@@ -566,3 +566,51 @@ func gmrPoolCount(p *game.Player, color string) int {
 	}
 	return n
 }
+
+// --- Domri, Chaos Bringer ---------------------------------------------
+
+const gmrDomriChaosBringerOracle = "2a5408ed-8b47-4896-97e4-aa102a4b85c9"
+
+// Domri's +1 mana, spent on a creature spell, gives it riot: the creature
+// asks the riot question as it enters (ADR 0109 §10 and §11). Spent on
+// an artifact, it gives nothing.
+func TestDomriChaosBringerManaGivesACreatureSpellRiot(t *testing.T) {
+	for _, tc := range []struct {
+		name, typeLine string
+		riot           bool
+	}{
+		{"a creature spell", "Creature — Bear", true},
+		{"an artifact spell", "Artifact", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			advanceToMain(t, g)
+			domri := seedPermanentWithOracle(g, me.ID, "Domri, Chaos Bringer", "Legendary Planeswalker — Domri", gmrDomriChaosBringerOracle)
+			g.WithWriteLock(func() { _ = g.AddCounterForEffect(domri, game.CounterLoyalty, 5) })
+			b16Activate(t, g, me.ID, domri, 0, game.ActivateAbilityParams{})
+			passPriorityAroundTable(t, g)
+			pick := riderLatestManaPick(g, me.ID)
+			if pick == nil {
+				t.Fatal("the +1 queued no {R} or {G} pick")
+			}
+			if err := g.ResolveManaChoice(pick.ID, me.ID, "R"); err != nil {
+				t.Fatalf("ResolveManaChoice: %v", err)
+			}
+			id := castFromHandForTest(t, g, me, "Spell", tc.typeLine, "{R}", "", strict)
+			passPriorityAroundTable(t, g)
+			open := pendingOfKind(g, game.PendingChoiceEntryRiot) != nil
+			if open != tc.riot {
+				t.Fatalf("riot question open = %v, want %v", open, tc.riot)
+			}
+			if !tc.riot {
+				return
+			}
+			answerRiotFor(t, g, false)
+			passPriorityAroundTable(t, g)
+			if !effectiveAbilitiesContain(t, g, id, "haste") {
+				t.Error("the creature took haste from riot and does not have it")
+			}
+		})
+	}
+}

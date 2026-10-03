@@ -316,3 +316,35 @@ func TestAnUnknownManaRiderIsRefusedOnRestore(t *testing.T) {
 		})
 	}
 }
+
+// ADR 0109 owner decision 1, CR 614.12: sunburst is read off the permanent
+// as it would exist on the battlefield. A creature entering under an
+// ability-removing static ("Creatures lose all abilities") has no sunburst
+// and enters with no counters; a noncreature artifact the static does not
+// reach still gets its charge counters. Reading the stack card instead gave
+// the creature three.
+func TestSunburstIsReadOffThePermanentAsItWouldEnter(t *testing.T) {
+	withRiotStatics(t)
+	for _, tc := range []struct {
+		name, typeLine, kind string
+		want                 int
+	}{
+		{"a creature loses it", "Artifact Creature — Golem", CounterPlusOne, 0},
+		{"a noncreature keeps it", "Artifact", CounterCharge, 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			pushStaticSource(g, me.ID, testRiotRemovalOracle)
+			id := seedSunburst(t, g, me, tc.typeLine)
+			floatMana(me, "WUBC")
+			if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true}); err != nil {
+				t.Fatalf("cast: %v", err)
+			}
+			resolveTop(t, g)
+			if got := counters(t, g, id, tc.kind); got != tc.want {
+				t.Errorf("%s counters = %d, want %d", tc.kind, got, tc.want)
+			}
+		})
+	}
+}

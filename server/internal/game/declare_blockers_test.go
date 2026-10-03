@@ -350,6 +350,10 @@ func TestScopedBlockRuleBindsThenSweepsAtEndOfTurn(t *testing.T) {
 	g := newActiveGame(t)
 	attacker := pushCombatant(t, g, g.Seats[0], "Gingerbrute", 1, 1)
 	blocker := pushCombatant(t, g, g.Seats[1], "Blocker", 2, 2)
+	// #1501: a hasty creature keeps the defender's declaration open; with
+	// no legal block at all it would complete as the step begins, and the
+	// block after the sweep would be refused as late.
+	pushCombatant(t, g, g.Seats[1], "Hasty", 1, 1, "haste")
 	g.WithWriteLock(func() {
 		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(attacker),
 			[]Mod{CantBeBlockedExceptByMod([]string{"haste"}, nil, "creatures with haste")},

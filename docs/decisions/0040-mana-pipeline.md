@@ -1087,7 +1087,8 @@ shape with one more field each and are not catalogued.
 > keyword given to a spell keeps its duration on the permanent; and the
 > rider gains two shapes, `spell_gains` (a keyword grant to the spell at the
 > spend, `Keywords` and `UntilEndOfTurn`) and a counted enters-with-counters
-> rider (`Count`, a registry key, Opal Palace). Restore now refuses a rider
+> rider (`Count`, a registry key, Opal Palace); an effect's mana carries riders
+> through `AddManaOptions.Riders` (Domri, Chaos Bringer's +1). Restore now refuses a rider
 > kind or a count key the binary cannot read (`snapshot_mana_riders.go`), so
 > the next rider kind is refused by every binary from this one on (Delivery
 > PR 10, #1552).

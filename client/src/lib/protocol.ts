@@ -119,6 +119,10 @@ export const BLOCK_REFUSAL_REASONS = [
   // two. Only a creature that can block more than one is ever refused
   // this; an ordinary blocker's second block re-points it.
   "blocker_capacity",
+  // #1501 (CR 509.1): the blocker's controller has already finished
+  // declaring blockers this combat — a late block, such as one on a
+  // ninja that entered attacking after the declaration.
+  "blocks_declared",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -351,6 +355,11 @@ export interface GameView {
   // Eclipse), by their source's name, oldest first. Absent on nearly
   // every turn.
   exile_if_creatures_die?: string[];
+  // ADR 0108 §7: the live "prevent all damage a source of your choice
+  // would deal this turn" shields and their charged siblings, as
+  // "<card> (<source>)" with "— N left" on a charged one, oldest first.
+  // Absent on nearly every turn.
+  damage_shields?: string[];
   // ADR 0108 §3: one line per live "it deals double (triple) that damage
   // instead" effect a resolved spell or ability made (Insult, Isengard
   // Unleashed, Lightning's Stagger), oldest first, already worded for the
@@ -569,7 +578,11 @@ export interface LegalMoveView {
     | "block"
     | "choice"
     | "mulligan"
-    | "special_action";
+    | "special_action"
+    // #1501: a declaring defender's finish_blocks ("No blocks" /
+    // "Done blocking"). Not a pass: nobody holds priority while a
+    // defender declares. Carries no card.
+    | "finish_blocks";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
@@ -1027,6 +1040,12 @@ export interface PendingChoiceView {
     // control_purpose says whether the permanent hurts or helps the
     // seat that receives it.
     | "entry_controller"
+    // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
+    // asked before the permanent enters. The {choice_id, apply} payload
+    // of the yes/no kinds: apply true takes the counter, false haste.
+    // Mandatory — both answers are always accepted. accept_label and
+    // decline_label name the two; source is the entering card.
+    | "entry_riot"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1069,6 +1088,13 @@ export interface PendingChoiceView {
     // stack still refers to), all public, so the options reach every
     // seat.
     | "choose_source"
+    // ADR 0108 §7 (#1904), CR 615.7: a charged prevention shield ("the
+    // next 3 damage") that meets several damage events at once, more
+    // than it can cover — the protected player divides the charge among
+    // them before any is dealt. `divide_shield` carries the charge and
+    // the events; answered with {choice_id, distribution: {entry id:
+    // share}}, the shares adding up to the charge.
+    | "divide_shield"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -1128,6 +1154,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
+  // the entry keyword it asks about — "riot" or "unleash". Absent on
+  // every other prompt, and on a "may" that is not unleash's.
+  entry_keyword?: "riot" | "unleash" | string;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
@@ -1167,6 +1197,8 @@ export interface PendingChoiceView {
   // is set) and submits resolve_choice with
   // { assignments: [{blocker_id, amount}, ...], trample_to_player }.
   damage_assignment?: DamageAssignmentView;
+  // ADR 0108 §7: populated for kind "divide_shield".
+  divide_shield?: DivideShieldView;
   // S19 follow-up: populated for kind "trigger_prompt" — true when
   // the optional trigger has no legal target and answering "Yes"
   // will pass without effect (Reclamation Sage with no opponent
@@ -1334,6 +1366,28 @@ export interface ReplacementOptionView {
 // blockers (respecting at-least-lethal-in-order) and, if
 // allow_trample, can overflow leftover to the defending player.
 // Added in S18 sub-PR 3.
+// ADR 0108 §7 (#1904), CR 615.7: a divide_shield prompt. `charge` is
+// what the shield has left; each entry is one damage event it meets —
+// `source_name` would deal `amount` to `target_name` (a player when
+// target_is_player). The answer gives each entry 0..amount, adding up
+// to `charge`.
+export interface DivideShieldView {
+  label?: string;
+  charge: number;
+  entries: DivideShieldEntryView[];
+}
+
+export interface DivideShieldEntryView {
+  id: string;
+  source_id: string;
+  source_name?: string;
+  target_id: string;
+  target_name?: string;
+  target_is_player?: boolean;
+  amount: number;
+  combat?: boolean;
+}
+
 export interface DamageAssignmentView {
   attacker_card_id: string;
   blocker_card_ids: string[];
@@ -2657,6 +2711,10 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // ADR 0109 §10 (CR 702.136a): this permanent's haste came from its
+  // own riot, so its haste chip is labelled "Riot". Public;
+  // battlefield only.
+  riot_haste?: boolean;
   // ADR 0109 §1: the resolved effects changing this permanent's land
   // types, oldest first — Tidal Warrior's "becomes an Island until end
   // of turn", Navigator's Compass's "in addition to its other types".

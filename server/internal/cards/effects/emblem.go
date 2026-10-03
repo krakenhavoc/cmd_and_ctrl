@@ -149,6 +149,14 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 // value creates the resolving card's emblem for the item's
 // controller, which is what every printed emblem clause says.
 //
+// A GRANTED ability's emblem is the grantor's (ADR 0109 §2, owner
+// decision 2). Teferi's Talent gives the planeswalker it enchants
+// "[−12]: You get an emblem with '…'"; the walker is the ability's
+// source and pays the 12, but the emblem's text is printed on the
+// Talent, so the zero value files it under the Talent's key
+// (Context.Grantor) and the Talent's Spec declares the emblem (CR
+// 114.2).
+//
 // Player and Source override those defaults for the case that does
 // not exist yet — an effect that hands somebody else's emblem to
 // somebody else — and are here so the primitive does not have to grow
@@ -164,6 +172,9 @@ func (c CreateEmblem) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	source := c.Source
+	if source == uuid.Nil {
+		source = ctx.Grantor()
+	}
 	if source == uuid.Nil {
 		source = ctx.Source()
 	}

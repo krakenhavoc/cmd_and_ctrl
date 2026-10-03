@@ -1014,6 +1014,11 @@ func TestB30SavvyHunterMakesFoodOnAttackAndOnBlock(t *testing.T) {
 	if err := g.DeclareAttacker(raider, me.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	// The Hunter is still tapped from its own attack, and a tapped
+	// creature can't block (CR 509.1a). #1501: with no legal block the
+	// defender's declaration would complete as the step began and the
+	// block below be refused as late, so it untaps first.
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(hunter) })
 	advanceTo(t, g, game.StepDeclareBlockers)
 	if err := g.DeclareBlocker(hunter, raider); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)

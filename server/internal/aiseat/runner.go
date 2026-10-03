@@ -54,8 +54,10 @@ type Config struct {
 	// block_decision_seats). Before #1279 this was what stopped a bot's
 	// pass from ending the step before a human had blocked; the engine
 	// now completes each defender's declaration explicitly and hands the
-	// active player priority after the last one, so the grace only saves
-	// the extra round of passes that follows. Zero disables;
+	// active player priority after the last one, and since #1501 nobody
+	// holds priority at all until then, so the grace almost never has
+	// anything to hold for — only a defender who holds priority while
+	// still declaring (block_completion.go). Zero disables;
 	// DefaultConfig sets 4s.
 	BlockGrace time.Duration
 	// Narrate posts the policy's Decision.Reason for every non-pass
@@ -760,9 +762,11 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 		// priority in hand — an attack a CR 508.1d requirement asks
 		// for — and a decline would sleep holding the table. #1597:
 		// the same for a defending player's blocks a CR 509.1c
-		// requirement asks for, offered as one AlwaysLegal move. A
-		// defender with only ordinary block moves has no always-legal
-		// answer and still declines, as before.
+		// requirement asks for, offered as one AlwaysLegal move. #1501:
+		// and for a defender with only ordinary block moves, whose
+		// always-legal answer is finish_blocks — priority is parked
+		// while it declares, so a decline that slept would hold the
+		// table with no pass for anyone.
 		if si := SafeIndex(in.Moves); si >= 0 {
 			out.index, out.reason, out.fallback = si, "decline → always-legal answer", FallbackDeclineAlwaysLegal
 			return out

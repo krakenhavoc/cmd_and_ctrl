@@ -79,6 +79,41 @@ describe("passHint", () => {
     expect(passHint(attacking, true)).toBe("passing moves to Declare Blockers");
   });
 
+  // #1501: nobody holds priority while defenders declare blockers, so
+  // the line names who the table is waiting on — for every viewer
+  // without priority, which in that window is every viewer.
+  it("names the defenders still declaring while priority is parked", () => {
+    const seats = [
+      { id: "a", name: "Alice", seat: 0 },
+      { id: "b", name: "Bob", seat: 1 },
+      { id: "c", name: "Cara", seat: 2 },
+      { id: "d", name: "Dev", seat: 3 },
+    ] as unknown as GameView["seats"];
+    const parked = (pending: number[]) =>
+      view("declare_blockers", {
+        seats,
+        turn: {
+          number: 2,
+          active_seat: 0,
+          priority_holder: -1,
+          phase: "combat",
+          step: "declare_blockers",
+          block_pending_seats: pending,
+        },
+      } as unknown as Partial<GameView>);
+    expect(passHint(parked([1]), false)).toBe("waiting for Bob to declare blockers");
+    expect(passHint(parked([1, 3]), false)).toBe("waiting for Bob and Dev to declare blockers");
+    expect(passHint(parked([1, 2, 3]), false)).toBe(
+      "waiting for Bob, Cara and Dev to declare blockers",
+    );
+    // Once the last declaration is in, the active player holds
+    // priority again and the line goes back to what `next` does.
+    const done = view("declare_blockers", { seats });
+    expect(passHint(done, false)).toBe("");
+    expect(passHint(done, true)).toBe("passing moves to Combat Damage");
+    expect(passHint(parked([]), false)).toBe("");
+  });
+
   it("says nothing on a step with no priority or one it does not know", () => {
     expect(passHint(view("untap"), true)).toBe("");
     expect(passHint(view("cleanup"), true)).toBe("");

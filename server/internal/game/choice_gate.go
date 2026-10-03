@@ -212,6 +212,11 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// prevention shield is created, mid-resolution, and the shield is
 	// the rest of the card: it blocks for option_pick's reason.
 	PendingChoiceChooseSource: true,
+	// ADR 0108 §7, CR 615.7. "Divide this shield among the damage" holds
+	// an instance's damage events, which are dealt once it is answered:
+	// a table that could walk past the question would be dealing the
+	// damage by doing.
+	PendingChoiceDivideShield: true,
 	// #804, CR 732. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the
@@ -242,6 +247,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// answering it by entering — and Xantcha's ruling is that nobody may
 	// act while it is on the battlefield before an opponent controls it.
 	PendingChoiceEntryController: true,
+	// ADR 0109 §10, CR 614.12a. Riot's "a +1/+1 counter or haste" is
+	// asked before the permanent enters, with the CR 614 pipeline
+	// suspended on the answer: entry_controller's reason.
+	PendingChoiceEntryRiot: true,
 	// ADR 0098: "if this would enter, you may discard a land card
 	// instead" and "sacrifice a Forest instead". The same reason: the
 	// entry is suspended on the answer.

@@ -492,11 +492,10 @@ func Register(spec Spec) {
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
-		// the ability free, the way a zero-counter cost would.
-		if dc := ab.Cost.DiscardCards; dc != nil && dc.N <= 0 {
-			panic(fmt.Sprintf("effects.Register: %q ability %d discards %d cards — a discard cost discards at least one",
-				spec.Name, i, dc.N))
-		}
+		// the ability free, the way a zero-counter cost would — unless
+		// it is "Discard your hand" (#1600), whose count is the hand.
+		checkDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
+		checkDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// ADR 0109 §7: the random discard and the two library
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
@@ -596,11 +595,10 @@ func Register(spec Spec) {
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
 		// #1213 / #1283: a card-picking clause that picks nothing would
-		// make the ability free — the refusal the CR 602 discard gets.
-		if dc := ma.Cost.DiscardCards; dc != nil && dc.N <= 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards %d cards — a discard cost discards at least one",
-				spec.Name, i, dc.N))
-		}
+		// make the ability free — the refusal the CR 602 discard gets,
+		// and the same "Discard your hand" exception (#1600).
+		checkDiscardClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.DiscardCards)
+		checkManaDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost)
 		// ADR 0109 §7: a random discard is a CR 602 component only. No
 		// printed mana ability discards at random, and the mana payer
 		// never draws one, so the ability would be free.

@@ -52,11 +52,32 @@ func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game)
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
 		return false
 	}
+	return damageSourceIsABattlefieldCreature(ev, g)
+}
+
+// damageSourceIsABattlefieldCreature reports whether an EventDealDamage's
+// source is a creature on the battlefield — "whenever a creature deals
+// damage …" (No Mercy, Liliana's Talent). Looked up live, which is right
+// at harvest: damage is dealt before SBAs run.
+func damageSourceIsABattlefieldCreature(ev game.Event, g *game.Game) bool {
 	if z := g.FindCardZoneForEffect(ev.Source); z == nil || z.Kind != game.ZoneBattlefield {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
 	return ok && c.IsCreature()
+}
+
+// destroyTheCreatureThatDealtTheDamage is "destroy it" / "destroy that
+// creature" after a creature's damage (No Mercy, Liliana's Talent). The
+// creature rides the trigger's event and is destroyed only if it is
+// still on the battlefield. Not targeted, so hexproof does not save it;
+// indestructible does.
+func destroyTheCreatureThatDealtTheDamage(g *game.Game, item *game.StackItem) error {
+	attacker := item.Trigger.Event.Source
+	if z := g.FindCardZoneForEffect(attacker); z == nil || z.Kind != game.ZoneBattlefield {
+		return nil
+	}
+	return DestroyTarget{Target: attacker}.Apply(NewContext(g, item))
 }
 
 // b13OtherCreatureYouControlLeftWithoutDying is Dour Port-Mage's

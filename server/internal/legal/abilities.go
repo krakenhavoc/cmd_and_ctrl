@@ -675,6 +675,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							label += returnLabel(g, rets)
 							label += tapLabel(g, taps)
 							label += randomDiscardLabel(ab.Cost)
+							handN := e.handDiscardCount(ab.Cost.DiscardCards, source.InstanceID)
+							label += handDiscardLabel(ab.Cost.DiscardCards, handN)
 							label += cc.label(g)
 							label += targetLabel(g, targets)
 							// #74: the life on the Move is what the
@@ -688,6 +690,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							for _, price := range cc.prices() {
 								cost = withCounterPrice(cost, price)
 							}
+							// #1600: the hand a "Discard your hand"
+							// cost throws away, which the params cannot
+							// name.
+							cost = withHandDiscard(cost, handN)
 							e.add(Move{
 								Type:   TypeActivateAbility,
 								Player: e.seat,
@@ -1696,14 +1702,18 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 					label += sacrificeLabel(g, sacs)
 					label += tapLabel(g, taps)
 					label += cc.label(g)
+					handN := e.handDiscardCount(ab.DiscardCards, source.InstanceID)
+					label += handDiscardLabel(ab.DiscardCards, handN)
 					// Mana Confluence's "Pay 1 life" is the same
 					// invisible cost an activated ability's is (#74),
 					// and so is a charge counter: the params name the
-					// permanent but never the price.
+					// permanent but never the price. #1600: and so is
+					// Lion's Eye Diamond's hand.
 					cost := moveCost(ab.LifeCost, 0)
 					for _, price := range cc.prices() {
 						cost = withCounterPrice(cost, price)
 					}
+					cost = withHandDiscard(cost, handN)
 					e.add(Move{
 						Type:   TypeActivateManaAbility,
 						Player: e.seat,
@@ -1776,6 +1786,39 @@ func randomDiscardLabel(cost game.AbilityCost) string {
 		return fmt.Sprintf(" discarding %d cards at random", n)
 	}
 	return ""
+}
+
+// handDiscardCount is how many cards a "Discard your hand" cost (#1600)
+// would discard if the move were made now: the activator's whole hand,
+// less the source when the ability is activated from that hand (the
+// engine's own reading, validateDiscardCostLocked). Zero for every
+// other cost — and for an empty hand, which pays the clause in full.
+//
+// The params name none of those cards (the engine refuses ids for the
+// clause), so this is the only place a policy learns what the move
+// throws away: MoveCost.Hand carries it, and the label says it.
+func (e *enumerator) handDiscardCount(dc *game.DiscardCost, sourceID uuid.UUID) int {
+	if !dc.DiscardsHand() || e.p.Hand == nil {
+		return 0
+	}
+	n := 0
+	for i := range e.p.Hand.Cards {
+		if e.p.Hand.Cards[i].InstanceID != sourceID {
+			n++
+		}
+	}
+	return n
+}
+
+// handDiscardLabel is randomDiscardLabel's sibling for the hand clause.
+func handDiscardLabel(dc *game.DiscardCost, n int) string {
+	if !dc.DiscardsHand() {
+		return ""
+	}
+	if n == 1 {
+		return " discarding your hand (1 card)"
+	}
+	return fmt.Sprintf(" discarding your hand (%d cards)", n)
 }
 
 // exileCardsPayment solves an ExileCards cost component (#1283, #1297)

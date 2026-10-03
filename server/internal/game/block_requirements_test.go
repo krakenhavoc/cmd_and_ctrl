@@ -44,19 +44,23 @@ func blockRequirementErr(t *testing.T, err error) *BlockRefusedError {
 	return br
 }
 
-// passToDefender hands priority from the active player to seat 1, the
-// defender, so the next PassPriority is the defender's.
+// passToDefender hands priority to seat 1, the defender, so the next
+// PassPriority is the defender's.
+//
+// #1501: priority is parked while a defender is declaring, so no pass
+// gets it there any more. The defender's pass is still a completion
+// point — and so still the declaration's CR 509.1c checkpoint — for
+// the one shape in which a pending defender holds priority anyway (a
+// restore point written before #1501 mid-step; a player who became a
+// defending player after the step began). This builds that shape
+// directly, so the pass checkpoint stays covered beside finish_blocks
+// and AdvanceStep.
 func passToDefender(t *testing.T, g *Game) {
 	t.Helper()
-	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
-		t.Fatalf("priority holder %d, want the active seat", g.Turn.PriorityHolder)
+	if g.Turn.PriorityHolder != NoPriority {
+		t.Fatalf("priority holder %d, want it parked for the declaration", g.Turn.PriorityHolder)
 	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
-	if g.Turn.PriorityHolder != 1 {
-		t.Fatalf("priority holder %d after the active pass, want the defender", g.Turn.PriorityHolder)
-	}
+	g.WithWriteLock(func() { g.Turn.PriorityHolder = 1 })
 }
 
 func block(t *testing.T, g *Game, pairs ...uuid.UUID) error {

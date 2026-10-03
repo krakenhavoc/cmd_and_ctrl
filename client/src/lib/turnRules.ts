@@ -33,6 +33,19 @@ export function exileIfCreaturesDieLine(sources: readonly string[] | undefined):
   return names.length === 0 ? rule : `${rule} — ${names.join(", ")}`;
 }
 
+/**
+ * The game banner's line for the live source shields
+ * (GameView.damage_shields, ADR 0108 §7): "Pay No Heed (Goblin Guide)"
+ * and "Healing Grace (Lightning Bolt) — 3 left". Empty when there are
+ * none. A line named twice is named once.
+ */
+export function damageShieldsLine(shields: readonly string[] | undefined): string {
+  if (!shields || shields.length === 0) return "";
+  const names = [...new Set(shields.filter((s) => s !== ""))];
+  const rule = "Damage prevented this turn";
+  return names.length === 0 ? rule : `${rule} — ${names.join(", ")}`;
+}
+
 export function damageCantBePreventedLine(sources: readonly string[] | undefined): string {
   if (!sources || sources.length === 0) return "";
   const names = [...new Set(sources.filter((s) => s !== ""))];

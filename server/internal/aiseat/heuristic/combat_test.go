@@ -120,6 +120,51 @@ func TestBlocksOnlyWindowDeclinesRatherThanChumping(t *testing.T) {
 	}
 }
 
+// #1501: priority is parked while a defender declares, so the window
+// carries finish_blocks instead of a pass. With nothing worth blocking
+// the bot takes it — finishing the declaration is its "nothing worth
+// doing" — rather than declining; with a good block on offer it still
+// blocks first.
+func TestDeclaringDefenderFinishesWhenNothingIsWorthBlocking(t *testing.T) {
+	v := newView(
+		[]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(
+			creature(cardID(20), 1, "Giant", 6, 6, attacking(0)),
+			creature(cardID(10), 0, "Bear", 2, 2),
+		),
+		withTurn(5, 1, "declare_blockers"),
+	)
+	in := input(0, v,
+		blockMove(t, 0, cardID(10), cardID(20)),
+		finishBlocksMove(0),
+	)
+	d := decide(t, heuristic.New(), in)
+	if d.Index != 1 {
+		t.Fatalf("chose index %d (%q); at 40 life the bot should finish its declaration with no block", d.Index, chose(t, in, d))
+	}
+	// Taken as the pass it stands in for, not as an owed answer the bot
+	// fell back on.
+	if d.Reason != "nothing worth doing" {
+		t.Errorf("reason %q, want the pass's \"nothing worth doing\"", d.Reason)
+	}
+
+	good := newView(
+		[]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(
+			creature(cardID(20), 1, "Bear", 2, 2, attacking(0)),
+			creature(cardID(10), 0, "Giant", 5, 5),
+		),
+		withTurn(5, 1, "declare_blockers"),
+	)
+	in = input(0, good,
+		blockMove(t, 0, cardID(10), cardID(20)),
+		finishBlocksMove(0),
+	)
+	if d := decide(t, heuristic.New(), in); d.Index != 0 {
+		t.Fatalf("chose index %d; a Giant eating a Bear is a block worth making before finishing", d.Index)
+	}
+}
+
 func TestAttacksAvoidUnprofitableSwings(t *testing.T) {
 	// A lone 2/2 into an untapped 5/5 is a gift.
 	v := newView(

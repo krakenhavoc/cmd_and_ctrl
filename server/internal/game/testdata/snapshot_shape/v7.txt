@@ -416,6 +416,7 @@ events[].last_known_supertypes[]	string
 events[].last_known_types	array
 events[].last_known_types[]	string
 events[].looked_at	number:int
+events[].loyalty	bool
 events[].new_zone	string
 events[].old_zone	string
 events[].played	bool
@@ -1162,6 +1163,7 @@ lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.faceDown	string
 lastKnownStack[].item.foretold	bool
+lastKnownStack[].item.grantedBy	custom(uuid.UUID)
 lastKnownStack[].item.hasEffect	bool
 lastKnownStack[].item.hasModeSpec	bool
 lastKnownStack[].item.hasTargetSpec	bool
@@ -1291,6 +1293,7 @@ lastKnownStack[].item.trigger.Event.last_known_supertypes[]	string
 lastKnownStack[].item.trigger.Event.last_known_types	array
 lastKnownStack[].item.trigger.Event.last_known_types[]	string
 lastKnownStack[].item.trigger.Event.looked_at	number:int
+lastKnownStack[].item.trigger.Event.loyalty	bool
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
@@ -1576,6 +1579,7 @@ pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
 pendingTriggers[].faceDown	string
 pendingTriggers[].foretold	bool
+pendingTriggers[].grantedBy	custom(uuid.UUID)
 pendingTriggers[].hasEffect	bool
 pendingTriggers[].hasModeSpec	bool
 pendingTriggers[].hasTargetSpec	bool
@@ -1705,6 +1709,7 @@ pendingTriggers[].trigger.Event.last_known_supertypes[]	string
 pendingTriggers[].trigger.Event.last_known_types	array
 pendingTriggers[].trigger.Event.last_known_types[]	string
 pendingTriggers[].trigger.Event.looked_at	number:int
+pendingTriggers[].trigger.Event.loyalty	bool
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
@@ -2105,6 +2110,7 @@ scopedEffects[].mods[].copy[].TypeLine	string
 scopedEffects[].mods[].copy[].VariableToughness	bool
 scopedEffects[].mods[].grants	array
 scopedEffects[].mods[].grants[]	string
+scopedEffects[].mods[].half	bool
 scopedEffects[].mods[].keywords	array
 scopedEffects[].mods[].keywords[]	string
 scopedEffects[].mods[].kind	string
@@ -3947,6 +3953,7 @@ stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
 stackMeta[].faceDown	string
 stackMeta[].foretold	bool
+stackMeta[].grantedBy	custom(uuid.UUID)
 stackMeta[].hasEffect	bool
 stackMeta[].hasModeSpec	bool
 stackMeta[].hasTargetSpec	bool
@@ -4076,6 +4083,7 @@ stackMeta[].trigger.Event.last_known_supertypes[]	string
 stackMeta[].trigger.Event.last_known_types	array
 stackMeta[].trigger.Event.last_known_types[]	string
 stackMeta[].trigger.Event.looked_at	number:int
+stackMeta[].trigger.Event.loyalty	bool
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool

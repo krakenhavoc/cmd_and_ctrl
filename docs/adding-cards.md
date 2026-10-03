@@ -759,8 +759,20 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
 `returnThisCreatureFromGraveyard`. See `feign_death.go`,
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
-Still no shape: a duration that lasts "for as long as it has a <kind>
-counter on it" (Ultima, Origin of Oblivion).
+"For as long as it has a <kind> counter on it" is a counter-held
+`Duration` (`GrantWhileItHasCounter`, ADR 0109 §2).
+
+A granted LOYALTY ability ("Enchanted planeswalker has '[−12]: …'",
+the Talents; ADR 0109 §2) is a bundle row with a `LoyaltyCost`, granted
+with `GrantAbilitiesToAttached` like any other. Nothing else to
+declare: the row is the planeswalker's, so CR 606.3's once-per-turn
+count and CR 606.6's counter check are the walker's, shared with its
+own loyalty abilities. "You get an emblem" in a granted ability is the
+GRANTOR's emblem: declare the `Emblem` on the grantor's Spec and write
+`CreateEmblem{}`, which reads the stack item's `GrantedBy`. "Whenever you
+activate a loyalty ability of enchanted planeswalker" is
+`WheneverYouActivateALoyaltyAbilityOfEnchanted`. See `teferis_talent.go`
+and `enchanted_planeswalker.go`.
 
 ### Abilities any player may activate (ADR 0106, #1793)
 
@@ -1719,6 +1731,8 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
+| `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
+| `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 
@@ -3128,6 +3142,19 @@ a scope. It cannot see one sentence written as two calls without a loop,
 so wrap those by hand (`b10Fight`, Fear, Fire, Foes!). Two sentences stay
 two instances (Repulsor Blast's teamwork damage, Garruk Relentless's
 fight-back).
+
+**A charged shield is divided among an instance's events (ADR 0108 §7,
+owner decision 1).** While a charged shield ("prevent the next 3
+damage", `preventDamage` or a charged `preventFromSource`) is live, a
+scope holds back the fire-and-forget damage calls the shield could meet
+and deals them as the scope ends, once the protected player has said
+which of it the shield prevents (`divide_shield`, CR 615.7). So inside
+a scope, never read the board straight after a fire-and-forget damage
+call to learn what it did — a CR 616 pause defers it the same way. Use a
+`…ThenForEffect` continuation (`DealDamageThen`) instead. Source shields
+against a chosen or named source are `PreventDamageFromChosenSource(…)`,
+`PreventDamageFromSource{From: …}` and `.Charged(n)`
+(`effects/prevent_from_source.go`).
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the

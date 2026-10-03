@@ -137,6 +137,13 @@ type GameView struct {
 	// single creature is that creature's chip instead
 	// (CardView.ExiledIfItDies).
 	ExileIfCreaturesDie []string `json:"exile_if_creatures_die,omitempty"`
+	// DamageShields lists the live "prevent all damage a source of your
+	// choice would deal this turn" shields and their charged siblings
+	// (ADR 0108 §7), oldest first, as "<card> (<source>)" with "— N
+	// left" on a charged one — the game banner's line. Public: the
+	// chosen source is announced as the shield is made. Empty on nearly
+	// every turn.
+	DamageShields []string `json:"damage_shields,omitempty"`
 	// DamageMultipliers is one line per live "it deals double (triple)
 	// that damage instead" effect a resolved spell or ability made (ADR
 	// 0108 §3 decision 4), oldest first — the game banner's lines:
@@ -326,6 +333,13 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// EntryKeyword names the entry keyword an "entry_riot" or
+	// "optional_replacement" prompt is asking about — "riot" or
+	// "unleash" (ADR 0109 §10) — so the client can word the question
+	// and a policy can tell unleash's "may" from any other.
+	// The entering card rides Source. Absent on every other prompt.
+	EntryKeyword string `json:"entry_keyword,omitempty"`
+
 	// TradeFor populates a "trigger_prompt" whose "yes" TRADES the
 	// source for the object the trigger is about (ADR 0104): Perplexing
 	// Chimera's "you may exchange control of this creature and that
@@ -367,6 +381,11 @@ type PendingChoiceView struct {
 	// ordered blocker list (CR 510.1c). Absent for non-assignment
 	// choices. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentView `json:"damage_assignment,omitempty"`
+
+	// DivideShield populates the ADR 0108 §7 "divide_shield" kind: a
+	// charged prevention shield the protected player divides among the
+	// damage events of one instance (CR 615.7).
+	DivideShield *DivideShieldView `json:"divide_shield,omitempty"`
 
 	// TriggerOptions populates the S19 "trigger_order" kind: one
 	// entry per pending trigger the chooser is ordering (CR
@@ -1139,6 +1158,48 @@ type DamageAssignmentView struct {
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
 }
 
+// DivideShieldView is the wire shape of a divide_shield prompt (ADR 0108
+// §7 decision 6, CR 615.7): the shield's label, the charge to divide,
+// and one entry per damage event it meets. The answer is resolve_choice
+// with `distribution: {entry id: share}`, the shares adding up to
+// `charge` and none above its entry's `amount`.
+type DivideShieldView struct {
+	Label   string                  `json:"label,omitempty"`
+	Charge  int                     `json:"charge"`
+	Entries []DivideShieldEntryView `json:"entries"`
+}
+
+// DivideShieldEntryView is one damage event a divided shield meets:
+// `source` would deal `amount` to `target` (a player when
+// target_is_player).
+type DivideShieldEntryView struct {
+	ID             string `json:"id"`
+	SourceID       string `json:"source_id"`
+	SourceName     string `json:"source_name,omitempty"`
+	TargetID       string `json:"target_id"`
+	TargetName     string `json:"target_name,omitempty"`
+	TargetIsPlayer bool   `json:"target_is_player,omitempty"`
+	Amount         int    `json:"amount"`
+	Combat         bool   `json:"combat,omitempty"`
+}
+
+func divideShieldView(p *game.DivideShieldPrompt) *DivideShieldView {
+	v := &DivideShieldView{Label: p.Label, Charge: p.Charge, Entries: make([]DivideShieldEntryView, 0, len(p.Entries))}
+	for _, en := range p.Entries {
+		v.Entries = append(v.Entries, DivideShieldEntryView{
+			ID:             en.ID.String(),
+			SourceID:       en.Source.String(),
+			SourceName:     en.SourceName,
+			TargetID:       en.Target.String(),
+			TargetName:     en.TargetName,
+			TargetIsPlayer: en.TargetIsPlayer,
+			Amount:         en.Amount,
+			Combat:         en.Combat,
+		})
+	}
+	return v
+}
+
 // ReplacementOptionView is one entry in a PendingChoiceView's
 // ReplacementOptions slice — the wire shape of one CR 616 order-
 // prompt candidate. ID is the server-side ReplacementEffectID
@@ -1693,6 +1754,10 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// RiotHaste is true for a permanent whose haste came from its own
+	// riot (CR 702.136a, ADR 0109 §10 decision 7): the client labels
+	// its haste chip "Riot". Public; battlefield only.
+	RiotHaste bool `json:"riot_haste,omitempty"`
 	// LandTypeEffects are the resolved effects changing this
 	// permanent's land types, oldest first (ADR 0109 §1 decision 7):
 	// Tidal Warrior's "becomes an Island until end of turn", Navigator's
@@ -3707,6 +3772,7 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
+			DamageShields:         g.DamageShieldLabels(),
 			DamageMultipliers:     g.DamageMultiplierLines(),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
@@ -6349,7 +6415,8 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 
 // stampDeathMarks is ADR 0108's two chips: "exiled if it dies this turn"
 // and "can't be regenerated this turn", on each battlefield permanent
-// that carries one.
+// that carries one — and ADR 0109 §10's riot haste, the third chip a
+// resolved record on the permanent puts there.
 func stampDeathMarks(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
 		return
@@ -6361,6 +6428,7 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+		view.Cards[i].RiotHaste = g.RiotHasteForEffect(id)
 	}
 }
 
@@ -6711,6 +6779,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
+		// ADR 0109 §10: riot's two answers, and which keyword a riot or
+		// unleash question is about.
+		if c.Kind == game.PendingChoiceEntryRiot {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+		}
+		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement) && len(c.ReplacementEffectIDs) == 1 {
+			v.EntryKeyword = game.EntryKeywordOfReplacement(c.ReplacementEffectIDs[0])
+		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public
 		// information the moment it is asked (the card's text is
@@ -6858,6 +6935,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				HasDeathtouch:  frame.HasDeathtouch,
 				BlockerDivides: frame.BlockerDivides,
 			}
+		}
+		// ADR 0108 §7: divide_shield — the shield's charge and the
+		// damage events it meets, answered with a distribution.
+		if c.Kind == game.PendingChoiceDivideShield && c.DivideShield != nil {
+			v.DivideShield = divideShieldView(c.DivideShield)
 		}
 		out = append(out, v)
 	}
@@ -7499,6 +7581,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive:     v.SplitSecondActive,
 		DamageCantBePrevented: v.DamageCantBePrevented,
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
+		DamageShields:         v.DamageShields,
 		DamageMultipliers:     v.DamageMultipliers,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
@@ -7905,6 +7988,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// ADR 0109 §10: "its haste came from riot" says the card has riot,
+	// which names it as loudly as the ability list does.
+	out.RiotHaste = false
 	// #662: the parsed half of Abilities. "Protection from Demons"
 	// names a card as loudly as the raw token does, and clearing one
 	// without the other would put the leak back.

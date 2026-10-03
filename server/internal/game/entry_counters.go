@@ -268,23 +268,6 @@ func (g *Game) EntrySpentForEffect(ev *ReplacementEvent) ManaSpent {
 // KeywordSunburst is CR 702.44's token in canonicalKeywords.
 const KeywordSunburst = "sunburst"
 
-// sunburstInstances is how many instances of sunburst the resolving
-// spell `card` has (CR 702.44d: each works separately) — its printed
-// ones and the ones an effect gave it on the stack (Lux Artillery's
-// "it gains sunburst", ADR 0107 §3's stack keyword pass), as the spell
-// had them when it began to resolve. Read off the stack card, which is
-// what CR 400.7a carries onto the permanent: a keyword the SPELL was
-// given is the permanent's as it enters.
-func sunburstInstances(card Card) int {
-	n := 0
-	for _, kw := range card.Effective().Abilities {
-		if kw == KeywordSunburst {
-			n++
-		}
-	}
-	return n
-}
-
 // applySunburstLocked seeds CR 702.44a's counters onto the entry event:
 // for each instance of sunburst, one counter per colour of mana spent
 // to cast the spell — a +1/+1 counter if the object is entering as a
@@ -292,12 +275,20 @@ func sunburstInstances(card Card) int {
 // a charge counter otherwise. So the creature test reads the PRINTED
 // type line, not the layered one.
 //
+// The instances are the permanent's as it would exist on the
+// battlefield (CR 614.12, ADR 0109 owner decision 1), from the entry
+// look-ahead (entry_lookahead.go): its printed and deck-imported
+// sunburst, the ones an effect gave the SPELL (Lux Artillery, Solar
+// Array — CR 400.7a carries them onto the permanent), each counted
+// separately (CR 702.44d), and none at all when it would enter under
+// an ability-removing effect such as Dress Down.
+//
 // CR 702.44b: only for an object entering from the stack as a resolving
 // spell, and only if coloured mana was spent. The caller passes the
 // resolving item; a payment the engine waived (strict mana off) claims
 // no colours and adds nothing (ADR 0068 §3).
-func applySunburstLocked(ev *ReplacementEvent, card Card, item *StackItem) {
-	instances := sunburstInstances(card)
+func (g *Game) applySunburstLocked(ev *ReplacementEvent, card Card, item *StackItem) {
+	instances := g.entryLookAheadLocked(ev).sunburst
 	if instances == 0 {
 		return
 	}
@@ -353,10 +344,11 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 	// same place and for the same reason as the card's own clause, so
 	// the two compose and Doubling Season sees both.
 	g.riderEntryCountersLocked(ev, item)
-	// ADR 0109 §11 decision 2: sunburst is a keyword, read off the
-	// resolving stack card so a granted instance counts like a printed
-	// one, each separately (CR 702.44d).
-	applySunburstLocked(ev, card, item)
+	// ADR 0109 §11 decision 2 and owner decision 1: sunburst is a
+	// keyword, counted on the permanent the entry look-ahead says this
+	// would be, so a granted instance counts like a printed one, each
+	// separately (CR 702.44d), and an ability-removing effect leaves none.
+	g.applySunburstLocked(ev, card, item)
 	clauses := EntersWithCountersFromCastFor(CatalogKey(card))
 	if len(clauses) == 0 {
 		return
