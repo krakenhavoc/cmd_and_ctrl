@@ -26,7 +26,11 @@
   import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import PhaseIcon from "./PhaseIcon.svelte";
-  import { damageCantBePreventedLine, exileIfCreaturesDieLine } from "../../turnRules";
+  import {
+    damageCantBePreventedLine,
+    damageMultiplierLines,
+    exileIfCreaturesDieLine,
+  } from "../../turnRules";
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
 
   interface Props {
@@ -37,6 +41,9 @@
     // be prevented this turn" grants (GameView.damage_cant_be_prevented).
     damageCantBePrevented?: string[];
     exileIfCreaturesDie?: string[];
+    // ADR 0108 §3: the live damage multipliers' banner lines
+    // (GameView.damage_multipliers).
+    damageMultipliers?: string[];
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
     // highlighted action on this frame (legalActions.ts
     // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
@@ -54,6 +61,7 @@
     mulligansOpen,
     damageCantBePrevented = [],
     exileIfCreaturesDie = [],
+    damageMultipliers = [],
     readyActions = 0,
     trackOpen = false,
   }: Props = $props();
@@ -71,6 +79,7 @@
 
   const unpreventableLine = $derived(damageCantBePreventedLine(damageCantBePrevented));
   const exileOnDeathLine = $derived(exileIfCreaturesDieLine(exileIfCreaturesDie));
+  const multiplierLines = $derived(damageMultiplierLines(damageMultipliers));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -210,6 +219,9 @@
   {#if exileOnDeathLine}
     <div class="row turn-rule" role="status">{exileOnDeathLine}</div>
   {/if}
+  {#each multiplierLines as line, i (i)}
+    <div class="row turn-rule" role="status">{line}</div>
+  {/each}
 </div>
 
 <style>

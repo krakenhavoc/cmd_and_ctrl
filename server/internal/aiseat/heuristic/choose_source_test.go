@@ -54,3 +54,16 @@ func TestChooseSourcePrefersASpellOnTheStack(t *testing.T) {
 		t.Errorf("chose %q, want the Lightning Bolt about to resolve", got)
 	}
 }
+
+// ADR 0108 §3: Desperate Gambit offers only the bot's own sources; it
+// picks the one with the most power.
+func TestChooseSourceAmongYourOwnPicksTheMostPower(t *testing.T) {
+	small := creature(cardID(1), 0, "Goblin", 1, 1)
+	big := creature(cardID(2), 0, "Dragon", 6, 6)
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(small, big), withChooseSource(small, big))
+	in := input(0, v, chooseSourceMoves(t, cardID(1), cardID(2))...)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "choose "+cardID(2) {
+		t.Errorf("chose %q, want your own 6-power Dragon", got)
+	}
+}

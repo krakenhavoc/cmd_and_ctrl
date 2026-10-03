@@ -78,6 +78,26 @@ import (
 // protected permanent.
 const ModPreventNextFromSource ModKind = "preventNextFromSource"
 
+// ModPreventNextCombatFromSource is ModPreventNextFromSource for "the
+// next time <source> would deal COMBAT damage this turn, prevent that
+// damage" (Impulsive Maneuvers' losing flip, ADR 0108 PR 2): the same
+// fields, read the same way, and non-combat damage from the source
+// neither meets the shield nor spends it.
+//
+// A kind of its own rather than a combatOnly flag on the older kind, so
+// that a binary from before it REFUSES a restore point holding one
+// (ErrUnknownEffectKey, the file kept): a flag would be a key that binary
+// already decodes and ignores, and it would restore the shield as one
+// that prevents non-combat damage too. Neither kind reads CombatOnly, and
+// both refuse it.
+const ModPreventNextCombatFromSource ModKind = "preventNextCombatFromSource"
+
+// isNextFromSourceKind reports whether k is one of the two next-damage
+// shield kinds.
+func isNextFromSourceKind(k ModKind) bool {
+	return k == ModPreventNextFromSource || k == ModPreventNextCombatFromSource
+}
+
 // NextDamageShield is the queue-side description of a
 // ModPreventNextFromSource record.
 type NextDamageShield struct {
@@ -109,6 +129,12 @@ type NextDamageShield struct {
 	// Zero is none.
 	Then BodyRef
 
+	// CombatOnly is "the next time <source> would deal COMBAT damage"
+	// (Impulsive Maneuvers' losing flip, ADR 0108 §3): non-combat damage
+	// from the source neither meets the shield nor spends it. It writes
+	// the ModPreventNextCombatFromSource kind.
+	CombatOnly bool
+
 	// Label is the record's label, shown in a CR 616 ordering prompt.
 	Label string
 }
@@ -131,6 +157,9 @@ func (g *Game) PreventNextDamageFromSourceForEffect(s NextDamageShield) bool {
 		Player:     s.ProtectPlayer,
 		Types:      copyStrings(s.ProtectTypes),
 		Then:       s.Then.key,
+	}
+	if s.CombatOnly {
+		m.Kind = ModPreventNextCombatFromSource
 	}
 	if s.Source.ID != uuid.Nil {
 		m.Objects = []ObjectRef{s.Source}
@@ -185,14 +214,26 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 // nextFromSourceModProblem is registration's (and restore's) check on the
 // kind's parameters.
 func nextFromSourceModProblem(m Mod) string {
-	if m.Kind != ModPreventNextFromSource {
+	if !isNextFromSourceKind(m.Kind) {
 		// #1879: the granted "can't attack unless defending player
 		// controls" reads Queries too, as what the defender must control.
 		queries := len(m.Queries) != 0 && m.Kind != ModCantAttackUnlessDefenderControls
-		if m.SourceZone != "" || queries || m.SpentBatch != 0 || m.SpentInstance != 0 {
+		// ADR 0108 §3: a multiplier names its one source and its "next
+		// time" spend with the same fields (multiplyDamageModProblem
+		// checks it).
+		sourced := m.SourceZone != "" || m.SpentBatch != 0 || m.SpentInstance != 0
+		if m.Kind == ModMultiplyDamage {
+			sourced = false
+		}
+		if sourced || queries {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
+	}
+	if m.CombatOnly {
+		// The combat-only shield is its own kind, so that an older
+		// binary refuses it; the flag is never written on either.
+		return fmt.Sprintf("a %s shield carries combatOnly; the combat-only shield is %s", m.Kind, ModPreventNextCombatFromSource)
 	}
 	if len(m.Objects) > 1 {
 		return "a preventNextFromSource shield names more than one source"
@@ -219,6 +260,11 @@ func nextFromSourceModProblem(m Mod) string {
 // Caller must hold g.mu.
 func (g *Game) nextFromSourceAppliesLocked(e ScopedEffect, m Mod, ev *ReplacementEvent) bool {
 	if ev.Kind != RepEventDamage || ev.DamageAmount <= 0 {
+		return false
+	}
+	// "The next time it would deal combat damage": other damage passes
+	// the shield by, unspent.
+	if m.Kind == ModPreventNextCombatFromSource && !ev.IsCombatDamage {
 		return false
 	}
 	// Spent in an earlier instance: CR 615.8's "any subsequent instances
@@ -360,7 +406,8 @@ func (g *Game) markNextShieldSpentLocked(seq int64, mod int, batch uint64, inst 
 func (g *Game) dropSpentNextShieldsLocked() {
 	stale := func(e ScopedEffect) bool {
 		for _, m := range e.Mods {
-			if m.Kind == ModPreventNextFromSource && m.SpentBatch != 0 && m.SpentBatch != g.eventBatch {
+			// ADR 0108 §3: a spent "next time" multiplier is done too.
+			if spentNextTimeMod(m, g.eventBatch) {
 				return true
 			}
 		}
@@ -651,11 +698,12 @@ func (g *Game) preventionFollowUpForUnpreventableLocked(ev *ReplacementEvent, id
 	if !ok {
 		return
 	}
-	e, m, ok := g.scopedReplacementModLocked(seq, mod, ModPreventNextFromSource)
-	if !ok {
+	i, ok := g.scopedEffectIndexBySeqLocked(seq)
+	if !ok || mod < 0 || mod >= len(g.ScopedEffects[i].Mods) || !isNextFromSourceKind(g.ScopedEffects[i].Mods[mod].Kind) {
 		return
 	}
-	g.queuePreventionFollowUpLocked(e, m, ev, 0)
+	e := g.ScopedEffects[i]
+	g.queuePreventionFollowUpLocked(e, e.Mods[mod], ev, 0)
 }
 
 // --- choosing a source (CR 609.7a) ------------------------------------
@@ -685,6 +733,13 @@ type ChooseSourcePrompt struct {
 	// Queries narrows the candidates to the sources the card names ("a
 	// red source of your choice"). Empty is any source.
 	Queries []PermanentQuery
+	// Controller narrows the candidates to the sources that player
+	// controls (ADR 0108 §3: Desperate Gambit's "choose a source you
+	// control"), read as each candidate is offered: a permanent's or a
+	// spell's controller, a departed permanent's as it last existed, and
+	// for a card that has no controller — one in the command zone, a
+	// graveyard or exile — its owner (CR 108.4a). uuid.Nil is anyone's.
+	Controller uuid.UUID
 	// Then is handed the chosen source, or the zero ref when nothing
 	// could be chosen (no legal source, or a chooser who has left).
 	// Runs with g.mu held.
@@ -699,7 +754,7 @@ type ChooseSourcePrompt struct {
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ChooseDamageSourceThenForEffect(p ChooseSourcePrompt) (bool, error) {
-	cands := g.DamageSourceCandidatesLocked(p.Queries)
+	cands := g.damageSourceCandidatesLocked(p.Queries, p.Controller)
 	then := p.Then
 	if who := g.playerByIDLocked(p.Chooser); who == nil || who.Eliminated || len(cands) == 0 {
 		if then == nil {
@@ -777,6 +832,15 @@ func (g *Game) ResolveChooseSource(choiceID, chooserID uuid.UUID, picks []uuid.U
 //
 // Caller must hold g.mu (write: the layers are caught up first).
 func (g *Game) DamageSourceCandidatesLocked(qs []PermanentQuery) []uuid.UUID {
+	return g.damageSourceCandidatesLocked(qs, uuid.Nil)
+}
+
+// damageSourceCandidatesLocked is DamageSourceCandidatesLocked narrowed,
+// when `controller` is set, to the sources that player controls
+// (ChooseSourcePrompt.Controller).
+//
+// Caller must hold g.mu (write).
+func (g *Game) damageSourceCandidatesLocked(qs []PermanentQuery, controller uuid.UUID) []uuid.UUID {
 	g.RecomputeLayersIfStaleLocked()
 	seen := map[uuid.UUID]bool{}
 	var out []uuid.UUID
@@ -799,7 +863,7 @@ func (g *Game) DamageSourceCandidatesLocked(qs []PermanentQuery) []uuid.UUID {
 			for _, q := range qs {
 				ok = ok || q.matchesLocked(g, c)
 			}
-			add(c.InstanceID, ok)
+			add(c.InstanceID, ok && (controller == uuid.Nil || c.Controller == controller))
 		}
 	}
 	if g.Stack != nil {
@@ -808,7 +872,8 @@ func (g *Game) DamageSourceCandidatesLocked(qs []PermanentQuery) []uuid.UUID {
 			if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind != StackItemSpell {
 				continue
 			}
-			add(c.InstanceID, matches(SourceCharacteristics(c)))
+			ch := SourceCharacteristics(c)
+			add(c.InstanceID, matches(ch) && (controller == uuid.Nil || ch.Controller == controller))
 		}
 	}
 	for _, p := range g.Seats {
@@ -820,7 +885,9 @@ func (g *Game) DamageSourceCandidatesLocked(qs []PermanentQuery) []uuid.UUID {
 			if c.FaceDown {
 				continue
 			}
-			add(c.InstanceID, matches(SourceCharacteristics(c)))
+			// CR 108.4a: a command-zone card has no controller; its
+			// owner answers "a source you control".
+			add(c.InstanceID, matches(SourceCharacteristics(c)) && (controller == uuid.Nil || p.ID == controller))
 		}
 	}
 	for _, id := range g.referredToObjectsLocked() {
@@ -828,7 +895,7 @@ func (g *Game) DamageSourceCandidatesLocked(qs []PermanentQuery) []uuid.UUID {
 			continue
 		}
 		ch, ok := g.referredSourceCharacteristicsLocked(id)
-		add(id, ok && matches(ch))
+		add(id, ok && matches(ch) && g.referredSourceControlledByLocked(id, ch, controller))
 	}
 	return out
 }
@@ -884,6 +951,32 @@ func (g *Game) referredToObjectsLocked() []uuid.UUID {
 		out = append(out, d.Cards...)
 	}
 	return out
+}
+
+// referredSourceControlledByLocked is the controller filter for a
+// referred-to object: a permanent's or a spell's controller, a departed
+// permanent's as it last existed (its last-known information), and for a
+// card in a graveyard or exile, which nobody controls, its owner
+// (CR 108.4a). True for every object when `controller` is unset.
+//
+// Caller must hold g.mu.
+func (g *Game) referredSourceControlledByLocked(id uuid.UUID, ch *Characteristic, controller uuid.UUID) bool {
+	if controller == uuid.Nil {
+		return true
+	}
+	z := g.findCardZoneLocked(id)
+	if z == nil {
+		return false
+	}
+	switch z.Kind {
+	case ZoneBattlefield, ZoneStack:
+		return ch != nil && ch.Controller == controller
+	}
+	if _, departed := g.departedDamageSourceLocked(id, nil); departed && ch != nil && ch.Controller != uuid.Nil {
+		return ch.Controller == controller
+	}
+	c, ok := g.LookupCardForEffect(id)
+	return ok && c.Owner == controller
 }
 
 // cmpSeqDesc orders stack items newest (top) first.
