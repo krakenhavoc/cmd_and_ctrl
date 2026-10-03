@@ -637,6 +637,12 @@ export interface MoveCost {
   // server only offers a cost the seat can meet. Note that "payable"
   // includes paying your last point, which is legal and lethal.
   life?: number;
+  // #1677: the part of `life` that pays Phyrexian mana symbols
+  // instead of mana (CR 107.4f). Already INCLUDED in `life`, and in
+  // life points: 2 per symbol, where `params.phyrexian_life` counts
+  // symbols. Broken out because it buys nothing — the same move at
+  // a different price — so it is no evidence of what the move does.
+  phyrexian_life?: number;
   // A loyalty ability's counter delta (CR 606.4), signed as printed:
   // +1 adds one, -3 removes three.
   loyalty?: number;
@@ -651,6 +657,13 @@ export interface MoveCost {
   // attack has no printed cost, so without this a consumer prices an
   // attack under Ghostly Prison exactly like a free one.
   mana?: string;
+  // #1600: how many cards a "Discard your hand" cost throws away if
+  // the move is made now — Lion's Eye Diamond, Null Brooch, Slate of
+  // Ancestry. Every other discard names its cards in
+  // `params.discard_ids`; this one names none, so without it the
+  // whole hand reads as free. Absent for an empty hand, which pays
+  // the cost.
+  hand?: number;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
