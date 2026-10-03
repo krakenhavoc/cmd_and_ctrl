@@ -160,7 +160,7 @@ func (g *Game) GrantCastBanForEffect(player uuid.UUID, rule CastBanRule, label s
 	if p == nil {
 		return
 	}
-	if d == (Duration{}) {
+	if d.IsZero() {
 		d = g.UntilEndOfTurnDuration()
 	}
 	p.Statics = append(p.Statics, PlayerStatic{

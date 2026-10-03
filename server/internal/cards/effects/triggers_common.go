@@ -975,3 +975,14 @@ func permanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g
 	}
 	return false
 }
+
+// ThisDealtDamageToAnOpponent — the source dealt damage, combat or
+// not, to one of its controller's opponents (Thalakos Dreamsower,
+// Looter il-Kor's wording).
+func ThisDealtDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Source != source.InstanceID || ev.Amount <= 0 {
+		return false
+	}
+	p := g.PlayerByIDForEffect(ev.Target)
+	return p != nil && p.ID != source.Controller
+}

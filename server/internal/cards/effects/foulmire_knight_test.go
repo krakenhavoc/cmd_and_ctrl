@@ -91,7 +91,7 @@ func TestProfaneInsightResolvesAndExilesTheCard(t *testing.T) {
 		t.Fatal("CR 715.3d: the resolved Adventure spell is not in exile")
 	}
 	perm := g.CastPermissionOnCardByIDForEffect(id)
-	if !perm.Granted() || perm.Duration != game.WhileInZoneDuration() {
+	if !perm.Granted() || !perm.Duration.Equal(game.WhileInZoneDuration()) {
 		t.Fatalf("CR 715.4 grant = %+v, want an unbounded exile permission", perm)
 	}
 	if face, ok := perm.NamedFace(); !ok || face != 0 {

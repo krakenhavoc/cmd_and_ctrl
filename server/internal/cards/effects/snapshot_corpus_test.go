@@ -309,7 +309,41 @@ func corpusBoards() []corpusBoard {
 		// addSubtypes Forest in addition to the land's own types
 		// (Navigator's Compass).
 		{"land_types", corpusLandTypes},
+		// v7, added by ADR 0109 PR 2 (#1894, #1604) as a new file: a
+		// duration with two conditions (Seasinger's "for as long as you
+		// control this creature and this creature remains tapped",
+		// Duration.Also) and a counter-held one (Minas Morgul's "for as
+		// long as that creature has a shadow counter on it",
+		// WhilePinnedHasCounter with its CounterKind).
+		{"durations", corpusDurations},
 	}
+}
+
+// corpusDurations is ADR 0109's new duration fields, made by the cards
+// that write them.
+func corpusDurations(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushLandFor(g, me.ID, "Island", "Basic Land — Island") // or Seasinger's state trigger sacrifices it
+	pushLandFor(g, opp.ID, "Island", "Basic Land — Island")
+	seasinger := pushCatalogPermanent(g, me.ID, "Seasinger", "Creature — Merfolk", rtSeasingerOracle, false)
+	victim := ctrlPushCreature(g, opp.ID, "Bear")
+	if err := g.ActivateCatalogAbility(me.ID, seasinger, 0, game.ActivateAbilityParams{Targets: ltCardTarget(victim)}); err != nil {
+		t.Fatalf("setup: Seasinger: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	morgul := pushCatalogPermanent(g, me.ID, "Minas Morgul, Dark Fortress", "Legendary Land", rtMinasMorgulOracle, false)
+	mine := ctrlPushCreature(g, me.ID, "Wolf")
+	b06AddMana(me, "B", "C", "C", "C")
+	if err := g.ActivateCatalogAbility(me.ID, morgul, 0, game.ActivateAbilityParams{Targets: ltCardTarget(mine)}); err != nil {
+		t.Fatalf("setup: Minas Morgul: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: %d scoped records, want 2", len(g.ScopedEffects))
+	}
+	return g
 }
 
 // corpusLandTypes is ADR 0109 §1's setBasicLandTypes kind in each
