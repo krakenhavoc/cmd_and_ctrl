@@ -1434,7 +1434,7 @@ var items = []Item{
 		Rules:       []string{"601.2b", "601.2h", "118.3"},
 		Issue:       1948,
 		Tracked:     "#1948 (found landing ADR 0108 PR 1, #1886)",
-		Waiting:     []string{"Draconic Intervention"},
+		Waiting:     []string{"Draconic Intervention", "Relentless Skaabs"},
 		EngineNotes: "cost: `game.AdditionalCost` has no component that exiles a card from a graveyard (`ExileFromGraveyard` is on alternative costs and activated-ability costs only), and `ctx.Exiled()` is filled only by an activation. Draconic Intervention's X is the exiled card's mana value; its damage, ADR 0108 PR 1's \"if a creature dealt damage this way would die this turn, exile it instead\" and its self-exile are expressible.",
 	},
 	{
