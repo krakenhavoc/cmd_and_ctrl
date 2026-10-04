@@ -43,3 +43,14 @@ func thisLosesKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, it
 			game.RemoveKeywordsMod(keyword))
 	}
 }
+
+// thisGainsKeywordUntilEndOfTurn is "This creature gains <keyword>
+// until end of turn": a layer-6 grant pinned to the source (Endling's
+// three {B} abilities). A cumulative keyword (undying, prowess) granted
+// twice is two instances.
+func thisGainsKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		return untilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
+			game.AddKeywordsMod(keyword))
+	}
+}
