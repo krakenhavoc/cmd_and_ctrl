@@ -98,7 +98,7 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 	s.mu.Unlock()
 	if held != nil {
 		if held.GameID == inv.GameID && held.Origin == inv.Origin {
-			return s.joinedText(ctx, true, nil), nil
+			return s.joinedText(true, nil), nil
 		}
 		return errorResult("this binary already holds a seat at game %s; one binary holds one seat. Call leave first.", held.GameID), nil
 	}
@@ -129,7 +129,7 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 		r := s.installDeck(ctx, *in.Deck)
 		deckNote = append(deckNote, r.Text)
 	}
-	return s.joinedText(ctx, resumed, deckNote), nil
+	return s.joinedText(resumed, deckNote), nil
 }
 
 // claim finds a saved session for the table and checks it still works, or
@@ -217,7 +217,7 @@ func (s *Seat) awaitFirstSnapshot(ctx context.Context) {
 }
 
 // joinedText is join's answer: the seat and the table.
-func (s *Seat) joinedText(ctx context.Context, resumed bool, extra []string) Result {
+func (s *Seat) joinedText(resumed bool, extra []string) Result {
 	s.mu.Lock()
 	sess := s.sess
 	view := s.view

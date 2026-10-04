@@ -131,11 +131,11 @@ type Seat struct {
 
 	isConnected bool
 	endReason   string // why the connection ended for good
-	haveView  bool
-	view      *protocol.GameView
-	key       windowKey
-	moves     []wireMove
-	truncated bool
+	haveView    bool
+	view        *protocol.GameView
+	key         windowKey
+	moves       []wireMove
+	truncated   bool
 
 	win          *window
 	lastCounted  windowKey

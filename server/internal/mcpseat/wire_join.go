@@ -1,6 +1,10 @@
 package mcpseat
 
-import "strings"
+import (
+	"errors"
+	"net/http"
+	"strings"
+)
 
 // The join body's `agent` field, ADR 0122 §7 (Delivery PR 2).
 //
@@ -11,8 +15,11 @@ import "strings"
 //
 // The binary always sends it, and has no flag to leave it out. The server
 // records it on the seat for good, and shows the table an "AI agent" chip.
-// An older server ignores the unknown field, which is why the PR 2 server
-// change matters: the badge is the server's record, not this struct.
+//
+// A server from before PR 2 decodes join bodies strictly and answers 400
+// `unknown field "agent"`. The seat then refuses to join rather than
+// retrying without the field (errNoBadge): a seat that cannot declare
+// itself does not sit down.
 
 // joinBody is the request body of both join routes.
 type joinBody struct {
@@ -24,6 +31,15 @@ type joinBody struct {
 // agentField declares the seat an agent, and which MCP client drives it.
 type agentField struct {
 	Client string `json:"client"`
+}
+
+// errNoBadge is a server that cannot record the badge.
+var errNoBadge = errors.New("this server cannot record the AI-agent badge yet (it predates ADR 0122 PR 2), and this seat never joins without declaring itself")
+
+// isNoBadge reports a pre-PR 2 server's refusal of the agent field.
+func isNoBadge(err error) bool {
+	var ae *apiError
+	return errors.As(err, &ae) && ae.Status == http.StatusBadRequest && strings.Contains(ae.Message, `unknown field "agent"`)
 }
 
 // maxAgentClient is the cut §7 puts on the client name.

@@ -31,10 +31,10 @@ type legalMovesRequest struct {
 // legalMovesReply is the reply's payload. Seq and Generation name the
 // state the list describes; a reply for any other state is discarded.
 type legalMovesReply struct {
-	Seq        uint64       `json:"seq"`
-	Generation uint64       `json:"generation"`
-	Moves      []wireMove   `json:"moves"`
-	Truncated  []cutReport  `json:"truncated,omitempty"`
+	Seq        uint64      `json:"seq"`
+	Generation uint64      `json:"generation"`
+	Moves      []wireMove  `json:"moves"`
+	Truncated  []cutReport `json:"truncated,omitempty"`
 }
 
 // cutReport is one place the enumerator cut a list: the card or the

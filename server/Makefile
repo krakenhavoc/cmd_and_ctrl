@@ -1,8 +1,9 @@
-.PHONY: docker-test docker-lint all buildbuild-bot build-boteval run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: docker-test docker-lint all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot
 BOTEVAL_BINARY := bin/boteval
+MCPSEAT_BINARY := bin/cmd_and_ctrl-mcpseat
 PKGS := ./...
 
 # Default target never mutates the working tree: it verifies formatting,
@@ -30,6 +31,13 @@ build-bot:
 build-boteval:
 	mkdir -p bin
 	go build -o $(BOTEVAL_BINARY) ./cmd/boteval
+
+# ADR 0122 MCP seat: a local stdio binary Claude Code or Codex launches to
+# sit in a guest seat at a table. Not deployed. With no local Go, from the
+# repo root: scripts/go-docker.sh go build -o bin/cmd_and_ctrl-mcpseat ./cmd/mcpseat
+build-mcpseat:
+	mkdir -p bin
+	go build -o $(MCPSEAT_BINARY) ./cmd/mcpseat
 
 run: build
 	./$(BINARY)

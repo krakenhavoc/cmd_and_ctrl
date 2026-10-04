@@ -188,6 +188,9 @@ func (a *api) join(ctx context.Context, inv invite, name, client string) (*sessi
 	url := inv.Origin + "/games/" + inv.GameID.String() + "/join"
 	var out sessionAnswer
 	err := a.withJoinRetry(ctx, func() error { return a.do(ctx, http.MethodPost, url, "", body, &out) })
+	if isNoBadge(err) {
+		return nil, errNoBadge
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -232,15 +235,6 @@ type mePrincipal struct {
 func (a *api) me(ctx context.Context, origin, token string) (*mePrincipal, error) {
 	var out mePrincipal
 	if err := a.do(ctx, http.MethodGet, origin+"/me", token, nil, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// game reads the lobby's record of a table.
-func (a *api) game(ctx context.Context, origin, token string, id uuid.UUID) (*gameMeta, error) {
-	var out gameMeta
-	if err := a.do(ctx, http.MethodGet, origin+"/games/"+id.String(), token, nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

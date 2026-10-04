@@ -61,6 +61,7 @@ type fakeServer struct {
 	cuts      []cutReport
 	meStatus  int
 	joinCode  int
+	joinMsg   string
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -107,11 +108,11 @@ func (f *fakeServer) handleJoin(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	f.joins = append(f.joins, body)
 	f.joinAuth = append(f.joinAuth, r.Header.Get("Authorization"))
-	code := f.joinCode
+	code, msg := f.joinCode, f.joinMsg
 	f.mu.Unlock()
 	if code != 0 {
 		w.WriteHeader(code)
-		_, _ = w.Write([]byte(`{"error":"no"}`))
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 		return
 	}
 	if body.InviteToken != f.inviteToken {
@@ -388,4 +389,26 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+// closeConn closes the socket with a close code, as hub.Shutdown (1001)
+// or hub.EvictGame (1000) would.
+func (f *fakeServer) closeConn(code int) {
+	f.mu.Lock()
+	c := f.conn
+	f.conn = nil
+	f.mu.Unlock()
+	if c == nil {
+		return
+	}
+	f.wmu.Lock()
+	_ = c.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, "bye"), time.Now().Add(time.Second))
+	f.wmu.Unlock()
+	_ = c.Close()
+}
+
+func (f *fakeServer) connCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.conns
 }

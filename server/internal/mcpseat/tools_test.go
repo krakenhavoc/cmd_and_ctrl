@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -499,4 +500,79 @@ func TestApplyValueFillsOnlyAStatedOpenSet(t *testing.T) {
 	if _, err := applyValue(wireMove{}, "x"); err == nil {
 		t.Error("a value on a move with no open set was accepted")
 	}
+}
+
+// TestAServerWithoutTheBadgeIsRefused: a pre-PR 2 server rejects the
+// agent field, and the seat does not retry without it (§7).
+func TestAServerWithoutTheBadgeIsRefused(t *testing.T) {
+	f := newFakeServer(t)
+	f.joinCode, f.joinMsg = 400, `invalid body: json: unknown field "agent"`
+	s := newTestSeat(t, nil)
+	r, _ := s.Join(context.Background(), JoinInput{InviteURL: f.inviteURL()})
+	if !r.IsError || !strings.Contains(r.Text, "never joins without declaring itself") {
+		t.Fatalf("join: %s", r.Text)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.joins) != 1 {
+		t.Errorf("joins = %d; the seat must not retry without the badge", len(f.joins))
+	}
+}
+
+// TestAJoin429IsRetriedThenReported is §8's join backoff.
+func TestAJoin429IsRetriedThenReported(t *testing.T) {
+	f := newFakeServer(t)
+	f.joinCode, f.joinMsg = 429, "slow down"
+	s := newTestSeat(t, nil)
+	var slept []time.Duration
+	s.api.sleep = func(_ context.Context, d time.Duration) error { slept = append(slept, d); return nil }
+	r, _ := s.Join(context.Background(), JoinInput{InviteURL: f.inviteURL()})
+	if !r.IsError || !strings.Contains(r.Text, "429") {
+		t.Fatalf("join: %s", r.Text)
+	}
+	if len(slept) != 3 || slept[0] != time.Second || slept[2] != 4*time.Second {
+		t.Errorf("backoff = %v, want 1s 2s 4s", slept)
+	}
+}
+
+// TestTheReconnectLadder: 1001 redials and an act lost with the socket
+// reads unknown; 1000 is terminal.
+func TestTheReconnectLadder(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	v := activeView(f)
+	f.mu.Lock()
+	f.onAction = func(protocol.ActionPayload) string { return "" } // never answers
+	f.mu.Unlock()
+	f.setState(v, twoChoices(f), false)
+	tok, _ := decisionWindow(t, s)
+
+	done := make(chan Result, 1)
+	go func() {
+		r, _ := s.Act(context.Background(), ActInput{Window: tok, Move: 1})
+		done <- r
+	}()
+	waitFor(t, "the act to be sent", func() bool { return f.actionCount() >= 1 })
+	f.closeConn(1001)
+	r := <-done
+	if !strings.Contains(r.Text, "status: unknown") {
+		t.Fatalf("an act lost with the socket: %s", r.Text)
+	}
+	waitFor(t, "the redial", func() bool { return f.connCount() >= 2 })
+
+	f.closeConn(1000)
+	waitFor(t, "the terminal close", func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.endReason != ""
+	})
+	r, _ = s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 1})
+	if !r.IsError || !strings.Contains(r.Text, "disconnected") {
+		t.Fatalf("after a 1000 close: %s", r.Text)
+	}
+	if f.connCount() != 2 {
+		t.Errorf("a 1000 close was redialled (%d connections)", f.connCount())
+	}
+	noSentinel(t, "the log", s.logBuf.String())
 }

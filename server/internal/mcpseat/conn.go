@@ -22,12 +22,12 @@ import (
 // ladder"): 500 ms doubling to 30 s, half-jittered, and a GET /me after
 // three failed dials to tell a dead session from a restarting server.
 const (
-	reconnectBase          = 500 * time.Millisecond
-	reconnectCap           = 30 * time.Second
-	deadSessionCheckAfter  = 3
-	maxInboundFrame        = 64 << 20
-	closeGrace             = time.Second
-	writeTimeout           = 10 * time.Second
+	reconnectBase         = 500 * time.Millisecond
+	reconnectCap          = 30 * time.Second
+	deadSessionCheckAfter = 3
+	maxInboundFrame       = 64 << 20
+	closeGrace            = time.Second
+	writeTimeout          = 10 * time.Second
 )
 
 // frameSink receives what the connection reads. Every method is called on
