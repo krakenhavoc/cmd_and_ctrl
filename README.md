@@ -1,8 +1,8 @@
 # cmd_and_ctrl
 
-A private, personal 4-player Magic: The Gathering Commander sandbox with a Go game server and a
-TypeScript client. See [PLAN.md](PLAN.md) for the vision and [AGENTS.md](AGENTS.md) for how to work
-in the repo.
+A private, personal 4-player Magic: The Gathering Commander table with a Go game server and a
+TypeScript client. Most cards resolve themselves; see [PLAN.md](PLAN.md) for the vision and
+[AGENTS.md](AGENTS.md) for how to work in the repo.
 
 ## Legal
 
