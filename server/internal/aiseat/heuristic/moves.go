@@ -143,7 +143,7 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 }
 
 // phyrexianLifeFloor is the life total the policy will not pay
-// Phyrexian symbols below (CR 107.4c, #1677): a move whose
+// Phyrexian symbols below (CR 107.4f, #1677): a move whose
 // legal.MoveCost.PhyrexianLife is non-zero is declined when paying its
 // whole Life would leave the seat under this number.
 //

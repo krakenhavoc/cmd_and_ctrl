@@ -10,7 +10,7 @@ import (
 // (CR 107.4, #787).
 //
 // A Phyrexian symbol can be paid with one mana of its colour, or with
-// 2 life (CR 107.4c). Since CR 107.4 the family also has ten HYBRID
+// 2 life (CR 107.4f). Since CR 107.4 the family also has ten HYBRID
 // Phyrexian symbols — {W/U/P} and the rest of the wheel — which can
 // be paid with one mana of EITHER of two colours, or with 2 life
 // (CR 107.4f). ParseCost reads every one of them into the same
@@ -54,7 +54,7 @@ import (
 // says the same of an activation. Nothing here touches a life total
 // directly.
 
-// PhyrexianLifePerSymbol is CR 107.4c's price for one Phyrexian
+// PhyrexianLifePerSymbol is CR 107.4f's price for one Phyrexian
 // symbol, hybrid Phyrexian included (CR 107.4f).
 const PhyrexianLifePerSymbol = 2
 

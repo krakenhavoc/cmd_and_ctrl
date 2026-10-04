@@ -1,7 +1,7 @@
 import type { ActivatedAbilityView, AlternativeCostView, CardView } from "./protocol";
 
 // phyrexianLife.ts — the arithmetic behind "pay N Phyrexian symbols
-// with life" (CR 107.4c/f, #916), kept out of the modal so it can be
+// with life" (CR 107.4f, #916), kept out of the modal so it can be
 // tested without a component harness.
 //
 // A Phyrexian mana symbol — {U/P}, or one of CR 107.4's ten hybrid
@@ -22,7 +22,7 @@ import type { ActivatedAbilityView, AlternativeCostView, CardView } from "./prot
 // everything below is arithmetic on that number and the player's
 // life total.
 
-// PhyrexianLifePerSymbol is CR 107.4c's price for one symbol, hybrid
+// PhyrexianLifePerSymbol is CR 107.4f's price for one symbol, hybrid
 // Phyrexian included (CR 107.4f). The same constant the engine
 // charges; the stepper's readout is a multiple of it.
 export const PhyrexianLifePerSymbol = 2;

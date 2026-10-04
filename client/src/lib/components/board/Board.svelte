@@ -853,7 +853,7 @@
   // its picker until X is known, so this step has to come after the X
   // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
-    // CR 107.4c/f (#916): "{U/P} can be paid with either {U} or 2
+    // CR 107.4f (#916): "{U/P} can be paid with either {U} or 2
     // life", and CR 601.2b makes which one part of announcing the
     // spell. Asked after X for the same reason the tap picker is:
     // the stepper's live readout prices the mana half, and an {X}
@@ -3324,7 +3324,7 @@
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
   />
-  <!-- CR 107.4c/f (#916): how many Phyrexian symbols the CAST pays
+  <!-- CR 107.4f (#916): how many Phyrexian symbols the CAST pays
        with 2 life each. Between the X picker and the convoke picker,
        because it is announced with them and priced after X. -->
   <PhyrexianCostModal

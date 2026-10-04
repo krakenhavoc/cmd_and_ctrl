@@ -951,7 +951,7 @@ type ActivateAbilityParams struct {
 
 	// PhyrexianLife is how many of the mana component's Phyrexian
 	// symbols the activator is paying with 2 life each instead of
-	// mana (CR 107.4c, and CR 107.4f for the ten hybrid Phyrexian
+	// mana (CR 107.4f, plain and hybrid Phyrexian
 	// symbols) — Birthing Pod's "{1}{G/P}", Solphim's
 	// "{1}{R/P}{R/P}".
 	//
