@@ -32,9 +32,16 @@ func handSizeStatics(spec Spec) []game.HandSizeStatic {
 // checkHandSize refuses the two declarations no printed card makes: a
 // maximum SET below zero (CR 107.1b clamps a result, but "is -1" is not
 // a printed number) and a modification by zero, which does nothing and
-// is a typo for a missing N.
+// is a typo for a missing N. An entry whose number is read at the time
+// (Dynamic) declares no N, so only its kind is checked.
 func checkHandSize(spec Spec) {
 	for i, h := range spec.HandSize {
+		if h.Dynamic != nil {
+			if h.Kind != game.HandSizeSet && h.Kind != game.HandSizeModify && h.Kind != game.HandSizeNoMaximum {
+				panic(fmt.Sprintf("effects.Register: %q HandSize[%d] has unknown kind %d", spec.Name, i, h.Kind))
+			}
+			continue
+		}
 		switch h.Kind {
 		case game.HandSizeSet:
 			if h.N < 0 {
@@ -86,4 +93,29 @@ func playACardHandOfTwo(oracleID, name string) Spec {
 // (Price of Knowledge): every player, the controller included.
 func PlayersHaveNoMaxHandSize() game.HandSizeStatic {
 	return game.HandSizeStatic{Players: game.HandSizeEachPlayer, Kind: game.HandSizeNoMaximum}
+}
+
+// YourMaxHandSizeChangedBy is "Your maximum hand size is increased by n"
+// (Minamo Scrollkeeper, Trusted Advisor) or, with a negative n,
+// "reduced by" (the Thought Beasts).
+func YourMaxHandSizeChangedBy(n int) game.HandSizeStatic {
+	return game.HandSizeStatic{Players: game.HandSizeYou, Kind: game.HandSizeModify, N: n}
+}
+
+// AtYourEndStepDrawUpTo is "At the beginning of your end step, if you
+// have fewer than n cards in hand, draw cards equal to the difference"
+// (Doctor Octopus, Master Planner; The Ten Rings). An intervening-if
+// (CR 603.4): checked as the step begins and again as the trigger
+// resolves, the difference counted then.
+func AtYourEndStepDrawUpTo(name string, n int) game.TriggeredAbility {
+	label := fmt.Sprintf("%s — draw up to %d cards in hand", name, n)
+	return On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		return ev.Actor == source.Controller && b14HandSize(g, source.Controller) < n
+	}, label, func(g *game.Game, item *game.StackItem) error {
+		short := n - b14HandSize(g, item.Controller)
+		if short <= 0 {
+			return nil
+		}
+		return DrawCards{Player: item.Controller, N: short}.Apply(NewContext(g, item))
+	})
 }
