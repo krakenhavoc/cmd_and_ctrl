@@ -5,6 +5,7 @@ import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
 import {
   openAdminClient,
   playerByID,
+  returnToLibrary,
   seedHandWithCard,
   type AdminClient,
   type SnapshotCard,
@@ -58,9 +59,7 @@ function makeDeck(): string {
 }
 
 function forestsInHand(admin: AdminClient, playerID: string): SnapshotCard[] {
-  return playerByID(admin.snapshot(), playerID).hand.cards.filter(
-    (c) => c.name === LAND,
-  );
+  return playerByID(admin.snapshot(), playerID).hand.cards.filter((c) => c.name === LAND);
 }
 
 // rightClick opens a hand card's popover the way the browser's
@@ -112,58 +111,24 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
 
     try {
       const adminToken = await adminLogin(request);
-      const game = await createGame(
-        request,
-        adminToken,
-        `Cast anyway 2188 ${Date.now()}`,
-      );
-      if (!game.invite_token)
-        throw new Error("invite token missing on fresh game");
+      const game = await createGame(request, adminToken, `Cast anyway 2188 ${Date.now()}`);
+      if (!game.invite_token) throw new Error("invite token missing on fresh game");
 
       // No settings seed: strict payment is the default (ADR 0118 §1).
-      first = await joinAsPlayer(
-        browser,
-        game.id,
-        game.invite_token,
-        "Seat One",
-      );
-      second = await joinAsPlayer(
-        browser,
-        game.id,
-        game.invite_token,
-        "Seat Two",
-      );
+      first = await joinAsPlayer(browser, game.id, game.invite_token, "Seat One");
+      second = await joinAsPlayer(browser, game.id, game.invite_token, "Seat Two");
 
       // Both seats get the deck: the starting player is rolled (#1486).
-      await uploadDeckAs(
-        request,
-        adminToken,
-        game.id,
-        first.playerID,
-        makeDeck(),
-      );
-      await uploadDeckAs(
-        request,
-        adminToken,
-        game.id,
-        second.playerID,
-        makeDeck(),
-      );
+      await uploadDeckAs(request, adminToken, game.id, first.playerID, makeDeck());
+      await uploadDeckAs(request, adminToken, game.id, second.playerID, makeDeck());
       await startGameAs(request, adminToken, game.id);
 
-      admin = await openAdminClient(
-        adminToken,
-        game.id,
-        first.playerID,
-        second.playerID,
-      );
+      admin = await openAdminClient(adminToken, game.id, first.playerID, second.playerID);
       await admin.sendActionAsPlayer(first.playerID, "keep_hand", {});
       await admin.sendActionAsPlayer(second.playerID, "keep_hand", {});
       await admin.waitFor((v) => v.state === "active", "game state active");
       await admin.waitFor(
-        (v) =>
-          v.turn?.step === "precombat_main" &&
-          v.turn?.priority_holder === v.turn?.active_seat,
+        (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,
         "cursor settled on the active player's precombat main",
         15_000,
       );
@@ -183,11 +148,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
 
       // Two Forests onto the battlefield (a sandbox move, which is not
       // a land drop and taps nothing).
-      for (
-        let i = 0;
-        i < 6 && forestsInHand(admin, me.playerID).length < 2;
-        i++
-      ) {
+      for (let i = 0; i < 6 && forestsInHand(admin, me.playerID).length < 2; i++) {
         await admin.sendActionAsPlayer(me.playerID, "draw_card", {});
       }
       const forests = forestsInHand(admin, me.playerID).slice(0, 2);
@@ -205,10 +166,19 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       const forestsOnBoard = (v: SnapshotView) =>
         v.battlefield.cards.filter((c) => forestIDs.includes(c.instance_id));
       await admin.waitFor(
-        (v) =>
-          forestsOnBoard(v).length === 2 &&
-          forestsOnBoard(v).every((c) => !c.tapped),
+        (v) => forestsOnBoard(v).length === 2 && forestsOnBoard(v).every((c) => !c.tapped),
         "two untapped Forests on the battlefield",
+        10_000,
+      );
+      // The Bears and the Wurm are two cards in 99, so the draws above
+      // can leave dozens of Forests in hand. In one failed run the Bears
+      // never showed up lit and findable in a fan that full. Put the
+      // spare Forests back, so the hand is just the Bears and the Wurm.
+      const spare = forestsInHand(admin, me.playerID).length;
+      if (spare > 0) await returnToLibrary(admin, me.playerID, LAND, spare);
+      await admin.waitFor(
+        (v) => playerByID(v, me.playerID).hand.cards.every((c) => c.name !== LAND),
+        "no Forests left in hand",
         10_000,
       );
       await admin.waitFor(
@@ -222,8 +192,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
 
       const page = me.page;
       const hand = page.locator('[aria-label="your hand"]');
-      const inHand = (id: string): Locator =>
-        hand.locator(`.card[data-instance-id="${id}"]`);
+      const inHand = (id: string): Locator => hand.locator(`.card[data-instance-id="${id}"]`);
 
       // --- a click on Grizzly Bears taps both Forests and casts it -----
       // The ready ring says the server's move list has the cast, which
@@ -239,32 +208,22 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       // already.
       await admin.waitFor(
         (v) =>
-          !playerByID(v, me.playerID).hand.cards.some(
-            (c) => c.instance_id === bears.instance_id,
-          ) &&
-          ((v.stack_items ?? []).some(
-            (s) => s.source_card_id === bears.instance_id,
-          ) ||
-            v.battlefield.cards.some(
-              (c) => c.instance_id === bears.instance_id,
-            )),
+          !playerByID(v, me.playerID).hand.cards.some((c) => c.instance_id === bears.instance_id) &&
+          ((v.stack_items ?? []).some((s) => s.source_card_id === bears.instance_id) ||
+            v.battlefield.cards.some((c) => c.instance_id === bears.instance_id)),
         "the Bears are on the stack (or resolved)",
         15_000,
       );
       const tapped = forestsOnBoard(admin.snapshot());
       expect(tapped).toHaveLength(2);
       expect(tapped.every((c) => c.tapped === true)).toBe(true);
-      await expect(
-        page.getByRole("dialog", { name: "insufficient mana" }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("dialog", { name: "insufficient mana" })).toHaveCount(0);
 
       // The Bears resolve and priority comes back to the active player
       // with an empty stack: the Wurm is a sorcery-speed cast.
       await admin.waitFor(
         (v) =>
-          v.battlefield.cards.some(
-            (c) => c.instance_id === bears.instance_id,
-          ) &&
+          v.battlefield.cards.some((c) => c.instance_id === bears.instance_id) &&
           (v.stack_items ?? []).length === 0 &&
           v.turn?.active_seat === activeSeat &&
           v.turn?.step === "precombat_main" &&
@@ -304,15 +263,9 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       // already resolved. Either way it left the hand unpaid.
       await admin.waitFor(
         (v) =>
-          !playerByID(v, me.playerID).hand.cards.some(
-            (c) => c.instance_id === wurm.instance_id,
-          ) &&
-          ((v.stack_items ?? []).some(
-            (s) => s.source_card_id === wurm.instance_id,
-          ) ||
-            v.battlefield.cards.some(
-              (c) => c.instance_id === wurm.instance_id,
-            )),
+          !playerByID(v, me.playerID).hand.cards.some((c) => c.instance_id === wurm.instance_id) &&
+          ((v.stack_items ?? []).some((s) => s.source_card_id === wurm.instance_id) ||
+            v.battlefield.cards.some((c) => c.instance_id === wurm.instance_id)),
         "the Wurm is on the stack (or resolved)",
         15_000,
       );
