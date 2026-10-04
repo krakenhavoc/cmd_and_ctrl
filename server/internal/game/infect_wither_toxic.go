@@ -20,7 +20,6 @@ package game
 
 import (
 	"strconv"
-	"strings"
 )
 
 // KeywordInfect and KeywordWither are the canonical tokens for
@@ -66,29 +65,7 @@ const maxToxicValue = 999
 // plus trim CanonicalKeywords applies, so a raw oracle line can be
 // handed straight in.
 func ToxicValue(token string) (int, bool) {
-	rest, ok := strings.CutPrefix(strings.ToLower(strings.TrimSpace(token)), KeywordToxic)
-	if !ok {
-		return 0, false
-	}
-	digits, ok := strings.CutPrefix(rest, " ")
-	if !ok || digits == "" {
-		return 0, false
-	}
-	n := 0
-	for i := 0; i < len(digits); i++ {
-		d := digits[i]
-		if d < '0' || d > '9' {
-			return 0, false
-		}
-		n = n*10 + int(d-'0')
-		if n > maxToxicValue {
-			return 0, false
-		}
-	}
-	if n <= 0 {
-		return 0, false
-	}
-	return n, true
+	return numberedKeywordValue(token, KeywordToxic, maxToxicValue)
 }
 
 // CanonicalToxicToken normalises one printed toxic clause to the
@@ -206,6 +183,13 @@ func KeywordIsCumulative(kw string) bool {
 	// Sunburst (CR 702.44d, #1552): "if an object has multiple
 	// instances of sunburst, each one works separately".
 	if kw == KeywordSunburst {
+		return true
+	}
+	// Annihilator (CR 702.86b, #2073): each instance triggers
+	// separately, so a granted "annihilator 2" beside a printed
+	// "annihilator 4" is two triggers. Recognised by its grammar, like
+	// toxic.
+	if _, ok := AnnihilatorValue(kw); ok {
 		return true
 	}
 	_, ok := ToxicValue(kw)

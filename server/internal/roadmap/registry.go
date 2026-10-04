@@ -304,6 +304,17 @@ var items = []Item{
 		Examples: []string{"Karumonix, the Rat King"},
 	},
 	{
+		Slug: "annihilator", Name: "Annihilator", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature with annihilator attacks, the defending player sacrifices that many permanents of their choice, once for each instance of annihilator it has.",
+		Rules:    []string{"702.86", "508.3a", "508.5"},
+		Issue:    2073,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Keywords: []string{game.KeywordAnnihilator},
+		Mechanic: "annihilator",
+		Printed:  printedLine("Annihilator"),
+		Examples: []string{"Kozilek, Butcher of Truth", "Ulamog, the Infinite Gyre", "Ulamog, the Defiler"},
+	},
+	{
 		Slug: "prowess", Name: "Prowess", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Whenever you cast a noncreature spell, a creature with prowess gets +1/+1 until end of turn, once for each instance of prowess it has.",
 		Rules:    []string{"702.108"},
