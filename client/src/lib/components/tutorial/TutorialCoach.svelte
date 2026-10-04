@@ -261,7 +261,8 @@
   {#if rect}
     <TutorialScrim {rect} />
   {/if}
-  <div class="coach-slot" bind:this={root}>
+  <!-- data-bottom-left-fixture: the stack pile stays above it (ADR 0119 §1). -->
+  <div class="coach-slot" data-bottom-left-fixture bind:this={root}>
     <CoachCard
       state={snap.coach}
       n={snap.step.n}
