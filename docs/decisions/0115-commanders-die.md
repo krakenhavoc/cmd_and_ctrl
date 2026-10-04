@@ -73,7 +73,6 @@ Then a new step of `stateBasedActionsLocked`, `commanderReturnSBALocked` (new fi
 **The check** runs **first** in the pass. It collects every marked card before anything else in the pass moves, so it reads the same board as the rest of the pass (CR 704.3). For each one:
 
 - If its owner has left the game, nothing happens (CR 800.4a already took the card out).
-- If the owner has an answer standing, that answer is applied at once (see [decision 2](#2-the-may-is-the-owners-every-time)).
 - Otherwise a `PendingChoiceCommanderReturn` prompt (`"commander_return"`) is queued to the **owner**, not the controller, with `Source` set to the card. The prompt is plain data, like the legend rule's.
 
 A commander put into a graveyard by a later step of the **same** pass (lethal damage, the legend rule) keeps its mark and is offered on the next pass. CR 704.3 runs that pass at once, because a pass that performed anything repeats.
@@ -82,7 +81,7 @@ A commander put into a graveyard by a later step of the **same** pass (lethal da
 
 ### 2. The "may" is the owner's, every time
 
-The prompt goes to the owner for every commander the check finds, and the engine keeps no hidden default. Whether the owner may also set a standing answer is [open question 1](#1-a-prompt-every-time-or-a-standing-answer). The recommended answer keeps that standing answer in the client, which answers the prompt for the player, so the server's rule stays exact and nothing new is stored on a seat.
+The prompt goes to the owner for every commander the check finds, and the engine keeps no hidden default. The owner chose this on 2026-10-03 ([owner decision 1](#owner-decisions-2026-10-03)): there is no standing answer, no synced setting and no server preference, so the owner is asked each time the state-based action offers the move.
 
 The prompt carries one server-computed fact, `playable_from_zone`: whether the owner could cast or play the card from where it now is. That covers a cast permission (`CastPermissionForLocked`, `cast_permission.go:882`) or a keyword that casts from that zone (escape, flashback, foretell, plot, an adventurer "on an adventure"). It is the zone half of `castableNow` (`protocol/view.go:5176`), ignoring timing and mana. The client shows it ("You could cast it from exile") and the bot reads it ([decision 4](#4-the-bot)).
 
@@ -100,7 +99,7 @@ In the cleanup step, a "yes" counts as a state-based action performed for CR 514
 
 ### 4. The bot
 
-`legal` enumerates the new kind as yes and no, the same two moves it lists for `optional_replacement`. The heuristic answers yes, **unless** `playable_from_zone` is set, in which case it answers no. That way a bot does not send an adventurer, foretold or escape commander home when it could cast it from where it went. The model prompt names the card and the flag. Whether the bot should do more is [open question 2](#2-how-smart-should-the-bots-answer-be).
+`legal` enumerates the new kind as yes and no, the same two moves it lists for `optional_replacement`. The heuristic answers yes, **unless** `playable_from_zone` is set, in which case it answers no. That way a bot does not send an adventurer, foretold or escape commander home when it could cast it from where it went. The model prompt names the card and the flag. The owner chose this answer ([owner decision 2](#owner-decisions-2026-10-03)).
 
 ### 5. What goes away, and what stays
 
@@ -176,7 +175,7 @@ Each PR targets `develop`, references S58 and #2085, and is green on its own.
 | 2 | Dormant plumbing: `Card.CommanderReturnDue` (snapshot, shape, clone), `PendingChoiceCommanderReturn` with `ResolveCommanderReturn` and the `runStateChecksLocked` hold, the wire view with `playable_from_zone`, `legal` and the heuristic, the client's copy and Yes/No for the kind, restore refusing unknown choice kinds, corpus boards, `docs/protocol.md`. The step is behind an unexported switch that is off. | None. |
 | 3 | The switch: the step is on, `commanderZoneReplacement` narrows to hand and library, #1397 narrows to hand and library costs, `as_commander` pre-answers, the graveyard and exile tests are rewritten, the pause-only tests are deleted, the `zone_route.go` header and ADR 0013 §5f/§5af get an amendment pointer to this ADR. | Commanders die. |
 | 4 | Cards: the caveats on Rest in Peace, Leyline of the Void and (if landed) Sauron, Lord of the Rings come off; the [decision 9](#9-which-cards-change) comments are rewritten; the oracle fixtures of those cards only are regenerated; `docs/adding-cards.md` gets one line ("a commander dies like any creature; CR 903.9a runs afterwards"). | Caveats lifted. |
-| 5 | The owner's answer to [open question 1](#1-a-prompt-every-time-or-a-standing-answer) (if it adds a setting), and the prompt polish: the card is shown in both prompts, with the `playable_from_zone` line. | UX only. |
+| 5 | Prompt polish: the commander card is shown in the prompt. | UX only. |
 
 PR 2 must deploy before PR 3 ([decision 8](#8-snapshots-undo-and-restore)). PR 1 and PR 2 are independent of each other.
 
@@ -201,23 +200,23 @@ PR 2 must deploy before PR 3 ([decision 8](#8-snapshots-undo-and-restore)). PR 1
 ## Out of scope
 
 - Meld and merge (CR 903.3b–c, 903.9c), which the engine does not have.
-- A deeper bot policy ([open question 2](#2-how-smart-should-the-bots-answer-be), option C).
+- A deeper bot policy ([owner decision 2](#owner-decisions-2026-10-03), option C).
 - Brawl (CR 903.12) beyond what already shares the Commander rules.
 
 ---
 
-## Open questions for the owner
+## Owner decisions (2026-10-03)
 
-### 1. A prompt every time, or a standing answer?
+### 1. A prompt every time, or a standing answer? Ask every time (A)
 
-CR 903.9a and 903.9b leave the choice to the owner each time. The issue asks whether the engine should ask or remember.
+The owner is prompted each time the CR 903.9a state-based action offers the move. This was not the ADR's recommendation; it is the owner's choice. There is no synced setting and no server preference.
 
-- **A. Ask every time.** No setting at all. The most prompts.
-- **B. Ask, plus an opt-in standing answer (recommended).** Add a per-person setting, "Always send my commander to the command zone", synced with the account settings (ADR 0110 §4) and off by default. When it is on, the client answers both prompts (903.9a and 903.9b) with yes for that person. It still shows the prompt when `playable_from_zone` is set, because "always" never means "even when I could cast it from here". The server and the rule stay exact: the player's own client gives the player's own answer.
-- **C. A server-side preference, on by default.** The engine moves the commander without asking unless the player turns it off. Fewest prompts, but the engine would be choosing for players who never opened the setting, and the state would live on the seat.
+- Rejected: B, an opt-in standing answer in the account settings.
+- Rejected: C, a server-side preference on by default.
 
-### 2. How smart should the bot's answer be?
+### 2. How smart should the bot's answer be? Yes, unless the commander can be cast from the zone it went to (B)
 
-- **A. Always yes**, as today.
-- **B. Yes, unless `playable_from_zone` (recommended).** One flag the server already computes for the client, so the rule is a single line.
-- **C. B, and also no when one of its own waiting triggers would use the card where it is**, such as the commander's own "when this dies, return it". It needs the bot to read the trigger queue for the card, which nothing in `aiseat` does today. Better play, larger change, and it can follow later.
+The bot sends its commander home unless `playable_from_zone` is set (escape, foretell, an adventure in exile).
+
+- Rejected: A, always yes.
+- Rejected: C, B plus reading its own waiting triggers.
