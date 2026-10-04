@@ -62,6 +62,7 @@ cmd_and_ctrl/
 │   │   ├── legal/       # legal-move enumerator — the closed move list a bot picks from and the client's timing lookup (ADR 0033 §1)
 │   │   ├── ws/          # gorilla/websocket hub, Room, RoomManager, per-viewer broadcast
 │   │   ├── aiseat/      # AI bot seats (S31): runner goroutine per bot, tiered policies, curated decks, announced improvisation — see docs/bot.md
+│   │   │   └── boardtext/ # the board half of the bot prompt as a pure Render(view, seat, opts): shared with the MCP seat (ADR 0122 §5)
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
