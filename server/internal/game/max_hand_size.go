@@ -83,6 +83,15 @@ type HandSizeStatic struct {
 	// When is the designation gate (ADR 0071): a Room's door, a Class
 	// level. The zero value is no gate.
 	When Designation
+	// Dynamic, when set, is read every time the maximum is asked for:
+	// ok false means the entry does not apply right now (Winter,
+	// Misanthropic Guide's delirium), and n replaces N (Midnight Oil's
+	// "equal to the number of hour counters"). The entry keeps its
+	// permanent's timestamp whenever it applies (CR 613.11). Called with
+	// g.mu held, so it reads the board through the ForEffect accessors
+	// only. Catalog data like the rest of the struct: nothing reachable
+	// from Game holds it.
+	Dynamic func(g *Game, source *Card) (n int, ok bool)
 }
 
 // Reaches reports whether this static, on a permanent controlled by
@@ -153,6 +162,13 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 			for _, s := range CatalogHandSize(key) {
 				if !s.Reaches(c.Controller, c.ChosenPlayer, p.ID) || !s.When.Active(*c) {
 					continue
+				}
+				if s.Dynamic != nil {
+					n, ok := s.Dynamic(g, c)
+					if !ok {
+						continue
+					}
+					s.N = n
 				}
 				entries = append(entries, handSizeEntry{at: c.layerTimestamp(), s: s})
 			}
