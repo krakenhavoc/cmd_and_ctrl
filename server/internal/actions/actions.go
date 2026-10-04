@@ -1846,6 +1846,10 @@ func dispatch(g *game.Game, a Action) error {
 				// +1/+1 counter ("you may"), and not applying takes
 				// haste ("if you don't").
 				return g.ResolveEntryRiot(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceCommanderReturn:
+				// CR 903.9a (ADR 0115): apply puts the commander into
+				// its owner's command zone.
+				return g.ResolveCommanderReturn(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}

@@ -38,6 +38,7 @@ describe("isInlineChoice", () => {
     for (const kind of [
       "trigger_prompt",
       "optional_replacement",
+      "commander_return",
       "confirm",
       "may_cast",
       "entry_pay_life",
@@ -209,6 +210,32 @@ describe("choiceRequest", () => {
     expect(r.tag).toBe("unleash");
     expect(r.hint).toContain("can't block");
     expect(r.primary?.label).toBe("Yes");
+  });
+
+  // ADR 0115 (CR 903.9a): the commander's owner answers Yes / No, and
+  // the hint says when it could be cast from where it is.
+  it("asks commander_return as Yes / No, naming a castable zone", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({ kind: "commander_return", reason: "", source: "cmd" }),
+      { sourceName: "Ezuri" },
+      h,
+    );
+    expect(r.question).toBe("Ezuri — put it into the command zone?");
+    expect(r.tag).toBe("commander");
+    expect(r.hint).not.toContain("cast it");
+    expect([r.primary?.label, r.primary?.keyShortcuts]).toEqual(["Yes", "Y"]);
+    expect(r.secondary?.map((a) => [a.label, a.keyShortcuts])).toEqual([["No", "N"]]);
+    r.primary!.onPress();
+    r.secondary![0].onPress();
+    expect(h.onAnswer.mock.calls).toEqual([[true], [false]]);
+
+    const castable = choiceRequest(
+      choice({ kind: "commander_return", playable_from_zone: true }),
+      { sourceName: "Ezuri" },
+      handlers(),
+    );
+    expect(castable.hint).toContain("You could cast it from where it is now");
   });
 
   it("carries a refusal as Not accepted", () => {

@@ -436,6 +436,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 			c.materialiseSplitWhole()
 		}
 	}
+	// ADR 0115 decision 1, CR 903.9a: a commander put into a graveyard
+	// or exile is owed the state-based action's question, and any other
+	// move ends that debt. Here because every route ends here and this
+	// is where the destination's kind is known, so no mover has to
+	// remember it (commander_return.go).
+	c.CommanderReturnDue = commanderReturnDueOn(c, dst.Kind)
 	dst.PushTop(c)
 	return c, nil
 }
