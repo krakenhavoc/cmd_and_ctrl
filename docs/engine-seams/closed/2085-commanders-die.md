@@ -1,0 +1,6 @@
+---
+title: "Commanders die"
+date: 2026-10-04
+issues: [2085]
+---
+**Commanders die** (#2085, CR 903.9a, [ADR 0115](decisions/0115-commanders-die.md)) — a commander that is destroyed, sacrificed, milled, discarded, countered or exiled now goes to its graveyard or to exile like any card, every trigger of that move fires, and only then does a state-based action (`commanderReturnSBALocked`) ask its owner, through the data-only `commander_return` prompt, whether it goes to the command zone. `commanderZoneReplacement` shrank to CR 903.9b, a move to a hand or a library, which is still a replacement and still pauses. Commander tax and commander damage follow the card across a new object, so a blinked commander keeps both. **Cards:** the caveats came off Sauron, Lord of the Rings (now Full: it sees an opponent's commander die whatever the owner answers), Rest in Peace (now Full: a dying commander is exiled and then offered) and Leyline of the Void (only its opening-hand caveat remains). The comments on Agent of the Iron Throne, Phyrexian Rebirth, The Battle of Bywater, God-Eternal Oketra, The Locust God, Underworld Cerberus, Liesa, Stone of Erech and Cosmic Intervention now describe the new order. **Still open:** showing the commander card in the prompt and an "X is deciding" line for the other seats (ADR 0115 PR 5, polish only).

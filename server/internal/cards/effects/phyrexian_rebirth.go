@@ -14,9 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "Destroyed this way" is the count the `Then` continuation is handed,
 // and it counts what LANDED: an indestructible creature is not
-// destroyed and does not grow the Horror, and a commander whose owner
-// takes the CR 903.9 offer went to the command zone rather than dying,
-// so it does not either (CR 400.7). It counts EVERY creature
+// destroyed and does not grow the Horror, but a commander is destroyed
+// like any creature and counts, whatever its owner then answers to the
+// CR 903.9a offer (ADR 0115). It counts EVERY creature
 // destroyed, yours included — the Horror is bigger for the creatures
 // you lost, which is exactly how the card is meant to be cast.
 //
