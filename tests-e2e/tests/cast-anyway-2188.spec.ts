@@ -148,13 +148,16 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
 
       // Two Forests onto the battlefield (a sandbox move, which is not
       // a land drop and taps nothing).
-      for (let i = 0; i < 6 && forestsInHand(admin, me.playerID).length < 2; i++) {
+      // Three in hand: two for the battlefield, one to keep (below).
+      for (let i = 0; i < 6 && forestsInHand(admin, me.playerID).length < 3; i++) {
         await admin.sendActionAsPlayer(me.playerID, "draw_card", {});
       }
-      const forests = forestsInHand(admin, me.playerID).slice(0, 2);
-      if (forests.length < 2) {
-        throw new Error(`need two Forests in hand, have ${forests.length}`);
+      if (forestsInHand(admin, me.playerID).length < 3) {
+        throw new Error(
+          `need three Forests in hand, have ${forestsInHand(admin, me.playerID).length}`,
+        );
       }
+      const forests = forestsInHand(admin, me.playerID).slice(0, 2);
       for (const f of forests) {
         await admin.sendActionAsPlayer(me.playerID, "move_card", {
           src: { kind: "hand", owner: me.playerID },
@@ -173,12 +176,16 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       // The Bears and the Wurm are two cards in 99, so the draws above
       // can leave dozens of Forests in hand. In one failed run the Bears
       // never showed up lit and findable in a fan that full. Put the
-      // spare Forests back, so the hand is just the Bears and the Wurm.
-      const spare = forestsInHand(admin, me.playerID).length;
+      // spare Forests back, but keep ONE: the open land drop is what
+      // holds this seat's main phase once the Bears resolve. With only
+      // an unpayable Wurm in hand, smart autopass (on by default) finds
+      // nothing to play and passes the step, so the Wurm's row is
+      // rightly greyed "Not your priority".
+      const spare = forestsInHand(admin, me.playerID).length - 1;
       if (spare > 0) await returnToLibrary(admin, me.playerID, LAND, spare);
       await admin.waitFor(
-        (v) => playerByID(v, me.playerID).hand.cards.every((c) => c.name !== LAND),
-        "no Forests left in hand",
+        (v) => playerByID(v, me.playerID).hand.cards.filter((c) => c.name === LAND).length === 1,
+        "one Forest left in hand",
         10_000,
       );
       await admin.waitFor(
