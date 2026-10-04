@@ -74,6 +74,14 @@
     // it on every permanent the viewer controls. On a mana source the
     // Tap row keeps #1438's label, "Tap (no mana)". Undefined hides it.
     onRawTap?: () => void;
+    // ADR 0118 §2: the Sandbox section's "Cast anyway (don't pay)" row,
+    // built by contextMenu.logic.ts castAnywayItem (greyed with its
+    // reason when something other than mana would refuse the cast).
+    // Choosing it fires `onCastAnyway`, which opens the dock's
+    // confirmation; nothing is sent from here. On a hand card it is the
+    // section's only row. Undefined hides it.
+    castAnyway?: MenuItem;
+    onCastAnyway?: () => void;
     // ADR 0117 §2: the card the rows belong to, for its restrictions
     // (Arrest, Faith's Fetters) and, with `view` and `viewerID`, a
     // planeswalker's "already activated this turn" and the −N it cannot
@@ -118,6 +126,8 @@
     special = [],
     onSpecialAction,
     onRawTap,
+    castAnyway,
+    onCastAnyway,
     onClose,
     payerLife,
     across = false,
@@ -182,6 +192,23 @@
     tapped
       ? "Untap it by hand: a manual change that activates nothing"
       : "Turn it sideways by hand: a manual change that adds no mana and activates nothing",
+  );
+
+  function fireCastAnyway(): void {
+    if (!castAnyway || castAnyway.disabled) return;
+    onCastAnyway?.();
+    onClose?.();
+  }
+
+  // The Sandbox section's divider: always on a permanent's popover, as
+  // before (ADR 0117 §3), and on a hand card's only when a row sits
+  // above Cast anyway.
+  const sandboxDivider = $derived(
+    !!onRawTap ||
+      special.length > 0 ||
+      abilities.length > 0 ||
+      activated.length > 0 ||
+      manualLoyalty.length > 0,
   );
 
   function activateAbility(index: number): void {
@@ -320,28 +347,52 @@
       </button>
     {/each}
   {/if}
-  {#if onRawTap}
+  {#if onRawTap || (castAnyway && onCastAnyway)}
     <!-- ADR 0117 §3: the Sandbox section. Never a pip, never counted by
-         the click rule: it is on every permanent the viewer controls. -->
-    <div class="divider" role="separator"></div>
+         the click rule: it is on every permanent the viewer controls.
+         ADR 0118 §2: and on every card the viewer could cast, with
+         "Cast anyway (don't pay)". -->
+    {#if sandboxDivider}
+      <div class="divider" role="separator"></div>
+    {/if}
     <div class="sandbox" role="group" aria-label="sandbox">
       <span class="section-label" aria-hidden="true">Sandbox</span>
-      <button
-        type="button"
-        class="menu-item"
-        role="menuitem"
-        title={sandboxTitle}
-        data-raw-tap
-        data-sandbox={tapped ? "untap" : "tap"}
-        onclick={(ev) => {
-          ev.stopPropagation();
-          onRawTap?.();
-          onClose?.();
-        }}
-      >
-        <span class="label">{sandboxLabel}</span>
-        <span class="cost" aria-hidden="true">↻</span>
-      </button>
+      {#if castAnyway && onCastAnyway}
+        <!-- ADR 0118 §2: the name is a label contract (AGENTS.md §5). It
+             draws no pip and lights no ring. -->
+        <button
+          type="button"
+          class="menu-item"
+          role="menuitem"
+          disabled={castAnyway.disabled}
+          title={castAnyway.hint || castAnyway.label}
+          data-cast-anyway
+          onclick={(ev) => {
+            ev.stopPropagation();
+            fireCastAnyway();
+          }}
+        >
+          <span class="label">{castAnyway.label}</span>
+        </button>
+      {/if}
+      {#if onRawTap}
+        <button
+          type="button"
+          class="menu-item"
+          role="menuitem"
+          title={sandboxTitle}
+          data-raw-tap
+          data-sandbox={tapped ? "untap" : "tap"}
+          onclick={(ev) => {
+            ev.stopPropagation();
+            onRawTap?.();
+            onClose?.();
+          }}
+        >
+          <span class="label">{sandboxLabel}</span>
+          <span class="cost" aria-hidden="true">↻</span>
+        </button>
+      {/if}
     </div>
   {/if}
 </div>

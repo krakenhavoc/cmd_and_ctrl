@@ -67,7 +67,10 @@
   import { closeAbilityPopover } from "../../abilityPopover";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
-  import type { MenuActivate } from "../../contextMenu.logic";
+  import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
+  import DockRequest from "./DockRequest.svelte";
+  import { castAnywayConfirmRequest } from "../../targetingDock";
+  import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
   import {
     targeting,
     begin as beginTargeting,
@@ -965,13 +968,18 @@
   // rides CastChoices through every prompt and applyCastChoices turns
   // it into `strict: true, auto_tap: true` on whichever cast_spell the
   // chain finally sends.
+  //
+  // ADR 0118 §2: `forceCast` is set only by a confirmed "Cast anyway
+  // (don't pay)". It rides the chain the same way, and applyCastChoices
+  // turns it into `strict: true, force_cast: true`.
   function handlePlayCard(
     card: CardView,
     fromZone?: CastSourceZone,
     face?: number,
     viaDrag = false,
+    forceCast = false,
   ): void {
-    const base = castChoicesBase(fromZone, viaDrag);
+    const base = castChoicesBase(fromZone, viaDrag, forceCast);
     if (face !== undefined) {
       afterFace(cardAsFace(card, face), { ...base, face });
       return;
@@ -1001,6 +1009,33 @@
     if (!req) return;
     unlockRequest.set(null);
     guardedSendAction("special_action", unlockParams(req.cardID, req.door), viewerID ?? undefined);
+  });
+
+  // ADR 0118 §2 (owner decision 6): "Cast anyway (don't pay)" asks
+  // first. The row (Hand, the strip, the command zone panel, the admin
+  // menu) only sets castAnywayPending; while it is set the dock asks
+  // "Cast <card> without paying its mana cost?". Cast starts the ordinary
+  // cast chain with `forceCast`; Cancel and Escape send nothing. The
+  // question goes away, also sending nothing, once the card has left the
+  // zone it was asked about.
+  const castAnywayRequest = $derived.by(() => {
+    const p = $castAnywayPending;
+    if (!p) return null;
+    return castAnywayConfirmRequest(p.card.name, {
+      onCast: () => {
+        clearCastAnyway();
+        // The card as the frame has it now, so the chain reads today's
+        // targets, modes and costs rather than the right-click's.
+        const live = findCard(view, p.card.instance_id) ?? p.card;
+        handlePlayCard(live, p.zone === "hand" ? undefined : p.zone, p.face, false, true);
+      },
+      onCancel: clearCastAnyway,
+    });
+  });
+  $effect(() => {
+    const p = $castAnywayPending;
+    if (!p) return;
+    if (locateCard(view, p.card.instance_id)?.zone !== p.zone) clearCastAnyway();
   });
 
   // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
@@ -3067,6 +3102,9 @@
       onPick={(card, index, colors) => handleMenuActivate(card, { kind: "mana", index, colors })}
       onClose={closeManaSourcePicker}
     />
+  {/if}
+  {#if castAnywayRequest}
+    <DockRequest request={castAnywayRequest} />
   {/if}
   {#if $cardMenu}
     <CardContextMenu

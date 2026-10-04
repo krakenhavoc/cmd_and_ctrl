@@ -67,11 +67,14 @@
   } from "../../dragCast";
   import {
     castStripBadge,
+    castStripCastAnywayBlocked,
     castStripEntries,
     castStripLegality,
+    castStripOffersCastAnyway,
     type CastStripEntry,
     type CastStripZone,
   } from "../../castStrip";
+  import { requestCastAnyway } from "../../castAnyway";
   import type { CastSourceZone } from "../../targeting";
   import type { Legality } from "../../timing";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
@@ -160,6 +163,18 @@
     if (!onCastCard) return;
     open = false;
     onCastCard(e.card, e.zone, e.face);
+  }
+
+  // ADR 0118 §2: with strict payment on, a commander and an exile entry
+  // whose verb is "cast" offer "Cast anyway (don't pay)" in their
+  // popover, payable or not. The row opens the dock's confirmation
+  // (castAnyway.ts), which starts the same cast chain a click does.
+  function castAnywayHere(e: CastStripEntry): boolean {
+    return !!onCastCard && $settings.gameplay.strictMana && castStripOffersCastAnyway(e);
+  }
+  function castAnyway(e: CastStripEntry): void {
+    open = false;
+    requestCastAnyway(e.card, e.zone, e.face);
   }
   // ---- #1622: drag to cast -------------------------------------------
   let drag = $state<DragState>(IDLE);
@@ -471,6 +486,10 @@
                 readyZone={e.zone}
                 {legal}
                 onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
+                onCastAnyway={castAnywayHere(e) ? () => castAnyway(e) : undefined}
+                castAnywayBlocked={castAnywayHere(e)
+                  ? castStripCastAnywayBlocked(e, view, viewerID)
+                  : ""}
               />
               {#if badge}
                 <span class="cost-tag" title={badge.title} aria-label={badge.label}>
