@@ -178,24 +178,24 @@ func TestRedirectedDestructionClearsTheDamage(t *testing.T) {
 	}
 }
 
-// TestPausedDestructionKeepsTheDamageUntilItLands is the CR 903.9 case
-// the issue names: a commander with lethal damage on it is destroyed,
-// its owner is asked whether to send it to the command zone, and the
-// answer is what decides whether the permanent leaves.
+// TestPausedDestructionKeepsTheDamageUntilItLands is the paused case
+// the issue names: a creature with lethal damage on it is destroyed,
+// a "may" replacement asks its owner whether to send it elsewhere, and
+// the answer is what decides whether the permanent leaves.
 //
-// While the prompt is open the commander is STILL ON THE BATTLEFIELD
+// While the prompt is open the creature is STILL ON THE BATTLEFIELD
 // with its damage on it — and #605's zoneChangePausedLocked guard is
 // what stops the lethal-damage SBA dooming it a second time now that
 // the damage is still visible. Answering clears it.
+//
+// The issue's vehicle was a commander and the CR 903.9 replacement;
+// since ADR 0115 a destroyed commander does not pause, so a test "may"
+// replacement (may_detour_test.go) stands in.
 func TestPausedDestructionKeepsTheDamageUntilItLands(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := damagedCreature(g, owner, 2, 3)
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == id {
-			g.Battlefield.Cards[i].IsCommander = true
-		}
-	}
+	g.WithWriteLock(func() { g.RegisterReplacementForTest(mayDetourForTest(id, owner.ID)) })
 
 	g.WithWriteLock(func() {
 		if err := g.destroyBattlefieldPermanentLocked(id, DestroyOptions{}); err != nil {

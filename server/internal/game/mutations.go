@@ -1377,7 +1377,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs, params.TeamworkIDs, params.BlightIDs); err != nil {
 		return err
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
+	// ADR 0115: of those, only a card the payment puts into a hand or
+	// a library is asked first (CR 903.9b), and the one cast cost that
+	// does is the alternative cost's return to hand (Daze, Gush). A
+	// discarded, sacrificed, pitched, escaped or delved commander is
+	// paid like any other card and offered the command zone afterwards
+	// by the CR 903.9a state-based action.
+	var asking []uuid.UUID
+	if alt != nil && alt.ReturnToHand != nil {
+		asking = params.AltCostIDs
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
 			again.commanderAnswers = answers
@@ -4036,8 +4046,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// of the pass reads (CR 704.3); a commander this pass kills is
 	// marked by that move and asked on the next pass. Not "fired": a
 	// question is not an action performed, and runStateChecksLocked
-	// holds the boundary while it is open. A no-op while
-	// commanderReturnSBA is off. See commander_return.go.
+	// holds the boundary while it is open. See commander_return.go.
 	g.commanderReturnSBALocked()
 	// #1199 / CR 702.26, ADR 0084: the "phases out until ~ leaves the
 	// battlefield" family comes back the moment its source is gone —
@@ -5727,19 +5736,20 @@ func (g *Game) recomputeSplitSecondLocked() {
 // would silently wipe a battlefield card's counters on a redundant
 // client-issued no-op move. Detect the same-zone case up front.
 //
-// S13.1: when asCommander is true and the card is a commander
-// being moved to graveyard, exile, hand, or library, the
-// destination is rewritten to the owner's command zone (CR 903.9
-// — commander zone replacement, exercised here as an explicit
-// player choice rather than an automatic engine transform).
+// S13.1, amended by ADR 0115 decision 5: when asCommander is true and
+// the card is a commander moved to a graveyard or exile, it lands there
+// (it dies, if it came from the battlefield) and is then put into its
+// owner's command zone with CR 903.9a's question pre-answered "yes". A
+// move to a hand or a library still asks the CR 903.9b replacement.
 func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	return g.MoveCardByIDAsCommander(src, dst, cardID, false)
 }
 
 // MoveCardByIDAsCommander is the S13.1 extended form. asCommander
-// is the player's "yes, route this commander back to command zone
-// instead" choice that the move_card action exposes via a
-// per-request flag. The default-false form preserves the historic
+// is the player's "yes, send this commander back to the command zone"
+// choice that the move_card action exposes via a per-request flag: for
+// a graveyard or exile destination it answers CR 903.9a in advance
+// (ADR 0115 decision 5). The default-false form preserves the historic
 // MoveCardByID behaviour for non-commander moves.
 func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
 	g.mu.Lock()
@@ -5821,6 +5831,12 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 			// the move now. Nothing has moved, so there is nothing for
 			// the state checks to see; the resume lands the card.
 			return nil
+		}
+		// ADR 0115 decision 5: as_commander pre-answers CR 903.9a's
+		// "yes" for a commander this move put into a graveyard or exile.
+		// It died (or was exiled) like any other card first.
+		if asCommander {
+			g.returnCommanderPreAnsweredLocked(cardID)
 		}
 		// A sandbox move is a special action: the mover keeps priority
 		// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
@@ -6419,16 +6435,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := g.refusePausedCostCardsLocked(moving, tapping, spending); err != nil {
 		return err
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
-		func(g *Game, answers map[uuid.UUID]bool) error {
-			again := params
-			again.commanderAnswers = answers
-			return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, again)
-		})
-	if asked {
-		return nil
-	}
-	params.commanderAnswers = answers
+	// ADR 0115: nothing a mana ability's cost moves goes to a hand or a
+	// library, so no card is asked CR 903.9b before it begins. A
+	// sacrificed, discarded or exiled commander is paid like any other
+	// card and offered the command zone afterwards by the CR 903.9a
+	// state-based action.
 
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life

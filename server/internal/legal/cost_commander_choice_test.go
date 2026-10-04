@@ -10,17 +10,19 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
-// cost_commander_choice_test.go — the enumerator half of #1397.
+// cost_commander_choice_test.go — the enumerator half of #1397, as
+// ADR 0115 left it.
 //
-// An activation whose cost moves a commander is now PARKED on a
-// CR 903.9 question to the commander's owner before anything is paid
-// (ADR 0013 §5af). The enumerator must still offer the activation
-// (it is legal; the question is part of making it), and once it is
-// parked the owner — who is an OPPONENT when the commander was stolen —
-// is offered the yes/no and nobody is offered anything else, because
-// the prompt blocks the table.
+// #1397 parked an activation whose cost moved a commander on a CR 903.9
+// question to the commander's owner before anything was paid (ADR 0013
+// §5af). Since ADR 0115 a SACRIFICED commander is paid like any other
+// card, and CR 903.9a asks its owner afterwards. The enumerator must
+// offer the activation, and once the commander is in the graveyard the
+// owner — who is an OPPONENT when the commander was stolen — is offered
+// the commander_return yes/no and nobody is offered anything else,
+// because the prompt blocks the table.
 
-func TestACostParkedOnAStolenCommanderIsAnsweredByItsOwner(t *testing.T) {
+func TestASacrificedStolenCommanderIsAnsweredByItsOwner(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
@@ -57,11 +59,15 @@ func TestACostParkedOnAStolenCommanderIsAnsweredByItsOwner(t *testing.T) {
 	if err := actions.Dispatch(g, actions.Action{Type: actions.Type(m.Type), Player: me.ID, Caller: me.ID, Params: m.Params}); err != nil {
 		t.Fatalf("dispatch the activation: %v", err)
 	}
-	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != opp.ID {
-		t.Fatalf("want one prompt owed by the commander's owner, got %d", len(g.PendingChoices))
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != opp.ID ||
+		g.PendingChoices[0].Kind != game.PendingChoiceCommanderReturn {
+		t.Fatalf("want one commander_return prompt owed by the commander's owner, got %d", len(g.PendingChoices))
 	}
-	if len(g.StackMeta) != 0 {
-		t.Fatal("the activation was paid before the owner answered")
+	if len(g.StackMeta) != 1 {
+		t.Fatal("the sacrifice was not paid at once")
+	}
+	if !opp.Graveyard.Contains(stolen) {
+		t.Fatal("the sacrificed commander is not in its owner's graveyard")
 	}
 
 	answers := legal.EnumerateFor(g, opp.ID)

@@ -2498,14 +2498,10 @@ func TestS131CommanderCastTaxIncrements(t *testing.T) {
 	); err != nil {
 		t.Fatalf("MoveCardByIDAsCommander: %v", err)
 	}
-	// S17 sub-PR 6: the move queues the CR 903.9 optional prompt.
-	// Resolve with "yes" so the commander reaches the command zone
-	// for the second-cast portion of the test.
-	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceOptionalReplacement {
-		t.Fatalf("expected CR 903.9 optional prompt after commander-death move")
-	}
-	if err := g.ResolveOptionalReplacement(g.PendingChoices[0].ID, caster.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	// ADR 0115 decision 5: as_commander pre-answers CR 903.9a's
+	// question, so the commander dies and goes home with no prompt.
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("as_commander left %d prompt(s) open, want none", len(g.PendingChoices))
 	}
 	if !caster.Command.Contains(cmdrCard.InstanceID) {
 		t.Errorf("commander did not route to command zone with as_commander flag")

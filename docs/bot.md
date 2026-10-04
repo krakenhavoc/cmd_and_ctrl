@@ -304,9 +304,10 @@ command zone. The bot says yes, unless the prompt's `playable_from_zone`
 is set, meaning it could cast the commander from where it is (escape,
 flashback, an adventure in exile). Then it says no and leaves the card
 there (owner decision 2). The model prompt names the card and says when
-it is castable where it is. The prompt ships switched off in ADR 0115
-PR 2: until PR 3, the commander-zone question is still the
-`optional_replacement` above.
+it is castable where it is. Since ADR 0115 PR 3 this is how a destroyed,
+sacrificed, countered, discarded, milled or exiled commander is asked;
+the `optional_replacement` above is left for a commander headed for a
+hand or a library (CR 903.9b).
 
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as

@@ -126,11 +126,11 @@ func TestMilledThisWayCountsOnlyWhatLanded(t *testing.T) {
 	}
 }
 
-// TestAPausedCommanderMillLegIsCountedOnlyWhenItLandsInTheGraveyard is
+// TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard is
 // the CR 903.9 half. The list cannot be taken while the prompt is
 // open, so the rest of the mill waits for it; when the answer arrives
 // the commander counts only if the graveyard is where it went.
-func TestAPausedCommanderMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testing.T) {
+func TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
@@ -141,7 +141,7 @@ func TestAPausedCommanderMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testin
 			// The top of a library is the LAST element, so the
 			// commander is milled first and the bear second.
 			bear := libraryCard(owner, "Bear")
-			commander := seatCommander(t, owner.Library, owner)
+			commander := seatDetouredCard(t, g, owner.Library, owner)
 
 			got, ran := millThen(t, g, owner, 2, ZoneGraveyard)
 
@@ -194,7 +194,7 @@ func TestUndoAcrossAPausedMillLegReplays(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	bear := libraryCard(owner, "Bear")
-	commander := seatCommander(t, owner.Library, owner)
+	commander := seatDetouredCard(t, g, owner.Library, owner)
 
 	got, ran := millThen(t, g, owner, 2, ZoneGraveyard)
 	promptOpen := g.Clone()
@@ -237,7 +237,7 @@ func TestFireAndForgetMillReturnsWhatLanded(t *testing.T) {
 	owner := g.Seats[0]
 	stolen := libraryCard(owner, "Stolen")
 	bear := libraryCard(owner, "Bear")
-	commander := seatCommander(t, owner.Library, owner)
+	commander := seatDetouredCard(t, g, owner.Library, owner)
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(intoGraveyardReplacement(stolen,
 			"if it would be put into a graveyard, exile it instead", func(ev *ReplacementEvent) {
@@ -278,7 +278,8 @@ func TestFireAndForgetMillReturnsWhatLanded(t *testing.T) {
 // TestMillToExileCountsWhatReachedExile is Oona's destination: "exile
 // the top X cards of their library" is not a mill (no EventMill, no
 // mill payoff), and "exiled this way" is the same CR 400.7 reading
-// against exile.
+// against exile. Since ADR 0115 an exiled commander is exiled with the
+// rest and counted; CR 903.9a asks about it afterwards.
 func TestMillToExileCountsWhatReachedExile(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -286,18 +287,13 @@ func TestMillToExileCountsWhatReachedExile(t *testing.T) {
 	commander := seatCommander(t, owner.Library, owner)
 
 	got, ran := millThen(t, g, owner, 2, ZoneExile)
-	if *ran != 0 {
-		t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0", *ran)
+	if *ran != 1 {
+		t.Fatalf("the continuation ran %d times, want 1 — nothing waits on the commander's owner", *ran)
 	}
-
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	if len(*got) != 2 || !g.Exile.Contains(bear) || !g.Exile.Contains(commander) {
+		t.Errorf("exiled this way = %v, want both the commander and %v", *got, bear)
 	}
-
-	if !idsEqual(*got, []uuid.UUID{bear}) {
-		t.Errorf("exiled this way = %v, want just %v — the commander went to the command zone", *got, bear)
-	}
+	answerCommanderReturn(t, g, owner, commander, true)
 	if !owner.Command.Contains(commander) || !g.Exile.Contains(bear) {
 		t.Error("the commander is in the command zone and the bear in exile")
 	}

@@ -17,7 +17,8 @@ import (
 // TestReplacementsZeroPassthrough — with no catalog / test
 // replacements registered, every mutation flows byte-for-byte
 // identically to pre-S17 behavior. The commander-zone built-in is
-// present but only fires for asCommanderMove + commander cards.
+// present but only fires for a commander headed for a hand or a library
+// (CR 903.9b since ADR 0115).
 func TestReplacementsZeroPassthrough(t *testing.T) {
 	g := newActiveGame(t)
 
@@ -50,11 +51,13 @@ func TestReplacementsZeroPassthrough(t *testing.T) {
 	}
 }
 
-// TestCommanderZoneBuiltInRoutesToCommandZone verifies the S17
-// refactor preserves S13.1 semantics: a commander moved with
-// asCommander=true queues the CR 903.9 optional prompt; owner
-// confirms → commander lands in command zone.
-func TestCommanderZoneBuiltInRoutesToCommandZone(t *testing.T) {
+// TestAsCommanderMoveDiesThenGoesHome — the sandbox move_card's
+// as_commander flag (ADR 0115 decision 5). The context menu's
+// "Graveyard → command zone" moves the commander into its graveyard,
+// where it dies like any other creature (an EventLTB into the
+// graveyard), and pre-answers CR 903.9a's question "yes", so it ends in
+// the command zone with no prompt at all.
+func TestAsCommanderMoveDiesThenGoesHome(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	cmdID := uuid.New()
@@ -68,6 +71,7 @@ func TestCommanderZoneBuiltInRoutesToCommandZone(t *testing.T) {
 		Controller:  owner.ID,
 		IsCommander: true,
 	})
+	before := len(g.Events)
 
 	err := g.MoveCardByIDAsCommander(
 		ZoneRef{Kind: ZoneBattlefield},
@@ -78,36 +82,39 @@ func TestCommanderZoneBuiltInRoutesToCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MoveCardByIDAsCommander: %v", err)
 	}
-	// Prompt queued — nothing moved yet.
-	if owner.Command.Contains(cmdID) || owner.Graveyard.Contains(cmdID) {
-		t.Fatalf("commander moved before prompt resolved")
-	}
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("expected CR 903.9 prompt, got %d pending choices", len(g.PendingChoices))
-	}
-	prompt := g.PendingChoices[0]
-	if prompt.Kind != PendingChoiceOptionalReplacement {
-		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, PendingChoiceOptionalReplacement)
-	}
-	if prompt.Chooser != owner.ID {
-		t.Errorf("chooser = %s, want commander owner %s", prompt.Chooser, owner.ID)
-	}
-	// Owner says "yes" → command zone.
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("as_commander pre-answers the question, but %d prompt(s) are open", len(g.PendingChoices))
 	}
 	if !owner.Command.Contains(cmdID) {
-		t.Errorf("commander did not land in command zone after yes")
+		t.Errorf("commander did not land in the command zone")
 	}
 	if owner.Graveyard.Contains(cmdID) {
-		t.Errorf("commander leaked into graveyard")
+		t.Errorf("commander stayed in the graveyard")
+	}
+	died, home := false, false
+	for _, ev := range g.Events[before:] {
+		if ev.CardID != cmdID {
+			continue
+		}
+		if ev.Kind == EventLTB && ev.NewZone == ZoneGraveyard {
+			died = true
+		}
+		if ev.Kind == EventZoneMove && ev.OldZone == ZoneGraveyard && ev.NewZone == ZoneCommand {
+			home = true
+		}
+	}
+	if !died {
+		t.Error("no EventLTB into the graveyard: the commander did not die first")
+	}
+	if !home {
+		t.Error("no EventZoneMove graveyard → command for the pre-answered return")
 	}
 }
 
-// TestCommanderZoneBuiltInOwnerDeclinesGoesToGraveyard — owner
-// says "no" to the CR 903.9 prompt → commander proceeds to the
-// original destination (graveyard).
-func TestCommanderZoneBuiltInOwnerDeclinesGoesToGraveyard(t *testing.T) {
+// TestASandboxMoveToTheGraveyardLandsThenAsks — without as_commander a
+// sandbox move of a commander to its graveyard lands there, and the
+// CR 903.9a check asks its owner; "no" leaves it there (ADR 0115).
+func TestASandboxMoveToTheGraveyardLandsThenAsks(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	cmdID := uuid.New()
@@ -130,32 +137,22 @@ func TestCommanderZoneBuiltInOwnerDeclinesGoesToGraveyard(t *testing.T) {
 	); err != nil {
 		t.Fatalf("MoveCardByIDAsCommander: %v", err)
 	}
-	// S17 sub-PR 6: AppliesTo no longer gates on asCommanderMove
-	// — the prompt fires on EVERY commander move to a CR 903.9
-	// destination. The asCommander flag is now just a routing
-	// flavor flag, not a gate on whether the replacement applies.
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("expected CR 903.9 prompt, got %d pending choices", len(g.PendingChoices))
-	}
-	prompt := g.PendingChoices[0]
-	// Owner says "no" → proceed to graveyard.
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
 	if !owner.Graveyard.Contains(cmdID) {
-		t.Errorf("commander did not land in graveyard after no")
+		t.Fatal("the commander did not land in the graveyard")
+	}
+	answerCommanderReturn(t, g, owner, cmdID, false)
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Errorf("commander did not stay in the graveyard after no")
 	}
 	if owner.Command.Contains(cmdID) {
 		t.Errorf("commander leaked into command zone after no")
 	}
 }
 
-// TestCommanderZoneSBADeathQueuesPrompt — the #164 regression:
-// a commander that dies to lethal damage (or any SBA destroy)
-// now routes through the replacement pipeline and queues the
-// CR 903.9 optional prompt. Before sub-PR 6 the `asCommanderMove`
-// gate skipped this path entirely, so the commander went straight
-// to graveyard.
+// TestCommanderZoneSBADeathQueuesPrompt — the #164 regression: a
+// commander that dies to lethal damage (or any SBA destroy) is offered
+// the command zone. Since ADR 0115 it is put into the graveyard first
+// and the CR 903.9a check asks its owner.
 func TestCommanderZoneSBADeathQueuesPrompt(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -179,26 +176,10 @@ func TestCommanderZoneSBADeathQueuesPrompt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DestroyPermanentForEffect: %v", err)
 	}
-
-	// Nothing moved — prompt queued.
-	if owner.Graveyard.Contains(cmdID) {
-		t.Fatalf("commander went to graveyard before prompt resolved")
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Fatalf("the destroyed commander is not in the graveyard")
 	}
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("expected CR 903.9 prompt, got %d", len(g.PendingChoices))
-	}
-	prompt := g.PendingChoices[0]
-	if prompt.Kind != PendingChoiceOptionalReplacement {
-		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, PendingChoiceOptionalReplacement)
-	}
-	if prompt.Chooser != owner.ID {
-		t.Errorf("chooser = %s, want owner %s", prompt.Chooser, owner.ID)
-	}
-
-	// Owner says "yes" → command zone.
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	if !owner.Command.Contains(cmdID) {
 		t.Errorf("commander did not land in command zone")
 	}

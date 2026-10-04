@@ -292,18 +292,14 @@ func TestB17BattleOfBywaterKillsBigCreaturesAndFeedsTheRest(t *testing.T) {
 
 // A commander of yours with power 3 or more is destroyed by The Battle
 // of Bywater, so it is not a creature you control when the Foods are
-// counted. The engine keeps it on the battlefield until its owner
-// answers the CR 903.9 prompt, so a plain board count would pay for it.
-//
-// #815: the Foods are made from the destruction's continuation, so
-// nothing is counted until that answer arrives — and then the
-// commander is not among the creatures its controller still has,
-// whichever answer it was.
+// counted. Since ADR 0115 it is in its owner's graveyard when the
+// Foods are made, and the CR 903.9a question that follows changes
+// nothing about the count, whichever answer it gets.
 func TestB17BattleOfBywaterDoesNotFeedADestroyedCommander(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
-	}{{"to the command zone", true}, {"to the graveyard", false}} {
+	}{{"to the command zone", true}, {"left in the graveyard", false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
 			me := g.Seats[0]
@@ -315,24 +311,22 @@ func TestB17BattleOfBywaterDoesNotFeedADestroyedCommander(t *testing.T) {
 			if !g.Battlefield.Contains(hobbit) {
 				t.Fatal("the Hobbit is too small to be destroyed")
 			}
-			if n := len(battlefieldIDsNamed(g, "Food")); n != 0 {
-				t.Errorf("%d Foods while the CR 903.9 prompt is still open, want 0 — "+
-					"the sweep is not finished until it is answered", n)
-			}
-
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, me.ID)
-				if !me.Command.Contains(commander) {
-					t.Error("the commander goes to the command zone")
-				}
-			} else {
-				b21DeclineCommandZone(t, g, me.ID)
-				if !me.Graveyard.Contains(commander) {
-					t.Error("the commander goes to the graveyard")
-				}
+			if !me.Graveyard.Contains(commander) {
+				t.Fatal("the destroyed commander is not in its owner's graveyard")
 			}
 			if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
-				t.Errorf("after the CR 903.9 answer: %d Foods, want 1 (only the Hobbit)", n)
+				t.Errorf("%d Foods before the CR 903.9a answer, want 1 (only the Hobbit)", n)
+			}
+
+			answerCommanderReturn(t, g, me.ID, tc.commandZone)
+			if tc.commandZone && !me.Command.Contains(commander) {
+				t.Error("the commander goes to the command zone")
+			}
+			if !tc.commandZone && !me.Graveyard.Contains(commander) {
+				t.Error("the commander stays in the graveyard")
+			}
+			if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
+				t.Errorf("after the CR 903.9a answer: %d Foods, want 1 (only the Hobbit)", n)
 			}
 		})
 	}

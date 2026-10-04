@@ -10,6 +10,7 @@
 **Amended:** 2026-09-22 · Branch `feat/amount-replacements` — §13's deferred `RepEventManaProduced` is answered and the draw event grows a COUNT, see [§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
 **Amended:** 2026-09-29 · Branch `fix/shuffle-after-replacement-1735` — a redirected library destination can now be a genuine shuffle, not just a placement, see [§5ah](#5ah-amendment-2026-09-29-a-redirected-library-destination-can-ask-for-a-shuffle)
 **Amended:** 2026-10-01 · Branch `feat/1743-explore-the-vastlands` — §5x's run takes an arbitrary choose_cards leg per seat, and a look-and-take can name two kinds of card at once, see [§5ai](#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look)
+**Amended:** 2026-10-04 · Branch `feat/s58-0115-pr3-commander-return-switch` — the CR 903.9 built-in applies to a HAND or LIBRARY destination only (CR 903.9b); a commander put into a graveyard or exile lands there and the CR 903.9a state-based action asks its owner afterwards. §5f's resume and §5af's ask-before-paying now serve bounces and tucks only. See [ADR 0115](0115-commanders-die.md)
 
 ## Context
 
@@ -524,6 +525,14 @@ error instead, dropping the event and its continuation on a prompt that
 was already dequeued. They now tolerate it the same way.
 
 ### 5f. Amendment, 2026-09-17: the CR 903.9 resume finishes a move from any zone
+
+> **Narrowed by [ADR 0115](0115-commanders-die.md) (2026-10-04).** The
+> commander-zone built-in now applies only to a move into a hand or a
+> library (CR 903.9b). A commander headed for a graveyard or exile is
+> no longer replaced and no longer pauses: it lands, and the CR 903.9a
+> state-based action (`commander_return`) asks its owner afterwards. The
+> resume below still finishes a paused bounce or tuck, and any other
+> optional exit replacement, from any zone.
 
 *Amendment, 2026-09-17, branch `fix/707-816-battlefield-exit`.
 Closes [#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707),
@@ -3608,6 +3617,15 @@ closed by this amendment. The other two (#1290, #1291) are unchanged.
 
 
 ### 5af. Amendment, 2026-09-24: a commander paid as a COST is asked before the payment, not during it
+
+> **Narrowed by [ADR 0115](0115-commanders-die.md) (2026-10-04).** Only a
+> cost that puts a commander into a hand or a library (a return to hand,
+> ninjutsu, Daze's alternative cost, a card put on top of its library)
+> is still asked before the payment (CR 903.9b). A commander sacrificed,
+> discarded or exiled to pay a cost is paid like any other card and
+> offered the command zone afterwards by the CR 903.9a state-based
+> action. The paused-card gate (`refusePausedCostCardsLocked`) is
+> unchanged; it now fires only for a bounce or a tuck.
 
 **Issue [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).**
 Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)

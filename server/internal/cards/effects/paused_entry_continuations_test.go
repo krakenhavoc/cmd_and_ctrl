@@ -284,6 +284,10 @@ func TestReanimationFinishesAfterTheEntryPrompt(t *testing.T) {
 // answers say. The commander's own CR 903.9 question is about the OTHER
 // card; a library → battlefield move is not a CR 903.9 destination, so
 // the fetched commander is asked nothing about the command zone.
+//
+// The paused exit is a BOUNCE: since ADR 0115 an exiled commander no
+// longer pauses (CR 903.9a asks after the move), while a return to hand
+// still asks CR 903.9b before anything moves.
 func TestFetchedCommanderEntryWaitsBesideACommandZonePrompt(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -303,10 +307,11 @@ func TestFetchedCommanderEntryWaitsBesideACommandZonePrompt(t *testing.T) {
 	if b06ReplacementOrderFor(g, me.ID) == nil {
 		t.Fatal("the fetched commander's entry queues the ordering prompt")
 	}
-	// A second, unrelated question: the other commander is exiled.
-	g.WithWriteLock(func() { _ = g.ExileCardForEffect(onBoard) })
+	// A second, unrelated question: the other commander is returned to
+	// its owner's hand.
+	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(onBoard) })
 
-	// Answer the CR 903.9 question first.
+	// Answer the CR 903.9b question first.
 	b36AcceptCommandZone(t, g, me.ID)
 	if !me.Command.Contains(onBoard) {
 		t.Fatal("the board commander took the command zone")

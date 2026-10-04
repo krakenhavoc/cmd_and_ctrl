@@ -34,6 +34,11 @@ import (
 // Aura sat on the battlefield attached to a card that had left. The
 // client draws an unattached enchantment in the enchantments row,
 // which is exactly what the report says it saw.
+//
+// ADR 0115: a commander headed for the graveyard no longer pauses (it
+// lands there and CR 903.9a asks afterwards), so the paused exit this
+// test is about is now a move to its owner's HAND, which still asks
+// CR 903.9b before anything moves.
 func TestIssue1156CuriosityFallsOffACommanderTakingTheCommandZone(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -66,11 +71,11 @@ func TestIssue1156CuriosityFallsOffACommanderTakingTheCommandZone(t *testing.T) 
 
 	if err := g.MoveCardByID(
 		game.ZoneRef{Kind: game.ZoneBattlefield},
-		game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID}, cmd); err != nil {
+		game.ZoneRef{Kind: game.ZoneHand, Owner: me.ID}, cmd); err != nil {
 		t.Fatalf("MoveCardByID: %v", err)
 	}
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("expected the CR 903.9 prompt, got %d pending choices", len(g.PendingChoices))
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != game.PendingChoiceOptionalReplacement {
+		t.Fatalf("expected the CR 903.9b prompt, got %d pending choices", len(g.PendingChoices))
 	}
 	p := g.PendingChoices[0]
 	if err := g.ResolveOptionalReplacement(p.ID, me.ID, true); err != nil {
@@ -296,22 +301,17 @@ func TestIssue1158CapstoneResolvesOffMalcolmAtFlashSpeed(t *testing.T) {
 	}
 }
 
-// TestIssue1158CapstoneCarriesOnPastACardTheWindowDiverted is the
-// pinned caveat of #1158 with its verdict flipped by #1159.
+// TestIssue1158CapstoneStopsOnAnExiledCommander was the pinned caveat
+// of #1158 with its verdict flipped by #1159: a commander whose owner
+// took the command zone never reached exile, so it was not one of the
+// cards "you exile" and the run carried on past it.
 //
-// The defect the #1158 reproduction turned up — not what that report
-// described — was that MillToZone's `until` predicate was answered in
-// millPlanLocked against the cards that came OFF the library, before
-// the CR 614 window had said where any of them went. A commander
-// whose owner takes the command zone never reached exile, so CR 400.7
-// says it is not one of the cards "you exile", and the run stopped on
-// it anyway: one card short, granting nothing.
-//
-// #1159 moved the verdict into the routing loop, where the landed
-// outcome is known. This test now asserts the rules answer on both
-// lines, and the caveats it used to hold in place — the Capstone's
-// and the "until" half of Helm of Obedience's — are gone.
-func TestIssue1158CapstoneCarriesOnPastACardTheWindowDiverted(t *testing.T) {
+// ADR 0115 removed that board. A commander is exiled like any other
+// card, so it IS one of the cards exiled, its mana value 4 meets the
+// printed total on its own, and the run stops there with one grant.
+// CR 903.9a then asks its owner about the command zone; declined, the
+// commander stays in exile, castable through the grant.
+func TestIssue1158CapstoneStopsOnAnExiledCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	cmd := improvisationCapstoneCard("Pirate Commander", "Legendary Creature — Pirate", "{2}{U}{R}")
@@ -322,28 +322,20 @@ func TestIssue1158CapstoneCarriesOnPastACardTheWindowDiverted(t *testing.T) {
 
 	castCatalogSpell(t, g, "Improvisation Capstone", "Sorcery — Lesson", improvisationCapstoneOracle, nil)
 	passPriorityAroundTable(t, g)
-	for _, p := range g.PendingChoices {
-		if p.Kind == game.PendingChoiceOptionalReplacement {
-			if err := g.ResolveOptionalReplacement(p.ID, p.Chooser, true); err != nil {
-				t.Fatalf("ResolveOptionalReplacement: %v", err)
-			}
-		}
-	}
-	passPriorityAroundTable(t, g)
 
-	if !me.Command.Contains(ids[0]) {
-		t.Fatal("the commander did not take the command zone")
+	if !g.Exile.Contains(ids[0]) {
+		t.Fatalf("the commander is in %s, want exile", b12ZoneOf(g, ids[0]))
 	}
-	// #1159 flipped this. The commander was never put into exile
-	// (CR 400.7), so its mana value 4 counts toward nothing, the run
-	// carries on to the Wurm, and the Wurm's mana value 6 takes the
-	// total over the printed 4 on its own.
-	if !g.Exile.Contains(ids[1]) {
-		t.Error("the run stopped on a card the CR 614 window diverted; it should have carried on to the next card")
+	if g.Exile.Contains(ids[1]) {
+		t.Error("the run carried on past a commander whose mana value already reached 4")
 	}
 	g.ReadSnapshot(func() {
 		if len(me.CastPermissions) != 1 {
-			t.Errorf("grants held: %d, want 1 — the card that really reached exile", len(me.CastPermissions))
+			t.Errorf("grants held: %d, want 1 — the commander in exile", len(me.CastPermissions))
 		}
 	})
+	answerCommanderReturn(t, g, me.ID, false)
+	if !g.Exile.Contains(ids[0]) {
+		t.Error("a declined commander stays in exile")
+	}
 }

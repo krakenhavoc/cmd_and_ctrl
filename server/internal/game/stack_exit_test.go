@@ -163,11 +163,54 @@ func TestExileSpellRefusesANonSpell(t *testing.T) {
 	}
 }
 
-// TestExiledCommanderSpellWaitsForTheAnswer: the exile of a commander
-// spell pauses on CR 903.9 with the record still in place (the spell
-// has not moved), and `then` hears the settled outcome — false when the
-// owner takes the command zone, because nothing reached exile to plot.
-func TestExiledCommanderSpellWaitsForTheAnswer(t *testing.T) {
+// TestAPausedSpellExileWaitsForTheAnswer: the exile of a spell that a
+// "may" replacement pauses (a test one, may_detour_test.go; a commander
+// spell was the vehicle before ADR 0115) keeps the record in place (the
+// spell has not moved), and `then` hears the settled outcome — false
+// when the owner takes the command zone, because nothing reached exile
+// to plot.
+func TestAPausedSpellExileWaitsForTheAnswer(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[1]
+	cmdID := seatDetouredCard(t, g, g.Stack, owner)
+	top, _ := g.Stack.Top()
+	_, _ = g.Stack.Remove(cmdID)
+	pushStackSpell(t, g, top)
+
+	var heard []bool
+	g.mu.Lock()
+	err := g.ExileSpellThenForEffect(cmdID, func(_ *Game, exiled bool) error {
+		heard = append(heard, exiled)
+		return nil
+	})
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("ExileSpellThenForEffect: %v", err)
+	}
+	if len(heard) != 0 {
+		t.Fatalf("then ran before the answer: %v", heard)
+	}
+	if _, ok := g.StackMeta[cmdID]; !ok {
+		t.Fatal("the record went before the spell did")
+	}
+	prompt := expectCommanderPrompt(t, g, owner)
+	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+	assertOnlyIn(t, cmdID, owner.Command, g.Exile, g.Stack)
+	if _, ok := g.StackMeta[cmdID]; ok {
+		t.Error("the record outlived the card's move to the command zone")
+	}
+	if len(heard) != 1 || heard[0] {
+		t.Errorf("then heard %v, want [false] — the card went to the command zone, not to exile", heard)
+	}
+}
+
+// TestAnExiledCommanderSpellIsExiledThenOffered — ADR 0115: a commander
+// spell exiled off the stack is exiled at once, its record goes with it,
+// `then` hears true (it reached exile), and CR 903.9a asks its owner
+// afterwards.
+func TestAnExiledCommanderSpellIsExiledThenOffered(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[1]
 	cmdID := seatCommander(t, g.Stack, owner)
@@ -185,21 +228,13 @@ func TestExiledCommanderSpellWaitsForTheAnswer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExileSpellThenForEffect: %v", err)
 	}
-	if len(heard) != 0 {
-		t.Fatalf("then ran before the CR 903.9 answer: %v", heard)
+	if len(heard) != 1 || !heard[0] {
+		t.Fatalf("then heard %v, want [true] — the commander spell reached exile", heard)
 	}
-	if _, ok := g.StackMeta[cmdID]; !ok {
-		t.Fatal("the record went before the spell did")
-	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
-	assertOnlyIn(t, cmdID, owner.Command, g.Exile, g.Stack)
 	if _, ok := g.StackMeta[cmdID]; ok {
-		t.Error("the record outlived the commander's move to the command zone")
+		t.Error("the record outlived the spell's move to exile")
 	}
-	if len(heard) != 1 || heard[0] {
-		t.Errorf("then heard %v, want [false] — the commander went home, not to exile", heard)
-	}
+	assertOnlyIn(t, cmdID, g.Exile, g.Stack, owner.Command)
+	answerCommanderReturn(t, g, owner, cmdID, true)
+	assertOnlyIn(t, cmdID, owner.Command, g.Exile, g.Stack)
 }

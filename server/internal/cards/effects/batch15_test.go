@@ -959,23 +959,16 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 	}
 }
 
-// A commander caught in Blood Money was destroyed and pays a Treasure
-// (CR 903.9 replaces the zone change, not the destruction). The engine
-// keeps it on the battlefield until its owner answers the command-zone
-// prompt, so the count is not knowable while the prompt is open.
-//
-// #815: the card WAITS for it. "For each creature destroyed this way"
-// runs from DestroyPermanentsThenForEffect's continuation, so no
-// Treasure is made until the answer arrives — and then the number is
-// the real one, whichever answer it was. Before #815 the Treasures
-// were made on the spot and the commander was counted on the strength
-// of the prompt having been queued, which was right here and wrong for
-// a destruction the window cancelled outright.
+// A commander caught in Blood Money was destroyed and pays a Treasure.
+// Since ADR 0115 it is destroyed and put into its owner's graveyard
+// with the rest of the wipe, so "for each creature destroyed this way"
+// counts it at once; the CR 903.9a state-based action then asks its
+// owner about the command zone, and neither answer changes the count.
 func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
-	}{{"to the command zone", true}, {"to the graveyard", false}} {
+	}{{"to the command zone", true}, {"left in the graveyard", false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
 			me := g.Seats[0]
@@ -985,24 +978,22 @@ func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
 
 			castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
 			passPriorityAroundTable(t, g)
-			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 0 {
-				t.Errorf("%d Treasures while the CR 903.9 prompt is still open, want 0 — "+
-					"the count is not knowable until it is answered", n)
-			}
-
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, me.ID)
-				if !me.Command.Contains(commander) {
-					t.Error("the commander goes to the command zone")
-				}
-			} else {
-				b21DeclineCommandZone(t, g, me.ID)
-				if !me.Graveyard.Contains(commander) {
-					t.Error("the commander goes to the graveyard")
-				}
+			if !me.Graveyard.Contains(commander) {
+				t.Fatal("the destroyed commander is not in its owner's graveyard")
 			}
 			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
-				t.Errorf("after the CR 903.9 answer: %d Treasures, want 2", n)
+				t.Errorf("%d Treasures before the CR 903.9a answer, want 2 — the commander was destroyed", n)
+			}
+
+			answerCommanderReturn(t, g, me.ID, tc.commandZone)
+			if tc.commandZone && !me.Command.Contains(commander) {
+				t.Error("the commander goes to the command zone")
+			}
+			if !tc.commandZone && !me.Graveyard.Contains(commander) {
+				t.Error("the commander stays in the graveyard")
+			}
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("after the CR 903.9a answer: %d Treasures, want 2", n)
 			}
 		})
 	}
@@ -1040,12 +1031,11 @@ func TestB15BloodMoneyDeathsAreSimultaneousForAristocratsPayoffs(t *testing.T) {
 	}
 }
 
-// A commander prompt splits the physical moves across two actions, but the
-// wipe is still one simultaneous destruction. In particular, a Cutthroat
-// processed before the commander has already left the battlefield when the
-// owner answers; the carried LKI batch must be active around that resumed
-// move itself, not only around the continuation that starts the next leg.
-func TestB15BloodMoneyPausedCommanderStaysInTheSimultaneousDeathBatch(t *testing.T) {
+// Since ADR 0115 a commander caught in the wipe dies in the same
+// simultaneous destruction as everything else (CR 700.4): a Zulaport
+// Cutthroat sees all three deaths, its own included, even when the
+// commander's owner then sends it to the command zone (CR 903.9a).
+func TestB15BloodMoneyCommanderDiesInTheSimultaneousDeathBatch(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	pushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", zulaportOracle, false)
@@ -1055,16 +1045,19 @@ func TestB15BloodMoneyPausedCommanderStaysInTheSimultaneousDeathBatch(t *testing
 	meBefore, oppBefore := me.Life, opp.Life
 	castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
 	passPriorityAroundTable(t, g)
-	if !g.Battlefield.Contains(commander) {
-		t.Fatal("the commander waits on its CR 903.9 choice")
+	if !me.Graveyard.Contains(commander) {
+		t.Fatal("the commander died with the rest of the wipe")
 	}
 
-	// Declining makes this a graveyard death, which Zulaport watches.
-	b21DeclineCommandZone(t, g, me.ID)
+	// A "yes" does not undo the death.
+	answerCommanderReturn(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	if !me.Command.Contains(commander) {
+		t.Error("the commander went home after the yes")
+	}
 
 	if want := oppBefore - 3; opp.Life != want {
-		t.Errorf("opponent life %d -> %d, want %d (Cutthroat, Bear and resumed commander died together)", oppBefore, opp.Life, want)
+		t.Errorf("opponent life %d -> %d, want %d (Cutthroat, Bear and commander died together)", oppBefore, opp.Life, want)
 	}
 	if want := meBefore + 3; me.Life != want {
 		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)

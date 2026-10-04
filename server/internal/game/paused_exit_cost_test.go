@@ -17,8 +17,14 @@ import (
 //     asking BEFORE paying; the regression test below pins it in that
 //     model.
 //  2. #1445, what #1423 leaves: a commander whose exit an EFFECT has paused
-//     (destroyed, with its owner still deciding) sits on the
+//     (bounced, with its owner still deciding) sits on the
 //     battlefield, and no cost may spend it in that window.
+//
+// ADR 0115 changed the vehicle. A destroyed commander no longer pauses:
+// it goes to the graveyard at once and CR 903.9a asks afterwards, so
+// there is no window left to spend it in. A BOUNCED or tucked one still
+// pauses on the CR 903.9b replacement, so the gate is exercised with a
+// bounce (Unsummon).
 //     refusePausedCostCardsLocked (cost_commander_choice.go) is the
 //     gate; the hand and graveyard legs are in
 //     paused_exit_hand_cost_test.go and the proof cards in
@@ -61,26 +67,30 @@ func pushSacrificeOutlet(g *Game, owner *Player) uuid.UUID {
 	return c.InstanceID
 }
 
-// destroyCommanderPaused destroys `id` by effect and asserts the
-// premise every test here rests on: its owner is asked, and it is
-// still on the battlefield while they decide.
-func destroyCommanderPaused(t *testing.T, g *Game, owner *Player, id uuid.UUID) *PendingChoice {
+// bounceCommanderPaused returns `id` to its owner's hand by effect and
+// asserts the premise every test here rests on: its owner is asked
+// (CR 903.9b), and it is still on the battlefield while they decide.
+// (A destroy was the vehicle before ADR 0115.)
+func bounceCommanderPaused(t *testing.T, g *Game, owner *Player, id uuid.UUID) *PendingChoice {
 	t.Helper()
-	if err := g.DestroyPermanentForEffect(id); err != nil {
-		t.Fatalf("DestroyPermanentForEffect: %v", err)
+	var err error
+	g.WithWriteLock(func() { err = g.BounceToHandForEffect(id) })
+	if err != nil {
+		t.Fatalf("BounceToHandForEffect: %v", err)
 	}
 	prompt := expectCommanderPrompt(t, g, owner)
 	if !g.Battlefield.Contains(id) {
-		t.Fatal("the destroyed commander left before its owner answered — the premise of #1445 is gone")
+		t.Fatal("the bounced commander left before its owner answered — the premise of #1445 is gone")
 	}
 	return prompt
 }
 
-// #1415 as reported, in #1423's ask-first model. Two activations of
-// "{1}, Sacrifice this" each park a question and pay nothing; the
-// first answer pays once and puts one ability on the stack; the second
-// answer finds the commander gone and pays nothing more. Both answers
-// to the first question are checked.
+// #1415 as reported. #1423 fixed it by asking before paying; since
+// ADR 0115 the sacrifice is paid at once. The first activation of
+// "{1}, Sacrifice this" pays and puts one ability on the stack, the
+// commander is in the graveyard, and the second activation has nothing
+// to sacrifice and pays nothing. CR 903.9a then asks the owner once.
+// Both answers are checked.
 func TestSacrificeSelfCommanderPaysOnceHoweverOftenItIsActivated(t *testing.T) {
 	for _, takeCommandZone := range []bool{true, false} {
 		g := newActiveGame(t)
@@ -90,25 +100,13 @@ func TestSacrificeSelfCommanderPaysOnceHoweverOftenItIsActivated(t *testing.T) {
 		editBattlefieldCard(g, id, func(c *Card) { c.ActivatedAbilities = []ActivatedAbilityShape{sacrificeSelfDrawAbility()} })
 		me.ManaPool.AddMana(ManaToken{Color: "C"}, ManaToken{Color: "C"})
 
-		for i := 0; i < 2; i++ {
-			if err := g.ActivateCatalogAbility(me.ID, id, 0, ActivateAbilityParams{}); err != nil {
-				t.Fatalf("activation %d: %v", i+1, err)
-			}
+		if err := g.ActivateCatalogAbility(me.ID, id, 0, ActivateAbilityParams{}); err != nil {
+			t.Fatalf("activation 1: %v", err)
 		}
-		if len(g.StackMeta) != 0 || len(me.ManaPool) != 2 {
-			t.Fatalf("stack %d, pool %d before any answer — nothing is paid before the owner answers", len(g.StackMeta), len(me.ManaPool))
+		if err := g.ActivateCatalogAbility(me.ID, id, 0, ActivateAbilityParams{}); err == nil {
+			t.Fatal("activation 2 sacrificed a commander that is already in the graveyard")
 		}
-		if len(g.PendingChoices) != 2 {
-			t.Fatalf("%d pending choices, want one parked question per activation", len(g.PendingChoices))
-		}
-		first, second := g.PendingChoices[0].ID, g.PendingChoices[1].ID
-		if err := g.ResolveOptionalReplacement(first, me.ID, takeCommandZone); err != nil {
-			t.Fatalf("first answer: %v", err)
-		}
-		// The payer is the one answering, so the refusal of the stale
-		// re-run comes back to them; what matters is that it paid
-		// nothing.
-		_ = g.ResolveOptionalReplacement(second, me.ID, takeCommandZone)
+		answerCommanderReturn(t, g, me, id, takeCommandZone)
 
 		if len(g.StackMeta) != 1 {
 			t.Errorf("%d stack items, want the ONE ability the one card paid for", len(g.StackMeta))
@@ -124,15 +122,15 @@ func TestSacrificeSelfCommanderPaysOnceHoweverOftenItIsActivated(t *testing.T) {
 	}
 }
 
-// A destroyed commander, its owner still deciding, cannot pay any
+// A bounced commander, its owner still deciding, cannot pay any
 // battlefield cost: not its own sacrifice-this or exile-this, not a
 // sacrifice outlet,
 // not Ashnod's Altar, not its own sacrifice-this mana ability, not a
 // return-to-hand cost. Each refusal pays nothing and leaves the
-// destroy's prompt alone. An unrelated creature still pays while the
+// bounce's prompt alone. An unrelated creature still pays while the
 // prompt is open, and after the answer the commander has gone where
-// the answer sent it — the destroy, not a cost, took it.
-func TestADestroyedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
+// the answer sent it — the bounce, not a cost, took it.
+func TestABouncedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me := g.Seats[0]
@@ -157,7 +155,7 @@ func TestADestroyedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
 	wolf := pushIntrinsicPermanent(g, me, "Wolf", "Creature — Wolf", nil, nil)
 	me.ManaPool.AddMana(ManaToken{Color: "C"})
 
-	prompt := destroyCommanderPaused(t, g, me, cmdr)
+	prompt := bounceCommanderPaused(t, g, me, cmdr)
 
 	for _, tc := range []struct {
 		name string
@@ -183,13 +181,13 @@ func TestADestroyedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
 		}},
 	} {
 		if err := tc.try(); !errors.Is(err, ErrChoicePending) {
-			t.Errorf("%s naming the destroyed commander: err = %v, want ErrChoicePending", tc.name, err)
+			t.Errorf("%s naming the bounced commander: err = %v, want ErrChoicePending", tc.name, err)
 		}
 		if !g.Battlefield.Contains(cmdr) {
-			t.Fatalf("%s moved the destroyed commander", tc.name)
+			t.Fatalf("%s moved the bounced commander", tc.name)
 		}
 		if len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != prompt.ID {
-			t.Fatalf("%s disturbed the destroy's prompt (%d pending)", tc.name, len(g.PendingChoices))
+			t.Fatalf("%s disturbed the bounce's prompt (%d pending)", tc.name, len(g.PendingChoices))
 		}
 	}
 	if len(g.StackMeta) != 0 || len(me.ManaPool) != 1 {
@@ -204,9 +202,9 @@ func TestADestroyedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
 	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
-	assertOnlyIn(t, cmdr, me.Graveyard, g.Battlefield, me.Command, me.Hand)
+	assertOnlyIn(t, cmdr, me.Hand, g.Battlefield, me.Command, me.Graveyard)
 	if hasEvent(g, EventSacrifice, cmdr) {
-		t.Error("the destroyed commander was also sacrificed")
+		t.Error("the bounced commander was also sacrificed")
 	}
 	if err := g.ActivateManaAbility(me.ID, altar, 0, ManaAbilityParams{SacrificeIDs: []uuid.UUID{wolf}}); err != nil {
 		t.Fatalf("the Altar after the answer: %v", err)
@@ -245,11 +243,11 @@ func TestSacrificeCostsOnANonCommanderAreUnaffected(t *testing.T) {
 }
 
 // The auto-tapper never activates through ActivateManaAbility, so the
-// announcement gate does not reach it: it plans a destroyed commander's
+// announcement gate does not reach it: it plans a bounced commander's
 // "Sacrifice this: Add {C}" unless it asks the same question itself.
 // Checked through the planner and through a real auto-tapped
 // activation, which must fail short rather than sacrifice the card.
-func TestAutoTapSkipsADestroyedCommandersSacrificeAbility(t *testing.T) {
+func TestAutoTapSkipsABouncedCommandersSacrificeAbility(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me := g.Seats[0]
@@ -259,21 +257,21 @@ func TestAutoTapSkipsADestroyedCommandersSacrificeAbility(t *testing.T) {
 		t.Fatalf("premise: the commander's sacrifice ability should pay {1} before anything happens (plan %v, ok %v)", plan, ok)
 	}
 
-	prompt := destroyCommanderPaused(t, g, me, cmdr)
+	prompt := bounceCommanderPaused(t, g, me, cmdr)
 
-	// A plan made before the destroy arrives stale; the executor must
+	// A plan made before the bounce arrives stale; the executor must
 	// drop the source rather than sacrifice it.
 	g.WithWriteLock(func() { g.materializePlanLocked(me, tapPlan{{CardID: cmdr}}, costFor(t, "{1}")) })
 	if len(me.ManaPool) != 0 || hasEvent(g, EventSacrifice, cmdr) {
-		t.Fatalf("a stale plan spent the destroyed commander (pool %v)", me.ManaPool)
+		t.Fatalf("a stale plan spent the bounced commander (pool %v)", me.ManaPool)
 	}
 
 	if plan, ok := g.AutoTapForCost(me.ID, costFor(t, "{1}"), 0); ok {
-		t.Errorf("auto-tap planned %v with the destroyed commander as the only source", plan)
+		t.Errorf("auto-tap planned %v with the bounced commander as the only source", plan)
 	}
 	src := pushReturnCostSource(g, me, AbilityCost{Mana: "{1}"})
 	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{AutoTap: true}); err == nil {
-		t.Error("an auto-tapped {1} activation was paid with the destroyed commander")
+		t.Error("an auto-tapped {1} activation was paid with the bounced commander")
 	}
 	if !g.Battlefield.Contains(cmdr) || len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != prompt.ID {
 		t.Fatal("the auto-tapper moved the commander or disturbed its prompt")

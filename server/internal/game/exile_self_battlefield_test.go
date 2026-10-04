@@ -114,15 +114,13 @@ func TestExileSelfFromTheBattlefieldRefusedActivationPaysNothing(t *testing.T) {
 	}
 }
 
-// CR 903.9 on the battlefield leg, through #1397's ask-first gate
-// (cost_commander_choice.go): a commander exiled to its own ability is
-// asked BEFORE anything is paid — the announcement parks with the
-// commander still on the battlefield, the mana unspent and nothing on
-// the stack — and the owner's answer makes the announcement, which then
-// pays in one indivisible step with the answer on the move. Both
-// answers are checked: the prompt is only worth offering if the card
-// lands where the answer says.
-func TestExileSelfFromTheBattlefieldAsksACommandersOwnerFirst(t *testing.T) {
+// The commander on the battlefield leg. #1397 asked a commander exiled
+// to its own ability BEFORE anything was paid. Since ADR 0115 an exile
+// cost is paid like any other: the announcement is made in one
+// indivisible step, the commander lands in exile, and CR 903.9a asks
+// its owner afterwards. Both answers are checked: the card ends where
+// the answer says, and the ability stays announced either way.
+func TestExileSelfFromTheBattlefieldIsPaidThenOffered(t *testing.T) {
 	for _, takeCommandZone := range []bool{true, false} {
 		g := newActiveGame(t)
 		advanceTo(t, g, StepPrecombatMain)
@@ -138,15 +136,11 @@ func TestExileSelfFromTheBattlefieldAsksACommandersOwnerFirst(t *testing.T) {
 		if err := g.ActivateCatalogAbility(me.ID, id, 0, ActivateAbilityParams{}); err != nil {
 			t.Fatalf("activate: %v", err)
 		}
-		prompt := expectCommanderPrompt(t, g, me)
-		if !g.Battlefield.Contains(id) || len(me.ManaPool) != 1 || len(g.StackMeta) != 0 {
-			t.Fatalf("something was paid before the owner answered: on battlefield %v, pool %v, %d stack items",
-				g.Battlefield.Contains(id), me.ManaPool, len(g.StackMeta))
+		if !g.Exile.Contains(id) || len(me.ManaPool) != 0 || len(g.StackMeta) != 1 {
+			t.Fatalf("the payment did not happen at once: in exile %v, pool %v, %d stack items",
+				g.Exile.Contains(id), me.ManaPool, len(g.StackMeta))
 		}
-
-		if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, takeCommandZone); err != nil {
-			t.Fatalf("ResolveOptionalReplacement: %v", err)
-		}
+		answerCommanderReturn(t, g, me, id, takeCommandZone)
 		if takeCommandZone {
 			assertOnlyIn(t, id, me.Command, g.Battlefield, g.Exile)
 		} else {

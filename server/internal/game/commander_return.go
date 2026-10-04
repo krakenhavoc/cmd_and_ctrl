@@ -17,21 +17,13 @@ import (
 // data-only prompt (PendingChoiceCommanderReturn), like the legend
 // rule's, so a table waiting on it is a restore point.
 //
-// THE SWITCH. ADR 0115 ships this in two steps (decision 8): the
-// plumbing first, switched off, so that a rollback by one deploy lands
-// on a binary that can answer an open commander_return prompt; then the
-// switch, together with narrowing commanderZoneReplacement to the hand
-// and the library (CR 903.9b). While commanderReturnSBA is false
-// nothing in this file runs: MoveCard never marks a card, the check
-// never queues, and the hold never holds, so the CR 903.9 replacement
-// does everything it did before.
-
-// commanderReturnSBA switches ADR 0115's CR 903.9a state-based action
-// on. OFF until ADR 0115 PR 3, which turns it on in the same change
-// that narrows the CR 903.9 replacement to hand and library. A var
-// rather than a const only so this package's tests can exercise the
-// plumbing; nothing outside the tests writes it.
-var commanderReturnSBA = false
+// ADR 0115 shipped this in two steps (decision 8): the plumbing first,
+// behind a switch that was off (PR 2), so that a rollback by one deploy
+// lands on a binary that can answer an open commander_return prompt;
+// then the switch (PR 3), which removed it together with narrowing
+// commanderZoneReplacement to the hand and the library (CR 903.9b,
+// builtin_replacements.go). A commander headed for a graveyard or
+// exile is no longer asked before it moves.
 
 // PendingChoiceCommanderReturn is CR 903.9a's question to a
 // commander's OWNER: "your commander was put into a graveyard or exile
@@ -50,7 +42,7 @@ const PendingChoiceCommanderReturn PendingChoiceKind = "commander_return"
 // commander CARD only (CR 903.3): never a token, which is never a
 // commander, and never a copy, whose IsCommander is false.
 func commanderReturnDueOn(c Card, dst ZoneKind) bool {
-	if !commanderReturnSBA || !c.IsCommander || c.IsToken() {
+	if !c.IsCommander || c.IsToken() {
 		return false
 	}
 	return dst == ZoneGraveyard || dst == ZoneExile
@@ -73,9 +65,6 @@ func commanderReturnDueOn(c Card, dst ZoneKind) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) commanderReturnSBALocked() bool {
-	if !commanderReturnSBA {
-		return false
-	}
 	type due struct {
 		id, owner uuid.UUID
 		name      string
@@ -275,6 +264,39 @@ func (g *Game) returnCommanderLocked(owner, cardID uuid.UUID) bool {
 		NewZone: ZoneCommand,
 	})
 	return true
+}
+
+// returnCommanderPreAnsweredLocked is the sandbox move_card action's
+// as_commander flag (ADR 0115 decision 5): the context menu's
+// "Graveyard → command zone" moves the commander into its graveyard,
+// where it dies like any other card, and answers CR 903.9a's question
+// "yes" in the same click. Called once the move has landed and BEFORE
+// the state checks run, which is where the state-based action would
+// have asked, so the dies triggers that move queued go on the stack
+// after the commander has gone home, exactly as after a "yes".
+//
+// It acts only on a card that this move marked: a commander card in a
+// graveyard or in exile with its check still due. A move that paused
+// (a CR 616 ordering prompt between two replacements) has not landed
+// yet, so nothing is pre-answered and the state-based action asks the
+// owner as usual. Reports whether the card moved.
+//
+// Caller must hold g.mu.
+func (g *Game) returnCommanderPreAnsweredLocked(cardID uuid.UUID) bool {
+	z := g.findCardZoneLocked(cardID)
+	if z == nil || (z.Kind != ZoneGraveyard && z.Kind != ZoneExile) {
+		return false
+	}
+	c := g.findCardByIDLocked(cardID)
+	if c == nil || !c.CommanderReturnDue {
+		return false
+	}
+	owner := g.playerByIDLocked(c.Owner)
+	if owner == nil || owner.Eliminated {
+		return false
+	}
+	c.CommanderReturnDue = false
+	return g.returnCommanderLocked(owner.ID, cardID)
 }
 
 // cleanupAfterCommanderReturnLocked finishes a cleanup step that a
