@@ -514,8 +514,9 @@ type CastSpellParams struct {
 	// tap-and-fill before the strict-mode cost check. Implies
 	// Strict — the auto-tapper exists to make a strict-gated cast
 	// succeed without manually clicking each land. The server
-	// runs `AutoTapForCostExcluding(controller, cost, x, locked)`
-	// against the caller's untapped permanents, taps each card in
+	// plans what the floating pool is missing (ADR 0118 §1,
+	// autoTapTopUpLocked) against the caller's untapped permanents
+	// other than the locked ones, taps each card in
 	// the returned plan, drops the produced mana into the pool
 	// (with greedy color-picking against the cost requirements),
 	// then proceeds to the normal CanPay/SpendMana flow — all
@@ -1896,13 +1897,14 @@ func spendStrategyForCast(card Card) ManaSpendStrategy {
 //  2. If the pool already covers the cost, skip — auto-tap is
 //     idempotent on a funded pool.
 //  3. Build the excluded set from LockedSources.
-//  4. Run autoTapLocked to get a plan; if no plan exists, return
-//     a structured InsufficientManaError keyed off the current
+//  4. Run autoTapTopUpLocked to get a plan for what the pool is
+//     missing (ADR 0118 §1); if no plan exists, return a
+//     structured InsufficientManaError keyed off the current
 //     pool's missing list (the auto-tapper itself doesn't carry
 //     a missing-symbols breakdown).
 //  5. Materialise the plan: for each card, tap it and drop its
 //     produced mana into the pool with greedy color-picking
-//     against the still-unsatisfied cost requirements.
+//     against the shortfall the plan was built to pay.
 //
 // Caller must hold g.mu (CastSpell holds the write lock).
 func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) error {
@@ -1938,8 +1940,11 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	// Same context applyCastCostLocked will pay under, so the
 	// "already funded, skip planning" shortcut can't be fooled by
-	// restricted mana this cast cannot legally spend.
-	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
+	// restricted mana this cast cannot legally spend. The top-up below
+	// takes the same shortcut; this one keeps the exclusion list from
+	// being built for a cast that needs no plan.
+	spendCtx := ManaSpendForCast(card)
+	if p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
 		return nil
 	}
 	// The lock-tap reservations, and everything this announcement has
@@ -1957,11 +1962,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// cast it") prefers a source it can read back — a tiebreak in the
 	// planner's ordering and never a filter, so the plan the solver
 	// can find is exactly the plan it could find before.
-	plan, ok := g.autoTapPreferringLocked(p.ID, cost, params.XValue, excluded, WantedManaSourcesFor(card))
+	//
+	// ADR 0118 §1: the plan pays only what the floating pool is
+	// missing, so mana already in the pool is spent first, and it is
+	// colour-picked against that shortfall (autotap_topup.go).
+	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
 	if !ok {
-		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
-	g.materializePlanLocked(p, plan, cost)
+	g.materializePlanLocked(p, plan, short)
 	return nil
 }
 

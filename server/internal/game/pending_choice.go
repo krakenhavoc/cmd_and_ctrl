@@ -3893,11 +3893,12 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, exclu
 	// names no spell.
 	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost, 0)
 	if !p.ManaPool.CanPay(cost, 0) {
-		plan, ok := g.autoTapLocked(p.ID, cost, 0, excluded)
+		// ADR 0118 §1: plan only what the floating pool is missing.
+		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, 0, ManaSpendContext{}, excluded, 0)
 		if !ok {
 			return false
 		}
-		g.materializePlanLocked(p, plan, cost)
+		g.materializePlanLocked(p, plan, short)
 	}
 	spent, ok := p.ManaPool.SpendManaFor(cost, 0, ManaSpendContext{})
 	if !ok {
