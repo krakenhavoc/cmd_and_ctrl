@@ -33,9 +33,14 @@ and set me up." The steps below are written for it and for you.
    (needs Go 1.27; the binary lands in `$(go env GOPATH)/bin/mcpseat`),
    or from a checkout `make -C server build-mcpseat`
    (`server/bin/cmd_and_ctrl-mcpseat`). See [Build](#build).
-2. **Register it.** `claude mcp add -s user cmdctrl-seat -- <path to the
-   binary>`. Add `--allow-origin https://<host>` only when the server is
-   not `cmd.labxp.io` or `cmd-dev.labxp.io` (or localhost).
+2. **Register it.** `mkdir -p ~/.local/state/cmdctrl-mcpseat`, then
+   `claude mcp add -s user cmdctrl-seat -- <path to the binary> --log-file
+   "$HOME/.local/state/cmdctrl-mcpseat/seat.log"`. Add `--allow-origin
+   https://<host>` only when the server is not `cmd.labxp.io` or
+   `cmd-dev.labxp.io` (or localhost). `--log-file` is there because Claude
+   Code does not keep the binary's later stderr lines, so the game-over
+   report would be lost. It does not expand `~` and does not create the
+   directory, so use `$HOME` in the shell form, as above.
 3. **Pre-allow only this server's tools**, so a game's ~65 decisions at
    2 to 4 calls each do not all prompt. In `~/.claude/settings.json`:
    `"permissions": {"allow": ["mcp__cmdctrl-seat"]}`. That is Claude
@@ -163,7 +168,7 @@ to `--log-file`.
 |---|---|---|
 | `--allow-origin <scheme://host[:port]>` | `https://cmd.labxp.io`, `https://cmd-dev.labxp.io`, `http://localhost:*`, `http://127.0.0.1:*` | An origin `join` may talk to. Repeatable. The port may be `*`. Naming any replaces the whole default list. The agent cannot change it. |
 | `--absorb <rules>` | `forced,mana-only,coin-call` | The trivial windows the binary answers without the model: a subset of `forced`, `mana-only`, `coin-call`, `same-land`, or `none`. You can only add `same-land` or remove rules, so more windows reach the model; nothing Layer A would not answer can be answered for it. |
-| `--log-file <path>` | stderr | Write the log here, mode `0600`, appended. |
+| `--log-file <path>` | stderr | Write the log here, mode `0600`, appended. The path is used as given: `~` is not expanded and the directory is not created. |
 | `--state-dir <dir>` | `$XDG_STATE_HOME/cmdctrl-mcpseat`, else `~/.local/state/cmdctrl-mcpseat` | Where saved sessions live. |
 | `-v` | off | Debug logging. |
 | `--version` | — | Print the version, commit, Go version and platform, then exit. A release prints its version (`v0.1.0` for `mcpseat-v0.1.0`). A local build prints `dev` and `unknown` unless `go install` or a git checkout supplies them. |
@@ -288,10 +293,15 @@ request in flight, one chat line per 5 s, card lookups 5 per second.
 ### Claude Code
 
 ```sh
+mkdir -p ~/.local/state/cmdctrl-mcpseat
 claude mcp add -s user cmdctrl-seat -- \
   /home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat \
-  --allow-origin https://cmd-dev.labxp.io
+  --allow-origin https://cmd-dev.labxp.io \
+  --log-file "$HOME/.local/state/cmdctrl-mcpseat/seat.log"
 ```
+
+`--log-file` keeps the game-over report, which Claude Code's own MCP log
+drops. The shell expands `$HOME`; the flag itself does not expand `~`.
 
 To play, start a session in an empty directory that can use only the
 seat's tools, for example `claude --allowedTools "mcp__cmdctrl-seat__*"`,
@@ -308,9 +318,11 @@ and stops at 50.
 ### Codex
 
 ```sh
+mkdir -p ~/.local/state/cmdctrl-mcpseat
 codex mcp add cmdctrl-seat -- \
   /home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat \
-  --allow-origin https://cmd-dev.labxp.io
+  --allow-origin https://cmd-dev.labxp.io \
+  --log-file "$HOME/.local/state/cmdctrl-mcpseat/seat.log"
 ```
 
 or in `~/.codex/config.toml`:
@@ -318,7 +330,7 @@ or in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.cmdctrl-seat]
 command = "/home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat"
-args = ["--allow-origin", "https://cmd-dev.labxp.io"]
+args = ["--allow-origin", "https://cmd-dev.labxp.io", "--log-file", "/home/<you>/.local/state/cmdctrl-mcpseat/seat.log"]
 ```
 
 Play with `codex -s read-only` in an empty directory. Unverified: the
@@ -356,13 +368,29 @@ list shown (moves and bytes); bytes returned in tool results (about
 4 per token); and the time from each decision opening to its `act`. It
 cannot see the model's own token count. Your client reports that.
 
-### Measured (to be filled after the first cmd-dev game)
+### Measured: the first cmd-dev game
+
+2026-10-04, cmd-dev at develop `69ad9976`, binary built from that commit
+(default absorb rules), Claude Code on Opus 5.5, 1v1 Commander with one
+human. The game ended on turn 16 and the human won. These come from the
+replay and the client's log. The binary's own report was not captured
+(Claude Code kept only its first stderr line), so use `--log-file` next
+time. ADR 0122's amendment of the same date discusses them.
 
 | Quantity | Measured |
 |---|---|
-| Windows seen / shown to the model | _pending_ |
-| Decisions, rejections | _pending_ |
-| Largest move list shown | _pending_ |
-| Tool-result bytes | _pending_ |
-| Time per decision | _pending_ |
-| Client-reported tokens and cost | _pending_ |
+| Wall clock, first tool call to `leave` | 26.2 min |
+| Tool calls | 337: `wait_for_decision` 174, `act` 154, `card` 3, `get_state` 2, `join` 2, `set_deck` 1, `leave` 1 |
+| Decisions reaching the model | ~154 (one `act` each), in a 2-seat game |
+| Windows seen, per-rule absorption | not captured |
+| `act` rejections | not captured |
+| Largest move list shown | not captured |
+| Tool-result bytes | not captured |
+| Time per decision (returned to `act`) | median 2.5 s, p90 5.7 s, max 23.3 s |
+| Table waiting on the agent | 9.6 min in total |
+| Time in `wait_for_decision` (opponent and table) | 15.4 min in total |
+| Client-reported tokens and cost | not captured |
+
+The estimates above were for a four-seat game. This one reached the
+model about 154 times in two seats, so plan on more decisions than the
+estimate, and on a much faster agent than 15 to 40 s.
