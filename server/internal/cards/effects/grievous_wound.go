@@ -33,12 +33,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Amount > 0 && source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == ev.Target
-			}, "Grievous Wound — enchanted player loses half their life", func(g *game.Game, item *game.StackItem) error {
-				if item.Trigger == nil {
-					return nil
-				}
-				return playerLosesHalfTheirLife(g, item, item.Trigger.Event.Target)
-			})),
+			}, "Grievous Wound — enchanted player loses half their life", triggeringTargetLosesHalfTheirLife)),
 		},
 	})
 }

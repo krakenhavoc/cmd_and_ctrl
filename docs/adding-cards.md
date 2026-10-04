@@ -5799,6 +5799,17 @@ step, and is swept if that turn never reaches one. Do not schedule an
 unbound "next end step" trigger for it. An instant cast in an end step
 would fire it in the wrong turn.
 
+A spell that takes the turn and then puts itself back in the library
+(Beacon of Tomorrows) tucks and shuffles the resolving card with
+`TuckToLibraryThenForEffect`, the way Blue Sun's Zenith does; one that
+says "if this would be put into a graveyard from anywhere, shuffle it
+into its owner's library instead" (Nexus of Fate, Blightsteel Colossus)
+declares `ShuffleIntoOwnersLibraryInstead(label)` in `Replacements`.
+A spell file that moves its own card (Beacon, Rise of the Eldrazi's
+"Exile Rise of the Eldrazi") goes in the `spells` list of
+`TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
+spell moving itself is not a permanent's ability.
+
 Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
 no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
 

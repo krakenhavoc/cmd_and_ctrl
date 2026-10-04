@@ -29,30 +29,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The count is taken at RESOLUTION, not when the trigger goes on the
 // stack, so a Hare Apparent killed in response lowers the total.
 //
-// # Declared simplification: the deckbuilding line is not enforced
+// # Deckbuilding
 //
 // "A deck can have any number of cards named Hare Apparent" is a
-// deckbuilding permission (CR 903.5b's exception), and the deck
-// validator applies the Commander singleton rule to every nonbasic
-// card with no exception list. So a legal paper deck with thirty
-// Hare Apparents is rejected at import, and the card is playable only
-// as a singleton — where its trigger makes nothing unless a copy
-// effect is involved.
-//
-// That is strictly WEAKER than printed, which is the direction #259
-// allows: nothing here lets a deck do something paper would not. The
-// trigger itself is complete and will start mattering the moment the
-// validator learns the exception (it is one predicate over the oracle
-// text, shared with Relentless Rats, Dragon's Approach, Persistent
-// Petitioners, Shadowborn Apostle, Seven Dwarves and the Nazgûl).
+// deckbuilding permission (CR 113.6n). deck.Validate reads it from the
+// card's oracle text (ADR 0114 §6), so a deck may run as many as it
+// likes.
 func init() {
 	Register(Spec{
 		OracleID:     "3c1619bd-db5e-4df6-a196-0a9d62374f6d",
 		Name:         "Hare Apparent",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Deckbuilding still treats it as a singleton, so you can't run the many copies the card allows — with one copy the enters trigger makes no Rabbits.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Hare Apparent — create a Rabbit for each other Hare Apparent you control",
 				func(g *game.Game, item *game.StackItem) error {
