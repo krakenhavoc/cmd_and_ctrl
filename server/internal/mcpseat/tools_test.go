@@ -42,7 +42,7 @@ func TestJoinDeclaresAnAgentGuestOverBearerAndSavesTheSessionPrivately(t *testin
 		t.Fatalf("joins = %d", len(f.joins))
 	}
 	j := f.joins[0]
-	if j.Agent.Client != "claude-code" || j.Name != "Claude" {
+	if j.Declaration.Client != "claude-code" || j.Name != "Claude" {
 		t.Errorf("join body = %+v; want agent client claude-code and name Claude", j)
 	}
 	if f.joinAuth[0] != "" {
@@ -597,4 +597,16 @@ func TestTheReconnectLadder(t *testing.T) {
 		t.Errorf("a 1000 close was redialled (%d connections)", f.connCount())
 	}
 	noSentinel(t, "the log", s.logBuf.String())
+}
+
+// TestTheSignedInRefusalIsNamed: the server's 400 for an agent join with a
+// signed-in session is reported as what it is.
+func TestTheSignedInRefusalIsNamed(t *testing.T) {
+	f := newFakeServer(t)
+	f.joinCode, f.joinMsg = 400, "an agent seat joins as a guest"
+	s := newTestSeat(t, nil)
+	r, _ := s.Join(context.Background(), JoinInput{InviteURL: f.inviteURL()})
+	if !r.IsError || !strings.Contains(r.Text, "joins as a guest") {
+		t.Fatalf("join: %s", r.Text)
+	}
 }

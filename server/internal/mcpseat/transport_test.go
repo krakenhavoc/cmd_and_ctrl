@@ -109,7 +109,7 @@ func TestTheClientNameReachesTheBadge(t *testing.T) {
 	noSentinel(t, "a tool result over MCP", text)
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if got := f.joins[0].Agent.Client; got != "codex-cli" {
+	if got := f.joins[0].Declaration.Client; got != "codex-cli" {
 		t.Errorf("agent client = %q, want codex-cli", got)
 	}
 

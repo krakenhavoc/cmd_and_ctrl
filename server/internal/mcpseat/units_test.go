@@ -121,7 +121,7 @@ func TestAgentClientName(t *testing.T) {
 		"":                            "unknown",
 		"!!!":                         "unknown",
 		strings.Repeat("abcdefgh", 6): strings.Repeat("abcdefgh", 4),
-		"Ünïcode/../../etc":           "ncode....etc",
+		"Ünïcode/../../etc":           "n-code-..-..-etc",
 	} {
 		if got := agentClientName(in); got != want {
 			t.Errorf("agentClientName(%q) = %q, want %q", in, got, want)

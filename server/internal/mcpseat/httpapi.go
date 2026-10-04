@@ -184,12 +184,15 @@ func (s *sessionAnswer) playerID() uuid.UUID {
 // A 429 (the route shares the server's per-IP bucket with /admin/login)
 // is retried after 1, 2 and 4 s, then reported.
 func (a *api) join(ctx context.Context, inv invite, name, client string) (*sessionAnswer, error) {
-	body := joinBody{InviteToken: inv.Token, Name: name, Agent: agentField{Client: client}}
+	body := joinBody{InviteToken: inv.Token, Name: name, Declaration: agentField{Client: client}}
 	url := inv.Origin + "/games/" + inv.GameID.String() + "/join"
 	var out sessionAnswer
 	err := a.withJoinRetry(ctx, func() error { return a.do(ctx, http.MethodPost, url, "", body, &out) })
 	if isNoBadge(err) {
 		return nil, errNoBadge
+	}
+	if isAgentSignedIn(err) {
+		return nil, errAgentSignedIn
 	}
 	if err != nil {
 		return nil, err
