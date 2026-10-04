@@ -67,6 +67,7 @@ var xMattersAllowlist = map[string]string{
 	"springleaf_parade.go Springleaf Parade":            "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
 	"the_goose_mother.go The Goose Mother":              "2/2 flying body and an attack trigger that never reads X",
 	"thryx_the_sudden_storm.go Thryx, the Sudden Storm": "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X Thryx was cast for",
+	"venarian_glimmer.go Venarian Glimmer":              "the reveal never reads X: at X=0 the whole hand is still revealed to the table, and a nonland card with mana value 0 can still be chosen",
 	"voracious_hydra.go Voracious Hydra":                "0/1 body survives at X=0, and the enters-the-battlefield fight mode is X-independent",
 }
 
