@@ -426,3 +426,71 @@ export function syncTargetMarks(
   }
   return now;
 }
+
+// ---------------------------------------------------------------- //
+// Rings in every style (ADR 0119 §4)
+//
+// The fan and the pile used to ring what they pointed at themselves,
+// from their own arrows, so compact, spotlight and ribbon rang
+// nothing. The ring is now one board-wide job (StackTargetRings.svelte)
+// for every style, compact included, read from the stack model rather
+// than from any style's arrows.
+
+/** A board target the stack rings, before it is found in the DOM. */
+export interface TargetMarkPlan {
+  kind: "permanent" | "player";
+  id: string;
+  color: string;
+  fromTop: boolean;
+}
+
+/**
+ * The board targets the stack rings: every permanent and player a
+ * stack item targets, once each. The top item's colour (gold) wins
+ * over a lower item's, as it does for the fan's arrows; otherwise the
+ * first item to reach a target colours it. A `stack` or `card` target
+ * gets no ring here: a stack item is marked on its own row, and a
+ * graveyard or exiled card has no place on the table.
+ */
+export function planTargetMarks(items: readonly StackLaneItem[]): TargetMarkPlan[] {
+  const out = new Map<string, TargetMarkPlan>();
+  for (const plan of planArrows(items)) {
+    if (plan.targetKind !== "permanent" && plan.targetKind !== "player") continue;
+    const key = `${plan.targetKind}:${plan.targetID}`;
+    const prev = out.get(key);
+    if (prev && (prev.fromTop || !plan.fromTop)) continue;
+    out.set(key, {
+      kind: plan.targetKind,
+      id: plan.targetID,
+      color: plan.color,
+      fromTop: plan.fromTop,
+    });
+  }
+  return [...out.values()];
+}
+
+/** The stack's own surfaces: a ring never lands inside them. */
+const STACK_SURFACES = ".stack-lane, [data-stack-body], [data-stack-item-id]";
+
+/**
+ * planTargetMarks found on the board: each target's element through
+ * boardAnchor (an expanded overlay's copy first, ADR 0120 §3), passing
+ * over an element with no size and anything drawn inside the stack's
+ * own surfaces. A target that is not on screen is left out.
+ */
+export function findTargetMarks(
+  board: ParentNode,
+  items: readonly StackLaneItem[],
+): MarkedTarget[] {
+  const out: MarkedTarget[] = [];
+  const seen = new Set<HTMLElement>();
+  for (const plan of planTargetMarks(items)) {
+    const el = findAnchor(board, targetSelector(plan.kind, plan.id), {
+      accept: (e) => hasSize(e) && e.closest(STACK_SURFACES) === null,
+    });
+    if (!el || seen.has(el)) continue;
+    seen.add(el);
+    out.push({ el, color: plan.color, fromTop: plan.fromTop });
+  }
+  return out;
+}
