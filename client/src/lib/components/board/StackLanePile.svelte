@@ -34,8 +34,9 @@
   //
   // Arrows: the fan's machinery (lib/stackArrows.ts). A board arrow
   // runs from the top card (gold) and from each peeking line (the
-  // caster's colour) to each permanent or player it targets, and each
-  // target gets the `data-stack-lane-target` ring. A target that is
+  // caster's colour) to each permanent or player it targets. The
+  // `data-stack-lane-target` ring on each target is StackTargetRings'
+  // job, for every style (ADR 0119 §4). A target that is
   // another stack item gets no arc here; the target line and the ring
   // on that item's line say it.
 
@@ -45,7 +46,6 @@
     TOP_ARROW_COLOR,
     curvePath,
     measureStackArrows,
-    syncTargetMarks,
     type StackArrow,
   } from "../../stackArrows";
   import { PILE_CARD_MAX_W, PILE_SHRUNK_W, pileDepth } from "../../stackPile";
@@ -136,7 +136,6 @@
 
   let boardArrows = $state<StackArrow[]>([]);
   let layer = $state({ left: 0, top: 0, width: 0, height: 0 });
-  let marked = new Set<HTMLElement>();
   const boardColors = $derived([...new Set(boardArrows.map((a) => a.color))]);
 
   function remeasure(): void {
@@ -145,12 +144,10 @@
     const lane = rootEl?.closest(".stack-lane") ?? rootEl;
     if (!board || !track || !lane) {
       boardArrows = [];
-      marked = syncTargetMarks(marked, []);
       return;
     }
     const m = measureStackArrows({ board, lane, track, items: model.stackItems });
     boardArrows = m.board;
-    marked = syncTargetMarks(marked, m.targets);
 
     // Put the board layer's 0,0 on the board's, whatever its
     // containing block turned out to be (as the fan does).
@@ -209,7 +206,6 @@
 
   onDestroy(() => {
     cancelRaf(pending);
-    marked = syncTargetMarks(marked, []);
   });
 </script>
 
@@ -926,15 +922,5 @@
   }
   :global(:root[data-reduce-motion="1"]) .arrow {
     animation: none;
-  }
-
-  /* The ring on a board element the pile points at
-     (stackArrows.syncTargetMarks), as the fan draws it. */
-  :global([data-stack-lane-target]) {
-    outline: 2px solid var(--stack-lane-ring, var(--gold));
-    outline-offset: 3px;
-    filter: drop-shadow(
-      0 0 8px color-mix(in srgb, var(--stack-lane-ring, var(--gold)) 55%, transparent)
-    );
   }
 </style>

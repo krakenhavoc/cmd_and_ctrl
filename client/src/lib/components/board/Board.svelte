@@ -61,6 +61,8 @@
   } from "../../stackLane";
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
+  import StackTargetRings from "./StackTargetRings.svelte";
+  import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
@@ -2629,6 +2631,11 @@
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
     )}
   />
+  <!-- ADR 0119 §4: what the stack targets is ringed in every style,
+       compact included; and while the viewer chooses targets, the
+       source glows and an arrow runs to each pick and to the pointer. -->
+  <StackTargetRings {view} {viewerID} {boardEl} />
+  <TargetingArrows {view} {boardEl} />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's

@@ -22,8 +22,10 @@ import {
   insideBox,
   laneArc,
   laneExit,
+  findTargetMarks,
   measureStackArrows,
   planArrows,
+  planTargetMarks,
   relativeTo,
   syncTargetMarks,
   targetSelector,
@@ -398,5 +400,52 @@ describe("measureStackArrows", () => {
     syncTargetMarks(marked, []);
     expect(seatEl.hasAttribute(TARGET_ATTR)).toBe(false);
     board.remove();
+  });
+});
+
+describe("planTargetMarks (ADR 0119 §4: rings in every style)", () => {
+  it("rings each permanent and player once, never a stack item or a graveyard card", () => {
+    expect(planTargetMarks(model().stackItems)).toEqual([
+      { kind: "player", id: BOT, color: TOP_ARROW_COLOR, fromTop: true },
+      { kind: "permanent", id: "birds", color: seatColor(0), fromTop: false },
+    ]);
+  });
+
+  it("lets the top item's gold win a target a lower item also aims at", () => {
+    const m = buildStackLane({
+      stack: zone("stack", [bolt, counterspell]),
+      stackItems: [
+        spell("bolt", ME, [{ kind: "card", id: "birds" }]),
+        spell("cs", BOT, [{ kind: "card", id: "birds" }]),
+      ],
+      pendingTriggers: [],
+      seats: [seat(ME, "Me", 0), seat(BOT, "Bot 2", 1)],
+      battlefield: zone("battlefield", [birds]),
+      viewerID: ME,
+      priorityHolder: ME,
+      splitSecondActive: false,
+    });
+    expect(planTargetMarks(m.stackItems)).toEqual([
+      { kind: "permanent", id: "birds", color: TOP_ARROW_COLOR, fromTop: true },
+    ]);
+  });
+
+  it("finds each target on the board, outside the stack's own surfaces", () => {
+    const board = document.createElement("div");
+    board.innerHTML = `
+      <section class="stack-lane"><div data-instance-id="birds" id="in-lane"></div></section>
+      <div data-instance-id="birds" id="on-table"></div>
+      <div data-seat-id="${BOT}" id="bot-header"></div>`;
+    document.body.appendChild(board);
+    const realRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 10, height: 10 }) as DOMRect;
+    try {
+      const marks = findTargetMarks(board, model().stackItems);
+      expect(marks.map((m) => m.el.id)).toEqual(["bot-header", "on-table"]);
+    } finally {
+      Element.prototype.getBoundingClientRect = realRect;
+      board.remove();
+    }
   });
 });
