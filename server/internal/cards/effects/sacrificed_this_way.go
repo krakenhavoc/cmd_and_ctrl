@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -80,4 +82,59 @@ func sacrificedToughness(ctx *Context) int {
 func sacrificedHadSupertype(ctx *Context, supertype string) bool {
 	info, ok := ctx.SacrificedPermanent()
 	return ok && hasFold(info.Characteristic.Supertypes, supertype)
+}
+
+// sacrificedHadCardType reports whether the sacrificed permanent had the
+// card type as it last existed on the battlefield — Foundry Helix's "if
+// the sacrificed permanent was an artifact".
+func sacrificedHadCardType(ctx *Context, cardType string) bool {
+	info, ok := ctx.SacrificedPermanent()
+	return ok && hasFold(info.Characteristic.Types, cardType)
+}
+
+// sacrificedHadSubtype reports whether the sacrificed permanent had the
+// subtype as it last existed on the battlefield — Hellish Sideswipe's
+// "if the sacrificed permanent was a Vehicle".
+func sacrificedHadSubtype(ctx *Context, subtype string) bool {
+	info, ok := ctx.SacrificedPermanent()
+	return ok && hasFold(info.Characteristic.Subtypes, subtype)
+}
+
+// sharesACardTypeWith reports whether `c` shares a card type (CR 205.2a)
+// with the sacrificed permanent as it last existed — Fatal Grudge.
+// Subtypes and supertypes do not count.
+func sharesACardTypeWith(info game.PermanentInfo, c game.Card) bool {
+	for _, t := range info.Characteristic.Types {
+		if hasFold(cardTypesCR205, t) && c.HasCardType(strings.ToLower(t)) {
+			return true
+		}
+	}
+	return false
+}
+
+// sharesACreatureTypeWith reports whether `c` shares a creature type
+// with the sacrificed creature as it last existed — Endemic Plague. The
+// same rule as game.SharesCreatureType, read off a last-known record: a
+// changeling on either side shares with anything that has a creature
+// type (CR 702.73a), and land and artifact subtypes never count.
+func sharesACreatureTypeWith(info game.PermanentInfo, c game.Card) bool {
+	theirs := game.CreatureTypesOf(&c)
+	if len(theirs) == 0 {
+		return false
+	}
+	var mine []string
+	for _, t := range info.Characteristic.Subtypes {
+		if game.IsCreatureType(t) {
+			mine = append(mine, t)
+		}
+	}
+	if info.Characteristic.AllCreatureTypes || game.HasAllCreatureTypes(&c) {
+		return info.Characteristic.AllCreatureTypes || len(mine) > 0
+	}
+	for _, t := range mine {
+		if hasFold(theirs, t) {
+			return true
+		}
+	}
+	return false
 }
