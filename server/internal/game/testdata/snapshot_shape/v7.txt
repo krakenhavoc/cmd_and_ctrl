@@ -426,6 +426,8 @@ events[].played	bool
 events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
 events[].round	number:int
+events[].seats	array
+events[].seats[]	number:int
 events[].seq	number:uint64
 events[].setting_new	string
 events[].setting_old	string
@@ -1315,6 +1317,8 @@ lastKnownStack[].item.trigger.Event.played	bool
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
 lastKnownStack[].item.trigger.Event.round	number:int
+lastKnownStack[].item.trigger.Event.seats	array
+lastKnownStack[].item.trigger.Event.seats[]	number:int
 lastKnownStack[].item.trigger.Event.seq	number:uint64
 lastKnownStack[].item.trigger.Event.setting_new	string
 lastKnownStack[].item.trigger.Event.setting_old	string
@@ -1369,6 +1373,17 @@ nextExtraRef	number:int
 nextPhaseId	number:int
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
+openingRoll	object
+openingRoll.chooser	number:int
+openingRoll.rounds	array
+openingRoll.rounds[]	object
+openingRoll.rounds[].rolls	array
+openingRoll.rounds[].rolls[]	object
+openingRoll.rounds[].rolls[].by	number:int
+openingRoll.rounds[].rolls[].result	number:int
+openingRoll.rounds[].rolls[].seat	number:int
+openingRoll.rounds[].seats	array
+openingRoll.rounds[].seats[]	number:int
 outcome	object
 outcome.cause	string
 outcome.kind	string
@@ -1739,6 +1754,8 @@ pendingTriggers[].trigger.Event.played	bool
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
 pendingTriggers[].trigger.Event.round	number:int
+pendingTriggers[].trigger.Event.seats	array
+pendingTriggers[].trigger.Event.seats[]	number:int
 pendingTriggers[].trigger.Event.seq	number:uint64
 pendingTriggers[].trigger.Event.setting_new	string
 pendingTriggers[].trigger.Event.setting_old	string
@@ -4155,6 +4172,8 @@ stackMeta[].trigger.Event.played	bool
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
 stackMeta[].trigger.Event.round	number:int
+stackMeta[].trigger.Event.seats	array
+stackMeta[].trigger.Event.seats[]	number:int
 stackMeta[].trigger.Event.seq	number:uint64
 stackMeta[].trigger.Event.setting_new	string
 stackMeta[].trigger.Event.setting_old	string

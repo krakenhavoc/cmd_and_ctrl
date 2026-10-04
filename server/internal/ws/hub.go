@@ -1001,7 +1001,26 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return
 	}
 
-	view, seq, err := room.Apply(c.playerID, func() error {
+	// ADR 0121 §3: "Roll for everyone left" belongs to the host, as
+	// the table settings do, and for the same reason it is gated here:
+	// only the room knows who hosts.
+	if action.Type == actions.TypeHostRollRemaining && !room.CanManageTable(c.binding()) {
+		c.sendError(frame.ID, protocol.CodeBadRequest,
+			"only the table host or the server admin may roll for everyone left")
+		return
+	}
+
+	// ADR 0121 §3: the opening roll's verbs, and anything sent while
+	// the roll is open, mint no undo entry.
+	apply := func(fn func() error) (protocol.GameView, uint64, error) {
+		return room.Apply(c.playerID, fn)
+	}
+	if actions.MintsNoUndo(room.Game, action.Type) {
+		apply = func(fn func() error) (protocol.GameView, uint64, error) {
+			return room.ApplyExternal(fn)
+		}
+	}
+	view, seq, err := apply(func() error {
 		return actions.Dispatch(room.Game, action)
 	})
 	if err != nil {

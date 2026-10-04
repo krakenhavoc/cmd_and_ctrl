@@ -292,10 +292,18 @@ type GameSnapshot struct {
 	// there is nothing in it but plain Cards.
 	PhasedOut *zoneSnapshot `json:"phasedOut,omitempty"`
 
-	Turn          Turn      `json:"turn"`
-	MulligansOpen bool      `json:"mulligansOpen"`
-	Monarch       uuid.UUID `json:"monarch"`
-	Initiative    uuid.UUID `json:"initiative"`
+	Turn          Turn `json:"turn"`
+	MulligansOpen bool `json:"mulligansOpen"`
+	// OpeningRoll is the open opening-roll window (ADR 0121 §1): its
+	// rounds, every die with its seat, result and presser, and the
+	// chooser. Pure data, additive within v7: absent on every file that
+	// is not mid-roll. A binary from before it ignores the key and
+	// finds an active game with empty hands and the mulligan open, a
+	// table only the host can end (ADR 0121 §1, "Rollback"); a bump
+	// would abandon every live game on rollback instead.
+	OpeningRoll *OpeningRoll `json:"openingRoll,omitempty"`
+	Monarch     uuid.UUID    `json:"monarch"`
+	Initiative  uuid.UUID    `json:"initiative"`
 	// UndoLimit is the pre-v4 home of the undo budget. Read only when
 	// migrating an older file (migrateLegacySettings); a v4 capture
 	// leaves it zero and it is omitted.
@@ -1574,6 +1582,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		State:                 g.State,
 		Turn:                  g.Turn,
 		MulligansOpen:         g.MulligansOpen,
+		OpeningRoll:           cloneOpeningRoll(g.OpeningRoll),
 		Monarch:               g.Monarch,
 		Initiative:            g.Initiative,
 		Settings:              g.Settings,
@@ -2394,6 +2403,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.Turn.OrderSeat = g.Turn.ActiveSeat
 	}
 	g.MulligansOpen = s.MulligansOpen
+	g.OpeningRoll = cloneOpeningRoll(s.OpeningRoll)
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
 	g.Settings = s.Settings

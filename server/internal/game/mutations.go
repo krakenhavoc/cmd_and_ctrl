@@ -8881,6 +8881,13 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 		return ErrPlayerEliminated
 	}
 	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
+	if g.OpeningRoll != nil {
+		// ADR 0121 §1: nobody is the active player yet, nothing is on
+		// the stack and nobody has a hand, so the seat leaves through
+		// the opening roll's own path.
+		g.leaveOpeningRollLocked(p)
+		return nil
+	}
 	// #1529: whether the trigger queue is being held for a trigger
 	// that is still announcing (see drainPendingTriggersAPNAPLocked).
 	heldForAnnouncement := g.triggerAnnouncementOpenLocked()
@@ -8965,6 +8972,10 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	if g.OpeningRoll != nil {
+		// ADR 0121 §1: no hand has been dealt yet.
+		return ErrOpeningRollOpen
+	}
 	if newHandSize < 0 {
 		return ErrInvalidParam
 	}
@@ -9011,6 +9022,10 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
+	}
+	if g.OpeningRoll != nil {
+		// ADR 0121 §1: no hand has been dealt yet.
+		return ErrOpeningRollOpen
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {

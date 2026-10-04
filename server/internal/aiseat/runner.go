@@ -605,13 +605,11 @@ func (r *Runner) step(ctx context.Context) bool {
 			return false
 		}
 
-		view, seq, err := r.room.Apply(r.seat, func() error {
-			return actions.Dispatch(r.room.Game, actions.Action{
-				Type:   actions.Type(mv.Type),
-				Player: mv.Player,
-				Caller: r.seat,
-				Params: mv.Params,
-			})
+		view, seq, err := r.apply(actions.Action{
+			Type:   actions.Type(mv.Type),
+			Player: mv.Player,
+			Caller: r.seat,
+			Params: mv.Params,
 		})
 		if err != nil {
 			rejects++
@@ -951,4 +949,17 @@ func (r *Runner) shouldHoldForBlockers(view protocol.GameView) bool {
 		return true
 	}
 	return false
+}
+
+// apply dispatches one of this seat's actions through the room. An
+// action actions.MintsNoUndo names — the opening roll's verbs, and
+// anything while the roll is open (ADR 0121 §3) — goes through
+// Room.ApplyExternal and leaves no undo entry, exactly as the hub
+// routes a person's.
+func (r *Runner) apply(a actions.Action) (protocol.GameView, uint64, error) {
+	fn := func() error { return actions.Dispatch(r.room.Game, a) }
+	if actions.MintsNoUndo(r.room.Game, a.Type) {
+		return r.room.ApplyExternal(fn)
+	}
+	return r.room.Apply(r.seat, fn)
 }

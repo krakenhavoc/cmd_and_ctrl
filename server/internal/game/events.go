@@ -1142,6 +1142,19 @@ const (
 	EventRollDie  EventKind = "roll_die"
 	EventFlipCoin EventKind = "flip_coin"
 
+	// EventOpeningRoll — the opening roll moved on (ADR 0121 §3).
+	// Label is OpeningRollTie (Seats tied on Amount and roll again),
+	// OpeningRollWon (Actor won with Amount and chooses who goes
+	// first) or OpeningRollRolledFor (Actor, the host, or uuid.Nil for
+	// the server admin, rolled for Seats). The dice themselves are
+	// ordinary EventRollDie events. Public.
+	EventOpeningRoll EventKind = "opening_roll"
+
+	// EventStartingPlayer — the winner of the opening roll (Actor)
+	// chose who takes the first turn (Target), CR 103.1. ADR 0121 §2.
+	// Public.
+	EventStartingPlayer EventKind = "starting_player"
+
 	// EventSettingsChanged — one table setting changed (ADR 0075
 	// §2.3). Actor is the player who changed it (uuid.Nil for the
 	// server admin), Label is the setting's key (SettingUndoLimit,
@@ -1299,6 +1312,10 @@ type Event struct {
 	Sides int    `json:"sides,omitempty"`
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
+
+	// Seats are the seat indexes an EventOpeningRoll names: the seats
+	// that tied, or the seats the host rolled for (ADR 0121 §3).
+	Seats []int `json:"seats,omitempty"`
 
 	// Step is the step that began, on EventStepBegan. Typed so a
 	// trigger's predicate compares a constant rather than a string
