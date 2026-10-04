@@ -477,6 +477,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a triggered MANA ability (#763)](docs/adding-cards.md#adding-a-triggered-mana-ability-763)
   - [State triggers (ADR 0107, #1858)](docs/adding-cards.md#state-triggers-adr-0107-1858)
   - [Choices made at resolution (#796, #568)](docs/adding-cards.md#choices-made-at-resolution-796-568)
+  - ["Reveals their hand. You choose a … card from it" (ADR 0116, #2078)](docs/adding-cards.md#reveals-their-hand-you-choose-a--card-from-it-adr-0116-2078)
   - [Adding a `PendingChoiceKind` (#730, #794)](docs/adding-cards.md#adding-a-pendingchoicekind-730-794)
   - [Cumulative upkeep (#567, CR 702.24)](docs/adding-cards.md#cumulative-upkeep-567-cr-70224)
   - [Echo (ADR 0108 §5, #1888, CR 702.30)](docs/adding-cards.md#echo-adr-0108-5-1888-cr-70230)

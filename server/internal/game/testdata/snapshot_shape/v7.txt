@@ -1484,6 +1484,9 @@ pendingChoices[].damageAssignment.SourceLifelink	bool
 pendingChoices[].damageAssignment.SourceToxic	number:int
 pendingChoices[].damageAssignment.SourceWither	bool
 pendingChoices[].declineLabel	string
+pendingChoices[].discardLabel	string
+pendingChoices[].discardOptions	array
+pendingChoices[].discardOptions[]	custom(uuid.UUID)
 pendingChoices[].fromPlayer	custom(uuid.UUID)
 pendingChoices[].guardsStackItem	custom(uuid.UUID)
 pendingChoices[].id	custom(uuid.UUID)

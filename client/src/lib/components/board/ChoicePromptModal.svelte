@@ -308,8 +308,28 @@
   );
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
+  // ADR 0116: a revealed-hand pick shows the whole hand, but only the
+  // cards the card lets you choose ("a nonland card") can be picked.
+  // `eligible` absent means every option. The server refuses any other
+  // pick, so this is the courtesy, not the rule.
+  const eligibleSet = $derived<Set<string> | null>(
+    active?.kind === "discard_from_hand" && active.eligible ? new Set(active.eligible) : null,
+  );
+  function isEligible(id: string): boolean {
+    return eligibleSet === null || eligibleSet.has(id);
+  }
+  // The hint's object: "a nonland card", "2 cards".
+  const pickWhat = $derived.by(() => {
+    const n = active?.count ?? 0;
+    const label = active?.eligible_label;
+    if (!label) return `${n} card${n === 1 ? "" : "s"}`;
+    if (n === 1) return `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`;
+    return `${n} of these, each a ${label}`;
+  });
+
   function toggle(id: string): void {
     if (!active) return;
+    if (!isEligible(id)) return;
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else if (next.size < pickMax) next.add(id);
@@ -2027,11 +2047,14 @@
           refers to. If the card names a kind of source, that is checked again when the damage would
           be dealt.
         {:else if isSelfSource}
-          Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
+          Pick {pickWhat} from your hand to discard.
         {:else}
-          Pick {active.count} card{active.count === 1 ? "" : "s"} from
+          Pick {pickWhat} from
           <strong>{fromName}</strong>'s revealed hand.
           <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
+        {/if}
+        {#if eligibleSet && active.eligible_label}
+          Cards that aren't {pickWhat.replace(/^\d+ of these, each /, "")} are greyed out.
         {/if}
       </p>
       <div class="card-grid">
@@ -2040,7 +2063,8 @@
             type="button"
             class="card-pick"
             class:selected={selected.has(c.instance_id)}
-            disabled={!selected.has(c.instance_id) && selected.size >= pickMax}
+            disabled={!isEligible(c.instance_id) ||
+              (!selected.has(c.instance_id) && selected.size >= pickMax)}
             onclick={() => toggle(c.instance_id)}
             aria-pressed={selected.has(c.instance_id)}
             aria-label={`select ${c.name || "card"}`}

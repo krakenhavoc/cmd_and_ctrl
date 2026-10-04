@@ -804,6 +804,11 @@ var pendingChoiceFields = plan(
 	"ModeUsedLabel", carried, "",
 	"ModeNotChosen", carried, "",
 	"SacrificeOptions", carried, "",
+	// ADR 0116: the revealed-hand pick's legal cards. Carried for the
+	// same reason SacrificeOptions is — a restored game that forgot
+	// them would let the chooser take a land with Thoughtseize.
+	"DiscardOptions", carried, "",
+	"DiscardLabel", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",

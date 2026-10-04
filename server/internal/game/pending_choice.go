@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -574,6 +575,24 @@ type PendingChoice struct {
 	// change between the prompt and the answer (an earlier player's
 	// sacrifice can trigger something that removes a creature).
 	SacrificeOptions []uuid.UUID
+
+	// DiscardOptions is the set of cards in FromPlayer's revealed hand
+	// a PendingChoiceDiscardFromHand's chooser may pick (ADR 0116 §3):
+	// "you choose a nonland card from it". The card's filter is run
+	// once, at the reveal, and only the matching instance IDs are kept
+	// — a func cannot be written to a restore point, and a prompt with
+	// no closure on it stays one. Re-checked on submit against the
+	// hand.
+	//
+	// nil means every card in the hand. Only a restore point written
+	// before ADR 0116 carries that; every prompt
+	// QueueDiscardFromRevealedHand queues has a non-empty list.
+	DiscardOptions []uuid.UUID
+
+	// DiscardLabel names what DiscardOptions holds, the way the card
+	// prints it — "nonland card", "card with mana value 3 or greater".
+	// Client copy only; never read by the resolver.
+	DiscardLabel string
 
 	// promptRun links this prompt to the RUN it is one leg of — the
 	// printed instruction whose continuation waits for every seat it
@@ -1256,6 +1275,12 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 			// silently — the choice is moot.
 			g.dequeueChoiceLocked(idx)
 			return nil
+		}
+		// ADR 0116 §5: every pick must be one the card allows — the
+		// server never relies on the client or the bot to have offered
+		// only those — and no card may be named twice.
+		if !discardOptionsAllow(choice, picks) {
+			return ErrInvalidParam
 		}
 		// Pre-validate every pick sits in from.Hand.
 		for _, id := range picks {
@@ -2562,44 +2587,128 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	return nil
 }
 
-// QueueDiscardFromRevealedHand is the Thoughtseize entry point.
-// Reveals the target's hand to the chooser (sticky via S13.5
-// KnownBy), then queues a discard_from_hand PendingChoice. The
-// spell can return nil from its OnResolve immediately — the
-// discard fires asynchronously when the chooser submits their
-// pick via resolve_choice.
+// RevealedHandDiscard describes "target player reveals their hand. You
+// choose a <kind of> card from it. That player discards that card."
+// (ADR 0116). A struct because the filter and its label travel
+// together and every card in the shape names both.
+type RevealedHandDiscard struct {
+	// Chooser picks; FromPlayer reveals and discards. They may be the
+	// same player (Thoughtseize can target its caster).
+	Chooser, FromPlayer uuid.UUID
+	// Source is the card whose effect asks. Its name heads the reveal.
+	Source uuid.UUID
+	// Count is the printed number of cards to choose — one on every
+	// card in the shape but Gruesome Discovery's two.
+	Count int
+	// Reason is the prompt header, written the way the card is
+	// ("Thoughtseize").
+	Reason string
+	// Filter is the printed restriction, evaluated against each card
+	// in the hand as it is in the hand (CR 712.8a, 709.4b, 202.3e).
+	// nil is "a card": every card qualifies.
+	Filter func(Card) bool
+	// Label is what Filter admits, for the client ("nonland card").
+	Label string
+}
+
+// QueueDiscardFromRevealedHand is the revealed-hand pick (ADR 0116,
+// ADR 0010 §10). In order:
+//
+//  1. FromPlayer reveals their hand: every seated player becomes a
+//     knower of every card in it and the table gets one reveal run
+//     (RevealForEffect, CR 701.20a — Unmask's ruling: a player who
+//     targets themselves reveals to everyone else too). The reveal is
+//     sticky, like any other.
+//  2. The filter runs once over the hand, in hand order, and the
+//     matching cards become the prompt's DiscardOptions. The set is
+//     fixed here: the card is chosen from the hand that was revealed
+//     (CR 608.2c), so a card that reaches the hand afterwards cannot
+//     be chosen.
+//  3. No matching card: nothing is chosen and nothing is discarded,
+//     and no prompt goes up (CR 609.3). The hand was still revealed,
+//     and the rest of the resolving effect still happens — Thoughtseize
+//     still costs 2 life (its 2020-08-07 ruling).
+//  4. Otherwise a discard_from_hand prompt is queued for the chooser,
+//     with Count capped at the number of matching cards.
+//
+// The prompt carries no continuation, so it stays a restore point. A
+// clause printed after the discard runs on the caller's next line; the
+// open resolution holds state-based actions and the trigger drain until
+// the pick is answered (#1289), so the order cannot be observed.
+//
+// Returns the prompt's ID, or uuid.Nil when nothing was queued.
 //
 // Caller must hold g.mu.
-func (g *Game) QueueDiscardFromRevealedHand(
-	chooser, fromPlayer, source uuid.UUID,
-	count int,
-	reason string,
-) uuid.UUID {
-	// Reveal to the chooser specifically so their client-side KnownBy
-	// lets redactCardForViewer keep the identity. The reveal is
-	// sticky — cards the chooser saw stay revealed after the choice
-	// resolves, same as any other reveal effect.
-	if p := g.playerByIDLocked(fromPlayer); p != nil {
-		for i := range p.Hand.Cards {
-			p.Hand.Cards[i].AddKnower(chooser)
+func (g *Game) QueueDiscardFromRevealedHand(d RevealedHandDiscard) uuid.UUID {
+	p := g.playerByIDLocked(d.FromPlayer)
+	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
+		return uuid.Nil
+	}
+	hand := make([]uuid.UUID, 0, p.Hand.Size())
+	options := make([]uuid.UUID, 0, p.Hand.Size())
+	for _, c := range p.Hand.Cards {
+		hand = append(hand, c.InstanceID)
+		if d.Filter == nil || d.Filter(c) {
+			options = append(options, c.InstanceID)
 		}
 	}
-	// Cap count to available hand size so the chooser isn't stuck
-	// on an impossible count (CR 609.3 "as many as you can").
-	if p := g.playerByIDLocked(fromPlayer); p != nil && p.Hand.Size() < count {
-		count = p.Hand.Size()
+	reason := d.Reason
+	if reason == "" && d.Source != uuid.Nil {
+		if card, ok := g.LookupCardForEffect(d.Source); ok {
+			reason = card.Name
+		}
+	}
+	g.RevealForEffect(RevealSpec{
+		Player: d.FromPlayer,
+		Source: d.Source,
+		Reason: revealHandReason(reason),
+		Cards:  hand,
+	})
+	count := d.Count
+	if count > len(options) {
+		// CR 609.3: choose as many as you can — none, with no match.
+		count = len(options)
 	}
 	if count <= 0 {
 		return uuid.Nil
 	}
 	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:       PendingChoiceDiscardFromHand,
-		Chooser:    chooser,
-		FromPlayer: fromPlayer,
-		Count:      count,
-		Source:     source,
-		Reason:     reason,
+		Kind:           PendingChoiceDiscardFromHand,
+		Chooser:        d.Chooser,
+		FromPlayer:     d.FromPlayer,
+		Count:          count,
+		Source:         d.Source,
+		Reason:         reason,
+		DiscardOptions: options,
+		DiscardLabel:   d.Label,
 	})
+}
+
+// revealHandReason is the reveal banner's line for a revealed-hand
+// pick: "Thoughtseize — reveals their hand".
+func revealHandReason(source string) string {
+	if source == "" {
+		return "reveals their hand"
+	}
+	return source + " — reveals their hand"
+}
+
+// discardOptionsAllow reports whether every pick is one the prompt
+// offered and none is named twice (ADR 0116 §5). A nil DiscardOptions
+// — a restore point from before ADR 0116 — offers the whole hand, which
+// the caller checks separately.
+func discardOptionsAllow(c *PendingChoice, picks []uuid.UUID) bool {
+	seen := make(map[uuid.UUID]bool, len(picks))
+	for _, id := range picks {
+		if seen[id] {
+			return false
+		}
+		seen[id] = true
+		if c.DiscardOptions != nil && !slices.Contains(c.DiscardOptions, id) {
+			return false
+		}
+	}
+	return true
 }
 
 // DamageAssignmentEntry is one {blocker, amount} pair from a

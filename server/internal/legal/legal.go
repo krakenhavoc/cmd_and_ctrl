@@ -708,7 +708,7 @@ const unknownCardLabel = "a card"
 // rather than a comment saying "careful here". Both callers are safe
 // by accident of their creators: QueueDiscardFromRevealedHand is the
 // only path that makes a chooser != discarder choice and it reveals
-// the hand to the chooser first, and queueSearchChoiceLocked marks
+// the hand to the whole table first (ADR 0116), and queueSearchChoiceLocked marks
 // the searcher a knower of every match. Neither guarantee is stated
 // anywhere the author of the NEXT coercive-discard card would read.
 // This makes the enumerator hold the line itself.
