@@ -34,6 +34,7 @@ import { grantedFromLabel } from "./abilityRef";
 import { abilityRowBlocked, abilityRowContext } from "./contextMenu.logic";
 import type { ColorButton } from "./manaPick";
 import { manaSymbolMeta, manaSymbols } from "./manaSymbol";
+import { splitColors, stepperSlots } from "./manaStepper";
 import type { CardView, ManaAbilityView } from "./protocol";
 
 /** One choice in a ManaSymbolPicker. */
@@ -50,6 +51,16 @@ export interface ManaPickOption {
   choice?: boolean;
   /** Short words under the symbols: "Red", "2 Colorless". */
   caption: string;
+  /**
+   * The words under a `choice` option saying what comes next. Absent
+   * is "pick the color next".
+   */
+  note?: string;
+  /**
+   * ADR 0117 §4: this option opens the per-colour stepper for its
+   * ability (two or more picking slots) instead of activating it.
+   */
+  split?: boolean;
   /** What else happens: "deals 1 damage to you", "pay 1 life". */
   rider?: string;
   /** Hover text and accessible name. */
@@ -180,18 +191,17 @@ export function manaAbilityOption(
   };
 }
 
-// The most options one ability may expand into before the picker gives
-// up and falls back to the server's own prompt. Five colours is the
-// widest single slot; Orcish Lumberjack's three {R|G} slots make four.
-const MAX_COLOR_OPTIONS = 12;
-
 /**
  * colorCombos is every distinct answer to `slots` (one list per
  * picking slot), in the server's order. Mana in a pool is unordered, so
  * {W}{U} and {U}{W} are one answer, kept at its first appearance:
- * Mystic Gate's [[W,U],[W,U]] is WW, WU, UU. Null past the cap.
+ * [[W,U],[W,U]] is WW, WU, UU. ADR 0117 §4: an ability with two or
+ * more picking slots is the stepper's (manaStepper.ts), so this is one
+ * slot's list in practice; the one exception is #742's count-carrying
+ * slot beside a second slot, which no catalog card has. There is no
+ * cap any more, and no fallback to the server's prompt.
  */
-export function colorCombos(slots: readonly (readonly string[])[]): string[][] | null {
+export function colorCombos(slots: readonly (readonly string[])[]): string[][] {
   let combos: string[][] = [[]];
   for (const slot of slots) {
     const next: string[][] = [];
@@ -203,7 +213,6 @@ export function colorCombos(slots: readonly (readonly string[])[]): string[][] |
         if (seen.has(key)) continue;
         seen.add(key);
         next.push(out);
-        if (next.length > MAX_COLOR_OPTIONS) return null;
       }
     }
     combos = next;
@@ -238,8 +247,11 @@ function symbolsForAnswer(produced: string, colors: readonly string[]): string[]
  * manaAbilityOptionsFor is the picker's options for one ability: the
  * one ability option for a fixed output, or — when the server
  * published `color_options` (#1443) — one option per answer, each
- * naming its colours so the activation needs no second question. A
- * greyed ability stays one greyed option, so its reason is read once.
+ * naming its colours so the activation needs no second question. Two
+ * or more picking slots (Vivi Ornitier, Relic of Sauron, a filter
+ * land) are one `split` option instead, which opens the per-colour
+ * stepper (ADR 0117 §4). A greyed ability stays one greyed option, so
+ * its reason is read once.
  */
 export function manaAbilityOptionsFor(
   card: CardView,
@@ -249,8 +261,23 @@ export function manaAbilityOptionsFor(
   const base = manaAbilityOption(card, a, ctx);
   const slots = a.color_options ?? [];
   if (base.disabled || slots.length === 0 || slots.some((s) => s.length === 0)) return [base];
+  // ADR 0117 §4: two or more picking slots are split with the stepper:
+  // one option that opens it, drawn as the colours it splits between.
+  const split = stepperSlots(a);
+  if (split) {
+    return [
+      {
+        ...base,
+        key: `ability-${a.index}-split`,
+        symbols: splitColors(split),
+        choice: true,
+        caption: `${split.length} mana, any split`,
+        note: "split the colors next",
+        split: true,
+      },
+    ];
+  }
   const combos = colorCombos(slots);
-  if (!combos) return [base];
   return combos.map((colors) => {
     const symbols = symbolsForAnswer(a.produced ?? "", colors);
     const adds = `Add ${symbols.map((sym) => `{${sym}}`).join("")}`;
@@ -287,6 +314,20 @@ export function manaColorParams(colors?: readonly string[]): {
   return { colors: [...colors] };
 }
 
+/**
+ * manaRowNeedsPicker says whether the light popover's mana row for `a`
+ * opens the anchored picker rather than activating at once (ADR 0117
+ * §4, "Right-click"): its `color_options` hold a real choice, so the
+ * picker's colour buttons, or its stepper for two or more picking
+ * slots, answer it before anything is sent. Every list one option long
+ * is no choice, and the row activates as it always has.
+ */
+export function manaRowNeedsPicker(a: ManaAbilityView): boolean {
+  const slots = a.color_options ?? [];
+  if (slots.length === 0 || slots.some((s) => s.length === 0)) return false;
+  return slots.some((s) => s.length >= 2);
+}
+
 /** Whether `card` publishes at least one battlefield mana ability. */
 export function hasManaAbility(card: CardView): boolean {
   return (card.mana_abilities?.length ?? 0) > 0;
@@ -295,6 +336,8 @@ export function hasManaAbility(card: CardView): boolean {
 export type ManaClickPlan =
   /** Send activate_mana_ability for this index now (with its colours). */
   | { kind: "activate"; index: number; colors?: string[] }
+  /** Open the anchored picker straight on this ability's stepper (ADR 0117 §4). */
+  | { kind: "split"; index: number }
   /** Open the anchored picker over these options. */
   | { kind: "pick"; options: ManaPickOption[] };
 
@@ -303,7 +346,9 @@ export type ManaClickPlan =
  * usable rows are mana rows (the click rule's "mana" answer, ADR 0117
  * §1). Null when the card has no mana ability. One live result goes
  * out at once — a Swamp, and also a Command Tower whose identity names
- * one colour. With several abilities the picker opens and shows every
+ * one colour. A lone ability with two or more picking slots opens the
+ * picker straight on its stepper (`split`, ADR 0117 §4). With several
+ * abilities the picker opens and shows every
  * one, a greyed one with its reason. The click rule never sends a card
  * here with no usable mana row, so a lone greyed ability is not
  * reached from a click.
@@ -320,6 +365,7 @@ export function manaClickPlan(card: CardView, ctx: ManaOptionContext = {}): Mana
   if (options.length === 0) return null;
   const [only] = options;
   if (options.length === 1 && !only.disabled && !only.granted && only.abilityIndex !== undefined) {
+    if (only.split) return { kind: "split", index: only.abilityIndex };
     return only.colors
       ? { kind: "activate", index: only.abilityIndex, colors: only.colors }
       : { kind: "activate", index: only.abilityIndex };

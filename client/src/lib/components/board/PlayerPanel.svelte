@@ -612,7 +612,13 @@
       activateManaAbility(card, plan.index, plan.colors);
       return;
     }
-    openManaSourcePicker({ cardID: card.instance_id, anchor: anchorFor(card, ev) });
+    // ADR 0117 §4: one ability with two or more picking slots opens
+    // the picker straight on its per-colour stepper.
+    openManaSourcePicker({
+      cardID: card.instance_id,
+      anchor: anchorFor(card, ev),
+      ...(plan.kind === "split" ? { abilityIndex: plan.index } : {}),
+    });
   }
 
   // The clicked card's box: the element the click landed on, or the

@@ -44,6 +44,8 @@
     type MenuAction,
   } from "../../contextMenu.logic";
   import { abilityPopover, closeAbilityPopover, openAbilityPopover } from "../../abilityPopover";
+  import { manaRowNeedsPicker } from "../../manaSource";
+  import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -589,6 +591,27 @@
     if (hasMenu) openAbilityPopover(card.instance_id);
   }
 
+  // ADR 0117 §4, "Right-click": the popover's mana row for an ability
+  // with a colour choice opens the anchored picker on that one ability
+  // (its colour buttons, or its stepper for two or more picking slots)
+  // instead of activating with no colours and leaving the server to ask
+  // once per slot. A permanent's own `mana_abilities` only: the picker
+  // is a battlefield picker, and a hand card's mana ability (a Spirit
+  // Guide) has no colour choice.
+  function activateManaRow(index: number): void {
+    const a = (card.mana_abilities ?? []).find((m) => m.index === index);
+    if (a && manaRowNeedsPicker(a) && cardEl) {
+      const r = cardEl.getBoundingClientRect();
+      openManaSourcePicker({
+        cardID: card.instance_id,
+        anchor: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
+        abilityIndex: index,
+      });
+      return;
+    }
+    onActivateManaAbility?.(index);
+  }
+
   function handlePipKeydown(ev: KeyboardEvent): void {
     if (ev.key !== "Enter" && ev.key !== " ") return;
     openFromPip(ev);
@@ -1085,7 +1108,7 @@
         onSpecialAction={(action) => onSpecialAction?.(action)}
         abilities={onActivateManaAbility ? menuManaAbilities : []}
         tapped={!!card.tapped}
-        onActivate={(idx) => onActivateManaAbility?.(idx)}
+        onActivate={activateManaRow}
         activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
