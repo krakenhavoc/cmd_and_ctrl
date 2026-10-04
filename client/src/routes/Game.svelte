@@ -1784,7 +1784,7 @@
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot
                  reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
-            <BotFeed chat={$chat} />
+            <BotFeed chat={$chat} {seats} />
 
             <!-- S22 broadcast reveals (CR 701.20). The strip rather than
                  a modal on purpose: a reveal asks nobody a question, and
