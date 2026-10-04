@@ -986,3 +986,21 @@ func ThisDealtDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Charac
 	p := g.PlayerByIDForEffect(ev.Target)
 	return p != nil && p.ID != source.Controller
 }
+
+// AtEachOpponentsUpkeep — "At the beginning of each opponent's
+// upkeep": the upkeep's player is an opponent of the source's
+// controller. The player is read off the trigger's event Actor
+// (Viseling, Iron Maiden, Dark Suspicions).
+func AtEachOpponentsUpkeep(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventBeginUpkeep, ByAnOpponent, label, effect)
+}
+
+// ThisDealtDamageToAPlayer — the source dealt damage, combat or not,
+// to any player, its controller included (Entropic Specter's "deals
+// damage to a player"). The sibling of ThisDealtDamageToAnOpponent.
+func ThisDealtDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Source != source.InstanceID || ev.Amount <= 0 {
+		return false
+	}
+	return g.PlayerByIDForEffect(ev.Target) != nil
+}
