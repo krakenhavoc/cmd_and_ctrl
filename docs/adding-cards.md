@@ -2877,11 +2877,32 @@ charge the discounted price. Register refuses a variable clause in an
 optional cost or an either/or branch, beside any other sacrifice in the
 plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
 life"; "any number" on an ability is still refused, because a cost an
-ability can pay with nothing is free. A card whose text reads the
-SACRIFICED permanents themselves — Corpse Cobble's "the total power of
-the sacrificed creatures" — needs last-known information for the list,
-which does not exist yet: leave it out (the Variable sacrifice costs on spells
-registry row lists it).
+ability can pay with nothing is free.
+
+**The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
+payment record names each one (`PaidCost.SacrificedObjects`, written at
+every payment site: a spell's additional cost, an activated ability and
+a mana ability), and the effect reads them as they last existed on the
+battlefield (CR 400.7j, 608.2h):
+
+```go
+OnResolve: damageEqualToSacrificedPower, // Fling: "damage equal to the sacrificed creature's power"
+info, ok := ctx.SacrificedPermanent()    // Momentous Fall: info.Power, then info.Toughness
+n := ctx.SacrificedPower()               // Tend the Pests: the first one's power, floored at zero
+x := ctx.SacrificedTotalPower()          // Corpse Cobble: the sum, the TOTAL floored at zero (CR 107.1b)
+all := ctx.SacrificedPermanents()        // every one, in the order named
+```
+
+Each answer is a `game.PermanentInfo`: post-layer characteristics,
+counter-aware power and toughness, mana value, colours and counters, so
+an anthem's bonus counts and a permanent that came back as a new object
+is never mistaken for the one sacrificed. A token and a commander are
+read like anything else. A CR 707.10 copy carries the original's record,
+so a copied spell reads the permanents the ORIGINAL sacrificed; never
+read the event log for this (`b17PermanentSacrificedToPay` keeps its log
+scan only for old restore points). Shared bodies go in
+`sacrificed_this_way.go`. An alternative cost's sacrifice is not
+recorded: no printed card reads it.
 
 **Gift (CR 702.174, [ADR 0089](decisions/0089-gift.md)):** one
 field, and never a hand-rolled optional cost:
