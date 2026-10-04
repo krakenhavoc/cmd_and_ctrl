@@ -8,8 +8,9 @@
 //   - it wears the bolt pip and the ready ring exactly when the
 //     viewer's own digest lists it (decision 6), on a frame where
 //     highlights are live;
-//   - a left-click on it opens the light ability popover at the card
-//     (ADR 0117 §1, call 5), whose only row is the any-player row;
+//   - a left-click on it activates its one any-player row, through the
+//     path the popover's row takes (ADR 0117 §1 as amended by #2201),
+//     and opens no menu;
 //   - the override menu, opened with admin overrides on, lists only that
 //     row too, and hands the activation to Board;
 //   - its right-click popover lists only that row, greyed when the
@@ -186,23 +187,15 @@ describe("the bolt pip on another player's permanent", () => {
 });
 
 describe("the left-click on another player's permanent", () => {
-  it("opens the light popover at the card, not the override menu, and never taps", () => {
+  it("activates its one any-player row, opens no menu, and never taps (#2201)", () => {
     const p = live(gameView({ legal_actions: listed }));
     p.tile().click();
     flushSync();
-    expect(get(abilityPopover)?.cardID).toBe("xantcha");
-    expect(get(cardMenu)).toBeNull();
-    const rows = [
-      ...p.tile().querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item:not([data-raw-tap])"),
-    ];
-    expect(rows.map((b) => b.textContent?.trim())).toEqual([
-      expect.stringContaining("{3}: Draw a card"),
-    ]);
-    // Not Alice's sandbox row: the card is not the viewer's.
-    expect(p.tile().querySelector("[data-raw-tap]")).toBeNull();
-    rows[0].click();
-    flushSync();
+    // The row the popover would list alone, handed to Board as the
+    // popover's row hands it.
     expect(p.activated).toEqual([["xantcha", 0]]);
+    expect(get(abilityPopover)).toBeNull();
+    expect(get(cardMenu)).toBeNull();
   });
 });
 

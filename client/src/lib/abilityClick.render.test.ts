@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 //
 // abilityClick.render.test.ts — ADR 0117 §1 and §2 on a real panel. A
-// left-click on a permanent does what the card does: the light ability
-// popover when it has a usable non-mana row, its mana when only mana
-// rows are usable, and nothing otherwise. The headline test runs the
-// click and the popover's greying over the same fixtures and checks
-// they agree: the popover a right-click opens is the evidence, and the
-// left-click must do what that popover says is possible.
+// left-click on a permanent does what the card does: its one usable
+// row activated, when that row is not a mana row (the 2026-10-04
+// amendment, #2201); the light ability popover when two or more rows
+// are usable and one is not mana; its mana when only mana rows are
+// usable; and nothing otherwise. The headline test runs the click and
+// the popover's greying over the same fixtures and checks they agree:
+// the popover a right-click opens is the evidence, and the left-click
+// must do what that popover says is possible. Where the popover has one
+// usable row, the click must do exactly what choosing that row does.
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { get } from "svelte/store";
@@ -139,6 +142,16 @@ const walker = (extra: Partial<CardView> = {}) =>
     ...extra,
   });
 
+// Polluted Delta's one row (#2201): every cost component, no mana row.
+const fetchRow = {
+  index: 0,
+  ref: "own:0",
+  label: "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Swamp card.",
+  tap_cost: true,
+  life_cost: 1,
+  sacrifice_self: true,
+};
+
 // The fixtures of ADR 0117 §1's before-and-after table, on the
 // viewer's own panel.
 const FIXTURES: Record<string, () => CardView> = {
@@ -260,6 +273,27 @@ const FIXTURES: Record<string, () => CardView> = {
         },
       ],
     }),
+  "a fetch land": () =>
+    permanent("delta", "Polluted Delta", "Land", { activated_abilities: [fetchRow] }),
+  "a fetch land under Urborg": () =>
+    permanent("delta", "Polluted Delta", "Land", {
+      activated_abilities: [fetchRow],
+      mana_abilities: [mana(0, { ref: "land:B", produced: "{B}", label: "{T}: Add {B}." })],
+    }),
+  "a tapped fetch land": () =>
+    permanent("delta", "Polluted Delta", "Land", {
+      tapped: true,
+      activated_abilities: [fetchRow],
+    }),
+  "a planeswalker with one usable loyalty ability": () => walker({ counters: { loyalty: 2 } }),
+  "a summoning-sick creature with one usable row": () =>
+    permanent("pinger", "Firebreathing Pinger", "Creature — Goblin", {
+      summoning_sick: true,
+      activated_abilities: [
+        { index: 0, ref: "own:0", label: "{T}: 1 damage to target player.", tap_cost: true },
+        { index: 1, ref: "own:1", label: "{R}: +1/+0 until end of turn.", mana_cost: "{R}" },
+      ],
+    }),
   "a land under Squirrel Nest": () =>
     permanent("nestland", "Forest", "Basic Land — Forest", {
       mana_abilities: [mana(0, { produced: "{G}", label: "{T}: Add {G}." })],
@@ -324,14 +358,18 @@ function mountPanel(card: CardView) {
   return { ...r, view, sent, tapped, activated, tile, rows, rightClick };
 }
 
-type Outcome = "popover" | "mana" | "none";
+type Outcome = "activate" | "popover" | "mana" | "none";
 
-// What the popover says a click can do: a live non-mana row means the
-// popover, else a live mana row means mana, else nothing.
+// What the popover says a click can do (the Sandbox row never counts):
+// one live row that is not a mana row means activate it; any other live
+// non-mana row means the popover; else a live mana row means mana; else
+// nothing.
 function popoverVerdict(rows: HTMLButtonElement[]): Outcome {
   const live = rows.filter((b) => !b.disabled);
-  if (live.some((b) => b.dataset.kind !== "mana")) return "popover";
-  if (live.some((b) => b.dataset.kind === "mana")) return "mana";
+  const nonMana = live.filter((b) => b.dataset.kind !== "mana");
+  if (nonMana.length === 1 && live.length === 1) return "activate";
+  if (nonMana.length > 0) return "popover";
+  if (live.length > 0) return "mana";
   return "none";
 }
 
@@ -341,6 +379,7 @@ function clickOutcome(p: ReturnType<typeof mountPanel>): Outcome {
   if (get(manaSourcePicker) || p.sent.some((s) => s.type === "activate_mana_ability")) {
     return "mana";
   }
+  if (p.activated.length > 0 || p.sent.length > 0) return "activate";
   return "none";
 }
 
@@ -359,15 +398,20 @@ const EXPECTED: Record<string, Outcome> = {
   "Relic of Sauron, draw row refused": "mana",
   "tapped Relic of Sauron": "none",
   "Rogue's Passage": "popover",
-  "Prodigal Sorcerer": "popover",
-  "an Equipment in your main phase": "popover",
+  "Prodigal Sorcerer": "activate",
+  "an Equipment in your main phase": "activate",
   "an Equipment with its window shut": "none",
   "an Arrested creature": "none",
   "a catalogued planeswalker": "popover",
   "a planeswalker that activated this turn": "none",
   "an uncatalogued planeswalker": "popover",
   "an uncatalogued planeswalker that activated this turn": "none",
-  "a face-down creature": "popover",
+  "a face-down creature": "activate",
+  "a fetch land": "activate",
+  "a fetch land under Urborg": "popover",
+  "a tapped fetch land": "none",
+  "a planeswalker with one usable loyalty ability": "activate",
+  "a summoning-sick creature with one usable row": "activate",
   "a land under Squirrel Nest": "popover",
 };
 
@@ -377,13 +421,28 @@ describe("the click rule and the popover agree (ADR 0117 §2)", () => {
       const p = mountPanel(make());
       // The popover, opened the way that never routes through the rule.
       p.rightClick();
-      const verdict = popoverVerdict(p.rows());
+      const rows = p.rows();
+      const verdict = popoverVerdict(rows);
       expect(verdict).toBe(EXPECTED[name]);
-      // Close it, then left-click.
-      p.rightClick();
+      // #2201: with one usable row, choosing it is the evidence of what
+      // the click must do. Choose it (which closes the popover), keep
+      // what it did, and start again. Otherwise just close it.
+      let viaRow: { sent: Sent[]; activated: [string, number][] } | null = null;
+      if (verdict === "activate") {
+        rows.find((b) => !b.disabled)!.click();
+        flushSync();
+        viaRow = { sent: [...p.sent], activated: [...p.activated] };
+        expect(viaRow.sent.length + viaRow.activated.length).toBe(1);
+        p.sent.length = 0;
+        p.activated.length = 0;
+      } else {
+        p.rightClick();
+      }
       expect(get(abilityPopover)).toBeNull();
       click(p.tile());
       expect(clickOutcome(p)).toBe(verdict);
+      // The click did exactly what the popover's one row does.
+      if (viaRow) expect({ sent: p.sent, activated: p.activated }).toEqual(viaRow);
       // Never a raw tap from a plain click, and never a refused send.
       expect(p.tapped).toEqual([]);
       // The cursor follows the rule.
@@ -442,6 +501,19 @@ describe("the left-click popover", () => {
       const p = mountPanel(relic());
       click(p.tile());
       expect(seen).toEqual(["ability-menu-opened"]);
+    } finally {
+      off();
+    }
+  });
+
+  it("does not emit ability-menu-opened when the click activates a lone row (#2201)", () => {
+    const seen: TutorialEvent[] = [];
+    const off = subscribe((e) => seen.push(e));
+    try {
+      const p = mountPanel(FIXTURES["Prodigal Sorcerer"]());
+      click(p.tile());
+      expect(p.activated).toEqual([["prodigal", 0]]);
+      expect(seen).toEqual([]);
     } finally {
       off();
     }

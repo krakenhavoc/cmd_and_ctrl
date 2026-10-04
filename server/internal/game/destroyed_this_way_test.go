@@ -14,16 +14,20 @@ import (
 // not a destruction: a permanent the CR 614 window saved outright
 // (indestructible granted mid-window, "it isn't destroyed instead"), a
 // permanent a replacement sent somewhere other than a graveyard, and a
-// commander whose exit is merely PAUSED on the CR 903.9 prompt and has
+// leg whose exit is merely PAUSED on a "may" replacement prompt and has
 // not happened yet.
 //
 // The rule, per CR 701.7a ("to destroy a permanent, move it from the
 // battlefield to its owner's graveyard"): a graveyard is a
-// destruction, the command zone is a destruction (CR 903.9 replaces
-// where the commander goes, not whether it was destroyed — the
-// engine's declared carry-over, see simultaneous.go), and everything
-// else is not. The count is a continuation rather than a return value
-// because any leg can pause.
+// destruction, the command zone is counted as one too (the engine's
+// declared carry-over from the CR 903.9 replacement, see
+// simultaneous.go), and everything else is not. The count is a
+// continuation rather than a return value because any leg can pause.
+//
+// Since ADR 0115 a destroyed commander is not one of the legs that
+// pause: it goes to the graveyard with the rest and is counted at once
+// (TestADestroyedCommanderIsCountedWithTheRest). The pause tests use a
+// test "may" replacement (may_detour_test.go) instead.
 
 // wipeTarget puts a plain creature on the battlefield under owner.
 func wipeTarget(g *Game, owner *Player) uuid.UUID {
@@ -132,12 +136,12 @@ func TestAnExiledDestructionIsNotADestruction(t *testing.T) {
 	}
 }
 
-// TestAPausedCommanderLegIsCountedOnceItLands — the CR 903.9 half.
-// The count cannot be taken while the prompt is open, so the whole
-// sweep waits for it; when the answer arrives the commander is
+// TestAPausedLegIsCountedOnceItLands — the pause half. The count
+// cannot be taken while a "may" replacement's prompt is open, so the
+// whole sweep waits for it; when the answer arrives the paused leg is
 // counted, and so is the creature queued behind it. Both answers, and
 // the creature ordered AFTER the paused leg so the wait is observable.
-func TestAPausedCommanderLegIsCountedOnceItLands(t *testing.T) {
+func TestAPausedLegIsCountedOnceItLands(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
@@ -145,13 +149,13 @@ func TestAPausedCommanderLegIsCountedOnceItLands(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newActiveGame(t)
 			owner := g.Seats[0]
-			commander := seatCommander(t, g.Battlefield, owner)
+			commander := seatDetouredCard(t, g, g.Battlefield, owner)
 			bear := wipeTarget(g, owner)
 
 			got, ran := destroyAllThen(t, g, []uuid.UUID{commander, bear})
 
 			if *ran != 0 {
-				t.Fatalf("the continuation ran %d times with the CR 903.9 prompt still open, want 0", *ran)
+				t.Fatalf("the continuation ran %d times with the prompt still open, want 0", *ran)
 			}
 			if findBattlefieldCard(g, bear) == nil {
 				t.Error("the rest of the sweep waits for the paused leg")
@@ -166,29 +170,52 @@ func TestAPausedCommanderLegIsCountedOnceItLands(t *testing.T) {
 				t.Fatalf("the continuation ran %d times after the answer, want 1", *ran)
 			}
 			if !idsEqual(*got, []uuid.UUID{commander, bear}) {
-				t.Errorf("destroyed this way = %v, want [commander bear] = %v %v — CR 903.9 "+
-					"replaces the zone change, not the destruction", *got, commander, bear)
+				t.Errorf("destroyed this way = %v, want [paused bear] = %v %v — the "+
+					"replacement changes the zone, not the destruction", *got, commander, bear)
 			}
 			landed := owner.Graveyard
 			if tc.commandZone {
 				landed = owner.Command
 			}
 			if !landed.Contains(commander) {
-				t.Errorf("the commander is in the %s", landed.Kind)
+				t.Errorf("the paused card is not in the %s", landed.Kind)
 			}
 		})
 	}
 }
 
+// TestADestroyedCommanderIsCountedWithTheRest — ADR 0115. A commander
+// caught in a wipe is destroyed with everything else: it is in its
+// owner's graveyard when the continuation runs, the continuation runs
+// at once and counts it, and only then does CR 903.9a ask its owner.
+// Whatever the owner answers, it was destroyed.
+func TestADestroyedCommanderIsCountedWithTheRest(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	commander := seatCommander(t, g.Battlefield, owner)
+	bear := wipeTarget(g, owner)
+
+	got, ran := destroyAllThen(t, g, []uuid.UUID{commander, bear})
+	if *ran != 1 {
+		t.Fatalf("the continuation ran %d times, want 1 — nothing waits on the commander's owner", *ran)
+	}
+	if !idsEqual(*got, []uuid.UUID{commander, bear}) {
+		t.Errorf("destroyed this way = %v, want [commander bear] = %v %v", *got, commander, bear)
+	}
+	assertOnlyIn(t, commander, owner.Graveyard, g.Battlefield, owner.Command)
+	answerCommanderReturn(t, g, owner, commander, true)
+	assertOnlyIn(t, commander, owner.Command, owner.Graveyard, g.Battlefield)
+}
+
 // TestUndoAcrossAPausedDestroyLegReplays is the undo contract for the
-// new continuation. Rewinding into the open CR 903.9 prompt and
+// new continuation. Rewinding into the open "may" prompt and
 // answering it again has to destroy the same permanents and report the
 // same list: the landed list is carried forward by value, so a
 // replayed answer cannot see the first run's entry.
 func TestUndoAcrossAPausedDestroyLegReplays(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
-	commander := seatCommander(t, g.Battlefield, owner)
+	commander := seatDetouredCard(t, g, g.Battlefield, owner)
 	bear := wipeTarget(g, owner)
 
 	got, ran := destroyAllThen(t, g, []uuid.UUID{commander, bear})

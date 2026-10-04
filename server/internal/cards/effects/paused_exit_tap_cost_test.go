@@ -10,18 +10,19 @@ import (
 )
 
 // paused_exit_tap_cost_test.go — #1427 with real cards. A commander
-// that an effect has destroyed stays on the battlefield while its
-// owner answers CR 903.9, and no cost may TAP it in that window: one
+// that an effect is returning to its owner's hand stays on the
+// battlefield while its owner answers CR 903.9b (ADR 0115: a destroyed
+// one no longer pauses), and no cost may TAP it in that window: one
 // card per tap shape — Birds of Paradise ({T} mana), Smuggler's Copter
 // (crew), Bennie Bracks (a spell's convoke) and Survivors' Encampment
 // ("{T}, Tap an untapped creature you control" on a mana ability).
-// Without the gate each of them spent the destroyed commander while
+// Without the gate each of them spent the bounced commander while
 // its owner was still deciding. The engine half is
 // game/paused_exit_tap_cost_test.go; the moving costs are #1445's
 // paused_exit_cost_test.go.
 
 // toMainPhase walks to the precombat main before anything is
-// destroyed: the CR 903.9 prompt blocks AdvanceStep, and each refusal
+// bounced: the CR 903.9b prompt blocks AdvanceStep, and each refusal
 // here must come from the cost, not from the walk.
 func toMainPhase(t *testing.T, g *game.Game) {
 	t.Helper()
@@ -38,16 +39,16 @@ func toMainPhase(t *testing.T, g *game.Game) {
 func assertTapRefused(t *testing.T, g *game.Game, owner *game.Player, cmdr uuid.UUID, prompt *game.PendingChoice, err error) {
 	t.Helper()
 	if !errors.Is(err, game.ErrChoicePending) {
-		t.Fatalf("naming the destroyed commander: err = %v, want ErrChoicePending", err)
+		t.Fatalf("naming the bounced commander: err = %v, want ErrChoicePending", err)
 	}
 	if b20Tapped(t, g, cmdr) {
-		t.Error("the refusal tapped the destroyed commander")
+		t.Error("the refusal tapped the bounced commander")
 	}
 	if len(g.StackMeta) != 0 || len(owner.ManaPool) != 0 {
 		t.Errorf("stack %d, pool %d — the refusal paid something", len(g.StackMeta), len(owner.ManaPool))
 	}
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != prompt.ID {
-		t.Fatalf("the refusal disturbed the destroy's prompt (%d pending)", len(g.PendingChoices))
+		t.Fatalf("the refusal disturbed the bounce's prompt (%d pending)", len(g.PendingChoices))
 	}
 }
 
@@ -66,8 +67,8 @@ func TestBirdsOfParadiseCommanderCannotTapForManaWhileItsOwnerIsAsked(t *testing
 		Controller:  me.ID,
 		IsCommander: true,
 	})
-	if err := g.DestroyPermanentForEffect(cmdr); err != nil {
-		t.Fatalf("DestroyPermanentForEffect: %v", err)
+	if err := g.BounceToHandForEffect(cmdr); err != nil {
+		t.Fatalf("BounceToHandForEffect: %v", err)
 	}
 	if len(g.PendingChoices) != 1 {
 		t.Fatalf("want the CR 903.9 prompt, have %d pending choices", len(g.PendingChoices))
@@ -84,13 +85,13 @@ func TestBirdsOfParadiseCommanderCannotTapForManaWhileItsOwnerIsAsked(t *testing
 	}
 }
 
-func TestSmugglersCopterCannotBeCrewedByADestroyedCommander(t *testing.T) {
+func TestSmugglersCopterCannotBeCrewedByABouncedCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMainPhase(t, g)
 	copter := pushVehicleForTest(g, me.ID, "Smuggler's Copter", smugglersCopterOracle, 3, 3)
 	crewer := pushCrewerForTest(g, me.ID, "Crewer", 1)
-	cmdr, prompt := destroyedCommander(t, g, me.ID)
+	cmdr, prompt := bouncedCommander(t, g, me.ID)
 
 	assertTapRefused(t, g, me, cmdr, prompt,
 		g.ActivateCatalogAbility(me.ID, copter, 0, game.ActivateAbilityParams{CrewIDs: []uuid.UUID{cmdr}}))
@@ -104,12 +105,12 @@ func TestSmugglersCopterCannotBeCrewedByADestroyedCommander(t *testing.T) {
 	}
 }
 
-func TestBennieBracksCannotConvokeWithADestroyedCommander(t *testing.T) {
+func TestBennieBracksCannotConvokeWithABouncedCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMainPhase(t, g)
 	soldiers := pushTapCostSoldiers(g, me.ID, 4)
-	cmdr, prompt := destroyedCommander(t, g, me.ID)
+	cmdr, prompt := bouncedCommander(t, g, me.ID)
 
 	bennie, err := castWithTapParams(t, g, "Bennie Bracks, Zoologist", "Legendary Creature — Elf Druid", "{3}{W}",
 		b16BennieBracksOracle, game.CastSpellParams{TapIDs: append([]uuid.UUID{cmdr}, soldiers[:3]...)})
@@ -130,13 +131,13 @@ func TestBennieBracksCannotConvokeWithADestroyedCommander(t *testing.T) {
 	}
 }
 
-func TestSurvivorsEncampmentCannotTapADestroyedCommander(t *testing.T) {
+func TestSurvivorsEncampmentCannotTapABouncedCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMainPhase(t, g)
 	land := seedPermanentWithOracle(g, me.ID, "Survivors' Encampment", "Land", b24SurvivorsEncampmentOracle)
 	bear := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
-	cmdr, prompt := destroyedCommander(t, g, me.ID)
+	cmdr, prompt := bouncedCommander(t, g, me.ID)
 
 	assertTapRefused(t, g, me, cmdr, prompt,
 		g.ActivateManaAbility(me.ID, land, 1, game.ManaAbilityParams{TapIDs: []uuid.UUID{cmdr}}))

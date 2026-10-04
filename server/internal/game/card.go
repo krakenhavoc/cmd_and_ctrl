@@ -994,8 +994,7 @@ type Card struct {
 	// graveyard or in exile (ADR 0115 decision 1). MoveCard sets it as a
 	// commander card lands in either zone and clears it on every other
 	// move; the check (commanderReturnSBALocked) clears it once it has
-	// asked the owner. Not a characteristic and not copiable. Only ever
-	// set while commanderReturnSBA is on.
+	// asked the owner. Not a characteristic and not copiable.
 	CommanderReturnDue bool
 
 	// FaceDown is the visual face-down flag (CR 406.3a / CR 708) —

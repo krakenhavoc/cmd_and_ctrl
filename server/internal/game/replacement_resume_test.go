@@ -28,6 +28,12 @@ import (
 // looks like. Since #539 made that window open on every exit "from
 // anywhere", it is how a commander usually leaves.
 //
+// Since ADR 0115 a commander headed for the graveyard no longer pauses
+// (it lands, and CR 903.9a asks afterwards), so the tests below put a
+// test "may" replacement on a plain creature instead
+// (may_detour_test.go): the resume path they pin is the same one any
+// optional replacement takes.
+//
 // The fix is one call at the tail both resume paths share
 // (finishReplacementResumeLocked), and the tests below are deliberately
 // NOT all about attachments: the point is that answering a replacement
@@ -36,29 +42,32 @@ import (
 // shape as #370's discard_selection, pinned in
 // cards/effects/inapp_trigger_reports_test.go.
 
-// pushResumeCommander seats a commander creature and fires the
-// zone-move event, so the layer listener has stamped it before the
-// attachment SBA reads its effective types.
+// pushResumeCommander seats a creature carrying the test "may"
+// replacement (mayDetourForTest: "if it would be put into a graveyard,
+// its owner may put it into the command zone instead", the shape the
+// CR 903.9 built-in had before ADR 0115) and fires the zone-move event,
+// so the layer listener has stamped it before the attachment SBA reads
+// its effective types.
 func pushResumeCommander(g *Game, owner uuid.UUID) uuid.UUID {
 	id := uuid.New()
 	g.Battlefield.PushTop(Card{
-		InstanceID:  id,
-		Name:        "Atraxa, Praetors' Voice",
-		TypeLine:    "Legendary Creature — Phyrexian Angel Horror",
-		Power:       4,
-		Toughness:   4,
-		Owner:       owner,
-		Controller:  owner,
-		IsCommander: true,
+		InstanceID: id,
+		Name:       "Atraxa, Praetors' Voice",
+		TypeLine:   "Legendary Creature — Phyrexian Angel Horror",
+		Power:      4,
+		Toughness:  4,
+		Owner:      owner,
+		Controller: owner,
 	})
 	g.WithWriteLock(func() {
+		g.RegisterReplacementForTest(mayDetourForTest(id, owner))
 		g.EmitEvent(Event{Kind: EventZoneMove, CardID: id, OldZone: ZoneHand, NewZone: ZoneBattlefield})
 	})
 	return id
 }
 
-// answerTheCommanderPrompt answers the one queued CR 903.9 optional
-// replacement, asserting there is exactly one.
+// answerTheCommanderPrompt answers the one queued optional replacement,
+// asserting there is exactly one.
 func answerTheCommanderPrompt(t *testing.T, g *Game, chooser uuid.UUID, apply bool) {
 	t.Helper()
 	if len(g.PendingChoices) != 1 {

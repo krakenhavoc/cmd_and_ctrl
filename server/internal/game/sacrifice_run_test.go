@@ -127,17 +127,17 @@ func TestAPromptedSacrificeRunWaitsForEveryAskedSeat(t *testing.T) {
 	}
 }
 
-// TestAPromptedSacrificeRunWaitsForAPausedCommanderLeg is the CR 903.9
+// TestAPromptedSacrificeRunWaitsForAPausedLeg is the CR 903.9
 // half, and the reason the answer goes through SacrificeThenForEffect
 // rather than the fire-and-forget call: a sacrificed commander is
 // STILL ON THE BATTLEFIELD while its owner is asked about the command
 // zone, so a run that settled on the line after the answer would pay
 // out with the permanent still in play.
-func TestAPromptedSacrificeRunWaitsForAPausedCommanderLeg(t *testing.T) {
+func TestAPromptedSacrificeRunWaitsForAPausedLeg(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	source := departureTestSource(g, me.ID, "Rise of the Witch-king")
-	commander := seatCommander(t, g.Battlefield, me)
+	commander := seatDetouredCard(t, g, g.Battlefield, me)
 
 	run := eachPlayerSacrificesThen(t, g, source, g.Seats[1].ID)
 	answerSacrifice(t, g, me.ID, commander)

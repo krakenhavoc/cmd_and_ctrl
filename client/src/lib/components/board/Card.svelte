@@ -127,10 +127,12 @@
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
     size?: "small" | "normal";
-    // #1954: draw the art crop instead of the full card (the
-    // experimental "card art only" setting). Set by BattlefieldRow
-    // and by Hand for the viewer's own cards; the hover zoom, stack
-    // and every other Card leave it off.
+    // #1954 / #2209: draw an art tile — the art crop with a name strip
+    // — instead of the full card. BattlefieldRow sets it from
+    // `display.battlefieldArt` (on by default) and Hand, for the
+    // viewer's own cards, from `display.handArt` (off by default); the
+    // hover zoom, stack and every other Card leave it off. A face-down
+    // card never becomes a tile (cardImage.ts tableImageSize).
     artOnly?: boolean;
     // showManaCost renders the S15 cost-chip overlay bottom-left.
     // Enabled by Hand.svelte for the viewer's own hand so they can
@@ -376,7 +378,16 @@
   // played as its land half — or, later, a transformed permanent —
   // shows the side that is actually up without this component
   // knowing faces exist.
-  const imgSrc = $derived(cardImageURL(card, tableImageSize(card, size, artOnly)));
+  const imgSize = $derived(tableImageSize(card, size, artOnly));
+  const imgSrc = $derived(cardImageURL(card, imgSize));
+  // #2209: the art tile. The crop has no frame, so the tile draws the
+  // name itself in a strip along the top, and every top-anchored mark
+  // (CMD, GOAD, counters, the designation, the pips) steps down below
+  // it through --face-top. Everything else on the tile — P/T or
+  // loyalty, counters, status marks, keyword chips, the ADR 0105 pips
+  // — is the same markup a full card draws. A card with no art (a
+  // token with no printing) keeps the name fallback, as before.
+  const artTile = $derived(imgSize === "art_crop" && !!imgSrc && !showsCardBack(card, faceDown));
 
   // Real MTG card back bundled as a static asset under client/public.
   // Two sizes to keep hand/battlefield thumbnails snappy while the
@@ -655,6 +666,7 @@
   bind:this={cardEl}
   class="card"
   class:face-down={showBack}
+  class:art-tile={artTile}
   class:tapped={card.tapped}
   class:selected
   class:targetable
@@ -712,6 +724,11 @@
       fetchpriority={priority ? "high" : undefined}
       use:cardArt={imgSrc}
     />
+    {#if artTile}
+      <!-- #2209: the art crop has no title bar. Hidden from assistive
+           tech because the card's own accessible name already is it. -->
+      <span class="art-name" aria-hidden="true">{displayName(card)}</span>
+    {/if}
     {#if showFaceDownBadge}
       <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
            permanent they control, CR 702.143d for their own foretold
@@ -1178,6 +1195,27 @@
     --art-error-left: 3px;
     --art-error-right: auto;
     --art-error-z: 5;
+    /* #2209: how far the top-anchored marks sit below the tile's top
+       edge. 0 on a full card, the name strip's height on an art tile.
+       CounterPips reads it too, through inheritance. */
+    --face-top: 0px;
+  }
+  /* #2209: the art tile. It keeps the full card's slot — the same
+     --card-w × --card-h, 5:7 portrait — so no row, pile, fan or
+     attachment offset reflows when the setting changes; the landscape
+     crop is centred and cropped at the sides (object-fit: cover). The
+     strip's type scales with the card and is clamped so it stays
+     legible on an opponent's smallest compact row and does not shout
+     on a large one. */
+  .card.art-tile {
+    --art-name-size: clamp(9px, calc(var(--card-w, 80px) * 0.085), 13px);
+    --art-strip-h: calc(var(--art-name-size) + 7px);
+    --face-top: var(--art-strip-h);
+  }
+  /* The failed-art pip steps under the strip with everything else. A
+     tapped tile keeps its own 58% (below). */
+  .card.art-tile:not(.tapped) {
+    --art-error-top: calc(22px + var(--art-strip-h));
   }
   .card.tapped {
     /* A tapped tile turns 90° clockwise: its left edge becomes its top
@@ -1229,6 +1267,40 @@
     display: block;
     pointer-events: none;
   }
+  /* #2209: the name strip. Drawn over art, never over the page, so its
+     colours are fixed rather than themed: near-white type on a
+     near-opaque dark band reads over any art in every theme. Ellipsis,
+     never a wrap; the full name is the card's title and the hover zoom. */
+  .art-name {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    height: var(--art-strip-h);
+    /* BattlefieldRow sets the inset on a land pile, whose count badge
+       overhangs this corner. */
+    padding: 0 5px 0 var(--art-name-inset, 5px);
+    font-size: var(--art-name-size);
+    font-weight: 700;
+    line-height: var(--art-strip-h);
+    letter-spacing: 0.01em;
+    color: #f6f1e4;
+    background: linear-gradient(rgba(6, 9, 18, 0.92), rgba(6, 9, 18, 0.8));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  :global(:root[data-theme="high-contrast"]) .art-name {
+    color: #fff;
+    background: #000;
+    border-bottom-color: #fff;
+    text-shadow: none;
+  }
   .name-fallback {
     display: -webkit-box;
     -webkit-line-clamp: 4;
@@ -1259,7 +1331,7 @@
   }
   .badge {
     position: absolute;
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     left: 3px;
     background: rgba(10, 14, 26, 0.88);
     color: var(--gold);
@@ -1337,7 +1409,7 @@
     border-color: rgba(255, 210, 122, 0.5);
   }
   .badge.no-untap {
-    top: 24px;
+    top: calc(24px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1357,7 +1429,7 @@
        also somebody's commander reads cleanly. Cool blue rather than
        gold: like WON'T UNTAP, it is a state the card is IN, not a
        property printed on it. */
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1456,7 +1528,7 @@
     /* ADR 0108. Top-centre, one row under WON'T UNTAP: a fact about
        what happens when the creature dies, like a regeneration shield,
        in the ash-grey of exile rather than the shield's green. */
-    top: 38px;
+    top: calc(38px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1474,7 +1546,7 @@
     /* ADR 0109 §1. Top-centre, a row under the death mark: what a
        resolved effect has made this land for now, in a sea-blue that
        reads as a temporary overlay rather than a warning. */
-    top: 52px;
+    top: calc(52px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1492,7 +1564,7 @@
     /* Top-right, clear of the bottom-right damage / P-T stack: a
        shield is a fact about the NEXT destruction, not about the
        creature's current numbers. */
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     left: auto;
     right: 3px;
     color: #9fe8a8;
@@ -1550,7 +1622,7 @@
        strings like "{W}{U}{B}{R}{G}" stay legible at small sizes. */
     left: auto;
     right: 3px;
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     font-family: ui-monospace, Menlo, monospace;
     font-size: 9px;
     letter-spacing: 0;
@@ -1614,7 +1686,7 @@
   }
   .ring-marker {
     position: absolute;
-    top: 21px;
+    top: calc(21px + var(--face-top, 0px));
     left: 3px;
     z-index: 4;
     box-sizing: border-box;
@@ -1662,7 +1734,7 @@
   .ready-pips {
     --pip: max(16px, calc(var(--card-w, 80px) * 0.17));
     position: absolute;
-    top: max(38px, 30%);
+    top: calc(max(38px, 30%) + var(--face-top, 0px));
     left: 3px;
     z-index: 4;
     display: flex;

@@ -13,9 +13,11 @@ import (
 // Buried Alive, Unmarked Grave) moved the card with a raw MoveCard,
 // and so did surveil's graveyard leg — so "if a card would be put into
 // a graveyard from anywhere, exile it instead" (Rest in Peace, Leyline
-// of the Void) could not see either of them, and neither could
-// CR 903.9: a tutored or surveilled commander was never offered the
-// command zone. Mill has gone through the window since #529, the
+// of the Void) could not see either of them, and neither could the
+// CR 903.9 replacement of the time: a tutored or surveilled commander
+// was never offered the command zone. (Since ADR 0115 a commander put
+// into a graveyard lands there and CR 903.9a asks afterwards; a tutor
+// to hand is still CR 903.9b's replacement.) Mill has gone through the window since #529, the
 // battlefield exit since S17, a discard since #650.
 //
 // Both now take the shared batch body (routeAllThenLocked) — the
@@ -111,18 +113,19 @@ func TestSearchToGraveyardCancelledLegLeavesTheCardInTheLibrary(t *testing.T) {
 	}
 }
 
-// TestATutoredCommanderIsOfferedTheCommandZone is CR 903.9's "from
-// anywhere" reaching the last two movers that never asked. The search
-// cannot finish while the question is open — the found list is not a
-// list yet — so the shuffle and the Then wait for the answer.
+// TestATutoredCommanderIsOfferedTheCommandZone is CR 903.9b's "from
+// anywhere" reaching a mover that never asked: a commander tutored to
+// its owner's hand. The search cannot finish while the question is
+// open — the found list is not a list yet — so the shuffle and the
+// Then wait for the answer. (The graveyard cases were here too before
+// ADR 0115; see TestACommanderTutoredToTheGraveyardIsFoundThenOffered.)
 func TestATutoredCommanderIsOfferedTheCommandZone(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		dest        ZoneKind
 		commandZone bool
 	}{
-		{"to the graveyard, declined", ZoneGraveyard, false},
-		{"to the graveyard, taken", ZoneGraveyard, true},
+		{"to the hand, declined", ZoneHand, false},
 		{"to the hand, taken", ZoneHand, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -167,14 +170,43 @@ func TestATutoredCommanderIsOfferedTheCommandZone(t *testing.T) {
 	}
 }
 
+// TestACommanderTutoredToTheGraveyardIsFoundThenOffered — ADR 0115.
+// Entomb on a commander puts it into the graveyard like any other card:
+// the search finishes at once and finds it, and CR 903.9a then asks the
+// owner. Both answers; either way the card was found this way.
+func TestACommanderTutoredToTheGraveyardIsFoundThenOffered(t *testing.T) {
+	for _, commandZone := range []bool{false, true} {
+		g := newActiveGame(t)
+		me := g.Seats[0]
+		commander := seatCommander(t, me.Library, me)
+
+		found, ran := searchToGraveyard(t, g, me, "Atraxa", ZoneGraveyard)
+		if *ran != 1 {
+			t.Fatalf("the continuation ran %d times, want 1 — nothing waits on the owner", *ran)
+		}
+		if !idsEqual(*found, []uuid.UUID{commander}) {
+			t.Errorf("found = %v, want the commander %v", *found, commander)
+		}
+		assertOnlyIn(t, commander, me.Graveyard, me.Library, me.Command)
+		answerCommanderReturn(t, g, me, commander, commandZone)
+		want := me.Graveyard
+		if commandZone {
+			want = me.Command
+		}
+		if !want.Contains(commander) {
+			t.Errorf("answer %v: the commander is not in the %s", commandZone, want.Kind)
+		}
+	}
+}
+
 // TestUndoAcrossAPausedSearchLegReplays is the undo contract every
-// continuation in the engine signs: rewind into the open CR 903.9
-// prompt, answer again, and the same card is taken and the same list
+// continuation in the engine signs: rewind into the open "may"
+// prompt (a test one, may_detour_test.go), answer again, and the same card is taken and the same list
 // reported, because the found list is carried forward by value.
 func TestUndoAcrossAPausedSearchLegReplays(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	commander := seatCommander(t, me.Library, me)
+	commander := seatDetouredCard(t, g, me.Library, me)
 
 	found, ran := searchToGraveyard(t, g, me, "Atraxa", ZoneGraveyard)
 	promptOpen := g.Clone()
@@ -271,9 +303,9 @@ func TestSurveilGraveyardLegOpensTheReplacementWindow(t *testing.T) {
 	}
 }
 
-// TestSurveilledCommanderIsOfferedTheCommandZone — the leg pauses, and
-// the surveil is not finished until it is answered: EventSurveil and
-// the rest of the effect both wait.
+// TestSurveilledCommanderIsOfferedTheCommandZone — ADR 0115. A
+// surveilled commander is binned like any other card: the surveil
+// finishes at once and counts it, and CR 903.9a asks the owner after.
 func TestSurveilledCommanderIsOfferedTheCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -285,8 +317,45 @@ func TestSurveilledCommanderIsOfferedTheCommandZone(t *testing.T) {
 	if err := g.ResolveSurveil(c.ID, me.ID, []uuid.UUID{commander}, []uuid.UUID{kept}); err != nil {
 		t.Fatalf("ResolveSurveil: %v", err)
 	}
+	if ran != 1 {
+		t.Fatalf("the rest of the effect ran %d times, want 1", ran)
+	}
+	binned := false
+	for _, ev := range g.Events {
+		if ev.Kind == EventSurveil && ev.Amount == 1 {
+			binned = true
+		}
+	}
+	if !binned {
+		t.Error("EventSurveil does not count the commander that went to the graveyard")
+	}
+	assertOnlyIn(t, commander, me.Graveyard, me.Library, me.Command)
+	answerCommanderReturn(t, g, me, commander, true)
+	if !me.Command.Contains(commander) {
+		t.Error("the commander's owner said yes and it is not in the command zone")
+	}
+	if top, err := me.Library.Top(); err != nil || top.InstanceID != kept {
+		t.Error("the kept card is the top of the library")
+	}
+}
+
+// TestAPausedSurveilLegHoldsTheRestOfTheEffect — the leg pauses on a
+// "may" replacement (a test one, may_detour_test.go; a commander was the
+// vehicle before ADR 0115), and the surveil is not finished until it is
+// answered: EventSurveil and the rest of the effect both wait.
+func TestAPausedSurveilLegHoldsTheRestOfTheEffect(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	kept := libraryCard(me, "Kept")
+	commander := seatDetouredCard(t, g, me.Library, me)
+
+	ran := 0
+	c := openSurveil(t, g, me, 2, func(*Game) error { ran++; return nil })
+	if err := g.ResolveSurveil(c.ID, me.ID, []uuid.UUID{commander}, []uuid.UUID{kept}); err != nil {
+		t.Fatalf("ResolveSurveil: %v", err)
+	}
 	if ran != 0 {
-		t.Fatalf("the rest of the effect ran %d times with the CR 903.9 prompt open, want 0", ran)
+		t.Fatalf("the rest of the effect ran %d times with the prompt open, want 0", ran)
 	}
 	if hasAnyEvent(g, EventSurveil) {
 		t.Error("the surveil is not finished while a leg is still being asked about")
@@ -301,7 +370,7 @@ func TestSurveilledCommanderIsOfferedTheCommandZone(t *testing.T) {
 		t.Fatalf("the rest of the effect ran %d times after the answer, want 1", ran)
 	}
 	if !me.Command.Contains(commander) {
-		t.Error("the commander took CR 903.9's offer and is in the command zone")
+		t.Error("the card took the replacement's offer and is not in the command zone")
 	}
 	if top, err := me.Library.Top(); err != nil || top.InstanceID != kept {
 		t.Error("the kept card is the top of the library")

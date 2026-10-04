@@ -192,7 +192,7 @@ func TestASandboxMoveOntoTheBattlefieldPrunesTheSameWay(t *testing.T) {
 // as an exit does, and #1069 took only the card-set prune through the
 // new door. The two shapes below are the gap and its idempotency.
 
-// stalableGraveyardExit starts a CR 903.9-pausing exile of a commander
+// stalableGraveyardExit starts a "may"-pausing exile (mayDetourForTest) of a card
 // sitting in `owner`'s GRAVEYARD and returns the route's continuation
 // counter. OldZone is the graveyard rather than the battlefield, which
 // is what makes an arrival ON the battlefield able to strand it:
@@ -213,7 +213,7 @@ func stalableGraveyardExit(t *testing.T, g *Game, owner *Player, cardID uuid.UUI
 		t.Fatalf("routeCardToZoneLocked: %v", err)
 	}
 	if !paused {
-		t.Fatal("setup: the CR 903.9 prompt did not pause the exile out of the graveyard")
+		t.Fatal("setup: the may-replacement prompt did not pause the exile out of the graveyard")
 	}
 	if ran != 0 {
 		t.Fatalf("setup: a paused route is not terminal, but its continuation ran %d times", ran)
@@ -236,7 +236,7 @@ func TestAnArrivalPrunesAStaleMoveOutOfTheGraveyard(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	g.WithWriteLock(func() { owner.Graveyard.Cards = nil })
-	cmdID := seatCommander(t, owner.Graveyard, owner)
+	cmdID := seatDetouredCard(t, g, owner.Graveyard, owner)
 
 	ran := stalableGraveyardExit(t, g, owner, cmdID)
 	prompt := expectCommanderPrompt(t, g, owner)
@@ -279,7 +279,7 @@ func TestTheArrivalFunnelIsIdempotent(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	g.WithWriteLock(func() { owner.Graveyard.Cards = nil })
-	cmdID := seatCommander(t, owner.Graveyard, owner)
+	cmdID := seatDetouredCard(t, g, owner.Graveyard, owner)
 
 	ran := stalableGraveyardExit(t, g, owner, cmdID)
 	expectCommanderPrompt(t, g, owner)

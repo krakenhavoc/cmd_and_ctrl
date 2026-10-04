@@ -208,9 +208,10 @@ func TestACostDiscardNeverPrompts(t *testing.T) {
 	assertOnlyIn(t, card, p.Graveyard, p.Hand, g.Exile)
 }
 
-// TestADiscardedCommanderStillGetsTheCR9039Offer — the built-in has to
-// keep working through the new event kind, because "from anywhere"
-// includes a hand and a discard is how a card leaves one.
+// TestADiscardedCommanderStillGetsTheCR9039Offer — a discarded
+// commander is still offered the command zone. Since ADR 0115 the offer
+// is CR 903.9a's, after the discard has put it into the graveyard
+// through the new event kind, rather than the replacement's.
 func TestADiscardedCommanderStillGetsTheCR9039Offer(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[1]
@@ -219,15 +220,11 @@ func TestADiscardedCommanderStillGetsTheCR9039Offer(t *testing.T) {
 
 	discardOne(t, g, p, cmdID, DiscardCauseEffect)
 
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("pending choices = %d, want the CR 903.9 prompt", len(g.PendingChoices))
-	}
-	if got := commanderPromptCard(t, g.PendingChoices[0]); got != cmdID {
-		t.Errorf("the prompt is about %s, want the commander %s", got, cmdID)
-	}
-	answerOnlyCommanderPrompt(t, g, p.ID, true)
+	assertOnlyIn(t, cmdID, p.Graveyard, p.Hand, p.Command)
+	assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneGraveyard)
+	answerCommanderReturn(t, g, p, cmdID, true)
 	assertOnlyIn(t, cmdID, p.Command, p.Hand, p.Graveyard)
-	assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneCommand)
+	assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneGraveyard)
 }
 
 // TestUndoAcrossAnOptionalDiscardReplacementReplaysTheSameWay — the

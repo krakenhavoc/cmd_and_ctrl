@@ -31,18 +31,37 @@ import (
 // as destroyed or discarded and no EventDiscardCard is emitted for it —
 // CR 701.9a defines a discard as the move out of the hand, and there
 // was none.
+//
+// The pausing leg was a commander on the CR 903.9 replacement until
+// ADR 0115. A commander headed for a graveyard or exile no longer
+// pauses, so the "commanders" below are plain cards carrying a test
+// "may" replacement (may_detour_test.go) that pauses the same way.
 
-// wipeCommanderOf puts a commander on the battlefield under `owner`.
+// wipeCommanderOf puts a card on the battlefield under `owner` whose
+// exit pauses on a "may" prompt to its owner (mayDetourForTest).
 func wipeCommanderOf(t *testing.T, g *Game, owner *Player) uuid.UUID {
 	t.Helper()
-	return seatCommander(t, g.Battlefield, owner)
+	return seatDetouredCard(t, g, g.Battlefield, owner)
+}
+
+// emptyHandWithDetouredCards clears p's hand and deals it n cards whose
+// discard pauses on a "may" prompt (mayDetourForTest), returning their
+// IDs in hand order.
+func emptyHandWithDetouredCards(t *testing.T, g *Game, p *Player, n int) []uuid.UUID {
+	t.Helper()
+	g.WithWriteLock(func() { p.Hand.Cards = nil })
+	ids := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		ids = append(ids, seatDetouredCard(t, g, p.Hand, p))
+	}
+	return ids
 }
 
 // --- (a) DROPPED: the chooser concedes ------------------------------
 
 // TestADroppedDiscardPromptStillRunsTheRestOfTheBatch is the discard
-// half of the issue. Two commanders are pitched to one Mind Rot; their
-// owner concedes with the first card's CR 903.9 prompt open. The
+// half of the issue. Two paused cards are pitched to one Mind Rot; their
+// owner concedes with the first card's prompt open. The
 // second card is still owed, and so is the prompt's own "then".
 //
 // The second leg does not ask a question of its own: its chooser is the
@@ -52,7 +71,7 @@ func wipeCommanderOf(t *testing.T, g *Game, owner *Player) uuid.UUID {
 func TestADroppedDiscardPromptStillRunsTheRestOfTheBatch(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	p := g.Seats[1]
-	ids := emptyHandWithCommanders(t, g, p, 2)
+	ids := emptyHandWithDetouredCards(t, g, p, 2)
 	first, second := ids[0], ids[1]
 	w := watchDiscards(g)
 

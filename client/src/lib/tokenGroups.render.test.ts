@@ -414,27 +414,49 @@ describe("a token group in the player's panel (#1724)", () => {
     expect(get(abilityPopover)).toBeNull();
   });
 
-  // A token with a usable ability opens its popover, at the group's
-  // drawn card, on the member the player chose: the group draws that
-  // member while its popover is open, and its rows act on it.
-  it("'Use this one' on a token with a usable ability opens its popover at the group's card", () => {
-    const clue = (id: string): CardView => ({
-      instance_id: id,
-      name: "Clue",
-      owner: "me",
-      controller: "me",
-      type_line: "Token Artifact — Clue",
-      battle_x: Number(id.slice(1)),
-      activated_abilities: [
-        {
-          index: 0,
-          ref: "own:0",
-          label: "{2}, Sacrifice this artifact: Draw a card.",
-          mana_cost: "{2}",
-        },
-      ],
-    });
+  // ADR 0117 as amended by #2201: a token with exactly one usable
+  // ability activates it on the member the player chose, as its board
+  // click would, and opens no popover.
+  const clueSac = {
+    index: 0,
+    ref: "own:0",
+    label: "{2}, Sacrifice this artifact: Draw a card.",
+    mana_cost: "{2}",
+  };
+  const clue = (id: string, extra: Partial<CardView> = {}): CardView => ({
+    instance_id: id,
+    name: "Clue",
+    owner: "me",
+    controller: "me",
+    type_line: "Token Artifact — Clue",
+    battle_x: Number(id.slice(1)),
+    activated_abilities: [clueSac],
+    ...extra,
+  });
+
+  it("'Use this one' on a token with one usable ability activates it on that member", () => {
     const cards = [clue("c1"), clue("c2"), clue("c3")];
+    const p = mountPanel(cards, "idle", snap(cards, "main"));
+    click(p.groupCard());
+    click(rowButtons()[1]);
+    click(button(/^Use this one$/));
+    expect(p.activated).toEqual([["c2", 0]]);
+    expect(get(abilityPopover)).toBeNull();
+    expect(p.tapped).toEqual([]);
+  });
+
+  // A token with two usable abilities opens its popover, at the
+  // group's drawn card, on the member the player chose: the group
+  // draws that member while its popover is open, and its rows act on
+  // it.
+  it("'Use this one' on a token with two usable abilities opens its popover at the group's card", () => {
+    const twoRows = {
+      activated_abilities: [
+        clueSac,
+        { index: 1, ref: "own:1", label: "{1}: Scry 1.", mana_cost: "{1}" },
+      ],
+    };
+    const cards = [clue("c1", twoRows), clue("c2", twoRows), clue("c3", twoRows)];
     const p = mountPanel(cards, "idle", snap(cards, "main"));
     click(p.groupCard());
     click(rowButtons()[1]);
@@ -448,7 +470,7 @@ describe("a token group in the player's panel (#1724)", () => {
         .groupCard()
         .querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item:not([data-raw-tap])"),
     ];
-    expect(rows).toHaveLength(1);
+    expect(rows).toHaveLength(2);
     rows[0].click();
     flushSync();
     expect(p.activated).toEqual([["c2", 0]]);

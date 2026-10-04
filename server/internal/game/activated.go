@@ -1486,7 +1486,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.refusePausedCostCardsLocked(moving, tapping, spending); err != nil {
 		return err
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
+	// ADR 0115: only the cards this payment puts into a hand or a
+	// library are asked first (CR 903.9b): the returns and the card put
+	// on top. A sacrificed, discarded or exiled commander is paid like
+	// any other card and offered the command zone afterwards by the
+	// CR 903.9a state-based action.
+	asking := append(append([]uuid.UUID(nil), params.ReturnIDs...), tops...)
+	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
 			again.commanderAnswers = answers

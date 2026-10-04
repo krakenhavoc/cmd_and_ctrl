@@ -191,10 +191,11 @@ func TestHandAbilityIsTheOwnersAlone(t *testing.T) {
 }
 
 // CR 601.2h / 602.2b: a cost is one indivisible step, so the cost
-// discard sets MustSettleNow and cannot pause. Since #1397 the CR 903.9
-// question is asked BEFORE the cycling is paid for, so a declined
-// commander goes to the graveyard and no prompt is left behind once the
-// ability is on the stack. ADR 0062 Decision 3, ADR 0013 §5af.
+// discard sets MustSettleNow and cannot pause. #1397 asked the CR 903.9
+// question BEFORE the cycling was paid for. Since ADR 0115 the cycled
+// commander is discarded like any other card, the ability goes on the
+// stack, and CR 903.9a asks afterwards; a declined commander stays in
+// the graveyard. ADR 0062 Decision 3, ADR 0013 §5af.
 func TestCyclingACommanderFromHandGoesToTheGraveyardWhenDeclined(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
@@ -213,12 +214,12 @@ func TestCyclingACommanderFromHandGoesToTheGraveyardWhenDeclined(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, cmdr, 0, ActivateAbilityParams{}); err != nil {
 		t.Fatalf("cycle the commander: %v", err)
 	}
-	prompt := expectCommanderPrompt(t, g, me)
-	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
-		t.Fatalf("decline: %v", err)
+	if len(g.StackMeta) != 1 || !me.Graveyard.Contains(cmdr) {
+		t.Fatal("cycling was not paid at once")
 	}
+	answerCommanderReturn(t, g, me, cmdr, false)
 	if len(g.PendingChoices) != 0 {
-		t.Errorf("a cost discard queued %d prompt(s) after the answer; CR 601.2h pays costs without asking", len(g.PendingChoices))
+		t.Errorf("%d prompt(s) left after the answer", len(g.PendingChoices))
 	}
 	if !me.Graveyard.Contains(cmdr) {
 		t.Error("the cycled commander is not in the graveyard")

@@ -913,6 +913,10 @@ func TestB19LiesaReturnsYoursAndExilesTheirs(t *testing.T) {
 // "An opponent's dying commander still goes to the command zone" was
 // never true once the two replacements were both registered normally
 // and met in the CR 616 apply loop.
+//
+// ADR 0115: there is no CR 616 ordering any more. Liesa's replacement is
+// the only one that applies, the commander is exiled, and the CR 903.9a
+// state-based action then asks its owner.
 func TestB19LiesaExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)
@@ -924,37 +928,26 @@ func TestB19LiesaExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *testing.
 			Power: 3, Toughness: 3, Owner: opp.ID, Controller: opp.ID, IsCommander: true,
 		})
 
-		asked := false
 		g.WithWriteLock(func() {
 			if err := g.DestroyPermanentForEffect(commander); err != nil {
 				t.Fatalf("DestroyPermanentForEffect: %v", err)
 			}
 		})
-		for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
-			c := g.PendingChoices[len(g.PendingChoices)-1]
-			if c.Chooser != opp.ID {
-				t.Fatalf("prompt %s addressed to %s, want the commander's owner %s", c.Kind, c.Chooser, opp.ID)
+		for _, c := range g.PendingChoices {
+			if c != nil && (c.Kind == game.PendingChoiceReplacementOrder || c.Kind == game.PendingChoiceOptionalReplacement) {
+				t.Fatalf("unexpected %s prompt: only Liesa's replacement applies to a dying commander", c.Kind)
 			}
-			switch c.Kind {
-			case game.PendingChoiceReplacementOrder:
-				if err := g.ResolveReplacementOrder(c.ID, opp.ID, c.ReplacementEffectIDs); err != nil {
-					t.Fatalf("ResolveReplacementOrder: %v", err)
-				}
-			case game.PendingChoiceOptionalReplacement:
-				asked = true
-				if err := g.ResolveOptionalReplacement(c.ID, opp.ID, takeCommandZone); err != nil {
-					t.Fatalf("ResolveOptionalReplacement: %v", err)
-				}
-			default:
-				t.Fatalf("unexpected prompt %s", c.Kind)
-			}
-		}
-		if !asked {
-			t.Fatal("the commander's owner was never offered the command zone")
 		}
 		if opp.Graveyard.Contains(commander) {
 			t.Fatal("the commander hit the graveyard under Liesa")
 		}
+		if !exileHas(g, commander) {
+			t.Fatal("Liesa did not exile the dying commander")
+		}
+		if commanderReturnPromptFor(g, opp.ID) == nil {
+			t.Fatal("the commander's owner was never offered the command zone")
+		}
+		answerCommanderReturn(t, g, opp.ID, takeCommandZone)
 		if takeCommandZone {
 			if !opp.Command.Contains(commander) {
 				t.Fatal("the owner took the command zone but the commander is not there")

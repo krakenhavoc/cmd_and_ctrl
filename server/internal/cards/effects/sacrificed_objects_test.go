@@ -372,8 +372,9 @@ func TestFlingReadsASacrificedToken(t *testing.T) {
 	}
 }
 
-// A sacrificed commander is read, whichever zone its owner sends it to
-// (CR 903.9): here the command zone.
+// A sacrificed commander is read, whichever zone its owner then sends
+// it to: it is sacrificed into the graveyard as the cost is paid, and
+// CR 903.9a (ADR 0115) offers the command zone afterwards; here, yes.
 func TestFlingReadsASacrificedCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -383,7 +384,10 @@ func TestFlingReadsASacrificedCommander(t *testing.T) {
 		game.CastSpellParams{Targets: soPlayer(opp.ID), SacrificeIDs: []uuid.UUID{cmd}}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	answerCostCommander(t, g, me.ID, true)
+	if !me.Graveyard.Contains(cmd) {
+		t.Fatal("the sacrificed commander is not in its owner's graveyard")
+	}
+	answerCommanderReturn(t, g, me.ID, true)
 	if !me.Command.Contains(cmd) {
 		t.Fatal("the commander did not go to the command zone")
 	}

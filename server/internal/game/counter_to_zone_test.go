@@ -32,14 +32,10 @@ func TestCounterTargetToZoneForEffectHonoursDestination(t *testing.T) {
 	g.mu.Lock()
 	err := g.CounterTargetToZoneForEffect(id, ZoneRef{Kind: ZoneExile})
 	g.mu.Unlock()
-	// The commander is still asked CR 903.9 before landing in exile —
-	// answer it so the assertion below can read a settled zone.
+	// Since ADR 0115 the commander lands in exile at once; CR 903.9a
+	// asks about it afterwards, which this test does not need.
 	if err != nil {
 		t.Fatalf("CounterTargetToZoneForEffect: %v", err)
-	}
-	prompt := expectCommanderPrompt(t, g, caster)
-	if err := g.ResolveOptionalReplacement(prompt.ID, caster.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
 	if !g.Exile.Contains(id) {
 		t.Error("CounterTargetToZoneForEffect should have exiled the spell")

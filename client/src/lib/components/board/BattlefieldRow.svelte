@@ -290,7 +290,7 @@
                 {@const aPips = readyPips(legal, a, "battlefield")}
                 <div class="attachment">
                   <Card
-                    artOnly={$settings.display.artOnlyCards}
+                    artOnly={$settings.display.battlefieldArt}
                     card={a}
                     ready={ringFor(a, aPips)}
                     pips={aPips}
@@ -320,7 +320,7 @@
               {/each}
               <div class="host">
                 <Card
-                  artOnly={$settings.display.artOnlyCards}
+                  artOnly={$settings.display.battlefieldArt}
                   card={c}
                   ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}
                   combatTarget={cTarget}
@@ -570,6 +570,11 @@
     background: var(--surface, #0b0a09);
     border: 1px solid rgba(217, 180, 92, 0.6);
     pointer-events: none;
+  }
+  /* #2209: the count badge overhangs the top-left corner, where an art
+     tile's name strip starts, so the strip's text starts clear of it. */
+  .row.strip .pile.multi {
+    --art-name-inset: 15px;
   }
   .pile-count {
     position: absolute;
