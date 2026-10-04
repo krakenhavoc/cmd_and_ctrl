@@ -61,15 +61,15 @@ export const DICE_TUMBLE_STEPS = 10;
 
 export type CoinFace = "heads" | "tails";
 
-/** Where a roll came from. `table` arrives with ADR 0121 PR 6. */
+/** Where a roll came from: a card's effect, the opening roll (ADR 0121 PR 5), or the table. */
 export type DiceSource = "card" | "opening" | "table";
 
 /** One animation's worth of randomness: one log entry, already drawn. */
 export interface DiceRoll {
   /**
-   * Identity across frames. A card roll is its log `seq`; a table roll
-   * (PR 6) will be its `roll_id`, so a line re-emitted after an undo is
-   * not animated twice.
+   * Identity across frames. A card roll is `seq:<seq>`; a table roll is
+   * `table:<roll_id>`, so the line an undo writes again under a new
+   * `seq` (ADR 0121 §5) is the same roll and is not animated twice.
    */
   key: string;
   /** The log entry this came from, for the strip cue and the announcer. */
@@ -118,6 +118,12 @@ export interface DiceState {
   released: Map<number, number>;
   /** seqs primed rather than played: released, but never announced. */
   primed: Set<number>;
+  /**
+   * key → the seq it was last seen at. A table roll's line can move to
+   * a new seq (an undo writes it again, ADR 0121 §5); what is known
+   * about the old seq follows it.
+   */
+  seqOf: Map<string, number>;
 }
 
 export interface DiceOptions {
@@ -128,7 +134,7 @@ export interface DiceOptions {
 }
 
 export function emptyDiceState(): DiceState {
-  return { seen: new Set(), plays: [], released: new Map(), primed: new Set() };
+  return { seen: new Set(), plays: [], released: new Map(), primed: new Set(), seqOf: new Map() };
 }
 
 /** Whether a die or coin animation should move, from the animation settings. */
@@ -142,13 +148,14 @@ function coinFace(s: string | undefined): CoinFace | null {
 
 /**
  * rollFromLog is the animation a log entry asks for, or null: a card's
- * `roll` or `flip`, or an opening d20 (a `roll` with no card before the
- * first turn, ADR 0121 PR 5), which is drawn here too and marked
- * `opening` so the strip raises no cue for it. An entry with no result
- * to show (an older server, a redacted line) is null: there is nothing
- * to land on.
+ * `roll` or `flip`, a `table_roll` (ADR 0121 §5), or an opening d20
+ * (a `roll` with no card before the first turn, ADR 0121 PR 5), which
+ * is drawn here too and marked `opening` so the strip raises no cue
+ * for it. An entry with no result to show (an older server, a
+ * redacted line) is null: there is nothing to land on.
  */
 export function rollFromLog(log: LogEvent): DiceRoll | null {
+  if (log.kind === "table_roll") return tableRollFromLog(log);
   const base = {
     key: `seq:${log.seq}`,
     seq: log.seq,
@@ -168,6 +175,28 @@ export function rollFromLog(log: LogEvent): DiceRoll | null {
     const call = coinFace(log.call) ?? undefined;
     return { ...base, kind: "coin", sides: 2, results: [], faces, ...(call ? { call } : {}) };
   }
+  return null;
+}
+
+/**
+ * A `table_roll` entry (ADR 0121 §5): one d6 or d20, or one coin, keyed
+ * on its `roll_id` rather than its `seq`, because an undo of an earlier
+ * action writes the line again under a new `seq`.
+ */
+function tableRollFromLog(log: LogEvent): DiceRoll | null {
+  if (!log.roll_id) return null;
+  const base = {
+    key: `table:${log.roll_id}`,
+    seq: log.seq,
+    seat: log.seat,
+    text: log.text,
+    source: "table" as const,
+  };
+  const results = (log.results ?? []).filter((n) => Number.isInteger(n));
+  const sides = log.sides ?? 0;
+  if (results.length > 0 && sides >= 1) return { ...base, kind: "die", sides, results, faces: [] };
+  const faces = (log.faces ?? []).map(coinFace).filter((f): f is CoinFace => f !== null);
+  if (faces.length > 0) return { ...base, kind: "coin", sides: 2, results: [], faces };
   return null;
 }
 
@@ -215,6 +244,7 @@ export function primeDice(rolls: readonly DiceRoll[]): DiceState {
     s.seen.add(r.key);
     s.released.set(r.seq, 0);
     s.primed.add(r.seq);
+    s.seqOf.set(r.key, r.seq);
   }
   return s;
 }
@@ -235,11 +265,29 @@ export function trackDice(
   // the same seq, ADR 0054 Decision 4) animate again.
   const keys = new Set(rolls.map((r) => r.key));
   const seqs = new Set(rolls.map((r) => r.seq));
+  // A table roll whose line an undo wrote again (ADR 0121 §5) is the
+  // same key at a new seq: its release, its priming and its play follow
+  // it there, so it is neither animated nor announced a second time.
+  const byKey = new Map(rolls.map((r) => [r.key, r] as const));
+  const moved = new Map<number, number>();
+  for (const r of rolls) {
+    const was = prev.seqOf.get(r.key);
+    if (was !== undefined && was !== r.seq) moved.set(was, r.seq);
+  }
+  const at = (seq: number): number => moved.get(seq) ?? seq;
   const seen = new Set([...prev.seen].filter((k) => keys.has(k)));
-  const released = new Map([...prev.released].filter(([seq]) => seqs.has(seq)));
-  const primed = new Set([...prev.primed].filter((seq) => seqs.has(seq)));
+  const released = new Map(
+    [...prev.released].map(([seq, t]) => [at(seq), t] as const).filter(([seq]) => seqs.has(seq)),
+  );
+  const primed = new Set([...prev.primed].map(at).filter((seq) => seqs.has(seq)));
+  const seqOf = new Map(rolls.map((r) => [r.key, r.seq] as const));
   // A play whose entry was rewound stops; one that has finished goes.
-  const live = prev.plays.filter((p) => keys.has(p.roll.key) && p.endAt > now);
+  const live = prev.plays
+    .filter((p) => keys.has(p.roll.key) && p.endAt > now)
+    .map((p) => {
+      const r = byKey.get(p.roll.key);
+      return r && r.seq !== p.roll.seq ? { ...p, roll: r } : p;
+    });
 
   const fresh: DiceRoll[] = [];
   for (const r of rolls) {
@@ -247,7 +295,7 @@ export function trackDice(
     seen.add(r.key);
     fresh.push(r);
   }
-  if (fresh.length === 0) return { seen, plays: live, released, primed };
+  if (fresh.length === 0) return { seen, plays: live, released, primed, seqOf };
 
   const bySeat = new Map<number, DiceRoll[]>();
   for (const r of fresh) bySeat.set(r.seat, [...(bySeat.get(r.seat) ?? []), r]);
@@ -281,7 +329,7 @@ export function trackDice(
     }
     plays = [...others, ...(showing ? [showing] : []), ...scheduled];
   }
-  return { seen, plays, released, primed };
+  return { seen, plays, released, primed, seqOf };
 }
 
 /** The plays on screen at `now`: started and not yet gone. */

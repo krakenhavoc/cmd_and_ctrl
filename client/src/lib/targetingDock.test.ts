@@ -166,5 +166,43 @@ describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
     expect(h.onCancel).toHaveBeenCalledTimes(1);
     // Cast anyway is a click only: no key reaches the override.
     expect(h.onCastAnyway).not.toHaveBeenCalled();
+    expect(r.secondary?.find((a) => a.label === "Cast anyway")?.title).toBe(
+      "cast it without paying its mana cost; the game log says so",
+    );
+  });
+
+  // ADR 0118 §1 (amends ADR 0111 PR 4): a clicked cast is auto-tapped
+  // under strict, so its refusal means the planner found no plan, and
+  // the preview would find none either.
+  it("drops Auto-tap & cast after a refused cast that was already auto-tapped", () => {
+    const h = { onAutoTap: vi.fn(), onCastAnyway: vi.fn(), onCancel: vi.fn() };
+    const r = insufficientManaRequest(["{4}"], "Craw Wurm", h, { autoTapped: true });
+    expect(r.label).toBe("insufficient mana");
+    expect(r.question).toBe("Insufficient mana for Craw Wurm");
+    expect(r.detail).toBe("missing {4}");
+    expect(r.primary?.label).toBe("Cancel");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Cast anyway"]);
+    expect([r.primary, ...(r.secondary ?? [])].some((a) => a?.label === "Auto-tap & cast")).toBe(
+      false,
+    );
+
+    // Escape cancels; Enter reaches nothing, and Cast anyway has no key.
+    expect(dockKeyAction(r, "Enter")).toBeNull();
+    dockKeyAction(r, "Escape")!.onPress();
+    expect(h.onCancel).toHaveBeenCalledTimes(1);
+    expect(r.secondary?.[0].keyShortcuts).toBeUndefined();
+    expect(r.secondary?.[0].title).toBe(
+      "cast it without paying its mana cost; the game log says so",
+    );
+    r.secondary![0].onPress();
+    expect(h.onCastAnyway).toHaveBeenCalledTimes(1);
+    expect(h.onAutoTap).not.toHaveBeenCalled();
+  });
+
+  it("keeps all three buttons when the refused cast was not auto-tapped", () => {
+    const h = { onAutoTap: vi.fn(), onCastAnyway: vi.fn(), onCancel: vi.fn() };
+    const r = insufficientManaRequest(["{G}"], "Llanowar Elves", h, { autoTapped: false });
+    expect(r.primary?.label).toBe("Auto-tap & cast");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Cancel", "Cast anyway"]);
   });
 });

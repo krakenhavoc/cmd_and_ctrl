@@ -93,6 +93,10 @@ type Hub struct {
 	// default (same-origin only). Protected by originsMu.
 	originsMu      sync.RWMutex
 	allowedOrigins map[string]struct{}
+
+	// clock is what the legal_moves_request limit reads the time from
+	// (ADR 0122 §6.1). Nil is time.Now; a test sets it before serving.
+	clock func() time.Time
 }
 
 // Binding is what the upgrade authorizer hands to the hub: the
@@ -728,6 +732,10 @@ type Client struct {
 	// hub makes no other decision on them.
 	userID   uuid.UUID
 	issuedAt time.Time
+
+	// legalMoves rate-limits legal_moves_request frames (ADR 0122
+	// §6.1, legal_moves.go). Read goroutine only.
+	legalMoves legalMovesLimiter
 }
 
 // binding reconstructs the Binding this connection was upgraded with,
@@ -791,6 +799,8 @@ func (c *Client) handleFrame(raw []byte) {
 		c.handleAction(frame)
 	case protocol.KindChat:
 		c.handleChat(frame)
+	case protocol.KindLegalMovesRequest:
+		c.handleLegalMovesRequest(frame)
 	default:
 		c.sendError(frame.ID, protocol.CodeBadRequest,
 			"unknown or unsupported kind")
@@ -951,7 +961,10 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			}
 			return
 		}
-		c.hub.broadcastToRoom(room.Game.ID, seq, room.Generation(), view)
+		generation := room.Generation()
+		c.hub.broadcastToRoom(room.Game.ID, seq, generation, view)
+		// ADR 0122 §6.4: after the snapshot, to this connection only.
+		c.sendAck(frame.ID, seq, generation)
 		c.log.Debug("undo applied", "seq", seq, "caller", c.playerID)
 		return
 	}
@@ -996,7 +1009,10 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendError(frame.ID, code, msg)
 			return
 		}
-		c.hub.broadcastToRoom(room.Game.ID, seq, room.Generation(), view)
+		generation := room.Generation()
+		c.hub.broadcastToRoom(room.Game.ID, seq, generation, view)
+		// ADR 0122 §6.4: after the snapshot, to this connection only.
+		c.sendAck(frame.ID, seq, generation)
 		c.log.Debug("table settings changed", "type", payload.Type, "seq", seq)
 		return
 	}
@@ -1010,8 +1026,22 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return
 	}
 
-	// ADR 0121 §3: the opening roll's verbs, and anything sent while
-	// the roll is open, mint no undo entry.
+	// ADR 0121 §5: one table roll per seat per 2 s, so a held-down
+	// button cannot push the game's history out of the log. The seat is
+	// the one rolling (the admin may roll for any seat, and is limited
+	// as that seat). A roll the game then refuses gives its slot back.
+	releaseTableRoll := func() {}
+	if action.Type == actions.TypeRollTableDie && action.Player != uuid.Nil {
+		release, ok := room.tableRolls.reserve(action.Player)
+		if !ok {
+			c.sendError(frame.ID, protocol.CodeBadRequest, tableRollTooSoon)
+			return
+		}
+		releaseTableRoll = release
+	}
+
+	// ADR 0121 §3: the opening roll's verbs, a table roll, and anything
+	// sent while the roll is open, mint no undo entry.
 	apply := func(fn func() error) (protocol.GameView, uint64, error) {
 		return room.Apply(c.playerID, fn)
 	}
@@ -1024,6 +1054,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return actions.Dispatch(room.Game, action)
 	})
 	if err != nil {
+		releaseTableRoll()
 		// S15: the structured insufficient_mana error carries the
 		// missing-symbols slice so the client's "Override strict
 		// mode for this cast" toast knows what's short. Surface it
@@ -1079,7 +1110,10 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		c.sendError(frame.ID, code, msg)
 		return
 	}
-	c.hub.broadcastToRoom(room.Game.ID, seq, room.Generation(), view)
+	generation := room.Generation()
+	c.hub.broadcastToRoom(room.Game.ID, seq, generation, view)
+	// ADR 0122 §6.4: after the snapshot, to this connection only.
+	c.sendAck(frame.ID, seq, generation)
 	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
 }
 

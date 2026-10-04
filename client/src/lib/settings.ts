@@ -161,16 +161,15 @@ export interface Settings {
     // (they don't grant priority) and are absent from this map.
     // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
-    // S15: opt-in mana-cost enforcement. When true, the client
-    // tags every cast_spell action with `strict: true` (and, since
-    // #1296, every catalog activate_ability with `strict: true,
-    // auto_tap: true` — manaEnforcement.ts) and the
-    // server gates the cast on the caster's ManaPool actually
-    // covering the printed cost (plus commander tax for casts
-    // from the command zone). Default false (sandbox / paper
-    // tracking). When the gate rejects, the client surfaces an
-    // "Override strict mode for this cast" toast that re-fires
-    // the action with `force_cast: true`.
+    // S15: mana-cost enforcement. When true, the client tags every
+    // cast_spell action with `strict: true, auto_tap: true` (ADR
+    // 0118 §1; and, since #1296, every catalog activate_ability the
+    // same way — manaEnforcement.ts) and the server taps what the
+    // pool is missing and gates the cast on the payment (plus
+    // commander tax for casts from the command zone). Default true
+    // since ADR 0118 (settings v19); false is the sandbox / paper
+    // tracking posture. A card the board can't pay for still offers
+    // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
     // S13.6: when a stopped step lands on the viewer but the
     // legality engine reports no legal response (no castable hand
@@ -297,7 +296,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 18;
+export const SETTINGS_VERSION = 19;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -398,10 +397,10 @@ export function defaultSettings(): Settings {
       // default — stops are the affordance for "stop here".
       autoPassPriority: true,
       stepStops: defaultStepStops(),
-      // S15 default: off. Sandbox / paper-tracking is the
-      // existing posture; players who want Arena-style "can't
-      // cast yet" enforcement opt in via Settings.
-      strictMana: false,
+      // ADR 0118 §1 default: on. A spell costs what it says, and a
+      // click taps the lands for it. Off (the S15 default) is the
+      // sandbox / paper-tracking posture, still a supported choice.
+      strictMana: true,
       // S13.6 default: on. The step-stops grid is the intent
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
@@ -851,6 +850,22 @@ function migrate(raw: unknown): Settings {
   // opponent's spell stays up for about 2 s before auto-pass lets it
   // resolve. Nothing is stored to rescue. The value is clamped where
   // it is read (stackHold.ts), as the bluff bounds are.
+  //
+  // v18 → v19 (ADR 0118 §1, #2188): strict payment becomes the
+  // default, and everyone is moved to it ONCE (owner decision 5). A
+  // stored `false` is the old default materialised, so it cannot be
+  // told from a choice; the v14 → v15 block met the same problem and
+  // wrote the new value for everyone. An account copy goes through
+  // this same migrate with the version that wrote it (applySyncedCopy),
+  // so a synced `false` from a v18 client moves too. From v19 on, the
+  // stored choice is honoured: a player who turns it off stays off.
+  // (The ADR planned this as v16; v16–v18 went to #2209 and ADR 0119
+  // first, so it is v19.)
+  if (storedVersion < 19) {
+    merged.gameplay.strictMana = true;
+  } else if (typeof merged.gameplay.strictMana !== "boolean") {
+    merged.gameplay.strictMana = d.gameplay.strictMana;
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),

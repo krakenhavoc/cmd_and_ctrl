@@ -51,7 +51,7 @@
   import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
-  import type { GameMenuOptions } from "../lib/gameMenu";
+  import { TABLE_ROLL_COOLDOWN_MS, type GameMenuOptions, type TableDie } from "../lib/gameMenu";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
@@ -80,6 +80,7 @@
     owesAttackRequirement,
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
+  import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
     attackAllParams,
     attackLimitOn,
@@ -486,6 +487,8 @@
       alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
+      // ADR 0118 owner decision 8: stop if the engine may be wrong.
+      engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,
       oppEndWindow: kw.oppEnd,
       // #1307: a bluff needs the setting AND the in-game switch.
@@ -624,7 +627,14 @@
   // proceed without touching the pool). Cleared when the next
   // snapshot or non-mana error arrives. lastError is already
   // destructured at the top of this script from the GameClient.
-  let manaOverride = $state<{ cardID: string; missing: string[] } | null>(null);
+  //
+  // ADR 0118 §1: `autoTapped` is read from the refused payload, not
+  // from the setting. A cast that already had auto_tap (every clicked
+  // cast under strict) found no plan, so the request drops "Auto-tap &
+  // cast" and Cancel becomes its primary.
+  let manaOverride = $state<{ cardID: string; missing: string[]; autoTapped: boolean } | null>(
+    null,
+  );
   $effect(() => {
     const err = $lastError;
     if (!err) {
@@ -635,7 +645,11 @@
       manaOverride = null;
       return;
     }
-    manaOverride = { cardID: err.cardID, missing: err.missing ?? [] };
+    manaOverride = {
+      cardID: err.cardID,
+      missing: err.missing ?? [],
+      autoTapped: lastCastByCardID.get(err.cardID)?.auto_tap === true,
+    };
   });
   // ADR 0093 Decision 5: a stale ability ref. The row the player
   // clicked moved because a granted ability appeared or vanished since
@@ -901,6 +915,26 @@
   // S31 sub-PR 0: the public game log drawer. Local to the tab —
   // whether you have the log open is not table state.
   let showGameLog = $state(false);
+  // ADR 0121 §5: the ⋯ menu's "Roll a d6", "Roll a d20" and "Flip a
+  // coin". Not a game action, so it is sent straight to the client: it
+  // ends no bluff and no stack hold. The items wait 2 s after the
+  // viewer's own roll, as the server does; the die tumbles at this seat
+  // when the frame with its result arrives (DiceLayer).
+  let tableRollCooling = $state(false);
+  let tableRollTimer: ReturnType<typeof setTimeout> | null = null;
+  function rollAtTable(die: TableDie): void {
+    if (!viewerID || tableRollCooling) return;
+    client.sendAction("roll_table_die", viewerID, { die });
+    tableRollCooling = true;
+    if (tableRollTimer !== null) clearTimeout(tableRollTimer);
+    tableRollTimer = setTimeout(() => {
+      tableRollTimer = null;
+      tableRollCooling = false;
+    }, TABLE_ROLL_COOLDOWN_MS);
+  }
+  onDestroy(() => {
+    if (tableRollTimer !== null) clearTimeout(tableRollTimer);
+  });
   // The ⋯ menu's "Mulligan to N" (lib/gameMenu.ts clamps N).
   function mulligan(n: number): void {
     if (!viewerID) return;
@@ -1470,11 +1504,16 @@
   );
   const manaDockRequest = $derived(
     manaOverride
-      ? insufficientManaRequest(manaOverride.missing, cardNameAnywhere(manaOverride.cardID), {
-          onAutoTap: openAutoTap,
-          onCastAnyway: castAnyway,
-          onCancel: dismissManaOverride,
-        })
+      ? insufficientManaRequest(
+          manaOverride.missing,
+          cardNameAnywhere(manaOverride.cardID),
+          {
+            onAutoTap: openAutoTap,
+            onCastAnyway: castAnyway,
+            onCancel: dismissManaOverride,
+          },
+          { autoTapped: manaOverride.autoTapped },
+        )
       : null,
   );
   // ---- Inline choices in the action dock (ADR 0111 PR 5) ----
@@ -1542,6 +1581,11 @@
     adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
+    tableRoll:
+      dockShown && !viewerEliminated && view?.state === "active"
+        ? { ready: !tableRollCooling }
+        : null,
+    onTableRoll: rollAtTable,
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,

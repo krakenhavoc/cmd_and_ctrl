@@ -425,6 +425,7 @@ events[].old_zone	string
 events[].played	bool
 events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
+events[].roll_id	number:uint64
 events[].round	number:int
 events[].seats	array
 events[].seats[]	number:int
@@ -1317,6 +1318,7 @@ lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
+lastKnownStack[].item.trigger.Event.roll_id	number:uint64
 lastKnownStack[].item.trigger.Event.round	number:int
 lastKnownStack[].item.trigger.Event.seats	array
 lastKnownStack[].item.trigger.Event.seats[]	number:int
@@ -1755,6 +1757,7 @@ pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
+pendingTriggers[].trigger.Event.roll_id	number:uint64
 pendingTriggers[].trigger.Event.round	number:int
 pendingTriggers[].trigger.Event.seats	array
 pendingTriggers[].trigger.Event.seats[]	number:int
@@ -4176,6 +4179,7 @@ stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
+stackMeta[].trigger.Event.roll_id	number:uint64
 stackMeta[].trigger.Event.round	number:int
 stackMeta[].trigger.Event.seats	array
 stackMeta[].trigger.Event.seats[]	number:int
@@ -4210,6 +4214,7 @@ stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
 state	string
+tableRollNext	number:uint64
 takenAt	custom(time.Time)
 turn	object
 turn.ActiveSeat	number:int

@@ -128,6 +128,15 @@ and **not listed in the lobby**.
   off, `autoPassPriority` off (so the player actually sees priority reach
   them), `tableLayout` quadrant, `cardSize` medium. The player's own values are
   captured on entry and written back on exit, including an exit by navigation.
+
+  > **Amended by [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md)
+  > §1 (S59 PR 4, #2188):** the practice table forces `strictMana` **on**, so
+  > the tutorial teaches the table the player will meet, where a click taps the
+  > lands. The other three forced values and the restore are unchanged. Step 1's
+  > copy is now "You are seated against a practice bot. Click a card your lands
+  > can pay for and the game taps them for you. You can undo, so nothing here
+  > can go wrong." The Context line "`strictMana` is off by default" is history:
+  > strict payment is the default since settings v19.
 - **There is no resume.** Leaving abandons the table and releases the bot seat.
   A half-finished practice game is worth less than a clean restart, and keeping
   one alive means holding a game id and a bot runner for an account that may

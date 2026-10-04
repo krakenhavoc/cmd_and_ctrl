@@ -13,6 +13,7 @@ import {
   type PongPayload,
   type ErrorPayload,
   type SnapshotPayload,
+  type AckPayload,
   type ChatPayload,
   type ChatKind,
   type GameView,
@@ -943,6 +944,18 @@ export class GameClient {
           return next.length > CHAT_LOG_LIMIT ? next.slice(-CHAT_LOG_LIMIT) : next;
         });
         this.append("received", `chat from=${msg.authorName} text=${JSON.stringify(msg.text)}`);
+        break;
+      }
+      case "ack": {
+        // ADR 0122 §6.4: the server applied this client's action and
+        // names the state it produced. It always follows that state's
+        // snapshot, so there is nothing to apply; the browser only
+        // records it, so it is not an unknown kind.
+        const p = frame.payload as AckPayload | undefined;
+        this.append(
+          "info",
+          `ack id=${frame.id.slice(0, 8)} seq=${p?.seq ?? "?"} generation=${p?.generation ?? "?"}`,
+        );
         break;
       }
       case "error": {

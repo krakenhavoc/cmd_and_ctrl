@@ -1,6 +1,7 @@
 <script lang="ts">
-  // DiceLayer draws every die a card rolls and every coin it flips, at
-  // the roller's seat, for everyone at the table (ADR 0121 §7).
+  // DiceLayer draws every die a card rolls and every coin it flips, and
+  // every die or coin a player rolls at the table (ADR 0121 §5), at the
+  // roller's seat, for everyone at the table (ADR 0121 §7).
   //
   // The result is already drawn when the frame arrives (ADR 0054): this
   // is presentation. The schedule (what plays when, the six-die cap, the
@@ -76,8 +77,8 @@
     untrack(() => (now = Date.now()));
   });
 
-  // seqs already read out (or primed): each roll is announced once.
-  const announced = new Set<number>();
+  // Roll keys already read out (or primed): each roll is announced once.
+  const announced = new Set<string>();
 
   let reprimeNext = false;
   $effect(() => {
@@ -99,7 +100,7 @@
         firstFrame = false;
         reprimeNext = false;
         queue.prime(rolls);
-        for (const r of rolls) announced.add(r.seq);
+        for (const r of rolls) announced.add(r.key);
         return;
       }
       const s = get(settings);
@@ -247,13 +248,14 @@
     untrack(() => {
       const t = Date.now();
       const rolls = rollsFromLogs(log);
-      const present = new Set(rolls.map((r) => r.seq));
-      // A rewound roll that is rolled again is read again.
-      for (const seq of [...announced]) if (!present.has(seq)) announced.delete(seq);
+      const present = new Set(rolls.map((r) => r.key));
+      // A rewound roll that is rolled again is read again. A table roll
+      // whose line an undo wrote again keeps its key, so it is not.
+      for (const key of [...announced]) if (!present.has(key)) announced.delete(key);
       const fresh: { seq: number; text: string }[] = [];
       for (const r of rolls) {
-        if (announced.has(r.seq) || !queue.released(r.seq, t)) continue;
-        announced.add(r.seq);
+        if (announced.has(r.key) || !queue.released(r.seq, t)) continue;
+        announced.add(r.key);
         if (queue.wasPrimed(r.seq)) continue;
         fresh.push({ seq: r.seq, text: r.text });
       }

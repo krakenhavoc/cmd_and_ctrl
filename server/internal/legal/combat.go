@@ -77,6 +77,10 @@ func (e *enumerator) combatMoves() {
 			if !game.AttackerEligible(c, e.seat) {
 				continue
 			}
+			// ADR 0122 §6.2: the scope a Source filter asks about.
+			if !e.enter(scope{source: c.InstanceID}) {
+				continue
+			}
 			// S27: an attacker may be declared against a player, a
 			// planeswalker or a battle (CR 508.1d), so the target set
 			// comes from the engine rather than from a walk over the
@@ -199,8 +203,14 @@ func (e *enumerator) combatMoves() {
 		// BlockerEligible, the per-card test the wire's
 		// block_decision_seats signal uses, is applied inside the
 		// generator for the same agreement reason.
-		for _, opt := range g.BlockOptionsLocked(e.seat, e.opts.MaxExpansionPerSource) {
+		for _, opt := range e.blockOptions() {
 			if len(opt.Blocks) == 0 {
+				continue
+			}
+			// ADR 0122 §6.2: a block is the blocker's move (its Source)
+			// and the attacker's too, so a Source filter naming either
+			// keeps it.
+			if !e.enterBlock(opt) {
 				continue
 			}
 			first := opt.Blocks[0]
@@ -262,6 +272,7 @@ func (e *enumerator) combatMoves() {
 			})
 		}
 		if m, ok := finishBlocksMove(g, e.seat); ok {
+			e.leave()
 			e.add(m)
 		}
 	}
@@ -445,4 +456,56 @@ func attackTargetLabel(g *game.Game, t game.AttackTargetRef) string {
 		return c.Name
 	}
 	return "a permanent"
+}
+
+// blockOptions is game.BlockOptionsLocked at this enumeration's cap,
+// with the cap's cut filed (ADR 0122 §6.2). The cap bounds the minimum
+// GROUPS per attacker (a menace attacker's pairs), so the generator is
+// asked once more at one past it: an attacker that gains an option
+// there had more groups than were offered. The options at the cap are
+// the ones the seat is offered, unchanged. The second call is made
+// only for a caller that asked for the report.
+func (e *enumerator) blockOptions() []game.BlockOption {
+	limit := e.opts.MaxExpansionPerSource
+	opts := e.g.BlockOptionsLocked(e.seat, limit)
+	if !e.report || len(opts) == 0 {
+		return opts
+	}
+	offered := groupsPerAttacker(opts)
+	for atk, n := range groupsPerAttacker(e.g.BlockOptionsLocked(e.seat, limit+1)) {
+		if n > offered[atk] {
+			e.enter(scope{source: atk})
+			e.noteCut(CapPerSource, n-offered[atk], true)
+		}
+	}
+	e.leave()
+	return opts
+}
+
+// groupsPerAttacker counts the multi-blocker options per attacker.
+func groupsPerAttacker(opts []game.BlockOption) map[uuid.UUID]int {
+	out := map[uuid.UUID]int{}
+	for _, o := range opts {
+		if o.Required || len(o.Blocks) < 2 {
+			continue
+		}
+		out[o.Blocks[0].Attacker]++
+	}
+	return out
+}
+
+// enterBlock enters the scope of one block option: the first blocker,
+// which is the move's Source. Under a Source filter it is admitted when
+// the filter names any blocker or attacker in it, and then filed under
+// that card, so "this card's moves" for an attacker includes the
+// blocks on it.
+func (e *enumerator) enterBlock(opt game.BlockOption) bool {
+	if e.opts.Source != uuid.Nil && e.opts.Choice == "" {
+		for _, d := range opt.Blocks {
+			if d.Blocker == e.opts.Source || d.Attacker == e.opts.Source {
+				return e.enter(scope{source: e.opts.Source})
+			}
+		}
+	}
+	return e.enter(scope{source: opt.Blocks[0].Blocker})
 }

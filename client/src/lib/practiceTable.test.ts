@@ -78,7 +78,7 @@ function storedSettings() {
 }
 
 const MY_SETTINGS = {
-  strictMana: true,
+  strictMana: false,
   autoPassPriority: true,
   tableLayout: "row",
   cardSize: "large",
@@ -89,7 +89,7 @@ const MY_SETTINGS = {
 async function openPractice() {
   const m = await load();
   m.setSession(MINE);
-  m.updateSettings("gameplay", "strictMana", true);
+  m.updateSettings("gameplay", "strictMana", false);
   m.updateSettings("gameplay", "autoPassPriority", true);
   m.updateSettings("display", "tableLayout", "row");
   m.updateSettings("display", "cardSize", "large");
@@ -130,11 +130,11 @@ describe("opening the practice table", () => {
   it("swaps nothing when the server refuses", async () => {
     const m = await load();
     m.setSession(MINE);
-    m.updateSettings("gameplay", "strictMana", true);
+    m.updateSettings("gameplay", "strictMana", false);
     m.createPracticeTable.mockRejectedValue(new Error("503"));
     await expect(m.startPractice()).rejects.toThrow("503");
     expect(m.currentSession()?.token).toBe("my-real-seat");
-    expect(storedSettings().strictMana).toBe(true);
+    expect(storedSettings().strictMana).toBe(false);
     expect(localStorage.getItem(m.RECORD_KEY)).toBeNull();
     expect(get(m.practiceTable)).toBeNull();
   });
@@ -229,7 +229,7 @@ describe("leaving the practice table", () => {
     // The tab dies here: no route change, no pagehide. Disk holds the
     // forced settings and the record.
     expect(storedSettings()).toEqual({
-      strictMana: false,
+      strictMana: true,
       autoPassPriority: false,
       tableLayout: "quadrant",
       cardSize: "medium",
@@ -242,7 +242,7 @@ describe("leaving the practice table", () => {
     next.recoverPractice(Date.now() + next.STALE_MS);
 
     expect(storedSettings()).toEqual(MY_SETTINGS);
-    expect(get(next.settings).gameplay.strictMana).toBe(true);
+    expect(get(next.settings).gameplay.strictMana).toBe(false);
     expect(next.currentSession()?.token).toBe("my-real-seat");
     expect(localStorage.getItem(next.RECORD_KEY)).toBeNull();
     expect(next.leavePracticeTable).toHaveBeenCalledWith(
@@ -333,12 +333,28 @@ describe("more than one tab", () => {
   });
 });
 
+describe("the forced values", () => {
+  // ADR 0118 owner decision 7: the tutorial teaches the table the
+  // player will meet, so it forces strict payment ON (it forced it off
+  // before ADR 0118). A player who turned strict off gets it back off
+  // when they leave (the restore tests above use exactly that player).
+  it("force strict payment on, and the other three as ADR 0076 §2.2 says", async () => {
+    const m = await load();
+    expect(m.FORCED_SETTINGS).toEqual({
+      strictMana: true,
+      autoPassPriority: false,
+      tableLayout: "quadrant",
+      cardSize: "medium",
+    });
+  });
+});
+
 describe("helpers", () => {
   it("withSettings touches only the four tutorial-owned fields", async () => {
     const m = await load();
     const before = get(m.settings);
     const after = m.withSettings(before, m.FORCED_SETTINGS);
-    expect(after.gameplay.strictMana).toBe(false);
+    expect(after.gameplay.strictMana).toBe(true);
     expect(after.gameplay.autoPassPriority).toBe(false);
     expect(after.display.tableLayout).toBe("quadrant");
     expect(after.display.cardSize).toBe("medium");

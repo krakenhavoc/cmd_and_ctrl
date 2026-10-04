@@ -411,3 +411,78 @@ describe("placeDice", () => {
     expect(p).toEqual({ side: "strip", left: 12, top: 120 + DICE_GAP });
   });
 });
+
+// ADR 0121 §5: a die or a coin rolled at the table. Keyed on its
+// roll_id, because an undo of an earlier action writes the same line
+// again under a new seq.
+function tableRoll(seq: number, rollID: number, seat = 1, result: number | "heads" = 14): LogEvent {
+  const coin = result === "heads";
+  return {
+    seq,
+    kind: "table_roll",
+    seat,
+    text: coin
+      ? `P${seat} flipped a coin at the table: heads`
+      : `P${seat} rolled a d20 at the table: ${result}`,
+    roll_id: rollID,
+    ...(coin ? { faces: ["heads"] } : { sides: 20, results: [result] }),
+  };
+}
+
+describe("table rolls", () => {
+  it("keys a table roll on its roll_id, a die or a coin", () => {
+    expect(rollFromLog(tableRoll(9, 3))).toMatchObject({
+      key: "table:3",
+      seq: 9,
+      seat: 1,
+      kind: "die",
+      sides: 20,
+      results: [14],
+      source: "table",
+    });
+    expect(rollFromLog(tableRoll(10, 4, 0, "heads"))).toMatchObject({
+      key: "table:4",
+      kind: "coin",
+      sides: 2,
+      faces: ["heads"],
+      source: "table",
+    });
+    // No roll_id (an older server) or nothing to land on: no animation.
+    expect(rollFromLog({ ...tableRoll(11, 5), roll_id: undefined })).toBeNull();
+    expect(rollFromLog({ seq: 12, kind: "table_roll", seat: 0, text: "x", roll_id: 6 })).toBeNull();
+  });
+
+  it("tumbles at the roller's seat like any roll", () => {
+    const [p] = after([tableRoll(9, 3)], 1000).plays;
+    expect(p.roll.seat).toBe(1);
+    expect(p.settleAt).toBe(1000 + DICE_TUMBLE_MS);
+  });
+
+  it("does not play again when an undo writes its line under a new seq", () => {
+    const first = after([roll(5, 0), tableRoll(9, 3)], 1000);
+    expect(first.plays.map((p) => p.roll.key).sort()).toEqual(["seq:5", "table:3"]);
+    // The undo rewound seq 5 and wrote the table roll again at seq 5.
+    const moved = trackDice(first, rollsFromLogs([tableRoll(5, 3)]), 1100, MOTION);
+    expect(moved.plays.map((p) => p.roll.key)).toEqual(["table:3"]);
+    const play = moved.plays[0];
+    expect(play.roll.seq).toBe(5);
+    expect(play.startAt).toBe(1000);
+    // Its strip cue follows it to the new seq, not released early.
+    expect(isReleased(moved, 5, 1100)).toBe(false);
+    expect(isReleased(moved, 5, play.settleAt)).toBe(true);
+  });
+
+  it("stays primed when the line of a roll from before this client moves", () => {
+    const primed = primeDice(rollsFromLogs([tableRoll(9, 3)]));
+    const moved = trackDice(primed, rollsFromLogs([tableRoll(4, 3)]), 1000, MOTION);
+    expect(moved.plays).toEqual([]);
+    expect(moved.primed.has(4)).toBe(true);
+    expect(isReleased(moved, 4, 1000)).toBe(true);
+  });
+
+  it("plays a new roll with a new roll_id", () => {
+    const first = after([tableRoll(9, 3)], 1000);
+    const next = trackDice(first, rollsFromLogs([tableRoll(9, 3), tableRoll(10, 4)]), 1100, MOTION);
+    expect(next.plays.map((p) => p.roll.key)).toEqual(["table:3", "table:4"]);
+  });
+});

@@ -325,3 +325,50 @@ describe("the opening roll's dice", () => {
     expect(announcer(board.container).textContent).toContain("Opp rolled a d20: 17");
   });
 });
+
+// ADR 0121 §5: a die rolled at the table from the ⋯ menu.
+function tableRoll(seq: number, rollID: number, result = 14): LogEvent {
+  return {
+    seq,
+    kind: "table_roll",
+    seat: 1,
+    text: `Opp rolled a d20 at the table: ${result}`,
+    sides: 20,
+    results: [result],
+    roll_id: rollID,
+  };
+}
+
+describe("a table roll", () => {
+  it("tumbles at the roller's seat and is read out once, even when an undo moves its line", () => {
+    const board = boardWithAvatar({ left: 700, top: 20, width: 40, height: 40 });
+    const r = mountLayer([], board);
+    r.setProps({ view: viewWith([roll(4, 0, [3], 6), tableRoll(5, 1)]) });
+    const keys = groups(r.container).map((g) => g.dataset.diceKey);
+    expect(keys).toContain("table:1");
+    const g = groups(r.container).find((x) => x.dataset.diceKey === "table:1")!;
+    expect(g.dataset.diceSeat).toBe("1");
+    expect(g.dataset.dicePhase).toBe("tumble");
+
+    // Another seat undoes their roll from before it: the server writes
+    // the table roll's line again, at seq 4. Same roll, not a new one.
+    r.setProps({ view: viewWith([tableRoll(4, 1)]) });
+    expect(groups(r.container).map((x) => x.dataset.diceKey)).toEqual(["table:1"]);
+    advance(DICE_TUMBLE_MS);
+    expect(announcer(r.container).textContent).toContain("Opp rolled a d20 at the table: 14");
+    advance(DICE_HOLD_MS + DICE_FADE_MS);
+    expect(groups(r.container)).toHaveLength(0);
+    // A second undo moves it again, after it was read: nothing plays,
+    // nothing is read again.
+    r.setProps({
+      view: viewWith([tableRoll(3, 1), { seq: 4, kind: "step", seat: -1, text: "x" }]),
+    });
+    advance(1);
+    expect(groups(r.container)).toHaveLength(0);
+    expect(
+      [...announcer(r.container).querySelectorAll("p")].filter((p) =>
+        p.textContent?.includes("at the table"),
+      ),
+    ).toHaveLength(1);
+  });
+});
