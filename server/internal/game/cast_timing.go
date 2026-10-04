@@ -298,7 +298,7 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 		// Orrery that has lost its abilities (CR 613.1f) stops
 		// saying it. The EMPTY KEY is the skip — a TOKEN has one of
 		// its own since #521 (ADR 0083 decision 3).
-		key := CatalogAbilityKey(*src)
+		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}

@@ -64,7 +64,7 @@ func NeedsCatalogEffect(typeLine string, texts ...string) bool {
 	// and getting them right is the difference between a predicate
 	// that is honest about lands and one that merely looks like it.
 	if typeLineHas(typeLine, "basic") && typeLineHas(typeLine, "land") &&
-		len(intrinsicLandManaAbilities(Card{TypeLine: typeLine})) == 0 {
+		len(intrinsicLandManaAbilities(&Card{TypeLine: typeLine})) == 0 {
 		return true
 	}
 	for _, text := range texts {

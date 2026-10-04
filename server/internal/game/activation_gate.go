@@ -222,10 +222,17 @@ var CatalogActivationRestrictions func(oracleID string) []ActivationRestriction
 // ability-removing effect (CatalogAbilityKey), and none for one whose
 // designation gate is unsatisfied.
 func ActivationRestrictionsForCard(c Card) []ActivationRestriction {
+	return activationRestrictionsOf(&c)
+}
+
+// activationRestrictionsOf is ActivationRestrictionsForCard without
+// the copy: Card is over a kilobyte and this is asked per permanent
+// per walk (#1498).
+func activationRestrictionsOf(c *Card) []ActivationRestriction {
 	if CatalogActivationRestrictions == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -310,12 +317,14 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 		Ability:    ability,
 	}
 	for i := range g.Battlefield.Cards {
-		src := g.Battlefield.Cards[i]
-		for _, r := range ActivationRestrictionsForCard(src) {
+		// A pointer, so the walk copies a permanent only when it
+		// actually carries a restriction (#1498).
+		src := &g.Battlefield.Cards[i]
+		for _, r := range activationRestrictionsOf(src) {
 			if r.Forbids == nil {
 				continue
 			}
-			q.Source = src
+			q.Source = *src
 			if r.Forbids(q) {
 				return &CantActivateError{Reason: r.Label, Source: src.InstanceID}
 			}
@@ -337,7 +346,7 @@ func (g *Game) AnyActivationRestrictionsForEffect() bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		if len(ActivationRestrictionsForCard(g.Battlefield.Cards[i])) > 0 {
+		if len(activationRestrictionsOf(&g.Battlefield.Cards[i])) > 0 {
 			return true
 		}
 	}

@@ -287,7 +287,7 @@ func (g *Game) sourceDamageCantBePreventedLocked(sourceID uuid.UUID) bool {
 	if !ok {
 		return false
 	}
-	key := ownAbilityKey(card)
+	key := ownAbilityKey(&card)
 	if key == "" {
 		return false
 	}

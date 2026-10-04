@@ -241,11 +241,15 @@ var CatalogAttackTaxes func(key string) []AttackTax
 // enumerator reach a card's taxes through it, which is what keeps the
 // price the bot is offered and the price the engine charges from
 // drifting apart.
-func AttackTaxesForCard(c Card) []AttackTax {
+func AttackTaxesForCard(c Card) []AttackTax { return attackTaxesOf(&c) }
+
+// attackTaxesOf is AttackTaxesForCard without the copy: Card is over a
+// kilobyte and this is asked per permanent per walk (#1498).
+func attackTaxesOf(c *Card) []AttackTax {
 	if CatalogAttackTaxes == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -368,7 +372,7 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 			if src.Controller != defender {
 				continue
 			}
-			taxes := AttackTaxesForCard(*src)
+			taxes := attackTaxesOf(src)
 			if len(taxes) == 0 {
 				continue
 			}

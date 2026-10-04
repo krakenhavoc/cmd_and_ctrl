@@ -308,71 +308,32 @@ type Characteristic struct {
 // since S20 stamped Card.Colors, and wrong in a way that mattered:
 // the cost-only derivation was what made every colour-indicator face
 // read as colourless.)
-func (c Card) printedCharacteristic() Characteristic {
+func (c Card) printedCharacteristic() Characteristic { return printedFresh(&c) }
+
+// printedFresh is printedCharacteristic without the receiver copy: a
+// freshly built baseline whose slices the caller owns. The layer
+// engine writes its baseline in place, which is why it builds one of
+// these rather than reading the cache (printed_cache.go). Every
+// read-only caller goes through printedShared instead.
+func printedFresh(c *Card) Characteristic {
 	// CR 708.2, ADR 0069 decision 3: a face-down permanent IS a 2/2
 	// creature with no name, text, subtypes, mana cost or colour.
 	// That is not an effect applied to the real card — the object has
 	// those characteristics — so it enters at layer 0, the baseline
 	// the whole CR 613 pass is applied to. Every later layer and
 	// every reader then sees the 2/2 for free.
-	if c.FaceDownIsPermanent() {
-		return faceDownCharacteristic(c)
+	if c.faceDownPermanent() {
+		return faceDownCharacteristic(*c)
 	}
-	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
-	// Printed keywords come from two places. The catalog's
-	// Spec.PrintedKeywords slot (S18 sub-PR 2) is the older one;
-	// including it here means off-battlefield
-	// CardView.Abilities surfaces the keyword on hand cards — the
-	// client's cast-timing gate needs flash to grey-enable Ambush
-	// Viper at instant speed. The on-battlefield synth adds these
-	// via a Layer 6 StaticAbility with a dedupe, so double-counting
-	// is impossible.
-	//
-	// Card.Keywords is the printed-data road: the deck importer
-	// stamps Scryfall's `keywords` array onto every imported card
-	// (#317 / #319 / #320), and token templates declare theirs
-	// inline as plain data (S21 sub-PR 1). The catalog remains a
-	// fallback and an override for cards that never go through deck
-	// import — fixtures, tokens, and any spec that deliberately
-	// states a keyword Scryfall doesn't.
-	//
-	// The two sources overlap for every catalog card that is also
-	// imported from a decklist, so the merge (mergePrintedKeywords)
-	// dedupes: a doubled "flash" is harmless to HasKeyword but renders
-	// as two badges on the client's keyword row. A CUMULATIVE keyword
-	// (prowess, toxic) is the one exception — see that function.
-	//
-	// The gate is the catalog KEY and not an oracle ID (ADR 0083
-	// decision 3): a token has a key of its own since #521, so a
-	// template that declares PrintedKeywords in its catalog entry is
-	// read here like any card's. CatalogKey already answers "" for
-	// an uncatalogued object.
-	var catalogKeywords []string
-	if key := CatalogKey(c); CatalogPrintedKeywords != nil && key != "" {
-		catalogKeywords = CatalogPrintedKeywords(key)
-	}
-	abilities := mergePrintedKeywords(catalogKeywords, c.Keywords)
-	return Characteristic{
-		Power:      c.Power,
-		Toughness:  c.Toughness,
-		Types:      types,
-		Subtypes:   subtypes,
-		Supertypes: supertypes,
-		Colors:     printedColors(c),
-		Name:       c.Name,
-		Abilities:  abilities,
-		// CR 702.73a is a characteristic-defining ability, and
-		// CR 613.2 applies CDAs before every other effect in their
-		// layer — so the keyword→layer-4 projection belongs in the
-		// baseline the layer pass starts from, and this is the ONE
-		// place a printed changeling becomes the type fact (#670).
-		// A layer-4 subtype SET clears it (Characteristic.SetSubtypes)
-		// and a layer-4 grant re-sets it, in timestamp order.
-		AllCreatureTypes: containsKeyword(abilities, KeywordChangeling),
-		// The layer-0 baseline for control (CR 613.1b): who controls
-		// this object absent any control-changing continuous effect.
-		Controller: c.baseController(),
-	}
+	// The whole face-up baseline is a pure function of printedInputs
+	// (printed_cache.go) — that is the property the cache stands on,
+	// so the builder lives there and reads nothing else.
+	in := printedInputsOf(c)
+	ch := in.characteristic()
+	// The layer-0 baseline for control (CR 613.1b): who controls
+	// this object absent any control-changing continuous effect.
+	ch.Controller = c.baseController()
+	return ch
 }
 
 // SetSubtypes is "is a Forest land" / "is an Elk creature" / "isn't a
@@ -419,7 +380,7 @@ func (c Characteristic) clone() Characteristic {
 // Card.BaseController is captured lazily by the recompute and cleared
 // on battlefield exit, so it is zero exactly when "the current
 // controller IS the base" is true.
-func (c Card) baseController() uuid.UUID {
+func (c *Card) baseController() uuid.UUID {
 	if c.BaseController != uuid.Nil {
 		return c.BaseController
 	}
@@ -535,11 +496,16 @@ func countKeywords(xs []string) map[string]int {
 // tokens and test fixtures never set it — so the cost fallback is
 // kept rather than replaced. That matches the posture
 // Card.EffectiveColors has taken since S20.
-func printedColors(c Card) []string {
-	if len(c.Colors) > 0 {
-		return append([]string(nil), c.Colors...)
+func printedColors(c Card) []string { return printedColorsOf(c.Colors, c.ManaCost) }
+
+// printedColorsOf is printedColors on the two fields it reads, which
+// is the shape the printed-characteristic builder (printedInputs) has
+// them in. The result is always a fresh slice.
+func printedColorsOf(colors []string, manaCost string) []string {
+	if len(colors) > 0 {
+		return append([]string(nil), colors...)
 	}
-	return printedColorsFromCost(c.ManaCost)
+	return printedColorsFromCost(manaCost)
 }
 
 // printedColorsFromCost extracts the unique WUBRG letters from a
@@ -580,20 +546,34 @@ func printedColorsFromCost(cost string) []string {
 // either never been on the battlefield since the most recent
 // recompute or is currently in another zone).
 //
-// Returns by value so callers can't mutate the cache. The layer
+// Returns by value so callers can't replace the cache. The layer
 // engine writes through a different path (recompute owns the
-// pointer it allocates per cycle and replaces atomically).
-func (c Card) Effective() Characteristic {
+// pointer it allocates per cycle and replaces atomically). The
+// SLICES inside the value are shared with that cache, so a caller
+// may append to them (they reallocate) but must not write their
+// elements.
+//
+// Off the battlefield the baseline comes from the card's printed-
+// characteristic cache (printed_cache.go, #1498), whose slices are
+// shared in the same way and under the same rule.
+func (c Card) Effective() Characteristic { return effectiveOf(&c) }
+
+// effectiveOf is Effective without the receiver copy — Card is over a
+// kilobyte, and the hot readers (the view, the P/T accessors) already
+// hold a pointer.
+func effectiveOf(c *Card) Characteristic {
 	if c.effective != nil {
 		return *c.effective
 	}
-	ch := c.printedCharacteristic()
+	ch := printedShared(c)
 	// CR 122.1b / ADR 0101 Decision 4: a keyword counter on a card in
 	// another zone gives it that keyword. No layer pass runs there, so
 	// the counter's keyword is added straight onto the baseline — the
 	// same keywordCounterTokens forEachAbilityToken reads, so the view
-	// and HasKeyword cannot disagree.
-	for _, kw := range keywordCounterTokens(&c) {
+	// and HasKeyword cannot disagree. The cached Abilities is clipped
+	// to its length, so these appends reallocate rather than write
+	// into the cache.
+	for _, kw := range keywordCounterTokens(c) {
 		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
 	}
 	// ADR 0107 §3: and a keyword the stack step gave a spell, the same
@@ -627,6 +607,16 @@ func (c Card) Effective() Characteristic {
 // vs-effective comparison in effectiveTypeLine without re-implementing
 // the parser.
 func ParseTypeLine(typeLine string) (supertypes, types, subtypes []string) {
+	if countParseTypeLine {
+		parseTypeLineCalls.Add(1)
+	}
+	return parseTypeLine(typeLine)
+}
+
+// parseTypeLine is ParseTypeLine without the test-binary call count —
+// for the printed cache's own verification rebuild, which must not
+// show up in the count the view's cost test reads.
+func parseTypeLine(typeLine string) (supertypes, types, subtypes []string) {
 	if typeLine == "" {
 		return nil, nil, nil
 	}

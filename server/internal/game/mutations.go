@@ -2406,7 +2406,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if card == nil || card.Owner != p.ID {
 		return
 	}
-	ab := g.autoManaExileAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card), zone)
+	ab := g.autoManaExileAbilityFor(p.ID, *card, manaAbilitiesOf(card), zone)
 	if ab == nil {
 		return
 	}
@@ -6179,7 +6179,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	abilities, origins := ManaAbilitiesWithOrigins(*card)
+	abilities, origins := manaAbilityRows(card, true)
 	// ADR 0093 Decision 5: the ref names the row the activator meant.
 	// A grant appearing or vanishing since the view moved the rows;
 	// refuse the stale move before anything is paid (#544).
@@ -6919,7 +6919,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 // layer-6 effect granted the object (Cryptolith Rite, Chromatic
 // Lantern). The body — and each row's stable ref — is manaAbilityRows
 // in granted_abilities.go.
-func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
+func ManaAbilitiesForCard(c Card) []ManaAbilityShape { return manaAbilitiesOf(&c) }
+
+// manaAbilitiesOf is ManaAbilitiesForCard without the copy (#1498).
+func manaAbilitiesOf(c *Card) []ManaAbilityShape {
 	abs, _ := manaAbilityRows(c, false)
 	return abs
 }
@@ -6928,12 +6931,17 @@ func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
 // mana their intrinsic ability produces. Order is only a tie-break
 // for cards whose effective subtypes are unordered; the real
 // ordering comes from the subtype list itself.
-var landTypeMana = [...]struct{ Subtype, Color string }{
-	{"Plains", "W"},
-	{"Island", "U"},
-	{"Swamp", "B"},
-	{"Mountain", "R"},
-	{"Forest", "G"},
+//
+// Produced and Label are the ability's two strings, spelled out rather
+// than concatenated from Color per call: intrinsicLandManaAbilities
+// runs for every land in every view, and the concatenation was most of
+// its cost (#1498). TestLandTypeManaStringsMatchTheColor pins them.
+var landTypeMana = [...]struct{ Subtype, Color, Produced, Label string }{
+	{"Plains", "W", "{W}", "Add {W}"},
+	{"Island", "U", "{U}", "Add {U}"},
+	{"Swamp", "B", "{B}", "Add {B}"},
+	{"Mountain", "R", "{R}", "Add {R}"},
+	{"Forest", "G", "{G}", "Add {G}"},
 }
 
 // intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
@@ -6957,22 +6965,22 @@ var landTypeMana = [...]struct{ Subtype, Color string }{
 // static on it keeps the exact ability list (and therefore the
 // exact ability indices, and the exact auto-tapper first choice)
 // it had before.
-func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
-	if !c.IsLand() {
+func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
+	if !hasCardType(c, "land") {
 		return nil
 	}
 	var subtypes []string
 	switch {
 	case c.effective != nil:
 		subtypes = c.effective.Subtypes
-	case c.FaceDownIsPermanent():
+	case c.faceDownPermanent():
 		// CR 708.2: the body's subtypes, not the card's — a
 		// manifested Forest has none, Yedora's face-down Forest has
 		// "Forest" (#1270). HasCardType's cold path makes the same
 		// guard for the IsLand above.
-		subtypes = faceDownCharacteristic(c).Subtypes
+		subtypes = faceDownCharacteristic(*c).Subtypes
 	default:
-		_, _, subtypes = ParseTypeLine(c.TypeLine)
+		_, _, subtypes = printedTypeParts(c)
 	}
 	if len(subtypes) == 0 {
 		return nil
@@ -6990,8 +6998,8 @@ func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
 			seen |= 1 << i
 			out = append(out, ManaAbilityShape{
 				TapCost:  true,
-				Produced: "{" + lt.Color + "}",
-				Label:    "Add {" + lt.Color + "}",
+				Produced: lt.Produced,
+				Label:    lt.Label,
 			})
 		}
 	}

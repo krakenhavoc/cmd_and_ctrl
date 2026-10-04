@@ -160,7 +160,7 @@ func (g *Game) activeAttackLimitsLocked() []attackLimitSource {
 	var out []attackLimitSource
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*src)
+		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}

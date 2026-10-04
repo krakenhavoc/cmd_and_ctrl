@@ -104,7 +104,7 @@ func (g *Game) specialActionGrantsLocked(actor uuid.UUID) []SpecialActionGrant {
 		if c.Controller != actor {
 			continue
 		}
-		if key := CatalogAbilityKey(*c); key != "" {
+		if key := catalogAbilityKeyOf(c); key != "" {
 			out = append(out, CatalogSpecialActionGrants(key)...)
 		}
 	}

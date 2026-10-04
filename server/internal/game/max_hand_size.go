@@ -146,7 +146,7 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 			// ability, and a permanent that has lost its abilities
 			// gives nothing (CR 613.1f). The empty key is the skip, so
 			// a token is walked too (ADR 0083 decision 3).
-			key := CatalogAbilityKey(*c)
+			key := catalogAbilityKeyOf(c)
 			if key == "" {
 				continue
 			}

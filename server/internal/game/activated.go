@@ -762,7 +762,11 @@ var CatalogActivatedAbilities func(oracleID string) []ActivatedAbilityShape
 //
 // The body, and each row's stable ref, is activatedAbilityRows in
 // granted_abilities.go.
-func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
+func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape { return activatedAbilitiesOf(&c) }
+
+// activatedAbilitiesOf is ActivatedAbilitiesForCard without the copy
+// (#1498).
+func activatedAbilitiesOf(c *Card) []ActivatedAbilityShape {
 	abs, _ := activatedAbilityRows(c, false)
 	return abs
 }
@@ -1068,7 +1072,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// nothing to say about a card in a hand.
 		return ErrCardCallerMismatch
 	}
-	abilities, origins := ActivatedAbilitiesWithOrigins(*source)
+	abilities, origins := activatedAbilityRows(source, true)
 	// ADR 0093 Decision 5: the row the activator meant, named by its
 	// ref, before anything else about it is asked. A grant appearing or
 	// vanishing between the view and this announcement moves the rows
