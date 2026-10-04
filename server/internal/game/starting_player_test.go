@@ -7,25 +7,20 @@ import (
 	"testing"
 )
 
-func TestChooseStartingSeatRerollsOnlyTiedLeaders(t *testing.T) {
-	rolls := map[int][]int{
-		0: {20, 3},
-		1: {5},
-		2: {20, 17},
-		3: {1},
+// The tie rule, with no randomness in it: only the seats on the high
+// result roll again, in seat order (ADR 0121 §1, decision 1).
+func TestOpeningRoundLeadersAreOnlyTheTiedHighSeats(t *testing.T) {
+	round := OpeningRollRound{
+		Seats: []int{0, 1, 2, 3},
+		Rolls: []OpeningRollDie{{Seat: 2, Result: 20}, {Seat: 0, Result: 20}, {Seat: 1, Result: 5}, {Seat: 3, Result: 1}},
 	}
-	calls := make([]int, 0, 6)
-	winner := chooseStartingSeat(4, func(seat int) int {
-		calls = append(calls, seat)
-		result := rolls[seat][0]
-		rolls[seat] = rolls[seat][1:]
-		return result
-	})
-	if winner != 2 {
-		t.Fatalf("winner = seat %d, want seat 2", winner)
+	leaders, high := openingRoundLeaders(round)
+	if high != 20 || !reflect.DeepEqual(leaders, []int{0, 2}) {
+		t.Fatalf("leaders = %v on %d, want [0 2] on 20", leaders, high)
 	}
-	if want := []int{0, 1, 2, 3, 0, 2}; !reflect.DeepEqual(calls, want) {
-		t.Fatalf("roll calls = %v, want %v", calls, want)
+	round = OpeningRollRound{Seats: []int{0, 2}, Rolls: []OpeningRollDie{{Seat: 0, Result: 3}, {Seat: 2, Result: 17}}}
+	if leaders, high = openingRoundLeaders(round); high != 17 || !reflect.DeepEqual(leaders, []int{2}) {
+		t.Fatalf("leaders = %v on %d, want [2] on 17", leaders, high)
 	}
 }
 

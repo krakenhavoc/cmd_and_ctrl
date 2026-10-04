@@ -92,6 +92,9 @@ var gameFields = plan(
 	"PhasedOut", carried, "",
 	"Turn", carried, "",
 	"MulligansOpen", carried, "",
+	// ADR 0121 §1: the open opening roll. Plain data; a restored game
+	// mid-roll continues where it stopped.
+	"OpeningRoll", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
 	"Settings", carried, "",
@@ -1027,6 +1030,8 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		// permission is a struct of flags rather than a predicate is
 		// that it has to survive this check.
 		CastPermission{},
+		// ADR 0121 §1: the opening roll is embedded by value.
+		OpeningRoll{}, OpeningRollRound{}, OpeningRollDie{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)
