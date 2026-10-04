@@ -650,11 +650,21 @@
             <label>
               <input
                 type="checkbox"
-                checked={$settings.display.artOnlyCards}
-                onchange={(e) => change("display", "artOnlyCards", e.currentTarget.checked)}
+                checked={$settings.display.battlefieldArt}
+                onchange={(e) => change("display", "battlefieldArt", e.currentTarget.checked)}
               />
-              Card art only (hover for the full card) — experimental
-              {#if isFresh("display.artOnlyCards")}<span class="saved">✓ saved</span>{/if}
+              Show card art on the battlefield (hover for the full card)
+              {#if isFresh("display.battlefieldArt")}<span class="saved">✓ saved</span>{/if}
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.handArt}
+                onchange={(e) => change("display", "handArt", e.currentTarget.checked)}
+              />
+              Show card art in your hand (hover for the full card)
+              {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
             </label>
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
