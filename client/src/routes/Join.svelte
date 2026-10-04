@@ -15,6 +15,7 @@
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import { seatColor } from "../lib/colors";
   import Icon from "../lib/components/Icon.svelte";
+  import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
 
   // Props carried from the route parser (lib/router.ts). The
@@ -198,6 +199,7 @@
             </span>
             <div class="sinfo">
               <div class="sname">{seatName(p)}</div>
+              {#if p.is_agent}<div class="sagent"><AgentChip seat={p} /></div>{/if}
               <div class="sstat">
                 {#if p.deck_uploaded}{p.deck_name || "deck ready"}{:else}deck pending{/if}
               </div>
@@ -447,6 +449,10 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .sagent {
+    margin: 2px 0;
+    min-width: 0;
   }
   .sname.dim {
     color: var(--fg-dim);

@@ -40,13 +40,13 @@
   import {
     decideSeatRendering,
     legalDefenderIDs,
-    nextPinnedSeat,
     seatControlsLegalTarget,
     seatHasAttackersOn,
     type SeatDecision,
   } from "../../expansion";
   import { settings } from "../../settings";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
+  import Icon from "../Icon.svelte";
   // CommanderDamageTooltip was folded into HoverZoomOverlay — the
   // damage readout now lives inside the card preview panel instead
   // of the lower-right corner.
@@ -74,7 +74,23 @@
   import { cardMenu, closeCardMenu } from "../../contextMenu";
   import ManaSourcePicker from "./ManaSourcePicker.svelte";
   import { manaSourcePicker, closeManaSourcePicker } from "../../manaSourcePicker";
-  import { closeAbilityPopover } from "../../abilityPopover";
+  import { abilityPopover, closeAbilityPopover } from "../../abilityPopover";
+  import {
+    bumpBoardExpandLayout,
+    initialExpandState,
+    liveExpanded,
+    parsePx,
+    peekOpenDelay,
+    placeOverlay,
+    reduceExpand,
+    setAvatarExpand,
+    type ExpandEvent,
+    type Span,
+  } from "../../boardExpand";
+  import { seatSelector } from "../../boardAnchor";
+  import { currentDockRequest, dockKeyFor } from "../../dock";
+  import { foreignModalOpen } from "../../modalLayers";
+  import { tick, untrack } from "svelte";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
   import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
@@ -2425,35 +2441,20 @@
   //
   // Which opponents render as SeatSummary read-outs and which as full
   // PlayerPanels. The decision itself lives in lib/expansion.ts and is
-  // unit-tested; Board's job is only to gather the per-seat facts and
-  // to own the one piece of state the decision cannot derive — the pin.
-  //
-  // The pin lives HERE rather than in a store because it is per-table
-  // view state with no reason to outlive the component: a summary
-  // pinned open in one game should not still be pinned when the next
-  // game mounts.
-  let pinnedSeatID = $state<string | null>(null);
+  // unit-tested; Board's job is only to gather the per-seat facts.
+  // ADR 0077's in-place pin is gone (ADR 0120 §6): a viewer who wants a
+  // seat's board opens it in the expanded overlay below, which does not
+  // move the table at all.
 
   // Seats the viewer may declare an attack against. Computed once per
   // snapshot rather than per seat, because it reads the whole turn.
   const defenderIDs = $derived(legalDefenderIDs(view, viewerID));
-
-  // A pin naming a seat that is no longer at the table (conceded,
-  // eliminated and removed, or a different game entirely) would hold a
-  // panel open for a player who is not there — and, worse, would be
-  // unclearable, because the control that clears it lives on the
-  // panel. Dropping it here keeps the invariant "a pin always has a
-  // seat" without needing an effect to watch for departures.
-  const pinned = $derived(
-    pinnedSeatID && view.seats.some((s) => s.id === pinnedSeatID) ? pinnedSeatID : null,
-  );
 
   function renderingFor(seat: PlayerView, pos: SeatPosition | null): SeatDecision {
     const controlled = cardsByController.get(seat.id) ?? [];
     return decideSeatRendering(
       {
         isSelf: pos === "self",
-        isPinned: pinned === seat.id,
         isActiveSeat: seat.id === activeSeatID,
         controlsLegalTarget: seatControlsLegalTarget($targeting, seat.id, controlled),
         hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
@@ -2465,6 +2466,216 @@
         expandActivePlayer: $settings.display.expandActivePlayer,
       },
     );
+  }
+
+  // ---- The expanded board (ADR 0120) ----------------------------------
+  //
+  // One seat's board drawn again, larger, over the table. Hovering its
+  // avatar peeks; clicking the avatar, its expand button or the pin pins.
+  // Every transition is boardExpand.ts's reducer; Board owns the state,
+  // runs the one timer the state asks for, and places the overlay.
+  //
+  // Per table and never persisted, like ADR 0077's pin before it: a board
+  // expanded in one game is not expanded when the next one mounts.
+  // `$state.raw` so `expandTimer` below keeps its identity across events
+  // that do not touch it, and the timer is not restarted by them.
+  let expandState = $state.raw(initialExpandState());
+  function dispatchExpand(ev: ExpandEvent): void {
+    expandState = reduceExpand(expandState, ev);
+  }
+  const expandTimer = $derived(expandState.timer);
+  $effect(() => {
+    const t = expandTimer;
+    if (!t) return;
+    const h = setTimeout(() => dispatchExpand({ type: "elapsed", seq: t.seq }), t.ms);
+    return () => clearTimeout(h);
+  });
+
+  // A seat that left the table takes its overlay with it: a derivation,
+  // not an effect (ADR 0120 §1), so the state never names a missing seat
+  // for even one frame.
+  const expanded = $derived(
+    liveExpanded(
+      expandState.expanded,
+      view.seats.map((s) => s.id),
+    ),
+  );
+  const expandedSeat = $derived(
+    expanded ? (view.seats.find((s) => s.id === expanded.seatID) ?? null) : null,
+  );
+
+  // Phones (under 600px, the dock's own breakpoint) get the pin only, and
+  // the overlay fills the board there (ADR 0120 §5).
+  function onPhone(): boolean {
+    return typeof matchMedia === "function" && matchMedia("(max-width: 599px)").matches;
+  }
+  // Without a hover-capable pointer nothing peeks (ADR 0120 §1). jsdom
+  // has no matchMedia; that counts as a mouse, so a test can hover.
+  function canPeek(): boolean {
+    if (typeof matchMedia !== "function") return true;
+    return matchMedia("(hover: hover)").matches && !onPhone();
+  }
+
+  // The avatar's reports (PlayerIdentity.svelte), through context so the
+  // table's panels, the summaries and the overlay's own panel all reach
+  // it without a prop on each.
+  setAvatarExpand({
+    enter(seatID, ev) {
+      // A touch, a held button (a card dragged from the hand across the
+      // avatars) or a pointer that cannot hover opens nothing.
+      if (ev.pointerType === "touch" || ev.buttons !== 0 || !canPeek()) return;
+      dispatchExpand({
+        type: "avatar-enter",
+        seatID,
+        openDelayMs: peekOpenDelay($settings.display.hoverDelayMs),
+      });
+    },
+    leave(seatID) {
+      dispatchExpand({ type: "avatar-leave", seatID });
+    },
+    press(seatID) {
+      dispatchExpand({ type: "avatar-press", seatID });
+    },
+    click(seatID) {
+      returnFocusTo = null;
+      dispatchExpand({ type: "avatar-click", seatID });
+    },
+  });
+
+  // The expand buttons (a full panel's, a summary's ⤢ and its pip click)
+  // open the overlay pinned and move focus into it; closing it puts focus
+  // back on the button that opened it (ADR 0120 §4).
+  let overlayEl = $state<HTMLElement | null>(null);
+  let pinButtonEl = $state<HTMLButtonElement | null>(null);
+  let returnFocusTo: HTMLElement | null = null;
+  async function openExpanded(seatID: string, from: EventTarget | null): Promise<void> {
+    returnFocusTo = from instanceof HTMLElement ? from : null;
+    dispatchExpand({ type: "expand", seatID });
+    await tick();
+    pinButtonEl?.focus();
+  }
+  function restoreFocus(): void {
+    const el = returnFocusTo;
+    returnFocusTo = null;
+    if (el && el.isConnected) el.focus();
+  }
+  function togglePin(): void {
+    const wasPinned = expanded?.pinned === true;
+    dispatchExpand({ type: "pin-toggle" });
+    if (wasPinned) restoreFocus();
+  }
+
+  // Escape closes the overlay only when nothing else owns it (ADR 0120 §4,
+  // ADR 0047): not a key something already took, not under a modal, not
+  // while a card's popover, the mana picker or a card menu is open, not
+  // while a target is being picked, and not when the dock's one key
+  // handler would press something with it. That keeps cancelling a pick
+  // and closing a menu ahead of closing the board.
+  function onExpandKey(e: KeyboardEvent): void {
+    if (e.key !== "Escape" || !expanded) return;
+    if (e.defaultPrevented || e.isComposing) return;
+    if ($foreignModalOpen) return;
+    if ($abilityPopover || $manaSourcePicker || $cardMenu || $targeting) return;
+    // A popup on the board that closes on its own Escape (the pile's
+    // "+N more" list) says so with `data-escape-owner`.
+    if (boardEl?.querySelector("[data-escape-owner]")) return;
+    if (dockKeyFor(e, currentDockRequest(), { modalOpen: $foreignModalOpen })) return;
+    e.preventDefault();
+    dispatchExpand({ type: "escape" });
+    restoreFocus();
+  }
+
+  // Where the overlay sits (ADR 0120 §2): the wider span beside the
+  // avatar it belongs to, on the table. Null fills the board, which is
+  // the phone layout and the fallback when the avatar cannot be measured.
+  let overlaySpan = $state<Span | null>(null);
+  function tableAvatar(seatID: string): HTMLElement | null {
+    if (!boardEl) return null;
+    for (const slot of boardEl.querySelectorAll<HTMLElement>(":scope > .slot")) {
+      const el = slot.querySelector<HTMLElement>(seatSelector(seatID));
+      if (el) return el;
+    }
+    return null;
+  }
+  function measureOverlay(): void {
+    const e = expanded;
+    if (!e || !boardEl || onPhone()) {
+      overlaySpan = null;
+      return;
+    }
+    const av = tableAvatar(e.seatID);
+    const b = boardEl.getBoundingClientRect();
+    const r = av?.getBoundingClientRect();
+    if (!r || (r.width === 0 && r.height === 0) || b.width === 0) {
+      overlaySpan = null;
+      return;
+    }
+    const next = placeOverlay(
+      { left: r.left - b.left, top: r.top - b.top, width: r.width, height: r.height },
+      {
+        boardWidth: b.width,
+        // ADR 0119's pile publishes its width here; unset is 0.
+        leftClear: parsePx(getComputedStyle(boardEl).getPropertyValue("--stack-pile-clear")),
+        edge: 6,
+      },
+    );
+    const cur = overlaySpan;
+    if (!cur || cur.left !== next.left || cur.width !== next.width || cur.side !== next.side) {
+      overlaySpan = next;
+    }
+  }
+  $effect(() => {
+    const seatID = expanded?.seatID;
+    const board = boardEl;
+    if (!seatID || !board) {
+      overlaySpan = null;
+      return;
+    }
+    untrack(measureOverlay);
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => measureOverlay());
+    ro.observe(board);
+    return () => ro.disconnect();
+  });
+
+  // The arrows and the fan lane re-measure when the overlay opens,
+  // closes, changes seat, moves or resizes (ADR 0120 §3): its copy of a
+  // card is the anchor while it is open, and none of that is a snapshot.
+  $effect(() => {
+    void expanded?.seatID;
+    void overlaySpan;
+    untrack(bumpBoardExpandLayout);
+  });
+  $effect(() => {
+    const el = overlayEl;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => bumpBoardExpandLayout());
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
+  // The overlay fades in when animations are on and motion is not
+  // reduced; otherwise it appears at once. It always leaves at once, so
+  // the anchors never prefer a copy that is on its way out. A CSS
+  // animation on mount (`.animate`) rather than a Svelte transition, so
+  // closing is never delayed by one.
+  const overlayMotion = $derived(
+    $settings.animations.enabled && !$settings.accessibility.reduceMotion,
+  );
+
+  // The overlay's name, and the expand and pin buttons' (ADR 0120 §3, §4).
+  // A label contract: none of them contains "<name> board" or
+  // "your board", which the e2e suite matches as substrings.
+  function expandedRegionName(seat: PlayerView): string {
+    return seat.id === viewerID ? "your own board, expanded" : `${seat.name}'s board, expanded`;
+  }
+  function expandButtonName(seat: PlayerView): string {
+    return seat.id === viewerID ? "Expand your own board" : `Expand ${seat.name}'s board`;
+  }
+  function pinButtonName(seat: PlayerView): string {
+    return seat.id === viewerID
+      ? "Pin your own expanded board"
+      : `Pin ${seat.name}'s expanded board`;
   }
 
   // The four quadrant positions. Iteration order doesn't matter for
@@ -2531,6 +2742,95 @@
   }
 </script>
 
+<svelte:window onkeydown={onExpandKey} />
+
+<!-- One seat's PlayerPanel, on the table or (ADR 0120 §3) a second time
+     in the expanded overlay, with exactly the same props and handlers, so
+     a click in the overlay goes where the same click on the table goes.
+     `pos` is null for a spectator's grid. -->
+{#snippet seatPanel(seat: PlayerView, pos: SeatPosition | null, expanded: boolean)}
+  {#if pos === null}
+    <PlayerPanel
+      {seat}
+      isSelf={false}
+      spectator={true}
+      {expanded}
+      isActive={seat.id === activeSeatID}
+      hasPriority={seat.id === prioritySeatID}
+      {viewerID}
+      {isAdmin}
+      sendAction={guardedSendAction}
+      isMonarch={seat.id === monarchID}
+      isInitiative={seat.id === initiativeID}
+      {view}
+      controlledCards={cardsByController.get(seat.id) ?? []}
+      exile={exileForOwner(seat.id)}
+      {combatMode}
+      {selectedCombatCardID}
+      {onSelectCombatCard}
+      {onDeclareAttack}
+      {onDeclareBlock}
+      onTapToggle={handleTapToggle}
+      onPlayCard={handlePlayCard}
+      onDrawCard={handleDrawCard}
+      onTargetPlayer={handleTargetPlayer}
+      onTargetCard={handleTargetCard}
+      considering={seat.id === consideringSeatID}
+    />
+  {:else}
+    <PlayerPanel
+      {seat}
+      isSelf={pos === "self"}
+      flipped={$settings.display.tableLayout === "row" || opponentCount === 2
+        ? pos !== "self"
+        : pos === "across" || pos === "across_next"}
+      {expanded}
+      isActive={seat.id === activeSeatID}
+      hasPriority={seat.id === prioritySeatID}
+      {viewerID}
+      {isAdmin}
+      sendAction={guardedSendAction}
+      isMonarch={seat.id === monarchID}
+      isInitiative={seat.id === initiativeID}
+      {view}
+      controlledCards={cardsByController.get(seat.id) ?? []}
+      exile={exileForOwner(seat.id)}
+      {combatMode}
+      {selectedCombatCardID}
+      {onSelectCombatCard}
+      {onDeclareAttack}
+      {onDeclareBlock}
+      onTapToggle={handleTapToggle}
+      onPlayCard={handlePlayCard}
+      onDrawCard={handleDrawCard}
+      onTargetPlayer={handleTargetPlayer}
+      onTargetCard={handleTargetCard}
+      docked={docked && pos === "self"}
+      coached={coached && pos === "self"}
+      onActivateAbility={handleActivateAbility}
+      onManaAbilityCost={handleManaAbilityCost}
+      considering={seat.id === consideringSeatID}
+      onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
+      {legal}
+      {legalGate}
+    />
+  {/if}
+{/snippet}
+
+<!-- ADR 0120 §4: the keyboard route to the overlay, and on a touch screen
+     the only one. Shown on the slot's hover and on focus. -->
+{#snippet expandButton(seat: PlayerView)}
+  <button
+    class="expand-board"
+    type="button"
+    aria-label={expandButtonName(seat)}
+    title={expandButtonName(seat)}
+    onclick={(e) => openExpanded(seat.id, e.currentTarget)}
+  >
+    ⤢
+  </button>
+{/snippet}
+
 <div
   class="board"
   class:spectator={isSpectator}
@@ -2563,61 +2863,13 @@
               {onDeclareBlock}
               onTargetPlayer={handleTargetPlayer}
               onTargetCard={handleTargetCard}
-              onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
+              onExpand={(from) => openExpanded(seat.id, from)}
               considering={seat.id === consideringSeatID}
               {legalGate}
             />
           {:else}
-            {#if decision.reason === "pinned"}
-              <!-- The only way back. A pin is the one expansion the
-                   viewer has to undo by hand — every other reason
-                   clears itself when the prompt closes or the turn
-                   moves on — and PlayerPanel has nowhere to put the
-                   control, so it lives on the slot instead. -->
-              <button
-                class="unpin"
-                type="button"
-                aria-label={`Collapse ${seat.name}'s board back to a summary`}
-                onclick={() => (pinnedSeatID = null)}
-              >
-                ⤡
-              </button>
-            {/if}
-            <PlayerPanel
-              {seat}
-              isSelf={pos === "self"}
-              flipped={$settings.display.tableLayout === "row" || opponentCount === 2
-                ? pos !== "self"
-                : pos === "across" || pos === "across_next"}
-              isActive={seat.id === activeSeatID}
-              hasPriority={seat.id === prioritySeatID}
-              {viewerID}
-              {isAdmin}
-              sendAction={guardedSendAction}
-              isMonarch={seat.id === monarchID}
-              isInitiative={seat.id === initiativeID}
-              {view}
-              controlledCards={cardsByController.get(seat.id) ?? []}
-              exile={exileForOwner(seat.id)}
-              {combatMode}
-              {selectedCombatCardID}
-              {onSelectCombatCard}
-              {onDeclareAttack}
-              {onDeclareBlock}
-              onTapToggle={handleTapToggle}
-              onPlayCard={handlePlayCard}
-              onDrawCard={handleDrawCard}
-              onTargetPlayer={handleTargetPlayer}
-              onTargetCard={handleTargetCard}
-              docked={docked && pos === "self"}
-              coached={coached && pos === "self"}
-              onActivateAbility={handleActivateAbility}
-              onManaAbilityCost={handleManaAbilityCost}
-              considering={seat.id === consideringSeatID}
-              onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
-              {legal}
-              {legalGate}
-            />
+            {@render expandButton(seat)}
+            {@render seatPanel(seat, pos, false)}
           {/if}
         </div>
       {/if}
@@ -2626,34 +2878,52 @@
     <!-- Spectator path: uniform grid, all upright, equal real estate. -->
     {#each view.seats as seat (seat.id)}
       <div class="slot spectator-slot">
-        <PlayerPanel
-          {seat}
-          isSelf={false}
-          spectator={true}
-          isActive={seat.id === activeSeatID}
-          hasPriority={seat.id === prioritySeatID}
-          {viewerID}
-          {isAdmin}
-          sendAction={guardedSendAction}
-          isMonarch={seat.id === monarchID}
-          isInitiative={seat.id === initiativeID}
-          {view}
-          controlledCards={cardsByController.get(seat.id) ?? []}
-          exile={exileForOwner(seat.id)}
-          {combatMode}
-          {selectedCombatCardID}
-          {onSelectCombatCard}
-          {onDeclareAttack}
-          {onDeclareBlock}
-          onTapToggle={handleTapToggle}
-          onPlayCard={handlePlayCard}
-          onDrawCard={handleDrawCard}
-          onTargetPlayer={handleTargetPlayer}
-          onTargetCard={handleTargetCard}
-          considering={seat.id === consideringSeatID}
-        />
+        {@render expandButton(seat)}
+        {@render seatPanel(seat, null, false)}
       </div>
     {/each}
+  {/if}
+
+  {#if expanded && expandedSeat}
+    <!-- ADR 0120 §2–§3: the expanded board. Over the table at z 32, beside
+         the avatar it belongs to, above the dock's clearance, no scrim.
+         Its panel is a second PlayerPanel for the seat, so the table's
+         handlers serve its clicks; it is the region, and the panel inside
+         is an unnamed group, so "<name> board" stays unique. -->
+    <div
+      class="board-expanded"
+      class:fill={overlaySpan === null}
+      class:pinned={expanded.pinned}
+      data-board-expanded
+      data-seat-id-expanded={expandedSeat.id}
+      role="region"
+      aria-label={expandedRegionName(expandedSeat)}
+      style:left={overlaySpan ? `${overlaySpan.left}px` : null}
+      style:width={overlaySpan ? `${overlaySpan.width}px` : null}
+      bind:this={overlayEl}
+      onpointerenter={() => dispatchExpand({ type: "overlay-enter" })}
+      onpointerleave={() => dispatchExpand({ type: "overlay-leave" })}
+      class:animate={overlayMotion}
+    >
+      <button
+        class="pin-board"
+        type="button"
+        aria-label={pinButtonName(expandedSeat)}
+        aria-pressed={expanded.pinned}
+        title={expanded.pinned ? "Unpin and close" : "Pin open"}
+        bind:this={pinButtonEl}
+        onclick={togglePin}
+      >
+        <Icon name="pin" size={13} />
+      </button>
+      {#key expandedSeat.id}
+        {@render seatPanel(
+          expandedSeat,
+          isSpectator ? null : expandedSeat.id === viewerID ? "self" : "across",
+          true,
+        )}
+      {/key}
+    </div>
   {/if}
 
   <!-- #1467: the fan lane draws its own stack-target arrows, and so
@@ -3224,22 +3494,25 @@
     filter: grayscale(0.45) brightness(0.82);
     cursor: not-allowed;
   }
-  .board-disabled .slot {
+  .board-disabled .slot,
+  .board-disabled .board-expanded > :global(.panel) {
     pointer-events: none;
   }
   .slot {
     min-height: 0;
     min-width: 0;
-    /* Anchors .unpin. Nothing else in a slot is positioned, so this
-       costs nothing until a seat is pinned. */
+    /* Anchors .expand-board. */
     position: relative;
   }
 
-  /* The collapse control on a pinned panel. Sits above the panel's own
-     chrome (PlayerPanel's rail is z-index 3) but under the attention
-     strip (40) and the hover zoom, because a prompt covering this
-     button is strictly better than this button covering a prompt. */
-  .unpin {
+  /* ADR 0120 §4: the expand button, at the slot's top-right corner
+     where ADR 0077's collapse button was. Above the panel's own chrome
+     (PlayerPanel's rail is z-index 3) and under the attention strip (40)
+     and the hover zoom, because a prompt covering this button is strictly
+     better than this button covering a prompt. It shows on the slot's
+     hover and on focus; without a hovering pointer it always shows,
+     because there it is the only way in. */
+  .expand-board {
     position: absolute;
     top: 6px;
     right: 6px;
@@ -3252,10 +3525,103 @@
     font-size: 12px;
     line-height: 1;
     cursor: pointer;
+    opacity: 0;
+    transition: opacity 120ms ease;
   }
-  .unpin:hover {
+  .slot:hover > .expand-board,
+  .expand-board:focus-visible {
+    opacity: 1;
+  }
+  .expand-board:hover {
     color: var(--fg);
     border-color: var(--border-strong);
+  }
+  @media (hover: none) {
+    .expand-board {
+      opacity: 1;
+    }
+  }
+
+  /* ADR 0120 §2: the expanded board. z 32: above every panel's chrome
+     (≤ 10), below the arrows (35–36), the floating stack (38), the
+     attention strip (40), the dock (55), card-local menus (60+), modals
+     (200) and the hover zoom (300). Full height, stopping above the dock
+     by the zoom's own clearance, so nothing in it is ever under the dock.
+     Board.svelte sets `left` and `width` inline to the span beside the
+     avatar; `.fill` (no span: a phone, or an avatar with no box) takes
+     the whole board. No scrim: the table around it stays clickable. */
+  .board-expanded {
+    position: absolute;
+    top: 10px;
+    bottom: calc(10px + var(--dock-zoom-clear, 0px));
+    z-index: 32;
+    display: flex;
+    min-width: 0;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    transform-origin: center;
+  }
+  .board-expanded.fill {
+    left: 6px;
+    right: 6px;
+  }
+  /* §4: a 120 ms fade in, from 0.98, only with animations on and motion
+     not reduced. */
+  .board-expanded.animate {
+    animation: board-expand-in 120ms ease-out;
+  }
+  @keyframes board-expand-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .board-expanded > :global(.panel) {
+    flex: 1 1 auto;
+    min-width: 0;
+    border-color: var(--border-strong);
+  }
+  .board-expanded.pinned > :global(.panel) {
+    border-color: var(--accent, var(--border-strong));
+  }
+  /* §5: a phone gets the board's whole area. */
+  @media (max-width: 599px) {
+    .board-expanded,
+    .board-expanded.fill {
+      inset: 0;
+      width: auto;
+    }
+  }
+
+  /* §4: the pin toggle, top right of the overlay, over its panel's rail. */
+  .pin-board {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 5px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg-dim);
+    line-height: 1;
+    cursor: pointer;
+  }
+  .pin-board:hover {
+    color: var(--fg);
+    border-color: var(--border-strong);
+  }
+  .pin-board[aria-pressed="true"] {
+    color: var(--accent, var(--fg));
+    border-color: var(--accent, var(--border-strong));
   }
 
   /* The attention strip. Fixed-width column, grows downward, capped

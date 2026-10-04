@@ -1686,6 +1686,12 @@ export interface PlayerView {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // AI agent seat (ADR 0122 §7): an outside model joined as a guest
+  // through the MCP seat binary. NOT a bot. Declared at join, never
+  // cleared, identical for every viewer. agent_client is the MCP
+  // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
+  is_agent?: boolean;
+  agent_client?: string;
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;

@@ -41,6 +41,7 @@
   import { gsap } from "gsap";
   import { settings } from "../../settings";
   import { cardAnchors, cardSelector, findAnchor, seatSelector } from "../../boardAnchor";
+  import { boardExpandLayout } from "../../boardExpand";
   import {
     BeatDirector,
     beatMode,
@@ -465,9 +466,12 @@
   // have shifted because the new card just mounted) AND on board
   // resize. requestAnimationFrame the first measurement so newly-
   // mounted DOM nodes have laid out before we read their rects.
+  // ADR 0120 §3: and when the expanded board opens, closes, changes
+  // seat or resizes, because its copy of a card is the anchor then.
   $effect(() => {
     void pairs;
     void view;
+    void $boardExpandLayout;
     if (!boardEl) return;
     let raf = requestAnimationFrame(recomputeArrows);
     const obs = new ResizeObserver(() => {
