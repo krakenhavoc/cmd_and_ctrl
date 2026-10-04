@@ -273,6 +273,16 @@ describe("ActionDock", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(toggle.getAttribute("aria-controls")).toBe("dock-phase-track");
     expect(d.q("#dock-phase-track")).not.toBeNull();
+    // #2214: the track is five phase groups, every step a button.
+    const groups = d.container.querySelectorAll('#dock-phase-track [role="group"]');
+    expect([...groups].map((g) => g.getAttribute("aria-label"))).toEqual([
+      "beginning phase",
+      "precombat main phase",
+      "combat phase",
+      "postcombat main phase",
+      "ending phase",
+    ]);
+    expect(d.container.querySelectorAll("#dock-phase-track button.step-icon")).toHaveLength(13);
     click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(d.q(".phase-display")!.classList.contains("track-open")).toBe(true);
