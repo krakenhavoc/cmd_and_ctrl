@@ -1821,6 +1821,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.
 	g.recordModesChosenLocked(ab.Modes, modeAbility, params.Modes)
+	// CardID is set here and on no trigger's EventTrigger, and the
+	// public log reads it that way (ADR 0119 §5): this breadcrumb is an
+	// activation, which EventActivateAbility below tells, so it gets no
+	// `trigger` line. Keep CardID on it and off the trigger emits.
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,
