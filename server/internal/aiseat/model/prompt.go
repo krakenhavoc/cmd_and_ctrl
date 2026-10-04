@@ -224,6 +224,11 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}
+		// ADR 0115 decision 4: the one fact the CR 903.9a question
+		// carries beyond its card.
+		if ch.Kind == "commander_return" && ch.PlayableFromZone {
+			b.WriteString(" (you could cast it from where it is now)")
+		}
 		if ch.Count > 0 {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}
