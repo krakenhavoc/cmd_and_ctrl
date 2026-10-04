@@ -3324,7 +3324,7 @@ Triage on `develop` at `f6444416` found 211 distinct cards requested, of which 2
 
 ### Status
 
-**In progress.** The tracker is open. Its class A card PRs, its four small seams ([ADR 0113](decisions/0113-small-seams-for-the-s58-deck-requests.md)), the Ring tempts you ([ADR 0114](decisions/0114-the-ring-tempts-you.md)) and the revealed-hand card filter ([ADR 0116](decisions/0116-a-card-filter-on-the-revealed-hand-pick.md)) have merged. Left open on the tracker: the seven deck issues and commanders die ([ADR 0115](decisions/0115-commanders-die.md)), whose PR 3 (the switch) is still open on the tracker. Alternative costs for every spell you cast ([#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163)) moved to S59.
+**In progress.** The tracker is open. Its class A card PRs, its four small seams ([ADR 0113](decisions/0113-small-seams-for-the-s58-deck-requests.md)), the Ring tempts you ([ADR 0114](decisions/0114-the-ring-tempts-you.md)), commanders die ([ADR 0115](decisions/0115-commanders-die.md); the switch [#2216](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2216) and the caveat lift [#2227](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2227) merged, [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085) closed) and the revealed-hand card filter ([ADR 0116](decisions/0116-a-card-filter-on-the-revealed-hand-pick.md)) have merged. Still open: the seven deck issues and the commander return prompt follow-up ([#2228](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2228), ADR 0115 PR 5). Alternative costs for every spell you cast ([#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163)) moved to S59.
 
 ---
 
