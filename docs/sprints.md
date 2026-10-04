@@ -3318,7 +3318,7 @@ From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/199
 
 Opened 2026-10-04 from the owner's direction: "previously we were building the game around it being a sandbox and now we are building it around being automated with almost 4k cards catalogged. That means the game should be smarter and more intuitive." The owner answered four questions the same day, recorded in ADR 0117. The members are ADR 0117's Delivery PRs and ADR 0118, which is written after it.
 
-- [ ] ADR 0117: click to act, and a per-colour mana stepper ([#2187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2187))
+- [x] ADR 0117: click to act, and a per-colour mana stepper ([#2187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2187))
 - [ ] PR 2 — server: `adds_no_mana` also covers an ability that adds nothing right now (a power-0 Vivi Ornitier), so the click never spends it and the bot is not offered it
 - [ ] PR 3 — client, the click rule: one predicate for "usable" shared by the click, the popover and the picker; usable abilities open the popover, mana only taps for mana, nothing usable does nothing; the popover's Sandbox Tap / Untap row; the tapped-Vivi fix; the tutorial's step 7 hint
 - [ ] PR 4 — client, the stepper: one −/+ row per colour with "N of N" for any activation with two or more colour picks, at the card; the right-click popover's colour rows open it; the 12-answer cap removed
@@ -3336,7 +3336,7 @@ From the tracker, [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/218
 
 ### Status
 
-**In progress.** ADR 0117 is in review. ADR 0118 is not written yet.
+**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 is not written yet.
 
 ---
 
