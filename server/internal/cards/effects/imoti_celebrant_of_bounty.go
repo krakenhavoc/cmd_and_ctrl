@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cascade, which then exiles until a card with mana value less than 6.
 func init() {
 	Register(Spec{
-		OracleID: "eca32dcd-6845-433e-a631-ed1f0ee78f25",
-		Name:     "Imoti, Celebrant of Bounty",
+		OracleID:     "eca32dcd-6845-433e-a631-ed1f0ee78f25",
+		Name:         "Imoti, Celebrant of Bounty",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Cascade(),
 			GrantsCascade("Imoti, Celebrant of Bounty", func(spell game.Card, _ *game.Card, g *game.Game) bool {

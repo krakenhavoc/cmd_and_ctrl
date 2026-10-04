@@ -21,8 +21,9 @@ import (
 // shows the picker option greyed out.
 func init() {
 	Register(Spec{
-		OracleID: "5e62b51d-faec-4aa0-9504-cf2c282d08ea",
-		Name:     "Rakdos Charm",
+		OracleID:     "5e62b51d-faec-4aa0-9504-cf2c282d08ea",
+		Name:         "Rakdos Charm",
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Exile target player's graveyard.", TargetPlayer("target player")),
 			Mode("Destroy target artifact.", TargetPermanent("target artifact", Artifact())),
