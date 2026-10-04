@@ -2178,6 +2178,13 @@ export interface ActivatedAbilityView {
   // come back: only a new object (CR 400.7 — a flicker, not an untap)
   // clears it, which is why the menu says something different.
   exhausted?: boolean;
+  // #1210: the printed clause of a board-wide "can't be activated"
+  // static that refuses THIS ability right now ("Activated abilities
+  // of creatures can't be activated", Cursed Totem). Absent, which is
+  // nearly always, means nothing refuses it. Distinct from
+  // CardView.restrictions' `cant_activate` token, the per-permanent
+  // Arrest bit. ADR 0117 §2 greys the row on it and shows the clause.
+  cant_activate?: string;
   // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
   // ability (CR 606.4). Its PRESENCE, not its value, is what marks
   // the ability as a loyalty ability — 0 is a real printed cost —
@@ -3339,7 +3346,16 @@ export interface ManaAbilityView {
   // empty, so the ability adds no mana at all and the row is greyed —
   // tapping the land would just lose it. Absent for every other
   // ability.
+  //
+  // ADR 0117 §5 widens it to "adds nothing right now": a computed
+  // output that comes to no mana (a power-0 Vivi Ornitier, an Exotic
+  // Orchard with nothing to copy, CR 106.5 and 106.7). The client
+  // greys the row either way, with the generic reason.
   adds_no_mana?: boolean;
+  // #1210: ActivatedAbilityView.cant_activate for a mana ability (a
+  // Cursed Totem reaches a mana creature's mana ability). Same key, so
+  // ADR 0117 §2's one predicate reads both kinds of row.
+  cant_activate?: string;
   // #1443: for each slot of the output that asks for a colour, the
   // colours that pick would offer — one list per picking slot, in
   // output order, narrowed (Command Tower, CR 903.4f) and ordered

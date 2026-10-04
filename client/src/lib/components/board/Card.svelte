@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { emit as tutorialEmit } from "../../tutorialBus";
   // Card is the visual primitive for one Magic card in the new HTML/
   // CSS board. Replaces the Pixi CardTile from client/src/lib/card-tile.ts.
   //
@@ -21,7 +20,7 @@
   // rows that 2-D placement is meaningless. A follow-up can wire
   // within-row reordering when the UX is designed for it.
 
-  import type { CardView } from "../../protocol";
+  import type { CardView, GameView } from "../../protocol";
   import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
@@ -36,7 +35,15 @@
   import { deathMarkBadge } from "../../deathMarks";
   import { landTypeBadge } from "../../landTypes";
   import { openCardMenu } from "../../contextMenu";
-  import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
+  import {
+    acrossFor,
+    manualLoyaltyRows,
+    menuAbilityRows,
+    menuManaRows,
+    specialActionItems,
+    type MenuAction,
+  } from "../../contextMenu.logic";
+  import { abilityPopover, closeAbilityPopover, openAbilityPopover } from "../../abilityPopover";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -140,11 +147,27 @@
     // suppresses the menu entirely (opponent permanents, zones where
     // activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
-    // #1438: a left-click on a mana source now taps it FOR mana, so
-    // the menu carries the plain tap as "Tap (no mana)". Set by
-    // BattlefieldRow on the viewer's own permanents; undefined hides
-    // the row (hand cards, opponents).
+    // ADR 0117 §3: the popover's Sandbox row, Tap or Untap, on every
+    // permanent the viewer controls ("Tap (no mana)" on a mana source,
+    // #1438). Set by BattlefieldRow on the viewer's own panel; undefined
+    // hides the row (hand cards, opponents). Shown only when `viewerID`
+    // controls the card, so an opponent's Aura drawn on the viewer's
+    // creature never offers it.
     onRawTap?: () => void;
+    // ADR 0117 §3: sends a manual loyalty row's `activate_loyalty`, for
+    // an uncatalogued planeswalker the viewer controls. Its rows need
+    // `view` to judge the window. Set by BattlefieldRow on the viewer's
+    // own panel.
+    onMenuAction?: (action: MenuAction) => void;
+    // The frame, for the manual loyalty rows' window and a
+    // planeswalker's rows. BattlefieldRow passes it; elsewhere absent.
+    view?: GameView | null;
+    // ADR 0117 §1: the panel's click rule says a left-click on this card
+    // does nothing right now, so it drops the `clickable` class: no
+    // pointer cursor, no hover lift. It keeps role="button" and its tab
+    // stop (a keyboard player still opens the popover from it, and the
+    // e2e suite selects cards by role). A live targeting ring wins.
+    inert?: boolean;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls, and
     // since #660 by Hand.svelte for the viewer's own hand — a card in
@@ -249,6 +272,9 @@
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
+    onMenuAction,
+    view,
+    inert = false,
     onActivateAbility,
     onSpecialAction,
     sorcerySpeedBlocked = "",
@@ -263,12 +289,13 @@
     onClick,
   }: Props = $props();
 
-  // manaMenuOpen — Card-local state driving the ManaAbilityMenu
-  // pop-over. Flipped true by oncontextmenu when the card has at
-  // least one mana ability and a parent wired onActivateManaAbility.
-  // Dismissed on selection, Escape (handled inside the menu), or
-  // click elsewhere (the window-level onclick handler below).
-  let manaMenuOpen = $state(false);
+  // manaMenuOpen — whether this card's ManaAbilityMenu popover is
+  // open. ADR 0117 §1: it lives in the abilityPopover store, keyed by
+  // instance ID, because a LEFT-click opens it too and that click is
+  // routed in PlayerPanel. A right-click or a pip writes the same store.
+  // Dismissed on selection, Escape (handled inside the menu), or a
+  // click on the card.
+  const manaMenuOpen = $derived($abilityPopover?.cardID === card.instance_id);
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
@@ -281,14 +308,13 @@
   const menuAbilities = $derived(menuAbilityRows(card, viewerID));
   // Those rows are the viewer's to activate on another player's
   // permanent, and the popover greys any the exact digest leaves out.
-  const across = $derived(
-    !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID,
-  );
+  const across = $derived(acrossFor(card, viewerID));
   // #1228: and the same sentence for the CR 605 list. A permanent
   // publishes `mana_abilities`; a card in hand whose mana ability
   // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
   // and the index means the same thing on the wire either way.
-  const menuManaAbilities = $derived(card.mana_abilities ?? card.zone_mana_abilities ?? []);
+  // ADR 0117: the controller's alone (contextMenu.logic.ts menuManaRows).
+  const menuManaAbilities = $derived(menuManaRows(card, viewerID));
   // ADR 0105 sub-PR 4: the special-action rows, from the same builder
   // the admin card menu uses, with the actor it would use: a face-down
   // permanent is turned up by its controller (CR 708.6), and a hand
@@ -299,11 +325,25 @@
       ? specialActionItems(card, card.controller || card.owner, legal, legalGate)
       : [],
   );
-  // hasMenu: the popover has at least one row to show.
+  // ADR 0117 §3: an uncatalogued planeswalker's manual loyalty rows,
+  // in the activated section. Only with the frame to judge them.
+  const loyaltyRows = $derived(
+    onMenuAction && onActivateAbility ? manualLoyaltyRows(card, view, viewerID ?? null) : [],
+  );
+  // ADR 0117 §3: the Sandbox row, on every permanent the viewer
+  // controls. A Card with no viewer in scope trusts its parent.
+  const sandbox = $derived(
+    !!onRawTap && (viewerID == null || (card.controller || card.owner) === viewerID),
+  );
+  // hasMenu: the popover has at least one row to show. Since ADR 0117
+  // §3 that is every permanent the viewer controls (its Sandbox row),
+  // so a right-click on a vanilla creature opens the popover with Tap.
   const hasMenu = $derived(
     (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
       (!!onActivateAbility && menuAbilities.length > 0) ||
-      specialRows.length > 0,
+      specialRows.length > 0 ||
+      loyaltyRows.length > 0 ||
+      sandbox,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
@@ -364,6 +404,8 @@
   // ("Island until end of turn — Tidal Warrior").
   const landTypeMark = $derived(landTypeBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
+  // ADR 0117 §1: the pointer affordance follows what a click would do.
+  const clickable = $derived(interactive && (!inert || targetable));
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
   // the controller of their own morph or manifest (CR 708.5), the
@@ -492,7 +534,7 @@
     // outer-click dismiss fires BEFORE the menu receives its
     // button click because the menu's onclick uses stopPropagation.
     if (manaMenuOpen) {
-      manaMenuOpen = false;
+      closeAbilityPopover();
       return;
     }
     // CR 702.26b: a phased-out permanent "can't affect or be affected
@@ -511,15 +553,15 @@
     if ($settings.gameplay.adminOverrides) {
       ev.preventDefault();
       ev.stopPropagation();
-      manaMenuOpen = false;
+      if (manaMenuOpen) closeAbilityPopover();
       openCardMenu({ card, x: ev.clientX, y: ev.clientY });
       return;
     }
     if (!hasMenu) return;
     ev.preventDefault();
     ev.stopPropagation();
-    manaMenuOpen = !manaMenuOpen;
-    if (manaMenuOpen) tutorialEmit("ability-menu-opened");
+    if (manaMenuOpen) closeAbilityPopover();
+    else openAbilityPopover(card.instance_id);
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -540,14 +582,11 @@
     if (phasedOut) return;
     if ($settings.gameplay.adminOverrides) {
       const r = (ev.currentTarget as HTMLElement | null)?.getBoundingClientRect();
-      manaMenuOpen = false;
+      if (manaMenuOpen) closeAbilityPopover();
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) {
-      manaMenuOpen = true;
-      tutorialEmit("ability-menu-opened");
-    }
+    if (hasMenu) openAbilityPopover(card.instance_id);
   }
 
   function handlePipKeydown(ev: KeyboardEvent): void {
@@ -557,6 +596,10 @@
 
   function handleKeydown(ev: KeyboardEvent): void {
     if (ev.key !== "Enter" && ev.key !== " ") return;
+    // ADR 0117: Enter on the card can open its popover, whose rows are
+    // buttons inside this element. Their own Enter must reach them, not
+    // be taken here as another click on the card.
+    if (ev.target !== ev.currentTarget) return;
     ev.preventDefault();
     onClick?.(card, ev as unknown as MouseEvent);
   }
@@ -599,7 +642,7 @@
   class:ready
   class:ready-idle={ready && !!idleHint}
   class:combat-target={combatTarget}
-  class:clickable={interactive}
+  class:clickable
   class:phased-out={phasedOut}
   class:ring-bearer={!!card.ring_bearer}
   class:menu-open={manaMenuOpen}
@@ -1052,10 +1095,13 @@
         {legalGate}
         {payerLife}
         {across}
-        onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
-          ? onRawTap
-          : undefined}
-        onClose={() => (manaMenuOpen = false)}
+        {card}
+        {view}
+        {viewerID}
+        manualLoyalty={loyaltyRows}
+        onMenuAction={(action) => onMenuAction?.(action)}
+        onRawTap={sandbox ? onRawTap : undefined}
+        onClose={closeAbilityPopover}
       />
     </div>
   {/if}

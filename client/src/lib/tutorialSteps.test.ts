@@ -361,6 +361,16 @@ describe("step 7: abilities live on right-click", () => {
     expect(RIGHT_CLICK.done!({ ...ctx(v), event: "ability-menu-opened" })).toBe(true);
   });
 
+  // ADR 0117 §6: a left click no longer taps the step's card (usually
+  // a summoning-sick mana creature, whose left click does nothing), so
+  // the hint stops saying it does.
+  it("hints at right-click and the pip, not at a left click that taps", () => {
+    expect(RIGHT_CLICK.hint).toBe(
+      "Right-click it, or tap its pip. A left click only acts when an ability is ready to use.",
+    );
+    expect(RIGHT_CLICK.hint).not.toMatch(/taps it/);
+  });
+
   it("recovers from a left click that tapped it", () => {
     const e = elves();
     const start = board({ mine: [e] });

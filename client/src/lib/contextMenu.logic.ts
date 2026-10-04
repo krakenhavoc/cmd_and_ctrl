@@ -28,7 +28,7 @@ import {
   planAttackAll,
   seatLabel,
 } from "./attackAll";
-import { grantedFromLabel, hasGrantedActivatedAbility } from "./abilityRef";
+import { grantedFromLabel } from "./abilityRef";
 import {
   attackersDefendedBy,
   attackTargetHint,
@@ -36,7 +36,7 @@ import {
   blockerHasRoom,
   permanentAttackTargets,
 } from "./attackTargets";
-import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
+import { isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import {
   NO_LEGAL_ACTIONS,
@@ -45,7 +45,13 @@ import {
   readyFirst,
   type LegalActions,
 } from "./legalActions";
-import type { ActionType, ActivatedAbilityView, CardView, GameView } from "./protocol";
+import type {
+  ActionType,
+  ActivatedAbilityView,
+  CardView,
+  GameView,
+  ManaAbilityView,
+} from "./protocol";
 import { sacrificeRangeShortfall } from "./sacrificeCost";
 import { targetPriceRange } from "./targetPrices";
 import {
@@ -299,108 +305,118 @@ export function menuAbilityRows(
   return rows.filter((a) => a.any_player === true);
 }
 
-// BattlefieldClickIntent is what a plain left-click on a
-// battlefield permanent should do.
-//
-//	"abilities" — open this card's menu so the player can pick one
-//	"mana"      — tap it FOR mana (#1438): activate its mana ability,
-//	              or open the mana picker when it has several
-//	"tap"       — the historic default: toggle tapped / untapped
-//	"none"      — the viewer may not drive this card at all
-export type BattlefieldClickIntent = "abilities" | "mana" | "tap" | "none";
-
-// BattlefieldClickOptions carries what the click router cannot read
-// off the card: whether this panel may activate mana abilities at all
-// (only the viewer's own panel wires the activation), and whether the
-// click was an Alt-click, which always means "just turn it sideways".
-export interface BattlefieldClickOptions {
-  manaClick?: boolean;
-  rawTap?: boolean;
+// acrossFor says whether `card`'s activated rows are being opened by a
+// seated viewer who does not control it (ADR 0106 §1 decision 6): the
+// popover then lists only its any-player rows, and greys any the exact
+// digest leaves out. Card and the click rule both ask this, so they
+// agree on which rows a viewer sees.
+export function acrossFor(card: CardView, viewerID: string | null | undefined): boolean {
+  return !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID;
 }
 
-// battlefieldClickIntent routes a left-click. Issue #329: "I cast
-// teferi and when I click on him to choose one of his abilities it
-// just tapped him."
+// menuManaRows is menuAbilityRows for the CR 605 list: a permanent's
+// mana rows are its controller's alone (a mana ability is never an
+// any-player row, ADR 0106 §1), so a viewer who does not control it
+// gets none — an opponent's Aura drawn on the viewer's own creature
+// included. `viewerID` undefined passes the rows through (a hand card,
+// whose list is `zone_mana_abilities`, CR 113.6).
+export function menuManaRows(
+  card: CardView,
+  viewerID: string | null | undefined,
+): ManaAbilityView[] {
+  const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
+  if (viewerID === undefined) return rows;
+  if (viewerID === null) return [];
+  return (card.controller || card.owner) === viewerID ? rows : [];
+}
+
+// BattlefieldClickIntent is what a plain left-click on a battlefield
+// permanent does once the intercepts (targeting, the combat selects,
+// an attack on a listed target, a block) have passed (ADR 0117 §1).
 //
-// He was right that it was wrong, and the replay shows it happening
-// — the `tapped` bit on his Teferi flips true / false across six
-// consecutive snapshots while he clicks. PlayerPanel's click handler
-// fell through every branch (targeting, combat select, block) to
-// `onTapToggle`, because tap/untap is the only thing a permanent
-// "does" in a sandbox.
+//	"popover" — open the card's light ability popover at the card: it
+//	            has a usable activated ability, loyalty ability or
+//	            special action (owner answer 2)
+//	"mana"    — tap it FOR mana (#1438): only mana rows are usable
+//	"tap"     — Alt-click: a raw tap / untap, the sandbox escape hatch
+//	"none"    — nothing on the card can be used right now
+export type BattlefieldClickIntent = "popover" | "mana" | "tap" | "none";
+
+// BattlefieldClickOptions carries what the click rule cannot read off
+// the card. The row inputs are the ones the popover is drawn with
+// (PlayerPanel hands both the same values), so the click and the
+// popover's greying are one judgement (ADR 0117 §2).
+export interface BattlefieldClickOptions {
+  // This panel wires mana activations: the popover lists mana rows and
+  // the click may tap for mana. Only the viewer's own panel does.
+  manaClick?: boolean;
+  // This panel wires the special-action and manual-loyalty sender.
+  special?: boolean;
+  // Alt-click: always "just turn it sideways", where canOverride holds.
+  rawTap?: boolean;
+  view?: GameView | null;
+  payerLife?: number;
+  // The panel's words for a window the server shut (`timing_closed`).
+  timingWords?: string;
+  // The frame's FULL legal-action lookup (the popover's `legalGate`).
+  legalGate?: LegalActions;
+}
+
+// battlefieldClickIntent is ADR 0117's click rule. The table is
+// automated now, so a left-click does what the card does, and a card
+// with nothing to do does nothing instead of turning sideways.
 //
-// Tapping a planeswalker is close to meaningless: no loyalty ability
-// has a {T} component, nothing in the rules taps one in normal play,
-// and the loyalty abilities are the entire reason to click him. So
-// the planeswalker branch goes to the menu instead — and it does so
-// whether or not the card has catalog abilities, because a
-// planeswalker with none still has the manual loyalty +/− rows
-// there, which beats a meaningless tap. Tap and untap remain in that
-// same menu for the rare effect that wants them.
+// History it replaces: a click used to tap, with exceptions grown one
+// at a time — a planeswalker opened its menu (#329, Teferi tapping
+// when clicked for his abilities), a utility land opened its menu
+// (#368), an untapped mana source tapped for mana (#1438), a permanent
+// with a granted ability opened its menu (ADR 0093 Decision 8).
 //
-// #1438, Ian: "when you click on mana and it taps can you have it tap
-// for that mana and put it in the floating mana pool". A raw tap of a
-// Forest adds nothing, and that is exactly how #1296's reporter tapped
-// a land and then wondered where the mana was. So an UNTAPPED
-// permanent with a mana ability is clicked FOR mana — lands, rocks
-// and dorks alike, and utility lands that also make mana (Rogue's
-// Passage): making mana is what they are clicked for nearly every
-// time, and the utility ability stays on right-click. What keeps the
-// old behaviour:
-//   - a TAPPED permanent: the click untaps it, one click as before;
-//   - a permanent with no mana ability: click-to-tap as before;
-//   - Alt-click: a raw tap, for the sandbox cases that want one
-//     (the right-click menu has it too, as "Tap (no mana)");
-//   - a planeswalker: still its menu (#329).
-// Summoning sickness is NOT checked here. The activation goes out and
-// the server's refusal is shown; the client does not pre-empt it.
+// The rule:
+//   1. Alt-click raw-taps wherever canOverride holds (an admin's too).
+//   2. The usable rows are worked out with the one predicate
+//      (abilityRowBlocked, through abilityPopoverModel) the popover
+//      greys with. For a permanent the viewer does not control, only
+//      its any-player rows count (CR 602.2, ADR 0106 §1). Who the
+//      card belongs to is the viewer's seat, not canOverride, so an
+//      admin's plain click on another seat's permanent no longer taps.
+//   3. Any usable non-mana row (activated, loyalty, manual loyalty,
+//      special action): the popover.
+//   4. Otherwise any usable mana row: the mana path (manaClickPlan).
+//   5. Otherwise nothing.
 export function battlefieldClickIntent(
   card: CardView,
   viewerID: string | null,
   isAdmin: boolean,
   opts: BattlefieldClickOptions = {},
 ): BattlefieldClickIntent {
-  // ADR 0106 §1 decision 6 (#1793): a permanent with an "Any player may
-  // activate this ability" row is clickable by every seat (CR 602.2).
-  // For a viewer who does not control it the click opens the menu,
-  // which lists only those rows. Nothing else about the permanent is
-  // theirs to drive, so there is no tap and no mana branch for them.
-  if (!canOverride(card, viewerID, isAdmin)) {
-    return mayActivateAcross(card, viewerID) ? "abilities" : "none";
-  }
-  if (opts.rawTap) return "tap";
-  if (isPlaneswalker(card)) return "abilities";
-  // ADR 0093 Decision 8 (owner decision, 2026-09-24): a permanent that
-  // another permanent granted an ACTIVATED ability is clicked for its
-  // abilities — a land under Squirrel Nest, a Sliver under Necrotic
-  // Sliver. #368's rule, extended to granted abilities on any
-  // permanent; the sandbox tap stays in the menu this opens. A granted
-  // MANA ability goes through the mana branch below, whose picker never
-  // chooses silently between two abilities (manaClickPlan).
-  if (hasGrantedActivatedAbility(card)) return "abilities";
-  if (opts.manaClick && !card.tapped && (card.mana_abilities?.length ?? 0) > 0) {
-    return "mana";
-  }
-  // #368, the same shape one rung down. Fabled Passage's only act is
-  // "{T}, Sacrifice this land: search for a basic" — a CR 602
-  // activated ability, not a mana ability — and left-clicking it
-  // just tapped it, leaving the fetch reachable only by right-click.
-  // A land that carries a non-mana activated ability is clicked FOR
-  // that ability, the way a planeswalker is clicked for its loyalty.
-  // Deliberately narrow:
-  //   - only lands, so a creature keeps its left-click tap (that is
-  //     how the sandbox marks one tapped) and its abilities stay on
-  //     right-click;
-  //   - only NON-creature lands, so an animated manland is still
-  //     tappable and selectable in combat;
-  //   - only `activated_abilities`, so a Forest — mana abilities
-  //     only — still taps on click. Utility lands are the whole
-  //     affected set.
-  // Tap and untap remain in the menu this opens, so nothing is lost.
-  if (isLand(card) && !isCreature(card) && (card.activated_abilities?.length ?? 0) > 0) {
-    return "abilities";
-  }
-  return "tap";
+  if (opts.rawTap && canOverride(card, viewerID, isAdmin)) return "tap";
+  if (!viewerID) return "none";
+  const model = abilityPopoverModel({
+    card,
+    viewerID,
+    view: opts.view,
+    payerLife: opts.payerLife,
+    timingWords: opts.timingWords,
+    legalGate: opts.legalGate,
+    mana: !!opts.manaClick,
+    activated: true,
+    special: !!opts.special,
+  });
+  if (popoverHasUsableNonMana(model)) return "popover";
+  if (model.mana.some((r) => !r.blocked)) return "mana";
+  return "none";
+}
+
+// popoverHasUsableNonMana: a row in the popover other than a mana row
+// can be used right now. The sandbox Tap / Untap row never counts: it
+// is on every permanent the viewer controls (ADR 0117 §3).
+export function popoverHasUsableNonMana(model: AbilityPopoverModel): boolean {
+  return (
+    model.special.some((i) => !i.disabled) ||
+    model.activated.some((r) => !r.blocked) ||
+    model.loyalty.some((i) => !i.disabled)
+  );
 }
 
 export function zoneRefFor(zone: MenuZone, ownerID: string): MenuZoneRef {
@@ -576,6 +592,10 @@ export interface AbilityCost {
   counter_cost_add?: number;
   counter_cost_add_kind?: string;
   counter_add_blocked?: boolean;
+  // #1210: the printed clause of a board-wide "can't be activated"
+  // static refusing this row (Cursed Totem). Both ability kinds carry
+  // it under the one name; ADR 0117 §2 reads it.
+  cant_activate?: string;
 }
 
 // ACTIVATION_CONDITION_UNMET is the hint on a row whose
@@ -590,11 +610,16 @@ export const ACTIVATION_CONDITION_UNMET = "activation condition not met";
 // next turn, an exhaust only if the permanent becomes a new object.
 export const ABILITY_EXHAUSTED = "already activated (exhaust)";
 
-// NO_COMMANDER_IDENTITY is the hint on a mana row the server marked
-// adds_no_mana (#844, CR 903.4f): "any color in your commander's color
-// identity" with no commander, or a colourless one, adds nothing.
-// Exported for the same reason.
-export const NO_COMMANDER_IDENTITY = "adds no mana: no commander color identity";
+// ADDS_NO_MANA is the hint on a mana row the server marked
+// adds_no_mana: it would add nothing right now. That was #844's case
+// first (CR 903.4f: "any color in your commander's color identity"
+// with no commander, or a colourless one), and since ADR 0117 §5 it is
+// also a computed output that comes to nothing (a power-0 Vivi
+// Ornitier, an Exotic Orchard with nothing to copy, CR 106.5 and
+// 106.7). Generic on purpose: the row's own label already says what
+// the output depends on, the way ACTIVATION_CONDITION_UNMET leaves the
+// condition to the label. Exported for the same reason.
+export const ADDS_NO_MANA = "adds no mana right now";
 
 // chargedManaCostNote is the tooltip fragment for a row whose
 // charged_mana_cost differs from its printed mana_cost (#1190) — a
@@ -793,11 +818,12 @@ export function abilityBlocked(
   // that will still be true tomorrow.
   if (a.exhausted) return ABILITY_EXHAUSTED;
   if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
-  // #844, CR 903.4f: the server says this mana ability would add
-  // nothing — no commander, or a colourless one. Activating it is
-  // legal and pointless (it would just tap the source), so the row is
-  // greyed with the reason rather than hidden.
-  if (a.adds_no_mana) return NO_COMMANDER_IDENTITY;
+  // #844 and ADR 0117 §5: the server says this mana ability would add
+  // nothing right now. Activating it is legal (CR 605.1a) and
+  // pointless: it would tap the source, or spend Vivi's once-per-turn
+  // activation, for no mana. So the row is greyed with the reason
+  // rather than hidden, and a click never activates it.
+  if (a.adds_no_mana) return ADDS_NO_MANA;
   // CR 601.2c, through the same predicate the cast path uses (#1157).
   // Not "is the list empty": a clause needs `min` candidates, and an
   // "up to N" clause needs none. Before this the row for The
@@ -843,6 +869,232 @@ function withGrantor(label: string, row: { granted_by?: { name?: string } }): st
   return from ? `${label} (${from})` : label;
 }
 
+// ---- ADR 0117 §2: one predicate for "can this row be used" ----------
+
+// AbilityRowKind is which list a row came from. The card-level
+// restriction that stops it differs: Arrest's `cant_activate` stops the
+// activated rows, `cant_activate_mana` the mana rows (Faith's Fetters
+// spares mana abilities, which is why the two are separate bits).
+export type AbilityRowKind = "mana" | "activated";
+
+// AbilityRow is what the predicate reads off a row: its cost shape and
+// the server's verdict fields (AbilityCost), plus the ref the digest
+// is keyed by.
+export type AbilityRow = AbilityCost & { ref?: string };
+
+// AbilityRowContext is everything about the card and the frame the
+// predicate needs. The click rule (battlefieldClickIntent), the ability
+// popover (ManaAbilityMenu), the mana picker (manaSource.ts) and the
+// override menu (abilityItems) all build one, so a click never
+// disagrees with the menu.
+export interface AbilityRowContext {
+  // The card the row is on, for its restrictions. Absent in a caller
+  // that has only the rows (a popover mounted on its own), in which
+  // case no card-level restriction is read.
+  card?: CardView;
+  // The card's instance ID, for the digest, when there is no `card`.
+  cardID?: string;
+  tapped: boolean;
+  sick: boolean;
+  // The PAYING player's life: the controller's on their own permanent,
+  // the viewer's on an any-player row (CR 602.1a).
+  payerLife?: number;
+  // The popover's words for a window the server shut: when defined, a
+  // `timing_closed` row is answered with them, ahead of the cost
+  // reasons, as the popover always has. Undefined (the override menu)
+  // leaves timing to the shared abilityBlocked, in its own order.
+  timingWords?: string;
+  // The frame's FULL legal-action lookup. Greys a sorcery-speed row,
+  // and on another player's permanent any row, that the exact digest
+  // leaves out (ADR 0105 §3, ADR 0106 §1 decision 5). The override
+  // menu passes none for its own rows: it never greys on the digest.
+  legalGate?: LegalActions;
+  // The rows are another player's permanent's any-player rows.
+  across?: boolean;
+  // For a planeswalker's rows: "already activated this turn" and a −N
+  // it cannot pay (CR 606.3, 606.6).
+  loyalty?: LoyaltyContext;
+}
+
+// abilityRowContext builds the context for a card from what every
+// caller has: the card, the viewer and the frame. One builder, so the
+// popover and the click rule cannot read different fields.
+export function abilityRowContext(
+  card: CardView,
+  opts: {
+    viewerID?: string | null;
+    view?: GameView | null;
+    payerLife?: number;
+    timingWords?: string;
+    legalGate?: LegalActions;
+  } = {},
+): AbilityRowContext {
+  const viewerID = opts.viewerID ?? null;
+  return {
+    card,
+    tapped: !!card.tapped,
+    sick: !!card.summoning_sick,
+    payerLife: opts.payerLife,
+    timingWords: opts.timingWords,
+    legalGate: opts.legalGate,
+    across: acrossFor(card, viewerID),
+    loyalty: { card, view: opts.view, viewerID },
+  };
+}
+
+// abilityRowBlocked is ADR 0117 §2's predicate: the reason `a` cannot
+// be used right now, or "" when it can. Advisory, as every check here
+// is: the server re-checks. In order:
+//
+//  1. the card's restriction (Arrest's `cant_activate`, Faith's
+//     Fetters' `cant_activate_mana`);
+//  2. the row's own `cant_activate` clause (#1210, Cursed Totem);
+//  3. a {T} cost on a tapped card. CR 106.12 makes this a cost
+//     question: the tapped flag matters only when the cost has {T}, so
+//     a tapped Vivi Ornitier's "{0}" ability stays usable;
+//  4. a {T} cost on a summoning-sick card (CR 302.6);
+//  5. the popover's timing words, when it passes them;
+//  6. everything the shared abilityBlocked says, with the loyalty
+//     context: life, sacrifice and the other costs, a planeswalker's
+//     once per turn and its −N, the timing window, exhausted,
+//     condition_unmet, adds_no_mana and targets;
+//  7. the digest's refusal, for a sorcery-speed row or an any-player
+//     row on another player's permanent.
+//
+// It never judges whether a mana cost can be afforded: the auto-tapper
+// pays, and ADR 0118 decides what happens when it cannot.
+export function abilityRowBlocked(
+  a: AbilityRow,
+  kind: AbilityRowKind,
+  ctx: AbilityRowContext,
+): string {
+  const restrictions = ctx.card?.restrictions ?? [];
+  if (kind === "activated" && restrictions.includes("cant_activate")) {
+    return EFFECT_STOPS_ABILITIES;
+  }
+  if (kind === "mana" && restrictions.includes("cant_activate_mana")) {
+    return EFFECT_STOPS_ABILITIES;
+  }
+  if (a.cant_activate) return a.cant_activate;
+  if (a.tap_cost && ctx.tapped) return "already tapped";
+  if (a.tap_cost && ctx.sick) return "summoning sickness";
+  if (a.timing_closed && ctx.timingWords !== undefined) {
+    return ctx.timingWords || ABILITY_NOT_RIGHT_NOW;
+  }
+  const fromRow = abilityBlocked(a, ctx.tapped, ctx.sick, ctx.loyalty, ctx.payerLife);
+  if (fromRow) return fromRow;
+  if (
+    kind === "activated" &&
+    (a.sorcery_speed || ctx.across) &&
+    digestRefusesRow(
+      ctx.legalGate ?? NO_LEGAL_ACTIONS,
+      ctx.cardID ?? ctx.card?.instance_id ?? "",
+      a.ref,
+    )
+  ) {
+    return ABILITY_NOT_RIGHT_NOW;
+  }
+  return "";
+}
+
+// JudgedRow is one row with the predicate's verdict, and whether the
+// frame's highlight lookup marks it ready (ADR 0105 §2). A blocked row
+// is never ready: an accent on a disabled row would say two things.
+export interface JudgedRow<T> {
+  a: T;
+  blocked: string;
+  ready: boolean;
+}
+
+// judgeAbilityRows runs the predicate over a list, ready rows first.
+export function judgeAbilityRows<T extends AbilityRow>(
+  list: readonly T[],
+  kind: AbilityRowKind,
+  ctx: AbilityRowContext,
+  readyRefs: readonly string[] = [],
+): JudgedRow<T>[] {
+  const out = list.map((a) => {
+    const blocked = abilityRowBlocked(a, kind, ctx);
+    return { a, blocked, ready: !blocked && !!a.ref && readyRefs.includes(a.ref) };
+  });
+  return readyFirst(out, (r) => r.ready);
+}
+
+// AbilityPopoverModel is what the light ability popover lists for one
+// card, judged: its special actions, mana rows, activated rows and, for
+// an uncatalogued planeswalker, the manual loyalty rows (ADR 0117 §3).
+export interface AbilityPopoverModel {
+  special: MenuItem[];
+  mana: JudgedRow<ManaAbilityView>[];
+  activated: JudgedRow<ActivatedAbilityView>[];
+  loyalty: MenuItem[];
+}
+
+export interface AbilityPopoverInput {
+  card: CardView;
+  viewerID: string | null | undefined;
+  view?: GameView | null;
+  payerLife?: number;
+  timingWords?: string;
+  legal?: LegalActions;
+  legalGate?: LegalActions;
+  // Which sections the surface wires: mana activations, activated
+  // abilities, and the special-action / manual-loyalty sender.
+  mana: boolean;
+  activated: boolean;
+  special: boolean;
+}
+
+// abilityPopoverModel is the popover's rows for a card, as the click
+// rule reads them. The popover component builds the same lists from
+// the same functions (menuAbilityRows, specialActionItems,
+// manualLoyaltyRows) and judges them with abilityRowContext and
+// judgeAbilityRows, so the two agree; abilityClick.render.test.ts runs
+// both over the same fixtures.
+export function abilityPopoverModel(i: AbilityPopoverInput): AbilityPopoverModel {
+  const { card } = i;
+  const legal = i.legal ?? NO_LEGAL_ACTIONS;
+  const ctx = abilityRowContext(card, {
+    viewerID: i.viewerID,
+    view: i.view,
+    payerLife: i.payerLife,
+    timingWords: i.timingWords,
+    legalGate: i.legalGate,
+  });
+  const special = i.special
+    ? specialActionItems(card, card.controller || card.owner, legal, i.legalGate)
+    : [];
+  const manaList = i.mana ? menuManaRows(card, i.viewerID) : [];
+  const activatedList = i.activated ? menuAbilityRows(card, i.viewerID) : [];
+  return {
+    special,
+    mana: judgeAbilityRows(manaList, "mana", ctx, legal.readyManaRefs(card.instance_id)),
+    activated: judgeAbilityRows(
+      activatedList,
+      "activated",
+      ctx,
+      legal.readyAbilityRefs(card.instance_id),
+    ),
+    loyalty: i.special && i.activated ? manualLoyaltyRows(card, i.view, i.viewerID ?? null) : [],
+  };
+}
+
+// manualLoyaltyRows is the popover's copy of the override menu's
+// manual loyalty rows (ADR 0117 §3): only on a planeswalker the viewer
+// controls, and only with a frame to judge the window against.
+// Without this, a left-click on an uncatalogued planeswalker, which
+// used to open the override menu for exactly these rows (#329), would
+// leave them reachable only with admin overrides on.
+export function manualLoyaltyRows(
+  card: CardView,
+  view: GameView | null | undefined,
+  viewerID: string | null,
+): MenuItem[] {
+  if (!view || !viewerID) return [];
+  if ((card.controller || card.owner) !== viewerID) return [];
+  return loyaltyAbilityItems(card, view, viewerID);
+}
+
 // abilityItems folds the permanent's mana abilities and CR 602
 // activated abilities into the menu. Right-click used to open the
 // dedicated ManaAbilityMenu popover; with the admin menu bound to
@@ -865,24 +1117,25 @@ function abilityItems(
   const readyAbilities = legal.readyAbilityRefs(card.instance_id);
   const isReady = (blocked: string, refs: readonly string[], ref: string | undefined) =>
     !blocked && !!ref && refs.includes(ref);
-  const tapped = !!card.tapped;
-  const sick = !!card.summoning_sick;
-  const loyalty: LoyaltyContext = { card, view, viewerID };
-  // #1690: the PAYING player's current life, for the life-cost check
-  // below. That's the card's controller, not necessarily the viewer —
-  // an admin override menu can open on a card the viewer doesn't
-  // control (canOverride above), and it's still that controller who
-  // would pay the cost.
-  const payerLife = view.seats.find((s) => s.id === (card.controller || card.owner))?.life;
-  // S24: "its activated abilities can't be activated" (Arrest,
-  // Faith's Fetters). Read off the wire, not derived — the server
-  // refuses these activations outright, and a row that opens a
-  // rejection toast is worse than a row that says why. Faith's
-  // Fetters spares mana abilities, which is why the two bits are
-  // checked separately rather than as one "restricted" flag.
-  const restrictions = card.restrictions ?? [];
-  const restricted = activationRestricted(card);
-  const manaRestricted = restrictions.includes("cant_activate_mana") ? EFFECT_STOPS_ABILITIES : "";
+  // #1690: the PAYING player's current life, for the life-cost check.
+  // That's the card's controller, not necessarily the viewer — an
+  // admin override menu can open on a card the viewer doesn't control
+  // (canOverride above), and it's still that controller who would pay
+  // the cost.
+  //
+  // ADR 0117 §2: the rows are judged by the one predicate the click
+  // and the popover use, with the card's restrictions (S24: Arrest,
+  // Faith's Fetters, read off the wire), the loyalty context and the
+  // payer's life. No timing words and no digest: this menu answers
+  // timing in the shared predicate's own order and never greys its
+  // own rows on the digest.
+  const ctx: AbilityRowContext = {
+    card,
+    tapped: !!card.tapped,
+    sick: !!card.summoning_sick,
+    payerLife: view.seats.find((s) => s.id === (card.controller || card.owner))?.life,
+    loyalty: { card, view, viewerID },
+  };
   const items: MenuItem[] = [];
   // #1228: a card projects EITHER the battlefield mana list or the
   // in-zone one, never both — the server filters by the zone the card
@@ -891,9 +1144,7 @@ function abilityItems(
   // and the index means the same thing to the engine either way. The
   // same shape the activated loop below has had since #660.
   for (const a of card.mana_abilities ?? card.zone_mana_abilities ?? []) {
-    // Mana abilities never carry a loyalty cost, so the context is
-    // inert for them — passed anyway to keep one call shape.
-    const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty, payerLife);
+    const blocked = abilityRowBlocked(a, "mana", ctx);
     // #1190: a discount note when the engine charges less than the
     // printed cost — shown only on an unblocked row, so a "why is
     // this greyed" reason never loses to a price note.
@@ -913,29 +1164,23 @@ function abilityItems(
   // hand card's cycling, and the index means the same thing to the
   // engine either way.
   for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
-    const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty, payerLife);
+    const blocked = abilityRowBlocked(a, "activated", ctx);
     items.push(activatedItem(a, blocked, isReady(blocked, readyAbilities, a.ref)));
   }
   return readyFirst(items, (i) => i.ready === true);
 }
 
 // EFFECT_STOPS_ABILITIES is the reason on a row an Arrest-style "its
-// activated abilities can't be activated" greys.
-const EFFECT_STOPS_ABILITIES = "an effect stops its abilities";
+// activated abilities can't be activated" greys (S24, read off the
+// wire). It restricts the object, not the activator, so it greys an
+// any-player row for every seat (ADR 0106 §1 decision 2).
+export const EFFECT_STOPS_ABILITIES = "an effect stops its abilities";
 
 // ABILITY_NOT_RIGHT_NOW is the reason on an any-player row the exact
 // digest leaves out (ADR 0106 §1 decision 6): the server would refuse
 // it, and the row fields say nothing more specific. The same sentence
 // the ability popover uses for a row the digest shuts.
 export const ABILITY_NOT_RIGHT_NOW = "Can't activate this right now";
-
-// activationRestricted: S24's "its activated abilities can't be
-// activated" (Arrest, Faith's Fetters), read off the wire. It restricts
-// the object, not the activator, so it greys an any-player row for
-// every seat (ADR 0106 §1 decision 2).
-function activationRestricted(card: CardView): string {
-  return (card.restrictions ?? []).includes("cant_activate") ? EFFECT_STOPS_ABILITIES : "";
-}
 
 // activatedItem is one CR 602 activated-ability row of the menu.
 // #1296: a price that depends on the target (Dragonfire Blade) says
@@ -978,14 +1223,17 @@ function anyPlayerAbilityItems(
   gate: LegalActions,
 ): MenuItem[] {
   const readyAbilities = legal.readyAbilityRefs(card.instance_id);
-  const payerLife = view.seats.find((s) => s.id === viewerID)?.life;
-  const loyalty: LoyaltyContext = { card, view, viewerID };
-  const restricted = activationRestricted(card);
+  const ctx: AbilityRowContext = {
+    card,
+    tapped: !!card.tapped,
+    sick: !!card.summoning_sick,
+    payerLife: view.seats.find((s) => s.id === viewerID)?.life,
+    legalGate: gate,
+    across: true,
+    loyalty: { card, view, viewerID },
+  };
   const items = anyPlayerRows(card).map((a) => {
-    const blocked =
-      restricted ||
-      abilityBlocked(a, !!card.tapped, !!card.summoning_sick, loyalty, payerLife) ||
-      (digestRefusesRow(gate, card.instance_id, a.ref) ? ABILITY_NOT_RIGHT_NOW : "");
+    const blocked = abilityRowBlocked(a, "activated", ctx);
     return activatedItem(a, blocked, !blocked && !!a.ref && readyAbilities.includes(a.ref));
   });
   return readyFirst(items, (i) => i.ready === true);

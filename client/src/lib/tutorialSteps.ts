@@ -278,7 +278,10 @@ export const RIGHT_CLICK: TutorialStep = {
   kind: "action",
   title: "Abilities live on right-click",
   body: "Right-click a permanent to open its abilities; that is where you activate them. Try this one.",
-  hint: "Right-click, not left: a left click taps it for mana.",
+  // ADR 0117 §6: a left click no longer taps this card. The usual
+  // anchor is the mana creature cast in step 6, which is summoning
+  // sick, so its left click does nothing at all.
+  hint: "Right-click it, or tap its pip. A left click only acts when an ability is ready to use.",
   anchor: (c) => {
     const id = abilityCardID(c.view, c.viewerID);
     return id ? { cardID: id } : null;

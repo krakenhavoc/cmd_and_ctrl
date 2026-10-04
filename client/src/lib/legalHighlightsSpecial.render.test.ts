@@ -196,7 +196,8 @@ function mountPanel(view: GameView, legal: LegalActions, legalGate: LegalActions
   const pip = (id: string, kind: "star" | "bolt" | "drop") =>
     tile(id).querySelector<HTMLButtonElement>(`.ready-pip[data-pip="${kind}"]`);
   const menuRows = (id: string) => [
-    ...tile(id).querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item"),
+    // ADR 0117 §3: not the Sandbox row, which every own permanent has.
+    ...tile(id).querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item:not([data-raw-tap])"),
   ];
   const rightClick = (id: string) => {
     tile(id).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));

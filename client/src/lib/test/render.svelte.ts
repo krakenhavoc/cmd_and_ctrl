@@ -24,6 +24,7 @@
 // `// @vitest-environment jsdom` in a docblock at the top.
 
 import { flushSync, mount, unmount, type Component } from "svelte";
+import { closeAbilityPopover } from "../abilityPopover";
 
 /** A mounted component, and the handles a test needs on it. */
 export interface Rendered<P extends Record<string, unknown>> {
@@ -90,6 +91,9 @@ export function render<P extends Record<string, unknown>>(
 export function cleanup(): void {
   while (live.length > 0) live[live.length - 1].destroy();
   document.body.innerHTML = "";
+  // ADR 0117: which card's ability popover is open is module state
+  // (abilityPopover.ts), not the Card's, so it outlives an unmount.
+  closeAbilityPopover();
 }
 
 /**
