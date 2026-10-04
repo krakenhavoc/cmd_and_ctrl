@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { CARDS } from "./s19-deck-fixture";
 import {
-  returnToLibrary,
   seedHandWithCard,
   setupS19Game,
   triggerOnStack,
@@ -49,8 +48,6 @@ test.describe("ADR 0119 stack hold", () => {
     const { admin, caster, opponent } = setup;
 
     const mulldrifter = await seedHandWithCard(admin, caster.playerID, CARDS.Mulldrifter);
-    // The trigger draws two; make sure there are two to draw.
-    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
 
     await admin.sendActionAsPlayer(caster.playerID, "move_card", {
       src: { kind: "hand", owner: caster.playerID },
