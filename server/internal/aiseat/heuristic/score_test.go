@@ -57,7 +57,7 @@ func TestUntappedManaBeatsTapped(t *testing.T) {
 func TestKeywordTableIsApplied(t *testing.T) {
 	w := heuristic.DefaultWeights()
 	vanilla := creature(cardID(1), 0, "Bear", 2, 2)
-	for _, kw := range []string{"flying", "deathtouch", "lifelink", "trample", "double strike", "indestructible", "ward {2}", "prowess"} {
+	for _, kw := range []string{"flying", "deathtouch", "lifelink", "trample", "double strike", "indestructible", "ward {2}", "prowess", "undying", "persist"} {
 		flashy := creature(cardID(1), 0, "Bear", 2, 2, keywords(kw))
 		if w.CreatureValue(&flashy) <= w.CreatureValue(&vanilla) {
 			t.Errorf("%q did not raise the creature's value", kw)
