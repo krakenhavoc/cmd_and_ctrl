@@ -30,6 +30,7 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     alwaysStopOpponentStack: false,
     hasResponse: false,
     hasPlay: false,
+    engineMayMissMana: false,
     combatWindow: false,
     oppEndWindow: false,
     bluffCounter: false,
@@ -228,6 +229,51 @@ describe("autopassDecision — the autopass safety belt", () => {
     // Toggle off, own main phase, stopped with something to do: the
     // conventional path holds.
     expect(autopassDecision(ownMain({ autopassToggle: false, hasPlay: true }))).toBe("hold");
+  });
+});
+
+// ADR 0118 owner decision 8: "stop if the engine may be wrong". The
+// gate itself (own main phase, a spell left out for mana, a manual mana
+// source) is engineMayMissMana.ts's; here it is one input to rule 8.
+describe("autopassDecision — stop if the engine may be wrong", () => {
+  const ownMain = (overrides: Partial<AutopassGates> = {}) =>
+    gates({
+      step: "precombat_main",
+      viewerIsActive: true,
+      stepStop: true,
+      hasPlay: false,
+      ...overrides,
+    });
+
+  it("holds the viewer's own stopped main phase with nothing else to play", () => {
+    expect(autopassDecision(ownMain())).toBe("pass");
+    expect(autopassDecision(ownMain({ engineMayMissMana: true }))).toBe("hold");
+  });
+
+  it("changes nothing on a step the player did not tick", () => {
+    expect(autopassDecision(ownMain({ engineMayMissMana: true, stepStop: false }))).toBe("pass");
+  });
+
+  it("changes nothing with smart autopass off: the stop already holds", () => {
+    expect(autopassDecision(ownMain({ smartAutoPass: false }))).toBe("hold");
+    expect(autopassDecision(ownMain({ smartAutoPass: false, engineMayMissMana: true }))).toBe(
+      "hold",
+    );
+  });
+
+  it("does not out-vote the autopass toggle or the safety belt", () => {
+    expect(autopassDecision(ownMain({ engineMayMissMana: true, autopassToggle: true }))).toBe(
+      "clear-toggle",
+    );
+    expect(
+      autopassDecision(
+        ownMain({
+          engineMayMissMana: true,
+          autopassToggle: true,
+          autopassPersistThroughTurns: true,
+        }),
+      ),
+    ).toBe("pass");
   });
 });
 

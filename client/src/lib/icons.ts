@@ -130,6 +130,8 @@ export const ICONS = {
   draw: [p("M12 4v11"), p("M7 10l5 5 5-5"), p("M4 20h16")],
   untap: [p("M4 12a8 8 0 1 0 2.5-5.8"), p("M4 4v5h5")],
   flag: [p("M5 21V4h12l-2 4 2 4H5")],
+  // ADR 0120 §4: the expanded board's pin toggle — a push pin.
+  pin: [p("M8 3h8"), p("M10 3v6l-4 5h12l-4-5V3"), p("M12 14v7")],
   hand: [
     p("M6 20V9a2 2 0 0 1 4 0v5"),
     p("M10 12V6a2 2 0 0 1 4 0v8"),

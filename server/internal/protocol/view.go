@@ -204,6 +204,13 @@ type GameView struct {
 	// unfiltered view that goes to the crash dump and the replay log
 	// carries no seat's moves at all. Added in S31 sub-PR 2.
 	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
+	// LegalMovesTruncated is true when capLegalMoves dropped anything
+	// from LegalMoves — the list on this frame is then one move per
+	// (source, kind, targets_stack) rather than every move (ADR 0122
+	// §6.1). Absent otherwise. A seat that needs the rest sends a
+	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
+	// out of legalTruncatedBySeat exactly as LegalMoves is.
+	LegalMovesTruncated bool `json:"legal_moves_truncated,omitempty"`
 	// LegalActions is a per-card digest of the same enumeration
 	// (ADR 0105 §1, #1789): for each card the viewer's seat may do
 	// something with, which kinds of move, which ability rows (by
@@ -230,6 +237,9 @@ type GameView struct {
 	// legalActionsBySeat is the per-seat LegalActions digest, keyed
 	// and projected exactly as legalBySeat is.
 	legalActionsBySeat map[string]*LegalActionsView
+	// legalTruncatedBySeat names the seats whose wire list
+	// capLegalMoves degraded, keyed and projected as legalBySeat is.
+	legalTruncatedBySeat map[string]bool
 	// Log is the public game log: the last PublicLogMax table-visible
 	// events, oldest first. A projection of game.Game.Events, not a
 	// stored buffer — see log.go. Every card reference in it goes
@@ -3921,7 +3931,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
-		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -3960,18 +3970,25 @@ func ViewOfGame(g *game.Game) GameView {
 //
 // A nil map is fine — FilterViewFor reads it with a comma-less index
 // and gets nil back for every seat.
-func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView) {
+//
+// ADR 0122 §6: the enumeration carries its cut report, which the digest
+// files under each card (legal_actions.sources[id].truncated), and the
+// third map says which seats' wire lists the cap degraded.
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool) {
 	var out map[string][]LegalMoveView
 	var digests map[string]*LegalActionsView
+	var truncated map[string]bool
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
 		}
-		all := legal.EnumerateLocked(g, p.ID, legal.Options{})
+		rep := legal.EnumerateReportLocked(g, p.ID, legal.Options{})
+		all := rep.Moves
 		if len(all) == 0 {
 			continue
 		}
 		if d := digestLegalMoves(all); d != nil {
+			fileDigestCuts(d, rep.Cuts)
 			if digests == nil {
 				digests = make(map[string]*LegalActionsView, len(g.Seats))
 			}
@@ -3980,9 +3997,16 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
 		}
-		out[p.ID.String()] = capLegalMoves(all)
+		capped, cut := capLegalMoves(all)
+		out[p.ID.String()] = capped
+		if cut {
+			if truncated == nil {
+				truncated = make(map[string]bool, len(g.Seats))
+			}
+			truncated[p.ID.String()] = true
+		}
 	}
-	return out, digests
+	return out, digests, truncated
 }
 
 // legalMovesWireCap bounds how many moves one seat's list may put on
@@ -4021,9 +4045,13 @@ const legalMovesWireCap = 48
 // burn one would silently delete the counterspell response smart
 // autopass needs to see. docs/protocol.md states this as part of the
 // field's contract.
-func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
+//
+// The second result says whether anything was dropped, which the view
+// carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
+// whose every move has its own key keeps them all and is not truncated.
+func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	if len(moves) <= legalMovesWireCap {
-		return moves
+		return moves, false
 	}
 	type key struct {
 		source       uuid.UUID
@@ -4040,7 +4068,7 @@ func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 		seen[k] = true
 		out = append(out, m)
 	}
-	return out
+	return out, len(out) < len(moves)
 }
 
 // stampLegalTargets walks the PER-SEAT cast surfaces — hand, the
@@ -7752,6 +7780,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
+		// ADR 0122 §6.1: the flag for the same list, under the same rule.
+		LegalMovesTruncated: legalTruncatedFor(v.legalTruncatedBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure
@@ -7790,6 +7820,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMoveView {
 	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
 		return nil
+	}
+	return bySeat[viewerID]
+}
+
+// legalTruncatedFor picks the viewer's own truncation flag under
+// legalMovesFor's rule.
+func legalTruncatedFor(bySeat map[string]bool, viewerID string) bool {
+	if viewerID == "" || viewerID == SpectatorViewerID {
+		return false
 	}
 	return bySeat[viewerID]
 }

@@ -331,6 +331,7 @@ function gates(over: Partial<AutopassGates> = {}): AutopassGates {
     alwaysStopOpponentStack: false,
     hasResponse: false,
     hasPlay: false,
+    engineMayMissMana: false,
     combatWindow: false,
     oppEndWindow: false,
     bluffCounter: false,

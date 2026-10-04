@@ -39,7 +39,10 @@
 //     fall through.
 //  8. stepStops[step] === true → hold, unless smart autopass says
 //     there is nothing to play (#599 keeps the declare-attackers
-//     review window open through this rule, via hasPlay).
+//     review window open through this rule, via hasPlay). On the
+//     viewer's own main phase, a spell left out for mana alone while
+//     a manual mana source is out counts as something to play (ADR
+//     0118 owner decision 8, engineMayMissMana).
 //  9. Otherwise → pass.
 //
 // Rule 3 sits *below* rule 2 deliberately, and it costs nothing:
@@ -99,6 +102,11 @@ export interface AutopassGates {
   // hasPlay(view, viewerID, categories) — a ticked step has something
   // in it. Carries the #328 and #599 windows.
   hasPlay: boolean;
+  // engineMayMissMana(view, viewerID) — the viewer's own main phase,
+  // a spell in hand the move list leaves out for mana alone, and a
+  // manual mana source on the battlefield (ADR 0118 owner decision 8,
+  // engineMayMissMana.ts). Holds rule 8 under smart autopass.
+  engineMayMissMana: boolean;
   // keyWindow().combat / .oppEnd. The stack key window is derived
   // here from stackEmpty and ownsEveryStackItem.
   combatWindow: boolean;
@@ -200,8 +208,14 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   // viewer cannot act on is dead air. hasPlay counts lands and
   // sorcery-speed casts, and carries #328's block window and #599's
   // declare-attackers review window.
+  //
+  // ADR 0118 owner decision 8 ("stop if the engine may be wrong"): on
+  // the viewer's own main phase, a spell the move list leaves out for
+  // mana alone is not dead air while a manual mana source is out. The
+  // engine may simply not see that mana, and Cast anyway exists for
+  // exactly that, so the stop holds.
   if (g.stepStop === true) {
-    const canAct = g.smartAutoPass ? g.hasPlay : true;
+    const canAct = g.smartAutoPass ? g.hasPlay || g.engineMayMissMana : true;
     if (canAct) return "hold";
   }
 

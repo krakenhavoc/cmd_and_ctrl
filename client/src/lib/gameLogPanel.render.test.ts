@@ -45,4 +45,26 @@ describe("GameLogPanel", () => {
       expect(r.classList.contains("tone-cast")).toBe(true);
     }
   });
+
+  // ADR 0121 §3: the opening roll's two kinds render the server's
+  // sentence as a plain line, with no mark.
+  it("renders the opening roll and the starting player as the server's text", () => {
+    const { container } = render(GameLogPanel, {
+      view: view([
+        line(1, "roll", "Alice rolled a d20: 17"),
+        line(2, "opening_roll", "Alice won the opening roll with 17"),
+        line(3, "starting_player", "Alice chose to take the first turn"),
+      ]),
+      viewerID: "p1",
+      onClose: () => {},
+    });
+    const rows = [...container.querySelectorAll("li.log-entry")];
+    const byText = (t: string) => rows.find((r) => r.querySelector(".log-text")?.textContent === t);
+    const won = byText("Alice won the opening roll with 17");
+    const first = byText("Alice chose to take the first turn");
+    expect(won?.classList.contains("tone-cast")).toBe(true);
+    expect(first?.classList.contains("tone-step")).toBe(true);
+    expect(won?.querySelector(".log-icon")).toBeNull();
+    expect(first?.querySelector(".log-icon")).toBeNull();
+  });
 });

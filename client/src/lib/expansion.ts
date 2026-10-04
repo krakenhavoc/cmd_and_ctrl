@@ -21,9 +21,14 @@
 //
 // So the trigger list below is closed, and every entry on it is either
 // (a) a mode the viewer entered by clicking — a targeting prompt,
-// block mode, attack mode — (b) a pin the viewer asked for, or (c) the
-// active player changing, which only happens on a turn boundary and
-// therefore cannot land inside a click the viewer has already started.
+// block mode, attack mode — or (b) the active player changing, which
+// only happens on a turn boundary and therefore cannot land inside a
+// click the viewer has already started.
+//
+// ADR 0077 also had a pin the viewer asked for, which expanded a
+// summary in place. ADR 0120 §6 retired it: a viewer who wants a seat's
+// board opens it in the expanded overlay (boardExpand.ts), drawn over
+// the table, which does not move the table at all.
 //
 // A spell being cast, a permanent entering, a trigger going on the
 // stack, life totals moving: none of these expand anything. If you are
@@ -46,7 +51,6 @@ export type ExpansionReason =
   | "self"
   | "spectator"
   | "setting"
-  | "pinned"
   | "targeting"
   | "blocking"
   | "attacking"
@@ -62,8 +66,6 @@ export interface SeatDecision {
 export interface SeatSignals {
   /** The viewer's own seat. Never a summary — you need your own cards. */
   isSelf: boolean;
-  /** The viewer clicked this seat's avatar. Outranks everything below. */
-  isPinned: boolean;
   isActiveSeat: boolean;
   /** A targeting prompt is live and this seat holds a legal target. */
   controlsLegalTarget: boolean;
@@ -84,12 +86,8 @@ export interface ExpansionSettings {
 }
 
 /**
- * decideSeatRendering is the whole decision, in priority order.
- *
- * The order matters in one place only: `pinned` sits above the three
- * interaction triggers, so a seat the viewer deliberately opened stays
- * open when a targeting prompt closes. Everything else is disjoint in
- * practice and ordered for readability.
+ * decideSeatRendering is the whole decision, in priority order. The
+ * reasons are disjoint in practice and ordered for readability.
  */
 export function decideSeatRendering(
   seat: SeatSignals,
@@ -107,8 +105,6 @@ export function decideSeatRendering(
   // The escape hatch. A player who chose "Full boards" gets exactly
   // the table they had before this feature existed.
   if (settings.opponentDetail === "full") return { rendering: "full", reason: "setting" };
-
-  if (seat.isPinned) return { rendering: "full", reason: "pinned" };
 
   // The three interaction triggers. Each one exists because the
   // summary renders pips rather than cards, and a pip is not
@@ -190,21 +186,4 @@ export function legalDefenderIDs(view: GameView, viewerID: string | null): Set<s
     if (t.kind === "player") out.add(t.id);
   }
   return out;
-}
-
-/**
- * nextPinnedSeat is the avatar click: pin this seat, or unpin it if it
- * was already the pinned one.
- *
- * ONE pin, deliberately. Multiple pins is the design where a player
- * expands three opponents, loses their own panel to the reflow, and
- * has to hunt for the control that undoes it. A single pin has one
- * obvious way out — click it again — and the viewer's own board can
- * never be squeezed by more than one expanded seat.
- *
- * Nothing clears a pin on a turn boundary. A pin is the viewer saying
- * "keep this open", and a turn change is not them changing their mind.
- */
-export function nextPinnedSeat(current: string | null, clicked: string): string | null {
-  return current === clicked ? null : clicked;
 }

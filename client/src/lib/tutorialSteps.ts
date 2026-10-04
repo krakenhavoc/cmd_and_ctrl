@@ -32,9 +32,11 @@
 //     pile. Step 4 completes on resting the pointer on the lands row
 //     whether or not a pile has formed yet, and its copy says the next
 //     Forest joins this one.
-//   - strictMana off does not make every spell castable: the server's
-//     move list leaves out what the player cannot pay for, and the hand
-//     dims it. Step 6 points at the lit cards, and gives up when no
+//   - The table forces strictMana on (ADR 0118 §1), so the move list
+//     and the cast agree: the server's move list leaves out what the
+//     player cannot pay for and the hand dims it, and a click on a lit
+//     card taps the lands for it, spending mana already in the pool
+//     first. Step 6 points at the lit cards, and gives up when no
 //     creature in hand is castable.
 
 import type { Anchor, CopyContext, Detour, StepContext, TutorialStep } from "./tutorial";
@@ -157,11 +159,11 @@ export const WELCOME: TutorialStep = {
   n: 1,
   kind: "opening",
   title: "A five-minute practice game",
-  // What the table does with mana (strictMana off, manaEnforcement.ts):
-  // the hand offers only what your mana could pay for, the server's move
-  // list being strict, but a cast spends what is in your pool and waives
-  // the rest, so lands never have to be tapped first.
-  body: "You are seated against a practice bot. You can cast whatever your lands could pay for without tapping them first, and you can undo, so nothing here can go wrong.",
+  // What the table does with mana (strictMana on, ADR 0118 §1,
+  // manaEnforcement.ts): the hand offers only what your mana can pay
+  // for, and a click casts it with auto_tap, so the game taps the lands
+  // the pool is missing.
+  body: "You are seated against a practice bot. Click a card your lands can pay for and the game taps them for you. You can undo, so nothing here can go wrong.",
 };
 
 export const READ_HAND: TutorialStep = {

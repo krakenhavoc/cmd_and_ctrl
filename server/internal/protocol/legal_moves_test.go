@@ -416,7 +416,7 @@ func TestCapLegalMovesKeepsTargetsStackDistinct(t *testing.T) {
 		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "counter mode", Source: source, TargetsStack: true},
 	)
 
-	out := capLegalMoves(moves)
+	out, _ := capLegalMoves(moves)
 	var sawBurn, sawCounter bool
 	for _, m := range out {
 		if m.Source != source {
@@ -451,7 +451,7 @@ func BenchmarkViewOfGame(b *testing.B) {
 	})
 	b.Run("enumeration_only", func(b *testing.B) {
 		for range b.N {
-			g.ReadSnapshot(func() { _, _ = enumerateLegalMoves(g) })
+			g.ReadSnapshot(func() { _, _, _ = enumerateLegalMoves(g) })
 		}
 	})
 	// ADR 0105 §5: the legal_actions digest alone, folded from the

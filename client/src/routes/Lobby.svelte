@@ -46,6 +46,7 @@
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
 
   // Lobby is the signed-in home (ADR 0112 §1): every session lands
@@ -1016,6 +1017,9 @@
                         >{/if}
                       {#if p.player_id === $session?.playerID}<b>you</b>{/if}
                     </div>
+                    {#if p.is_agent && !p.is_bot}
+                      <div class="sagent"><AgentChip seat={p} /></div>
+                    {/if}
                     {#if p.is_bot}
                       <div class="sstat">
                         <i class="dot ok"></i>{p.bot_tier || "bot"} · {botDeckName(p.bot_deck) ||
@@ -1787,6 +1791,10 @@
   .sav .botmark {
     background: transparent;
     color: inherit;
+  }
+  .sagent {
+    margin: 2px 0;
+    min-width: 0;
   }
   .sname b.botchip {
     color: var(--fg-muted);

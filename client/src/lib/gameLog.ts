@@ -84,11 +84,12 @@ const LOG_TONE: Record<LogKind, string> = {
   reveal: "tone-cast",
   roll: "tone-cast",
   flip: "tone-cast",
-  // ADR 0121. The opening roll and the choice of who goes first are the
-  // spine of the game's start, toned like a step. A table roll is not
-  // part of the game: quiet.
-  opening_roll: "tone-step",
+  // ADR 0121 §3. A tie or a winner of the opening roll reads like the
+  // dice beside it; who takes the first turn is the start of the turn
+  // structure the step spine narrates, so it is toned like a step.
+  opening_roll: "tone-cast",
   starting_player: "tone-step",
+  // ADR 0121 §5: a table roll is not part of the game: quiet.
   table_roll: "tone-quiet",
   // #984: an answer given out loud (CR 105.4, CR 614.12). Quiet —
   // it is a fact about one permanent, not a swing in the game — but

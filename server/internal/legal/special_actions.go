@@ -77,6 +77,10 @@ func (e *enumerator) specialActionMoves() {
 // offers in `zone` that the seat may take and afford right now.
 func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKind) {
 	g := e.g
+	// ADR 0122 §6.2: the scope a Source filter asks about.
+	if !e.enter(scope{source: card.InstanceID}) {
+		return
+	}
 	for _, sa := range g.SpecialActionsOfferedLocked(e.seat, card, zone) {
 		if !game.SpecialActionKindBuilt(sa.Kind) {
 			continue

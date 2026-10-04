@@ -94,6 +94,11 @@ clicks have nowhere to land. Expansion is load-bearing, not a nicety.
 | Active player | that seat is the active player, gated on `display.expandActivePlayer` (default on) | turn boundary; cannot land mid-click |
 | Pinned | the viewer clicked that seat's avatar | the viewer asked |
 
+> **Amended by [ADR 0120](0120-expand-a-players-board.md) §6 (S60).** The "Pinned"
+> row is retired. A summary's ⤢, its pip click and the avatar now pin the seat's
+> board in an overlay drawn over the table, which does not move the table, so no
+> summary is pinned open in place. The other four rows are unchanged.
+
 Every one is either initiated by the viewer or changes on a turn boundary. A pin
 outranks the rest and survives turn changes; only one seat can be pinned, so the
 viewer never loses their own panel to a pile of expanded opponents.
