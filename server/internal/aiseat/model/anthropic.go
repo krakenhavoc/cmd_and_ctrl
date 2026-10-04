@@ -19,14 +19,11 @@ import (
 //
 // There is an official Go SDK and it is the right default for a new
 // project. It is the wrong call for THIS one, and the reason is
-// arithmetic rather than taste. `server/go.mod` has three direct
-// dependencies and pins `go 1.22` with a comment saying why ("older
-// collaborator installs stay supported"). anthropic-sdk-go requires
-// `go 1.24` and brings the AWS SDK, the MCP SDK, jsonschema and gjson
-// with it. Taking it would bump the language floor for the entire
-// repository and multiply its dependency count, to make one
-// single-turn POST with no tools, no streaming and no conversation
-// state.
+// arithmetic rather than taste. `server/go.mod` has a handful of
+// direct dependencies, and anthropic-sdk-go brings the AWS SDK, the
+// MCP SDK, jsonschema and gjson with it. Taking it would multiply the
+// whole repository's dependency count to make one single-turn POST
+// with no tools, no streaming and no conversation state.
 //
 // So this is ~120 lines of encoding/json against a documented wire
 // format, behind the Client interface, which is exactly where the
