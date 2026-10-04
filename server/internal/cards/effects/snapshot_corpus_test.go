@@ -385,7 +385,34 @@ func corpusBoards() []corpusBoard {
 		// charged source shield carrying its follow-up's target (Mod.To),
 		// and the turn's red instant in the cast tally.
 		{"redirections", corpusRedirections},
+		// v7, added by ADR 0113 §3 (#2074) as a new file: a player's
+		// "no maximum hand size for the rest of the game" grant with its
+		// CR 613.7b timestamp (players[].maxHandSizeAt), and a Null
+		// Profusion that entered after it, whose "your maximum hand size
+		// is two" is catalog data and so adds nothing but the permanent.
+		{"max_hand_size_grant", corpusMaxHandSizeGrant},
 	}
+}
+
+// corpusMaxHandSizeGrant is ADR 0113 §3's one stored shape: a stamped
+// player grant (Finale of Revelation's), folded before a later Null
+// Profusion, so the player's maximum is two.
+func corpusMaxHandSizeGrant(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	g.WithWriteLock(func() {
+		if err := g.SetMaxHandSizeForEffect(me.ID, game.NoMaxHandSize); err != nil {
+			t.Fatalf("setup: grant: %v", err)
+		}
+	})
+	pushCatalogPermanent(g, me.ID, "Null Profusion", "Enchantment", mhNullProfusionOracle, false)
+	if me.MaxHandSizeAt == 0 {
+		t.Fatal("setup: the grant was not stamped")
+	}
+	if got := mhMax(g, me); got != 2 {
+		t.Fatalf("setup: maximum hand size = %d, want 2", got)
+	}
+	return g
 }
 
 // corpusToAndByShields is ADR 0108 Delivery PR 7's shapes, made by the

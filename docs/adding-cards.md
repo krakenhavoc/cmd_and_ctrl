@@ -2310,6 +2310,46 @@ GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCoun
 - `From` is the card's name, shown on the seat's NO COUNTER badge
   (`counter_shields` on the player view) beside the printed `text`.
 
+### Maximum hand size (ADR 0113 §3, #2074)
+
+A permanent's static that sets or changes a player's maximum hand size
+is `Spec.HandSize`, a list of `game.HandSizeStatic{Players, Kind, N, When}`
+([ADR 0113](decisions/0113-small-seams-for-the-s58-deck-requests.md) §3):
+
+```go
+// "Each opponent's maximum hand size is reduced by seven."
+HandSize: []game.HandSizeStatic{EachOpponentsMaxHandSizeReducedBy(7)},
+// "Your maximum hand size is two."
+HandSize: []game.HandSizeStatic{YourMaxHandSizeIs(2)},
+// "Players have no maximum hand size."
+HandSize: []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
+```
+
+- **`Players`** is relative to the permanent's controller:
+  `HandSizeYou`, `HandSizeEachOpponent` (every other player, CR 102.3),
+  `HandSizeEachPlayer`, or `HandSizeChosenPlayer` (the permanent's
+  `Card.ChosenPlayer`, for "the chosen player's maximum hand size").
+- **`Kind`** is `HandSizeNoMaximum`, `HandSizeSet` (to `N` ≥ 0) or
+  `HandSizeModify` (by `N` ≠ 0; a reduction is a negative `N`).
+  `Register` refuses a negative set and a zero modification.
+- **"You have no maximum hand size"** stays `Spec.NoMaxHandSize`, the
+  shorthand; `buildDef` folds it into the list. `When` is the
+  designation gate, as `NoMaxHandSizeWhen` is for the shorthand.
+- **Nothing is written to the player.** `Game.EffectiveMaxHandSizeLocked`
+  folds every entry that reaches a player from seven in CR 613.11
+  timestamp order: each permanent at its own timestamp, and the player's
+  rest-of-the-game grant (`SetMaxHandSizeForEffect`, Finale of
+  Revelation) at the time it resolved. A set replaces "no maximum"; a
+  modification leaves "no maximum" alone. The result is never below
+  zero (CR 107.1b). A permanent that has lost its abilities gives
+  nothing.
+- **The cleanup discard is the active player's only** (CR 514.1),
+  against their own maximum, so "each opponent" never makes the
+  controller discard.
+- **A grant for a duration** ("until your next turn", "for as long as
+  you control this Saga") has no shape yet; only the rest of the game
+  does.
+
 ### Attaching, and an ability whose source has gone (#812)
 
 Two rules, each at one choke point, and no card file checks either.

@@ -604,6 +604,10 @@ type playerSnapshot struct {
 	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters           map[string]int    `json:"counters,omitempty"`
 	MaxHandSize        int               `json:"maxHandSize"`
+	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
+	// Additive within v7: a file without it restores a grant that
+	// sorts first.
+	MaxHandSizeAt int64 `json:"maxHandSizeAt,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -1942,6 +1946,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderCasts:     copyIntMap(p.CommanderCasts),
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,
+		MaxHandSizeAt:      p.MaxHandSizeAt,
 		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
@@ -2776,6 +2781,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,
+		MaxHandSizeAt:      p.MaxHandSizeAt,
 		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no

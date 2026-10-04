@@ -986,3 +986,21 @@ func ThisDealtDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Charac
 	p := g.PlayerByIDForEffect(ev.Target)
 	return p != nil && p.ID != source.Controller
 }
+
+// YouPlayedACard — "whenever you play a card" (Null Profusion,
+// Recycle): you played a land (b20LandPlayed: a land put onto the
+// battlefield as a play, Event.Played) or cast a spell (EventCast). A
+// copy of a spell is never cast in this engine (CR 707.10: it is put
+// on the stack, and the one EventCast site is the cast path), so the
+// 2007 ruling's "won't trigger when you play a copy of a card" holds.
+func YouPlayedACard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Actor != source.Controller {
+		return false
+	}
+	return ev.Kind == game.EventCast || b20LandPlayed(ev, g)
+}
+
+// WheneverYouPlayACard — "Whenever you play a card".
+func WheneverYouPlayACard(label string, effect Effect) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventCast, game.EventZoneMove}, YouPlayedACard, label, effect)
+}

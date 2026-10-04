@@ -69,7 +69,7 @@ import "github.com/google/uuid"
 // by the cards/effects package from effects.Spec.PlayerLifeTotalLocked.
 // A nil hook (no catalog wired) means no permanent locks anything.
 //
-// Derived rather than written, for the reason CatalogNoMaxHandSize and
+// Derived rather than written, for the reason CatalogHandSize and
 // CatalogPlayerKeywords both spell out: a "set on enter, restore on
 // leave" design has to answer "restore to what?", and gets two real
 // cases wrong — two copies, and a player whose state was changed by
