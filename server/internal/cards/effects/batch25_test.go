@@ -125,14 +125,15 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The ten remaining declared skips must stay out until their seam
+	// The nine remaining declared skips must stay out until their seam
 	// lands: a counter-removal cost, an untap-step event, an
 	// opponent's non-mana choice at resolution (three cards), a
 	// reveal-from-hand entry choice, a per-player "as though it had
 	// flash" plus a trigger replacement, a legendary-sorcery cast
 	// restriction, a card put from hand at resolution, a
-	// beginning-of-combat event plus a modal trigger, and a
-	// tap-another-creature cost.
+	// beginning-of-combat event plus a modal trigger. Dawnsire, Sunstar
+	// Dreadnought, skipped for a tap-another-creature cost, shipped
+	// with station (S58 PR 7).
 	//
 	// Two cards came off this list since it was written, each closing
 	// a different seam. Cloudstone Curio, with #1223: "a
@@ -153,7 +154,6 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 		"8de8027b-072a-474b-b76b-dc49c417cc55": "Primevals' Glorious Rebirth",
 		"3b6ef144-bb98-4686-9718-204f1c3cf020": "Worldsoul's Rage",
 		"2143f413-7baa-4fd6-a7ca-32f52bfa553f": "Shadrix Silverquill",
-		"afc9436b-8cad-4916-929d-ff33a37b42d5": "Dawnsire, Sunstar Dreadnought",
 		"d08ce18a-0fd9-47ac-ad2f-6934b60070f1": "Rakdos, Patron of Chaos",
 	} {
 		if _, ok := Lookup(oracle); ok {

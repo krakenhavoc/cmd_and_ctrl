@@ -105,3 +105,4 @@ body the-mindskinner/each-opponent-mills
 body flicker/return-exiled-to-owners-tapped
 body redirection/that-much-to-the-sources-controller
 body ugins-binding/bounce-all
+body foray-of-orcs/damage

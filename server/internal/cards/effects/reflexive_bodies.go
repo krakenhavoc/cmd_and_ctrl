@@ -93,6 +93,15 @@ var (
 		constTargets(func() *game.TargetSpec {
 			return TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature())
 		}))
+
+	// Foray of Orcs: "when you do, this spell deals X damage to target
+	// creature an opponent controls, where X is the amassed Army's
+	// power". The Army rides the payload and its power is read as the
+	// trigger resolves.
+	forayOfOrcsDamageBody = game.ReflexiveBody("foray-of-orcs/damage", simpleBody(forayOfOrcsDamage),
+		constTargets(func() *game.TargetSpec {
+			return TargetCreature("target creature an opponent controls", OpponentControls())
+		}))
 )
 
 // simpleBody adapts a no-params reflexive body — every one of them
