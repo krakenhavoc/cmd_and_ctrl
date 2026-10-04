@@ -571,3 +571,31 @@ The owner's answers did not settle these. Each is decided above, and each can be
 23. **No deadline on the agent's decisions** (§8). The table waits as it does for a person, and the binary never plays a move the model did not choose.
 24. **`join` reattaches a saved seat and accepts a reclaim link** (§3, §8).
 25. **The docs go in a new `docs/mcp-seat.md`, not in `docs/bot.md`** (§11).
+
+## Amendment (2026-10-04, #2263): distribution
+
+§1 left the binary as something you build: `make -C server build-mcpseat`, or `go install github.com/krakenhavoc/cmd_and_ctrl/server/cmd/mcpseat@develop`. Both need Go 1.27, which a contributor who only wants an agent in a seat may not have. **The owner chose prebuilt binaries on a GitHub Release**, built by a release workflow. The alternatives were `go install` only, and builds the owner sends by hand.
+
+**The workflow.** `.github/workflows/mcpseat-release.yml`, on GitHub-hosted runners. It tests `./internal/mcpseat/... ./cmd/mcpseat/...` first. Then it builds `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=… -X main.commit=…"` for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 and windows/amd64. Each target becomes one archive, `mcpseat-<version>-<os>-<arch>.tar.gz` (`.zip` for Windows), and the run writes one `SHA256SUMS` over all five. Go comes from the minor version in `server/go.mod`, at its newest patch, so there is no second pin to move.
+
+- **On a pull request** that touches the binary, its library, `go.mod`/`go.sum` or the workflow itself, it stops there. The archives and `SHA256SUMS` are workflow artifacts, and nothing is attested or released.
+- **On a pushed tag `mcpseat-vX.Y.Z`** (or `mcpseat-vX.Y.Z-<pre>`), it then attests each archive's build provenance with `actions/attest-build-provenance`, and creates a **draft** GitHub Release for the tag with the archives and `SHA256SUMS`. A tag with a `-` part is marked a prerelease. A tag that does not match the pattern is refused.
+- **`workflow_dispatch`** takes a tag and does the same. It refuses a tag that does not exist or does not match. GitHub offers a manual run only for a workflow on the default branch, so this path works once the file reaches `main`. Until then, a pushed tag is how the release path is exercised.
+
+**The tag scheme.** `mcpseat-v*`. The prefix keeps these tags clear of Go's `server/vX.Y.Z` submodule tags, which the toolchain would read as versions of the server module.
+
+**Draft, then the owner publishes.** The owner pushes the tag. The workflow never tags, and never publishes. It leaves a draft that the owner reads and publishes by hand. A rerun refreshes the assets of its own draft. It refuses to touch a published release, so a fix is a new tag.
+
+**Permissions.** The workflow is `contents: read`. Only the attest job holds `id-token: write` and `attestations: write`, and only the publish job holds `contents: write`. Neither compiles anything. A release build starts from a cold Go cache, so no other run's cache reaches a published binary.
+
+**The version.** `mcpseat --version` (or `-version`) prints the stamped version and commit, the Go version and the platform, for a bug report to quote. A local build prints `dev` and `unknown`, unless `go install …@vX` or a git checkout supplies them through the Go build info.
+
+**Verifying a download.** Check the archive against `SHA256SUMS` (`sha256sum -c SHA256SUMS --ignore-missing`, or `shasum -a 256 -c` on macOS). Or check its provenance: `gh attestation verify <archive> -R krakenhavoc/cmd_and_ctrl` proves the file was built by this repository's workflow, and names the commit.
+
+**Which server a release joins.** A release is cut from a commit, and the binary speaks the wire that commit's server speaks. A release cut from `develop` joins cmd-dev. It joins cmd.labxp.io only once the server half of that commit has been promoted to `main`.
+
+**Not included:**
+
+- Code signing and macOS notarization, which need paid certificates. The docs say how to clear the quarantine flag (`xattr -d com.apple.quarantine mcpseat`).
+- Homebrew or Scoop.
+- Auto-update.
