@@ -1,6 +1,6 @@
 # ADR 0122 — An agent at the table: a local MCP seat
 
-**Status:** Proposed · 2026-10-04 · S62 — An agent at the table. Amended the same day with the owner's review answers (decisions 6–8).
+**Status:** Proposed · 2026-10-04 · S62 — An agent at the table. Amended the same day with the owner's review answers (decisions 6–8), and again for the Go version (decision 8 as amended).
 **Issues:** [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) (this change, and S62's tracker).
 **Owner decisions:** the five answers of 2026-10-04 on #2230 and the three review answers of the same day, quoted under [Owner decisions](#owner-decisions-2026-10-04). They are binding. This ADR also makes calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before PR 2 lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-04. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 38 remote heads, then on all 182 local branches. The highest number on any of them was 0120, on `origin/develop`. 0121 was reserved for animated dice ([#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229)), and it has since landed on `develop`. This ADR takes **0122**.
@@ -30,7 +30,7 @@ From the owner's review of the first draft, the same day:
 
 6. **The move cap is fixed on the server.** When `capLegalMoves` trims the list, the wire carries an explicit truncation flag, and a seat can fetch its own full, uncapped legal-move list on demand: scoped to the seat, filtered like the rest of its view, never another seat's moves. The client-side variants go; the agent always chooses from the full closed list. *This overturns the first draft's call 12* (variants for attacks, blocks and one-target moves, worked out from the digest). The design is §6.1–§6.3. The request is a frame on the existing socket, not an HTTP route, so decision 5's "no new server endpoint" still holds for routes.
 7. **A server acknowledgement for successful actions.** When an action is applied, the server echoes its id, additively on the wire, so a client knows exactly what landed. `act` reports acceptance from the ack, not from "the sequence advanced". *A new decision.* It replaces the first draft's inference from `seq` (§3). The design is §6.4.
-8. **Upgrade Go and use the official SDK.** A delivery PR before the binary's moves the module to Go 1.25, and the binary uses `modelcontextprotocol/go-sdk`. *This overturns the first draft's call 1* (a hand-rolled stdio JSON-RPC server, chosen because the SDK needs Go 1.25). The design is §1 and §1.1.
+8. **Upgrade Go and use the official SDK.** A delivery PR before the binary's moves the module to **Go 1.27**, and the binary uses `modelcontextprotocol/go-sdk`. *This overturns the first draft's call 1* (a hand-rolled stdio JSON-RPC server, chosen because the SDK needs Go 1.25). The owner's first answer named Go 1.25, the SDK's floor. The owner then chose 1.27, the newest release, because 1.25 no longer gets security fixes: Go supports only its two newest major releases, and 1.27 shipped on 2026-08-18, which left 1.26 and 1.27 supported. That settles the first amendment's call 1, which had flagged 1.25's support status and recommended 1.26. The design is §1 and §1.1, with the fallback rule for the linter in §1.1.
 
 ### What exists
 
@@ -112,15 +112,15 @@ The toolchain releases on 2026-10-04, from the Go module proxy:
 - Go 1.26.0 shipped 2026-02-10. The newest patch is 1.26.8.
 - **Go 1.27.0 shipped 2026-08-18.** Go's policy supports the two newest major releases, so **1.25 no longer receives security fixes**.
 
-**golangci-lint and Go 1.25.** v1.64.8, the pin today, is the final v1 release, and it cannot lint a module that declares a newer Go than the one it was built with. The v2 line can. Each v2 release requires a minimum Go to `go run`:
+**golangci-lint and Go 1.27.** v1.64.8, the pin today, is the final v1 release, and it cannot lint a module that declares a newer Go than the one it was built with. The v2 line can. Each v2 release requires a minimum Go to `go run`:
 
 - v2.4.0 to v2.8.0 need `go 1.24.0`.
 - v2.10.0 to v2.12.x need `go 1.25.0`.
-- v2.13.0 and later need `go 1.26.0`.
+- v2.13.0 and later need `go 1.26.0`. The project's own `go.mod` comment says that floor is always "latest-1".
 
-So **v2.12.2 is the newest that runs on a 1.25 toolchain**. v2 reads a different configuration format, which `golangci-lint migrate` converts. Among other changes, `gofmt` and `goimports` move to a `formatters` section, and `disable-all` becomes `linters.default: none`.
+**Go 1.27 support arrived in v2.13.0** (published 2026-08-19, the day after Go 1.27.0). Its release notes list "go1.27 support (#6642)". v2.13.1, v2.13.2 and v2.14.0 (2026-09-24, the newest on the proxy on 2026-10-04) follow it. I checked it rather than read it: `golangci-lint@v2.14.0`, run under `golang:1.27` (go1.27.1) through `scripts/go-docker.sh` with an image override and only the shared volumes, reported "built with go1.27.1". It linted a scratch module declaring `go 1.27.0` with 0 issues. v2 reads a different configuration format, which `golangci-lint migrate` converts. Among other changes, `gofmt` and `goimports` move to a `formatters` section, and `disable-all` becomes `linters.default: none`.
 
-**The SDK.** `github.com/modelcontextprotocol/go-sdk` v1.8.0 was published 2026-09-04 and declares `go 1.25.0`. I read its module source from the proxy.
+**The SDK.** `github.com/modelcontextprotocol/go-sdk` v1.8.0 was published 2026-09-04 and declares `go 1.25.0`. I read its module source from the proxy. **It builds under Go 1.27.** I built a scratch module declaring `go 1.27.0` with a stdio server and one tool on `golang:1.27` (go1.27.1), through `scripts/go-docker.sh` and the shared volumes. `go mod tidy`, `go vet` and `go build` all passed, and the scratch module was deleted afterwards. `go list -deps` confirmed the linked set below.
 
 - **Stdio.** `mcp.NewServer`, `mcp.AddTool[In, Out]` (`mcp/server.go:603`), whose handler type is `ToolHandlerFor[In, Out]` (`mcp/tool.go:57`), and `(*Server).Run(ctx, &mcp.StdioTransport{})` (`mcp/transport.go:128`). Inbound lines are capped by `MaxLineLength`, default 16 MiB.
 - **Tests.** `mcp.NewInMemoryTransports()` (`:183`).
@@ -148,29 +148,30 @@ The seat is `server/cmd/mcpseat` (a `main` of about 40 lines: flags, signal hand
 
 The tool handlers, the seat's state, the WebSocket client and the renderer never see an SDK type. A later SDK version, or a return to a hand-written transport, is a change to that file.
 
-**What it costs the module.** The server module moves to Go 1.25 first (§1.1). The binary then links `x/oauth2`, `segmentio/encoding` and `segmentio/asm`, `jsonschema-go`, `uritemplate`, `x/time` and `x/sync`. `go.sum` gains `golang-jwt/jwt/v5`, `go-cmp` and `x/tools`, which are not linked. `x/sys` rises to v0.41.0 for every binary in the module. None of this reaches `cmd/server` or `cmd/bot`, because they do not import the SDK. PR 7 lists `go mod why` for each new module in its description, and checks with `go version -m bin/cmd_and_ctrl-server` that the server binary links none of them.
+**What it costs the module.** The server module moves to Go 1.27 first (§1.1). The binary then links `x/oauth2`, `segmentio/encoding` and `segmentio/asm`, `jsonschema-go`, `uritemplate`, `x/time` and `x/sync`. `go.sum` gains `golang-jwt/jwt/v5`, `go-cmp` and `x/tools`, which are not linked. `x/sys` rises to v0.41.0 for every binary in the module. None of this reaches `cmd/server` or `cmd/bot`, because they do not import the SDK. PR 7 lists `go mod why` for each new module in its description, and checks with `go version -m bin/cmd_and_ctrl-server` that the server binary links none of them.
 
-#### 1.1 The Go 1.25 upgrade
+#### 1.1 The Go 1.27 upgrade
 
 A PR of its own, before the binary's (Delivery PR 6). It changes every pin in the table under [What exists](#what-exists), and nothing else:
 
-- **The module.** `server/go.mod` to `go 1.25.0`, with its comment saying why: the MCP SDK's floor, and method-aware `ServeMux`, `slog` and range-over-int as before.
-- **CI.** Every `go-version: "1.22"` to `"1.25"`: the `&setup-go` anchor in `ci-cd.yml` and its aliases, `census-publish`, and the four `e2e-nightly.yml` jobs.
-- **Lint.** golangci-lint to **v2.12.2**, the newest that runs on Go 1.25, in `server/Makefile` and `scripts/go-docker.sh`'s `LINT_PKG`, under its v2 module path `github.com/golangci/golangci-lint/v2/cmd/golangci-lint`. `server/.golangci.yml` is converted with `golangci-lint migrate`, keeping the same linters, the same exclusions for test files and the 6 m timeout. The diff is reviewed for any linter whose meaning changed.
-- **The lint workaround.** Because the tool and the module now need the same Go, the lint step's `GOTOOLCHAIN: auto` and its comment block go, and so does `-e GOTOOLCHAIN=auto` in `go-docker.sh`.
-- **`scripts/go-docker.sh`.** `GO_IMAGE` to `golang:1.25`, and `LINT_IMAGE` to `golang:1.25` too: one image again. The usage text is updated. **The only cache volumes stay `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci`**, as AGENTS.md §5 requires. golangci-lint v2 keeps its cache where v1 did, so the third volume is reused. `go-docker.sh prune` runs once after the switch, because the build cache of a new toolchain shares nothing with the old one.
-- **The devcontainer.** The Go feature from `"latest"` to `"1.25"`, so a fresh container builds with what CI builds with.
-- **AGENTS.md §5.** "golang:1.22 (golang:1.24 for golangci-lint)" becomes "golang:1.25 for both".
+- **The module.** `server/go.mod` to `go 1.27.0`, with its comment saying why. It is the newest supported release (decision 8), above the MCP SDK's floor of 1.25, and it keeps method-aware `ServeMux`, `slog` and range-over-int as before.
+- **CI.** Every `go-version: "1.22"` to `"1.27"`: the `&setup-go` anchor in `ci-cd.yml` and its aliases (`server-check`, `server-test`, and `build`, which builds the deployed binaries), `census-publish`, and the four `e2e-nightly.yml` jobs (`bot-games`, `catalog-soak`, `bot-soak`, `playwright`).
+- **Lint.** golangci-lint to **v2.14.0**, the newest release, which runs on and lints Go 1.27 (checked above). It goes in `server/Makefile`'s `GOLANGCI_LINT` and `scripts/go-docker.sh`'s `LINT_PKG`, under its v2 module path `github.com/golangci/golangci-lint/v2/cmd/golangci-lint`. `server/.golangci.yml` is converted with `golangci-lint migrate`, keeping the same linters, the same exclusions for test files and the 6 m timeout. The diff is reviewed for any linter whose meaning changed.
+- **The lint workaround.** Because the tool's floor (1.26) is below the module's Go, the lint step's `GOTOOLCHAIN: auto` and its comment block in `ci-cd.yml` go, and so does `-e GOTOOLCHAIN=auto` in `go-docker.sh`.
+- **`scripts/go-docker.sh`.** `GO_IMAGE` to `golang:1.27`, and `LINT_IMAGE` to `golang:1.27` too: one image again. The usage text (`:35-38`) is updated. **The only cache volumes stay `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci`**, as AGENTS.md §5 requires. golangci-lint v2 keeps its cache where v1 did, so the third volume is reused. `go-docker.sh prune` runs once after the switch, because the build cache of a new toolchain shares nothing with the old one.
+- **The devcontainer.** The Go feature from `"latest"` to `"1.27"`, so a fresh container builds with what CI builds with.
+- **AGENTS.md §5.** "golang:1.22 (golang:1.24 for golangci-lint)" becomes "golang:1.27 for both".
 - **Stale comments.** The six listed under What exists are reworded. `anthropic.go` and `openai.go` keep their reasons (dependency weight) without the version argument. The four `omitzero` comments keep their rule and drop "CI's pinned 1.22", because the guard test still holds every toolchain to one encoding.
-- **What the new toolchain checks.** Language changes that apply once `go.mod` says 1.23 or later:
+- **What the new toolchain checks.** Language and vet changes that apply once `go.mod` says 1.23 or later:
   - Go 1.23's synchronous timer channels. The only Stop-and-drain idiom in the tree is `lobby/practice.go:333`, and it is read for the new semantics.
   - `go vet`'s printf check for non-constant format strings (Go 1.24).
   - The `tests` analyzer (Go 1.24).
   - The `waitgroup` and `hostport` analyzers (Go 1.25).
+  - Anything the 1.26 and 1.27 release notes add to the language, the standard library's defaults or `go vet`. The PR lists what it found.
 
   The PR fixes whatever these report, and runs the full test suite, the snapshot corpus test and the nightly workflows on its branch (`gh workflow run "cmd_and_ctrl E2E" --ref <branch>`).
 
-**Flag for the owner: 1.25 is already out of support.** Go 1.27 shipped on 2026-08-18, so Go 1.25 has stopped getting security fixes, and 1.25.14 may be its last patch. This ADR follows decision 8 as given, because 1.25 is the SDK's floor. Using **1.26** instead is the same PR, with every `1.25` above read as `1.26` and golangci-lint at v2.13.2 or later. That would keep the server on a supported toolchain for another six months. I recommend it, and it needs the owner's word (call 1).
+**The fallback rule.** The PR pins the newest golangci-lint release whose notes say it supports the target Go, and verifies it by running it on that toolchain against the converted module. That is v2.14.0 for Go 1.27 today. If no release supports 1.27 when the PR is written (for example, if v2.14.0 turns out not to run cleanly on the real tree under 1.27, and no patch release fixes it), the PR **falls back to Go 1.26** everywhere above, which is still supported, with golangci-lint v2.13.2 or later. It says so in its description and in an amendment here. A linter that does not support the toolchain is never kept by turning lint off or by running it under a different Go than CI's.
 
 ### 2. What the binary may import, and why the line is real
 
@@ -437,7 +438,7 @@ The binary cannot see the model's own token count. The client reports that.
 
 **Client side.** A vitest for the chip, its "thinking…" state, and the bot chip and agent chip never both showing.
 
-**The Go upgrade (PR 6)** is tested by the whole suite, the snapshot corpus, lint under v2.12.2 and the nightly workflows run on its branch, as §1.1 says.
+**The Go upgrade (PR 6)** is tested by the whole suite, the snapshot corpus, lint under v2.14.0 and the nightly workflows run on its branch, as §1.1 says.
 
 ### 11. Docs
 
@@ -510,7 +511,7 @@ Each PR goes into `develop`, Sprint S62, Issue #2230.
 | 3 | **Client: the chip** (§7) on the seat, lobby list, invite preview and chat, with its vitest. | 2 | 4, 5, 6 |
 | 4 | **Refactor: `aiseat/boardtext`** (§5). Byte-identical bot prompts, held by the existing prompt tests. | 1 | 2, 3, 5, 6 |
 | 5 | **Server: the wire** (§6). `legal_moves_truncated`; `legal_moves_request` and its reply; the cut report in `internal/legal` and the digest, the `Source` filter and the 512 ceiling; the open-set `value` markers; the `ack` frame on all three apply paths; `ws.ts`'s `case "ack"` and the protocol type; docs/protocol.md; its tests (§10). | 1 | 2, 3, 4, 6 |
-| 6 | **Go 1.25 and golangci-lint v2.12.2** (§1.1). Every pin in the table under What exists, the v2 lint configuration, the devcontainer, AGENTS.md §5, the stale comments, and whatever the new vet analyzers report. Nightly workflows run on the branch before merge. | 1 | 2, 3, 4, 5 |
+| 6 | **Go 1.27 and golangci-lint v2.14.0** (§1.1), or Go 1.26 under the fallback rule. Every pin in the table under What exists, the v2 lint configuration, the devcontainer, AGENTS.md §5, the stale comments, and whatever the new vet analyzers report. Nightly workflows run on the branch before merge. | 1 | 2, 3, 4, 5 |
 | 7 | **The binary and its tools** (§1–§5, §8, §9) on `modelcontextprotocol/go-sdk` v1.8.0. `internal/mcpseat` with the SDK in `transport.go` only, `cmd/mcpseat`, `make build-mcpseat`, the import gates, the end-to-end test and the unit tests (§10). `go mod why` for each new module in the description. | 2, 4, 5, 6 | 3 |
 | 8 | **Docs** (§11). `docs/mcp-seat.md`, the AGENTS.md §3 layout and §5 entries, the pointer from docs/bot.md. Then one real game on cmd-dev, with its §9 numbers appended to this ADR as an amendment. | 7 | — |
 
@@ -525,7 +526,7 @@ After PR 8: the owner plays one game on cmd-dev with Claude Code in a seat. The 
 - A seat's move list now says when it is partial, and any seat can have the whole of it. That includes the enumerator's own cuts, which were invisible to the bot as well.
 - Every applied action is acknowledged to the client that sent it, so no client has to infer success from the sequence number again.
 - The server gains two snapshot keys and one join field. On the wire it gains three view fields, one request kind, two reply kinds and a digest field. It gains no HTTP route and no migration.
-- The whole server module moves to Go 1.25 and golangci-lint v2, a release that is already out of upstream support unless the owner takes 1.26 (§1.1). The binary links `x/oauth2` and four small modules through the SDK, and `x/sys` rises for every binary.
+- The whole server module moves to Go 1.27, the newest supported release, and to golangci-lint v2. The binary links `x/oauth2` and four small modules through the SDK, and `x/sys` rises for every binary.
 - The bot's board text moves to a package of its own, so the two seats read the same board.
 - A table with an agent is slower than a table of bots, by roughly the agent's thinking time on 60–70 decisions.
 - **A timing tell.** Layer A passes instantly, so an agent seat that holds priority for more than a moment has a real choice in front of it. Opponents can read that, as they can read a human's smart autopass. #1307's "considering…" chip hides the same tell for humans only partly. A uniform delay on the agent would hide it better, at the cost of slowing every trivial window. This ADR does not add one (call 7).
@@ -545,8 +546,8 @@ After PR 8: the owner plays one game on cmd-dev with Claude Code in a seat. The 
 
 The owner's answers did not settle these. Each is decided above, and each can be overturned in review. The first draft's call 1 (a hand-rolled transport) was overturned by decision 8, and its call 12 (client-side variants) by decision 6. The rest are renumbered.
 
-1. **Go 1.25 as decided, with a recommendation to take 1.26 instead** (§1.1). 1.25 left upstream support on 2026-08-18. With 1.26, golangci-lint goes to v2.13.2 or later. The owner's word decides.
-2. **golangci-lint v2.12.2 with the configuration migrated by its own tool, one image for test and lint, and the devcontainer pinned to 1.25** (§1.1).
+1. **Go 1.27, with Go 1.26 as the fallback if no golangci-lint release supports 1.27 when PR 6 is written** (§1.1). Decision 8 fixed the version. The fallback rule is this ADR's.
+2. **golangci-lint v2.14.0 with the configuration migrated by its own tool, one image for test and lint, and the devcontainer pinned to 1.27** (§1.1).
 3. **The SDK at v1.8.0, stdio only, imported by `transport.go` alone, behind our own handler and result types** (§1, §2).
 4. **`internal/mcpseat` plus a thin `cmd/mcpseat`, built by `make build-mcpseat`, not deployed** (§1).
 5. **The import gate bans server-state packages from the binary and exempts only its external end-to-end test** (§2).
