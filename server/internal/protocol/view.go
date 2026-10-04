@@ -2752,13 +2752,15 @@ type CastSurfaceView struct {
 	CantCast string `json:"cant_cast,omitempty"`
 	// CastPrices is what THIS viewer would be charged to cast the card
 	// out of EXILE right now, one entry per price the cast may claim,
-	// cheapest first (#1389). Each is the total after every CR 601.2f
+	// cheapest first (#1389) — and, since #2202, out of the viewer's
+	// own COMMAND ZONE, where the price carries the commander tax (CR
+	// 903.8) on top of any cost modifier. Each is the total after every CR 601.2f
 	// cost modifier, from game.PriceCastForEffect — the pricer the
 	// cast path, the auto-tap preview and the bot enumerator already
 	// share — so the badge on the client's castable-from-exile strip
 	// is the number the auto-tapper will then tap for.
 	//
-	// Exile only, and only on the frame of a seat holding a LIVE
+	// In exile, only on the frame of a seat holding a LIVE
 	// permission over the card: a warp or foretell grant whose later
 	// turn has not come yet has no price, because the engine would
 	// not accept the cast at any. PER VIEWER, like `castable_here`: a
@@ -5140,7 +5142,18 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
 			out.CastableHere = castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
-			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
+		}
+	case game.ZoneCommand:
+		// #2202: the command zone gets the price and not the bit. A
+		// commander sits in the same strip as the exile cards, and its
+		// tag is the commander tax (CR 903.8) plus every cost modifier
+		// — the engine's own total, so a Medallion's discount is in it
+		// and the client never multiplies a cast count by two. Whether
+		// it is castable NOW stays the move list's answer, as it always
+		// was for this zone.
+		if haveLive {
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
 	}
 	if spec == nil {
@@ -5246,8 +5259,9 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 		g.AnyAdditionalCostBranchPayableLocked(caster, card)
 }
 
-// viewOfCastPrices prices every offer a cast out of exile may claim,
-// through game.PriceCastForEffect (#1389) — the pricer CastSpell's
+// viewOfCastPrices prices every offer a cast out of `kind` may claim —
+// exile (#1389) or the command zone (#2202) — through
+// game.PriceCastForEffect, the pricer CastSpell's
 // payment, the auto-tap preview and the bot enumerator read, so the
 // strip's badge cannot name a number the auto-tapper then disagrees
 // with. `offers` is castStampsFor's own game.CastOffersForLocked list;
@@ -5261,7 +5275,7 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 // entry 0. A land has no price (it is played, not cast) and gets nil.
 //
 // Caller must hold g.mu.
-func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*game.AlternativeCost) []CastPriceView {
+func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*game.AlternativeCost, kind game.ZoneKind) []CastPriceView {
 	if card.IsLand() {
 		return nil
 	}
@@ -5271,7 +5285,7 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 	}
 	var rows []priced
 	for _, o := range offers {
-		params := game.CastSpellParams{FromZone: "exile", Face: card.ActiveFace}
+		params := game.CastSpellParams{FromZone: delveZoneWire(kind), Face: card.ActiveFace}
 		var v CastPriceView
 		if o != nil {
 			params.AlternativeCost = o.Key
@@ -5293,8 +5307,16 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		// is the one in the corner (an airbend {2} on a two-drop is;
 		// a granted flashback at "its mana cost" is), no modifier
 		// moved it, and no life rides on top.
+		//
+		// #2202: and no commander tax. Base already carries the tax
+		// (CR 903.8 is part of the 601.2f total, before the
+		// modifiers), so "Total == Base" alone called a taxed
+		// commander's price printed. Asked of the command zone only:
+		// Base also folds a grant's "spend mana as though any colour"
+		// into generic, and in exile that has never moved the badge.
 		v.Printed = price.Paid == price.Printed && v.Life == 0 &&
-			price.Total.String() == price.Base.String()
+			price.Total.String() == price.Base.String() &&
+			(kind != game.ZoneCommand || untaxed(price))
 		rows = append(rows, priced{v: v, mv: price.Total.ManaValue()})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -5308,6 +5330,18 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		out = append(out, r.v)
 	}
 	return out
+}
+
+// untaxed reports whether a command-zone price is the cost string the
+// cast pays with nothing layered on it, the commander tax being the
+// one thing that can be (#2202). Compared as parsed costs so the
+// printed string and its canonical rendering agree.
+func untaxed(price game.CastPrice) bool {
+	paid, err := game.ParseCost(price.Paid)
+	if err != nil {
+		return false
+	}
+	return price.Base.String() == paid.String()
 }
 
 // ProtectionView is one "protection from <quality>" on a permanent,

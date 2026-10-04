@@ -233,6 +233,9 @@ The sheet bodies are today's modal bodies, moved. The shared `.prompt-modal` she
 ### 4. Placement, and what it must not cover
 
 - **The self panel keeps the corner clear.** Under decision 1, the rail spans the creature and middle rows only. The bottom row is the hand, the exile strip and an empty cell `var(--dock-w)` wide under the rail. The rail's piles end above the dock. The hand keeps the rest of the row, so nothing is covered at rest. The hand's hover lift goes up, not right, so it does not touch the dock.
+
+  *Amendment (2026-10-04, #2202):* the exile strip is now the castable-from-other-zones strip. It also holds the viewer's own commanders while they sit in the command zone, first, nearest the hand, with the same card size, hover zoom, ready ring, price tag and drag to cast. The row's layout is unchanged: still the hand, the strip and the dock's cell. The command zone panel keeps showing the commander and its own cast. Added accessible names (none renamed): the strip's region is `castable from other zones` while it holds a commander (`castable from exile` otherwise, as before); the narrow-panel chip reads `N commander(s) you may cast` or `N commander(s) and M exiled card(s) you may cast`, plus `, K ready`; a commander's tag is `costs {…} to cast from the command zone`.
+
 - **A sheet may cover the self panel's right side** while it is open. That is a picker you opened, and it replaces a full-screen blur, so it covers less than today.
 - **The hover zoom** caps at `calc(100% - 20px - var(--dock-h))` so a long card stops above the dock. While a sheet is open, the zoom moves left of the sheet (`right: calc(var(--dock-w) + 20px)`), so hovering a card in a scry shows its text beside the sheet.
 - **The game log drawer** ends at `bottom: var(--dock-h)` and sits above the dock's top edge, so the log and the dock are both usable.

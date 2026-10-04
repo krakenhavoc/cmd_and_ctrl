@@ -2671,6 +2671,11 @@ export interface CastSurfaceView {
   // a warp or foretell grant whose later turn has not come carries
   // none. Read it through exileStrip.ts, which decides the badge.
   //
+  // #2202: also on the cards in the viewer's OWN command zone, priced
+  // for a cast from there — the commander tax (CR 903.8) plus every
+  // cost modifier. `printed` is false once the tax is above 0. Read it
+  // through castStrip.ts (commanderCostBadge).
+  //
   // Since #1389 `castable_here` is stamped in exile too, with the same
   // meaning it has in a graveyard — "YOU may cast this from here NOW",
   // timing included — and is what the castable-from-exile strip

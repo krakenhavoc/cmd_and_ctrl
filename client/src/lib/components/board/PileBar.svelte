@@ -193,6 +193,7 @@
     {isSelf}
     {sendAction}
     commanderCasts={seat.commander_casts}
+    onCastCard={isSelf && onPlayCard ? (c, zone) => onPlayCard(c, zone) : undefined}
     onActivateAbility={isSelf ? onActivateAbility : undefined}
     {sorcerySpeedBlocked}
     {view}

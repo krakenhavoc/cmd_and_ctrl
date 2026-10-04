@@ -6,10 +6,13 @@
   //
   // Click semantics on the viewer's own zone:
   //   - empty: no-op
-  //   - one commander present: cast_spell from the command zone — the
+  //   - one commander present: cast it from the command zone — the
   //     cast goes through the real pipeline (stack, sorcery-speed +
   //     priority gates, strict-mana with CR 903.8 tax, ETB triggers)
-  //     and the server increments CommanderCasts on success.
+  //     and the server increments CommanderCasts on success. Since
+  //     #2202 it starts the Board's one cast chain (onCastCard), the
+  //     one the strip beside the hand uses, so an X, a kicker or a
+  //     modal double-faced commander is asked its questions first.
   //   - multiple commanders (partner / Background): cycle visible top
   //     and click the visible one to cast it. Partner support on the
   //     deck-import side is currently `ErrUnsupportedMechanic`, so
@@ -21,6 +24,8 @@
   // viewer (not just the caster's tab) sees the same tax.
 
   import type { ActionPayload, ActionType, CardView, GameView, ZoneView } from "../../protocol";
+  import type { CastSourceZone } from "../../targeting";
+  import { commanderTax } from "../../castStrip";
   import Card from "./Card.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
   import { canCastFromHand, type Legality } from "../../timing";
@@ -36,6 +41,12 @@
     // Server-side per-commander cast counts (PlayerView.commander_casts),
     // keyed by commander instance UUID. Drives the "+N tax" badge.
     commanderCasts?: Record<string, number>;
+    // #2202: the Board's cast chain (handlePlayCard), handed the
+    // commander with the command zone as its zone — X, modes, targets,
+    // alternative and optional costs. Before #2202 the click sent a bare
+    // cast_spell, which skipped every one of those prompts; that bare
+    // send is still the fallback for a caller with no chain.
+    onCastCard?: (card: CardView, fromZone: CastSourceZone) => void;
     // #1278: a commander can print an activated ability that functions
     // FROM the command zone — commander ninjutsu (CR 702.49c). The
     // server ships those rows on `zone_abilities`, owner-only, exactly
@@ -70,6 +81,7 @@
     isSelf,
     sendAction,
     commanderCasts,
+    onCastCard,
     onActivateAbility,
     sorcerySpeedBlocked = "",
     view = null,
@@ -90,7 +102,7 @@
 
   // CR 903.8: each prior cast of this commander adds {2}.
   const visibleTax = $derived(
-    visibleCard ? (commanderCasts?.[visibleCard.instance_id] ?? 0) * 2 : 0,
+    visibleCard ? commanderTax(commanderCasts?.[visibleCard.instance_id]) : 0,
   );
 
   function cycleVisible(): void {
@@ -113,6 +125,10 @@
   function castVisible(): void {
     if (!isSelf || !visibleCard) return;
     if (!castGate.legal) return;
+    if (onCastCard) {
+      onCastCard(visibleCard, "command");
+      return;
+    }
     // Game.svelte's sendAction shim stamps the strict flag and stashes
     // the payload for the cast-anyway / auto-tap retry paths, which
     // replay it verbatim — so from_zone survives those retries too.
