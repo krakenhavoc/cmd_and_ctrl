@@ -6,9 +6,8 @@ import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
 // #2229 / ADR 0121 §5: "Roll a die", end to end.
 //
 // A seat rolls a d20 from the action dock's ⋯ menu before the first
-// turn (the mulligan; the lobby still starts tables with the automatic
-// opening roll until ADR 0121 PR 5, so the opening-roll window is not
-// reachable from a browser yet), and the other seat flips a coin during
+// turn (the mulligan: startGameAs finishes the opening roll as the
+// admin, ADR 0121 PR 5), and the other seat flips a coin during
 // a turn. Each roll tumbles at the roller's seat on both screens, and
 // both game logs say so: "<name> rolled a d20 at the table: N",
 // "<name> flipped a coin at the table: heads|tails".

@@ -58,6 +58,8 @@
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import { confirmAction } from "../lib/dock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
+  import OpeningRollBanner from "../lib/components/board/OpeningRollBanner.svelte";
+  import OpeningRollDock from "../lib/components/board/OpeningRollDock.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import {
@@ -813,9 +815,17 @@
   // KeptHand. The dialog blocks the viewer's normal toolbar until
   // they commit. The viewer can still see the table, chat, etc.
   const mulligansOpen = $derived(view?.mulligans_open === true);
+  // ADR 0121 §1: the opening roll comes first. While it is open the
+  // mulligan window is open too (the turn is parked the same way), but
+  // no hand has been dealt, so the mulligan sheet and its roll call wait.
+  const openingRollOpen = $derived(!!view?.opening_roll);
   const openingRoll = $derived(openingRollWinner(view));
   const viewerNeedsToDecide = $derived(
-    mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
+    mulligansOpen &&
+      !openingRollOpen &&
+      !!viewerSeat &&
+      !viewerSeat.eliminated &&
+      !viewerSeat.hand_kept,
   );
 
   // Pre-game deck-import modal (S08.5 wave 1). A player who accepted
@@ -1315,6 +1325,20 @@
   function keepHand(): void {
     if (!viewerID) return;
     client.sendAction("keep_hand", viewerID);
+  }
+
+  // ADR 0121 §3: the opening roll's three verbs. The host's button is
+  // not player-scoped (the server records whoever pressed it).
+  function rollOpening(): void {
+    if (!viewerID) return;
+    client.sendAction("roll_opening", viewerID);
+  }
+  function hostRollRemaining(): void {
+    client.sendAction("host_roll_remaining");
+  }
+  function chooseStartingPlayer(seat: number): void {
+    if (!viewerID) return;
+    client.sendAction("choose_starting_player", viewerID, { seat });
   }
 
   function mulliganDecide(): void {
@@ -1842,7 +1866,11 @@
                  the combat-selection hint are the action dock's
                  requests now (lib/combatDock.ts), not the strip's. -->
 
-            {#if mulligansOpen && !gameEnded}
+            {#if openingRollOpen && !gameEnded}
+              <!-- ADR 0121 §6: the opening roll, before any hand is
+                   dealt. Everyone sees it, spectators included. -->
+              <OpeningRollBanner {view} />
+            {:else if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
                 <span class="att-label">Opening hands</span>
                 {#if openingRoll}
@@ -2001,6 +2029,16 @@
       {#if dockShown}
         <!-- The dock's requests (lib/dock.ts). Each is open for as long
              as its block is mounted; the dock draws the strongest. -->
+        {#if openingRollOpen && !gameEnded}
+          <OpeningRollDock
+            {view}
+            viewerSeat={viewerSeat && !viewerSeat.eliminated ? viewerSeat.seat : null}
+            isHost={canManage}
+            onRoll={rollOpening}
+            onRollForEveryone={hostRollRemaining}
+            onChoose={chooseStartingPlayer}
+          />
+        {/if}
         {#if attackDockRequest}
           <DockRequest request={attackDockRequest} />
         {/if}

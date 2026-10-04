@@ -352,16 +352,17 @@ func TestOpeningRollIsAbsorbedAndAgreesWithHeuristic(t *testing.T) {
 		name string
 		in   aiseat.Input
 		want int
+		rule string
 	}{
-		{"a lone die is rolled", input(roll), 0},
-		{"the winner takes the first turn, by its seat in the view", withView, 2},
-		{"with no view, the winner takes the choice marked AlwaysLegal", chooser, 2},
+		{"a lone die is rolled", input(roll), 0, rules.RuleOpeningRoll},
+		{"the winner takes the first turn, by its seat in the view", withView, 2, rules.RuleOpeningChoice},
+		{"with no view, the winner takes the choice marked AlwaysLegal", chooser, 2, rules.RuleOpeningChoice},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			v := rules.Resolve(c.in)
-			if !v.Absorbed() || v.Rule != rules.RuleOpeningRoll || v.Index != c.want {
-				t.Fatalf("verdict = %#v, want opening-roll at %d", v, c.want)
+			if !v.Absorbed() || v.Rule != c.rule || v.Index != c.want {
+				t.Fatalf("verdict = %#v, want %s at %d", v, c.rule, c.want)
 			}
 			d, err := heuristic.New().Decide(context.Background(), c.in)
 			if err != nil {

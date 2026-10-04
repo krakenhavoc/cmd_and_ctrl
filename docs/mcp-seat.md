@@ -167,7 +167,7 @@ to `--log-file`.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--allow-origin <scheme://host[:port]>` | `https://cmd.labxp.io`, `https://cmd-dev.labxp.io`, `http://localhost:*`, `http://127.0.0.1:*` | An origin `join` may talk to. Repeatable. The port may be `*`. Naming any replaces the whole default list. The agent cannot change it. |
-| `--absorb <rules>` | `forced,mana-only,coin-call` | The trivial windows the binary answers without the model: a subset of `forced`, `mana-only`, `coin-call`, `same-land`, or `none`. You can only add `same-land` or remove rules, so more windows reach the model; nothing Layer A would not answer can be answered for it. |
+| `--absorb <rules>` | `forced,mana-only,coin-call,opening-roll` | The trivial windows the binary answers without the model: a subset of `forced`, `mana-only`, `coin-call`, `same-land`, `opening-roll`, `opening-choice`, or `none`. `opening-roll` rolls the seat's d20 in the opening roll (ADR 0121), rerolls included. `opening-choice`, the winner choosing who takes the first turn, is off by default: it reaches the model as `kind: choice:starting_player`, and switched on, the seat takes the first turn itself. You can only add `same-land` or `opening-choice`, or remove rules, so more windows reach the model; nothing Layer A would not answer can be answered for it. |
 | `--log-file <path>` | stderr | Write the log here, mode `0600`, appended. The path is used as given: `~` is not expanded and the directory is not created. |
 | `--state-dir <dir>` | `$XDG_STATE_HOME/cmdctrl-mcpseat`, else `~/.local/state/cmdctrl-mcpseat` | Where saved sessions live. |
 | `-v` | off | Debug logging. |

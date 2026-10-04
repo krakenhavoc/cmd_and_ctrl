@@ -39,6 +39,7 @@
 // (ADR 0121 PR 5) and table rolls (PR 6) feed the same schedule: each
 // only needs its own `rollsFrom…` and a stable `key`.
 
+import { isOpeningDieLog } from "./openingRoll";
 import type { LogEvent } from "./protocol";
 
 /** The tumble at speed 1. Scaled by `animations.speed`. */
@@ -147,10 +148,11 @@ function coinFace(s: string | undefined): CoinFace | null {
 
 /**
  * rollFromLog is the animation a log entry asks for, or null: a card's
- * `roll` or `flip`, and a `table_roll` (ADR 0121 §5). The opening roll's
- * dice are `roll` entries too, and PR 5 decides whether this layer or
- * the banner draws them. An entry with no result to show (an older
- * server, a redacted line) is null: there is nothing to land on.
+ * `roll` or `flip`, a `table_roll` (ADR 0121 §5), or an opening d20
+ * (a `roll` with no card before the first turn, ADR 0121 PR 5), which
+ * is drawn here too and marked `opening` so the strip raises no cue
+ * for it. An entry with no result to show (an older server, a
+ * redacted line) is null: there is nothing to land on.
  */
 export function rollFromLog(log: LogEvent): DiceRoll | null {
   if (log.kind === "table_roll") return tableRollFromLog(log);
@@ -159,7 +161,7 @@ export function rollFromLog(log: LogEvent): DiceRoll | null {
     seq: log.seq,
     seat: log.seat,
     text: log.text,
-    source: "card" as const,
+    source: (isOpeningDieLog(log) ? "opening" : "card") as DiceSource,
   };
   if (log.kind === "roll") {
     const results = (log.results ?? []).filter((n) => Number.isInteger(n));

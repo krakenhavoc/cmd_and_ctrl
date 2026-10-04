@@ -14,6 +14,7 @@
 //   - declare attackers goes to end of combat when nothing attacked
 //     (CR 508.8), and to declare blockers otherwise.
 
+import { openingRollStatus } from "./openingRoll";
 import type { GameView } from "./protocol";
 import { buildStackLane } from "./stackLane";
 import { STEP_LABELS, type StepID } from "./turn";
@@ -46,8 +47,15 @@ const NEXT_STEP: Partial<Record<StepID, StepID | "next_turn">> = {
  * declaration first), `next` is greyed for everyone, and the line says
  * who the table is waiting on. A defender still declaring has the
  * block request in the action bar instead, which hides this line.
+ *
+ * ADR 0121 §6: so is the opening roll. Nobody holds priority, and a
+ * viewer with nothing to answer reads who the table is waiting for:
+ * "Waiting for Bob and Dave to roll", then "Carol is choosing who goes
+ * first". A seat with a die to roll, the host and the chooser have a
+ * request in the action bar instead, which hides this line.
  */
 export function passHint(view: GameView | null | undefined, viewerHasPriority: boolean): string {
+  if (view?.opening_roll) return openingRollStatus(view);
   if (!view || view.mulligans_open === true) return "";
   if (!viewerHasPriority) return blockWaitHint(view);
 

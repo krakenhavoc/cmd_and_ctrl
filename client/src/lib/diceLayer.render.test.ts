@@ -248,6 +248,84 @@ describe("the strip cue waits for the die", () => {
   });
 });
 
+// ADR 0121 PR 5: the opening roll's dice go through the same queue, are
+// drawn at the roller's seat, raise no strip cue (the `opening roll`
+// banner shows them), and stay settled by their seats until the choice.
+describe("the opening roll's dice", () => {
+  function openingDie(seq: number, seat: number, result: number): LogEvent {
+    return {
+      seq,
+      kind: "roll",
+      seat,
+      text: `${seat === 0 ? "Me" : "Opp"} rolled a d20: ${result}`,
+      sides: 20,
+      results: [result],
+    };
+  }
+  const open = { rounds: [{ seats: [0, 1], rolls: [] }] };
+  function rollView(log: LogEvent[], opening: unknown = open): GameView {
+    return dockTestView({ log, opening_roll: opening } as Partial<GameView>);
+  }
+
+  it("tumbles at the seat, then stays settled instead of fading while the roll is open", () => {
+    const board = boardWithAvatar({ left: 700, top: 20, width: 40, height: 40 });
+    const r = render(DiceLayer as never, { view: rollView([]), boardEl: board, queue });
+    r.setProps({ view: rollView([openingDie(3, 1, 17)]) });
+    let [g] = groups(r.container);
+    expect(g.dataset.dicePhase).toBe("tumble");
+    expect(g.dataset.diceSeat).toBe("1");
+
+    advance(DICE_TUMBLE_MS + DICE_HOLD_MS + DICE_FADE_MS + 5_000);
+    [g] = groups(r.container);
+    expect(g, "the die is still at the seat").toBeDefined();
+    expect(g.dataset.dicePhase).toBe("hold");
+    expect(g.classList.contains("fading")).toBe(false);
+    expect(g.querySelector(".die")?.getAttribute("data-face")).toBe("17");
+
+    // The choice closes the roll: the standings go.
+    r.setProps({ view: dockTestView({ log: [openingDie(3, 1, 17)] } as Partial<GameView>) });
+    expect(groups(r.container)).toHaveLength(0);
+  });
+
+  it("draws dice already rolled settled when it mounts mid-roll (a reconnect)", () => {
+    const r = render(DiceLayer as never, {
+      view: rollView([openingDie(3, 0, 8), openingDie(4, 1, 12)]),
+      boardEl: bareBoard(),
+      queue,
+    });
+    const gs = groups(r.container);
+    expect(gs.map((g) => g.dataset.dicePhase)).toEqual(["hold", "hold"]);
+    expect(gs.map((g) => g.querySelector(".die")?.getAttribute("data-face"))).toEqual(["8", "12"]);
+    expect(gs.every((g) => !g.classList.contains("moving"))).toBe(true);
+  });
+
+  it("shows a seat's reroll in place of its first die", () => {
+    const r = render(DiceLayer as never, {
+      view: rollView([openingDie(3, 0, 15), openingDie(4, 1, 15)]),
+      boardEl: bareBoard(),
+      queue,
+    });
+    r.setProps({
+      view: rollView([openingDie(3, 0, 15), openingDie(4, 1, 15), openingDie(6, 1, 2)]),
+    });
+    const forSeat1 = groups(r.container).filter((g) => g.dataset.diceSeat === "1");
+    expect(forSeat1).toHaveLength(1);
+    expect(forSeat1[0].dataset.diceKey).toBe("seq:6");
+  });
+
+  it("raises no strip cue", () => {
+    const board = mountLayer([]);
+    const strip = render(RevealBanner as never, { snap: rollView([]), dice: queue });
+    const next = rollView([openingDie(3, 1, 17)]);
+    board.setProps({ view: next });
+    strip.setProps({ snap: next });
+    advance(DICE_TUMBLE_MS + DICE_HOLD_MS);
+    expect(strip.container.querySelector(".random-line")).toBeNull();
+    // It is still read out, once, by the layer's announcer.
+    expect(announcer(board.container).textContent).toContain("Opp rolled a d20: 17");
+  });
+});
+
 // ADR 0121 §5: a die rolled at the table from the ⋯ menu.
 function tableRoll(seq: number, rollID: number, result = 14): LogEvent {
   return {

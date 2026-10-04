@@ -17,11 +17,14 @@
     keyHint?: string;
     // The same key for aria-keyshortcuts ("B"), or undefined.
     keyShortcuts?: string;
+    // Disabled whatever the settings say: the opening roll, before
+    // there is a turn to bluff in (ADR 0121 §6).
+    locked?: boolean;
   }
-  const { keyHint = "", keyShortcuts }: Props = $props();
+  const { keyHint = "", keyShortcuts, locked = false }: Props = $props();
 
   const gp = $derived($settings.gameplay);
-  const enabled = $derived(gp.smartAutoPass);
+  const enabled = $derived(gp.smartAutoPass && !locked);
   let open = $state(false);
   let root: HTMLElement | undefined = $state();
 
@@ -33,11 +36,13 @@
   const label = $derived($bluffArmed ? `bluff ✓${kindSuffix}` : "bluff");
 
   const title = $derived(
-    (!enabled
-      ? "bluffing needs smart auto-pass: with it off you stop at every opponent spell, so a pause gives nothing away"
-      : $bluffArmed
-        ? "bluff ON — when you have no answer, pause anyway so a pause gives nothing away; click to stop bluffing this game"
-        : "bluff OFF — windows you can't answer pass instantly; click to bluff for the rest of this game") +
+    (locked
+      ? "nothing to bluff before the first turn"
+      : !enabled
+        ? "bluffing needs smart auto-pass: with it off you stop at every opponent spell, so a pause gives nothing away"
+        : $bluffArmed
+          ? "bluff ON — when you have no answer, pause anyway so a pause gives nothing away; click to stop bluffing this game"
+          : "bluff OFF — windows you can't answer pass instantly; click to bluff for the rest of this game") +
       (enabled ? keyHint : ""),
   );
 

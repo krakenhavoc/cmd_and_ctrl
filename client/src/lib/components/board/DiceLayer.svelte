@@ -38,6 +38,7 @@
     diceThrow,
     faceAt,
     placeDice,
+    rollFromLog,
     rollsFromLogs,
     visiblePlays,
     type DicePlacement,
@@ -45,6 +46,7 @@
     type Rect,
   } from "../../dice";
   import { DiceQueue, useDiceQueue } from "../../diceQueue.svelte";
+  import { latestOpeningDice } from "../../openingRoll";
 
   interface Props {
     view: GameView;
@@ -115,6 +117,45 @@
 
   const plays = $derived(visiblePlays({ plays: queue.plays }, now));
 
+  // ADR 0121 §7: the opening roll's dice do not fade. While the roll is
+  // open, each seat's latest opening die stays settled beside its seat,
+  // as the standings, until the winner chooses. A die still tumbling or
+  // holding is drawn by its play (and its fade is held off while the
+  // roll is open); once that play is over, the same die is drawn here,
+  // under the same key, so it is the same element and nothing flickers.
+  // A die the queue has not settled yet (or not seen yet) is not drawn
+  // here, so a standing never gives a result away before its tumble. A
+  // reconnect primes the window, and primed dice are settled at once.
+  const openingOpen = $derived(!!view.opening_roll);
+  const standings = $derived.by((): DicePlay[] => {
+    if (!view.opening_roll) return [];
+    void queue.tick;
+    const busy = new Set(plays.map((p) => p.roll.seat));
+    const out: DicePlay[] = [];
+    for (const log of latestOpeningDice(view.log)) {
+      if (busy.has(log.seat) || !queue.released(log.seq, now)) continue;
+      const roll = rollFromLog(log);
+      if (!roll) continue;
+      out.push({
+        roll,
+        startAt: 0,
+        settleAt: 0,
+        fadeAt: Number.POSITIVE_INFINITY,
+        endAt: Number.POSITIVE_INFINITY,
+        motion: false,
+        slotMs: 0,
+        releaseAt: 0,
+      });
+    }
+    return out;
+  });
+  const drawn = $derived([...plays, ...standings]);
+
+  function phaseOf(p: DicePlay, at: number): ReturnType<typeof dicePhase> {
+    const phase = dicePhase(p, at);
+    return phase === "fade" && openingOpen && p.roll.source === "opening" ? "hold" : phase;
+  }
+
   // Animation frames, only while a die is in the air: the faces change
   // on a seeded schedule (lib/dice.ts tumbleIndex).
   $effect(() => {
@@ -140,7 +181,7 @@
 
   let placements = $state.raw<Map<string, DicePlacement>>(new Map());
   let resized = $state(0);
-  const visibleKeys = $derived(plays.map((p) => p.roll.key).join("|"));
+  const visibleKeys = $derived(drawn.map((p) => p.roll.key).join("|"));
 
   $effect(() => {
     const el = boardEl;
@@ -175,14 +216,14 @@
     void resized;
     const board = boardEl;
     untrack(() => {
-      if (!board || plays.length === 0) {
+      if (!board || drawn.length === 0) {
         if (placements.size > 0) placements = new Map();
         return;
       }
       const boardRect = board.getBoundingClientRect();
       const size = { width: boardRect.width, height: boardRect.height };
       const next = new Map<string, DicePlacement>();
-      for (const p of plays) {
+      for (const p of drawn) {
         const seatID = view.seats[p.roll.seat]?.id;
         const anchor = seatID ? findSeatAnchor(board, seatID, { accept: hasSize }) : null;
         let avatar: Rect | null = anchor ? relRect(boardRect, anchor) : null;
@@ -290,9 +331,9 @@
 </script>
 
 <div class="dice-layer" aria-hidden="true" style="--die-px:{DIE_PX}px;--coin-px:{COIN_PX}px">
-  {#each plays as p (p.roll.key)}
+  {#each drawn as p (p.roll.key)}
     {@const at = placements.get(p.roll.key)}
-    {@const phase = dicePhase(p, now)}
+    {@const phase = phaseOf(p, now)}
     {@const shown = diceShown(p.roll)}
     {@const box = diceGroupSize(p.roll)}
     {#if at}

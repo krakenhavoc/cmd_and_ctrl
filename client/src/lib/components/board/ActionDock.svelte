@@ -129,6 +129,13 @@
     menu,
   }: Props = $props();
 
+  // ADR 0121 §6: while the opening roll is open there is no turn yet.
+  // `next`, Pass turn and the toggles are disabled (never hidden: the
+  // e2e suite and the tutorial read them). The ⋯ menu stays.
+  const preGame = $derived(!!view.opening_roll);
+  const canPass = $derived(viewerHasPriority && !preGame);
+  const canPassTurn = $derived(viewerIsActive && !preGame);
+
   // ---- keys --------------------------------------------------------
   // Read from the same binding map the dispatcher uses, so a rebound
   // key updates the tooltip, the cap and aria-keyshortcuts together,
@@ -462,6 +469,7 @@
       class:on={$holdPriority}
       aria-pressed={$holdPriority}
       aria-keyshortcuts={ariaKeys(keys.holdPriority)}
+      disabled={preGame}
       onclick={toggleHoldPriority}
       title={($holdPriority
         ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
@@ -481,6 +489,7 @@
       aria-label="autopass"
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
+      disabled={preGame}
       onclick={onToggleAutopass}
       title={(autopassPaused
         ? "autopass PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
@@ -492,14 +501,18 @@
       {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}
     </button>
     <!-- ADR 0111 §5: always shown, set up or not. -->
-    <BluffChip keyHint={keyHint(keys.toggleBluff)} keyShortcuts={ariaKeys(keys.toggleBluff)} />
+    <BluffChip
+      keyHint={keyHint(keys.toggleBluff)}
+      keyShortcuts={ariaKeys(keys.toggleBluff)}
+      locked={preGame}
+    />
     <!-- ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack
          row. Disabled, not hidden, when the budget is spent; the server
          keeps the rules, this only reads them. -->
     <button
       type="button"
       class="action undo"
-      disabled={!canUndo}
+      disabled={!canUndo || preGame}
       aria-label={undoUnlimited ? "Undo (no limit)" : `Undo (${undoCount} left)`}
       aria-keyshortcuts={ariaKeys(keys.undo)}
       onclick={onUndo}
@@ -700,25 +713,27 @@
       <button
         type="button"
         class="dock-btn secondary pass-turn"
-        disabled={!viewerIsActive}
+        disabled={!canPassTurn}
         aria-keyshortcuts={ariaKeys(keys.passTurn)}
         onclick={onPassTurn}
-        onkeydown={(e) => enterPresses(e, viewerIsActive, onPassTurn)}
-        title={viewerIsActive
-          ? `skip the rest of your turn${keyHint(keys.passTurn)}`
-          : `${activePlayerName} is the active player`}
+        onkeydown={(e) => enterPresses(e, canPassTurn, onPassTurn)}
+        title={preGame
+          ? "the first turn has not begun"
+          : viewerIsActive
+            ? `skip the rest of your turn${keyHint(keys.passTurn)}`
+            : `${activePlayerName} is the active player`}
       >
         Pass turn
       </button>
       <button
         type="button"
         class="dock-btn primary next"
-        class:viewer-priority={viewerHasPriority}
-        disabled={!viewerHasPriority}
+        class:viewer-priority={canPass}
+        disabled={!canPass}
         aria-keyshortcuts={ariaKeys(keys.passPriority)}
         onclick={onPassPriority}
-        onkeydown={(e) => enterPresses(e, viewerHasPriority, onPassPriority)}
-        title={viewerHasPriority
+        onkeydown={(e) => enterPresses(e, canPass, onPassPriority)}
+        title={canPass
           ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
           : "you don't hold priority"}
       >
