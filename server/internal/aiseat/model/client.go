@@ -22,10 +22,13 @@
 // # The model selects, it does not act
 //
 // The model is shown a numbered list of `legal.Move` labels and asked
-// for one number. It cannot emit an action, so it cannot invent one;
-// an index outside the list is simply discarded. This is the
+// for one number, with that entry's label copied beside it. It cannot
+// emit an action, so it cannot invent one: the number and the label
+// are both only ever looked up in the list it was shown, and an
+// answer that names nothing on it is discarded. This is the
 // structural defence ADR 0033 §1 builds the enumerator for, and it is
-// why a model is safe here at all.
+// why a model is safe here at all. ResolveAnswer is the one place a
+// reply becomes a move.
 //
 // # The type gate
 //
@@ -56,7 +59,7 @@ type Block struct {
 }
 
 // Request is one model call. It is deliberately small — this is a
-// select-an-index call, not a conversation: no history, no tools, no
+// select-a-move call, not a conversation: no history, no tools, no
 // streaming, one turn.
 type Request struct {
 	// Model is the provider's model id.
@@ -76,6 +79,24 @@ type Request struct {
 	// Thinking is "", "adaptive" or "disabled". Empty omits the
 	// field and takes the model's default.
 	Thinking string
+	// Choices is the move list exactly as the prompt shows it: every
+	// listed index with its label, ascending, and nothing that is not
+	// listed (#2196). A transport that can constrain a reply to a
+	// schema uses it to make an unlisted number impossible to write —
+	// the OpenAI-compatible client sends it as a json_schema enum. One
+	// that cannot ignores it, and the funnel's own resolution
+	// (ResolveAnswer) covers the reply either way.
+	//
+	// Empty means the reply is not a move pick — an improvisation
+	// bundle — and no transport constrains it.
+	Choices []Choice
+}
+
+// Choice is one entry of the move list a model was shown: the real
+// index into Input.Moves and the label as rendered.
+type Choice struct {
+	Index int
+	Label string
 }
 
 // Usage is what one call cost, as the provider reported it.

@@ -102,6 +102,21 @@ type Trace struct {
 	// ParsedIndex is the index parsed out of Reply, nil when the
 	// reply was not an index.
 	ParsedIndex *int `json:"parsed_index,omitempty"`
+	// ParsedMove is the move label the reply copied beside its number,
+	// as written (#2196). Empty when it copied none.
+	ParsedMove string `json:"parsed_move,omitempty"`
+	// ModelIndex is the move the reply resolved to once its number and
+	// label were checked against the list it was shown — which is
+	// ParsedIndex unless the label overruled the number. Nil when the
+	// reply named no move. A reader asking "what did the model want"
+	// should read this before ParsedIndex: a number past the end of
+	// the list is what the model WROTE, not what it meant.
+	ModelIndex *int `json:"model_index,omitempty"`
+	// Pick is how the reply resolved: "index", "index-unlabelled",
+	// "label-rescued", "label-corrected" or "label-mismatch" — see
+	// aiseat/model's Pick* constants. Empty when the model's answer
+	// was not used.
+	Pick string `json:"pick,omitempty"`
 	// Fallback names why Layer C's answer was not used — the funnel's
 	// own classification, not the runner's.
 	Fallback string `json:"fallback,omitempty"`

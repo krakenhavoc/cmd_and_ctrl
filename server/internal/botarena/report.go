@@ -502,6 +502,7 @@ func mergeFunnel(dst *model.Stats, s model.Stats) {
 	dst.ByLayer = mergeCounts(dst.ByLayer, s.ByLayer)
 	dst.ByEscalation = mergeCounts(dst.ByEscalation, s.ByEscalation)
 	dst.ByFallback = mergeCounts(dst.ByFallback, s.ByFallback)
+	dst.ByPick = mergeCounts(dst.ByPick, s.ByPick)
 }
 
 func mergeCounts(dst, src map[string]int64) map[string]int64 {
@@ -572,8 +573,8 @@ func (s Summary) Markdown() string {
 	b.WriteString(playFootnote)
 
 	b.WriteString("\n### Funnel\n\n")
-	b.WriteString("| policy | windows | A | B | C | escalated | calls | timeouts | fallbacks | in tok | out tok | prompt B p50 |\n")
-	b.WriteString("|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|\n")
+	b.WriteString("| policy | windows | A | B | C | escalated | calls | timeouts | fallbacks | picks | in tok | out tok | prompt B p50 |\n")
+	b.WriteString("|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|\n")
 	for _, n := range names {
 		t := s.PerPolicy[n]
 		windows := t.Funnel.Windows
@@ -582,11 +583,12 @@ func (s Summary) Markdown() string {
 			// meter is the only record of its windows.
 			windows = t.Meter.Windows
 		}
-		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d | %d | %d | %s | %d | %d | %d |\n",
+		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d | %d | %d | %s | %s | %d | %d | %d |\n",
 			n, windows, layer(t, model.LayerA), layer(t, model.LayerB), t.Funnel.ByLayer[model.LayerC],
 			t.Funnel.Escalated, t.Funnel.ModelCalls, t.Funnel.ModelTimeouts, counts(t.Funnel.ByFallback),
-			t.Funnel.Usage.InputTokens, t.Funnel.Usage.OutputTokens, t.PromptBytesP50)
+			counts(t.Funnel.ByPick), t.Funnel.Usage.InputTokens, t.Funnel.Usage.OutputTokens, t.PromptBytesP50)
 	}
+	b.WriteString(funnelFootnote)
 
 	b.WriteString("\n### Latency\n\n")
 	b.WriteString("| policy | decisions | decision p50 | p99 | p999 | max | model p50 | model p99 | model max |\n")
@@ -628,6 +630,11 @@ func (s Summary) Markdown() string {
 	}
 	return b.String()
 }
+
+// funnelFootnote is under the Funnel table on every run: `picks` is
+// new with #2196 and reads wrong without the out-of-range count beside
+// it.
+const funnelFootnote = "\n*`picks` says how the model replies that were USED became a move: `index` (the number, label agreeing), `index-unlabelled` (a number and no label), `label-rescued` (the number was not on the list and the label named exactly one listed move), `label-corrected` (the label named a different listed move than the number, and won), `label-mismatch` (the label named no single listed move, so the number was taken). Replies that named no move at all are `out-of-range` and `malformed` under `fallbacks`.*\n"
 
 // playFootnote is under the Play table on every run, because both
 // halves of it are ways to misread the numbers directly above.
