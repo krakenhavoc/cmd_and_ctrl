@@ -37,16 +37,24 @@
   import { openCardMenu } from "../../contextMenu";
   import {
     acrossFor,
+    castAnywayItem,
     manualLoyaltyRows,
     menuAbilityRows,
     menuManaRows,
     specialActionItems,
     type MenuAction,
   } from "../../contextMenu.logic";
-  import { abilityPopover, closeAbilityPopover, openAbilityPopover } from "../../abilityPopover";
+  import {
+    abilityPopover,
+    closeAbilityPopover,
+    openAbilityPopover,
+    popoverDrawnOn,
+    popoverSurface,
+  } from "../../abilityPopover";
   import { manaRowNeedsPicker } from "../../manaSource";
   import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
+  import ManaCost from "./ManaCost.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
@@ -127,10 +135,12 @@
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
     size?: "small" | "normal";
-    // #1954: draw the art crop instead of the full card (the
-    // experimental "card art only" setting). Set by BattlefieldRow
-    // and by Hand for the viewer's own cards; the hover zoom, stack
-    // and every other Card leave it off.
+    // #1954 / #2209: draw an art tile — the art crop with a name strip
+    // — instead of the full card. BattlefieldRow sets it from
+    // `display.battlefieldArt` (on by default) and Hand, for the
+    // viewer's own cards, from `display.handArt` (off by default); the
+    // hover zoom, stack and every other Card leave it off. A face-down
+    // card never becomes a tile (cardImage.ts tableImageSize).
     artOnly?: boolean;
     // showManaCost renders the S15 cost-chip overlay bottom-left.
     // Enabled by Hand.svelte for the viewer's own hand so they can
@@ -156,6 +166,17 @@
     // controls the card, so an opponent's Aura drawn on the viewer's
     // creature never offers it.
     onRawTap?: () => void;
+    // ADR 0118 §2: the popover's "Cast anyway (don't pay)" row, on a card
+    // the viewer could cast (a hand card, a strip card, the command-zone
+    // panel's commander) while strict payment is on. It opens the dock's
+    // confirmation; the parent closes over the card and its zone. It
+    // counts toward `hasMenu`, so a plain spell's right-click opens the
+    // popover. It draws no pip and does not light the ready ring.
+    // Undefined: no row.
+    onCastAnyway?: () => void;
+    // Why that row is greyed (timing.ts castAnywayBlocked), or "" when it
+    // is live.
+    castAnywayBlocked?: string;
     // ADR 0117 §3: sends a manual loyalty row's `activate_loyalty`, for
     // an uncatalogued planeswalker the viewer controls. Its rows need
     // `view` to judge the window. Set by BattlefieldRow on the viewer's
@@ -274,6 +295,8 @@
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
+    onCastAnyway,
+    castAnywayBlocked = "",
     onMenuAction,
     view,
     inert = false,
@@ -297,7 +320,12 @@
   // routed in PlayerPanel. A right-click or a pip writes the same store.
   // Dismissed on selection, Escape (handled inside the menu), or a
   // click on the card.
-  const manaMenuOpen = $derived($abilityPopover?.cardID === card.instance_id);
+  //
+  // ADR 0120 §3: with a seat's board expanded over the table, two Cards
+  // carry this instance ID. The popover records which surface opened
+  // it, and only the Card on that surface draws it.
+  const surface = popoverSurface();
+  const manaMenuOpen = $derived(popoverDrawnOn($abilityPopover, card.instance_id, surface));
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
@@ -337,6 +365,9 @@
   const sandbox = $derived(
     !!onRawTap && (viewerID == null || (card.controller || card.owner) === viewerID),
   );
+  // ADR 0118 §2: the Sandbox section's Cast anyway row, one builder with
+  // the admin menu's (contextMenu.logic.ts castAnywayItem).
+  const castAnywayRow = $derived(onCastAnyway ? castAnywayItem(castAnywayBlocked) : undefined);
   // hasMenu: the popover has at least one row to show. Since ADR 0117
   // §3 that is every permanent the viewer controls (its Sandbox row),
   // so a right-click on a vanilla creature opens the popover with Tap.
@@ -345,7 +376,8 @@
       (!!onActivateAbility && menuAbilities.length > 0) ||
       specialRows.length > 0 ||
       loyaltyRows.length > 0 ||
-      sandbox,
+      sandbox ||
+      !!castAnywayRow,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
@@ -376,7 +408,16 @@
   // played as its land half — or, later, a transformed permanent —
   // shows the side that is actually up without this component
   // knowing faces exist.
-  const imgSrc = $derived(cardImageURL(card, tableImageSize(card, size, artOnly)));
+  const imgSize = $derived(tableImageSize(card, size, artOnly));
+  const imgSrc = $derived(cardImageURL(card, imgSize));
+  // #2209: the art tile. The crop has no frame, so the tile draws the
+  // name itself in a strip along the top, and every top-anchored mark
+  // (CMD, GOAD, counters, the designation, the pips) steps down below
+  // it through --face-top. Everything else on the tile — P/T or
+  // loyalty, counters, status marks, keyword chips, the ADR 0105 pips
+  // — is the same markup a full card draws. A card with no art (a
+  // token with no printing) keeps the name fallback, as before.
+  const artTile = $derived(imgSize === "art_crop" && !!imgSrc && !showsCardBack(card, faceDown));
 
   // Real MTG card back bundled as a static asset under client/public.
   // Two sizes to keep hand/battlefield thumbnails snappy while the
@@ -563,7 +604,7 @@
     ev.preventDefault();
     ev.stopPropagation();
     if (manaMenuOpen) closeAbilityPopover();
-    else openAbilityPopover(card.instance_id);
+    else openAbilityPopover(card.instance_id, surface);
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -588,7 +629,7 @@
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) openAbilityPopover(card.instance_id);
+    if (hasMenu) openAbilityPopover(card.instance_id, surface);
   }
 
   // ADR 0117 §4, "Right-click": the popover's mana row for an ability
@@ -655,6 +696,7 @@
   bind:this={cardEl}
   class="card"
   class:face-down={showBack}
+  class:art-tile={artTile}
   class:tapped={card.tapped}
   class:selected
   class:targetable
@@ -712,6 +754,11 @@
       fetchpriority={priority ? "high" : undefined}
       use:cardArt={imgSrc}
     />
+    {#if artTile}
+      <!-- #2209: the art crop has no title bar. Hidden from assistive
+           tech because the card's own accessible name already is it. -->
+      <span class="art-name" aria-hidden="true">{displayName(card)}</span>
+    {/if}
     {#if showFaceDownBadge}
       <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
            permanent they control, CR 702.143d for their own foretold
@@ -801,8 +848,9 @@
       </span>
     {/if}
     {#if showManaCost && card.mana_cost}
-      <span class="badge cost" title={`mana cost ${card.mana_cost}`} aria-label="mana cost">
-        {card.mana_cost}
+      <!-- #2231: the printed cost as pips; the badge keeps a spoken name. -->
+      <span class="badge cost" title={`mana cost ${card.mana_cost}`}>
+        <ManaCost cost={card.mana_cost} size={15} />
       </span>
     {/if}
     <CounterPips counters={card.counters} />
@@ -1124,6 +1172,8 @@
         manualLoyalty={loyaltyRows}
         onMenuAction={(action) => onMenuAction?.(action)}
         onRawTap={sandbox ? onRawTap : undefined}
+        castAnyway={castAnywayRow}
+        {onCastAnyway}
         onClose={closeAbilityPopover}
       />
     </div>
@@ -1178,6 +1228,27 @@
     --art-error-left: 3px;
     --art-error-right: auto;
     --art-error-z: 5;
+    /* #2209: how far the top-anchored marks sit below the tile's top
+       edge. 0 on a full card, the name strip's height on an art tile.
+       CounterPips reads it too, through inheritance. */
+    --face-top: 0px;
+  }
+  /* #2209: the art tile. It keeps the full card's slot — the same
+     --card-w × --card-h, 5:7 portrait — so no row, pile, fan or
+     attachment offset reflows when the setting changes; the landscape
+     crop is centred and cropped at the sides (object-fit: cover). The
+     strip's type scales with the card and is clamped so it stays
+     legible on an opponent's smallest compact row and does not shout
+     on a large one. */
+  .card.art-tile {
+    --art-name-size: clamp(9px, calc(var(--card-w, 80px) * 0.085), 13px);
+    --art-strip-h: calc(var(--art-name-size) + 7px);
+    --face-top: var(--art-strip-h);
+  }
+  /* The failed-art pip steps under the strip with everything else. A
+     tapped tile keeps its own 58% (below). */
+  .card.art-tile:not(.tapped) {
+    --art-error-top: calc(22px + var(--art-strip-h));
   }
   .card.tapped {
     /* A tapped tile turns 90° clockwise: its left edge becomes its top
@@ -1229,6 +1300,40 @@
     display: block;
     pointer-events: none;
   }
+  /* #2209: the name strip. Drawn over art, never over the page, so its
+     colours are fixed rather than themed: near-white type on a
+     near-opaque dark band reads over any art in every theme. Ellipsis,
+     never a wrap; the full name is the card's title and the hover zoom. */
+  .art-name {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    height: var(--art-strip-h);
+    /* BattlefieldRow sets the inset on a land pile, whose count badge
+       overhangs this corner. */
+    padding: 0 5px 0 var(--art-name-inset, 5px);
+    font-size: var(--art-name-size);
+    font-weight: 700;
+    line-height: var(--art-strip-h);
+    letter-spacing: 0.01em;
+    color: #f6f1e4;
+    background: linear-gradient(rgba(6, 9, 18, 0.92), rgba(6, 9, 18, 0.8));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  :global(:root[data-theme="high-contrast"]) .art-name {
+    color: #fff;
+    background: #000;
+    border-bottom-color: #fff;
+    text-shadow: none;
+  }
   .name-fallback {
     display: -webkit-box;
     -webkit-line-clamp: 4;
@@ -1259,7 +1364,7 @@
   }
   .badge {
     position: absolute;
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     left: 3px;
     background: rgba(10, 14, 26, 0.88);
     color: var(--gold);
@@ -1337,7 +1442,7 @@
     border-color: rgba(255, 210, 122, 0.5);
   }
   .badge.no-untap {
-    top: 24px;
+    top: calc(24px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1357,7 +1462,7 @@
        also somebody's commander reads cleanly. Cool blue rather than
        gold: like WON'T UNTAP, it is a state the card is IN, not a
        property printed on it. */
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1456,7 +1561,7 @@
     /* ADR 0108. Top-centre, one row under WON'T UNTAP: a fact about
        what happens when the creature dies, like a regeneration shield,
        in the ash-grey of exile rather than the shield's green. */
-    top: 38px;
+    top: calc(38px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1474,7 +1579,7 @@
     /* ADR 0109 §1. Top-centre, a row under the death mark: what a
        resolved effect has made this land for now, in a sea-blue that
        reads as a temporary overlay rather than a warning. */
-    top: 52px;
+    top: calc(52px + var(--face-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -1492,7 +1597,7 @@
     /* Top-right, clear of the bottom-right damage / P-T stack: a
        shield is a fact about the NEXT destruction, not about the
        creature's current numbers. */
-    top: 3px;
+    top: calc(3px + var(--face-top, 0px));
     left: auto;
     right: 3px;
     color: #9fe8a8;
@@ -1546,21 +1651,18 @@
   .badge.cost {
     /* Top-right to mirror the printed-card convention. Only shown in
        hand-zone presentations via the showManaCost prop, so no clash
-       with the goad / damage battlefield badges. Monospace so cost
-       strings like "{W}{U}{B}{R}{G}" stay legible at small sizes. */
+       with the goad / damage battlefield badges. Drawn as pips (#2231). */
     left: auto;
     right: 3px;
-    top: 3px;
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 9px;
-    letter-spacing: 0;
-    color: var(--gold);
+    top: calc(3px + var(--face-top, 0px));
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 3px;
+    border-radius: 999px;
     background: rgba(10, 14, 26, 0.92);
     border: 1px solid rgba(200, 168, 106, 0.5);
-    max-width: 72%;
+    max-width: 90%;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   /* ADR 0105 (#1789): the "ready" ring. Static on purpose — forty
      cards animating a box-shadow is the cost §5 rules out. Two parts:
@@ -1614,7 +1716,7 @@
   }
   .ring-marker {
     position: absolute;
-    top: 21px;
+    top: calc(21px + var(--face-top, 0px));
     left: 3px;
     z-index: 4;
     box-sizing: border-box;
@@ -1662,7 +1764,7 @@
   .ready-pips {
     --pip: max(16px, calc(var(--card-w, 80px) * 0.17));
     position: absolute;
-    top: max(38px, 30%);
+    top: calc(max(38px, 30%) + var(--face-top, 0px));
     left: 3px;
     z-index: 4;
     display: flex;

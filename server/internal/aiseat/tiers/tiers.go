@@ -146,6 +146,15 @@ type Options struct {
 	// posture for a table that would rather not have a model touching
 	// the board.
 	NoImprovise bool
+	// Think turns the model's own thinking ON for the decision calls
+	// (model.Config.WithThinking), and MaxTokens sets their reply
+	// budget — DefaultThinkingMaxTokens when Think is on and MaxTokens
+	// is zero; the tier's own (128 routine, 256 frontier) when both
+	// are unset. An EXPERIMENT for a local model (#2196,
+	// CMDCTRL_BOT_THINK / CMDCTRL_BOT_MAX_TOKENS): off by default,
+	// because thinking is unbounded and needs a deadline in minutes.
+	Think     bool
+	MaxTokens int
 	// Config overrides the model funnel's tuning. Nil takes the
 	// tier's default.
 	Config *model.Config
@@ -239,6 +248,11 @@ func New(t Tier, opt Options) (aiseat.Policy, error) {
 		}
 		if opt.NoImprovise {
 			cfg.Improvise = false
+		}
+		if opt.Think {
+			cfg = cfg.WithThinking(opt.MaxTokens)
+		} else {
+			cfg = cfg.WithMaxTokens(opt.MaxTokens)
 		}
 		if think := opt.MaxThink; think > t.MaxThink() {
 			// The runner's deadline moved, so the call budget inside

@@ -101,6 +101,14 @@ func (e *enumerator) delvePlan(
 		}
 		best, fullN, fullCost = x, n, c
 	}
+	if priced.XSlots > 0 && hi == e.opts.MaxX {
+		// ADR 0122 §6.2: the search stopped at the cap, not at the
+		// life ceiling.
+		e.noteMaxX(best, func(x int) bool {
+			_, c := fullAt(x)
+			return e.canPay(c, x, spend)
+		})
+	}
 	if best < 0 {
 		return castSolve{}, false
 	}

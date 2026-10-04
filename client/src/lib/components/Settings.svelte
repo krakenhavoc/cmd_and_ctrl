@@ -14,6 +14,7 @@
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
+  import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
   import type { StackStyle } from "../stackLane";
   import {
     SHORTCUTS,
@@ -475,6 +476,16 @@
                   {k.replace(/([A-Z])/g, " $1").toLowerCase()}
                 </label>
               {/each}
+              <!-- ADR 0121 §7. Off, a roll's result still shows, settled;
+                   only the tumble and the spin go. -->
+              <label class="inline">
+                <input
+                  type="checkbox"
+                  checked={$settings.animations.dice}
+                  onchange={(e) => change("animations", "dice", e.currentTarget.checked)}
+                />
+                Dice and coins: animate rolls and flips
+              </label>
             </fieldset>
           {:else if activeTab === "display"}
             <h3>Display</h3>
@@ -599,27 +610,33 @@
               {#if isFresh("display.handLayout")}<span class="saved">✓</span>{/if}
             </label>
 
-            <!-- #1467: four ways to draw the stack, shipped side by side
-                 so they can be compared on a live table. -->
+            <!-- #1467, ADR 0119 §1: the pile is the default and is not
+                 experimental; the other four still are. -->
             <label class="slider-row">
-              <span>Stack <span class="experimental">experimental</span></span>
+              <span>Stack</span>
               <select
                 value={$settings.display.stackStyle}
                 onchange={(e) =>
                   change("display", "stackStyle", e.currentTarget.value as StackStyle)}
               >
-                <option value="compact">Compact (default)</option>
-                <option value="fan">Fan</option>
-                <option value="spotlight">Spotlight</option>
-                <option value="ribbon">Ribbon</option>
+                <option value="pile">Pile (default): large cards on the left</option>
+                <optgroup label="Experimental">
+                  <option value="compact">Compact</option>
+                  <option value="fan">Fan</option>
+                  <option value="spotlight">Spotlight</option>
+                  <option value="ribbon">Ribbon</option>
+                </optgroup>
               </select>
               {#if isFresh("display.stackStyle")}<span class="saved">✓</span>{/if}
             </label>
             <p class="help">
-              Compact keeps the stack in the small card at the top left. The others show it across
-              the middle of the table while something is on it: Fan lays the cards out with arrows
-              to what they target, Spotlight shows the next spell large with the rest queued beside
-              it, and Ribbon is a numbered row. The table itself never moves to make room.
+              Pile shows the stack as large, readable cards on the left of the table, the next to
+              resolve in front, with arrows to what they target; on a phone or a short window it
+              shows Compact instead. The others are <span class="experimental">experimental</span>.
+              Compact keeps the stack in the small card at the top left. Fan, Spotlight and Ribbon
+              show it across the middle of the table: Fan lays the cards out with arrows to what
+              they target, Spotlight shows the next spell large with the rest queued beside it, and
+              Ribbon is a numbered row. The table itself never moves to make room.
             </p>
 
             <label class="slider-row">
@@ -650,11 +667,21 @@
             <label>
               <input
                 type="checkbox"
-                checked={$settings.display.artOnlyCards}
-                onchange={(e) => change("display", "artOnlyCards", e.currentTarget.checked)}
+                checked={$settings.display.battlefieldArt}
+                onchange={(e) => change("display", "battlefieldArt", e.currentTarget.checked)}
               />
-              Card art only (hover for the full card) — experimental
-              {#if isFresh("display.artOnlyCards")}<span class="saved">✓ saved</span>{/if}
+              Show card art on the battlefield (hover for the full card)
+              {#if isFresh("display.battlefieldArt")}<span class="saved">✓ saved</span>{/if}
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.handArt}
+                onchange={(e) => change("display", "handArt", e.currentTarget.checked)}
+              />
+              Show card art in your hand (hover for the full card)
+              {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
             </label>
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
@@ -803,6 +830,27 @@
               </p>
             </fieldset>
 
+            <label class="slider-row">
+              <span
+                >Let other players' spells sit on the stack for at least … before auto-pass lets
+                them resolve</span
+              >
+              <select
+                value={clampStackHoldMs($settings.gameplay.stackHoldMs)}
+                onchange={(e) => change("gameplay", "stackHoldMs", Number(e.currentTarget.value))}
+              >
+                {#each STACK_HOLD_CHOICES_MS as ms (ms)}
+                  <option value={ms}>{ms === 0 ? "Off" : `${ms / 1000} s`}</option>
+                {/each}
+              </select>
+              {#if isFresh("gameplay.stackHoldMs")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              So you can read what was cast before it resolves. Only an automatic pass waits, and
+              only for a spell or ability someone else controls; <strong>next</strong> still passes at
+              once, and the action dock counts the wait down.
+            </p>
+
             <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
               <legend>Bluff</legend>
               <p class="help">
@@ -924,11 +972,13 @@
               Strict mana enforcement
               {#if isFresh("gameplay.strictMana")}<span class="saved">✓ saved</span>{/if}
             </label>
+            <!-- ADR 0118 §1: the help text is the ADR's, word for word. -->
             <p class="help">
-              When on, the server checks your mana pool before letting a spell resolve and enforces
-              commander tax (CR&nbsp;903.8). If you're short, a toast lets you cast anyway by
-              overriding the gate for that one spell. Default is off — the sandbox treats mana as
-              paper-tracked.
+              On (the default): a spell or ability costs what it says. Clicking or dragging a card
+              taps your lands for it, spending mana already in your pool first. A card your board
+              can't pay for is dimmed; right-click it for &ldquo;Cast anyway (don't pay)&rdquo;,
+              which the game log shows to the table. Off: the sandbox — mana is tracked on paper and
+              nothing is charged.
             </p>
 
             <label>

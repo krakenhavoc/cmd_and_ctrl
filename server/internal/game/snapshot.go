@@ -292,10 +292,18 @@ type GameSnapshot struct {
 	// there is nothing in it but plain Cards.
 	PhasedOut *zoneSnapshot `json:"phasedOut,omitempty"`
 
-	Turn          Turn      `json:"turn"`
-	MulligansOpen bool      `json:"mulligansOpen"`
-	Monarch       uuid.UUID `json:"monarch"`
-	Initiative    uuid.UUID `json:"initiative"`
+	Turn          Turn `json:"turn"`
+	MulligansOpen bool `json:"mulligansOpen"`
+	// OpeningRoll is the open opening-roll window (ADR 0121 §1): its
+	// rounds, every die with its seat, result and presser, and the
+	// chooser. Pure data, additive within v7: absent on every file that
+	// is not mid-roll. A binary from before it ignores the key and
+	// finds an active game with empty hands and the mulligan open, a
+	// table only the host can end (ADR 0121 §1, "Rollback"); a bump
+	// would abandon every live game on rollback instead.
+	OpeningRoll *OpeningRoll `json:"openingRoll,omitempty"`
+	Monarch     uuid.UUID    `json:"monarch"`
+	Initiative  uuid.UUID    `json:"initiative"`
 	// UndoLimit is the pre-v4 home of the undo budget. Read only when
 	// migrating an older file (migrateLegacySettings); a v4 capture
 	// leaves it zero and it is omitted.
@@ -504,6 +512,12 @@ type GameSnapshot struct {
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
 	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
+	// TableRollNext is the table-roll counter (ADR 0121 §5): how many
+	// table rolls the game has made, so a restored game does not repeat
+	// an earlier roll. Additive within v7: a binary from before it has
+	// no table rolls and ignores the key. The ring of recent rolls is
+	// not carried: after a restore there is no undo stack to cross.
+	TableRollNext uint64 `json:"tableRollNext,omitempty"`
 
 	LayerVersion        uint64 `json:"layerVersion"`
 	LastResolvedVersion uint64 `json:"lastResolvedVersion"`
@@ -600,6 +614,8 @@ type playerSnapshot struct {
 	IsBot              bool              `json:"isBot,omitempty"`
 	BotTier            string            `json:"botTier,omitempty"`
 	BotDeck            string            `json:"botDeck,omitempty"`
+	Agent              bool              `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
+	AgentClient        string            `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
 	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
 	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters           map[string]int    `json:"counters,omitempty"`
@@ -794,13 +810,12 @@ type cardSnapshot struct {
 	// as the zero record: "not cast, or cast for its mana cost", the
 	// answer every permanent gave before #653.
 	//
-	// No `omitzero`: `encoding/json` only honours that option from Go
-	// 1.24 (#1492), and CI's pinned 1.22 toolchain — the one that
-	// builds every fixture in testdata/snapshots and every deployed
-	// binary — silently ignores it and always writes the field. A
-	// contributor's newer local toolchain honouring the option is
-	// what produced the divergence; always writing it, on every Go
-	// version, is what removes it.
+	// No `omitzero`: when the module's floor was below Go 1.24, CI's
+	// toolchain — the one that built every fixture in
+	// testdata/snapshots and every deployed binary — ignored the
+	// option and always wrote the field, while a contributor's newer
+	// one omitted it (#1492). The frozen fixtures carry the key, so it
+	// is always written; omitzero_tag_guard_test.go holds that.
 	Provenance CastProvenance `json:"provenance"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
@@ -1574,6 +1589,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		State:                 g.State,
 		Turn:                  g.Turn,
 		MulligansOpen:         g.MulligansOpen,
+		OpeningRoll:           cloneOpeningRoll(g.OpeningRoll),
 		Monarch:               g.Monarch,
 		Initiative:            g.Initiative,
 		Settings:              g.Settings,
@@ -1720,6 +1736,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.RNG = snapshotRNG(g)
 	s.SourceOrdinals = cloneSourceOrdinals(g.sourceOrdinals)
 	s.SourceOrdinalNext = g.sourceOrdinalNext
+	s.TableRollNext = g.tableRollNext
 	s.LayerVersion = g.layerVersion.Load()
 	s.LastResolvedVersion = g.lastResolvedVersion.Load()
 	return s
@@ -1960,6 +1977,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		IsBot:              p.IsBot,
 		BotTier:            p.BotTier,
 		BotDeck:            p.BotDeck,
+		Agent:              p.Agent,
+		AgentClient:        p.AgentClient,
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		CommanderCasts:     copyIntMap(p.CommanderCasts),
 		Counters:           copyStringIntMap(p.Counters),
@@ -2394,6 +2413,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.Turn.OrderSeat = g.Turn.ActiveSeat
 	}
 	g.MulligansOpen = s.MulligansOpen
+	g.OpeningRoll = cloneOpeningRoll(s.OpeningRoll)
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
 	g.Settings = s.Settings
@@ -2585,6 +2605,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
 	g.sourceOrdinalNext = s.SourceOrdinalNext
+	g.tableRollNext = s.TableRollNext
 
 	// Layer-engine counters, handled exactly as RestoreFrom does
 	// after an undo and for the same reason: every restored Card
@@ -2805,6 +2826,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		IsBot:              p.IsBot,
 		BotTier:            p.BotTier,
 		BotDeck:            p.BotDeck,
+		Agent:              p.Agent,
+		AgentClient:        p.AgentClient,
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,

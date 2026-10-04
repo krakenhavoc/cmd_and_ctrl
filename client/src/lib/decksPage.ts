@@ -51,15 +51,28 @@ export function decksAccess(s: Session | null | undefined): DecksAccess {
   return { request: "hidden", save: "hidden", library: "hidden" };
 }
 
+// reportDeckSize is every copy the report accounts for: the buckets by
+// copies plus the copies the card index could not find. A Commander
+// deck totals 100 (#2220).
+export function reportDeckSize(r: CoverageReport): number {
+  const c = r.copies;
+  return c.manual + c.unreviewed + c.caveats + c.automated + c.no_effect + r.unknown_copies;
+}
+
 // reportAsPrinted is the check report's headline, in the library's
 // words (ADR 0110 §6 item 2): automated plus nothing-to-automate, over
-// every card the report bucketed. Counts are per distinct card, as the
-// server's Report.AsPrinted counts them.
+// the deck's size. Counted by copies, as the server's
+// Report.AsPrintedCopies counts them, so thirty Forests are thirty.
 export function reportAsPrinted(r: CoverageReport): string {
-  const c = r.counts;
-  const resolved = c.manual + c.unreviewed + c.caveats + c.automated + c.no_effect;
-  if (resolved === 0) return "";
-  return `${c.automated + c.no_effect} of ${resolved} cards play as printed`;
+  const size = reportDeckSize(r);
+  if (size === 0) return "";
+  return `${r.copies.automated + r.copies.no_effect} of ${size} cards play as printed`;
+}
+
+// reportNotFound is the "K not found" note beside the bar: names the
+// index could not resolve, in copies. Empty when there are none.
+export function reportNotFound(r: CoverageReport): string {
+  return r.unknown_copies > 0 ? `${r.unknown_copies} not found` : "";
 }
 
 // defaultSaveName fills the save field: the deck's name, then its first

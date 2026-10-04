@@ -153,7 +153,64 @@ const (
 	// "whenever you sacrifice" payoffs fire. Only the permanent's
 	// controller may sacrifice it.
 	TypeSacrificePermanent Type = "sacrifice_permanent"
+	// ADR 0121 §3 — the opening roll. roll_opening rolls the caller's
+	// d20 in the current round; host_roll_remaining rolls for every seat
+	// in the round that has not (host or admin only, gated at the
+	// WebSocket edge like set_table_settings); choose_starting_player
+	// is the winner's choice of who takes the first turn, params
+	// `{seat}`. None of the three mints an undo entry (MintsNoUndo).
+	TypeRollOpening          Type = "roll_opening"
+	TypeHostRollRemaining    Type = "host_roll_remaining"
+	TypeChooseStartingPlayer Type = "choose_starting_player"
+	// ADR 0121 §5 — "Roll a die": a d6, a d20 or a coin flip at the
+	// table, for fun, params `{die: "d6" | "d20" | "coin"}`. Not a game
+	// roll: nothing can trigger on it. Legal at any time while the game
+	// is active, the opening roll and the mulligan included; mints no
+	// undo entry (MintsNoUndo). The hub allows one per seat per 2 s.
+	TypeRollTableDie Type = "roll_table_die"
 )
+
+// openingRollActions are the only action types Dispatch accepts while
+// the opening roll is open (ADR 0121 §1): the roll's own verbs, a
+// concession, and the table settings. An ALLOWLIST, so every other
+// type — and every type added after this one — is refused with
+// game.ErrOpeningRollOpen until somebody decides otherwise here.
+// ADR 0121 §5's roll_table_die is on it: a table roll is never a game
+// action, and decision 4 makes it legal at any time.
+var openingRollActions = map[Type]struct{}{
+	TypeRollOpening:          {},
+	TypeHostRollRemaining:    {},
+	TypeChooseStartingPlayer: {},
+	TypeRollTableDie:         {},
+	TypeConcede:              {},
+	TypeSetTableSettings:     {},
+	TypeSetUndoLimit:         {},
+}
+
+// MintsNoUndo reports whether an action of type t is applied without an
+// undo entry (ADR 0121 §3): the opening roll's verbs, a table roll
+// (§5), the two table settings verbs, and every action while the
+// opening roll is open (in practice a concession). The hub and the bot runner, the two callers
+// of ws.Room.Apply, route such an action through Room.ApplyExternal.
+//
+// The opening roll's dice are simultaneous: an undo entry for each would
+// bury every seat's real last action under other seats' rolls and make
+// "undo your own most recent action" refuse. The choice of who goes
+// first is final, as at a paper table. And no undo, the admin's
+// included, may reach back into the roll: undoing a concession made
+// mid-roll would silently take back every die rolled since.
+//
+// It reads the game outside the room lock. The window only ever closes,
+// so the one stale answer it can give is "no undo" for an action that
+// lands just after the choice: a concession that cannot be taken back.
+func MintsNoUndo(g *game.Game, t Type) bool {
+	switch t {
+	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
+		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit:
+		return true
+	}
+	return g.OpeningRollOpen()
+}
 
 // ErrUnknownType is returned when Dispatch receives an action type it
 // does not recognise. Clients sending unknown types get an error
@@ -412,6 +469,12 @@ var playerScopedActions = map[Type]struct{}{
 	TypeChangeLife:     {},
 	TypeConcede:        {},
 	TypeKeepHand:       {},
+	// ADR 0121 §3: a seat rolls its own opening die, and only the
+	// winner chooses who goes first. The admin acts for any seat.
+	TypeRollOpening:          {},
+	TypeChooseStartingPlayer: {},
+	// ADR 0121 §5: a seat rolls its own table die.
+	TypeRollTableDie: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
 	// initiative are NOT player-scoped — any seated player may flip
@@ -460,6 +523,11 @@ func Dispatch(g *game.Game, a Action) error {
 }
 
 func dispatch(g *game.Game, a Action) error {
+	// ADR 0121 §1: while the opening roll is open, nothing but the
+	// roll, a concession and the table settings happens.
+	if _, ok := openingRollActions[a.Type]; !ok && g.OpeningRollOpen() {
+		return game.ErrOpeningRollOpen
+	}
 	// Player-scoped guard: a seated player may not target a different
 	// seat. Admin / spectator (Caller == uuid.Nil) bypasses so a
 	// trusted moderator can advance any seat.
@@ -859,6 +927,49 @@ func dispatch(g *game.Game, a Action) error {
 			return ErrInvalidPlayer
 		}
 		return g.KeepHand(a.Player)
+
+	case TypeRollOpening:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		return g.RollOpening(a.Player)
+
+	case TypeHostRollRemaining:
+		// WHO may press it (the host or the admin) is decided at the
+		// WebSocket edge, which knows the host (ADR 0121 §3). The
+		// caller is recorded as the presser: uuid.Nil is the admin.
+		return g.HostRollRemaining(a.Caller)
+
+	case TypeChooseStartingPlayer:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Seat *int `json:"seat"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.Seat == nil {
+			return fmt.Errorf("%w: %s seat", ErrMissingParams, a.Type)
+		}
+		return g.ChooseStartingPlayer(a.Player, *p.Seat)
+
+	case TypeRollTableDie:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Die string `json:"die"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.Die == "" {
+			return fmt.Errorf("%w: %s die", ErrMissingParams, a.Type)
+		}
+		_, err := g.RollTableDie(a.Player, p.Die)
+		return err
 
 	case TypeDeclareAttacker:
 		var p struct {

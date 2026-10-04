@@ -32,10 +32,21 @@
   //
   // On a narrow panel the strip collapses to a count chip that opens
   // the cards in a popover, so a phone keeps its hand width.
+  //
+  // #2202: the strip is the "castable from other zones" strip now. The
+  // viewer's commanders sit in it too, first, nearest the hand: lit
+  // when castable, greyed when not, with a price tag once the commander
+  // tax (or a cost modifier) moves the price off the printed cost. A
+  // click or a drag hands the commander to the same cast chain with
+  // the command zone as its zone, exactly as the command zone panel's
+  // own click does. castStrip.ts decides which cards and what tag; the
+  // command zone panel keeps showing the commander, since it lives
+  // there.
 
   import type { CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
   import ManaSymbol from "./ManaSymbol.svelte";
+  import { pipRun } from "../../manaSymbol";
   import { dealIn, dealOut } from "../../animations";
   import { handOverlap } from "../../handFan";
   import { settings } from "../../settings";
@@ -56,11 +67,15 @@
     type DragState,
   } from "../../dragCast";
   import {
-    exileCostBadge,
-    exileEntryLegality,
-    exileStripEntries,
-    type ExileStripEntry,
-  } from "../../exileStrip";
+    castStripBadge,
+    castStripCastAnywayBlocked,
+    castStripEntries,
+    castStripLegality,
+    castStripOffersCastAnyway,
+    type CastStripEntry,
+    type CastStripZone,
+  } from "../../castStrip";
+  import { requestCastAnyway } from "../../castAnyway";
   import type { CastSourceZone } from "../../targeting";
   import type { Legality } from "../../timing";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
@@ -83,7 +98,9 @@
 
   const { view, viewerID, onCastCard, onDragCast, legal = NO_LEGAL_ACTIONS }: Props = $props();
 
-  const entries = $derived(exileStripEntries(view, viewerID));
+  const entries = $derived(castStripEntries(view, viewerID));
+  const commanderCount = $derived(entries.filter((e) => e.zone === "command").length);
+  const exileCount = $derived(entries.length - commanderCount);
   // ADR 0105: what the server's move list says the viewer can cast
   // from exile this instant, mana included. The chip's cyan count, and
   // (sub-PR 6, §7) the count its accessible name says. It used to say
@@ -91,10 +108,36 @@
   // card the viewer cannot pay for. With no digest (highlights off,
   // autopass passing, or no decision owed) the label says no count at
   // all rather than one the board is not drawing.
-  const readyCount = $derived(legal.readyCount("exile"));
+  //
+  // #2202: plus the commanders the move list can cast from the command
+  // zone. With no commander in the strip the label reads exactly as it
+  // did; with one it names both (labels are a contract: added, never
+  // renamed).
+  const readyCount = $derived(
+    legal.readyCount("exile") +
+      entries.filter(
+        (e) => e.zone === "command" && legal.castableFrom(e.card.instance_id, "command"),
+      ).length,
+  );
   const chipLabel = $derived(
-    `${entries.length} exiled ${entries.length === 1 ? "card" : "cards"} you may cast` +
+    stripCountPhrase(commanderCount, exileCount) +
+      " you may cast" +
       (legal.known ? `, ${readyCount} ready` : ""),
+  );
+  function stripCountPhrase(commanders: number, exiled: number): string {
+    const ex = `${exiled} exiled ${exiled === 1 ? "card" : "cards"}`;
+    if (commanders === 0) return ex;
+    const cmd = `${commanders} ${commanders === 1 ? "commander" : "commanders"}`;
+    return exiled === 0 ? cmd : `${cmd} and ${ex}`;
+  }
+  // The strip's own name and the chip's word: unchanged while it holds
+  // only exile cards.
+  const stripLabel = $derived(
+    commanderCount === 0 ? "castable from exile" : "castable from other zones",
+  );
+  const chipWord = $derived(commanderCount === 0 ? "exile" : exileCount === 0 ? "cmd" : "cast");
+  const tagText = $derived(
+    commanderCount === 0 ? "from exile" : exileCount === 0 ? "commander" : "other zones",
   );
   // Two cards sit side by side; from three on they overlap like the
   // hand, tightening with handOverlap so a long strip cannot outgrow
@@ -111,18 +154,33 @@
   // #1406: extracted to exileStrip.ts as exileEntryLegality, shared
   // with the zone browser's exile button so the two surfaces read the
   // same verdict rather than deriving it a second way.
-  function legalityFor(e: ExileStripEntry): Legality {
-    return exileEntryLegality(e, view, viewerID);
+  // #2202: castStripLegality, which asks a commander the command zone
+  // panel's own gate.
+  function legalityFor(e: CastStripEntry): Legality {
+    return castStripLegality(e, view, viewerID);
   }
 
-  function cast(e: ExileStripEntry): void {
+  function cast(e: CastStripEntry): void {
     if (!onCastCard) return;
     open = false;
-    onCastCard(e.card, "exile", e.face);
+    onCastCard(e.card, e.zone, e.face);
+  }
+
+  // ADR 0118 §2: with strict payment on, a commander and an exile entry
+  // whose verb is "cast" offer "Cast anyway (don't pay)" in their
+  // popover, payable or not. The row opens the dock's confirmation
+  // (castAnyway.ts), which starts the same cast chain a click does.
+  function castAnywayHere(e: CastStripEntry): boolean {
+    return !!onCastCard && $settings.gameplay.strictMana && castStripOffersCastAnyway(e);
+  }
+  function castAnyway(e: CastStripEntry): void {
+    open = false;
+    requestCastAnyway(e.card, e.zone, e.face);
   }
   // ---- #1622: drag to cast -------------------------------------------
   let drag = $state<DragState>(IDLE);
   let dragCardID = $state<string | null>(null);
+  let dragZone = $state<CastStripZone>("exile");
   let preview = $state<AutoTapPreview | null>(null);
   let previewToken = 0;
   let previewRequested = false;
@@ -155,7 +213,11 @@
   const verdict = $derived(
     liveEntry
       ? dragVerdict(liveEntry.card, legalityFor(liveEntry), preview)
-      : { castable: false, reason: "That card left exile" },
+      : {
+          castable: false,
+          reason:
+            dragZone === "command" ? "That card left the command zone" : "That card left exile",
+        },
   );
 
   // The ghost, the drop zone and the reason are position: fixed, and a
@@ -194,7 +256,7 @@
     return res.outcome;
   }
 
-  function onSlotPointerDown(ev: PointerEvent, e: ExileStripEntry): void {
+  function onSlotPointerDown(ev: PointerEvent, e: CastStripEntry): void {
     swallowClick = false;
     if (!dragEnabled || drag.phase !== "idle") return;
     if (ev.button !== 0 || ev.isPrimary === false) return;
@@ -207,6 +269,7 @@
     dragSlot = slot;
     dragPointerID = ev.pointerId ?? null;
     dragCardID = e.card.instance_id;
+    dragZone = e.zone;
     ghost = {
       card: e.card,
       x: r.left,
@@ -289,7 +352,12 @@
     const entry = liveEntry;
     if (!entry || !view.id || !wantsPreview(entry.card, legalityFor(entry))) return;
     const token = ++previewToken;
-    fetchAutoTapPreview(view.id, entry.card.instance_id)
+    // #2202: priced for the zone the card is cast from — a commander
+    // carries its tax only when the preview is told it comes out of
+    // the command zone, and an exile grant's face and price likewise.
+    fetchAutoTapPreview(view.id, entry.card.instance_id, {
+      cast: { fromZone: entry.zone, face: entry.face },
+    })
       .then((p) => {
         if (token !== previewToken || drag.phase !== "dragging") return;
         preview = p;
@@ -300,7 +368,7 @@
       });
   }
 
-  function finish(out: DragOutcome, entry: ExileStripEntry | null, x: number, y: number): void {
+  function finish(out: DragOutcome, entry: CastStripEntry | null, x: number, y: number): void {
     unlisten();
     if (dragSlot && dragPointerID !== null) {
       try {
@@ -326,7 +394,7 @@
       ghost = null;
       if (entry) {
         open = false;
-        onDragCast?.(entry.card, "exile", entry.face);
+        onDragCast?.(entry.card, entry.zone, entry.face);
       }
       return;
     }
@@ -376,7 +444,7 @@
 </script>
 
 {#if entries.length > 0}
-  <div class="exile-strip" class:open aria-label="castable from exile">
+  <div class="exile-strip" class:open aria-label={stripLabel}>
     <button
       type="button"
       class="strip-toggle"
@@ -384,18 +452,18 @@
       aria-label={chipLabel}
       onclick={() => (open = !open)}
     >
-      <span class="toggle-label">exile</span>
+      <span class="toggle-label">{chipWord}</span>
       <span class="toggle-count">{entries.length}</span>
       {#if readyCount > 0}
         <span class="toggle-count ready" aria-hidden="true">{readyCount} ready</span>
       {/if}
     </button>
     <div class="strip-body" style:--strip-overlap={overlap}>
-      <span class="strip-tag" aria-hidden="true">from exile</span>
+      <span class="strip-tag" aria-hidden="true">{tagText}</span>
       <div class="strip-cards">
         {#each entries as e (e.card.instance_id)}
           {@const leg = legalityFor(e)}
-          {@const badge = exileCostBadge(e.card)}
+          {@const badge = castStripBadge(e)}
           <!-- #1622: the pointer handler is the drag-to-cast gesture, a
                pointer-only enhancement. The Card inside is the button;
                click and Enter cast exactly as before. -->
@@ -415,15 +483,19 @@
               <Card
                 card={e.card}
                 showManaCost={badge === null}
-                ready={legal.castableFrom(e.card.instance_id, "exile")}
-                readyZone="exile"
+                ready={legal.castableFrom(e.card.instance_id, e.zone)}
+                readyZone={e.zone}
                 {legal}
                 onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
+                onCastAnyway={castAnywayHere(e) ? () => castAnyway(e) : undefined}
+                castAnywayBlocked={castAnywayHere(e)
+                  ? castStripCastAnywayBlocked(e, view, viewerID)
+                  : ""}
               />
               {#if badge}
                 <span class="cost-tag" title={badge.title} aria-label={badge.label}>
-                  {#each badge.symbols as s, i (i)}
-                    <ManaSymbol symbol={s} size={15} />
+                  {#each pipRun(badge.symbols) as p, i (i)}
+                    <ManaSymbol symbol={p.symbol} size={15} />
                   {/each}
                   {#if badge.life}
                     <span class="life">+{badge.life}♥</span>

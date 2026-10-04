@@ -13,7 +13,9 @@ tests-e2e/
 ├── tsconfig.json
 └── tests/
     ├── auth.spec.ts           # admin login, logout, invite-URL paste
+    ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
+    ├── cast-anyway-2188.spec.ts # ADR 0118 §2: Cast anyway (don't pay) asks first, casts unpaid, logs it
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)
@@ -29,6 +31,7 @@ tests-e2e/
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
     ├── smoke.spec.ts          # router + entry pages + healthz
+    ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold
     └── zone-browser.spec.ts   # graveyard / exile modal behind the pile chips
 ```
 

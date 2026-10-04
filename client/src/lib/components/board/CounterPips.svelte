@@ -43,7 +43,8 @@
 <style>
   .pips {
     position: absolute;
-    top: 4px;
+    /* #2209: below an art tile's name strip (Card.svelte --face-top). */
+    top: calc(4px + var(--face-top, 0px));
     right: 4px;
     display: flex;
     flex-direction: column;

@@ -61,6 +61,8 @@
     libraryDeckRequestable,
     rememberAfterSignIn,
     reportAsPrinted,
+    reportDeckSize,
+    reportNotFound,
     saveButtonLabel,
     savedMessage,
     takePendingDeckText,
@@ -118,17 +120,16 @@
 
   const totalCards = $derived.by(() => {
     if (!report) return 0;
-    const c = report.counts;
-    return c.manual + c.unreviewed + c.caveats + c.automated + c.no_effect;
+    return reportDeckSize(report);
   });
 
   function bucketPct(b: CoverageBucket): number {
     if (!report || totalCards === 0) return 0;
-    return (report.counts[b] / totalCards) * 100;
+    return (report.copies[b] / totalCards) * 100;
   }
 
   function bucketCount(b: CoverageBucket): number {
-    return report ? report.counts[b] : 0;
+    return report ? report.copies[b] : 0;
   }
 
   function violationLabel(v: DeckCoverageViolation): string {
@@ -577,6 +578,13 @@
               ></span>
             {/if}
           {/each}
+          {#if report.unknown_copies > 0}
+            <span
+              class="seg unknown"
+              style="width: {(report.unknown_copies / totalCards) * 100}%"
+              title="Not found: {report.unknown_copies}"
+            ></span>
+          {/if}
         </div>
 
         <ul class="legend">
@@ -587,6 +595,13 @@
               <span class="lg-n">{bucketCount(b)}</span>
             </li>
           {/each}
+          {#if reportNotFound(report)}
+            <li class="lg-item unknown">
+              <span class="dot unknown" aria-hidden="true"></span>
+              <span class="lg-label">Not found</span>
+              <span class="lg-n">{report.unknown_copies}</span>
+            </li>
+          {/if}
         </ul>
 
         {#if report.violations.length > 0}
@@ -1189,6 +1204,16 @@
   .seg.no_effect,
   .dot.no_effect {
     background: var(--border-strong);
+  }
+  .seg.unknown,
+  .dot.unknown {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--rose),
+      var(--rose) 2px,
+      transparent 2px,
+      transparent 4px
+    );
   }
   .legend {
     list-style: none;

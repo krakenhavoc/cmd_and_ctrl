@@ -13,6 +13,11 @@ now lives in code.
 spell you cannot answer now passes. It also adds bluffing and a "considering a
 response…" chip. See "Amendment: key windows and response categories (#1307)"
 below.
+**Amended by:** S59 ([ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md)
+owner decision 8, #2188), 2026-10-04 — rule 8 also holds the viewer's own
+main phase when the engine may not see their mana: a spell in hand left out
+for mana alone while they control a mana source the engine does not run. See
+the precedence list below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -153,7 +158,13 @@ Quiet steps (an opponent's upkeep with an empty stack, say) still pass.
    bluff; otherwise pass.
 7. An empty stack with smart autopass on, in a combat or oppEnd window: a
    response → hold; an instant bluff armed → bluff; otherwise fall through.
-8. A ticked step: hold if `smartAutoPass ? hasPlay : true`.
+8. A ticked step: hold if `smartAutoPass ? hasPlay || engineMayMissMana : true`.
+   `engineMayMissMana` is ADR 0118 owner decision 8 ("stop if the engine may
+   be wrong", 2026-10-04): the viewer's own main phase, a spell in hand that
+   the move list leaves out for mana alone (the Cast anyway row's non-mana
+   denials say nothing), and a permanent the viewer controls that carries
+   `unimplemented` and has a mana ability on the wire or is a land
+   (`client/src/lib/engineMayMissMana.ts`).
 9. Pass.
 
 Rules 4, 6 and 7 name a bluff verdict. A bluff only ever replaces a pass. It

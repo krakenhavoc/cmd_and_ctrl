@@ -196,8 +196,12 @@ function mountPanel(view: GameView, legal: LegalActions, legalGate: LegalActions
   const pip = (id: string, kind: "star" | "bolt" | "drop") =>
     tile(id).querySelector<HTMLButtonElement>(`.ready-pip[data-pip="${kind}"]`);
   const menuRows = (id: string) => [
-    // ADR 0117 §3: not the Sandbox row, which every own permanent has.
-    ...tile(id).querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item:not([data-raw-tap])"),
+    // ADR 0117 §3: not the Sandbox rows — the raw tap, which every own
+    // permanent has, and (ADR 0118 §2, strict being the default since
+    // §1) Cast anyway, which every castable hand card has.
+    ...tile(id).querySelectorAll<HTMLButtonElement>(
+      ".mana-menu .menu-item:not([data-raw-tap]):not([data-cast-anyway])",
+    ),
   ];
   const rightClick = (id: string) => {
     tile(id).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));

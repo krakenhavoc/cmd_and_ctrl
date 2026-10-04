@@ -3,6 +3,7 @@ package rules_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -323,5 +324,53 @@ func TestCoinCallMatchesChooserAndChoiceID(t *testing.T) {
 	in.View.PendingChoices = in.View.PendingChoices[:1]
 	if v := rules.Resolve(in); v.Absorbed() {
 		t.Fatalf("answered another player's prompt: %+v", v)
+	}
+}
+
+func openingChoice(t *testing.T, chosen int, own bool) legal.Move {
+	t.Helper()
+	b, err := json.Marshal(map[string]int{"seat": chosen})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return legal.Move{Type: legal.TypeChooseStartingPlayer, Kind: legal.KindOpeningRoll, Player: seat,
+		Label: fmt.Sprintf("seat %d goes first", chosen), Params: b, AlwaysLegal: own}
+}
+
+// ADR 0121 §4: Layer A absorbs the opening roll — a lone die, and the
+// winner's choice as "I go first" — and agrees with the heuristic on
+// both, so a model tier spends no call on either.
+func TestOpeningRollIsAbsorbedAndAgreesWithHeuristic(t *testing.T) {
+	roll := legal.Move{Type: legal.TypeRollOpening, Kind: legal.KindOpeningRoll, Player: seat, Label: "Roll a d20 for the first turn", AlwaysLegal: true}
+	chooser := input(openingChoice(t, 0, false), openingChoice(t, 1, false), openingChoice(t, 2, true), openingChoice(t, 3, false))
+	withView := chooser
+	withView.View = protocol.GameView{Seats: []protocol.PlayerView{
+		{ID: uuid.NewString(), Seat: 0}, {ID: uuid.NewString(), Seat: 1},
+		{ID: seat.String(), Seat: 2}, {ID: uuid.NewString(), Seat: 3},
+	}}
+	cases := []struct {
+		name string
+		in   aiseat.Input
+		want int
+		rule string
+	}{
+		{"a lone die is rolled", input(roll), 0, rules.RuleOpeningRoll},
+		{"the winner takes the first turn, by its seat in the view", withView, 2, rules.RuleOpeningChoice},
+		{"with no view, the winner takes the choice marked AlwaysLegal", chooser, 2, rules.RuleOpeningChoice},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			v := rules.Resolve(c.in)
+			if !v.Absorbed() || v.Rule != c.rule || v.Index != c.want {
+				t.Fatalf("verdict = %#v, want %s at %d", v, c.rule, c.want)
+			}
+			d, err := heuristic.New().Decide(context.Background(), c.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d.Index != v.Index {
+				t.Fatalf("Layer A index %d disagrees with heuristic %d", v.Index, d.Index)
+			}
+		})
 	}
 }

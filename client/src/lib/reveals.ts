@@ -27,6 +27,7 @@
 // Plain functions over plain data, so all of that is unit-testable
 // without mounting a component.
 
+import { isOpeningDieLog } from "./openingRoll";
 import type { LogEvent, RevealView } from "./protocol";
 
 // REVEAL_TTL_MS is how long one reveal stays on the attention strip.
@@ -95,6 +96,9 @@ export function trackRandomEvents(
   for (const log of logs ?? []) {
     if (!isRandomLog(log) || seen.has(log.seq)) continue;
     seen.add(log.seq);
+    // ADR 0121 §6: the strip's `opening roll` banner already shows
+    // every opening die, so none raises a cue of its own.
+    if (isOpeningDieLog(log)) continue;
     cues.push({ log, shownAt: now });
   }
   return { seen, cues: cues.slice(-RANDOM_CUE_LIMIT) };

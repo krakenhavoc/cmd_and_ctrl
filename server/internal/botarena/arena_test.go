@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/botarena"
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects" // catalog hooks, so the deck's burn spell resolves
@@ -188,6 +189,34 @@ func TestSummaryMarkdown(t *testing.T) {
 			if !strings.Contains(body, policy) {
 				t.Errorf("the %s table has no %s row:\n%s", section, policy, body)
 			}
+		}
+	}
+}
+
+// A thinking run (#2196) says so in the header, and says how much the
+// model thought; a default run's header is unchanged.
+func TestMarkdownRecordsTheThinkingExperiment(t *testing.T) {
+	seats := []botarena.SeatSpec{{Tier: tiers.Assisted}, {Tier: tiers.Heuristic}}
+	base := botarena.Summary{
+		Config: botarena.ConfigSummary{Seats: seats, MaxThink: 20 * time.Second, Routine: "qwen3.6:35b-a3b"},
+		PerPolicy: map[string]*botarena.PolicyTotals{
+			"assisted":  {Policy: "assisted", Games: 1},
+			"heuristic": {Policy: "heuristic", Games: 1},
+		},
+	}
+	if md := base.Markdown(); strings.Contains(md, "thinking") || strings.Contains(md, "thought before") {
+		t.Errorf("a default run mentions thinking:\n%s", md)
+	}
+	on := base
+	on.Config.Think, on.Config.MaxTokens, on.Config.MaxThink = true, 8000, 120*time.Second
+	on.PerPolicy = map[string]*botarena.PolicyTotals{
+		"assisted":  {Policy: "assisted", Games: 1, Funnel: model.Stats{ModelCalls: 10, ReasoningReplies: 8, ReasoningChars: 8000}},
+		"heuristic": {Policy: "heuristic", Games: 1},
+	}
+	md := on.Markdown()
+	for _, want := range []string{"max think 2m0s, **thinking on**, max tokens 8000", "assisted thought before 8 of its 10 model answers, 1000 chars on average"} {
+		if !strings.Contains(md, want) {
+			t.Errorf("Markdown() is missing %q:\n%s", want, md)
 		}
 	}
 }

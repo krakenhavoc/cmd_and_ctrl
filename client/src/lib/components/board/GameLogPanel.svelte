@@ -15,7 +15,7 @@
   // next frame.
 
   import type { GameView } from "../../protocol";
-  import { filterBySeat, groupLog, logTone, seatName } from "../../gameLog";
+  import { filterBySeat, groupLog, logIcon, logTone, seatName } from "../../gameLog";
   import { seatColor } from "../../colors";
   import Icon from "../Icon.svelte";
 
@@ -85,12 +85,16 @@
         {/if}
         <ol class="log-entries">
           {#each group.entries as entry (entry.seq)}
+            {@const icon = logIcon(entry.kind)}
             <li class="log-entry {logTone(entry.kind)}">
               <span
                 class="log-dot"
                 style="background:{entry.seat >= 0 ? seatColor(entry.seat) : 'transparent'}"
                 aria-hidden="true"
               ></span>
+              {#if icon}
+                <span class="log-icon" aria-hidden="true"><Icon name={icon} size={12} /></span>
+              {/if}
               <span class="log-text">{entry.text}</span>
               {#if entry.target_seat !== undefined && seatName(view, entry.target_seat)}
                 <span
@@ -235,6 +239,15 @@
     height: 5px;
     border-radius: 50%;
     transform: translateY(-1px);
+  }
+
+  /* ADR 0119 §5: the trigger / activate marks (logIcon in gameLog.ts).
+     Centred on the line and dimmed, so the sentence leads. */
+  .log-icon {
+    flex: none;
+    display: inline-flex;
+    align-self: center;
+    color: var(--fg-dim);
   }
 
   .log-text {

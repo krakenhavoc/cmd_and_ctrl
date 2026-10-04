@@ -478,7 +478,9 @@ func TestB33StoneOfErechExilesOpposingDeathsAndEatsAGraveyard(t *testing.T) {
 // #1337: the same stale caveat Liesa's file carried, closed the same
 // way — CR 903.9a's command-zone move is a state-based "may" AFTER
 // the exile, so an opponent's dying commander is exiled like any
-// other of their creatures and its owner separately decides.
+// other of their creatures and its owner separately decides. Since
+// ADR 0115 that is literally the engine's order: no CR 616 ordering
+// prompt, the Stone's replacement exiles it, then CR 903.9a asks.
 func TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)
@@ -490,37 +492,26 @@ func TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *t
 			Power: 3, Toughness: 3, Owner: opp.ID, Controller: opp.ID, IsCommander: true,
 		})
 
-		asked := false
 		g.WithWriteLock(func() {
 			if err := g.DestroyPermanentForEffect(commander); err != nil {
 				t.Fatalf("DestroyPermanentForEffect: %v", err)
 			}
 		})
-		for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
-			c := g.PendingChoices[len(g.PendingChoices)-1]
-			if c.Chooser != opp.ID {
-				t.Fatalf("prompt %s addressed to %s, want the commander's owner %s", c.Kind, c.Chooser, opp.ID)
+		for _, c := range g.PendingChoices {
+			if c != nil && (c.Kind == game.PendingChoiceReplacementOrder || c.Kind == game.PendingChoiceOptionalReplacement) {
+				t.Fatalf("unexpected %s prompt: only the Stone's replacement applies to a dying commander", c.Kind)
 			}
-			switch c.Kind {
-			case game.PendingChoiceReplacementOrder:
-				if err := g.ResolveReplacementOrder(c.ID, opp.ID, c.ReplacementEffectIDs); err != nil {
-					t.Fatalf("ResolveReplacementOrder: %v", err)
-				}
-			case game.PendingChoiceOptionalReplacement:
-				asked = true
-				if err := g.ResolveOptionalReplacement(c.ID, opp.ID, takeCommandZone); err != nil {
-					t.Fatalf("ResolveOptionalReplacement: %v", err)
-				}
-			default:
-				t.Fatalf("unexpected prompt %s", c.Kind)
-			}
-		}
-		if !asked {
-			t.Fatal("the commander's owner was never offered the command zone")
 		}
 		if opp.Graveyard.Contains(commander) {
 			t.Fatal("the commander hit the graveyard under Stone of Erech")
 		}
+		if !exileHas(g, commander) {
+			t.Fatal("the Stone did not exile the dying commander")
+		}
+		if commanderReturnPromptFor(g, opp.ID) == nil {
+			t.Fatal("the commander's owner was never offered the command zone")
+		}
+		answerCommanderReturn(t, g, opp.ID, takeCommandZone)
 		if takeCommandZone {
 			if !opp.Command.Contains(commander) {
 				t.Fatal("the owner took the command zone but the commander is not there")

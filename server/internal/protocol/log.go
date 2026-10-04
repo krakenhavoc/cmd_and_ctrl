@@ -69,6 +69,13 @@ import (
 // Going to a thousand would have made the log the largest single thing
 // on the wire.
 //
+// Measured again when the `trigger` and `activate` lines landed (ADR
+// 0119 §5): three four-seat heuristic games on the four curated decks
+// wrote 81–89 entries per round at the median and 127–176 in the
+// busiest round; the two kinds added 4–5% to the game's lines. So the ring
+// holds about two and a half rounds, and at least one whole round even
+// at the busiest, and the cap stayed 200.
+//
 // The schema below is shaped by the same constraint. Players are seat
 // INDICES rather than UUIDs (the convention TurnView.ActiveSeat
 // already uses) because a uuid string costs 36 bytes and a seat index
@@ -165,6 +172,21 @@ const (
 	LogReveal LogKind = "reveal"
 	LogRoll   LogKind = "roll"
 	LogFlip   LogKind = "flip"
+	// LogOpeningRoll — the opening roll moved on (ADR 0121 §3). `Label`
+	// says how: "tie" (`Seats` tied on `Results[0]` and roll again),
+	// "won" (`Seat` won with `Results[0]` and chooses who goes first)
+	// or "rolled_for" (`Seat`, the host — NoSeat for the server admin —
+	// rolled for `Seats`). Each die is its own `roll` line.
+	LogOpeningRoll LogKind = "opening_roll"
+	// LogStartingPlayer — the winner of the opening roll (`Seat`) chose
+	// who takes the first turn (`TargetSeat`), CR 103.1. ADR 0121 §2.
+	LogStartingPlayer LogKind = "starting_player"
+	// LogTableRoll — a player rolled a d6 or a d20, or flipped a coin,
+	// at the table, for fun (ADR 0121 §5): `Sides` 6 or 20 with
+	// `Results`, or a coin with `Faces`, and `RollID`, the roll's
+	// identity across an undo (which re-emits the line under a new
+	// `Seq`). Not a game roll: nothing triggers on it.
+	LogTableRoll LogKind = "table_roll"
 	// LogChooseColor — a player answered a "choose a color" prompt
 	// (CR 105.4): Coldsteel Heart as it enters, Wash Out as it
 	// resolves. `Choice` is the colour LETTER and CardID the card the
@@ -236,10 +258,29 @@ const (
 	// LogActivateAcross — a player activated the "Any player may
 	// activate this ability" row of a permanent ANOTHER player controls
 	// (ADR 0106 §1 decision 6, CR 602.2): "Bob activated Alice's Xantcha,
-	// Sleeper Agent". `target_seat` is that controller. An ordinary
-	// activation by a permanent's controller is not narrated: its stack
-	// item already is.
+	// Sleeper Agent". `target_seat` is that controller. Every other
+	// activation is a LogActivate line.
 	LogActivateAcross LogKind = "activate_across"
+	// LogTrigger — a triggered ability triggered (CR 603.2) and was
+	// queued to go on the stack the next time a player would receive
+	// priority (CR 603.3): "Alice's trigger: Mulldrifter — draw two
+	// cards". ADR 0119 §5. `card_id` is the SOURCE and `label` the
+	// item's label, redacted together exactly as an ability's
+	// LogResolve is (projectAbilityItem, #1257), so a face-down or
+	// hidden source stays hidden here too. Consecutive identical lines
+	// (same controller, source and label, in the same step) collapse
+	// into one, with `amount` the count; `amount` is absent on a
+	// trigger that happened once.
+	LogTrigger LogKind = "trigger"
+	// LogActivate — a player activated an ability that uses the stack
+	// (CR 602.2): "Alice activated Prodigal Sorcerer — deal 1 damage to
+	// any target". ADR 0119 §5. Redacted like LogTrigger. Mana
+	// abilities never get one (CR 605.3b: they do not use the stack,
+	// and every land tap would be a line). An activation another line
+	// already tells gets none either: cycling's LogCycle (the fold
+	// skips the activation that follows a cycle of the same card) and
+	// LogActivateAcross.
+	LogActivate LogKind = "activate"
 	// LogCycle — a player cycled a card (CR 702.29b). It REPLACES
 	// the LogZone line for the discard that paid the cost, which is
 	// the same motion in words that do not say "cycled".
@@ -463,6 +504,12 @@ type LogEvent struct {
 	// that deliberately carry no card reference (draws; any zone
 	// change with two hidden endpoints).
 	CardID string `json:"card_id,omitempty"`
+	// StackItemID is the stack item a LogResolve, LogFizzle or LogCounter
+	// entry is about, for a spell and an ability alike (ADR 0119 §3).
+	// For a spell it equals its card's ID; an ability's item has an ID of
+	// its own that no other field carries. The stack is public, so an item
+	// ID reveals nothing the stack view does not, and redaction leaves it.
+	StackItemID string `json:"stack_item_id,omitempty"`
 	// Target is the CARD the entry acts on: a counterspell's victim,
 	// a blocker's attacker. Player targets ride TargetSeat instead.
 	Target string `json:"target,omitempty"`
@@ -497,12 +544,25 @@ type LogEvent struct {
 	// anywhere is untagged, so the tag's presence alone says there are
 	// two beats to show. #187, ADR 0053 Decision 1.
 	CombatStep string `json:"combat_step,omitempty"`
+	// Unpaid marks a LogCast entry whose caster cast it without paying
+	// its mana cost (force_cast, the "Cast anyway (don't pay)" row;
+	// ADR 0118 §2). Copied from game.Event.Unpaid. Public: the pool
+	// and the cost are public, so it is not redacted with the card's
+	// name. #2188.
+	Unpaid bool `json:"unpaid,omitempty"`
 	// Random outcomes are public. One entry groups a whole instruction.
 	Sides   int      `json:"sides,omitempty"`
 	Results []int    `json:"results,omitempty"`
 	Faces   []string `json:"faces,omitempty"`
 	Call    string   `json:"call,omitempty"`
 	Wins    int      `json:"wins,omitempty"`
+	// Seats are the seats a LogOpeningRoll entry names: the seats that
+	// tied, or the seats the host rolled for (ADR 0121 §3).
+	Seats []int `json:"seats,omitempty"`
+	// RollID identifies a LogTableRoll entry across an undo (ADR 0121
+	// §5): an undo re-emits a table roll's line under a new Seq, and a
+	// client keys the roll's animation on this, so it plays once.
+	RollID uint64 `json:"roll_id,omitempty"`
 	// Choice is the VALUE a player named at a "choose a ..." prompt:
 	// the colour letter on a LogChooseColor entry ("G"), the
 	// canonical creature type on a LogChooseType one ("Elf"). A
@@ -564,6 +624,8 @@ type LogEvent struct {
 	// GameView.Seats already carries them.
 	actorName      string
 	targetSeatName string
+	// seatNames are the display names of Seats, in order (ADR 0121).
+	seatNames []string
 	// revealSeq / revealIDs / revealNames are LogReveal's render
 	// inputs. The instance IDs exist only between projection and name
 	// resolution — resolveLogNames swaps them for printed names and
@@ -574,7 +636,8 @@ type LogEvent struct {
 	revealNames []string
 	batchSeq    uint64
 	// ability marks a LogResolve / LogFizzle entry about a triggered
-	// or activated ABILITY rather than a spell (#1257). Its CardID is
+	// or activated ABILITY rather than a spell (#1257), and every
+	// LogTrigger / LogActivate entry (ADR 0119 §5). Its CardID is
 	// then the ability's SOURCE and its Label the stack item's label,
 	// and redactLogForViewer drops the two together when the viewer
 	// may not identify the source. Unexported because the wire already
@@ -610,6 +673,15 @@ func projectAbilityItem(base *LogEvent, ev game.Event) {
 	base.ability = true
 	base.CardID = uuidStringOrEmpty(ev.Source)
 	base.Label = ev.Label
+}
+
+// stackItemOf is the stack item a resolve or fizzle event is about: the
+// ability path stamps StackItemID, and a spell's item ID is its card's.
+func stackItemOf(ev game.Event) string {
+	if ev.ResolvedStackItemID != uuid.Nil {
+		return ev.ResolvedStackItemID.String()
+	}
+	return uuidStringOrEmpty(ev.CardID)
 }
 
 // hiddenZone reports whether a zone's contents are hidden from the
@@ -722,6 +794,13 @@ type logFold struct {
 	// line (see feed).
 	revealAt map[uint64]int
 	randomAt map[uint64]int
+	// cycled is the card of the LogCycle entry just pushed, until the
+	// next activation consumes it. A cycling's cost emits EventCycle
+	// and the activation's EventActivateAbility follows it, possibly
+	// after the lines of what the cycle or the discard triggered; the
+	// cycle line already told that activation (ADR 0119 §5), the way
+	// `sacrificed` keeps a sacrifice from being told twice.
+	cycled string
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -776,6 +855,29 @@ func (f *logFold) feed(events []game.Event) int {
 		e.Turn = f.turn
 		if e.Kind == LogStep {
 			e.Step = f.step
+		}
+		switch e.Kind {
+		case LogCycle:
+			f.cycled = e.CardID
+		case LogActivate, LogActivateAcross:
+			// The first activation after a cycle is the cycling's own
+			// (it is emitted inside the same activation), so the
+			// marker is spent on it either way.
+			cycled := f.cycled
+			f.cycled = ""
+			if e.Kind == LogActivate && cycled != "" && cycled == e.CardID {
+				continue
+			}
+		}
+		// ADR 0119 §5: the same trigger firing several times in a row
+		// (a trigger doubled under CR 603.2d, or one watching events
+		// that write no line of their own) is one line with a count,
+		// as a run of draws is. Adjacent in the ring means the same
+		// step: a new step always pushes its own line.
+		if prev := ring.last(); prev != nil && e.Kind == LogTrigger && prev.Kind == LogTrigger &&
+			prev.Seat == e.Seat && prev.Turn == e.Turn && prev.CardID == e.CardID && prev.Label == e.Label {
+			prev.Amount = max(prev.Amount, 1) + 1
+			continue
 		}
 		if (e.Kind == LogRoll || e.Kind == LogFlip) && e.batchSeq != 0 {
 			if at, seen := f.randomAt[e.batchSeq]; seen {
@@ -906,6 +1008,39 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventOpeningRoll:
+		// ADR 0121 §3: a round ended (a tie, or a winner) or the host
+		// rolled for the seats that had not.
+		base.Kind = LogOpeningRoll
+		base.Label = ev.Label
+		base.Seats = append([]int(nil), ev.Seats...)
+		if ev.Amount > 0 {
+			base.Results = []int{ev.Amount}
+		}
+		return base, true
+
+	case game.EventTableRoll:
+		// ADR 0121 §5: a die or a coin at the table, for fun. Never
+		// folded into a batch: each roll is its own line.
+		base.Kind = LogTableRoll
+		base.RollID = ev.RollID
+		if ev.Sides > 0 {
+			base.Sides = ev.Sides
+			base.Results = []int{ev.Amount}
+		} else {
+			base.Faces = []string{ev.Label}
+		}
+		return base, true
+
+	case game.EventStartingPlayer:
+		// ADR 0121 §2, CR 103.1: who takes the first turn, and who
+		// chose it.
+		base.Kind = LogStartingPlayer
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventStepBegan:
 		*turn = ev.Amount
 		*step = ev.Label
@@ -922,17 +1057,20 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.OldZone != game.ZoneHand {
 			base.OldZone = string(ev.OldZone)
 		}
+		base.Unpaid = ev.Unpaid
 		return base, true
 
 	case game.EventResolve:
 		base.Kind = LogResolve
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.StackItemID = stackItemOf(ev)
 		projectAbilityItem(&base, ev)
 		return base, true
 
 	case game.EventFizzle:
 		base.Kind = LogFizzle
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.StackItemID = stackItemOf(ev)
 		projectAbilityItem(&base, ev)
 		return base, true
 
@@ -941,6 +1079,9 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Target = uuidStringOrEmpty(ev.Target)
+		// Target is the countered item's ID for a spell and an ability
+		// both, before the ability case below clears it from Target.
+		base.StackItemID = uuidStringOrEmpty(ev.Target)
 		// #1211, CR 701.6a: a countered ABILITY has no card of its
 		// own — its id names a StackMeta entry the client cannot look
 		// up, and its source permanent is still standing on the
@@ -1240,16 +1381,46 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventActivateAbility:
 		// ADR 0106 §1 decision 6. The event carries the permanent's
 		// controller in Target only when somebody else activated its
-		// "Any player may activate this ability" row; every other
-		// activation stays off the log, as it always has.
+		// "Any player may activate this ability" row. Every other
+		// activation is a LogActivate line (ADR 0119 §5), named and
+		// redacted like the ability's own resolve line. A mana
+		// ability never reaches this arm: it emits
+		// EventManaAbilityActivated instead (CR 605.3b).
 		if ev.Target == uuid.Nil {
-			return LogEvent{}, false
+			base.Kind = LogActivate
+			base.ability = true
+			base.CardID = uuidStringOrEmpty(ev.CardID)
+			base.Label = ev.Label
+			return base, true
 		}
 		base.Kind = LogActivateAcross
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		if seat := seatOf(ev.Target); seat != NoSeat {
 			base.TargetSeat = &seat
 		}
+		return base, true
+
+	case game.EventTrigger:
+		// ADR 0119 §5. Every activation also emits EventTrigger, as a
+		// breadcrumb naming its source in CardID as well as Source
+		// (game/activated.go); the two trigger emits (the harvested
+		// queue and the manual announce) never set CardID. So a CardID
+		// is an activation, which its own EventActivateAbility tells,
+		// and gets no line here. The discriminator is the engine's
+		// existing shape on purpose: stamping a new field on these
+		// events would change the value of `stack_item_id` on events
+		// the snapshot corpus has frozen, which is a schema bump.
+		//
+		// The line is written as the ability triggers, which is the
+		// frame it reaches the stack unless its controller is ordering
+		// several (CR 603.3b).
+		if ev.CardID != uuid.Nil {
+			return LogEvent{}, false
+		}
+		base.Kind = LogTrigger
+		base.ability = true
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
 		return base, true
 
 	case game.EventCycle:
@@ -1554,6 +1725,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		if e.TargetSeat != nil {
 			e.targetSeatName = nameOfSeat(*e.TargetSeat)
 		}
+		if len(e.Seats) > 0 {
+			e.seatNames = make([]string, len(e.Seats))
+			for j, s := range e.Seats {
+				e.seatNames[j] = nameOfSeat(s)
+			}
+		}
 		if c, ok := cards[e.CardID]; ok {
 			e.cardName = logNameOf(c)
 			e.cardKnowers = c.knowers
@@ -1772,16 +1949,31 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 // A redacted entry has lost both halves together and says only that
 // an ability resolved, which the stack view already showed the whole
 // table.
+//
+// A label that starts with the name's short form also names the card
+// (ADR 0119 §5): "Tatyova — gain 1 life and draw a card" is Tatyova,
+// Benthic Druid's, and "Tatyova, Benthic Druid — Tatyova — …" says it
+// twice.
 func abilityName(label, cardName string) string {
 	switch {
 	case label == "" && cardName == "":
 		return "an ability"
 	case label == "":
 		return cardName + "'s ability"
-	case cardName == "" || strings.HasPrefix(label, cardName):
+	case cardName == "" || strings.HasPrefix(label, cardName) || strings.HasPrefix(label, shortCardName(cardName)+" "):
 		return label
 	}
 	return cardName + " — " + label
+}
+
+// shortCardName is a legendary name's short form, the part before its
+// first comma ("Tatyova" of "Tatyova, Benthic Druid"), or the whole
+// name when it has no comma.
+func shortCardName(name string) string {
+	if i := strings.Index(name, ", "); i > 0 {
+		return name[:i]
+	}
+	return name
 }
 
 // renderLogText writes the human-readable line. cardName / targetName
@@ -1803,6 +1995,10 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	switch e.Kind {
 	case LogRoll, LogFlip:
 		return renderRandomLogText(e, actor, card)
+	case LogOpeningRoll, LogStartingPlayer:
+		return renderOpeningRollLogText(e, actor, target)
+	case LogTableRoll:
+		return renderTableRollLogText(e, actor)
 	case LogStep:
 		round := e.Round
 		if round == 0 {
@@ -1812,10 +2008,16 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("Turn %d — %s · %s", round, actor, prettyStep(e.Step))
 	case LogCast:
-		if e.OldZone != "" {
-			return fmt.Sprintf("%s cast %s from %s", actor, card, prettyZone(e.OldZone))
+		// ADR 0118 owner decision 4: an unpaid cast says so, in these
+		// words, after the zone.
+		unpaid := ""
+		if e.Unpaid {
+			unpaid = " without paying its mana cost"
 		}
-		return fmt.Sprintf("%s cast %s", actor, card)
+		if e.OldZone != "" {
+			return fmt.Sprintf("%s cast %s from %s%s", actor, card, prettyZone(e.OldZone), unpaid)
+		}
+		return fmt.Sprintf("%s cast %s%s", actor, card, unpaid)
 	case LogResolve:
 		if e.ability {
 			return fmt.Sprintf("%s resolved", abilityName(e.Label, cardName))
@@ -1953,6 +2155,18 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s activated %s's %s", actor, target, card)
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
+	case LogTrigger:
+		line := fmt.Sprintf("%s's trigger: %s", actor, abilityName(e.Label, cardName))
+		if e.Label == "" && cardName == "" {
+			// Redacted: the source and the label went together.
+			line = fmt.Sprintf("%s's ability triggered", actor)
+		}
+		if e.Amount > 1 {
+			line += fmt.Sprintf(" ×%d", e.Amount)
+		}
+		return line
+	case LogActivate:
+		return fmt.Sprintf("%s activated %s", actor, abilityName(e.Label, cardName))
 	case LogCounters:
 		return renderCountersText(e, card)
 	case LogScry, LogSurveil:

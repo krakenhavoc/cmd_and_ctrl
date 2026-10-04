@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { entrySeats, filterBySeat, groupLog, logTone, seatName } from "./gameLog";
+import {
+  ALL_LOG_KINDS,
+  entrySeats,
+  filterBySeat,
+  groupLog,
+  logIcon,
+  logTone,
+  seatName,
+} from "./gameLog";
+import { ICONS } from "./icons";
 import type { GameView, LogEvent, LogKind } from "./protocol";
 
 let seq = 0;
@@ -117,6 +126,40 @@ describe("logTone", () => {
       "choose_player",
     ];
     for (const k of kinds) expect(logTone(k)).toMatch(/^tone-/);
+  });
+
+  // ADR 0121 §3: an opening-roll line reads like the dice beside it;
+  // who takes the first turn starts the turn structure, like a step.
+  it("tones the opening roll like a roll and the starting player like a step", () => {
+    expect(logTone("opening_roll")).toBe(logTone("roll"));
+    expect(logTone("starting_player")).toBe("tone-step");
+  });
+
+  // ADR 0119 §5: the two stack-arrival kinds read like a cast.
+  it("tones a trigger and an activation like a cast", () => {
+    expect(logTone("trigger")).toBe("tone-cast");
+    expect(logTone("activate")).toBe("tone-cast");
+  });
+});
+
+describe("logIcon", () => {
+  it("marks a trigger, an activation and a table roll, and nothing else", () => {
+    expect(logIcon("trigger")).toBe("spark");
+    expect(logIcon("activate")).toBe("bolt");
+    expect(logIcon("activate_across")).toBe("bolt");
+    expect(logIcon("table_roll")).toBe("die");
+    for (const k of ALL_LOG_KINDS) {
+      if (k === "trigger" || k === "activate" || k === "activate_across" || k === "table_roll")
+        continue;
+      expect(logIcon(k), k).toBeNull();
+    }
+  });
+
+  it("names only icons the shared set has", () => {
+    for (const k of ALL_LOG_KINDS) {
+      const icon = logIcon(k);
+      if (icon) expect(ICONS[icon], icon).toBeDefined();
+    }
   });
 });
 

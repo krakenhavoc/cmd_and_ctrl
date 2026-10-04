@@ -29,15 +29,22 @@ describe("stampManaEnforcement", () => {
     expect(stampManaEnforcement("activate_ability", freeForm, true)).toEqual(freeForm);
   });
 
-  it("stamps a cast with the setting either way, as it always has", () => {
+  // ADR 0118 §1 (#2188): a clicked cast under strict auto-taps, as a
+  // drag and an activation already do.
+  it("stamps a strict cast with auto_tap, so a click taps the lands and casts", () => {
     expect(stampManaEnforcement("cast_spell", { instance_id: "c" }, true)).toEqual({
       instance_id: "c",
       strict: true,
+      auto_tap: true,
     });
-    expect(stampManaEnforcement("cast_spell", { instance_id: "c" }, false)).toEqual({
-      instance_id: "c",
-      strict: false,
-    });
+  });
+
+  it("stamps a cast with strictMana off exactly as before, byte for byte", () => {
+    const params = { instance_id: "c", targets: [{ kind: "player", id: "p2" }], x_value: 3 };
+    expect(JSON.stringify(stampManaEnforcement("cast_spell", params, false))).toBe(
+      JSON.stringify({ ...params, strict: false }),
+    );
+    expect(stampManaEnforcement("cast_spell", params, false)).not.toHaveProperty("auto_tap");
   });
 
   it("respects a payload that already says strict (the override retries)", () => {

@@ -15,12 +15,17 @@
   import { visibleBotLines, dismissable, type BotLine } from "../botChat";
   import type { ChatMessage } from "../ws";
   import { settings } from "../settings";
+  import { agentLines, type AgentFields } from "../agentSeat";
+  import AgentChip from "./AgentChip.svelte";
   import Icon from "./Icon.svelte";
 
   interface Props {
     chat: readonly ChatMessage[];
+    // The table's seats, so a chat line can be matched to an AI agent
+    // seat (ADR 0122 §7: the chip shows on the chat author line).
+    seats?: readonly (AgentFields & { id: string })[];
   }
-  const { chat }: Props = $props();
+  const { chat, seats = [] }: Props = $props();
 
   // Lines the viewer has closed. Only reasoning is closable — an
   // improvisation ages out on the feed's cap instead, because a
@@ -32,10 +37,17 @@
     visibleBotLines(chat, $settings.gameplay.showBotReasoning).filter((l) => !dismissed.has(l.id)),
   );
 
+  // Plain lines typed by an agent seat. Nothing else renders a "say"
+  // line, and an agent says what a card should have done in chat.
+  const agentFeed = $derived(agentLines(chat, seats).filter((l) => !dismissed.has(l.id)));
+
   function dismiss(line: BotLine) {
     if (!dismissable(line)) return;
+    dismissId(line.id);
+  }
+  function dismissId(id: string) {
     const next = new Set(dismissed);
-    next.add(line.id);
+    next.add(id);
     dismissed = next;
   }
 </script>
@@ -67,6 +79,24 @@
         <Icon name="x" size={12} />
       </button>
     {/if}
+  </div>
+{/each}
+
+{#each agentFeed as line (line.id)}
+  <div class="bot-line agent-line" role="status" aria-live="polite">
+    <AgentChip seat={line.seat} />
+    <span class="text">
+      <strong>{line.authorName}</strong>
+      {line.text}
+    </span>
+    <button
+      type="button"
+      class="ghost close"
+      onclick={() => dismissId(line.id)}
+      aria-label="dismiss"
+    >
+      <Icon name="x" size={12} />
+    </button>
   </div>
 {/each}
 

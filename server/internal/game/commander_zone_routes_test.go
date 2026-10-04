@@ -9,9 +9,16 @@ import (
 // commander_zone_routes_test.go pins CR 903.9 on the routes #529
 // found unwired: counter, fizzle, exile, bounce, tuck and mill.
 //
-// The rule is "from ANYWHERE" — a commander that would be put into a
-// library, hand, graveyard or exile from any zone gives its owner the
-// command-zone choice. Before #529 the replacement window was opened
+// Since ADR 0115 the rule has two halves. A commander that would be
+// put into a hand or a library is offered the command zone INSTEAD
+// (CR 903.9b, the optional_replacement prompt, nothing moves until the
+// answer). A commander put into a graveyard or exile lands there first
+// and is offered the command zone by the next state-based action check
+// (CR 903.9a, the commander_return prompt).
+//
+// Before ADR 0115 the rule was implemented as "from ANYWHERE": a
+// commander that would be put into a library, hand, graveyard or exile
+// from any zone gave its owner the command-zone choice. Before #529 the replacement window was opened
 // by two callers only (MoveCardByIDAsCommander and
 // routeBattlefieldCardToOwnerGraveyardLocked), both battlefield →
 // graveyard, so every other way a commander leaves — which is most of
@@ -72,6 +79,34 @@ func expectCommanderPrompt(t *testing.T, g *Game, owner *Player) *PendingChoice 
 	return prompt
 }
 
+// expectCommanderReturn runs the state-based action checks and asserts
+// exactly one CR 903.9a commander_return prompt is queued, to `owner`,
+// about `cardID` (ADR 0115).
+func expectCommanderReturn(t *testing.T, g *Game, owner *Player, cardID uuid.UUID) *PendingChoice {
+	t.Helper()
+	runChecks(g)
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("expected one CR 903.9a prompt, got %d pending choices", len(g.PendingChoices))
+	}
+	prompt := g.PendingChoices[0]
+	if prompt.Kind != PendingChoiceCommanderReturn {
+		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, PendingChoiceCommanderReturn)
+	}
+	if prompt.Chooser != owner.ID || prompt.Source != cardID {
+		t.Fatalf("prompt to %s about %s, want the owner %s about %s", prompt.Chooser, prompt.Source, owner.ID, cardID)
+	}
+	return prompt
+}
+
+// answerCommanderReturn answers the one open CR 903.9a prompt.
+func answerCommanderReturn(t *testing.T, g *Game, owner *Player, cardID uuid.UUID, apply bool) {
+	t.Helper()
+	prompt := expectCommanderReturn(t, g, owner, cardID)
+	if err := g.ResolveCommanderReturn(prompt.ID, owner.ID, apply); err != nil {
+		t.Fatalf("ResolveCommanderReturn: %v", err)
+	}
+}
+
 // assertOnlyIn asserts the card is in `want` and in none of `others`.
 func assertOnlyIn(t *testing.T, cardID uuid.UUID, want *Zone, others ...*Zone) {
 	t.Helper()
@@ -88,8 +123,8 @@ func assertOnlyIn(t *testing.T, cardID uuid.UUID, want *Zone, others ...*Zone) {
 // --- counter (#364) ---------------------------------------------
 
 // TestCommanderCounteredOffersCommandZone is #364: Wash Away counters
-// a commander cast. Countering moves the spell stack → graveyard,
-// which is a CR 903.9 destination, so the owner must be asked.
+// a commander cast. Countering puts the spell into the graveyard, and
+// the CR 903.9a check then asks the owner (ADR 0115).
 func TestCommanderCounteredOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -101,14 +136,12 @@ func TestCommanderCounteredOffersCommandZone(t *testing.T) {
 	if err := g.CounterSpell(cmdID, nil); err != nil {
 		t.Fatalf("CounterSpell: %v", err)
 	}
-	// Nothing has moved: the prompt gates the move.
-	if owner.Graveyard.Contains(cmdID) {
-		t.Fatalf("countered commander hit the graveyard before the prompt was answered")
+	// The counter lands it in the graveyard (CR 701.6a); the question
+	// comes after.
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Fatalf("countered commander did not reach the graveyard")
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, owner.Graveyard, g.Stack, g.Exile)
 	if _, ok := g.StackMeta[cmdID]; ok {
 		t.Error("StackMeta entry survived the counter")
@@ -128,10 +161,7 @@ func TestCommanderCounteredDeclineGoesToGraveyard(t *testing.T) {
 	if err := g.CounterSpell(cmdID, nil); err != nil {
 		t.Fatalf("CounterSpell: %v", err)
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, false)
 	assertOnlyIn(t, cmdID, owner.Graveyard, owner.Command, g.Stack)
 }
 
@@ -161,7 +191,7 @@ func TestNonCommanderCounterIsUnchanged(t *testing.T) {
 // (CR 608.2b, every target illegal on resolution) routes the spell
 // off the stack through routeStackCardToGraveyardLocked, the same
 // function the ordinary instant/sorcery resolution uses. A commander
-// spell that fizzles is put into a graveyard, so 903.9 applies.
+// spell that fizzles is put into a graveyard, so CR 903.9a applies.
 func TestCommanderFizzledOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -174,20 +204,17 @@ func TestCommanderFizzledOffersCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("routeStackCardToGraveyardLocked: %v", err)
 	}
-	if owner.Graveyard.Contains(cmdID) {
-		t.Fatalf("fizzled commander hit the graveyard before the prompt was answered")
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Fatalf("fizzled commander did not reach the graveyard")
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, owner.Graveyard, g.Stack)
 }
 
 // --- exile (#372) -----------------------------------------------
 
 // TestCommanderExiledOffersCommandZone is #372: Airbend exiles a
-// commander off the battlefield. Exile is a CR 903.9 destination.
+// commander off the battlefield. It is exiled, then CR 903.9a asks.
 func TestCommanderExiledOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -199,13 +226,10 @@ func TestCommanderExiledOffersCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExileCardForEffect: %v", err)
 	}
-	if g.Exile.Contains(cmdID) {
-		t.Fatalf("exiled commander hit exile before the prompt was answered")
+	if !g.Exile.Contains(cmdID) {
+		t.Fatalf("exiled commander did not reach exile")
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, g.Exile, g.Battlefield)
 }
 
@@ -222,10 +246,7 @@ func TestCommanderExiledDeclineGoesToExile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExileCardForEffect: %v", err)
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, false)
 	assertOnlyIn(t, cmdID, g.Exile, owner.Command, g.Battlefield)
 	if !hasEventFor(g, EventLTB, cmdID) {
 		t.Error("declining the command zone skipped the leaves-the-battlefield event")
@@ -235,7 +256,7 @@ func TestCommanderExiledDeclineGoesToExile(t *testing.T) {
 // --- bounce -----------------------------------------------------
 
 // TestCommanderBouncedOffersCommandZone — Unsummon on a commander.
-// Hand is a CR 903.9 destination.
+// Hand is a CR 903.9b destination: a replacement, asked before the move.
 func TestCommanderBouncedOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -279,7 +300,7 @@ func TestCommanderBouncedDeclineGoesToHand(t *testing.T) {
 // --- tuck -------------------------------------------------------
 
 // TestCommanderTuckedOffersCommandZone — Hinder / Condemn put a
-// commander into a library, a CR 903.9 destination.
+// commander into a library, a CR 903.9b destination.
 func TestCommanderTuckedOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -336,7 +357,8 @@ func TestCommanderTuckedToBottomDeclineKeepsTheBottom(t *testing.T) {
 // --- mill -------------------------------------------------------
 
 // TestCommanderMilledOffersCommandZone — a commander shuffled into a
-// library and then milled is put into a graveyard, so 903.9 applies.
+// library and then milled is put into a graveyard, so CR 903.9a
+// applies once it is there.
 func TestCommanderMilledOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -348,20 +370,18 @@ func TestCommanderMilledOffersCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MillNForEffect: %v", err)
 	}
-	if owner.Graveyard.Contains(cmdID) {
-		t.Fatalf("milled commander hit the graveyard before the prompt was answered")
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Fatalf("milled commander did not reach the graveyard")
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, owner.Graveyard, owner.Library)
 }
 
-// TestCommanderMilledMidStackDoesNotEatTheRestOfTheMill — the paused
-// card sits in the library while the prompt is outstanding, so the
-// mill loop must keep counting off the cards it decided on up front
-// rather than tripping over the commander on top.
+// TestCommanderMilledMidStackDoesNotEatTheRestOfTheMill — a commander
+// third from the top is milled with the two cards above it, and all
+// three land before CR 903.9a asks about the commander. (Before
+// ADR 0115 the commander paused in the library and this pinned that the
+// mill loop counted past it.)
 func TestCommanderMilledMidStackDoesNotEatTheRestOfTheMill(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -384,15 +404,12 @@ func TestCommanderMilledMidStackDoesNotEatTheRestOfTheMill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MillNForEffect: %v", err)
 	}
-	for _, id := range after {
+	for _, id := range append(after, cmdID) {
 		if !owner.Graveyard.Contains(id) {
-			t.Errorf("non-commander card %s was not milled", id)
+			t.Errorf("card %s was not milled", id)
 		}
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, owner.Graveyard, owner.Library)
 }
 
@@ -537,18 +554,19 @@ func TestOptionalReplacementNowPausesAReanimation(t *testing.T) {
 
 // TestOptionalReplacementStillPausesAnExit guards the narrowness of
 // the #359 fix: the guard is about entries with no resume, and must
-// not silence the CR 903.9 prompt on the exit routes, which do have
-// one. Everything in this file depends on that, but this states it.
+// not silence the CR 903.9b prompt on the exit routes, which do have
+// one. The bounce and tuck tests in this file depend on that, but this
+// states it. (A bounce since ADR 0115: an exile no longer asks first.)
 func TestOptionalReplacementStillPausesAnExit(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	cmdID := seatCommander(t, g.Battlefield, owner)
 
 	g.mu.Lock()
-	err := g.ExileCardForEffect(cmdID)
+	err := g.BounceToHandForEffect(cmdID)
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("ExileCardForEffect: %v", err)
+		t.Fatalf("BounceToHandForEffect: %v", err)
 	}
 	expectCommanderPrompt(t, g, owner)
 }

@@ -23,8 +23,8 @@ import (
 // anthropic.go's doc says the swap point is "implement Client with
 // the SDK and delete this file". This is that seam used in the other
 // direction: a second implementation of a two-method interface, under
-// the same constraints as the first — raw net/http (server/go.mod has
-// three direct dependencies and pins go 1.22 on purpose), no
+// the same constraints as the first — raw net/http (server/go.mod
+// keeps its dependencies few on purpose), no
 // streaming, no tools, no retries, and ctx is the deadline that
 // matters.
 //
@@ -75,6 +75,25 @@ import (
 //
 // A server that rejects either unknown field can be told to stop
 // sending both with CMDCTRL_OPENAI_SEND_THINK=0.
+//
+// # Thinking on, as an experiment (#2196)
+//
+// CMDCTRL_BOT_THINK=1 (and boteval's --think) sets the decision
+// profiles to "adaptive" with a reply budget in the thousands
+// (Config.WithThinking). Measured on Ollama 0.35.1 with
+// qwen3.6:35b-a3b: `think: true` with the json_schema below WORKS —
+// the thinking lands in `message.reasoning`, unconstrained, and
+// `content` is the schema-constrained JSON, written after it. The
+// failure ADR 0052 §7 names is unchanged: thinking that reaches
+// max_tokens leaves `content` empty with finish_reason "length", which
+// is a malformed reply. The answer is only ever read from `content`;
+// Response.Reasoning is recorded (its length goes into the decision
+// record and the trace) and never parsed.
+//
+// A server that returns the thinking INLINE, as a leading
+// `<think>…</think>` block in `content`, has that block moved into
+// Response.Reasoning, so a brace in the model's draft is never read as
+// its answer.
 //
 // # The reply is constrained to the listed moves (#2196)
 //
@@ -423,7 +442,7 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		// thinking should stay on, `think: true` is sent and
 		// ReasoningEffort is left empty so the model keeps its own
 		// default effort.
-		adaptive := req.Thinking == "adaptive"
+		adaptive := req.Thinking == ThinkingAdaptive
 		think := adaptive
 		body.Think = &think
 		if !adaptive {
@@ -514,8 +533,15 @@ func (c *OpenAIClient) post(ctx context.Context, body openAIRequest) (Response, 
 	if reasoning == "" {
 		reasoning = msg.ReasoningContent
 	}
+	text := msg.Content
+	if inline, rest, ok := splitInlineThink(text); ok {
+		if reasoning == "" {
+			reasoning = inline
+		}
+		text = rest
+	}
 	return Response{
-		Text:       msg.Content,
+		Text:       text,
 		Model:      out.Model,
 		StopReason: out.Choices[0].FinishReason,
 		Reasoning:  reasoning,
@@ -529,6 +555,25 @@ func (c *OpenAIClient) post(ctx context.Context, body openAIRequest) (Response, 
 			// argument rests on.
 		},
 	}, nil
+}
+
+// splitInlineThink takes a leading `<think>…</think>` block off a
+// reply, for a server that sends a thinking model's reasoning inline
+// rather than in a field of its own. ok is false when the reply does
+// not start with one. An unclosed block is all reasoning and no
+// answer: the budget ran out mid-thought.
+func splitInlineThink(content string) (reasoning, rest string, ok bool) {
+	const open, closeTag = "<think>", "</think>"
+	s := strings.TrimLeft(content, " \t\r\n")
+	if !strings.HasPrefix(s, open) {
+		return "", content, false
+	}
+	s = s[len(open):]
+	end := strings.Index(s, closeTag)
+	if end < 0 {
+		return strings.TrimSpace(s), "", true
+	}
+	return strings.TrimSpace(s[:end]), strings.TrimSpace(s[end+len(closeTag):]), true
 }
 
 // flattenBlocks joins the system blocks into one message. Order is

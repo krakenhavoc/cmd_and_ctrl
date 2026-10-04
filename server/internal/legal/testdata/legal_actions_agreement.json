@@ -116,7 +116,13 @@
                 "owner": "00000001-0000-4000-8000-000000000000",
                 "controller": "00000001-0000-4000-8000-000000000000",
                 "is_commander": true,
-                "known_by_you": true
+                "known_by_you": true,
+                "cast_prices": [
+                  {
+                    "cost": "{0}",
+                    "printed": true
+                  }
+                ]
               }
             ]
           },
@@ -1036,7 +1042,13 @@
                 "owner": "00000012-0000-4000-8000-000000000000",
                 "controller": "00000012-0000-4000-8000-000000000000",
                 "is_commander": true,
-                "known_by_you": true
+                "known_by_you": true,
+                "cast_prices": [
+                  {
+                    "cost": "{0}",
+                    "printed": true
+                  }
+                ]
               }
             ]
           },
@@ -1258,7 +1270,13 @@
                 "owner": "0000001c-0000-4000-8000-000000000000",
                 "controller": "0000001c-0000-4000-8000-000000000000",
                 "is_commander": true,
-                "known_by_you": true
+                "known_by_you": true,
+                "cast_prices": [
+                  {
+                    "cost": "{0}",
+                    "printed": true
+                  }
+                ]
               }
             ]
           },
@@ -1626,7 +1644,13 @@
                 "owner": "00000025-0000-4000-8000-000000000000",
                 "controller": "00000025-0000-4000-8000-000000000000",
                 "is_commander": true,
-                "known_by_you": true
+                "known_by_you": true,
+                "cast_prices": [
+                  {
+                    "cost": "{0}",
+                    "printed": true
+                  }
+                ]
               }
             ]
           },

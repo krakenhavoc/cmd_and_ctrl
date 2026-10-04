@@ -17,6 +17,8 @@ import {
   libraryDeckRequestable,
   rememberAfterSignIn,
   reportAsPrinted,
+  reportDeckSize,
+  reportNotFound,
   returnHashFor,
   saveButtonLabel,
   savedMessage,
@@ -51,12 +53,21 @@ function report(over: Partial<CoverageReport> = {}): CoverageReport {
     source_url: "https://archidekt.com/decks/42",
     commanders: ["Atraxa, Praetors' Voice"],
     counts: { manual: 2, unreviewed: 1, caveats: 3, automated: 50, no_effect: 10 },
+    copies: { manual: 2, unreviewed: 1, caveats: 3, automated: 50, no_effect: 40 },
+    unknown_copies: 4,
     cards: [],
     unknown: [],
     violations: [],
     ...over,
   };
 }
+
+const COV_COPIES = {
+  copies: { manual: 1, unreviewed: 0, caveats: 0, automated: 5, no_effect: 94 },
+  unknown_copies: 0,
+  as_printed_copies: 99,
+  deck_size: 100,
+};
 
 function libDeck(over: Partial<MyDeckInfo> = {}): MyDeckInfo {
   return {
@@ -110,13 +121,19 @@ describe("decksAccess (§3 item 3, who can do what)", () => {
 });
 
 describe("reportAsPrinted (§3 item 1.2)", () => {
-  it("counts automated plus nothing-to-automate over every bucketed card", () => {
-    expect(reportAsPrinted(report())).toBe("60 of 66 cards play as printed");
+  it("counts copies: automated plus nothing-to-automate over the deck's size", () => {
+    expect(reportAsPrinted(report())).toBe("90 of 100 cards play as printed");
+    expect(reportDeckSize(report())).toBe(100);
+  });
+
+  it("counts names the index could not find inside the total, and says so", () => {
+    expect(reportNotFound(report())).toBe("4 not found");
+    expect(reportNotFound(report({ unknown_copies: 0 }))).toBe("");
   });
 
   it("says nothing for an empty report", () => {
-    const counts = { manual: 0, unreviewed: 0, caveats: 0, automated: 0, no_effect: 0 };
-    expect(reportAsPrinted(report({ counts }))).toBe("");
+    const copies = { manual: 0, unreviewed: 0, caveats: 0, automated: 0, no_effect: 0 };
+    expect(reportAsPrinted(report({ copies, unknown_copies: 0 }))).toBe("");
   });
 });
 
@@ -149,7 +166,7 @@ describe("the save field and button (§3 item 4)", () => {
 describe("libraryDeckRequestable (§3 item 5)", () => {
   it("offers the request on a pasted deck as well as a link deck", () => {
     const counts = { manual: 1, unreviewed: 0, caveats: 0, automated: 5, no_effect: 1 };
-    const coverage = { counts, unknown: 0, as_printed: 6, resolved: 7 };
+    const coverage = { ...COV_COPIES, counts, unknown: 0, as_printed: 6, resolved: 7 };
     expect(libraryDeckRequestable(libDeck({ coverage }))).toBe(true);
     expect(libraryDeckRequestable(libDeck({ coverage, source_url: "https://x" }))).toBe(true);
   });
@@ -159,7 +176,9 @@ describe("libraryDeckRequestable (§3 item 5)", () => {
     const counts = { manual: 0, unreviewed: 0, caveats: 2, automated: 5, no_effect: 1 };
     expect(
       libraryDeckRequestable(
-        libDeck({ coverage: { counts, unknown: 0, as_printed: 6, resolved: 8 } }),
+        libDeck({
+          coverage: { ...COV_COPIES, counts, unknown: 0, as_printed: 6, resolved: 8 },
+        }),
       ),
     ).toBe(false);
   });

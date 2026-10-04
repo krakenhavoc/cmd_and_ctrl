@@ -4,7 +4,19 @@
 
 export const PROTOCOL_VERSION = 0;
 
-export type Kind = "ping" | "pong" | "error" | "action" | "snapshot" | "chat";
+// ADR 0122 §6: "ack" acknowledges an applied action to the client that
+// sent it; "legal_moves_request" / "legal_moves" fetch a seat's whole
+// move list. The browser handles "ack" and sends no requests.
+export type Kind =
+  | "ping"
+  | "pong"
+  | "error"
+  | "action"
+  | "snapshot"
+  | "chat"
+  | "ack"
+  | "legal_moves_request"
+  | "legal_moves";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -39,6 +51,11 @@ export const ErrorCode = {
   // refused whole. #1533: an "attack with all" refused this way offers
   // the attackers picker, capped at `attack_targets[].attack_limit`.
   IllegalAttack: "illegal_attack",
+  // ADR 0122 §6.1: answers to a legal_moves_request, which the browser
+  // never sends — a seat that owes no decision, and a connection past
+  // four requests a second. Listed so this table stays the server's.
+  NoDecision: "no_decision",
+  RateLimited: "rate_limited",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -181,12 +198,23 @@ export type ActionType =
   | "draw_card"
   | "end_vote"
   | "keep_hand"
+  // ADR 0121 §3: the opening roll. `roll_opening` rolls the caller's
+  // d20; `host_roll_remaining` (host or admin) rolls for every seat
+  // left in the round; `choose_starting_player` {seat} is the winner's
+  // choice of who takes the first turn.
+  | "roll_opening"
+  | "host_roll_remaining"
+  | "choose_starting_player"
   | "mark_damage"
   | "move_card"
   | "mulligan"
   | "pass_priority"
   | "pass_turn"
   | "resolve_choice"
+  // ADR 0121 §5: "Roll a die" — `{die: "d6" | "d20" | "coin"}`, a roll
+  // at the table for fun. Never a game roll, never undoable, and the
+  // server takes one per seat per 2 s.
+  | "roll_table_die"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -230,6 +258,39 @@ export interface SnapshotPayload {
   seq: number;
   generation: number;
   game: GameView;
+}
+
+// OpeningRollView mirrors protocol.OpeningRollView (ADR 0121 §3): the
+// open opening roll. Round 1 is every seat; each later round is the
+// tied leaders of the one before. `chooser` is present once one leader
+// remains. Everything in it is public.
+export interface OpeningRollView {
+  rounds: OpeningRollRoundView[];
+  chooser?: number;
+}
+
+export interface OpeningRollRoundView {
+  // The seats that roll in this round, in seat order.
+  seats: number[];
+  // Their dice, in the order rolled.
+  rolls: OpeningRollDieView[];
+}
+
+export interface OpeningRollDieView {
+  seat: number;
+  result: number;
+  // Present only when somebody other than the seat pressed the button:
+  // the host's seat, or -1 for the server admin.
+  by?: number;
+}
+
+// AckPayload is the body of a Kind == "ack" frame (ADR 0122 §6.4): sent
+// to the client whose action was applied, carrying that action's frame
+// `id`, after the snapshot of the state it names. `seq` and
+// `generation` are that state's.
+export interface AckPayload {
+  seq: number;
+  generation: number;
 }
 
 // ChatPayload is the body of a Kind == "chat" frame in either
@@ -329,6 +390,10 @@ export interface GameView {
   // decode as 0 (Go's int zero), which matches the only seat games
   // ever started on before the field existed.
   starting_seat?: number;
+  // ADR 0121 §3: the opening roll, present only while it is open
+  // (between Start and the winner's choice). Public to every viewer.
+  // While it is present `starting_seat` means nothing (it reads 0).
+  opening_roll?: OpeningRollView;
   // Stack item announce-time metadata (S13.1). Indexed bottom..top —
   // the corresponding spell card (if any) lives in `stack` at the
   // same index. Empty when the stack is empty.
@@ -395,6 +460,12 @@ export interface GameView {
   // omits it entirely. Client predicates stay permissive when it is
   // missing and let the server do the rejecting.
   legal_moves?: LegalMoveView[];
+  // ADR 0122 §6.1: true when the 48-move wire cap dropped anything
+  // from legal_moves — the list then has one move per (source, kind,
+  // targets_stack), not every alternative. Absent otherwise. Own seat
+  // only. The browser reads nothing from legal_moves that the cap
+  // loses (legalActions.ts), so it only needs to know.
+  legal_moves_truncated?: boolean;
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
@@ -549,9 +620,9 @@ export interface LegalActionsView {
 }
 
 export interface LegalSourceView {
-  // Distinct move kinds, in enumeration order. Never pass, choice or
-  // mulligan.
-  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan">[];
+  // Distinct move kinds, in enumeration order. Never pass, choice,
+  // mulligan or opening_roll.
+  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan" | "opening_roll">[];
   // Moves in the uncapped list that involve this card.
   moves: number;
   // ADR 0093 refs of live activated_abilities / zone_abilities rows.
@@ -573,6 +644,31 @@ export interface LegalSourceView {
   // (an overloaded Counterflux with no spell to counter). The first
   // such hint; the hand draws a muted ring with it as the tooltip.
   cast_idle_hint?: string;
+  // ADR 0122 §6.2: the enumerator's own caps that cut this card's
+  // moves, and by how much. Absent when nothing was cut. `moves`
+  // counts what survived; this says the card has more.
+  truncated?: LegalCutView[];
+}
+
+// One entry of the enumerator's cut report (ADR 0122 §6.2,
+// docs/protocol.md "The cut report"). In the digest it carries no
+// `source`: the key is the card.
+export interface LegalCutView {
+  source?: string;
+  choice?: string;
+  cap:
+    | "per_source"
+    | "max_x"
+    | "variable_counts"
+    | "subset_scan"
+    | "creature_types"
+    | "card_names"
+    | "cost_payments"
+    | "repeats"
+    | "ceiling";
+  // Candidate moves the cap left out; a lower bound when at_least.
+  omitted: number;
+  at_least?: boolean;
 }
 
 export interface LegalMoveView {
@@ -593,7 +689,10 @@ export interface LegalMoveView {
     // #1501: a declaring defender's finish_blocks ("No blocks" /
     // "Done blocking"). Not a pass: nobody holds priority while a
     // defender declares. Carries no card.
-    | "finish_blocks";
+    | "finish_blocks"
+    // ADR 0121 §4: roll_opening and choose_starting_player, the only
+    // moves while `opening_roll` is open. Carries no card.
+    | "opening_roll";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
@@ -619,6 +718,10 @@ export interface LegalMoveView {
   // right now: there's no spell you don't control."). Advice, never
   // sent back; only overload sets it today. Absent promises nothing.
   idle_hint?: string;
+  // ADR 0122 §6.2: the move's answer is an open set — any card name
+  // ("card_name"), or any X from `min` to `max` ("x") — with the rest
+  // of `params` unchanged. Advice, never sent back.
+  value?: { kind: "card_name" | "x"; min?: number; max?: number };
   // What the move charges beyond its mana, in the components `params`
   // cannot name — the ones the engine reads off the ability rather
   // than off the payload. Absent for the overwhelming majority of
@@ -713,6 +816,15 @@ export type LogKind =
   // for both the log and the attention strip.
   | "roll"
   | "flip"
+  // ADR 0121 §3: the opening roll moved on (a tie, a winner, or the
+  // host rolling for everyone left), and the winner's choice of who
+  // takes the first turn. Server-rendered `text`, like `roll`.
+  | "opening_roll"
+  | "starting_player"
+  // ADR 0121 §5: a d6, a d20 or a coin rolled at the table for fun.
+  // `sides` and `results`, or `faces` for a coin, and `roll_id`, which
+  // an undo keeps when it writes the line again under a new `seq`.
+  | "table_roll"
   // #984: a player answered a "choose a ..." prompt out loud. The
   // chosen VALUE is `choice` on the first two ("G", "Elf"); a chosen
   // PLAYER is `target_seat`, like every other player in the log. All
@@ -763,6 +875,15 @@ export type LogKind =
   // controls — "Bob activated Alice's Xantcha, Sleeper Agent".
   // `target_seat` is the permanent's controller.
   | "activate_across"
+  // ADR 0119 §5: what goes on the stack, as it goes there. `trigger` is a
+  // triggered ability triggering ("Alice's trigger: Mulldrifter — draw two
+  // cards"); consecutive identical ones collapse, with `amount` the count
+  // (absent for one). `activate` is an activated ability that uses the
+  // stack (mana abilities never get one). Both carry the SOURCE in
+  // `card_id` and the item's label in `label`, redacted together like an
+  // ability's `resolve` line.
+  | "trigger"
+  | "activate"
   | "cycle"
   | "counters"
   | "scry"
@@ -863,6 +984,12 @@ export interface LogEvent {
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.
   card_id?: string;
+  // ADR 0119 §3: the stack item a `resolve`, `fizzle` or `counter`
+  // entry is about, for spells and abilities alike. For a spell it
+  // equals its card's ID; an ability's item has an ID no other field
+  // carries. Absent on every other kind, and on entries written before
+  // the field existed.
+  stack_item_id?: string;
   // Instance ID of the CARD the entry acts on (a counterspell's
   // victim, a blocker's attacker). Player targets use target_seat.
   target?: string;
@@ -885,6 +1012,11 @@ export interface LogEvent {
   // presence alone means there are two beats. Read it, don't derive it
   // from keywords (#187, ADR 0053 Decision 1).
   combat_step?: "first_strike" | "regular";
+  // ADR 0118 §2 (#2188): a `cast` entry whose caster cast it without
+  // paying its mana cost (`force_cast`). The `text` already ends
+  // " without paying its mana cost"; this is for a client that wants
+  // the bit. Public: never redacted with the card's name.
+  unpaid?: boolean;
   // #984: the value named at a "choose a ..." prompt — the colour
   // LETTER on a `choose_color` entry ("G"), the creature type on a
   // `choose_type` one ("Elf"). Absent on a `choose_player` entry,
@@ -918,6 +1050,14 @@ export interface LogEvent {
   faces?: string[];
   call?: "heads" | "tails";
   wins?: number;
+  // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
+  // that tied, or the seats the host rolled for.
+  seats?: number[];
+  // ADR 0121 §5: a `table_roll` entry's identity, the game's table-roll
+  // count after it (1 for the first). An undo of an earlier action
+  // writes the line again under a new `seq` and the same `roll_id`, so
+  // the dice layer keys the roll on this and plays it once.
+  roll_id?: number;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
@@ -1620,6 +1760,12 @@ export interface PlayerView {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // AI agent seat (ADR 0122 §7): an outside model joined as a guest
+  // through the MCP seat binary. NOT a bot. Declared at join, never
+  // cleared, identical for every viewer. agent_client is the MCP
+  // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
+  is_agent?: boolean;
+  agent_client?: string;
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;
@@ -1643,7 +1789,8 @@ export interface PlayerView {
   // and how many it already has. The engine REFUSES a land play past
   // the allowance, so a client should grey out the hand's lands when
   // lands_played_this_turn >= land_drops_per_turn rather than only
-  // explain the rejection afterwards. land_drops_per_turn is the
+  // explain the rejection afterwards — timing.ts landDropsSpent does,
+  // for a frame with no move list (#2203). land_drops_per_turn is the
   // EFFECTIVE allowance — a controlled Exploration or a one-turn
   // grant is already summed in. Normally 1 / 0.
   land_drops_per_turn?: number;
@@ -2669,6 +2816,11 @@ export interface CastSurfaceView {
   // only, and only on the frame of a seat holding a LIVE permission:
   // a warp or foretell grant whose later turn has not come carries
   // none. Read it through exileStrip.ts, which decides the badge.
+  //
+  // #2202: also on the cards in the viewer's OWN command zone, priced
+  // for a cast from there — the commander tax (CR 903.8) plus every
+  // cost modifier. `printed` is false once the tax is above 0. Read it
+  // through castStrip.ts (commanderCostBadge).
   //
   // Since #1389 `castable_here` is stamped in exile too, with the same
   // meaning it has in a graveyard — "YOU may cast this from here NOW",

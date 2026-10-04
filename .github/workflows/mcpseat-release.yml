@@ -1,0 +1,339 @@
+name: mcpseat release
+
+# Prebuilt mcpseat binaries (ADR 0122, amendment of 2026-10-04: distribution;
+# #2263). A contributor can put an agent in a seat without installing Go.
+#
+# - A pull request that touches the binary or this file runs the tests and
+#   cross-builds every target, and uploads the archives and SHA256SUMS as
+#   workflow artifacts. Nothing is attested and nothing is released.
+# - A pushed tag `mcpseat-vX.Y.Z` (or `mcpseat-vX.Y.Z-rc.1`) does the same,
+#   then attests each archive's build provenance and creates a DRAFT GitHub
+#   Release with the archives and SHA256SUMS. The owner reads the draft and
+#   publishes it by hand. Nothing here tags, and nothing publishes.
+# - workflow_dispatch with a tag rebuilds an existing tag the same way. It
+#   only works once this file is on main: GitHub offers a manual run only
+#   for a workflow on the default branch. Before then, a pushed tag is the
+#   way to exercise the release path.
+#
+# The `mcpseat-v` prefix keeps these tags clear of Go's `server/vX.Y.Z`
+# submodule tags, which the Go toolchain would read as module versions.
+#
+# Verify a download:
+#   sha256sum -c SHA256SUMS --ignore-missing
+#   gh attestation verify <archive> -R krakenhavoc/cmd_and_ctrl
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/mcpseat-release.yml
+      - server/cmd/mcpseat/**
+      - server/internal/mcpseat/**
+      - server/go.mod
+      - server/go.sum
+  push:
+    tags:
+      - "mcpseat-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing tag to build and draft a release for, e.g. mcpseat-v0.1.0"
+        required: true
+        type: string
+
+concurrency:
+  group: mcpseat-release-${{ github.event_name }}-${{ inputs.tag || github.ref }}
+  # A newer push to a PR supersedes the old build. A release run is never
+  # cancelled half way through publishing.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # What to build: the ref to check out, the version and commit to stamp,
+  # and whether this run releases. The only job that reads the dispatch
+  # input, which it validates before anything uses it.
+  resolve:
+    # Fork PRs do not run, as in ci-cd.yml: opening CI to forks is its own
+    # decision. Push a fork's branch to this repo to build it.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.r.outputs.ref }}
+      version: ${{ steps.r.outputs.version }}
+      commit: ${{ steps.r.outputs.commit }}
+      tag: ${{ steps.r.outputs.tag }}
+      release: ${{ steps.r.outputs.release }}
+      prerelease: ${{ steps.r.outputs.prerelease }}
+    steps:
+      - name: Resolve tag, version and commit
+        id: r
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = pull_request ]; then
+            {
+              echo "ref=$SHA"
+              echo "version=pr${PR_NUMBER}"
+              echo "commit=$SHA"
+              echo "tag="
+              echo "release=false"
+              echo "prerelease=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT" = workflow_dispatch ]; then tag="$INPUT_TAG"; else tag="$REF_NAME"; fi
+          # The trigger's glob lets through anything after the prefix; the
+          # release needs a version.
+          if ! printf '%s' "$tag" | grep -Eq '^mcpseat-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$tag' is not a release tag. Expected mcpseat-vX.Y.Z or mcpseat-vX.Y.Z-<pre>, e.g. mcpseat-v0.1.0."
+            exit 1
+          fi
+          if [ "$EVENT" = workflow_dispatch ]; then
+            # A manual run builds a tag the owner already pushed, never a
+            # branch tip under a release name.
+            if ! gh api "repos/$REPO/git/ref/tags/$tag" --silent 2>/dev/null; then
+              echo "::error::Tag $tag does not exist in $REPO. Push the tag first; this workflow never creates one."
+              exit 1
+            fi
+            commit="$(gh api "repos/$REPO/commits/$tag" --jq .sha)"
+          else
+            commit="$SHA"
+          fi
+          version="${tag#mcpseat-}"
+          prerelease=false
+          case "$version" in *-*) prerelease=true ;; esac
+          {
+            echo "ref=refs/tags/$tag"
+            echo "version=$version"
+            echo "commit=$commit"
+            echo "tag=$tag"
+            echo "release=true"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Release $tag: version $version, commit $commit, prerelease $prerelease"
+
+  test:
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+          persist-credentials: false
+
+      # The minor version from server/go.mod, so there is no second pin to
+      # move. setup-go's go-version-file would install the exact patch the
+      # `go` line names (1.27.0), and a released binary should carry the
+      # newest patch's standard-library fixes; check-latest takes it.
+      - &go-version
+        name: Go version from server/go.mod
+        id: go
+        run: echo "minor=$(sed -nE 's/^go ([0-9]+\.[0-9]+).*/\1/p' server/go.mod)" >> "$GITHUB_OUTPUT"
+
+      # The cache only on pull requests: a release is built from a cold
+      # cache, so nothing another run wrote can reach a published binary.
+      - &setup-go
+        name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ steps.go.outputs.minor }}
+          check-latest: true
+          cache: ${{ github.event_name == 'pull_request' }}
+          cache-dependency-path: server/go.sum
+
+      - name: Test mcpseat
+        working-directory: server
+        run: go test -race ./internal/mcpseat/... ./cmd/mcpseat/...
+
+  build:
+    needs: [resolve, test]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+          persist-credentials: false
+
+      - *go-version
+      - *setup-go
+
+      - name: Build and archive ${{ matrix.goos }}/${{ matrix.goarch }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          VERSION: ${{ needs.resolve.outputs.version }}
+          COMMIT: ${{ needs.resolve.outputs.commit }}
+        run: |
+          set -euo pipefail
+          name="mcpseat-${VERSION}-${GOOS}-${GOARCH}"
+          exe=mcpseat
+          if [ "$GOOS" = windows ]; then exe=mcpseat.exe; fi
+          mkdir -p stage dist
+          (cd server && go build -trimpath \
+            -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+            -o "../stage/${exe}" ./cmd/mcpseat)
+
+          # Fixed owner and timestamps, so an archive depends on the binary
+          # and nothing else about the runner.
+          epoch="$(git log -1 --format=%ct)"
+          touch -d "@${epoch}" "stage/${exe}"
+          if [ "$GOOS" = windows ]; then
+            (cd stage && zip -X -q "../dist/${name}.zip" "${exe}")
+          else
+            tar -C stage --sort=name --owner=0 --group=0 --numeric-owner \
+              --mtime="@${epoch}" -cf - "${exe}" | gzip -9n > "dist/${name}.tar.gz"
+          fi
+          ls -l dist
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v5
+        with:
+          name: mcpseat-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@v6
+        with:
+          pattern: mcpseat-*-*
+          path: dist
+          merge-multiple: true
+
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          archives=(*.tar.gz *.zip)
+          if [ "${#archives[@]}" -ne 5 ]; then
+            echo "::error::expected 5 archives, found ${#archives[@]}"
+            ls -l
+            exit 1
+          fi
+          sha256sum -- "${archives[@]}" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload SHA256SUMS
+        uses: actions/upload-artifact@v5
+        with:
+          name: mcpseat-SHA256SUMS
+          path: dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  # Release runs only from here on. Each job holds just the permission it
+  # needs: attest signs with the run's OIDC identity, publish writes the
+  # draft release, and neither compiles anything.
+  attest:
+    needs: [resolve, checksums]
+    if: needs.resolve.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download archives and SHA256SUMS
+        uses: actions/download-artifact@v6
+        with:
+          pattern: mcpseat-*
+          path: dist
+          merge-multiple: true
+
+      - name: Check SHA256SUMS
+        working-directory: dist
+        run: sha256sum -c SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  publish:
+    needs: [resolve, attest]
+    if: needs.resolve.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download archives and SHA256SUMS
+        uses: actions/download-artifact@v6
+        with:
+          pattern: mcpseat-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          COMMIT: ${{ needs.resolve.outputs.commit }}
+          PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c SHA256SUMS)
+
+          # A rerun may find its own draft from a failed upload: refresh its
+          # assets. A published release is the owner's and is never touched.
+          if state="$(gh release view "$TAG" -R "$REPO" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [ "$state" != true ]; then
+              echo "::error::Release $TAG is already published. Cut a new tag instead."
+              exit 1
+            fi
+            gh release upload "$TAG" -R "$REPO" --clobber dist/*
+            echo "Updated the assets of the existing draft $TAG."
+            exit 0
+          fi
+
+          cat > notes.md <<EOF
+          mcpseat ${VERSION}, built from ${COMMIT}.
+
+          Download the archive for your platform, unpack it and point your MCP client at the \`mcpseat\` binary. See [docs/mcp-seat.md](https://github.com/${REPO}/blob/develop/docs/mcp-seat.md).
+
+          Verify a download (on macOS, \`shasum -a 256 -c\` in place of \`sha256sum -c\`):
+
+          \`\`\`
+          sha256sum -c SHA256SUMS --ignore-missing
+          gh attestation verify <archive> -R ${REPO}
+          \`\`\`
+
+          The binaries are not code-signed or notarized. On macOS, clear the quarantine flag: \`xattr -d com.apple.quarantine mcpseat\`.
+
+          A release cut from develop joins cmd-dev. It joins cmd.labxp.io once the server half of this commit has been promoted to main.
+          EOF
+
+          flags=(--draft --verify-tag --title "mcpseat ${VERSION}" --notes-file notes.md)
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" -R "$REPO" "${flags[@]}" dist/*
+          echo "Draft release $TAG created. The owner publishes it."

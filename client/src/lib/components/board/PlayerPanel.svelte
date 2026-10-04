@@ -26,11 +26,11 @@
   // intercepts and the click rule stay in one place: targeting, combat
   // select on your own creature, an attack on a listed planeswalker or
   // battle, declare-block on an incoming attacker, and then ADR 0117's
-  // click rule: the card's ability popover when it has a usable
-  // activated ability or special action, its mana when only mana rows
-  // are usable (#1438), and otherwise nothing. The rule itself is
-  // battlefieldClickIntent, in contextMenu.logic, so it is testable
-  // without rendering Svelte.
+  // click rule: the card's one usable ability activated (#2201), its
+  // ability popover when two or more rows are usable and one is not
+  // mana, its mana when only mana rows are usable (#1438), and
+  // otherwise nothing. The rule itself is battlefieldClickPlan, in
+  // contextMenu.logic, so it is testable without rendering Svelte.
 
   import type {
     ActionPayload,
@@ -46,10 +46,21 @@
   import { ringBearerNames } from "../../ringEmblem";
   import { cantAttackByCard } from "../../cantAttack";
   import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
-  import { battlefieldClickIntent, type BattlefieldClickIntent } from "../../contextMenu.logic";
+  import {
+    battlefieldClickPlan,
+    type BattlefieldClickPlan,
+    type LoneAbilityRow,
+  } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
-  import { openAbilityPopover } from "../../abilityPopover";
+  import { untrack } from "svelte";
+  import {
+    closeAbilityPopover,
+    openAbilityPopover,
+    setPopoverSurface,
+    type PopoverSurface,
+  } from "../../abilityPopover";
+  import { findCardAnchor } from "../../boardAnchor";
   import { manaClickPlan, manaColorParams, type AnchorRect } from "../../manaSource";
   import { manaAbilityRef } from "../../abilityRef";
   import {
@@ -176,6 +187,16 @@
     // setting never touches. Read only by the ability popover's gate,
     // which greys a sorcery-speed row the server's digest leaves out.
     legalGate?: LegalActions;
+    // ADR 0120 §3: this panel is the second copy of a seat's board,
+    // drawn larger in the expanded overlay over the table. It is then
+    // upright (never `flipped`), its cards cap at 240px for every seat,
+    // `docked` and `coached` are off (the dock and the coach card belong
+    // to the table's panel), and it is a `group` with no name, because
+    // the overlay around it is the named region and "<name> board"
+    // must stay unique. Its cards open the ability popover on the
+    // `expanded` surface. Read once, at mount: a panel is the overlay's
+    // or the table's for its whole life.
+    expanded?: boolean;
   }
 
   const {
@@ -201,17 +222,29 @@
     onDrawCard,
     onTargetPlayer,
     onTargetCard,
-    docked = false,
-    coached = false,
+    docked: dockedProp = false,
+    coached: coachedProp = false,
     onActivateAbility,
     onManaAbilityCost,
-    flipped = false,
+    flipped: flippedProp = false,
     spectator = false,
     considering = false,
     onDeclareAttackers,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
+    expanded = false,
   }: Props = $props();
+
+  // ADR 0120 §3: the expanded copy is upright, and leaves the dock's
+  // and the coach card's cells to the table's panel.
+  const flipped = $derived(flippedProp && !expanded);
+  const docked = $derived(dockedProp && !expanded);
+  const coached = $derived(coachedProp && !expanded);
+  // The surface this panel's cards are drawn on, for the ability
+  // popover (abilityPopover.ts): set as context for every Card below,
+  // and used directly by this panel's own click router.
+  const surface: PopoverSurface = untrack(() => expanded) ? "expanded" : "table";
+  setPopoverSurface(surface);
 
   // ADR 0105: the battlefield rows read the lookups on the viewer's own
   // panel. A spectator never has a digest.
@@ -540,16 +573,20 @@
       return;
     }
     // ADR 0117 §1: the click rule. A left-click acts on what the card
-    // does: its popover for a usable activated ability, loyalty ability
-    // or special action (at the card, never the override menu), its
-    // mana when only mana rows are usable, nothing otherwise. Alt-click
+    // does: its one usable ability, activated as its popover row would
+    // activate it (#2201); its popover when two or more rows are usable
+    // and one is not mana (at the card, never the override menu); its
+    // mana when only mana rows are usable; nothing otherwise. Alt-click
     // still raw-taps wherever the viewer may drive the card.
-    const intent = clickIntent(card, !!ev?.altKey);
-    switch (intent) {
+    const plan = clickPlan(card, !!ev?.altKey);
+    switch (plan.intent) {
       case "none":
         return;
+      case "activate":
+        activateLoneRow(card, plan.row);
+        return;
       case "popover":
-        openAbilityPopover(card.instance_id);
+        openAbilityPopover(card.instance_id, surface);
         return;
       case "mana":
         clickForMana(card, ev);
@@ -559,12 +596,12 @@
     }
   }
 
-  // clickIntent asks the click rule with exactly what this panel hands
+  // clickPlan asks the click rule with exactly what this panel hands
   // the popover (BattlefieldRow → Card → ManaAbilityMenu): the same
   // wiring, life, timing words and digest gate, so a click never
   // disagrees with the menu it would open (ADR 0117 §2).
-  function clickIntent(card: CardView, rawTap: boolean): BattlefieldClickIntent {
-    return battlefieldClickIntent(card, viewerID, isAdmin, {
+  function clickPlan(card: CardView, rawTap: boolean): BattlefieldClickPlan {
+    return battlefieldClickPlan(card, viewerID, isAdmin, {
       manaClick: !!activateManaAbility,
       special: !!sendSpecialAction,
       rawTap,
@@ -594,7 +631,25 @@
       return false;
     }
     if (combatMode === "block" && defendingPlayerOf(card) === viewerID) return false;
-    return clickIntent(card, false) === "none";
+    return clickPlan(card, false).intent === "none";
+  }
+
+  // activateLoneRow is the "activate" branch (#2201): the card's one
+  // usable row, sent down the very callback its popover row calls
+  // (BattlefieldRow → Card → ManaAbilityMenu), so its costs, X, modes
+  // and targets run exactly as they do from the popover. An activated
+  // row (own, granted, loyalty, any-player) goes to the board's
+  // activation flow; a special action and a manual loyalty row send
+  // the action their row sends. No menu opens, so nothing is said to
+  // the tutorial. A popover left open on another card closes, as
+  // choosing a row closes it.
+  function activateLoneRow(card: CardView, row: LoneAbilityRow): void {
+    closeAbilityPopover();
+    if (row.kind === "activated") {
+      onActivateAbility?.(card, row.index);
+      return;
+    }
+    sendSpecialAction?.(row.action);
   }
 
   // clickForMana is the "mana" branch of the click router (#1438): one
@@ -623,12 +678,13 @@
 
   // The clicked card's box: the element the click landed on, or the
   // tile found by its instance ID (a keyboard activation has no
-  // pointer), or failing both a point at the cursor.
+  // pointer), or failing both a point at the cursor. The lookup goes
+  // through boardAnchor, so an expanded overlay's copy wins (ADR 0120 §3).
   function anchorFor(card: CardView, ev?: MouseEvent): AnchorRect {
     const target = ev?.currentTarget ?? ev?.target;
     let el = target instanceof Element ? target.closest("[data-instance-id]") : null;
     if (!el && typeof document !== "undefined") {
-      el = document.querySelector(`[data-instance-id="${CSS.escape(card.instance_id)}"]`);
+      el = findCardAnchor(document, card.instance_id);
     }
     if (el) {
       const r = el.getBoundingClientRect();
@@ -647,8 +703,9 @@
   class:flipped
   class:spectator
   class:docked
-  role="region"
-  aria-label={isSelf ? "your board" : `${seat.name} board`}
+  class:expanded
+  role={expanded ? "group" : "region"}
+  aria-label={expanded ? undefined : isSelf ? "your board" : `${seat.name} board`}
 >
   <div class="grid-creatures">
     <BattlefieldRow
@@ -995,6 +1052,14 @@
      .panel.opponent.spectator (three) outright, so this can never
      lose to either regardless of source order. */
   .panel.opponent.flipped.spectator {
+    --card-h-max: 240px;
+  }
+  /* ADR 0120 §3: the expanded overlay's copy of a board caps its cards
+     at 240px for every seat, as on a spectator's panel. Self is 240px
+     already, and an expanded panel is never flipped, so only
+     .panel.opponent's 200px has to be beaten. The floor and slope are
+     the seat's own; the overlay's height does the rest. */
+  .panel.opponent.expanded {
     --card-h-max: 240px;
   }
   /* The creature area is the grid's minmax(0, 1fr) row, so on a short

@@ -806,6 +806,59 @@ type reclaimRequest struct {
 type joinRequest struct {
 	InviteToken string `json:"invite_token"`
 	Name        string `json:"name"`
+	// Agent is an AI agent's MCP client declaring itself (ADR 0122
+	// §7). Present (even as {}) makes the seat an agent seat, badged
+	// for the whole table for the rest of the game. Absent is every
+	// other join. Accepted on both join routes.
+	Agent *agentJoin `json:"agent,omitempty"`
+}
+
+// agentJoin is the `agent` field of a join body. Client is the MCP
+// client's clientInfo.name; the server normalises it
+// (NormalizeAgentClient), and an empty one reads "unknown".
+type agentJoin struct {
+	Client string `json:"client"`
+}
+
+// errAgentSignedIn is the 400 for an agent join that carries a
+// signed-in session (ADR 0122 §7, decision 2).
+var errAgentSignedIn = httpError(http.StatusBadRequest, "an agent seat joins as a guest")
+
+// isSignedInSession reports whether p is a signed-in person's session:
+// a Discord sign-in with no seat yet, or a seat or spectator session
+// that carries a user. It is the set of sessions a join takes an
+// identity from, and the set an agent join refuses.
+func isSignedInSession(p auth.Principal) bool {
+	return p.Role == auth.RoleIdentified || isSignedInPerson(p)
+}
+
+// joinAgent is the agent half of both join routes: a guest seat with
+// the badge on it. The caller has already refused a signed-in session.
+func joinAgent(c Config, w http.ResponseWriter, r *http.Request, id uuid.UUID, body joinRequest) error {
+	meta, playerID, err := c.Lobby.JoinAgent(id, body.InviteToken, body.Name, AgentDecl{Client: body.Agent.Client})
+	if err != nil {
+		return err
+	}
+	p := auth.Principal{
+		Role:     auth.RolePlayer,
+		GameID:   meta.ID,
+		PlayerID: playerID,
+		Name:     body.Name,
+	}
+	tok, issued, err := issueFor(r.Context(), c, p, nil)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+	meta.InviteToken = ""
+	meta.SpectatorInvite = ""
+	return writeJSON(w, http.StatusOK, sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &meta,
+		PlayerID:  playerID,
+	})
 }
 
 // spectateRequest is the body of POST /games/{id}/spectate. The
@@ -1019,6 +1072,17 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	// An agent's MCP client (ADR 0122 §7) joins as a guest, never as a
+	// signed-in person: a session that would give the seat a user or a
+	// Discord identity is refused rather than ignored, so the rule is
+	// the server's and not the binary's habit.
+	if body.Agent != nil {
+		if s, ok := optionalSession(c, r); ok && isSignedInSession(s) {
+			return errAgentSignedIn
+		}
+		return joinAgent(c, w, r, id, body)
+	}
+
 	// A signed-in person clicking an invite link sits as themselves
 	// (ADR 0051 sub-PR 4): the seat takes the Discord identity and the
 	// user from the session, and body.name is ignored, as on POST
@@ -1106,6 +1170,21 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	gameID, err := c.Lobby.FindByInvite(body.InviteToken)
 	if err != nil {
 		return err
+	}
+
+	// ADR 0122 §7, as on POST /games/{id}/join. Checked before the 409
+	// below, so a signed-in agent join gets the reason that applies to
+	// it. Any other session (a guest seat, the admin token) falls
+	// through to that 409 as before.
+	if body.Agent != nil {
+		if s, ok := optionalSession(c, r); ok {
+			if isSignedInSession(s) {
+				return errAgentSignedIn
+			}
+			return httpError(http.StatusConflict,
+				"this session already belongs to a table — sign out before joining another")
+		}
+		return joinAgent(c, w, r, gameID, body)
 	}
 
 	// The session is OPTIONAL on this route, so a credential that
@@ -2143,7 +2222,10 @@ func writeAutoTapPreview(
 	delveBudget int,
 	w http.ResponseWriter,
 ) error {
-	plan, ok := g.AutoTapPlanPreferringExcluding(playerID, cost, xValue, excluded, prefer)
+	// ADR 0118 §1: the plan for what the floating pool is missing, the
+	// same plan the auto-tapped payment makes. An empty plan with ok is
+	// a pool that covers the cost on its own.
+	plan, ok := g.AutoTapPlanToppingUp(playerID, cost, xValue, spend, excluded, prefer)
 	// #1285: `sources` describes each planned source — where it is and
 	// what paying with it costs — beside the bare `plan` ID list, which
 	// is unchanged for every reader that only wanted the IDs. A plan
@@ -2920,6 +3002,13 @@ type myDeckCoverageInfo struct {
 	// every distinct card the report bucketed.
 	AsPrinted int `json:"as_printed"`
 	Resolved  int `json:"resolved"`
+	// The copies form (#2220): the same buckets weighted by copies,
+	// the copies the index could not resolve, and "N of DeckSize" where
+	// DeckSize is every copy including those. The headline reads these.
+	Copies          map[deckcoverage.Bucket]int `json:"copies"`
+	UnknownCopies   int                         `json:"unknown_copies"`
+	AsPrintedCopies int                         `json:"as_printed_copies"`
+	DeckSize        int                         `json:"deck_size"`
 }
 
 // myDeckInfo is one entry in GET /me/decks.
@@ -3040,8 +3129,10 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
 			n, m := rep.AsPrinted()
+			nc, size := rep.AsPrintedCopies()
 			info.Coverage = &myDeckCoverageInfo{
 				Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
+				Copies: rep.Copies, UnknownCopies: rep.UnknownCopies, AsPrintedCopies: nc, DeckSize: size,
 			}
 		}
 	}
@@ -3658,8 +3749,10 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
-	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier), errors.Is(err, ErrSeatIsBot):
+	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier), errors.Is(err, ErrSeatIsBot), errors.Is(err, ErrSeatIsAgent):
 		status = http.StatusUnprocessableEntity
+	case errors.Is(err, ErrAgentSignedIn):
+		status = http.StatusBadRequest
 	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
 		status = http.StatusConflict
 	case errors.Is(err, ErrCreateRateLimited):

@@ -60,7 +60,7 @@ func snapshotShape() []string {
 	texter := reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 	walk = func(rt reflect.Type, path string, stack []reflect.Type) {
-		for rt.Kind() == reflect.Ptr {
+		for rt.Kind() == reflect.Pointer {
 			rt = rt.Elem()
 		}
 		if rt.Implements(marshaler) || reflect.PointerTo(rt).Implements(marshaler) ||
@@ -127,7 +127,7 @@ func walkFields(rt reflect.Type, path string, stack []reflect.Type,
 		name, _, _ := strings.Cut(tag, ",")
 		if f.Anonymous && name == "" {
 			ft := f.Type
-			for ft.Kind() == reflect.Ptr {
+			for ft.Kind() == reflect.Pointer {
 				ft = ft.Elem()
 			}
 			if ft.Kind() == reflect.Struct {

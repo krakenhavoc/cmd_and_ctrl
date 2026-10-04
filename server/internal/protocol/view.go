@@ -95,6 +95,11 @@ type GameView struct {
 	// which matches the only seat games started on before this field
 	// existed. Added in S13.
 	StartingSeat int `json:"starting_seat"`
+	// OpeningRoll is the open opening roll (ADR 0121 §3): its rounds of
+	// d20s and, once one leader remains, the chooser. Present only
+	// while the roll is open; a client ignores StartingSeat meanwhile
+	// (it reads 0). Public and identical for every viewer.
+	OpeningRoll *OpeningRollView `json:"opening_roll,omitempty"`
 	// StackItems is the announce-time metadata for every item
 	// currently on the stack — caster, target list, modes, X,
 	// distribution, hold-priority, split-second flags. Indexed in
@@ -199,6 +204,13 @@ type GameView struct {
 	// unfiltered view that goes to the crash dump and the replay log
 	// carries no seat's moves at all. Added in S31 sub-PR 2.
 	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
+	// LegalMovesTruncated is true when capLegalMoves dropped anything
+	// from LegalMoves — the list on this frame is then one move per
+	// (source, kind, targets_stack) rather than every move (ADR 0122
+	// §6.1). Absent otherwise. A seat that needs the rest sends a
+	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
+	// out of legalTruncatedBySeat exactly as LegalMoves is.
+	LegalMovesTruncated bool `json:"legal_moves_truncated,omitempty"`
 	// LegalActions is a per-card digest of the same enumeration
 	// (ADR 0105 §1, #1789): for each card the viewer's seat may do
 	// something with, which kinds of move, which ability rows (by
@@ -225,6 +237,9 @@ type GameView struct {
 	// legalActionsBySeat is the per-seat LegalActions digest, keyed
 	// and projected exactly as legalBySeat is.
 	legalActionsBySeat map[string]*LegalActionsView
+	// legalTruncatedBySeat names the seats whose wire list
+	// capLegalMoves degraded, keyed and projected as legalBySeat is.
+	legalTruncatedBySeat map[string]bool
 	// Log is the public game log: the last PublicLogMax table-visible
 	// events, oldest first. A projection of game.Game.Events, not a
 	// stored buffer — see log.go. Every card reference in it goes
@@ -1452,6 +1467,15 @@ type PlayerView struct {
 	IsBot   bool   `json:"is_bot,omitempty"`
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
+
+	// Agent seat (ADR 0122 §7). IsAgent marks a seat played by an AI
+	// agent through an MCP client, declared by that client when it
+	// joined; AgentClient is the client's declared name
+	// ("claude-code", "codex", "unknown"). Public and identical for
+	// every viewer, like IsBot: being an agent is a fact about the
+	// seat. Never cleared once set, and never true on a bot seat.
+	IsAgent     bool   `json:"is_agent,omitempty"`
+	AgentClient string `json:"agent_client,omitempty"`
 
 	// IsHost marks the table host (ADR 0075 §2.1) — the seat that may
 	// change table settings alongside the server admin. Public to
@@ -2752,13 +2776,15 @@ type CastSurfaceView struct {
 	CantCast string `json:"cant_cast,omitempty"`
 	// CastPrices is what THIS viewer would be charged to cast the card
 	// out of EXILE right now, one entry per price the cast may claim,
-	// cheapest first (#1389). Each is the total after every CR 601.2f
+	// cheapest first (#1389) — and, since #2202, out of the viewer's
+	// own COMMAND ZONE, where the price carries the commander tax (CR
+	// 903.8) on top of any cost modifier. Each is the total after every CR 601.2f
 	// cost modifier, from game.PriceCastForEffect — the pricer the
 	// cast path, the auto-tap preview and the bot enumerator already
 	// share — so the badge on the client's castable-from-exile strip
 	// is the number the auto-tapper will then tap for.
 	//
-	// Exile only, and only on the frame of a seat holding a LIVE
+	// In exile, only on the frame of a seat holding a LIVE
 	// permission over the card: a warp or foretell grant whose later
 	// turn has not come yet has no price, because the engine would
 	// not accept the cast at any. PER VIEWER, like `castable_here`: a
@@ -3853,6 +3879,7 @@ func ViewOfGame(g *game.Game) GameView {
 			UndoLimit:             g.Settings.UndoLimit,
 			Settings:              viewOfTableSettings(g.Settings),
 			StartingSeat:          g.StartingSeat,
+			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
@@ -3904,7 +3931,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
-		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -3943,18 +3970,25 @@ func ViewOfGame(g *game.Game) GameView {
 //
 // A nil map is fine — FilterViewFor reads it with a comma-less index
 // and gets nil back for every seat.
-func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView) {
+//
+// ADR 0122 §6: the enumeration carries its cut report, which the digest
+// files under each card (legal_actions.sources[id].truncated), and the
+// third map says which seats' wire lists the cap degraded.
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool) {
 	var out map[string][]LegalMoveView
 	var digests map[string]*LegalActionsView
+	var truncated map[string]bool
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
 		}
-		all := legal.EnumerateLocked(g, p.ID, legal.Options{})
+		rep := legal.EnumerateReportLocked(g, p.ID, legal.Options{})
+		all := rep.Moves
 		if len(all) == 0 {
 			continue
 		}
 		if d := digestLegalMoves(all); d != nil {
+			fileDigestCuts(d, rep.Cuts)
 			if digests == nil {
 				digests = make(map[string]*LegalActionsView, len(g.Seats))
 			}
@@ -3963,9 +3997,16 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
 		}
-		out[p.ID.String()] = capLegalMoves(all)
+		capped, cut := capLegalMoves(all)
+		out[p.ID.String()] = capped
+		if cut {
+			if truncated == nil {
+				truncated = make(map[string]bool, len(g.Seats))
+			}
+			truncated[p.ID.String()] = true
+		}
 	}
-	return out, digests
+	return out, digests, truncated
 }
 
 // legalMovesWireCap bounds how many moves one seat's list may put on
@@ -4004,9 +4045,13 @@ const legalMovesWireCap = 48
 // burn one would silently delete the counterspell response smart
 // autopass needs to see. docs/protocol.md states this as part of the
 // field's contract.
-func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
+//
+// The second result says whether anything was dropped, which the view
+// carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
+// whose every move has its own key keeps them all and is not truncated.
+func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	if len(moves) <= legalMovesWireCap {
-		return moves
+		return moves, false
 	}
 	type key struct {
 		source       uuid.UUID
@@ -4023,7 +4068,7 @@ func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 		seen[k] = true
 		out = append(out, m)
 	}
-	return out
+	return out, len(out) < len(moves)
 }
 
 // stampLegalTargets walks the PER-SEAT cast surfaces — hand, the
@@ -5140,7 +5185,18 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
 			out.CastableHere = castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
-			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
+		}
+	case game.ZoneCommand:
+		// #2202: the command zone gets the price and not the bit. A
+		// commander sits in the same strip as the exile cards, and its
+		// tag is the commander tax (CR 903.8) plus every cost modifier
+		// — the engine's own total, so a Medallion's discount is in it
+		// and the client never multiplies a cast count by two. Whether
+		// it is castable NOW stays the move list's answer, as it always
+		// was for this zone.
+		if haveLive {
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
 	}
 	if spec == nil {
@@ -5246,8 +5302,9 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 		g.AnyAdditionalCostBranchPayableLocked(caster, card)
 }
 
-// viewOfCastPrices prices every offer a cast out of exile may claim,
-// through game.PriceCastForEffect (#1389) — the pricer CastSpell's
+// viewOfCastPrices prices every offer a cast out of `kind` may claim —
+// exile (#1389) or the command zone (#2202) — through
+// game.PriceCastForEffect, the pricer CastSpell's
 // payment, the auto-tap preview and the bot enumerator read, so the
 // strip's badge cannot name a number the auto-tapper then disagrees
 // with. `offers` is castStampsFor's own game.CastOffersForLocked list;
@@ -5261,7 +5318,7 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 // entry 0. A land has no price (it is played, not cast) and gets nil.
 //
 // Caller must hold g.mu.
-func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*game.AlternativeCost) []CastPriceView {
+func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*game.AlternativeCost, kind game.ZoneKind) []CastPriceView {
 	if card.IsLand() {
 		return nil
 	}
@@ -5271,7 +5328,7 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 	}
 	var rows []priced
 	for _, o := range offers {
-		params := game.CastSpellParams{FromZone: "exile", Face: card.ActiveFace}
+		params := game.CastSpellParams{FromZone: delveZoneWire(kind), Face: card.ActiveFace}
 		var v CastPriceView
 		if o != nil {
 			params.AlternativeCost = o.Key
@@ -5293,8 +5350,16 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		// is the one in the corner (an airbend {2} on a two-drop is;
 		// a granted flashback at "its mana cost" is), no modifier
 		// moved it, and no life rides on top.
+		//
+		// #2202: and no commander tax. Base already carries the tax
+		// (CR 903.8 is part of the 601.2f total, before the
+		// modifiers), so "Total == Base" alone called a taxed
+		// commander's price printed. Asked of the command zone only:
+		// Base also folds a grant's "spend mana as though any colour"
+		// into generic, and in exile that has never moved the badge.
 		v.Printed = price.Paid == price.Printed && v.Life == 0 &&
-			price.Total.String() == price.Base.String()
+			price.Total.String() == price.Base.String() &&
+			(kind != game.ZoneCommand || untaxed(price))
 		rows = append(rows, priced{v: v, mv: price.Total.ManaValue()})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -5308,6 +5373,18 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		out = append(out, r.v)
 	}
 	return out
+}
+
+// untaxed reports whether a command-zone price is the cost string the
+// cast pays with nothing layered on it, the commander tax being the
+// one thing that can be (#2202). Compared as parsed costs so the
+// printed string and its canonical rendering agree.
+func untaxed(price game.CastPrice) bool {
+	paid, err := game.ParseCost(price.Paid)
+	if err != nil {
+		return false
+	}
+	return price.Base.String() == paid.String()
 }
 
 // ProtectionView is one "protection from <quality>" on a permanent,
@@ -7306,6 +7383,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		IsBot:             p.IsBot,
 		BotTier:           p.BotTier,
 		BotDeck:           p.BotDeck,
+		IsAgent:           p.Agent,
+		AgentClient:       p.AgentClient,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
@@ -7676,16 +7755,18 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1199: shared and public like the battlefield, and redacted
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
-		PhasedOut:             redactZone(v.PhasedOut, isKnower),
-		Turn:                  v.Turn,
-		MulligansOpen:         v.MulligansOpen,
-		Monarch:               v.Monarch,
-		Initiative:            v.Initiative,
-		Promises:              v.Promises,
-		Vote:                  v.Vote,
-		UndoLimit:             v.UndoLimit,
-		Settings:              v.Settings,
-		StartingSeat:          v.StartingSeat,
+		PhasedOut:     redactZone(v.PhasedOut, isKnower),
+		Turn:          v.Turn,
+		MulligansOpen: v.MulligansOpen,
+		Monarch:       v.Monarch,
+		Initiative:    v.Initiative,
+		Promises:      v.Promises,
+		Vote:          v.Vote,
+		UndoLimit:     v.UndoLimit,
+		Settings:      v.Settings,
+		StartingSeat:  v.StartingSeat,
+		// ADR 0121 §3: every die is public the moment it lands.
+		OpeningRoll:           v.OpeningRoll,
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
 		DelayedTriggers:       v.DelayedTriggers,
@@ -7699,6 +7780,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
+		// ADR 0122 §6.1: the flag for the same list, under the same rule.
+		LegalMovesTruncated: legalTruncatedFor(v.legalTruncatedBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure
@@ -7737,6 +7820,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMoveView {
 	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
 		return nil
+	}
+	return bySeat[viewerID]
+}
+
+// legalTruncatedFor picks the viewer's own truncation flag under
+// legalMovesFor's rule.
+func legalTruncatedFor(bySeat map[string]bool, viewerID string) bool {
+	if viewerID == "" || viewerID == SpectatorViewerID {
+		return false
 	}
 	return bySeat[viewerID]
 }

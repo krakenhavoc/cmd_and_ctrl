@@ -83,6 +83,17 @@ type Report struct {
 	Commanders []string `json:"commanders"`
 	// Counts is by distinct card, and always carries all five buckets.
 	Counts map[Bucket]int `json:"counts"`
+	// Copies is Counts again with every card weighted by its copies
+	// (Card.Count), so a Commander deck's buckets plus UnknownCopies
+	// total its size, 100 for a legal one. Always carries all five
+	// buckets. Additive (ADR 0095 §1, note 2026-10-04): Counts stays by
+	// distinct card for anything that wants a list, such as a deck
+	// request's checklist.
+	Copies map[Bucket]int `json:"copies"`
+	// UnknownCopies is the copies the card index could not resolve,
+	// sideboard rows excluded. They are in no bucket, but they are
+	// part of the deck's size.
+	UnknownCopies int `json:"unknown_copies"`
 	// Cards is sorted by bucket (see Buckets), then by name.
 	Cards []Card `json:"cards"`
 	// Unknown is the names the card index could not resolve. They are
@@ -103,6 +114,23 @@ func (r *Report) AsPrinted() (n, m int) {
 		m += r.Counts[b]
 	}
 	return r.Counts[Automated] + r.Counts[NoEffect], m
+}
+
+// CopiesTotal is the deck's size in cards: every copy the report
+// bucketed plus the copies it could not resolve.
+func (r *Report) CopiesTotal() int {
+	n := r.UnknownCopies
+	for _, b := range Buckets {
+		n += r.Copies[b]
+	}
+	return n
+}
+
+// AsPrintedCopies is AsPrinted by copies: how many cards of the deck
+// play exactly as printed (automated plus no_effect, basics included),
+// out of CopiesTotal, which counts unresolved names too.
+func (r *Report) AsPrintedCopies() (n, total int) {
+	return r.Copies[Automated] + r.Copies[NoEffect], r.CopiesTotal()
 }
 
 // Needed reports whether the deck has anything to request: a manual or
@@ -171,12 +199,14 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 		DeckKey:    d.DeckKey,
 		Commanders: []string{},
 		Counts:     make(map[Bucket]int, len(Buckets)),
+		Copies:     make(map[Bucket]int, len(Buckets)),
 		Cards:      []Card{},
 		Unknown:    []string{},
 		Violations: []deck.Violation{},
 	}
 	for _, b := range Buckets {
 		r.Counts[b] = 0
+		r.Copies[b] = 0
 	}
 
 	list := &deck.List{Name: r.DeckName}
@@ -192,6 +222,9 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 			if k := strings.ToLower(n); !unknownSeen[k] {
 				unknownSeen[k] = true
 				r.Unknown = append(r.Unknown, n)
+			}
+			if !e.IsSideboard {
+				r.UnknownCopies += e.Count
 			}
 			continue
 		}
@@ -247,6 +280,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	})
 	for _, c := range r.Cards {
 		r.Counts[c.Bucket]++
+		r.Copies[c.Bucket] += c.Count
 	}
 
 	if err := deck.Validate(list); err != nil {

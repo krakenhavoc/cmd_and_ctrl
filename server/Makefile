@@ -1,8 +1,9 @@
-.PHONY: docker-test docker-lint all buildbuild-bot build-boteval run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: docker-test docker-lint all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot
 BOTEVAL_BINARY := bin/boteval
+MCPSEAT_BINARY := bin/cmd_and_ctrl-mcpseat
 PKGS := ./...
 
 # Default target never mutates the working tree: it verifies formatting,
@@ -30,6 +31,13 @@ build-bot:
 build-boteval:
 	mkdir -p bin
 	go build -o $(BOTEVAL_BINARY) ./cmd/boteval
+
+# ADR 0122 MCP seat: a local stdio binary Claude Code or Codex launches to
+# sit in a guest seat at a table. Not deployed. With no local Go, from the
+# repo root: scripts/go-docker.sh go build -o bin/cmd_and_ctrl-mcpseat ./cmd/mcpseat
+build-mcpseat:
+	mkdir -p bin
+	go build -o $(MCPSEAT_BINARY) ./cmd/mcpseat
 
 run: build
 	./$(BINARY)
@@ -70,12 +78,13 @@ fmt-check:
 	fi
 
 # Pinned golangci-lint, run via `go run` so no locally-installed
-# binary is needed and the version can't drift from the v1-format
-# config in .golangci.yml (v1.64.8 is the final v1.x release).
-# First invocation downloads + builds the tool; later runs hit the
-# Go build cache. Unlike the old target, this can never silently
-# skip linting.
-GOLANGCI_LINT := github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+# binary is needed and the version can't drift from the v2-format
+# config in .golangci.yml. v2.14.0 supports and runs on Go 1.27, the
+# version go.mod declares (ADR 0122 §1.1); keep it in step with
+# scripts/go-docker.sh's LINT_PKG. First invocation downloads + builds
+# the tool; later runs hit the Go build cache. Unlike the old target,
+# this can never silently skip linting.
+GOLANGCI_LINT := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 
 lint:
 	go run $(GOLANGCI_LINT) run $(PKGS)

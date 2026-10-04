@@ -31,9 +31,10 @@ import (
 //     the run's continuation is what makes the sequence the printed
 //     one.
 //
-// The boards are exit_payout_cards_test.go's boards: a CR 903.9 prompt
-// held open by a commander, and a seat whose only creature leaves
-// while somebody else is being asked.
+// The boards are exit_payout_cards_test.go's boards: a sacrificed
+// commander (which, since ADR 0115, lands in the graveyard and is asked
+// CR 903.9a afterwards), and a seat whose only creature leaves while
+// somebody else is being asked.
 
 // --- Rise of the Witch-king: the answer -----------------------------
 
@@ -64,22 +65,20 @@ func TestRiseOfTheWitchKingWaitsForEveryAnswer(t *testing.T) {
 	}
 }
 
-// TestRiseOfTheWitchKingWaitsForACommandZoneAnswer is the CR 903.9
-// half, and the reason the answer routes through the sacrifice's own
-// continuation: the commander is still ON the battlefield while its
-// owner is asked, so a payout on the next line would read "not
-// sacrificed" for a sacrifice that lands a beat later.
+// TestRiseOfTheWitchKingPaysForASacrificedCommander was the CR 903.9
+// half: the commander used to stay ON the battlefield while its owner
+// was asked, so a payout on the next line read "not sacrificed".
 //
-// Both answers pay. CR 701.17a's keyword action is the controller's
-// move OFF the battlefield, and a replacement rewrites only where the
-// permanent goes.
-func TestRiseOfTheWitchKingWaitsForACommandZoneAnswer(t *testing.T) {
+// Since ADR 0115 the commander is sacrificed into its owner's graveyard
+// like any other creature, the permanent comes back at once, and the
+// CR 903.9a answer that follows changes nothing.
+func TestRiseOfTheWitchKingPaysForASacrificedCommander(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
 	}{
-		{"to the command zone: still sacrificed", true},
-		{"to the graveyard", false},
+		{"then to the command zone: still sacrificed", true},
+		{"left in the graveyard", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -93,27 +92,21 @@ func TestRiseOfTheWitchKingWaitsForACommandZoneAnswer(t *testing.T) {
 			passPriorityAroundTable(t, g)
 			answerSacrifice(t, g, me.ID, mine)
 
-			if g.Battlefield.Contains(rock) {
-				t.Fatal("the permanent came back with the CR 903.9 prompt still open")
-			}
-			if !g.Battlefield.Contains(mine) {
-				t.Fatal("a paused leg has moved nothing")
-			}
-
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, me.ID)
-				if !me.Command.Contains(mine) {
-					t.Fatal("accepting puts the commander in the command zone")
-				}
-			} else {
-				b21DeclineCommandZone(t, g, me.ID)
-				if !me.Graveyard.Contains(mine) {
-					t.Fatal("declining puts the commander in the graveyard")
-				}
+			if !me.Graveyard.Contains(mine) {
+				t.Fatal("the sacrificed commander is in its owner's graveyard")
 			}
 			if !g.Battlefield.Contains(rock) {
-				t.Error("you sacrificed a creature this way whichever zone it went to, " +
-					"so the permanent comes back")
+				t.Fatal("you sacrificed a creature this way, so the permanent comes back")
+			}
+			answerCommanderReturn(t, g, me.ID, tc.commandZone)
+			if tc.commandZone && !me.Command.Contains(mine) {
+				t.Fatal("yes puts the commander in the command zone")
+			}
+			if !tc.commandZone && !me.Graveyard.Contains(mine) {
+				t.Fatal("no leaves the commander in the graveyard")
+			}
+			if !g.Battlefield.Contains(rock) {
+				t.Error("the returned permanent stays")
 			}
 		})
 	}

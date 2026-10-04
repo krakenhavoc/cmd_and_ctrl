@@ -423,8 +423,12 @@ events[].loyalty	bool
 events[].new_zone	string
 events[].old_zone	string
 events[].played	bool
+events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
+events[].roll_id	number:uint64
 events[].round	number:int
+events[].seats	array
+events[].seats[]	number:int
 events[].seq	number:uint64
 events[].setting_new	string
 events[].setting_old	string
@@ -433,6 +437,7 @@ events[].source	custom(uuid.UUID)
 events[].stack_item_id	custom(uuid.UUID)
 events[].step	string
 events[].target	custom(uuid.UUID)
+events[].unpaid	bool
 events[].won	bool
 exile	object
 exile.cards	array
@@ -1311,8 +1316,12 @@ lastKnownStack[].item.trigger.Event.loyalty	bool
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
+lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
+lastKnownStack[].item.trigger.Event.roll_id	number:uint64
 lastKnownStack[].item.trigger.Event.round	number:int
+lastKnownStack[].item.trigger.Event.seats	array
+lastKnownStack[].item.trigger.Event.seats[]	number:int
 lastKnownStack[].item.trigger.Event.seq	number:uint64
 lastKnownStack[].item.trigger.Event.setting_new	string
 lastKnownStack[].item.trigger.Event.setting_old	string
@@ -1321,6 +1330,7 @@ lastKnownStack[].item.trigger.Event.source	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.step	string
 lastKnownStack[].item.trigger.Event.target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.unpaid	bool
 lastKnownStack[].item.trigger.Event.won	bool
 lastKnownStack[].item.trigger.Object	object
 lastKnownStack[].item.trigger.Object.Colors	array
@@ -1367,6 +1377,17 @@ nextExtraRef	number:int
 nextPhaseId	number:int
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
+openingRoll	object
+openingRoll.chooser	number:int
+openingRoll.rounds	array
+openingRoll.rounds[]	object
+openingRoll.rounds[].rolls	array
+openingRoll.rounds[].rolls[]	object
+openingRoll.rounds[].rolls[].by	number:int
+openingRoll.rounds[].rolls[].result	number:int
+openingRoll.rounds[].rolls[].seat	number:int
+openingRoll.rounds[].seats	array
+openingRoll.rounds[].seats[]	number:int
 outcome	object
 outcome.cause	string
 outcome.kind	string
@@ -1734,8 +1755,12 @@ pendingTriggers[].trigger.Event.loyalty	bool
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
+pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
+pendingTriggers[].trigger.Event.roll_id	number:uint64
 pendingTriggers[].trigger.Event.round	number:int
+pendingTriggers[].trigger.Event.seats	array
+pendingTriggers[].trigger.Event.seats[]	number:int
 pendingTriggers[].trigger.Event.seq	number:uint64
 pendingTriggers[].trigger.Event.setting_new	string
 pendingTriggers[].trigger.Event.setting_old	string
@@ -1744,6 +1769,7 @@ pendingTriggers[].trigger.Event.source	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.step	string
 pendingTriggers[].trigger.Event.target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.unpaid	bool
 pendingTriggers[].trigger.Event.won	bool
 pendingTriggers[].trigger.Object	object
 pendingTriggers[].trigger.Object.Colors	array
@@ -2192,6 +2218,7 @@ scopedEffects[].sourceName	string
 scopedEffects[].timestamp	number:int64
 seats	array
 seats[]	object
+seats[].agentClient	string
 seats[].botDeck	string
 seats[].botTier	string
 seats[].castPermissions	array
@@ -3325,6 +3352,7 @@ seats[].hand.kind	string
 seats[].hand.owner	custom(uuid.UUID)
 seats[].handKept	bool
 seats[].id	custom(uuid.UUID)
+seats[].isAgent	bool
 seats[].isBot	bool
 seats[].landDropsPerTurn	number:int
 seats[].lastTurnAttacks	array
@@ -4149,8 +4177,12 @@ stackMeta[].trigger.Event.loyalty	bool
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool
+stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
+stackMeta[].trigger.Event.roll_id	number:uint64
 stackMeta[].trigger.Event.round	number:int
+stackMeta[].trigger.Event.seats	array
+stackMeta[].trigger.Event.seats[]	number:int
 stackMeta[].trigger.Event.seq	number:uint64
 stackMeta[].trigger.Event.setting_new	string
 stackMeta[].trigger.Event.setting_old	string
@@ -4159,6 +4191,7 @@ stackMeta[].trigger.Event.source	custom(uuid.UUID)
 stackMeta[].trigger.Event.stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.step	string
 stackMeta[].trigger.Event.target	custom(uuid.UUID)
+stackMeta[].trigger.Event.unpaid	bool
 stackMeta[].trigger.Event.won	bool
 stackMeta[].trigger.Object	object
 stackMeta[].trigger.Object.Colors	array
@@ -4181,6 +4214,7 @@ stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
 state	string
+tableRollNext	number:uint64
 takenAt	custom(time.Time)
 turn	object
 turn.ActiveSeat	number:int

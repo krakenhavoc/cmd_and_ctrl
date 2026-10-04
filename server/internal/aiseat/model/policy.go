@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -221,6 +222,99 @@ func StrongConfig() Config {
 	c.Frontier.Effort = "medium"
 	c.Improv.Effort = "medium"
 	c.MaxCall = 4 * time.Second
+	return c
+}
+
+// ThinkingAdaptive is the ModelProfile.Thinking value that asks for
+// the model's own thinking: `think: true` and no `reasoning_effort` on
+// the OpenAI-compatible transport, `thinking: {"type": "adaptive"}` on
+// Anthropic's.
+const ThinkingAdaptive = "adaptive"
+
+// DefaultThinkingMaxTokens is the per-call reply budget WithThinking
+// uses when the caller names none (#2196). The routine profile's 128
+// is sized for a JSON object with a number in it; a thinking model
+// writes its reasoning out of the same budget. qwen3.6:35b-a3b on the
+// position suite (#2196) wrote about 1,700 tokens a window at the
+// median and up to ~3,600; at 4000 one reply in 66 ran out before the
+// answer, at 8000 none did. A budget the thinking runs past leaves
+// `content` empty and the window malformed, so this errs long. See
+// docs/bot.md, "Letting the model think".
+const DefaultThinkingMaxTokens = 8000
+
+// DefaultThinkingMaxThink is the per-window deadline a thinking run
+// gets when the operator named none (CMDCTRL_BOT_MAX_THINK, boteval's
+// --max-think). The local transport's 20s is sized for a model that
+// answers with a number; thinking at the ~80 tokens a second
+// qwen3.6:35b-a3b manages on a 16 GB card, a full DefaultThinkingMaxTokens
+// budget is about 100s on top of the prompt. See docs/bot.md, "Letting
+// the model think".
+const DefaultThinkingMaxThink = 120 * time.Second
+
+// WithThinking returns c with the decision profiles — Routine and
+// Frontier — asking for the model's own thinking, and their reply
+// budget raised to maxTokens (DefaultThinkingMaxTokens when <= 0).
+//
+// It is an EXPERIMENT switch (#2196), off unless a deployment or a
+// boteval run asks for it: ADR 0052 §7 keeps native thinking off
+// because it is unbounded and a trace cut off by the cap loses the
+// whole answer. That is still true, and nothing here changes the
+// default; this exists so the suite and the arena can measure what
+// thinking buys on a local model whose time is cheap.
+//
+// Improv is left alone. Improvisation writes a bundle, not a pick, and
+// has its own budget and its own question; thinking there is a
+// separate experiment.
+func (c Config) WithThinking(maxTokens int) Config {
+	if maxTokens <= 0 {
+		maxTokens = DefaultThinkingMaxTokens
+	}
+	c.Routine.Thinking, c.Frontier.Thinking = ThinkingAdaptive, ThinkingAdaptive
+	c.Routine.MaxTokens, c.Frontier.MaxTokens = maxTokens, maxTokens
+	return c
+}
+
+// The thinking experiment's env vars (#2196). cmd/server reads them at
+// boot and boteval takes them as fallbacks for --think and
+// --max-tokens.
+const (
+	// EnvBotThink set truthy turns the model's own thinking on for the
+	// decision calls. Unset or falsey is the default: off.
+	EnvBotThink = "CMDCTRL_BOT_THINK"
+	// EnvBotMaxTokens is the decision calls' reply budget, in tokens.
+	// Unset keeps each profile's own, or DefaultThinkingMaxTokens with
+	// thinking on.
+	EnvBotMaxTokens = "CMDCTRL_BOT_MAX_TOKENS"
+)
+
+// ThinkingFromEnv reads EnvBotThink and EnvBotMaxTokens. A value it
+// does not recognise is an error rather than a default: an experiment
+// that silently ran with thinking off would report the baseline under
+// the experiment's name.
+func ThinkingFromEnv() (think bool, maxTokens int, err error) {
+	switch raw := strings.ToLower(strings.TrimSpace(os.Getenv(EnvBotThink))); raw {
+	case "", "0", "false", "no", "off":
+	case "1", "true", "yes", "on":
+		think = true
+	default:
+		return false, 0, fmt.Errorf("%s=%q: want 1 or 0", EnvBotThink, raw)
+	}
+	if raw := strings.TrimSpace(os.Getenv(EnvBotMaxTokens)); raw != "" {
+		n, perr := strconv.Atoi(raw)
+		if perr != nil || n <= 0 {
+			return false, 0, fmt.Errorf("%s=%q: want a positive number of tokens", EnvBotMaxTokens, raw)
+		}
+		maxTokens = n
+	}
+	return think, maxTokens, nil
+}
+
+// WithMaxTokens returns c with the decision profiles' reply budget set
+// to n, leaving thinking as it is. Zero or less changes nothing.
+func (c Config) WithMaxTokens(n int) Config {
+	if n > 0 {
+		c.Routine.MaxTokens, c.Frontier.MaxTokens = n, n
+	}
 	return c
 }
 
@@ -532,7 +626,9 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 	rec.Attempted = true
 	rec.ModelLatency = time.Since(callStarted)
 	rec.Usage = resp.Usage
+	rec.ReasoningChars = len(resp.Reasoning)
 	tr.ModelLatency, tr.Usage, tr.Reply = rec.ModelLatency, traceUsage(resp.Usage), resp.Text
+	tr.ReasoningChars = rec.ReasoningChars
 	if cerr != nil {
 		rec.Fallback = FallbackError
 		// A deadline miss is a different operational problem from an

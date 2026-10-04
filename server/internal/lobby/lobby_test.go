@@ -163,9 +163,33 @@ func TestStartHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LookupGame: %v", err)
 	}
+	// ADR 0121 §1: Start opens the opening roll. Nothing is shuffled
+	// or dealt and nobody has rolled until the seats press Roll.
 	view := protocol.ViewOfGame(started)
+	if view.OpeningRoll == nil {
+		t.Fatal("Start did not open the opening roll")
+	}
+	if got := len(view.OpeningRoll.Rounds); got != 1 || len(view.OpeningRoll.Rounds[0].Seats) != 2 {
+		t.Fatalf("opening roll rounds = %+v, want one round of both seats", view.OpeningRoll.Rounds)
+	}
+	for _, s := range view.Seats {
+		if s.Hand.Count != 0 {
+			t.Errorf("%s holds %d cards before the roll is finished, want 0", s.Name, s.Hand.Count)
+		}
+	}
+	finishOpeningRoll(t, l, meta.ID)
+	view = protocol.ViewOfGame(started)
+	if view.OpeningRoll != nil {
+		t.Fatal("the opening roll is still open after the choice")
+	}
 	if view.Turn.ActiveSeat != view.StartingSeat {
 		t.Errorf("active seat %d, rolled starting seat %d", view.Turn.ActiveSeat, view.StartingSeat)
+	}
+	for _, s := range view.Seats {
+		// The dummy deck has one card besides the commander.
+		if s.Hand.Count == 0 {
+			t.Errorf("%s holds no cards after the choice, want the deck dealt", s.Name)
+		}
 	}
 	rolls := 0
 	for _, entry := range view.Log {

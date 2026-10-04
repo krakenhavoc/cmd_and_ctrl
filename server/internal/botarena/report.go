@@ -206,21 +206,25 @@ func digest(r GameResult) GameDigest {
 // ADR 0052's "record with each run" list, minus the model's quant,
 // which no API exposes and an operator writes into Note.
 type ConfigSummary struct {
-	Seats       []SeatSpec    `json:"seats"`
-	Games       int           `json:"games"`
-	Seed        uint64        `json:"seed"`
-	Rotate      bool          `json:"rotate"`
-	Lockstep    bool          `json:"lockstep"` // Config.Lockstep: did the seeds fix the games, or only the deals?
-	TurnBudget  int           `json:"turn_budget"`
-	Wall        time.Duration `json:"wall_ns"`
-	Stall       time.Duration `json:"stall_ns"`
-	MaxThink    time.Duration `json:"max_think_ns"`
-	Routine     string        `json:"routine_model,omitempty"`
-	Frontier    string        `json:"frontier_model,omitempty"`
-	Endpoint    string        `json:"endpoint,omitempty"`
-	HasIndex    bool          `json:"has_scryfall_index"`
-	DecisionLog string        `json:"decision_log_dir,omitempty"`
-	ReplayDir   string        `json:"replay_dir,omitempty"`
+	Seats      []SeatSpec    `json:"seats"`
+	Games      int           `json:"games"`
+	Seed       uint64        `json:"seed"`
+	Rotate     bool          `json:"rotate"`
+	Lockstep   bool          `json:"lockstep"` // Config.Lockstep: did the seeds fix the games, or only the deals?
+	TurnBudget int           `json:"turn_budget"`
+	Wall       time.Duration `json:"wall_ns"`
+	Stall      time.Duration `json:"stall_ns"`
+	MaxThink   time.Duration `json:"max_think_ns"`
+	// Think and MaxTokens are Config's own: whether the model seats
+	// were let think, and the reply budget they were given (#2196).
+	Think       bool   `json:"think,omitempty"`
+	MaxTokens   int    `json:"max_tokens,omitempty"`
+	Routine     string `json:"routine_model,omitempty"`
+	Frontier    string `json:"frontier_model,omitempty"`
+	Endpoint    string `json:"endpoint,omitempty"`
+	HasIndex    bool   `json:"has_scryfall_index"`
+	DecisionLog string `json:"decision_log_dir,omitempty"`
+	ReplayDir   string `json:"replay_dir,omitempty"`
 	// Revision is the build's VCS revision, stamped by the Go
 	// toolchain. It answers "which prompt was this?" without anybody
 	// having to remember to write it down.
@@ -243,7 +247,8 @@ func describeConfig(cfg Config) ConfigSummary {
 	c := ConfigSummary{
 		Seats: append([]SeatSpec(nil), cfg.Seats...), Games: cfg.Games, Seed: cfg.Seed,
 		Rotate: cfg.Rotate, Lockstep: cfg.Lockstep, TurnBudget: cfg.TurnBudget, Wall: cfg.Wall, Stall: cfg.Stall,
-		MaxThink: cfg.MaxThink, Routine: cfg.Models.Routine, Frontier: frontierOf(cfg),
+		MaxThink: cfg.MaxThink, Think: cfg.Think, MaxTokens: cfg.MaxTokens,
+		Routine: cfg.Models.Routine, Frontier: frontierOf(cfg),
 		HasIndex: cfg.Index != nil, ReplayDir: cfg.ReplayDir, Revision: revision(), Note: cfg.Note,
 	}
 	if cfg.DecisionLog != nil {
@@ -503,6 +508,8 @@ func mergeFunnel(dst *model.Stats, s model.Stats) {
 	dst.ByEscalation = mergeCounts(dst.ByEscalation, s.ByEscalation)
 	dst.ByFallback = mergeCounts(dst.ByFallback, s.ByFallback)
 	dst.ByPick = mergeCounts(dst.ByPick, s.ByPick)
+	dst.ReasoningReplies += s.ReasoningReplies
+	dst.ReasoningChars += s.ReasoningChars
 }
 
 func mergeCounts(dst, src map[string]int64) map[string]int64 {
@@ -531,8 +538,8 @@ func (s Summary) Markdown() string {
 	fmt.Fprintf(&b, "- **games**: %d, seed %d, rotation %s, turn budget %d, schedule %s\n",
 		c.Games, c.Seed, onOff(c.Rotate), c.TurnBudget, Schedule(c.Lockstep))
 	if c.Routine != "" || c.Endpoint != "" {
-		fmt.Fprintf(&b, "- **model**: %s (frontier %s) at %s, max think %s\n",
-			orDash(c.Routine), orDash(c.Frontier), orDash(c.Endpoint), c.MaxThink)
+		fmt.Fprintf(&b, "- **model**: %s (frontier %s) at %s, max think %s%s\n",
+			orDash(c.Routine), orDash(c.Frontier), orDash(c.Endpoint), c.MaxThink, thinkingLine(c))
 	} else {
 		b.WriteString("- **model**: none (no model tier in this run)\n")
 	}
@@ -589,6 +596,14 @@ func (s Summary) Markdown() string {
 			counts(t.Funnel.ByPick), t.Funnel.Usage.InputTokens, t.Funnel.Usage.OutputTokens, t.PromptBytesP50)
 	}
 	b.WriteString(funnelFootnote)
+	for _, n := range names {
+		// Only a thinking run has anything to say here, and the
+		// table above keeps its columns in every run.
+		if f := s.PerPolicy[n].Funnel; f.ReasoningReplies > 0 {
+			fmt.Fprintf(&b, "\n*%s thought before %d of its %d model answers, %d chars on average.*\n",
+				n, f.ReasoningReplies, f.ModelCalls, f.ReasoningChars/f.ReasoningReplies)
+		}
+	}
 
 	b.WriteString("\n### Latency\n\n")
 	b.WriteString("| policy | decisions | decision p50 | p99 | p999 | max | model p50 | model p99 | model max |\n")
@@ -639,6 +654,21 @@ const funnelFootnote = "\n*`picks` says how the model replies that were USED bec
 // playFootnote is under the Play table on every run, because both
 // halves of it are ways to misread the numbers directly above.
 const playFootnote = "\n*Win % and its interval are over DECIDED seat-games — the ones that produced a single survivor — which is the scale the null rate (1/seats) is on. `seat-games` counts every seat of every game; `decided` drops the draws: turn budget, wall clock, stalls, and multi-survivor ends. Two chairs of the same policy contribute two seat-games to one game and at most one of them can win, so those trials are negatively correlated; the interval treats them as independent, which makes it CONSERVATIVE (it will not manufacture a `beats null`) but means `seat-games` must not be read as a count of independent trials.*\n"
+
+// thinkingLine is the model line's tail on a run that changed the
+// reply budget or let the model think (#2196). Empty otherwise, so a
+// default run's report reads as it always has.
+func thinkingLine(c ConfigSummary) string {
+	switch {
+	case c.Think && c.MaxTokens > 0:
+		return fmt.Sprintf(", **thinking on**, max tokens %d", c.MaxTokens)
+	case c.Think:
+		return ", **thinking on**"
+	case c.MaxTokens > 0:
+		return fmt.Sprintf(", max tokens %d", c.MaxTokens)
+	}
+	return ""
+}
 
 // contestant names the spec sitting in a seating row, for the report.
 func contestant(seats []SeatSpec, k int) string {

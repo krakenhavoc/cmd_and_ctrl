@@ -36,6 +36,7 @@
 // canPassPriority (no callers at all, in or out of production).
 
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
+import { isLand } from "./cardTypes";
 import { castableFaces } from "./faces";
 import { castSacrificeFloor } from "./sacrificeCost";
 import { castIsForbidden, printedCostClaimable } from "./targeting";
@@ -130,6 +131,30 @@ export function hasPriority(snap: GameView | null | undefined, viewerID: string 
   return seat?.id === viewerID;
 }
 
+// landDropsSpent reports whether the viewer has used every land play
+// the turn allows (CR 305.2, #500). It compares the two numbers the
+// server puts on the viewer's own seat — `land_drops_per_turn`, the
+// EFFECTIVE allowance with Exploration-style statics and one-turn
+// grants already summed in, and `lands_played_this_turn` — and derives
+// nothing: the allowance is the engine's, never recomputed here. A
+// frame missing either field (a server older than #500) answers false,
+// which keeps the reading permissive like every other "don't know".
+export function landDropsSpent(
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+): boolean {
+  if (!snap || !viewerID) return false;
+  const seat = snap.seats?.find((s) => s.id === viewerID);
+  const allowance = seat?.land_drops_per_turn;
+  const played = seat?.lands_played_this_turn;
+  if (allowance === undefined || played === undefined) return false;
+  return played >= allowance;
+}
+
+// LAND_DROPS_SPENT_REASON is the tooltip (and the red drag verdict) for
+// a land once the turn's land plays are used (#2203).
+export const LAND_DROPS_SPENT_REASON = "No land plays left this turn";
+
 // isActivePlayer reports whether the viewer is the active-turn
 // player. Different from hasPriority — the active player keeps
 // priority into their main phases but loses it during opponents'
@@ -219,22 +244,6 @@ export function canCastFromHand(
   const moves = movesFor(snap, card.instance_id, ["cast", "land"]);
   if (moves && moves.length > 0) return LEGAL;
 
-  // No move list at all. The server owes this seat no decision (or is
-  // older than S31); either way we know nothing, so fall back to the
-  // two coarse facts the frame does carry and otherwise stay out of
-  // the way. Erring permissive is deliberate — a false "yes" costs a
-  // rejected click, a false "no" costs the player a window they were
-  // entitled to.
-  if (moves === undefined) {
-    if (!hasPriority(snap, viewerID)) return deny("Not your priority");
-    if (snap.split_second_active) return deny("Split second on the stack");
-    return LEGAL;
-  }
-
-  // The server said no. Everything from here is tooltip copy.
-  if (!hasPriority(snap, viewerID)) return deny("Not your priority");
-  if (snap.split_second_active) return deny("Split second on the stack");
-
   // #1168: every face a cast may choose, materialised — `[card]` for
   // the ~33,000 ordinary single-faced oracle IDs, which makes every
   // gate below read identically to the single-face version it
@@ -242,6 +251,61 @@ export function canCastFromHand(
   // name, but only once there is more than one candidate to name —
   // a single-faced denial reads exactly as it always has.
   const faces = castableFaces(card);
+  // #2203: a card that can only be PLAYED as a land (every face a
+  // land: a basic, a pathway) is dead once the turn's land plays are
+  // used, whatever else is true. A modal DFC with a spell face is not:
+  // its spell may still be cast.
+  const landSpent = faces.every(isLand) && landDropsSpent(snap, viewerID);
+
+  // No move list at all. The server owes this seat no decision (or is
+  // older than S31); either way we know nothing, so fall back to the
+  // coarse facts the frame does carry and otherwise stay out of the
+  // way. Erring permissive is deliberate — a false "yes" costs a
+  // rejected click, a false "no" costs the player a window they were
+  // entitled to. The spent land drop is not a guess: the seat's own
+  // counts say so, and they hold for the rest of the turn (#2203).
+  if (moves === undefined) {
+    if (!hasPriority(snap, viewerID)) return deny("Not your priority");
+    if (snap.split_second_active) return deny("Split second on the stack");
+    if (landSpent) return deny(LAND_DROPS_SPENT_REASON);
+    return LEGAL;
+  }
+
+  // The server said no. Everything from here is tooltip copy.
+  if (!hasPriority(snap, viewerID)) return deny("Not your priority");
+  if (snap.split_second_active) return deny("Split second on the stack");
+  if (landSpent) return deny(LAND_DROPS_SPENT_REASON);
+  const clause = castClauseDenial(card, faces, snap, viewerID);
+  if (clause) return deny(clause);
+
+  // Nothing card-specific to say. The seat holds priority and the
+  // server still did not offer this card, which leaves timing and
+  // mana (a spent land drop was answered above). The frame does tell us whether the
+  // sorcery-speed window (CR 307.1) is open, and a shut window is the
+  // overwhelmingly common answer for a greyed hand — a hand full of
+  // sorceries and creatures during combat.
+  //
+  // It is a HINT, not a derivation, and it can be imprecise in one
+  // direction: an unaffordable instant during combat gets told
+  // "only at sorcery speed" when the real reason is the mana. The
+  // verdict is right either way, which is the part that was broken
+  // before; sharpening the sentence needs the server to ship a
+  // denial reason alongside the move list, which it does not yet.
+  if (!canActivateSorcerySpeedAbility(snap, viewerID).legal) return deny("Only at sorcery speed");
+  return deny("Can't play this right now");
+}
+
+// castClauseDenial is the card-specific half of a cast's denials: the
+// clauses the server stamps on the card, walked per castable face
+// (#1168). "" when none of them refuses the cast. canCastFromHand reads
+// it to explain a "no" the move list gave; castAnywayBlocked reads it as
+// a verdict, because none of these is about mana.
+function castClauseDenial(
+  card: CardView,
+  faces: CardView[],
+  snap: GameView,
+  viewerID: string,
+): string {
   const named = (face: CardView, reason: string): string =>
     faces.length > 1 ? `${face.name}: ${reason}` : reason;
 
@@ -258,7 +322,7 @@ export function canCastFromHand(
   const cantCastOK = (face: CardView): boolean => !castIsForbidden(face);
   if (!faces.some(cantCastOK)) {
     const blocked = faces.find((f) => !cantCastOK(f)) ?? card;
-    return deny(named(blocked, blocked.cant_cast || "Can't cast this card"));
+    return named(blocked, blocked.cant_cast || "Can't cast this card");
   }
 
   // A targeted spell with nothing legal to point at can't be cast
@@ -295,7 +359,7 @@ export function canCastFromHand(
   if (!faces.some(targetOK)) {
     const blocked = faces.find((f) => !targetOK(f)) ?? card;
     const min = blocked.legal_targets?.min ?? 1;
-    return deny(named(blocked, min > 1 ? `Needs ${min} legal targets` : "No legal target"));
+    return named(blocked, min > 1 ? `Needs ${min} legal targets` : "No legal target");
   }
   // A modal spell needs enough castable options to meet its minimum —
   // untargeted options always count, targeted ones only with a legal
@@ -311,7 +375,7 @@ export function canCastFromHand(
   };
   if (!faces.some(modesOK)) {
     const blocked = faces.find((f) => !modesOK(f)) ?? card;
-    return deny(named(blocked, "No castable mode"));
+    return named(blocked, "No castable mode");
   }
   // An additional cost you can't pay makes the spell uncastable
   // (CR 601.2h). "Discard a card" with an empty hand is the whole
@@ -325,8 +389,9 @@ export function canCastFromHand(
   if (!faces.some(discardOK)) {
     const blocked = faces.find((f) => !discardOK(f)) ?? card;
     const discards = blocked.additional_cost?.discard_cards ?? 0;
-    return deny(
-      named(blocked, discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard"),
+    return named(
+      blocked,
+      discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard",
     );
   }
   // Same rule for a sacrifice clause. The server has already filtered
@@ -345,8 +410,9 @@ export function canCastFromHand(
   if (!faces.some(sacrificeOK)) {
     const blocked = faces.find((f) => !sacrificeOK(f)) ?? card;
     const need = castSacrificeFloor(blocked.additional_cost?.sacrifice_options);
-    return deny(
-      named(blocked, need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice"),
+    return named(
+      blocked,
+      need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice",
     );
   }
   // ADR 0100: an either/or additional cost none of whose branches the
@@ -357,24 +423,73 @@ export function canCastFromHand(
   };
   if (!faces.some(branchOK)) {
     const blocked = faces.find((f) => !branchOK(f)) ?? card;
-    return deny(named(blocked, "No additional cost you can pay"));
+    return named(blocked, "No additional cost you can pay");
   }
+  return "";
+}
 
-  // Nothing card-specific to say. The seat holds priority and the
-  // server still did not offer this card, which leaves timing, the
-  // spent land drop, and mana. The frame does tell us whether the
-  // sorcery-speed window (CR 307.1) is open, and a shut window is the
-  // overwhelmingly common answer for a greyed hand — a hand full of
-  // sorceries and creatures during combat.
-  //
-  // It is a HINT, not a derivation, and it can be imprecise in one
-  // direction: an unaffordable instant during combat gets told
-  // "only at sorcery speed" when the real reason is the mana. The
-  // verdict is right either way, which is the part that was broken
-  // before; sharpening the sentence needs the server to ship a
-  // denial reason alongside the move list, which it does not yet.
-  if (!canActivateSorcerySpeedAbility(snap, viewerID).legal) return deny("Only at sorcery speed");
-  return deny("Can't play this right now");
+// --- Cast anyway (don't pay), ADR 0118 §2 ----------------------------
+
+// CastAnywayZone is where a "Cast anyway (don't pay)" row may stand: the
+// hand, the castable-from-other-zones strip's exile entries, and the
+// commanders (the strip and the command-zone panel).
+export type CastAnywayZone = "hand" | "exile" | "command";
+
+// faceZone is the zone castableFaces is asked about: none for the hand,
+// as canCastFromHand asks, so the two read the same faces.
+function faceZone(zone: CastAnywayZone): string | undefined {
+  return zone === "hand" ? undefined : zone;
+}
+
+// castAnywayOffered says whether a card gets the row at all: the
+// viewer's own card with a castable face. A card that can only be
+// PLAYED as a land (every castable face a land: a basic, a pathway) is
+// never cast, so it has no row. A modal DFC with a spell face has one.
+export function castAnywayOffered(card: CardView, zone: CastAnywayZone = "hand"): boolean {
+  return !castableFaces(card, faceZone(zone)).every(isLand);
+}
+
+// castAnywayBlocked is why the row is greyed, or "" when it is offered
+// live (ADR 0118 §2, "When it is greyed").
+//
+// It is canCastFromHand's denials WITHOUT its move-list shortcut and
+// without its last "timing or mana" hint: the row is offered on every
+// castable card, payable or not (owner decision 2), so mana never greys
+// it, and it is greyed only for what would refuse the cast whatever the
+// pool held. No priority, split second, a land-only card, `cant_cast`,
+// no legal target, no castable mode, nothing to discard or sacrifice,
+// no payable either/or branch, and a card with no mana cost and no
+// alternative cost (CR 118.6: an unpayable cost, which the server
+// refuses with ErrNoManaCost however the cast is paid). Out of exile,
+// also `castable_here` false on every surface the cast may announce:
+// the server's zone, timing and gate answer, which reads no mana.
+//
+// What the client cannot judge — a closed sorcery-speed window above
+// all — the server refuses with its own error, which the existing
+// rejected toast shows.
+export function castAnywayBlocked(
+  card: CardView,
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+  zone: CastAnywayZone = "hand",
+): string {
+  if (!snap || !viewerID) return "Spectator can't cast";
+  if (!hasPriority(snap, viewerID)) return "Not your priority";
+  if (snap.split_second_active) return "Split second on the stack";
+  const faces = castableFaces(card, faceZone(zone));
+  if (faces.every(isLand)) return "A land is played, not cast";
+  if (zone === "exile") {
+    const surfaces = faces[0] === card ? faces : [card, ...faces];
+    if (!surfaces.some((s) => s.castable_here === true)) {
+      return card.cant_cast || "Not castable from exile right now";
+    }
+  }
+  const clause = castClauseDenial(card, faces, snap, viewerID);
+  if (clause) return clause;
+  const hasCost = (face: CardView): boolean =>
+    !!face.mana_cost || (face.alternative_costs?.length ?? 0) > 0;
+  if (!faces.some(hasCost)) return "It has no mana cost, so it can't be cast";
+  return "";
 }
 
 // --- activated and loyalty abilities --------------------------------

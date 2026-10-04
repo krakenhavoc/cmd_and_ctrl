@@ -14,7 +14,9 @@
 //   - Insufficient mana (S15). A strict cast the server refused for
 //     mana. Auto-tap & cast is the primary (it opens the auto-tap
 //     preview, which still confirms before anything is tapped), Cast
-//     anyway and Cancel the secondaries. It was a strip toast.
+//     anyway and Cancel the secondaries. It was a strip toast. Since
+//     ADR 0118 §1 a clicked cast is already auto-tapped, and its
+//     refusal drops Auto-tap & cast: Cancel is the primary.
 //
 // The names are the old ones (ADR 0111 §10): the request's dialog is
 // "Select target for <card>", which s19-triggers.spec.ts waits on, and
@@ -195,20 +197,55 @@ export interface InsufficientManaHandlers {
   onCancel: () => void;
 }
 
+export interface InsufficientManaOptions {
+  // The refused cast's payload already had `auto_tap` (every clicked
+  // cast under strict since ADR 0118 §1): the planner found no plan, so
+  // the preview would find none either.
+  autoTapped?: boolean;
+}
+
 // insufficientManaRequest: a strict cast was refused for mana (the
 // server's insufficient_mana, with what it is missing).
+//
+// ADR 0118 §1 (amends ADR 0111 PR 4): a refusal of a cast that was
+// already auto-tapped drops "Auto-tap & cast"; Cancel becomes the
+// primary and Cast anyway stays a secondary with no key. A refusal
+// without `auto_tap` (no client surface sends one now, but the server
+// accepts it) keeps all three buttons. The labels are unchanged (ADR
+// 0111 §10); only Cast anyway's title is.
 export function insufficientManaRequest(
   missing: readonly string[],
   cardName: string | undefined,
   h: InsufficientManaHandlers,
+  opts: InsufficientManaOptions = {},
 ): DockRequest {
-  return {
-    rank: "flow",
+  const cancel: DockAction = {
+    id: "cancel",
+    label: "Cancel",
+    title: "don't cast it",
+    keyShortcuts: "Escape",
+    cap: "Esc",
+    onPress: h.onCancel,
+  };
+  const castAnyway: DockAction = {
+    id: "cast-anyway",
+    label: "Cast anyway",
+    title: "cast it without paying its mana cost; the game log says so",
+    onPress: h.onCastAnyway,
+  };
+  const base = {
+    rank: "flow" as const,
     label: "insufficient mana",
     tag: "mana",
-    tone: "gold",
+    tone: "gold" as const,
     question: cardName ? `Insufficient mana for ${cardName}` : "Insufficient mana",
     detail: missing.length > 0 ? `missing ${missing.join(" ")}` : undefined,
+  };
+  if (opts.autoTapped) {
+    return { ...base, primary: cancel, secondary: [castAnyway] };
+  }
+  return {
+    ...base,
     primary: {
       id: "auto-tap",
       label: "Auto-tap & cast",
@@ -216,6 +253,54 @@ export function insufficientManaRequest(
       keyShortcuts: "Enter",
       cap: "⏎",
       onPress: h.onAutoTap,
+    },
+    secondary: [cancel, castAnyway],
+  };
+}
+
+export interface CastAnywayConfirmHandlers {
+  onCast: () => void;
+  onCancel: () => void;
+}
+
+// castAnywayConfirmLabel is the confirmation's dialog name (ADR 0118 §2,
+// owner decision 6), e.g. "Cast Craw Wurm without paying its mana cost?".
+// A label contract (AGENTS.md §5, ADR 0111 §10): cast-anyway-2188.spec.ts
+// selects the dialog by it.
+export function castAnywayConfirmLabel(cardName: string): string {
+  return `Cast ${cardName} without paying its mana cost?`;
+}
+
+// castAnywayConfirmRequest: the "Cast anyway (don't pay)" row was chosen
+// from a card's menu, and nothing has been sent yet (ADR 0118 §2, owner
+// decision 6). The question is the dialog's name; Cast and Cancel are
+// its two buttons, and both names are a label contract. Cancel answers
+// Escape. Cast has no key, for the reason the insufficient-mana
+// request's Cast anyway has none: no keystroke should reach an unpaid
+// cast. A flow does not move focus today; should the dock ever move it,
+// it goes to the dialog, never to Cast (`focus: "dialog"`).
+//
+// The dock's own Cast anyway, on a refused cast (insufficientManaRequest
+// above), does not open this: it is already the second step of a choice
+// the player made.
+export function castAnywayConfirmRequest(
+  cardName: string,
+  h: CastAnywayConfirmHandlers,
+): DockRequest {
+  const question = castAnywayConfirmLabel(cardName);
+  return {
+    rank: "flow",
+    label: question,
+    tag: "unpaid",
+    tone: "gold",
+    question,
+    hint: "No mana is spent. Life and any other costs are still paid, and the game log shows the table.",
+    focus: "dialog",
+    primary: {
+      id: "cast",
+      label: "Cast",
+      title: "cast it without paying its mana cost; the game log says so",
+      onPress: h.onCast,
     },
     secondary: [
       {
@@ -225,12 +310,6 @@ export function insufficientManaRequest(
         keyShortcuts: "Escape",
         cap: "Esc",
         onPress: h.onCancel,
-      },
-      {
-        id: "cast-anyway",
-        label: "Cast anyway",
-        title: "cast it without paying the missing mana (the sandbox override)",
-        onPress: h.onCastAnyway,
       },
     ],
   };

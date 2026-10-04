@@ -305,11 +305,10 @@ func TestDiscardAtRandomDrawsFromWhatTheOtherCostsLeave(t *testing.T) {
 	}
 }
 
-// #1397 / CR 903.9a: a commander drawn for a random discard is offered
-// the command zone before anything is paid, and the answer discards the
-// SAME card — the announcement is made again with its draw, not drawn
-// again.
-func TestARandomDiscardOfACommanderAsksItsOwnerFirst(t *testing.T) {
+// CR 903.9a, since ADR 0115: a commander drawn for a random discard is
+// discarded as the cost is paid, like any other card, and its owner is
+// offered the command zone afterwards. The record names the commander.
+func TestARandomDiscardOfACommanderPaysThenAsksItsOwner(t *testing.T) {
 	var rec lcRecord
 	registerForTest(t, lcSpec(lcRandomOracle, "Random Payer", DiscardAtRandom(1, "a card at random"), &rec))
 	g, me, _ := exileCostTable(t)
@@ -319,21 +318,22 @@ func TestARandomDiscardOfACommanderAsksItsOwnerFirst(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, src, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if !me.Hand.Contains(cmd.InstanceID) || len(g.StackMeta) != 0 {
-		t.Fatal("the cost was paid before the commander's owner answered")
-	}
-	answerCostCommander(t, g, me.ID, true)
-	if !me.Command.Contains(cmd.InstanceID) {
-		t.Fatal("the commander did not take the command zone")
+	if !me.Graveyard.Contains(cmd.InstanceID) {
+		t.Fatal("the commander was not discarded to pay the cost")
 	}
 	if got := onlyStackItemOf(t, g).Paid.Discarded; len(got) != 1 || got[0] != cmd.InstanceID {
 		t.Fatalf("Paid.Discarded = %v, want the commander", got)
 	}
+	answerCommanderReturn(t, g, me.ID, true)
+	if !me.Command.Contains(cmd.InstanceID) {
+		t.Fatal("the commander did not take the command zone")
+	}
 }
 
 // A commander put on top of the library is offered CR 903.9b's command
-// zone first, and the exile of a commander off the top of the library
-// CR 903.9a's.
+// zone first, before anything is paid (#1397). A commander exiled off
+// the top of the library is exiled as the cost is paid and offered
+// CR 903.9a's afterwards (ADR 0115).
 func TestLibraryCostsAskACommandersOwner(t *testing.T) {
 	var top, lib lcRecord
 	registerForTest(t, lcSpec(lcTopOracle, "Top Payer", PutACardFromHandOnTop(), &top))
@@ -361,10 +361,10 @@ func TestLibraryCostsAskACommandersOwner(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, src, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if !me.Library.Contains(cmd.InstanceID) {
-		t.Fatal("the exile was paid before the owner answered")
+	if !g.Exile.Contains(cmd.InstanceID) {
+		t.Fatal("the exile was not paid: the commander is not in exile")
 	}
-	answerCostCommander(t, g, me.ID, true)
+	answerCommanderReturn(t, g, me.ID, true)
 	if !me.Command.Contains(cmd.InstanceID) {
 		t.Fatal("the commander did not take the command zone")
 	}

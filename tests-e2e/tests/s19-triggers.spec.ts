@@ -72,10 +72,11 @@ async function waitForPickTarget(setup: S19Setup, chooser: JoinedPlayer, sourceN
     "pick_target prompt queued",
   );
   // 20s, not the project's 10s default: three browser contexts, two
-  // dev servers and four sockets share one self-hosted runner, and a
-  // player page has been observed a full 10s behind the admin socket
-  // under that load. The wait is bounded well inside the 90s
-  // test.slow() budget, so a genuinely stuck prompt still fails.
+  // dev servers and four sockets share one self-hosted runner. A
+  // player page was once seen 10-20s behind the admin socket, but that
+  // was the hand seeding flooding it with snapshots of a 90-card hand
+  // (#2253), which no longer happens. The wait is bounded well inside
+  // the 90s test.slow() budget, so a genuinely stuck prompt still fails.
   await expect(
     chooser.page.getByRole("dialog", { name: new RegExp(`Select target for ${sourceName}`, "i") }),
   ).toBeVisible({ timeout: 20_000 });
@@ -99,14 +100,8 @@ test.describe("S19 ETB triggers", () => {
     const { admin, caster, opponent } = setup;
 
     // Seed Mulldrifter into the caster's hand FIRST, then capture
-    // the pre-move hand size — the seed step itself drew an
-    // unpredictable number of cards out of the library, so any
-    // baseline taken before seeding would be off by N.
+    // the pre-move hand size, so the baseline already counts it.
     const mulldrifter = await seedHandWithCard(admin, caster.playerID, CARDS.Mulldrifter);
-    // Seeding drains the library; the ETB draws two, so guarantee
-    // there are two to draw. Done before the baseline below, so the
-    // hand arithmetic still holds.
-    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
     const handBefore = playerByID(admin.snapshot(), caster.playerID).hand.count;
 
     await admin.sendActionAsPlayer(caster.playerID, "move_card", {
@@ -440,26 +435,14 @@ test.describe("S19 ETB triggers", () => {
     setup = await setupS19Game(browser, request);
     const { admin, caster } = setup;
 
-    // Seed Solemn into the hand FIRST, then restock the library
-    // before putting it onto the battlefield.
-    //
-    // This ordering is load-bearing. seedHandWithCard finds a card by
-    // drawing until it surfaces, so an unlucky shuffle leaves the
-    // caster with a one-card library and every Forest stranded in
-    // hand. "Search your library for a basic land" then correctly
-    // finds nothing, and this test fails on deck order rather than on
-    // engine behaviour — which is exactly how it failed the first
-    // time the suite got far enough to run it.
     const solemn = await seedHandWithCard(admin, caster.playerID, CARDS.SolemnSimulacrum);
 
-    // The deck's single Island gets the same treatment for the same
-    // reason, and one more: the search below has to be able to OFFER
-    // it. Drawing until it surfaces and then putting it back is the
-    // only way to pin a named card into a library the wire redacts
-    // (CR 400.2), so this is "guarantee exactly one Island is in the
-    // library", not "hope the shuffle cooperated".
+    // The search below has to be able to OFFER the deck's single
+    // Island, so it must be in the library, and the opening hand may
+    // have drawn it. Putting it into the hand and back makes "exactly
+    // one Island is in the library" a fact, not a hope about the
+    // shuffle.
     await seedHandWithCard(admin, caster.playerID, CARDS.Island);
-    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 3);
     await returnToLibrary(admin, caster.playerID, CARDS.Island, 1);
     const stocked = playerByID(admin.snapshot(), caster.playerID);
     expect(stocked.library.count).toBeGreaterThanOrEqual(4);
@@ -565,11 +548,9 @@ test.describe("S19 ETB triggers", () => {
       "library",
       "battlefield",
     );
-    // Capture library count AFTER the seed-and-move step settles,
-    // BEFORE we resolve the prompt. The seed step drew an unknown
-    // number of cards into the caster's hand; we want to assert
-    // that the decline path doesn't fetch anything else from the
-    // library on top of that.
+    // Capture library count AFTER the move settles, BEFORE we
+    // resolve the prompt: the decline path must not fetch anything
+    // from the library.
     const promptView = await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).some(
@@ -679,8 +660,8 @@ test.describe("S19 ETB triggers", () => {
     setup = await setupS19Game(browser, request);
     const { admin, caster, opponent } = setup;
 
-    // Stage the Tithe under the opponent AFTER any hand seeding —
-    // seeding draws cards, and each draw would trigger it.
+    // Stage the Tithe before anything else: the only draw this test
+    // makes is the one below that is meant to trigger it.
     await adminMoveByName(admin, opponent.playerID, CARDS.SmotheringTithe, "library", "battlefield");
     await admin.waitFor(
       (v) => findCardOnBattlefield(v, CARDS.SmotheringTithe) !== null,
@@ -739,8 +720,6 @@ test.describe("S19 ETB triggers", () => {
     const { admin, caster, opponent } = setup;
 
     const temple = await seedHandWithCard(admin, caster.playerID, CARDS.TempleOfMystery);
-    // Seeding drains the library; a scry needs a card to look at.
-    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 2);
     await admin.sendActionAsPlayer(caster.playerID, "move_card", {
       src: { kind: "hand", owner: caster.playerID },
       dst: { kind: "battlefield" },

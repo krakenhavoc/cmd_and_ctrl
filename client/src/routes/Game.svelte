@@ -51,13 +51,15 @@
   import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
-  import type { GameMenuOptions } from "../lib/gameMenu";
+  import { TABLE_ROLL_COOLDOWN_MS, type GameMenuOptions, type TableDie } from "../lib/gameMenu";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import { confirmAction } from "../lib/dock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
+  import OpeningRollBanner from "../lib/components/board/OpeningRollBanner.svelte";
+  import OpeningRollDock from "../lib/components/board/OpeningRollDock.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import {
@@ -78,6 +80,7 @@
     owesAttackRequirement,
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
+  import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
     attackAllParams,
     attackLimitOn,
@@ -103,6 +106,12 @@
     pressBluff,
     setBluffStatus,
   } from "../lib/bluff";
+  import {
+    combinedPassDelayMs,
+    noteStackSeen,
+    setStackHoldStatus,
+    stackHoldRemainingMs,
+  } from "../lib/stackHold";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -112,11 +121,17 @@
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
+  import { provideDiceQueue } from "../lib/diceQueue.svelte";
 
   interface Props {
     gameID: string;
   }
   const { gameID }: Props = $props();
+
+  // ADR 0121 §7: one dice schedule for the screen. The board's dice
+  // layer fills it and draws from it; the strip's roll cue waits on it.
+  const diceQueue = provideDiceQueue();
+  onDestroy(() => diceQueue.dispose());
 
   // Build the WS URL from the stored session + route. Query string
   // carries the session token (browsers can't send Authorization on
@@ -319,43 +334,76 @@
   let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
 
-  // #1307 timed bluff. Plain (non-reactive) on purpose: the timer is a
-  // side effect of the decision, not an input to it. `seq` is the frame
-  // the bluff was rolled on, so a re-run on the same frame keeps the
-  // same delay; `sent` is the client's action count at that moment, so
-  // any action the viewer sends in the meantime calls the pass off.
-  let pendingBluff: { seq: number; sent: number; timer: ReturnType<typeof setTimeout> } | null =
-    null;
+  // #1307 timed bluff, and ADR 0119 §2's stack hold: both are an
+  // automatic pass that waits. Plain (non-reactive) on purpose: the
+  // timer is a side effect of the decision, not an input to it. `seq`
+  // is the frame the wait was armed on, so a re-run on the same frame
+  // keeps the same delay; `sent` is the client's action count at that
+  // moment, so any action the viewer sends in the meantime calls the
+  // pass off; `kind` says which line the action dock shows.
+  type PassWait = "bluff" | "hold";
+  let pendingPass: {
+    seq: number;
+    sent: number;
+    kind: PassWait;
+    timer: ReturnType<typeof setTimeout>;
+  } | null = null;
   let latestGates: AutopassGates | null = null;
 
-  function cancelBluffTimer(): void {
-    if (pendingBluff) clearTimeout(pendingBluff.timer);
-    pendingBluff = null;
-  }
-  function cancelBluff(): void {
-    cancelBluffTimer();
-    setBluffStatus(null);
+  // ADR 0119 §2: when this client first saw each item on the stack.
+  // Plain, like pendingPass; refreshed on every frame by the autopass
+  // effect below, which prunes the items that have left.
+  let stackSeen = new Map<string, number>();
+
+  // holdLeft is the rest of the stack hold for the current frame.
+  function holdLeft(now: number): number {
+    return stackHoldRemainingMs({
+      view,
+      viewerID,
+      firstSeen: stackSeen,
+      holdMs: $settings.gameplay.stackHoldMs,
+      now,
+    });
   }
 
-  // armTimedBluff starts the countdown for this frame, once.
-  function armTimedBluff(minMs: number, maxMs: number): void {
+  function cancelPassTimer(): void {
+    if (pendingPass) clearTimeout(pendingPass.timer);
+    pendingPass = null;
+  }
+  function setPassStatus(kind: PassWait | null, passesAt = 0): void {
+    setBluffStatus(kind === "bluff" ? { manual: false, passesAt } : null);
+    setStackHoldStatus(kind === "hold" ? { passesAt } : null);
+  }
+  function cancelPendingPass(): void {
+    cancelPassTimer();
+    setPassStatus(null);
+  }
+
+  // armTimedPass starts the countdown for this frame, once per kind.
+  function armTimedPass(kind: PassWait, delayFor: () => number): void {
     const seq = $lastSeq;
     if (seq === lastAutoPassedSeq) return;
-    if (pendingBluff?.seq === seq) return;
-    cancelBluffTimer();
-    const delay = bluffDelayMs(minMs, maxMs);
-    pendingBluff = { seq, sent: client.actionsSent, timer: setTimeout(fireBluff, delay) };
-    setBluffStatus({ manual: false, passesAt: Date.now() + delay });
+    if (pendingPass?.seq === seq && pendingPass.kind === kind) return;
+    cancelPassTimer();
+    const delay = delayFor();
+    pendingPass = {
+      seq,
+      sent: client.actionsSent,
+      kind,
+      timer: setTimeout(firePendingPass, delay),
+    };
+    setPassStatus(kind, Date.now() + delay);
   }
 
-  // fireBluff is the end of a timed bluff. It passes only if nothing
-  // moved while it waited: the same frame, no pass already sent for
-  // it, no action from the viewer, and the decision still says bluff
-  // (or pass). Anything else and the window belongs to the player.
-  function fireBluff(): void {
-    const p = pendingBluff;
-    pendingBluff = null;
-    setBluffStatus(null);
+  // firePendingPass is the end of a timed bluff or a stack hold. It
+  // passes only if nothing moved while it waited: the same frame, no
+  // pass already sent for it, no action from the viewer, and the
+  // decision still says pass (or a timed bluff). Anything else and the
+  // window belongs to the player.
+  function firePendingPass(): void {
+    const p = pendingPass;
+    pendingPass = null;
+    setPassStatus(null);
     if (!p) return;
     const seq = $lastSeq;
     if (seq !== p.seq || seq === lastAutoPassedSeq) return;
@@ -363,6 +411,13 @@
     if (!latestGates) return;
     const v = autopassDecision(latestGates);
     if (!(v === "pass" || (isBluff(v) && !v.manual))) return;
+    // A timer that fired a moment early waits out the rest of the hold.
+    const left = holdLeft(Date.now());
+    if (left > 0) {
+      pendingPass = { ...p, timer: setTimeout(firePendingPass, left) };
+      setPassStatus(p.kind, Date.now() + left);
+      return;
+    }
     lastAutoPassedSeq = seq;
     client.sendAction("pass_priority");
   }
@@ -370,9 +425,9 @@
   onMount(() => {
     // The in-game bluff switch starts from the settings each game.
     initBluffArmed($settings.gameplay);
-    setBluffStatus(null);
+    setPassStatus(null);
   });
-  onDestroy(cancelBluff);
+  onDestroy(cancelPendingPass);
 
   // The gates and the verdict are derived, not computed inside the
   // effect below, because ADR 0105 §3 reads the verdict too: a frame
@@ -432,6 +487,8 @@
       alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
+      // ADR 0118 owner decision 8: stop if the engine may be wrong.
+      engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,
       oppEndWindow: kw.oppEnd,
       // #1307: a bluff needs the setting AND the in-game switch.
@@ -448,18 +505,36 @@
     latestGates = gates;
     const verdict = autopassVerdict;
 
+    // ADR 0119 §2: note the frame's stack before anything decides, so
+    // an item's hold is measured from the first frame that showed it,
+    // whoever held priority then.
+    const now = Date.now();
+    stackSeen = noteStackSeen(stackSeen, view, now);
+    const hold = holdLeft(now);
+
     if (isBluff(verdict)) {
       if (verdict.manual) {
         // A manual bluff is a hold the action dock labels; next is
         // the pass.
-        cancelBluffTimer();
+        cancelPassTimer();
+        setStackHoldStatus(null);
         setBluffStatus({ manual: true });
       } else {
-        armTimedBluff(gp.bluffDelayMinMs, gp.bluffDelayMaxMs);
+        // A timed bluff and the stack hold end in the same pass: the
+        // longer of the two waits, not their sum.
+        armTimedPass("bluff", () =>
+          combinedPassDelayMs(bluffDelayMs(gp.bluffDelayMinMs, gp.bluffDelayMaxMs), hold),
+        );
       }
       return;
     }
-    cancelBluff();
+    if (verdict === "pass" && hold > 0) {
+      // ADR 0119 §2: someone else's item has not been up for the hold
+      // yet. Wait out the rest; `next` still passes at once.
+      armTimedPass("hold", () => hold);
+      return;
+    }
+    cancelPendingPass();
 
     if (verdict === "hold") return;
     if (verdict === "clear-toggle") {
@@ -521,8 +596,9 @@
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
 
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
-    // Acting ends a bluff: the viewer has taken the window.
-    cancelBluff();
+    // Acting ends a bluff or a stack hold: the viewer has taken the
+    // window.
+    cancelPendingPass();
     // #1296: activate_ability is stamped too — see manaEnforcement.ts.
     if (type === "cast_spell" || type === "activate_ability") {
       params = stampManaEnforcement(
@@ -551,7 +627,14 @@
   // proceed without touching the pool). Cleared when the next
   // snapshot or non-mana error arrives. lastError is already
   // destructured at the top of this script from the GameClient.
-  let manaOverride = $state<{ cardID: string; missing: string[] } | null>(null);
+  //
+  // ADR 0118 §1: `autoTapped` is read from the refused payload, not
+  // from the setting. A cast that already had auto_tap (every clicked
+  // cast under strict) found no plan, so the request drops "Auto-tap &
+  // cast" and Cancel becomes its primary.
+  let manaOverride = $state<{ cardID: string; missing: string[]; autoTapped: boolean } | null>(
+    null,
+  );
   $effect(() => {
     const err = $lastError;
     if (!err) {
@@ -562,7 +645,11 @@
       manaOverride = null;
       return;
     }
-    manaOverride = { cardID: err.cardID, missing: err.missing ?? [] };
+    manaOverride = {
+      cardID: err.cardID,
+      missing: err.missing ?? [],
+      autoTapped: lastCastByCardID.get(err.cardID)?.auto_tap === true,
+    };
   });
   // ADR 0093 Decision 5: a stale ability ref. The row the player
   // clicked moved because a granted ability appeared or vanished since
@@ -728,9 +815,17 @@
   // KeptHand. The dialog blocks the viewer's normal toolbar until
   // they commit. The viewer can still see the table, chat, etc.
   const mulligansOpen = $derived(view?.mulligans_open === true);
+  // ADR 0121 §1: the opening roll comes first. While it is open the
+  // mulligan window is open too (the turn is parked the same way), but
+  // no hand has been dealt, so the mulligan sheet and its roll call wait.
+  const openingRollOpen = $derived(!!view?.opening_roll);
   const openingRoll = $derived(openingRollWinner(view));
   const viewerNeedsToDecide = $derived(
-    mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
+    mulligansOpen &&
+      !openingRollOpen &&
+      !!viewerSeat &&
+      !viewerSeat.eliminated &&
+      !viewerSeat.hand_kept,
   );
 
   // Pre-game deck-import modal (S08.5 wave 1). A player who accepted
@@ -795,7 +890,7 @@
   }
 
   function passPriority(): void {
-    cancelBluff();
+    cancelPendingPass();
     client.sendAction("pass_priority");
   }
 
@@ -820,6 +915,26 @@
   // S31 sub-PR 0: the public game log drawer. Local to the tab —
   // whether you have the log open is not table state.
   let showGameLog = $state(false);
+  // ADR 0121 §5: the ⋯ menu's "Roll a d6", "Roll a d20" and "Flip a
+  // coin". Not a game action, so it is sent straight to the client: it
+  // ends no bluff and no stack hold. The items wait 2 s after the
+  // viewer's own roll, as the server does; the die tumbles at this seat
+  // when the frame with its result arrives (DiceLayer).
+  let tableRollCooling = $state(false);
+  let tableRollTimer: ReturnType<typeof setTimeout> | null = null;
+  function rollAtTable(die: TableDie): void {
+    if (!viewerID || tableRollCooling) return;
+    client.sendAction("roll_table_die", viewerID, { die });
+    tableRollCooling = true;
+    if (tableRollTimer !== null) clearTimeout(tableRollTimer);
+    tableRollTimer = setTimeout(() => {
+      tableRollTimer = null;
+      tableRollCooling = false;
+    }, TABLE_ROLL_COOLDOWN_MS);
+  }
+  onDestroy(() => {
+    if (tableRollTimer !== null) clearTimeout(tableRollTimer);
+  });
   // The ⋯ menu's "Mulligan to N" (lib/gameMenu.ts clamps N).
   function mulligan(n: number): void {
     if (!viewerID) return;
@@ -1212,6 +1327,20 @@
     client.sendAction("keep_hand", viewerID);
   }
 
+  // ADR 0121 §3: the opening roll's three verbs. The host's button is
+  // not player-scoped (the server records whoever pressed it).
+  function rollOpening(): void {
+    if (!viewerID) return;
+    client.sendAction("roll_opening", viewerID);
+  }
+  function hostRollRemaining(): void {
+    client.sendAction("host_roll_remaining");
+  }
+  function chooseStartingPlayer(seat: number): void {
+    if (!viewerID) return;
+    client.sendAction("choose_starting_player", viewerID, { seat });
+  }
+
   function mulliganDecide(): void {
     if (!viewerID) return;
     // Simplified London — redraw to OpeningHandSize (7) every time.
@@ -1375,11 +1504,16 @@
   );
   const manaDockRequest = $derived(
     manaOverride
-      ? insufficientManaRequest(manaOverride.missing, cardNameAnywhere(manaOverride.cardID), {
-          onAutoTap: openAutoTap,
-          onCastAnyway: castAnyway,
-          onCancel: dismissManaOverride,
-        })
+      ? insufficientManaRequest(
+          manaOverride.missing,
+          cardNameAnywhere(manaOverride.cardID),
+          {
+            onAutoTap: openAutoTap,
+            onCastAnyway: castAnyway,
+            onCancel: dismissManaOverride,
+          },
+          { autoTapped: manaOverride.autoTapped },
+        )
       : null,
   );
   // ---- Inline choices in the action dock (ADR 0111 PR 5) ----
@@ -1447,6 +1581,11 @@
     adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
+    tableRoll:
+      dockShown && !viewerEliminated && view?.state === "active"
+        ? { ready: !tableRollCooling }
+        : null,
+    onTableRoll: rollAtTable,
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,
@@ -1713,7 +1852,7 @@
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot
                  reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
-            <BotFeed chat={$chat} />
+            <BotFeed chat={$chat} {seats} />
 
             <!-- S22 broadcast reveals (CR 701.20). The strip rather than
                  a modal on purpose: a reveal asks nobody a question, and
@@ -1727,7 +1866,11 @@
                  the combat-selection hint are the action dock's
                  requests now (lib/combatDock.ts), not the strip's. -->
 
-            {#if mulligansOpen && !gameEnded}
+            {#if openingRollOpen && !gameEnded}
+              <!-- ADR 0121 §6: the opening roll, before any hand is
+                   dealt. Everyone sees it, spectators included. -->
+              <OpeningRollBanner {view} />
+            {:else if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
                 <span class="att-label">Opening hands</span>
                 {#if openingRoll}
@@ -1886,6 +2029,16 @@
       {#if dockShown}
         <!-- The dock's requests (lib/dock.ts). Each is open for as long
              as its block is mounted; the dock draws the strongest. -->
+        {#if openingRollOpen && !gameEnded}
+          <OpeningRollDock
+            {view}
+            viewerSeat={viewerSeat && !viewerSeat.eliminated ? viewerSeat.seat : null}
+            isHost={canManage}
+            onRoll={rollOpening}
+            onRollForEveryone={hostRollRemaining}
+            onChoose={chooseStartingPlayer}
+          />
+        {/if}
         {#if attackDockRequest}
           <DockRequest request={attackDockRequest} />
         {/if}

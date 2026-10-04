@@ -29,6 +29,12 @@ import {
   seatLabel,
 } from "./attackAll";
 import { grantedFromLabel } from "./abilityRef";
+import { CAST_ANYWAY_LABEL, CAST_ANYWAY_TITLE } from "./castAnyway";
+import {
+  castStripCastAnywayBlocked,
+  castStripEntries,
+  castStripOffersCastAnyway,
+} from "./castStrip";
 import {
   attackersDefendedBy,
   attackTargetHint,
@@ -58,6 +64,9 @@ import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
   canPayLoyaltyCost,
+  castAnywayBlocked,
+  castAnywayOffered,
+  type CastAnywayZone,
   hasSatisfiableTargets,
   loyaltyOf,
 } from "./timing";
@@ -180,6 +189,10 @@ export interface MenuItem {
   action?: MenuAction;
   prompt?: MenuPrompt;
   activate?: MenuActivate;
+  // ADR 0118 §2: the "Cast anyway (don't pay)" row, out of this zone. It
+  // hands the card to the Board's confirmation (castAnyway.ts) rather
+  // than sending anything: the cast chain and the dock are the Board's.
+  castAnyway?: CastAnywayZone;
   // Leave the menu open after firing. Set on the incremental rows
   // (counters, damage) because "add three +1/+1 counters" is three
   // clicks and re-opening the menu between each would be hostile.
@@ -332,15 +345,35 @@ export function menuManaRows(
 
 // BattlefieldClickIntent is what a plain left-click on a battlefield
 // permanent does once the intercepts (targeting, the combat selects,
-// an attack on a listed target, a block) have passed (ADR 0117 §1).
+// an attack on a listed target, a block) have passed (ADR 0117 §1, as
+// amended on 2026-10-04 by #2201).
 //
-//	"popover" — open the card's light ability popover at the card: it
-//	            has a usable activated ability, loyalty ability or
-//	            special action (owner answer 2)
-//	"mana"    — tap it FOR mana (#1438): only mana rows are usable
-//	"tap"     — Alt-click: a raw tap / untap, the sandbox escape hatch
-//	"none"    — nothing on the card can be used right now
-export type BattlefieldClickIntent = "popover" | "mana" | "tap" | "none";
+//	"activate" — the card has exactly one usable row, and it is not a
+//	             mana row: activate it, through the path the popover's
+//	             row takes (#2201)
+//	"popover"  — open the card's light ability popover at the card: it
+//	             has two or more usable rows, one of them not a mana
+//	             row (owner answer 2)
+//	"mana"     — tap it FOR mana (#1438): only mana rows are usable
+//	"tap"      — Alt-click: a raw tap / untap, the sandbox escape hatch
+//	"none"     — nothing on the card can be used right now
+export type BattlefieldClickIntent = "activate" | "popover" | "mana" | "tap" | "none";
+
+// LoneAbilityRow is the one usable row an "activate" click acts on, in
+// the shape the popover's row hands it on: an activated row (own,
+// granted, loyalty or any-player) by its index, for the board's
+// activation flow (costs, X, modes, targets); a special action or a
+// manual loyalty row by the action its row sends.
+export type LoneAbilityRow =
+  | { kind: "activated"; index: number }
+  | { kind: "special"; action: MenuAction }
+  | { kind: "loyalty"; action: MenuAction };
+
+// BattlefieldClickPlan is the click rule's answer: the intent, and for
+// "activate" the row it activates.
+export type BattlefieldClickPlan =
+  | { intent: "activate"; row: LoneAbilityRow }
+  | { intent: Exclude<BattlefieldClickIntent, "activate"> };
 
 // BattlefieldClickOptions carries what the click rule cannot read off
 // the card. The row inputs are the ones the popover is drawn with
@@ -362,7 +395,7 @@ export interface BattlefieldClickOptions {
   legalGate?: LegalActions;
 }
 
-// battlefieldClickIntent is ADR 0117's click rule. The table is
+// battlefieldClickPlan is ADR 0117's click rule. The table is
 // automated now, so a left-click does what the card does, and a card
 // with nothing to do does nothing instead of turning sideways.
 //
@@ -376,22 +409,33 @@ export interface BattlefieldClickOptions {
 //   1. Alt-click raw-taps wherever canOverride holds (an admin's too).
 //   2. The usable rows are worked out with the one predicate
 //      (abilityRowBlocked, through abilityPopoverModel) the popover
-//      greys with. For a permanent the viewer does not control, only
-//      its any-player rows count (CR 602.2, ADR 0106 §1). Who the
+//      greys with, and counted the way the popover lists them: special
+//      actions, mana rows, activated rows (own, granted, loyalty,
+//      any-player) and manual loyalty rows. The Sandbox Tap / Untap
+//      row never counts. For a permanent the viewer does not control,
+//      only its any-player rows count (CR 602.2, ADR 0106 §1). Who the
 //      card belongs to is the viewer's seat, not canOverride, so an
 //      admin's plain click on another seat's permanent no longer taps.
-//   3. Any usable non-mana row (activated, loyalty, manual loyalty,
-//      special action): the popover.
-//   4. Otherwise any usable mana row: the mana path (manaClickPlan).
-//   5. Otherwise nothing.
-export function battlefieldClickIntent(
+//   3. Exactly one usable row, and it is not a mana row: activate it
+//      (#2201, the 2026-10-04 amendment). A fetch land fetches,
+//      Prodigal Sorcerer starts its targeting, an Equipment's lone
+//      Equip starts its creature choice. Its costs are paid as from the
+//      popover, at once; the table's Undo covers a misclick (#2201
+//      owner answer 2).
+//   4. Two or more usable rows, one of them not a mana row: the
+//      popover (ADR 0117 owner answer 2).
+//   5. Otherwise any usable mana row: the mana path (manaClickPlan),
+//      which activates a lone mana ability at once and never chooses
+//      silently between two.
+//   6. Otherwise nothing.
+export function battlefieldClickPlan(
   card: CardView,
   viewerID: string | null,
   isAdmin: boolean,
   opts: BattlefieldClickOptions = {},
-): BattlefieldClickIntent {
-  if (opts.rawTap && canOverride(card, viewerID, isAdmin)) return "tap";
-  if (!viewerID) return "none";
+): BattlefieldClickPlan {
+  if (opts.rawTap && canOverride(card, viewerID, isAdmin)) return { intent: "tap" };
+  if (!viewerID) return { intent: "none" };
   const model = abilityPopoverModel({
     card,
     viewerID,
@@ -403,20 +447,47 @@ export function battlefieldClickIntent(
     activated: true,
     special: !!opts.special,
   });
-  if (popoverHasUsableNonMana(model)) return "popover";
-  if (model.mana.some((r) => !r.blocked)) return "mana";
-  return "none";
+  const nonMana = usableNonManaRows(model);
+  const mana = model.mana.filter((r) => !r.blocked).length;
+  if (nonMana.length === 1 && mana === 0) return { intent: "activate", row: nonMana[0] };
+  if (nonMana.length > 0) return { intent: "popover" };
+  if (mana > 0) return { intent: "mana" };
+  return { intent: "none" };
+}
+
+// battlefieldClickIntent is battlefieldClickPlan's intent alone.
+export function battlefieldClickIntent(
+  card: CardView,
+  viewerID: string | null,
+  isAdmin: boolean,
+  opts: BattlefieldClickOptions = {},
+): BattlefieldClickIntent {
+  return battlefieldClickPlan(card, viewerID, isAdmin, opts).intent;
+}
+
+// usableNonManaRows: the popover's rows other than its mana rows that
+// can be used right now, in the popover's order (special actions,
+// activated rows, manual loyalty rows). The sandbox Tap / Untap row is
+// never one: it is on every permanent the viewer controls (ADR 0117
+// §3).
+export function usableNonManaRows(model: AbilityPopoverModel): LoneAbilityRow[] {
+  const out: LoneAbilityRow[] = [];
+  for (const i of model.special) {
+    if (!i.disabled && i.action) out.push({ kind: "special", action: i.action });
+  }
+  for (const r of model.activated) {
+    if (!r.blocked) out.push({ kind: "activated", index: r.a.index });
+  }
+  for (const i of model.loyalty) {
+    if (!i.disabled && i.action) out.push({ kind: "loyalty", action: i.action });
+  }
+  return out;
 }
 
 // popoverHasUsableNonMana: a row in the popover other than a mana row
-// can be used right now. The sandbox Tap / Untap row never counts: it
-// is on every permanent the viewer controls (ADR 0117 §3).
+// can be used right now.
 export function popoverHasUsableNonMana(model: AbilityPopoverModel): boolean {
-  return (
-    model.special.some((i) => !i.disabled) ||
-    model.activated.some((r) => !r.blocked) ||
-    model.loyalty.some((i) => !i.disabled)
-  );
+  return usableNonManaRows(model).length > 0;
 }
 
 export function zoneRefFor(zone: MenuZone, ownerID: string): MenuZoneRef {
@@ -1584,16 +1655,17 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
     label: d.label,
     action: buildMoveAction(card, location, d),
   }));
-  // CR 903.9 — route a commander leaving the battlefield through the
-  // replacement pipeline instead of dropping it straight in the
-  // command zone. #164 (shipped in #171) made that replacement fire
-  // on every path, and this manual trigger keeps it testable by hand.
+  // CR 903.9a (ADR 0115) — the commander dies into its owner's
+  // graveyard, so every dies trigger sees it, and `as_commander`
+  // answers the state-based action's "put it into the command zone?"
+  // with yes in the same click, rather than dropping the card straight
+  // into the command zone.
   if (card.is_commander && location.zone === "battlefield") {
     const gy: MoveDest = { id: "graveyard", label: "Graveyard", zone: "graveyard" };
     items.push({
       id: "move-commander-903-9",
-      label: "Graveyard → command zone (CR 903.9)",
-      hint: "fires the commander-zone replacement rather than moving directly",
+      label: "Graveyard → command zone (CR 903.9a)",
+      hint: "dies first, so dies triggers see it, then goes to the command zone",
       action: buildMoveAction(card, location, gy, true),
     });
   }
@@ -1695,6 +1767,48 @@ export function specialActionItems(
   return readyFirst(items, (i) => i.ready === true);
 }
 
+// ---- Cast anyway (don't pay), ADR 0118 §2 -----------------------------
+//
+// castAnywayItem is the row, for the popover's Sandbox section and for
+// the admin override menu's "cast" section: one builder for both, as
+// specialActionItems is. `blocked` is timing.ts castAnywayBlocked's
+// reason ("" for a live row): the row is greyed only for what would
+// refuse the cast whatever the pool held, never for the mana. The label
+// is a contract (AGENTS.md §5).
+export function castAnywayItem(blocked: string, zone: CastAnywayZone = "hand"): MenuItem {
+  return {
+    id: "cast-anyway",
+    label: CAST_ANYWAY_LABEL,
+    hint: blocked || CAST_ANYWAY_TITLE,
+    disabled: blocked !== "" || undefined,
+    castAnyway: zone,
+  };
+}
+
+// castAnywayMenuItem is the admin override menu's row for one card, or
+// null when the card offers none: the viewer's own hand card with a
+// castable face, or a card the castable-from-other-zones strip holds (a
+// commander, or an exile entry whose verb is "cast"), exactly the cards
+// whose popover carries it.
+function castAnywayMenuItem(
+  view: GameView,
+  card: CardView,
+  zone: MenuZone,
+  viewerID: string | null,
+): MenuItem | null {
+  if (!viewerID) return null;
+  if (zone === "hand") {
+    if (card.owner !== viewerID || !castAnywayOffered(card, "hand")) return null;
+    return castAnywayItem(castAnywayBlocked(card, view, viewerID, "hand"), "hand");
+  }
+  if (zone !== "command" && zone !== "exile") return null;
+  const entry = castStripEntries(view, viewerID).find(
+    (e) => e.zone === zone && e.card.instance_id === card.instance_id,
+  );
+  if (!entry || !castStripOffersCastAnyway(entry)) return null;
+  return castAnywayItem(castStripCastAnywayBlocked(entry, view, viewerID), zone);
+}
+
 // buildMenuSections is the whole menu for one card, in render order.
 // An empty result means "the viewer may not override this card" and
 // the component says so rather than showing a bare frame.
@@ -1711,6 +1825,10 @@ export function buildMenuSections(
   // control. Read for those rows only; the controller's and the admin's
   // menus never grey on the digest. Omitted: no information.
   gate: LegalActions = NO_LEGAL_ACTIONS,
+  // ADR 0118 §2: the viewer's `gameplay.strictMana`. On, a card the
+  // viewer could cast gets the "Cast anyway (don't pay)" row in a
+  // "cast" section above "move to". Omitted: off, no row.
+  strictMana = false,
 ): MenuSection[] {
   const location = locateCard(view, card.instance_id);
   if (!location) return [];
@@ -1775,6 +1893,12 @@ export function buildMenuSections(
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
   }
+
+  // ADR 0118 §2: with admin overrides on, a right-click opens this menu
+  // instead of the popover, so the popover's "Cast anyway (don't pay)"
+  // row is here too, above "move to".
+  const castAnyway = strictMana ? castAnywayMenuItem(view, card, location.zone, viewerID) : null;
+  if (castAnyway) sections.push({ id: "cast", label: "cast", items: [castAnyway] });
 
   sections.push({
     id: "move",

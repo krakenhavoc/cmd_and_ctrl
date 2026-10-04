@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManaCost from "./ManaCost.svelte";
   // HoverZoomOverlay is the floating card-detail panel anchored at
   // (0.8, 0.2) of the board area — top-right quadrant. Driven by the
   // module-scope `hoveredCard` store written from Card.svelte.
@@ -194,7 +195,8 @@
       </header>
       <div class="type-line">
         {#if meta?.type_line}<span>{meta.type_line}</span>{/if}
-        {#if meta?.mana_cost}<span class="cost">{meta.mana_cost}</span>{/if}
+        {#if meta?.mana_cost}<span class="cost"><ManaCost cost={meta.mana_cost} size={13} /></span
+          >{/if}
       </div>
       {#if meta?.oracle_text}
         <div class="oracle">{meta.oracle_text}</div>

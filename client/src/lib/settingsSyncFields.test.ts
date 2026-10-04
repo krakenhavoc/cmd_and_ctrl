@@ -79,10 +79,16 @@ describe("SYNCED_FIELDS", () => {
     );
   });
 
-  it("syncs art-only cards (#1954) with the other display tastes", () => {
-    expect(SYNCED_FIELDS.display.artOnlyCards).toBe("synced");
+  it("syncs the art-tile choices (#1954, #2209) with the other display tastes", () => {
+    expect(SYNCED_FIELDS.display.battlefieldArt).toBe("synced");
+    expect(SYNCED_FIELDS.display.handArt).toBe("synced");
     expect(SYNCED_FIELDS.display.theme).toBe("synced");
     expect(SYNCED_FIELDS.display.stackStyle).toBe("synced");
+  });
+
+  it("syncs the stack hold (ADR 0119 §2) with the other auto-pass choices", () => {
+    expect(SYNCED_FIELDS.gameplay.stackHoldMs).toBe("synced");
+    expect(SYNCED_FIELDS.gameplay.bluffDelayMinMs).toBe("synced");
   });
 
   it("syncs the two forced practice-table fields that are per person, and not the two that are per device", () => {
@@ -144,7 +150,20 @@ describe("syncedSubset and applySyncedCopy", () => {
       { display: { stackStyle: "removed-style" } },
       SETTINGS_VERSION,
     );
-    expect(next.display.stackStyle).toBe("compact");
+    expect(next.display.stackStyle).toBe("pile");
+  });
+
+  // ADR 0119 §1: an account copy goes through the same migration, with
+  // the version of the client that wrote it.
+  it("an account copy's stack style moves as a stored one does", () => {
+    const at = (style: string, version: number) =>
+      applySyncedCopy(defaultSettings(), { display: { stackStyle: style } }, version).display
+        .stackStyle;
+    expect(at("compact", 15)).toBe("pile");
+    expect(at("compact", 16)).toBe("pile");
+    expect(at("compact", 17)).toBe("compact");
+    expect(at("fan", 15)).toBe("fan");
+    expect(at("ribbon", 16)).toBe("ribbon");
   });
 
   it("canonicalJSON ignores key order", () => {

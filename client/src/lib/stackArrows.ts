@@ -22,6 +22,7 @@
 // and draws what comes back.
 
 import type { StackLaneItem, StackLaneTargetKind } from "./stackLane";
+import { findAnchor, hasSize } from "./boardAnchor";
 
 export interface Point {
   x: number;
@@ -281,18 +282,14 @@ export function curvePath(c: Curve): string {
 // ---------------------------------------------------------------- //
 // DOM measuring
 
-function hasSize(el: Element): boolean {
-  const r = el.getBoundingClientRect();
-  return r.width > 0 || r.height > 0;
-}
-
 /**
  * The element a target resolves to, or null. A permanent or player is
  * looked for on the board OUTSIDE the lane (the lane never carries
  * those attributes today, but a style that did must not point at
  * itself); a stack target only inside it. An element with no size —
  * a collapsed seat, a hidden duplicate — is passed over: there is
- * nothing on screen to point at.
+ * nothing on screen to point at. A board target goes through
+ * boardAnchor, so an expanded overlay's copy wins (ADR 0120 §3).
  */
 export function findTarget(
   board: ParentNode,
@@ -305,11 +302,7 @@ export function findTarget(
     const el = lane.querySelector<HTMLElement>(sel);
     return el && hasSize(el) ? el : null;
   }
-  for (const el of board.querySelectorAll<HTMLElement>(sel)) {
-    if (lane.contains(el)) continue;
-    if (hasSize(el)) return el;
-  }
-  return null;
+  return findAnchor(board, sel, { accept: (el) => !lane.contains(el) && hasSize(el) });
 }
 
 /** A board element the lane is pointing at, for the highlight ring. */
@@ -432,4 +425,72 @@ export function syncTargetMarks(
     el.style.removeProperty(TARGET_RING_VAR);
   }
   return now;
+}
+
+// ---------------------------------------------------------------- //
+// Rings in every style (ADR 0119 §4)
+//
+// The fan and the pile used to ring what they pointed at themselves,
+// from their own arrows, so compact, spotlight and ribbon rang
+// nothing. The ring is now one board-wide job (StackTargetRings.svelte)
+// for every style, compact included, read from the stack model rather
+// than from any style's arrows.
+
+/** A board target the stack rings, before it is found in the DOM. */
+export interface TargetMarkPlan {
+  kind: "permanent" | "player";
+  id: string;
+  color: string;
+  fromTop: boolean;
+}
+
+/**
+ * The board targets the stack rings: every permanent and player a
+ * stack item targets, once each. The top item's colour (gold) wins
+ * over a lower item's, as it does for the fan's arrows; otherwise the
+ * first item to reach a target colours it. A `stack` or `card` target
+ * gets no ring here: a stack item is marked on its own row, and a
+ * graveyard or exiled card has no place on the table.
+ */
+export function planTargetMarks(items: readonly StackLaneItem[]): TargetMarkPlan[] {
+  const out = new Map<string, TargetMarkPlan>();
+  for (const plan of planArrows(items)) {
+    if (plan.targetKind !== "permanent" && plan.targetKind !== "player") continue;
+    const key = `${plan.targetKind}:${plan.targetID}`;
+    const prev = out.get(key);
+    if (prev && (prev.fromTop || !plan.fromTop)) continue;
+    out.set(key, {
+      kind: plan.targetKind,
+      id: plan.targetID,
+      color: plan.color,
+      fromTop: plan.fromTop,
+    });
+  }
+  return [...out.values()];
+}
+
+/** The stack's own surfaces: a ring never lands inside them. */
+const STACK_SURFACES = ".stack-lane, [data-stack-body], [data-stack-item-id]";
+
+/**
+ * planTargetMarks found on the board: each target's element through
+ * boardAnchor (an expanded overlay's copy first, ADR 0120 §3), passing
+ * over an element with no size and anything drawn inside the stack's
+ * own surfaces. A target that is not on screen is left out.
+ */
+export function findTargetMarks(
+  board: ParentNode,
+  items: readonly StackLaneItem[],
+): MarkedTarget[] {
+  const out: MarkedTarget[] = [];
+  const seen = new Set<HTMLElement>();
+  for (const plan of planTargetMarks(items)) {
+    const el = findAnchor(board, targetSelector(plan.kind, plan.id), {
+      accept: (e) => hasSize(e) && e.closest(STACK_SURFACES) === null,
+    });
+    if (!el || seen.has(el)) continue;
+    seen.add(el);
+    out.push({ el, color: plan.color, fromTop: plan.fromTop });
+  }
+  return out;
 }

@@ -99,8 +99,8 @@ test.describe("#1789 ready highlights", () => {
       const me = activeID === first.playerID ? first : second;
 
       // --- stage the hand and the mana -------------------------------
-      // seedHandWithCard draws until the named card surfaces, so the
-      // hand fills up with Forests on the way.
+      // seedHandWithCard moves each card straight out of the library;
+      // the Forests come from the opening hand, topped up below.
       const bears = await seedHandWithCard(admin, me.playerID, CASTABLE);
       const wurm = await seedHandWithCard(admin, me.playerID, TOO_DEAR);
 

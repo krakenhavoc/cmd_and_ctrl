@@ -145,9 +145,11 @@ describe("Game.svelte's strictMana stamp", () => {
       instance_id: "spell",
       strict: false,
     });
+    // ADR 0118 §1: under strict a clicked cast auto-taps, as a drag does.
     expect(stampManaEnforcement("cast_spell", clicked, true)).toEqual({
       instance_id: "spell",
       strict: true,
+      auto_tap: true,
     });
   });
 });

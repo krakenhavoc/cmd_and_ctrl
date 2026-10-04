@@ -514,8 +514,9 @@ type CastSpellParams struct {
 	// tap-and-fill before the strict-mode cost check. Implies
 	// Strict — the auto-tapper exists to make a strict-gated cast
 	// succeed without manually clicking each land. The server
-	// runs `AutoTapForCostExcluding(controller, cost, x, locked)`
-	// against the caller's untapped permanents, taps each card in
+	// plans what the floating pool is missing (ADR 0118 §1,
+	// autoTapTopUpLocked) against the caller's untapped permanents
+	// other than the locked ones, taps each card in
 	// the returned plan, drops the produced mana into the pool
 	// (with greedy color-picking against the cost requirements),
 	// then proceeds to the normal CanPay/SpendMana flow — all
@@ -752,7 +753,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// below, because overload and cleave rewrite the target clause —
 	// the spell's legality has to be judged under the cost actually
 	// being paid, not under the printed one.
-	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, params.Targets)
+	alt, err := g.resolveAlternativeCostLocked(playerID, card, src.Kind, grant, params.AlternativeCost, params.Targets)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost claim",
 			"card_name", card.Name,
@@ -1377,7 +1378,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs, params.TeamworkIDs, params.BlightIDs); err != nil {
 		return err
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
+	// ADR 0115: of those, only a card the payment puts into a hand or
+	// a library is asked first (CR 903.9b), and the one cast cost that
+	// does is the alternative cost's return to hand (Daze, Gush). A
+	// discarded, sacrificed, pitched, escaped or delved commander is
+	// paid like any other card and offered the command zone afterwards
+	// by the CR 903.9a state-based action.
+	var asking []uuid.UUID
+	if alt != nil && alt.ReturnToHand != nil {
+		asking = params.AltCostIDs
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
 			again.commanderAnswers = answers
@@ -1708,6 +1719,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		CardID:  cardID,
 		OldZone: src.Kind,
 		NewZone: ZoneStack,
+		// ADR 0118 §2: a forced cast is announced as unpaid, so the
+		// log tells the table. ForceCast waives the whole mana gate
+		// (applyCastCostLocked), so the flag alone decides it.
+		Unpaid: params.ForceCast,
 	})
 	// CR 115.3: the objects named at 601.2c have now become targets.
 	// Emitted after EventCast so a "becomes the target" trigger and
@@ -1886,13 +1901,14 @@ func spendStrategyForCast(card Card) ManaSpendStrategy {
 //  2. If the pool already covers the cost, skip — auto-tap is
 //     idempotent on a funded pool.
 //  3. Build the excluded set from LockedSources.
-//  4. Run autoTapLocked to get a plan; if no plan exists, return
-//     a structured InsufficientManaError keyed off the current
+//  4. Run autoTapTopUpLocked to get a plan for what the pool is
+//     missing (ADR 0118 §1); if no plan exists, return a
+//     structured InsufficientManaError keyed off the current
 //     pool's missing list (the auto-tapper itself doesn't carry
 //     a missing-symbols breakdown).
 //  5. Materialise the plan: for each card, tap it and drop its
 //     produced mana into the pool with greedy color-picking
-//     against the still-unsatisfied cost requirements.
+//     against the shortfall the plan was built to pay.
 //
 // Caller must hold g.mu (CastSpell holds the write lock).
 func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) error {
@@ -1928,8 +1944,11 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	// Same context applyCastCostLocked will pay under, so the
 	// "already funded, skip planning" shortcut can't be fooled by
-	// restricted mana this cast cannot legally spend.
-	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
+	// restricted mana this cast cannot legally spend. The top-up below
+	// takes the same shortcut; this one keeps the exclusion list from
+	// being built for a cast that needs no plan.
+	spendCtx := ManaSpendForCast(card)
+	if p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
 		return nil
 	}
 	// The lock-tap reservations, and everything this announcement has
@@ -1947,11 +1966,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// cast it") prefers a source it can read back — a tiebreak in the
 	// planner's ordering and never a filter, so the plan the solver
 	// can find is exactly the plan it could find before.
-	plan, ok := g.autoTapPreferringLocked(p.ID, cost, params.XValue, excluded, WantedManaSourcesFor(card))
+	//
+	// ADR 0118 §1: the plan pays only what the floating pool is
+	// missing, so mana already in the pool is spent first, and it is
+	// colour-picked against that shortfall (autotap_topup.go).
+	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
 	if !ok {
-		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
-	g.materializePlanLocked(p, plan, cost)
+	g.materializePlanLocked(p, plan, short)
 	return nil
 }
 
@@ -2774,7 +2797,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
 	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
-	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
+	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
 	}
@@ -3468,18 +3491,20 @@ func (g *Game) resolveTopAbilityLocked() {
 	g.recomputeSplitSecondLocked()
 	if spellAllTargetsIllegalLocked(g, top) {
 		g.EmitEvent(Event{
-			Kind:   EventFizzle,
-			Actor:  top.Controller,
-			Source: top.SourceCardID,
-			Label:  top.Label,
+			Kind:                EventFizzle,
+			Actor:               top.Controller,
+			Source:              top.SourceCardID,
+			Label:               top.Label,
+			ResolvedStackItemID: top.ID,
 		})
 		return
 	}
 	g.EmitEvent(Event{
-		Kind:   EventResolve,
-		Actor:  top.Controller,
-		Source: top.SourceCardID,
-		Label:  top.Label,
+		Kind:                EventResolve,
+		Actor:               top.Controller,
+		Source:              top.SourceCardID,
+		Label:               top.Label,
+		ResolvedStackItemID: top.ID,
 	})
 	if top.Effect != nil {
 		if err := top.Effect(g, top); err != nil {
@@ -3568,11 +3593,13 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 	// the game already goes.
 	//
 	// #529: both destinations go through the shared exit primitive,
-	// so a commander that fizzles ("countered by game rules", CR
-	// 608.2b) or resolves to a graveyard gets the CR 903.9 choice.
-	// A queued prompt leaves the card on the stack until the owner
-	// answers — priority cannot pass while a choice is outstanding,
-	// so nothing resolves on top of it in the meantime.
+	// so every replacement window sees a spell that fizzles
+	// ("countered by game rules", CR 608.2b) or resolves to a
+	// graveyard. A commander goes to the graveyard like any card and
+	// is offered the command zone afterwards (CR 903.9a, ADR 0115). A
+	// queued replacement prompt leaves the card on the stack until
+	// the owner answers — priority cannot pass while a choice is
+	// outstanding, so nothing resolves on top of it in the meantime.
 	r := zoneRoute{
 		CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner,
 		// #1320: CR 608.2n puts the card away as the last step of its
@@ -4036,8 +4063,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// of the pass reads (CR 704.3); a commander this pass kills is
 	// marked by that move and asked on the next pass. Not "fired": a
 	// question is not an action performed, and runStateChecksLocked
-	// holds the boundary while it is open. A no-op while
-	// commanderReturnSBA is off. See commander_return.go.
+	// holds the boundary while it is open. See commander_return.go.
 	g.commanderReturnSBALocked()
 	// #1199 / CR 702.26, ADR 0084: the "phases out until ~ leaves the
 	// battlefield" family comes back the moment its source is gone —
@@ -4272,8 +4298,8 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		// moment a cancelled destruction counted zero: a permanent whose
 		// destruction the CR 614 window replaced away is still doomed and
 		// still has to be looked at again, and one whose exit is paused on
-		// the CR 903.9 prompt is skipped by the collector above on the next
-		// pass. Both are answered by the set this pass COLLECTED.
+		// a replacement's prompt is skipped by the collector above on the
+		// next pass. Both are answered by the set this pass COLLECTED.
 		fired = true
 	}
 
@@ -4309,7 +4335,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// still on the stack" check sees the settled queue.
 	for _, id := range g.sagasReadyToSacrificeLocked() {
 		// Same re-entry guard as the doomed sweep above: a Saga
-		// commander waiting on the CR 903.9 prompt is still on the
+		// permanent waiting on a replacement's prompt is still on the
 		// battlefield at its final chapter, and sacrificing it a
 		// second time would queue a second prompt and emit a second
 		// EventSacrifice for one sacrifice.
@@ -4951,8 +4977,9 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 // The FIRE-AND-FORGET form. A caller that has to know what the exit
 // actually did — "for each creature destroyed this way" — uses
 // routeBattlefieldExitThenLocked and reads the board from the
-// continuation, because any exit can pause on the CR 903.9 prompt
-// (#815).
+// continuation, because an exit can pause on a replacement's prompt
+// (a commander's CR 903.9b offer for a bounce or a tuck; a death is
+// no longer one, ADR 0115) (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
 	return g.routeBattlefieldExitThenLocked(cardID, nil)
 }
@@ -5006,11 +5033,12 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 	}
 
 	// S17 sub-PR 6: route through the CR 614 replacement pipeline
-	// so the CR 903.9 commander-zone built-in can fire for dies-to-
-	// damage + wrath + SBA destroys. The built-in is Optional, so
-	// when the dying card is a commander the pipeline queues a
-	// yes/no prompt for the owner; the physical move waits for
-	// their answer via ResolveOptionalReplacement.
+	// so every replacement sees dies-to-damage + wrath + SBA
+	// destroys. (Until ADR 0115 the CR 903.9 commander-zone built-in
+	// fired here and asked the owner before the card moved. It is now
+	// a hand-and-library replacement, CR 903.9b: a dying commander
+	// lands in the graveyard and CR 903.9a's state-based action asks
+	// afterwards.)
 	var defaultDest ZoneKind
 	var defaultOwner uuid.UUID
 	if owner == nil {
@@ -5128,7 +5156,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	var actor uuid.UUID
 	switch dest {
 	case ZoneCommand:
-		// CR 903.9 commander-zone replacement landed. Find the
+		// A CR 903.9b commander-zone replacement landed. Find the
 		// owner via the card — defaultOwner may have been empty
 		// when the original owner had left the game.
 		card, ok := g.LookupCardForEffect(cardID)
@@ -5727,19 +5755,20 @@ func (g *Game) recomputeSplitSecondLocked() {
 // would silently wipe a battlefield card's counters on a redundant
 // client-issued no-op move. Detect the same-zone case up front.
 //
-// S13.1: when asCommander is true and the card is a commander
-// being moved to graveyard, exile, hand, or library, the
-// destination is rewritten to the owner's command zone (CR 903.9
-// — commander zone replacement, exercised here as an explicit
-// player choice rather than an automatic engine transform).
+// S13.1, amended by ADR 0115 decision 5: when asCommander is true and
+// the card is a commander moved to a graveyard or exile, it lands there
+// (it dies, if it came from the battlefield) and is then put into its
+// owner's command zone with CR 903.9a's question pre-answered "yes". A
+// move to a hand or a library still asks the CR 903.9b replacement.
 func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 	return g.MoveCardByIDAsCommander(src, dst, cardID, false)
 }
 
 // MoveCardByIDAsCommander is the S13.1 extended form. asCommander
-// is the player's "yes, route this commander back to command zone
-// instead" choice that the move_card action exposes via a
-// per-request flag. The default-false form preserves the historic
+// is the player's "yes, send this commander back to the command zone"
+// choice that the move_card action exposes via a per-request flag: for
+// a graveyard or exile destination it answers CR 903.9a in advance
+// (ADR 0115 decision 5). The default-false form preserves the historic
 // MoveCardByID behaviour for non-commander moves.
 func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
 	g.mu.Lock()
@@ -5821,6 +5850,12 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 			// the move now. Nothing has moved, so there is nothing for
 			// the state checks to see; the resume lands the card.
 			return nil
+		}
+		// ADR 0115 decision 5: as_commander pre-answers CR 903.9a's
+		// "yes" for a commander this move put into a graveyard or exile.
+		// It died (or was exiled) like any other card first.
+		if asCommander {
+			g.returnCommanderPreAnsweredLocked(cardID)
 		}
 		// A sandbox move is a special action: the mover keeps priority
 		// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
@@ -6419,16 +6454,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := g.refusePausedCostCardsLocked(moving, tapping, spending); err != nil {
 		return err
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
-		func(g *Game, answers map[uuid.UUID]bool) error {
-			again := params
-			again.commanderAnswers = answers
-			return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, again)
-		})
-	if asked {
-		return nil
-	}
-	params.commanderAnswers = answers
+	// ADR 0115: nothing a mana ability's cost moves goes to a hand or a
+	// library, so no card is asked CR 903.9b before it begins. A
+	// sacrificed, discarded or exiled commander is paid like any other
+	// card and offered the command zone afterwards by the CR 903.9a
+	// state-based action.
 
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life
@@ -8855,6 +8885,13 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 		return ErrPlayerEliminated
 	}
 	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
+	if g.OpeningRoll != nil {
+		// ADR 0121 §1: nobody is the active player yet, nothing is on
+		// the stack and nobody has a hand, so the seat leaves through
+		// the opening roll's own path.
+		g.leaveOpeningRollLocked(p)
+		return nil
+	}
 	// #1529: whether the trigger queue is being held for a trigger
 	// that is still announcing (see drainPendingTriggersAPNAPLocked).
 	heldForAnnouncement := g.triggerAnnouncementOpenLocked()
@@ -8939,6 +8976,10 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	if g.OpeningRoll != nil {
+		// ADR 0121 §1: no hand has been dealt yet.
+		return ErrOpeningRollOpen
+	}
 	if newHandSize < 0 {
 		return ErrInvalidParam
 	}
@@ -8985,6 +9026,10 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
+	}
+	if g.OpeningRoll != nil {
+		// ADR 0121 §1: no hand has been dealt yet.
+		return ErrOpeningRollOpen
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -9359,9 +9404,45 @@ func (g *Game) SetBot(playerID uuid.UUID, tier, deckID string) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	if p.Agent {
+		return ErrSeatKindTaken
+	}
 	p.IsBot = true
 	p.BotTier = tier
 	p.BotDeck = deckID
+	return nil
+}
+
+// SetAgent marks a seat as played by an AI agent through an MCP client
+// (ADR 0122 §7), with client the name the client declared. The lobby
+// calls it inside the join's own apply, so the first capture that
+// shows the seat already carries the badge.
+//
+// It is one way. There is no ClearAgent and no other writer of
+// Player.Agent: once declared, the badge stays for the life of the
+// game, across every action, restore and undo
+// (TestAgentBadgeHasNoClearingWriter). A second call on a seat that
+// is already an agent keeps the first client name, so a later
+// declaration cannot relabel the seat either. Lobby state only, like
+// SetBot, and refused on a bot seat.
+func (g *Game) SetAgent(playerID uuid.UUID, client string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.IsBot {
+		return ErrSeatKindTaken
+	}
+	if p.Agent {
+		return nil
+	}
+	p.Agent = true
+	p.AgentClient = client
 	return nil
 }
 
@@ -9619,7 +9700,7 @@ func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
 // #707: the bottom now rides the exit primitive's route
 // (zoneRoute.ToBottom) rather than being a post-move reorder. The
 // reorder could not survive a pause — a commander tucked to the bottom
-// paused on the CR 903.9 prompt was still in its old zone when the
+// paused on the CR 903.9b prompt was still in its old zone when the
 // reorder ran, so it found nothing and the card later landed on TOP —
 // and the route already knows how to do this for every effect-side
 // tuck (Condemn, Hinder). Like those, it is honoured only against the

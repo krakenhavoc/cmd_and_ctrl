@@ -62,6 +62,14 @@ const (
 	// declaration's unconditional answer, so a seat whose policy
 	// declines every block still has a move that ends the declaration.
 	KindFinishBlocks Kind = "finish_blocks"
+	// KindOpeningRoll is a move of the opening roll (ADR 0121 §4): a
+	// seat's own d20 (roll_opening) and the winner's choice of who
+	// takes the first turn (choose_starting_player). While the roll is
+	// open these are the only moves anyone is offered, and no hand
+	// exists yet. Its own kind so a policy can recognise the window
+	// without parsing labels, and so nothing that prices game moves
+	// ever prices one.
+	KindOpeningRoll Kind = "opening_roll"
 )
 
 // Wire action types this package emits. Kept as strings rather than
@@ -87,6 +95,11 @@ const (
 	TypeMulligan         = "mulligan"
 	TypeDiscardSelection = "discard_selection"
 	TypeSpecialAction    = "special_action"
+	// ADR 0121 §4: the opening roll's two seat-scoped verbs. Never
+	// host_roll_remaining (a bot is never the host) and never a table
+	// roll (it changes nothing in the game).
+	TypeRollOpening          = "roll_opening"
+	TypeChooseStartingPlayer = "choose_starting_player"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type
@@ -153,6 +166,51 @@ type Move struct {
 	// It is not a general "this move does nothing" detector. See
 	// idleCastHint.
 	IdleHint string `json:"idle_hint,omitempty"`
+
+	// Value marks a move whose answer is an open set the rules state,
+	// rather than one point of it (ADR 0122 §6.2). Nil — almost every
+	// move — means Params is the whole answer. See MoveValue.
+	Value *MoveValue `json:"value,omitempty"`
+}
+
+// Value kinds. Wire tokens, stable once shipped.
+const (
+	// ValueCardName: the move's params.card_name may be any card name
+	// (CR 201.2). The enumerator's names are suggestions; the server
+	// validates a free one as it does a person's — trimmed, non-empty,
+	// at most 200 characters.
+	ValueCardName = "card_name"
+	// ValueX: the move's params.x_value may be any whole number from
+	// Min to Max. Every value in the range is payable with the move's
+	// other params unchanged; the enumerator offers Max.
+	ValueX = "x"
+)
+
+// MoveValue is the open set a move's answer may come from. Only two
+// answers are open sets by the rules and too wide to list point by
+// point: a card name, and X. A move carries one only when every value
+// in the set is an answer the server accepts with the rest of the
+// move's params as they are, so a client that substitutes a value
+// sends a move this package stands behind.
+//
+// Advice about the move, like Cost and IdleHint: never part of the
+// action payload.
+type MoveValue struct {
+	Kind string `json:"kind"`
+	// Min and Max bound an X (ValueX). Absent for a card name.
+	Min *int `json:"min,omitempty"`
+	Max *int `json:"max,omitempty"`
+}
+
+// openX is the MoveValue for an X announced anywhere from lo to hi.
+func openX(lo, hi int) *MoveValue {
+	if lo < 0 {
+		lo = 0
+	}
+	if hi < lo {
+		return nil
+	}
+	return &MoveValue{Kind: ValueX, Min: &lo, Max: &hi}
 }
 
 // MoveCost is the half of a move's price that Params does not carry.
@@ -367,6 +425,22 @@ type Options struct {
 	// creatures do I most want carrying the Ring". Higher sorts
 	// earlier, like OrderTargets.
 	OrderRingBearer RingBearerOrder
+
+	// Source asks for one card's moves only (ADR 0122 §6.2): every move
+	// whose card is this instance, and every block on or by it. Naming
+	// a card also lifts every count cap — MaxExpansionPerSource, MaxX
+	// and the package's own policy caps — to ExpandCeiling, and stops
+	// the list at ExpandCeiling moves. What is still cut is reported in
+	// EnumerateReport's cuts, never hidden.
+	//
+	// uuid.Nil — the default, and what the view and the bot pass —
+	// enumerates the whole seat under the ordinary caps.
+	Source uuid.UUID
+
+	// Choice is Source for a decision that is not a card's: a pending
+	// choice's ID, or CleanupDiscardChoice. It lifts the caps the same
+	// way. When both are set, Choice wins.
+	Choice string
 }
 
 // RingBearerOrder prices one candidate of a ring_bearer prompt for the
@@ -424,6 +498,10 @@ const (
 )
 
 func (o Options) withDefaults() Options {
+	if o.expanding() {
+		o.MaxExpansionPerSource = ExpandCeiling
+		o.MaxX = ExpandCeiling
+	}
 	if o.MaxExpansionPerSource <= 0 {
 		o.MaxExpansionPerSource = defaultMaxExpansionPerSource
 	}
@@ -473,6 +551,18 @@ func EnumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 // enumerateLocked is the lock-held core. Every helper it calls reads
 // through the game's *ForEffect surfaces and never takes g.mu.
 func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
+	e := newEnumerator(g, seat, opts)
+	if e == nil {
+		return nil
+	}
+	e.run()
+	return e.out
+}
+
+// newEnumerator is the enumerator for one seat, or nil when that seat
+// has nothing to enumerate: the game is not active, or the seat is
+// unknown or out of the game.
+func newEnumerator(g *game.Game, seat uuid.UUID, opts Options) *enumerator {
 	if g.State != game.StateActive {
 		return nil
 	}
@@ -481,13 +571,29 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		return nil
 	}
 	e := &enumerator{g: g, p: p, seat: seat, opts: opts}
+	e.leave()
+	return e
+}
+
+// run fills e.out (and e.cuts). Each phase below returns once it has
+// answered the seat's decision.
+func (e *enumerator) run() {
+	g, seat := e.g, e.seat
+
+	// ADR 0121 §1: the opening roll comes before the mulligan, and while
+	// it is open nobody has a hand to keep. The roll's own moves (§4)
+	// are the only ones on offer.
+	if g.OpeningRoll != nil {
+		e.openingRollMoves()
+		return
+	}
 
 	// The mulligan window is its own world: the cursor is parked on
 	// Untap, nobody holds priority, and the only verbs are keep and
 	// mulligan.
 	if g.MulligansOpen {
 		e.mulliganMoves()
-		return e.out
+		return
 	}
 
 	// Pending choices come first and, when one is owed by this seat,
@@ -499,18 +605,18 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 	// the question is already in front of them, and answering it is one
 	// dispatch, after which the next window offers everything else.
 	if e.choiceMoves() {
-		return e.out
+		return
 	}
 	// Somebody else's prompt. Only a blocking one empties this seat's
 	// list, because only a blocking one stops the table (#794).
 	if anyBlockingChoiceOpen(g) {
-		return e.out
+		return
 	}
 	// Cleanup-step discard (CR 514.1): the cursor parks at Cleanup with
 	// no priority holder until the active player discards down to
 	// their maximum hand size. Nothing else is legal meanwhile.
 	if e.cleanupDiscardMoves() {
-		return e.out
+		return
 	}
 
 	holds := holdsPriority(g, seat)
@@ -528,7 +634,8 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		// declare_blockers, the block declaration's checkpoint — the
 		// required blocks are offered as one AlwaysLegal move.
 		if !attackRequirementOwed(g, seat) && !blockRequirementOwed(g, seat) {
-			e.out = append(e.out, Move{
+			e.leave()
+			e.add(Move{
 				Type:        TypePassPriority,
 				Player:      seat,
 				Kind:        KindPass,
@@ -547,7 +654,6 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 	// nobody holds priority — it is parked until the declaration is
 	// over (#1501) — see ADR 0033 §2.
 	e.combatMoves()
-	return e.out
 }
 
 type enumerator struct {
@@ -556,9 +662,32 @@ type enumerator struct {
 	seat uuid.UUID
 	opts Options
 	out  []Move
+
+	// scope is the card or prompt being expanded, and admitted whether
+	// Options.Source / Choice wants its moves (cuts.go). Both are set
+	// by enter and leave at every loop head that walks a card.
+	scope    scope
+	admitted bool
+	// cuts is what the caps left out (ADR 0122 §6.2).
+	cuts []Cut
+	// added counts the moves kept, for ExpandCeiling.
+	added int
+	// report is set by EnumerateReport: only then is any work spent
+	// finding out what a cap cut. EnumerateFor — the bot — leaves it
+	// off and pays nothing for the report it would throw away.
+	report bool
 }
 
-func (e *enumerator) add(m Move) { e.out = append(e.out, m) }
+// add keeps a move, unless a Source or Choice filter does not want the
+// card or prompt it belongs to, or an expanded request is already at
+// ExpandCeiling (which is reported, not hidden).
+func (e *enumerator) add(m Move) {
+	if !e.admitted || e.ceilingFull() {
+		return
+	}
+	e.out = append(e.out, m)
+	e.added++
+}
 
 // mustJSON marshals a params struct; the structs are ours, so a
 // failure is a programming error, not a runtime condition.

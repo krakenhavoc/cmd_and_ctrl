@@ -167,7 +167,10 @@ closes it too, before the card underneath gets its own right-click.
 - The commander-zone replacement (CR 903.9) is manually triggerable
   from the battlefield ("Graveyard → command zone"), so the replacement
   path can be exercised by hand. (Corrected 2026-09-16: this line said
-  "before #164 ships", but #164 had shipped in #171.)
+  "before #164 ships", but #164 had shipped in #171.) (Amended
+  2026-10-04 by [ADR 0115](0115-commanders-die.md): the commander now
+  dies into the graveyard first, and the item answers the CR 903.9a
+  state-based action's question "yes" in the same click.)
 - Settings schema goes to v7 (`gameplay.adminOverrides`). The migration
   is a pure default-fill; nothing to rescue.
 - Player-level counters (poison / energy / experience / rad) are

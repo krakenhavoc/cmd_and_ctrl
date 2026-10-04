@@ -44,8 +44,9 @@ func filterViewDeliberatelyZeroed(viewerID string) map[string]bool {
 	// moves could be, so LegalMoves is the one field a spectator is
 	// deliberately handed zero for.
 	// LegalActions (ADR 0105) is the digest of that same list and
-	// follows the same rule.
-	return map[string]bool{"LegalMoves": true, "LegalActions": true}
+	// follows the same rule, and so does LegalMovesTruncated (ADR 0122
+	// §6.1), the flag that says the list was cut.
+	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true}
 }
 
 // everyFieldGameView returns a GameView with every top-level exported
@@ -91,6 +92,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		UndoLimit:     3,
 		Settings:      &TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		StartingSeat:  1,
+		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
+			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
+		}},
 
 		StackItems:      []StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: "card-1"}},
 		PendingTriggers: []StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: "card-2"}},
@@ -121,6 +125,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 	v.legalActionsBySeat = map[string]*LegalActionsView{
 		ownerID: {Pass: true},
 	}
+	v.legalTruncatedBySeat = map[string]bool{ownerID: true}
 	return v
 }
 
@@ -138,7 +143,7 @@ func assertGameViewFixtureComplete(t *testing.T, v GameView) {
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
-		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" {
+		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" || f.Name == "LegalMovesTruncated" {
 			continue
 		}
 		if rv.Field(i).IsZero() {

@@ -23,9 +23,12 @@
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
+  import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
+  import AgentChip from "../AgentChip.svelte";
+  import { isAgentSeat } from "../../agentSeat";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -79,12 +82,26 @@
     return t !== null && isPicked(t, seat.id);
   });
 
+  // ADR 0120 §1: the board this avatar sits on, for the expanded
+  // overlay. Hover opens a peek of this seat's board, a press uses the
+  // hover up, and a click the two intercepts below did not take pins it.
+  // Absent when no Board is above (a unit test), and then nothing expands.
+  const expand = avatarExpand();
+
+  // The intercepts run first and in this order, always: picking the
+  // player as a target, then attacking them. Only a click neither takes
+  // reaches the overlay, so an open overlay never steals a target pick
+  // (ADR 0120 §1, owner answer 1). The keyboard reaches this only while
+  // an intercept applies; the overlay's keyboard route is its own button.
   function handleAvatarClick(): void {
     if (targetableByCast) {
       onTargetPlayer?.(seat.id);
       return;
     }
-    if (!attackTargetable) return;
+    if (!attackTargetable) {
+      expand?.click(seat.id);
+      return;
+    }
     onDeclareAttack?.(seat.id);
   }
 
@@ -145,6 +162,10 @@
   // bot holds priority, so the table is waiting on its runner. It
   // clears the moment priority moves.
   const botThinking = $derived(isBot && hasPriority && !seat.eliminated);
+  // ADR 0122 §7: an agent seat reads "thinking…" the same way, from the
+  // priority holder every viewer already has. No presence signal.
+  const isAgent = $derived(!isBot && isAgentSeat(seat));
+  const agentThinking = $derived(isAgent && hasPriority && !seat.eliminated);
   // S11.5: the pulse is an animation, so it obeys the animations
   // toggle and the reduce-motion preference. With either off the chip
   // still says "thinking" — the information survives, the motion does
@@ -216,7 +237,7 @@
   class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
   class:bot={isBot}
-  class:thinking={(botThinking || considering) && animateThinking}
+  class:thinking={(botThinking || agentThinking || considering) && animateThinking}
   style:--seat-color={seatColor(seat.seat)}
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
@@ -237,6 +258,11 @@
   {/if}
   {#if isBot}
     <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
+  {:else if isAgent}
+    <!-- ADR 0122 §7: an outside AI agent plays this seat. Same slot as
+         the bot chip, so a seat is a bot, an agent or neither, never
+         two; its own look, so it never reads as the server's bot. -->
+    <AgentChip {seat} thinking={agentThinking} />
   {:else if considering}
     <!-- #1307: same slot the bot chip sits in, on a human seat that
          has been holding priority in a public response window longer
@@ -267,6 +293,9 @@
           handleAvatarClick();
         }
       }}
+      onpointerenter={(e) => expand?.enter(seat.id, e)}
+      onpointerleave={() => expand?.leave(seat.id)}
+      onpointerdown={() => expand?.press(seat.id)}
       aria-label={attackTargetable
         ? `attack ${displayLabel}`
         : `${displayLabel}, ${seat.life} life`}

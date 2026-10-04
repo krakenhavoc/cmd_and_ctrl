@@ -40,18 +40,15 @@ func helmActivation(t *testing.T, g *game.Game, me *game.Player, helm uuid.UUID,
 	passPriorityAroundTable(t, g)
 }
 
-// TestHelmsXDoesNotCountACommanderThatTookTheCommandZone is the bug on
-// the smallest board that shows it: X=2, and the first card off the
-// library never reaches the graveyard.
-//
-// CR 903.9 takes the commander to the command zone, so it was not put
-// into that graveyard this way — it does not end the run (#1159) and
-// it does not spend one of the X (#1161). The Helm mills another card
-// in its place and two real cards are in the graveyard when it stops.
-// Before the fix the bound was the mill's amount, the plan was two
-// cards long, and the run ended one card short with ONE card in the
-// graveyard.
-func TestHelmsXDoesNotCountACommanderThatTookTheCommandZone(t *testing.T) {
+// TestHelmTakesAMilledCommander. Before ADR 0115 a milled commander
+// that took CR 903.9's offer never reached the graveyard, so it did not
+// count toward X or end the run (#1159, #1161); that board no longer
+// exists. A commander is milled into the graveyard like any other card,
+// so it is a creature card put there this way: the run stops on it, the
+// Helm is sacrificed, and the commander is put onto the battlefield
+// under the Helm's controller. It left the graveyard within the same
+// resolution, so CR 903.9a never offers it the command zone (CR 704.4).
+func TestHelmTakesAMilledCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	fillPool(me, 5)
@@ -63,24 +60,24 @@ func TestHelmsXDoesNotCountACommanderThatTookTheCommandZone(t *testing.T) {
 	first := libraryCardFor(opp, "Filler A", "Sorcery")
 	commander := libraryCardFor(opp, "Their Commander", "Legendary Creature — Beast")
 	markCommanderCard(t, g, opp, commander)
-	graveBefore := opp.Graveyard.Size()
 
 	helmActivation(t, g, me, helm, opp, 2)
-	b21AcceptCommandZone(t, g, opp.ID)
 
-	if !opp.Command.Contains(commander) {
-		t.Fatal("setup: accepting did not put the commander into the command zone")
+	if !opp.Library.Contains(first) || !opp.Library.Contains(second) {
+		t.Error("the run stops on the commander, the first creature card put into the graveyard")
 	}
-	if got := opp.Graveyard.Size() - graveBefore; got != 2 {
-		t.Errorf("%d cards reached the graveyard, want X=2 — the diverted commander was never "+
-			"put into that graveyard this way, so it does not count toward X", got)
+	if g.Battlefield.Contains(helm) {
+		t.Error("a creature card reached the graveyard, so the Helm is sacrificed")
 	}
-	if !opp.Graveyard.Contains(first) || !opp.Graveyard.Contains(second) {
-		t.Error("the two cards that count are the two that arrived")
+	if !g.Battlefield.Contains(commander) {
+		t.Fatalf("the milled commander is in %s, want the battlefield under the Helm's controller",
+			b12ZoneOf(g, commander))
 	}
-	if !g.Battlefield.Contains(helm) {
-		t.Error("no CREATURE card reached the graveyard, so the Helm is not sacrificed — " +
-			"the commander that left the library was not put there")
+	if c := controllerOf(t, g, commander); c != me.ID {
+		t.Errorf("the commander is controlled by %s, want the Helm's controller %s", c, me.ID)
+	}
+	if commanderReturnPromptFor(g, opp.ID) != nil {
+		t.Error("a commander that left the graveyard within the resolution was offered the command zone")
 	}
 }
 

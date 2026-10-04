@@ -704,6 +704,17 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `Scoped
 
 An optional "you may" that trades the source for the spell declares `OptionalPrompt.Trade`, so a bot can weigh the trade (Perplexing Chimera).
 
+### Alternative costs for every spell you cast (ADR 0118, #2163)
+
+"You may pay {W}{U}{B}{R}{G} rather than pay the mana cost for spells you cast" (Fist of Suns, Jodah) and "You may cast spells from your hand without paying their mana costs" (Omniscience) are a static that gives each spell its controller casts one more alternative cost (CR 118.9). Declare it with `Spec.GrantedAlternativeCosts` and one of the helpers in `effects/granted_alternative_cost.go`:
+
+```go
+GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast()},
+// Omniscience: CastFromHandWithoutPayingManaCost()
+```
+
+Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label.
+
 ### Granting an ability to another permanent (ADR 0093, #754)
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a
@@ -889,17 +900,18 @@ the revealed-hand leg, the random discard and the discard component of
 an additional cost — shares `discardCardsLocked` (`server/internal/game/discard.go`),
 which routes each card through `routeCardToZoneLocked` like every other
 exit. So the CR 614 window opens on a discard, a discarded commander
-gets the CR 903.9 offer, and a discard can PAUSE: `...ForEffect` returns
-with the card still in hand and the rest of the batch (and the prompt's
-`Then`) owed until the owner answers. The COST site is the exception —
+lands in the graveyard and is then offered the command zone (CR 903.9a,
+ADR 0115), and a discard can PAUSE on a replacement's prompt:
+`...ForEffect` returns with the card still in hand and the rest of the
+batch (and the prompt's `Then`) owed until the owner answers. The COST site is the exception —
 CR 601.2h pays a spell's costs as one indivisible step, so it sets
 `zoneRoute.MustSettleNow` and settles without asking, which means a
 commander pitched to a cost goes to the graveyard.
 
 **A tuck can pause, so read what LANDED** (#783). A library is a
-CR 903.9 destination like every other, so "put it into its owner's
-library" opens the window and can stop to ask a commander's owner about
-the command zone. If your card has anything to do AFTER the tuck —
+CR 903.9b destination (a hand is the other), so "put it into its
+owner's library" opens the window and can stop to ask a commander's
+owner about the command zone. If your card has anything to do AFTER the tuck —
 shuffle, reveal, scry, ask the next question, read the card's zone —
 hand it over as a continuation (`TuckToLibraryThenForEffect`, or
 `TuckCardsToLibraryThenForEffect` for a batch, which reports the cards
@@ -931,7 +943,7 @@ controller of `Source`. Build one with `DiscardBecomes{…}.Build()`
 `EventDiscardCard` still fires wherever the card ends up (CR 701.9a
 defines a discard by the move OUT of the hand), so a discard your
 replacement redirects is still a discard for Megrim and friends, and a
-discarded commander still gets the CR 903.9 offer. A COST discard
+discarded commander is still offered the command zone afterwards. A COST discard
 settles without asking, so an `Optional` replacement on one is skipped
 un-applied — which is also the right answer, since costs are not
 effects.
@@ -1203,7 +1215,8 @@ INSTRUCTION — the same shape as the creation and the keyword action.
 Do not confuse it with the per-card window, which is older and needs
 nothing from you: every milled card already goes through the shared
 exit primitive, so "if a card would be put into a graveyard from
-anywhere, exile it instead" and CR 903.9 both see each of them. That
+anywhere, exile it instead" and the CR 903.9a state-based action both
+see each of them. That
 one is `graveyard_replacements.go`; this one is
 `cards/effects/mill_replacements.go` —
 `MillBecomes{Count, Scope, Label}`, with `OpponentsMillTwice(label)`
@@ -1391,8 +1404,9 @@ DESTROY `RepEventMove` and, when it applies, cancels the move, taps
 the permanent, removes all damage from it, takes it out of combat and
 spends one shield (CR 701.19a). Two shields never prompt — a built-in
 is registered once per game, so two of them are one applicable
-effect — and a shielded COMMANDER does prompt, because CR 903.9
-applies to the same event and CR 616.1 gives its controller the order.
+effect. (A shielded COMMANDER used to prompt because CR 903.9 applied
+to the same event; since ADR 0115 a destroyed commander is not
+replaced, so the shield alone applies and no order is asked.)
 
 **"It can't be regenerated" is a rider on the destroy, not a keyword**
 (CR 701.19c). Write `DestroyTarget{Target: id, CantBeRegenerated:
@@ -3407,10 +3421,17 @@ replacement that removes damage — regeneration is the one the rules
 name, CR 701.15a — it does that in its own `Replace`, not by leaning on
 the destroy path.
 
+**A commander dies like any creature (ADR 0115).** It goes to the graveyard
+or exile like any card, so every dies, leaves-the-battlefield and
+put-into-a-graveyard trigger sees it and no card needs a commander
+clause; CR 903.9a runs afterwards (`commander_return`: the owner may
+move it to the command zone), and only a move to a hand or a library is
+a replacement (CR 903.9b). Write the card as if the commander were any
+other card, and never add a caveat for the command zone.
+
 **"For each X destroyed this way" comes from a continuation too
-(#815).** A destruction can pause — a commander caught in a wipe stops
-to answer CR 903.9 — so the number is not knowable on the line after
-the sweep. `DestroyAllMatching`'s `Then` already receives it; what
+(#815).** A destruction can pause on a replacement's prompt, so the
+number is not knowable on the line after the sweep. `DestroyAllMatching`'s `Then` already receives it; what
 changed is that the clause now runs from the sweep's continuation
 (`g.DestroyPermanentsThenForEffect`), so it may run an action later,
 and its two arguments finally describe the same set: `swept` is the
@@ -3425,9 +3446,10 @@ What counts as destroyed is CR 701.7a — "move it from the battlefield
 to its owner's graveyard". A permanent the CR 614 window saved is not
 destroyed (it never left), and neither is one a replacement sent to
 exile, a hand or a library instead (it left, but not to a graveyard).
-A commander that takes CR 903.9's offer IS counted, which is the
-engine's one declared exception and lives in
-`destroyedThisWayLocked`. See
+A destroyed commander IS counted: it lands in the graveyard first and
+its owner is offered the command zone afterwards (CR 903.9a,
+ADR 0115), and `destroyedThisWayLocked` still counts one already in
+the command zone. See
 [ADR 0013 §5i](decisions/0013-replacement-effects.md).
 
 **"For each X exiled / returned this way" is a continuation too, and
@@ -3436,9 +3458,10 @@ and `ReturnAllToHand` behave exactly like `DestroyAllMatching`: give one
 a `Then` and it runs from the sweep's continuation
 (`g.ExileCardsThenForEffect` / `g.BounceCardsToHandThenForEffect`) with
 the cards that actually reached the destination. CR 400.7 decides that
-— a commander that took CR 903.9's offer went to the command zone, not
-to exile or a hand, so it is not in the list. (Destroy is the one verb
-that DOES count the command zone, and §5i says why.) The fire-and-forget
+— a commander that was exiled IS in the list (CR 903.9a asks its owner
+afterwards), but one bounced under CR 903.9b whose owner took the offer
+went to the command zone, not to a hand, so it is not. (Destroy also
+counts a commander already in the command zone, and §5i says why.) The fire-and-forget
 `g.ExileCardsForEffect(ids)` / `g.BounceCardsToHandForEffect(ids)` keep
 their `int` for a sweep nothing is waiting on. See
 [ADR 0013 §5k](decisions/0013-replacement-effects.md).
@@ -3455,13 +3478,12 @@ stay the fire-and-forget form: their `nil` means "no error", never "it
 is in exile". A card that reads the move at all reaches for the `Then`.
 
 **A mill reports what LANDED, through the same `Then` (#893).** A mill
-opens the CR 614 window per card, so a commander coming off the top
-stops to answer CR 903.9 and what was milled is not knowable on the
-next line. `MillToZone{…, Then: func(ctx, milled []uuid.UUID) error}`
+opens the CR 614 window per card, so a replacement may stop to ask
+and what was milled is not knowable on the next line. `MillToZone{…, Then: func(ctx, milled []uuid.UUID) error}`
 and `g.MillToZoneThenForEffect` are the read-back — `milled` is
 CR 400.7's answer, the cards that ARRIVED in the destination, so a
-commander that took the command zone and a card an "exile it instead"
-replacement rewrote are not in it. `MillToZone` with no `Then`,
+card an "exile it instead" replacement rewrote is not in it (a milled
+commander is: CR 903.9a asks its owner afterwards). `MillToZone` with no `Then`,
 `MillCards` and `g.MillToZoneForEffect` stay fire-and-forget: they mill
 AROUND a paused card rather than waiting for it, which is right when
 nothing is waiting on the answer and wrong the moment anything reads
@@ -3481,8 +3503,8 @@ route now: the battlefield exit, a mill, a discard, a countered spell,
 graveyard leg. Two consequences for a card that uses them. A search
 finishes from a continuation, so `SearchLibrary{…, Then}` is handed the
 cards that ARRIVED where it aimed them (CR 400.7) and runs an action
-later when a tutored commander stops to answer CR 903.9 — `found` is
-not "what I picked". And "put a card from your hand into your
+later when a replacement's prompt stops it — `found` is not "what I
+picked". And "put a card from your hand into your
 graveyard" that does NOT say *discard* is not a discard (CR 701.9a
 defines one by the move out of the hand under that word): reach for
 `PutIntoGraveyardForEffect`, never `discardCardsLocked`, or Megrim
@@ -3496,11 +3518,11 @@ battlefield" (Living Death), "exile target creature, then its
 controller searches" (Path to Exile): the second half belongs in
 `ExileTarget.Then` — or, for a set, in `g.ExileCardsThenForEffect`'s
 continuation, which also hands over the cards that really reached
-exile. Written as the next line it runs while a commander's CR 903.9
-prompt is still open, which at best asks the table two questions at
-once and at worst LOSES the card: the return half finds nothing in
-exile, finishes, and the commander lands there a moment later with
-nothing left to move it. Gate the second half on the `exiled` /
+exile. Written as the next line it runs while a replacement's prompt is
+still open (a commander's CR 903.9b offer on a bounce, for one), which
+at best asks the table two questions at once and at worst LOSES the
+card: the return half finds nothing in exile, finishes, and the card
+lands there a moment later with nothing left to move it. Gate the second half on the `exiled` /
 landed answer when the card says "if you do" or acts on the exiled
 card, and leave it ungated when it is a separate sentence (Path's
 search happens either way). See
@@ -3515,8 +3537,8 @@ wrapper for "sacrifice a creature. If you do, …", and
 `g.SacrificeAllForEffect(source, ids)` the fire-and-forget count for a
 sweep nothing is waiting on. Reach for a `Then` form the moment a card
 reads the result — "draw that many cards", "for each permanent
-sacrificed this way" — because a sacrificed commander stops to answer
-CR 903.9 and the number is not knowable on the next line. A sacrifice
+sacrificed this way" — because a leg can stop on a replacement's
+prompt and the number is not knowable on the next line. A sacrifice
 is NOT a destruction (CR 701.17a: indestructible and regeneration do
 not apply), and the two "this way" rules differ in one row: CR 701.7a
 defines a destruction by the graveyard, so a permanent an "exile it
@@ -3541,8 +3563,8 @@ reason, count, then)` for one seat asked N times, and
 `effects.EachPlayerSacrifices.Then` card-side. One run is ONE printed
 instruction however many prompts it takes, and `then` runs once —
 after the last seat has answered AND the permanents they named have
-finished moving, so a sacrificed commander’s CR 903.9 prompt holds it
-too. It is handed `game.PromptedSacrifices`: `.Sacrificed(seat)` is
+finished moving, so a replacement's prompt on a sacrificed permanent
+holds it too. It is handed `game.PromptedSacrifices`: `.Sacrificed(seat)` is
 "if you sacrificed a creature this way", `.Count()` is "that many",
 `.By(seat)` and `.Cards()` are the permanents themselves. A seat that
 was asked and sacrificed nothing is IN the answer with an empty list;
@@ -3556,7 +3578,7 @@ loop reading the count, which the payout lint now flags. See
 `g.QueueDiscardChoiceForEffect` discards nothing either — it queues a
 question over the player's own hand and hands back the prompt's ID —
 and a discard can pause for an extra action after the answer, because
-a discarded commander is offered CR 903.9. So anything printed after a
+a replacement on the discarded card may ask. So anything printed after a
 discard goes in a run's continuation:
 `g.PlayerDiscardsThenForEffect(prompt, then)` for one seat,
 `g.PlayersDiscardThenForEffect(players, prompt, then)` for a named
@@ -3832,7 +3854,7 @@ stays private) — over the engine's
 for this.** It appears to work only because the zone router finds a
 card's zone by scan; "return it to its owner's hand" is not "put it
 into your hand off the top of your library", the fire-and-forget form
-drops a paused CR 903.9 leg from the accounting, and nothing watching a
+drops a paused leg from the accounting, and nothing watching a
 bounce should see a library take. `TakeRestOnBottomInRandomOrder` and
 `TakeRestIntoGraveyard` are the two rests.
 

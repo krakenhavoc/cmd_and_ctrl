@@ -89,6 +89,9 @@ type Result struct {
 	Latency     time.Duration     `json:"latency_ns"`
 	PromptBytes int               `json:"prompt_bytes,omitempty"`
 	Usage       aiseat.TokenUsage `json:"usage"`
+	// ReasoningChars is how much the model thought before it answered,
+	// in bytes, when it was let think (#2196). Zero otherwise.
+	ReasoningChars int `json:"reasoning_chars,omitempty"`
 }
 
 // TagStats is one tag's slice of the report.
@@ -109,8 +112,13 @@ func (t TagStats) AgreeRate() float64 {
 
 // Report is the whole run.
 type Report struct {
-	Policy    string `json:"policy"`
-	Positions int    `json:"positions"`
+	Policy string `json:"policy"`
+	// Note is the caller's description of the run — which model, and
+	// whether it was let think (#2196). Printed under the heading.
+	Note string `json:"note,omitempty"`
+	// MaxThink is the per-position deadline the run used.
+	MaxThink  time.Duration `json:"max_think_ns,omitempty"`
+	Positions int           `json:"positions"`
 	// Labelled is how many positions had an answer to grade against;
 	// everything else in this report is computed over those.
 	Labelled   int `json:"labelled"`
@@ -131,7 +139,17 @@ type Report struct {
 	// Tokens is the SUM over the run, not a per-window figure.
 	Tokens         aiseat.TokenUsage `json:"tokens"`
 	PromptBytesP50 int               `json:"prompt_bytes_p50,omitempty"`
-	Results        []Result          `json:"results"`
+	// OutputTokensP50 is the median reply length over the positions
+	// that made a model call — the number that moves when a model is
+	// let think.
+	OutputTokensP50 int `json:"output_tokens_p50,omitempty"`
+	// ReasoningReplies counts the positions whose reply carried
+	// thinking apart from the answer; ReasoningCharsP50 and
+	// ReasoningCharsMax are over those (#2196).
+	ReasoningReplies  int      `json:"reasoning_replies,omitempty"`
+	ReasoningCharsP50 int      `json:"reasoning_chars_p50,omitempty"`
+	ReasoningCharsMax int      `json:"reasoning_chars_max,omitempty"`
+	Results           []Result `json:"results"`
 }
 
 // AgreeRate is agreement over labelled positions, 0 when none.
@@ -238,7 +256,9 @@ func Run(ctx context.Context, positions []Position, policy aiseat.Policy, opt Ru
 	close(work)
 	wg.Wait()
 
-	return summarise(policy.Name(), positions, results)
+	rep := summarise(policy.Name(), positions, results)
+	rep.MaxThink = opt.MaxThink
+	return rep
 }
 
 // decide runs one position under its own deadline and classifies the
@@ -271,6 +291,7 @@ func decide(ctx context.Context, p Position, policy aiseat.Policy, tracer aiseat
 	res.Latency = time.Since(started)
 	res.Layer, res.Fallback, res.HeuristicIndex = tr.Layer, tr.Fallback, tr.HeuristicIndex
 	res.Usage = tr.Usage
+	res.ReasoningChars = tr.ReasoningChars
 	if tr.Prompt != nil {
 		res.PromptBytes = len(tr.Prompt.User)
 		for _, b := range tr.Prompt.System {
@@ -393,8 +414,10 @@ func summarise(policyName string, positions []Position, results []Result) Report
 		Results:   results,
 	}
 	var (
-		lat    []time.Duration
-		prompt []int
+		lat       []time.Duration
+		prompt    []int
+		outTokens []int
+		reasoning []int
 	)
 	for i, res := range results {
 		labelled := res.Outcome != OutcomeSkipped
@@ -404,6 +427,12 @@ func summarise(policyName string, positions []Position, results []Result) Report
 		}
 		if res.PromptBytes > 0 {
 			prompt = append(prompt, res.PromptBytes)
+		}
+		if res.Usage.OutputTokens > 0 {
+			outTokens = append(outTokens, res.Usage.OutputTokens)
+		}
+		if res.ReasoningChars > 0 {
+			reasoning = append(reasoning, res.ReasoningChars)
 		}
 		rep.Tokens.InputTokens += res.Usage.InputTokens
 		rep.Tokens.OutputTokens += res.Usage.OutputTokens
@@ -446,11 +475,25 @@ func summarise(policyName string, positions []Position, results []Result) Report
 		}
 	}
 	rep.Latency = aiseat.PercentilesOf(lat)
-	if len(prompt) > 0 {
-		sort.Ints(prompt)
-		rep.PromptBytesP50 = prompt[(len(prompt)-1)/2]
+	rep.PromptBytesP50 = medianInt(prompt)
+	rep.OutputTokensP50 = medianInt(outTokens)
+	rep.ReasoningReplies = len(reasoning)
+	rep.ReasoningCharsP50 = medianInt(reasoning)
+	for _, n := range reasoning {
+		if n > rep.ReasoningCharsMax {
+			rep.ReasoningCharsMax = n
+		}
 	}
 	return rep
+}
+
+// medianInt is the lower median, 0 for an empty slice. It sorts xs.
+func medianInt(xs []int) int {
+	if len(xs) == 0 {
+		return 0
+	}
+	sort.Ints(xs)
+	return xs[(len(xs)-1)/2]
 }
 
 // Markdown renders the report as the block that goes into a PR
@@ -459,6 +502,9 @@ func summarise(policyName string, positions []Position, results []Result) Report
 func (r Report) Markdown() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "### Position suite — `%s`\n\n", r.Policy)
+	if r.Note != "" {
+		fmt.Fprintf(&b, "%s · max think %s\n\n", r.Note, r.MaxThink)
+	}
 	fmt.Fprintf(&b, "%d positions, %d labelled, **%.0f%% agreement**", r.Positions, r.Labelled, r.AgreeRate()*100)
 	if skipped := r.Positions - r.Labelled; skipped > 0 {
 		fmt.Fprintf(&b, " (%d unlabelled, skipped)", skipped)
@@ -493,7 +539,14 @@ func (r Report) Markdown() string {
 	if r.Tokens.InputTokens > 0 || r.Tokens.OutputTokens > 0 {
 		fmt.Fprintf(&b, " · tokens in %d / out %d", r.Tokens.InputTokens, r.Tokens.OutputTokens)
 	}
+	if r.OutputTokensP50 > 0 {
+		fmt.Fprintf(&b, " · out tokens p50 %d", r.OutputTokensP50)
+	}
 	b.WriteString("\n")
+	if r.ReasoningReplies > 0 {
+		fmt.Fprintf(&b, "\nreasoning: %d of %d labelled positions, chars p50 %d · max %d\n",
+			r.ReasoningReplies, r.Labelled, r.ReasoningCharsP50, r.ReasoningCharsMax)
+	}
 
 	var misses []Result
 	for _, res := range r.Results {

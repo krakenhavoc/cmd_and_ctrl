@@ -21,7 +21,13 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { emit as tutorialEmit } from "../../tutorialBus";
-  import { canCastFromHand, type Legality } from "../../timing";
+  import {
+    canCastFromHand,
+    castAnywayBlocked,
+    castAnywayOffered,
+    type Legality,
+  } from "../../timing";
+  import { requestCastAnyway } from "../../castAnyway";
   import {
     NO_LEGAL_ACTIONS,
     NO_PIPS,
@@ -126,6 +132,14 @@
     legalGate = NO_LEGAL_ACTIONS,
     onSpecialAction,
   }: Props = $props();
+
+  // ADR 0118 §2: with strict payment on, every card in the viewer's own
+  // hand with a castable face offers "Cast anyway (don't pay)" in its
+  // popover, payable or not; a card that can only be played as a land
+  // does not. The row opens the dock's confirmation (castAnyway.ts).
+  function castAnywayHere(c: CardView): boolean {
+    return isSelf && $settings.gameplay.strictMana && castAnywayOffered(c, "hand");
+  }
 
   // ---- #1524: the viewer's own order --------------------------------
   //
@@ -684,7 +698,7 @@
           card={c}
           faceDown={!isSelf && c.known_by_you !== true}
           showManaCost={isSelf}
-          artOnly={isSelf && $settings.display.artOnlyCards}
+          artOnly={isSelf && $settings.display.handArt}
           priority={isSelf}
           onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
             ? (idx) => onActivateAbility?.(c, idx)
@@ -696,6 +710,8 @@
           onSpecialAction={isSelf && (c.special_actions?.length ?? 0) > 0
             ? onSpecialAction
             : undefined}
+          onCastAnyway={castAnywayHere(c) ? () => requestCastAnyway(c, "hand") : undefined}
+          castAnywayBlocked={castAnywayHere(c) ? castAnywayBlocked(c, snap, viewerID, "hand") : ""}
           legal={isSelf ? legal : undefined}
           legalGate={isSelf ? legalGate : undefined}
           pips={cPips}

@@ -120,6 +120,17 @@ describe("the .panel --card-h-max ceiling", () => {
     expect(px(resolve(["panel", "opponent", "flipped", "spectator"], "--card-h-max"))).toBe(240);
   });
 
+  // ADR 0120 §3: the expanded overlay's copy of a board. PlayerPanel
+  // never sets `flipped` alongside `expanded`, so these are the two
+  // class sets it can carry.
+  it("is 240px for an expanded opponent panel, as on a spectator's", () => {
+    expect(px(resolve(["panel", "opponent", "expanded"], "--card-h-max"))).toBe(240);
+  });
+
+  it("is 240px for the viewer's own expanded panel", () => {
+    expect(px(resolve(["panel", "self", "expanded"], "--card-h-max"))).toBe(240);
+  });
+
   it("leaves the opponent formula's floor and slope untouched", () => {
     // 123px floor, "43cqh - 31px" slope — the same numbers #1071's
     // measurement table cites. Only the ceiling should have moved.
@@ -170,14 +181,29 @@ describe("the spectator prop reaches PlayerPanel", () => {
     expect(panelSvelte).toMatch(/class:spectator\b/);
   });
 
+  // ADR 0120 §3: Board draws a seat's PlayerPanel from one snippet,
+  // `seatPanel(seat, pos, expanded)`, so the expanded overlay gets the
+  // same props as the table. Its `pos === null` branch is the spectator
+  // grid's panel; the other is the seated table's.
+  const snippet = boardSvelte.slice(
+    boardSvelte.indexOf("{#snippet seatPanel"),
+    boardSvelte.indexOf("{/snippet}"),
+  );
+  const [spectatorBranch, seatedBranch] = snippet.split("{:else}");
+
   it("Board's spectator grid passes spectator={true} to PlayerPanel", () => {
+    expect(spectatorBranch, "no seatPanel snippet found in Board.svelte").toMatch(
+      /\{#if pos === null\}/,
+    );
+    expect(spectatorBranch).toMatch(/spectator=\{true\}/);
     const spectatorBlock = boardSvelte.split("Spectator path")[1];
     expect(spectatorBlock, "no spectator-path section found in Board.svelte").toBeDefined();
-    expect(spectatorBlock).toMatch(/spectator=\{true\}/);
+    expect(spectatorBlock).toMatch(/seatPanel\(seat, null, false\)/);
   });
 
   it("Board's seated (non-spectator) PlayerPanel does not pass spectator={true}", () => {
-    const seatedBlock = boardSvelte.split("Spectator path")[0];
-    expect(seatedBlock).not.toMatch(/spectator=\{true\}/);
+    expect(seatedBranch).toBeDefined();
+    expect(seatedBranch).not.toMatch(/spectator=\{true\}/);
+    expect(boardSvelte.split("Spectator path")[0]).toMatch(/seatPanel\(seat, pos, false\)/);
   });
 });

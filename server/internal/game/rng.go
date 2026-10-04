@@ -53,6 +53,10 @@ const (
 	rngStreamRandomOrder = "random_order"
 	rngStreamRoll        = "roll"
 	rngStreamFlip        = "flip"
+	// rngStreamTable is ADR 0121 §5's table roll. It is NOT drawn
+	// through randForLocked: its counter is Game.tableRollNext, per
+	// game and never reset, and it never touches rngCounters.
+	rngStreamTable = "table"
 )
 
 // rngDomain separates this derivation from any other use of HMAC
@@ -211,6 +215,29 @@ func (g *Game) pickAtRandomLocked(s rngStream, ids []uuid.UUID, k int) []uuid.UU
 		out = out[:k]
 	}
 	return out
+}
+
+// tableRollDrawLocked draws one table roll (ADR 0121 §5): an integer in
+// [0, n) from rngSeed(key, "table", seat, nil, 0, tableRollNext), and
+// then tableRollNext is incremented. It returns the draw and the new
+// tableRollNext, which is the roll's roll_id.
+//
+// It deliberately bypasses randForLocked: no turn index (the turn is
+// always 0) and no rngCounters entry, so a card roll, a shuffle or a
+// pick draws exactly what it would have had no table roll happened,
+// and an undo, which rewinds rngCounters, cannot replay it. The HMAC
+// key keeps it as unpredictable as every other draw (ADR 0054
+// Decision 2). TestTableRollKnownAnswer pins it. Caller must hold g.mu
+// for writing.
+func (g *Game) tableRollDrawLocked(player uuid.UUID, n int) (int, uint64) {
+	if g.rngKey == ([32]byte{}) {
+		g.rngKey = mintRNGKey()
+	}
+	who, _ := g.rngPlayerIdentityLocked(player)
+	counter := g.tableRollNext
+	g.tableRollNext++
+	r := rand.New(rand.NewChaCha8(rngSeed(g.rngKey, rngStreamTable, who, uuid.Nil, 0, counter)))
+	return r.IntN(n), g.tableRollNext
 }
 
 // mintRNGKey returns a fresh key from crypto/rand. It is never zero:

@@ -67,6 +67,12 @@ type FactoryOptions struct {
 	// this factory builds (CMDCTRL_BOT_IMPROVISE=0). The model tiers
 	// have it on by default since #686.
 	NoImprovise bool
+	// Think and MaxTokens are tiers.Options' own: the model's
+	// thinking on for every model seat this factory builds, and the
+	// decision calls' reply budget (CMDCTRL_BOT_THINK,
+	// CMDCTRL_BOT_MAX_TOKENS; #2196). Both off by default.
+	Think     bool
+	MaxTokens int
 	// Meter is the shared Layer A absorption meter. Nil allocates
 	// one, so Factory.Meter is always readable.
 	Meter *rules.Meter
@@ -155,6 +161,8 @@ func (f *Factory) NewPolicy(seat aiseat.SeatSpec) (aiseat.Policy, error) {
 		Models:      f.opt.Models,
 		MaxThink:    f.opt.MaxThink,
 		NoImprovise: f.opt.NoImprovise,
+		Think:       f.opt.Think,
+		MaxTokens:   f.opt.MaxTokens,
 	}
 	if tier.NeedsModel() && f.opt.DeckProfile != nil && seat.Deck != "" {
 		if profile, ok := f.opt.DeckProfile(seat.Deck); ok {

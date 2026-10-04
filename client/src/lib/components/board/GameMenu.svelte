@@ -7,6 +7,9 @@
   // viewer with no dock (a spectator, an admin with no seat here) keeps a
   // smaller one on the command bar, opening downward (lib/gameMenu.ts).
   //
+  // A seat still in an active game also has the Dice section (ADR 0121
+  // §5): "Roll a d6", "Roll a d20" and "Flip a coin".
+  //
   // One trigger, one popover, which shows one of three things:
   //   - the menu itself (role="menu", "game actions");
   //   - the vote launcher's form (moved here from VotingPanel's corner
@@ -24,7 +27,14 @@
   import { tick } from "svelte";
   import Icon from "../Icon.svelte";
   import ModalLayer from "../ModalLayer.svelte";
-  import { clampMulligan, concedeTitle, parseVote, type GameMenuOptions } from "../../gameMenu";
+  import {
+    TABLE_ROLL_ITEMS,
+    clampMulligan,
+    concedeTitle,
+    parseVote,
+    tableRollTitle,
+    type GameMenuOptions,
+  } from "../../gameMenu";
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
 
   type Props = GameMenuOptions & {
@@ -188,6 +198,26 @@
         <button class="mi" role="menuitem" onclick={via(props.onLifeHistory)}>
           <Icon name="drop" size={15} /> Life history
         </button>
+        <div class="sep"></div>
+      {/if}
+      {#if props.tableRoll}
+        <!-- ADR 0121 §5: a die or a coin at the table, for fun. Never a
+             game roll and never undone. Disabled for 2 s after the
+             viewer's own roll, matching the server's rate. -->
+        {@const ready = props.tableRoll.ready}
+        <div class="menu-h">Dice</div>
+        {#each TABLE_ROLL_ITEMS as item (item.die)}
+          <button
+            class="mi"
+            role="menuitem"
+            disabled={!ready}
+            title={tableRollTitle(ready)}
+            onclick={via(() => props.onTableRoll?.(item.die))}
+          >
+            <Icon name={item.die === "coin" ? "coin" : "die"} size={15} />
+            {item.label}
+          </button>
+        {/each}
         <div class="sep"></div>
       {/if}
       <div class="menu-h">Table</div>

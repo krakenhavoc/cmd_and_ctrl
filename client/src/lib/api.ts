@@ -89,6 +89,10 @@ export interface SeatInfo {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // AI agent seat (ADR 0122 §7), same two fields as PlayerView. Never
+  // set together with is_bot, never on a seat with a user.
+  is_agent?: boolean;
+  agent_client?: string;
   // True on the table host's seat (ADR 0075 §2.1). Never on a bot.
   is_host?: boolean;
 }

@@ -5,9 +5,11 @@
 // Opening it swaps two things the player owns for the tutorial's
 // duration:
 //
-//   - Four settings are FORCED: strictMana off, autoPassPriority off
-//     (so priority visibly reaches the player), tableLayout quadrant,
-//     cardSize medium. The player's own four values are captured first.
+//   - Four settings are FORCED: strictMana on (ADR 0118 owner decision
+//     7: the tutorial teaches the table the player will meet, where a
+//     click taps the lands), autoPassPriority off (so priority visibly
+//     reaches the player), tableLayout quadrant, cardSize medium. The
+//     player's own four values are captured first.
 //   - The SESSION becomes the practice seat's, exactly as joining any
 //     table swaps it. The session it replaces — a seat at a real
 //     table, a Discord sign-in, the admin — is captured too.
@@ -15,7 +17,7 @@
 // Leaving writes both back, and the ADR is explicit that "leaving"
 // means EVERY exit path (§3): the Leave button, a navigation to any
 // other route or site, a closed tab, a crash. A player who abandons
-// the tutorial and later finds strictMana silently off in a real game
+// the tutorial and later finds strictMana silently flipped in a real game
 // will never connect the two. So the restore runs from four places:
 //
 //   1. A route change away from the practice game (the Leave button is
@@ -62,9 +64,9 @@ export interface SavedSettings {
   cardSize: Settings["display"]["cardSize"];
 }
 
-/** The values the tutorial forces (ADR 0076 §2.2). */
+/** The values the tutorial forces (ADR 0076 §2.2; strictMana on since ADR 0118 §1). */
 export const FORCED_SETTINGS: Readonly<SavedSettings> = Object.freeze({
-  strictMana: false,
+  strictMana: true,
   autoPassPriority: false,
   tableLayout: "quadrant",
   cardSize: "medium",

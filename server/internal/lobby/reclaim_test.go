@@ -29,6 +29,8 @@ import (
 func TestReclaimReturnsAPlayerToTheirSeatInAStartedGame(t *testing.T) {
 	srv, l, a := newTestHTTPStack(t)
 	meta, alice, _ := startTwoSeatGame(t, l, "FNM")
+	// The seat draws a card below, which waits for the first turn.
+	finishOpeningRoll(t, l, meta.ID)
 
 	// The state the feature exists for: the invite link is useless
 	// once the table is underway.

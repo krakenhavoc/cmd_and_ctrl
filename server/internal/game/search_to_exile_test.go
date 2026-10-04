@@ -15,12 +15,12 @@ import (
 // search destination, so CR 614 and CR 903.9 apply unchanged; this
 // file is the CR 903.9 half, mirroring the exile / bounce / tuck /
 // mill coverage in commander_zone_routes_test.go for the SEARCH path
-// specifically. seatCommander, expectCommanderPrompt and assertOnlyIn
+// specifically. seatCommander, expectCommanderReturn and assertOnlyIn
 // are declared there.
 
 // TestCommanderSearchedToExileOffersCommandZone: a commander found by
-// a library search whose destination is exile still gets the CR
-// 903.9 offer before it lands anywhere.
+// a library search whose destination is exile is exiled, and then
+// CR 903.9a offers it the command zone (ADR 0115).
 func TestCommanderSearchedToExileOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -37,13 +37,10 @@ func TestCommanderSearchedToExileOffersCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
-	if g.Exile.Contains(cmdID) {
-		t.Fatalf("searched-to-exile commander hit exile before the prompt was answered")
+	if !g.Exile.Contains(cmdID) {
+		t.Fatalf("searched-to-exile commander did not reach exile")
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, g.Exile, owner.Library)
 }
 
@@ -65,10 +62,7 @@ func TestCommanderSearchedToExileDeclineGoesToExile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, false)
 	assertOnlyIn(t, cmdID, g.Exile, owner.Command, owner.Library)
 }
 

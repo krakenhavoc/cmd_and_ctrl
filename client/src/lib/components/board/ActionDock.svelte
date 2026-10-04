@@ -73,6 +73,7 @@
   import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
+  import { stackHoldStatus, stackHoldStatusText } from "../../stackHold";
   import { settings } from "../../settings";
   import { ariaKeyshortcuts, effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import { passHint } from "../../dockHint";
@@ -127,6 +128,13 @@
     onSheet,
     menu,
   }: Props = $props();
+
+  // ADR 0121 §6: while the opening roll is open there is no turn yet.
+  // `next`, Pass turn and the toggles are disabled (never hidden: the
+  // e2e suite and the tutorial read them). The ⋯ menu stays.
+  const preGame = $derived(!!view.opening_roll);
+  const canPass = $derived(viewerHasPriority && !preGame);
+  const canPassTurn = $derived(viewerIsActive && !preGame);
 
   // ---- keys --------------------------------------------------------
   // Read from the same binding map the dispatcher uses, so a rebound
@@ -365,6 +373,16 @@
     return () => clearInterval(id);
   });
   const bluffLine = $derived(bluffStatusText($bluffStatus, now));
+  // ADR 0119 §2: the stack hold's countdown, in tenths, so the table
+  // does not look stalled and the player knows `next` still works.
+  $effect(() => {
+    const s = $stackHoldStatus;
+    if (!s) return;
+    now = Date.now();
+    const id = setInterval(() => (now = Date.now()), 100);
+    return () => clearInterval(id);
+  });
+  const holdLine = $derived(stackHoldStatusText($stackHoldStatus, now));
   const hint = $derived(passHint(view, viewerHasPriority));
 
   // ---- phone header ----------------------------------------------------
@@ -429,6 +447,10 @@
     {:else if bluffLine}
       <!-- Only the viewer sees this line. -->
       <span class="bluff-status" role="status">{bluffLine}</span>
+    {:else if holdLine}
+      <!-- ADR 0119 §2. Only the viewer sees this line. A timer, not a
+           status: a countdown read aloud ten times a second is noise. -->
+      <span class="hold-status" role="timer">{holdLine}</span>
     {:else if hint && !reqTakesBar}
       <!-- What `next` will do — not while a request has taken the bar
            and `next` is not on it. -->
@@ -447,6 +469,7 @@
       class:on={$holdPriority}
       aria-pressed={$holdPriority}
       aria-keyshortcuts={ariaKeys(keys.holdPriority)}
+      disabled={preGame}
       onclick={toggleHoldPriority}
       title={($holdPriority
         ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
@@ -466,6 +489,7 @@
       aria-label="autopass"
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
+      disabled={preGame}
       onclick={onToggleAutopass}
       title={(autopassPaused
         ? "autopass PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
@@ -477,14 +501,18 @@
       {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}
     </button>
     <!-- ADR 0111 §5: always shown, set up or not. -->
-    <BluffChip keyHint={keyHint(keys.toggleBluff)} keyShortcuts={ariaKeys(keys.toggleBluff)} />
+    <BluffChip
+      keyHint={keyHint(keys.toggleBluff)}
+      keyShortcuts={ariaKeys(keys.toggleBluff)}
+      locked={preGame}
+    />
     <!-- ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack
          row. Disabled, not hidden, when the budget is spent; the server
          keeps the rules, this only reads them. -->
     <button
       type="button"
       class="action undo"
-      disabled={!canUndo}
+      disabled={!canUndo || preGame}
       aria-label={undoUnlimited ? "Undo (no limit)" : `Undo (${undoCount} left)`}
       aria-keyshortcuts={ariaKeys(keys.undo)}
       onclick={onUndo}
@@ -685,25 +713,27 @@
       <button
         type="button"
         class="dock-btn secondary pass-turn"
-        disabled={!viewerIsActive}
+        disabled={!canPassTurn}
         aria-keyshortcuts={ariaKeys(keys.passTurn)}
         onclick={onPassTurn}
-        onkeydown={(e) => enterPresses(e, viewerIsActive, onPassTurn)}
-        title={viewerIsActive
-          ? `skip the rest of your turn${keyHint(keys.passTurn)}`
-          : `${activePlayerName} is the active player`}
+        onkeydown={(e) => enterPresses(e, canPassTurn, onPassTurn)}
+        title={preGame
+          ? "the first turn has not begun"
+          : viewerIsActive
+            ? `skip the rest of your turn${keyHint(keys.passTurn)}`
+            : `${activePlayerName} is the active player`}
       >
         Pass turn
       </button>
       <button
         type="button"
         class="dock-btn primary next"
-        class:viewer-priority={viewerHasPriority}
-        disabled={!viewerHasPriority}
+        class:viewer-priority={canPass}
+        disabled={!canPass}
         aria-keyshortcuts={ariaKeys(keys.passPriority)}
         onclick={onPassPriority}
-        onkeydown={(e) => enterPresses(e, viewerHasPriority, onPassPriority)}
-        title={viewerHasPriority
+        onkeydown={(e) => enterPresses(e, canPass, onPassPriority)}
+        title={canPass
           ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
           : "you don't hold priority"}
       >
@@ -761,7 +791,8 @@
     min-width: 0;
   }
   .pass-hint,
-  .bluff-status {
+  .bluff-status,
+  .hold-status {
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -773,6 +804,10 @@
   .bluff-status {
     color: var(--magenta);
     opacity: 0.85;
+  }
+  .hold-status {
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
   }
   .loop-notice {
     display: flex;

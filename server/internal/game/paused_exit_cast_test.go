@@ -10,16 +10,18 @@ import (
 // paused_exit_cast_test.go — #1474, the two uses of a paused card that
 // neither #1451's `moving` list nor #1478's `tapping` list could see.
 //
-// A commander an effect is exiling, destroying or discarding sits
-// where it was while its owner answers CR 903.9, but as far as the
-// rules are concerned it has already left. #1451 refused every cost
+// A commander an effect is bouncing or tucking sits where it was while
+// its owner answers CR 903.9b, but as far as the rules are concerned it
+// has already left. (Before ADR 0115 an exile, destroy or discard
+// paused too, and those were this file's vehicles; since then those
+// moves land at once and CR 903.9a asks afterwards.) #1451 refused every cost
 // that would MOVE it and #1478 every cost that would TAP it. What was
 // left:
 //
 //   - CASTING the paused card itself (or playing it, if it is a land).
 //     CR 601.2a moves the spell before any cost is paid, so it was in
 //     no cost list at all, and CastSpell put it on the stack with the
-//     exile's prompt still open.
+//     move's prompt still open.
 //   - Activating an ability OF the paused permanent through a cost
 //     component that neither moves nor taps it — a counter it removes
 //     or adds, a loyalty cost, or no cost at all — and naming it as
@@ -63,12 +65,12 @@ func newPausedCastTable(t *testing.T, zone func(*Player) *Zone, typeLine string)
 	z.PushTop(spare)
 	me.ManaPool.AddMana(ManaToken{Color: "C"}, ManaToken{Color: "C"})
 	return &pausedCastTable{g: g, me: me, cmdr: cmdr, spare: spare.InstanceID,
-		prompt: exileCommanderPaused(t, g, me, z, cmdr)}
+		prompt: tuckCommanderPaused(t, g, me, z, cmdr)}
 }
 
 // assertNothingSpent checks a refused announcement left the table as
 // it found it: the card where it was, no spell or ability on the stack,
-// the pool untouched, no land drop spent, and the exile's prompt the
+// the pool untouched, no land drop spent, and the tuck's prompt the
 // only one open.
 func (tb *pausedCastTable) assertNothingSpent(t *testing.T, z *Zone, pool int) {
 	t.Helper()
@@ -86,12 +88,12 @@ func (tb *pausedCastTable) assertNothingSpent(t *testing.T, z *Zone, pool int) {
 		t.Errorf("pool %v, want %d mana — the refused cast paid", me.ManaPool, pool)
 	}
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != tb.prompt.ID {
-		t.Fatalf("the refusal disturbed the exile's prompt (%d pending)", len(g.PendingChoices))
+		t.Fatalf("the refusal disturbed the tuck's prompt (%d pending)", len(g.PendingChoices))
 	}
 }
 
-// A commander an effect is exiling out of its owner's hand or
-// graveyard cannot be cast, or played if it is a land, while its owner
+// A commander an effect is putting into its owner's library out of
+// their hand or graveyard cannot be cast, or played if it is a land, while its owner
 // decides. Nothing moves and nothing is paid. The same cast of an
 // ordinary card beside it goes through with the prompt open, and once
 // the owner sends the commander to the command zone it casts from
@@ -137,7 +139,7 @@ func TestAPausedCommanderCannotBeCastWhileItsOwnerIsAsked(t *testing.T) {
 			if err := g.ResolveOptionalReplacement(tb.prompt.ID, me.ID, true); err != nil {
 				t.Fatalf("ResolveOptionalReplacement: %v", err)
 			}
-			assertOnlyIn(t, tb.cmdr, me.Command, z, g.Exile, g.Stack)
+			assertOnlyIn(t, tb.cmdr, me.Command, z, me.Library, g.Stack)
 			if tc.typeLine == "Legendary Land" {
 				return // no rule plays a land out of the command zone
 			}
@@ -171,15 +173,15 @@ func counterMark(label string, cost AbilityCost) ActivatedAbilityShape {
 	}
 }
 
-// A destroyed commander, its owner still deciding, cannot be the
+// A bounced commander, its owner still deciding, cannot be the
 // source of an activation — through a counter it removes or adds, a
 // loyalty cost, a counter-cost mana ability, or no cost at all — and
 // cannot be named as another ability's counter-removal source. Each
 // refusal changes no counter, puts nothing on the stack or in the pool,
-// and leaves the destroy's prompt alone. An ordinary permanent in the
+// and leaves the bounce's prompt alone. An ordinary permanent in the
 // same slot still pays, prompt open, and after the answer the
-// commander is where the destroy sent it.
-func TestADestroyedCommanderCannotPayOrActivateWithCounters(t *testing.T) {
+// commander is where the bounce sent it.
+func TestABouncedCommanderCannotPayOrActivateWithCounters(t *testing.T) {
 	loyalty := 1
 	for _, tc := range []struct {
 		name string
@@ -233,14 +235,14 @@ func TestADestroyedCommanderCannotPayOrActivateWithCounters(t *testing.T) {
 			}
 			cmdr := seatCommander(t, g.Battlefield, me)
 			editBattlefieldCard(g, cmdr, withCounterAbilities)
-			prompt := destroyCommanderPaused(t, g, me, cmdr)
+			prompt := bounceCommanderPaused(t, g, me, cmdr)
 
 			if err := tc.try(g, me, cmdr, remover); !errors.Is(err, ErrChoicePending) {
-				t.Errorf("naming the destroyed commander: err = %v, want ErrChoicePending", err)
+				t.Errorf("naming the bounced commander: err = %v, want ErrChoicePending", err)
 			}
 			c := findBattlefieldCard(g, cmdr)
 			if c == nil {
-				t.Fatal("the destroyed commander left the battlefield before its owner answered")
+				t.Fatal("the bounced commander left the battlefield before its owner answered")
 			}
 			if c.Counters["+1/+1"] != 2 || c.Counters["-1/-1"] != 0 || c.Counters[CounterLoyalty] != 3 || g.LoyaltyActivatedThisTurn[cmdr] {
 				t.Errorf("the refused payment changed the commander's counters: %v", c.Counters)
@@ -249,7 +251,7 @@ func TestADestroyedCommanderCannotPayOrActivateWithCounters(t *testing.T) {
 				t.Errorf("stack %d, pool %v — the refused payment paid something", len(g.StackMeta), me.ManaPool)
 			}
 			if len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != prompt.ID {
-				t.Fatalf("the refusal disturbed the destroy's prompt (%d pending)", len(g.PendingChoices))
+				t.Fatalf("the refusal disturbed the bounce's prompt (%d pending)", len(g.PendingChoices))
 			}
 
 			// The same payment with an ordinary permanent, prompt open.
@@ -262,7 +264,7 @@ func TestADestroyedCommanderCannotPayOrActivateWithCounters(t *testing.T) {
 			if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
 				t.Fatalf("ResolveOptionalReplacement: %v", err)
 			}
-			assertOnlyIn(t, cmdr, me.Graveyard, g.Battlefield, me.Command)
+			assertOnlyIn(t, cmdr, me.Hand, g.Battlefield, me.Command)
 		})
 	}
 }

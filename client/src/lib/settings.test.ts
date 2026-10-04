@@ -59,7 +59,7 @@ describe("settings", () => {
     expect(s.__version).toBe(d.__version);
     expect(s.audio.masterVolume).toBe(80);
     expect(s.display.cardSize).toBe("medium");
-    expect(s.display.stackStyle).toBe("compact");
+    expect(s.display.stackStyle).toBe("pile");
     expect(s.gameplay.confirmExit).toBe(true);
   });
 
@@ -75,6 +75,22 @@ describe("settings", () => {
     expect(d.display.opponentDetail).toBe("summary");
     expect(d.display.expandActivePlayer).toBe(true);
     expect(d.display.expandStyle).toBe("reflow");
+  });
+
+  // ADR 0121 §7: dice animate by default, and a stored blob from before
+  // the field existed gains it from the merge, with no version bump.
+  it("defaults animations.dice on and fills it into an older blob", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, animations: { enabled: true, speed: 1.5, cardDraw: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS } = await freshModule();
+    expect(defaultSettings().animations.dice).toBe(true);
+    const s = get(settings);
+    expect(s.animations.dice).toBe(true);
+    expect(s.animations.cardDraw).toBe(false);
+    expect(s.animations.speed).toBe(1.5);
+    expect(SYNCED_FIELDS.animations.dice).toBe("synced");
   });
 
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
@@ -228,13 +244,78 @@ describe("settings", () => {
     expect(s.shortcuts.bindings).toEqual({ undo: "z" });
   });
 
-  // #1954: experimental, off by default, and it survives a reload.
-  it("artOnlyCards defaults off and persists once turned on", async () => {
+  // #2209: art tiles on the battlefield by default, full cards in the
+  // hand, and each choice survives a reload.
+  it("battlefieldArt defaults on, handArt off, and both persist once changed", async () => {
     let m = await freshModule();
-    expect(get(m.settings).display.artOnlyCards).toBe(false);
-    m.updateSettings("display", "artOnlyCards", true);
+    expect(get(m.settings).display.battlefieldArt).toBe(true);
+    expect(get(m.settings).display.handArt).toBe(false);
+    expect(m.defaultSettings().display.battlefieldArt).toBe(true);
+    expect(m.defaultSettings().display.handArt).toBe(false);
+    m.updateSettings("display", "battlefieldArt", false);
+    m.updateSettings("display", "handArt", true);
     m = await freshModule();
-    expect(get(m.settings).display.artOnlyCards).toBe(true);
+    expect(get(m.settings).display.battlefieldArt).toBe(false);
+    expect(get(m.settings).display.handArt).toBe(true);
+  });
+
+  // #2209 migration. A v15 blob always carries artOnlyCards, default
+  // included, so only `true` is known to be a choice.
+  it("v16 keeps a v15 artOnlyCards: true as art in both places", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 15, display: { artOnlyCards: true, cardSize: "large" } }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(s.__version).toBe(SETTINGS_VERSION);
+    expect(s.display.battlefieldArt).toBe(true);
+    expect(s.display.handArt).toBe(true);
+    expect(s.display.cardSize).toBe("large");
+    expect("artOnlyCards" in s.display).toBe(false);
+  });
+
+  it("v16 gives a v15 artOnlyCards: false (or none) the new defaults", async () => {
+    for (const display of [{ artOnlyCards: false }, {}]) {
+      localStorage.clear();
+      localStorage.setItem("cmdctrl.settings.v1", JSON.stringify({ __version: 15, display }));
+      const { settings } = await freshModule();
+      const s = get(settings);
+      expect(s.display.battlefieldArt).toBe(true);
+      expect(s.display.handArt).toBe(false);
+      expect("artOnlyCards" in s.display).toBe(false);
+    }
+  });
+
+  it("from v16 on, the stored art choices are honoured", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 16, display: { battlefieldArt: false, handArt: true } }),
+    );
+    const { settings } = await freshModule();
+    const s = get(settings);
+    expect(s.display.battlefieldArt).toBe(false);
+    expect(s.display.handArt).toBe(true);
+  });
+
+  it("an account copy from a v15 client migrates the same way (ADR 0110 §4)", async () => {
+    const m = await freshModule();
+    const base = m.defaultSettings();
+    base.display.battlefieldArt = false;
+    const on = m.applySyncedCopy(base, { display: { artOnlyCards: true } }, 15);
+    expect(on.display.battlefieldArt).toBe(true);
+    expect(on.display.handArt).toBe(true);
+    const off = m.applySyncedCopy(base, { display: { artOnlyCards: false } }, 15);
+    expect(off.display.battlefieldArt).toBe(true);
+    expect(off.display.handArt).toBe(false);
+    const v16 = m.applySyncedCopy(
+      m.defaultSettings(),
+      { display: { battlefieldArt: false, handArt: true } },
+      16,
+    );
+    expect(v16.display.battlefieldArt).toBe(false);
+    expect(v16.display.handArt).toBe(true);
+    expect(m.syncedSubset(v16).display).not.toHaveProperty("artOnlyCards");
   });
 
   it("v11 keeps an explicit opponentDetail: full across a load", async () => {
@@ -307,9 +388,95 @@ describe("settings", () => {
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
   });
 
-  // #1467. The stack stays where players know it: nobody's moves on
-  // upgrade, and the floating lanes are opt-in.
-  it("v13 → v14 seeds stackStyle as compact without disturbing stored choices", async () => {
+  // ADR 0119 §2: the stack hold arrives on, at 2 s, for everyone.
+  it("v17 → v18 seeds the stack hold at 2 s, and keeps a stored choice", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, gameplay: { bluffInstant: true } }),
+    );
+    let mod = await freshModule();
+    let s = get(mod.settings);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(18);
+    expect(s.gameplay.stackHoldMs).toBe(2000);
+    expect(s.gameplay.bluffInstant).toBe(true);
+
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 18, gameplay: { stackHoldMs: 0 } }),
+    );
+    mod = await freshModule();
+    s = get(mod.settings);
+    expect(s.gameplay.stackHoldMs).toBe(0);
+  });
+
+  // ADR 0118 §1, owner decision 5: strict payment is the default, and
+  // every existing player is moved to it once. A stored false from
+  // before v19 is the old default materialised, so it moves; from v19
+  // on it is a choice and is kept.
+  it("defaults strictMana on for a new player", async () => {
+    const { settings, defaultSettings } = await freshModule();
+    expect(defaultSettings().gameplay.strictMana).toBe(true);
+    expect(get(settings).gameplay.strictMana).toBe(true);
+  });
+
+  it("v18 → v19 writes strictMana true whatever was stored", async () => {
+    for (const version of [4, 15, 18]) {
+      for (const stored of [false, true, "no", undefined]) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({
+            __version: version,
+            gameplay: { strictMana: stored, smartAutoPass: false },
+          }),
+        );
+        const { settings, SETTINGS_VERSION } = await freshModule();
+        const s = get(settings);
+        expect(SETTINGS_VERSION).toBe(19);
+        expect(s.__version).toBe(SETTINGS_VERSION);
+        expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
+        expect(s.gameplay.smartAutoPass).toBe(false);
+      }
+    }
+  });
+
+  it("v19 keeps a player's choice to turn strict payment off", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 19, gameplay: { strictMana: false } }),
+    );
+    const mod = await freshModule();
+    expect(get(mod.settings).gameplay.strictMana).toBe(false);
+    // It survives the save and the next load: the move happens once.
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.strictMana).toBe(false);
+  });
+
+  it("moves a synced copy written before v19 to strict, and keeps a v19 copy's off", async () => {
+    const m = await freshModule();
+    const base = { ...m.defaultSettings(), gameplay: { ...m.defaultSettings().gameplay } };
+    base.gameplay.strictMana = false;
+    for (const version of [15, 18]) {
+      const moved = m.applySyncedCopy(base, { gameplay: { strictMana: false } }, version);
+      expect(moved.gameplay.strictMana, `v${version} copy`).toBe(true);
+    }
+    const kept = m.applySyncedCopy(base, { gameplay: { strictMana: false } }, 19);
+    expect(kept.gameplay.strictMana).toBe(false);
+  });
+
+  it("v19 falls back to the default for a strictMana that is not a boolean", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 19, gameplay: { strictMana: "off" } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).gameplay.strictMana).toBe(true);
+  });
+
+  // #1467 seeded stackStyle at v14; since v17 the seeded value is the
+  // pile (ADR 0119 §1), and nothing else stored moves.
+  it("a v13 blob gets the default stack style without disturbing stored choices", async () => {
     localStorage.setItem(
       "cmdctrl.settings.v1",
       JSON.stringify({
@@ -321,7 +488,7 @@ describe("settings", () => {
     const { settings, SETTINGS_VERSION } = await freshModule();
     const s = get(settings);
     expect(s.__version).toBe(SETTINGS_VERSION);
-    expect(s.display.stackStyle).toBe("compact");
+    expect(s.display.stackStyle).toBe("pile");
     expect(s.display.tableLayout).toBe("row");
     expect(s.display.handLayout).toBe("stacked");
     expect(s.gameplay.bluffInstant).toBe(true);
@@ -342,8 +509,7 @@ describe("settings", () => {
       );
       const { settings, SETTINGS_VERSION } = await freshModule();
       const s = get(settings);
-      expect(SETTINGS_VERSION).toBe(15);
-      expect(s.__version).toBe(15);
+      expect(s.__version).toBe(SETTINGS_VERSION);
       expect(s.gameplay.highlightLegalActions, `stored ${String(stored)}`).toBe(true);
       expect(s.display.stackStyle).toBe("fan");
       expect(s.gameplay.smartAutoPass).toBe(false);
@@ -364,28 +530,66 @@ describe("settings", () => {
     expect(get(settings).gameplay.highlightLegalActions).toBe(true);
   });
 
-  it("v14 keeps a chosen stack style across a load", async () => {
-    for (const style of ["fan", "spotlight", "ribbon", "compact"] as const) {
+  it("keeps a chosen fan, spotlight or ribbon across the v17 upgrade", async () => {
+    for (const version of [14, 15, 16]) {
+      for (const style of ["fan", "spotlight", "ribbon"] as const) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({ __version: version, display: { stackStyle: style } }),
+        );
+        const { settings } = await freshModule();
+        expect(get(settings).display.stackStyle, `v${version} ${style}`).toBe(style);
+      }
+    }
+  });
+
+  // ADR 0119 §1: before v17 an untouched compact and a chosen one look
+  // the same (the shallow merge wrote the default in), so a stored
+  // compact moves to the new default. From v17 on it is a choice.
+  it("v16 → v17 moves a stored compact to the pile", async () => {
+    for (const version of [14, 15, 16]) {
       localStorage.setItem(
         "cmdctrl.settings.v1",
-        JSON.stringify({ __version: 14, display: { stackStyle: style } }),
+        JSON.stringify({ __version: version, display: { stackStyle: "compact" } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.stackStyle, `v${version}`).toBe("pile");
+    }
+  });
+
+  it("keeps a compact chosen at v17", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, display: { stackStyle: "compact" } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).display.stackStyle).toBe("compact");
+  });
+
+  it("keeps every style across a load from v17", async () => {
+    for (const style of ["pile", "compact", "fan", "spotlight", "ribbon"] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 17, display: { stackStyle: style } }),
       );
       const { settings } = await freshModule();
       expect(get(settings).display.stackStyle).toBe(style);
     }
   });
 
-  it("falls back to the compact stack for a style it does not know", async () => {
+  it("falls back to the pile for a style it does not know", async () => {
     // A style that was tried and removed, or a hand-edited blob: the
-    // board must still draw a stack, and compact is the one that
-    // always exists.
-    for (const bad of ["carousel", 7, null]) {
-      localStorage.setItem(
-        "cmdctrl.settings.v1",
-        JSON.stringify({ __version: 14, display: { stackStyle: bad } }),
-      );
-      const { settings } = await freshModule();
-      expect(get(settings).display.stackStyle).toBe("compact");
+    // board must still draw a stack, and the default is the one that
+    // is always there (ADR 0119 §1).
+    for (const version of [14, 17]) {
+      for (const bad of ["carousel", 7, null]) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({ __version: version, display: { stackStyle: bad } }),
+        );
+        const { settings } = await freshModule();
+        expect(get(settings).display.stackStyle).toBe("pile");
+      }
     }
   });
 

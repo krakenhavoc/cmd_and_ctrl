@@ -31,10 +31,11 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   timeout: 30_000,
-  // 10s: the s19 helpers seed hands by pumping draw_card (the admin
-  // view can't address redacted library cards by name), so pages can
-  // be re-rendering 40+ card hands when an assertion polls — 5s
-  // loses that race on a loaded single-core runner.
+  // 10s: three browser contexts, two dev servers and the other E2E
+  // runs share one runner. (This used to be blamed on the s19 helpers
+  // seeding hands by pumping draw_card, which left pages re-rendering
+  // 90-card hands; they move the card straight out of the library now,
+  // #2253.)
   expect: { timeout: 10_000 },
   use: {
     baseURL: "http://localhost:5173",

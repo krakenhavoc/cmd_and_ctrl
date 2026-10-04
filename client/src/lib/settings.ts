@@ -5,7 +5,7 @@ import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
-import { isStackStyle, type StackStyle } from "./stackLane";
+import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -58,6 +58,10 @@ export interface Settings {
     cardFlip: boolean;
     particlesEtb: boolean;
     damagePopups: boolean;
+    // ADR 0121 §7: dice and coins tumble at the roller's seat. Off (or
+    // the master switch off, or reduced motion) the result still shows,
+    // settled, for the same hold; only the motion goes.
+    dice: boolean;
   };
 
   display: {
@@ -79,14 +83,16 @@ export interface Settings {
     // arrangement worth having. This setting only distinguishes the
     // 4-player table.
     tableLayout: "row" | "quadrant";
-    // #1467: how the stack is drawn. "compact" (the default) is the
-    // docked card in the top-left attention strip, as it has always
-    // been. The other three float a lane over the middle of the table
-    // while the stack or pending triggers are live — "fan" (cards with
-    // arrows to their targets), "spotlight" (the next item large, the
-    // queue beside it) and "ribbon" (a numbered row). The board grid
-    // never reflows for any of them. All four ship so they can be
-    // compared on a live table; see lib/stackLane.ts.
+    // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
+    // since v17) is a pile of large, readable cards on the left of the
+    // table; phones and short boards draw "compact" instead, without
+    // changing this value. "compact" is the docked card in the
+    // top-left attention strip. The other three float a lane over the
+    // middle of the table while the stack or pending triggers are
+    // live — "fan" (cards with arrows to their targets), "spotlight"
+    // (the next item large, the queue beside it) and "ribbon" (a
+    // numbered row). The board grid never reflows for any of them; see
+    // lib/stackLane.ts.
     stackStyle: StackStyle;
     // How an opponent's board is drawn. "summary" (the default)
     // renders a dense read-out — life, untapped mana by colour,
@@ -128,12 +134,18 @@ export interface Settings {
     // behaviour is always-on; this lets a viewer who finds it
     // distracting hide it.
     showOpponentHandCount: boolean;
-    // #1954, EXPERIMENTAL, off by default. Battlefield cards and the
-    // viewer's own hand draw Scryfall's art_crop instead of the full
-    // card; the hover zoom still shows the whole card. The stack,
-    // prompts, catalog, deck views and every face-down card are
-    // untouched. Not in practiceTable's forced list on purpose.
-    artOnlyCards: boolean;
+    // #2209 (was #1954's single `artOnlyCards`). Where a card is drawn
+    // as an art tile — Scryfall's art_crop with a name strip, its P/T
+    // or loyalty, counters, status marks and keyword chips — instead
+    // of the full card. The hover zoom always shows the whole card.
+    // The stack, prompts, catalog, deck views and every face-down card
+    // are untouched. Not in practiceTable's forced list on purpose.
+    //   battlefieldArt — every permanent on the battlefield. Default ON
+    //                    (owner answer 1, 2026-10-04).
+    //   handArt        — the viewer's own hand. Default OFF: the hand is
+    //                    where a player reads what a card does.
+    battlefieldArt: boolean;
+    handArt: boolean;
   };
 
   gameplay: {
@@ -149,16 +161,15 @@ export interface Settings {
     // (they don't grant priority) and are absent from this map.
     // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
-    // S15: opt-in mana-cost enforcement. When true, the client
-    // tags every cast_spell action with `strict: true` (and, since
-    // #1296, every catalog activate_ability with `strict: true,
-    // auto_tap: true` — manaEnforcement.ts) and the
-    // server gates the cast on the caster's ManaPool actually
-    // covering the printed cost (plus commander tax for casts
-    // from the command zone). Default false (sandbox / paper
-    // tracking). When the gate rejects, the client surfaces an
-    // "Override strict mode for this cast" toast that re-fires
-    // the action with `force_cast: true`.
+    // S15: mana-cost enforcement. When true, the client tags every
+    // cast_spell action with `strict: true, auto_tap: true` (ADR
+    // 0118 §1; and, since #1296, every catalog activate_ability the
+    // same way — manaEnforcement.ts) and the server taps what the
+    // pool is missing and gates the cast on the payment (plus
+    // commander tax for casts from the command zone). Default true
+    // since ADR 0118 (settings v19); false is the sandbox / paper
+    // tracking posture. A card the board can't pay for still offers
+    // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
     // S13.6: when a stopped step lands on the viewer but the
     // legality engine reports no legal response (no castable hand
@@ -201,6 +212,12 @@ export interface Settings {
     bluffMode: "timed" | "manual";
     bluffDelayMinMs: number;
     bluffDelayMaxMs: number;
+    // ADR 0119 §2: an automatic pass on a stack whose top item someone
+    // else controls waits until that item has been on screen this long,
+    // so a spell nobody can answer is still readable. 0 is off; the
+    // Settings choices are 0–3 s, and stackHold.ts clamps a stored
+    // value to that range where it reads it. Never holds `next`.
+    stackHoldMs: number;
     // #323: when every item on the stack is one the viewer put
     // there, auto-pass instead of asking "Counter or Pass?" about
     // your own spell. Defaults on — casting is already the
@@ -279,7 +296,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 15;
+export const SETTINGS_VERSION = 19;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -342,15 +359,16 @@ export function defaultSettings(): Settings {
       cardFlip: true,
       particlesEtb: true,
       damagePopups: true,
+      dice: true,
     },
     display: {
       theme: "dark",
       cardSize: "medium",
       handLayout: "fan",
       tableLayout: "quadrant",
-      // v14 default: compact — the docked card players already know,
-      // until the owner picks one of the floating lanes (#1467).
-      stackStyle: "compact",
+      // v17 default: the pile (ADR 0119 §1, owner answer 1). It was
+      // compact from v14, until the owner picked the pile.
+      stackStyle: DEFAULT_STACK_STYLE,
       // v11 default: summary. The full-card rendering clips at small
       // panel sizes and has no headroom left to shrink into (#956),
       // so the dense read-out is the one that works at every table
@@ -365,7 +383,10 @@ export function defaultSettings(): Settings {
       expandStyle: "reflow",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
-      artOnlyCards: false,
+      // v16 defaults (#2209): art tiles on the battlefield, full cards
+      // in the hand.
+      battlefieldArt: true,
+      handArt: false,
     },
     gameplay: {
       confirmExit: true,
@@ -376,10 +397,10 @@ export function defaultSettings(): Settings {
       // default — stops are the affordance for "stop here".
       autoPassPriority: true,
       stepStops: defaultStepStops(),
-      // S15 default: off. Sandbox / paper-tracking is the
-      // existing posture; players who want Arena-style "can't
-      // cast yet" enforcement opt in via Settings.
-      strictMana: false,
+      // ADR 0118 §1 default: on. A spell costs what it says, and a
+      // click taps the lands for it. Off (the S15 default) is the
+      // sandbox / paper-tracking posture, still a supported choice.
+      strictMana: true,
       // S13.6 default: on. The step-stops grid is the intent
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
@@ -398,6 +419,8 @@ export function defaultSettings(): Settings {
       bluffMode: "timed",
       bluffDelayMinMs: 1500,
       bluffDelayMaxMs: 4000,
+      // ADR 0119 §2 default: about 2 s (owner answer 2a).
+      stackHoldMs: 2000,
       // #323 default: ON. "I cast it" is already the decision; the
       // client shouldn't ask you to confirm it. Opponent items on
       // the stack still stop, and the in-game "hold" toggle is the
@@ -486,6 +509,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     cardFlip: "synced",
     particlesEtb: "synced",
     damagePopups: "synced",
+    dice: "synced",
   },
   display: {
     theme: "synced",
@@ -498,8 +522,10 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     expandStyle: "device",
     hoverDelayMs: "synced",
     showOpponentHandCount: "synced",
-    // #1954: a taste, not a screen size (ADR 0110 owner answer 5).
-    artOnlyCards: "synced",
+    // #1954 / #2209: a taste, not a screen size (ADR 0110 owner
+    // answer 5).
+    battlefieldArt: "synced",
+    handArt: "synced",
   },
   gameplay: {
     confirmExit: "synced",
@@ -517,6 +543,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     bluffMode: "synced",
     bluffDelayMinMs: "synced",
     bluffDelayMaxMs: "synced",
+    stackHoldMs: "synced",
     autoPassOwnStack: "synced",
     autopassPersistThroughTurns: "synced",
     adminOverrides: "synced",
@@ -769,9 +796,10 @@ function migrate(raw: unknown): Settings {
   // value is also checked: this one picks which component the board
   // mounts, and an unknown string (a style that was tried and
   // removed, a hand-edited blob) must fall back to the docked card
-  // rather than to no stack at all.
+  // rather than to no stack at all. (Since v17 that fallback is the
+  // pile, the default; see below.)
   if (!isStackStyle(merged.display.stackStyle)) {
-    merged.display.stackStyle = "compact";
+    merged.display.stackStyle = DEFAULT_STACK_STYLE;
   }
   // v14 → v15 (ADR 0105, #1789): gameplay.highlightLegalActions. Not
   // the usual shallow-merge fill: the owner decided the highlights
@@ -783,6 +811,60 @@ function migrate(raw: unknown): Settings {
     merged.gameplay.highlightLegalActions = true;
   } else if (typeof merged.gameplay.highlightLegalActions !== "boolean") {
     merged.gameplay.highlightLegalActions = true;
+  }
+  // v15 → v16 (#2209): display.artOnlyCards splits into
+  // display.battlefieldArt (default true) and display.handArt (default
+  // false). A stored blob is a MATERIALISED copy of every field, the
+  // default included, so `artOnlyCards: false` cannot be told from
+  // "never touched it" — and neither can an account copy, which is the
+  // same subset written the same way (ADR 0110 §4). Only `true` is
+  // certainly a choice: the option was off by default. So `true` keeps
+  // art in both places, and anything else takes the new defaults —
+  // which is what the owner asked for (owner answer 1, 2026-10-04): the
+  // battlefield goes to art for everyone who had not opted in.
+  const display = merged.display as Settings["display"] & { artOnlyCards?: unknown };
+  if (storedVersion < 16) {
+    const hadArt = display.artOnlyCards === true;
+    display.battlefieldArt = hadArt || d.display.battlefieldArt;
+    display.handArt = hadArt || d.display.handArt;
+  }
+  if (typeof display.battlefieldArt !== "boolean") {
+    display.battlefieldArt = d.display.battlefieldArt;
+  }
+  if (typeof display.handArt !== "boolean") display.handArt = d.display.handArt;
+  delete display.artOnlyCards;
+  // v16 → v17 (ADR 0119 §1, #2204): the pile becomes the default. A
+  // stored `compact` from before v17 becomes `pile`. `compact` was the
+  // default, and the shallow merge above has always written defaults
+  // into the stored blob, so an untouched `compact` and a chosen one
+  // look the same; the v2 → v3 migration met the same problem and moved
+  // the untouched case. A stored fan, spotlight or ribbon is kept:
+  // nobody reaches those without choosing them. From v17 on, a stored
+  // `compact` is honoured.
+  if (storedVersion < 17 && merged.display.stackStyle === "compact") {
+    merged.display.stackStyle = "pile";
+  }
+  // v17 → v18 (ADR 0119 §2, #2204): gameplay.stackHoldMs. The shallow
+  // merge fills it from defaults (2000) for any v17 blob, so every
+  // player gets the hold on upgrade, as the owner asked: an
+  // opponent's spell stays up for about 2 s before auto-pass lets it
+  // resolve. Nothing is stored to rescue. The value is clamped where
+  // it is read (stackHold.ts), as the bluff bounds are.
+  //
+  // v18 → v19 (ADR 0118 §1, #2188): strict payment becomes the
+  // default, and everyone is moved to it ONCE (owner decision 5). A
+  // stored `false` is the old default materialised, so it cannot be
+  // told from a choice; the v14 → v15 block met the same problem and
+  // wrote the new value for everyone. An account copy goes through
+  // this same migrate with the version that wrote it (applySyncedCopy),
+  // so a synced `false` from a v18 client moves too. From v19 on, the
+  // stored choice is honoured: a player who turns it off stays off.
+  // (The ADR planned this as v16; v16–v18 went to #2209 and ADR 0119
+  // first, so it is v19.)
+  if (storedVersion < 19) {
+    merged.gameplay.strictMana = true;
+  } else if (typeof merged.gameplay.strictMana !== "boolean") {
+    merged.gameplay.strictMana = d.gameplay.strictMana;
   }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
@@ -900,6 +982,7 @@ settings.subscribe((s) => {
     cardFlip: s.animations.cardFlip,
     particlesEtb: s.animations.particlesEtb,
     damagePopups: s.animations.damagePopups,
+    dice: s.animations.dice,
   });
 });
 

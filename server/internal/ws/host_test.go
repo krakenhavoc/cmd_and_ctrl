@@ -34,6 +34,14 @@ func TestPickHost(t *testing.T) {
 		{"designated not seated walks from seat 0", uuid.New(), seats(), a},
 		{"a bot designated never hosts", b, seats(), c},
 		{"empty table", a, nil, uuid.Nil},
+		// ADR 0122 §7: an agent seat never hosts, as a bot seat does not.
+		{"an agent designated never hosts", c, seats(func(s []hostSeat) { s[2].agent = true }), d},
+		{"the pass skips an agent", a, seats(out(0), func(s []hostSeat) { s[2].agent = true }), d},
+		{"agents and bots only: no host", a, seats(func(s []hostSeat) {
+			for i := range s {
+				s[i].agent = !s[i].bot
+			}
+		}), uuid.Nil},
 	}
 	for _, tc := range cases {
 		if got := pickHost(tc.designated, tc.seats); got != tc.want {

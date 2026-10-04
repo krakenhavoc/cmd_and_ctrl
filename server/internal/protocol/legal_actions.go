@@ -142,6 +142,74 @@ type LegalSourceView struct {
 	// would do something (the targeted half, with a target) and it is
 	// absent, so the card highlights as an ordinary castable card.
 	CastIdleHint string `json:"cast_idle_hint,omitempty"`
+	// Truncated is the enumerator's own cut report for this card (ADR
+	// 0122 §6.2): each count cap that left some of its moves out, and
+	// how many. Absent when nothing was cut, which is nearly every
+	// card. Moves counts what survived the caps; this says the card has
+	// more. A legal_moves_request naming the card returns them, up to
+	// legal.ExpandCeiling.
+	Truncated []LegalCutView `json:"truncated,omitempty"`
+}
+
+// LegalCutView is one entry of the cut report (ADR 0122 §6.2), on the
+// wire in the full-list reply's `truncated` and, per card, in the
+// digest. See legal.Cut for what the numbers mean.
+type LegalCutView struct {
+	// Source is the card whose expansion was cut. Omitted for a prompt
+	// no card raised, and inside the digest, where the key is the card.
+	Source string `json:"source,omitempty"`
+	// Choice is the pending choice being answered — its ID, or
+	// "cleanup_discard" — when the cut was in one.
+	Choice string `json:"choice,omitempty"`
+	// Cap names the cap: per_source, max_x, variable_counts,
+	// subset_scan, creature_types, card_names, cost_payments, repeats,
+	// or ceiling (an expanded request's 512).
+	Cap string `json:"cap"`
+	// Omitted is how many candidate moves the cap left out; a lower
+	// bound when AtLeast is set.
+	Omitted int  `json:"omitted"`
+	AtLeast bool `json:"at_least,omitempty"`
+}
+
+// LegalCutViews converts the enumerator's cut report to its wire form.
+func LegalCutViews(cuts []legal.Cut) []LegalCutView {
+	if len(cuts) == 0 {
+		return nil
+	}
+	out := make([]LegalCutView, 0, len(cuts))
+	for _, c := range cuts {
+		out = append(out, legalCutView(c, true))
+	}
+	return out
+}
+
+func legalCutView(c legal.Cut, withSource bool) LegalCutView {
+	v := LegalCutView{Choice: c.Choice, Cap: string(c.Cap), Omitted: c.Omitted, AtLeast: c.AtLeast}
+	if withSource && c.Source != uuid.Nil {
+		v.Source = c.Source.String()
+	}
+	return v
+}
+
+// fileDigestCuts files each card's cuts under that card's digest entry
+// (ADR 0122 §6.2). Only a card the digest already lists gets them: an
+// entry is a highlight, so a cut never invents one, and a prompt's cut
+// (whose answers the digest does not fold) rides the full-list reply
+// alone.
+func fileDigestCuts(d *LegalActionsView, cuts []legal.Cut) {
+	if d == nil {
+		return
+	}
+	for _, c := range cuts {
+		if c.Source == uuid.Nil || c.Choice != "" {
+			continue
+		}
+		e := d.Sources[c.Source.String()]
+		if e == nil {
+			continue
+		}
+		e.Truncated = append(e.Truncated, legalCutView(c, false))
+	}
 }
 
 // idleTally is digestLegalMoves' per-card count behind CastIdleHint.
@@ -178,8 +246,9 @@ type (
 
 // digestLegalMoves folds one seat's uncapped move list into its
 // LegalActionsView. Nil when the list gives the client nothing to
-// highlight — no moves at all, or only choice and mulligan answers,
-// whose surfaces read pending_choices — so a quiet frame costs 0 bytes.
+// highlight — no moves at all, or only choice, mulligan and opening-roll
+// answers, whose surfaces read pending_choices, the mulligan window and
+// opening_roll — so a quiet frame costs 0 bytes.
 func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 	var out *LegalActionsView
 	// #1918: cast moves per card, and how many of them are idle.
@@ -209,7 +278,7 @@ func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 		case legal.KindPass:
 			view().Pass = true
 			continue
-		case legal.KindChoice, legal.KindMulligan:
+		case legal.KindChoice, legal.KindMulligan, legal.KindOpeningRoll:
 			continue
 		}
 		if m.Source == uuid.Nil {

@@ -540,6 +540,12 @@ const (
 	// AnnounceTrigger in S13.1; S19's auto-announce will flow
 	// through here too. The event lets listeners observe trigger
 	// creation without having to poll PendingTriggers.
+	//
+	// Two shapes, and the public log tells them apart (ADR 0119 §5).
+	// A TRIGGER (queueHarvestedTriggerLocked, AnnounceTrigger) carries
+	// its source in Source and its label in Label, and no CardID. An
+	// ACTIVATION's breadcrumb (activated.go) carries the source in both
+	// Source and CardID, and no label; it gets no `trigger` line.
 	EventTrigger EventKind = "trigger"
 
 	// EventActivateAbility — a player ACTIVATED an activated ability
@@ -1136,6 +1142,30 @@ const (
 	EventRollDie  EventKind = "roll_die"
 	EventFlipCoin EventKind = "flip_coin"
 
+	// EventOpeningRoll — the opening roll moved on (ADR 0121 §3).
+	// Label is OpeningRollTie (Seats tied on Amount and roll again),
+	// OpeningRollWon (Actor won with Amount and chooses who goes
+	// first) or OpeningRollRolledFor (Actor, the host, or uuid.Nil for
+	// the server admin, rolled for Seats). The dice themselves are
+	// ordinary EventRollDie events. Public.
+	EventOpeningRoll EventKind = "opening_roll"
+
+	// EventStartingPlayer — the winner of the opening roll (Actor)
+	// chose who takes the first turn (Target), CR 103.1. ADR 0121 §2.
+	// Public.
+	EventStartingPlayer EventKind = "starting_player"
+
+	// EventTableRoll — a player rolled a d6 or a d20, or flipped a
+	// coin, at the table, for fun (ADR 0121 §5, roll_table_die). It is
+	// not a game roll: no effect instructed it (CR 706.1), so it is
+	// never an EventRollDie or an EventFlipCoin and no "whenever you
+	// roll" or "whenever you win a coin flip" ability can see it, and
+	// no watcher matches this kind. Actor rolled; Sides is 6 or 20 with
+	// Amount the result, or 0 for a coin with Label "heads" or "tails";
+	// RollID names the roll across an undo, which re-emits the event
+	// under a new Seq (Game.reemitTableRollsLocked). Public.
+	EventTableRoll EventKind = "table_roll"
+
 	// EventSettingsChanged — one table setting changed (ADR 0075
 	// §2.3). Actor is the player who changed it (uuid.Nil for the
 	// server admin), Label is the setting's key (SettingUndoLimit,
@@ -1227,6 +1257,14 @@ type Event struct {
 	// Source alone, and ward is the first effect that has to.
 	StackItemID uuid.UUID `json:"stack_item_id,omitempty"`
 
+	// ResolvedStackItemID names the item that left the stack, on an
+	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public
+	// log can say which item it was. A separate field from StackItemID
+	// because stamping that one would change values frozen in the v7
+	// snapshot fixtures. A spell's resolve and fizzle leave it unset:
+	// CardID is its item ID.
+	ResolvedStackItemID uuid.UUID `json:"resolved_stack_item_id,omitempty"`
+
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
@@ -1286,6 +1324,16 @@ type Event struct {
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
 
+	// Seats are the seat indexes an EventOpeningRoll names: the seats
+	// that tied, or the seats the host rolled for (ADR 0121 §3).
+	Seats []int `json:"seats,omitempty"`
+
+	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
+	// game's tableRollNext after the roll, so 1 for the first table
+	// roll of a game. It survives the re-emission an undo makes, where
+	// Seq does not, and is what a client keys the roll's animation on.
+	RollID uint64 `json:"roll_id,omitempty"`
+
 	// Step is the step that began, on EventStepBegan. Typed so a
 	// trigger's predicate compares a constant rather than a string
 	// (Label still carries the name for the public log). Added in
@@ -1318,6 +1366,18 @@ type Event struct {
 	// read off a nonland permanent, but nothing prints a nonland
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
+
+	// Unpaid marks an EventCast whose mana the caster chose not to
+	// pay: the cast was made with CastSpellParams.ForceCast, which is
+	// the client's "Cast anyway (don't pay)" row and the dock's Cast
+	// anyway after a refused cast (ADR 0118 §2). The log reads it to
+	// say "<player> cast <card> without paying its mana cost", so the
+	// table sees the cast. A permissive cast (strict off) does not set
+	// it: that seat may be paying on paper, and the line belongs to
+	// force_cast (ADR 0118 owner decision 2). Life for Phyrexian
+	// symbols and additional costs are still paid; only the mana gate
+	// is waived. False on every other kind. Added for #2188.
+	Unpaid bool `json:"unpaid,omitempty"`
 
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based

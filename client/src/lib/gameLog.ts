@@ -9,6 +9,7 @@
 // from the board state would walk straight around the visibility
 // filter the log went through.
 
+import type { IconName } from "./icons";
 import type { GameView, LogEvent, LogKind, PlayerView } from "./protocol";
 
 // LogGroup is one turn/step block: the `step` entry's text as a
@@ -83,6 +84,13 @@ const LOG_TONE: Record<LogKind, string> = {
   reveal: "tone-cast",
   roll: "tone-cast",
   flip: "tone-cast",
+  // ADR 0121 §3. A tie or a winner of the opening roll reads like the
+  // dice beside it; who takes the first turn is the start of the turn
+  // structure the step spine narrates, so it is toned like a step.
+  opening_roll: "tone-cast",
+  starting_player: "tone-step",
+  // ADR 0121 §5: a table roll is not part of the game: quiet.
+  table_roll: "tone-quiet",
   // #984: an answer given out loud (CR 105.4, CR 614.12). Quiet —
   // it is a fact about one permanent, not a swing in the game — but
   // present, because the card's later abilities read it back and the
@@ -108,6 +116,10 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0106 §1: reaching across the table to activate another
   // player's permanent is a play, toned like the special action.
   activate_across: "tone-cast",
+  // ADR 0119 §5. A trigger going on the stack and an activation are the
+  // stack's other arrivals beside a cast, and read like one.
+  trigger: "tone-cast",
+  activate: "tone-cast",
   cycle: "tone-zone",
   counters: "tone-quiet",
   scry: "tone-quiet",
@@ -151,6 +163,22 @@ const LOG_TONE: Record<LogKind, string> = {
 
 export function logTone(kind: LogKind): string {
   return LOG_TONE[kind] ?? "tone-quiet";
+}
+
+// LOG_ICON marks the entries that put an ability on the stack (ADR 0119
+// §5), so a reader scanning the log can tell "it triggered" and "they
+// activated it" from the resolve line that comes later, and a die or a
+// coin rolled at the table for fun (ADR 0121 §8). Decorative: the text
+// already says which. Every other kind has no icon.
+const LOG_ICON: Partial<Record<LogKind, IconName>> = {
+  trigger: "spark",
+  activate: "bolt",
+  activate_across: "bolt",
+  table_roll: "die",
+};
+
+export function logIcon(kind: LogKind): IconName | null {
+  return LOG_ICON[kind] ?? null;
 }
 
 // ALL_LOG_KINDS is the client's runtime enumeration of every LogKind

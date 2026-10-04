@@ -102,6 +102,9 @@ planned just-in-time from the S12 pain-point triage.
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
 | S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
 | S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
+| S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | in progress |
+| S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | in progress |
+| S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | planned     |
 
 ### How to read the status column
 
@@ -3314,15 +3317,20 @@ From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/199
 
 ## S59 — Automated table: clicks that act, payment that counts
 
-**Phase:** 7 · **Goal:** the table behaves like an automated game, not a sandbox. A left-click on a permanent does what the card does, mana split across colours is one dialog with a running count, and a spell's cost is paid rather than waived, per [ADR 0117](decisions/0117-click-to-act-and-a-per-colour-mana-stepper.md) and ADR 0118. Tracking issue [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189).
+**Phase:** 7 · **Goal:** the table behaves like an automated game, not a sandbox. A left-click on a permanent does what the card does, mana split across colours is one dialog with a running count, and a spell's cost is paid rather than waived, per [ADR 0117](decisions/0117-click-to-act-and-a-per-colour-mana-stepper.md) and [ADR 0118](decisions/0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md). Tracking issue [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189).
 
-Opened 2026-10-04 from the owner's direction: "previously we were building the game around it being a sandbox and now we are building it around being automated with almost 4k cards catalogged. That means the game should be smarter and more intuitive." The owner answered four questions the same day, recorded in ADR 0117. The members are ADR 0117's Delivery PRs and ADR 0118, which is written after it.
+Opened 2026-10-04 from the owner's direction: "previously we were building the game around it being a sandbox and now we are building it around being automated with almost 4k cards catalogged. That means the game should be smarter and more intuitive." The owner answered four questions the same day, recorded in ADR 0117. The members are ADR 0117's Delivery PRs, ADR 0118 and its Delivery PRs, and [#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163) (alternative costs for every spell you cast: Fist of Suns, Jodah, Archmage Eternal, Leyline of Mutation, Omniscience), which the owner pulled in from S58's deck requests on 2026-10-04 so that strict payment can price Jodah's {W}{U}{B}{R}{G}.
 
 - [x] ADR 0117: click to act, and a per-colour mana stepper ([#2187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2187))
 - [ ] PR 2 — server: `adds_no_mana` also covers an ability that adds nothing right now (a power-0 Vivi Ornitier), so the click never spends it and the bot is not offered it
 - [ ] PR 3 — client, the click rule: one predicate for "usable" shared by the click, the popover and the picker; usable abilities open the popover, mana only taps for mana, nothing usable does nothing; the popover's Sandbox Tap / Untap row; the tapped-Vivi fix; the tutorial's step 7 hint
 - [ ] PR 4 — client, the stepper: one −/+ row per colour with "N of N" for any activation with two or more colour picks, at the card; the right-click popover's colour rows open it; the 12-answer cap removed
-- [ ] ADR 0118: strict mana payment with auto-tap by default ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188)), and its delivery PRs
+- [x] ADR 0118: strict payment by default, Cast anyway, and alternative costs for every spell ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188), [#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163))
+- [ ] ADR 0118 PR 2 — Cast anyway (don't pay): the right-click row on every castable card in the hand, the castable-from-other-zones strip and the command zone while strict is on, confirmed in the dock ("Cast <card> without paying its mana cost?", Cast / Cancel), then sending `force_cast`; the log line "<player> cast <card> without paying its mana cost" (#2188)
+- [ ] ADR 0118 PR 3 — server: the auto-tapper tops up a partly funded pool, and the enumerator agrees (#2188)
+- [ ] ADR 0118 PR 4 — client, the default flip: `strictMana` on by default and a clicked cast auto-taps; settings v19 (planned as v16) moves everyone to strict once; the Settings help; the practice table forces strict on; the tutorial's step 1 copy (#2188)
+- [ ] ADR 0118 PR 5 — server: a permanent's static adds an alternative cost to each spell its controller casts, read by the cast path, the enumerator, the auto-tapper and the view (#2163)
+- [ ] ADR 0118 PR 6 — server: Fist of Suns, Jodah, Archmage Eternal, Leyline of Mutation and Omniscience; the `granted-alternative-costs` seam closed (#2163)
 
 ### Exit criteria
 
@@ -3336,7 +3344,101 @@ From the tracker, [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/218
 
 ### Status
 
-**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 is not written yet.
+**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 was accepted on 2026-10-04 with the owner's review answers.
+
+---
+
+## S60 — Table clarity: a stack you can follow
+
+**Phase:** 7 · **Goal:** the stack and its resolution can be followed at the table. The stack is a pile of large, readable cards on the left of the battlefield with arrows to its targets; another player's item stays up long enough to read before it resolves; what resolved, was countered or fizzled is shown and where it went; targets are drawn as they are chosen; and the log tells triggers and activations. Per [ADR 0119](decisions/0119-a-stack-you-can-follow.md). Tracking issue [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204), which is also the change's issue.
+
+Opened 2026-10-04 from the owner's request: "we need to make the stack and resolution much more clear. See how arena does it? … things are passing by too quickly that it is not obvious what is happening some times". The owner answered three questions the same day, recorded in ADR 0119: an Arena-style pile as the default, on the left so the hover zoom keeps the right; a hold before auto-pass and a linger on resolution; and arrows while targeting plus a fuller log. A phone layout and opening the log by default were not chosen. The members are ADR 0119's Delivery PRs.
+
+- [x] ADR 0119: a stack you can follow (PR 1, with this section)
+- [ ] PR 2 — client, the pile: a `pile` stack style and the new default, on the left, centred on the seam between the opponents' row and yours, with the top card readable and four lower items peeking; shrinks while targeting and folds to a tab; phones and short boards render compact; the settings migration; the tutorial's step 6 copy
+- [ ] PR 3 — hold, client and bots: `gameplay.stackHoldMs` (default 2 s, 0 off) delays an automatic pass on another player's top item, with a countdown in the dock; the considering chip waits past the hold; the bot speed presets gain a stack hold (fast 0, normal 2 s, slow 3 s)
+- [ ] PR 4 — server: `stack_item_id` on the log's resolve, fizzle and counter entries
+- [ ] PR 5 — client, the linger: a departed item stays 1.5 s marked resolved, countered or fizzled, then moves to where it went
+- [ ] PR 6 — client, targeting: the source glows, an arrow per pick and one following the pointer, and target rings in every stack style
+- [ ] PR 7 — server and client, the fuller log: `trigger` and `activate` lines, mana abilities left out
+- [x] ADR 0120: expand a player's board on top of the table ([#2208](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2208)): [#2210](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2210)
+- [ ] ADR 0120 PR 2 — client plumbing: the board-anchor helper, the popover's surface, the `expanded` panel prop
+- [ ] ADR 0120 PR 3 — client, the overlay: hover opens, click pins, act through it; ADR 0077's in-place pin retired; a Playwright spec
+- [ ] Battlefield cards as art tiles by default, with a name strip, P/T and ability chips ([#2209](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2209))
+
+### Exit criteria
+
+From the tracker, [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204):
+
+1. ADR 0119 is accepted and every PR in its Delivery table has merged. The ADR was accepted on 2026-10-04.
+2. The nightly E2E passes on `develop` after the last client PR.
+3. On cmd-dev, in a game against a bot at normal speed: the bot's spell sits in the pile on the left for about 2 s, lingers marked resolved and moves to where it went, and the log shows its trigger or activation.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0119).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** ADR 0119 was accepted on 2026-10-04. No delivery PR has opened yet.
+
+---
+
+## S61 — Dice you can watch
+
+**Phase:** 7 · **Goal:** dice the whole table can see. A game starts with every seat rolling a d20 at the table, all at once, and the high roll choosing who takes the first turn (CR 103.1) before anything is shuffled or drawn; every die a card rolls and every coin it flips tumbles at the roller's seat; and any player can roll a d6 or a d20, or flip a coin, at any time without stopping anyone. Per [ADR 0121](decisions/0121-animated-dice.md). Milestone *S61 — Dice you can watch*; issue [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229), which is also the sprint's only issue.
+
+Opened 2026-10-04 from the owner's request on #2229: "Make dice rolls visible and fun: an animated die that the whole table sees, and rolls that never lock other players out." The owner answered four questions the same day, recorded in ADR 0121: the opening roll happens at the table before mulligans, every seat rolling concurrently and bots rolling for themselves, tied leaders rerolling; the winner chooses who starts; no timer, but the host gets a "roll for everyone left" button; and the animation covers the opening roll, every card roll and coin flip (amending ADR 0054's "no animation") and a new non-blocking Roll a die action. Three more answers came in review the same day: an idle chooser holds the table (no host override), giving the first turn away asks for a confirm, and mulligans in turn order (CR 103.5) are a follow-up, [#2237](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2237). The members are ADR 0121's Delivery PRs.
+
+- [x] ADR 0121: animated dice (PR 1, with this section)
+- [ ] PR 2 — server, the opening roll window: `OpeningRoll` and `StartWithOpeningRoll`; the shuffle and the deal moved after the choice (CR 103.3, 103.5, 903.7); `roll_opening`, `host_roll_remaining` and `choose_starting_player`; the dispatch allowlist; no undo entries for the roll; the view field, log kinds and snapshot field. The lobby keeps the automatic roll until PR 5
+- [ ] PR 3 — bots: the enumerator offers the roll and the choice; Layer A and the heuristic roll and choose themselves
+- [ ] PR 4 — client, the dice layer: card rolls and coin flips tumble at the roller's seat for everyone; batches, bursts, reduced motion and the `animations.dice` toggle
+- [ ] PR 5 — client and lobby, the opening roll at the table: Roll and Roll for everyone left in the dock, the chooser's sheet with a confirm before giving the first turn away, the `opening roll` banner; the lobby switches to the interactive roll; the e2e helper and `full-game.spec.ts`
+- [ ] PR 6 — server and client, Roll a die: d6, d20 or a coin from the ⋯ menu, on its own stream, never undone, never a trigger; its log line survives other players' undos
+
+### Exit criteria
+
+From [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229):
+
+1. ADR 0121 is accepted and every PR in its Delivery table has merged. The ADR was accepted on 2026-10-04.
+2. The nightly E2E passes on `develop` after the last client PR.
+3. On cmd-dev, at a table of two people and a bot: all three roll at once, the winner hands the first turn to another seat, a card's d20 tumbles at its controller's seat, and a table d20 rolled mid-turn shows in both players' logs.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0121).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** ADR 0121 was accepted on 2026-10-04. No delivery PR has opened yet.
+
+---
+
+## S62 — An agent at the table
+
+**Phase:** 7 · **Goal:** the owner can seat Claude Code, Codex or any MCP client at a real table as an extra player: a local stdio binary in a guest seat, joined by invite link, seeing only what that seat sees over the normal WebSocket, with a permanent "AI agent" badge the server records and only real choices reaching the model. Per [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md). Tracking issue [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230), which is also the change's issue.
+
+Opened 2026-10-04 from the owner's request to play Claude Code or Codex as an additional player. The owner answered five questions the same day, recorded on #2230 and in ADR 0122: an MCP server in a normal seat with no special access; a guest seat by invite link; a visible badge recorded by the server; trivial windows answered the way bot Layer A answers them; and a local binary that connects out over the WebSocket with no new server endpoint. Three more answers came in review the same day: the server flags a truncated move list and gives a seat its own full list on request; the server acknowledges every applied action; and the module moves to Go 1.27, the newest supported release, so the binary can use the official MCP Go SDK (the owner first said 1.25, then chose 1.27 because 1.25 no longer gets security fixes). The members are ADR 0122's Delivery PRs.
+
+- [ ] ADR 0122: an agent at the table, a local MCP seat (PR 1, with this section)
+- [ ] PR 2 — server, the badge: an `agent` field on both join routes, refused with a signed-in session; `is_agent` / `agent_client` on the seat, carried in the snapshot (additive, no migration) and on `PlayerView` and `SeatInfo`; an agent seat is never host and cannot link Discord
+- [ ] PR 3 — client: the "AI agent" chip in the bot chip's slot on the seat, reading "thinking…" while it holds priority, and on the lobby list, the invite preview and chat
+- [ ] PR 4 — refactor: the bot prompt's board rendering moves to `aiseat/boardtext` with byte-identical prompts
+- [ ] PR 5 — server, the wire: `legal_moves_truncated`; a seat's own full move list on request (`legal_moves_request`); the enumerator reports every cut it makes, with a one-card expansion; an `ack` frame for every applied action, and the browser's handler for it
+- [ ] PR 6 — Go 1.27 and golangci-lint v2.14.0 (or Go 1.26 with v2.13.2+ under the ADR's fallback rule): every pin (go.mod, CI and nightly workflows, `scripts/go-docker.sh` with only the three shared volumes, the Makefile, the lint config, the devcontainer, AGENTS.md §5)
+- [ ] PR 7 — the binary: `cmd/mcpseat` over `internal/mcpseat` on `modelcontextprotocol/go-sdk` v1.8.0 (stdio only, behind one file), ten tools, Layer A imported, the token file and rate limits, the import gates, and an end-to-end test against an in-process server with no model call
+- [ ] PR 8 — docs: `docs/mcp-seat.md` with the Claude Code and Codex recipes, AGENTS.md §3 and §5 entries; one real game on cmd-dev with its numbers appended to ADR 0122
+
+### Exit criteria
+
+From the tracker, [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230):
+
+1. ADR 0122 is accepted and every PR in its Delivery table has merged.
+2. On cmd-dev, the owner plays a game to the end with Claude Code (or Codex) in a seat. The other seats see the "AI agent" chip, and the agent is shown only real choices.
+3. That game's decisions, absorption, time and token figures are recorded in ADR 0122.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0122).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**Planned.** ADR 0122 was proposed on 2026-10-04 and amended the same day with three review answers. It waits on the owner's review of its remaining calls. The Go version is settled: 1.27.
 
 ---
 

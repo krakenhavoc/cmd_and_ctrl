@@ -227,6 +227,9 @@ func TestWarpedCreatureIsRecastableFromExileLater(t *testing.T) {
 // way to cast it back — the same root cause #1332 fixed for airbend
 // (TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines). A "yes"
 // sends it home, where there is nothing to grant.
+//
+// ADR 0115: the exile no longer pauses. The commander is exiled with
+// its recast grant, and CR 903.9a asks its owner afterwards.
 func TestWarpedCommanderKeepsTheRecastWhenItsOwnerDeclines(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)
@@ -255,12 +258,15 @@ func TestWarpedCommanderKeepsTheRecastWhenItsOwnerDeclines(t *testing.T) {
 		}
 		passPriorityAroundTable(t, g)
 
-		offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
-		if offer == nil || offer.Chooser != active.ID {
-			t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9)")
+		if !g.Exile.Contains(id) {
+			t.Fatalf("the warped commander is not exiled at the end step")
 		}
-		if err := g.ResolveOptionalReplacement(offer.ID, active.ID, takeCommandZone); err != nil {
-			t.Fatalf("ResolveOptionalReplacement: %v", err)
+		offer := commanderReturnPromptFor(g, active.ID)
+		if offer == nil {
+			t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9a)")
+		}
+		if err := g.ResolveCommanderReturn(offer.ID, active.ID, takeCommandZone); err != nil {
+			t.Fatalf("ResolveCommanderReturn: %v", err)
 		}
 		passPriorityAroundTable(t, g)
 
