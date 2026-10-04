@@ -3323,7 +3323,7 @@ Opened 2026-10-04 from the owner's direction: "previously we were building the g
 - [ ] PR 3 — client, the click rule: one predicate for "usable" shared by the click, the popover and the picker; usable abilities open the popover, mana only taps for mana, nothing usable does nothing; the popover's Sandbox Tap / Untap row; the tapped-Vivi fix; the tutorial's step 7 hint
 - [ ] PR 4 — client, the stepper: one −/+ row per colour with "N of N" for any activation with two or more colour picks, at the card; the right-click popover's colour rows open it; the 12-answer cap removed
 - [x] ADR 0118: strict payment by default, Cast anyway, and alternative costs for every spell ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188), [#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163))
-- [ ] ADR 0118 PR 2 — Cast anyway (don't pay): the right-click row on every castable card in the hand, the castable-from-other-zones strip and the command zone while strict is on, sending `force_cast`; the log line "<player> cast <card> without paying its cost" (#2188)
+- [ ] ADR 0118 PR 2 — Cast anyway (don't pay): the right-click row on every castable card in the hand, the castable-from-other-zones strip and the command zone while strict is on, confirmed in the dock ("Cast <card> without paying its mana cost?", Cast / Cancel), then sending `force_cast`; the log line "<player> cast <card> without paying its mana cost" (#2188)
 - [ ] ADR 0118 PR 3 — server: the auto-tapper tops up a partly funded pool, and the enumerator agrees (#2188)
 - [ ] ADR 0118 PR 4 — client, the default flip: `strictMana` on by default and a clicked cast auto-taps; settings v16 moves everyone to strict once; the Settings help; the practice table forces strict on; the tutorial's step 1 copy (#2188)
 - [ ] ADR 0118 PR 5 — server: a permanent's static adds an alternative cost to each spell its controller casts, read by the cast path, the enumerator, the auto-tapper and the view (#2163)
@@ -3341,7 +3341,7 @@ From the tracker, [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/218
 
 ### Status
 
-**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 was written on 2026-10-04 and is in review.
+**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 was accepted on 2026-10-04 with the owner's review answers.
 
 ---
 
