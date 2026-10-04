@@ -38,13 +38,7 @@ func init() {
 		Modes: ChooseN("Choose two", 2, 2,
 			ModeDoing("Return target creature card from your graveyard to your hand.",
 				TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature()),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
-				}),
+				ReturnTheModesGraveyardTargetToHand),
 			ModeDoing("Target player discards a card.",
 				TargetPlayer("target player"),
 				func(item *game.StackItem, ctx *Context, occ int) error {

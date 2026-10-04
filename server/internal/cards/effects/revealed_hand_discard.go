@@ -82,3 +82,19 @@ func TargetRevealsYouChooseDiscard(filter CardPredicate, label string) func(*gam
 		return ChooseFromRevealedHand{Player: TargetedPlayer(ctx), Filter: filter, Label: label}.Apply(ctx)
 	}
 }
+
+// TargetRevealsYouChooseDiscardAbility is TargetRevealsYouChooseDiscard
+// as a triggered or activated ability's Effect: Grief's enters trigger,
+// Mind Slash's sacrifice ability, a Saga's chapter. "You" is the
+// ability's controller (CR 113.8): the player who activated it, or the
+// player who controlled the source when it triggered. That is
+// ctx.Controller(), the stack item's controller, so the chooser is the
+// same whether the source is still on the battlefield or a cost
+// sacrificed it (Pilfering Imp). The targeted player is the ability's
+// first target clause.
+func TargetRevealsYouChooseDiscardAbility(filter CardPredicate, label string) Effect {
+	body := TargetRevealsYouChooseDiscard(filter, label)
+	return func(g *game.Game, item *game.StackItem) error {
+		return body(item, NewContext(g, item))
+	}
+}
