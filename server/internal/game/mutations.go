@@ -3478,18 +3478,20 @@ func (g *Game) resolveTopAbilityLocked() {
 	g.recomputeSplitSecondLocked()
 	if spellAllTargetsIllegalLocked(g, top) {
 		g.EmitEvent(Event{
-			Kind:   EventFizzle,
-			Actor:  top.Controller,
-			Source: top.SourceCardID,
-			Label:  top.Label,
+			Kind:                EventFizzle,
+			Actor:               top.Controller,
+			Source:              top.SourceCardID,
+			Label:               top.Label,
+			ResolvedStackItemID: top.ID,
 		})
 		return
 	}
 	g.EmitEvent(Event{
-		Kind:   EventResolve,
-		Actor:  top.Controller,
-		Source: top.SourceCardID,
-		Label:  top.Label,
+		Kind:                EventResolve,
+		Actor:               top.Controller,
+		Source:              top.SourceCardID,
+		Label:               top.Label,
+		ResolvedStackItemID: top.ID,
 	})
 	if top.Effect != nil {
 		if err := top.Effect(g, top); err != nil {
