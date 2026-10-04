@@ -327,7 +327,41 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Unlocked = 0
 		c.Prepared = false
 		c.effective = nil
+		if c.IsCommander {
+			g.rekeyCommanderTalliesLocked(oldID, newID)
+		}
 		return newID
 	}
 	return uuid.Nil
+}
+
+// rekeyCommanderTalliesLocked moves a commander's CR 903.8 tax tally
+// and its CR 903.10a damage totals from the instance ID it had to the
+// one it has just been given (ADR 0115 decision 6).
+//
+// CR 903.3: the commander designation "is an attribute of the card
+// itself" and "the card retains this designation even when it changes
+// zones". Both numbers count what "the same commander" did, which is
+// the card, so neither may reset when the card becomes a new object
+// (CR 400.7). They are keyed by instance ID, and this is the one place
+// that mints a new ID for a card that already has one, so re-keying
+// here is enough: a commander blinked by Cloudshift keeps paying its
+// tax and keeps its place on every opponent's 21-damage clock.
+//
+// Every player's maps are re-keyed, not only the owner's: CR 903.8
+// counts the casts of "the player casting it", and the cast path
+// (CastSpell) bumps the caster's map.
+//
+// Caller must hold g.mu.
+func (g *Game) rekeyCommanderTalliesLocked(oldID, newID uuid.UUID) {
+	for _, p := range g.Seats {
+		if n, ok := p.CommanderCasts[oldID]; ok {
+			delete(p.CommanderCasts, oldID)
+			p.CommanderCasts[newID] = n
+		}
+		if n, ok := p.CommanderDamage[oldID]; ok {
+			delete(p.CommanderDamage, oldID)
+			p.CommanderDamage[newID] = n
+		}
+	}
 }

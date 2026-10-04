@@ -125,12 +125,16 @@ type Player struct {
 	// one commander has dealt to this player across the game
 	// (CR 903.10a). See the note above the struct.
 	//
-	// The key is an instance ID and survives zone changes, which is
-	// the behaviour the rule wants: a commander that dies, returns to
-	// the command zone and is recast keeps accruing toward the same
-	// 21. A commander that is exiled and returned as a NEW object
-	// starts a fresh clock, which is also correct (CR 400.7) and
-	// falls out of the new instance ID for free.
+	// The key is an instance ID, and the total belongs to the
+	// commander CARD across every zone change (CR 903.3: the
+	// designation "is an attribute of the card itself"; CR 903.10a
+	// counts damage "by the same commander"). MoveCard keeps the ID,
+	// so a commander that dies, returns to the command zone and is
+	// recast keeps accruing toward the same 21. A commander exiled and
+	// returned as a new object (CR 400.7) gets a new ID, and
+	// resetAsNewObjectLocked moves this entry to it
+	// (rekeyCommanderTalliesLocked, ADR 0115 decision 6), so a blink
+	// does not start a fresh clock. CommanderCasts is re-keyed with it.
 	CommanderDamage map[uuid.UUID]int
 
 	// LifeHistory is the rolling log of every change to Life. Bounded
@@ -261,7 +265,9 @@ type Player struct {
 	// (the pre-S13.1 per-opponent CommanderDamage map collapsed
 	// partners; this fixes that for the cast-tax half — the damage
 	// half is sub-PR-deferred until the partner-pair playtest demands
-	// it). Surfaced on the wire so clients can render "+0 / +2 / +4"
+	// it). A blink's new instance ID inherits the count
+	// (rekeyCommanderTalliesLocked, ADR 0115 decision 6, CR 903.3).
+	// Surfaced on the wire so clients can render "+0 / +2 / +4"
 	// next to the commander tile. Sandbox: the engine doesn't enforce
 	// the mana cost — players track mana on paper / in their head.
 	// Added in S13.1.
