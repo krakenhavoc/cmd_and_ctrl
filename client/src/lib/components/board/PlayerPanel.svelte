@@ -26,11 +26,11 @@
   // intercepts and the click rule stay in one place: targeting, combat
   // select on your own creature, an attack on a listed planeswalker or
   // battle, declare-block on an incoming attacker, and then ADR 0117's
-  // click rule: the card's ability popover when it has a usable
-  // activated ability or special action, its mana when only mana rows
-  // are usable (#1438), and otherwise nothing. The rule itself is
-  // battlefieldClickIntent, in contextMenu.logic, so it is testable
-  // without rendering Svelte.
+  // click rule: the card's one usable ability activated (#2201), its
+  // ability popover when two or more rows are usable and one is not
+  // mana, its mana when only mana rows are usable (#1438), and
+  // otherwise nothing. The rule itself is battlefieldClickPlan, in
+  // contextMenu.logic, so it is testable without rendering Svelte.
 
   import type {
     ActionPayload,
@@ -46,10 +46,14 @@
   import { ringBearerNames } from "../../ringEmblem";
   import { cantAttackByCard } from "../../cantAttack";
   import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
-  import { battlefieldClickIntent, type BattlefieldClickIntent } from "../../contextMenu.logic";
+  import {
+    battlefieldClickPlan,
+    type BattlefieldClickPlan,
+    type LoneAbilityRow,
+  } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
-  import { openAbilityPopover } from "../../abilityPopover";
+  import { closeAbilityPopover, openAbilityPopover } from "../../abilityPopover";
   import { manaClickPlan, manaColorParams, type AnchorRect } from "../../manaSource";
   import { manaAbilityRef } from "../../abilityRef";
   import {
@@ -540,13 +544,17 @@
       return;
     }
     // ADR 0117 §1: the click rule. A left-click acts on what the card
-    // does: its popover for a usable activated ability, loyalty ability
-    // or special action (at the card, never the override menu), its
-    // mana when only mana rows are usable, nothing otherwise. Alt-click
+    // does: its one usable ability, activated as its popover row would
+    // activate it (#2201); its popover when two or more rows are usable
+    // and one is not mana (at the card, never the override menu); its
+    // mana when only mana rows are usable; nothing otherwise. Alt-click
     // still raw-taps wherever the viewer may drive the card.
-    const intent = clickIntent(card, !!ev?.altKey);
-    switch (intent) {
+    const plan = clickPlan(card, !!ev?.altKey);
+    switch (plan.intent) {
       case "none":
+        return;
+      case "activate":
+        activateLoneRow(card, plan.row);
         return;
       case "popover":
         openAbilityPopover(card.instance_id);
@@ -559,12 +567,12 @@
     }
   }
 
-  // clickIntent asks the click rule with exactly what this panel hands
+  // clickPlan asks the click rule with exactly what this panel hands
   // the popover (BattlefieldRow → Card → ManaAbilityMenu): the same
   // wiring, life, timing words and digest gate, so a click never
   // disagrees with the menu it would open (ADR 0117 §2).
-  function clickIntent(card: CardView, rawTap: boolean): BattlefieldClickIntent {
-    return battlefieldClickIntent(card, viewerID, isAdmin, {
+  function clickPlan(card: CardView, rawTap: boolean): BattlefieldClickPlan {
+    return battlefieldClickPlan(card, viewerID, isAdmin, {
       manaClick: !!activateManaAbility,
       special: !!sendSpecialAction,
       rawTap,
@@ -594,7 +602,25 @@
       return false;
     }
     if (combatMode === "block" && defendingPlayerOf(card) === viewerID) return false;
-    return clickIntent(card, false) === "none";
+    return clickPlan(card, false).intent === "none";
+  }
+
+  // activateLoneRow is the "activate" branch (#2201): the card's one
+  // usable row, sent down the very callback its popover row calls
+  // (BattlefieldRow → Card → ManaAbilityMenu), so its costs, X, modes
+  // and targets run exactly as they do from the popover. An activated
+  // row (own, granted, loyalty, any-player) goes to the board's
+  // activation flow; a special action and a manual loyalty row send
+  // the action their row sends. No menu opens, so nothing is said to
+  // the tutorial. A popover left open on another card closes, as
+  // choosing a row closes it.
+  function activateLoneRow(card: CardView, row: LoneAbilityRow): void {
+    closeAbilityPopover();
+    if (row.kind === "activated") {
+      onActivateAbility?.(card, row.index);
+      return;
+    }
+    sendSpecialAction?.(row.action);
   }
 
   // clickForMana is the "mana" branch of the click router (#1438): one

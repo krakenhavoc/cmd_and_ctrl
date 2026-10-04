@@ -102,6 +102,7 @@ planned just-in-time from the S12 pain-point triage.
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
 | S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
 | S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
+| S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | in progress |
 
 ### How to read the status column
 
@@ -3342,6 +3343,40 @@ From the tracker, [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/218
 ### Status
 
 **In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 was accepted on 2026-10-04 with the owner's review answers.
+
+---
+
+## S60 — Table clarity: a stack you can follow
+
+**Phase:** 7 · **Goal:** the stack and its resolution can be followed at the table. The stack is a pile of large, readable cards on the left of the battlefield with arrows to its targets; another player's item stays up long enough to read before it resolves; what resolved, was countered or fizzled is shown and where it went; targets are drawn as they are chosen; and the log tells triggers and activations. Per [ADR 0119](decisions/0119-a-stack-you-can-follow.md). Tracking issue [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204), which is also the change's issue.
+
+Opened 2026-10-04 from the owner's request: "we need to make the stack and resolution much more clear. See how arena does it? … things are passing by too quickly that it is not obvious what is happening some times". The owner answered three questions the same day, recorded in ADR 0119: an Arena-style pile as the default, on the left so the hover zoom keeps the right; a hold before auto-pass and a linger on resolution; and arrows while targeting plus a fuller log. A phone layout and opening the log by default were not chosen. The members are ADR 0119's Delivery PRs.
+
+- [x] ADR 0119: a stack you can follow (PR 1, with this section)
+- [ ] PR 2 — client, the pile: a `pile` stack style and the new default, on the left, centred on the seam between the opponents' row and yours, with the top card readable and four lower items peeking; shrinks while targeting and folds to a tab; phones and short boards render compact; the settings migration; the tutorial's step 6 copy
+- [ ] PR 3 — hold, client and bots: `gameplay.stackHoldMs` (default 2 s, 0 off) delays an automatic pass on another player's top item, with a countdown in the dock; the considering chip waits past the hold; the bot speed presets gain a stack hold (fast 0, normal 2 s, slow 3 s)
+- [ ] PR 4 — server: `stack_item_id` on the log's resolve, fizzle and counter entries
+- [ ] PR 5 — client, the linger: a departed item stays 1.5 s marked resolved, countered or fizzled, then moves to where it went
+- [ ] PR 6 — client, targeting: the source glows, an arrow per pick and one following the pointer, and target rings in every stack style
+- [ ] PR 7 — server and client, the fuller log: `trigger` and `activate` lines, mana abilities left out
+- [x] ADR 0120: expand a player's board on top of the table ([#2208](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2208)): [#2210](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2210)
+- [ ] ADR 0120 PR 2 — client plumbing: the board-anchor helper, the popover's surface, the `expanded` panel prop
+- [ ] ADR 0120 PR 3 — client, the overlay: hover opens, click pins, act through it; ADR 0077's in-place pin retired; a Playwright spec
+- [ ] Battlefield cards as art tiles by default, with a name strip, P/T and ability chips ([#2209](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2209))
+
+### Exit criteria
+
+From the tracker, [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204):
+
+1. ADR 0119 is accepted and every PR in its Delivery table has merged. The ADR was accepted on 2026-10-04.
+2. The nightly E2E passes on `develop` after the last client PR.
+3. On cmd-dev, in a game against a bot at normal speed: the bot's spell sits in the pile on the left for about 2 s, lingers marked resolved and moves to where it went, and the log shows its trigger or activation.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0119).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** ADR 0119 was accepted on 2026-10-04. No delivery PR has opened yet.
 
 ---
 

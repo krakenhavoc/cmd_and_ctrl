@@ -128,12 +128,18 @@ export interface Settings {
     // behaviour is always-on; this lets a viewer who finds it
     // distracting hide it.
     showOpponentHandCount: boolean;
-    // #1954, EXPERIMENTAL, off by default. Battlefield cards and the
-    // viewer's own hand draw Scryfall's art_crop instead of the full
-    // card; the hover zoom still shows the whole card. The stack,
-    // prompts, catalog, deck views and every face-down card are
-    // untouched. Not in practiceTable's forced list on purpose.
-    artOnlyCards: boolean;
+    // #2209 (was #1954's single `artOnlyCards`). Where a card is drawn
+    // as an art tile — Scryfall's art_crop with a name strip, its P/T
+    // or loyalty, counters, status marks and keyword chips — instead
+    // of the full card. The hover zoom always shows the whole card.
+    // The stack, prompts, catalog, deck views and every face-down card
+    // are untouched. Not in practiceTable's forced list on purpose.
+    //   battlefieldArt — every permanent on the battlefield. Default ON
+    //                    (owner answer 1, 2026-10-04).
+    //   handArt        — the viewer's own hand. Default OFF: the hand is
+    //                    where a player reads what a card does.
+    battlefieldArt: boolean;
+    handArt: boolean;
   };
 
   gameplay: {
@@ -279,7 +285,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 15;
+export const SETTINGS_VERSION = 16;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -365,7 +371,10 @@ export function defaultSettings(): Settings {
       expandStyle: "reflow",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
-      artOnlyCards: false,
+      // v16 defaults (#2209): art tiles on the battlefield, full cards
+      // in the hand.
+      battlefieldArt: true,
+      handArt: false,
     },
     gameplay: {
       confirmExit: true,
@@ -498,8 +507,10 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     expandStyle: "device",
     hoverDelayMs: "synced",
     showOpponentHandCount: "synced",
-    // #1954: a taste, not a screen size (ADR 0110 owner answer 5).
-    artOnlyCards: "synced",
+    // #1954 / #2209: a taste, not a screen size (ADR 0110 owner
+    // answer 5).
+    battlefieldArt: "synced",
+    handArt: "synced",
   },
   gameplay: {
     confirmExit: "synced",
@@ -784,6 +795,27 @@ function migrate(raw: unknown): Settings {
   } else if (typeof merged.gameplay.highlightLegalActions !== "boolean") {
     merged.gameplay.highlightLegalActions = true;
   }
+  // v15 → v16 (#2209): display.artOnlyCards splits into
+  // display.battlefieldArt (default true) and display.handArt (default
+  // false). A stored blob is a MATERIALISED copy of every field, the
+  // default included, so `artOnlyCards: false` cannot be told from
+  // "never touched it" — and neither can an account copy, which is the
+  // same subset written the same way (ADR 0110 §4). Only `true` is
+  // certainly a choice: the option was off by default. So `true` keeps
+  // art in both places, and anything else takes the new defaults —
+  // which is what the owner asked for (owner answer 1, 2026-10-04): the
+  // battlefield goes to art for everyone who had not opted in.
+  const display = merged.display as Settings["display"] & { artOnlyCards?: unknown };
+  if (storedVersion < 16) {
+    const hadArt = display.artOnlyCards === true;
+    display.battlefieldArt = hadArt || d.display.battlefieldArt;
+    display.handArt = hadArt || d.display.handArt;
+  }
+  if (typeof display.battlefieldArt !== "boolean") {
+    display.battlefieldArt = d.display.battlefieldArt;
+  }
+  if (typeof display.handArt !== "boolean") display.handArt = d.display.handArt;
+  delete display.artOnlyCards;
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
