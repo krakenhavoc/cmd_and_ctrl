@@ -100,6 +100,28 @@ type PaidCost struct {
 	// looking at.
 	Sacrificed int
 
+	// SacrificedObjects is WHICH permanents the sacrifice component
+	// took (ADR 0113 §1, #2072): each as the battlefield object it was,
+	// instance ID and CR 400.7 epoch, in the order named. It names
+	// exactly the set Sacrificed counts, so len(SacrificedObjects) ==
+	// Sacrificed on every record written since; a restore point written
+	// before the field existed has the count and no list.
+	//
+	// It exists for the spell that reads the permanent its cost took —
+	// Fling's "the sacrificed creature's power", Momentous Fall's power
+	// and toughness, Corpse Cobble's "the total power of the sacrificed
+	// creatures". CR 400.7j lets the effect find an object its cost
+	// moved, and CR 608.2h reads it as it last existed on the
+	// battlefield, which is Game.PermanentForEffect on each ref. Read
+	// through Context.SacrificedPermanents, never off the event log.
+	//
+	// An alternative cost's sacrifice is not recorded here, as it is
+	// not counted by Sacrificed: no printed card reads it. A CR 707.10
+	// copy keeps the list, because "if an effect of the copy refers to
+	// objects used to pay its costs, it uses the objects used to pay
+	// the costs of the original".
+	SacrificedObjects []ObjectRef `json:"sacrificedObjects,omitempty"`
+
 	// ReturnedAttacking is what the permanent a ReturnToHand component
 	// returned was ATTACKING when it was returned — the player,
 	// planeswalker or battle, in Card.AttackingTarget's own overloaded
@@ -376,7 +398,8 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
-		p.Sacrificed == 0 && p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
+		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 &&
+		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
 		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0
 }
@@ -401,6 +424,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Delved) > 0 {
 		out.Delved = append([]ObjectRef(nil), p.Delved...)
+	}
+	if len(p.SacrificedObjects) > 0 {
+		out.SacrificedObjects = append([]ObjectRef(nil), p.SacrificedObjects...)
 	}
 	if len(p.Discarded) > 0 {
 		out.Discarded = append([]uuid.UUID(nil), p.Discarded...)
