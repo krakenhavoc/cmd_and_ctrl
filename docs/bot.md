@@ -1971,7 +1971,7 @@ at all. The rule is keyed on the cost component, so the next card that
 prints "pay X life" is priced without a line of its own.
 
 **Phyrexian symbols can be paid with life, on spells and abilities
-alike.** A `{B/P}` is one black mana or 2 life (CR 107.4c), and the
+alike.** A `{B/P}` is one black mana or 2 life (CR 107.4f), and the
 caster announces how many symbols the life buys as `phyrexian_life`.
 Abilities have had this since
 [#917](https://github.com/krakenhavoc/cmd_and_ctrl/issues/917). Casts

@@ -2368,9 +2368,8 @@ deck tracker [#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).
 
 The #1573 amendment stated one inherited trade: under either "spend mana as
 though" clause, a Phyrexian slot folded to generic and lost its "or 2 life"
-half. That was weaker than printed, never stronger, but it was wrong. CR 107.4c
-says a Phyrexian symbol is paid with one mana of its colour **or** 2 life, and
-CR 107.4f says the same of the ten hybrid Phyrexian symbols. A grant that says
+half. That was weaker than printed, never stronger, but it was wrong. CR 107.4f
+says a Phyrexian symbol, hybrid ones included, is paid with one mana of its colour **or** 2 life. A grant that says
 "spend mana as though it were mana of any color" (or "of any type") widens
 which mana pays the first half. It says nothing about the second half.
 

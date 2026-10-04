@@ -1,7 +1,7 @@
 <script lang="ts">
   // PhyrexianCostModal — #916: how many of the cost's Phyrexian mana
-  // symbols you are paying with 2 life each (CR 107.4c, and CR 107.4f
-  // for the ten hybrid Phyrexian symbols).
+  // symbols you are paying with 2 life each (CR 107.4f, plain and
+  // hybrid Phyrexian symbols).
   //
   // Which half of a {U/P} you pay is part of ANNOUNCING — CR 601.2b
   // for a cast, CR 602.2b for an activation — so this opens with the

@@ -1623,8 +1623,8 @@ func countWord(n int) string {
 // real colorless mana.
 //
 // Phyrexian slots are not folded either (#1589). A Phyrexian symbol
-// is "one mana of its colour, or 2 life" (CR 107.4c, and CR 107.4f
-// for the hybrid Phyrexian ones), and the grant widens only the mana
+// is "one mana of its colour, or 2 life" (CR 107.4f, plain and
+// hybrid alike), and the grant widens only the mana
 // half — so the slot stays a Phyrexian requirement the caster may
 // strike for life, marked AnyMana so any mana pays it otherwise. See
 // widenPhyrexian.

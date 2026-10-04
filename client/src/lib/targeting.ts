@@ -117,7 +117,7 @@ export interface CastChoices {
   // a cast that does not.
   teamworkIDs?: string[];
   blightIDs?: string[];
-  // CR 107.4c/f (#916): how many of the cost's Phyrexian symbols are
+  // CR 107.4f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
   // be priced — and bounded by `phyrexian_symbols` and the caster's

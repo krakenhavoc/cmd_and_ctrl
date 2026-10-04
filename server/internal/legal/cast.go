@@ -27,7 +27,7 @@ type castParams struct {
 	// Exactly CardPaymentCount entries, or none.
 	AltCostIDs []string `json:"alt_cost_ids,omitempty"`
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
-	// cast pays with 2 life each instead of mana (CR 107.4c, CR
+	// cast pays with 2 life each instead of mana (CR 107.4f, CR
 	// 601.2b, #1677) — CastSpellParams.PhyrexianLife. See
 	// castPayment for which counts are offered.
 	PhyrexianLife int          `json:"phyrexian_life,omitempty"`
@@ -789,7 +789,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
-	// #1677: Phyrexian symbols paid with life (CR 107.4c). The offer's
+	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
 	// together never claim more than the seat has (CR 119.4). A "pay X
 	// life" additional cost turns the life path off: X and the symbol
@@ -1637,7 +1637,7 @@ type castPaymentSolve struct {
 
 // castPayment solves a cast's mana cost for the pair CR 601.2b makes
 // the caster announce: the X, and how many of the cost's Phyrexian
-// symbols are paid with 2 life each (CR 107.4c, #1677). The spell
+// symbols are paid with 2 life each (CR 107.4f, #1677). The spell
 // twin of affordablePayment, which does the same for an activated
 // ability (#917); before #1677 a cast was priced on the mana path only,
 // so a bot holding Dismember and one Swamp was never offered it, at
