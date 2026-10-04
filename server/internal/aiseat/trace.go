@@ -127,6 +127,12 @@ type Trace struct {
 	ModelLatency time.Duration `json:"model_latency_ns,omitempty"`
 	// Usage is what the call cost.
 	Usage TokenUsage `json:"usage"`
+	// ReasoningChars is the length, in bytes, of the thinking the
+	// model's reply carried apart from its answer. The thinking itself
+	// is not kept: it is a draft, never read for the answer, and on a
+	// thinking run it is tens of kilobytes a window (#2196). Zero with
+	// thinking off.
+	ReasoningChars int `json:"reasoning_chars,omitempty"`
 }
 
 // Tracer is an optional Policy extension, the same shape as Conceder:

@@ -367,6 +367,8 @@ server picks the local one when both are set.
 | `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
 | `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and escalation then changes how a window is asked, not which model answers it (see [Known limitations](#known-limitations)). |
 | `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
+| `CMDCTRL_BOT_THINK` | `1` lets the model think before it picks a move. An experiment, off by default — see [Letting the model think](#letting-the-model-think-2196). |
+| `CMDCTRL_BOT_MAX_TOKENS` | The decision calls' reply budget in tokens. Unset keeps 128 routine / 256 frontier, or 8000 with `CMDCTRL_BOT_THINK` on. |
 | `CMDCTRL_BOT_IMPROVISE` | `0` turns [improvisation](#improvisation-and-why-an-undo-is-free) off. On by default for the model tiers. |
 | `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
 
@@ -385,6 +387,52 @@ false` for a server that honours it, `reasoning_effort: "none"` for
 one that (like Ollama's) does not. `CMDCTRL_OPENAI_SEND_THINK=0` stops
 both fields being sent, for a server that rejects one of them — at the
 cost of getting the behaviour above back.
+
+### Letting the model think (#2196)
+
+`CMDCTRL_BOT_THINK=1` (or `--think` on `boteval probe`, `suite run`
+and `arena`) turns thinking back ON for the decision calls, as an
+experiment. It is off by default and nothing about a default
+deployment changes. With it on:
+
+- the client stops sending `think: false` and `reasoning_effort:
+  "none"`, and sends `think: true`;
+- the reply budget rises from 128 / 256 tokens to
+  `CMDCTRL_BOT_MAX_TOKENS` (`--max-tokens`), 8000 when unset, because
+  the model writes its thinking out of the same budget;
+- the deadline, when `CMDCTRL_BOT_MAX_THINK` (`--max-think`) is unset,
+  is 120s rather than the local 20s. `CMDCTRL_BOT_MAX_THINK` still
+  wins when it is set, and it can only widen a tier's deadline.
+
+Measured on Ollama 0.35.1 with `qwen3.6:35b-a3b`: thinking works WITH
+the `json_schema` constraint. The thinking arrives in
+`message.reasoning`, unconstrained, and `content` is the
+schema-constrained answer, written after it. The answer is read from
+`content` only; the thinking is never parsed, and its length is
+recorded (`Trace.ReasoningChars`, `Stats.ReasoningChars`, the suite's
+`reasoning` line, the arena's note under the funnel table). A server
+that sends the thinking inline as a leading `<think>…</think>` block
+has that block moved out of the answer first.
+
+The failure ADR 0052 §7 names is unchanged: **thinking that reaches
+the token cap leaves `content` empty**, `finish_reason` is `length`,
+and the window scores as malformed and plays the heuristic's move.
+`boteval probe --think` says `THINKING: on, and it RAN OUT OF BUDGET`
+when that happens. Raise `--max-tokens`, and the deadline with it: at
+about 80 tokens a second on a 16 GB card, 8000 tokens of thinking is
+about 100 seconds.
+
+What it bought, measured 2026-10-04 on the 22-position suite with the
+dump (`qwen3.6:35b-a3b`, Ollama 0.35.1, 16k context): agreement rose
+from a mean of 54% over ten runs with thinking off (range 45–64%) to
+62% at 4000 tokens / 60s and 70% at 8000 tokens / 120s (three runs
+each, range 55–73% and 68–73%), and reject-hits fell from 8.7 a run to
+6.0 and 5.7. The median model call went from about 1s to about 22s,
+the median reply from 30 tokens to about 1,700, and 8000 tokens left
+no reply cut off (4000 cut one). It is still worse than the heuristic
+on mulligans: three of the six are missed on most thinking runs. And
+it is too slow to play: one two-seat arena game against the heuristic
+had not finished after 17 minutes. Use it to measure, not at a table.
 
 **Probe the endpoint before you trust it.** `boteval probe` sends one
 request in the funnel's exact shape and prints what came back: the
@@ -983,7 +1031,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
 | `--rotate` | moves each contestant one chair along per game (contestant *k* sits at position `(k+i) mod n`). **Use it.** Turn order in Commander is worth real percentage points; without rotation you are measuring the chair. |
 | `--turn-budget`, `--wall`, `--stall` | when to stop a game that will not end (default 60 turns, 30 minutes, `3×max-think+15s` with no committed move). |
-| `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason. |
+| `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason (**120s** with `--think`). |
+| `--think`, `--max-tokens` | [let the model think](#letting-the-model-think-2196), and set the decision calls' reply budget (8000 with `--think` when unset). Both are recorded on the report's model line. |
 | `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
 | `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
 | `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
@@ -993,7 +1042,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 Env fallbacks match the server's: `CMDCTRL_OPENAI_ENDPOINT`,
 `CMDCTRL_OPENAI_API_KEY`, `CMDCTRL_BOT_MODEL`,
 `CMDCTRL_BOT_FRONTIER_MODEL`, `CMDCTRL_BOT_MAX_THINK`,
-`CMDCTRL_SCRYFALL_DUMP`.
+`CMDCTRL_BOT_THINK`, `CMDCTRL_BOT_MAX_TOKENS`, `CMDCTRL_SCRYFALL_DUMP`.
 
 **A model tier with no endpoint is refused, not downgraded.** An
 `assisted` seat with no client plays Layer A + B and still calls
@@ -1190,7 +1239,13 @@ AISEAT_GAME_TESTS=1 AISEAT_DECISION_LOG=/tmp/dl \
 # 4. fill in expected.accept / expected.reject, move it into the suite, run it
 ./bin/boteval suite run --policy heuristic --md
 ./bin/boteval suite run --policy assisted --max-think 20s --out report.json
+./bin/boteval suite run --policy assisted --think --max-tokens 8000 --max-think 120s --md
 ```
+
+`--think` and `--max-tokens` are the
+[thinking experiment](#letting-the-model-think-2196); the report's
+header records them (and `--note`), and a thinking run adds the median
+reply length and how much the model thought.
 
 `harvest` filters by escalation, heuristic/model disagreement, fallback
 cause, layer, seat and tag, and samples deterministically under

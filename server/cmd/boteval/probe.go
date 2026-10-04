@@ -105,6 +105,11 @@ type probeResult struct {
 	// moves: "json_schema", "refused" (the server 400'd it and the
 	// call was retried without), or "none".
 	Schema string
+	// Think says the probe ASKED for thinking (--think, #2196), which
+	// turns a reasoning field from a fault into the expected shape.
+	// MaxTokens is the reply budget that was sent.
+	Think     bool
+	MaxTokens int
 }
 
 // Estimate is the client-side guess at how many tokens were sent.
@@ -189,6 +194,9 @@ func thinkingVerdict(r probeResult) string {
 	if r.CallErr != nil {
 		return "THINKING: unknown — the call did not return"
 	}
+	if r.Think {
+		return thinkingOnVerdict(r)
+	}
 	switch {
 	case strings.TrimSpace(r.Reasoning) != "":
 		return fmt.Sprintf("THINKING: not suppressed — the reply carried a reasoning field (%d chars). This server honours neither `think:false` nor `reasoning_effort:\"none\"`; every window on it will score as malformed and play the heuristic.",
@@ -197,6 +205,26 @@ func thinkingVerdict(r probeResult) string {
 		return "THINKING: not suppressed — finish_reason is \"length\" and the reply is empty or unparseable: the budget went somewhere that is not the answer"
 	default:
 		return "THINKING: suppressed (or this model does not think) — no reasoning field and the answer arrived inside the token cap"
+	}
+}
+
+// thinkingOnVerdict is thinkingVerdict for a probe that asked the
+// model to think (#2196). The reasoning field is then the expected
+// shape, and the question is whether the answer still arrived after it.
+func thinkingOnVerdict(r probeResult) string {
+	reasoned := strings.TrimSpace(r.Reasoning) != ""
+	answered := strings.TrimSpace(r.Reply) != ""
+	switch {
+	case reasoned && answered:
+		return fmt.Sprintf("THINKING: on, as asked — %d chars of reasoning, then the answer in content (%d completion tokens of %d)",
+			len(r.Reasoning), r.CompletionTokens, r.MaxTokens)
+	case reasoned:
+		return fmt.Sprintf("THINKING: on, and it RAN OUT OF BUDGET — %d chars of reasoning, no answer, finish_reason %q. A seat scores this as malformed and plays the heuristic; raise --max-tokens (and the deadline with it).",
+			len(r.Reasoning), r.FinishReason)
+	case answered:
+		return "THINKING: asked for, but no reasoning came back — this server or model answered without thinking (or put it nowhere the client reads)"
+	default:
+		return fmt.Sprintf("THINKING: asked for; no reasoning and no answer came back (finish_reason %q)", r.FinishReason)
 	}
 }
 
@@ -262,7 +290,8 @@ func runProbe(args []string) int {
 	fs.SetOutput(os.Stderr)
 	endpoint := fs.String("endpoint", "", "OpenAI-compatible endpoint (default: $CMDCTRL_OPENAI_ENDPOINT)")
 	modelID := fs.String("model", "", "model id (default: $CMDCTRL_BOT_MODEL)")
-	maxTokens := fs.Int("max-tokens", 0, "max_tokens for the call (default: the assisted tier's routine profile)")
+	maxTokens := fs.Int("max-tokens", 0, "max_tokens for the call (default: $CMDCTRL_BOT_MAX_TOKENS, else the assisted tier's routine profile, or 8000 with --think)")
+	think := fs.Bool("think", false, "let the model THINK before it answers (default: $CMDCTRL_BOT_THINK)")
 	deckID := fs.String("deck", "izzet-aggro", "curated deck whose list becomes the static prompt block")
 	dump := fs.String("dump", "", "Scryfall bulk dump for oracle text (default: $CMDCTRL_SCRYFALL_DUMP)")
 	timeout := fs.Duration("timeout", 5*time.Minute, "wall clock for the one call")
@@ -288,11 +317,18 @@ func runProbe(args []string) int {
 	idx := loadIndex(out, *dump)
 	profile, profileSource := buildProfile(idx, *deckID)
 
+	thinkOn, budget, terr := thinkingFlags(*think, *maxTokens)
+	if terr != nil {
+		say(out, "%v\n", terr)
+		return 0
+	}
 	cfg := model.DefaultConfig()
 	cfg.Deck = profile
 	cfg.Routine.ID, cfg.Frontier.ID = id, id
-	if *maxTokens > 0 {
-		cfg.Routine.MaxTokens, cfg.Frontier.MaxTokens = *maxTokens, *maxTokens
+	if thinkOn {
+		cfg = cfg.WithThinking(budget)
+	} else {
+		cfg = cfg.WithMaxTokens(budget)
 	}
 	pol := model.New(cfg)
 
@@ -313,6 +349,8 @@ func runProbe(args []string) int {
 		UserBytes:   len(req.User),
 		Moves:       len(in.Moves),
 		Shown:       req.Choices,
+		Think:       thinkOn,
+		MaxTokens:   req.MaxTokens,
 	}
 	started := time.Now()
 	resp, cerr := client.Complete(ctx, req)
@@ -550,6 +588,7 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 	say(out, "user bytes         %d\n", r.UserBytes)
 	say(out, "estimate (b/%d)     ~%d tokens\n", estimateDivisor, r.Estimate())
 	say(out, "response_format    %s\n", schemaLine(r))
+	say(out, "thinking           %s (max_tokens %d)\n", onOffAsked(r.Think), r.MaxTokens)
 	if r.CallErr != nil {
 		say(out, "call               FAILED after %v: %v\n", r.Elapsed.Round(time.Millisecond), r.CallErr)
 		say(out, "%s\n", "------------------------------------------------------------")
@@ -587,6 +626,13 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 	say(out, "%s\n", truncationVerdict(r))
 	say(out, "%s\n", thinkingVerdict(r))
 	say(out, "%s\n", answerVerdict(r))
+}
+
+func onOffAsked(think bool) string {
+	if think {
+		return "ON — asked for (--think)"
+	}
+	return "off — suppressed by the transport"
 }
 
 func schemaLine(r probeResult) string {

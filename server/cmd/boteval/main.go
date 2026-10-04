@@ -74,11 +74,12 @@ subcommands:
           tokens, finish_reason, whether a reasoning field was present,
           whether the reply parsed as an index, and wall time.
 
-          boteval probe [--endpoint URL] [--model ID] [--max-tokens N]
+          boteval probe [--endpoint URL] [--model ID] [--max-tokens N] [--think]
                         [--deck izzet-aggro] [--dump path/to/default-cards.json]
 
           Env fallbacks: CMDCTRL_OPENAI_ENDPOINT, CMDCTRL_OPENAI_API_KEY,
-          CMDCTRL_BOT_MODEL, CMDCTRL_SCRYFALL_DUMP.
+          CMDCTRL_BOT_MODEL, CMDCTRL_BOT_THINK, CMDCTRL_BOT_MAX_TOKENS,
+          CMDCTRL_SCRYFALL_DUMP.
 
   arena   play N bot-vs-bot games headlessly and report who won, how
           the funnel behaved and how long decisions took. Stalls are
@@ -88,7 +89,8 @@ subcommands:
                         [--names a,b]
                         [--games N] [--seed N] [--rotate] [--lockstep]
                         [--turn-budget N] [--wall 30m] [--stall 0]
-                        [--max-think 20s] [--model ID] [--frontier-model ID]
+                        [--max-think 20s] [--think] [--max-tokens N]
+                        [--model ID] [--frontier-model ID]
                         [--endpoint URL] [--out DIR] [--decision-log]
                         [--decision-log-mode escalated|all|model]
                         [--replays] [--dump path] [--note text]
@@ -100,13 +102,15 @@ subcommands:
 
           Env fallbacks: CMDCTRL_OPENAI_ENDPOINT, CMDCTRL_OPENAI_API_KEY,
           CMDCTRL_BOT_MODEL, CMDCTRL_BOT_FRONTIER_MODEL,
-          CMDCTRL_BOT_MAX_THINK, CMDCTRL_SCRYFALL_DUMP.
+          CMDCTRL_BOT_MAX_THINK, CMDCTRL_BOT_THINK, CMDCTRL_BOT_MAX_TOKENS,
+          CMDCTRL_SCRYFALL_DUMP.
 
   suite   the labelled position suite: run a policy over it, harvest
           candidate windows out of decision logs, render one position as
           the prompt a model would see.
 
           boteval suite run     [--dir DIR] [--policy heuristic|assisted|strong]
+                                [--think] [--max-tokens N] [--note text]
           boteval suite harvest --from 'dir/*.decisions.jsonl' --to inbox/
           boteval suite render  --pos path/to/position.json
 `)

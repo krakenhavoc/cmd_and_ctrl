@@ -92,6 +92,15 @@
 //	                             hosted model, 20s when a local endpoint is
 //	                             configured, because a model that overruns
 //	                             the deadline plays the heuristic's move.
+//	CMDCTRL_BOT_THINK          — "1" lets the model THINK before it answers a
+//	                             decision window (an experiment, #2196; off
+//	                             by default). Raises the reply budget to
+//	                             CMDCTRL_BOT_MAX_TOKENS (default 8000) and,
+//	                             unless CMDCTRL_BOT_MAX_THINK says otherwise,
+//	                             the deadline to 120s.
+//	CMDCTRL_BOT_MAX_TOKENS     — the decision calls' reply budget in tokens.
+//	                             Unset keeps 128 routine / 256 frontier, or
+//	                             8000 with CMDCTRL_BOT_THINK on.
 //	CMDCTRL_BOT_IMPROVISE      — "0" / "off" / "false" turns ADR 0033 §8
 //	                             improvisation OFF for the model tiers, which
 //	                             have it on by default. With it off, a bot
@@ -712,6 +721,12 @@ type config struct {
 	// because the default is on: the zero config is the shipped
 	// behaviour.
 	BotNoImprovise bool
+	// BotThink and BotMaxTokens are the thinking experiment
+	// (CMDCTRL_BOT_THINK / CMDCTRL_BOT_MAX_TOKENS, #2196): the model's
+	// own thinking on for the decision calls, and their reply budget.
+	// Both zero is the shipped behaviour.
+	BotThink     bool
+	BotMaxTokens int
 	// BotDecisionLog is the directory the per-game bot decision log
 	// is written to (CMDCTRL_BOT_DECISION_LOG). Empty is off, which
 	// is the default: the file holds every bot seat's view of one
@@ -789,6 +804,16 @@ func loadConfig(log *slog.Logger) config {
 		}
 		c.BotMaxThink = d
 	}
+
+	// Same posture again for the thinking experiment: a run that
+	// asked for thinking and silently got the default would report the
+	// baseline under the experiment's name.
+	think, maxTokens, terr := model.ThinkingFromEnv()
+	if terr != nil {
+		log.Error("bot thinking config invalid", "err", terr)
+		os.Exit(1)
+	}
+	c.BotThink, c.BotMaxTokens = think, maxTokens
 
 	// The mode only matters when the log is ON, and it fails the boot
 	// only then. Same posture as CMDCTRL_BOT_MAX_THINK for a
@@ -1066,7 +1091,7 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 	case oc != nil:
 		client, local = oc, true
 		log.Info("bot model transport: OpenAI-compatible (local LLM)",
-			"endpoint", oc.URL(), "authenticated", oc.APIKey != "", "thinking_suppressed", !oc.OmitThink)
+			"endpoint", oc.URL(), "authenticated", oc.APIKey != "", "thinking_suppressed", !oc.OmitThink && !cfg.BotThink)
 	case ac != nil:
 		client = ac
 		log.Info("bot model transport: Anthropic")
@@ -1075,10 +1100,29 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 	}
 
 	maxThink := cfg.BotMaxThink
-	if local && maxThink == 0 {
+	switch {
+	case cfg.BotThink && client != nil && maxThink == 0:
+		maxThink = model.DefaultThinkingMaxThink
+		log.Info("bot think deadline raised for the thinking experiment (CMDCTRL_BOT_THINK); set CMDCTRL_BOT_MAX_THINK to choose your own",
+			"max_think", maxThink)
+	case local && maxThink == 0:
 		maxThink = localDefaultMaxThink
 		log.Info("bot think deadline raised for the local model transport; set CMDCTRL_BOT_MAX_THINK to choose your own",
 			"max_think", maxThink)
+	}
+	if cfg.BotThink && client != nil {
+		// Said once and loudly, because a thinking bot is a SLOW bot:
+		// a window can take minutes, and a table that did not expect
+		// that will think the bot has hung.
+		budget := cfg.BotMaxTokens
+		if budget <= 0 {
+			budget = model.DefaultThinkingMaxTokens
+		}
+		log.Warn("bot THINKING is on (CMDCTRL_BOT_THINK): the model tiers think before every decision they are asked; expect windows that take a minute or more. This is an experiment, not a table setting.",
+			"max_tokens", budget, "max_think", maxThink)
+		if !local {
+			log.Warn("CMDCTRL_BOT_THINK with the Anthropic transport sends thinking {type: adaptive}, which not every model accepts; it was measured only against a local OpenAI-compatible endpoint")
+		}
 	}
 	// The silent-downgrade warning. A local model that cannot answer
 	// inside the deadline falls back to the heuristic on EVERY
@@ -1117,6 +1161,8 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 		Models:      models,
 		MaxThink:    maxThink,
 		NoImprovise: cfg.BotNoImprovise,
+		Think:       cfg.BotThink,
+		MaxTokens:   cfg.BotMaxTokens,
 		DeckProfile: func(deckID string) (model.DeckProfile, bool) {
 			return deckprofile.Build(idx, deckID)
 		},

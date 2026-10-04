@@ -134,6 +134,11 @@ type Config struct {
 	Models tiers.Models
 	// MaxThink is the model tiers' per-window deadline.
 	MaxThink time.Duration
+	// Think and MaxTokens are tiers.Options' own: the model's thinking
+	// on for every model seat, and the decision calls' reply budget
+	// (#2196). Both zero is the shipped behaviour.
+	Think     bool
+	MaxTokens int
 	// ModelConfig overrides the funnel's tuning. Nil takes the
 	// tier's default. This is the knob every Part 2 lever is A/B'd on.
 	ModelConfig *model.Config
@@ -637,11 +642,13 @@ type seatInstruments struct {
 func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, seatInstruments, error) {
 	inst := seatInstruments{meter: &rules.Meter{}}
 	opt := tiers.Options{
-		Meter:    inst.meter,
-		Client:   cfg.Client,
-		Models:   cfg.Models,
-		MaxThink: cfg.MaxThink,
-		Config:   cfg.ModelConfig,
+		Meter:     inst.meter,
+		Client:    cfg.Client,
+		Models:    cfg.Models,
+		MaxThink:  cfg.MaxThink,
+		Think:     cfg.Think,
+		MaxTokens: cfg.MaxTokens,
+		Config:    cfg.ModelConfig,
 		// Seeded from the game seed and the CHAIR, so that a run is
 		// reproducible and two random seats at one table are not
 		// playing the same moves.
