@@ -199,6 +199,10 @@ func (e *enumerator) abilityZones() []abilityZone {
 // the activation path and the wire.
 func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, restricted bool) {
 	g, p := e.g, e.p
+	// ADR 0122 §6.2: the scope a cut is filed against (cuts.go).
+	if !e.enter(scope{source: source.InstanceID}) {
+		return
+	}
 	abilities, origins := game.ActivatedAbilitiesWithOrigins(*source)
 	// #662: an activated ability's source is the permanent — or, since
 	// #660, the HAND CARD — that has it, which is what CR 702.16b tests
@@ -667,6 +671,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						}
 						for _, cc := range counterChoices {
 							if budget <= 0 {
+								// ADR 0122 §6.2: a payment the budget
+								// never built.
+								e.budgetSpent()
 								break
 							}
 							// ADR 0109 §9: the bound this payment sets —
@@ -714,6 +721,17 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// cost throws away, which the params cannot
 							// name.
 							cost = withHandDiscard(cost, handN)
+							// ADR 0122 §6.2: an open X, where nothing else in
+							// the move is fixed by it — no X-bound or
+							// X-counted target, no count of sacrificed or
+							// tapped permanents, no waterbend taps, no
+							// division.
+							var xv *MoveValue
+							if ab.Cost.XSlots() > 0 && ann.xValue < 0 && !ann.bounded && dist == nil &&
+								len(waterbendIDs) == 0 && !game.SacrificeCountFromX(ab.Cost.SacrificeOther) &&
+								!game.TapOthersCountFromX(ab.Cost.TapOthers) {
+								xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
+							}
 							e.add(Move{
 								Type:   TypeActivateAbility,
 								Player: e.seat,
@@ -721,6 +739,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								Label:  label,
 								Source: source.InstanceID,
 								Cost:   cost,
+								Value:  xv,
 								// See the same note on the cast emitter:
 								// a modal ability's stack-targeting mode
 								// is flagged on its own.
@@ -907,16 +926,34 @@ func (e *enumerator) variableSacrificePayments(pool []uuid.UUID, spec *game.Targ
 		return nil
 	}
 	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
+	// The engine validates the count with the same predicate, so a
+	// payment offered here is one the announce path accepts. For a
+	// CountFromX clause the announced X IS the count, which is why both
+	// arguments are n.
+	return e.variableCountPayments(ordered, lo, func(n int) bool { return game.SacrificeCountLegal(spec, n, n) })
+}
+
+// variableCountPayments is the ladder both variable-count costs offer:
+// a prefix of `ordered` for each count from lo up, while `legal` admits
+// it, at most maxEnumeratedVariableCounts of them. ADR 0122 §6.2: the
+// counts past the cap that `legal` still admits are filed as the cut,
+// exactly — each is a count the validator accepts.
+func (e *enumerator) variableCountPayments(ordered []uuid.UUID, lo int, legal func(n int) bool) [][]uuid.UUID {
+	counts := e.capOr(maxEnumeratedVariableCounts)
 	var out [][]uuid.UUID
-	for n := lo; n <= len(ordered) && len(out) < maxEnumeratedVariableCounts; n++ {
-		// The engine validates the count with the same predicate, so
-		// a payment offered here is one the announce path accepts.
-		// For a CountFromX clause the announced X IS the count, which
-		// is why both arguments are n.
-		if !game.SacrificeCountLegal(spec, n, n) {
-			break
+	n := lo
+	for ; n <= len(ordered) && len(out) < counts; n++ {
+		if !legal(n) {
+			return out
 		}
 		out = append(out, ordered[:n])
+	}
+	left := 0
+	for ; e.report && n <= len(ordered) && legal(n); n++ {
+		left++
+	}
+	if left > 0 {
+		e.noteCut(CapVariableCounts, left, false)
 	}
 	return out
 }
@@ -942,7 +979,7 @@ func (e *enumerator) returnPayments(pool []uuid.UUID, rc *game.ReturnToHandCost,
 	if rc.Count > 1 {
 		return [][]uuid.UUID{ordered[:rc.Count]}
 	}
-	return combinations(ordered, 1, 1, e.opts.MaxExpansionPerSource)
+	return e.combos(ordered, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
 }
 
 // exilePermanentPayments is returnPayments one destination over
@@ -958,7 +995,7 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 	if ec.Count > 1 {
 		return [][]uuid.UUID{ordered[:ec.Count]}
 	}
-	return combinations(ordered, 1, 1, e.opts.MaxExpansionPerSource)
+	return e.combos(ordered, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
 }
 
 // permanentCostPair is one payment of an ability's permanent-MOVING
@@ -1048,7 +1085,7 @@ func (e *enumerator) tapOthersPayments(pool []uuid.UUID, tc *game.TapOthersCost,
 	if tc.Count > 1 {
 		return [][]uuid.UUID{pool[:tc.Count]}
 	}
-	return combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+	return e.combos(pool, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
 }
 
 // variableTapOthersPayments offers one nested payment for each of the
@@ -1070,14 +1107,7 @@ func (e *enumerator) variableTapOthersPayments(pool []uuid.UUID, tc *game.TapOth
 		pool = kept
 	}
 	pool = e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
-	var out [][]uuid.UUID
-	for n := 1; n <= len(pool) && len(out) < maxEnumeratedVariableCounts; n++ {
-		if !game.TapOthersCountLegal(tc, n, n) {
-			break
-		}
-		out = append(out, pool[:n])
-	}
-	return out
+	return e.variableCountPayments(pool, 1, func(n int) bool { return game.TapOthersCountLegal(tc, n, n) })
 }
 
 // tapLabel is sacrificeLabel one verb over (#759).
@@ -1490,7 +1520,7 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
 	n := game.SacrificeCostCount(spec)
 	if n <= 1 {
-		return combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+		return e.combos(pool, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
 	}
 	if len(pool) < n {
 		return nil
@@ -1655,6 +1685,10 @@ func (e *enumerator) manaMoves() {
 // a land sitting in a hand, which is exactly what should happen.
 func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, restricted bool) {
 	g := e.g
+	// ADR 0122 §6.2: the scope a cut is filed against (cuts.go).
+	if !e.enter(scope{source: source.InstanceID}) {
+		return
+	}
 	abilities, origins := game.ManaAbilitiesWithOrigins(*source)
 	for idx, ab := range abilities {
 		// CR 113.6 (#1228): the ability has to function from the zone

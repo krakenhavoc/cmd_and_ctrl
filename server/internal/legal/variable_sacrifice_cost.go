@@ -33,7 +33,7 @@ import (
 // the validator enforces, at the X the count announces for the X form
 // (CR 107.3i). Nil when nothing can be offered — a sacrifice-X card
 // whose floor the board cannot reach.
-func castVariableSacrificePayments(ordered []uuid.UUID, spec *game.TargetSpec, xFloor int) [][]uuid.UUID {
+func (e *enumerator) castVariableSacrificePayments(ordered []uuid.UUID, spec *game.TargetSpec, xFloor int) [][]uuid.UUID {
 	fromX := game.SacrificeCountFromX(spec)
 	lo := xFloor
 	if !fromX {
@@ -50,7 +50,23 @@ func castVariableSacrificePayments(ordered []uuid.UUID, spec *game.TargetSpec, x
 		lo = 1
 	}
 	positive := 0
-	for n := lo; n <= len(ordered) && positive < maxEnumeratedVariableCounts; n++ {
+	counts := e.capOr(maxEnumeratedVariableCounts)
+	n := lo
+	for ; n <= len(ordered) && positive < counts; n++ {
+		x := 0
+		if fromX {
+			x = n
+		}
+		if !game.SacrificeCountLegal(spec, x, n) {
+			return out
+		}
+		out = append(out, ordered[:n])
+		positive++
+	}
+	// ADR 0122 §6.2: the counts past the cap that the board could pay,
+	// each one a legal count by the validator's own predicate.
+	left := 0
+	for ; e.report && n <= len(ordered); n++ {
 		x := 0
 		if fromX {
 			x = n
@@ -58,8 +74,10 @@ func castVariableSacrificePayments(ordered []uuid.UUID, spec *game.TargetSpec, x
 		if !game.SacrificeCountLegal(spec, x, n) {
 			break
 		}
-		out = append(out, ordered[:n])
-		positive++
+		left++
+	}
+	if left > 0 {
+		e.noteCut(CapVariableCounts, left, false)
 	}
 	return out
 }

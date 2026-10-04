@@ -42,6 +42,10 @@
   --gold-strong: #f1d38a;
   --gold-soft: rgba(217, 180, 92, 0.16);
   --magenta: #b08aff;
+  /* ADR 0122 §7: the AI-agent chip. Violet, never the bot chip's seat tint. */
+  --agent: #c3a6ff;
+  --agent-soft: rgba(176, 138, 255, 0.16);
+  --agent-border: rgba(176, 138, 255, 0.55);
   --mint: #5fd4a4;
   --rose: #ff8aa5;
   --danger: #ff6b6b;
@@ -107,6 +111,9 @@
   --ready-glow: rgba(10, 142, 163, 0.35);
   --ready-soft: rgba(10, 142, 163, 0.12);
   --ready-ink: #ffffff;
+  --agent: #5b36b8;
+  --agent-soft: rgba(91, 54, 184, 0.1);
+  --agent-border: rgba(91, 54, 184, 0.5);
 }
 
 /* High contrast: strong fg-on-bg, brighter accent, thicker
@@ -136,6 +143,9 @@
   --ready-glow: transparent;
   --ready-soft: rgba(0, 255, 255, 0.25);
   --ready-ink: #000;
+  --agent: #e0d0ff;
+  --agent-soft: rgba(224, 208, 255, 0.2);
+  --agent-border: #e0d0ff;
 }
 
 /* ADR 0105 §7 (#1789): accessibility.colorblindPalette swaps the

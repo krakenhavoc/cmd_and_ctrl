@@ -201,6 +201,11 @@ func (e *enumerator) castMoves() {
 // permission is the only way in.
 func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from string, speed, landOwed, anyGrant, mine bool) {
 	g := e.g
+	// ADR 0122 §6.2: this card is what a cap below files its cut
+	// against, and the card a Source filter asks about.
+	if !e.enter(scope{source: c.InstanceID}) {
+		return
+	}
 	// CastPermissionForLocked answers nil unless the window is open
 	// for this seat, so there is no second liveness test here — one
 	// function reads the duration (#945).
@@ -402,7 +407,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// which is every card in the catalog before #664 — so this loop
 	// runs exactly once for them and the enumeration is unchanged.
 	optional := game.OptionalCostsFor(game.CatalogKey(card))
-	for _, chosen := range optionalCostSets(optional, e.opts.MaxExpansionPerSource) {
+	for _, chosen := range e.optionalCostSets(optional) {
 		// ADR 0089: a set that promises a gift is one announcement
 		// per opponent who could receive it — "which opponent" is
 		// part of paying the cost (CR 702.174a), and a bot offered
@@ -506,15 +511,24 @@ const maxEnumeratedRepeats = 3
 // search whose every member also needs its own affordability probe,
 // and no card in the catalog offers two. A bot simply does not take
 // that line yet; it is never offered one it cannot pay for.
-func optionalCostSets(costs []game.AdditionalCost, budget int) [][]int {
+//
+// ADR 0122 §6.2: both caps file their cuts — the repeats a multikicker
+// was not offered, and the announcements the budget stopped.
+func (e *enumerator) optionalCostSets(costs []game.AdditionalCost) [][]int {
 	if len(costs) == 0 {
 		return [][]int{nil}
 	}
+	budget := e.opts.MaxExpansionPerSource
+	repeats := e.capOr(maxEnumeratedRepeats)
 	out := [][]int{nil}
 	for i := range costs {
-		reps := min(costs[i].MaxPayments(), maxEnumeratedRepeats)
+		reps := min(costs[i].MaxPayments(), repeats)
+		if more := costs[i].MaxPayments() - reps; more > 0 {
+			e.noteCut(CapRepeats, more, false)
+		}
 		for k := 1; k <= reps; k++ {
 			if budget > 0 && len(out) >= budget {
+				e.budgetSpent()
 				return out
 			}
 			set := make([]int, k)
@@ -854,7 +868,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// name and the next few are that payment with its last card
 		// swapped for the next-cheapest.
 		pool := e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer))
-		altCostSets = combinations(pool, want, want, maxEnumeratedCostPayments)
+		altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
 		if len(altCostSets) == 0 {
 			// Unreachable through CastOffersForLocked, which already
 			// dropped an offer with too few candidates. Kept because
@@ -883,7 +897,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				pool = append(pool, h.InstanceID)
 			}
 		}
-		discardSets = combinations(pool, discards, discards, e.opts.MaxExpansionPerSource)
+		discardSets = e.combos(pool, discards, discards, e.opts.MaxExpansionPerSource, CapPerSource)
 		if len(discardSets) == 0 {
 			return
 		}
@@ -899,7 +913,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		}
 		if varSac {
 			sacOrdered = g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
-			sacrificeSets = castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)
+			sacrificeSets = e.castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)
 		} else {
 			// #747: N from the clause, one payment per cast for N ≥ 2,
 			// nothing offered when the caster controls fewer than N.
@@ -1026,12 +1040,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			bound := x
 			if perTarget {
 				bound = e.opts.MaxX
+				// ADR 0122 §6.2: a step with more legal targets than
+				// MaxX had arities the cap closed.
+				e.noteXCountedTargets(castSrc, steps, xSteps)
 			}
 			// ADR 0100 §6: "Sacrifice X creatures. Destroy X target
 			// creatures" — X is the sacrifice count, so the arities are
 			// bounded by the permanents the seat can sacrifice.
 			if sacFromX {
 				bound = min(len(sacOrdered), e.opts.MaxX)
+				if len(sacOrdered) > e.opts.MaxX {
+					e.noteCut(CapMaxX, len(sacOrdered)-e.opts.MaxX, true)
+				}
 			}
 			if bound < 1 {
 				continue
@@ -1116,6 +1136,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			for _, discards := range discardSets {
 				for _, sacs := range sacSets {
 					if budget <= 0 {
+						e.budgetSpent()
 						return
 					}
 					payX, payLife, payCost, payPrinted := setX, setLife, setCost, setPrinted
@@ -1184,6 +1205,17 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 						continue
 					}
 					budget--
+					// ADR 0122 §6.2: the X this cast announces is an open
+					// set from the offer floor up to the largest X the
+					// seat can pay — but only where nothing else in the
+					// move is fixed by that X: a target count or a
+					// "mana value X or less" bound, a division, a
+					// sacrifice count, a delve payment sized to it.
+					var xv *MoveValue
+					if (modeCost.XSlots > 0 || (addCost != nil && addCost.PayLifeX)) &&
+						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 {
+						xv = openX(xFloor, payX)
+					}
 					if first == nil {
 						first = &announcedCast{
 							modes:     modes,
@@ -1200,9 +1232,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							alt:       altCostSets[0],
 							delve:     payDelve,
 							delveFull: payDelveFull,
+							xv:        xv,
 						}
 					}
-					emit(altCostSets[0], modes, targets, payX, payLife, dist, discards, sacs, payDelve)
+					emit(altCostSets[0], modes, targets, payX, payLife, dist, discards, sacs, payDelve, xv)
 				}
 			}
 		}
@@ -1226,10 +1259,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// same spell with the same targets at a different price, so it
 	// must not displace a target set. See castPayment for why this is
 	// the one extra count offered.
-	if budget > 0 && lifeAllowed {
+	if (budget > 0 || e.report) && lifeAllowed {
 		if n, ok := e.allLifePayment(first, spend, lifeReserved); ok {
-			budget--
-			emit(altCostSets[0], first.modes, first.targets, first.x, n, first.dist, first.discards, first.sacs, first.delve)
+			if budget <= 0 {
+				// ADR 0122 §6.2: offered out of the leftover budget,
+				// and there was none.
+				e.budgetSpent()
+			} else {
+				budget--
+				emit(altCostSets[0], first.modes, first.targets, first.x, n, first.dist, first.discards, first.sacs, first.delve, first.xv)
+			}
 		}
 	}
 	// ADR 0100 owner decision 3: the FULL delve payment of the first
@@ -1238,12 +1277,17 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// graveyard and less mana, and must not displace a target set.
 	// Murktide Regent and Soulflayer want it; the policy prices the fuel
 	// either way.
-	if budget > 0 && first.delveFull != nil && e.delveFullAffordable(first, spend) {
-		budget--
-		emit(altCostSets[0], first.modes, first.targets, first.delveFull.x, first.life, first.dist, first.discards, first.sacs, first.delveFull.ids)
+	if (budget > 0 || e.report) && first.delveFull != nil && e.delveFullAffordable(first, spend) {
+		if budget <= 0 {
+			e.budgetSpent()
+		} else {
+			budget--
+			emit(altCostSets[0], first.modes, first.targets, first.delveFull.x, first.life, first.dist, first.discards, first.sacs, first.delveFull.ids, nil)
+		}
 	}
 	for _, altPaid := range altCostSets[1:] {
 		if budget <= 0 {
+			e.budgetSpent()
 			return
 		}
 		// #1727: the same affordability, with THIS payment's cards
@@ -1254,7 +1298,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			continue
 		}
 		budget--
-		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs, first.delve)
+		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs, first.delve, first.xv)
 	}
 }
 
@@ -1286,6 +1330,9 @@ type announcedCast struct {
 	// two are the same set.
 	delve     []uuid.UUID
 	delveFull *delvePayment
+	// xv is the announcement's open X (ADR 0122 §6.2), nil when its X is
+	// fixed by something else in the move.
+	xv *MoveValue
 }
 
 // castEmitter writes one concrete cast move.
@@ -1295,7 +1342,7 @@ type announcedCast struct {
 // label and the params — the #815 / #866 lesson at the move layer: two
 // writers of one move shape drift, and the one that drifts is the one
 // nobody reads.
-type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID)
+type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue)
 
 // castMoveEmitter builds that writer for one (card, zone, offer,
 // optional-cost) announcement. Everything it closes over is fixed for
@@ -1315,7 +1362,7 @@ func (e *enumerator) castMoveEmitter(
 	// #1918: fixed for the whole expansion — it reads the offer and the
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
-	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID) {
+	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
@@ -1376,6 +1423,7 @@ func (e *enumerator) castMoveEmitter(
 			// actually chose a stack target come back flagged.
 			TargetsStack: targetsStackObject(g, targets),
 			IdleHint:     idle,
+			Value:        xv,
 			Params: mustJSON(castParams{
 				InstanceID:      card.InstanceID.String(),
 				FromZone:        from,
@@ -1539,6 +1587,7 @@ func (e *enumerator) affordableXExcluding(
 		}
 		break
 	}
+	e.noteMaxX(best, func(x int) bool { return e.canPayExcluding(cost, x, spend, excluded) })
 	return best, ok
 }
 
@@ -1715,7 +1764,21 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 	if hi <= 0 || (!ms.Repeatable && hi > len(options)) {
 		hi = len(options)
 	}
-	budget := e.opts.MaxExpansionPerSource
+	limit := e.opts.MaxExpansionPerSource
+	out := modeSelections(options, lo, hi, ms.Repeatable, limit+1)
+	if len(out) > limit {
+		// ADR 0122 §6.2: the walk was asked for one selection past the
+		// budget, which leaves the first ones as they were; a spare one
+		// means the budget cut.
+		out = out[:limit]
+		e.noteCut(CapPerSource, 1, true)
+	}
+	return out
+}
+
+// modeSelections is legalModeSets' walk over the choosable options:
+// every selection of size lo..hi, all-one-option first, up to budget.
+func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]int {
 	var out [][]int
 	add := func(sel []int) bool {
 		out = append(out, append([]int(nil), sel...))
@@ -1732,7 +1795,7 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 	// CR 700.2d: the all-one-option selections first, so a
 	// repeatable spec whose only legal option is one mode is not
 	// crowded out by mixed multisets.
-	if ms.Repeatable {
+	if repeatable {
 		for _, opt := range options {
 			for n := lo; n <= hi; n++ {
 				sel := make([]int, n)
@@ -1748,7 +1811,7 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 	var rec func(start int, cur []int) bool
 	rec = func(start int, cur []int) bool {
 		if len(cur) >= lo && len(cur) <= hi {
-			if !(ms.Repeatable && len(cur) == 1) && !add(cur) {
+			if !(repeatable && len(cur) == 1) && !add(cur) {
 				return false
 			}
 		}
@@ -1782,6 +1845,8 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 		for _, prefix := range out {
 			for _, pick := range picks {
 				if len(next) >= budget {
+					// ADR 0122 §6.2: a pairing the budget never built.
+					e.budgetSpent()
 					break
 				}
 				combined := append([]game.TargetRef(nil), prefix...)
@@ -1888,7 +1953,7 @@ func announcedXCount(steps []game.AnnouncedClause, xSteps []int, targets []game.
 // enumerator that passed only a seat would offer the bot a pro-red
 // creature as a target for its red spell and the server would then
 // refuse the move — the #347 / #544 failure mode.
-func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpec, budget int) [][]game.TargetRef {
+func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpec, budget int) (out [][]game.TargetRef) {
 	lt := e.g.LegalTargetsForEffect(src, spec)
 	cands := make([]game.TargetRef, 0, len(lt.Players)+len(lt.Cards))
 	for _, id := range lt.Players {
@@ -1911,7 +1976,19 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 	if hi <= 0 || hi > len(cands) {
 		hi = len(cands)
 	}
-	var out [][]game.TargetRef
+	// ADR 0122 §6.2: asked for one set past the budget when the cut is
+	// wanted. The walk's order is fixed, so the first `budget` sets are
+	// the ones it always offered; a spare one means the budget cut.
+	limit := budget
+	if e.report {
+		limit = budget + 1
+	}
+	defer func() {
+		if len(out) > budget {
+			out = out[:budget]
+			e.noteSetCut(len(cands), spec.Min, hi, budget, keys)
+		}
+	}()
 	if lo == 0 {
 		out = append(out, nil)
 	}
@@ -1921,10 +1998,10 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 	if lo > len(cands) {
 		return out
 	}
-	for k := lo; k <= hi && len(out) < budget; k++ {
+	for k := lo; k <= hi && len(out) < limit; k++ {
 		var rec func(start int, cur []game.TargetRef)
 		rec = func(start int, cur []game.TargetRef) {
-			if len(out) >= budget {
+			if len(out) >= limit {
 				return
 			}
 			if len(cur) == k {

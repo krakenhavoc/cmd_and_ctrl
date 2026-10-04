@@ -102,6 +102,12 @@ func (e *enumerator) choiceMoves() bool {
 			continue
 		}
 		owed = true
+		// ADR 0122 §6.2: the prompt a cut is filed against, and what a
+		// Choice (or Source, for a prompt a card raised) filter asks
+		// about. The seat still owes it, filtered or not.
+		if !e.enter(scope{source: c.Source, choice: c.ID.String()}) {
+			continue
+		}
 		base := func() choiceParams { return choiceParams{ChoiceID: c.ID.String()} }
 		reason := c.Reason
 		if reason == "" {
@@ -123,7 +129,7 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				pool = append(pool, h.InstanceID)
 			}
-			for _, set := range combinations(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource) {
+			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": discard"
@@ -222,7 +228,7 @@ func (e *enumerator) choiceMoves() bool {
 			// always there.
 			if action := c.PayAction(); action != nil {
 				pool := g.PayActionOptionsForEffect(c.Chooser, action)
-				for _, set := range combinations(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource) {
+				for _, set := range e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
 					a := true
 					p := base()
 					p.Apply = &a
@@ -346,7 +352,7 @@ func (e *enumerator) choiceMoves() bool {
 			_, diffKeys := g.PickTargetSetRuleForEffect(c)
 			_, sameKeys := g.PickTargetSameRuleForEffect(c)
 			setKeys := setRuleKeys{different: diffKeys, same: sameKeys}
-			for _, set := range combinationsRefs(cands, lo, hi, e.opts.MaxExpansionPerSource, setKeys) {
+			for _, set := range e.refCombos(cands, lo, hi, e.opts.MaxExpansionPerSource, setKeys) {
 				p := base()
 				p.Targets = wireTargets(set)
 				if p.Targets == nil {
@@ -398,7 +404,7 @@ func (e *enumerator) choiceMoves() bool {
 		// whose only legal option is one mode is not crowded out by
 		// mixed multisets it cannot take.
 		case game.PendingChoiceModePick:
-			for _, sel := range game.ModePickSelections(c, e.opts.MaxExpansionPerSource) {
+			for _, sel := range e.modePicks(c) {
 				p := base()
 				p.Modes = sel
 				if p.Modes == nil {
@@ -448,7 +454,7 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := filteredCombinations(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource,
+			picks := e.filteredCombos(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
 			for _, set := range picks {
 				p := base()
@@ -636,7 +642,7 @@ func (e *enumerator) choiceMoves() bool {
 			// still reaches the valid pairs instead of spending the
 			// whole budget on singles (#544, and
 			// TestChooseCardsReachesValidPairsPastTheBudget).
-			sets := filteredCombinations(e.cardSetPickPool(c), c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
+			sets := e.filteredCombos(e.cardSetPickPool(c), c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.ChooseCardsPickLegalLocked(c, set) })
 			// #826: untap_choice shares every line of this branch —
 			// the same payload, the same bounds and the same
@@ -971,10 +977,26 @@ func (e *enumerator) choiceMoves() bool {
 			// nothing worth naming still gets one answer, so the seat
 			// is never handed an empty list — the wedge this case
 			// exists to end.
+			//
+			// ADR 0122 §6.2: and each answer says so. `value` marks the
+			// move as one whose card_name may be ANY name — the server
+			// validates a free one exactly as it does a person's
+			// (trimmed, non-empty, at most 200 characters) — so a
+			// client that wants a name the list does not suggest may
+			// send it in this move's params.
 			for _, n := range e.cardNameAnswers(c) {
 				p := base()
 				p.CardName = n
-				e.addAlwaysLegalChoice(c, reason+": "+n, p)
+				e.add(Move{
+					Type:        TypeResolveChoice,
+					Player:      e.seat,
+					Kind:        KindChoice,
+					Label:       reason + ": " + n,
+					Source:      c.Source,
+					Params:      mustJSON(p),
+					AlwaysLegal: true,
+					Value:       &MoveValue{Kind: ValueCardName},
+				})
 			}
 
 		case game.PendingChoiceLoopShortcut:
@@ -1177,6 +1199,41 @@ func (e *enumerator) addAlwaysLegalChoice(c *game.PendingChoice, label string, p
 // are preserved within each size, so the first answer offered is
 // still the first smallest subset in pool order.
 func filteredCombinations(pool []uuid.UUID, lo, hi, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
+	return filteredCombinationsWalk(pool, lo, hi, limit, allow, nil)
+}
+
+// subsetWalk is what a filtered subset walk learned past its limit, for
+// the cut report (ADR 0122 §6.2). Nil asks for nothing and walks
+// exactly as before.
+type subsetWalk struct {
+	// spare counts allowed subsets found but not offered: a size's list
+	// the round-robin did not reach, or the one extra a probe found.
+	spare int
+	// untested is set when the scan budget stopped a walk with subsets
+	// it never tested.
+	untested bool
+}
+
+// filteredCombos is filteredCombinations with its cut filed: allowed
+// subsets left over are a per-source cut (a lower bound — the walk does
+// not count past one extra per size), and a scan the budget stopped is
+// a subset_scan cut of unknown size.
+func (e *enumerator) filteredCombos(pool []uuid.UUID, lo, hi, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
+	if !e.report {
+		return filteredCombinations(pool, lo, hi, limit, allow)
+	}
+	w := &subsetWalk{}
+	out := filteredCombinationsWalk(pool, lo, hi, limit, allow, w)
+	if w.spare > 0 {
+		e.noteCut(CapPerSource, w.spare, true)
+	}
+	if w.untested {
+		e.noteCut(CapSubsetScan, 0, true)
+	}
+	return out
+}
+
+func filteredCombinationsWalk(pool []uuid.UUID, lo, hi, limit int, allow func([]uuid.UUID) bool, w *subsetWalk) [][]uuid.UUID {
 	if hi > len(pool) {
 		hi = len(pool)
 	}
@@ -1187,8 +1244,10 @@ func filteredCombinations(pool []uuid.UUID, lo, hi, limit int, allow func([]uuid
 		return nil
 	}
 	bySize := make([][][]uuid.UUID, hi+1)
+	found := 0
 	for k := lo; k <= hi; k++ {
-		bySize[k] = allowedSubsets(pool, k, limit, allow)
+		bySize[k] = allowedSubsetsWalk(pool, k, limit, allow, w)
+		found += len(bySize[k])
 	}
 	out := make([][]uuid.UUID, 0, limit)
 	for i := 0; len(out) < limit; i++ {
@@ -1201,6 +1260,9 @@ func filteredCombinations(pool []uuid.UUID, lo, hi, limit int, allow func([]uuid
 		if len(out) == before {
 			break
 		}
+	}
+	if w != nil {
+		w.spare += found - len(out)
 	}
 	return out
 }
@@ -1223,14 +1285,32 @@ const subsetScanBudget = 64
 // 2^n nodes, all under the read lock. With it, every node leads to at
 // least one finished subset, so the scan budget bounds the walk.
 func allowedSubsets(pool []uuid.UUID, k, limit int, allow func([]uuid.UUID) bool) [][]uuid.UUID {
+	return allowedSubsetsWalk(pool, k, limit, allow, nil)
+}
+
+// allowedSubsetsWalk is allowedSubsets that, given a subsetWalk, goes
+// on past `limit` — under the same scan budget — until it finds one
+// more allowed subset (filed as spare, not returned) or runs out, and
+// says whether the budget stopped it with subsets untested. What it
+// returns is exactly what allowedSubsets returns.
+func allowedSubsetsWalk(pool []uuid.UUID, k, limit int, allow func([]uuid.UUID) bool, w *subsetWalk) [][]uuid.UUID {
 	if k > len(pool) || limit <= 0 {
 		return nil
 	}
+	want := limit
+	if w != nil {
+		want = limit + 1
+	}
 	var out [][]uuid.UUID
 	scanned, budget := 0, limit*subsetScanBudget
+	finished := true
 	var rec func(start int, cur []uuid.UUID)
 	rec = func(start int, cur []uuid.UUID) {
-		if len(out) >= limit || scanned >= budget {
+		if len(out) >= want {
+			return
+		}
+		if scanned >= budget {
+			finished = false
 			return
 		}
 		if len(cur) == k {
@@ -1241,11 +1321,23 @@ func allowedSubsets(pool []uuid.UUID, k, limit int, allow func([]uuid.UUID) bool
 			return
 		}
 		last := len(pool) - (k - len(cur)) // the last index that can still finish a k-set
-		for i := start; i <= last && len(out) < limit && scanned < budget; i++ {
+		for i := start; i <= last && len(out) < want; i++ {
+			if scanned >= budget {
+				finished = false
+				return
+			}
 			rec(i+1, append(cur, pool[i]))
 		}
 	}
 	rec(0, nil)
+	if w != nil {
+		if len(out) > limit {
+			w.spare += len(out) - limit
+			out = out[:limit]
+		} else if !finished {
+			w.untested = true
+		}
+	}
 	return out
 }
 
@@ -1484,13 +1576,44 @@ func (e *enumerator) creatureTypeAnswers() []string {
 		}
 		return types[i] < types[j]
 	})
-	if len(types) > creatureTypeAnswersCap {
-		types = types[:creatureTypeAnswersCap]
+	// ADR 0122 §6.2: every canonical type is a legal answer, so a
+	// request for this prompt alone lists the vocabulary after the
+	// board's own — about 300 types, under ExpandCeiling.
+	if e.opts.expanding() {
+		seen := make(map[string]bool, len(types))
+		for _, t := range types {
+			seen[t] = true
+		}
+		for _, t := range game.AllCreatureTypes {
+			if !seen[t] {
+				seen[t] = true
+				types = append(types, t)
+			}
+		}
+	}
+	if limit := e.capOr(creatureTypeAnswersCap); len(types) > limit {
+		types = types[:limit]
 	}
 	if len(types) == 0 {
-		return []string{creatureTypeFallback}
+		types = []string{creatureTypeFallback}
+	}
+	// Every canonical type the list does not offer is an answer the
+	// cap left out, and the count is exact: the resolver accepts each.
+	if left := len(game.AllCreatureTypes) - creatureTypesOffered(types); left > 0 {
+		e.noteCut(CapCreatureTypes, left, false)
 	}
 	return types
+}
+
+// creatureTypesOffered counts the canonical types among the answers.
+func creatureTypesOffered(types []string) int {
+	n := 0
+	for _, t := range types {
+		if _, ok := game.CanonicalCreatureType(t); ok {
+			n++
+		}
+	}
+	return n
 }
 
 // cardNameAnswersCap bounds the card names offered for one
@@ -1547,8 +1670,11 @@ func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
 		}
 		return names[i] < names[j]
 	})
-	if len(names) > cardNameAnswersCap {
-		names = names[:cardNameAnswersCap]
+	if limit := e.capOr(cardNameAnswersCap); len(names) > limit {
+		// ADR 0122 §6.2: exact — each ranked name was a suggestion the
+		// cap dropped. The open set past them is the move's `value`.
+		e.noteCut(CapCardNames, len(names)-limit, false)
+		names = names[:limit]
 	}
 	if len(names) == 0 {
 		return []string{cardNameFallback}

@@ -123,6 +123,11 @@ func (e *enumerator) announcedX(
 		x = lifeCeiling
 	}
 	if x > e.opts.MaxX {
+		// ADR 0122 §6.2: every X between the cap and the life ceiling
+		// is payable (the mana cost has no {X} slot to price it, or its
+		// own search already stopped at the cap), so the count is exact
+		// when the life is the whole price.
+		e.noteCut(CapMaxX, x-e.opts.MaxX, priced.XSlots > 0)
 		x = e.opts.MaxX
 	}
 	if x < floor {
