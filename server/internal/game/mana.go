@@ -228,9 +228,19 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// here, and a better answer to "with what?": the colour the card
 	// asked for is spent when the pool has it, so a grant the player
 	// "may" use never costs a Firespout its red mode.
+	//
+	// ADR 0118 §1: a requirement the first-match walk leaves unpaid is
+	// given one more chance by reassignColored before the cost is
+	// called unpayable. A payment the walk already makes is made with
+	// exactly the same tokens as before.
 	deferred := 0
-	for _, req := range widenedLast(cost.Required) {
+	reqs := widenedLast(cost.Required)
+	owner := newTokenOwners(len(work))
+	for ri, req := range reqs {
 		idx := firstPrintedMatch(work, used, order, req)
+		if idx < 0 && !req.AnyMana {
+			idx = reassignColored(work, used, order, owner, reqs, ri)
+		}
 		if idx < 0 {
 			if req.AnyMana {
 				deferred++
@@ -239,6 +249,7 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 			return nil, nil, false
 		}
 		used[idx] = true
+		owner[idx] = ri
 	}
 
 	// Step 2 — generic requirement. Total = explicit Generic +
@@ -465,8 +476,13 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	// attemptSpend's two passes, mirrored: a widened slot no printed
 	// colour paid waits for the generic pass (#1600).
 	var deferred []ColorRequirement
-	for _, req := range widenedLast(cost.Required) {
+	reqs := widenedLast(cost.Required)
+	owner := newTokenOwners(len(work))
+	for ri, req := range reqs {
 		idx := firstPrintedMatch(work, used, order, req)
+		if idx < 0 && !req.AnyMana {
+			idx = reassignColored(work, used, order, owner, reqs, ri)
+		}
 		if idx < 0 {
 			if req.AnyMana {
 				deferred = append(deferred, req)
@@ -476,6 +492,7 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 			continue
 		}
 		used[idx] = true
+		owner[idx] = ri
 	}
 
 	generic := cost.Generic + cost.XSlots*xValue
@@ -528,6 +545,66 @@ func firstPrintedMatch(work ManaPool, used []bool, order []int, req ColorRequire
 		}
 	}
 	return -1
+}
+
+// newTokenOwners is the colored pass's booking sheet: for each token,
+// the index of the requirement it was booked for, or -1.
+func newTokenOwners(n int) []int {
+	owner := make([]int, n)
+	for i := range owner {
+		owner[i] = -1
+	}
+	return owner
+}
+
+// reassignColored finds a token for requirement `ri` when no unused
+// token prints its colour, by moving a token already booked for an
+// earlier requirement onto another token that requirement also
+// prints: an augmenting path, so the colored pass pays every
+// requirement whenever some assignment of tokens to requirements
+// could (CR 601.2h: the player chooses which mana pays which symbol,
+// and would choose an assignment that works). It returns the token
+// now free for `ri`, with every booking along the path already moved,
+// or -1 with every booking left as it was. The caller books the
+// returned token for `ri`.
+//
+// It is asked only after firstPrintedMatch has failed, so a payment
+// the first-match walk could already make is made with the same
+// tokens: this repairs a refusal and never changes a success. ADR 0118
+// §1's top-up is the case it exists for. A {G} that floated before the
+// auto-tapper ran sits in front of the plan's own mana, so the walk
+// alone pays {G/W}{G} out of [{G}, {W}] by spending the {G} on the
+// hybrid and then finds no {G} for the second symbol, with lands
+// already tapped for a cast it refuses.
+//
+// Widened slots (AnyMana) never come here: they are walked last and
+// defer to the generic pass rather than fail, so no booking this moves
+// can belong to one.
+func reassignColored(work ManaPool, used []bool, order []int, owner []int, reqs []ColorRequirement, ri int) int {
+	visited := make([]bool, len(work))
+	var augment func(r int) int
+	augment = func(r int) int {
+		for _, i := range order {
+			if visited[i] || !matchColor(work[i].Color, reqs[r].Options) {
+				continue
+			}
+			visited[i] = true
+			if !used[i] {
+				return i
+			}
+			prev := owner[i]
+			if prev < 0 || reqs[prev].AnyMana {
+				continue
+			}
+			if j := augment(prev); j >= 0 {
+				used[j] = true
+				owner[j] = prev
+				return i
+			}
+		}
+		return -1
+	}
+	return augment(ri)
 }
 
 // manaSpentEvent builds the EventManaSpent breadcrumb for a payment
