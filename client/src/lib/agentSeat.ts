@@ -27,7 +27,7 @@ function clientOf(s: AgentFields): string {
 
 /** Visible chip text: "AI · claude-code", or just "AI". */
 export function agentChipText(s: AgentFields, thinking = false): string {
-  if (thinking) return "thinking…";
+  if (thinking) return "AI · thinking…";
   const c = clientOf(s);
   return c ? `AI · ${c}` : "AI";
 }

@@ -5,13 +5,13 @@
   // separate program, so it is violet, solid, with a spark glyph and the
   // client's name. The chip is a role="img" with an accessible name
   // rather than bare text, because its visible text ("AI · claude-code",
-  // "thinking…") is an abbreviation of what it states.
+  // "AI · thinking…") is an abbreviation of what it states.
   import Icon from "./Icon.svelte";
   import { agentChipLabel, agentChipText, agentChipTitle, type AgentFields } from "../agentSeat";
 
   interface Props {
     seat: AgentFields;
-    /** The seat holds priority: the chip reads "thinking…". */
+    /** The seat holds priority: the chip reads "AI · thinking…". */
     thinking?: boolean;
   }
   const { seat, thinking = false }: Props = $props();

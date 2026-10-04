@@ -72,7 +72,7 @@ describe("on the seat at the table", () => {
       PlayerIdentity as never,
       props(s, { hasPriority: true }) as never,
     );
-    expect(container.querySelector(CHIP)?.textContent).toContain("thinking…");
+    expect(container.querySelector(CHIP)?.textContent).toContain("AI · thinking…");
     expect(container.querySelector(CHIP)?.getAttribute("aria-label")).toBe(
       "AI agent, claude-code, thinking",
     );

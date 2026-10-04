@@ -28,7 +28,7 @@ describe("the agent chip's wording", () => {
     }
   });
   it("reads thinking… while the seat holds priority", () => {
-    expect(agentChipText(cc, true)).toBe("thinking…");
+    expect(agentChipText(cc, true)).toBe("AI · thinking…");
     expect(agentChipLabel(cc, true)).toBe("AI agent, claude-code, thinking");
   });
   it("is only an agent when the wire says so", () => {
