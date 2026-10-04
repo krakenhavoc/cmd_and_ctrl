@@ -9,6 +9,7 @@
 // from the board state would walk straight around the visibility
 // filter the log went through.
 
+import type { IconName } from "./icons";
 import type { GameView, LogEvent, LogKind, PlayerView } from "./protocol";
 
 // LogGroup is one turn/step block: the `step` entry's text as a
@@ -108,6 +109,10 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0106 §1: reaching across the table to activate another
   // player's permanent is a play, toned like the special action.
   activate_across: "tone-cast",
+  // ADR 0119 §5. A trigger going on the stack and an activation are the
+  // stack's other arrivals beside a cast, and read like one.
+  trigger: "tone-cast",
+  activate: "tone-cast",
   cycle: "tone-zone",
   counters: "tone-quiet",
   scry: "tone-quiet",
@@ -151,6 +156,20 @@ const LOG_TONE: Record<LogKind, string> = {
 
 export function logTone(kind: LogKind): string {
   return LOG_TONE[kind] ?? "tone-quiet";
+}
+
+// LOG_ICON marks the entries that put an ability on the stack (ADR 0119
+// §5), so a reader scanning the log can tell "it triggered" and "they
+// activated it" from the resolve line that comes later. Decorative: the
+// text already says which. Every other kind has no icon.
+const LOG_ICON: Partial<Record<LogKind, IconName>> = {
+  trigger: "spark",
+  activate: "bolt",
+  activate_across: "bolt",
+};
+
+export function logIcon(kind: LogKind): IconName | null {
+  return LOG_ICON[kind] ?? null;
 }
 
 // ALL_LOG_KINDS is the client's runtime enumeration of every LogKind
