@@ -101,6 +101,7 @@ planned just-in-time from the S12 pain-point triage.
 | S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | **done**    |
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
 | S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
+| S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
 
 ### How to read the status column
 
@@ -3308,6 +3309,34 @@ From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/199
 ### Status
 
 **In progress.** Every Delivery PR has merged into `develop` (2026-10-02/03), with one follow-up: the account button shows a marker while admin mode is on ([#2024](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2024), owner's choice). Exit criteria 2 and 3 are the owner's checks on cmd-dev; 5 waits on the next promotion, which now carries PRs 1 and 4 together.
+
+---
+
+## S59 — Automated table: clicks that act, payment that counts
+
+**Phase:** 7 · **Goal:** the table behaves like an automated game, not a sandbox. A left-click on a permanent does what the card does, mana split across colours is one dialog with a running count, and a spell's cost is paid rather than waived, per [ADR 0117](decisions/0117-click-to-act-and-a-per-colour-mana-stepper.md) and ADR 0118. Tracking issue [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189).
+
+Opened 2026-10-04 from the owner's direction: "previously we were building the game around it being a sandbox and now we are building it around being automated with almost 4k cards catalogged. That means the game should be smarter and more intuitive." The owner answered four questions the same day, recorded in ADR 0117. The members are ADR 0117's Delivery PRs and ADR 0118, which is written after it.
+
+- [ ] ADR 0117: click to act, and a per-colour mana stepper ([#2187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2187))
+- [ ] PR 2 — server: `adds_no_mana` also covers an ability that adds nothing right now (a power-0 Vivi Ornitier), so the click never spends it and the bot is not offered it
+- [ ] PR 3 — client, the click rule: one predicate for "usable" shared by the click, the popover and the picker; usable abilities open the popover, mana only taps for mana, nothing usable does nothing; the popover's Sandbox Tap / Untap row; the tapped-Vivi fix; the tutorial's step 7 hint
+- [ ] PR 4 — client, the stepper: one −/+ row per colour with "N of N" for any activation with two or more colour picks, at the card; the right-click popover's colour rows open it; the 12-answer cap removed
+- [ ] ADR 0118: strict mana payment with auto-tap by default ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188)), and its delivery PRs
+
+### Exit criteria
+
+From the tracker, [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189):
+
+1. ADR 0117 is accepted and every PR in its Delivery table has merged.
+2. The nightly E2E passes on `develop` after ADR 0117's PR 4, and on cmd-dev a tapped Vivi Ornitier at power 3 splits blue and red in one dialog without untapping.
+3. ADR 0118 is accepted and its delivery PRs have merged.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0117).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** ADR 0117 is in review. ADR 0118 is not written yet.
 
 ---
 
