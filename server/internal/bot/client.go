@@ -442,9 +442,32 @@ type DeckCoverageReport struct {
 	DeckKey    string                     `json:"deck_key,omitempty"`
 	Commanders []string                   `json:"commanders"`
 	Counts     map[DeckCoverageBucket]int `json:"counts"`
-	Cards      []DeckCoverageCard         `json:"cards"`
-	Unknown    []string                   `json:"unknown"`
-	Violations []DeckViolation            `json:"violations"`
+	// Copies is Counts weighted by copies, and UnknownCopies the copies
+	// the index could not resolve (#2220). Absent from an older server.
+	Copies        map[DeckCoverageBucket]int `json:"copies"`
+	UnknownCopies int                        `json:"unknown_copies"`
+	Cards         []DeckCoverageCard         `json:"cards"`
+	Unknown       []string                   `json:"unknown"`
+	Violations    []DeckViolation            `json:"violations"`
+}
+
+// bucketCopies is the report's buckets by copies, falling back to the
+// per-card counts for a server that does not send them yet.
+func (r DeckCoverageReport) bucketCopies() map[DeckCoverageBucket]int {
+	if r.Copies != nil {
+		return r.Copies
+	}
+	return r.Counts
+}
+
+// deckSize is every copy the report accounts for, unresolved ones
+// included.
+func (r DeckCoverageReport) deckSize() int {
+	n := r.UnknownCopies
+	for _, v := range r.bucketCopies() {
+		n += v
+	}
+	return n
 }
 
 // DeckSource is what a deck check or request is about: a Moxfield or

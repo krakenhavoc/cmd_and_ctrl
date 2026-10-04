@@ -62,7 +62,16 @@ export interface CoverageReport {
    */
   deck_key?: string;
   commanders: string[];
+  /** By distinct card: what the per-card list is made of. */
   counts: CoverageCounts;
+  /**
+   * `counts` weighted by copies (ADR 0095 §1, note 2026-10-04), so the
+   * buckets plus `unknown_copies` total the deck's size. The headline and
+   * the bucket bar read these.
+   */
+  copies: CoverageCounts;
+  /** Copies the card index could not resolve; part of the deck's size. */
+  unknown_copies: number;
   cards: CoverageCard[];
   /** Names the card index could not resolve. */
   unknown: string[];
@@ -258,7 +267,7 @@ export const BUCKET_LABELS: Record<CoverageBucket, string> = {
   unreviewed: "Not yet reviewed",
   caveats: "Automated, with caveats",
   automated: "Fully automated",
-  no_effect: "Nothing to automate",
+  no_effect: "Nothing to automate (lands, vanilla)",
 };
 
 /** One-line explanation for each bucket, for a legend beside the counts. */
@@ -268,7 +277,7 @@ export const BUCKET_BLURBS: Record<CoverageBucket, string> = {
   caveats: "The engine plays it, with a declared simplification or two.",
   automated: "The engine plays the whole card on its own.",
   no_effect:
-    "Nothing to automate — a vanilla creature, a keyword the engine already enforces, a basic land.",
+    "Nothing to automate — a land (basics included), a vanilla creature, a keyword the engine already enforces. These play as printed.",
 };
 
 /**

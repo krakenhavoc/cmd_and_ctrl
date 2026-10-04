@@ -26,6 +26,14 @@ export interface MyDeckCoverage {
   as_printed: number;
   /** Every distinct card the report bucketed. */
   resolved: number;
+  /** `counts` weighted by copies (#2220). */
+  copies: Record<CoverageBucket, number>;
+  /** Copies the card index could not resolve. */
+  unknown_copies: number;
+  /** Copies that play exactly as printed (automated + no_effect). */
+  as_printed_copies: number;
+  /** The deck's size: every copy, unresolved ones included. */
+  deck_size: number;
 }
 
 /** One saved deck, as GET /me/decks reports it. */
@@ -83,13 +91,14 @@ export function deckSubtitle(deck: MyDeckInfo): string {
 /**
  * coverageLine is the headline under a saved deck: "N of M cards play
  * as printed" (ADR 0110 section 6, the strict reading: automated plus
- * nothing-to-automate). Empty when the server sent no coverage, so the
+ * nothing-to-automate), counted by copies so M is the deck's size
+ * (#2220). Empty when the server sent no coverage, so the
  * row simply has no line rather than a wrong one.
  */
 export function coverageLine(deck: MyDeckInfo): string {
   const c = deck.coverage;
-  if (!c || c.resolved === 0) return "";
-  return `${c.as_printed} of ${c.resolved} cards play as printed`;
+  if (!c || c.deck_size === 0) return "";
+  return `${c.as_printed_copies} of ${c.deck_size} cards play as printed`;
 }
 
 /**
@@ -100,10 +109,10 @@ export function coverageDetail(deck: MyDeckInfo): string {
   const c = deck.coverage;
   if (!c) return "";
   const parts: string[] = [];
-  if (c.counts.caveats > 0) parts.push(`${c.counts.caveats} simplified`);
-  if (c.counts.unreviewed > 0) parts.push(`${c.counts.unreviewed} not checked yet`);
-  if (c.counts.manual > 0) parts.push(`${c.counts.manual} you resolve by hand`);
-  if (c.unknown > 0) parts.push(`${c.unknown} not found`);
+  if (c.copies.caveats > 0) parts.push(`${c.copies.caveats} simplified`);
+  if (c.copies.unreviewed > 0) parts.push(`${c.copies.unreviewed} not checked yet`);
+  if (c.copies.manual > 0) parts.push(`${c.copies.manual} you resolve by hand`);
+  if (c.unknown_copies > 0) parts.push(`${c.unknown_copies} not found`);
   return parts.join(" · ");
 }
 

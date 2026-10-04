@@ -147,6 +147,24 @@ func TestDeckCheckContent_NamesCountsAndLink(t *testing.T) {
 	}
 }
 
+func TestDeckCheckContent_CountsCopiesAndNamesUnknowns(t *testing.T) {
+	report := sampleReport()
+	report.Copies = map[DeckCoverageBucket]int{
+		BucketManual: 2, BucketUnreviewed: 1, BucketCaveats: 6, BucketAutomated: 40, BucketNoEffect: 49,
+	}
+	report.UnknownCopies = 2
+	content := deckCheckContent(report, "https://cmd.labxp.io", DeckSource{URL: "https://moxfield.com/decks/AbC123"})
+	for _, want := range []string{
+		"89 of 100 cards play as printed.",
+		"49 need no automation (lands, vanilla)",
+		"2 not found.",
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("content missing %q: %q", want, content)
+		}
+	}
+}
+
 func TestDeckCheckContent_EmptyDeckNameFallsBack(t *testing.T) {
 	report := DeckCoverageReport{Counts: map[DeckCoverageBucket]int{}}
 	content := deckCheckContent(report, "https://cmd.labxp.io", DeckSource{URL: "https://moxfield.com/decks/x"})
