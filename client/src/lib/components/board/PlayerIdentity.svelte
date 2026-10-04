@@ -23,6 +23,7 @@
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
+  import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
@@ -81,12 +82,26 @@
     return t !== null && isPicked(t, seat.id);
   });
 
+  // ADR 0120 §1: the board this avatar sits on, for the expanded
+  // overlay. Hover opens a peek of this seat's board, a press uses the
+  // hover up, and a click the two intercepts below did not take pins it.
+  // Absent when no Board is above (a unit test), and then nothing expands.
+  const expand = avatarExpand();
+
+  // The intercepts run first and in this order, always: picking the
+  // player as a target, then attacking them. Only a click neither takes
+  // reaches the overlay, so an open overlay never steals a target pick
+  // (ADR 0120 §1, owner answer 1). The keyboard reaches this only while
+  // an intercept applies; the overlay's keyboard route is its own button.
   function handleAvatarClick(): void {
     if (targetableByCast) {
       onTargetPlayer?.(seat.id);
       return;
     }
-    if (!attackTargetable) return;
+    if (!attackTargetable) {
+      expand?.click(seat.id);
+      return;
+    }
     onDeclareAttack?.(seat.id);
   }
 
@@ -278,6 +293,9 @@
           handleAvatarClick();
         }
       }}
+      onpointerenter={(e) => expand?.enter(seat.id, e)}
+      onpointerleave={() => expand?.leave(seat.id)}
+      onpointerdown={() => expand?.press(seat.id)}
       aria-label={attackTargetable
         ? `attack ${displayLabel}`
         : `${displayLabel}, ${seat.life} life`}

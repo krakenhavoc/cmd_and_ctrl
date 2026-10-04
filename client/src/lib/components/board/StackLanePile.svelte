@@ -51,6 +51,7 @@
   import { PILE_CARD_MAX_W, PILE_SHRUNK_W, pileDepth } from "../../stackPile";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { boardExpandLayout } from "../../boardExpand";
   import Icon from "../Icon.svelte";
 
   interface Props extends StackLaneStyleProps {
@@ -77,6 +78,10 @@
   function onWindowKey(e: KeyboardEvent): void {
     if (moreOpen && e.key === "Escape") {
       moreOpen = false;
+      // Taken: the expanded board's Escape (ADR 0120 §4) reads this
+      // when it runs after this handler, `data-escape-owner` below when
+      // it runs before.
+      e.preventDefault();
       e.stopPropagation();
     }
   }
@@ -189,6 +194,9 @@
   $effect(() => {
     void model;
     void cardW;
+    // ADR 0120 §3: the expanded board opening, closing, changing seat
+    // or resizing moves the anchors too, with no snapshot.
+    void $boardExpandLayout;
     const board = boardEl;
     const track = cardsEl;
     if (!board || !track) {
@@ -366,8 +374,11 @@
   {/if}
 
   {#if moreOpen}
-    <!-- The whole stack, top first, as compact rows over the pile. -->
-    <ol class="all-items" aria-label="the stack, top first">
+    <!-- The whole stack, top first, as compact rows over the pile.
+         `data-escape-owner`: its Escape closes this list, so the
+         expanded board's Escape stands down while it is open (ADR 0120
+         §4, Board.svelte's onExpandKey). -->
+    <ol class="all-items" aria-label="the stack, top first" data-escape-owner>
       {#each model.stackItems as item (item.id)}
         {@const src = imageOf(item, "small")}
         <li
