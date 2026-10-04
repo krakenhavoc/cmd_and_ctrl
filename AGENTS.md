@@ -100,7 +100,7 @@ cmd_and_ctrl/
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── adding-cards.md  # the catalog card guide: recipes for cards, mechanics and engine seams (moved out of AGENTS.md §7, #1747)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0108 turn-scoped effects, object history and damage shields; 0109 rule gates, land types, mana and cost components; 0110 remember me: durable sign-in, account settings, admins and saved setups; 0111 the action dock; 0112 signed-in home, player mode and one decks page; 0113 small seams for the S58 deck requests; 0114 the Ring tempts you; 0115 commanders die (CR 903.9a); 0116 a card filter on the revealed-hand pick; 0117 click to act and a per-colour mana stepper; 0118 strict payment by default, Cast anyway, and alternative costs; 0119 a stack you can follow; 0120 expand a player's board) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0108 turn-scoped effects, object history and damage shields; 0109 rule gates, land types, mana and cost components; 0110 remember me: durable sign-in, account settings, admins and saved setups; 0111 the action dock; 0112 signed-in home, player mode and one decks page; 0113 small seams for the S58 deck requests; 0114 the Ring tempts you; 0115 commanders die (CR 903.9a); 0116 a card filter on the revealed-hand pick; 0117 click to act and a per-colour mana stepper; 0118 strict payment by default, Cast anyway, and alternative costs; 0119 a stack you can follow; 0120 expand a player's board; 0122 an agent at the table: a local MCP seat) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
