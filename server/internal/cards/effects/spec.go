@@ -883,6 +883,21 @@ type Spec struct {
 	// no gate. The Room constructor sets it; a card file seldom does.
 	NoMaxHandSizeWhen game.Designation
 
+	// HandSize declares the printed statics that SET or CHANGE a
+	// player's maximum hand size, or reach a player other than the
+	// controller (ADR 0113 §3, #2074): "your maximum hand size is two"
+	// (Null Profusion), "each opponent's maximum hand size is reduced
+	// by seven" (Jin-Gitaxias, Core Augur), "players have no maximum
+	// hand size" (Price of Knowledge). NoMaxHandSize above stays the
+	// shorthand for the controller-only "no maximum"; buildDef folds it
+	// into this list.
+	//
+	// Not a Static entry, for NoMaxHandSize's reason: it modifies a
+	// PLAYER. The engine folds every entry that reaches a player in
+	// CR 613.11's timestamp order (game.Game.EffectiveMaxHandSizeLocked).
+	// Register refuses a Set below zero and a Modify by zero.
+	HandSize []game.HandSizeStatic
+
 	// room marks a Spec built by Room (ADR 0103), so Register holds it
 	// to the door-gate rules (checkRoomSpec). Unexported: a card file
 	// gets it only by building its Spec with Room.

@@ -271,5 +271,8 @@ func specDesignations(spec Spec) []game.Designation {
 	if spec.NoMaxHandSize {
 		out = append(out, spec.NoMaxHandSizeWhen)
 	}
+	for _, h := range spec.HandSize {
+		out = append(out, h.When)
+	}
 	return out
 }

@@ -222,10 +222,11 @@ type CardDef struct {
 	// CounterShieldsForCard, keyed by CatalogAbilityKey; see
 	// cant_be_countered.go.
 	SpellsCantBeCountered []CounterShieldStatic
-	NoMaxHandSize         bool
-	// NoMaxHandSizeWhen gates NoMaxHandSize on a designation (ADR
-	// 0071, ADR 0103: Steaming Sauna's door). Zero is no gate.
-	NoMaxHandSizeWhen Designation
+	// HandSize are this permanent's printed statics that set or change
+	// a player's maximum hand size (ADR 0113 §3, #2074), Spec.NoMaxHandSize
+	// folded in. Read from the battlefield through CatalogHandSize, keyed
+	// by CatalogAbilityKey; see max_hand_size.go.
+	HandSize []HandSizeStatic
 	// PlayerKeywords are the abilities this permanent's printed
 	// static gives its CONTROLLER — "You have hexproof" (Leyline of
 	// Sanctity, Aegis of the Gods). Engine ability tokens, in the
@@ -686,9 +687,11 @@ func init() {
 		}
 		return nil
 	}
-	CatalogNoMaxHandSize = func(key string) bool {
-		d := catalogDef(key)
-		return d != nil && d.NoMaxHandSize
+	CatalogHandSize = func(key string) []HandSizeStatic {
+		if d := catalogDef(key); d != nil {
+			return d.HandSize
+		}
+		return nil
 	}
 	CatalogPlayerKeywords = func(key string) []string {
 		if d := catalogDef(key); d != nil {

@@ -71,7 +71,7 @@ const (
 // visible. Populated at init from CardDef.LibraryTopVisible.
 //
 // A derived hook rather than a CR 613 layer, for the reason
-// CatalogAdditionalLandPlays and CatalogNoMaxHandSize give: the layer
+// CatalogAdditionalLandPlays and CatalogHandSize give: the layer
 // engine models characteristics of objects, and "you may look at the
 // top card of your library" is not one.
 var CatalogLibraryTopVisible func(oracleID string) LibraryTopVisibility

@@ -3681,10 +3681,13 @@ func (g *Game) addManaSlotsLocked(
 // permanent does — wrong for a effect that has to outlive the spell
 // that granted it, and outlive every permanent on the board).
 //
-// Writes the same Player.MaxHandSize field SetMaxHandSize does, and
-// EffectiveMaxHandSizeLocked checks it FIRST, before consulting the
-// battlefield — so this is a permanent per-player grant with no
-// battlefield dependency, exactly as the printed clause reads.
+// Writes the same Player.MaxHandSize field SetMaxHandSize does, a
+// per-player grant with no battlefield dependency, exactly as the
+// printed clause reads, and stamps Player.MaxHandSizeAt: CR 613.7b
+// gives the effect the timestamp of its creation, so
+// EffectiveMaxHandSizeLocked folds it among the permanents' statics
+// in CR 613.11's timestamp order (ADR 0113 §3). A Null Profusion that
+// enters after a Finale of Revelation still sets two.
 //
 // `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
 // negative value is rejected with ErrInvalidParam. Caller must hold
@@ -3698,5 +3701,6 @@ func (g *Game) SetMaxHandSizeForEffect(playerID uuid.UUID, value int) error {
 		return ErrPlayerNotFound
 	}
 	p.MaxHandSize = value
+	p.MaxHandSizeAt = timeNowUnixNano()
 	return nil
 }

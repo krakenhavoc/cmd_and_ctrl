@@ -1473,7 +1473,10 @@ type PlayerView struct {
 	// a controlled permanent with Spec.NoMaxHandSize reports -1
 	// here without the underlying field being written. Otherwise the
 	// badge would keep saying "10 / 7" for a player the cleanup step
-	// is (correctly) never going to prompt (#338).
+	// is (correctly) never going to prompt (#338). Since ADR 0113 §3
+	// (#2074) it is the CR 613.11 timestamp-order fold of every
+	// maximum-hand-size static and grant, never below 0, so -1 only
+	// ever means no maximum.
 	MaxHandSize int `json:"max_hand_size"`
 
 	// LandDropsPerTurn / LandsPlayedThisTurn are the two halves of
