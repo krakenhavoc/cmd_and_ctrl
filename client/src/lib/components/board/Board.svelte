@@ -60,6 +60,7 @@
   } from "../../stackLane";
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
+  import DiceLayer from "./DiceLayer.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
@@ -2627,6 +2628,10 @@
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
     )}
   />
+  <!-- ADR 0121 §7: every die a card rolls and every coin it flips
+       tumbles at the roller's seat, z 41, aria-hidden, no pointer
+       events. -->
+  <DiceLayer {view} {boardEl} {beatsPrimeKey} />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's

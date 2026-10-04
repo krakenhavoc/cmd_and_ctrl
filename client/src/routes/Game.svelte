@@ -112,11 +112,17 @@
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
+  import { provideDiceQueue } from "../lib/diceQueue.svelte";
 
   interface Props {
     gameID: string;
   }
   const { gameID }: Props = $props();
+
+  // ADR 0121 §7: one dice schedule for the screen. The board's dice
+  // layer fills it and draws from it; the strip's roll cue waits on it.
+  const diceQueue = provideDiceQueue();
+  onDestroy(() => diceQueue.dispose());
 
   // Build the WS URL from the stored session + route. Query string
   // carries the session token (browsers can't send Authorization on

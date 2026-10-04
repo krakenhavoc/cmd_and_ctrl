@@ -475,6 +475,16 @@
                   {k.replace(/([A-Z])/g, " $1").toLowerCase()}
                 </label>
               {/each}
+              <!-- ADR 0121 §7. Off, a roll's result still shows, settled;
+                   only the tumble and the spin go. -->
+              <label class="inline">
+                <input
+                  type="checkbox"
+                  checked={$settings.animations.dice}
+                  onchange={(e) => change("animations", "dice", e.currentTarget.checked)}
+                />
+                Dice and coins: animate rolls and flips
+              </label>
             </fieldset>
           {:else if activeTab === "display"}
             <h3>Display</h3>

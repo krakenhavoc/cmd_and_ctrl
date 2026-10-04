@@ -38,6 +38,7 @@ type AnimationConfig = {
   cardFlip: boolean;
   particlesEtb: boolean;
   damagePopups: boolean;
+  dice: boolean;
 };
 const cfg: AnimationConfig = {
   enabled: true,
@@ -49,6 +50,7 @@ const cfg: AnimationConfig = {
   cardFlip: true,
   particlesEtb: true,
   damagePopups: true,
+  dice: true,
 };
 export function setAnimationConfig(next: Partial<AnimationConfig>): void {
   Object.assign(cfg, next);

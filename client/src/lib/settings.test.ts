@@ -77,6 +77,22 @@ describe("settings", () => {
     expect(d.display.expandStyle).toBe("reflow");
   });
 
+  // ADR 0121 §7: dice animate by default, and a stored blob from before
+  // the field existed gains it from the merge, with no version bump.
+  it("defaults animations.dice on and fills it into an older blob", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, animations: { enabled: true, speed: 1.5, cardDraw: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS } = await freshModule();
+    expect(defaultSettings().animations.dice).toBe(true);
+    const s = get(settings);
+    expect(s.animations.dice).toBe(true);
+    expect(s.animations.cardDraw).toBe(false);
+    expect(s.animations.speed).toBe(1.5);
+    expect(SYNCED_FIELDS.animations.dice).toBe("synced");
+  });
+
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
     localStorage.setItem("cmdctrl.muted", "1");
     const { settings } = await freshModule();
