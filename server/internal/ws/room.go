@@ -117,6 +117,12 @@ type Room struct {
 	// idle table at that instant hides everything that happened
 	// mid-game. Guarded by mu; written only by writeRestorePointLocked.
 	skips skipTally
+
+	// tableRolls is the hub's rate limit on roll_table_die (ADR 0121
+	// §5, table_roll.go): when each seat last rolled at the table.
+	// Guarded by its own mutex, never by mu. In memory only; a restart
+	// forgets it, which costs at most one extra roll.
+	tableRolls tableRollLimiter
 }
 
 // restorePointRecord is Room's bookkeeping about its own last written

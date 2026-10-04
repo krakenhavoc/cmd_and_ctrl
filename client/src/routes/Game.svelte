@@ -51,7 +51,7 @@
   import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
-  import type { GameMenuOptions } from "../lib/gameMenu";
+  import { TABLE_ROLL_COOLDOWN_MS, type GameMenuOptions, type TableDie } from "../lib/gameMenu";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
@@ -905,6 +905,26 @@
   // S31 sub-PR 0: the public game log drawer. Local to the tab —
   // whether you have the log open is not table state.
   let showGameLog = $state(false);
+  // ADR 0121 §5: the ⋯ menu's "Roll a d6", "Roll a d20" and "Flip a
+  // coin". Not a game action, so it is sent straight to the client: it
+  // ends no bluff and no stack hold. The items wait 2 s after the
+  // viewer's own roll, as the server does; the die tumbles at this seat
+  // when the frame with its result arrives (DiceLayer).
+  let tableRollCooling = $state(false);
+  let tableRollTimer: ReturnType<typeof setTimeout> | null = null;
+  function rollAtTable(die: TableDie): void {
+    if (!viewerID || tableRollCooling) return;
+    client.sendAction("roll_table_die", viewerID, { die });
+    tableRollCooling = true;
+    if (tableRollTimer !== null) clearTimeout(tableRollTimer);
+    tableRollTimer = setTimeout(() => {
+      tableRollTimer = null;
+      tableRollCooling = false;
+    }, TABLE_ROLL_COOLDOWN_MS);
+  }
+  onDestroy(() => {
+    if (tableRollTimer !== null) clearTimeout(tableRollTimer);
+  });
   // The ⋯ menu's "Mulligan to N" (lib/gameMenu.ts clamps N).
   function mulligan(n: number): void {
     if (!viewerID) return;
@@ -1537,6 +1557,11 @@
     adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
+    tableRoll:
+      dockShown && !viewerEliminated && view?.state === "active"
+        ? { ready: !tableRollCooling }
+        : null,
+    onTableRoll: rollAtTable,
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,

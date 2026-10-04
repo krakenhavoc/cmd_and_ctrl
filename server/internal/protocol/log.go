@@ -181,6 +181,12 @@ const (
 	// LogStartingPlayer — the winner of the opening roll (`Seat`) chose
 	// who takes the first turn (`TargetSeat`), CR 103.1. ADR 0121 §2.
 	LogStartingPlayer LogKind = "starting_player"
+	// LogTableRoll — a player rolled a d6 or a d20, or flipped a coin,
+	// at the table, for fun (ADR 0121 §5): `Sides` 6 or 20 with
+	// `Results`, or a coin with `Faces`, and `RollID`, the roll's
+	// identity across an undo (which re-emits the line under a new
+	// `Seq`). Not a game roll: nothing triggers on it.
+	LogTableRoll LogKind = "table_roll"
 	// LogChooseColor — a player answered a "choose a color" prompt
 	// (CR 105.4): Coldsteel Heart as it enters, Wash Out as it
 	// resolves. `Choice` is the colour LETTER and CardID the card the
@@ -553,6 +559,10 @@ type LogEvent struct {
 	// Seats are the seats a LogOpeningRoll entry names: the seats that
 	// tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
+	// RollID identifies a LogTableRoll entry across an undo (ADR 0121
+	// §5): an undo re-emits a table roll's line under a new Seq, and a
+	// client keys the roll's animation on this, so it plays once.
+	RollID uint64 `json:"roll_id,omitempty"`
 	// Choice is the VALUE a player named at a "choose a ..." prompt:
 	// the colour letter on a LogChooseColor entry ("G"), the
 	// canonical creature type on a LogChooseType one ("Elf"). A
@@ -1006,6 +1016,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Seats = append([]int(nil), ev.Seats...)
 		if ev.Amount > 0 {
 			base.Results = []int{ev.Amount}
+		}
+		return base, true
+
+	case game.EventTableRoll:
+		// ADR 0121 §5: a die or a coin at the table, for fun. Never
+		// folded into a batch: each roll is its own line.
+		base.Kind = LogTableRoll
+		base.RollID = ev.RollID
+		if ev.Sides > 0 {
+			base.Sides = ev.Sides
+			base.Results = []int{ev.Amount}
+		} else {
+			base.Faces = []string{ev.Label}
 		}
 		return base, true
 
@@ -1974,6 +1997,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderRandomLogText(e, actor, card)
 	case LogOpeningRoll, LogStartingPlayer:
 		return renderOpeningRollLogText(e, actor, target)
+	case LogTableRoll:
+		return renderTableRollLogText(e, actor)
 	case LogStep:
 		round := e.Round
 		if round == 0 {

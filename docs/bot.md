@@ -16,6 +16,9 @@ logs, the position suite and the bot-vs-bot arena — are in
 surface is specified in [docs/lobby.md](lobby.md); the chat and view
 fields are in [docs/protocol.md](protocol.md).
 
+A seat you run yourself, played by an AI agent through MCP rather than
+by the server, is a different thing: see [docs/mcp-seat.md](mcp-seat.md).
+
 > **What is actually wired today.** All four tiers and all four
 > curated decks are reachable from the lobby. `random` and `heuristic`
 > need nothing but the binary; `assisted` and `strong` call a model,

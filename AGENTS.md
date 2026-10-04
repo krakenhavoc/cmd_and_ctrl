@@ -52,6 +52,7 @@ cmd_and_ctrl/
 ├── server/              # Go game server (authoritative state, WebSocket + HTTP API)
 │   ├── cmd/
 │   │   ├── server/      # main package — serves :8080 with lobby + hub + cards routes
+│   │   ├── mcpseat/     # local MCP seat: an MCP client plays a guest seat, badged as an AI agent (ADR 0122) — see docs/mcp-seat.md
 │   │   ├── gamecli/     # dev WebSocket client for driving a game via v0 actions
 │   │   └── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
 │   ├── internal/
@@ -61,6 +62,7 @@ cmd_and_ctrl/
 │   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
 │   │   ├── legal/       # legal-move enumerator — the closed move list a bot picks from and the client's timing lookup (ADR 0033 §1)
 │   │   ├── ws/          # gorilla/websocket hub, Room, RoomManager, per-viewer broadcast
+│   │   ├── mcpseat/     # the MCP seat's library: ten tools over stdio, Layer A imported from aiseat/rules, imports no server state (ADR 0122)
 │   │   ├── aiseat/      # AI bot seats (S31): runner goroutine per bot, tiered policies, curated decks, announced improvisation — see docs/bot.md
 │   │   │   └── boardtext/ # the board half of the bot prompt as a pure Render(view, seat, opts): shared with the MCP seat (ADR 0122 §5)
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
@@ -259,6 +261,7 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`
 - `make -C server build-boteval` — produces `server/bin/boteval`, the AI-bot evaluation harness (#837). `boteval probe [--endpoint URL] [--model ID] [--think] [--max-tokens N]` sends ONE request in the funnel's exact shape to a model endpoint and prints prompt/completion tokens vs the client-side estimate, `finish_reason`, whether a `reasoning` field came back, the parsed index and copied label, and a verdict for each of the three failures that make a model seat play like a heuristic seat: truncation, thinking, and an answer that names no listed move (`INDEX: out of range`, #2196). Always exits 0. Not deployed; local tool.
+- `make -C server build-mcpseat` — produces `server/bin/cmd_and_ctrl-mcpseat`, the local MCP seat (ADR 0122): a stdio MCP server that sits Claude Code, Codex or any MCP client in a guest seat, badged as an AI agent. Not deployed. Flags `--allow-origin`, `--absorb`, `--log-file`, `--state-dir`, `-v`; the session token lives in a `0600` file under `$XDG_STATE_HOME/cmdctrl-mcpseat/`. Guide, warnings and recipes: [docs/mcp-seat.md](docs/mcp-seat.md).
 - `boteval suite run [--dir DIR] [--policy heuristic|assisted|strong] [--max-think 20s] [--think] [--max-tokens N] [--note text] [--parallel N] [--out report.json] [--md]` — asks a policy every labelled position in `server/internal/aiseat/suite/testdata/positions/` and reports agreement overall and per tag, plus reject-hits, malformed replies, out-of-range indices and timeouts. Exits non-zero on a gated miss. The `heuristic` run is also an ordinary Go test and runs on every CI run.
 - `boteval suite harvest --from 'dir/*.decisions.jsonl' --to inbox/ [--escalated] [--disagree] [--fallback a,b] [--layer A,B,C] [--seat 0,1] [--tag block,attack] [--limit N] [--seed N]` — pulls candidate windows out of decision logs into an inbox of UNLABELLED positions. Deterministic under `--seed`.
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](docs/bot.md#position-suite).

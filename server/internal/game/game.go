@@ -765,6 +765,22 @@ type Game struct {
 	sourceOrdinals    map[uuid.UUID]uint64
 	sourceOrdinalNext uint64
 
+	// tableRollNext counts the table rolls this game has made (ADR
+	// 0121 §5, table_roll.go). It is the counter of the `table` stream,
+	// which lives outside rngCounters and the turn index, so a table
+	// roll moves no card's draw. Per game and never reset. Clone copies
+	// it but RestoreFrom does NOT put it back, the way Settings are
+	// carried forward: a table roll after an undo is a fresh roll, not
+	// a replay of one the table already watched. Persisted.
+	tableRollNext uint64
+	// tableRolls is the ring of the last tableRollRingMax EventTableRoll
+	// events, as last emitted (their current Seq). RestoreFrom does not
+	// restore it; it re-emits every one the restored log no longer
+	// holds, so an undo of somebody's earlier action does not erase a
+	// roll the whole table watched. Not persisted: after a restore
+	// there is no undo stack to cross.
+	tableRolls []Event
+
 	// layerVersion is the S16 continuous-effect-engine invalidation
 	// counter. Bumped by listeners on every event that could change
 	// which static abilities are active or what they apply to —

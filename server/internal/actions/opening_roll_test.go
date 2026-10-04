@@ -187,7 +187,7 @@ func TestConcedeIsAllowedWhileTheOpeningRollIsOpen(t *testing.T) {
 func TestMintsNoUndo(t *testing.T) {
 	open := newOpeningRollGame(t)
 	closed := newGame(t)
-	always := []Type{TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer, TypeSetTableSettings, TypeSetUndoLimit}
+	always := []Type{TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer, TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit}
 	for _, typ := range always {
 		if !MintsNoUndo(open, typ) || !MintsNoUndo(closed, typ) {
 			t.Errorf("%s mints an undo entry", typ)

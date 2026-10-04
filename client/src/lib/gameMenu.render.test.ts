@@ -378,6 +378,36 @@ describe("GameMenu", () => {
     ]);
     expect(m.container.querySelector('input[aria-label="mulligan hand size"]')).toBeNull();
   });
+
+  // ADR 0121 §5 and §8: the Dice section and its three names.
+  it("has Roll a d6, Roll a d20 and Flip a coin for a seat in the game, after the sandbox", async () => {
+    const onTableRoll = vi.fn();
+    const m = mountMenu({ tableRoll: { ready: true }, onTableRoll });
+    await open(m.trigger);
+    const names = itemNames(m.container);
+    const at = names.indexOf("Roll a d6");
+    expect(names.slice(at, at + 3)).toEqual(["Roll a d6", "Roll a d20", "Flip a coin"]);
+    expect(at).toBeGreaterThan(names.indexOf("Life history"));
+    expect(at).toBeLessThan(names.findIndex((n) => /^Table settings/.test(n)));
+    click(item(m.container, "Roll a d20")!);
+    flushSync();
+    expect(onTableRoll).toHaveBeenCalledWith("d20");
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("disables the dice while the last roll lands, and has none without a table roll", async () => {
+    const m = mountMenu({ tableRoll: { ready: false }, onTableRoll: vi.fn() });
+    await open(m.trigger);
+    for (const name of ["Roll a d6", "Roll a d20", "Flip a coin"]) {
+      const el = item(m.container, name) as HTMLButtonElement;
+      expect(el.disabled, name).toBe(true);
+      expect(el.title).toBe("wait for your last roll to land");
+    }
+    cleanup();
+    const none = mountMenu({ tableRoll: null });
+    await open(none.trigger);
+    expect(itemNames(none.container)).not.toContain("Roll a d20");
+  });
 });
 
 describe("gameMenu rules", () => {
@@ -520,6 +550,26 @@ describe("the ⋯ menu at the table", () => {
     expect(FakeSocket.last!.actions()).toContain("concede");
   });
 
+  it("rolls a d20 at the table, then waits 2 s before the next roll", async () => {
+    const c = await mountGame("player");
+    const more = moreButtons(c)[0]!;
+    await open(more);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      click(item(c, "Roll a d20")!);
+      flushSync();
+      const sent = FakeSocket.last!.last("roll_table_die");
+      expect(sent?.payload?.params).toEqual({ die: "d20" });
+      await open(more);
+      expect((item(c, "Flip a coin") as HTMLButtonElement).disabled).toBe(true);
+      vi.advanceTimersByTime(2000);
+      flushSync();
+      expect((item(c, "Flip a coin") as HTMLButtonElement).disabled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("starts a vote from the dock, and the board no longer has a launcher", async () => {
     const c = await mountGame("player");
     expect(c.querySelector('button[aria-label="call a vote"]')).toBeNull();
@@ -553,7 +603,13 @@ describe("the ⋯ menu at the table", () => {
     expect(names).toContain("Life history");
     expect(names).toContain("Back to lobby");
     expect(names.some((n) => /^Table settings/.test(n))).toBe(true);
-    for (const seatOnly of ["Untap all", "Shuffle library", "Call a vote…", "Concede…"]) {
+    for (const seatOnly of [
+      "Untap all",
+      "Shuffle library",
+      "Call a vote…",
+      "Concede…",
+      "Roll a d20",
+    ]) {
       expect(names).not.toContain(seatOnly);
     }
     expect(names.some((n) => /^Draw a card/.test(n))).toBe(false);
