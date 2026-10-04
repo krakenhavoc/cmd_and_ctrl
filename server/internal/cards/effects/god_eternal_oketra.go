@@ -22,8 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // its owner's library and slid under the top two (on the bottom when
 // the library holds fewer than two, the printed ruling). The card is
 // looked up as the trigger resolves: an Oketra that has since moved
-// on — a commander sent to the command zone by the CR 903.9 prompt,
-// a graveyard exiled in response — is left where it is.
+// on — a commander its owner sent to the command zone at the
+// CR 903.9a prompt, a graveyard exiled in response — is left where it
+// is. The dies trigger fires first either way (ADR 0115).
 //
 // No simplification.
 func init() {
