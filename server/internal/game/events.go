@@ -1227,6 +1227,14 @@ type Event struct {
 	// Source alone, and ward is the first effect that has to.
 	StackItemID uuid.UUID `json:"stack_item_id,omitempty"`
 
+	// ResolvedStackItemID names the item that left the stack, on an
+	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public
+	// log can say which item it was. A separate field from StackItemID
+	// because stamping that one would change values frozen in the v7
+	// snapshot fixtures. A spell's resolve and fizzle leave it unset:
+	// CardID is its item ID.
+	ResolvedStackItemID uuid.UUID `json:"resolved_stack_item_id,omitempty"`
+
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`

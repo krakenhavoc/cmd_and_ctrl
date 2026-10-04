@@ -463,6 +463,12 @@ type LogEvent struct {
 	// that deliberately carry no card reference (draws; any zone
 	// change with two hidden endpoints).
 	CardID string `json:"card_id,omitempty"`
+	// StackItemID is the stack item a LogResolve, LogFizzle or LogCounter
+	// entry is about, for a spell and an ability alike (ADR 0119 §3).
+	// For a spell it equals its card's ID; an ability's item has an ID of
+	// its own that no other field carries. The stack is public, so an item
+	// ID reveals nothing the stack view does not, and redaction leaves it.
+	StackItemID string `json:"stack_item_id,omitempty"`
 	// Target is the CARD the entry acts on: a counterspell's victim,
 	// a blocker's attacker. Player targets ride TargetSeat instead.
 	Target string `json:"target,omitempty"`
@@ -610,6 +616,15 @@ func projectAbilityItem(base *LogEvent, ev game.Event) {
 	base.ability = true
 	base.CardID = uuidStringOrEmpty(ev.Source)
 	base.Label = ev.Label
+}
+
+// stackItemOf is the stack item a resolve or fizzle event is about: the
+// ability path stamps StackItemID, and a spell's item ID is its card's.
+func stackItemOf(ev game.Event) string {
+	if ev.ResolvedStackItemID != uuid.Nil {
+		return ev.ResolvedStackItemID.String()
+	}
+	return uuidStringOrEmpty(ev.CardID)
 }
 
 // hiddenZone reports whether a zone's contents are hidden from the
@@ -927,12 +942,14 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventResolve:
 		base.Kind = LogResolve
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.StackItemID = stackItemOf(ev)
 		projectAbilityItem(&base, ev)
 		return base, true
 
 	case game.EventFizzle:
 		base.Kind = LogFizzle
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.StackItemID = stackItemOf(ev)
 		projectAbilityItem(&base, ev)
 		return base, true
 
@@ -941,6 +958,9 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Target = uuidStringOrEmpty(ev.Target)
+		// Target is the countered item's ID for a spell and an ability
+		// both, before the ability case below clears it from Target.
+		base.StackItemID = uuidStringOrEmpty(ev.Target)
 		// #1211, CR 701.6a: a countered ABILITY has no card of its
 		// own — its id names a StackMeta entry the client cannot look
 		// up, and its source permanent is still standing on the
