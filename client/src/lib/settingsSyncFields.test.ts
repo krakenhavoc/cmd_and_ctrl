@@ -79,8 +79,9 @@ describe("SYNCED_FIELDS", () => {
     );
   });
 
-  it("syncs art-only cards (#1954) with the other display tastes", () => {
-    expect(SYNCED_FIELDS.display.artOnlyCards).toBe("synced");
+  it("syncs the art-tile choices (#1954, #2209) with the other display tastes", () => {
+    expect(SYNCED_FIELDS.display.battlefieldArt).toBe("synced");
+    expect(SYNCED_FIELDS.display.handArt).toBe("synced");
     expect(SYNCED_FIELDS.display.theme).toBe("synced");
     expect(SYNCED_FIELDS.display.stackStyle).toBe("synced");
   });
