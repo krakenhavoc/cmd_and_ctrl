@@ -109,7 +109,8 @@
   // playerKeywordBadges.ts for the mapping; this component only
   // renders what it returns.
   // ADR 0057 (#749): and the "can't lose" / "can't win" badges, whose
-  // tooltip names the sources.
+  // tooltip names the sources. ADR 0113 §3 (#2074): and a maximum hand
+  // size other than seven.
   const keywordBadges = $derived(playerKeywordBadges(seat.keywords, seat.life_total_locked, seat));
 
   // --- bot seats (S31, ADR 0033) ---------------------------------

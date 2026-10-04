@@ -283,12 +283,21 @@ type Player struct {
 	// wire.
 	Counters map[string]int
 
-	// MaxHandSize is the per-player cleanup-step hand-size cap
-	// (CR 402.2). Default DefaultMaxHandSize (7); NoMaxHandSize (-1)
-	// disables the cap (Reliquary Tower / Thought Vessel). Set via
-	// the set_max_hand_size action; effect-catalog work in S14+
-	// will write to it via the S16 layer pipeline. Added in S13.4.
+	// MaxHandSize is the player's own maximum-hand-size GRANT
+	// (CR 402.2): DefaultMaxHandSize (7) for none; NoMaxHandSize (-1)
+	// for "you have no maximum hand size for the rest of the game"
+	// (Finale of Revelation), or a number the sandbox
+	// set_max_hand_size action wrote. Permanents' statics are never
+	// written here; EffectiveMaxHandSizeLocked folds them with this
+	// grant in timestamp order (max_hand_size.go). Added in S13.4.
 	MaxHandSize int
+
+	// MaxHandSizeAt is the grant's CR 613.7b timestamp: when the spell
+	// or action that wrote MaxHandSize did so, from the clock that
+	// stamps battlefield entries (ADR 0113 §3 decision 3). Zero on a
+	// grant restored from a file written before the field existed,
+	// which sorts it first.
+	MaxHandSizeAt int64
 
 	// LandDropsPerTurn is the player's BASE land-play allowance
 	// (CR 305.2). DefaultLandDropsPerTurn (1) on every freshly seated

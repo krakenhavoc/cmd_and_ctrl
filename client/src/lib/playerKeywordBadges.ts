@@ -177,6 +177,44 @@ export interface SeatCantPlayLands {
   cant_play_lands?: string;
 }
 
+// ADR 0113 §3, owner decision 1 (#2074, CR 402.2): a seat whose maximum
+// hand size is not seven gets a badge, read from the existing
+// PlayerView.max_hand_size (the EFFECTIVE maximum: -1 for none, else 0
+// or more). A seat at seven, or a view without the field, gets none.
+export interface SeatMaxHandSize {
+  max_hand_size?: number;
+}
+
+const DEFAULT_MAX_HAND_SIZE = 7;
+const NO_MAX_HAND_SIZE = -1;
+
+/**
+ * The maximum-hand-size badge for one seat, or none: "NO HAND MAX" for
+ * no maximum, "HAND MAX n" for any other number than seven.
+ */
+export function maxHandSizeBadges(seat?: SeatMaxHandSize): PlayerKeywordBadge[] {
+  const max = seat?.max_hand_size;
+  if (max === undefined || max === DEFAULT_MAX_HAND_SIZE) return [];
+  if (max === NO_MAX_HAND_SIZE) {
+    return [
+      {
+        key: "max-hand-size",
+        short: "NO HAND MAX",
+        title: "No maximum hand size — no discard down at cleanup",
+        kind: "plain",
+      },
+    ];
+  }
+  return [
+    {
+      key: "max-hand-size",
+      short: `HAND MAX ${max}`,
+      title: `Maximum hand size ${max} — discards down to ${max} at their cleanup step`,
+      kind: "plain",
+    },
+  ];
+}
+
 const CANT_GAIN_LIFE_BADGE: PlayerKeywordBadge = {
   key: "cant-gain-life",
   short: "NO GAIN",
@@ -193,7 +231,11 @@ const CANT_GAIN_LIFE_BADGE: PlayerKeywordBadge = {
 export function playerKeywordBadges(
   keywords?: string[],
   lifeTotalLocked?: boolean,
-  endGates?: SeatEndGates & SeatCounterShields & SeatCantGainLife & SeatCantPlayLands,
+  endGates?: SeatEndGates &
+    SeatCounterShields &
+    SeatCantGainLife &
+    SeatCantPlayLands &
+    SeatMaxHandSize,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -247,5 +289,6 @@ export function playerKeywordBadges(
   }
   badges.push(...endGateBadges(endGates));
   badges.push(...counterShieldBadges(endGates));
+  badges.push(...maxHandSizeBadges(endGates));
   return badges;
 }
