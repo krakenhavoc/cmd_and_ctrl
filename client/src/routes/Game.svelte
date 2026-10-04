@@ -103,6 +103,12 @@
     pressBluff,
     setBluffStatus,
   } from "../lib/bluff";
+  import {
+    combinedPassDelayMs,
+    noteStackSeen,
+    setStackHoldStatus,
+    stackHoldRemainingMs,
+  } from "../lib/stackHold";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -319,43 +325,76 @@
   let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
 
-  // #1307 timed bluff. Plain (non-reactive) on purpose: the timer is a
-  // side effect of the decision, not an input to it. `seq` is the frame
-  // the bluff was rolled on, so a re-run on the same frame keeps the
-  // same delay; `sent` is the client's action count at that moment, so
-  // any action the viewer sends in the meantime calls the pass off.
-  let pendingBluff: { seq: number; sent: number; timer: ReturnType<typeof setTimeout> } | null =
-    null;
+  // #1307 timed bluff, and ADR 0119 §2's stack hold: both are an
+  // automatic pass that waits. Plain (non-reactive) on purpose: the
+  // timer is a side effect of the decision, not an input to it. `seq`
+  // is the frame the wait was armed on, so a re-run on the same frame
+  // keeps the same delay; `sent` is the client's action count at that
+  // moment, so any action the viewer sends in the meantime calls the
+  // pass off; `kind` says which line the action dock shows.
+  type PassWait = "bluff" | "hold";
+  let pendingPass: {
+    seq: number;
+    sent: number;
+    kind: PassWait;
+    timer: ReturnType<typeof setTimeout>;
+  } | null = null;
   let latestGates: AutopassGates | null = null;
 
-  function cancelBluffTimer(): void {
-    if (pendingBluff) clearTimeout(pendingBluff.timer);
-    pendingBluff = null;
-  }
-  function cancelBluff(): void {
-    cancelBluffTimer();
-    setBluffStatus(null);
+  // ADR 0119 §2: when this client first saw each item on the stack.
+  // Plain, like pendingPass; refreshed on every frame by the autopass
+  // effect below, which prunes the items that have left.
+  let stackSeen = new Map<string, number>();
+
+  // holdLeft is the rest of the stack hold for the current frame.
+  function holdLeft(now: number): number {
+    return stackHoldRemainingMs({
+      view,
+      viewerID,
+      firstSeen: stackSeen,
+      holdMs: $settings.gameplay.stackHoldMs,
+      now,
+    });
   }
 
-  // armTimedBluff starts the countdown for this frame, once.
-  function armTimedBluff(minMs: number, maxMs: number): void {
+  function cancelPassTimer(): void {
+    if (pendingPass) clearTimeout(pendingPass.timer);
+    pendingPass = null;
+  }
+  function setPassStatus(kind: PassWait | null, passesAt = 0): void {
+    setBluffStatus(kind === "bluff" ? { manual: false, passesAt } : null);
+    setStackHoldStatus(kind === "hold" ? { passesAt } : null);
+  }
+  function cancelPendingPass(): void {
+    cancelPassTimer();
+    setPassStatus(null);
+  }
+
+  // armTimedPass starts the countdown for this frame, once per kind.
+  function armTimedPass(kind: PassWait, delayFor: () => number): void {
     const seq = $lastSeq;
     if (seq === lastAutoPassedSeq) return;
-    if (pendingBluff?.seq === seq) return;
-    cancelBluffTimer();
-    const delay = bluffDelayMs(minMs, maxMs);
-    pendingBluff = { seq, sent: client.actionsSent, timer: setTimeout(fireBluff, delay) };
-    setBluffStatus({ manual: false, passesAt: Date.now() + delay });
+    if (pendingPass?.seq === seq && pendingPass.kind === kind) return;
+    cancelPassTimer();
+    const delay = delayFor();
+    pendingPass = {
+      seq,
+      sent: client.actionsSent,
+      kind,
+      timer: setTimeout(firePendingPass, delay),
+    };
+    setPassStatus(kind, Date.now() + delay);
   }
 
-  // fireBluff is the end of a timed bluff. It passes only if nothing
-  // moved while it waited: the same frame, no pass already sent for
-  // it, no action from the viewer, and the decision still says bluff
-  // (or pass). Anything else and the window belongs to the player.
-  function fireBluff(): void {
-    const p = pendingBluff;
-    pendingBluff = null;
-    setBluffStatus(null);
+  // firePendingPass is the end of a timed bluff or a stack hold. It
+  // passes only if nothing moved while it waited: the same frame, no
+  // pass already sent for it, no action from the viewer, and the
+  // decision still says pass (or a timed bluff). Anything else and the
+  // window belongs to the player.
+  function firePendingPass(): void {
+    const p = pendingPass;
+    pendingPass = null;
+    setPassStatus(null);
     if (!p) return;
     const seq = $lastSeq;
     if (seq !== p.seq || seq === lastAutoPassedSeq) return;
@@ -363,6 +402,13 @@
     if (!latestGates) return;
     const v = autopassDecision(latestGates);
     if (!(v === "pass" || (isBluff(v) && !v.manual))) return;
+    // A timer that fired a moment early waits out the rest of the hold.
+    const left = holdLeft(Date.now());
+    if (left > 0) {
+      pendingPass = { ...p, timer: setTimeout(firePendingPass, left) };
+      setPassStatus(p.kind, Date.now() + left);
+      return;
+    }
     lastAutoPassedSeq = seq;
     client.sendAction("pass_priority");
   }
@@ -370,9 +416,9 @@
   onMount(() => {
     // The in-game bluff switch starts from the settings each game.
     initBluffArmed($settings.gameplay);
-    setBluffStatus(null);
+    setPassStatus(null);
   });
-  onDestroy(cancelBluff);
+  onDestroy(cancelPendingPass);
 
   // The gates and the verdict are derived, not computed inside the
   // effect below, because ADR 0105 §3 reads the verdict too: a frame
@@ -448,18 +494,36 @@
     latestGates = gates;
     const verdict = autopassVerdict;
 
+    // ADR 0119 §2: note the frame's stack before anything decides, so
+    // an item's hold is measured from the first frame that showed it,
+    // whoever held priority then.
+    const now = Date.now();
+    stackSeen = noteStackSeen(stackSeen, view, now);
+    const hold = holdLeft(now);
+
     if (isBluff(verdict)) {
       if (verdict.manual) {
         // A manual bluff is a hold the action dock labels; next is
         // the pass.
-        cancelBluffTimer();
+        cancelPassTimer();
+        setStackHoldStatus(null);
         setBluffStatus({ manual: true });
       } else {
-        armTimedBluff(gp.bluffDelayMinMs, gp.bluffDelayMaxMs);
+        // A timed bluff and the stack hold end in the same pass: the
+        // longer of the two waits, not their sum.
+        armTimedPass("bluff", () =>
+          combinedPassDelayMs(bluffDelayMs(gp.bluffDelayMinMs, gp.bluffDelayMaxMs), hold),
+        );
       }
       return;
     }
-    cancelBluff();
+    if (verdict === "pass" && hold > 0) {
+      // ADR 0119 §2: someone else's item has not been up for the hold
+      // yet. Wait out the rest; `next` still passes at once.
+      armTimedPass("hold", () => hold);
+      return;
+    }
+    cancelPendingPass();
 
     if (verdict === "hold") return;
     if (verdict === "clear-toggle") {
@@ -521,8 +585,9 @@
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
 
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
-    // Acting ends a bluff: the viewer has taken the window.
-    cancelBluff();
+    // Acting ends a bluff or a stack hold: the viewer has taken the
+    // window.
+    cancelPendingPass();
     // #1296: activate_ability is stamped too — see manaEnforcement.ts.
     if (type === "cast_spell" || type === "activate_ability") {
       params = stampManaEnforcement(
@@ -795,7 +860,7 @@
   }
 
   function passPriority(): void {
-    cancelBluff();
+    cancelPendingPass();
     client.sendAction("pass_priority");
   }
 

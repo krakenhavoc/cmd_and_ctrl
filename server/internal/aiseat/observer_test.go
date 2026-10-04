@@ -302,7 +302,8 @@ func TestRunnerObserverRecordsTheDeclineToPass(t *testing.T) {
 			// nothing, both of which the event has to say out loud or
 			// a decision census cannot balance: the dispatcher refused
 			// it, or the runner's context ended before it got there.
-			case ev.RejectErr != nil || ev.Forced == aiseat.ForcedCancelled:
+			case ev.RejectErr != nil || ev.Forced == aiseat.ForcedCancelled ||
+				ev.Forced == aiseat.ForcedStackChanged:
 			default:
 				t.Errorf("event %d: the pass was neither played, refused, nor cancelled: %+v", i, ev)
 			}
