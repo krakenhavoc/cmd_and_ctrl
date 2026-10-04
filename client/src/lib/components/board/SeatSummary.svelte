@@ -58,8 +58,12 @@
     onDeclareBlock: (attackerCardID: string) => void;
     onTargetPlayer?: (targetPlayerID: string) => void;
     onTargetCard?: (card: CardView) => boolean;
-    /** Pin this seat open. Board owns the pin; the summary just asks. */
-    onExpand?: () => void;
+    /**
+     * Open this seat's board in the expanded overlay, pinned (ADR 0120
+     * §6). Board owns the overlay; the summary just asks. `from` is the
+     * control that asked, which gets focus back when the overlay closes.
+     */
+    onExpand?: (from: EventTarget | null) => void;
     // #1307: threaded straight through to PlayerIdentity — see its
     // prop doc.
     considering?: boolean;
@@ -198,8 +202,8 @@
   // Click routing mirrors PlayerPanel's: a live targeting prompt wins,
   // then block-mode on an incoming attacker. A pip is NOT a card tile,
   // so there is no tap-toggle and no card menu — anything beyond these
-  // two intents expands the panel instead, which is the whole point of
-  // the expansion model. Board decides whether the expansion happens;
+  // two intents opens the seat's board in the expanded overlay, pinned
+  // (ADR 0120 §6), where its cards are cards. Board owns the overlay;
   // this only asks.
   function handlePipClick(c: CardView): void {
     if (onTargetCard?.(c)) return;
@@ -207,7 +211,7 @@
       onDeclareBlock(c.instance_id);
       return;
     }
-    onExpand?.();
+    onExpand?.(null);
   }
 </script>
 
@@ -237,7 +241,7 @@
       class="expand"
       type="button"
       aria-label={`Show ${seat.name}'s full board`}
-      onclick={() => onExpand?.()}
+      onclick={(e) => onExpand?.(e.currentTarget)}
     >
       ⤢
     </button>

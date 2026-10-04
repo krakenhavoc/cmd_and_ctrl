@@ -4,7 +4,6 @@ import type { TargetingState } from "./targeting";
 import {
   decideSeatRendering,
   legalDefenderIDs,
-  nextPinnedSeat,
   seatControlsLegalTarget,
   seatHasAttackersOn,
   type ExpansionSettings,
@@ -18,7 +17,6 @@ import {
 function seat(over: Partial<SeatSignals> = {}): SeatSignals {
   return {
     isSelf: false,
-    isPinned: false,
     isActiveSeat: false,
     controlsLegalTarget: false,
     hasAttackersOnViewer: false,
@@ -66,7 +64,6 @@ describe("decideSeatRendering", () => {
     // The escape hatch has to beat every expansion trigger, or a
     // player who opted out would still see panels changing size.
     const everything = seat({
-      isPinned: true,
       isActiveSeat: true,
       controlsLegalTarget: true,
       hasAttackersOnViewer: true,
@@ -78,15 +75,6 @@ describe("decideSeatRendering", () => {
       shipped({ opponentDetail: "full" }),
     );
     expect(d).toEqual({ rendering: "full", reason: "setting" });
-  });
-
-  it("expands a pinned seat and keeps the pin above the interaction triggers", () => {
-    // Ordering test, not a duplicate of the one above: a pinned seat
-    // that ALSO holds a legal target must report "pinned", so that
-    // when the prompt closes the panel does not collapse.
-    expect(
-      decideSeatRendering(seat({ isPinned: true, controlsLegalTarget: true }), table(), shipped()),
-    ).toEqual({ rendering: "full", reason: "pinned" });
   });
 
   it("expands a seat holding a legal target while a prompt is live", () => {
@@ -242,19 +230,5 @@ describe("legalDefenderIDs", () => {
   it("survives a snapshot with no attack_targets at all", () => {
     const v = { seats: [{ id: "p1" }], turn: { active_seat: 0 } } as unknown as GameView;
     expect(legalDefenderIDs(v, "p1").size).toBe(0);
-  });
-});
-
-describe("nextPinnedSeat", () => {
-  it("pins a seat when nothing is pinned", () => {
-    expect(nextPinnedSeat(null, "p2")).toBe("p2");
-  });
-
-  it("unpins when the pinned seat is clicked again", () => {
-    expect(nextPinnedSeat("p2", "p2")).toBeNull();
-  });
-
-  it("moves the pin rather than adding a second one", () => {
-    expect(nextPinnedSeat("p2", "p3")).toBe("p3");
   });
 });

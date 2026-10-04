@@ -31,6 +31,7 @@
     type TargetingState,
   } from "../../targeting";
   import { findAnchor, findCardAnchor, findSeatAnchor, hasSize } from "../../boardAnchor";
+  import { boardExpandLayout } from "../../boardExpand";
   import { curvePath, relativeTo, type Box, type Point } from "../../stackArrows";
   import {
     FOLLOW_ARROW_COLOR,
@@ -198,9 +199,12 @@
   // The prompt, the snapshot or the board changed: measure now (the
   // DOM is current when effects run) and again next frame, for a card
   // still laying out.
+  // ADR 0120 §3: and when the expanded board opens, closes, changes
+  // seat or resizes, because its copy of a card is the anchor then.
   $effect(() => {
     void $targeting;
     void view;
+    void $boardExpandLayout;
     const board = boardEl;
     untrack(measure);
     if (!board || !$targeting) return;

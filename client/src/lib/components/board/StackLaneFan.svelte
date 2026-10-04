@@ -56,6 +56,7 @@
   } from "../../stackArrows";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { boardExpandLayout } from "../../boardExpand";
   import Icon from "../Icon.svelte";
 
   interface Props extends StackLaneStyleProps {
@@ -187,7 +188,10 @@
     // Every snapshot rebuilds the model, and a snapshot is when cards
     // move: re-measure now (the DOM is updated when effects run), and
     // again next frame for anything still laying out (art, fonts).
+    // ADR 0120 §3: the expanded board opening, closing, changing seat
+    // or resizing moves the anchors too, with no snapshot.
     void model;
+    void $boardExpandLayout;
     const board = boardEl;
     const track = trackEl;
     if (!board || !track) return;
