@@ -38,7 +38,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordUndying},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventCast},
-			AppliesTo: anOpponentCastANoncreatureSpell,
+			AppliesTo: AnOpponentCast(Noncreature()),
 			Key:       "Gleeful Arsonist — damage equal to its power to that player",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
@@ -55,15 +55,4 @@ func init() {
 			},
 		}},
 	})
-}
-
-// anOpponentCastANoncreatureSpell is "whenever an opponent casts a
-// noncreature spell": the spell is read off the stack, where its type
-// line is intact.
-func anOpponentCastANoncreatureSpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && !spell.IsCreature()
 }
