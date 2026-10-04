@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 
-import { isResponseWindowFor, responseWindowKey } from "./considering";
+import {
+  CONSIDERING_DELAY_MS,
+  consideringDelayMs,
+  isResponseWindowFor,
+  responseWindowKey,
+} from "./considering";
+import { STACK_HOLD_MAX_MS } from "./stackHold";
 import type { GameView, PendingChoiceView, PlayerView, TurnView, ZoneView } from "./protocol";
 
 // Fixture helpers mirror the shape used in priority.test.ts.
@@ -152,5 +158,31 @@ describe("responseWindowKey", () => {
     const a = responseWindowKey(snap({ stackDepth: 1, priorityHolder: 0 }));
     const b = responseWindowKey(snap({ stackDepth: 1, priorityHolder: 0 }));
     expect(a).toBe(b);
+  });
+});
+
+// ADR 0119 §2: an automatic pass in a stack window now waits for the
+// holder's stack hold, so the chip waits past the largest one.
+describe("consideringDelayMs", () => {
+  it("is 800 ms outside a stack window", () => {
+    expect(consideringDelayMs(snap({ activeSeat: 0, priorityHolder: 1 }))).toBe(800);
+    expect(CONSIDERING_DELAY_MS).toBe(800);
+  });
+
+  it("is the largest stack hold plus 800 ms in a stack window", () => {
+    expect(consideringDelayMs(snap({ stackDepth: 1, priorityHolder: 1 }))).toBe(3800);
+    expect(consideringDelayMs(snap({ stackDepth: 3, priorityHolder: 0 }))).toBe(
+      STACK_HOLD_MAX_MS + CONSIDERING_DELAY_MS,
+    );
+  });
+
+  it("counts a spell card on the stack before its item lands", () => {
+    const v = snap({ priorityHolder: 1 });
+    v.stack = { ...v.stack, count: 1, cards: [{ instance_id: "c-1" } as never] };
+    expect(consideringDelayMs(v)).toBe(3800);
+  });
+
+  it("is 800 ms for no view at all", () => {
+    expect(consideringDelayMs(null)).toBe(800);
   });
 });

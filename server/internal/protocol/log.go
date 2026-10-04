@@ -538,6 +538,12 @@ type LogEvent struct {
 	// anywhere is untagged, so the tag's presence alone says there are
 	// two beats to show. #187, ADR 0053 Decision 1.
 	CombatStep string `json:"combat_step,omitempty"`
+	// Unpaid marks a LogCast entry whose caster cast it without paying
+	// its mana cost (force_cast, the "Cast anyway (don't pay)" row;
+	// ADR 0118 §2). Copied from game.Event.Unpaid. Public: the pool
+	// and the cost are public, so it is not redacted with the card's
+	// name. #2188.
+	Unpaid bool `json:"unpaid,omitempty"`
 	// Random outcomes are public. One entry groups a whole instruction.
 	Sides   int      `json:"sides,omitempty"`
 	Results []int    `json:"results,omitempty"`
@@ -1028,6 +1034,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.OldZone != game.ZoneHand {
 			base.OldZone = string(ev.OldZone)
 		}
+		base.Unpaid = ev.Unpaid
 		return base, true
 
 	case game.EventResolve:
@@ -1976,10 +1983,16 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("Turn %d — %s · %s", round, actor, prettyStep(e.Step))
 	case LogCast:
-		if e.OldZone != "" {
-			return fmt.Sprintf("%s cast %s from %s", actor, card, prettyZone(e.OldZone))
+		// ADR 0118 owner decision 4: an unpaid cast says so, in these
+		// words, after the zone.
+		unpaid := ""
+		if e.Unpaid {
+			unpaid = " without paying its mana cost"
 		}
-		return fmt.Sprintf("%s cast %s", actor, card)
+		if e.OldZone != "" {
+			return fmt.Sprintf("%s cast %s from %s%s", actor, card, prettyZone(e.OldZone), unpaid)
+		}
+		return fmt.Sprintf("%s cast %s%s", actor, card, unpaid)
 	case LogResolve:
 		if e.ability {
 			return fmt.Sprintf("%s resolved", abilityName(e.Label, cardName))

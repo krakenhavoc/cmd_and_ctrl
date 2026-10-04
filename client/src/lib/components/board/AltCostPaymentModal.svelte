@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManaCost from "./ManaCost.svelte";
   // AltCostPaymentModal — S28: pick the card(s) that pay the
   // non-mana half of a chosen alternative cost. Force of Will's
   // "exile a blue card from your hand", Daze's "return an Island you
@@ -115,7 +116,7 @@
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name">{c.name}</span>
               {#if c.mana_cost}
-                <span class="note cost">{c.mana_cost}</span>
+                <span class="note cost"><ManaCost cost={c.mana_cost} size={14} /></span>
               {/if}
             </button>
           </li>

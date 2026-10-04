@@ -704,6 +704,17 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `Scoped
 
 An optional "you may" that trades the source for the spell declares `OptionalPrompt.Trade`, so a bot can weigh the trade (Perplexing Chimera).
 
+### Alternative costs for every spell you cast (ADR 0118, #2163)
+
+"You may pay {W}{U}{B}{R}{G} rather than pay the mana cost for spells you cast" (Fist of Suns, Jodah) and "You may cast spells from your hand without paying their mana costs" (Omniscience) are a static that gives each spell its controller casts one more alternative cost (CR 118.9). Declare it with `Spec.GrantedAlternativeCosts` and one of the helpers in `effects/granted_alternative_cost.go`:
+
+```go
+GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast()},
+// Omniscience: CastFromHandWithoutPayingManaCost()
+```
+
+Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label.
+
 ### Granting an ability to another permanent (ADR 0093, #754)
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a

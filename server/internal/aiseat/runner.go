@@ -126,11 +126,21 @@ func DefaultConfig() Config {
 // (ADR 0075 §2.2, sub-PR 6). fast trades the "never feels
 // precognitive" floor (Config.MinThink's doc) for speed; slow is for
 // a table that wants to watch the bot think.
-var botPacePresets = map[game.BotPace]struct{ Min, Max time.Duration }{
-	game.BotPaceFast:   {Min: 0, Max: 2 * time.Second},
-	game.BotPaceNormal: {Min: defaultMinThink, Max: defaultMaxThink},
-	game.BotPaceSlow:   {Min: 2 * time.Second, Max: 8 * time.Second},
+//
+// StackHold is ADR 0119 §2's hold: how long another seat's item has to
+// have been on top of the stack before this seat passes on it, so the
+// people at the table can read it. A bot cannot read a person's own
+// stack-hold setting, so the bot side is part of the bot speed the host
+// already sets. The hold overlaps MinThink rather than adding to it.
+var botPacePresets = map[game.BotPace]struct{ Min, Max, StackHold time.Duration }{
+	game.BotPaceFast:   {Min: 0, Max: 2 * time.Second, StackHold: 0},
+	game.BotPaceNormal: {Min: defaultMinThink, Max: defaultMaxThink, StackHold: 2 * time.Second},
+	game.BotPaceSlow:   {Min: 2 * time.Second, Max: 8 * time.Second, StackHold: 3 * time.Second},
 }
+
+// stackHoldPoll is how often a stack hold re-reads the stack, the same
+// cadence holdForBlockers uses.
+const stackHoldPoll = 100 * time.Millisecond
 
 func (c Config) withDefaults() Config {
 	if c.MaxThink <= 0 {
@@ -231,6 +241,17 @@ type Runner struct {
 	// stepped is set by NewStepped and never changes: the runner has
 	// no goroutine and acts only when Step is called (#1503).
 	stepped bool
+
+	// stackSeen is when this runner first saw each item now on the
+	// stack (ADR 0119 §2), pruned as items leave. Touched only by the
+	// goroutine that steps the runner, so it needs no lock. Nil while
+	// the table's bot speed has no stack hold.
+	stackSeen map[uuid.UUID]time.Time
+	// stackHoldPolled, when set, runs on the runner's goroutine after
+	// each of holdForStack's waits and before it re-reads the stack.
+	// Tests only: it lets a test change the stack mid-hold without a
+	// second goroutine to schedule.
+	stackHoldPolled func()
 }
 
 // Start launches a runner goroutine for seat in room. bc may be nil.
@@ -428,6 +449,11 @@ func (r *Runner) step(ctx context.Context) bool {
 		if r.room.Game.CurrentState() != game.StateActive {
 			return false
 		}
+		// ADR 0119 §2: note the stack on every commit this seat is
+		// woken for, whether or not it has a decision, so a hold is
+		// measured from the commit that put the item there.
+		stackHold := r.stackHoldNow()
+		r.noteStack(stackHold, time.Now())
 		// #687 / #1013: the policy may order the enumerator's target
 		// expansion and price the cards a cost would eat, and both are
 		// reads of the seat's own view — so for a policy with either
@@ -583,6 +609,14 @@ func (r *Runner) step(ctx context.Context) bool {
 			}
 		}
 		r.pace(ctx, started, minThink)
+		if mv.Kind == legal.KindPass && stackHold > 0 && !r.holdForStack(ctx, stackHold) {
+			// The top of the stack changed while this seat waited, so
+			// the pass was decided on a frame that is gone. Report the
+			// window and decide again on the new one.
+			out.forced = ForcedStackChanged
+			r.observe(in, out, &mv, 0, false, nil)
+			continue
+		}
 		if mv.Kind == legal.KindPass && r.cfg.BlockGrace > 0 {
 			// A view-blind seat decided without one (#1261), so the
 			// block-grace check builds its own; it only reads the
@@ -877,6 +911,83 @@ func (r *Runner) pacingNow() (minThink, maxThink time.Duration) {
 		maxThink = r.cfg.MaxThink
 	}
 	return
+}
+
+// stackHoldNow is this decision window's stack hold (ADR 0119 §2): the
+// table's BotPace preset's StackHold when Config.FollowTablePace is on,
+// and zero otherwise. Zero for every hand-built test Config and every
+// stepped runner (NewStepped turns FollowTablePace off), so tests,
+// arenas and the soak keep their speed. Read fresh, like pacingNow, so
+// a host's change is live on the next window.
+func (r *Runner) stackHoldNow() time.Duration {
+	if !r.cfg.FollowTablePace || r.stepped {
+		return 0
+	}
+	preset, ok := botPacePresets[r.room.Game.TableSettingsSnapshot().BotPace]
+	if !ok {
+		return 0
+	}
+	return preset.StackHold
+}
+
+// noteStack records when this runner first saw each item on the stack
+// and forgets the items that have left. With no hold it keeps nothing.
+func (r *Runner) noteStack(hold time.Duration, now time.Time) {
+	if hold <= 0 {
+		r.stackSeen = nil
+		return
+	}
+	r.noteStackPresence(r.room.Game.StackPresenceSnapshot(), now)
+}
+
+func (r *Runner) noteStackPresence(p game.StackPresence, now time.Time) {
+	next := make(map[uuid.UUID]time.Time, len(p.Items))
+	for _, id := range p.Items {
+		if at, ok := r.stackSeen[id]; ok {
+			next[id] = at
+		} else {
+			next[id] = now
+		}
+	}
+	r.stackSeen = next
+}
+
+// holdForStack holds this seat's pass while the top of the stack is
+// another seat's item that has been there for less than hold, measured
+// from the commit at which this runner first saw it (ADR 0119 §2). It
+// re-reads the stack every stackHoldPoll and returns false if the top
+// item changed while it waited, so the caller re-enumerates instead of
+// sending a pass decided on the old frame. It returns true when the
+// pass may go: the hold is over, there is nothing to hold for, or ctx
+// ended (the caller checks ctx next).
+//
+// Every seat measures from about the same moment, so a table of bots
+// holds once, not once per seat (CR 117.4: the item resolves when every
+// seat has passed in succession).
+func (r *Runner) holdForStack(ctx context.Context, hold time.Duration) bool {
+	p := r.room.Game.StackPresenceSnapshot()
+	r.noteStackPresence(p, time.Now())
+	top := p.Top
+	if top == uuid.Nil || p.TopController == r.seat {
+		return true
+	}
+	deadline := r.stackSeen[top].Add(hold)
+	for ctx.Err() == nil {
+		left := time.Until(deadline)
+		if left <= 0 {
+			return true
+		}
+		r.hold(ctx, min(left, stackHoldPoll))
+		if r.stackHoldPolled != nil {
+			r.stackHoldPolled()
+		}
+		p = r.room.Game.StackPresenceSnapshot()
+		r.noteStackPresence(p, time.Now())
+		if p.Top != top {
+			return false
+		}
+	}
+	return true
 }
 
 // pace holds the runner so the decision takes at least minThink of

@@ -138,6 +138,8 @@
   <div class="pile-slot">
     <PileButton
       label="library"
+      pile="library"
+      owner={seat.id}
       zone={seat.library}
       faceDown={libraryTop === null}
       disabled={!isSelf || !onDrawCard}
@@ -185,8 +187,22 @@
       </div>
     {/if}
   </div>
-  <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} readyCount={graveReady} />
-  <PileButton label="exile" zone={exile} onClick={openExile} readyCount={exileReady} />
+  <PileButton
+    label="grave"
+    pile="graveyard"
+    owner={seat.id}
+    zone={seat.graveyard}
+    onClick={openGraveyard}
+    readyCount={graveReady}
+  />
+  <PileButton
+    label="exile"
+    pile="exile"
+    owner={seat.id}
+    zone={exile}
+    onClick={openExile}
+    readyCount={exileReady}
+  />
   <CommandZone
     seat={{ id: seat.id, name: seat.name }}
     zone={seat.command}

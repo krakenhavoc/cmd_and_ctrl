@@ -83,3 +83,102 @@ export function manaSymbolMeta(symbol: string): ManaSymbolMeta {
 export function manaSymbols(cost: string): string[] {
   return Array.from(cost.matchAll(/\{([^}]+)\}/g), (m) => m[1]);
 }
+
+/** What a symbol is, for drawing and for speaking. */
+export type PipKind = "generic" | "colour" | "colourless" | "x" | "hybrid" | "phyrexian" | "snow";
+
+export interface ManaPip {
+  /** The symbol with braces stripped, upper-cased: "U", "2", "W/U", "U/P". */
+  symbol: string;
+  kind: PipKind;
+}
+
+const COLOUR_LETTERS = ["W", "U", "B", "R", "G"];
+
+function pipKind(sym: string): PipKind {
+  if (/^\d+$/.test(sym)) return "generic";
+  if (sym === "X" || sym === "Y" || sym === "Z") return "x";
+  if (sym === "C") return "colourless";
+  if (sym === "S") return "snow";
+  if (COLOUR_LETTERS.includes(sym)) return "colour";
+  if (/\/P$/.test(sym)) return "phyrexian";
+  if (sym.includes("/")) return "hybrid";
+  return "generic";
+}
+
+/**
+ * pipRun turns symbols into what is drawn: every generic number is
+ * summed into ONE grey circle (`{1}{1}{U}` becomes 2, U), as a person
+ * reads a cost; {C}, X, hybrid, Phyrexian and snow stay one pip each.
+ * The generic total takes the place of the first generic symbol. A bare
+ * `{0}` is a "0" circle; a zero beside other pips is dropped.
+ */
+export function pipRun(symbols: readonly string[]): ManaPip[] {
+  const out: ManaPip[] = [];
+  let total = 0;
+  let at = -1;
+  for (const raw of symbols) {
+    const symbol = raw.toUpperCase();
+    if (/^\d+$/.test(symbol)) {
+      total += Number(symbol);
+      if (at < 0) {
+        at = out.length;
+        out.push({ symbol: "0", kind: "generic" });
+      }
+      continue;
+    }
+    out.push({ symbol, kind: pipKind(symbol) });
+  }
+  if (at >= 0) {
+    if (total === 0 && out.length > 1) out.splice(at, 1);
+    else out[at] = { symbol: String(total), kind: "generic" };
+  }
+  return out;
+}
+
+/** costPips is pipRun over a brace-notation cost: "{2}{U}" gives 2, U. */
+export function costPips(cost: string): ManaPip[] {
+  return pipRun(manaSymbols(cost));
+}
+
+function colourName(letter: string): string {
+  return (MANA_SYMBOL_META[letter]?.name ?? letter).toLowerCase();
+}
+
+/** pipWords says one pip aloud: "2 generic", "blue", "blue or white". */
+export function pipWords(p: ManaPip): string {
+  const half = (s: string): string => (/^\d+$/.test(s) ? `${s} generic` : colourName(s));
+  switch (p.kind) {
+    case "generic":
+      return `${p.symbol} generic`;
+    case "colour":
+      return colourName(p.symbol);
+    case "colourless":
+      return "colourless";
+    case "x":
+      return p.symbol;
+    case "snow":
+      return "snow";
+    case "phyrexian":
+      return `${colourName(p.symbol.split("/")[0])} or 2 life`;
+    default:
+      return p.symbol.split("/").map(half).join(" or ");
+  }
+}
+
+/**
+ * costWords is a cost as a fragment for an accessible name: "{2}{U}"
+ * becomes "2 generic and 1 blue"; repeated colours are counted.
+ */
+export function costWords(cost: string): string {
+  const counts = new Map<string, number>();
+  for (const p of costPips(cost)) {
+    const w = pipWords(p);
+    counts.set(w, (counts.get(w) ?? 0) + 1);
+  }
+  const parts = Array.from(counts, ([w, n]) =>
+    /^\d+ generic$/.test(w) || w === "X" ? w : `${n} ${w}`,
+  );
+  if (parts.length <= 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}

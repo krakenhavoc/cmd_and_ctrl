@@ -35,6 +35,8 @@
     type MenuItem,
   } from "../../contextMenu.logic";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { requestCastAnyway } from "../../castAnyway";
+  import { settings } from "../../settings";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -79,7 +81,19 @@
   const card = $derived(findCard(view, open.card.instance_id) ?? open.card);
   const where = $derived(locateCard(view, open.card.instance_id));
   const zoneLabel = $derived(where ? ZONE_LABELS[where.zone] : "gone");
-  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin, legal, legalGate));
+  // ADR 0118 §2: with strict payment on, a card the viewer could cast
+  // carries "Cast anyway (don't pay)" in a "cast" section.
+  const sections = $derived(
+    buildMenuSections(
+      view,
+      card,
+      viewerID,
+      isAdmin,
+      legal,
+      legalGate,
+      $settings.gameplay.strictMana,
+    ),
+  );
 
   // trail is the drill-down path, held as item IDs rather than item
   // objects so a snapshot arriving while a submenu is open refreshes
@@ -151,6 +165,13 @@
     }
     if (item.activate) {
       onActivate(card, item.activate);
+      onClose();
+      return;
+    }
+    // ADR 0118 §2: the row opens the dock's confirmation and sends
+    // nothing; the Board's cast chain runs only after Cast.
+    if (item.castAnyway) {
+      requestCastAnyway(card, item.castAnyway);
       onClose();
       return;
     }

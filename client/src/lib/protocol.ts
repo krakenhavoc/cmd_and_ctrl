@@ -872,6 +872,12 @@ export interface LogEvent {
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.
   card_id?: string;
+  // ADR 0119 §3: the stack item a `resolve`, `fizzle` or `counter`
+  // entry is about, for spells and abilities alike. For a spell it
+  // equals its card's ID; an ability's item has an ID no other field
+  // carries. Absent on every other kind, and on entries written before
+  // the field existed.
+  stack_item_id?: string;
   // Instance ID of the CARD the entry acts on (a counterspell's
   // victim, a blocker's attacker). Player targets use target_seat.
   target?: string;
@@ -894,6 +900,11 @@ export interface LogEvent {
   // presence alone means there are two beats. Read it, don't derive it
   // from keywords (#187, ADR 0053 Decision 1).
   combat_step?: "first_strike" | "regular";
+  // ADR 0118 §2 (#2188): a `cast` entry whose caster cast it without
+  // paying its mana cost (`force_cast`). The `text` already ends
+  // " without paying its mana cost"; this is for a client that wants
+  // the bit. Public: never redacted with the card's name.
+  unpaid?: boolean;
   // #984: the value named at a "choose a ..." prompt — the colour
   // LETTER on a `choose_color` entry ("G"), the creature type on a
   // `choose_type` one ("Elf"). Absent on a `choose_player` entry,

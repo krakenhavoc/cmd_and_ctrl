@@ -34,7 +34,7 @@
   } from "../../protocol";
   import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
-  import { isResponseWindowFor, responseWindowKey } from "../../considering";
+  import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
   import SeatSummary from "./SeatSummary.svelte";
   import {
@@ -52,6 +52,7 @@
   // of the lower-right corner.
   import StackOverlay from "./StackOverlay.svelte";
   import StackLaneHost from "./StackLaneHost.svelte";
+  import StackLinger from "./StackLinger.svelte";
   import {
     DEFAULT_STACK_STYLE,
     isStackStyle,
@@ -60,6 +61,8 @@
   } from "../../stackLane";
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
+  import StackTargetRings from "./StackTargetRings.svelte";
+  import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
@@ -73,7 +76,10 @@
   import { closeAbilityPopover } from "../../abilityPopover";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
-  import type { MenuActivate } from "../../contextMenu.logic";
+  import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
+  import DockRequest from "./DockRequest.svelte";
+  import { castAnywayConfirmRequest } from "../../targetingDock";
+  import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
   import {
     targeting,
     begin as beginTargeting,
@@ -339,10 +345,10 @@
   // panel; the pure predicate stays in considering.ts so it's testable
   // without a component.
   //
-  // Automatic passes land in about one round trip — milliseconds — so
-  // this delay is long enough that nothing ever gets a chip.
-  const CONSIDERING_DELAY_MS = 800;
-
+  // The delay is consideringDelayMs: 800 ms, which an automatic pass
+  // always beats, or in a stack window the largest stack hold plus
+  // 800 ms, because an automatic pass there now waits for the holder's
+  // hold (ADR 0119 §2).
   let consideringSeatID = $state<string | null>(null);
   let consideringTimer: ReturnType<typeof setTimeout> | null = null;
   // Plain (non-reactive) watermark: `view` is a brand-new object on
@@ -372,6 +378,7 @@
       return;
     }
 
+    const delay = consideringDelayMs(view);
     consideringTimer = setTimeout(() => {
       consideringTimer = null;
       // Re-read fresh rather than trust the closure: the window this
@@ -382,7 +389,7 @@
       if (responseWindowKey(view) !== key) return;
       if (!isResponseWindowFor(view, holderIdx)) return;
       consideringSeatID = holder.id;
-    }, CONSIDERING_DELAY_MS);
+    }, delay);
   });
 
   // Teardown-only: clears an in-flight timer on unmount (leaving the
@@ -971,13 +978,18 @@
   // rides CastChoices through every prompt and applyCastChoices turns
   // it into `strict: true, auto_tap: true` on whichever cast_spell the
   // chain finally sends.
+  //
+  // ADR 0118 §2: `forceCast` is set only by a confirmed "Cast anyway
+  // (don't pay)". It rides the chain the same way, and applyCastChoices
+  // turns it into `strict: true, force_cast: true`.
   function handlePlayCard(
     card: CardView,
     fromZone?: CastSourceZone,
     face?: number,
     viaDrag = false,
+    forceCast = false,
   ): void {
-    const base = castChoicesBase(fromZone, viaDrag);
+    const base = castChoicesBase(fromZone, viaDrag, forceCast);
     if (face !== undefined) {
       afterFace(cardAsFace(card, face), { ...base, face });
       return;
@@ -1007,6 +1019,33 @@
     if (!req) return;
     unlockRequest.set(null);
     guardedSendAction("special_action", unlockParams(req.cardID, req.door), viewerID ?? undefined);
+  });
+
+  // ADR 0118 §2 (owner decision 6): "Cast anyway (don't pay)" asks
+  // first. The row (Hand, the strip, the command zone panel, the admin
+  // menu) only sets castAnywayPending; while it is set the dock asks
+  // "Cast <card> without paying its mana cost?". Cast starts the ordinary
+  // cast chain with `forceCast`; Cancel and Escape send nothing. The
+  // question goes away, also sending nothing, once the card has left the
+  // zone it was asked about.
+  const castAnywayRequest = $derived.by(() => {
+    const p = $castAnywayPending;
+    if (!p) return null;
+    return castAnywayConfirmRequest(p.card.name, {
+      onCast: () => {
+        clearCastAnyway();
+        // The card as the frame has it now, so the chain reads today's
+        // targets, modes and costs rather than the right-click's.
+        const live = findCard(view, p.card.instance_id) ?? p.card;
+        handlePlayCard(live, p.zone === "hand" ? undefined : p.zone, p.face, false, true);
+      },
+      onCancel: clearCastAnyway,
+    });
+  });
+  $effect(() => {
+    const p = $castAnywayPending;
+    if (!p) return;
+    if (locateCard(view, p.card.instance_id)?.zone !== p.zone) clearCastAnyway();
   });
 
   // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
@@ -2627,6 +2666,11 @@
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
     )}
   />
+  <!-- ADR 0119 §4: what the stack targets is ringed in every style,
+       compact included; and while the viewer chooses targets, the
+       source glows and an arrow runs to each pick and to the pointer. -->
+  <StackTargetRings {view} {viewerID} {boardEl} />
+  <TargetingArrows {view} {boardEl} />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's
@@ -2674,6 +2718,11 @@
     {/if}
     {@render attention?.()}
   </div>
+  <!-- ADR 0119 §3: a card leaving the stack lingers where it was drawn,
+       badged resolved / countered / fizzled, then flies to where it
+       went. One overlay for every style, aria-hidden and outside the
+       labelled regions above. -->
+  <StackLinger {view} {viewerID} {boardEl} {beatsPrimeKey} />
   <VotingPanel {view} {viewerID} sendAction={guardedSendAction} {docked} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
@@ -3109,6 +3158,9 @@
       onPick={(card, index, colors) => handleMenuActivate(card, { kind: "mana", index, colors })}
       onClose={closeManaSourcePicker}
     />
+  {/if}
+  {#if castAnywayRequest}
+    <DockRequest request={castAnywayRequest} />
   {/if}
   {#if $cardMenu}
     <CardContextMenu

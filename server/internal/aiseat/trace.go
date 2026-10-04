@@ -200,6 +200,11 @@ const (
 	// stopped the seat, the process is going away). The decision was
 	// made and paid for; nothing was played.
 	ForcedCancelled = "cancelled"
+	// ForcedStackChanged — the runner was holding a pass for ADR 0119
+	// §2's stack hold and the top of the stack changed under it. The
+	// pass was decided on a frame that is gone, so nothing was played
+	// and the seat decides again on the new one.
+	ForcedStackChanged = "stack-changed"
 )
 
 // DecisionEvent is one decision window, after the dispatcher has had

@@ -14,6 +14,7 @@
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
+  import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
   import type { StackStyle } from "../stackLane";
   import {
     SHORTCUTS,
@@ -818,6 +819,27 @@
                 never tells the table you have an answer.
               </p>
             </fieldset>
+
+            <label class="slider-row">
+              <span
+                >Let other players' spells sit on the stack for at least … before auto-pass lets
+                them resolve</span
+              >
+              <select
+                value={clampStackHoldMs($settings.gameplay.stackHoldMs)}
+                onchange={(e) => change("gameplay", "stackHoldMs", Number(e.currentTarget.value))}
+              >
+                {#each STACK_HOLD_CHOICES_MS as ms (ms)}
+                  <option value={ms}>{ms === 0 ? "Off" : `${ms / 1000} s`}</option>
+                {/each}
+              </select>
+              {#if isFresh("gameplay.stackHoldMs")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              So you can read what was cast before it resolves. Only an automatic pass waits, and
+              only for a spell or ability someone else controls; <strong>next</strong> still passes at
+              once, and the action dock counts the wait down.
+            </p>
 
             <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
               <legend>Bluff</legend>
