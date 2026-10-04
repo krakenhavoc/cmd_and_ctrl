@@ -31,12 +31,7 @@ func init() {
 				Key:       "Spine of Ish Sah — destroy target permanent",
 				Effect:    destroyChosenPermanent,
 			},
-			WhenThisDies("Spine of Ish Sah — return it to its owner's hand", func(g *game.Game, item *game.StackItem) error {
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
-			}),
+			WhenThisDies("Spine of Ish Sah — return it to its owner's hand", returnThisCardFromYourGraveyardToHand),
 		},
 	})
 }

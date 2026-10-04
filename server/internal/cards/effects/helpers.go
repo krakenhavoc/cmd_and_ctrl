@@ -1373,3 +1373,16 @@ func returnThisPermanentToOwnersHand(g *game.Game, item *game.StackItem) error {
 	}
 	return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
 }
+
+// returnThisCardFromYourGraveyardToHand is "return this card from your
+// graveyard to your hand" (Ringwraiths' trigger, Gollum, Patient
+// Plotter's ability) and Spine of Ish Sah's "return it to its owner's
+// hand" from the graveyard it died into. The card may have left the
+// graveyard before the ability resolves; then it does nothing, since
+// the card it names is gone.
+func returnThisCardFromYourGraveyardToHand(g *game.Game, item *game.StackItem) error {
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
+}
