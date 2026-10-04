@@ -759,14 +759,19 @@ func (s *Seat) Act(ctx context.Context, in ActInput) (Result, error) {
 	s.stats.acts++
 	s.mu.Unlock()
 
-	t := time.NewTimer(s.cfg.AckTimeout)
+	wait, legacy := s.ackWait()
+	t := time.NewTimer(wait)
 	defer t.Stop()
 	var r reply
 	select {
 	case r = <-ch:
 	case <-t.C:
+		why := fmt.Sprintf("No acknowledgement within %s.", wait)
+		if legacy {
+			why = "This server predates ADR 0122 PR 5 and sends no acknowledgements, and no error came back."
+		}
 		return textResult("status: unknown",
-			fmt.Sprintf("No acknowledgement within %s. The move may or may not have landed: call wait_for_decision to read the state.", s.cfg.AckTimeout)), nil
+			why+" The move may or may not have landed: call wait_for_decision to read the state."), nil
 	case <-ctx.Done():
 		return textResult("status: unknown", "Cancelled after sending. Call wait_for_decision to read the state."), nil
 	}
@@ -903,7 +908,8 @@ func (s *Seat) Concede(ctx context.Context, in ConcedeInput) (Result, error) {
 	if err != nil {
 		return errorResult("not sent: %v", err), nil
 	}
-	t := time.NewTimer(s.cfg.AckTimeout)
+	wait, _ := s.ackWait()
+	t := time.NewTimer(wait)
 	defer t.Stop()
 	select {
 	case r := <-ch:
@@ -949,6 +955,7 @@ func (s *Seat) Leave(_ context.Context, _ LeaveInput) (Result, error) {
 	s.sess, s.view, s.haveView, s.win, s.moves = nil, nil, false, nil, nil
 	s.key, s.lastCounted = windowKey{}, windowKey{}
 	s.endReason, s.reportedOver, s.passUntil = "", false, false
+	s.noMoveReq, s.probed = false, false
 	s.autoSince, s.chatSince, s.logSeqShown = map[string]int{}, nil, 0
 	s.broadcastLocked()
 	s.mu.Unlock()

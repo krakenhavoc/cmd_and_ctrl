@@ -302,6 +302,28 @@ func TestAnOlderServerStillPlays(t *testing.T) {
 	}
 }
 
+func TestTheProbeNamesAnOlderServer(t *testing.T) {
+	f := newFakeServer(t)
+	f.oldServer = true
+	s := newTestSeat(t, func(c *Config) { c.AckTimeout = time.Minute })
+	joinFake(t, f, s)
+	waitFor(t, "the probe's answer", func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.noMoveReq
+	})
+	f.setState(activeView(f), twoChoices(f), false)
+	tok, _ := decisionWindow(t, s)
+	start := time.Now()
+	r, _ := s.Act(context.Background(), ActInput{Window: tok, Move: 1})
+	if !strings.Contains(r.Text, "status: unknown") || !strings.Contains(r.Text, "predates ADR 0122 PR 5") {
+		t.Errorf("act on an older server: %s", r.Text)
+	}
+	if time.Since(start) > 30*time.Second {
+		t.Error("act waited the full ack timeout on a server known to send none")
+	}
+}
+
 func TestPassUntilPassesOthersTurnsAndClearsAtOwnTurn(t *testing.T) {
 	f := newFakeServer(t)
 	s := newTestSeat(t, nil)

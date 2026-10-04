@@ -143,6 +143,7 @@ type Seat struct {
 	lastActive   int
 	reportedOver bool
 	noMoveReq    bool // the server answered legal_moves_request as unknown
+	probed       bool // the wire probe has been sent for this seat
 
 	pending map[string]chan reply
 	moveSem chan struct{}
@@ -271,8 +272,61 @@ func (s *Seat) pokeAutopilot() {
 func (s *Seat) connected() {
 	s.mu.Lock()
 	s.isConnected = true
+	probe := !s.probed
+	s.probed = true
 	s.broadcastLocked()
 	s.mu.Unlock()
+	if probe {
+		go s.probeWire()
+	}
+}
+
+// legacyAckWait is how long act waits on a server that predates ADR 0122
+// PR 5, which never acknowledges anything: long enough for an error frame
+// to arrive, short enough that a test game is not mostly waiting.
+const legacyAckWait = 2 * time.Second
+
+// probeWire asks once, on the first connection, whether the server knows
+// legal_moves_request. A server from before PR 5 answers "unknown or
+// unsupported kind", and it sends no ack either, so act stops waiting
+// the full AckTimeout for one and says why its answer is `unknown`.
+// Nothing is inferred from the probe about any move: act still reports
+// only an ack or an error as an outcome.
+func (s *Seat) probeWire() {
+	ctx, cancel := context.WithTimeout(context.Background(), movesReplyWait)
+	defer cancel()
+	select {
+	case s.moveSem <- struct{}{}:
+	case <-ctx.Done():
+		return
+	}
+	defer func() { <-s.moveSem }()
+	ch, err := s.sendFrame(kindLegalMovesRequest, legalMovesRequest{})
+	if err != nil {
+		return
+	}
+	select {
+	case r := <-ch:
+		if r.kind == string(protocol.KindError) && r.err.Code == protocol.CodeBadRequest &&
+			strings.Contains(r.err.Message, "unknown or unsupported kind") {
+			s.mu.Lock()
+			s.noMoveReq = true
+			s.mu.Unlock()
+			s.log.Info("this server predates ADR 0122 PR 5: no acks and no full move lists")
+		}
+	case <-ctx.Done():
+	}
+}
+
+// ackWait is how long act and concede wait for the server's answer.
+func (s *Seat) ackWait() (time.Duration, bool) {
+	s.mu.Lock()
+	legacy := s.noMoveReq
+	s.mu.Unlock()
+	if legacy && legacyAckWait < s.cfg.AckTimeout {
+		return legacyAckWait, true
+	}
+	return s.cfg.AckTimeout, legacy
 }
 
 func (s *Seat) dropped() {
