@@ -28,18 +28,9 @@ func init() {
 		Name:         "Esper Sentinel",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor == source.Controller {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok || spell.IsCreature() {
-					return false
-				}
-				return g.CastTallyFor(ev.Actor).Noncreature == 1
-			},
-			Key: "Esper Sentinel — draw unless caster pays {X}",
+			Watches:   []game.EventKind{game.EventCast},
+			AppliesTo: AnOpponentCastTheirFirstNoncreatureSpellThisTurn,
+			Key:       "Esper Sentinel — draw unless caster pays {X}",
 			// The Sentinel's power at trigger time is a board read the
 			// effect cannot re-derive from item.Trigger alone (ADR 0041
 			// P9's fill-in Build): it is the CR 603.10 fallback X if the

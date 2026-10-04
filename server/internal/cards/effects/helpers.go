@@ -900,9 +900,9 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
 // of the Moon, Blood Moon) and takes the land's own rules text with
 // it.
-// putCounterOnSourceWhileOnBattlefield is the ability effect body
-// behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
-// Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
+// putIndestructibleCounterOnSource is the ability effect body
+// behind "…: Put an indestructible counter on this permanent" (Tekuthal,
+// Inquiry Dominus; Solphim, Mayhem Dominus; Drivnod; Zopandrel): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. The indestructible counter needs nothing
 // else: the engine reads keyword counters itself (CR 122.1b, ADR 0101).
@@ -911,7 +911,7 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
 // Scholar) and a common one outside them.
 //
-// Unlike putCounterOnSourceWhileOnBattlefield beside it, it does NOT
+// Unlike putIndestructibleCounterOnSource beside it, it does NOT
 // check that the source is still on the battlefield: AddCounter is a
 // no-op on a card that has gone, and the two cards that read that
 // check place a keyword counter on a source that must still be there.
@@ -926,12 +926,12 @@ func plusOneCountersOnThis(n int) Effect {
 	}
 }
 
-func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
+func putIndestructibleCounterOnSource() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if !b15OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
-		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.
+		return AddCounter{Target: item.SourceCardID, Kind: game.CounterIndestructible, N: 1}.
 			Apply(NewContext(g, item))
 	}
 }

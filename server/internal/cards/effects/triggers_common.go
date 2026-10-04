@@ -986,3 +986,19 @@ func ThisDealtDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Charac
 	p := g.PlayerByIDForEffect(ev.Target)
 	return p != nil && p.ID != source.Controller
 }
+
+// AnOpponentCastTheirFirstNoncreatureSpellThisTurn — "Whenever an
+// opponent casts their first noncreature spell each turn" (Esper
+// Sentinel, Shadow in the Warp). The per-player cast tally is bumped
+// before EventCast fires, so the spell that makes the count one is the
+// first; spells cast before the source arrived still count.
+func AnOpponentCastTheirFirstNoncreatureSpellThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor == source.Controller {
+		return false
+	}
+	spell, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || spell.IsCreature() {
+		return false
+	}
+	return g.CastTallyFor(ev.Actor).Noncreature == 1
+}
