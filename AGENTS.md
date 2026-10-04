@@ -466,6 +466,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a mana ability (S15+)](docs/adding-cards.md#adding-a-mana-ability-s15)
   - [Adding a static ability (S16+)](docs/adding-cards.md#adding-a-static-ability-s16)
   - [Granting an ability to another permanent (ADR 0093, #754)](docs/adding-cards.md#granting-an-ability-to-another-permanent-adr-0093-754)
+  - [Alternative costs for every spell you cast (ADR 0118, #2163)](docs/adding-cards.md#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](docs/adding-cards.md#abilities-any-player-may-activate-adr-0106-1793)
   - [Adding a replacement effect (S17+)](docs/adding-cards.md#adding-a-replacement-effect-s17)
   - [Adding a copy effect (S16.5+)](docs/adding-cards.md#adding-a-copy-effect-s165)
