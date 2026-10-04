@@ -752,7 +752,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// below, because overload and cleave rewrite the target clause —
 	// the spell's legality has to be judged under the cost actually
 	// being paid, not under the printed one.
-	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, params.Targets)
+	alt, err := g.resolveAlternativeCostLocked(playerID, card, src.Kind, grant, params.AlternativeCost, params.Targets)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost claim",
 			"card_name", card.Name,
@@ -2784,7 +2784,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
 	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
-	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
+	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
 	}
