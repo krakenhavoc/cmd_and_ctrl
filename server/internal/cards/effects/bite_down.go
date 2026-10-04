@@ -33,20 +33,26 @@ func init() {
 			TargetPermanent("target creature or planeswalker you don't control",
 				Or(Creature(), Planeswalker()), OpponentControls()),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			biter, ok := ctx.ClauseTarget(0)
-			if !ok || biter.Kind != game.TargetCard {
-				return nil
-			}
-			victim, ok := ctx.ClauseTarget(1)
-			if !ok || victim.Kind != game.TargetCard {
-				return nil
-			}
-			c, ok := ctx.Game.LookupCardForEffect(biter.ID)
-			if !ok {
-				return nil
-			}
-			return DealDamage{Source: biter.ID, Target: victim.ID, Amount: c.CurrentPower()}.Apply(ctx)
-		},
+		OnResolve: oneSidedBite,
 	})
+}
+
+// oneSidedBite is "target creature you control deals damage equal to
+// its power to target creature or planeswalker you don't control" as
+// a spell's whole resolution, read off a two-clause announcement:
+// slot 0 deals, slot 1 takes. Bite Down and Stump Stomp share it.
+func oneSidedBite(_ *game.StackItem, ctx *Context) error {
+	biter, ok := ctx.ClauseTarget(0)
+	if !ok || biter.Kind != game.TargetCard {
+		return nil
+	}
+	victim, ok := ctx.ClauseTarget(1)
+	if !ok || victim.Kind != game.TargetCard {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(biter.ID)
+	if !ok {
+		return nil
+	}
+	return DealDamage{Source: biter.ID, Target: victim.ID, Amount: c.CurrentPower()}.Apply(ctx)
 }
