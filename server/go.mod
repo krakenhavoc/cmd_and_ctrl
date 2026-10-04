@@ -1,9 +1,11 @@
 module github.com/krakenhavoc/cmd_and_ctrl/server
 
-// Minimum Go version is 1.22 — we rely on method-aware ServeMux (1.22+),
-// log/slog (1.21+), and `for range N` (1.22+). Devcontainer ships the
-// latest Go, but older collaborator installs stay supported.
-go 1.22
+// Go 1.27, the newest supported release (ADR 0122 §1.1, owner decision 8):
+// Go supports only its two newest majors, and the MCP seat's SDK needs 1.25
+// or later. We also rely on method-aware ServeMux (1.22+), log/slog (1.21+)
+// and `for range N` (1.22+). CI, scripts/go-docker.sh and the devcontainer
+// all pin the same version; move them together.
+go 1.27.0
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0

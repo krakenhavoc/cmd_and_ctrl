@@ -614,6 +614,8 @@ type playerSnapshot struct {
 	IsBot              bool              `json:"isBot,omitempty"`
 	BotTier            string            `json:"botTier,omitempty"`
 	BotDeck            string            `json:"botDeck,omitempty"`
+	Agent              bool              `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
+	AgentClient        string            `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
 	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
 	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters           map[string]int    `json:"counters,omitempty"`
@@ -808,13 +810,12 @@ type cardSnapshot struct {
 	// as the zero record: "not cast, or cast for its mana cost", the
 	// answer every permanent gave before #653.
 	//
-	// No `omitzero`: `encoding/json` only honours that option from Go
-	// 1.24 (#1492), and CI's pinned 1.22 toolchain — the one that
-	// builds every fixture in testdata/snapshots and every deployed
-	// binary — silently ignores it and always writes the field. A
-	// contributor's newer local toolchain honouring the option is
-	// what produced the divergence; always writing it, on every Go
-	// version, is what removes it.
+	// No `omitzero`: when the module's floor was below Go 1.24, CI's
+	// toolchain — the one that built every fixture in
+	// testdata/snapshots and every deployed binary — ignored the
+	// option and always wrote the field, while a contributor's newer
+	// one omitted it (#1492). The frozen fixtures carry the key, so it
+	// is always written; omitzero_tag_guard_test.go holds that.
 	Provenance CastProvenance `json:"provenance"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
@@ -1976,6 +1977,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		IsBot:              p.IsBot,
 		BotTier:            p.BotTier,
 		BotDeck:            p.BotDeck,
+		Agent:              p.Agent,
+		AgentClient:        p.AgentClient,
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		CommanderCasts:     copyIntMap(p.CommanderCasts),
 		Counters:           copyStringIntMap(p.Counters),
@@ -2823,6 +2826,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		IsBot:              p.IsBot,
 		BotTier:            p.BotTier,
 		BotDeck:            p.BotDeck,
+		Agent:              p.Agent,
+		AgentClient:        p.AgentClient,
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,

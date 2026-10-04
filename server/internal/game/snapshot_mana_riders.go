@@ -94,7 +94,7 @@ func (s *GameSnapshot) unknownManaRiders() []string {
 }
 
 func walkRiderValues(v reflect.Value, where string, visit func(string, ManaSpendRider)) {
-	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+	for v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface {
 		if v.IsNil() {
 			return
 		}

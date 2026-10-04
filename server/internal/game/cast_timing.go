@@ -124,8 +124,8 @@ type CastTimingRule struct {
 	// simply match nothing a cast can be.
 	//
 	// No `omitzero`: this is part of GameSnapshot's serialization
-	// graph (PlayerStatic.Timing.Filter) and its presence would
-	// otherwise depend on the building Go toolchain (#1492).
+	// graph (PlayerStatic.Timing.Filter), which writes it at its zero
+	// value too; omitzero_tag_guard_test.go holds that (#1492).
 	Filter PermissionFilter `json:"filter"`
 
 	// FromZone narrows the statement to casts out of one zone. Zero
