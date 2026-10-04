@@ -43,7 +43,13 @@
     specialActionItems,
     type MenuAction,
   } from "../../contextMenu.logic";
-  import { abilityPopover, closeAbilityPopover, openAbilityPopover } from "../../abilityPopover";
+  import {
+    abilityPopover,
+    closeAbilityPopover,
+    openAbilityPopover,
+    popoverDrawnOn,
+    popoverSurface,
+  } from "../../abilityPopover";
   import { manaRowNeedsPicker } from "../../manaSource";
   import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
@@ -299,7 +305,12 @@
   // routed in PlayerPanel. A right-click or a pip writes the same store.
   // Dismissed on selection, Escape (handled inside the menu), or a
   // click on the card.
-  const manaMenuOpen = $derived($abilityPopover?.cardID === card.instance_id);
+  //
+  // ADR 0120 §3: with a seat's board expanded over the table, two Cards
+  // carry this instance ID. The popover records which surface opened
+  // it, and only the Card on that surface draws it.
+  const surface = popoverSurface();
+  const manaMenuOpen = $derived(popoverDrawnOn($abilityPopover, card.instance_id, surface));
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
@@ -574,7 +585,7 @@
     ev.preventDefault();
     ev.stopPropagation();
     if (manaMenuOpen) closeAbilityPopover();
-    else openAbilityPopover(card.instance_id);
+    else openAbilityPopover(card.instance_id, surface);
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -599,7 +610,7 @@
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) openAbilityPopover(card.instance_id);
+    if (hasMenu) openAbilityPopover(card.instance_id, surface);
   }
 
   // ADR 0117 §4, "Right-click": the popover's mana row for an ability

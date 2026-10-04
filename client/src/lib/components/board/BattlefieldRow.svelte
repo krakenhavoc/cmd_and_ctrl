@@ -13,7 +13,7 @@
   import type { CantAttackChip } from "../../cantAttack";
   import type { CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
-  import { abilityPopover } from "../../abilityPopover";
+  import { abilityPopover, popoverSurface } from "../../abilityPopover";
   import { settings } from "../../settings";
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
@@ -155,6 +155,9 @@
     combat = NO_COMBAT_RINGS,
   }: Props = $props();
 
+  // ADR 0120 §3: the surface this row is drawn on, table or expanded.
+  const surface = popoverSurface();
+
   // ADR 0105 §2: the special-action rows go only to a card that offers
   // any. The server strips `special_actions` from every seat but the
   // card's controller, so an opponent's card has none anyway.
@@ -210,8 +213,9 @@
     // the ability popover on a member that is not the drawn one. The
     // group then draws THAT member while its popover is open, so the
     // popover opens at the group's card and its rows act on the member
-    // the player chose.
-    const popoverID = $abilityPopover?.cardID;
+    // the player chose. Only on the surface the popover was opened
+    // from (ADR 0120 §3): the other copy of the row keeps its own rep.
+    const popoverID = $abilityPopover?.surface === surface ? $abilityPopover.cardID : undefined;
     for (const e of entries) {
       if (e.kind === "group") {
         const drawn = e.members.find((m) => m.instance_id === popoverID) ?? e.rep;
