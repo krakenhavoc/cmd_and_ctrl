@@ -36,7 +36,8 @@ func (r *Runner) enumerationOrder() (legal.Options, Input) {
 	// lobby could create (#1060). See aiseat/capability.go.
 	orderer, wantsOrder := Capability[TargetOrderer](r.policy)
 	pricer, wantsFuel := Capability[CostFuelPricer](r.policy)
-	if !wantsOrder && !wantsFuel {
+	bearer, wantsBearer := Capability[RingBearerOrderer](r.policy)
+	if !wantsOrder && !wantsFuel && !wantsBearer {
 		return legal.Options{}, Input{}
 	}
 	in := Input{View: protocol.ViewOfGameFor(r.room.Game, r.seat.String()), Seat: r.seat}
@@ -46,6 +47,9 @@ func (r *Runner) enumerationOrder() (legal.Options, Input) {
 	}
 	if wantsFuel {
 		opts.OrderCostFuel = pricer.CostFuelPrice(in)
+	}
+	if wantsBearer {
+		opts.OrderRingBearer = bearer.RingBearerOrder(in)
 	}
 	return opts, in
 }

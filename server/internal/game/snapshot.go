@@ -826,6 +826,14 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// RingBearer is the CR 701.54b Ring-bearer designation and
+	// RingTemptations the Ring emblem's count of temptations (ADR 0114
+	// §8), both carried for Monstrous's reason: each zero value is a
+	// legal state, so a restore that dropped them would bring a table
+	// back with no Ring-bearers and every Ring at nothing, silently.
+	// Additive within v7: an older binary ignores both keys.
+	RingBearer      bool `json:"ringBearer,omitempty"`
+	RingTemptations int  `json:"ringTemptations,omitempty"`
 	// Unlocked is a Room's two CR 709.5c unlocked designations and
 	// Fused a fused split spell's mark on the stack (ADR 0103). Both
 	// carried: a restore that dropped Unlocked would bring a Room back
@@ -1888,6 +1896,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		RingBearer:               c.RingBearer,
+		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
@@ -2693,6 +2703,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		RingBearer:               c.RingBearer,
+		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,

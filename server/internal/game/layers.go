@@ -1025,6 +1025,10 @@ func (g *Game) materialiseControlLocked() []controlChange {
 		// ADR 0108 §5: a control change is "came under your control"
 		// (CR 702.30a), stamped with the new controller's upkeep count.
 		c.ControlledSinceUpkeep = g.upkeepsBegunForLocked(c.Controller)
+		// ADR 0114 §3, CR 701.54a: a Ring-bearer stays one "until
+		// another player gains control of it". The new controller's
+		// own later temptation may choose it.
+		c.RingBearer = false
 		g.removeFromCombatLocked(c)
 		// #1376: CR 506.4 removes an ATTACKED planeswalker or battle
 		// from combat on a control change too, and its attackers then
