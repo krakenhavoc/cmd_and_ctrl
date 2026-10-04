@@ -4018,11 +4018,12 @@ func clearKnownInZoneLocked(zone *Zone) {
 //   - 704.5d: a token in any zone other than the battlefield ceases
 //     to exist — see token_existence.go
 //
-// Counter ordering (CR 704.3): the +1/+1 / -1/-1 cancel runs BEFORE
-// the lethal-damage check so a 2/2 with one +1/+1 and one -1/-1 +
-// 1 marked damage doesn't die — the counters cancel first, leaving
-// it a 2/2 with 1 damage. The implementation enforces this by
-// running the counter cancel pass before destruction collection.
+// Counter ordering (CR 704.3): every action in one check is performed
+// simultaneously, so the +1/+1 / -1/-1 cancel runs AFTER the doomed set
+// is collected and swept. It never changes power or toughness, so the
+// order cannot change which creatures die; it decides only that a
+// creature dying in this check leaves with both kinds of counter, which
+// is what undying and persist read (#2075).
 //
 // Caller must hold g.mu.
 func (g *Game) stateBasedActionsLocked() (fired, left bool) {
@@ -4076,41 +4077,6 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// in the same settling rather than surviving a round.
 	if g.attachmentSBALocked() {
 		fired = true
-	}
-
-	// Counter cancel (704.5q). Must run before destruction so the
-	// post-cancel state is what the lethal-damage SBA sees.
-	//
-	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
-	// changes power and toughness (PTCounterDelta), but CR 704.5q
-	// names these two and no others: a +1/+0 and a -1/-0 on one
-	// creature both stay, as do a +1/+1 and a -2/-1.
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if !c.IsCreature() || c.Counters == nil {
-			continue
-		}
-		plus := c.Counters["+1/+1"]
-		minus := c.Counters["-1/-1"]
-		if plus > 0 && minus > 0 {
-			cancel := plus
-			if minus < cancel {
-				cancel = minus
-			}
-			c.Counters["+1/+1"] -= cancel
-			c.Counters["-1/-1"] -= cancel
-			if c.Counters["+1/+1"] <= 0 {
-				delete(c.Counters, "+1/+1")
-			}
-			if c.Counters["-1/-1"] <= 0 {
-				delete(c.Counters, "-1/-1")
-			}
-			if len(c.Counters) == 0 {
-				c.Counters = nil
-				c.LostLastCounter = true
-			}
-			fired = true
-		}
 	}
 
 	// Player-loss SBAs (ADR 0057 Decision 2). CR 704.3 performs them
@@ -4203,7 +4169,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			continue
 		}
 		if c.IsCreature() {
-			if !c.ToughnessIsKnown() {
+			// Whether the toughness is KNOWN is judged as if this
+			// check's CR 704.5q cancel had already happened: a `*`
+			// placeholder whose counters cancel to nothing is as
+			// unknown as one that never had any (the cancel itself
+			// runs after the sweep, below).
+			if !afterPlusMinusCancel(c).ToughnessIsKnown() {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -4303,6 +4274,27 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		// still has to be looked at again, and one whose exit is paused on
 		// the CR 903.9 prompt is skipped by the collector above on the next
 		// pass. Both are answered by the set this pass COLLECTED.
+		fired = true
+	}
+
+	// Counter cancel (704.5q). AFTER the doomed set is collected and
+	// swept, for CR 704.3: every state-based action in one check is
+	// performed simultaneously, so a creature this check puts into a
+	// graveyard leaves with the counters it had, both kinds included.
+	// Its last-known counters are what undying and persist read
+	// (#2075, ADR 0113 §4): a 1/1 undying creature with a +1/+1 counter
+	// that gets two -1/-1 counters dies with its +1/+1 counter and does
+	// not return. Running the cancel first would have removed that
+	// counter before the creature died, and brought it back. The
+	// cancel removes as many of one kind as of the other, so it never
+	// changes power or toughness and cannot change which creatures the
+	// pre-pass dooms.
+	//
+	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
+	// changes power and toughness (PTCounterDelta), but CR 704.5q
+	// names these two and no others: a +1/+0 and a -1/-0 on one
+	// creature both stay, as do a +1/+1 and a -2/-1.
+	if g.cancelPlusMinusCountersLocked() {
 		fired = true
 	}
 
@@ -9610,4 +9602,49 @@ func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asComman
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.moveCardByRefLocked(src, dst, cardID, asCommander, true)
+}
+
+// cancelPlusMinusCountersLocked is CR 704.5q: N +1/+1 and N -1/-1
+// counters are removed from a creature that has both, N the smaller
+// count. Reports whether it removed any.
+//
+// Caller must hold g.mu.
+func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if !c.IsCreature() || c.Counters == nil {
+			continue
+		}
+		if c.Counters[CounterPlusOne] > 0 && c.Counters[CounterMinusOne] > 0 {
+			*c = afterPlusMinusCancel(*c)
+			fired = true
+		}
+	}
+	return fired
+}
+
+// afterPlusMinusCancel is the card as CR 704.5q leaves it: N of each of
+// +1/+1 and -1/-1 removed, N the smaller count, on a fresh counter map.
+// A card with not both kinds comes back unchanged.
+func afterPlusMinusCancel(c Card) Card {
+	plus, minus := c.Counters[CounterPlusOne], c.Counters[CounterMinusOne]
+	if plus <= 0 || minus <= 0 {
+		return c
+	}
+	cancel := min(plus, minus)
+	counters := copyStringIntMap(c.Counters)
+	counters[CounterPlusOne] -= cancel
+	counters[CounterMinusOne] -= cancel
+	if counters[CounterPlusOne] <= 0 {
+		delete(counters, CounterPlusOne)
+	}
+	if counters[CounterMinusOne] <= 0 {
+		delete(counters, CounterMinusOne)
+	}
+	if len(counters) == 0 {
+		counters = nil
+		c.LostLastCounter = true
+	}
+	c.Counters = counters
+	return c
 }

@@ -126,8 +126,8 @@ func TestMurderousRedcapDepartedDeathtouchStillKills(t *testing.T) {
 		t.Error("the 5/5 survived 2 damage from a departed deathtouch Redcap (CR 608.2h, #1396)")
 	}
 	spec, _ := Lookup(b40MurderousRedcapOracle)
-	if len(spec.Caveats) != 1 {
-		t.Errorf("only the persist caveat stays: %v", spec.Caveats)
+	if len(spec.Caveats) != 0 {
+		t.Errorf("persist landed with #2075, so no caveat stays: %v", spec.Caveats)
 	}
 }
 
