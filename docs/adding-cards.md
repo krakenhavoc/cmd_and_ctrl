@@ -2333,6 +2333,12 @@ HandSize: []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
 - **`Kind`** is `HandSizeNoMaximum`, `HandSizeSet` (to `N` ≥ 0) or
   `HandSizeModify` (by `N` ≠ 0; a reduction is a negative `N`).
   `Register` refuses a negative set and a zero modification.
+- **A number read at the time, or a condition**, is `Dynamic`: a
+  function of the game and the permanent that returns the number and
+  whether the entry applies right now ("equal to the number of hour
+  counters on this enchantment", Midnight Oil; Winter, Misanthropic
+  Guide's delirium). The entry keeps its permanent's timestamp. It runs
+  under the game lock, so read with the `ForEffect` accessors only.
 - **"You have no maximum hand size"** stays `Spec.NoMaxHandSize`, the
   shorthand; `buildDef` folds it into the list. `When` is the
   designation gate, as `NoMaxHandSizeWhen` is for the shorthand.
