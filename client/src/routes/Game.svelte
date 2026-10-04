@@ -78,6 +78,7 @@
     owesAttackRequirement,
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
+  import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
     attackAllParams,
     attackLimitOn,
@@ -484,6 +485,8 @@
       alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
+      // ADR 0118 owner decision 8: stop if the engine may be wrong.
+      engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,
       oppEndWindow: kw.oppEnd,
       // #1307: a bluff needs the setting AND the in-game switch.
