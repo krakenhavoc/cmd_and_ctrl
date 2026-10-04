@@ -73,18 +73,10 @@ var silentEventKinds = map[string]string{
 	"EventDiscardCard":     silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":   "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked":  "the LogBlock entry for the blocker is the same fact from the other side",
-	// #1257: this reason was not true when it was written. The
-	// ability's LogResolve carried no card and no label and rendered
-	// as "a card resolved". It now names the ability by its stack
-	// label and its source (projectAbilityItem), redacted with the
-	// source — log_ability_resolve_test.go pins both halves.
-	"EventTrigger": "a trigger reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
-	// #1184's EventActivateAbility is no longer on this list: since
-	// ADR 0106 §1 it has an arm (LogActivateAcross) for the one
-	// activation the resolve line cannot tell — a player reaching
-	// across to another player's permanent. Every other activation is
-	// still told by the LogResolve of the ability it becomes, and the
-	// arm returns nothing for it.
+	// EventTrigger left this list with ADR 0119 §5: a trigger is a
+	// LogTrigger line when it is queued, and EventActivateAbility (#1184)
+	// a LogActivate line, or LogActivateAcross when a player reaches
+	// across to another player's permanent (ADR 0106 §1).
 	"EventKeywordAction": silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
