@@ -473,8 +473,14 @@ func paidWithGift(paid PaidCost, to uuid.UUID) PaidCost {
 // (#1213) — the same shape and the same reason as the fold above:
 // by resolution the permanents are in graveyards, so the number has to
 // be a fact about the announcement rather than a count of the board.
-func paidWithSacrifices(paid PaidCost, n int) PaidCost {
-	paid.Sacrificed = n
+//
+// ADR 0113 §1 (#2072): and which permanents they were, as the objects
+// they were on the battlefield — `refs` is sacrificeRefsLocked of the
+// named IDs, taken before the payment moves them. The count is the
+// list's length, so the two can never disagree.
+func paidWithSacrifices(paid PaidCost, refs []ObjectRef) PaidCost {
+	paid.Sacrificed = len(refs)
+	paid.SacrificedObjects = refs
 	return paid
 }
 

@@ -425,6 +425,18 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.Discarded) > 0 {
 		meta.Paid.Discarded = append([]uuid.UUID(nil), item.Paid.Discarded...)
 	}
+	// ADR 0113 §1 (#2072): the permanents the original's cost sacrificed
+	// are "objects used to pay its costs" too (CR 707.10), so a copied
+	// Tend the Pests makes the original's number of Pests — its ruling
+	// says so — and a copied Fling deals the original's damage. The
+	// count travels with them: before this a copied Vicious Betrayal
+	// read zero sacrifices, which was the copy forgetting a fact rather
+	// than the copy paying nothing. Its own slice, so neither record can
+	// reach the other's.
+	meta.Paid.Sacrificed = item.Paid.Sacrificed
+	if len(item.Paid.SacrificedObjects) > 0 {
+		meta.Paid.SacrificedObjects = append([]ObjectRef(nil), item.Paid.SacrificedObjects...)
+	}
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 
