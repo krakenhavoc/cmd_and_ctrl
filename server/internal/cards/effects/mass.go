@@ -204,8 +204,8 @@ type DestroyAllMatching struct {
 	//
 	// #815: it runs from a CONTINUATION, which means it may run an
 	// action later than the sweep — a commander caught in the wipe
-	// stops to answer CR 903.9, and the number is not knowable until
-	// they do. Write it as a clause that acts on what it is given, not
+	// stops to answer a replacement's prompt, and the number is not
+	// knowable until they do. Write it as a clause that acts on what it is given, not
 	// as the next line of the card.
 	Then func(ctx *Context, swept []game.Card, destroyed int) error
 
@@ -226,7 +226,7 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 	if d.Then == nil {
 		// Nothing is waiting on the count, so the sweep stays
 		// fire-and-forget: every leg is destroyed on this line, and a
-		// commander's CR 903.9 prompt lands its own card later without
+		// replacement's prompt lands its own card later without
 		// holding the rest of the board up.
 		m.move = func(g *game.Game, ids []uuid.UUID) int {
 			return g.DestroyPermanentsForEffect(ids, opts)
@@ -259,11 +259,10 @@ type ExileAllMatching struct {
 	// describe the same set. Optional.
 	//
 	// #866: it runs from a CONTINUATION, exactly as
-	// DestroyAllMatching's does — a commander caught in the sweep stops
-	// to answer CR 903.9, and the number is not knowable until it does.
-	// A commander that TAKES the offer is not in it: it went to the
-	// command zone, not to exile, and CR 400.7 says the object that
-	// arrived is the one that was exiled this way.
+	// DestroyAllMatching's does — a leg that stops to answer a
+	// replacement's prompt makes the number unknowable until it does.
+	// A commander is in it: it is exiled first and CR 903.9a asks its
+	// owner afterwards (ADR 0115).
 	Then func(ctx *Context, swept []game.Card, exiled int) error
 }
 
@@ -272,7 +271,7 @@ func (e ExileAllMatching) Apply(ctx *Context) error {
 	if e.Then == nil {
 		// Nothing is waiting on the count, so the sweep stays
 		// fire-and-forget: every leg is exiled on this line, and a
-		// commander's CR 903.9 prompt lands its own card later without
+		// replacement's prompt lands its own card later without
 		// holding the rest of the board up.
 		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.ExileCardsForEffect(ids) }
 	} else {

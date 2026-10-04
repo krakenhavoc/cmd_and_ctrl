@@ -25,8 +25,9 @@ import (
 // schedules a CR 603.7 delayed trigger for the next end step
 // carrying the God's own ID; when it fires, the card comes back to
 // hand only if it is still in a graveyard — a God tucked into the
-// command zone by CR 903.9, or reanimated in the meantime, is a
-// different object and is left alone, as printed.
+// command zone at CR 903.9a's prompt (it dies first, so this trigger
+// fires, ADR 0115), or reanimated in the meantime, is a different
+// object and is left alone, as printed.
 //
 // No simplification.
 func init() {

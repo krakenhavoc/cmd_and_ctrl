@@ -3589,11 +3589,13 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 	// the game already goes.
 	//
 	// #529: both destinations go through the shared exit primitive,
-	// so a commander that fizzles ("countered by game rules", CR
-	// 608.2b) or resolves to a graveyard gets the CR 903.9 choice.
-	// A queued prompt leaves the card on the stack until the owner
-	// answers — priority cannot pass while a choice is outstanding,
-	// so nothing resolves on top of it in the meantime.
+	// so every replacement window sees a spell that fizzles
+	// ("countered by game rules", CR 608.2b) or resolves to a
+	// graveyard. A commander goes to the graveyard like any card and
+	// is offered the command zone afterwards (CR 903.9a, ADR 0115). A
+	// queued replacement prompt leaves the card on the stack until
+	// the owner answers — priority cannot pass while a choice is
+	// outstanding, so nothing resolves on top of it in the meantime.
 	r := zoneRoute{
 		CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner,
 		// #1320: CR 608.2n puts the card away as the last step of its
@@ -4292,8 +4294,8 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		// moment a cancelled destruction counted zero: a permanent whose
 		// destruction the CR 614 window replaced away is still doomed and
 		// still has to be looked at again, and one whose exit is paused on
-		// the CR 903.9 prompt is skipped by the collector above on the next
-		// pass. Both are answered by the set this pass COLLECTED.
+		// a replacement's prompt is skipped by the collector above on the
+		// next pass. Both are answered by the set this pass COLLECTED.
 		fired = true
 	}
 
@@ -4329,7 +4331,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// still on the stack" check sees the settled queue.
 	for _, id := range g.sagasReadyToSacrificeLocked() {
 		// Same re-entry guard as the doomed sweep above: a Saga
-		// commander waiting on the CR 903.9 prompt is still on the
+		// permanent waiting on a replacement's prompt is still on the
 		// battlefield at its final chapter, and sacrificing it a
 		// second time would queue a second prompt and emit a second
 		// EventSacrifice for one sacrifice.
@@ -4971,8 +4973,9 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 // The FIRE-AND-FORGET form. A caller that has to know what the exit
 // actually did — "for each creature destroyed this way" — uses
 // routeBattlefieldExitThenLocked and reads the board from the
-// continuation, because any exit can pause on the CR 903.9 prompt
-// (#815).
+// continuation, because an exit can pause on a replacement's prompt
+// (a commander's CR 903.9b offer for a bounce or a tuck; a death is
+// no longer one, ADR 0115) (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
 	return g.routeBattlefieldExitThenLocked(cardID, nil)
 }
@@ -5026,11 +5029,12 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 	}
 
 	// S17 sub-PR 6: route through the CR 614 replacement pipeline
-	// so the CR 903.9 commander-zone built-in can fire for dies-to-
-	// damage + wrath + SBA destroys. The built-in is Optional, so
-	// when the dying card is a commander the pipeline queues a
-	// yes/no prompt for the owner; the physical move waits for
-	// their answer via ResolveOptionalReplacement.
+	// so every replacement sees dies-to-damage + wrath + SBA
+	// destroys. (Until ADR 0115 the CR 903.9 commander-zone built-in
+	// fired here and asked the owner before the card moved. It is now
+	// a hand-and-library replacement, CR 903.9b: a dying commander
+	// lands in the graveyard and CR 903.9a's state-based action asks
+	// afterwards.)
 	var defaultDest ZoneKind
 	var defaultOwner uuid.UUID
 	if owner == nil {
@@ -5148,7 +5152,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	var actor uuid.UUID
 	switch dest {
 	case ZoneCommand:
-		// CR 903.9 commander-zone replacement landed. Find the
+		// A CR 903.9b commander-zone replacement landed. Find the
 		// owner via the card — defaultOwner may have been empty
 		// when the original owner had left the game.
 		card, ok := g.LookupCardForEffect(cardID)
@@ -9641,7 +9645,7 @@ func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
 // #707: the bottom now rides the exit primitive's route
 // (zoneRoute.ToBottom) rather than being a post-move reorder. The
 // reorder could not survive a pause — a commander tucked to the bottom
-// paused on the CR 903.9 prompt was still in its old zone when the
+// paused on the CR 903.9b prompt was still in its old zone when the
 // reorder ran, so it found nothing and the card later landed on TOP —
 // and the route already knows how to do this for every effect-side
 // tuck (Condemn, Hinder). Like those, it is honoured only against the

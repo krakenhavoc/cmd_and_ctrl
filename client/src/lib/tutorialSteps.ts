@@ -250,7 +250,7 @@ export const CAST_CREATURE: TutorialStep = {
         id: "resolve",
         title: "Now let it resolve",
         body: (k) =>
-          `Your creature is on the stack, at the top of the screen. ${PressNext(k)} in the dock and it resolves.`,
+          `Your creature is on the stack, on the left of the table. ${PressNext(k)} in the dock and it resolves.`,
         anchor: DOCK,
       };
     }
