@@ -97,6 +97,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // the same reason — the choice itself moves nothing, and whatever
   // the card then does to what was chosen has its own line.
   choose_cards: "tone-quiet",
+  // ADR 0114 §9: the Ring tempting a player is a play the table watches,
+  // toned like the cast that caused it.
+  ring_tempted: "tone-cast",
   // #1021. A control change is a swing in the game and reads like a
   // removal spell; the rest are beats of a turn a player narrates
   // without raising their voice.

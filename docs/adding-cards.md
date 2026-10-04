@@ -6181,6 +6181,62 @@ Three things to know:
   Never write an emblem's "can't" as a `CastBanRule` granted to each
   opponent: that record is invisible on the board, frozen when it is
   made, and does not end when the emblem's owner leaves (CR 800.4a).
+- **An emblem's block rules** (ADR 0114 §5) are `EmblemSpec.BlockRules`,
+  built by the `Spec.BlockRules` constructors. The block-rule walk reads
+  every seat's emblems after the battlefield, with the emblem as the
+  source, so a scope's "your" is the emblem's owner, and a refusal names
+  the emblem by its label.
+
+### The Ring tempts you (ADR 0114, #2076)
+
+"The Ring tempts you" (CR 701.54) is one primitive. Its player is the
+controller, and `Then` is the rest of the sentence, handed the creature
+chosen as the Ring-bearer:
+
+```go
+Do(TheRingTemptsYou{})                                  // "the Ring tempts you."
+TheRingTemptsYou{Then: func(ctx *Context, rb uuid.UUID) error {
+    // "Then …" — runs after the tempt, with the new Ring-bearer
+    // (uuid.Nil when you controlled no creature).
+}}
+```
+
+The engine does the rest (`game.RingTemptsForEffect`, `game/ring.go`):
+the Ring emblem at the first temptation, its count, the choice (asked
+with the `ring_bearer` prompt only when you control two or more
+creatures; one is chosen for you), the Ring-bearer designation and the
+event. The Ring's own abilities live once, in
+[the_ring.go](../server/internal/cards/effects/the_ring.go), behind
+`game.RingTempted(n)`. A card never declares them.
+
+The trigger shapes:
+
+- `WheneverTheRingTemptsYou(label, effect)` — every temptation, including
+  one where you controlled no creature (CR 701.54d).
+- `WheneverYouChooseARingBearer(label, effect)` — only when a creature was
+  chosen, including the one that already was your Ring-bearer (Call of
+  the Ring).
+- `IfYouChoseAnotherRingBearer(trigger)` — the intervening "if you chose
+  a creature other than ~ as your Ring-bearer" (CR 603.4), wrapped round
+  either of the above.
+
+Readers: `game.RingBearerOf(g, player)` ("your Ring-bearer", CR
+701.54e: on the battlefield, phased in, under your control),
+`game.IsRingBearerOf(card, player)` for a predicate that has the card
+already, `YourRingBearer()` as a block-rule scope, and
+`game.RingTemptCount(g, player)` ("if the Ring has tempted you N or more
+times this game").
+
+Three things to know:
+
+- **Never set `Card.RingBearer` from a card.** The tempt is its one write
+  site, which is what keeps one Ring-bearer per player. A control change
+  and CR 400.7 clear it; phasing does not.
+- **Choosing a Ring-bearer is not targeting.** Hexproof and protection do
+  not stop it, and nothing can respond to the choice.
+- **No card ships until the Ring has all four lines** (ADR 0114 PR 3).
+  Today the emblem has its first line only; a card that tempts would be
+  weaker than printed for anyone who reaches the second.
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 

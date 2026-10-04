@@ -54,14 +54,9 @@ func init() {
 		Caveats: []string{
 			"If a milled card is exiled instead of going to a graveyard, Mug doesn't let you cast it.",
 		},
-		BlockRules: []game.BlockRule{{
-			Reason: game.BlockReasonCantBeBlockedBy,
-			Label:  "creatures with greater power",
-			Pair: func(_ *game.Game, attacker, blocker, source *game.Card) bool {
-				return source != nil && attacker.InstanceID == source.InstanceID &&
-					blocker.PowerForComparison() > attacker.PowerForComparison()
-			},
-		}},
+		BlockRules: []game.BlockRule{
+			CantBeBlockedByComparing(OnSelf(), GreaterPowerThanAttacker(), "creatures with greater power"),
+		},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Locke, Treasure Hunter — Mug: each player mills a card", lockeMug),
 		},

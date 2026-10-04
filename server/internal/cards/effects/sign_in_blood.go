@@ -12,15 +12,19 @@ func init() {
 		Name:         "Sign in Blood",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			target := item.Targets[0].ID
-			if err := (DrawCards{Player: target, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), target, -2)
-		},
+		OnResolve:    signInBloodOnResolve,
 	})
+}
+
+// signInBloodOnResolve is the spell's body, shared with Scheming
+// Silvertongue's prepare spell, which prints the same text.
+func signInBloodOnResolve(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		return nil
+	}
+	target := item.Targets[0].ID
+	if err := (DrawCards{Player: target, N: 2}).Apply(ctx); err != nil {
+		return err
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), target, -2)
 }

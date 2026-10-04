@@ -1968,6 +1968,11 @@ func dispatch(g *game.Game, a Action) error {
 				// ADR 0107 §6, CR 609.7a: "a source of your choice" —
 				// exactly one, from the prompt's candidates.
 				return g.ResolveChooseSource(choiceID, a.Player, ids)
+			case game.PendingChoiceRingBearer:
+				// ADR 0114 §4, CR 701.54a: "choose a creature you
+				// control" as the Ring tempts you — exactly one, from
+				// the prompt's candidates.
+				return g.ResolveRingBearer(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for
