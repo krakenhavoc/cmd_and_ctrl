@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -75,6 +76,24 @@ import (
 // A server that rejects either unknown field can be told to stop
 // sending both with CMDCTRL_OPENAI_SEND_THINK=0.
 //
+// # The reply is constrained to the listed moves (#2196)
+//
+// A move-pick request (Request.Choices non-empty) carries
+// `response_format: json_schema` whose `index` is an integer enum of
+// exactly the listed indices and whose `move` is a string enum of their
+// labels, in that order, then `why`. A server that applies the schema
+// as a grammar — Ollama does — cannot emit a number that is not on the
+// list, which was half of qwen3.6:35b-a3b's replies on the probe's
+// window before this. ADR 0052 §7 designs the same field with a
+// scratchpad before the index; this is the constraint without the
+// scratchpad.
+//
+// A server that 400s on `response_format` gets the same request once
+// more without it, and if that one succeeds the client stops sending
+// the schema for the rest of its life (SchemaRefused). The reply is
+// then exactly what it was before #2196, and ResolveAnswer's label
+// check still covers it.
+//
 // # The deadline is the real hazard
 //
 // ADR 0033 §10 gives `assisted` a 2s hard deadline, sized for a
@@ -130,7 +149,16 @@ type OpenAIClient struct {
 	// conservative timeout; the per-call deadline that actually
 	// matters comes from ctx.
 	HTTP *http.Client
+
+	// schemaRefused latches once the server has answered a request
+	// carrying response_format with a 400 and the same request
+	// without it with a 2xx. See the file comment.
+	schemaRefused atomic.Bool
 }
+
+// SchemaRefused reports whether this server refused the json_schema
+// response_format, so the client has stopped sending it.
+func (c *OpenAIClient) SchemaRefused() bool { return c != nil && c.schemaRefused.Load() }
 
 // Env vars this transport reads. Named for the wire shape rather
 // than for any one server, because the whole point is that four of
@@ -261,6 +289,85 @@ type openAIRequest struct {
 	// which leaves the model at its own default effort — used when
 	// Request.Thinking == "adaptive".
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+	// ResponseFormat constrains a move-pick reply to the listed moves.
+	// Nil on an improvisation call and once the server has refused it.
+	ResponseFormat *openAIResponseFormat `json:"response_format,omitempty"`
+}
+
+type openAIResponseFormat struct {
+	Type       string           `json:"type"`
+	JSONSchema openAIJSONSchema `json:"json_schema"`
+}
+
+type openAIJSONSchema struct {
+	Name   string           `json:"name"`
+	Strict bool             `json:"strict"`
+	Schema choiceSchemaBody `json:"schema"`
+}
+
+// choiceSchemaBody is a JSON Schema object for the reply. It is a
+// struct rather than a map because a grammar-constrained server emits
+// properties in the order the schema lists them, and Go marshals a
+// struct's fields in declaration order and a map's keys sorted.
+type choiceSchemaBody struct {
+	Type                 string            `json:"type"`
+	Properties           choiceSchemaProps `json:"properties"`
+	Required             []string          `json:"required"`
+	AdditionalProperties bool              `json:"additionalProperties"`
+}
+
+// choiceSchemaProps is the reply's properties in emission order: the
+// number, then the label it names, then the reason.
+type choiceSchemaProps struct {
+	Index schemaEnum[int]    `json:"index"`
+	Move  schemaEnum[string] `json:"move"`
+	Why   schemaString       `json:"why"`
+}
+
+type schemaEnum[T int | string] struct {
+	Type string `json:"type"`
+	Enum []T    `json:"enum"`
+}
+
+type schemaString struct {
+	Type string `json:"type"`
+}
+
+// choiceFormat is the response_format for a move-pick request: the
+// listed indices and nothing else, and the listed labels, each once.
+// Nil when there is nothing to constrain to.
+func choiceFormat(choices []Choice) *openAIResponseFormat {
+	if len(choices) == 0 {
+		return nil
+	}
+	idx := make([]int, 0, len(choices))
+	labels := make([]string, 0, len(choices))
+	seen := make(map[string]bool, len(choices))
+	for _, c := range choices {
+		idx = append(idx, c.Index)
+		// Two untapped Mountains are two moves with one label. An
+		// enum lists a value once.
+		if !seen[c.Label] {
+			seen[c.Label] = true
+			labels = append(labels, c.Label)
+		}
+	}
+	return &openAIResponseFormat{
+		Type: "json_schema",
+		JSONSchema: openAIJSONSchema{
+			Name:   "move_choice",
+			Strict: true,
+			Schema: choiceSchemaBody{
+				Type: "object",
+				Properties: choiceSchemaProps{
+					Index: schemaEnum[int]{Type: "integer", Enum: idx},
+					Move:  schemaEnum[string]{Type: "string", Enum: labels},
+					Why:   schemaString{Type: "string"},
+				},
+				Required: []string{"index", "move", "why"},
+			},
+		},
+	}
 }
 
 type openAIChoice struct {
@@ -329,7 +436,26 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		body.Messages = append(body.Messages, openAIMessage{Role: "system", Content: sys})
 	}
 	body.Messages = append(body.Messages, openAIMessage{Role: "user", Content: req.User})
+	if !c.schemaRefused.Load() {
+		body.ResponseFormat = choiceFormat(req.Choices)
+	}
 
+	resp, err := c.post(ctx, body)
+	var apiErr *APIError
+	if body.ResponseFormat != nil && errors.As(err, &apiErr) && apiErr.Status == http.StatusBadRequest {
+		// The schema may be what the server refused. Ask once more
+		// without it; only a success proves that, so only a success
+		// stops it being sent.
+		body.ResponseFormat = nil
+		if resp, err = c.post(ctx, body); err == nil {
+			c.schemaRefused.Store(true)
+		}
+	}
+	return resp, err
+}
+
+// post makes one HTTP round trip and decodes it.
+func (c *OpenAIClient) post(ctx context.Context, body openAIRequest) (Response, error) {
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return Response{}, fmt.Errorf("openai: marshal request: %w", err)

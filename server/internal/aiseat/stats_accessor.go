@@ -41,6 +41,10 @@ type PolicyStats struct {
 	ByEscalation map[string]int64 `json:"by_escalation,omitempty"`
 	// ByFallback counts the reasons Layer C's answer was discarded.
 	ByFallback map[string]int64 `json:"by_fallback,omitempty"`
+	// ByPick counts how the model replies that WERE used mapped onto
+	// the move list — by their number, or by the label beside it when
+	// the number disagreed (#2196). See aiseat/model's Pick* constants.
+	ByPick map[string]int64 `json:"by_pick,omitempty"`
 	// Escalated counts windows where at least one trigger fired,
 	// once per window — unlike ByEscalation, which counts every
 	// trigger a window fired.

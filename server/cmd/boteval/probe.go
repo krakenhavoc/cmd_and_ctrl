@@ -48,6 +48,13 @@ import (
 //     regression here is invisible from the table: the seat still
 //     plays, it just plays Layer B under a model tier's name.
 //
+// A third question came later (#2196): **does the answer name a
+// listed move?** A reply in the right shape whose number is not on the
+// list used to be reported as "TRUNCATION: likely", which sent an
+// operator to raise a context length that was never the problem. It
+// is now resolved by the funnel's own ResolveAnswer — number, then the
+// label beside it — and reported on its own line (answerVerdict).
+//
 // The probe sends ONE request through the ordinary OpenAIClient, in
 // the exact shape the funnel sends, and prints the evidence. It always
 // exits 0: it is a diagnostic, and "the endpoint is down" is a
@@ -84,6 +91,20 @@ type probeResult struct {
 	Moves              int
 	Elapsed            time.Duration
 	CallErr            error
+
+	// Shown is the move list the prompt carried (Request.Choices),
+	// and the rest is ResolveAnswer's reading of the reply against
+	// it: the label the reply copied, the move it resolved to, how,
+	// or why it resolved to none.
+	Shown    []model.Choice
+	Move     string
+	Resolved int
+	Pick     string
+	Fallback string
+	// Schema says whether the reply was constrained to the listed
+	// moves: "json_schema", "refused" (the server 400'd it and the
+	// call was retried without), or "none".
+	Schema string
 }
 
 // Estimate is the client-side guess at how many tokens were sent.
@@ -98,6 +119,15 @@ func (r probeResult) ReplyParsed() bool {
 		return false
 	}
 	return r.ParsedIndex >= 0 && r.ParsedIndex < r.Moves
+}
+
+// outOfRange reports a reply in the requested shape whose number is
+// not a move. That is a statement about the ANSWER, not about the
+// prompt: the model read the instructions well enough to follow the
+// format, so it is no evidence the front of the prompt was dropped.
+func (r probeResult) outOfRange() bool {
+	return r.ParseErr == nil && strings.TrimSpace(r.Reply) != "" &&
+		(r.ParsedIndex < 0 || r.ParsedIndex >= r.Moves)
 }
 
 // thinkingEvidence reports whether the reply's shape is already
@@ -137,6 +167,9 @@ func truncationVerdict(r probeResult) string {
 	case !r.ReplyParsed() && thinkingEvidence(r):
 		return fmt.Sprintf("TRUNCATION: not detected — %d prompt tokens for ~%d sent. The reply is unusable, but thinking explains that (see below), not a truncated prompt.",
 			r.PromptTokens, est)
+	case r.outOfRange():
+		return fmt.Sprintf("TRUNCATION: not detected — %d prompt tokens for ~%d sent, and the reply is in the requested shape. Its number is not on the list; see the INDEX line.",
+			r.PromptTokens, est)
 	case !r.ReplyParsed():
 		return "TRUNCATION: likely — the prompt token count is plausible, but the reply ignores the answer format, which is what a model that never saw the instructions does"
 	default:
@@ -165,6 +198,63 @@ func thinkingVerdict(r probeResult) string {
 	default:
 		return "THINKING: suppressed (or this model does not think) — no reasoning field and the answer arrived inside the token cap"
 	}
+}
+
+// answerVerdict says which move, if any, the reply comes to — the
+// funnel's own reading (model.ResolveAnswer), so the probe and a live
+// seat can never disagree about it.
+func answerVerdict(r probeResult) string {
+	if r.CallErr != nil {
+		return "ANSWER: unknown — the call did not return"
+	}
+	switch r.Fallback {
+	case model.FallbackMalformed:
+		return "ANSWER: malformed — the reply is not an index; a seat plays the heuristic's move"
+	case model.FallbackOutOfRange:
+		label := ""
+		if strings.TrimSpace(r.Move) != "" {
+			label = fmt.Sprintf(", and its label %q names no single listed move", r.Move)
+		}
+		return fmt.Sprintf("INDEX: out of range — the model named a move number that is not on the list (%d; listed: %s)%s. A seat plays the heuristic's move.",
+			r.ParsedIndex, listedIndices(r.Shown), label)
+	}
+	chosen := fmt.Sprintf("move %d", r.Resolved)
+	if l := shownLabel(r.Shown, r.Resolved); l != "" {
+		chosen += fmt.Sprintf(" %q", l)
+	}
+	switch r.Pick {
+	case model.PickIndex:
+		return "ANSWER: " + chosen + " — the number and the label agree"
+	case model.PickUnlabelled:
+		return "ANSWER: " + chosen + " — by number; the reply copied no label"
+	case model.PickLabelRescued:
+		return fmt.Sprintf("ANSWER: %s — RESCUED by its label: the number %d is not on the list, and the label names this move", chosen, r.ParsedIndex)
+	case model.PickLabelCorrected:
+		return fmt.Sprintf("ANSWER: %s — the label overrode the number: %d is a different move", chosen, r.ParsedIndex)
+	case model.PickLabelMismatch:
+		return fmt.Sprintf("ANSWER: %s — by number; the label %q names no single listed move", chosen, r.Move)
+	}
+	return "ANSWER: unknown"
+}
+
+func listedIndices(shown []model.Choice) string {
+	parts := make([]string, 0, len(shown))
+	for _, c := range shown {
+		parts = append(parts, fmt.Sprint(c.Index))
+	}
+	if len(parts) == 0 {
+		return "none"
+	}
+	return strings.Join(parts, ", ")
+}
+
+func shownLabel(shown []model.Choice, i int) string {
+	for _, c := range shown {
+		if c.Index == i {
+			return c.Label
+		}
+	}
+	return ""
 }
 
 func runProbe(args []string) int {
@@ -222,11 +312,13 @@ func runProbe(args []string) int {
 		SystemBytes: systemBytes(req),
 		UserBytes:   len(req.User),
 		Moves:       len(in.Moves),
+		Shown:       req.Choices,
 	}
 	started := time.Now()
 	resp, cerr := client.Complete(ctx, req)
 	res.Elapsed = time.Since(started)
 	res.CallErr = cerr
+	res.Schema = schemaState(client, req)
 	if cerr == nil {
 		res.PromptTokens = resp.Usage.InputTokens
 		res.CompletionTokens = resp.Usage.OutputTokens
@@ -234,11 +326,30 @@ func runProbe(args []string) int {
 		res.FinishReason = resp.StopReason
 		res.Reply = resp.Text
 		res.Reasoning = resp.Reasoning
-		res.ParsedIndex, res.ParseErr = model.ParseAnswerIndex(resp.Text)
+		readAnswer(&res, resp.Text)
 	}
 
 	printProbe(out, res, profileSource, in)
 	return 0
+}
+
+// readAnswer resolves a reply exactly as the funnel does.
+func readAnswer(res *probeResult, text string) {
+	a := model.ResolveAnswer(text, res.Shown, res.Moves)
+	res.ParsedIndex, res.ParseErr = a.Parsed, a.Err
+	res.Move, res.Resolved, res.Pick, res.Fallback = a.Move, a.Index, a.Pick, a.Fallback
+}
+
+// schemaState is what the client did about constraining the reply.
+func schemaState(c *model.OpenAIClient, req model.Request) string {
+	switch {
+	case len(req.Choices) == 0:
+		return "none"
+	case c.SchemaRefused():
+		return "refused"
+	default:
+		return "json_schema"
+	}
 }
 
 // buildClient applies model.NewOpenAIClient's env semantics with the
@@ -438,11 +549,13 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 	say(out, "system bytes       %d\n", r.SystemBytes)
 	say(out, "user bytes         %d\n", r.UserBytes)
 	say(out, "estimate (b/%d)     ~%d tokens\n", estimateDivisor, r.Estimate())
+	say(out, "response_format    %s\n", schemaLine(r))
 	if r.CallErr != nil {
 		say(out, "call               FAILED after %v: %v\n", r.Elapsed.Round(time.Millisecond), r.CallErr)
 		say(out, "%s\n", "------------------------------------------------------------")
 		say(out, "%s\n", truncationVerdict(r))
 		say(out, "%s\n", thinkingVerdict(r))
+		say(out, "%s\n", answerVerdict(r))
 		return
 	}
 	say(out, "prompt_tokens      %d\n", r.PromptTokens)
@@ -460,10 +573,31 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 		say(out, "parsed index       PARSE FAILED: %v\n", r.ParseErr)
 	} else {
 		say(out, "parsed index       %d (of %d moves; in range: %v)\n", r.ParsedIndex, r.Moves, r.ReplyParsed())
+		say(out, "parsed move        %q\n", r.Move)
+	}
+	say(out, "%s\n", "moves shown")
+	for _, c := range r.Shown {
+		mark := ""
+		if r.Fallback == "" && c.Index == r.Resolved {
+			mark = "   <- answer"
+		}
+		say(out, "  %d: %s%s\n", c.Index, c.Label, mark)
 	}
 	say(out, "%s\n", "------------------------------------------------------------")
 	say(out, "%s\n", truncationVerdict(r))
 	say(out, "%s\n", thinkingVerdict(r))
+	say(out, "%s\n", answerVerdict(r))
+}
+
+func schemaLine(r probeResult) string {
+	switch r.Schema {
+	case "json_schema":
+		return fmt.Sprintf("json_schema — the reply is constrained to the %d listed moves", len(r.Shown))
+	case "refused":
+		return "REFUSED by the server (400) — retried without it; the reply is unconstrained"
+	default:
+		return "none"
+	}
 }
 
 // say writes one line to the probe's output. The error is
