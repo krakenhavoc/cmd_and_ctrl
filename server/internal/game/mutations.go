@@ -9404,9 +9404,45 @@ func (g *Game) SetBot(playerID uuid.UUID, tier, deckID string) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	if p.Agent {
+		return ErrSeatKindTaken
+	}
 	p.IsBot = true
 	p.BotTier = tier
 	p.BotDeck = deckID
+	return nil
+}
+
+// SetAgent marks a seat as played by an AI agent through an MCP client
+// (ADR 0122 §7), with client the name the client declared. The lobby
+// calls it inside the join's own apply, so the first capture that
+// shows the seat already carries the badge.
+//
+// It is one way. There is no ClearAgent and no other writer of
+// Player.Agent: once declared, the badge stays for the life of the
+// game, across every action, restore and undo
+// (TestAgentBadgeHasNoClearingWriter). A second call on a seat that
+// is already an agent keeps the first client name, so a later
+// declaration cannot relabel the seat either. Lobby state only, like
+// SetBot, and refused on a bot seat.
+func (g *Game) SetAgent(playerID uuid.UUID, client string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby {
+		return ErrGameNotInLobby
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.IsBot {
+		return ErrSeatKindTaken
+	}
+	if p.Agent {
+		return nil
+	}
+	p.Agent = true
+	p.AgentClient = client
 	return nil
 }
 
