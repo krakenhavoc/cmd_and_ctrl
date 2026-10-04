@@ -150,6 +150,12 @@ export interface AdminClient {
     timeoutMs?: number,
   ): Promise<SnapshotView>;
 
+  // cardName returns the name of a card instance as the server itself
+  // recorded it, or undefined when the server has no such card. Unlike
+  // snapshot(), it can name a card in a library, which every view on
+  // the wire redacts (CR 400.2). See cardNamesFromReplay.
+  cardName(instanceID: string): Promise<string | undefined>;
+
   close(): void;
 }
 
@@ -297,6 +303,56 @@ async function openAdminConnection(
   };
 }
 
+// cardNamesFromReplay maps every card instance in the game to its
+// name, read from the server's own record of the game.
+//
+// Why: a library is hidden on the wire (CR 400.2). The seat-bound
+// admin view keeps each library card's instance_id but strips its
+// name, so the wire alone cannot say which library card is the Sol
+// Ring. The helpers used to find out by drawing until the card
+// surfaced. That flooded the hand with up to ninety cards and sent the
+// browsers a snapshot per draw, and on a shared runner the players'
+// pages fell 10-20 seconds behind the server re-rendering them. Every
+// UI assertion made after the seeding then raced that backlog (#2253).
+//
+// The admin's replay download (GET /games/{id}/replay) is the
+// server's unfiltered record: one SnapshotPayload per committed
+// action, every card named. Instance IDs never change when a card
+// changes zone, so one read gives a map that stays true for the rest
+// of the game. The replay is appended under the room lock before the
+// snapshot is broadcast, so a card the admin has seen in a snapshot is
+// already in the file.
+async function cardNamesFromReplay(
+  adminToken: string,
+  gameID: string,
+): Promise<Map<string, string>> {
+  const res = await fetch(`http://localhost:8080/games/${gameID}/replay`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(`replay download failed: ${res.status} ${await res.text()}`);
+  }
+  const lines = (await res.text()).split("\n").filter((l) => l.trim() !== "");
+  const last = lines.at(-1);
+  if (!last) throw new Error(`replay for ${gameID} is empty`);
+  const game = (JSON.parse(last) as { game: SnapshotView }).game;
+  const names = new Map<string, string>();
+  const add = (z: SnapshotZone | undefined) => {
+    for (const c of z?.cards ?? []) {
+      if (c.name) names.set(c.instance_id, c.name);
+    }
+  };
+  for (const seat of game.seats) {
+    add(seat.library);
+    add(seat.hand);
+    add(seat.graveyard);
+    add(seat.command);
+  }
+  add(game.battlefield);
+  add(game.exile);
+  return names;
+}
+
 // openAdminClient opens two admin-token WS connections — one bound
 // to each seat — so the test layer has full visibility into both
 // players' private zones (hand / library). Snapshot reads are
@@ -337,6 +393,11 @@ export async function openAdminClient(
   casterConn.onSnapshot(() => broadcast(mergedSnapshot()));
   opponentConn.onSnapshot(() => broadcast(mergedSnapshot()));
 
+  // Read once, on first use: a card's name and instance ID never
+  // change, so the map does not go stale. A miss re-reads it, which
+  // covers a card created after the first read (a token, a spawn).
+  let names: Map<string, string> | null = null;
+
   return {
     async sendAction(type, params) {
       // Route through the caster connection. Either would work — we
@@ -374,6 +435,12 @@ export async function openAdminClient(
         };
         subscribers.push(cb);
       });
+    },
+    async cardName(instanceID) {
+      if (!names?.has(instanceID)) {
+        names = await cardNamesFromReplay(adminToken, gameID);
+      }
+      return names.get(instanceID);
     },
     close() {
       casterConn.close();
@@ -442,81 +509,109 @@ export function findCardInPlayerGraveyard(
 
 // --- Move-card admin convenience -----------------------------
 
-// seedHandWithCard pumps `draw_card` for `ownerID` until `name`
-// surfaces in their hand, then returns the matching SnapshotCard.
-// Used by tests that need to know the hand size right BEFORE a
-// trigger fires (the `adminMoveByName` shorthand bundles seeding
-// and moving; this primitive splits them apart so tests can
-// snapshot in between).
+type OwnZoneKind = "library" | "hand" | "graveyard";
+
+function ownZone(v: SnapshotView, ownerID: string, kind: OwnZoneKind): SnapshotZone {
+  const seat = playerByID(v, ownerID);
+  return kind === "library" ? seat.library : kind === "hand" ? seat.hand : seat.graveyard;
+}
+
+function zoneHolds(zone: SnapshotZone, instanceID: string): boolean {
+  return zone.cards.some((c) => c.instance_id === instanceID);
+}
+
+// findCardInLibrary returns a card named `name` from ownerID's library,
+// or null. The owner's library reaches the seat-bound view with each
+// card's instance_id and no name (CR 400.2), so the name comes from
+// the server's record (AdminClient.cardName).
+export async function findCardInLibrary(
+  admin: AdminClient,
+  ownerID: string,
+  name: string,
+): Promise<SnapshotCard | null> {
+  for (const c of playerByID(admin.snapshot(), ownerID).library.cards) {
+    if ((await admin.cardName(c.instance_id)) === name) return c;
+  }
+  return null;
+}
+
+// moveOwnCard moves one of ownerID's cards and waits until the server
+// confirms it left `src`. Waiting on the source rather than the
+// destination keeps it true for a card that moves on at once (a
+// permanent whose ETB sends it elsewhere).
 //
-// The library / opponent-hand zones are wholesale-hidden by the
-// per-viewer redactor (CR 400.2 private-zone rule), so admin can
-// only address cards in a zone where they're identified by the
-// per-viewer KnownBy machinery — the player's own hand qualifies
-// because hand cards add their owner as a knower at deal time.
+// It routes through the owner's admin connection so action.Caller
+// matches the card's controller: the move_card gate
+// (`requireCardController`) only bypasses when Caller=uuid.Nil, which
+// a seat-bound admin WS isn't.
+async function moveOwnCard(
+  admin: AdminClient,
+  ownerID: string,
+  instanceID: string,
+  src: OwnZoneKind,
+  dst: { kind: string; owner?: string },
+  what: string,
+): Promise<SnapshotView> {
+  await admin.sendActionAsPlayer(ownerID, "move_card", {
+    src: { kind: src, owner: ownerID },
+    dst,
+    instance_id: instanceID,
+  });
+  return await admin.waitFor(
+    (v) => !zoneHolds(ownZone(v, ownerID, src), instanceID),
+    `${what} left ${ownerID.slice(0, 8)}'s ${src}`,
+  );
+}
+
+// seedHandWithCard puts a card named `name` into ownerID's hand and
+// returns it. A copy already in hand is returned as it is; otherwise
+// one is moved there straight from the library, in one action. Used by
+// tests that need to know the hand size right BEFORE a trigger fires
+// (the `adminMoveByName` shorthand bundles seeding and moving; this
+// primitive splits them apart so tests can snapshot in between).
+//
+// It used to draw until the card surfaced, because the wire does not
+// name library cards. That moved up to ninety cards into the hand and
+// left the players' pages seconds behind the server (#2253).
 export async function seedHandWithCard(
   admin: AdminClient,
   ownerID: string,
   name: string,
 ): Promise<SnapshotCard> {
-  const owner0 = playerByID(admin.snapshot(), ownerID);
-  const already = findCardInZone(owner0.hand, name);
+  const already = findCardInZone(playerByID(admin.snapshot(), ownerID).hand, name);
   if (already) return already;
-  const startLibrary = owner0.library.count;
-  const maxDraws = Math.min(startLibrary + 1, 105);
-  let iters = 0;
-  for (let i = 0; i < maxDraws; i++) {
-    iters++;
-    const beforeLib = playerByID(admin.snapshot(), ownerID).library.count;
-    try {
-      await admin.sendActionAsPlayer(ownerID, "draw_card", {});
-    } catch (e) {
-      throw new Error(
-        `seedHandWithCard: draw_card rejected at iter ${iters}: ${(e as Error).message}`,
-      );
-    }
-    // Wait for the library count to actually decrease — the merged
-    // snapshot can lag a single broadcast frame when both admin
-    // connections are racing to deliver the same broadcast on
-    // separate sockets. waitFor pumps the merged-snapshot
-    // subscribers until the library reflects the draw.
-    try {
-      await admin.waitFor(
-        (v) => playerByID(v, ownerID).library.count < beforeLib,
-        `caster library decreases past ${beforeLib}`,
-        2000,
-      );
-    } catch {
-      // No decrease within 2s — could be StepDraw early-return
-      // or a no-op condition. Skip this iteration but don't fail
-      // the whole loop.
-      continue;
-    }
+  const card = await findCardInLibrary(admin, ownerID, name);
+  if (!card) {
     const owner = playerByID(admin.snapshot(), ownerID);
-    const found = findCardInZone(owner.hand, name);
-    if (found) return found;
-    if (owner.library.count === 0) break;
+    throw new Error(
+      `seedHandWithCard: no ${name} in ${ownerID.slice(0, 8)}'s library ` +
+        `(library_count=${owner.library.count} hand_count=${owner.hand.count} ` +
+        `graveyard_count=${owner.graveyard.count})`,
+    );
   }
-  const finalView = admin.snapshot();
-  const ownerNow = playerByID(finalView, ownerID);
-  const seatList = finalView.seats.map((s) => `${s.name}(${s.id.slice(0, 8)})`).join(",");
-  const namesInHand = ownerNow.hand.cards.map((c) => c.name ?? "?");
-  throw new Error(
-    `seedHandWithCard: ${name} not surfaced for ${ownerID.slice(0, 8)} after ${iters} draws; ` +
-      `seats=[${seatList}] ` +
-      `library_count=${ownerNow.library.count} hand_count=${ownerNow.hand.count} ` +
-      `graveyard_count=${ownerNow.graveyard.count} ` +
-      `hand=${JSON.stringify(namesInHand)}`,
+  await moveOwnCard(
+    admin,
+    ownerID,
+    card.instance_id,
+    "library",
+    { kind: "hand", owner: ownerID },
+    name,
   );
+  const seeded = await admin.waitFor(
+    (v) => zoneHolds(playerByID(v, ownerID).hand, card.instance_id),
+    `${name} in ${ownerID.slice(0, 8)}'s hand`,
+  );
+  const inHand = playerByID(seeded, ownerID).hand.cards.find(
+    (c) => c.instance_id === card.instance_id,
+  );
+  if (!inHand) throw new Error(`seedHandWithCard: ${name} vanished from the hand`);
+  return inHand;
 }
 
-// adminMoveByName routes a card identified by name to the target
-// zone. The wire-side library / opponent-hand zones are wholesale-
-// hidden by the per-viewer redactor (CR 400.2 private-zone rule),
-// so admin can only "see" cards in the OWNING player's hand /
-// graveyard / battlefield. To make a library card visible, this
-// helper calls seedHandWithCard, then moves the resulting card
-// from the hand to dstKind.
+// adminMoveByName moves a card identified by name to the target zone,
+// from wherever it is among the owner's hand, graveyard and library
+// (searched in that order), in one action. It returns once the server
+// confirms the card left where it was.
 //
 // `_srcHint` is informational only — kept on the signature so test
 // call sites still document where the card "lives" conceptually.
@@ -527,59 +622,35 @@ export async function adminMoveByName(
   _srcHint: "library" | "hand" | "graveyard",
   dstKind: "battlefield" | "graveyard" | "hand" | "exile",
 ): Promise<SnapshotView> {
-  let card: SnapshotCard | null = null;
-  let srcKind: "hand" | "graveyard" | null = null;
-
-  // Probe 1: already in hand?
-  {
-    const owner = playerByID(admin.snapshot(), ownerID);
-    card = findCardInZone(owner.hand, name);
-    if (card) srcKind = "hand";
-    else {
-      const grave = findCardInZone(owner.graveyard, name);
-      if (grave) {
-        card = grave;
-        srcKind = "graveyard";
-      }
-    }
-  }
-
-  // Probe 2: seed it into the hand by drawing until found.
+  const owner = playerByID(admin.snapshot(), ownerID);
+  let card: SnapshotCard | null = findCardInZone(owner.hand, name);
+  let src: OwnZoneKind = "hand";
   if (!card) {
-    card = await seedHandWithCard(admin, ownerID, name);
-    srcKind = "hand";
+    card = findCardInZone(owner.graveyard, name);
+    src = "graveyard";
   }
-  // Both probes assign srcKind alongside card; this guard is
-  // unreachable but narrows the union for the compiler.
-  if (!srcKind) throw new Error(`${name}: source zone never resolved`);
+  if (!card) {
+    card = await findCardInLibrary(admin, ownerID, name);
+    src = "library";
+  }
+  if (!card) {
+    throw new Error(
+      `adminMoveByName: no ${name} in ${ownerID.slice(0, 8)}'s hand, graveyard or library`,
+    );
+  }
 
   const dst: { kind: string; owner?: string } = { kind: dstKind };
   if (dstKind === "graveyard" || dstKind === "hand") {
     dst.owner = ownerID;
   }
-  const src: { kind: string; owner?: string } = { kind: srcKind, owner: ownerID };
-  // Route through the owner's admin connection so action.Caller
-  // matches the card's controller — the move_card gate
-  // (`requireCardController`) only bypasses when Caller=uuid.Nil,
-  // which a seat-bound admin WS isn't.
-  return await admin.sendActionAsPlayer(ownerID, "move_card", {
-    src,
-    dst,
-    instance_id: card.instance_id,
-  });
+  return await moveOwnCard(admin, ownerID, card.instance_id, src, dst, name);
 }
 
 // returnToLibrary moves up to `n` cards named `name` from ownerID's
-// hand back into their library, and returns the last snapshot.
-//
-// Why this exists: seedHandWithCard finds a card by DRAWING until it
-// surfaces, because library contents are redacted on the wire (CR
-// 400.2). On an unlucky shuffle that empties the library — basics
-// included. Any effect that then reads the library (Solemn's "search
-// for a basic land", Mulldrifter's "draw two") legally does nothing,
-// and the test's assertion becomes a coin flip on deck order rather
-// than a statement about the engine. Restocking makes the
-// precondition explicit instead of lucky.
+// hand back onto their library, and returns the last snapshot. The
+// Solemn test uses it to be certain the deck's one Island is in the
+// library, where the search can offer it, even when the opening hand
+// drew it.
 export async function returnToLibrary(
   admin: AdminClient,
   ownerID: string,
@@ -591,11 +662,14 @@ export async function returnToLibrary(
   for (let i = 0; i < n; i++) {
     const card = findCardInZone(playerByID(admin.snapshot(), ownerID).hand, name);
     if (!card) break;
-    last = await admin.sendActionAsPlayer(ownerID, "move_card", {
-      src: { kind: "hand", owner: ownerID },
-      dst: { kind: "library", owner: ownerID },
-      instance_id: card.instance_id,
-    });
+    last = await moveOwnCard(
+      admin,
+      ownerID,
+      card.instance_id,
+      "hand",
+      { kind: "library", owner: ownerID },
+      name,
+    );
     moved++;
   }
   if (moved === 0) {
