@@ -287,9 +287,13 @@ func copiedPaidCost(p PaidCost) PaidCost {
 		// Lotus counts the artifacts it sacrificed, and a copied
 		// ninjutsu reads what the returned creature was attacking.
 		// Their own slices, so neither record can reach the other's.
-		Discarded:         append([]uuid.UUID(nil), p.Discarded...),
-		Exiled:            append([]uuid.UUID(nil), p.Exiled...),
-		Sacrificed:        p.Sacrificed,
+		Discarded:  append([]uuid.UUID(nil), p.Discarded...),
+		Exiled:     append([]uuid.UUID(nil), p.Exiled...),
+		Sacrificed: p.Sacrificed,
+		// ADR 0113 §1 (#2072): and which permanents they were, so a
+		// copied Jarad ability reads the creature the original
+		// sacrificed.
+		SacrificedObjects: append([]ObjectRef(nil), p.SacrificedObjects...),
 		ReturnedAttacking: p.ReturnedAttacking,
 	}
 }
