@@ -900,6 +900,11 @@ export interface LogEvent {
   // presence alone means there are two beats. Read it, don't derive it
   // from keywords (#187, ADR 0053 Decision 1).
   combat_step?: "first_strike" | "regular";
+  // ADR 0118 §2 (#2188): a `cast` entry whose caster cast it without
+  // paying its mana cost (`force_cast`). The `text` already ends
+  // " without paying its mana cost"; this is for a client that wants
+  // the bit. Public: never redacted with the card's name.
+  unpaid?: boolean;
   // #984: the value named at a "choose a ..." prompt — the colour
   // LETTER on a `choose_color` entry ("G"), the creature type on a
   // `choose_type` one ("Elf"). Absent on a `choose_player` entry,
