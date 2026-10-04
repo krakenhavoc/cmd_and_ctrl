@@ -64,7 +64,7 @@ func init() {
 				RemoveCountersAmongOthers("", 3, "other artifacts, creatures, and planeswalkers you control",
 					Or(Artifact(), Creature(), Planeswalker())),
 			),
-			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
+			Effect: putIndestructibleCounterOnSource(),
 		}},
 	})
 }
