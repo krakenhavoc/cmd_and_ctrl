@@ -1643,7 +1643,8 @@ export interface PlayerView {
   // and how many it already has. The engine REFUSES a land play past
   // the allowance, so a client should grey out the hand's lands when
   // lands_played_this_turn >= land_drops_per_turn rather than only
-  // explain the rejection afterwards. land_drops_per_turn is the
+  // explain the rejection afterwards — timing.ts landDropsSpent does,
+  // for a frame with no move list (#2203). land_drops_per_turn is the
   // EFFECTIVE allowance — a controlled Exploration or a one-turn
   // grant is already summed in. Normally 1 / 0.
   land_drops_per_turn?: number;
@@ -2669,6 +2670,11 @@ export interface CastSurfaceView {
   // only, and only on the frame of a seat holding a LIVE permission:
   // a warp or foretell grant whose later turn has not come carries
   // none. Read it through exileStrip.ts, which decides the badge.
+  //
+  // #2202: also on the cards in the viewer's OWN command zone, priced
+  // for a cast from there — the commander tax (CR 903.8) plus every
+  // cost modifier. `printed` is false once the tax is above 0. Read it
+  // through castStrip.ts (commanderCostBadge).
   //
   // Since #1389 `castable_here` is stamped in exile too, with the same
   // meaning it has in a graveyard — "YOU may cast this from here NOW",

@@ -157,6 +157,8 @@ There is **one "ready" treatment** in one colour token, `--ready`. It is a cool 
 | Block candidates (declare blockers, defending) | `blocks` non-empty | Ready ring on each creature that may block. While a blocker is selected, the attackers in its `blocks` get the ready ring. |
 | Targets, pending choices, pass | — | **Unchanged.** Targeting's green ring and the choice modal are already the right answer. The digest's `pass` only replaces `hasPassMove`'s scan. |
 
+*Amendment (2026-10-04, #2202), to the "Exile strip, zone browser…" row:* the exile strip also holds the viewer's commanders (it is the castable-from-other-zones strip now). A commander there reads the same digest as the command-zone hint, `kinds` ∋ `cast` with `zones` ∋ `command`: the ready ring when it has a move, greyed (`.strip-slot.blocked`) when it has none, and the chip's ready count includes it. Its price tag is the server's `cast_prices` for the command zone (commander tax, CR 903.8, plus cost modifiers), shown only when that price is not the printed cost.
+
 What highlights do **not** say:
 
 - **They do not mean "the engine automates this card".** A card with ADR 0037's `unimplemented` flag is still castable and still gets the ring; its `manual` chip stays separate text.

@@ -2299,6 +2299,25 @@ it was made is not live, so the holder gets the public `exile_play`
 `cast_prices`: the engine would not accept the cast at any price. The
 client shows such a card dimmed with a "next turn" hint and no badge.
 
+## `cast_prices` in the command zone (#2202, 2026-10-04)
+
+Additive, `v` unmoved. `cast_prices` is stamped on the cards in a
+seat's own **command zone** too, for the commander's price tag in the
+client's castable-from-other-zones strip. Same shape and meaning as in
+exile: what `game.PriceCastForEffect` will charge for a cast with
+`from_zone: "command"`, cheapest first, priced with no targets and
+X = 0. The cost carries the commander tax (CR 903.8, `{2}` per earlier
+cast from the command zone) and every CR 601.2f cost modifier on top
+of it, so a taxed commander under a Medallion reads `{2}{G}` + `{4}`
+tax − `{1}` = `{5}{G}`. `printed` is true only when there is no tax and
+no modifier moved the cost; the client draws no tag for that price.
+
+Per viewer, like the exile prices: the commander's owner gets them and
+nobody else does, spectators included. `castable_here` is still never
+stamped in the command zone; whether a commander can be cast now is the
+legal-move digest's answer (`legal_actions`, zone `"command"`), as it
+was before.
+
 ## A land's `castable_here` is the land-play rule in every zone (#1407, 2026-09-24)
 
 A narrowing, no new field, `v` unmoved. #1389 answered a LAND in exile

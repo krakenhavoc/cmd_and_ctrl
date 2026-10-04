@@ -3354,6 +3354,10 @@ Opened 2026-10-04 from the owner's request: "we need to make the stack and resol
 - [ ] PR 5 — client, the linger: a departed item stays 1.5 s marked resolved, countered or fizzled, then moves to where it went
 - [ ] PR 6 — client, targeting: the source glows, an arrow per pick and one following the pointer, and target rings in every stack style
 - [ ] PR 7 — server and client, the fuller log: `trigger` and `activate` lines, mana abilities left out
+- [x] ADR 0120: expand a player's board on top of the table ([#2208](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2208)): [#2210](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2210)
+- [ ] ADR 0120 PR 2 — client plumbing: the board-anchor helper, the popover's surface, the `expanded` panel prop
+- [ ] ADR 0120 PR 3 — client, the overlay: hover opens, click pins, act through it; ADR 0077's in-place pin retired; a Playwright spec
+- [ ] Battlefield cards as art tiles by default, with a name strip, P/T and ability chips ([#2209](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2209))
 
 ### Exit criteria
 
