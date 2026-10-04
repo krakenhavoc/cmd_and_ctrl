@@ -508,7 +508,7 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 		// removal accessor to read yet — and nothing for it to say,
 		// because a removal that has not been applied in this pass has
 		// not happened.
-		abilities := StaticAbilitiesForCard(*src)
+		abilities := staticAbilitiesOf(src)
 		if len(abilities) == 0 {
 			continue
 		}
@@ -768,8 +768,8 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 		if p.Graveyard == nil {
 			continue
 		}
-		for _, c := range p.Graveyard.Cards {
-			pc := c.printedCharacteristic()
+		for i := range p.Graveyard.Cards {
+			pc := printedShared(&p.Graveyard.Cards[i])
 			for _, t := range pc.Types {
 				seen[t] = struct{}{}
 			}
@@ -936,7 +936,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 			if c.BaseController == uuid.Nil {
 				c.BaseController = c.Controller
 			}
-			printed := c.printedCharacteristic()
+			// Fresh, not the printed cache: the pass below writes this
+			// baseline in place (printed_cache.go).
+			printed := printedFresh(c)
 			c.effective = &printed
 		}
 	}
@@ -1025,6 +1027,10 @@ func (g *Game) materialiseControlLocked() []controlChange {
 		// ADR 0108 §5: a control change is "came under your control"
 		// (CR 702.30a), stamped with the new controller's upkeep count.
 		c.ControlledSinceUpkeep = g.upkeepsBegunForLocked(c.Controller)
+		// ADR 0114 §3, CR 701.54a: a Ring-bearer stays one "until
+		// another player gains control of it". The new controller's
+		// own later temptation may choose it.
+		c.RingBearer = false
 		g.removeFromCombatLocked(c)
 		// #1376: CR 506.4 removes an ATTACKED planeswalker or battle
 		// from combat on a control change too, and its attackers then

@@ -742,6 +742,11 @@ export type LogKind =
   // there; `card_id` names the one card for a single-card pick and is
   // absent for any other count; `target` is the card that ASKED.
   | "choose_cards"
+  // ADR 0114 §9: the Ring tempted `seat`. `amount` is how many times it
+  // has now; `card_id` is the creature chosen as their Ring-bearer
+  // (absent when they controlled none); `cause` is "forced" when it was
+  // their only creature and was chosen for them.
+  | "ring_tempted"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -926,6 +931,12 @@ export interface PendingChoiceView {
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
+    // ADR 0115 (CR 903.9a): "your commander was put into a graveyard or
+    // exile; put it into the command zone?", asked of its owner as a
+    // state-based action. `source` is the commander. Answered with the
+    // shared yes/no {choice_id, apply} payload. `playable_from_zone`
+    // says whether the owner could cast it from where it is now.
+    | "commander_return"
     | "damage_assignment"
     | "trigger_prompt"
     | "pay_unless"
@@ -1112,6 +1123,14 @@ export interface PendingChoiceView {
     // stack still refers to), all public, so the options reach every
     // seat.
     | "choose_source"
+    // ADR 0114 §4 (#2076), CR 701.54a: "the Ring tempts you — choose a
+    // creature you control" as your Ring-bearer. Exactly one of
+    // `options` (two or more of the chooser's creatures; with one the
+    // server chooses it and logs it), answered with {choice_id,
+    // card_ids: [id]} on the shared grid. Not targeting. Public: the
+    // candidates are battlefield creatures. Its reason is "choose your
+    // Ring-bearer".
+    | "ring_bearer"
     // ADR 0108 §7 (#1904), CR 615.7: a charged prevention shield ("the
     // next 3 damage") that meets several damage events at once, more
     // than it can cover — the protected player divides the charge among
@@ -1148,6 +1167,14 @@ export interface PendingChoiceView {
   source?: string;
   reason?: string;
   options?: CardView[];
+  // ADR 0116: for "discard_from_hand", the instance IDs among
+  // `options` the chooser may pick ("you choose a nonland card from
+  // it"). `options` stays the whole revealed hand. Absent means every
+  // option (a prompt from before the filter).
+  eligible?: string[];
+  // ADR 0116: what `eligible` holds, as the card prints it — "nonland
+  // card", "card with mana value 3 or greater".
+  eligible_label?: string;
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
   // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
@@ -1292,6 +1319,11 @@ export interface PendingChoiceView {
   // accept_label / decline_label when the server named its branches.
   may_cast_keyword?: string;
   may_cast_card?: string;
+  // ADR 0115 decision 2: populated for kind "commander_return" — the
+  // owner could cast or play the commander from the graveyard or exile
+  // it is in now (escape, flashback, an adventure), ignoring timing and
+  // mana. Computed by the server on every view.
+  playable_from_zone?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -1600,7 +1632,10 @@ export interface PlayerView {
   // `energy` ints above stay populated for backwards compat.
   counters?: Record<string, number>;
   // Per-player cleanup-step hand-size cap (S13.4, CR 402.2).
-  // 7 by default; -1 = no cap (Reliquary Tower / Thought Vessel).
+  // 7 by default; -1 = no cap (Reliquary Tower / Thought Vessel);
+  // otherwise 0 or more (ADR 0113 §3: Null Profusion's 2,
+  // Jin-Gitaxias's 0). The EFFECTIVE value. playerKeywordBadges.ts
+  // shows a badge on a seat whose value is not 7.
   // Always present on the wire; the field is non-omitempty so
   // clients know the cap even when it's the default.
   max_hand_size?: number;
@@ -1703,6 +1738,19 @@ export interface EmblemView {
   instance_id: string;
   label: string;
   text: string;
+  // ADR 0114 §2: how many times the Ring has tempted the emblem's owner.
+  // Absent on every other emblem. For the Ring, `text` is the lines it
+  // has gained so far.
+  level?: number;
+  // ADR 0114 owner decision 1: every line of the Ring with the count it
+  // is gained at, so the table can show the lines still to come.
+  // Absent on every other emblem.
+  lines?: EmblemLineView[];
+}
+
+export interface EmblemLineView {
+  text: string;
+  at: number;
 }
 
 export interface LifeChangeView {
@@ -2999,6 +3047,11 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
+  // Ring-bearer. Public, and kept on a face-down permanent: the
+  // designation was chosen in public and says nothing about the card.
+  // Absent — not `false` — for everything else.
+  ring_bearer?: boolean;
   // #781 (CR 105.4 / CR 614.12): the answers this permanent's
   // controller gave to its "as this enters, choose a color" and "as
   // this enters, choose a creature type" instructions — one uppercase

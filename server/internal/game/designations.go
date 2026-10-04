@@ -135,6 +135,15 @@ const (
 	// Appended rather than slotted beside Harnessed so no existing
 	// kind's value moves.
 	DesignationMonstrous
+
+	// DesignationRingTempted is CR 701.54c's "as long as the Ring has
+	// tempted that player N or more times": an ability of the Ring
+	// emblem exists while the emblem's count (Card.RingTemptations) is
+	// N or greater (ADR 0114 §2). The one gate read off an object in
+	// the command zone rather than on the battlefield, which is why the
+	// count lives on the emblem: the gate stays an object-only
+	// question. Appended so no existing kind's value moves.
+	DesignationRingTempted
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -197,6 +206,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Harnessed
 	case DesignationMonstrous:
 		return c.Monstrous
+	case DesignationRingTempted:
+		return c.RingTemptations >= d.N
 	case DesignationChosenOption:
 		// An unanswered prompt ("") matches no anchor word, so a
 		// Siege has NEITHER ability before its controller chooses —
@@ -296,7 +307,7 @@ func IsCase(c Card) bool  { return c.HasSubtype(CaseSubtype) }
 // every card in the catalog but a handful, so the hot paths allocate
 // nothing. The catalog's slices are built once at Register and never
 // mutated, so handing the original back is safe (see CardDef).
-func activeOnly[T any](c Card, all []T, gate func(T) Designation) []T {
+func activeOnly[T any](c *Card, all []T, gate func(T) Designation) []T {
 	gated := false
 	for i := range all {
 		if gate(all[i]).IsGate() {
@@ -309,7 +320,7 @@ func activeOnly[T any](c Card, all []T, gate func(T) Designation) []T {
 	}
 	out := make([]T, 0, len(all))
 	for i := range all {
-		if gate(all[i]).Active(c) {
+		if gate(all[i]).Active(*c) {
 			out = append(out, all[i])
 		}
 	}
@@ -328,11 +339,15 @@ func activeOnly[T any](c Card, all []T, gate func(T) Designation) []T {
 // so there is nothing for the removal accessor to read yet — see the
 // note in activeStaticAbilitiesLocked. CR 613.1f silencing happens
 // per bucket, in applyBucketLocked, and this gate is orthogonal to it.
-func StaticAbilitiesForCard(c Card) []StaticAbility {
+func StaticAbilitiesForCard(c Card) []StaticAbility { return staticAbilitiesOf(&c) }
+
+// staticAbilitiesOf is StaticAbilitiesForCard without the copy: Card
+// is over a kilobyte and this is asked per permanent per walk (#1498).
+func staticAbilitiesOf(c *Card) []StaticAbility {
 	if CatalogStaticAbilities == nil {
 		return nil
 	}
-	key := CatalogKey(c)
+	key := catalogKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -348,15 +363,21 @@ func StaticAbilitiesForCard(c Card) []StaticAbility {
 //
 // Off the battlefield this degrades to the printed list, which is
 // what the LKI harvest and the from-stack cascade scan want.
-func TriggersForCard(c Card) []TriggeredAbility {
+func TriggersForCard(c Card) []TriggeredAbility { return triggersOf(&c) }
+
+// triggersOf is TriggersForCard without the copy: the trigger harvest
+// asks it once per battlefield permanent per event (#1498).
+func triggersOf(c *Card) []TriggeredAbility {
 	// CR 702.168a / CR 701.58a, ADR 0069 decision 3 and ADR 0082
 	// decision 8: a DISGUISED or CLOAKED object has ward {2}, and it
 	// is the one ability a CR 708.2 object has. Answered before the
 	// catalog read rather than folded into it, because the catalog
 	// read is exactly what CR 708.2a silences — this ability belongs
 	// to the face-down STATE, not to the card underneath.
-	if ward := faceDownWardLocked(c); len(ward) > 0 {
-		return ward
+	if c.FaceDown { // faceDownWardLocked's own first test; skips the copy
+		if ward := faceDownWardLocked(*c); len(ward) > 0 {
+			return ward
+		}
 	}
 	// #706: keyword triggers the engine derives from the ability LIST
 	// rather than from the catalog — prowess (prowess.go). Read off the
@@ -364,11 +385,11 @@ func TriggersForCard(c Card) []TriggeredAbility {
 	// count, one trigger per instance (CR 702.108b), and an object
 	// with no key at all (an uncatalogued Monastery Swiftspear, a Monk
 	// token) still has them.
-	keyword := keywordTriggersFor(&c)
+	keyword := keywordTriggersFor(c)
 	if CatalogTriggers == nil {
 		return keyword
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return keyword
 	}
@@ -394,7 +415,7 @@ func TriggersForKey(key string, lki Card) []TriggeredAbility {
 	if CatalogTriggers == nil || key == "" {
 		return nil
 	}
-	return activeOnly(lki, CatalogTriggers(key), func(t TriggeredAbility) Designation {
+	return activeOnly(&lki, CatalogTriggers(key), func(t TriggeredAbility) Designation {
 		return t.ActiveWhen
 	})
 }
@@ -402,11 +423,15 @@ func TriggersForKey(key string, lki Card) []TriggeredAbility {
 // CostModifiersForCard is the "spells cost {N} more / less" statics a
 // permanent contributes right now, gate applied. Fortune Teller's
 // Talent's level-3 reduction is the card that needs it.
-func CostModifiersForCard(c Card) []CostModifier {
+func CostModifiersForCard(c Card) []CostModifier { return costModifiersOf(&c) }
+
+// costModifiersOf is CostModifiersForCard without the copy: Card is
+// over a kilobyte and this is asked per permanent per walk (#1498).
+func costModifiersOf(c *Card) []CostModifier {
 	if CatalogCostModifiers == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}

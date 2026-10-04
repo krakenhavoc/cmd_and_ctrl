@@ -319,7 +319,7 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// A catalogued Aura always acquires its host at resolution,
 		// so reaching here means an effect put it onto the
 		// battlefield without one.
-		return !c.IsAura() || TargetSpecFor(CatalogKey(*c)) == nil
+		return !c.IsAura() || TargetSpecFor(catalogKeyOf(c)) == nil
 	}
 	// CR 702.16c-d: a permanent with protection from a quality can't
 	// be enchanted, equipped or fortified by anything WITH that
@@ -365,7 +365,7 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		}
 	}
 	if c.IsAura() {
-		if spec := TargetSpecFor(CatalogKey(*c)); spec != nil {
+		if spec := TargetSpecFor(catalogKeyOf(c)); spec != nil {
 			return g.specMatchLocked(SourceChooser(c.Controller), spec, c.AttachedTo, false)
 		}
 	} else if !c.HasSubtype("Equipment") && !c.HasSubtype("Fortification") && !c.IsCreature() && !c.IsBattle() {

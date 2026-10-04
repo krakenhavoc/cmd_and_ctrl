@@ -372,6 +372,10 @@ type BlockRefusedError struct {
 	//
 	// #1597: also the card a block_requirement's requirement is
 	// printed on ("Lure", "Grand Melee").
+	//
+	// ADR 0114 §5: also the emblem a pair rule was read from ("The
+	// Ring"), whatever the reason, because an emblem is not a card on
+	// the battlefield the player could find by its ID.
 	SourceName string
 	// Requirement is the CR 509.1c requirement a block_requirement
 	// refusal leaves unobeyed. Zero for every other reason. #1597.
@@ -433,7 +437,13 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 	case BlockReasonCantBeBlockedBy:
 		// #750. The Label is the rule's parameter as the card prints
 		// it, so the player reads the clause rather than a token.
-		return attacker + " can't be blocked by " + nameOr(e.Label, "that creature") + "."
+		s := attacker + " can't be blocked by " + nameOr(e.Label, "that creature")
+		if e.SourceName != "" {
+			// ADR 0114 §5: an emblem's rule names the emblem, the one
+			// source the player cannot find on the battlefield.
+			s += " (" + e.SourceName + ")"
+		}
+		return s + "."
 	case BlockReasonCantBeBlockedExceptBy:
 		return attacker + " can't be blocked except by " + nameOr(e.Label, "creatures it names") +
 			", and " + blocker + " is not one."
@@ -558,6 +568,12 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		if src := findBattlefieldCard(g, r.Source); src != nil {
 			e.SourceName = src.Effective().Name
 		}
+	}
+	// ADR 0114 §5: a rule read off an emblem (the Ring) has no card on
+	// the battlefield to point at, so the sentence names the emblem by
+	// its label instead.
+	if label, ok := g.emblemLabelLocked(r.Source); ok {
+		e.SourceName = label
 	}
 	if blocker != nil {
 		e.Blocker, e.BlockerName = blocker.InstanceID, blocker.Effective().Name

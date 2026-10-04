@@ -659,6 +659,13 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// reassigned. The drop settles with no source, so the shield is
 	// simply never made and the rest of the card finishes.
 	PendingChoiceChooseSource: {onDrop: dropDefault},
+	// ADR 0114 §4. A ring_bearer's candidates are the departing
+	// player's own creatures, which CR 800.4a takes with them, so
+	// nothing is reassigned. The drop runs the continuation with
+	// nothing chosen: the tempt still completes (CR 701.54d) and no
+	// frame is stranded. A trigger it would cause is controlled by the
+	// player who left, so CR 800.4d keeps it off the stack.
+	PendingChoiceRingBearer: {onDrop: dropDefault},
 	// ADR 0108 §7. A divide_shield is the protected player's, and the
 	// shield was protecting them or their permanents, which CR 800.4a
 	// takes with them: nothing is reassigned. But the instance's other
@@ -666,9 +673,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// engine's order, and everything is dealt.
 	PendingChoiceDivideShield: {onDrop: dropSettle},
 	PendingChoiceLegendRule:   {},
-	PendingChoiceScry:         {},
-	PendingChoiceSurveil:      {},
-	PendingChoiceLookAtTop:    {},
+	// ADR 0115: the CR 903.9a question is the commander's OWNER's, and
+	// CR 800.4a takes the owner's cards out of the game with them.
+	PendingChoiceCommanderReturn: {},
+	PendingChoiceScry:            {},
+	PendingChoiceSurveil:         {},
+	PendingChoiceLookAtTop:       {},
 	// ADR 0088. Most printed choosers own the pile, and CR 800.4a
 	// takes it out of the game with them; the cards stay where the
 	// effect left them. #1298 added three whose chooser does NOT own

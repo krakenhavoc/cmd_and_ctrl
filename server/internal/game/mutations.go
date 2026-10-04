@@ -1666,8 +1666,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {
 		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
-			if ch := SourceCharacteristics(sc); characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
+			ch := SourceCharacteristics(sc)
+			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
+			}
+			// Artificer Class's "first artifact spell you cast each turn".
+			if characteristicHasType(ch, "Artifact") {
+				tally.Artifact++
 			}
 			break
 		}
@@ -2401,7 +2406,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if card == nil || card.Owner != p.ID {
 		return
 	}
-	ab := g.autoManaExileAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card), zone)
+	ab := g.autoManaExileAbilityFor(p.ID, *card, manaAbilitiesOf(card), zone)
 	if ab == nil {
 		return
 	}
@@ -4013,17 +4018,27 @@ func clearKnownInZoneLocked(zone *Zone) {
 //   - 704.5d: a token in any zone other than the battlefield ceases
 //     to exist — see token_existence.go
 //
-// Counter ordering (CR 704.3): the +1/+1 / -1/-1 cancel runs BEFORE
-// the lethal-damage check so a 2/2 with one +1/+1 and one -1/-1 +
-// 1 marked damage doesn't die — the counters cancel first, leaving
-// it a 2/2 with 1 damage. The implementation enforces this by
-// running the counter cancel pass before destruction collection.
+// Counter ordering (CR 704.3): every action in one check is performed
+// simultaneously, so the +1/+1 / -1/-1 cancel runs AFTER the doomed set
+// is collected and swept. It never changes power or toughness, so the
+// order cannot change which creatures die; it decides only that a
+// creature dying in this check leaves with both kinds of counter, which
+// is what undying and persist read (#2075).
 //
 // Caller must hold g.mu.
 func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.State != StateActive {
 		return false, false
 	}
+	// ADR 0115 decision 1, CR 903.9a / CR 704.6d: a commander put into
+	// a graveyard or exile since the last check is offered the command
+	// zone. FIRST, so it collects its cards off the same board the rest
+	// of the pass reads (CR 704.3); a commander this pass kills is
+	// marked by that move and asked on the next pass. Not "fired": a
+	// question is not an action performed, and runStateChecksLocked
+	// holds the boundary while it is open. A no-op while
+	// commanderReturnSBA is off. See commander_return.go.
+	g.commanderReturnSBALocked()
 	// #1199 / CR 702.26, ADR 0084: the "phases out until ~ leaves the
 	// battlefield" family comes back the moment its source is gone —
 	// Oubliette destroyed, Out of Time's last time counter removed.
@@ -4062,41 +4077,6 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// in the same settling rather than surviving a round.
 	if g.attachmentSBALocked() {
 		fired = true
-	}
-
-	// Counter cancel (704.5q). Must run before destruction so the
-	// post-cancel state is what the lethal-damage SBA sees.
-	//
-	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
-	// changes power and toughness (PTCounterDelta), but CR 704.5q
-	// names these two and no others: a +1/+0 and a -1/-0 on one
-	// creature both stay, as do a +1/+1 and a -2/-1.
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if !c.IsCreature() || c.Counters == nil {
-			continue
-		}
-		plus := c.Counters["+1/+1"]
-		minus := c.Counters["-1/-1"]
-		if plus > 0 && minus > 0 {
-			cancel := plus
-			if minus < cancel {
-				cancel = minus
-			}
-			c.Counters["+1/+1"] -= cancel
-			c.Counters["-1/-1"] -= cancel
-			if c.Counters["+1/+1"] <= 0 {
-				delete(c.Counters, "+1/+1")
-			}
-			if c.Counters["-1/-1"] <= 0 {
-				delete(c.Counters, "-1/-1")
-			}
-			if len(c.Counters) == 0 {
-				c.Counters = nil
-				c.LostLastCounter = true
-			}
-			fired = true
-		}
 	}
 
 	// Player-loss SBAs (ADR 0057 Decision 2). CR 704.3 performs them
@@ -4189,7 +4169,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			continue
 		}
 		if c.IsCreature() {
-			if !c.ToughnessIsKnown() {
+			// Whether the toughness is KNOWN is judged as if this
+			// check's CR 704.5q cancel had already happened: a `*`
+			// placeholder whose counters cancel to nothing is as
+			// unknown as one that never had any (the cancel itself
+			// runs after the sweep, below).
+			if !afterPlusMinusCancel(c).ToughnessIsKnown() {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -4289,6 +4274,27 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		// still has to be looked at again, and one whose exit is paused on
 		// the CR 903.9 prompt is skipped by the collector above on the next
 		// pass. Both are answered by the set this pass COLLECTED.
+		fired = true
+	}
+
+	// Counter cancel (704.5q). AFTER the doomed set is collected and
+	// swept, for CR 704.3: every state-based action in one check is
+	// performed simultaneously, so a creature this check puts into a
+	// graveyard leaves with the counters it had, both kinds included.
+	// Its last-known counters are what undying and persist read
+	// (#2075, ADR 0113 §4): a 1/1 undying creature with a +1/+1 counter
+	// that gets two -1/-1 counters dies with its +1/+1 counter and does
+	// not return. Running the cancel first would have removed that
+	// counter before the creature died, and brought it back. The
+	// cancel removes as many of one kind as of the other, so it never
+	// changes power or toughness and cannot change which creatures the
+	// pre-pass dooms.
+	//
+	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
+	// changes power and toughness (PTCounterDelta), but CR 704.5q
+	// names these two and no others: a +1/+0 and a -1/-0 on one
+	// creature both stay, as do a +1/+1 and a -2/-1.
+	if g.cancelPlusMinusCountersLocked() {
 		fired = true
 	}
 
@@ -4414,6 +4420,13 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	const maxIter = 32
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
+		// ADR 0115 decision 3, CR 704.3: the CR 903.9a question is part
+		// of the state-based actions, so nothing goes on the stack and
+		// no further pass runs until every commander_return prompt is
+		// answered. ResolveCommanderReturn runs the checks again.
+		if g.holdForCommanderReturnLocked() {
+			return sbaFired
+		}
 		// #809 / CR 603.3d: a targeted trigger dispatched from inside a
 		// resolving spell's own events froze its legal set while that
 		// spell was still on the stack. This is the priority-grant
@@ -4450,6 +4463,16 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		// earlier one) already eliminated. See sweepEliminatedChoicesLocked.
 		g.sweepEliminatedChoicesLocked()
 		departuresPending = departuresPending || left
+		// ADR 0115 decision 3: the pass that asked a CR 903.9a question
+		// ends the boundary here. A departure this pass performed still
+		// owes its rotation, so it is deferred to the run the answer
+		// starts, through the flag a mid-resolution loss already uses.
+		if g.holdForCommanderReturnLocked() {
+			if departuresPending && g.State == StateActive {
+				g.ActiveSeatLeftPending = true
+			}
+			return sbaFired
+		}
 		if departuresPending && g.State == StateActive {
 			if fired {
 				// CR 704.3 repeats the checks before anything gets priority.
@@ -5598,7 +5621,9 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 // playgroup adjustments.
 //
 // `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
-// negative value is rejected with ErrInvalidParam. Doesn't fire
+// negative value is rejected with ErrInvalidParam. Stamped like
+// SetMaxHandSizeForEffect, so the sandbox value is folded in CR
+// 613.11's timestamp order (ADR 0113 §3 decision 3). Doesn't fire
 // the SBA loop — the cap only matters at cleanup-step entry, which
 // has its own re-check via populateDiscardPendingLocked.
 //
@@ -5619,6 +5644,7 @@ func (g *Game) SetMaxHandSize(playerID uuid.UUID, value int) error {
 		return ErrPlayerNotFound
 	}
 	p.MaxHandSize = value
+	p.MaxHandSizeAt = timeNowUnixNano()
 	return nil
 }
 
@@ -6145,7 +6171,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	abilities, origins := ManaAbilitiesWithOrigins(*card)
+	abilities, origins := manaAbilityRows(card, true)
 	// ADR 0093 Decision 5: the ref names the row the activator meant.
 	// A grant appearing or vanishing since the view moved the rows;
 	// refuse the stale move before anything is paid (#544).
@@ -6885,7 +6911,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 // layer-6 effect granted the object (Cryptolith Rite, Chromatic
 // Lantern). The body — and each row's stable ref — is manaAbilityRows
 // in granted_abilities.go.
-func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
+func ManaAbilitiesForCard(c Card) []ManaAbilityShape { return manaAbilitiesOf(&c) }
+
+// manaAbilitiesOf is ManaAbilitiesForCard without the copy (#1498).
+func manaAbilitiesOf(c *Card) []ManaAbilityShape {
 	abs, _ := manaAbilityRows(c, false)
 	return abs
 }
@@ -6894,12 +6923,17 @@ func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
 // mana their intrinsic ability produces. Order is only a tie-break
 // for cards whose effective subtypes are unordered; the real
 // ordering comes from the subtype list itself.
-var landTypeMana = [...]struct{ Subtype, Color string }{
-	{"Plains", "W"},
-	{"Island", "U"},
-	{"Swamp", "B"},
-	{"Mountain", "R"},
-	{"Forest", "G"},
+//
+// Produced and Label are the ability's two strings, spelled out rather
+// than concatenated from Color per call: intrinsicLandManaAbilities
+// runs for every land in every view, and the concatenation was most of
+// its cost (#1498). TestLandTypeManaStringsMatchTheColor pins them.
+var landTypeMana = [...]struct{ Subtype, Color, Produced, Label string }{
+	{"Plains", "W", "{W}", "Add {W}"},
+	{"Island", "U", "{U}", "Add {U}"},
+	{"Swamp", "B", "{B}", "Add {B}"},
+	{"Mountain", "R", "{R}", "Add {R}"},
+	{"Forest", "G", "{G}", "Add {G}"},
 }
 
 // intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
@@ -6923,22 +6957,22 @@ var landTypeMana = [...]struct{ Subtype, Color string }{
 // static on it keeps the exact ability list (and therefore the
 // exact ability indices, and the exact auto-tapper first choice)
 // it had before.
-func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
-	if !c.IsLand() {
+func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
+	if !hasCardType(c, "land") {
 		return nil
 	}
 	var subtypes []string
 	switch {
 	case c.effective != nil:
 		subtypes = c.effective.Subtypes
-	case c.FaceDownIsPermanent():
+	case c.faceDownPermanent():
 		// CR 708.2: the body's subtypes, not the card's — a
 		// manifested Forest has none, Yedora's face-down Forest has
 		// "Forest" (#1270). HasCardType's cold path makes the same
 		// guard for the IsLand above.
-		subtypes = faceDownCharacteristic(c).Subtypes
+		subtypes = faceDownCharacteristic(*c).Subtypes
 	default:
-		_, _, subtypes = ParseTypeLine(c.TypeLine)
+		_, _, subtypes = printedTypeParts(c)
 	}
 	if len(subtypes) == 0 {
 		return nil
@@ -6956,8 +6990,8 @@ func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
 			seen |= 1 << i
 			out = append(out, ManaAbilityShape{
 				TapCost:  true,
-				Produced: "{" + lt.Color + "}",
-				Label:    "Add {" + lt.Color + "}",
+				Produced: lt.Produced,
+				Label:    lt.Label,
 			})
 		}
 	}
@@ -9576,4 +9610,49 @@ func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asComman
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.moveCardByRefLocked(src, dst, cardID, asCommander, true)
+}
+
+// cancelPlusMinusCountersLocked is CR 704.5q: N +1/+1 and N -1/-1
+// counters are removed from a creature that has both, N the smaller
+// count. Reports whether it removed any.
+//
+// Caller must hold g.mu.
+func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if !c.IsCreature() || c.Counters == nil {
+			continue
+		}
+		if c.Counters[CounterPlusOne] > 0 && c.Counters[CounterMinusOne] > 0 {
+			*c = afterPlusMinusCancel(*c)
+			fired = true
+		}
+	}
+	return fired
+}
+
+// afterPlusMinusCancel is the card as CR 704.5q leaves it: N of each of
+// +1/+1 and -1/-1 removed, N the smaller count, on a fresh counter map.
+// A card with not both kinds comes back unchanged.
+func afterPlusMinusCancel(c Card) Card {
+	plus, minus := c.Counters[CounterPlusOne], c.Counters[CounterMinusOne]
+	if plus <= 0 || minus <= 0 {
+		return c
+	}
+	cancel := min(plus, minus)
+	counters := copyStringIntMap(c.Counters)
+	counters[CounterPlusOne] -= cancel
+	counters[CounterMinusOne] -= cancel
+	if counters[CounterPlusOne] <= 0 {
+		delete(counters, CounterPlusOne)
+	}
+	if counters[CounterMinusOne] <= 0 {
+		delete(counters, CounterMinusOne)
+	}
+	if len(counters) == 0 {
+		counters = nil
+		c.LostLastCounter = true
+	}
+	c.Counters = counters
+	return c
 }

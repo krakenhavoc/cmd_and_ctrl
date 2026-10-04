@@ -1523,6 +1523,13 @@ type CastTally struct {
 	// spell cast face down is colourless. Read through
 	// CastInstantOrSorceryOfColor.
 	InstantSorceryColors string `json:"instantSorceryColors,omitempty"`
+	// Artifact counts the artifact spells the player cast this turn,
+	// read as each spell became cast, off the spell on the stack
+	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the
+	// first artifact spell you cast each turn costs {1} less" prices a
+	// spell while Artifact is still 0: a cost is determined (CR 601.2f)
+	// before the spell is counted here.
+	Artifact int `json:"artifact,omitempty"`
 }
 
 // CastInstantOrSorceryOfColor reports whether the tally includes an

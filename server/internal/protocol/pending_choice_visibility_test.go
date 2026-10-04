@@ -135,17 +135,36 @@ func TestScryOptionsAreNotShippedToOtherSeats(t *testing.T) {
 	}
 }
 
-// The Thoughtseize shape: the caster revealed the hand and is
-// entitled to every card in it; the third seat at the table revealed
-// nothing and is entitled to none of them — not the names, and not
-// the instance IDs, which the seat projection has already stripped
-// out of the hand zone for that same viewer.
+// The knower rule on a hand pick: a chooser who was LET LOOK at the
+// hand (a look at, CR 701.20e — no reveal) is entitled to every card
+// in it; the third seat at the table saw nothing and is entitled to
+// none of them — not the names, and not the instance IDs, which the
+// seat projection has already stripped out of the hand zone for that
+// same viewer. That includes ADR 0116's `eligible`, a second list of
+// the same cards' IDs.
+//
+// The revealed-hand pick itself no longer looks like this: it reveals
+// to the whole table (TestRevealedHandPickReachesTheWholeTable). The
+// rule is still the one every other hand pick rides.
 func TestDiscardChoiceOptionsFollowTheKnowerSet(t *testing.T) {
 	g := buildThreeSeatGame(t)
 	caster, victim, bystander := g.Seats[0], g.Seats[1], g.Seats[2]
 
 	g.WithWriteLock(func() {
-		g.QueueDiscardFromRevealedHand(caster.ID, victim.ID, uuid.Nil, 1, "Thoughtseize")
+		var all []uuid.UUID
+		for i := range victim.Hand.Cards {
+			victim.Hand.Cards[i].AddKnower(caster.ID)
+			all = append(all, victim.Hand.Cards[i].InstanceID)
+		}
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:           game.PendingChoiceDiscardFromHand,
+			Chooser:        caster.ID,
+			FromPlayer:     victim.ID,
+			Count:          1,
+			Reason:         "A look at a hand",
+			DiscardOptions: all,
+			DiscardLabel:   "card",
+		})
 	})
 	handSize := len(victim.Hand.Cards)
 	if handSize == 0 {
@@ -154,11 +173,14 @@ func TestDiscardChoiceOptionsFollowTheKnowerSet(t *testing.T) {
 
 	mine := choiceFor(t, ViewOfGameFor(g, caster.ID.String()), string(game.PendingChoiceDiscardFromHand))
 	if len(mine.Options) != handSize {
-		t.Fatalf("the caster sees %d of the %d cards it revealed", len(mine.Options), handSize)
+		t.Fatalf("the caster sees %d of the %d cards it looked at", len(mine.Options), handSize)
+	}
+	if len(mine.Eligible) != handSize {
+		t.Errorf("the caster was told %d of %d cards are eligible", len(mine.Eligible), handSize)
 	}
 	for _, o := range mine.Options {
 		if o.Name == "" || !o.KnownByYou {
-			t.Errorf("the caster got a back for a hand it revealed: %+v", o)
+			t.Errorf("the caster got a back for a hand it looked at: %+v", o)
 		}
 	}
 
@@ -173,7 +195,10 @@ func TestDiscardChoiceOptionsFollowTheKnowerSet(t *testing.T) {
 	view := ViewOfGameFor(g, bystander.ID.String())
 	bc := choiceFor(t, view, string(game.PendingChoiceDiscardFromHand))
 	if len(bc.Options) != 0 {
-		t.Errorf("a bystander got %d options out of a hand revealed to somebody else: %+v", len(bc.Options), bc.Options)
+		t.Errorf("a bystander got %d options out of a hand shown to somebody else: %+v", len(bc.Options), bc.Options)
+	}
+	if len(bc.Eligible) != 0 {
+		t.Errorf("a bystander got %d eligible IDs out of a hand shown to somebody else", len(bc.Eligible))
 	}
 	buf, err := json.Marshal(view)
 	if err != nil {
@@ -185,6 +210,55 @@ func TestDiscardChoiceOptionsFollowTheKnowerSet(t *testing.T) {
 		}
 		if strings.Contains(string(buf), c.Name) {
 			t.Errorf("a bystander's frame names hand card %q", c.Name)
+		}
+	}
+}
+
+// ADR 0116 §2 and §7: the revealed-hand pick reveals to every player
+// (CR 701.20a), so the bystander sees the whole hand on the prompt
+// too, and every seat is told which cards the card lets the chooser
+// take.
+func TestRevealedHandPickReachesTheWholeTable(t *testing.T) {
+	g := buildThreeSeatGame(t)
+	caster, victim, bystander := g.Seats[0], g.Seats[1], g.Seats[2]
+	handSize := len(victim.Hand.Cards)
+	if handSize < 3 {
+		t.Fatalf("the victim has %d cards; the test wants three", handSize)
+	}
+	// "Even" cards are the eligible kind: a filter the test controls.
+	var want []string
+	for i, c := range victim.Hand.Cards {
+		if i%2 == 0 {
+			want = append(want, c.InstanceID.String())
+		}
+	}
+	g.WithWriteLock(func() {
+		even := map[uuid.UUID]bool{}
+		for i, c := range victim.Hand.Cards {
+			even[c.InstanceID] = i%2 == 0
+		}
+		g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{
+			Chooser: caster.ID, FromPlayer: victim.ID, Count: 1, Reason: "Thoughtseize",
+			Filter: func(c game.Card) bool { return even[c.InstanceID] },
+			Label:  "nonland card",
+		})
+	})
+
+	for _, viewer := range []*game.Player{caster, victim, bystander} {
+		c := choiceFor(t, ViewOfGameFor(g, viewer.ID.String()), string(game.PendingChoiceDiscardFromHand))
+		if len(c.Options) != handSize {
+			t.Errorf("%s sees %d of the %d revealed cards", viewer.Name, len(c.Options), handSize)
+		}
+		for _, o := range c.Options {
+			if o.Name == "" || !o.KnownByYou {
+				t.Errorf("%s got a back for a revealed card: %+v", viewer.Name, o)
+			}
+		}
+		if strings.Join(c.Eligible, ",") != strings.Join(want, ",") {
+			t.Errorf("%s: eligible = %v, want %v", viewer.Name, c.Eligible, want)
+		}
+		if c.EligibleLabel != "nonland card" {
+			t.Errorf("%s: eligible_label = %q", viewer.Name, c.EligibleLabel)
 		}
 	}
 }

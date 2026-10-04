@@ -186,6 +186,21 @@ var carriedFixture = map[string]any{
 	"DelayedTrigger.At": StepEnd,
 	// The prompt kind, which decides which Resolve* call may answer it.
 	"PendingChoice.Kind": PendingChoiceDiscardFromHand,
+	// ADR 0115 §8: restore refuses a pending-choice kind it does not
+	// know, so the generated queue keeps every generated field but
+	// carries a registered kind; an invented one would fail the
+	// restore rather than test the carry.
+	"Game.PendingChoices": func(g *Game) any {
+		v, err := generateNonZero(reflect.TypeOf([]*PendingChoice(nil)), "Game.PendingChoices", 0)
+		if err != nil {
+			panic(err)
+		}
+		out := v.Interface().([]*PendingChoice)
+		for _, c := range out {
+			c.Kind = PendingChoiceDiscardFromHand
+		}
+		return out
+	},
 	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
 	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
 	// invented one would fail the restore, not test the carry.

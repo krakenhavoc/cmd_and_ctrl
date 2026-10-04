@@ -66,6 +66,14 @@ func (g *Game) exitCleanupStepLocked() {
 	if g.State != StateActive || g.Turn.Step != StepCleanup {
 		return
 	}
+	// ADR 0115 decision 3: an open CR 903.9a question decides CR
+	// 514.3a — a "yes" is a state-based action performed, a "no" is
+	// not — so the cursor waits here, with nobody holding priority,
+	// and ResolveCommanderReturn finishes the exit
+	// (cleanupAfterCommanderReturnLocked).
+	if g.commanderReturnOpenLocked() {
+		return
+	}
 	if grant {
 		// CR 514.3a: the active player gets priority IN the cleanup
 		// step. The table passing it around brings it back to

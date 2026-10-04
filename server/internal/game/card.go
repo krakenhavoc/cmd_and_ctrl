@@ -860,6 +860,14 @@ type Card struct {
 	// S46 (#757).
 	ClassLevel int
 
+	// RingTemptations is how many times the Ring has tempted this
+	// emblem's owner (CR 701.54c), set only on the Ring emblem
+	// (RingEmblemKey) and read by DesignationRingTempted and
+	// RingTemptCount. The emblem is created at the first temptation and
+	// never leaves while its owner is in the game, so the count on it is
+	// the player's count (ADR 0114 §2). Zero on every other object.
+	RingTemptations int
+
 	// PreparedBy is set on a CR 722.3c prepare copy only: the
 	// permanent OBJECT — instance and CR 400.7 epoch — whose prepared
 	// designation keeps this copy in exile and castable (ADR 0090).
@@ -910,6 +918,22 @@ type Card struct {
 	// atomically without partial-update visibility. Added in S16
 	// sub-PR 3.
 	effective *Characteristic
+
+	// printed is the memoised layer-0 baseline — what
+	// printedCharacteristic builds from the printed fields — together
+	// with the inputs it was built from (#1498). Off the battlefield
+	// `effective` is nil, so this is what Effective() reads there.
+	//
+	// Self-validating rather than invalidated: every read compares the
+	// recorded inputs with the card's live ones and rebuilds on any
+	// difference, so a face change, a copy effect, a restore or an
+	// in-place write can make it stale but never wrong. The entry is
+	// immutable and replaced, never written through — cloneCard shares
+	// it with the clone exactly as it shares `effective`. Stamped only
+	// under the write lock (Zone.PushTop and friends, restoreZone);
+	// readers never write it. A derived cache: never snapshotted.
+	// See printed_cache.go.
+	printed *printedEntry
 
 	// stackGranted is the keyword abilities the stack step of the layer
 	// pass gave this SPELL (CR 613.1f, ADR 0107 §3, #1854): "that spell
@@ -964,6 +988,15 @@ type Card struct {
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
 	IsCommander bool
+
+	// CommanderReturnDue is CR 903.9a's "put into that zone since the
+	// last time state-based actions were checked" for a commander in a
+	// graveyard or in exile (ADR 0115 decision 1). MoveCard sets it as a
+	// commander card lands in either zone and clears it on every other
+	// move; the check (commanderReturnSBALocked) clears it once it has
+	// asked the owner. Not a characteristic and not copiable. Only ever
+	// set while commanderReturnSBA is on.
+	CommanderReturnDue bool
 
 	// FaceDown is the visual face-down flag (CR 406.3a / CR 708) —
 	// "is there a back showing". Distinct from the KnownBy knowledge
@@ -1103,6 +1136,19 @@ type Card struct {
 	// cleared when the permanent leaves the battlefield (CR 400.7),
 	// carried by clone and the snapshot.
 	Monstrous bool
+
+	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
+	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by
+	// nothing else; the one write site first clears every other
+	// permanent the chooser controls, which keeps one Ring-bearer per
+	// player. Cleared when the permanent leaves the battlefield (CR
+	// 400.7) and when another player gains control of it (CR 701.54a,
+	// materialiseControlLocked). Kept through phasing (CR 702.26d), a
+	// face change and ceasing to be a creature. Not copiable (CR
+	// 701.54b): CopiableValuesOf never reads it. Read only through
+	// IsRingBearerOf / RingBearerOf, which apply CR 701.54e. Carried by
+	// clone and the snapshot.
+	RingBearer bool
 
 	// Prepared is the CR 722.3a designation on a permanent with a
 	// prepare spell (ADR 0090): while it is set, the permanent's
@@ -1274,8 +1320,11 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 // move a permanent), call g.RecomputeLayersIfStaleLocked first so
 // Effective() reflects the new state. Combat damage and the SBA
 // loop both do this at their top.
-func (c Card) CurrentPower() int {
-	p := c.PowerForComparison()
+func (c Card) CurrentPower() int { return clampPower(c.PowerForComparison()) }
+
+// clampPower is CurrentPower's rule on a power already read: a
+// negative power deals no damage, so it reads as zero.
+func clampPower(p int) int {
 	if p < 0 {
 		return 0
 	}
@@ -1285,14 +1334,34 @@ func (c Card) CurrentPower() int {
 // PowerForComparison includes layers and counters without clamping negative
 // values. Skulk compares actual power; CurrentPower clamps damage to zero.
 func (c Card) PowerForComparison() int {
-	p := c.Effective().Power
-	if c.Counters != nil {
-		// #1664: every P/T counter kind (CR 122.1a), not just
-		// +1/+1 and -1/-1 — see pt_counters.go.
-		dp, _ := PTCounterDelta(c.Counters)
-		p += dp
-	}
+	p, _ := ptWithCounters(effectiveOf(&c), c.Counters)
 	return p
+}
+
+// ptWithCounters adds every P/T counter on the object to its
+// effective power and toughness — #1664: every P/T counter kind
+// (CR 122.1a), not just +1/+1 and -1/-1 — see pt_counters.go. The one
+// definition PowerForComparison, CurrentToughness and PowerToughness
+// share, so the three cannot drift.
+func ptWithCounters(eff Characteristic, counters map[string]int) (power, toughness int) {
+	power, toughness = eff.Power, eff.Toughness
+	if counters != nil {
+		dp, dt := PTCounterDelta(counters)
+		power += dp
+		toughness += dt
+	}
+	return power, toughness
+}
+
+// PowerToughness is CurrentPower, PowerForComparison and
+// CurrentToughness from ONE read of Effective(). The view needs all
+// three for every card on every frame, and three reads were three
+// rebuilds of an off-battlefield card's baseline before the printed
+// cache, and are three cache validations and three kilobyte receiver
+// copies after it (#1498).
+func (c *Card) PowerToughness() (current, forComparison, toughness int) {
+	forComparison, toughness = ptWithCounters(effectiveOf(c), c.Counters)
+	return clampPower(forComparison), forComparison, toughness
 }
 
 // CurrentToughness returns the card's combat-relevant toughness:
@@ -1308,11 +1377,7 @@ func (c Card) PowerForComparison() int {
 // Same caller responsibility as CurrentPower: ensure
 // RecomputeLayersIfStaleLocked has been called for this game state.
 func (c Card) CurrentToughness() int {
-	t := c.Effective().Toughness
-	if c.Counters != nil {
-		_, dt := PTCounterDelta(c.Counters)
-		t += dt
-	}
+	_, t := ptWithCounters(effectiveOf(&c), c.Counters)
 	return t
 }
 
@@ -1519,10 +1584,14 @@ func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
 // a deliberate fast path off the printed fields when the layer cache
 // is cold. Without it a manifested Forest still answers "land" to
 // every predicate that runs before the first recompute.
-func (c Card) HasCardType(lowerType string) bool {
+func (c Card) HasCardType(lowerType string) bool { return hasCardType(&c, lowerType) }
+
+// hasCardType is HasCardType without the copy, for the internal readers
+// that hold a pointer (#1498).
+func hasCardType(c *Card, lowerType string) bool {
 	if c.effective == nil {
-		if c.FaceDownIsPermanent() {
-			return typeListHas(faceDownCharacteristic(c).Types, lowerType)
+		if c.faceDownPermanent() {
+			return typeListHas(faceDownCharacteristic(*c).Types, lowerType)
 		}
 		return typeLineHas(c.TypeLine, lowerType)
 	}
@@ -1556,7 +1625,7 @@ func (c Card) HasSubtype(subtype string) bool {
 		return typeListHas(faceDownCharacteristic(c).Subtypes, subtype)
 	}
 	if c.effective == nil {
-		_, _, printed := ParseTypeLine(c.TypeLine)
+		_, _, printed := printedTypeParts(&c)
 		if typeListHas(printed, subtype) {
 			return true
 		}
@@ -1583,7 +1652,7 @@ func (c Card) HasSupertype(supertype string) bool {
 		if c.FaceDownIsPermanent() {
 			return false
 		}
-		super, _, _ := ParseTypeLine(c.TypeLine)
+		super, _, _ := printedTypeParts(&c)
 		return typeListHas(super, supertype)
 	}
 	return typeListHas(c.effective.Supertypes, supertype)

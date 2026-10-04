@@ -73,6 +73,13 @@ var knownUnmatchedTokens = map[string]string{
 	// own token this table already carries.)
 	"2/2 colorless Spawn artifact": "no token card was ever printed for Spawning Pit's Spawn",
 
+	// Carrion (Visions, 1997) creates "X 0/1 black Insect creature
+	// tokens". No 0/1 Insect token card of any colour exists in the
+	// dump (a Scryfall search for t:token t:insect pow=0 tou=1 finds
+	// none), for the same reason as Spawning Pit: the card predates
+	// token cards. The template follows the oracle text (#2096).
+	"0/1 black Insect": "no token card was ever printed for Carrion's Insects",
+
 	// Wurmcoil Engine's current oracle says "3/3 colorless Phyrexian
 	// Wurm artifact creature token"; the printed token card, from
 	// 2010, is named "Wurm" — it predates the 2021 Phyrexian subtype
@@ -170,6 +177,7 @@ func tokenTemplatesUnderTest() []labelledTemplate {
 		{"EldraziSpawnToken()", EldraziSpawnToken()},
 		{"BlueShapeshifterToken()", BlueShapeshifterToken()},
 		{"ColorlessShapeshifterToken()", ColorlessShapeshifterToken()},
+		{"SmaugToken()", SmaugToken()},
 	} {
 		out = append(out, labelledTemplate{key: bt.name, display: bt.name, card: bt.card})
 	}

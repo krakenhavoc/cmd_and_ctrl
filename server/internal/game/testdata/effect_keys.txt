@@ -104,4 +104,11 @@ body swans-of-bryn-argoll/source-controller-draws
 body the-mindskinner/each-opponent-mills
 body flicker/return-exiled-to-owners-tapped
 body redirection/that-much-to-the-sources-controller
+body berserk/destroy-if-attacked
 body ugins-binding/bounce-all
+body annihilator/sacrifice
+body persist/return
+body undying/return
+body foray-of-orcs/damage
+body the-ring/sacrifice-blocker-at-end-of-combat
+body sauron-the-necromancer/exile-token-unless-ring-bearer

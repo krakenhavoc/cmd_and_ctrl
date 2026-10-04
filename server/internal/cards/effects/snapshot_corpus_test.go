@@ -204,6 +204,11 @@ func corpusBoards() []corpusBoard {
 		// evolve/grow body — waiting on the stack, carrying the entered
 		// creature on its trigger context.
 		{"evolve_on_stack", corpusEvolveOnStack},
+		// v7, added by #2073 (ADR 0113 §2) as a new file: an annihilator
+		// trigger — the third engine keyword trigger, keyed by its
+		// annihilator/sacrifice body — waiting on the stack, carrying
+		// the defending player and N in its params.
+		{"annihilator_trigger_pending", corpusAnnihilatorTriggerPending},
 		// v7, added by #1858 (ADR 0107 §1) as a new file: a CR 603.8
 		// state trigger — a catalog row with a State condition and no
 		// event — waiting on the stack. Its latch is derived from this
@@ -390,7 +395,123 @@ func corpusBoards() []corpusBoard {
 		// the creature it sacrificed, and that creature's last-known
 		// record beside it.
 		{"sacrifice_cost_objects", corpusSacrificeCostObjects},
+		// v7, added by ADR 0113 §3 (#2074) as a new file: a player's
+		// "no maximum hand size for the rest of the game" grant with its
+		// CR 613.7b timestamp (players[].maxHandSizeAt), and a Null
+		// Profusion that entered after it, whose "your maximum hand size
+		// is two" is catalog data and so adds nothing but the permanent.
+		{"max_hand_size_grant", corpusMaxHandSizeGrant},
+		// v7, added by ADR 0113 §4 (#2075) as a new file: a persist
+		// trigger — an engine dies trigger with no catalog row, keyed by
+		// its persist/return body — waiting on the stack, its source
+		// object the graveyard card (CR 400.7e) and its trigger context
+		// the departed permanent whose last-known counters it re-reads.
+		{"persist_trigger_pending", corpusPersistTriggerPending},
+		// v7, added by ADR 0115 PR 2 (#2085) as new files: CR 903.9a as
+		// a state-based action — a commander in its owner's graveyard
+		// with the check still owed (card.commanderReturnDue), and the
+		// commander_return prompt open to its owner, which is plain
+		// data and so a restore point.
+		{"commander_return_due", corpusCommanderReturnDue},
+		{"commander_return_prompt", corpusCommanderReturnPrompt},
+		// v7, added by ADR 0114 PR 2 (#2076) as a new file: the Ring
+		// tempts two players once each — each one's Ring emblem
+		// (emblem:the-ring, Card.ringTemptations) and their Ring-bearer
+		// (Card.ringBearer), one chosen at the prompt and one the only
+		// creature. PR 3 adds the level 4 board.
+		{"the_ring", corpusTheRing},
+		// v7, added by ADR 0114 PR 3 (#2076) as a new file: the Ring at
+		// two levels — one player tempted four times, the other once —
+		// a Ring-bearer each, and the level 3 delayed sacrifice
+		// (the-ring/sacrifice-blocker-at-end-of-combat) waiting on the
+		// other player's creature.
+		{"the_ring_level_4", corpusTheRingLevel4},
+		// v7, added by ADR 0116 (#2078) as a new file: Thoughtseize's
+		// pick open over a revealed hand of a land and two spells —
+		// pendingChoices[].discardOptions naming the two spells and
+		// discardLabel, every card in the hand known to every seat.
+		{"revealed_hand_discard_filtered", corpusRevealedHandDiscard},
 	}
+}
+
+// corpusRevealedHandDiscard is ADR 0116 §9's board: seat 1 has
+// revealed a hand of a Forest and two spells, and seat 0's "choose a
+// nonland card" prompt is open over the two spells.
+func corpusRevealedHandDiscard(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	chooser, victim := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() {
+		victim.Hand.Cards = nil
+		for _, c := range []game.Card{
+			{Name: "Forest", TypeLine: "Basic Land — Forest"},
+			{Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", Colors: []string{"R"}},
+			{Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}", Colors: []string{"U"}},
+		} {
+			c.InstanceID, c.Owner, c.Controller = uuid.New(), victim.ID, victim.ID
+			victim.Hand.PushTop(c)
+		}
+		g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{
+			Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Thoughtseize",
+			Filter: func(c game.Card) bool { return !c.IsLand() },
+			Label:  "nonland card",
+		})
+	})
+	if len(g.PendingChoices) != 1 || len(g.PendingChoices[0].DiscardOptions) != 2 {
+		t.Fatal("setup: the revealed-hand pick is not open over the two spells")
+	}
+	return g
+}
+
+// corpusCommanderInGraveyard moves seat 1's commander from its command
+// zone into its graveyard and returns it.
+func corpusCommanderInGraveyard(t *testing.T, g *game.Game) (*game.Player, uuid.UUID) {
+	t.Helper()
+	p := g.Seats[1]
+	if p.Command.Size() == 0 {
+		t.Fatal("setup: seat 1 has no commander in the command zone")
+	}
+	id := p.Command.Cards[0].InstanceID
+	g.WithWriteLock(func() {
+		if _, err := game.MoveCard(p.Command, p.Graveyard, id); err != nil {
+			t.Fatalf("setup: move the commander to the graveyard: %v", err)
+		}
+	})
+	return p, id
+}
+
+// corpusCommanderReturnDue is ADR 0115 §8's first board: a commander
+// put into its graveyard since the last state-based action check, so
+// CR 903.9a still owes its owner the question. The mark is set by hand
+// because ADR 0115 PR 2 ships the state-based action switched off.
+func corpusCommanderReturnDue(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	p, id := corpusCommanderInGraveyard(t, g)
+	g.WithWriteLock(func() {
+		for i := range p.Graveyard.Cards {
+			if p.Graveyard.Cards[i].InstanceID == id {
+				p.Graveyard.Cards[i].CommanderReturnDue = true
+			}
+		}
+	})
+	return g
+}
+
+// corpusCommanderReturnPrompt is ADR 0115 §8's second board: the check
+// has asked, so the mark is gone and the commander_return prompt is
+// open to the commander's owner.
+func corpusCommanderReturnPrompt(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	p, id := corpusCommanderInGraveyard(t, g)
+	g.WithWriteLock(func() {
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:    game.PendingChoiceCommanderReturn,
+			Chooser: p.ID,
+			Count:   1,
+			Source:  id,
+			Reason:  "Test Commander 2 — put it into the command zone?",
+		})
+	})
+	return g
 }
 
 // corpusSacrificeCostObjects is Fling cast at the next seat, its
@@ -415,6 +536,112 @@ func corpusSacrificeCostObjects(t *testing.T) *game.Game {
 	}
 	if item := g.StackMeta[id]; item == nil || len(item.Paid.SacrificedObjects) != 1 {
 		t.Fatal("setup: Fling's payment record names no sacrificed creature")
+	}
+	return g
+}
+
+// corpusTheRing is two players the Ring has tempted once each, a
+// Ring-bearer each: one chosen at the ring_bearer prompt, one forced.
+func corpusTheRing(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	bearer := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Runeclaw Bear", 2, 2))
+	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Balduvian Bears", 2, 2))
+	var err error
+	g.WithWriteLock(func() {
+		if err = g.RingTemptsForEffect(me, uuid.Nil, nil); err == nil {
+			err = g.RingTemptsForEffect(opp, uuid.Nil, nil)
+		}
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	var prompt *game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceRingBearer {
+			prompt = c
+		}
+	}
+	if prompt == nil {
+		t.Fatal("setup: two creatures and no ring_bearer prompt")
+	}
+	if err := g.ResolveRingBearer(prompt.ID, me, []uuid.UUID{bearer}); err != nil {
+		t.Fatalf("setup: ResolveRingBearer: %v", err)
+	}
+	g.ReadSnapshot(func() {
+		if game.RingBearerOf(g, me) != bearer || game.RingBearerOf(g, opp) != theirs {
+			t.Fatal("setup: the Ring-bearers are not the ones chosen")
+		}
+	})
+	return g
+}
+
+// corpusTheRingLevel4 is the Ring at levels 4 and 1, a Ring-bearer
+// each, and line 3's delayed sacrifice scheduled against the second
+// player's Ring-bearer, as if it had blocked the first player's.
+func corpusTheRingLevel4(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Balduvian Bears", 2, 2))
+	var err error
+	g.WithWriteLock(func() {
+		for i := 0; i < 4 && err == nil; i++ {
+			err = g.RingTemptsForEffect(me.ID, uuid.Nil, nil)
+		}
+		if err == nil {
+			err = g.RingTemptsForEffect(opp.ID, uuid.Nil, nil)
+		}
+		if err != nil {
+			return
+		}
+		var emblem *game.Card
+		for i := range me.Emblems.Cards {
+			if me.Emblems.Cards[i].IsRingEmblem() {
+				emblem = &me.Emblems.Cards[i]
+			}
+		}
+		if emblem == nil {
+			t.Fatal("setup: no Ring emblem")
+		}
+		blocker, _ := g.LookupCardForEffect(theirs)
+		item := game.NewTriggeredItem(emblem, theRingSacrificeLabel)
+		item.Params.Object = game.ObjectRef{ID: theirs, Epoch: blocker.ObjectEpoch}
+		err = theRingScheduleBlockerSacrifice(g, item)
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	g.ReadSnapshot(func() {
+		if game.RingBearerOf(g, me.ID) != mine || game.RingBearerOf(g, opp.ID) != theirs ||
+			game.RingTemptCount(g, me.ID) != 4 || game.RingTemptCount(g, opp.ID) != 1 {
+			t.Fatal("setup: the Ring-bearers or the counts are not the ones arranged")
+		}
+	})
+	if len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: %d delayed triggers, want the one sacrifice", len(g.DelayedTriggers))
+	}
+	return g
+}
+
+// corpusMaxHandSizeGrant is ADR 0113 §3's one stored shape: a stamped
+// player grant (Finale of Revelation's), folded before a later Null
+// Profusion, so the player's maximum is two.
+func corpusMaxHandSizeGrant(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	g.WithWriteLock(func() {
+		if err := g.SetMaxHandSizeForEffect(me.ID, game.NoMaxHandSize); err != nil {
+			t.Fatalf("setup: grant: %v", err)
+		}
+	})
+	pushCatalogPermanent(g, me.ID, "Null Profusion", "Enchantment", mhNullProfusionOracle, false)
+	if me.MaxHandSizeAt == 0 {
+		t.Fatal("setup: the grant was not stamped")
+	}
+	if got := mhMax(g, me); got != 2 {
+		t.Fatalf("setup: maximum hand size = %d, want 2", got)
 	}
 	return g
 }
@@ -2085,6 +2312,19 @@ func corpusProwessOnStack(t *testing.T) *game.Game {
 	return g
 }
 
+// corpusPersistTriggerPending is a persist trigger (#2075) waiting on
+// the stack after a vanilla persist creature died.
+func corpusPersistTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	elite := pushDiesKeywordCreature(g, me, "Safehold Elite", 2, 2, game.KeywordPersist)
+	b25Destroy(g, elite)
+	if it := corpusSettleTrigger(t, g, elite); it.Body != "persist/return" {
+		t.Fatalf("setup: the persist trigger names body %q, want persist/return", it.Body)
+	}
+	return g
+}
+
 // corpusEvolveOnStack is an evolve trigger — an engine trigger with no
 // catalog row, keyed by its evolve/grow body (#1805) — waiting on the
 // stack after a bigger creature entered under its controller's control.
@@ -2095,6 +2335,24 @@ func corpusEvolveOnStack(t *testing.T) *game.Game {
 	enterCreature(t, g, me, "Grizzly Bears", 2, 2)
 	if it := corpusSettleTrigger(t, g, raptor); it.Body != "evolve/grow" {
 		t.Fatalf("setup: the evolve trigger names body %q, want evolve/grow", it.Body)
+	}
+	return g
+}
+
+// corpusAnnihilatorTriggerPending is an "annihilator 2" trigger — an
+// engine trigger with no catalog row, keyed by its annihilator/sacrifice
+// body (#2073) — waiting on the stack in the declare attackers step,
+// before the defending player has been asked anything.
+func corpusAnnihilatorTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	eldrazi := pushAnnihilatorCreature(g, me, "annihilator 2")
+	pushAnnFodder(g, opp, 3)
+	declareAttack(t, g, opp, eldrazi)
+	it := corpusSettleTrigger(t, g, eldrazi)
+	if it.Body != "annihilator/sacrifice" || it.Params.Player != opp || it.Params.Amount != 2 {
+		t.Fatalf("setup: the annihilator trigger is %+v, want body annihilator/sacrifice for the defender, N = 2", it)
 	}
 	return g
 }

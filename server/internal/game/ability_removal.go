@@ -9,7 +9,7 @@ package game
 // for triggered abilities, `CatalogActivatedAbilities`,
 // `CatalogManaAbilities`, `CatalogStaticAbilities`,
 // `CatalogReplacements`, `CatalogCostModifiers`,
-// `CatalogUntapStepPermissions`, `CatalogNoMaxHandSize`. Those hooks
+// `CatalogUntapStepPermissions`, `CatalogHandSize`. Those hooks
 // answer *what the printed card says*, which is the right question
 // almost always and the wrong question under a layer-6 effect that
 // takes the abilities away. Layer 6 could already clear
@@ -131,7 +131,15 @@ package game
 // merges each bundle into whatever the own half resolves to. An object
 // with no layered grant — every card off the battlefield and nearly
 // every card on it — takes the first return and allocates nothing.
-func CatalogAbilityKey(c Card) string {
+func CatalogAbilityKey(c Card) string { return catalogAbilityKeyOf(&c) }
+
+// catalogAbilityKeyOf is CatalogAbilityKey without the copy. Card is
+// over a kilobyte and this is asked once per permanent per gate per
+// view (the game-end gates, the cast and activation restrictions, the
+// mana rows), so the by-value shape was most of its flat time in a bot
+// table's profile (#1498). Internal callers holding a *Card use this;
+// the exported by-value shape stays for the catalog and open branches.
+func catalogAbilityKeyOf(c *Card) string {
 	own := ownAbilityKey(c)
 	if c.effective == nil || len(c.effective.GrantedAbilities) == 0 {
 		return own
@@ -156,6 +164,10 @@ func CatalogAbilityKey(c Card) string {
 // battlefield and its cache has been cleared, but CR 603.10 says the
 // trigger is judged on what the permanent looked like when it was
 // still there.
-func (c Card) HasLostAllAbilities() bool {
+func (c Card) HasLostAllAbilities() bool { return c.lostAllAbilities() }
+
+// lostAllAbilities is HasLostAllAbilities on a pointer receiver, for the
+// reason faceDownPermanent gives (#1498).
+func (c *Card) lostAllAbilities() bool {
 	return c.effective != nil && c.effective.AbilitiesRemoved
 }

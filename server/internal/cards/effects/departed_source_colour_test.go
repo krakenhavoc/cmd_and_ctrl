@@ -81,6 +81,23 @@ func redcapTurnedBlueAndKilled(t *testing.T, g *game.Game, target game.TargetRef
 	if !inYard.HasColor("R") {
 		t.Fatal("setup: the Redcap card in the graveyard must be red, or these tests prove nothing")
 	}
+	// #2075: the Redcap has persist now, and its persist trigger went on
+	// the stack above the enter trigger. These tests are about the enter
+	// trigger's departed source, so the card leaves the graveyard (it is
+	// a new object, black-red in exile too) and the persist trigger
+	// resolves doing nothing, leaving the board as it was before persist.
+	if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID},
+		game.ZoneRef{Kind: game.ZoneExile}, redcap); err != nil {
+		t.Fatalf("setup: exile the Redcap from the graveyard: %v", err)
+	}
+	for i := 0; i < 8 && diesReturnItems(g) > 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("setup: resolve the persist trigger: %v", err)
+		}
+	}
+	if diesReturnItems(g) > 0 || triggerOnStack(g, redcap) == nil {
+		t.Fatal("setup: the persist trigger should be gone and the enter trigger still waiting")
+	}
 	return redcap
 }
 

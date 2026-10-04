@@ -70,3 +70,20 @@ func putACounterOnEachCreatureYouControl(kind string) Effect {
 		return nil
 	}
 }
+
+// putAPlusOneCounterOnEachYouControl is "put a +1/+1 counter on each
+// <noun> you control" — Nazgûl's "each Wraith you control": every
+// permanent the resolving item's controller controls that `match`
+// admits. The set is read before the first counter goes on, and each
+// counter settles before the next (b13PutCounterOnEach).
+func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		var ids []uuid.UUID
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.Controller == item.Controller && match(g, item.Controller, c) {
+				ids = append(ids, c.InstanceID)
+			}
+		}
+		return b13PutCounterOnEach(NewContext(g, item), ids)
+	}
+}

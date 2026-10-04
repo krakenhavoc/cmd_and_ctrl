@@ -34,7 +34,14 @@ import (
 //
 // The cost, stated plainly: a call site that FORGETS CatalogKey
 // silently resolves to face 0's spec rather than erroring.
-func CatalogKey(c Card) string {
+func CatalogKey(c Card) string { return catalogKeyOf(&c) }
+
+// catalogKeyOf is CatalogKey without the copy: Card is over a
+// kilobyte, and copying one per catalog lookup was most of
+// CatalogAbilityKey's flat time in a bot table's profile (#1498).
+// Internal callers that hold a *Card use this; CatalogKey stays the
+// exported by-value shape every catalog file and open branch calls.
+func catalogKeyOf(c *Card) string {
 	// CR 708.2a, ADR 0069 decision 4: a face-down permanent has NO
 	// TEXT — no triggered, activated, mana, static or replacement
 	// abilities, no cost modifiers, no "as enters" hook, no printed
@@ -56,7 +63,7 @@ func CatalogKey(c Card) string {
 	// exile needs (#658). Nothing off the battlefield runs a trigger,
 	// static or replacement off a catalog entry (CR 113.6), so
 	// keeping it costs nothing.
-	if c.FaceDownIsPermanent() {
+	if c.faceDownPermanent() {
 		return ""
 	}
 	base := c.OracleID
@@ -77,7 +84,7 @@ func CatalogKey(c Card) string {
 	switch {
 	case c.Fused && c.OracleID != "":
 		base = FusedCatalogKey(c.OracleID)
-	case c.ActiveFace != 0 && c.OracleID != "" && !HasSharedTypeLine(c):
+	case c.ActiveFace != 0 && c.OracleID != "" && !hasSharedTypeLine(c):
 		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
 	}
 	// CR 707.9a, #665: an ability a copy effect GRANTED is part of
@@ -826,77 +833,6 @@ var CatalogTriggers func(oracleID string) []TriggeredAbility
 // count without importing the effects package.
 var CatalogTriggerDoublers func(oracleID string) []TriggerDoubler
 
-// CatalogNoMaxHandSize reports whether the given oracle ID is a
-// permanent whose controller has no maximum hand size (Thought
-// Vessel, Reliquary Tower, Spellbook, Venser's Journal). Populated
-// at init time by the cards/effects package from
-// `effects.Spec.NoMaxHandSize`. Nil hook ⇒ no catalog wired ⇒ every
-// player keeps whatever Player.MaxHandSize says.
-//
-// This is the one continuous effect in the catalog that is
-// PLAYER-scoped rather than card-scoped. The layer engine (CR 613)
-// only models characteristics of objects, so there is no
-// characteristic for "you have no maximum hand size" to modify and
-// no layer for it to sit in. Rather than invent a player-layer
-// pipeline for a single clause, the value is DERIVED: the cleanup
-// step asks the battlefield at the moment it needs an answer (see
-// Game.EffectiveMaxHandSizeLocked).
-//
-// Deriving instead of writing to Player.MaxHandSize is what makes
-// the leave case correct for free. A "set on enter, restore on
-// leave" design has to answer "restore to what?", and gets two
-// things wrong that a real game hits: two Thought Vessels, where the
-// first to leave would restore the cap while the second is still
-// out; and a player whose maximum was changed by something else in
-// between, whose real value the restore would clobber. Derivation
-// has no stored value to strand, so neither case exists. It also
-// keeps undo correct without touching clone.go — there is no new
-// state to clone.
-//
-// Issue #338.
-var CatalogNoMaxHandSize func(oracleID string) bool
-
-// EffectiveMaxHandSizeLocked returns the hand-size cap that actually
-// applies to `p` right now (CR 402.2): NoMaxHandSize when the player
-// controls any battlefield permanent granting "you have no maximum
-// hand size", otherwise the player's own Player.MaxHandSize.
-//
-// Player.MaxHandSize remains the BASE value and is never written by
-// this path, so the set_max_hand_size sandbox action and a Thought
-// Vessel compose the obvious way: the permanent wins while it is
-// there, and the base value is untouched underneath it.
-//
-// Caller must hold g.mu (read or write).
-func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
-	if p == nil {
-		return DefaultMaxHandSize
-	}
-	if p.MaxHandSize == NoMaxHandSize {
-		return NoMaxHandSize
-	}
-	if CatalogNoMaxHandSize == nil {
-		return p.MaxHandSize
-	}
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID {
-			continue
-		}
-		// CatalogAbilityKey: "you have no maximum hand size" is a
-		// static ability, and a Thought Vessel that has lost all its
-		// abilities gives the cap back. The empty KEY is the skip, so
-		// a token is walked too (ADR 0083 decision 3).
-		key := CatalogAbilityKey(*c)
-		if key == "" {
-			continue
-		}
-		if CatalogNoMaxHandSize(key) && noMaxHandSizeGate(key).Active(*c) {
-			return NoMaxHandSize
-		}
-	}
-	return p.MaxHandSize
-}
-
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
@@ -1033,14 +969,4 @@ func TargetModeFor(oracleID string) string {
 		return ""
 	}
 	return CatalogTargetMode(oracleID)
-}
-
-// noMaxHandSizeGate is the designation gate on a card's "you have no
-// maximum hand size" static (ADR 0103: a Room door). The zero value —
-// no gate — for a card the catalog does not know.
-func noMaxHandSizeGate(key string) Designation {
-	if d := catalogDef(key); d != nil {
-		return d.NoMaxHandSizeWhen
-	}
-	return Designation{}
 }

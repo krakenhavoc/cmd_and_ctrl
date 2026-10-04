@@ -35,7 +35,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:  "{B/P}{B/P}, Exile three creature cards from your graveyard: Put an indestructible counter on Drivnod, Carnage Dominus.",
 			Cost:   Plus(ManaCost("{B/P}{B/P}"), ExileFromGraveyard(3, "three creature cards", func(c game.Card) bool { return c.IsCreature() })),
-			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
+			Effect: putIndestructibleCounterOnSource(),
 		}},
 	})
 }

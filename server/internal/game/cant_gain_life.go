@@ -86,7 +86,7 @@ func (g *Game) playerCantGainLifeLocked(p *Player) bool {
 	if CatalogCantGainLife != nil && g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			src := &g.Battlefield.Cards[i]
-			key := CatalogAbilityKey(*src)
+			key := catalogAbilityKeyOf(src)
 			if key == "" {
 				continue
 			}

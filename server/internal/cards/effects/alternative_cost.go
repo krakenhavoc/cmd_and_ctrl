@@ -368,6 +368,27 @@ func Warp(cost string) game.AlternativeCost {
 	}
 }
 
+// Spectacle is "Spectacle {cost} (You may cast this spell for its
+// spectacle cost rather than its mana cost if an opponent lost life
+// this turn.)" — CR 702.137a. Drill Bit (ADR 0116 pool B, #2078).
+//
+// The condition reads the turn tally Rakdos, Lord of Riots reads
+// (opponentLifeLostThisTurn): life LOST this turn, not a lower life
+// total, so an opponent who lost 1 and gained 2 still counts, and so
+// does one who lost life and then left the game (the rulings). Checked
+// at announce and in the view, like every conditional offer, and never
+// again once the spell is on the stack.
+func Spectacle(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:      "spectacle",
+		Label:    "Spectacle " + cost,
+		ManaCost: cost,
+		Condition: func(g *game.Game, controller uuid.UUID) bool {
+			return opponentLifeLostThisTurn(g, controller) > 0
+		},
+	}
+}
+
 // --- S28: the free-spell family ----------------------------------
 //
 // Four more shapes of "rather than pay this spell's mana cost", all

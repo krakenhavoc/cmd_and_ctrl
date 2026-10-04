@@ -42,6 +42,8 @@
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import { displayName } from "../../faces";
+  import { ICONS } from "../../icons";
+  import { ringBearerTitle } from "../../ringEmblem";
   import {
     DROP_PIP_LABEL,
     NO_LEGAL_ACTIONS,
@@ -189,6 +191,12 @@
     // greyed target ring. Supplied by BattlefieldRow from the card
     // view's attack_target_restrictions; undefined for nearly every card.
     cantAttack?: CantAttackChip;
+    // ADR 0114 owner decision 1: the controller's name when this
+    // permanent is their Ring-bearer, for the marker's title ("Alice's
+    // Ring-bearer"). Supplied by BattlefieldRow; the marker itself
+    // follows `card.ring_bearer` and reads plain "Ring-bearer" without
+    // it.
+    ringBearerOf?: string;
     // #33: request this card's art with fetchpriority="high". Opt-in,
     // set only by Hand.svelte for the viewer's own hand — the art
     // that is above the fold and latency-visible. Card is shared by
@@ -248,6 +256,7 @@
     enchantedPlayer,
     takenFrom,
     cantAttack,
+    ringBearerOf,
     priority = false,
     memberIDs,
     viewerID,
@@ -309,9 +318,14 @@
 
   // ADR 0105 §7: a ready card's accessible name gains a phrase saying
   // what it is ready FOR. Built only while the ring is drawn.
+  //
+  // ADR 0114: a Ring-bearer says so in its name too. The marker's own
+  // label sits inside the card's role, whose children assistive tech
+  // does not read, so the name is the route that reaches it.
+  const ringTitle = $derived(ringBearerTitle(ringBearerOf));
   const accessibleName = $derived.by(() => {
-    if (showBack) return "face-down card";
-    const name = displayName(card);
+    if (showBack) return card.ring_bearer ? `face-down card, ${ringTitle}` : "face-down card";
+    const name = card.ring_bearer ? `${displayName(card)}, ${ringTitle}` : displayName(card);
     if (!ready) return name;
     return readyCardLabel(name, true, readyPhrases(legal, card, readyZone, combatTarget));
   });
@@ -587,6 +601,7 @@
   class:combat-target={combatTarget}
   class:clickable={interactive}
   class:phased-out={phasedOut}
+  class:ring-bearer={!!card.ring_bearer}
   class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
   data-tapped={card.tapped ? "true" : "false"}
@@ -915,6 +930,20 @@
          not its art loaded. -->
     <span class="badge designation" title={designationTitle} aria-label={designationTitle}>
       {designationBadge}
+    </span>
+  {/if}
+  {#if card.ring_bearer}
+    <!-- ADR 0114 owner decision 1: the Ring-bearer's own marker, apart
+         from the designation slot above, because a Ring-bearer can also
+         be monstrous or harnessed. Outside the art / back branches on
+         purpose: the designation was chosen in public, so a face-down
+         Ring-bearer shows it too (ADR 0114 §9). -->
+    <span class="ring-marker" role="img" aria-label="Ring-bearer" title={ringTitle}>
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        {#each ICONS.ring as prim, i (i)}
+          {#if prim.t === "path"}<path d={prim.d} />{/if}
+        {/each}
+      </svg>
     </span>
   {/if}
   {#if anyPip || swordPip || shieldPip}
@@ -1497,6 +1526,59 @@
   }
   .card.ready.ready-idle::after {
     box-shadow: none;
+  }
+  /* ADR 0114 owner decision 1: the Ring-bearer's marker. A gold disc
+     with the ring glyph on the left edge, one badge row down — under
+     CMD, which a commander Ring-bearer also wears, and clear of the
+     designation slot at top centre, so MONSTROUS or HARNESSED shows
+     beside it. The left edge of an untapped tile is the part that
+     stays visible where tiles overlap (see the failed-art pip above),
+     and the ready pips start below it. A tapped tile turns, so the
+     marker follows the failed-art pip to 58% to stay out from under a
+     tapped neighbour. Gold like the Ring chip on the player panel; the
+     same dark ring around it on every theme, because it sits on card
+     art, not on the page. */
+  .card.ring-bearer {
+    --ring-size: max(15px, calc(var(--card-w, 80px) * 0.16));
+    /* The failed-art pip shares the marker's row; it steps right of it. */
+    --art-error-left: calc(var(--ring-size) + 7px);
+  }
+  .ring-marker {
+    position: absolute;
+    top: 21px;
+    left: 3px;
+    z-index: 4;
+    box-sizing: border-box;
+    width: var(--ring-size, 15px);
+    height: var(--ring-size, 15px);
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffe9a8, #d9b45c 60%, #8a6a1e);
+    color: #2a1d00;
+    border: 1px solid rgba(20, 14, 0, 0.8);
+    box-shadow:
+      0 0 0 1px rgba(255, 220, 140, 0.45),
+      0 1px 4px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+  }
+  .card.tapped .ring-marker {
+    top: 58%;
+  }
+  .ring-marker svg {
+    width: 78%;
+    height: 78%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  :global(:root[data-theme="high-contrast"]) .ring-marker {
+    background: #ffd400;
+    color: #000;
+    border-color: #000;
+    box-shadow: 0 0 0 1px #fff;
   }
   /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
      below the top badge row (CMD) and the failed-art pip (22px): that

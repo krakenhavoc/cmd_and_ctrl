@@ -131,17 +131,16 @@ func TestBatch31CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four remaining declared skips must stay out until their seam
+	// The three remaining declared skips must stay out until their seam
 	// lands: a put-a-card-from-hand-onto-the-battlefield prompt (Oviya),
-	// casting from the top of the library (Conspicuous Snoop), a
-	// filtered pick from a revealed hand (Duress), and a continuous
-	// effect with no duration (Tree of Redemption). Manaweft Sliver
-	// came OFF this list with ADR 0093's granted abilities and ships
-	// in manaweft_sliver.go.
+	// casting from the top of the library (Conspicuous Snoop), and a
+	// continuous effect with no duration (Tree of Redemption). Manaweft
+	// Sliver came OFF this list with ADR 0093's granted abilities and
+	// ships in manaweft_sliver.go; Duress came off it with ADR 0116's
+	// filtered revealed-hand pick and ships in duress.go.
 	for oracle, name := range map[string]string{
 		"b01649b8-b0b5-4cf6-aea7-291f3407859e": "Oviya, Automech Artisan",
 		"f5d1bd3c-0e65-4999-a810-881b2389b40e": "Conspicuous Snoop",
-		"33d405ea-7a9a-4970-b70f-9c05d90dd6f0": "Duress",
 		"1372dd15-cdb9-470c-b3e8-3423697e46e8": "Tree of Redemption",
 	} {
 		if _, ok := Lookup(oracle); ok {

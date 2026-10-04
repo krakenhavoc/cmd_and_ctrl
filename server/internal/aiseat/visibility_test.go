@@ -184,7 +184,7 @@ func scenarios() []scenario {
 				bot := g.Seats[botIdx]
 				victim := g.Seats[(botIdx+1)%len(g.Seats)]
 				g.WithWriteLock(func() {
-					g.QueueDiscardFromRevealedHand(bot.ID, victim.ID, uuid.Nil, 1, "Thoughtseize")
+					g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{Chooser: bot.ID, FromPlayer: victim.ID, Count: 1, Reason: "Thoughtseize"})
 				})
 				return room, bot.ID, m
 			},

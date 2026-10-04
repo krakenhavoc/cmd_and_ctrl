@@ -297,6 +297,17 @@ entering creature would be the bot's only untapped creature, which a
 counter would stop from blocking (CR 702.98a). See
 `aiseat/heuristic/riot.go`.
 
+**Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
+CR 903.9a).** When the bot's commander has been put into a graveyard or
+exile, the state-based action asks its owner whether it goes to the
+command zone. The bot says yes, unless the prompt's `playable_from_zone`
+is set, meaning it could cast the commander from where it is (escape,
+flashback, an adventure in exile). Then it says no and leaves the card
+there (owner decision 2). The model prompt names the card and says when
+it is castable where it is. The prompt ships switched off in ADR 0115
+PR 2: until PR 3, the commander-zone question is still the
+`optional_replacement` above.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's
@@ -1574,6 +1585,33 @@ that quietly stops happening. The runtime half is
 `TestEveryShippedTierForwardsItsOptionalHooks`, which builds every
 tier through the factory and asks it everything the runner and the
 enumerator will ask it.
+
+## Choosing a Ring-bearer (ADR 0114 §7)
+
+When the Ring tempts a bot seat that controls two or more creatures, it
+owes a `ring_bearer` prompt (one creature is chosen by the server). The
+enumerator offers one move per creature, labelled `choose your
+Ring-bearer: choose Ring-bearer <name>`, and the prompt always has an
+answer: it is only asked with candidates, and the submit re-check
+refuses only a creature that has gone, leaving the rest open.
+
+The heuristic gives the Ring to the creature that attacks hardest: the
+highest power, then one that can attack this turn (untapped, not
+summoning sick), then the current Ring-bearer, which costs nothing to
+keep. A creature the Ring's "is legendary" would put into the legend
+rule against a same-named legendary permanent the seat already controls
+goes last. The same price orders the pool before the enumerator's cap
+(`legal.Options.OrderRingBearer`, the `aiseat.RingBearerOrderer` hook,
+forwarded through every wrapper like the two above), so on a wide board
+the best candidates are the ones offered.
+
+The model tiers see the Ring in the board text: one `emblem:` line per
+emblem, the Ring with its count ("The Ring (tempted 3 times): …"), and
+a `Ring-bearer` tag on the creature. Legendary and the evasion reach the
+evaluator through the effective type line and the block refusals, with
+nothing new. The Ring's other three lines (ADR 0114 PR 3) are ordinary
+triggers the seat controls: the loot's discard is the usual discard
+prompt, and the end-of-combat sacrifice and the life loss ask nothing.
 
 ## Never offered a banned cast (#760)
 

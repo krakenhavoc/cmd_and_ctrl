@@ -908,9 +908,9 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
 // of the Moon, Blood Moon) and takes the land's own rules text with
 // it.
-// putCounterOnSourceWhileOnBattlefield is the ability effect body
-// behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
-// Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
+// putIndestructibleCounterOnSource is the ability effect body
+// behind "…: Put an indestructible counter on this permanent" (Tekuthal,
+// Inquiry Dominus; Solphim, Mayhem Dominus; Drivnod; Zopandrel): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. The indestructible counter needs nothing
 // else: the engine reads keyword counters itself (CR 122.1b, ADR 0101).
@@ -919,7 +919,7 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
 // Scholar) and a common one outside them.
 //
-// Unlike putCounterOnSourceWhileOnBattlefield beside it, it does NOT
+// Unlike putIndestructibleCounterOnSource beside it, it does NOT
 // check that the source is still on the battlefield: AddCounter is a
 // no-op on a card that has gone, and the two cards that read that
 // check place a keyword counter on a source that must still be there.
@@ -934,12 +934,12 @@ func plusOneCountersOnThis(n int) Effect {
 	}
 }
 
-func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
+func putIndestructibleCounterOnSource() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if !b15OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
-		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.
+		return AddCounter{Target: item.SourceCardID, Kind: game.CounterIndestructible, N: 1}.
 			Apply(NewContext(g, item))
 	}
 }
@@ -1372,4 +1372,31 @@ func returnThisPermanentToOwnersHand(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
+}
+
+// returnThisCardFromYourGraveyardToHand is "return this card from your
+// graveyard to your hand" (Ringwraiths' trigger, Gollum, Patient
+// Plotter's ability) and Spine of Ish Sah's "return it to its owner's
+// hand" from the graveyard it died into. The card may have left the
+// graveyard before the ability resolves; then it does nothing, since
+// the card it names is gone.
+func returnThisCardFromYourGraveyardToHand(g *game.Game, item *game.StackItem) error {
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
+}
+
+// counterTheSpellIfNoManaWasSpent is "counter that spell" behind the
+// intervening "if no mana was spent to cast it" (Vexing Bauble;
+// Boromir, Warden of the Tower). CR 603.4: the "if" is checked again
+// on resolution. A spell that is no longer on the stack answers "known
+// nothing", but CounterTarget on a missing item is already a no-op, so
+// the re-read is the honest check and not the guard.
+func counterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
+	spell := item.Trigger.Event.CardID
+	if !NoManaWasSpentToCast(g, spell) {
+		return nil
+	}
+	return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
 }

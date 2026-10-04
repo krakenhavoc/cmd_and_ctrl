@@ -102,7 +102,7 @@ func (g *Game) activeDrawStepPermissionsLocked(activePlayer uuid.UUID) []boundDr
 			// CatalogAbilityKey: a permanent that has lost all its
 			// abilities grants nothing, exactly as the untap-step
 			// gather reads it.
-			oracle := CatalogAbilityKey(*src)
+			oracle := catalogAbilityKeyOf(src)
 			if oracle == "" {
 				continue
 			}
@@ -130,7 +130,7 @@ func (g *Game) activeDrawStepPermissionsLocked(activePlayer uuid.UUID) []boundDr
 			// CatalogKey, not CatalogAbilityKey: nothing in the game
 			// can name an emblem to remove its abilities (emblem.go),
 			// so there is no removal state to read.
-			oracle := CatalogKey(*src)
+			oracle := catalogKeyOf(src)
 			if oracle == "" {
 				continue
 			}

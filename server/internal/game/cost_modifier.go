@@ -521,14 +521,19 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	var out []boundCostModifier
 	if g.Battlefield != nil && CatalogCostModifiers != nil {
 		for i := range g.Battlefield.Cards {
-			src := g.Battlefield.Cards[i]
 			// CostModifiersForCard: a cost modifier is a static
 			// ability, so a permanent under a CR 613.1f
 			// ability-removing effect stops taxing and stops
 			// discounting (CatalogAbilityKey), and one whose
 			// designation gate is unsatisfied — Fortune Teller's
 			// Talent below level 3 — is not there at all (ADR 0071).
-			mods := CostModifiersForCard(src)
+			// Asked through the pointer, and the permanent copied
+			// only when it has a modifier to bind (#1498).
+			mods := costModifiersOf(&g.Battlefield.Cards[i])
+			if len(mods) == 0 {
+				continue
+			}
+			src := g.Battlefield.Cards[i]
 			for _, m := range mods {
 				// #1184, widened by #1319: a cast, an activation and a
 				// special action are three different announcements,
@@ -832,7 +837,7 @@ func (g *Game) PriceActivation(activator, cardID uuid.UUID, index int, targets [
 			err = ErrCardNotFound
 			return
 		}
-		abilities := ActivatedAbilitiesForCard(*source)
+		abilities := activatedAbilitiesOf(source)
 		if index < 0 || index >= len(abilities) {
 			err = ErrInvalidParam
 			return
@@ -871,7 +876,7 @@ func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool 
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		for _, m := range CostModifiersForCard(g.Battlefield.Cards[i]) {
+		for _, m := range costModifiersOf(&g.Battlefield.Cards[i]) {
 			if m.Activations && m.ReadsTargets {
 				return true
 			}

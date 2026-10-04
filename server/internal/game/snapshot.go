@@ -604,6 +604,10 @@ type playerSnapshot struct {
 	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters           map[string]int    `json:"counters,omitempty"`
 	MaxHandSize        int               `json:"maxHandSize"`
+	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
+	// Additive within v7: a file without it restores a grant that
+	// sorts first.
+	MaxHandSizeAt int64 `json:"maxHandSizeAt,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -699,8 +703,12 @@ type cardSnapshot struct {
 	// ordered at its permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
-	AttackingTarget  uuid.UUID        `json:"attackingTarget"`
-	BlockingTarget   uuid.UUID        `json:"blockingTarget"`
+	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
+	// CR 903.9a check is owed to this commander. Additive within v7;
+	// an older file has none, which is what every game before it was.
+	CommanderReturnDue bool      `json:"commanderReturnDue,omitempty"`
+	AttackingTarget    uuid.UUID `json:"attackingTarget"`
+	BlockingTarget     uuid.UUID `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -818,6 +826,14 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// RingBearer is the CR 701.54b Ring-bearer designation and
+	// RingTemptations the Ring emblem's count of temptations (ADR 0114
+	// §8), both carried for Monstrous's reason: each zero value is a
+	// legal state, so a restore that dropped them would bring a table
+	// back with no Ring-bearers and every Ring at nothing, silently.
+	// Additive within v7: an older binary ignores both keys.
+	RingBearer      bool `json:"ringBearer,omitempty"`
+	RingTemptations int  `json:"ringTemptations,omitempty"`
 	// Unlocked is a Room's two CR 709.5c unlocked designations and
 	// Fused a fused split spell's mark on the stack (ADR 0103). Both
 	// carried: a restore that dropped Unlocked would bring a Room back
@@ -1249,8 +1265,11 @@ type pendingChoiceSnapshot struct {
 	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
 	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
-	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
-	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
+	// ADR 0116: the revealed-hand pick's legal cards and their label.
+	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
+	DiscardLabel   string      `json:"discardLabel,omitempty"`
+	CopyOptions    []uuid.UUID `json:"copyOptions,omitempty"`
+	ScryCards      []uuid.UUID `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -1845,6 +1864,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
@@ -1879,6 +1899,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		RingBearer:               c.RingBearer,
+		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
@@ -1942,6 +1964,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderCasts:     copyIntMap(p.CommanderCasts),
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,
+		MaxHandSizeAt:      p.MaxHandSizeAt,
 		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
@@ -2186,6 +2209,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
+		DiscardOptions:       copyUUIDs(c.DiscardOptions),
+		DiscardLabel:         c.DiscardLabel,
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
@@ -2611,6 +2636,10 @@ func restoreZone(z *zoneSnapshot, fallback ZoneKind) *Zone {
 		out.Cards = make([]Card, len(z.Cards))
 		for i := range z.Cards {
 			out.Cards[i] = restoreCard(&z.Cards[i])
+			// The printed-characteristic cache is derived and never
+			// snapshotted; build it here, as a zone insertion would
+			// (#1498, printed_cache.go).
+			out.Cards[i].stampPrinted()
 		}
 	}
 	return out
@@ -2649,6 +2678,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
@@ -2682,6 +2712,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		RingBearer:               c.RingBearer,
+		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
@@ -2776,6 +2808,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,
+		MaxHandSizeAt:      p.MaxHandSizeAt,
 		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no
@@ -2973,6 +3006,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
+		DiscardOptions:       copyUUIDs(c.DiscardOptions),
+		DiscardLabel:         c.DiscardLabel,
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
