@@ -1,7 +1,7 @@
 # ADR 0113 — Small seams for the S58 deck requests
 
 **Status:** Proposed · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
-**Owner decisions:** pending. Two questions are open; see [Open questions for the owner](#open-questions-for-the-owner). Everything else below is settled by the rules or by an earlier owner decision, and is written as decided.
+**Owner decisions:** both questions answered on 2026-10-03; see [Owner decisions (2026-10-03)](#owner-decisions-2026-10-03). Everything else below is settled by the rules or by an earlier owner decision, and is written as decided.
 **Issues:** [#2072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2072) (a spell that reads what its sacrifice cost took), [#2073](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2073) (annihilator), [#2074](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2074) (statics that set or change a maximum hand size), [#2075](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2075) (undying and persist).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-03. I ran `git fetch --all --prune` and read the `docs/decisions/` file names on all 36 remote heads (`origin/develop`, `origin/main` and 34 chore, docs, feat, fix, repro and wip branches). The highest number anywhere is 0112. This one takes **0113**.
 **Amends:** [ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) (owner decision 5: Corpse Cobble's list of sacrificed permanents, §1 here). A pointer line goes into it with the first implementation PR.
@@ -75,7 +75,7 @@ No wire change: the payment record is not on the wire. The enumerator already of
 - **Fling, Kazuul's Fury // Kazuul's Cliffs, Momentous Fall, Tend the Pests: Full**, each verified against its oracle text and rulings. Kazuul's Fury is a front face: its land back is already in `mdfc_lands.go`, so the face gets its own file in the shape of `agadeems_awakening.go`. Tend the Pests creates `PestToken`, which exists.
 - **Corpse Cobble: Full** (owner decision 5 of ADR 0100, closed by this record). Its flashback still pays the additional cost (2021-09-24 ruling), and that path already works.
 - **Extus, Oriq Overlord:** checked in the PR. It lands only if its magecraft on a copy and its Avatar token's attack trigger are expressible; otherwise it moves to the row for that blocker, with the reason.
-- The rest of the pool follows ADR 0106 owner decision 6, subject to [question 2](#open-questions-for-the-owner): Thud, Eldritch Evolution, Neoform, Carrion, Life's Legacy and the rest of the 34 spells that read their sacrificed permanent.
+- The rest of the pool follows ADR 0106 owner decision 6, per [owner decision 2](#owner-decisions-2026-10-03): Thud, Eldritch Evolution, Neoform, Carrion, Life's Legacy and the rest of the 34 spells that read their sacrificed permanent.
 
 ### Tests
 
@@ -133,7 +133,7 @@ The token reaches the card view as `annihilator 4`, and the client's keyword bad
 
 - **Kozilek, Butcher of Truth and Ulamog, the Infinite Gyre: Full.** Cast trigger (Kozilek, the Great Distortion's shape; the Gyre's "destroy target permanent"), indestructible for the Gyre, the token, and the shuffle trigger.
 - **Ulamog, the Defiler: Full.** Cast trigger (Peer into the Abyss's half, rounded up, on a target opponent), `WardSacrificeN(2)`, entry counters equal to the greatest mana value in exile, and `AnnihilatorCounted`.
-- Creatures whose only text is annihilator and other canonical keywords need no card file (Ulamog's Crusher). The rest of the pool follows ADR 0106 owner decision 6, subject to [question 2](#open-questions-for-the-owner): Artisan of Kozilek, Pathrazer of Ulamog, It That Betrays, Eldrazi Conscription and the others.
+- Creatures whose only text is annihilator and other canonical keywords need no card file (Ulamog's Crusher). The rest of the pool follows ADR 0106 owner decision 6, per [owner decision 2](#owner-decisions-2026-10-03): Artisan of Kozilek, Pathrazer of Ulamog, It That Betrays, Eldrazi Conscription and the others.
 
 ### Tests
 
@@ -188,14 +188,14 @@ A new keyword row: `annihilator`, **Implemented**, `Rules` 702.86, 508.3a, 508.5
 
 ### Wire, client and bot
 
-No protocol change: `max_hand_size` is still the effective value, −1 or a number from 0 up. The client shows it only in the discard prompt today; whether the seat panel should show a changed maximum is [question 1](#open-questions-for-the-owner). The bot answers the cleanup discard prompt as it does now.
+No protocol change: `max_hand_size` is still the effective value, −1 or a number from 0 up. The client shows it only in the discard prompt today; the seat panel also shows a changed maximum as a badge ([owner decision 1](#owner-decisions-2026-10-03)). The bot answers the cleanup discard prompt as it does now.
 
 ### Cards
 
 - **Jin-Gitaxias, Core Augur: Full.** Flash, the end-step draw seven, and `{HandSizeEachOpponent, Modify, −7}`.
 - **Null Profusion: Full.** "Skip your draw step" (`skip_draw_step.go`), "whenever you play a card, draw a card" (a land played or a spell cast, never a copy: the 2007-02-01 ruling), and `{HandSizeYou, Set, 2}`. The PR verifies that the play-a-card trigger exists without Prosper's from-exile filter; if it doesn't, the PR adds it.
 - **Price of Knowledge: Full.** `{HandSizeEachPlayer, NoMaximum}` and the each-opponent upkeep damage equal to that player's hand size, counted at resolution (2013-10-17 ruling).
-- The rest of the pool follows ADR 0106 owner decision 6, subject to [question 2](#open-questions-for-the-owner): Gnat Miser, Locust Miser, Cursed Rack (a chosen opponent, set to four), Anvil of Bogardan and the others.
+- The rest of the pool follows ADR 0106 owner decision 6, per [owner decision 2](#owner-decisions-2026-10-03): Gnat Miser, Locust Miser, Cursed Rack (a chosen opponent, set to four), Anvil of Bogardan and the others.
 
 ### Tests
 
@@ -264,7 +264,7 @@ The tokens reach the card view, and the badge row shows the three-letter text fa
 - **Gleeful Arsonist: Full.** The opponent-casts-a-noncreature-spell trigger is Kambal, Consul of Allocation's shape; the damage is its power at resolution, or its last-known power (2024-09-20 ruling). Undying is `PrintedKeywords`.
 - **Persistent Constrictor: Full.** At each opponent's upkeep, that player loses 1 life and up to one target creature they control gets a -1/-1 counter. Per the 2024-09-20 ruling, an illegal target means no life is lost either. Persist is `PrintedKeywords`.
 - **Murderous Redcap: Caveats → Full.** The caveat goes, and `PrintedKeywords` gains `persist`.
-- Creatures whose only text is undying or persist and other canonical keywords need no file (Young Wolf, Butcher Ghoul, Safehold Elite). The rest of the pool follows ADR 0106 owner decision 6, subject to [question 2](#open-questions-for-the-owner): Kitchen Finks, Glen Elendra Archmage, Strangleroot Geist, Geralf's Messenger, Mikaeus, the Unhallowed, Cauldron Haze and the others.
+- Creatures whose only text is undying or persist and other canonical keywords need no file (Young Wolf, Butcher Ghoul, Safehold Elite). The rest of the pool follows ADR 0106 owner decision 6, per [owner decision 2](#owner-decisions-2026-10-03): Kitchen Finks, Glen Elendra Archmage, Strangleroot Geist, Geralf's Messenger, Mikaeus, the Unhallowed, Cauldron Haze and the others.
 
 ### Tests
 
@@ -312,11 +312,7 @@ PRs 1 and 2 touch nothing the others touch, so they can go in parallel with ever
 
 ---
 
-## Open questions for the owner
+## Owner decisions (2026-10-03)
 
-1. **Showing a changed maximum hand size (§3).** Today a player sees their maximum only in the cleanup discard prompt. With Jin-Gitaxias out, every opponent's maximum is zero.
-   - **(a) Recommended:** the seat panel shows a small badge when a player's effective maximum is not seven ("Hand max 0", "No hand max"), from the existing `max_hand_size`. No protocol change.
-   - (b) No client change. Players learn it at cleanup.
-2. **How many cards each PR lands.** ADR 0106 owner decision 6 is "the named waiting cards plus every other card of the seam that needs no other missing primitive". Here the pools are 34 sacrifice-reading spells (§1), 18 annihilator cards (§2), 23 hand-size cards (§3) and 62 undying or persist cards (§4), though the keyword-only creatures in §2 and §4 need no file at all.
-   - **(a) Recommended:** apply decision 6 as before. Each PR lands its named cards plus every pool card that needs nothing else, each verified against its full oracle text; anything that needs more goes on a `Waiting` list with the reason.
-   - (b) Each PR lands only the named cards (and Corpse Cobble and the Redcap's caveat). The rest of each pool follows in one card batch after the four seams have merged.
+1. **Showing a changed maximum hand size (§3): yes.** The seat panel shows a small badge when a player's effective maximum is not seven ("Hand max 0", "No hand max"), from the existing `max_hand_size`. No protocol change. Rejected: no client change.
+2. **How many cards each PR lands: the whole pool.** ADR 0106 owner decision 6 applies as before: each seam PR also lands every other catalog-pool card that the seam alone unblocks, each verified against its full oracle text; anything that needs more goes on a `Waiting` list with the reason. A seam may split into a seam PR plus pool PRs. Rejected: named cards only, the rest in one batch after the four seams.
