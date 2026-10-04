@@ -53,6 +53,7 @@
   import { manaRowNeedsPicker } from "../../manaSource";
   import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
+  import ManaCost from "./ManaCost.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
@@ -829,8 +830,9 @@
       </span>
     {/if}
     {#if showManaCost && card.mana_cost}
-      <span class="badge cost" title={`mana cost ${card.mana_cost}`} aria-label="mana cost">
-        {card.mana_cost}
+      <!-- #2231: the printed cost as pips; the badge keeps a spoken name. -->
+      <span class="badge cost" title={`mana cost ${card.mana_cost}`}>
+        <ManaCost cost={card.mana_cost} size={15} />
       </span>
     {/if}
     <CounterPips counters={card.counters} />
@@ -1629,21 +1631,18 @@
   .badge.cost {
     /* Top-right to mirror the printed-card convention. Only shown in
        hand-zone presentations via the showManaCost prop, so no clash
-       with the goad / damage battlefield badges. Monospace so cost
-       strings like "{W}{U}{B}{R}{G}" stay legible at small sizes. */
+       with the goad / damage battlefield badges. Drawn as pips (#2231). */
     left: auto;
     right: 3px;
     top: calc(3px + var(--face-top, 0px));
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 9px;
-    letter-spacing: 0;
-    color: var(--gold);
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 3px;
+    border-radius: 999px;
     background: rgba(10, 14, 26, 0.92);
     border: 1px solid rgba(200, 168, 106, 0.5);
-    max-width: 72%;
+    max-width: 90%;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   /* ADR 0105 (#1789): the "ready" ring. Static on purpose — forty
      cards animating a box-shadow is the cost §5 rules out. Two parts:

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManaCost from "./ManaCost.svelte";
   // ManaAbilityMenu — small popover anchored to a battlefield permanent
   // that lists the card's activated mana abilities (S15). One button
   // per entry in card.mana_abilities; click fires the supplied
@@ -250,8 +251,8 @@
              engine actually charges (charged_mana_cost); the tooltip
              names the printed cost only when a discount made the two
              differ. -->
-        <span class="cost" aria-label="mana cost" title={costNote || `mana cost ${a.mana_cost}`}>
-          {chargedManaCostLabel(a)}
+        <span class="cost" title={costNote || `mana cost ${a.mana_cost}`}>
+          <ManaCost cost={chargedManaCostLabel(a)} size={13} />
         </span>
       {/if}
       {#if a.sacrifice_cost || a.sacrifice_options}
@@ -295,8 +296,8 @@
                Label text already prints the ability's cost baked in
                by hand, so this is the ONE place a discount that made
                the printed text stale is visible. -->
-          <span class="cost" aria-label="mana cost" title={costNote || `mana cost ${a.mana_cost}`}>
-            {chargedManaCostLabel(a)}
+          <span class="cost" title={costNote || `mana cost ${a.mana_cost}`}>
+            <ManaCost cost={chargedManaCostLabel(a)} size={13} />
           </span>
         {/if}
       </button>
