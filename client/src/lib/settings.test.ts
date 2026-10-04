@@ -394,6 +394,70 @@ describe("settings", () => {
     expect(s.gameplay.stackHoldMs).toBe(0);
   });
 
+  // ADR 0118 §1, owner decision 5: strict payment is the default, and
+  // every existing player is moved to it once. A stored false from
+  // before v19 is the old default materialised, so it moves; from v19
+  // on it is a choice and is kept.
+  it("defaults strictMana on for a new player", async () => {
+    const { settings, defaultSettings } = await freshModule();
+    expect(defaultSettings().gameplay.strictMana).toBe(true);
+    expect(get(settings).gameplay.strictMana).toBe(true);
+  });
+
+  it("v18 → v19 writes strictMana true whatever was stored", async () => {
+    for (const version of [4, 15, 18]) {
+      for (const stored of [false, true, "no", undefined]) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({
+            __version: version,
+            gameplay: { strictMana: stored, smartAutoPass: false },
+          }),
+        );
+        const { settings, SETTINGS_VERSION } = await freshModule();
+        const s = get(settings);
+        expect(SETTINGS_VERSION).toBe(19);
+        expect(s.__version).toBe(SETTINGS_VERSION);
+        expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
+        expect(s.gameplay.smartAutoPass).toBe(false);
+      }
+    }
+  });
+
+  it("v19 keeps a player's choice to turn strict payment off", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 19, gameplay: { strictMana: false } }),
+    );
+    const mod = await freshModule();
+    expect(get(mod.settings).gameplay.strictMana).toBe(false);
+    // It survives the save and the next load: the move happens once.
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.strictMana).toBe(false);
+  });
+
+  it("moves a synced copy written before v19 to strict, and keeps a v19 copy's off", async () => {
+    const m = await freshModule();
+    const base = { ...m.defaultSettings(), gameplay: { ...m.defaultSettings().gameplay } };
+    base.gameplay.strictMana = false;
+    for (const version of [15, 18]) {
+      const moved = m.applySyncedCopy(base, { gameplay: { strictMana: false } }, version);
+      expect(moved.gameplay.strictMana, `v${version} copy`).toBe(true);
+    }
+    const kept = m.applySyncedCopy(base, { gameplay: { strictMana: false } }, 19);
+    expect(kept.gameplay.strictMana).toBe(false);
+  });
+
+  it("v19 falls back to the default for a strictMana that is not a boolean", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 19, gameplay: { strictMana: "off" } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).gameplay.strictMana).toBe(true);
+  });
+
   // #1467 seeded stackStyle at v14; since v17 the seeded value is the
   // pile (ADR 0119 §1), and nothing else stored moves.
   it("a v13 blob gets the default stack style without disturbing stored choices", async () => {

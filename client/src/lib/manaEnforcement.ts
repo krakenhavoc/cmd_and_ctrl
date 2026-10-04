@@ -16,17 +16,26 @@
 // such retry, so the engine taps the lands itself (as it already does
 // for every bot activation, special action and attack tax) and refuses
 // only when the board cannot pay.
+//
+// ADR 0118 §1 (#2188): strict is the default, and a clicked cast is
+// stamped `auto_tap` too, as an activation and a drag already are. A
+// click on a card the board can pay for taps the lands and casts it in
+// one click; the server spends what is floating first and plans only
+// what the pool is missing (ADR 0118 PR 3). With the setting off, a
+// cast is stamped `strict: false` exactly as before.
 
 // stampManaEnforcement returns `params` with the enforcement flags the
-// setting asks for. A payload that already says `strict` (the cast
-// override toast's force_cast, the auto-tap retry) is left alone.
+// setting asks for. A payload that already says `strict` (Cast anyway's
+// force_cast, the auto-tap retry, a drag) is left alone.
 export function stampManaEnforcement(
   type: string,
   params: Record<string, unknown>,
   strictMana: boolean,
 ): Record<string, unknown> {
   if (params.strict !== undefined) return params;
-  if (type === "cast_spell") return { ...params, strict: strictMana };
+  if (type === "cast_spell") {
+    return strictMana ? { ...params, strict: true, auto_tap: true } : { ...params, strict: false };
+  }
   // Only the catalog path (an ability_index) pays a real cost; the
   // free-form "label" announce is a sandbox stack item with nothing to
   // charge.

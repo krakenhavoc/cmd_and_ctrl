@@ -616,7 +616,14 @@
   // proceed without touching the pool). Cleared when the next
   // snapshot or non-mana error arrives. lastError is already
   // destructured at the top of this script from the GameClient.
-  let manaOverride = $state<{ cardID: string; missing: string[] } | null>(null);
+  //
+  // ADR 0118 §1: `autoTapped` is read from the refused payload, not
+  // from the setting. A cast that already had auto_tap (every clicked
+  // cast under strict) found no plan, so the request drops "Auto-tap &
+  // cast" and Cancel becomes its primary.
+  let manaOverride = $state<{ cardID: string; missing: string[]; autoTapped: boolean } | null>(
+    null,
+  );
   $effect(() => {
     const err = $lastError;
     if (!err) {
@@ -627,7 +634,11 @@
       manaOverride = null;
       return;
     }
-    manaOverride = { cardID: err.cardID, missing: err.missing ?? [] };
+    manaOverride = {
+      cardID: err.cardID,
+      missing: err.missing ?? [],
+      autoTapped: lastCastByCardID.get(err.cardID)?.auto_tap === true,
+    };
   });
   // ADR 0093 Decision 5: a stale ability ref. The row the player
   // clicked moved because a granted ability appeared or vanished since
@@ -1440,11 +1451,16 @@
   );
   const manaDockRequest = $derived(
     manaOverride
-      ? insufficientManaRequest(manaOverride.missing, cardNameAnywhere(manaOverride.cardID), {
-          onAutoTap: openAutoTap,
-          onCastAnyway: castAnyway,
-          onCancel: dismissManaOverride,
-        })
+      ? insufficientManaRequest(
+          manaOverride.missing,
+          cardNameAnywhere(manaOverride.cardID),
+          {
+            onAutoTap: openAutoTap,
+            onCastAnyway: castAnyway,
+            onCancel: dismissManaOverride,
+          },
+          { autoTapped: manaOverride.autoTapped },
+        )
       : null,
   );
   // ---- Inline choices in the action dock (ADR 0111 PR 5) ----

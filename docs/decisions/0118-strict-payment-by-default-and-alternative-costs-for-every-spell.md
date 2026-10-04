@@ -106,6 +106,8 @@ No battlefield static adds an offer to every spell. Standing permissions are der
 
 The label stays "Strict mana enforcement".
 
+*Note, 2026-10-04 (PR 4):* v16, v17 and v18 were taken before PR 4 landed (#2209 and ADR 0119, the last in #2241), so this migration is settings **v19**. Read "v16" and "v15" in this ADR as v19 and v18.
+
 **The practice table and the tutorial** (amends ADR 0076 §2.1 step 1 and §2.2). The practice table keeps its four forced settings and their restore on every exit path, but forces `strictMana` **on**: the tutorial teaches the table the player will meet. Step 1's body becomes: "You are seated against a practice bot. Click a card your lands can pay for and the game taps them for you. You can undo, so nothing here can go wrong." The header note at `tutorialSteps.ts:35-38` is rewritten to say the move list and the cast agree. No step changes its anchor, predicate or event. Step 5 still taps a Forest, and the pool top-up means step 6's one-drop is paid from that {G} rather than from a second land. ADR 0076's Context line "`strictMana` is off by default" becomes history.
 
 **Bots.** Nothing changes for them. They send the enumerator's moves verbatim, and every cast move was strict and auto-tapped already (`legal/cast.go:14-16`). They gain the pool top-up through the shared affordability check (§1), and the #2163 offers through `CastOffersForLocked` (§3).

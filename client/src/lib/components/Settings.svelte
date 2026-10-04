@@ -962,11 +962,13 @@
               Strict mana enforcement
               {#if isFresh("gameplay.strictMana")}<span class="saved">✓ saved</span>{/if}
             </label>
+            <!-- ADR 0118 §1: the help text is the ADR's, word for word. -->
             <p class="help">
-              When on, the server checks your mana pool before letting a spell resolve and enforces
-              commander tax (CR&nbsp;903.8). If you're short, a toast lets you cast anyway by
-              overriding the gate for that one spell. Default is off — the sandbox treats mana as
-              paper-tracked.
+              On (the default): a spell or ability costs what it says. Clicking or dragging a card
+              taps your lands for it, spending mana already in your pool first. A card your board
+              can't pay for is dimmed; right-click it for &ldquo;Cast anyway (don't pay)&rdquo;,
+              which the game log shows to the table. Off: the sandbox — mana is tracked on paper and
+              nothing is charged.
             </p>
 
             <label>
