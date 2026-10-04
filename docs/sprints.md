@@ -104,6 +104,7 @@ planned just-in-time from the S12 pain-point triage.
 | S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
 | S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | in progress |
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | in progress |
+| S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | planned     |
 
 ### How to read the status column
 
@@ -3407,6 +3408,37 @@ From [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229):
 ### Status
 
 **In progress.** ADR 0121 was accepted on 2026-10-04. No delivery PR has opened yet.
+
+---
+
+## S62 — An agent at the table
+
+**Phase:** 7 · **Goal:** the owner can seat Claude Code, Codex or any MCP client at a real table as an extra player: a local stdio binary in a guest seat, joined by invite link, seeing only what that seat sees over the normal WebSocket, with a permanent "AI agent" badge the server records and only real choices reaching the model. Per [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md). Tracking issue [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230), which is also the change's issue.
+
+Opened 2026-10-04 from the owner's request to play Claude Code or Codex as an additional player. The owner answered five questions the same day, recorded on #2230 and in ADR 0122: an MCP server in a normal seat with no special access; a guest seat by invite link; a visible badge recorded by the server; trivial windows answered the way bot Layer A answers them; and a local binary that connects out over the WebSocket with no new server endpoint. Three more answers came in review the same day: the server flags a truncated move list and gives a seat its own full list on request; the server acknowledges every applied action; and the module moves to Go 1.27, the newest supported release, so the binary can use the official MCP Go SDK (the owner first said 1.25, then chose 1.27 because 1.25 no longer gets security fixes). The members are ADR 0122's Delivery PRs.
+
+- [ ] ADR 0122: an agent at the table, a local MCP seat (PR 1, with this section)
+- [ ] PR 2 — server, the badge: an `agent` field on both join routes, refused with a signed-in session; `is_agent` / `agent_client` on the seat, carried in the snapshot (additive, no migration) and on `PlayerView` and `SeatInfo`; an agent seat is never host and cannot link Discord
+- [ ] PR 3 — client: the "AI agent" chip in the bot chip's slot on the seat, reading "thinking…" while it holds priority, and on the lobby list, the invite preview and chat
+- [ ] PR 4 — refactor: the bot prompt's board rendering moves to `aiseat/boardtext` with byte-identical prompts
+- [ ] PR 5 — server, the wire: `legal_moves_truncated`; a seat's own full move list on request (`legal_moves_request`); the enumerator reports every cut it makes, with a one-card expansion; an `ack` frame for every applied action, and the browser's handler for it
+- [ ] PR 6 — Go 1.27 and golangci-lint v2.14.0 (or Go 1.26 with v2.13.2+ under the ADR's fallback rule): every pin (go.mod, CI and nightly workflows, `scripts/go-docker.sh` with only the three shared volumes, the Makefile, the lint config, the devcontainer, AGENTS.md §5)
+- [ ] PR 7 — the binary: `cmd/mcpseat` over `internal/mcpseat` on `modelcontextprotocol/go-sdk` v1.8.0 (stdio only, behind one file), ten tools, Layer A imported, the token file and rate limits, the import gates, and an end-to-end test against an in-process server with no model call
+- [ ] PR 8 — docs: `docs/mcp-seat.md` with the Claude Code and Codex recipes, AGENTS.md §3 and §5 entries; one real game on cmd-dev with its numbers appended to ADR 0122
+
+### Exit criteria
+
+From the tracker, [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230):
+
+1. ADR 0122 is accepted and every PR in its Delivery table has merged.
+2. On cmd-dev, the owner plays a game to the end with Claude Code (or Codex) in a seat. The other seats see the "AI agent" chip, and the agent is shown only real choices.
+3. That game's decisions, absorption, time and token figures are recorded in ADR 0122.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0122).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**Planned.** ADR 0122 was proposed on 2026-10-04 and amended the same day with three review answers. It waits on the owner's review of its remaining calls. The Go version is settled: 1.27.
 
 ---
 

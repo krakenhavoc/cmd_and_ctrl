@@ -28,6 +28,11 @@
     // the default, and what every pile shows while highlights are off
     // — draws nothing.
     readyCount?: number;
+    // ADR 0119 §3: which of the seat's piles this is ("library",
+    // "graveyard", "exile") and whose, as `data-pile` and
+    // `data-pile-owner`, so a card leaving the stack can fly to it.
+    pile?: string;
+    owner?: string;
   }
 
   const {
@@ -37,6 +42,8 @@
     disabled = false,
     onClick,
     readyCount = 0,
+    pile,
+    owner,
   }: Props = $props();
 
   const topCard = $derived(zone.cards.length > 0 ? zone.cards[zone.cards.length - 1] : null);
@@ -61,6 +68,8 @@
   class:has-cards={zone.count > 0}
   class:ready={readyCount > 0}
   {disabled}
+  data-pile={pile}
+  data-pile-owner={owner}
   onclick={onClick}
   aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}`}
   title={readyCount > 0

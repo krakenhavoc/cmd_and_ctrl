@@ -388,6 +388,28 @@ describe("settings", () => {
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
   });
 
+  // ADR 0119 §2: the stack hold arrives on, at 2 s, for everyone.
+  it("v17 → v18 seeds the stack hold at 2 s, and keeps a stored choice", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, gameplay: { bluffInstant: true } }),
+    );
+    let mod = await freshModule();
+    let s = get(mod.settings);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(18);
+    expect(s.gameplay.stackHoldMs).toBe(2000);
+    expect(s.gameplay.bluffInstant).toBe(true);
+
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 18, gameplay: { stackHoldMs: 0 } }),
+    );
+    mod = await freshModule();
+    s = get(mod.settings);
+    expect(s.gameplay.stackHoldMs).toBe(0);
+  });
+
   // #1467 seeded stackStyle at v14; since v17 the seeded value is the
   // pile (ADR 0119 §1), and nothing else stored moves.
   it("a v13 blob gets the default stack style without disturbing stored choices", async () => {

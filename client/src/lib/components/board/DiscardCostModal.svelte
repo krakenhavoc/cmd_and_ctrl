@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManaCost from "./ManaCost.svelte";
   // DiscardCostModal — S21 sub-PR 5: pick the cards that pay a
   // spell's additional cost ("As an additional cost to cast this
   // spell, discard a card").
@@ -123,7 +124,7 @@
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name">{c.name}</span>
               {#if c.mana_cost}
-                <span class="note cost">{c.mana_cost}</span>
+                <span class="note cost"><ManaCost cost={c.mana_cost} size={14} /></span>
               {/if}
             </button>
           </li>

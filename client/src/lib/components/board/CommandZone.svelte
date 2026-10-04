@@ -195,6 +195,8 @@
   class="cmd-zone"
   class:self={isSelf}
   class:empty={commanders.length === 0}
+  data-pile="command"
+  data-pile-owner={seat.id}
   aria-label={`${seat.name} command zone, ${zone.count} card${zone.count === 1 ? "" : "s"}`}
 >
   <div class="card-slot" bind:this={cardSlot}>

@@ -139,11 +139,22 @@ miss. **The table never waits on a model.**
 single decision a bot makes, not once when the seat was added, so a
 host changing it mid-game is live on the bot's very next move:
 
-| Table pace | `MinThink` | `MaxThink` |
-|---|---|---|
-| `fast` | 0 | 2s |
-| `normal` (default) | 700ms | 2s |
-| `slow` | 2s | 8s |
+| Table pace | `MinThink` | `MaxThink` | Stack hold |
+|---|---|---|---|
+| `fast` | 0 | 2s | 0 |
+| `normal` (default) | 700ms | 2s | 2s |
+| `slow` | 2s | 8s | 3s |
+
+The **stack hold** ([ADR 0119](decisions/0119-a-stack-you-can-follow.md)
+§2) is how long another seat's spell or ability must have been on top
+of the stack before the bot passes on it, so the people at the table
+can read it. It is measured from the commit at which the bot first saw
+the item, and it overlaps `MinThink` rather than adding to it. A bot
+passes on its own item at once (CR 117.3c), and if the top of the stack
+changes while it waits it decides again. Every seat measures from about
+the same moment, so a table of bots holds once, not once per seat. A
+seat built with a hand-made `Config` (tests) or stepped in lockstep
+(`boteval arena --lockstep`) never holds.
 
 `strong`'s longer 5s deadline is never shortened by the table pace —
 a `fast` table still gives a model-backed seat its full budget, and

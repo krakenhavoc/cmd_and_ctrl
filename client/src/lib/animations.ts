@@ -124,7 +124,9 @@ export function dealIn(node: HTMLElement): TransitionConfig {
 // Played-card-to-battlefield travel is intentionally NOT modelled here
 // because the new hand DOM node and the new battlefield DOM node are
 // in different parents; a true cross-zone fly-in would need a portal /
-// FLIP step. Saving that for a follow-up if it's missed.
+// FLIP step. ADR 0119 §3 built that step for one case, a card leaving
+// the stack (`flyTo` below, driven by StackLinger.svelte); the hand
+// still has none.
 export function dealOut(node: HTMLElement): TransitionConfig {
   return {
     // Played-from-hand uses cardPlay; pure draw discards (less
@@ -212,4 +214,34 @@ export function fadeOut(node: HTMLElement): TransitionConfig {
       });
     },
   };
+}
+
+// flyTo is the FLIP step for a card leaving the stack (ADR 0119 §3).
+// The caller draws a copy of the card where it was, in a layer over the
+// whole board (the portal), and passes the translation and scale that
+// put it on its landing (stackLinger.ts flightTransform). The copy
+// travels there and fades as it lands. Gated by cardPlay under the
+// master switch and scaled by speed, like every other card motion;
+// with motion off it settles at once. Resolves when the flight is over.
+const FLIGHT_EASE = "power2.inOut";
+export function flyTo(
+  el: HTMLElement,
+  to: { x: number; y: number; scale: number },
+  baseMs: number,
+): Promise<void> {
+  const ms = gatedDuration(baseMs, cfg.cardPlay);
+  return new Promise((resolve) => {
+    gsap.to(el, {
+      x: to.x,
+      y: to.y,
+      scale: to.scale,
+      opacity: 0.35,
+      transformOrigin: "0 0",
+      duration: ms / 1000,
+      ease: FLIGHT_EASE,
+      overwrite: "auto",
+      onComplete: () => resolve(),
+      onInterrupt: () => resolve(),
+    });
+  });
 }
