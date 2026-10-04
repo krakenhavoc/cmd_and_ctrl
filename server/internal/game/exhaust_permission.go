@@ -94,11 +94,16 @@ var CatalogExhaustPermissions func(key string) []ExhaustPermission
 // applied. CatalogAbilityKey and not CatalogKey, because this is a
 // static ability and a permanent under a CR 613.1f ability-removing
 // effect has stopped granting it (ADR 0046).
-func ExhaustPermissionsForCard(c Card) []ExhaustPermission {
+func ExhaustPermissionsForCard(c Card) []ExhaustPermission { return exhaustPermissionsOf(&c) }
+
+// exhaustPermissionsOf is ExhaustPermissionsForCard without the copy:
+// Card is over a kilobyte and this is asked per permanent per walk
+// (#1498).
+func exhaustPermissionsOf(c *Card) []ExhaustPermission {
 	if CatalogExhaustPermissions == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -123,9 +128,9 @@ func (g *Game) exhaustPermittedLocked(asker uuid.UUID) bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		src := g.Battlefield.Cards[i]
-		for _, perm := range ExhaustPermissionsForCard(src) {
-			if perm.Applies != nil && perm.Applies(g, asker, src) {
+		src := &g.Battlefield.Cards[i]
+		for _, perm := range exhaustPermissionsOf(src) {
+			if perm.Applies != nil && perm.Applies(g, asker, *src) {
 				return true
 			}
 		}

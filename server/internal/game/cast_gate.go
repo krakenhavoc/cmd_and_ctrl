@@ -143,11 +143,15 @@ var CatalogCastRestrictions func(oracleID string) []CastRestriction
 // contributes right now: none for a permanent under an
 // ability-removing effect (CatalogAbilityKey), and none for one whose
 // designation gate is unsatisfied.
-func CastRestrictionsForCard(c Card) []CastRestriction {
+func CastRestrictionsForCard(c Card) []CastRestriction { return castRestrictionsOf(&c) }
+
+// castRestrictionsOf is CastRestrictionsForCard without the copy: Card
+// is over a kilobyte and this is asked per permanent per walk (#1498).
+func castRestrictionsOf(c *Card) []CastRestriction {
 	if CatalogCastRestrictions == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -243,12 +247,14 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	// card's own permission to exist, and it is the cheaper check on
 	// the overwhelmingly common board where nothing restricts
 	// anything.
-	refusedBy := func(src Card) *CantCastError {
-		for _, r := range CastRestrictionsForCard(src) {
+	// A pointer, so the walk copies a permanent only when it actually
+	// carries a restriction — nearly never (#1498).
+	refusedBy := func(src *Card) *CantCastError {
+		for _, r := range castRestrictionsOf(src) {
 			if r.Forbids == nil {
 				continue
 			}
-			q.Source = src
+			q.Source = *src
 			if r.Forbids(q) {
 				return &CantCastError{Reason: r.Label, Source: src.InstanceID}
 			}
@@ -258,7 +264,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	if CatalogCastRestrictions != nil {
 		if g.Battlefield != nil {
 			for i := range g.Battlefield.Cards {
-				if err := refusedBy(g.Battlefield.Cards[i]); err != nil {
+				if err := refusedBy(&g.Battlefield.Cards[i]); err != nil {
 					return err
 				}
 			}
@@ -275,7 +281,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 		// owner, so its presence is the duration.
 		var refused *CantCastError
 		g.forEachEmblemLocked(func(src *Card) bool {
-			refused = refusedBy(*src)
+			refused = refusedBy(src)
 			return refused == nil
 		})
 		if refused != nil {

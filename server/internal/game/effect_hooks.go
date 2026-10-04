@@ -34,7 +34,14 @@ import (
 //
 // The cost, stated plainly: a call site that FORGETS CatalogKey
 // silently resolves to face 0's spec rather than erroring.
-func CatalogKey(c Card) string {
+func CatalogKey(c Card) string { return catalogKeyOf(&c) }
+
+// catalogKeyOf is CatalogKey without the copy: Card is over a
+// kilobyte, and copying one per catalog lookup was most of
+// CatalogAbilityKey's flat time in a bot table's profile (#1498).
+// Internal callers that hold a *Card use this; CatalogKey stays the
+// exported by-value shape every catalog file and open branch calls.
+func catalogKeyOf(c *Card) string {
 	// CR 708.2a, ADR 0069 decision 4: a face-down permanent has NO
 	// TEXT — no triggered, activated, mana, static or replacement
 	// abilities, no cost modifiers, no "as enters" hook, no printed
@@ -56,7 +63,7 @@ func CatalogKey(c Card) string {
 	// exile needs (#658). Nothing off the battlefield runs a trigger,
 	// static or replacement off a catalog entry (CR 113.6), so
 	// keeping it costs nothing.
-	if c.FaceDownIsPermanent() {
+	if c.faceDownPermanent() {
 		return ""
 	}
 	base := c.OracleID
@@ -77,7 +84,7 @@ func CatalogKey(c Card) string {
 	switch {
 	case c.Fused && c.OracleID != "":
 		base = FusedCatalogKey(c.OracleID)
-	case c.ActiveFace != 0 && c.OracleID != "" && !HasSharedTypeLine(c):
+	case c.ActiveFace != 0 && c.OracleID != "" && !hasSharedTypeLine(c):
 		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
 	}
 	// CR 707.9a, #665: an ability a copy effect GRANTED is part of

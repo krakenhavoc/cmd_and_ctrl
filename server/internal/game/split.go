@@ -40,7 +40,10 @@ const splitNameSeparator = " // "
 // rules apply to. A CR 722.3c prepare copy is excluded: its
 // characteristics are the prepare spell's alone (ADR 0090), and its
 // layout is `prepare` anyway.
-func IsSplitCard(c Card) bool {
+func IsSplitCard(c Card) bool { return isSplitCard(&c) }
+
+// isSplitCard is IsSplitCard without the copy.
+func isSplitCard(c *Card) bool {
 	return c.Layout == LayoutSplit && len(c.Faces) == 2 && !c.PrepareCopy
 }
 
@@ -51,8 +54,12 @@ func IsSplitCard(c Card) bool {
 //
 // False for a face-down object: a face-down Room is a 2/2 with no
 // text (CR 708.2a) and has no halves to lock or unlock.
-func HasSharedTypeLine(c Card) bool {
-	if !IsSplitCard(c) || c.FaceDownIsPermanent() {
+func HasSharedTypeLine(c Card) bool { return hasSharedTypeLine(&c) }
+
+// hasSharedTypeLine is HasSharedTypeLine without the copy, for
+// catalogKeyOf.
+func hasSharedTypeLine(c *Card) bool {
+	if !isSplitCard(c) || c.faceDownPermanent() {
 		return false
 	}
 	if c.Faces[0].TypeLine != c.Faces[1].TypeLine {

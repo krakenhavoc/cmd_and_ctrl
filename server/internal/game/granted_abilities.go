@@ -81,7 +81,7 @@ func (c *Characteristic) GrantAbility(key string, source uuid.UUID) {
 // layeredGrants returns the object's current layer-6 grants, or nil for
 // every object that has none — which is every card off the battlefield
 // (no effective characteristic) and nearly every card on it.
-func layeredGrants(c Card) []GrantedAbility {
+func layeredGrants(c *Card) []GrantedAbility {
 	if c.effective == nil {
 		return nil
 	}
@@ -93,11 +93,11 @@ func layeredGrants(c Card) []GrantedAbility {
 // removal applies to it. Since ADR 0093 that is what AbilitiesRemoved
 // means — "its own abilities are gone" — and a layered grant is not
 // one of them.
-func ownAbilityKey(c Card) string {
-	if c.HasLostAllAbilities() {
+func ownAbilityKey(c *Card) string {
+	if c.lostAllAbilities() {
 		return ""
 	}
-	return CatalogKey(c)
+	return catalogKeyOf(c)
 }
 
 // composeAbilityKey appends layered grant keys to an own key. The own
@@ -231,7 +231,7 @@ func staleAbilityRef(ref string, index, n int, origins AbilityOrigins) bool {
 // ActivatedAbilityOrigins is ActivatedAbilitiesWithOrigins' origin list
 // alone.
 func ActivatedAbilityOrigins(c Card) AbilityOrigins {
-	_, o := activatedAbilityRows(c, true)
+	_, o := activatedAbilityRows(&c, true)
 	return o
 }
 
@@ -241,13 +241,15 @@ func ActivatedAbilityOrigins(c Card) AbilityOrigins {
 // LAST, so a grant appearing never renumbers a row that was already
 // there.
 func ActivatedAbilitiesWithOrigins(c Card) ([]ActivatedAbilityShape, AbilityOrigins) {
-	return activatedAbilityRows(c, true)
+	return activatedAbilityRows(&c, true)
 }
 
 // activatedAbilityRows is the one body behind ActivatedAbilitiesForCard
 // and ActivatedAbilitiesWithOrigins. With wantOrigins false it builds no
 // origin list and, for an object with no grant, allocates nothing.
-func activatedAbilityRows(c Card, wantOrigins bool) ([]ActivatedAbilityShape, AbilityOrigins) {
+// Takes a pointer so neither it nor the catalog-key read copies the
+// card (#1498).
+func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, AbilityOrigins) {
 	var own []ActivatedAbilityShape
 	var ownIdx []int
 	// S24 layer 6: a permanent an ability-removing effect applies to
@@ -258,7 +260,7 @@ func activatedAbilityRows(c Card, wantOrigins bool) ([]ActivatedAbilityShape, Ab
 	// away exactly as it takes away Sol Ring's. What it does NOT take
 	// is a grant with a later timestamp (CR 613.6) — the layer pass has
 	// already decided which of those survived, and they are below.
-	if !c.HasLostAllAbilities() {
+	if !c.lostAllAbilities() {
 		switch {
 		// S21 sub-PR 4: intrinsic abilities win — a token has no oracle
 		// ID for the catalog to key on, and Food / Clue / Blood ARE
@@ -271,7 +273,7 @@ func activatedAbilityRows(c Card, wantOrigins bool) ([]ActivatedAbilityShape, Ab
 			// #521: an object with no entry has the empty key, whether
 			// because it is uncatalogued or because CR 708.2a has
 			// silenced it.
-			if key := CatalogKey(c); key != "" {
+			if key := catalogKeyOf(c); key != "" {
 				// ADR 0071: an ability gated on a designation the
 				// permanent does not have is not on the permanent.
 				own, ownIdx = activeOnlyIndexed(c, CatalogActivatedAbilities(key), func(a ActivatedAbilityShape) Designation {
@@ -326,7 +328,7 @@ func activatedAbilityRows(c Card, wantOrigins bool) ([]ActivatedAbilityShape, Ab
 
 // ManaAbilityOrigins is ManaAbilitiesWithOrigins' origin list alone.
 func ManaAbilityOrigins(c Card) AbilityOrigins {
-	_, o := manaAbilityRows(c, true)
+	_, o := manaAbilityRows(&c, true)
 	return o
 }
 
@@ -335,12 +337,13 @@ func ManaAbilityOrigins(c Card) AbilityOrigins {
 // then every layered grant's in layer-6 order — with the origin of each
 // row (ADR 0093 Decision 5).
 func ManaAbilitiesWithOrigins(c Card) ([]ManaAbilityShape, AbilityOrigins) {
-	return manaAbilityRows(c, true)
+	return manaAbilityRows(&c, true)
 }
 
 // manaAbilityRows is the one body behind ManaAbilitiesForCard and
-// ManaAbilitiesWithOrigins.
-func manaAbilityRows(c Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigins) {
+// ManaAbilitiesWithOrigins. Takes a pointer so neither it nor the
+// catalog-key read copies the card (#1498).
+func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigins) {
 	var declared []ManaAbilityShape
 	switch {
 	// S24 layer 6: an ability-removing effect takes the DECLARED half
@@ -354,7 +357,7 @@ func manaAbilityRows(c Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigi
 	// the removing, so it survives on the other side of this switch
 	// rather than being re-granted. And since ADR 0093 a THIRD half
 	// survives too — a layer-6 grant, which is not the object's own.
-	case c.HasLostAllAbilities():
+	case c.lostAllAbilities():
 		declared = nil
 	// CR 708.2a: a face-down permanent has no text, so nothing it
 	// carries declares a mana ability — CatalogKey is already silent,
@@ -362,7 +365,7 @@ func manaAbilityRows(c Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigi
 	// Treasure turned face down by Cyber Conversion is not a Treasure).
 	// A listed Forest still taps for {G}: that is the intrinsic half
 	// below, read off the listed subtype (#1270).
-	case c.FaceDownIsPermanent():
+	case c.faceDownPermanent():
 		declared = nil
 	// S21 sub-PR 1: instance abilities win — a token has no oracle ID
 	// for the catalog to key on.
@@ -373,7 +376,7 @@ func manaAbilityRows(c Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigi
 	// CatalogKey, not c.OracleID: an MDFC back face keys on
 	// "<oracle_id>#N" (#357).
 	case CatalogManaAbilities != nil:
-		declared = CatalogManaAbilities(CatalogKey(c))
+		declared = CatalogManaAbilities(catalogKeyOf(c))
 	}
 	intrinsic := intrinsicLandManaAbilities(c)
 	grants := layeredGrants(c)
@@ -478,7 +481,7 @@ func ownOrigins(n int, ownIdx []int) AbilityOrigins {
 // activeOnlyIndexed is activeOnly that can also report, for a filtered
 // list, each survivor's index in the input. The index list is nil when
 // nothing was filtered or when it was not asked for.
-func activeOnlyIndexed[T any](c Card, all []T, gate func(T) Designation, wantIdx bool) ([]T, []int) {
+func activeOnlyIndexed[T any](c *Card, all []T, gate func(T) Designation, wantIdx bool) ([]T, []int) {
 	gated := false
 	for i := range all {
 		if gate(all[i]).IsGate() {
@@ -492,7 +495,7 @@ func activeOnlyIndexed[T any](c Card, all []T, gate func(T) Designation, wantIdx
 	out := make([]T, 0, len(all))
 	var idx []int
 	for i := range all {
-		if gate(all[i]).Active(c) {
+		if gate(all[i]).Active(*c) {
 			out = append(out, all[i])
 			if wantIdx {
 				idx = append(idx, i)
@@ -529,7 +532,7 @@ type GrantedAbilityInfo struct {
 // show — and so is every grant on an object whose own abilities are
 // gone, for the copy half.
 func GrantedAbilitiesOf(c Card) []GrantedAbilityInfo {
-	grants := layeredGrants(c)
+	grants := layeredGrants(&c)
 	copyGrants := c.GrantedAbilities
 	if c.HasLostAllAbilities() || c.FaceDownIsPermanent() {
 		copyGrants = nil
