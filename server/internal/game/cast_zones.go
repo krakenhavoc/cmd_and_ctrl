@@ -235,7 +235,10 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 // the card also prints is dropped rather than listed twice — the
 // same order resolveAlternativeCostLocked judges a claim in, so a
 // Deep Analysis flashed back under Past in Flames is listed at its
-// printed price and not at the grant's.
+// printed price and not at the grant's. The offers a battlefield static
+// applies to every spell the caster casts (ADR 0118 §3: Jodah,
+// Omniscience) come last, and one that only repeats a listed price is
+// dropped.
 //
 // Every entry is filtered through the two gates the announce path
 // applies: validateCastPathLocked (is this offer claimable from this
@@ -292,6 +295,19 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	for _, other := range g.otherGrantedOffersLocked(playerID, card, zone, grant) {
 		add(other.AlternativeCostFor(card), other)
 	}
+	// ADR 0118 §3, #2163: the offers the caster's permanents grant to
+	// every spell they cast (Jodah's {W}{U}{B}{R}{G}, Omniscience's
+	// free cast from hand), last, in announce precedence. One that only
+	// repeats a price already listed — the printed cost included — is
+	// dropped (ADR 0118 call 3). validateCastPathLocked, inside add,
+	// keeps each to where the printed mana cost could be paid (CR
+	// 118.9a).
+	for _, ac := range g.grantedAlternativeCostsLocked(playerID, card, zone) {
+		if duplicatesListedPrice(card, out, ac) {
+			continue
+		}
+		add(ac, grant)
+	}
 	return out
 }
 
@@ -346,8 +362,16 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 //     Cost (airbend's {2}, cascade's {0}) names no claimable offer
 //     and charges itself.
 //
+// An offer a battlefield static GRANTS (ADR 0118 §3, Jodah) is judged
+// by one rule of its own instead, CR 118.9a's: it may be claimed only
+// where the printed mana cost could be paid. See
+// grantedOfferClaimableLocked.
+//
 // Caller must hold g.mu.
 func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *AlternativeCost, grant *CastPermission) error {
+	if alt != nil && alt.Granted {
+		return g.grantedOfferClaimableLocked(card, srcKind, alt, grant)
+	}
 	// ADR 0107 §4, CR 712.11d: a disturbed card is judged by the zone
 	// its FRONT face opens, though the spell is its back face.
 	key := castPathKey(card, alt)

@@ -1493,11 +1493,11 @@ func (e *enumerator) cheapestFuelFirst(pool []uuid.UUID) []uuid.UUID {
 }
 
 // affordableXFrom reports whether the seat can pay cost right now —
-// from the floating pool, or by the auto-tapper's plan — and, for an
-// {X} cost, the largest X it can pay, at or above `floor`, up to MaxX.
-// Mirrors the engine's auto_tap + strict path: the pool is consulted
-// first, then a plan is sought for the WHOLE cost (the engine does not
-// net floating mana against the plan).
+// from the floating pool, by the auto-tapper's plan, or by the two
+// together — and, for an {X} cost, the largest X it can pay, at or
+// above `floor`, up to MaxX. Mirrors the engine's auto_tap + strict
+// path: the pool is consulted first, then a plan is sought for what
+// the pool is missing (ADR 0118 §1, the pool top-up).
 //
 // The floor is the announcement's lower bound, and it has two sources,
 // both settled by enumeratedXFloor (x.go) before the call: a printed
@@ -1570,8 +1570,11 @@ func (e *enumerator) canPayExcluding(
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
 	}
-	_, ok := e.g.AutoTapForCostForEffectExcluding(e.seat, cost, x, excluded)
-	return ok
+	// ADR 0118 §1: the pool and a plan TOGETHER, through the function
+	// every engine auto-tap payer reads — {G} floating plus one Forest
+	// pays {1}{G}, where asking the pool alone and the lands alone
+	// called it unpayable twice.
+	return e.g.AutoTapTopUpForEffectExcluding(e.seat, cost, x, spend, excluded)
 }
 
 // castPaymentSolve is one priced way to pay a cast's mana cost: the X

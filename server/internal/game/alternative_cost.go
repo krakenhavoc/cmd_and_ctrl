@@ -331,6 +331,16 @@ type AlternativeCost struct {
 	// effects.Register refuses it on a back-face entry, since CR
 	// 702.146a puts disturb on the front face.
 	CastsFace int
+
+	// Granted marks an offer a battlefield static applies to the spell
+	// rather than one the card prints (ADR 0118 §3, #2163: Jodah,
+	// Archmage Eternal's {W}{U}{B}{R}{G}, Omniscience's free cast).
+	// Set only on the copies grantedAlternativeCostsLocked derives, and
+	// read by validateCastPathLocked, which lets a granted offer be
+	// claimed only where the printed mana cost could be paid (CR
+	// 118.9a). Never serialised: an offer is catalog data built per
+	// query, and a claim reaches the stack as its key alone.
+	Granted bool
 }
 
 // CastFaceOf returns the card as a cast claiming this offer puts it on
@@ -461,8 +471,13 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 // would make the card cheaper than it is, and the one direction a
 // sandbox must never err in is the player's favour (#259).
 //
+// ADR 0118 §3: and the offers the caster's permanents grant to every
+// spell they cast out of `zone` (Jodah, Omniscience) last of all,
+// which is the order CastOffersForLocked lists them in. Their keys are
+// namespaced, so none can shadow a printed or permission key.
+//
 // Caller must hold g.mu.
-func (g *Game) resolveAlternativeCostLocked(card Card, grant *CastPermission, key string, targets []TargetRef) (*AlternativeCost, error) {
+func (g *Game) resolveAlternativeCostLocked(caster uuid.UUID, card Card, zone ZoneKind, grant *CastPermission, key string, targets []TargetRef) (*AlternativeCost, error) {
 	if key == "" {
 		return nil, nil
 	}
@@ -477,6 +492,9 @@ func (g *Game) resolveAlternativeCostLocked(card Card, grant *CastPermission, ke
 	}
 	granted := grant.AlternativeCostFor(card)
 	if granted == nil || granted.Key != key {
+		granted = g.grantedAlternativeCostByKeyLocked(caster, card, zone, key)
+	}
+	if granted == nil {
 		return nil, ErrInvalidParam
 	}
 	if granted.ClearsTargets && len(targets) > 0 {

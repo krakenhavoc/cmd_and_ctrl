@@ -1827,6 +1827,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.
 	g.recordModesChosenLocked(ab.Modes, modeAbility, params.Modes)
+	// CardID is set here and on no trigger's EventTrigger, and the
+	// public log reads it that way (ADR 0119 §5): this breadcrumb is an
+	// activation, which EventActivateAbility below tells, so it gets no
+	// `trigger` line. Keep CardID on it and off the trigger emits.
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,
@@ -2132,11 +2136,12 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 		return paid, nil
 	}
 	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
-		plan, ok := g.autoTapLocked(p.ID, cost, x, excluded)
+		// ADR 0118 §1: plan only what the floating pool is missing.
+		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, x, spendCtx, excluded, 0)
 		if !ok {
 			return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
-		g.materializePlanLocked(p, plan, cost)
+		g.materializePlanLocked(p, plan, short)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}

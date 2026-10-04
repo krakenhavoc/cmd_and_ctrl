@@ -540,6 +540,12 @@ const (
 	// AnnounceTrigger in S13.1; S19's auto-announce will flow
 	// through here too. The event lets listeners observe trigger
 	// creation without having to poll PendingTriggers.
+	//
+	// Two shapes, and the public log tells them apart (ADR 0119 §5).
+	// A TRIGGER (queueHarvestedTriggerLocked, AnnounceTrigger) carries
+	// its source in Source and its label in Label, and no CardID. An
+	// ACTIVATION's breadcrumb (activated.go) carries the source in both
+	// Source and CardID, and no label; it gets no `trigger` line.
 	EventTrigger EventKind = "trigger"
 
 	// EventActivateAbility — a player ACTIVATED an activated ability

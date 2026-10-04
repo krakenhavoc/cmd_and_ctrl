@@ -763,6 +763,15 @@ export type LogKind =
   // controls — "Bob activated Alice's Xantcha, Sleeper Agent".
   // `target_seat` is the permanent's controller.
   | "activate_across"
+  // ADR 0119 §5: what goes on the stack, as it goes there. `trigger` is a
+  // triggered ability triggering ("Alice's trigger: Mulldrifter — draw two
+  // cards"); consecutive identical ones collapse, with `amount` the count
+  // (absent for one). `activate` is an activated ability that uses the
+  // stack (mana abilities never get one). Both carry the SOURCE in
+  // `card_id` and the item's label in `label`, redacted together like an
+  // ability's `resolve` line.
+  | "trigger"
+  | "activate"
   | "cycle"
   | "counters"
   | "scry"
