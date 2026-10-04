@@ -105,7 +105,15 @@ func TestMyDecksCarriesCoverageMatchingBuild(t *testing.T) {
 	if cov.AsPrinted != n || cov.Resolved != m || m == 0 {
 		t.Errorf("coverage as_printed/resolved = %d/%d, Build says %d/%d", cov.AsPrinted, cov.Resolved, n, m)
 	}
+	nc, size := want.AsPrintedCopies()
+	if cov.AsPrintedCopies != nc || cov.DeckSize != size || cov.UnknownCopies != want.UnknownCopies || size == 0 {
+		t.Errorf("coverage copies = %d of %d (+%d unknown), Build says %d of %d (+%d)",
+			cov.AsPrintedCopies, cov.DeckSize, cov.UnknownCopies, nc, size, want.UnknownCopies)
+	}
 	for _, b := range deckcoverage.Buckets {
+		if cov.Copies[b] != want.Copies[b] {
+			t.Errorf("copies bucket %s = %d, want %d", b, cov.Copies[b], want.Copies[b])
+		}
 		if cov.Counts[b] != want.Counts[b] {
 			t.Errorf("bucket %s = %d, want %d", b, cov.Counts[b], want.Counts[b])
 		}

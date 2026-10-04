@@ -27,6 +27,7 @@ import { sessionFromOAuth, setSession, type Session } from "./session";
 import { click, cleanup, flushSync, render } from "./test/render.svelte";
 
 const COUNTS = { manual: 2, unreviewed: 0, caveats: 1, automated: 5, no_effect: 2 };
+const COPIES = { manual: 2, unreviewed: 0, caveats: 1, automated: 5, no_effect: 90 };
 
 function deck(over: Partial<MyDeckInfo>): MyDeckInfo {
   return {
@@ -35,7 +36,16 @@ function deck(over: Partial<MyDeckInfo>): MyDeckInfo {
     commanders: ["Atraxa, Praetors' Voice"],
     card_count: 100,
     updated_at: "2026-09-19T08:00:00Z",
-    coverage: { counts: COUNTS, unknown: 0, as_printed: 7, resolved: 10 },
+    coverage: {
+      counts: COUNTS,
+      unknown: 0,
+      as_printed: 7,
+      resolved: 10,
+      copies: COPIES,
+      unknown_copies: 0,
+      as_printed_copies: 95,
+      deck_size: 98,
+    },
     ...over,
   };
 }
@@ -47,6 +57,8 @@ const CHECKED: CoverageReport = {
   deck_key: "archidekt:42",
   commanders: ["Atraxa, Praetors' Voice"],
   counts: { manual: 1, unreviewed: 1, caveats: 1, automated: 6, no_effect: 1 },
+  copies: { manual: 1, unreviewed: 1, caveats: 1, automated: 6, no_effect: 91 },
+  unknown_copies: 0,
   cards: [
     { name: "Doubling Season", oracle_id: "o1", count: 1, bucket: "manual" },
     { name: "Sol Ring", oracle_id: "o2", count: 1, bucket: "automated" },
@@ -105,7 +117,16 @@ beforeEach(() => {
       id: "d2",
       name: "Linked",
       source_url: "https://moxfield.com/decks/abc",
-      coverage: { counts: COUNTS, unknown: 0, as_printed: 3, resolved: 4 },
+      coverage: {
+        counts: COUNTS,
+        unknown: 0,
+        as_printed: 3,
+        resolved: 4,
+        copies: COPIES,
+        unknown_copies: 0,
+        as_printed_copies: 30,
+        deck_size: 40,
+      },
     }),
   ];
   signIn();
@@ -193,7 +214,7 @@ describe("#/decks: the check (§3 item 1)", () => {
     await checkLink(container);
     const text = container.textContent ?? "";
     expect(text).toContain("Weekend deck");
-    expect(text).toContain("7 of 10 cards play as printed");
+    expect(text).toContain("97 of 100 cards play as printed");
     expect(text).toContain("Doubling Season");
     // Owner answer 2: a check writes nothing.
     expect(posts("/me/decks")).toHaveLength(0);
@@ -267,7 +288,7 @@ describe("#/decks: the check (§3 item 1)", () => {
     click(button(container, "Save to my decks")!);
     await settle();
     expect(container.textContent).toContain("Your deck library is full (200 decks).");
-    expect(container.textContent).toContain("7 of 10 cards play as printed");
+    expect(container.textContent).toContain("97 of 100 cards play as printed");
   });
 });
 
@@ -281,7 +302,7 @@ describe("#/decks: who sees what (§3 item 3)", () => {
     expect(container.textContent).toContain("Sign in with Discord to see them.");
     await checkLink(container);
     const text = container.textContent ?? "";
-    expect(text).toContain("7 of 10 cards play as printed");
+    expect(text).toContain("97 of 100 cards play as printed");
     expect(text).toContain("Sign in with Discord to request these cards");
     expect(text).toContain("Sign in with Discord to save this deck");
     expect(button(container, "Request missing cards")).toBeUndefined();
@@ -315,7 +336,7 @@ describe("#/decks: who sees what (§3 item 3)", () => {
     const { container } = render(Decks as never, {} as never);
     await settle();
     expect(JSON.parse(posts("/deck-coverage")[0].body!)).toEqual({ text: "1 Sol Ring" });
-    expect(container.textContent).toContain("7 of 10 cards play as printed");
+    expect(container.textContent).toContain("97 of 100 cards play as printed");
     expect(button(container, "Save to my decks")).toBeDefined();
   });
 
@@ -360,7 +381,7 @@ describe("#/decks: who sees what (§3 item 3)", () => {
     await settle();
     await checkLink(container);
     const text = container.textContent ?? "";
-    expect(text).toContain("7 of 10 cards play as printed");
+    expect(text).toContain("97 of 100 cards play as printed");
     expect(text).not.toContain("Request missing cards");
     expect(text).not.toContain("Save to my decks");
     expect(text).not.toContain("Sign in with Discord");
@@ -383,8 +404,8 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     const { container } = render(Decks as never, {} as never);
     await settle();
     const text = container.textContent ?? "";
-    expect(text).toContain("7 of 10 cards play as printed");
-    expect(text).toContain("3 of 4 cards play as printed");
+    expect(text).toContain("95 of 98 cards play as printed");
+    expect(text).toContain("30 of 40 cards play as printed");
     expect(text).toContain("1 simplified");
     expect(text).toContain("2 you resolve by hand");
     const link = container.querySelector<HTMLAnchorElement>(
@@ -456,8 +477,8 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     click(button(container, "Delete")!);
     await settle();
     expect(calls.find((c) => c.method === "DELETE")?.url).toBe("/me/decks/d1");
-    expect(container.textContent).not.toContain("7 of 10 cards play as printed");
-    expect(container.textContent).toContain("3 of 4 cards play as printed");
+    expect(container.textContent).not.toContain("95 of 98 cards play as printed");
+    expect(container.textContent).toContain("30 of 40 cards play as printed");
   });
 });
 
@@ -481,7 +502,7 @@ describe("the lobby's deck picker", () => {
     );
     await settle();
     const text = container.textContent ?? "";
-    expect(text).toContain("7 of 10 cards play as printed");
-    expect(text).toContain("3 of 4 cards play as printed");
+    expect(text).toContain("95 of 98 cards play as printed");
+    expect(text).toContain("30 of 40 cards play as printed");
   });
 });

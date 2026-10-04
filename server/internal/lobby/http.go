@@ -2920,6 +2920,13 @@ type myDeckCoverageInfo struct {
 	// every distinct card the report bucketed.
 	AsPrinted int `json:"as_printed"`
 	Resolved  int `json:"resolved"`
+	// The copies form (#2220): the same buckets weighted by copies,
+	// the copies the index could not resolve, and "N of DeckSize" where
+	// DeckSize is every copy including those. The headline reads these.
+	Copies          map[deckcoverage.Bucket]int `json:"copies"`
+	UnknownCopies   int                         `json:"unknown_copies"`
+	AsPrintedCopies int                         `json:"as_printed_copies"`
+	DeckSize        int                         `json:"deck_size"`
 }
 
 // myDeckInfo is one entry in GET /me/decks.
@@ -3040,8 +3047,10 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
 			n, m := rep.AsPrinted()
+			nc, size := rep.AsPrintedCopies()
 			info.Coverage = &myDeckCoverageInfo{
 				Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
+				Copies: rep.Copies, UnknownCopies: rep.UnknownCopies, AsPrintedCopies: nc, DeckSize: size,
 			}
 		}
 	}

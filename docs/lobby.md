@@ -465,6 +465,11 @@ A pasted list may name at most 2,000 cards in total (400 past that).
   - `no_effect`: nothing to automate. A vanilla creature, a card whose
     text is only keywords the engine enforces, or a basic land.
 - `counts` is by distinct card, and always carries all five keys.
+  `copies` (#2220, additive) is the same five keys summed over each
+  card's `count`, and `unknown_copies` the copies of the `unknown`
+  names, sideboard excluded. `copies` plus `unknown_copies` totals the
+  deck's size (100 for a Commander deck); the site and the bot's
+  headline "N of M cards play as printed" read it.
   `count` on a card is its copies, summed across the command zone and
   the main deck. Sideboard rows are not bucketed.
 - `cards` is sorted by bucket in the order above, then by name.
@@ -2253,8 +2258,12 @@ pasted deck.
 **`coverage` is computed on read, never stored** (ADR 0110 section 6).
 `counts` are [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md)'s
 five buckets by distinct card. `as_printed` is `automated` plus
-`no_effect`, `resolved` is every distinct card bucketed, and the page
-says "N of M play as printed". The list builds the catalogue verdicts
+`no_effect`, `resolved` is every distinct card bucketed. Since #2220
+the same block carries the copies form: `copies` (the buckets summed
+over each card's copies), `unknown_copies`, `as_printed_copies`
+(`automated` plus `no_effect` copies) and `deck_size` (every copy,
+unresolved ones included). The page says "N of M cards play as
+printed" from `as_printed_copies` and `deck_size`. The list builds the catalogue verdicts
 once per request and reuses them for every deck. `coverage` is absent
 when the server has no card index or a stored list no longer parses.
 These reads, and the four routes below, share a per-client bucket of 1

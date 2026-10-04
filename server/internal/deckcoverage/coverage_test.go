@@ -213,3 +213,59 @@ func TestBuildWithoutAnIndex(t *testing.T) {
 		t.Errorf("err = %v, want ErrNoIndex", err)
 	}
 }
+
+// Copies is Counts weighted by Card.Count: thirty-two Forests, a
+// commander and unresolved names all make up the deck's size, so a
+// Commander deck totals its real card count (#2220).
+func TestCopiesSumEveryRowIncludingBasicsCommanderAndUnknowns(t *testing.T) {
+	idx, tc := TestingIndex(t)
+	r, err := Build(idx, Deck{Source: "text", Entries: testingDeck(tc)})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	// Commander + Bear + 32 Forests are no_effect; the sideboard row is
+	// not in the deck; the two unknown rows are 2 copies.
+	wantCopies := map[Bucket]int{Manual: 1, Unreviewed: 1, Caveats: 1, Automated: 1, NoEffect: 34}
+	if !reflect.DeepEqual(r.Copies, wantCopies) {
+		t.Errorf("copies = %v, want %v", r.Copies, wantCopies)
+	}
+	if r.UnknownCopies != 2 {
+		t.Errorf("unknown copies = %d, want 2 (sideboard excluded)", r.UnknownCopies)
+	}
+	if got := r.CopiesTotal(); got != 40 {
+		t.Errorf("CopiesTotal = %d, want 40", got)
+	}
+	if n, m := r.AsPrintedCopies(); n != 35 || m != 40 {
+		t.Errorf("AsPrintedCopies = %d of %d, want 35 of 40", n, m)
+	}
+	// The distinct form is untouched.
+	if n, m := r.AsPrinted(); n != 4 || m != 7 {
+		t.Errorf("AsPrinted = %d of %d, want 4 of 7", n, m)
+	}
+}
+
+func TestReportJSONCarriesCopies(t *testing.T) {
+	idx, tc := TestingIndex(t)
+	r, err := Build(idx, Deck{Source: "text", Entries: testingDeck(tc)})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	raw, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Counts        map[string]int `json:"counts"`
+		Copies        map[string]int `json:"copies"`
+		UnknownCopies *int           `json:"unknown_copies"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Copies) != 5 || got.Copies["no_effect"] != 34 || got.Counts["no_effect"] != 3 {
+		t.Errorf("copies = %v counts = %v", got.Copies, got.Counts)
+	}
+	if got.UnknownCopies == nil || *got.UnknownCopies != 2 {
+		t.Errorf("unknown_copies = %v", got.UnknownCopies)
+	}
+}
