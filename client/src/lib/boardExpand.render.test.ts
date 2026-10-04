@@ -17,8 +17,8 @@ import Board from "./components/board/Board.svelte";
 import { abilityPopover } from "./abilityPopover";
 import { begin, targeting } from "./targeting";
 import { _resetForTests as resetDock, cancelAction, pushDockRequest } from "./dock";
-import { resetSettings } from "./settings";
-import type { ActionType, CardView, GameView, PlayerView } from "./protocol";
+import { resetSettings, updateSettings } from "./settings";
+import type { ActionType, CardView, GameView, PlayerView, StackItemView } from "./protocol";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
 
 class FakeObserver {
@@ -308,6 +308,38 @@ describe("Escape (ADR 0120 §4)", () => {
     });
     escape();
     expect(overlay()).not.toBeNull();
+  });
+
+  it("is the pile's '+N more' list's while it is open, then the overlay's", () => {
+    updateSettings("display", "stackStyle", "pile");
+    const items = Array.from({ length: 7 }, (_, i) => ({
+      id: `s${i}`,
+      kind: "spell",
+      controller: BOB,
+      owner: BOB,
+      source_card_id: `s${i}`,
+      targets: [],
+    })) as unknown as StackItemView[];
+    const cards = items.map((it) => ({
+      instance_id: it.id,
+      name: `Spell ${it.id}`,
+      owner: BOB,
+      controller: BOB,
+      type_line: "Instant",
+    })) as unknown as CardView[];
+    mountBoard({
+      ...gameView(),
+      stack: zone("stack", undefined, cards),
+      stack_items: items,
+    } as GameView);
+    click(tableAvatar(BOB));
+    click(document.querySelector<HTMLElement>(".more-chip")!);
+    expect(document.querySelector(".all-items")).not.toBeNull();
+    escape();
+    expect(document.querySelector(".all-items")).toBeNull();
+    expect(overlay()).not.toBeNull();
+    escape();
+    expect(overlay()).toBeNull();
   });
 
   it("is the open popover's, and leaves the overlay", () => {

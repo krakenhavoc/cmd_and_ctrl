@@ -2143,7 +2143,10 @@ func writeAutoTapPreview(
 	delveBudget int,
 	w http.ResponseWriter,
 ) error {
-	plan, ok := g.AutoTapPlanPreferringExcluding(playerID, cost, xValue, excluded, prefer)
+	// ADR 0118 §1: the plan for what the floating pool is missing, the
+	// same plan the auto-tapped payment makes. An empty plan with ok is
+	// a pool that covers the cost on its own.
+	plan, ok := g.AutoTapPlanToppingUp(playerID, cost, xValue, spend, excluded, prefer)
 	// #1285: `sources` describes each planned source — where it is and
 	// what paying with it costs — beside the bare `plan` ID list, which
 	// is unchanged for every reader that only wanted the IDs. A plan

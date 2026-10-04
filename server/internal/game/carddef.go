@@ -364,6 +364,15 @@ type CardDef struct {
 	// it is granted by an effect and stored on the player.
 	CastTimings []CastTimingRule
 
+	// GrantedAlternativeCosts are the alternative costs (CR 118.9) this
+	// permanent offers its controller for each spell they cast while it
+	// is on the battlefield (ADR 0118 §3, #2163) — Jodah, Archmage
+	// Eternal's {W}{U}{B}{R}{G}, Omniscience's free cast from hand. Read
+	// through CatalogGrantedAlternativeCosts; see
+	// granted_alternative_cost.go. Derived on every query, for the
+	// reason CastPermissions gives.
+	GrantedAlternativeCosts []GrantedAlternativeCost
+
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
 	// at the top card of your library any time" is LibraryTopOwner,
@@ -768,6 +777,12 @@ func init() {
 	CatalogCastTimings = func(key string) []CastTimingRule {
 		if d := catalogDef(key); d != nil {
 			return d.CastTimings
+		}
+		return nil
+	}
+	CatalogGrantedAlternativeCosts = func(key string) []GrantedAlternativeCost {
+		if d := catalogDef(key); d != nil {
+			return d.GrantedAlternativeCosts
 		}
 		return nil
 	}

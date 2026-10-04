@@ -145,7 +145,20 @@ describe("syncedSubset and applySyncedCopy", () => {
       { display: { stackStyle: "removed-style" } },
       SETTINGS_VERSION,
     );
-    expect(next.display.stackStyle).toBe("compact");
+    expect(next.display.stackStyle).toBe("pile");
+  });
+
+  // ADR 0119 §1: an account copy goes through the same migration, with
+  // the version of the client that wrote it.
+  it("an account copy's stack style moves as a stored one does", () => {
+    const at = (style: string, version: number) =>
+      applySyncedCopy(defaultSettings(), { display: { stackStyle: style } }, version).display
+        .stackStyle;
+    expect(at("compact", 15)).toBe("pile");
+    expect(at("compact", 16)).toBe("pile");
+    expect(at("compact", 17)).toBe("compact");
+    expect(at("fan", 15)).toBe("fan");
+    expect(at("ribbon", 16)).toBe("ribbon");
   });
 
   it("canonicalJSON ignores key order", () => {

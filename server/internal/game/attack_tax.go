@@ -463,7 +463,9 @@ func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, 
 		for _, id := range params.LockedSources {
 			excluded[id] = true
 		}
-		if _, ok := g.autoTapLocked(payer, cost, 0, excluded); ok {
+		// ADR 0118 §1: the pool and the plan together, as the
+		// payment (payAbilityManaCostLocked) will pay it.
+		if _, _, ok := g.autoTapTopUpLocked(payer, cost, 0, ManaSpendContext{}, excluded, 0); ok {
 			return nil
 		}
 	}

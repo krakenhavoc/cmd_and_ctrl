@@ -514,8 +514,9 @@ type CastSpellParams struct {
 	// tap-and-fill before the strict-mode cost check. Implies
 	// Strict — the auto-tapper exists to make a strict-gated cast
 	// succeed without manually clicking each land. The server
-	// runs `AutoTapForCostExcluding(controller, cost, x, locked)`
-	// against the caller's untapped permanents, taps each card in
+	// plans what the floating pool is missing (ADR 0118 §1,
+	// autoTapTopUpLocked) against the caller's untapped permanents
+	// other than the locked ones, taps each card in
 	// the returned plan, drops the produced mana into the pool
 	// (with greedy color-picking against the cost requirements),
 	// then proceeds to the normal CanPay/SpendMana flow — all
@@ -752,7 +753,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// below, because overload and cleave rewrite the target clause —
 	// the spell's legality has to be judged under the cost actually
 	// being paid, not under the printed one.
-	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, params.Targets)
+	alt, err := g.resolveAlternativeCostLocked(playerID, card, src.Kind, grant, params.AlternativeCost, params.Targets)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost claim",
 			"card_name", card.Name,
@@ -1896,13 +1897,14 @@ func spendStrategyForCast(card Card) ManaSpendStrategy {
 //  2. If the pool already covers the cost, skip — auto-tap is
 //     idempotent on a funded pool.
 //  3. Build the excluded set from LockedSources.
-//  4. Run autoTapLocked to get a plan; if no plan exists, return
-//     a structured InsufficientManaError keyed off the current
+//  4. Run autoTapTopUpLocked to get a plan for what the pool is
+//     missing (ADR 0118 §1); if no plan exists, return a
+//     structured InsufficientManaError keyed off the current
 //     pool's missing list (the auto-tapper itself doesn't carry
 //     a missing-symbols breakdown).
 //  5. Materialise the plan: for each card, tap it and drop its
 //     produced mana into the pool with greedy color-picking
-//     against the still-unsatisfied cost requirements.
+//     against the shortfall the plan was built to pay.
 //
 // Caller must hold g.mu (CastSpell holds the write lock).
 func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) error {
@@ -1938,8 +1940,11 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	// Same context applyCastCostLocked will pay under, so the
 	// "already funded, skip planning" shortcut can't be fooled by
-	// restricted mana this cast cannot legally spend.
-	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
+	// restricted mana this cast cannot legally spend. The top-up below
+	// takes the same shortcut; this one keeps the exclusion list from
+	// being built for a cast that needs no plan.
+	spendCtx := ManaSpendForCast(card)
+	if p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
 		return nil
 	}
 	// The lock-tap reservations, and everything this announcement has
@@ -1957,11 +1962,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// cast it") prefers a source it can read back — a tiebreak in the
 	// planner's ordering and never a filter, so the plan the solver
 	// can find is exactly the plan it could find before.
-	plan, ok := g.autoTapPreferringLocked(p.ID, cost, params.XValue, excluded, WantedManaSourcesFor(card))
+	//
+	// ADR 0118 §1: the plan pays only what the floating pool is
+	// missing, so mana already in the pool is spent first, and it is
+	// colour-picked against that shortfall (autotap_topup.go).
+	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
 	if !ok {
-		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
+		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
-	g.materializePlanLocked(p, plan, cost)
+	g.materializePlanLocked(p, plan, short)
 	return nil
 }
 
@@ -2784,7 +2793,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
 	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
-	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
+	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
 	}
@@ -3580,11 +3589,13 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 	// the game already goes.
 	//
 	// #529: both destinations go through the shared exit primitive,
-	// so a commander that fizzles ("countered by game rules", CR
-	// 608.2b) or resolves to a graveyard gets the CR 903.9 choice.
-	// A queued prompt leaves the card on the stack until the owner
-	// answers — priority cannot pass while a choice is outstanding,
-	// so nothing resolves on top of it in the meantime.
+	// so every replacement window sees a spell that fizzles
+	// ("countered by game rules", CR 608.2b) or resolves to a
+	// graveyard. A commander goes to the graveyard like any card and
+	// is offered the command zone afterwards (CR 903.9a, ADR 0115). A
+	// queued replacement prompt leaves the card on the stack until
+	// the owner answers — priority cannot pass while a choice is
+	// outstanding, so nothing resolves on top of it in the meantime.
 	r := zoneRoute{
 		CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner,
 		// #1320: CR 608.2n puts the card away as the last step of its
@@ -4283,8 +4294,8 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		// moment a cancelled destruction counted zero: a permanent whose
 		// destruction the CR 614 window replaced away is still doomed and
 		// still has to be looked at again, and one whose exit is paused on
-		// the CR 903.9 prompt is skipped by the collector above on the next
-		// pass. Both are answered by the set this pass COLLECTED.
+		// a replacement's prompt is skipped by the collector above on the
+		// next pass. Both are answered by the set this pass COLLECTED.
 		fired = true
 	}
 
@@ -4320,7 +4331,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// still on the stack" check sees the settled queue.
 	for _, id := range g.sagasReadyToSacrificeLocked() {
 		// Same re-entry guard as the doomed sweep above: a Saga
-		// commander waiting on the CR 903.9 prompt is still on the
+		// permanent waiting on a replacement's prompt is still on the
 		// battlefield at its final chapter, and sacrificing it a
 		// second time would queue a second prompt and emit a second
 		// EventSacrifice for one sacrifice.
@@ -4962,8 +4973,9 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 // The FIRE-AND-FORGET form. A caller that has to know what the exit
 // actually did — "for each creature destroyed this way" — uses
 // routeBattlefieldExitThenLocked and reads the board from the
-// continuation, because any exit can pause on the CR 903.9 prompt
-// (#815).
+// continuation, because an exit can pause on a replacement's prompt
+// (a commander's CR 903.9b offer for a bounce or a tuck; a death is
+// no longer one, ADR 0115) (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
 	return g.routeBattlefieldExitThenLocked(cardID, nil)
 }
@@ -5017,11 +5029,12 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 	}
 
 	// S17 sub-PR 6: route through the CR 614 replacement pipeline
-	// so the CR 903.9 commander-zone built-in can fire for dies-to-
-	// damage + wrath + SBA destroys. The built-in is Optional, so
-	// when the dying card is a commander the pipeline queues a
-	// yes/no prompt for the owner; the physical move waits for
-	// their answer via ResolveOptionalReplacement.
+	// so every replacement sees dies-to-damage + wrath + SBA
+	// destroys. (Until ADR 0115 the CR 903.9 commander-zone built-in
+	// fired here and asked the owner before the card moved. It is now
+	// a hand-and-library replacement, CR 903.9b: a dying commander
+	// lands in the graveyard and CR 903.9a's state-based action asks
+	// afterwards.)
 	var defaultDest ZoneKind
 	var defaultOwner uuid.UUID
 	if owner == nil {
@@ -5139,7 +5152,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	var actor uuid.UUID
 	switch dest {
 	case ZoneCommand:
-		// CR 903.9 commander-zone replacement landed. Find the
+		// A CR 903.9b commander-zone replacement landed. Find the
 		// owner via the card — defaultOwner may have been empty
 		// when the original owner had left the game.
 		card, ok := g.LookupCardForEffect(cardID)
@@ -9632,7 +9645,7 @@ func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
 // #707: the bottom now rides the exit primitive's route
 // (zoneRoute.ToBottom) rather than being a post-move reorder. The
 // reorder could not survive a pause — a commander tucked to the bottom
-// paused on the CR 903.9 prompt was still in its old zone when the
+// paused on the CR 903.9b prompt was still in its old zone when the
 // reorder ran, so it found nothing and the card later landed on TOP —
 // and the route already knows how to do this for every effect-side
 // tuck (Condemn, Hinder). Like those, it is honoured only against the

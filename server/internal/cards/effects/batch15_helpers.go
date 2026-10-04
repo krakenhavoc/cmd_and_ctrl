@@ -241,8 +241,8 @@ func b15OnBattlefield(g *game.Game, id uuid.UUID) bool {
 // body The Locust God schedules: return every card the item carries
 // that is in a graveyard to its owner's hand. Package-level so the
 // delayed trigger captures nothing. A card that is not in a
-// graveyard any more — reanimated, exiled, tucked into the command
-// zone by CR 903.9 — is a different object and is left alone.
+// graveyard any more — reanimated, exiled, or sent to the command zone
+// at CR 903.9a's prompt — is a different object and is left alone.
 func b15ReturnListedCardsFromGraveyardToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range item.Targets {

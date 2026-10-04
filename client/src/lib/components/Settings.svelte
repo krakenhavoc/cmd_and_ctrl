@@ -599,27 +599,33 @@
               {#if isFresh("display.handLayout")}<span class="saved">✓</span>{/if}
             </label>
 
-            <!-- #1467: four ways to draw the stack, shipped side by side
-                 so they can be compared on a live table. -->
+            <!-- #1467, ADR 0119 §1: the pile is the default and is not
+                 experimental; the other four still are. -->
             <label class="slider-row">
-              <span>Stack <span class="experimental">experimental</span></span>
+              <span>Stack</span>
               <select
                 value={$settings.display.stackStyle}
                 onchange={(e) =>
                   change("display", "stackStyle", e.currentTarget.value as StackStyle)}
               >
-                <option value="compact">Compact (default)</option>
-                <option value="fan">Fan</option>
-                <option value="spotlight">Spotlight</option>
-                <option value="ribbon">Ribbon</option>
+                <option value="pile">Pile (default): large cards on the left</option>
+                <optgroup label="Experimental">
+                  <option value="compact">Compact</option>
+                  <option value="fan">Fan</option>
+                  <option value="spotlight">Spotlight</option>
+                  <option value="ribbon">Ribbon</option>
+                </optgroup>
               </select>
               {#if isFresh("display.stackStyle")}<span class="saved">✓</span>{/if}
             </label>
             <p class="help">
-              Compact keeps the stack in the small card at the top left. The others show it across
-              the middle of the table while something is on it: Fan lays the cards out with arrows
-              to what they target, Spotlight shows the next spell large with the rest queued beside
-              it, and Ribbon is a numbered row. The table itself never moves to make room.
+              Pile shows the stack as large, readable cards on the left of the table, the next to
+              resolve in front, with arrows to what they target; on a phone or a short window it
+              shows Compact instead. The others are <span class="experimental">experimental</span>.
+              Compact keeps the stack in the small card at the top left. Fan, Spotlight and Ribbon
+              show it across the middle of the table: Fan lays the cards out with arrows to what
+              they target, Spotlight shows the next spell large with the rest queued beside it, and
+              Ribbon is a numbered row. The table itself never moves to make room.
             </p>
 
             <label class="slider-row">

@@ -24,14 +24,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // If a card ever reads "exiled by Leyline", this is the line to
 // revisit.
 //
-// Two declared deviations:
+// One declared deviation: the leyline clause itself. There is no
+// "begin the game with it on the battlefield" step in this sandbox;
+// the enchantment is cast for {2}{B}{B} like any other.
 //
-//   - the leyline clause itself. There is no "begin the game with it
-//     on the battlefield" step in this sandbox; the enchantment is
-//     cast for {2}{B}{B} like any other.
-//   - an opponent's COMMANDER whose owner takes CR 903.9's offer goes
-//     to the command zone rather than to exile, the deviation Rest in
-//     Peace, Liesa and Stone of Erech all share.
+// An opponent's COMMANDER is exiled like any other card, and its owner
+// is offered the command zone afterwards (CR 903.9a, ADR 0115).
 func init() {
 	Register(Spec{
 		OracleID:     "f4e32fc1-1b8d-441e-8e76-71f19f98e925",
@@ -39,7 +37,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"You can't begin the game with it on the battlefield from your opening hand — it has to be cast.",
-			"An opponent's dying commander whose owner sends it to the command zone goes there instead of being exiled.",
 		},
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			OpponentsOnly: true,

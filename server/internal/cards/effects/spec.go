@@ -1166,6 +1166,22 @@ type Spec struct {
 	// +1 — is granted by an EFFECT instead, with GrantCastTiming.
 	CastTimings []game.CastTimingRule
 
+	// GrantedAlternativeCosts declares the alternative costs (CR 118.9)
+	// this permanent offers its controller for each spell they cast
+	// while it is on the battlefield (ADR 0118 §3, #2163): "You may pay
+	// {W}{U}{B}{R}{G} rather than pay the mana cost for spells you cast"
+	// (Jodah, Archmage Eternal; Fist of Suns), "You may cast spells from
+	// your hand without paying their mana costs" (Omniscience).
+	//
+	// Build one with PayWUBRGForSpellsYouCast or
+	// CastFromHandWithoutPayingManaCost (granted_alternative_cost.go)
+	// rather than by hand: the key is an on-disk identity. Derived from
+	// the battlefield on every query, for the reason CastPermissions
+	// gives. The offer is claimable only where the spell's printed mana
+	// cost could be paid (CR 118.9a), keeps the spell's own timing, and
+	// takes commander tax and cost modifiers on top (CR 118.9d).
+	GrantedAlternativeCosts []game.GrantedAlternativeCost
+
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —
 	// game.LibraryTopOwner for "you may look at the top card of your
