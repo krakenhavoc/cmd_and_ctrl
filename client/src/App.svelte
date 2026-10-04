@@ -22,6 +22,7 @@
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
   import SettingsSyncToast from "./lib/components/SettingsSyncToast.svelte";
+  import SiteFooter from "./lib/components/SiteFooter.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
@@ -152,6 +153,13 @@
   {#key $route.gameID}
     <Game gameID={$route.gameID} />
   {/key}
+{/if}
+
+<!-- Unofficial-fan-content / Scryfall notice (#2191). Every page outside
+     the table; never on the game route, which is also where the practice
+     table lives (#/practice is only the door that opens it). The oauth hand-off renders nothing, so skip it too. -->
+{#if $route.name !== "game" && $route.name !== "oauthComplete"}
+  <SiteFooter />
 {/if}
 
 <!-- Environment marker. Renders nothing in production; on dev it is a
