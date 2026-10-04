@@ -1386,3 +1386,17 @@ func returnThisCardFromYourGraveyardToHand(g *game.Game, item *game.StackItem) e
 	}
 	return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
 }
+
+// counterTheSpellIfNoManaWasSpent is "counter that spell" behind the
+// intervening "if no mana was spent to cast it" (Vexing Bauble;
+// Boromir, Warden of the Tower). CR 603.4: the "if" is checked again
+// on resolution. A spell that is no longer on the stack answers "known
+// nothing", but CounterTarget on a missing item is already a no-op, so
+// the re-read is the honest check and not the guard.
+func counterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
+	spell := item.Trigger.Event.CardID
+	if !NoManaWasSpentToCast(g, spell) {
+		return nil
+	}
+	return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
+}
