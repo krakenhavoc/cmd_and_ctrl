@@ -156,6 +156,14 @@ export interface CastChoices {
   // viewer's strictMana setting says (owner decision 3). A click never
   // sets it, so a clicked cast is byte-identical to before.
   viaDrag?: boolean;
+  // ADR 0118 §2 (#2188): the cast was started from the "Cast anyway
+  // (don't pay)" row and confirmed. It rides CastChoices for the reason
+  // viaDrag does: the face, the costs, X, the modes and the targets are
+  // asked exactly as for a click, and the flag must survive every hop.
+  // applyCastChoices turns it into `strict: true, force_cast: true`:
+  // no mana is spent and the log says so. Life for Phyrexian symbols
+  // and every additional cost are still paid.
+  forceCast?: boolean;
 }
 
 // CastSourceZone is the `from_zone` vocabulary the server's
@@ -221,17 +229,31 @@ export function applyCastChoices(
     params.strict = true;
     params.auto_tap = true;
   }
+  // ADR 0118 §2: a confirmed Cast anyway pays no mana. `strict` keeps
+  // manaEnforcement.ts's stamp off the payload, and no auto_tap: the
+  // engine must tap nothing for a cast the player chose not to pay.
+  if (choices.forceCast) {
+    params.strict = true;
+    params.force_cast = true;
+    delete params.auto_tap;
+  }
 }
 
 // castChoicesBase is the CastChoices a cast STARTS with, before any
 // prompt has asked anything: the zone it comes out of (undefined is the
-// hand) and whether it was dragged. handlePlayCard seeds the chain with
-// it, and the face picker stashes it, so neither half is lost when a
-// modal DFC asks which face first.
-export function castChoicesBase(fromZone?: CastSourceZone, viaDrag = false): CastChoices {
+// hand), whether it was dragged, and whether it is a confirmed Cast
+// anyway (ADR 0118 §2). handlePlayCard seeds the chain with it, and the
+// face picker stashes it, so none of it is lost when a modal DFC asks
+// which face first.
+export function castChoicesBase(
+  fromZone?: CastSourceZone,
+  viaDrag = false,
+  forceCast = false,
+): CastChoices {
   const out: CastChoices = {};
   if (fromZone) out.fromZone = fromZone;
   if (viaDrag) out.viaDrag = true;
+  if (forceCast) out.forceCast = true;
   return out;
 }
 

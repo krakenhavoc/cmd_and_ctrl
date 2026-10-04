@@ -106,6 +106,16 @@ type Game struct {
 	// "real" game UI behind the player's commitment. Added in S08.
 	MulligansOpen bool
 
+	// OpeningRoll is the open opening-roll window (ADR 0121 §1): the
+	// rounds of d20s rolled so far and, once one leader is left, the
+	// chooser. Non-nil from StartWithOpeningRoll until the chooser
+	// chooses who takes the first turn; the hands are dealt then. While
+	// it is set only the opening roll's own actions, a concession and
+	// the table settings are accepted (actions.Dispatch), and nothing
+	// done mints an undo entry. Carried by Clone, RestoreFrom and the
+	// snapshot.
+	OpeningRoll *OpeningRoll
+
 	// Monarch is the player ID currently designated as the monarch
 	// (CR 725). uuid.Nil means "no monarch currently". Handed out by
 	// the set_monarch action or by a card effect; from #375 onward the
@@ -1047,7 +1057,8 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 // Start transitions the game from lobby to active with seat 0 as the starting
 // player and shuffles each player's library. It is the stable fixture/replay
 // entry point retained for callers that already chose a starting seat.
-// Production game creation uses StartWithFirstPlayerRoll instead.
+// Production game creation uses StartWithFirstPlayerRoll or
+// StartWithOpeningRoll instead.
 //
 // The RNG argument no longer IS the game's source; it seeds the
 // game's secret key (ADR 0054 Decision 2). A caller-supplied source
@@ -1063,22 +1074,25 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 // and ErrGameAlreadyStarted if the game is not in lobby.
 func (g *Game) Start(r *rand.Rand) error {
 	if r == nil {
-		return g.start(nil, false)
+		return g.start(nil, startSeatZero)
 	}
 	key := rngKeyFrom(r)
-	return g.start(&key, false)
+	return g.start(&key, startSeatZero)
 }
 
-// StartWithFirstPlayerRoll is Start plus the real-table pregame procedure:
-// every seat rolls a d20, tied leaders reroll, and the winner takes turn 1.
-// The rolls use the same seeded, persisted RNG as card effects and are emitted
-// to the public log. Production callers should use this entry point.
+// StartWithFirstPlayerRoll is Start plus the real-table pregame procedure,
+// played automatically: every seat rolls a d20, tied leaders reroll, and
+// the winner chooses to take turn 1 themselves. It runs on the same
+// opening-roll window StartWithOpeningRoll opens (ADR 0121 §1), so for a
+// given key it finds the same winner, and deals the same hands, as a table
+// that rolls by hand and whose winner goes first. The rolls use the same
+// seeded, persisted RNG as card effects and are emitted to the public log.
 func (g *Game) StartWithFirstPlayerRoll(r *rand.Rand) error {
 	if r == nil {
-		return g.start(nil, true)
+		return g.start(nil, startAutomaticRoll)
 	}
 	key := rngKeyFrom(r)
-	return g.start(&key, true)
+	return g.start(&key, startAutomaticRoll)
 }
 
 // StartWithSource is Start on a caller-supplied PCG source. It used
@@ -1090,16 +1104,31 @@ func (g *Game) StartWithFirstPlayerRoll(r *rand.Rand) error {
 // Pass nil to get the same crypto-minted key Start(nil) mints.
 func (g *Game) StartWithSource(src *rand.PCG) error {
 	if src == nil {
-		return g.start(nil, false)
+		return g.start(nil, startSeatZero)
 	}
 	key := rngKeyFrom(src)
-	return g.start(&key, false)
+	return g.start(&key, startSeatZero)
 }
 
+// startMode is how a game picks its starting player.
+type startMode int
+
+const (
+	// startSeatZero: seat 0 takes turn 1 and the hands are dealt at
+	// once (Start, StartWithSource; the practice table).
+	startSeatZero startMode = iota
+	// startAutomaticRoll: the opening roll is played out at once and
+	// its winner goes first (StartWithFirstPlayerRoll).
+	startAutomaticRoll
+	// startOpeningRoll: the opening roll opens and waits for the table
+	// (StartWithOpeningRoll, ADR 0121).
+	startOpeningRoll
+)
+
 // start is the shared body. key is the game's RNG key, or nil to keep a key
-// already set and otherwise mint one. rollForFirst selects whether this caller
-// already chose seat 0 or wants the table's public opening roll.
-func (g *Game) start(key *[32]byte, rollForFirst bool) error {
+// already set and otherwise mint one. mode says how the starting player is
+// found.
+func (g *Game) start(key *[32]byte, mode startMode) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -1130,39 +1159,12 @@ func (g *Game) start(key *[32]byte, rollForFirst bool) error {
 	for _, p := range g.Seats {
 		p.UndosRemaining = g.Settings.UndoLimit
 		p.Life = g.Settings.StartingLife
-		// The opening shuffle is the pre-game turn index's first draw
-		// on this seat's shuffle stream (the cursor is set to turn 1
-		// below).
-		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-		// Deal an opening hand of 7. If the library is too short to
-		// satisfy 7 (a malformed deck), stop early — the partial hand
-		// is still valid and tests can use small decks.
-		for i := 0; i < OpeningHandSize; i++ {
-			c, err := p.Library.PopTop()
-			if err != nil {
-				break
-			}
-			p.Hand.PushTop(c)
-		}
-		// S13.5: opening-hand cards are known to their owner only.
-		// Library cards have no knowers (post-shuffle order is
-		// unknown to everyone). Command-zone cards are public — every
-		// seated player sees them per CR 400.2.
-		for i := range p.Hand.Cards {
-			p.Hand.Cards[i].AddKnower(p.ID)
-		}
+		// Command-zone cards are public — every seated player sees
+		// them per CR 400.2.
 		for i := range p.Command.Cards {
 			p.Command.Cards[i].AddKnowersAll(allSeatedIDs)
 		}
 	}
-	g.StartingSeat = 0
-	if rollForFirst {
-		g.StartingSeat = g.rollStartingSeatLocked()
-	}
-	g.Turn = newStartingTurn(g.StartingSeat)
-	// The one turn that does not begin through the rotation seam
-	// still counts as a turn begun (ADR 0063 Decision 3).
-	g.noteTurnBegunLocked(g.StartingSeat)
 	g.State = StateActive
 	g.MulligansOpen = true
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
@@ -1170,6 +1172,16 @@ func (g *Game) start(key *[32]byte, rollForFirst bool) error {
 	// mulligan window closes (KeepHand triggers them when MulligansOpen
 	// flips false). This keeps the lobby/keep-hand UX from auto-drawing
 	// before players have committed to their opening hand.
+	if mode == startSeatZero {
+		g.dealAndBeginLocked(0)
+		return nil
+	}
+	// ADR 0121 §1: the roll comes before the shuffle and the deal
+	// (CR 103.1, 103.3, 903.7).
+	g.openOpeningRollLocked()
+	if mode == startAutomaticRoll {
+		g.rollOpeningAutomaticallyLocked()
+	}
 	return nil
 }
 
@@ -1200,6 +1212,8 @@ func (g *Game) End() {
 		g.revealForetoldAtGameEndLocked()
 	}
 	g.State = StateEnded
+	// ADR 0121 §1: a table ended mid-roll has no roll left to finish.
+	g.OpeningRoll = nil
 }
 
 // AdvanceStep is the sandbox's skip-ahead: "pass priority until this

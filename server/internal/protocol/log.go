@@ -172,6 +172,15 @@ const (
 	LogReveal LogKind = "reveal"
 	LogRoll   LogKind = "roll"
 	LogFlip   LogKind = "flip"
+	// LogOpeningRoll — the opening roll moved on (ADR 0121 §3). `Label`
+	// says how: "tie" (`Seats` tied on `Results[0]` and roll again),
+	// "won" (`Seat` won with `Results[0]` and chooses who goes first)
+	// or "rolled_for" (`Seat`, the host — NoSeat for the server admin —
+	// rolled for `Seats`). Each die is its own `roll` line.
+	LogOpeningRoll LogKind = "opening_roll"
+	// LogStartingPlayer — the winner of the opening roll (`Seat`) chose
+	// who takes the first turn (`TargetSeat`), CR 103.1. ADR 0121 §2.
+	LogStartingPlayer LogKind = "starting_player"
 	// LogChooseColor — a player answered a "choose a color" prompt
 	// (CR 105.4): Coldsteel Heart as it enters, Wash Out as it
 	// resolves. `Choice` is the colour LETTER and CardID the card the
@@ -529,12 +538,21 @@ type LogEvent struct {
 	// anywhere is untagged, so the tag's presence alone says there are
 	// two beats to show. #187, ADR 0053 Decision 1.
 	CombatStep string `json:"combat_step,omitempty"`
+	// Unpaid marks a LogCast entry whose caster cast it without paying
+	// its mana cost (force_cast, the "Cast anyway (don't pay)" row;
+	// ADR 0118 §2). Copied from game.Event.Unpaid. Public: the pool
+	// and the cost are public, so it is not redacted with the card's
+	// name. #2188.
+	Unpaid bool `json:"unpaid,omitempty"`
 	// Random outcomes are public. One entry groups a whole instruction.
 	Sides   int      `json:"sides,omitempty"`
 	Results []int    `json:"results,omitempty"`
 	Faces   []string `json:"faces,omitempty"`
 	Call    string   `json:"call,omitempty"`
 	Wins    int      `json:"wins,omitempty"`
+	// Seats are the seats a LogOpeningRoll entry names: the seats that
+	// tied, or the seats the host rolled for (ADR 0121 §3).
+	Seats []int `json:"seats,omitempty"`
 	// Choice is the VALUE a player named at a "choose a ..." prompt:
 	// the colour letter on a LogChooseColor entry ("G"), the
 	// canonical creature type on a LogChooseType one ("Elf"). A
@@ -596,6 +614,8 @@ type LogEvent struct {
 	// GameView.Seats already carries them.
 	actorName      string
 	targetSeatName string
+	// seatNames are the display names of Seats, in order (ADR 0121).
+	seatNames []string
 	// revealSeq / revealIDs / revealNames are LogReveal's render
 	// inputs. The instance IDs exist only between projection and name
 	// resolution — resolveLogNames swaps them for printed names and
@@ -978,6 +998,26 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventOpeningRoll:
+		// ADR 0121 §3: a round ended (a tie, or a winner) or the host
+		// rolled for the seats that had not.
+		base.Kind = LogOpeningRoll
+		base.Label = ev.Label
+		base.Seats = append([]int(nil), ev.Seats...)
+		if ev.Amount > 0 {
+			base.Results = []int{ev.Amount}
+		}
+		return base, true
+
+	case game.EventStartingPlayer:
+		// ADR 0121 §2, CR 103.1: who takes the first turn, and who
+		// chose it.
+		base.Kind = LogStartingPlayer
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventStepBegan:
 		*turn = ev.Amount
 		*step = ev.Label
@@ -994,6 +1034,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.OldZone != game.ZoneHand {
 			base.OldZone = string(ev.OldZone)
 		}
+		base.Unpaid = ev.Unpaid
 		return base, true
 
 	case game.EventResolve:
@@ -1661,6 +1702,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		if e.TargetSeat != nil {
 			e.targetSeatName = nameOfSeat(*e.TargetSeat)
 		}
+		if len(e.Seats) > 0 {
+			e.seatNames = make([]string, len(e.Seats))
+			for j, s := range e.Seats {
+				e.seatNames[j] = nameOfSeat(s)
+			}
+		}
 		if c, ok := cards[e.CardID]; ok {
 			e.cardName = logNameOf(c)
 			e.cardKnowers = c.knowers
@@ -1925,6 +1972,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	switch e.Kind {
 	case LogRoll, LogFlip:
 		return renderRandomLogText(e, actor, card)
+	case LogOpeningRoll, LogStartingPlayer:
+		return renderOpeningRollLogText(e, actor, target)
 	case LogStep:
 		round := e.Round
 		if round == 0 {
@@ -1934,10 +1983,16 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("Turn %d — %s · %s", round, actor, prettyStep(e.Step))
 	case LogCast:
-		if e.OldZone != "" {
-			return fmt.Sprintf("%s cast %s from %s", actor, card, prettyZone(e.OldZone))
+		// ADR 0118 owner decision 4: an unpaid cast says so, in these
+		// words, after the zone.
+		unpaid := ""
+		if e.Unpaid {
+			unpaid = " without paying its mana cost"
 		}
-		return fmt.Sprintf("%s cast %s", actor, card)
+		if e.OldZone != "" {
+			return fmt.Sprintf("%s cast %s from %s%s", actor, card, prettyZone(e.OldZone), unpaid)
+		}
+		return fmt.Sprintf("%s cast %s%s", actor, card, unpaid)
 	case LogResolve:
 		if e.ability {
 			return fmt.Sprintf("%s resolved", abilityName(e.Label, cardName))

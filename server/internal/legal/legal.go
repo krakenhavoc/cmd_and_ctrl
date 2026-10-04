@@ -567,6 +567,14 @@ func newEnumerator(g *game.Game, seat uuid.UUID, opts Options) *enumerator {
 func (e *enumerator) run() {
 	g, seat := e.g, e.seat
 
+	// ADR 0121 §1: the opening roll comes before the mulligan, and while
+	// it is open nobody has a hand to keep. Its own moves (§4) are not
+	// offered yet, so a bot seat sits the roll out rather than being
+	// handed keep and mulligan moves the engine refuses.
+	if g.OpeningRoll != nil {
+		return
+	}
+
 	// The mulligan window is its own world: the cursor is parked on
 	// Untap, nobody holds priority, and the only verbs are keep and
 	// mulligan.

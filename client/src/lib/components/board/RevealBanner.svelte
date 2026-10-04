@@ -31,6 +31,7 @@
     emptyRandomState,
     emptyRevealState,
     hiddenRevealCount,
+    isRandomLog,
     primeRandomEvents,
     primeRevealState,
     revealHeadline,
@@ -40,11 +41,19 @@
     type RevealState,
   } from "../../reveals";
   import Icon from "../Icon.svelte";
+  import { useDiceQueue, type DiceQueue } from "../../diceQueue.svelte";
 
   interface Props {
     snap: GameView | null;
+    // ADR 0121 §7: the game screen's dice schedule. A roll's cue waits
+    // for its die to settle, so the text never gives the number away
+    // mid-tumble. Defaults to the one Game.svelte provides; with none
+    // (mounted alone) a cue shows at once, as before.
+    dice?: DiceQueue | null;
   }
-  const { snap }: Props = $props();
+  const { snap, dice: given }: Props = $props();
+  const provided = useDiceQueue();
+  const dice = $derived(given === undefined ? provided : given);
 
   let cueState = $state<RevealState>(emptyRevealState());
   let primed = false;
@@ -73,16 +82,27 @@
   // Roll and flip log entries are a stream rather than a window, but
   // the public log is replayed on reconnect too. Prime that first
   // frame, then admit each batch sequence once into the same strip.
+  //
+  // With a dice queue, an entry is admitted only once the queue releases
+  // it: when its die settles, at once with motion off, at once for one
+  // the queue dropped. Reading the queue's tick wakes this at that
+  // instant. Priming still reads the whole window.
   $effect(() => {
     if (!snap) return;
     const logs = snap.log;
+    const queue = dice;
+    void queue?.tick;
     untrack(() => {
       if (!randomPrimed) {
         randomPrimed = true;
         randomState = primeRandomEvents(logs);
         return;
       }
-      randomState = trackRandomEvents(randomState, logs, Date.now());
+      const now = Date.now();
+      const ready = queue
+        ? logs?.filter((log) => !isRandomLog(log) || queue.released(log.seq, now))
+        : logs;
+      randomState = trackRandomEvents(randomState, ready, now);
     });
   });
 
@@ -158,8 +178,15 @@
   </div>
 {/each}
 
+<!-- With a dice queue the dice layer's always-mounted announcer reads
+     each roll once as it settles, so the line here is not a second
+     live region. -->
 {#each randomState.cues as cue (cue.log.seq)}
-  <div class="reveal-line random-line" role="status" aria-live="polite">
+  <div
+    class="reveal-line random-line"
+    role={dice ? undefined : "status"}
+    aria-live={dice ? undefined : "polite"}
+  >
     <span class="label gold">
       <Icon name="spark" size={12} />
       {cue.log.kind === "roll" ? "rolled" : "flipped"}

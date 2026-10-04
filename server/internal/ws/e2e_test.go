@@ -144,6 +144,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.Promises = n.promises(v.Promises)
 	out.Vote = n.vote(v.Vote)
 	out.StartingSeat = v.StartingSeat
+	// ADR 0121: seat indexes and results only, nothing to normalise.
+	out.OpeningRoll = v.OpeningRoll
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
@@ -509,6 +511,9 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		UndoLimit:    3,
 		Settings:     &protocol.TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		StartingSeat: 1,
+		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{
+			{Seats: []int{0, 1}, Rolls: []protocol.OpeningRollDieView{{Seat: 0, Result: 12}}},
+		}},
 
 		StackItems:      []protocol.StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
 		PendingTriggers: []protocol.StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},

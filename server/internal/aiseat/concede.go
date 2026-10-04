@@ -62,12 +62,10 @@ func (r *Runner) concede(ctx context.Context, in Input) bool {
 	if ctx.Err() != nil {
 		return false
 	}
-	view, seq, err := r.room.Apply(r.seat, func() error {
-		return actions.Dispatch(r.room.Game, actions.Action{
-			Type:   actions.TypeConcede,
-			Player: r.seat,
-			Caller: r.seat,
-		})
+	view, seq, err := r.apply(actions.Action{
+		Type:   actions.TypeConcede,
+		Player: r.seat,
+		Caller: r.seat,
 	})
 	if err != nil {
 		// A concede the engine refuses (the game already ended, say)

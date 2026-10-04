@@ -95,6 +95,11 @@ type GameView struct {
 	// which matches the only seat games started on before this field
 	// existed. Added in S13.
 	StartingSeat int `json:"starting_seat"`
+	// OpeningRoll is the open opening roll (ADR 0121 §3): its rounds of
+	// d20s and, once one leader remains, the chooser. Present only
+	// while the roll is open; a client ignores StartingSeat meanwhile
+	// (it reads 0). Public and identical for every viewer.
+	OpeningRoll *OpeningRollView `json:"opening_roll,omitempty"`
 	// StackItems is the announce-time metadata for every item
 	// currently on the stack — caster, target list, modes, X,
 	// distribution, hold-priority, split-second flags. Indexed in
@@ -3865,6 +3870,7 @@ func ViewOfGame(g *game.Game) GameView {
 			UndoLimit:             g.Settings.UndoLimit,
 			Settings:              viewOfTableSettings(g.Settings),
 			StartingSeat:          g.StartingSeat,
+			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
@@ -7738,16 +7744,18 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1199: shared and public like the battlefield, and redacted
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
-		PhasedOut:             redactZone(v.PhasedOut, isKnower),
-		Turn:                  v.Turn,
-		MulligansOpen:         v.MulligansOpen,
-		Monarch:               v.Monarch,
-		Initiative:            v.Initiative,
-		Promises:              v.Promises,
-		Vote:                  v.Vote,
-		UndoLimit:             v.UndoLimit,
-		Settings:              v.Settings,
-		StartingSeat:          v.StartingSeat,
+		PhasedOut:     redactZone(v.PhasedOut, isKnower),
+		Turn:          v.Turn,
+		MulligansOpen: v.MulligansOpen,
+		Monarch:       v.Monarch,
+		Initiative:    v.Initiative,
+		Promises:      v.Promises,
+		Vote:          v.Vote,
+		UndoLimit:     v.UndoLimit,
+		Settings:      v.Settings,
+		StartingSeat:  v.StartingSeat,
+		// ADR 0121 §3: every die is public the moment it lands.
+		OpeningRoll:           v.OpeningRoll,
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
 		DelayedTriggers:       v.DelayedTriggers,

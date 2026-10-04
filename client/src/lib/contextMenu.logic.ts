@@ -29,6 +29,12 @@ import {
   seatLabel,
 } from "./attackAll";
 import { grantedFromLabel } from "./abilityRef";
+import { CAST_ANYWAY_LABEL, CAST_ANYWAY_TITLE } from "./castAnyway";
+import {
+  castStripCastAnywayBlocked,
+  castStripEntries,
+  castStripOffersCastAnyway,
+} from "./castStrip";
 import {
   attackersDefendedBy,
   attackTargetHint,
@@ -58,6 +64,9 @@ import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
   canPayLoyaltyCost,
+  castAnywayBlocked,
+  castAnywayOffered,
+  type CastAnywayZone,
   hasSatisfiableTargets,
   loyaltyOf,
 } from "./timing";
@@ -180,6 +189,10 @@ export interface MenuItem {
   action?: MenuAction;
   prompt?: MenuPrompt;
   activate?: MenuActivate;
+  // ADR 0118 §2: the "Cast anyway (don't pay)" row, out of this zone. It
+  // hands the card to the Board's confirmation (castAnyway.ts) rather
+  // than sending anything: the cast chain and the dock are the Board's.
+  castAnyway?: CastAnywayZone;
   // Leave the menu open after firing. Set on the incremental rows
   // (counters, damage) because "add three +1/+1 counters" is three
   // clicks and re-opening the menu between each would be hostile.
@@ -1754,6 +1767,48 @@ export function specialActionItems(
   return readyFirst(items, (i) => i.ready === true);
 }
 
+// ---- Cast anyway (don't pay), ADR 0118 §2 -----------------------------
+//
+// castAnywayItem is the row, for the popover's Sandbox section and for
+// the admin override menu's "cast" section: one builder for both, as
+// specialActionItems is. `blocked` is timing.ts castAnywayBlocked's
+// reason ("" for a live row): the row is greyed only for what would
+// refuse the cast whatever the pool held, never for the mana. The label
+// is a contract (AGENTS.md §5).
+export function castAnywayItem(blocked: string, zone: CastAnywayZone = "hand"): MenuItem {
+  return {
+    id: "cast-anyway",
+    label: CAST_ANYWAY_LABEL,
+    hint: blocked || CAST_ANYWAY_TITLE,
+    disabled: blocked !== "" || undefined,
+    castAnyway: zone,
+  };
+}
+
+// castAnywayMenuItem is the admin override menu's row for one card, or
+// null when the card offers none: the viewer's own hand card with a
+// castable face, or a card the castable-from-other-zones strip holds (a
+// commander, or an exile entry whose verb is "cast"), exactly the cards
+// whose popover carries it.
+function castAnywayMenuItem(
+  view: GameView,
+  card: CardView,
+  zone: MenuZone,
+  viewerID: string | null,
+): MenuItem | null {
+  if (!viewerID) return null;
+  if (zone === "hand") {
+    if (card.owner !== viewerID || !castAnywayOffered(card, "hand")) return null;
+    return castAnywayItem(castAnywayBlocked(card, view, viewerID, "hand"), "hand");
+  }
+  if (zone !== "command" && zone !== "exile") return null;
+  const entry = castStripEntries(view, viewerID).find(
+    (e) => e.zone === zone && e.card.instance_id === card.instance_id,
+  );
+  if (!entry || !castStripOffersCastAnyway(entry)) return null;
+  return castAnywayItem(castStripCastAnywayBlocked(entry, view, viewerID), zone);
+}
+
 // buildMenuSections is the whole menu for one card, in render order.
 // An empty result means "the viewer may not override this card" and
 // the component says so rather than showing a bare frame.
@@ -1770,6 +1825,10 @@ export function buildMenuSections(
   // control. Read for those rows only; the controller's and the admin's
   // menus never grey on the digest. Omitted: no information.
   gate: LegalActions = NO_LEGAL_ACTIONS,
+  // ADR 0118 §2: the viewer's `gameplay.strictMana`. On, a card the
+  // viewer could cast gets the "Cast anyway (don't pay)" row in a
+  // "cast" section above "move to". Omitted: off, no row.
+  strictMana = false,
 ): MenuSection[] {
   const location = locateCard(view, card.instance_id);
   if (!location) return [];
@@ -1834,6 +1893,12 @@ export function buildMenuSections(
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
   }
+
+  // ADR 0118 §2: with admin overrides on, a right-click opens this menu
+  // instead of the popover, so the popover's "Cast anyway (don't pay)"
+  // row is here too, above "move to".
+  const castAnyway = strictMana ? castAnywayMenuItem(view, card, location.zone, viewerID) : null;
+  if (castAnyway) sections.push({ id: "cast", label: "cast", items: [castAnyway] });
 
   sections.push({
     id: "move",

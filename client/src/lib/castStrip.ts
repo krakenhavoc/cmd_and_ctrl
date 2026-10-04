@@ -32,7 +32,7 @@ import {
   type ExileCostBadge,
   type ExileStripEntry,
 } from "./exileStrip";
-import { canCastFromHand, type Legality } from "./timing";
+import { canCastFromHand, castAnywayBlocked, castAnywayOffered, type Legality } from "./timing";
 
 /** The `from_zone` a strip card is cast from. */
 export type CastStripZone = "exile" | "command";
@@ -105,6 +105,34 @@ export function castStripLegality(
 ): Legality {
   if (entry.zone === "command") return canCastFromHand(entry.card, view, viewerID);
   return exileEntryLegality(entry, view, viewerID);
+}
+
+/**
+ * castStripOffersCastAnyway says whether a strip card gets the "Cast
+ * anyway (don't pay)" row (ADR 0118 §2): a commander, or an exile entry
+ * whose verb is "cast" (a land under a "you may play it" grant is
+ * played, never cast).
+ */
+export function castStripOffersCastAnyway(entry: CastStripEntry): boolean {
+  return entry.verb === "cast" && castAnywayOffered(entry.card, entry.zone);
+}
+
+/**
+ * castStripCastAnywayBlocked is why a strip card's "Cast anyway (don't
+ * pay)" row is greyed, or "" when it is live. An exile entry whose grant
+ * waits on a later turn or a closed window says so first, in the strip's
+ * own words; everything else is timing.ts castAnywayBlocked, which reads
+ * the entry's `castable_here` but never the mana.
+ */
+export function castStripCastAnywayBlocked(
+  entry: CastStripEntry,
+  view: GameView,
+  viewerID: string | null,
+): string {
+  if (entry.zone === "exile" && entry.state !== "now") {
+    return exileEntryLegality(entry, view, viewerID).reason ?? "Not castable from exile right now";
+  }
+  return castAnywayBlocked(entry.card, view, viewerID, entry.zone);
 }
 
 /**
