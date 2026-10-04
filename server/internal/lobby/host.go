@@ -12,7 +12,7 @@ package lobby
 //     HUMAN seat to join hosts. A named host who arrives later takes
 //     over from that interim host; the table is never left without
 //     someone who can manage it just because the named host is late.
-//   - Bot seats never host.
+//   - Bot seats never host, and neither do agent seats (ADR 0122 §7).
 //   - POST /games/{id}/host transfers it (host or admin).
 //   - A host who leaves the game (ADR 0060 — concede or loss) passes
 //     hosting to the next human seat in turn order. That rule lives on
@@ -29,8 +29,9 @@ import (
 )
 
 // ErrHostIneligible is returned by TransferHost when the target seat
-// cannot host: a bot, or a player who has already left the game.
-var ErrHostIneligible = errors.New("lobby: seat cannot host (bot or no longer in the game)")
+// cannot host: a bot, an AI agent's seat (ADR 0122 §7), or a player
+// who has already left the game.
+var ErrHostIneligible = errors.New("lobby: seat cannot host (bot, agent or no longer in the game)")
 
 // ErrNotTableManager is returned by the host-or-admin routes when the
 // caller is neither.
@@ -110,7 +111,7 @@ func (l *Lobby) TransferHost(id, target uuid.UUID) (GameMeta, error) {
 	if seat == nil {
 		return GameMeta{}, ErrPlayerNotInGame
 	}
-	if seat.IsBot {
+	if seat.IsBot || seat.IsAgent {
 		return GameMeta{}, ErrHostIneligible
 	}
 	if !canHost(entry.room.Game, target) {
@@ -133,14 +134,14 @@ func (l *Lobby) TransferHost(id, target uuid.UUID) (GameMeta, error) {
 }
 
 // canHost reports whether the engine seat is a human still in the
-// game. Read under the game's lock: Eliminated is written by the
+// game: not a bot, not an agent (ADR 0122 §7), not eliminated. Read under the game's lock: Eliminated is written by the
 // engine mid-game.
 func canHost(g *game.Game, playerID uuid.UUID) bool {
 	ok := false
 	g.ReadSnapshot(func() {
 		for _, p := range g.Seats {
 			if p != nil && p.ID == playerID {
-				ok = !p.IsBot && !p.Eliminated
+				ok = !p.IsBot && !p.Agent && !p.Eliminated
 				return
 			}
 		}

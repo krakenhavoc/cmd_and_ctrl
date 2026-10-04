@@ -23,14 +23,17 @@ import (
 )
 
 // hostSeat is the slice of a seat the host rules read: identity, and
-// the two properties that disqualify a seat from hosting.
+// the three properties that disqualify a seat from hosting. An agent
+// seat (ADR 0122 §7) never hosts, as a bot seat does not: changing the
+// table's rules is not a seat's move.
 type hostSeat struct {
 	id         uuid.UUID
 	bot        bool
+	agent      bool
 	eliminated bool
 }
 
-func (s hostSeat) eligible() bool { return !s.bot && !s.eliminated }
+func (s hostSeat) eligible() bool { return !s.bot && !s.agent && !s.eliminated }
 
 // pickHost is the pure host rule. seats are in turn order (seat
 // index order — the order the turn rotation walks).
@@ -92,7 +95,7 @@ func (r *Room) HostPlayerID() uuid.UUID {
 			if p == nil {
 				continue
 			}
-			seats = append(seats, hostSeat{id: p.ID, bot: p.IsBot, eliminated: p.Eliminated})
+			seats = append(seats, hostSeat{id: p.ID, bot: p.IsBot, agent: p.Agent, eliminated: p.Eliminated})
 		}
 	})
 	return r.resolveHost(seats)
@@ -143,7 +146,7 @@ func (r *Room) stampHostLocked(view *protocol.GameView) {
 		if err != nil {
 			continue
 		}
-		seats = append(seats, hostSeat{id: id, bot: s.IsBot, eliminated: s.Eliminated})
+		seats = append(seats, hostSeat{id: id, bot: s.IsBot, agent: s.IsAgent, eliminated: s.Eliminated})
 	}
 	h := r.resolveHost(seats)
 	if h == uuid.Nil {

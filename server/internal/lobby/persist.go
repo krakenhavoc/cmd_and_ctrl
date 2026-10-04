@@ -365,9 +365,9 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 //
 // The rows hold what ADR 0051 decision 4 gives a column. The rest of
 // SeatInfo — whether a real deck is loaded, the Discord avatar and
-// display name, the curated bot deck — rides the engine snapshot on
-// game.Player already, so it is read back from there rather than
-// duplicated into seats.
+// display name, the curated bot deck, the agent badge (ADR 0122 §7) —
+// rides the engine snapshot on game.Player already, so it is read
+// back from there rather than duplicated into seats.
 func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 	ctx, cancel := storeCtx()
 	defer cancel()
@@ -419,6 +419,10 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 				info.IsBot = true
 				info.BotTier = p.BotTier
 				info.BotDeck = p.BotDeck
+			}
+			if p.Agent {
+				info.IsAgent = true
+				info.AgentClient = p.AgentClient
 			}
 		}
 		meta.Players = append(meta.Players, info)

@@ -2195,6 +2195,7 @@ scopedEffects[].sourceName	string
 scopedEffects[].timestamp	number:int64
 seats	array
 seats[]	object
+seats[].agentClient	string
 seats[].botDeck	string
 seats[].botTier	string
 seats[].castPermissions	array
@@ -3328,6 +3329,7 @@ seats[].hand.kind	string
 seats[].hand.owner	custom(uuid.UUID)
 seats[].handKept	bool
 seats[].id	custom(uuid.UUID)
+seats[].isAgent	bool
 seats[].isBot	bool
 seats[].landDropsPerTurn	number:int
 seats[].lastTurnAttacks	array
