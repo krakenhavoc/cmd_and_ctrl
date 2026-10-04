@@ -154,3 +154,22 @@ func AddsOneManaOfTheChosenColor() func(game.ManaProduced, *game.Card, *game.Gam
 		return ""
 	}
 }
+
+// WheneverYouTapALandOfSubtypeForMana is the one-sided trigger
+// narrowed to a land subtype: "Whenever you tap a Swamp for mana, add
+// an additional {B}" — Crypt Ghast, Nirkana Revenant. The subtype is
+// read off the tapped land's EFFECTIVE type line as it was when it
+// produced, so Urborg, Tomb of Yawgmoth makes every land of yours a
+// Swamp for these.
+func WheneverYouTapALandOfSubtypeForMana(
+	label, subtype string,
+	produced func(prod game.ManaProduced, source *game.Card, g *game.Game) string,
+) game.ManaTrigger {
+	t := WheneverYouTapALandForMana(label, produced)
+	byController := t.AppliesTo
+	match := MatchLandSubtype(subtype)
+	t.AppliesTo = func(prod game.ManaProduced, source *game.Card, g *game.Game) bool {
+		return byController(prod, source, g) && match(prod.Source)
+	}
+	return t
+}
