@@ -134,7 +134,9 @@ func (e *enumerator) combatMoves() {
 						// Only the tapper can cover it, so the move
 						// has to say so — and if the tapper cannot
 						// either, the move is not offered at all.
-						if _, ok := e.g.AutoTapForCostForEffectExcluding(e.seat, total, 0, nil); !ok {
+						// ADR 0118 §1: the pool tops up, as
+						// attackTaxAffordableLocked asks it.
+						if !e.g.AutoTapTopUpForEffectExcluding(e.seat, total, 0, game.ManaSpendContext{}, nil) {
 							continue
 						}
 						autoTap = true
