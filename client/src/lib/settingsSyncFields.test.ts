@@ -86,6 +86,11 @@ describe("SYNCED_FIELDS", () => {
     expect(SYNCED_FIELDS.display.stackStyle).toBe("synced");
   });
 
+  it("syncs the stack hold (ADR 0119 §2) with the other auto-pass choices", () => {
+    expect(SYNCED_FIELDS.gameplay.stackHoldMs).toBe("synced");
+    expect(SYNCED_FIELDS.gameplay.bluffDelayMinMs).toBe("synced");
+  });
+
   it("syncs the two forced practice-table fields that are per person, and not the two that are per device", () => {
     expect(SYNCED_FIELDS.gameplay.strictMana).toBe("synced");
     expect(SYNCED_FIELDS.gameplay.autoPassPriority).toBe("synced");

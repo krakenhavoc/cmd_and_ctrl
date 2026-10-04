@@ -77,6 +77,22 @@ describe("settings", () => {
     expect(d.display.expandStyle).toBe("reflow");
   });
 
+  // ADR 0121 §7: dice animate by default, and a stored blob from before
+  // the field existed gains it from the merge, with no version bump.
+  it("defaults animations.dice on and fills it into an older blob", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, animations: { enabled: true, speed: 1.5, cardDraw: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS } = await freshModule();
+    expect(defaultSettings().animations.dice).toBe(true);
+    const s = get(settings);
+    expect(s.animations.dice).toBe(true);
+    expect(s.animations.cardDraw).toBe(false);
+    expect(s.animations.speed).toBe(1.5);
+    expect(SYNCED_FIELDS.animations.dice).toBe("synced");
+  });
+
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
     localStorage.setItem("cmdctrl.muted", "1");
     const { settings } = await freshModule();
@@ -370,6 +386,28 @@ describe("settings", () => {
     expect(s.gameplay.bluffInstant).toBe(true);
     expect(s.gameplay.bluffMode).toBe("manual");
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
+  });
+
+  // ADR 0119 §2: the stack hold arrives on, at 2 s, for everyone.
+  it("v17 → v18 seeds the stack hold at 2 s, and keeps a stored choice", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, gameplay: { bluffInstant: true } }),
+    );
+    let mod = await freshModule();
+    let s = get(mod.settings);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(18);
+    expect(s.gameplay.stackHoldMs).toBe(2000);
+    expect(s.gameplay.bluffInstant).toBe(true);
+
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 18, gameplay: { stackHoldMs: 0 } }),
+    );
+    mod = await freshModule();
+    s = get(mod.settings);
+    expect(s.gameplay.stackHoldMs).toBe(0);
   });
 
   // #1467 seeded stackStyle at v14; since v17 the seeded value is the

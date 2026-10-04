@@ -42,11 +42,9 @@
   //   the arrows fade in, and not at all under reduced motion.
   //
   // Target highlight
-  //   Each board element an arrow reaches gets `data-stack-lane-target`
-  //   and a `--stack-lane-ring` colour (syncTargetMarks). The ring rule
-  //   is the :global one at the bottom of this file, so it exists only
-  //   while this style is mounted, and the marks are cleared on unmount
-  //   — the board itself carries no fan-specific code.
+  //   The ring on each board element the stack targets is no longer
+  //   drawn here: StackTargetRings.svelte rings them for every style
+  //   (ADR 0119 §4).
 
   import { onDestroy, untrack } from "svelte";
   import type { StackLaneItem, StackLaneStyle, StackLaneStyleProps } from "../../stackLane";
@@ -54,7 +52,6 @@
     TOP_ARROW_COLOR,
     curvePath,
     measureStackArrows,
-    syncTargetMarks,
     type StackArrow,
   } from "../../stackArrows";
   import { cardImageURL } from "../../cardImage";
@@ -127,8 +124,6 @@
   // Where the board layer sits so its 0,0 is the board's top-left.
   let layer = $state({ left: 0, top: 0, width: 0, height: 0 });
 
-  let marked = new Set<HTMLElement>();
-
   function markerColors(arrows: StackArrow[]): string[] {
     return [...new Set(arrows.map((a) => a.color))];
   }
@@ -142,13 +137,11 @@
     if (!board || !track || !lane) {
       boardArrows = [];
       laneArrows = [];
-      marked = syncTargetMarks(marked, []);
       return;
     }
     const m = measureStackArrows({ board, lane, track, items: model.items });
     boardArrows = m.board;
     laneArrows = m.lane;
-    marked = syncTargetMarks(marked, m.targets);
 
     // The board layer's containing block is whatever the host makes it
     // (today the lane, whose backdrop-filter establishes one). Rather
@@ -213,7 +206,6 @@
 
   onDestroy(() => {
     cancelRaf(pending);
-    marked = syncTargetMarks(marked, []);
   });
 </script>
 
@@ -755,17 +747,5 @@
     text-transform: uppercase;
     color: var(--fg-dim);
     white-space: nowrap;
-  }
-
-  /* The highlight ring on a board element the lane points at
-     (stackArrows.syncTargetMarks). Outline and a drop-shadow rather
-     than box-shadow, so it composes with a card's own selection ring
-     instead of replacing it. */
-  :global([data-stack-lane-target]) {
-    outline: 2px solid var(--stack-lane-ring, var(--gold));
-    outline-offset: 3px;
-    filter: drop-shadow(
-      0 0 8px color-mix(in srgb, var(--stack-lane-ring, var(--gold)) 55%, transparent)
-    );
   }
 </style>

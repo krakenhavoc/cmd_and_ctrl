@@ -614,35 +614,46 @@ export interface JoinedPlayer {
   playerID: string;
 }
 
+// S19_GAMEPLAY is what every S19 seat's settings start from.
+//
+// alwaysStopOpponentStack makes the client hold on an opponent's stack
+// item. Smart autopass (#1308) passes for a seat with nothing to
+// respond with, so on an idle table the opponent passes the caster's
+// trigger the moment it lands and it resolves before any assertion can
+// see it; before that change an opponent's stack item always held.
+// These tests assert on the trigger while it waits and resolve it
+// through resolveStack's own "next" clicks.
+//
+// stackHoldMs: 0 turns off ADR 0119 §2's stack hold. These seats hold
+// by hand anyway and resolve with `next`, which is never delayed; the
+// hold has its own spec (stack-hold-2204.spec.ts).
+//
+// Everything else stays on the defaults (auto-pass through upkeep/draw
+// is what setup waits for).
+export const S19_GAMEPLAY: Record<string, unknown> = {
+  alwaysStopOpponentStack: true,
+  stackHoldMs: 0,
+};
+
 async function joinAsPlayer(
   browser: Browser,
   gameID: string,
   inviteToken: string,
   name: string,
+  gameplay: Record<string, unknown> = S19_GAMEPLAY,
 ): Promise<JoinedPlayer> {
   const context = await browser.newContext();
-  // Make the client hold on an opponent's stack item. Smart autopass
-  // (#1308) passes for a seat with nothing to respond with, so on an
-  // idle table the opponent passes the caster's trigger the moment it
-  // lands and it resolves before any assertion can see it; before
-  // that change an opponent's stack item always held. These tests
-  // assert on the trigger while it waits and resolve it through
-  // resolveStack's own "next" clicks. Everything else stays on the
-  // defaults (auto-pass through upkeep/draw is what setup waits for).
   // Written only when absent so a later navigation does not undo what
   // the app saved.
-  await context.addInitScript(() => {
+  await context.addInitScript((seed) => {
     try {
       if (localStorage.getItem("cmdctrl.settings.v1") === null) {
-        localStorage.setItem(
-          "cmdctrl.settings.v1",
-          JSON.stringify({ gameplay: { alwaysStopOpponentStack: true } }),
-        );
+        localStorage.setItem("cmdctrl.settings.v1", JSON.stringify({ gameplay: seed }));
       }
     } catch {
       // storage unavailable: fall back to the defaults
     }
-  });
+  }, gameplay);
   const page = await context.newPage();
   await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
   await page.getByPlaceholder("your name").fill(name);
@@ -797,16 +808,37 @@ export async function resolveStack(setup: S19Setup, maxAttempts = 20): Promise<S
 // (which has its own coverage in the lobby/full-game suite). It also
 // sidesteps the post-Pixi-rewrite UI churn that broke the dialog-
 // based flow.
+export interface S19Options {
+  // The gameplay settings each seat starts from, in place of
+  // S19_GAMEPLAY. The stack-hold spec seats an opponent on the
+  // defaults, which is the only way to watch smart autopass hold.
+  casterGameplay?: Record<string, unknown>;
+  opponentGameplay?: Record<string, unknown>;
+}
+
 export async function setupS19Game(
   browser: Browser,
   request: APIRequestContext,
+  opts: S19Options = {},
 ): Promise<S19Setup> {
   const adminToken = await adminLogin(request);
   const game = await createGame(request, adminToken, `S19 e2e ${Date.now()}`);
   if (!game.invite_token) throw new Error("invite token missing on fresh game");
 
-  const caster = await joinAsPlayer(browser, game.id, game.invite_token, "Caster");
-  const opponent = await joinAsPlayer(browser, game.id, game.invite_token, "Opponent");
+  const caster = await joinAsPlayer(
+    browser,
+    game.id,
+    game.invite_token,
+    "Caster",
+    opts.casterGameplay,
+  );
+  const opponent = await joinAsPlayer(
+    browser,
+    game.id,
+    game.invite_token,
+    "Opponent",
+    opts.opponentGameplay,
+  );
 
   const up1 = await uploadDeckAs(request, adminToken, game.id, caster.playerID, makeS19CasterDeck());
   const up2 = await uploadDeckAs(request, adminToken, game.id, opponent.playerID, makeS19OpponentDeck());

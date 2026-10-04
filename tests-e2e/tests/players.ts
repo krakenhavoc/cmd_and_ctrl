@@ -24,13 +24,30 @@ export interface JoinedPlayer {
 // the issued session captured. The returned token + playerID let a
 // test drive that seat either through this page or through the
 // server API (admin helpers in lobby-api.ts).
+//
+// `settings` (optional) seeds the browser's settings blob before the
+// app loads, written only when absent so a later navigation does not
+// undo what the app saved (the S19 helper's pattern). Omitted: the
+// defaults, as before.
 export async function joinAsPlayer(
   browser: Browser,
   gameID: string,
   inviteToken: string,
   name: string,
+  settings?: Record<string, unknown>,
 ): Promise<JoinedPlayer> {
   const context = await browser.newContext();
+  if (settings) {
+    await context.addInitScript((seed: string) => {
+      try {
+        if (localStorage.getItem("cmdctrl.settings.v1") === null) {
+          localStorage.setItem("cmdctrl.settings.v1", seed);
+        }
+      } catch {
+        // storage unavailable: fall back to the defaults
+      }
+    }, JSON.stringify(settings));
+  }
   const page = await context.newPage();
   await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
   await page.getByPlaceholder("your name").fill(name);
