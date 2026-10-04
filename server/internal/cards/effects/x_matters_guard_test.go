@@ -59,6 +59,7 @@ var xMattersAllowlist = map[string]string{
 	"domesticated_hydra.go Domesticated Hydra":          "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":                    "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
 	"fated_firepower.go Fated Firepower":                "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
+	"kessig_wolf_run.go Kessig Wolf Run":                "the trample half never reads X: at X=0 the target gets +0/+0 and still gains trample until end of turn",
 	"lightning_serpent.go Lightning Serpent":            "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
 	"mawloc.go Mawloc":                                  "2/2 body survives at X=0, and the Terror from the Deep fight is X-independent",
 	"pull_from_tomorrow.go Pull from Tomorrow":          "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
