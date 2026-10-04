@@ -5,7 +5,7 @@ import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
-import { isStackStyle, type StackStyle } from "./stackLane";
+import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -79,14 +79,16 @@ export interface Settings {
     // arrangement worth having. This setting only distinguishes the
     // 4-player table.
     tableLayout: "row" | "quadrant";
-    // #1467: how the stack is drawn. "compact" (the default) is the
-    // docked card in the top-left attention strip, as it has always
-    // been. The other three float a lane over the middle of the table
-    // while the stack or pending triggers are live — "fan" (cards with
-    // arrows to their targets), "spotlight" (the next item large, the
-    // queue beside it) and "ribbon" (a numbered row). The board grid
-    // never reflows for any of them. All four ship so they can be
-    // compared on a live table; see lib/stackLane.ts.
+    // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
+    // since v17) is a pile of large, readable cards on the left of the
+    // table; phones and short boards draw "compact" instead, without
+    // changing this value. "compact" is the docked card in the
+    // top-left attention strip. The other three float a lane over the
+    // middle of the table while the stack or pending triggers are
+    // live — "fan" (cards with arrows to their targets), "spotlight"
+    // (the next item large, the queue beside it) and "ribbon" (a
+    // numbered row). The board grid never reflows for any of them; see
+    // lib/stackLane.ts.
     stackStyle: StackStyle;
     // How an opponent's board is drawn. "summary" (the default)
     // renders a dense read-out — life, untapped mana by colour,
@@ -279,7 +281,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 15;
+export const SETTINGS_VERSION = 17;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -348,9 +350,9 @@ export function defaultSettings(): Settings {
       cardSize: "medium",
       handLayout: "fan",
       tableLayout: "quadrant",
-      // v14 default: compact — the docked card players already know,
-      // until the owner picks one of the floating lanes (#1467).
-      stackStyle: "compact",
+      // v17 default: the pile (ADR 0119 §1, owner answer 1). It was
+      // compact from v14, until the owner picked the pile.
+      stackStyle: DEFAULT_STACK_STYLE,
       // v11 default: summary. The full-card rendering clips at small
       // panel sizes and has no headroom left to shrink into (#956),
       // so the dense read-out is the one that works at every table
@@ -769,9 +771,21 @@ function migrate(raw: unknown): Settings {
   // value is also checked: this one picks which component the board
   // mounts, and an unknown string (a style that was tried and
   // removed, a hand-edited blob) must fall back to the docked card
-  // rather than to no stack at all.
+  // rather than to no stack at all. (Since v17 that fallback is the
+  // pile, the default; see below.)
   if (!isStackStyle(merged.display.stackStyle)) {
-    merged.display.stackStyle = "compact";
+    merged.display.stackStyle = DEFAULT_STACK_STYLE;
+  }
+  // v16 → v17 (ADR 0119 §1, #2204): the pile becomes the default. A
+  // stored `compact` from before v17 becomes `pile`. `compact` was the
+  // default, and the shallow merge above has always written defaults
+  // into the stored blob, so an untouched `compact` and a chosen one
+  // look the same; the v2 → v3 migration met the same problem and moved
+  // the untouched case. A stored fan, spotlight or ribbon is kept:
+  // nobody reaches those without choosing them. From v17 on, a stored
+  // `compact` is honoured. (v16 is the battlefield-art bump, #2213.)
+  if (storedVersion < 17 && merged.display.stackStyle === "compact") {
+    merged.display.stackStyle = "pile";
   }
   // v14 → v15 (ADR 0105, #1789): gameplay.highlightLegalActions. Not
   // the usual shallow-merge fill: the owner decided the highlights

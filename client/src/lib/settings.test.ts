@@ -59,7 +59,7 @@ describe("settings", () => {
     expect(s.__version).toBe(d.__version);
     expect(s.audio.masterVolume).toBe(80);
     expect(s.display.cardSize).toBe("medium");
-    expect(s.display.stackStyle).toBe("compact");
+    expect(s.display.stackStyle).toBe("pile");
     expect(s.gameplay.confirmExit).toBe(true);
   });
 
@@ -307,9 +307,9 @@ describe("settings", () => {
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
   });
 
-  // #1467. The stack stays where players know it: nobody's moves on
-  // upgrade, and the floating lanes are opt-in.
-  it("v13 → v14 seeds stackStyle as compact without disturbing stored choices", async () => {
+  // #1467 seeded stackStyle at v14; since v17 the seeded value is the
+  // pile (ADR 0119 §1), and nothing else stored moves.
+  it("a v13 blob gets the default stack style without disturbing stored choices", async () => {
     localStorage.setItem(
       "cmdctrl.settings.v1",
       JSON.stringify({
@@ -321,7 +321,7 @@ describe("settings", () => {
     const { settings, SETTINGS_VERSION } = await freshModule();
     const s = get(settings);
     expect(s.__version).toBe(SETTINGS_VERSION);
-    expect(s.display.stackStyle).toBe("compact");
+    expect(s.display.stackStyle).toBe("pile");
     expect(s.display.tableLayout).toBe("row");
     expect(s.display.handLayout).toBe("stacked");
     expect(s.gameplay.bluffInstant).toBe(true);
@@ -342,8 +342,7 @@ describe("settings", () => {
       );
       const { settings, SETTINGS_VERSION } = await freshModule();
       const s = get(settings);
-      expect(SETTINGS_VERSION).toBe(15);
-      expect(s.__version).toBe(15);
+      expect(s.__version).toBe(SETTINGS_VERSION);
       expect(s.gameplay.highlightLegalActions, `stored ${String(stored)}`).toBe(true);
       expect(s.display.stackStyle).toBe("fan");
       expect(s.gameplay.smartAutoPass).toBe(false);
@@ -364,28 +363,66 @@ describe("settings", () => {
     expect(get(settings).gameplay.highlightLegalActions).toBe(true);
   });
 
-  it("v14 keeps a chosen stack style across a load", async () => {
-    for (const style of ["fan", "spotlight", "ribbon", "compact"] as const) {
+  it("keeps a chosen fan, spotlight or ribbon across the v17 upgrade", async () => {
+    for (const version of [14, 15, 16]) {
+      for (const style of ["fan", "spotlight", "ribbon"] as const) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({ __version: version, display: { stackStyle: style } }),
+        );
+        const { settings } = await freshModule();
+        expect(get(settings).display.stackStyle, `v${version} ${style}`).toBe(style);
+      }
+    }
+  });
+
+  // ADR 0119 §1: before v17 an untouched compact and a chosen one look
+  // the same (the shallow merge wrote the default in), so a stored
+  // compact moves to the new default. From v17 on it is a choice.
+  it("v16 → v17 moves a stored compact to the pile", async () => {
+    for (const version of [14, 15, 16]) {
       localStorage.setItem(
         "cmdctrl.settings.v1",
-        JSON.stringify({ __version: 14, display: { stackStyle: style } }),
+        JSON.stringify({ __version: version, display: { stackStyle: "compact" } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.stackStyle, `v${version}`).toBe("pile");
+    }
+  });
+
+  it("keeps a compact chosen at v17", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 17, display: { stackStyle: "compact" } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).display.stackStyle).toBe("compact");
+  });
+
+  it("keeps every style across a load from v17", async () => {
+    for (const style of ["pile", "compact", "fan", "spotlight", "ribbon"] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 17, display: { stackStyle: style } }),
       );
       const { settings } = await freshModule();
       expect(get(settings).display.stackStyle).toBe(style);
     }
   });
 
-  it("falls back to the compact stack for a style it does not know", async () => {
+  it("falls back to the pile for a style it does not know", async () => {
     // A style that was tried and removed, or a hand-edited blob: the
-    // board must still draw a stack, and compact is the one that
-    // always exists.
-    for (const bad of ["carousel", 7, null]) {
-      localStorage.setItem(
-        "cmdctrl.settings.v1",
-        JSON.stringify({ __version: 14, display: { stackStyle: bad } }),
-      );
-      const { settings } = await freshModule();
-      expect(get(settings).display.stackStyle).toBe("compact");
+    // board must still draw a stack, and the default is the one that
+    // is always there (ADR 0119 §1).
+    for (const version of [14, 17]) {
+      for (const bad of ["carousel", 7, null]) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({ __version: version, display: { stackStyle: bad } }),
+        );
+        const { settings } = await freshModule();
+        expect(get(settings).display.stackStyle).toBe("pile");
+      }
     }
   });
 
