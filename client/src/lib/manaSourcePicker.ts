@@ -17,6 +17,13 @@ export interface ManaSourcePickerOpen {
   cardID: string;
   /** The card's on-screen box when it was clicked. */
   anchor: AnchorRect;
+  /**
+   * ADR 0117 §4: open on this one mana ability only. A lone ability
+   * with two or more picking slots opens straight on its stepper; the
+   * popover's mana row with a colour choice opens its buttons or its
+   * stepper. Absent lists every mana ability the card has.
+   */
+  abilityIndex?: number;
 }
 
 export const manaSourcePicker: Writable<ManaSourcePickerOpen | null> = guardedWritable(

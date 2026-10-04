@@ -91,7 +91,7 @@
       </span>
       <span class="caption">{o.caption}</span>
       {#if o.choice}
-        <span class="note">pick the color next</span>
+        <span class="note">{o.note ?? "pick the color next"}</span>
       {/if}
       {#if o.rider}
         <span class="rider">{o.rider}</span>

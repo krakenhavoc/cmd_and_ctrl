@@ -415,14 +415,61 @@ describe("colour chosen before the tap (#1443)", () => {
     expect(manaClickPlan(tower)).toEqual({ kind: "activate", index: 0, colors: ["G"] });
   });
 
-  it("offers each distinct result of a two-slot filter land once (Mystic Gate)", () => {
+  it("lists a two-slot filter land as one stepper option beside its {C} (Mystic Gate, ADR 0117 §4)", () => {
+    const gate = card({
+      mana_abilities: [
+        ability(0, { produced: "{C}" }),
+        ability(1, {
+          produced: "{W|U}{W|U}",
+          mana_cost: "{W/U}",
+          color_options: [
+            ["W", "U"],
+            ["W", "U"],
+          ],
+        }),
+      ],
+    });
+    const [plain, filter, ...rest] = manaAbilityOptions(gate);
+    expect(rest).toEqual([]);
+    expect(plain).toMatchObject({ abilityIndex: 0, symbols: ["C"] });
+    expect(filter).toMatchObject({
+      abilityIndex: 1,
+      split: true,
+      choice: true,
+      symbols: ["W", "U"],
+      caption: "2 mana, any split",
+      note: "split the colors next",
+      rider: "pay {W/U}",
+    });
+    expect(filter.colors).toBeUndefined();
+    // Two abilities: the picker, never a silent choice between them.
+    expect(manaClickPlan(gate)?.kind).toBe("pick");
+  });
+
+  it("opens a lone ability with two or more picking slots straight on its stepper (Vivi)", () => {
+    const vivi = card({
+      mana_abilities: [
+        ability(0, {
+          tap_cost: false,
+          produced: "{U|R}{U|R}{U|R}",
+          color_options: [
+            ["U", "R"],
+            ["U", "R"],
+            ["U", "R"],
+          ],
+        }),
+      ],
+    });
+    expect(manaClickPlan(vivi)).toEqual({ kind: "split", index: 0 });
+  });
+
+  it("still lists every distinct answer when a counted slot sits beside another (#742)", () => {
     const [, ...opts] = manaAbilityOptions(
       card({
         mana_abilities: [
           ability(0, { produced: "{C}" }),
           ability(1, {
-            produced: "{W|U}{W|U}",
-            mana_cost: "{W/U}",
+            produced: "{W2|U2}{W|U}",
             color_options: [
               ["W", "U"],
               ["W", "U"],
@@ -436,8 +483,8 @@ describe("colour chosen before the tap (#1443)", () => {
       ["W", "U"],
       ["U", "U"],
     ]);
-    expect(opts[1]).toMatchObject({ symbols: ["W", "U"], caption: "White and Blue" });
-    expect(opts[0].rider).toBe("pay {W/U}");
+    expect(opts.map((o) => o.split)).toEqual([undefined, undefined, undefined]);
+    expect(opts[1]).toMatchObject({ symbols: ["W", "W", "U"], caption: "2 White and Blue" });
   });
 
   it("draws an 'N mana of one color' answer N times (Gilded Lotus, #742)", () => {
@@ -471,9 +518,10 @@ describe("colour chosen before the tap (#1443)", () => {
     expect(opts[0].colors).toBeUndefined();
   });
 
-  it("falls back to the server's prompt past the option cap", () => {
+  it("has no option cap: five colours over three slots are one stepper option (ADR 0117 §4)", () => {
     const five = ["W", "U", "B", "R", "G"];
-    expect(colorCombos([five, five, five])).toBeNull();
+    // colorCombos keeps no cap and no null any more.
+    expect(colorCombos([five, five, five])).toHaveLength(35);
     const opts = manaAbilityOptions(
       card({
         mana_abilities: [
@@ -485,8 +533,23 @@ describe("colour chosen before the tap (#1443)", () => {
       }),
     );
     expect(opts).toHaveLength(1);
-    expect(opts[0].choice).toBe(true);
-    expect(opts[0].colors).toBeUndefined();
+    expect(opts[0]).toMatchObject({ split: true, symbols: five, caption: "3 mana, any split" });
+  });
+
+  it("keeps the buttons for one picking slot and activates an all-fixed answer at once", () => {
+    const one = card({
+      mana_abilities: [ability(0, { produced: "{W|U}", color_options: [["W", "U"]] })],
+    });
+    expect(manaAbilityOptions(one).map((o) => o.colors)).toEqual([["W"], ["U"]]);
+    const fixed = card({
+      mana_abilities: [
+        ability(0, {
+          produced: "{W|U|B|R|G}{W|U|B|R|G}",
+          color_options: [["G"], ["G"]],
+        }),
+      ],
+    });
+    expect(manaClickPlan(fixed)).toEqual({ kind: "activate", index: 0, colors: ["G", "G"] });
   });
 
   it("sends color for one slot, colors for several, nothing for none", () => {
