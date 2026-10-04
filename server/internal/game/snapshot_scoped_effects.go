@@ -143,6 +143,15 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			unknown = append(unknown, "prevention follow-up body "+f.Body)
 		}
 	}
+	// ADR 0115 §8: a pending-choice kind is a key too. A newer binary's
+	// prompt would restore as a question this one cannot answer, which
+	// wedges the table, so the file is refused and kept for the
+	// roll-forward.
+	for _, c := range s.PendingChoices {
+		if !KnownChoiceKind(c.Kind) {
+			unknown = append(unknown, "pending-choice kind "+string(c.Kind))
+		}
+	}
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

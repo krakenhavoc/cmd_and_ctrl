@@ -7,7 +7,8 @@
 //
 // INLINE is a question plus at most about six short buttons, or a
 // single number (§2): the yes/no family (trigger_prompt,
-// optional_replacement, confirm, may_cast, entry_pay_life, entry_riot), pay_unless
+// optional_replacement, commander_return, confirm, may_cast, entry_pay_life,
+// entry_riot), pay_unless
 // without card or tap picks, coin_call, loop_shortcut, mana_pick,
 // choose_color, option_pick and entry_controller when every option is
 // a short label, and an open vote. Everything else is a sheet (PR 6)
@@ -50,6 +51,7 @@ export const INLINE_LABEL_MAX = 64;
 const YES_NO_KINDS = new Set([
   "trigger_prompt",
   "optional_replacement",
+  "commander_return",
   "confirm",
   "may_cast",
   "entry_pay_life",
@@ -143,6 +145,18 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         title: reason || "Apply replacement?",
         tag: "replacement",
         hint: "You (the affected player) decide whether this substitution applies.",
+      };
+    case "commander_return":
+      // ADR 0115 (CR 903.9a). The commander has already landed: its
+      // dies and leaves triggers have seen it, and this only decides
+      // whether it stays.
+      return {
+        title: reason || `${ctx.sourceName} — put it into the command zone?`,
+        tag: "commander",
+        hint:
+          c.playable_from_zone === true
+            ? "You could cast it from where it is now. Yes sends it to the command zone; No leaves it there."
+            : "Yes sends it to the command zone; No leaves it where it is.",
       };
     case "entry_riot":
       return {
@@ -251,6 +265,7 @@ function answersFor(
   const no = (label: string) => keyed("no", label, "N", () => h.onAnswer(false));
   switch (c.kind) {
     case "optional_replacement":
+    case "commander_return":
     case "trigger_prompt":
       return { primary: yes("Yes"), secondary: [no("No")] };
     case "may_cast": {
