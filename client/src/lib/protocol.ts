@@ -863,6 +863,12 @@ export interface LogEvent {
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.
   card_id?: string;
+  // ADR 0119 §3: the stack item a `resolve`, `fizzle` or `counter`
+  // entry is about, for spells and abilities alike. For a spell it
+  // equals its card's ID; an ability's item has an ID no other field
+  // carries. Absent on every other kind, and on entries written before
+  // the field existed.
+  stack_item_id?: string;
   // Instance ID of the CARD the entry acts on (a counterspell's
   // victim, a blocker's attacker). Player targets use target_seat.
   target?: string;

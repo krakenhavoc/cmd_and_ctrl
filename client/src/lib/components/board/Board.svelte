@@ -52,6 +52,7 @@
   // of the lower-right corner.
   import StackOverlay from "./StackOverlay.svelte";
   import StackLaneHost from "./StackLaneHost.svelte";
+  import StackLinger from "./StackLinger.svelte";
   import {
     DEFAULT_STACK_STYLE,
     isStackStyle,
@@ -2674,6 +2675,11 @@
     {/if}
     {@render attention?.()}
   </div>
+  <!-- ADR 0119 §3: a card leaving the stack lingers where it was drawn,
+       badged resolved / countered / fizzled, then flies to where it
+       went. One overlay for every style, aria-hidden and outside the
+       labelled regions above. -->
+  <StackLinger {view} {viewerID} {boardEl} {beatsPrimeKey} />
   <VotingPanel {view} {viewerID} sendAction={guardedSendAction} {docked} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
