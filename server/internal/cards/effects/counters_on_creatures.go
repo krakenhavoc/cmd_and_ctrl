@@ -45,3 +45,28 @@ func putACounterOnEachCreatureWith(kind string) Effect {
 		return nil
 	}
 }
+
+// putACounterOnEachCreatureYouControl is "put a <kind> counter on each
+// creature you control" (Illicit Masquerade's impostor counters). The
+// set is read before the first counter goes on, so a creature that
+// arrives mid-placement gets none, and one that left is skipped.
+func putACounterOnEachCreatureYouControl(kind string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		var ids []uuid.UUID
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.IsCreature() && c.Controller == item.Controller {
+				ids = append(ids, c.InstanceID)
+			}
+		}
+		ctx := NewContext(g, item).asGroupMember()
+		for _, id := range ids {
+			if !onBattlefield(g, id) {
+				continue
+			}
+			if err := (AddCounter{Target: id, Kind: kind, N: 1}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
