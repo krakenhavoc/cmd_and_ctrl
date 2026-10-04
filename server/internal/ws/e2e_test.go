@@ -154,6 +154,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
 	out.Outcome = n.outcome(v.Outcome)
+	// ADR 0122 §6.1: a flag, no IDs.
+	out.LegalMovesTruncated = v.LegalMovesTruncated
 
 	// #1264: the card-ID-bearing lists. A card named here that never
 	// appeared in a zone above (a log entry for a card now in a
@@ -524,7 +526,8 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,
 			Options: []protocol.CardView{{InstanceID: uuid.NewString(), Name: "Choice Card", Owner: ownerID, Controller: ownerID}},
 		}},
-		LegalMoves: []protocol.LegalMoveView{{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
+		LegalMoves:          []protocol.LegalMoveView{{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
+		LegalMovesTruncated: true,
 		LegalActions: &protocol.LegalActionsView{Pass: true, Sources: map[string]*protocol.LegalSourceView{
 			cardID: {Kinds: []legal.Kind{legal.KindAttack}, Moves: 1, AttackTargets: []string{oppID}},
 		}},
@@ -655,16 +658,21 @@ func dialAs(t *testing.T, wsURL string, playerID uuid.UUID) *websocket.Conn {
 
 // sendActionAndWait sends a scripted action and returns the resulting
 // snapshot payload. Fails the test on any protocol error.
+//
+// ADR 0122 §6.4: it also holds every action it sends to the ack's
+// contract — the next frame after the snapshot is an ack carrying the
+// action's id and that snapshot's seq and generation.
 func sendActionAndWait(t *testing.T, conn *websocket.Conn, a protocol.ActionPayload) protocol.SnapshotPayload {
 	t.Helper()
 	payload, err := json.Marshal(a)
 	if err != nil {
 		t.Fatalf("marshal action: %v", err)
 	}
+	id := uuid.New().String()
 	frame, err := json.Marshal(protocol.Frame{
 		V:       protocol.Version,
 		Kind:    protocol.KindAction,
-		ID:      uuid.New().String(),
+		ID:      id,
 		Payload: payload,
 	})
 	if err != nil {
@@ -692,6 +700,18 @@ func sendActionAndWait(t *testing.T, conn *websocket.Conn, a protocol.ActionPayl
 	var snap protocol.SnapshotPayload
 	if err := json.Unmarshal(f.Payload, &snap); err != nil {
 		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	ack := readRawFrame(t, conn)
+	if ack.Kind != protocol.KindAck || ack.ID != id {
+		t.Fatalf("after %q's snapshot: got %q id=%q, want its ack id=%q", a.Type, ack.Kind, ack.ID, id)
+	}
+	var ap protocol.AckPayload
+	if err := json.Unmarshal(ack.Payload, &ap); err != nil {
+		t.Fatalf("unmarshal ack: %v", err)
+	}
+	if ap.Seq != snap.Seq || ap.Generation != snap.Generation {
+		t.Fatalf("%q's ack names seq %d generation %d, its snapshot was seq %d generation %d",
+			a.Type, ap.Seq, ap.Generation, snap.Seq, snap.Generation)
 	}
 	return snap
 }
@@ -903,18 +923,26 @@ func TestE2EScriptedTurn(t *testing.T) {
 // the raw protocol.Frame so the caller can assert on Kind. Used by
 // the S11 undo authorization tests where the server's response can
 // be either an error (rejected) or a snapshot (accepted).
+//
+// An `ack` (ADR 0122 §6.4) is skipped: these tests ask whether the
+// action was applied, which the snapshot answers, and sendActionAndWait
+// and ack_test.go hold the ack's own contract.
 func readNextFrame(t *testing.T, conn *websocket.Conn) protocol.Frame {
 	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	_, raw, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatalf("read frame: %v", err)
+	for {
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("read frame: %v", err)
+		}
+		var f protocol.Frame
+		if err := json.Unmarshal(raw, &f); err != nil {
+			t.Fatalf("unmarshal frame: %v", err)
+		}
+		if f.Kind != protocol.KindAck {
+			return f
+		}
 	}
-	var f protocol.Frame
-	if err := json.Unmarshal(raw, &f); err != nil {
-		t.Fatalf("unmarshal frame: %v", err)
-	}
-	return f
 }
 
 // Game state read helpers — the hub's write goroutine mutates the

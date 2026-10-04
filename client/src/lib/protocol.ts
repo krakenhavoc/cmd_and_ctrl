@@ -4,7 +4,19 @@
 
 export const PROTOCOL_VERSION = 0;
 
-export type Kind = "ping" | "pong" | "error" | "action" | "snapshot" | "chat";
+// ADR 0122 §6: "ack" acknowledges an applied action to the client that
+// sent it; "legal_moves_request" / "legal_moves" fetch a seat's whole
+// move list. The browser handles "ack" and sends no requests.
+export type Kind =
+  | "ping"
+  | "pong"
+  | "error"
+  | "action"
+  | "snapshot"
+  | "chat"
+  | "ack"
+  | "legal_moves_request"
+  | "legal_moves";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -39,6 +51,11 @@ export const ErrorCode = {
   // refused whole. #1533: an "attack with all" refused this way offers
   // the attackers picker, capped at `attack_targets[].attack_limit`.
   IllegalAttack: "illegal_attack",
+  // ADR 0122 §6.1: answers to a legal_moves_request, which the browser
+  // never sends — a seat that owes no decision, and a connection past
+  // four requests a second. Listed so this table stays the server's.
+  NoDecision: "no_decision",
+  RateLimited: "rate_limited",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -232,6 +249,15 @@ export interface SnapshotPayload {
   game: GameView;
 }
 
+// AckPayload is the body of a Kind == "ack" frame (ADR 0122 §6.4): sent
+// to the client whose action was applied, carrying that action's frame
+// `id`, after the snapshot of the state it names. `seq` and
+// `generation` are that state's.
+export interface AckPayload {
+  seq: number;
+  generation: number;
+}
+
 // ChatPayload is the body of a Kind == "chat" frame in either
 // direction. When the client sends one, only `text` is honoured —
 // the server stamps `author_id`, `author_name`, and `timestamp` from
@@ -395,6 +421,12 @@ export interface GameView {
   // omits it entirely. Client predicates stay permissive when it is
   // missing and let the server do the rejecting.
   legal_moves?: LegalMoveView[];
+  // ADR 0122 §6.1: true when the 48-move wire cap dropped anything
+  // from legal_moves — the list then has one move per (source, kind,
+  // targets_stack), not every alternative. Absent otherwise. Own seat
+  // only. The browser reads nothing from legal_moves that the cap
+  // loses (legalActions.ts), so it only needs to know.
+  legal_moves_truncated?: boolean;
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
@@ -573,6 +605,31 @@ export interface LegalSourceView {
   // (an overloaded Counterflux with no spell to counter). The first
   // such hint; the hand draws a muted ring with it as the tooltip.
   cast_idle_hint?: string;
+  // ADR 0122 §6.2: the enumerator's own caps that cut this card's
+  // moves, and by how much. Absent when nothing was cut. `moves`
+  // counts what survived; this says the card has more.
+  truncated?: LegalCutView[];
+}
+
+// One entry of the enumerator's cut report (ADR 0122 §6.2,
+// docs/protocol.md "The cut report"). In the digest it carries no
+// `source`: the key is the card.
+export interface LegalCutView {
+  source?: string;
+  choice?: string;
+  cap:
+    | "per_source"
+    | "max_x"
+    | "variable_counts"
+    | "subset_scan"
+    | "creature_types"
+    | "card_names"
+    | "cost_payments"
+    | "repeats"
+    | "ceiling";
+  // Candidate moves the cap left out; a lower bound when at_least.
+  omitted: number;
+  at_least?: boolean;
 }
 
 export interface LegalMoveView {
@@ -619,6 +676,10 @@ export interface LegalMoveView {
   // right now: there's no spell you don't control."). Advice, never
   // sent back; only overload sets it today. Absent promises nothing.
   idle_hint?: string;
+  // ADR 0122 §6.2: the move's answer is an open set — any card name
+  // ("card_name"), or any X from `min` to `max` ("x") — with the rest
+  // of `params` unchanged. Advice, never sent back.
+  value?: { kind: "card_name" | "x"; min?: number; max?: number };
   // What the move charges beyond its mana, in the components `params`
   // cannot name — the ones the engine reads off the ability rather
   // than off the payload. Absent for the overwhelming majority of

@@ -150,6 +150,16 @@ func (e *enumerator) waterbendAbilityPayment(
 		}
 		best, ok = x, true
 	}
+	// ADR 0122 §6.2: a search the cap stopped with the next X payable.
+	e.noteMaxX(best, func(x int) bool {
+		budget := game.WaterbendBudget(wb, cost, x)
+		widest := options
+		if len(widest) > budget {
+			ordered, _ := e.waterbendOrder(options)
+			widest = ordered[:budget]
+		}
+		return payableAt(x)(widest)
+	})
 	if !ok {
 		return 0, nil, false
 	}
