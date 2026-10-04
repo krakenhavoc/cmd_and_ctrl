@@ -599,3 +599,32 @@ The owner's answers did not settle these. Each is decided above, and each can be
 - Code signing and macOS notarization, which need paid certificates. The docs say how to clear the quarantine flag (`xattr -d com.apple.quarantine mcpseat`).
 - Homebrew or Scoop.
 - Auto-update.
+
+## Amendment (2026-10-04): the first measured game
+
+§9 said PR 7 would measure its figures. The first real game is in, on cmd-dev at develop `69ad9976`: the binary built from that commit (`version=dev`, default absorb rules `forced,mana-only,coin-call`), Claude Code on **Opus 5.5** as the client, and two seats, the owner and the agent, in a 1v1 Commander game. These numbers come from the replay and the MCP client log. The binary's own game-over report was not captured. §9 itself is unchanged.
+
+**The game.** It reached `game_over` on turn 16. The owner won. The agent was eliminated at -5 life by 29 combat damage. The replay shows the agent seat with `is_agent: true` and `agent_client: claude-code`, so §7's badge was recorded. The owner reported the game "went very well".
+
+| Quantity | §9 estimate | Measured |
+|---|---|---|
+| Table shape | four seats | two seats, 16 turns |
+| Wall clock, first tool call to `leave` | 15-45 min of waiting on the agent, on top of the game | 26.2 min in all |
+| Tool calls | 2-4 per decision | 337: `wait_for_decision` 174, `act` 154, `card` 3, `get_state` 2, `join` 2, `set_deck` 1, `leave` 1 |
+| Decisions reaching the model | ~60-70 per game | ~154 (one `act` each) |
+| Agent time per decision, decision returned to `act` | 15-40 s | median 2.5 s, p90 5.7 s, max 23.3 s |
+| Table waiting on the agent | 15-45 min | 9.6 min in total |
+| Time inside `wait_for_decision` (the opponent and the table) | not estimated | 15.4 min in total |
+| Windows seen, per-rule absorption | ~650 windows, ~90% absorbed | not captured |
+| Truncations, largest move list, tool-result bytes | estimated only | not captured |
+| Model tokens and cost | ~150k context, ~7M input tokens | not captured |
+| `act` rejections | not estimated | not captured. Each `act` completed at the MCP level, but accepted versus rejected is in the tool result, which the client log did not keep |
+
+**What it says.**
+
+- **The agent decided far faster than estimated.** The median was 2.5 s and the worst case 23.3 s, against 15-40 s a decision. For this model and client the estimate was too slow by roughly an order of magnitude. The table waited 9.6 min in all, below the 15-45 min range, though the game was also shorter.
+- **More decisions reached the model, not fewer.** About 154 reached the model in a two-seat, 16-turn game, against ~60-70 estimated for a four-seat game. Two readings fit: Layer A absorbs less in a real game than the ~90% measured over four heuristic bots, or the per-game window count is higher than the ~650 §9 took from them. This game cannot tell the two apart, because per-rule absorption was not captured. Until it is, treat §9's 60-70 as an underestimate and plan on a few hundred tool calls per game.
+- **The tool-call ratio held.** 337 calls over ~154 decisions is about 2.2 a decision, inside the 2-4 estimate. `wait_for_decision` outnumbers `act` because a wait can return with nothing to decide.
+- **The agent was not the slow part.** The table spent more time in `wait_for_decision` (15.4 min) than waiting on the agent (9.6 min).
+
+**Next time, capture the report.** Claude Code's MCP log kept only the binary's first stderr line, so the game-over line was lost. Register the binary with `--log-file`, which appends the whole log, game-over line included, to a file. [docs/mcp-seat.md](../mcp-seat.md) now says so in the Quickstart and the Recipes. Token usage still has to come from the client. A repeat game with the report will settle how much Layer A absorbs, and whether §9's estimate needs replacing rather than qualifying.
