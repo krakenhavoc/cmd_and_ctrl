@@ -182,6 +182,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
+
+	// ADR 0114 PR 5: There and Back Again's Smaug.
+	printedSmaugToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

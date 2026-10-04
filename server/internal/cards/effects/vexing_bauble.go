@@ -54,19 +54,7 @@ func init() {
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Vexing Bauble — counter that spell")
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				spell := item.Trigger.Event.CardID
-				// CR 603.4: the intervening-if is checked
-				// again on resolution. A spell that is no
-				// longer on the stack answers "known
-				// nothing" — but CounterTarget on a missing
-				// item is already a no-op, so the re-read is
-				// the honest check and not the guard.
-				if !NoManaWasSpentToCast(g, spell) {
-					return nil
-				}
-				return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
-			},
+			Effect: counterTheSpellIfNoManaWasSpent,
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}, Sacrifice this artifact: Draw a card.",

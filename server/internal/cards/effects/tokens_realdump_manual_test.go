@@ -177,6 +177,7 @@ func tokenTemplatesUnderTest() []labelledTemplate {
 		{"EldraziSpawnToken()", EldraziSpawnToken()},
 		{"BlueShapeshifterToken()", BlueShapeshifterToken()},
 		{"ColorlessShapeshifterToken()", ColorlessShapeshifterToken()},
+		{"SmaugToken()", SmaugToken()},
 	} {
 		out = append(out, labelledTemplate{key: bt.name, display: bt.name, card: bt.card})
 	}
