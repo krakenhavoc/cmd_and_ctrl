@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManaCost from "./ManaCost.svelte";
   // FacePickerModal — ADR 0034: choose which printed face of a modal
   // double-faced card you are playing.
   //
@@ -174,7 +175,12 @@
             <span class="face-type"
               >{opt.fused ? "both halves (fuse)" : (opt.view.type_line ?? "")}</span
             >
-            <span class="face-cost">{opt.view.mana_cost || "—"}</span>
+            <span class="face-cost"
+              >{#if opt.view.mana_cost}<ManaCost
+                  cost={opt.view.mana_cost}
+                  size={14}
+                />{:else}—{/if}</span
+            >
           </button>
         </li>
       {/each}
