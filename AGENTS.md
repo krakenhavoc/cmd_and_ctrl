@@ -100,7 +100,7 @@ cmd_and_ctrl/
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── adding-cards.md  # the catalog card guide: recipes for cards, mechanics and engine seams (moved out of AGENTS.md §7, #1747)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0108 turn-scoped effects, object history and damage shields; 0109 rule gates, land types, mana and cost components; 0110 remember me: durable sign-in, account settings, admins and saved setups; 0111 the action dock; 0112 signed-in home, player mode and one decks page) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0108 turn-scoped effects, object history and damage shields; 0109 rule gates, land types, mana and cost components; 0110 remember me: durable sign-in, account settings, admins and saved setups; 0111 the action dock; 0112 signed-in home, player mode and one decks page; 0114 the Ring tempts you) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
