@@ -339,6 +339,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	var scanned map[string]int
 	wantProtection := false
 	wantToxic := false
+	wantAnnihilator := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -358,6 +359,12 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// no amount stamps nothing, which errs weaker.
 			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordToxic) {
 				wantToxic = true
+			}
+			// ANNIHILATOR (CR 702.86) is toxic's shape exactly: the
+			// array says "Annihilator" and the number is only in the
+			// oracle line ("Annihilator 4"), ADR 0113 §2.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordAnnihilator) {
+				wantAnnihilator = true
 			}
 			continue
 		}
@@ -427,7 +434,20 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 		sort.Strings(protections)
 		out = append(out, protections...)
 	}
-	if wantToxic {
+	// Toxic and annihilator are numbered keywords: Scryfall's array
+	// says only the word, so their tokens are read off the keyword
+	// lines, like protection's (ADR 0056 Decision 1, ADR 0113 §2). A
+	// card whose lines name no number stamps nothing, which errs weaker.
+	for _, want := range []struct {
+		on    bool
+		parse func(string) (int, bool)
+	}{
+		{wantToxic, game.ToxicValue},
+		{wantAnnihilator, game.AnnihilatorValue},
+	} {
+		if !want.on {
+			continue
+		}
 		lines := front
 		if lines == nil {
 			if scanned == nil {
@@ -435,18 +455,18 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			}
 			lines = scanned
 		}
-		var toxics []string
+		var numbered []string
 		for kw, n := range lines {
 			if n == 0 {
 				continue
 			}
-			if _, ok := game.ToxicValue(kw); ok && !containsString(out, kw) {
-				toxics = append(toxics, kw)
+			if _, ok := want.parse(kw); ok && !containsString(out, kw) {
+				numbered = append(numbered, kw)
 			}
 		}
 		// Sorted for the same stable-badge reason as protection.
-		sort.Strings(toxics)
-		out = append(out, toxics...)
+		sort.Strings(numbered)
+		out = append(out, numbered...)
 	}
 	// A CUMULATIVE keyword (prowess, toxic — game.KeywordIsCumulative,
 	// CR 702.108b / 702.164b) is a real thing per PRINTED INSTANCE, but
@@ -545,7 +565,11 @@ func keywordLineCounts(text string) map[string]int {
 		if i := strings.IndexByte(line, '('); i >= 0 {
 			line = line[:i]
 		}
-		for _, part := range strings.Split(line, ",") {
+		parts := strings.Split(line, ",")
+		if isSentenceLine(line, parts) {
+			continue
+		}
+		for _, part := range parts {
 			// CanonicalKeywords, not the singular form: "protection
 			// from Demons and from Dragons" is one comma-separated
 			// part and two abilities (CR 702.16m, #662).
@@ -559,6 +583,23 @@ func keywordLineCounts(text string) map[string]int {
 		}
 	}
 	return out
+}
+
+// isSentenceLine reports whether a line (reminder text already cut) is
+// a SENTENCE rather than a keyword-ability line: it ends with a full
+// stop and its first comma-separated part is not a keyword. A keyword
+// line never reads that way — "Flying, vigilance", "Annihilator 2",
+// "Trample, haste, annihilator 1" — but a sentence can have a part
+// between two commas that IS a keyword. Flayer of Loyalties' cast
+// trigger ends "gains trample, annihilator 2, and haste.", and counting
+// that "annihilator 2" would give the card a second, unprinted
+// instance of a cumulative keyword: stronger than printed (#2073).
+func isSentenceLine(line string, parts []string) bool {
+	if !strings.HasSuffix(strings.TrimSpace(line), ".") || len(parts) == 0 {
+		return false
+	}
+	_, ok := game.CanonicalKeywords(parts[0])
+	return !ok
 }
 
 // oracleTexts returns every oracle text a printing carries: the
