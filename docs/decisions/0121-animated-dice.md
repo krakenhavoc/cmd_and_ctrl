@@ -2,7 +2,7 @@
 
 **Status:** Accepted · 2026-10-04 · S61 — Dice you can watch (milestone; issue [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229))
 **Issues:** [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229), which is both this change and the sprint's only issue. No separate S61 tracker exists.
-**Owner decisions:** the four answers of 2026-10-04 recorded on #2229, quoted under [Owner decisions](#owner-decisions-2026-10-04). They are binding. This ADR also makes twenty smaller calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before the PR that implements each one lands.
+**Owner decisions:** the four answers of 2026-10-04 recorded on #2229 and the three given the same day in review of this ADR, quoted under [Owner decisions](#owner-decisions-2026-10-04). They are binding. This ADR also makes eighteen smaller calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before the PR that implements each one lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-04. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 38 remote heads, including `origin/develop`, `origin/main`, the open PR branches `feat/s60-0119-pr7-fuller-log`, `fix/s58-0115-pr4-lift-caveats` and `feat/1548-heuristic-gang-blocks`, and the card, chore, docs, feat, fix, repro and wip branches. I also listed the 180 local branches in this checkout. The highest number on any of them is 0120 (`origin/develop`). No branch has 0121, so this ADR takes **0121**.
 **Amends:** [ADR 0054](0054-dice-rolls-and-coin-flips.md) owner decision 3 ("a roll or flip shows a log line and a reveal-strip cue, with no animation"). The owner reversed it on 2026-10-04 (decision 4 below). The log line and the strip cue stay; an animation is added. #1486's "the winner of the d20 roll goes first" (`starting_player.go`) is replaced by a choice (decision 2).
 **Builds on:** [ADR 0054](0054-dice-rolls-and-coin-flips.md) (keyed RNG streams, rewind, the roll and flip events and log), [ADR 0075](0075-table-settings-and-host-controls.md) §2.1 and §2.3 (the host, and the no-undo path for table actions), [ADR 0076](0076-tutorial.md) §2 (the practice table starts with seat 0 and no roll), [ADR 0111](0111-action-dock.md) (dock requests, the ⋯ menu, labels as a contract), [ADR 0119](0119-a-stack-you-can-follow.md) (the pile, the linger and the attention strip share the screen with the dice), [ADR 0120](0120-expand-a-players-board.md) §3 (the board-anchor helper and the z ladder), [ADR 0033](0033-ai-bot-seat.md) (the legal-move enumerator and bot tiers).
@@ -23,6 +23,12 @@ The request on #2229: "Make dice rolls visible and fun: an animated die that the
 2. **The winner chooses who starts (CR 103.1).** Today the winner simply goes first.
 3. **No timer for a player who doesn't roll.** The host gets a "roll for everyone left" button.
 4. **The animation covers all three:** the opening roll; every die a card rolls and every coin flip (amending ADR 0054 owner decision 3); and a new "Roll a die" table action (d6, d20 or coin, any time, never blocking, logged).
+
+Answered in review of this ADR, the same day:
+
+5. **An idle chooser: the table waits.** There is no host override of the winner's choice, because CR 103.1 says the winner chooses. (This was call 6 of the first draft.)
+6. **Confirm only when giving the first turn away.** "I go first" stays a single click. Choosing another seat opens a confirm, "Let <name> take the first turn?", with **Confirm** and **Cancel**, because the choice has no undo. (The first draft's call 7 had no confirm; it is overturned.)
+7. **Mulligans in turn order (CR 103.5) are a follow-up,** filed as [#2237](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2237). The mulligan stays simultaneous in this change.
 
 ### The rules
 
@@ -59,7 +65,7 @@ The request on #2229: "Make dice rolls visible and fun: an animated die that the
 1. **The hands are dealt before the roll.** Under CR 103.3, 103.5 and 903.7 the shuffle and the draw come after the starting player is determined. While the winner only went first this was invisible. Once the winner *chooses* (decision 2), a winner who has seen their seven cards chooses with information paper never gives. §1 moves the deal after the choice.
 2. **The winner goes first with no choice** (`starting_player.go`), which decision 2 replaces.
 3. **Undo drops the log line of a later table action** (the truncation above). It already happens to a settings change. For a table roll it would erase a roll the whole table watched (§5).
-4. **The mulligan is simultaneous**, where CR 103.5 has the starting player declare first and the others in turn order. Out of scope here; see [Out of scope](#out-of-scope).
+4. **The mulligan is simultaneous**, where CR 103.5 has the starting player declare first and the others in turn order. Out of scope here (decision 7, [#2237](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2237)); see [Out of scope](#out-of-scope).
 
 ---
 
@@ -111,9 +117,9 @@ type OpeningRollDie struct {
 
 ### 2. The winner chooses
 
-`choose_starting_player {player, params: {seat}}` is player-scoped and accepted only from `Chooser` (or the admin). `seat` is any seat that is not eliminated, the chooser's own included (CR 103.1: "who takes the first turn"). The engine then runs the three steps of §1. There is no confirm step and no undo: as at a paper table, "you go first" is final. The dock makes the choice one deliberate click (§6).
+`choose_starting_player {player, params: {seat}}` is player-scoped and accepted only from `Chooser` (or the admin). `seat` is any seat that is not eliminated, the chooser's own included (CR 103.1: "who takes the first turn"). The engine then runs the three steps of §1. There is no undo: as at a paper table, "you go first" is final. So giving the first turn away asks first (decision 6): "I go first" is one click, and any other seat opens a confirm (§6). The confirm is the client's; the wire is still the one `choose_starting_player` action, so a bot or the admin chooses without it.
 
-A chooser who never chooses holds the table, as a player who never passes priority does. There is no timer (decision 3) and no host override of the choice; see [Calls made here](#calls-made-here), item 6.
+A chooser who never chooses holds the table, as a player who never passes priority does. There is no timer (decision 3) and no host override of the choice (decision 5: CR 103.1 says the winner chooses). The admin can act for the seat, as for any seat.
 
 ### 3. The wire
 
@@ -187,7 +193,7 @@ The draw lives in `rng.go`, so `TestNoDirectRandomSource` holds, and a known-ans
 
 For the host, once the host has rolled or has nothing to roll, the request becomes "Waiting for Bob and Dave to roll" with a secondary **`Roll for everyone left`**. It is not a primary, so Enter never presses it. If the host still has to roll, the same secondary sits beside `Roll`.
 
-For the chooser, a sheet **`choose who takes the first turn`** lists the seats in turn order, each a button named **"<name> goes first"**, the chooser's own named **"I go first"**. The line above reads "You won the roll with 20. Choose who takes the first turn." There is no primary, so Enter chooses nothing; a click does. Everyone else sees "Carol is choosing who goes first" in the dock's status line.
+For the chooser, a sheet **`choose who takes the first turn`** lists the seats in turn order, each a button named **"<name> goes first"**, the chooser's own named **"I go first"**. The line above reads "You won the roll with 20. Choose who takes the first turn." There is no primary, so Enter chooses nothing; a click does. "I go first" chooses at once. Any other seat's button opens a confirm in its place (decision 6): a dock request whose dialog is named by its question, **"Let <name> take the first turn?"**, with a primary **`Confirm`** and a secondary **`Cancel`**. Confirm does not take Enter: a stray Enter must not give the first turn away, the same reason ADR 0111 §1 keeps Enter off yes/no questions. Cancel, or Escape, goes back to the sheet. Everyone else sees "Carol is choosing who goes first" in the dock's status line.
 
 `next`, Pass turn and the toggles are disabled while the window is open, as during the mulligan.
 
@@ -228,6 +234,7 @@ For the chooser, a sheet **`choose who takes the first turn`** lists the seats i
 **New accessible names** (AGENTS.md §5, labels are a contract):
 - `dialog "roll for the first turn"`, its primary `Roll`, and the secondary `Roll for everyone left`;
 - `dialog "choose who takes the first turn"` and its buttons "<name> goes first" and "I go first";
+- the confirm `dialog "Let <name> take the first turn?"` and its buttons `Confirm` and `Cancel` (decision 6);
 - the strip banner `opening roll`;
 - the ⋯ menu items `Roll a d6`, `Roll a d20` and `Flip a coin` (ADR 0111 decision 3's menu). They are disabled for 2 s after the viewer's own table roll, matching the hub's rate.
 
@@ -251,9 +258,9 @@ For the chooser, a sheet **`choose who takes the first turn`** lists the seats i
 - `botarena`: a pinned seeded game has the same starting seat, the same opening hands and the same winner as before this change.
 - `protocol`: the view, and the text of each log kind.
 
-**Vitest.** As pure functions: the dice plan (one animation per entry, the six-die cap and "+N", the burst schedule and its cap of three, the deterministic tumble sequence, the settle time, no motion with the toggle or the master off); priming; anchoring and its strip fallback; the opening-roll view model (standings, ties, the chooser, which request each role gets); `startingPlayer.ts` reading `starting_player` and never a table d20. Render tests for the two dialogs, their names and buttons, the strip banner, and the ⋯ menu items.
+**Vitest.** As pure functions: the dice plan (one animation per entry, the six-die cap and "+N", the burst schedule and its cap of three, the deterministic tumble sequence, the settle time, no motion with the toggle or the master off); priming; anchoring and its strip fallback; the opening-roll view model (standings, ties, the chooser, which request each role gets); `startingPlayer.ts` reading `starting_player` and never a table d20. Render tests for the three dialogs (the roll, the choice and its confirm), their names and buttons, "I go first" sending at once and another seat sending only after Confirm, Cancel and Escape returning to the sheet, the strip banner, and the ⋯ menu items.
 
-**Playwright.** `startGameAs` gains an opt-out-able finish: after `POST /games/{id}/start` it sends `host_roll_remaining` as the admin until a chooser exists, then the chooser's `choose_starting_player` for themselves, and returns the starting seat. Every existing spec keeps its flow unchanged with that. `full-game.spec.ts` opts out and plays the roll through the UI: both players press `Roll`, each sees the other's result in the `opening roll` banner, the winner chooses the other player, and that player takes turn 1. One new spec, `table-roll-2229.spec.ts`, rolls a d20 from the ⋯ menu during the opening roll and during a turn, and both pages show the log line. Ties are not forced in Playwright (they are random); the Go tests cover them. Every client PR, and the PR that switches the lobby, runs the nightly E2E on its branch before it merges (`gh workflow run "cmd_and_ctrl E2E" --ref <branch>`), and the nightly runs on `develop` after the last one.
+**Playwright.** `startGameAs` gains an opt-out-able finish: after `POST /games/{id}/start` it sends `host_roll_remaining` as the admin until a chooser exists, then the chooser's `choose_starting_player` for themselves, and returns the starting seat. Every existing spec keeps its flow unchanged with that. `full-game.spec.ts` opts out and plays the roll through the UI: both players press `Roll`, each sees the other's result in the `opening roll` banner, the winner chooses the other player, confirms in `Let <name> take the first turn?`, and that player takes turn 1. One new spec, `table-roll-2229.spec.ts`, rolls a d20 from the ⋯ menu during the opening roll and during a turn, and both pages show the log line. Ties are not forced in Playwright (they are random); the Go tests cover them. Every client PR, and the PR that switches the lobby, runs the nightly E2E on its branch before it merges (`gh workflow run "cmd_and_ctrl E2E" --ref <branch>`), and the nightly runs on `develop` after the last one.
 
 ---
 
@@ -275,16 +282,16 @@ PR 5 is the one that changes what a person sees at Start, so it lands only after
 ## Consequences
 
 - A game starts the way a paper game does: everyone rolls, the high roll chooses, and only then is anything shuffled or drawn. Nobody chooses with their hand in view.
-- Starting a table takes a few seconds longer: everyone presses Roll, and the winner chooses. Bots do both on their own clock, and the host can roll for anyone who has not.
+- Starting a table takes a few seconds longer: everyone presses Roll, and the winner chooses. Giving the first turn away takes one more click, the confirm (decision 6). A winner who walks away holds the table (decision 5). Bots do both on their own clock, and the host can roll for anyone who has not.
 - The automatic path stays for the arena, the probe and the demo, and a seeded game there is unchanged.
 - Every die and coin in the game, and a table die, tumbles for everyone at the roller's seat, for under 3 s, without slowing anything.
 - A table roll is visibly not part of the game: it triggers nothing, is drawn from its own stream, cannot be undone, and keeps its log line through other players' undos.
 - One new pre-game field in the snapshot and one counter, both additive under v7. A rollback binary breaks a table caught mid-roll.
-- Six new accessible names and one settings field. The existing names stay.
+- A handful of new accessible names (§8), among them the confirm dialog `Let <name> take the first turn?` with `Confirm` and `Cancel`, and one settings field. The existing names stay.
 
 ## Out of scope
 
-- **Mulligans in turn order** (CR 103.5: the starting player declares first). The mulligan stays simultaneous. It is a separate change, and it now has a starting player to start from.
+- **Mulligans in turn order** (CR 103.5: the starting player declares first). The mulligan stays simultaneous. It is a separate change, filed as [#2237](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2237) (decision 7), and it now has a starting player to start from.
 - **The London mulligan's bottom-N** (the sheet's "simplified London" note). Unchanged.
 - **Power Play** (CR 103.1c) and any other card that sets the starting player.
 - **A timer** for a seat that does not roll or a chooser who does not choose (decision 3).
@@ -294,25 +301,23 @@ PR 5 is the one that changes what a person sees at Start, so it lands only after
 
 ## Calls made here
 
-The owner's answers did not settle these. Each is decided above, and each can be overturned in review:
+The owner's answers did not settle these. Each is decided above, and each can be overturned in review. The first draft's call 6 (no host override for an idle chooser) became decision 5, and its call 7 (no confirm) was overturned by decision 6; the list is renumbered without them:
 
 1. **The window is `StateActive` plus `OpeningRoll`, not a new `State`** (§1). Fewer places change, and `MulligansOpen` already parks the turn machinery.
 2. **The shuffle and the deal move after the choice** (§1, CR 103.3, 103.5, 903.7). The streams keep every library identical to today's for the same key.
 3. **The interactive and automatic paths are one state machine,** and the automatic one stays for the arena, the probe and the demo (§1).
 4. **An allowlist gate** in `actions.Dispatch` refuses every other action type while the roll is open, new ones included (§1).
 5. **Concede is allowed during the roll,** and the standings are recomputed without the seat (§1).
-6. **No host override of the choice.** A chooser who never chooses holds the table like a player who never passes; the admin can act for the seat. The alternative was a host button "Let <winner> go first", which overrides the winner's CR 103.1 choice (§2).
-7. **The choice is final**: no confirm, no undo (§2).
-8. **`host_roll_remaining` rolls the current round only.** A tie it causes gives the tied seats their own Roll buttons (§3).
-9. **None of the four verbs mints an undo entry, and neither does a concede during the roll,** decided by one predicate (§3).
-10. **Bots choose themselves;** Layer A absorbs both the roll and the choice; the enumerator never offers the host's button or a table roll (§4).
-11. **A table roll is not a game roll:** no `EventRollDie` or `EventFlipCoin`, nothing triggers, its own `table` stream and per-game counter outside the turn counters, carried forward across undo (§5).
-12. **A table roll's log line survives an undo** by re-emission, keyed by `roll_id` so it is not animated twice (§5).
-13. **One table roll per seat per 2 s,** enforced in the hub (§5).
-14. **The roll and the choice are dock requests;** "Roll for everyone left" is a secondary, never Enter; the choice has no primary (§6).
-15. **Opening dice raise no strip cues;** the `opening roll` banner shows them (§6).
-16. **Dice are drawn at the roller's seat,** at z 41, with the strip as the fallback (§7).
-17. **900 ms tumble scaled by speed, 1.6 s hold unscaled, 200 ms fade;** the tumble's faces are seeded by the entry, never `Math.random` (§7).
-18. **Six dice at most, then "+N"; bursts follow ADR 0119's rule** (§7).
-19. **The strip's text cue waits for the die to settle** (§7).
-20. **An `animations.dice` toggle,** default on, under the master switch. The result shows with motion off (§7).
+6. **`host_roll_remaining` rolls the current round only.** A tie it causes gives the tied seats their own Roll buttons (§3).
+7. **None of the four verbs mints an undo entry, and neither does a concede during the roll,** decided by one predicate (§3).
+8. **Bots choose themselves;** Layer A absorbs both the roll and the choice; the enumerator never offers the host's button or a table roll (§4).
+9. **A table roll is not a game roll:** no `EventRollDie` or `EventFlipCoin`, nothing triggers, its own `table` stream and per-game counter outside the turn counters, carried forward across undo (§5).
+10. **A table roll's log line survives an undo** by re-emission, keyed by `roll_id` so it is not animated twice (§5).
+11. **One table roll per seat per 2 s,** enforced in the hub (§5).
+12. **The roll and the choice are dock requests;** "Roll for everyone left" is a secondary, never Enter; the choice has no primary; the confirm's `Confirm` does not take Enter, and Cancel or Escape returns to the sheet (§6).
+13. **Opening dice raise no strip cues;** the `opening roll` banner shows them (§6).
+14. **Dice are drawn at the roller's seat,** at z 41, with the strip as the fallback (§7).
+15. **900 ms tumble scaled by speed, 1.6 s hold unscaled, 200 ms fade;** the tumble's faces are seeded by the entry, never `Math.random` (§7).
+16. **Six dice at most, then "+N"; bursts follow ADR 0119's rule** (§7).
+17. **The strip's text cue waits for the die to settle** (§7).
+18. **An `animations.dice` toggle,** default on, under the master switch. The result shows with motion off (§7).
