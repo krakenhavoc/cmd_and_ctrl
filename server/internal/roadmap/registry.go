@@ -862,6 +862,15 @@ var items = []Item{
 		EngineNotes: "tally: `TurnTally` (`game/turn_tally.go`) counts creatures that died and permanents sacrificed, not every nonland permanent that left the battlefield, and nothing records a cast for its warp cost. The likely shape is two table-wide cells recorded where the events happen, read by a self cost modifier (Temporal Intervention's {2} less) and by the set's \"Void —\" triggers. Temporal Intervention's spell half is ADR 0116's revealed-hand pick and already works; found landing ADR 0116 pool B (#2078).",
 	},
 	{
+		Slug: "damage-life-loss-result", Name: "Telling life loss from damage that changed no life total", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Cards that care exactly how much life you lost, such as Lich's Mastery, which exiles one of your cards for each 1 life you lose.",
+		Missing:     "Damage that gives poison counters instead of costing life still counts as life lost, so a card that punishes you for each life lost can't be added yet.",
+		Rules:       []string{"119.2", "120.3a", "120.3b"},
+		Issue:       2105,
+		Waiting:     []string{"Lich's Mastery"},
+		EngineNotes: "event: the player-damage path (`game/damage_tail.go`) emits one `EventDealDamage` and then applies `DamageResultSource.DamageToPlayer`, which turns infect damage into poison (CR 120.3b) and skips the loss when the player's life total can't change. The event is the same either way, and every reader takes a positive `EventDealDamage` to a player as that much life lost: `s22PlayerLostLife`, `b04OpponentLostLife` and the turn tally's `LifeLost`. The likely shape is the life actually lost stamped on the damage event (or a loss event of its own), with those three readers moved onto it. Lich's Mastery's other parts look expressible today: a `GateYou` CantLose game-end gate, the lifegain draw, the leaves-the-battlefield loss, and one `ChooseCardsPrompt` per point over permanents, hand and graveyard.",
+	},
+	{
 		Slug: "player-hexproof-during-your-turn", Name: "\"You have hexproof\" only during your turn", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Permanents that give you hexproof only some of the time, such as Gruul Spellbreaker during your turn.",
 		Missing:     "A permanent can't yet give you hexproof only during your turn.",

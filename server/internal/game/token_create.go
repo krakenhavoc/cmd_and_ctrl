@@ -567,3 +567,33 @@ func (g *Game) enteringTokenLocked(id uuid.UUID) (Card, bool) {
 	}
 	return Card{}, false
 }
+
+// TokenCreationAwaitingAnswerForEffect reports whether a creation
+// instruction for tokens under `controller` is paused in its CR 701.7b
+// window on a prompt — a "may" replacement's yes/no or a CR 616
+// ordering — and so has not created anything yet.
+//
+// A paused creation returns to its caller with nothing made, and the
+// caller carries on (createTokensLocked), so a second instruction in the
+// same resolution can open its window while the first still waits.
+// "The first time you would create one or more tokens each turn"
+// (Moonlit Meditation) asks this beside the turn tally, because the
+// waiting instruction is the first time and the tally has not seen it.
+//
+// `except` is the instruction being asked about, which is never its own
+// "earlier" one: its window is re-gathered after its own prompt is
+// answered, and that prompt may still be in the queue.
+//
+// Read-only. Caller must hold g.mu.
+func (g *Game) TokenCreationAwaitingAnswerForEffect(controller uuid.UUID, except ReplacementEventID) bool {
+	for _, pc := range g.PendingChoices {
+		if pc == nil || pc.replacementResume == nil || pc.replacementResume.ev == nil {
+			continue
+		}
+		ev := pc.replacementResume.ev
+		if ev.ID != except && ev.Kind == RepEventCreateTokens && ev.TokenController == controller {
+			return true
+		}
+	}
+	return false
+}
