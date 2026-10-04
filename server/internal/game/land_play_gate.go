@@ -88,11 +88,16 @@ var CatalogLandPlayRestrictions func(oracleID string) []LandPlayRestriction
 // LandPlayRestrictionsForCard returns the restrictions a permanent
 // contributes right now: none under an ability-removing effect, and none
 // for one whose designation gate is unsatisfied.
-func LandPlayRestrictionsForCard(c Card) []LandPlayRestriction {
+func LandPlayRestrictionsForCard(c Card) []LandPlayRestriction { return landPlayRestrictionsOf(&c) }
+
+// landPlayRestrictionsOf is LandPlayRestrictionsForCard without the
+// copy: Card is over a kilobyte and this is asked per permanent per
+// walk (#1498).
+func landPlayRestrictionsOf(c *Card) []LandPlayRestriction {
 	if CatalogLandPlayRestrictions == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -140,12 +145,14 @@ func (e *CantPlayLandError) Unwrap() error { return ErrCantPlayLand }
 // Caller must hold g.mu (read or write).
 func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind) error {
 	q := LandPlayQuery{Game: g, Card: card, Player: player, FromZone: fromZone}
-	refusedBy := func(src Card) *CantPlayLandError {
-		for _, r := range LandPlayRestrictionsForCard(src) {
+	// A pointer, so the walk copies a permanent only when it actually
+	// carries a restriction (#1498).
+	refusedBy := func(src *Card) *CantPlayLandError {
+		for _, r := range landPlayRestrictionsOf(src) {
 			if r.Forbids == nil {
 				continue
 			}
-			q.Source = src
+			q.Source = *src
 			if r.Forbids(q) {
 				reason := r.Label
 				if src.Name != "" {
@@ -159,7 +166,7 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 	if CatalogLandPlayRestrictions != nil {
 		if g.Battlefield != nil {
 			for i := range g.Battlefield.Cards {
-				if err := refusedBy(g.Battlefield.Cards[i]); err != nil {
+				if err := refusedBy(&g.Battlefield.Cards[i]); err != nil {
 					return err
 				}
 			}
@@ -170,7 +177,7 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 		// the first one is a Spec field, not an engine change.
 		var refused *CantPlayLandError
 		g.forEachEmblemLocked(func(src *Card) bool {
-			refused = refusedBy(*src)
+			refused = refusedBy(src)
 			return refused == nil
 		})
 		if refused != nil {

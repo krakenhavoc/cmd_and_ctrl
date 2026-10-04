@@ -34,3 +34,22 @@ func legalTargetIDs(ctx *Context) []uuid.UUID {
 	}
 	return ids
 }
+
+// AtYourEndStepIfACreatureDied is "At the beginning of your end step,
+// if a creature died under your control this turn, …" (Faramir, Field
+// Commander; Sméagol, Helpful Guide). The "if" is an intervening if
+// (CR 603.4): checked as the step begins, and again as the ability
+// resolves, against the turn's tally (tokens count, CR 700.4). It
+// triggers once however many died.
+func AtYourEndStepIfACreatureDied(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventBeginEndStep,
+		AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			return aCreatureDiedUnderYourControlThisTurn(g, source.Controller)
+		}),
+		label, func(g *game.Game, item *game.StackItem) error {
+			if !aCreatureDiedUnderYourControlThisTurn(g, item.Controller) {
+				return nil
+			}
+			return effect(g, item)
+		})
+}

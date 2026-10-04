@@ -71,7 +71,7 @@ func (g *Game) spellStaticsLocked() []spellStaticGrant {
 		if src.HasLostAllAbilities() {
 			continue
 		}
-		for _, ab := range StaticAbilitiesForCard(*src) {
+		for _, ab := range staticAbilitiesOf(src) {
 			if ab.AffectsSpells && ab.AppliesTo != nil {
 				out = append(out, spellStaticGrant{ability: ab, source: src, ts: src.layerTimestamp()})
 			}

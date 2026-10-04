@@ -411,7 +411,7 @@ func TestTokenTextIsReadFromTheCatalog(t *testing.T) {
 // regression, and an entry here that stops matching is a stale
 // exemption to delete.
 var oracleIDEmptinessIsTheRightQuestion = map[string]string{
-	"effect_hooks.go:CatalogKey": "the token-key fallback itself — a composite FACE key " +
+	"effect_hooks.go:catalogKeyOf": "the token-key fallback itself (CatalogKey's body since #1498) — a composite FACE key " +
 		"(\"<oracle>#1\") needs a real oracle ID, and a token has no second face",
 	"mutations.go:printedIdentityOf":    "asks whether a real Scryfall PRINTING stands behind the card, not whether the catalog has an entry",
 	"mutations.go:fromScryfallPrinting": "same question, and this is the function that names it",

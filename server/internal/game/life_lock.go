@@ -146,7 +146,7 @@ func (g *Game) playerLifeTotalCantChangeLocked(p *Player) bool {
 			// an Emperion that has lost its abilities (layer 6) stops
 			// locking. The empty KEY is the skip, so a token is walked
 			// like any other permanent (ADR 0083 decision 3).
-			key := CatalogAbilityKey(*c)
+			key := catalogAbilityKeyOf(c)
 			if key == "" {
 				continue
 			}

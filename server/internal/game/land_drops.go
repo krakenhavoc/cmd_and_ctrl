@@ -85,7 +85,7 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 			// grants nothing. The empty key — not an empty oracle ID
 			// — is the skip, so a TOKEN with a catalog key of its own
 			// is walked like any other permanent (ADR 0083 decision 3).
-			key := CatalogAbilityKey(*c)
+			key := catalogAbilityKeyOf(c)
 			if key == "" {
 				continue
 			}

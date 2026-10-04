@@ -601,7 +601,7 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 	// PrintedKeywords today — its keywords ride the Card above — so
 	// this is the gate asking the right question rather than a
 	// behaviour change.
-	key := CatalogKey(*c)
+	key := catalogKeyOf(c)
 	if key == "" {
 		return
 	}

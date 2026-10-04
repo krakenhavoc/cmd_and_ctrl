@@ -99,7 +99,7 @@ func (g *Game) EchoDueLocked(c *Card) bool {
 	if c.ControlledSinceUpkeep < g.upkeepsBegunForLocked(c.Controller) {
 		return false
 	}
-	for _, t := range TriggersForCard(*c) {
+	for _, t := range triggersOf(c) {
 		if t.Keyword == KeywordEcho {
 			return true
 		}

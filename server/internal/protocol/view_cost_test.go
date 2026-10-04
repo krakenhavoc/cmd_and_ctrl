@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"sync/atomic"
 	"testing"
 
@@ -219,5 +220,97 @@ func TestViewCardLookupsAreLinearInTheBoard(t *testing.T) {
 	// 4x, where one walk per card would be ~16.
 	if ratio := float64(large.Examined) / float64(small.Examined); ratio > 8 {
 		t.Errorf("quadrupling the board multiplied the cards the view's lookups examine by %.1f; want ~4", ratio)
+	}
+}
+
+// #1498: a card off the battlefield has no layer pass, so Effective()
+// used to rebuild its printed characteristic — a type-line parse, a
+// colour slice, the keyword merge — on every call, and the view calls
+// it several times per card (the card view, CurrentPower,
+// PowerForComparison, CurrentToughness), plus a parse of its own in
+// effectiveTypeLine and one more for every land's intrinsic mana
+// ability. ParseTypeLine alone was 5% of a bot table's CPU. The
+// printed-characteristic cache (game/printed_cache.go) builds it once,
+// when the card enters its zone.
+//
+// offBattlefieldTable returns a two-seat game with n cards in every
+// hand and graveyard and 2n in exile, a mix of the shapes that took
+// each parse: a creature with subtypes, a basic land (the intrinsic-
+// ability parse), a legendary one (supertypes) and an instant.
+func offBattlefieldTable(t testing.TB, n int) *game.Game {
+	t.Helper()
+	g := game.NewGame()
+	for i := range 2 {
+		deck := []game.Card{game.NewCommander(fmt.Sprintf("Commander %d", i+1), uuid.Nil)}
+		for j := range 10 {
+			deck = append(deck, game.NewCard(fmt.Sprintf("Filler %d", j+1), uuid.Nil))
+		}
+		if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), deck); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.Start(rand.New(rand.NewPCG(1, 2))); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	shapes := []game.Card{
+		{Name: "Elvish Visionary", TypeLine: "Creature — Elf Shaman", ManaCost: "{1}{G}", Power: 1, Toughness: 1},
+		basicLand("Forest", "Forest"),
+		{Name: "Isamaru", TypeLine: "Legendary Creature — Dog", ManaCost: "{W}", Power: 2, Toughness: 2},
+		{Name: "Shock", TypeLine: "Instant", ManaCost: "{R}"},
+	}
+	g.WithWriteLock(func() {
+		for _, p := range g.Seats {
+			for i := 0; i < n; i++ {
+				shape := shapes[i%len(shapes)]
+				shape.Name = fmt.Sprintf("%s %d", shape.Name, i)
+				put(p.Hand, p, shape)
+				put(p.Graveyard, p, shape)
+				put(g.Exile, p, shape)
+			}
+		}
+	})
+	return g
+}
+
+// parsesPerSteadyView builds two views of the table and returns how
+// many times the SECOND one called ParseTypeLine: the first is the one
+// a new game pays once, the second is the one a table pays every frame.
+func parsesPerSteadyView(t *testing.T, n int) int64 {
+	t.Helper()
+	g := offBattlefieldTable(t, n)
+	_ = ViewOfGame(g)
+	before := game.ParseTypeLineCallsForTest()
+	_ = ViewOfGame(g)
+	return game.ParseTypeLineCallsForTest() - before
+}
+
+func TestSteadyViewDoesNotReparseOffBattlefieldTypeLines(t *testing.T) {
+	small, large := parsesPerSteadyView(t, 8), parsesPerSteadyView(t, 32)
+	t.Logf("ParseTypeLine calls per steady view: %d with 8 cards per zone, %d with 32", small, large)
+	// The shape: quadrupling the cards off the battlefield must not
+	// change the count. Before the cache it was several parses per
+	// card per view, growing with the zones.
+	if large > small {
+		t.Errorf("quadrupling the off-battlefield cards took ParseTypeLine from %d to %d calls per view; want no growth (the cached parse)", small, large)
+	}
+	// The size: the card view, the P/T accessors, the type-line render
+	// and the land's intrinsic ability all read the cache.
+	if large > 4 {
+		t.Errorf("a steady view called ParseTypeLine %d times; want ~0", large)
+	}
+}
+
+// BenchmarkViewOfGameOffBattlefield measures one view of a table whose
+// cards are mostly off the battlefield — 32 per hand and graveyard and
+// 64 in exile per seat — the shape the printed-characteristic cache is
+// for. BenchmarkViewOfGame (legal_moves_test.go) is the busy-
+// battlefield one.
+func BenchmarkViewOfGameOffBattlefield(b *testing.B) {
+	g := offBattlefieldTable(b, 32)
+	_ = ViewOfGame(g)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = ViewOfGame(g)
 	}
 }

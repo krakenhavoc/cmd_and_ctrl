@@ -44,7 +44,7 @@ func TestAnnihilatorImport(t *testing.T) {
 		// The cast trigger's sentence has ", annihilator 2," between two
 		// commas. Counting it would give the card a second, unprinted
 		// instance of a cumulative keyword.
-		annihilatorRecord("Flayer of Loyalties", "1e9053b5-0cca-486c-9dd8-b198a7b666bf",
+		annihilatorRecord("Flayer of Loyalties", "1e9053b5-5cca-486c-9dd8-b198a7b666bf",
 			[]string{"Annihilator", "Trample"},
 			"When you cast this spell, gain control of target creature until end of turn. Untap that creature. "+
 				"Until end of turn, it has base power and toughness 10/10 and gains trample, annihilator 2, and haste.\n"+

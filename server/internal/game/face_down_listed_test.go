@@ -98,7 +98,7 @@ func TestAListedForestIsALandAndNotACreature(t *testing.T) {
 	if cold.IsCreature() || !cold.IsLand() {
 		t.Errorf("cold cache: creature %v, land %v — want a land and not a creature", cold.IsCreature(), cold.IsLand())
 	}
-	if got := intrinsicLandManaAbilities(cold); len(got) != 1 || got[0].Produced != "{G}" {
+	if got := intrinsicLandManaAbilities(&cold); len(got) != 1 || got[0].Produced != "{G}" {
 		t.Errorf("cold cache: intrinsic mana = %+v, want one {G}", got)
 	}
 

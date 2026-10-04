@@ -1282,7 +1282,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		}
 		// The empty KEY is the skip, not an empty oracle ID — a token
 		// has one of its own since #521 (ADR 0083 decision 3).
-		key := CatalogAbilityKey(*c)
+		key := catalogAbilityKeyOf(c)
 		if key == "" {
 			continue
 		}
@@ -1296,7 +1296,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		if CatalogGatedCastPermissions == nil {
 			continue
 		}
-		gated := activeOnly(*c, CatalogGatedCastPermissions(key), func(gp CastPermissionGate) Designation {
+		gated := activeOnly(c, CatalogGatedCastPermissions(key), func(gp CastPermissionGate) Designation {
 			return gp.ActiveWhen
 		})
 		for _, gp := range gated {
@@ -1505,7 +1505,7 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*c)
+		key := catalogAbilityKeyOf(c)
 		if key == "" {
 			continue
 		}
