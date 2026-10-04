@@ -36,6 +36,7 @@
 // canPassPriority (no callers at all, in or out of production).
 
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
+import { isLand } from "./cardTypes";
 import { castableFaces } from "./faces";
 import { castSacrificeFloor } from "./sacrificeCost";
 import { castIsForbidden, printedCostClaimable } from "./targeting";
@@ -130,6 +131,30 @@ export function hasPriority(snap: GameView | null | undefined, viewerID: string 
   return seat?.id === viewerID;
 }
 
+// landDropsSpent reports whether the viewer has used every land play
+// the turn allows (CR 305.2, #500). It compares the two numbers the
+// server puts on the viewer's own seat — `land_drops_per_turn`, the
+// EFFECTIVE allowance with Exploration-style statics and one-turn
+// grants already summed in, and `lands_played_this_turn` — and derives
+// nothing: the allowance is the engine's, never recomputed here. A
+// frame missing either field (a server older than #500) answers false,
+// which keeps the reading permissive like every other "don't know".
+export function landDropsSpent(
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+): boolean {
+  if (!snap || !viewerID) return false;
+  const seat = snap.seats?.find((s) => s.id === viewerID);
+  const allowance = seat?.land_drops_per_turn;
+  const played = seat?.lands_played_this_turn;
+  if (allowance === undefined || played === undefined) return false;
+  return played >= allowance;
+}
+
+// LAND_DROPS_SPENT_REASON is the tooltip (and the red drag verdict) for
+// a land once the turn's land plays are used (#2203).
+export const LAND_DROPS_SPENT_REASON = "No land plays left this turn";
+
 // isActivePlayer reports whether the viewer is the active-turn
 // player. Different from hasPriority — the active player keeps
 // priority into their main phases but loses it during opponents'
@@ -219,22 +244,6 @@ export function canCastFromHand(
   const moves = movesFor(snap, card.instance_id, ["cast", "land"]);
   if (moves && moves.length > 0) return LEGAL;
 
-  // No move list at all. The server owes this seat no decision (or is
-  // older than S31); either way we know nothing, so fall back to the
-  // two coarse facts the frame does carry and otherwise stay out of
-  // the way. Erring permissive is deliberate — a false "yes" costs a
-  // rejected click, a false "no" costs the player a window they were
-  // entitled to.
-  if (moves === undefined) {
-    if (!hasPriority(snap, viewerID)) return deny("Not your priority");
-    if (snap.split_second_active) return deny("Split second on the stack");
-    return LEGAL;
-  }
-
-  // The server said no. Everything from here is tooltip copy.
-  if (!hasPriority(snap, viewerID)) return deny("Not your priority");
-  if (snap.split_second_active) return deny("Split second on the stack");
-
   // #1168: every face a cast may choose, materialised — `[card]` for
   // the ~33,000 ordinary single-faced oracle IDs, which makes every
   // gate below read identically to the single-face version it
@@ -242,6 +251,30 @@ export function canCastFromHand(
   // name, but only once there is more than one candidate to name —
   // a single-faced denial reads exactly as it always has.
   const faces = castableFaces(card);
+  // #2203: a card that can only be PLAYED as a land (every face a
+  // land: a basic, a pathway) is dead once the turn's land plays are
+  // used, whatever else is true. A modal DFC with a spell face is not:
+  // its spell may still be cast.
+  const landSpent = faces.every(isLand) && landDropsSpent(snap, viewerID);
+
+  // No move list at all. The server owes this seat no decision (or is
+  // older than S31); either way we know nothing, so fall back to the
+  // coarse facts the frame does carry and otherwise stay out of the
+  // way. Erring permissive is deliberate — a false "yes" costs a
+  // rejected click, a false "no" costs the player a window they were
+  // entitled to. The spent land drop is not a guess: the seat's own
+  // counts say so, and they hold for the rest of the turn (#2203).
+  if (moves === undefined) {
+    if (!hasPriority(snap, viewerID)) return deny("Not your priority");
+    if (snap.split_second_active) return deny("Split second on the stack");
+    if (landSpent) return deny(LAND_DROPS_SPENT_REASON);
+    return LEGAL;
+  }
+
+  // The server said no. Everything from here is tooltip copy.
+  if (!hasPriority(snap, viewerID)) return deny("Not your priority");
+  if (snap.split_second_active) return deny("Split second on the stack");
+  if (landSpent) return deny(LAND_DROPS_SPENT_REASON);
   const named = (face: CardView, reason: string): string =>
     faces.length > 1 ? `${face.name}: ${reason}` : reason;
 
@@ -361,8 +394,8 @@ export function canCastFromHand(
   }
 
   // Nothing card-specific to say. The seat holds priority and the
-  // server still did not offer this card, which leaves timing, the
-  // spent land drop, and mana. The frame does tell us whether the
+  // server still did not offer this card, which leaves timing and
+  // mana (a spent land drop was answered above). The frame does tell us whether the
   // sorcery-speed window (CR 307.1) is open, and a shut window is the
   // overwhelmingly common answer for a greyed hand — a hand full of
   // sorceries and creatures during combat.

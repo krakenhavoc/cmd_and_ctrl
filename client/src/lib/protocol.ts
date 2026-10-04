@@ -1643,7 +1643,8 @@ export interface PlayerView {
   // and how many it already has. The engine REFUSES a land play past
   // the allowance, so a client should grey out the hand's lands when
   // lands_played_this_turn >= land_drops_per_turn rather than only
-  // explain the rejection afterwards. land_drops_per_turn is the
+  // explain the rejection afterwards — timing.ts landDropsSpent does,
+  // for a frame with no move list (#2203). land_drops_per_turn is the
   // EFFECTIVE allowance — a controlled Exploration or a one-turn
   // grant is already summed in. Normally 1 / 0.
   land_drops_per_turn?: number;
