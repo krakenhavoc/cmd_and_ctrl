@@ -169,11 +169,15 @@ var CatalogManaTriggers func(key string) []ManaTrigger
 // designations.go and ADR 0071. An Aura under Song of the Dryads has
 // no key, so it has no mana triggers, and the land it enchants taps
 // for exactly what it prints.
-func ManaTriggersForCard(c Card) []ManaTrigger {
+func ManaTriggersForCard(c Card) []ManaTrigger { return manaTriggersOf(&c) }
+
+// manaTriggersOf is ManaTriggersForCard without the copy: Card is over
+// a kilobyte and this is asked per permanent per walk (#1498).
+func manaTriggersOf(c *Card) []ManaTrigger {
 	if CatalogManaTriggers == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -224,7 +228,7 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 	var fired []firing
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
-		triggers := ManaTriggersForCard(*source)
+		triggers := manaTriggersOf(source)
 		if len(triggers) == 0 {
 			continue
 		}

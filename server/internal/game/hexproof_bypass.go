@@ -213,7 +213,7 @@ func (g *Game) anyHexproofBypassLocked(by uuid.UUID, waives func(b HexproofBypas
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*src)
+		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}
@@ -246,7 +246,7 @@ func (g *Game) WardSuppressedForEffect(warded *Card) bool {
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*src)
+		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}

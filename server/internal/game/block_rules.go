@@ -160,7 +160,7 @@ func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool
 			// Avatar Kuruk's Spirit token ("can't block or be blocked
 			// by non-Spirit creatures") is a token that prints a pair
 			// rule. ADR 0083 decision 3.
-			key := CatalogAbilityKey(*src)
+			key := catalogAbilityKeyOf(src)
 			if key == "" {
 				continue
 			}

@@ -98,7 +98,7 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 		// The gate is "has no catalog entry", not "has no oracle ID"
 		// (ADR 0083 decision 3): a TOKEN has a key of its own since
 		// #521, and an object CR 708.2a has silenced has none.
-		key := CatalogAbilityKey(*c)
+		key := catalogAbilityKeyOf(c)
 		if key == "" {
 			continue
 		}

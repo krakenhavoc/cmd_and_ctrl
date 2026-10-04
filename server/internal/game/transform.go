@@ -195,7 +195,7 @@ func (g *Game) runAsTransformsIntoLocked(cardID uuid.UUID) {
 	if card == nil {
 		return
 	}
-	d := catalogDef(CatalogAbilityKey(*card))
+	d := catalogDef(catalogAbilityKeyOf(card))
 	if d == nil || d.AsTransformsInto == nil {
 		return
 	}
