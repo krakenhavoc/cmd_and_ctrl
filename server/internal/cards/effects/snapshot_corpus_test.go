@@ -204,6 +204,11 @@ func corpusBoards() []corpusBoard {
 		// evolve/grow body — waiting on the stack, carrying the entered
 		// creature on its trigger context.
 		{"evolve_on_stack", corpusEvolveOnStack},
+		// v7, added by #2073 (ADR 0113 §2) as a new file: an annihilator
+		// trigger — the third engine keyword trigger, keyed by its
+		// annihilator/sacrifice body — waiting on the stack, carrying
+		// the defending player and N in its params.
+		{"annihilator_trigger_pending", corpusAnnihilatorTriggerPending},
 		// v7, added by #1858 (ADR 0107 §1) as a new file: a CR 603.8
 		// state trigger — a catalog row with a State condition and no
 		// event — waiting on the stack. Its latch is derived from this
@@ -2330,6 +2335,24 @@ func corpusEvolveOnStack(t *testing.T) *game.Game {
 	enterCreature(t, g, me, "Grizzly Bears", 2, 2)
 	if it := corpusSettleTrigger(t, g, raptor); it.Body != "evolve/grow" {
 		t.Fatalf("setup: the evolve trigger names body %q, want evolve/grow", it.Body)
+	}
+	return g
+}
+
+// corpusAnnihilatorTriggerPending is an "annihilator 2" trigger — an
+// engine trigger with no catalog row, keyed by its annihilator/sacrifice
+// body (#2073) — waiting on the stack in the declare attackers step,
+// before the defending player has been asked anything.
+func corpusAnnihilatorTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	eldrazi := pushAnnihilatorCreature(g, me, "annihilator 2")
+	pushAnnFodder(g, opp, 3)
+	declareAttack(t, g, opp, eldrazi)
+	it := corpusSettleTrigger(t, g, eldrazi)
+	if it.Body != "annihilator/sacrifice" || it.Params.Player != opp || it.Params.Amount != 2 {
+		t.Fatalf("setup: the annihilator trigger is %+v, want body annihilator/sacrifice for the defender, N = 2", it)
 	}
 	return g
 }

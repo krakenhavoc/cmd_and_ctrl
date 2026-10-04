@@ -127,7 +127,8 @@ func resolveProwess(g *Game, item *StackItem) error {
 // keywordTriggersFor is the keyword triggers an object has right now:
 // one prowess trigger per prowess token in its ability list (CR
 // 702.108b), then one evolve trigger per evolve token (CR 702.100d,
-// evolve.go).
+// evolve.go), then one annihilator trigger per "annihilator N" token
+// (CR 702.86b, annihilator.go).
 //
 // It reads the list through forEachAbilityToken, the same walk
 // HasKeyword uses, so the answer follows the layer engine on the
@@ -142,24 +143,34 @@ func resolveProwess(g *Game, item *StackItem) error {
 // catalog trigger that did not declare their zone.
 func keywordTriggersFor(c *Card) []TriggeredAbility {
 	prowess, evolve := 0, 0
+	var annihilator []int
 	forEachAbilityToken(c, func(a string) bool {
 		switch a {
 		case KeywordProwess:
 			prowess++
 		case KeywordEvolve:
 			evolve++
+		default:
+			// CR 702.86b (#2073, annihilator.go): one trigger per
+			// "annihilator N" instance, each with its own N.
+			if n, ok := AnnihilatorValue(a); ok {
+				annihilator = append(annihilator, n)
+			}
 		}
 		return true
 	})
-	if prowess+evolve == 0 {
+	if prowess+evolve+len(annihilator) == 0 {
 		return nil
 	}
-	out := make([]TriggeredAbility, 0, prowess+evolve)
+	out := make([]TriggeredAbility, 0, prowess+evolve+len(annihilator))
 	for i := 0; i < prowess; i++ {
 		out = append(out, prowessTrigger)
 	}
 	for i := 0; i < evolve; i++ {
 		out = append(out, evolveTrigger)
+	}
+	for _, n := range annihilator {
+		out = append(out, annihilatorTriggerFor(n))
 	}
 	return out
 }

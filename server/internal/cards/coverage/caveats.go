@@ -639,6 +639,19 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordEvolve} — the engine does the rest`,
 	},
 	{
+		// #2073 (ADR 0113 §2): annihilator is a numbered
+		// canonicalKeywords token ("annihilator N") whose trigger the
+		// engine derives from the ability list (game/annihilator.go),
+		// or, for an "annihilator X" read at resolution, the catalog's
+		// AnnihilatorCounted row, which carries the keyword's name.
+		Name:       "annihilator",
+		Phrases:    []string{"annihilator"},
+		Implements: annihilatorProbe,
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) has an "annihilator N" token, or a catalog trigger is Keyword "annihilator"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"annihilator N"} — the engine does the rest; "annihilator X" is AnnihilatorCounted`,
+	},
+	{
 		// #1556 (ADR 0109 §10): riot and unleash are canonicalKeywords
 		// tokens whose entry replacements the engine derives from the
 		// CR 614.12 look-ahead (game/riot.go). Same probe as evolve.
@@ -723,6 +736,19 @@ func printedKeywordProbe(token string) func(effects.Spec) bool {
 		}
 		return false
 	}
+}
+
+// annihilatorProbe is the exact probe for annihilator: a printed
+// "annihilator N" token, or a triggered row named "annihilator".
+func annihilatorProbe(s effects.Spec) bool {
+	if game.CatalogPrintedKeywords != nil {
+		for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+			if _, ok := game.AnnihilatorValue(kw); ok {
+				return true
+			}
+		}
+	}
+	return keywordTrigger(game.KeywordAnnihilator)(s)
 }
 
 // keywordTrigger builds the exact probe for a keyword that ships as a
