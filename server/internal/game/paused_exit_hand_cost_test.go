@@ -9,12 +9,16 @@ import (
 
 // paused_exit_hand_cost_test.go — #1445, the hand and graveyard legs.
 // The battlefield leg's reasoning one zone over: a commander an effect
-// is exiling out of its owner's hand or graveyard is asked about the
-// command zone, and sits where it was while its owner decides. Every
-// cost that spends a card from those piles — a Force of Will pitch,
-// cycling, a discard, an exile-cards cost, a Spirit Guide, scavenge,
-// a delve-style alternative cost — must refuse it until the answer is
-// in.
+// is putting into its owner's library out of their hand or graveyard
+// is asked about the command zone (CR 903.9b), and sits where it was
+// while its owner decides. Every cost that spends a card from those
+// piles — a Force of Will pitch, cycling, a discard, an exile-cards
+// cost, a Spirit Guide, scavenge, a delve-style alternative cost — must
+// refuse it until the answer is in.
+//
+// The vehicle was an exile before ADR 0115. An exiled commander no
+// longer pauses (it is exiled at once and CR 903.9a asks afterwards),
+// so the tests tuck it instead.
 
 // pushCardCostSource seats an artifact whose one ability costs `cost`
 // and marks itself when it resolves.
@@ -42,12 +46,15 @@ func editZoneCard(z *Zone, id uuid.UUID, fn func(*Card)) {
 	}
 }
 
-// exileCommanderPaused exiles `id` out of `zone` by effect and asserts
-// the premise: its owner is asked, and it is still in `zone`.
-func exileCommanderPaused(t *testing.T, g *Game, owner *Player, zone *Zone, id uuid.UUID) *PendingChoice {
+// tuckCommanderPaused puts `id` out of `zone` into its owner's library
+// by effect and asserts the premise: its owner is asked (CR 903.9b),
+// and it is still in `zone`.
+func tuckCommanderPaused(t *testing.T, g *Game, owner *Player, zone *Zone, id uuid.UUID) *PendingChoice {
 	t.Helper()
-	if err := g.ExileCardForEffect(id); err != nil {
-		t.Fatalf("ExileCardForEffect: %v", err)
+	var err error
+	g.WithWriteLock(func() { _, err = g.routeCardToZoneLocked(zoneRoute{CardID: id, Dst: ZoneLibrary}) })
+	if err != nil {
+		t.Fatalf("routeCardToZoneLocked: %v", err)
 	}
 	prompt := expectCommanderPrompt(t, g, owner)
 	if !zone.Contains(id) {
@@ -57,7 +64,7 @@ func exileCommanderPaused(t *testing.T, g *Game, owner *Player, zone *Zone, id u
 }
 
 // The hand leg. A blue commander in hand, with cycling and a Spirit
-// Guide's mana ability of its own, is being exiled by an effect; while
+// Guide's mana ability of its own, is being tucked by an effect; while
 // its owner decides, no payment may spend it. A different blue card
 // still pitches, and the commander lands where the answer says.
 func TestHandCostsCannotSpendACommanderWhoseExitIsPaused(t *testing.T) {
@@ -96,7 +103,7 @@ func TestHandCostsCannotSpendACommanderWhoseExitIsPaused(t *testing.T) {
 	forceID := inHand("Test Force of Will", force, "U")
 	thrillID := inHand("Thrill of Possibility", thrill)
 
-	prompt := exileCommanderPaused(t, g, me, me.Hand, cmdr)
+	prompt := tuckCommanderPaused(t, g, me, me.Hand, cmdr)
 
 	for _, tc := range []struct {
 		name string
@@ -153,11 +160,11 @@ func TestHandCostsCannotSpendACommanderWhoseExitIsPaused(t *testing.T) {
 	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
-	assertOnlyIn(t, cmdr, g.Exile, me.Hand, me.Command, me.Graveyard)
+	assertOnlyIn(t, cmdr, me.Library, me.Hand, me.Command, me.Graveyard)
 }
 
-// The graveyard leg: a commander Bojuka Bog is exiling out of its
-// owner's graveyard cannot pay an exile-from-graveyard cost, a
+// The graveyard leg: a commander an effect is shuffling out of its
+// owner's graveyard into their library cannot pay an exile-from-graveyard cost, a
 // delve-style alternative cost, or its own scavenge-shaped exile-this.
 // After the answer the same alternative cost pays with another card.
 func TestGraveyardCostsCannotSpendACommanderWhoseExitIsPaused(t *testing.T) {
@@ -181,7 +188,7 @@ func TestGraveyardCostsCannotSpendACommanderWhoseExitIsPaused(t *testing.T) {
 	spell.OracleID = delve
 	me.Hand.PushTop(spell)
 
-	prompt := exileCommanderPaused(t, g, me, me.Graveyard, cmdr)
+	prompt := tuckCommanderPaused(t, g, me, me.Graveyard, cmdr)
 
 	for _, tc := range []struct {
 		name string
@@ -208,7 +215,7 @@ func TestGraveyardCostsCannotSpendACommanderWhoseExitIsPaused(t *testing.T) {
 	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, true); err != nil {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
-	assertOnlyIn(t, cmdr, me.Command, me.Graveyard, g.Exile)
+	assertOnlyIn(t, cmdr, me.Command, me.Graveyard, me.Library)
 	if err := g.CastSpell(me.ID, spell.InstanceID, CastSpellParams{AlternativeCost: "delve", AltCostIDs: []uuid.UUID{filler.InstanceID}}); err != nil {
 		t.Fatalf("the alternative cost after the answer: %v", err)
 	}

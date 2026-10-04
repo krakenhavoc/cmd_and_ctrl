@@ -30,15 +30,24 @@ import "github.com/google/uuid"
 //
 // Added in S17 sub-PR 2.
 
-// commanderZoneReplacement implements CR 903.9: "if a commander
-// would be put into a library, hand, graveyard, or exile from
-// anywhere, its owner may put it into the command zone instead."
+// commanderZoneReplacement implements CR 903.9b: "If a commander
+// would be put into its owner's hand or library from anywhere, its
+// owner may put it into the command zone instead. This replacement
+// effect may apply more than once to the same event."
+//
+// HAND AND LIBRARY ONLY since ADR 0115 PR 3. A commander headed for a
+// graveyard or exile is not replaced: it is put there like any other
+// card, so it dies, is milled, discarded or exiled and every trigger
+// of that move sees it, and the CR 903.9a state-based action offers
+// its owner the command zone afterwards (commander_return.go). Before
+// ADR 0115 this built-in also applied to the graveyard and exile,
+// which is why a commander never died.
 //
 // "may" replacement — Optional=true triggers the apply-
 // loop's yes/no prompt path (PendingChoiceOptionalReplacement) so
 // the owner decides each time. Sub-PR 6 widened AppliesTo (dropped
 // the asCommanderMove gate) so this fires for every move that puts a
-// commander into graveyard/exile/hand/library, whatever sent it.
+// commander into a hand or a library, whatever sent it.
 //
 // A destination-only AppliesTo is necessary but not sufficient: a
 // replacement effect only ever runs for a mover that pushes a
@@ -54,9 +63,10 @@ import "github.com/google/uuid"
 // yes/no prompt and the CR 616 multi-replacement order prompt if
 // other commander-zone-touching replacements ever join).
 var commanderZoneReplacement = ReplacementEffect{
-	// Two kinds, because #650 split the discard off: "from anywhere"
-	// has to include a discarded commander, and a discard no longer
-	// arrives as a zone move.
+	// EventDiscardCard since #650 split the discard off a zone move.
+	// A discard ends in a graveyard, which CR 903.9a handles after the
+	// fact, so the kind stays watched only for a replacement that
+	// rewrites a discard's destination to a hand or a library.
 	Watches:        []EventKind{EventZoneMove, EventDiscardCard},
 	Optional:       true,
 	PromptQuestion: "Send commander to command zone instead?",
@@ -65,8 +75,9 @@ var commanderZoneReplacement = ReplacementEffect{
 			return false
 		}
 		switch ev.NewZone {
-		case ZoneGraveyard, ZoneExile, ZoneHand, ZoneLibrary:
-			// Eligible destination.
+		case ZoneHand, ZoneLibrary:
+			// CR 903.9b. A graveyard or exile is CR 903.9a's, after
+			// the move (ADR 0115).
 		default:
 			return false
 		}
@@ -111,15 +122,12 @@ var commanderZoneReplacement = ReplacementEffect{
 // flag is a declaration that Replace "rewrites no other field on the
 // event and changes nothing else in the game", and this one changes
 // four things about the permanent. Leaving it false costs a CR 616
-// ordering prompt in the one window where a second replacement also
-// applies — a COMMANDER with a shield on it, where CR 903.9 is also
-// offering — and that prompt is the rules-correct outcome: CR 616.1
-// gives the affected permanent's controller the choice, and the two
-// orders are genuinely different questions to be asked. (They reach
-// the same board either way, as it happens: regeneration first cancels
-// the move outright, and CR 903.9 first rewrites the destination of a
-// move that regeneration then cancels anyway under the CR 616.1f
-// re-check.) Two SHIELDS never prompt, because they are one
+// ordering prompt in any window where a second replacement also
+// applies, and that prompt is the rules-correct outcome: CR 616.1
+// gives the affected permanent's controller the choice. (Before
+// ADR 0115 the common case was a shielded COMMANDER, where CR 903.9 was
+// also offering; a destroyed commander is no longer replaced, so that
+// prompt is gone.) Two SHIELDS never prompt, because they are one
 // registration of one built-in — see the file header.
 //
 // Controlled by the permanent's controller: a regeneration shield

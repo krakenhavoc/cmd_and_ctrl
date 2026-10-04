@@ -1,27 +1,29 @@
 package game
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
 // cost_commander_choice_test.go — #1397: a commander moved to PAY A
-// COST is offered CR 903.9, and the payment never pauses to ask.
+// COST is offered the command zone, and the payment never pauses to
+// ask.
 //
 // Every cost component that can move a card is a row in one table,
-// and every row runs the same five checks, because the bug was a
-// matrix: the discard, return and exile payers skipped the question
+// and every row runs the same checks, because the bug was a matrix:
+// the discard, return and exile payers skipped the question
 // (MustSettleNow) while the sacrifice and alternative-cost payers
 // paused half way through the payment for it. One driver means a
 // component added later is one row, not a fresh set of assertions to
 // forget.
 //
-// The five checks, for each row:
+// ADR 0115 split the table by destination. A row whose cost puts the
+// card into a HAND or a LIBRARY is CR 903.9b's, and #1397's
+// ask-before-paying still holds for it:
 //
 //  1. a NON-commander pays without any prompt, as before;
-//  2. a commander parks the announcement: exactly one CR 903.9 prompt,
+//  2. a commander parks the announcement: exactly one CR 903.9b prompt,
 //     addressed to the commander's OWNER, and NOTHING paid — the card
 //     is where it was and the announcement has not been made;
 //  3. "yes" makes the announcement and the commander lands in its
@@ -31,6 +33,18 @@ import (
 //  5. undo across the open prompt replays: rewound into the prompt,
 //     the other answer lands the other way and the announcement is
 //     made once.
+//
+// A row whose cost puts the card into a GRAVEYARD or EXILE (discard,
+// sacrifice, exile) is CR 903.9a's: the commander is paid like any
+// other card and offered afterwards.
+//
+//  1. a NON-commander pays without any prompt, as before;
+//  2. a commander pays at once: no prompt before or during the payment,
+//     the announcement is made and the card is where the cost sends it;
+//  3. the state-based action then asks the OWNER, and "yes" sends the
+//     card from there to the command zone;
+//  4. "no" leaves it where the cost sent it;
+//  5. undo into the open question replays either answer.
 
 // costCommanderSetup is one seeded board for a row.
 type costCommanderSetup struct {
@@ -415,9 +429,24 @@ func parkedCostPrompt(t *testing.T, g *Game, owner, card uuid.UUID) *PendingChoi
 	return c
 }
 
+// asksFirst reports whether a row's cost puts the card into a hand or
+// a library — CR 903.9b, asked before paying — rather than a graveyard
+// or exile, where CR 903.9a asks after (ADR 0115).
+func asksFirst(g *Game, s costCommanderSetup) bool {
+	k := s.declined(g).Kind
+	return k == ZoneHand || k == ZoneLibrary
+}
+
 func TestCostCommanderChoice(t *testing.T) {
 	for _, tc := range costCommanderCases() {
 		t.Run(tc.name, func(t *testing.T) {
+			{
+				g := newActiveGame(t)
+				if !asksFirst(g, tc.build(t, g, true)) {
+					testCostCommanderPaidThenOffered(t, tc)
+					return
+				}
+			}
 			t.Run("a non-commander pays without asking", func(t *testing.T) {
 				g := newActiveGame(t)
 				s := tc.build(t, g, false)
@@ -503,14 +532,105 @@ func TestCostCommanderChoice(t *testing.T) {
 	}
 }
 
+// testCostCommanderPaidThenOffered runs a graveyard-or-exile row
+// (ADR 0115, CR 903.9a): the commander is paid like any other card,
+// and its owner is asked afterwards.
+func testCostCommanderPaidThenOffered(t *testing.T, tc costCommanderCase) {
+	t.Run("a non-commander pays without asking", func(t *testing.T) {
+		g := newActiveGame(t)
+		s := tc.build(t, g, false)
+		if err := s.announce(g); err != nil {
+			t.Fatalf("announce: %v", err)
+		}
+		runChecks(g)
+		if len(g.PendingChoices) != 0 {
+			t.Fatalf("a non-commander queued %d prompt(s)", len(g.PendingChoices))
+		}
+		if !s.made(g) {
+			t.Error("the announcement was not made")
+		}
+		if !s.declined(g).Contains(s.card) {
+			t.Errorf("the card is not in %s", s.declined(g).Kind)
+		}
+	})
+
+	// payThenAsk announces, checks the commander was paid at once, and
+	// returns the CR 903.9a question that follows.
+	payThenAsk := func(t *testing.T, g *Game, s costCommanderSetup) (*Player, *PendingChoice) {
+		t.Helper()
+		owner := g.Seats[s.ownerSeat]
+		if err := s.announce(g); err != nil {
+			t.Fatalf("announce: %v", err)
+		}
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == PendingChoiceOptionalReplacement {
+				t.Fatal("a graveyard or exile cost asked CR 903.9b before paying")
+			}
+		}
+		if !s.made(g) {
+			t.Fatal("the announcement was not made")
+		}
+		assertOnlyIn(t, s.card, s.declined(g), s.from(g), commandOf(s.ownerSeat)(g))
+		return owner, expectCommanderReturn(t, g, owner, s.card)
+	}
+
+	for _, apply := range []bool{true, false} {
+		name := "paid, then no: the card stays where the cost sent it"
+		if apply {
+			name = "paid, then yes: the command zone"
+		}
+		t.Run(name, func(t *testing.T) {
+			g := newActiveGame(t)
+			s := tc.build(t, g, true)
+			owner, c := payThenAsk(t, g, s)
+			if err := g.ResolveCommanderReturn(c.ID, owner.ID, apply); err != nil {
+				t.Fatalf("answer: %v", err)
+			}
+			if len(g.PendingChoices) != 0 {
+				t.Fatalf("%d prompt(s) left after the answer", len(g.PendingChoices))
+			}
+			if !s.made(g) {
+				t.Fatal("answering the question undid the announcement")
+			}
+			want, other := s.declined(g), commandOf(s.ownerSeat)(g)
+			if apply {
+				want, other = other, want
+			}
+			assertOnlyIn(t, s.card, want, other, s.from(g))
+		})
+	}
+
+	t.Run("undo into the open question replays either way", func(t *testing.T) {
+		g := newActiveGame(t)
+		s := tc.build(t, g, true)
+		owner, c := payThenAsk(t, g, s)
+		promptOpen := g.Clone()
+		if err := g.ResolveCommanderReturn(c.ID, owner.ID, true); err != nil {
+			t.Fatalf("first answer: %v", err)
+		}
+		assertOnlyIn(t, s.card, commandOf(s.ownerSeat)(g), s.declined(g), s.from(g))
+
+		g.WithWriteLock(func() { g.RestoreFrom(promptOpen) })
+		owner = g.Seats[s.ownerSeat]
+		c = expectCommanderReturn(t, g, owner, s.card)
+		if !s.declined(g).Contains(s.card) || !s.made(g) {
+			t.Fatal("the rewind did not put the table back on the open question with the cost paid")
+		}
+		if err := g.ResolveCommanderReturn(c.ID, owner.ID, false); err != nil {
+			t.Fatalf("replayed answer: %v", err)
+		}
+		assertOnlyIn(t, s.card, s.declined(g), commandOf(s.ownerSeat)(g), s.from(g))
+	})
+}
+
 // The double spend the mid-payment pause allowed: an Ashnod's Altar
 // activation naming a stolen commander paused on its owner's prompt
 // with the commander still on the battlefield, so a second activation
-// naming the SAME commander was accepted and paid for. Asking first
-// means neither activation has paid anything while the question is
-// open, and the second one re-validates against a board the first has
-// already changed.
-func TestACommanderParkedOnACostCannotPayTwice(t *testing.T) {
+// naming the SAME commander was accepted and paid for. #1397 asked
+// first. Since ADR 0115 the sacrifice is paid at once: the commander is
+// in its owner's graveyard after the first activation, the second one
+// has nothing to sacrifice, and the owner is asked once, afterwards.
+func TestACommanderSacrificedForACostCannotPayTwice(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	altar := manaSource(g, me, ManaAbilityShape{
@@ -526,62 +646,48 @@ func TestACommanderParkedOnACostCannotPayTwice(t *testing.T) {
 	if err := sac(); err != nil {
 		t.Fatalf("first activation: %v", err)
 	}
-	if err := sac(); err != nil {
-		t.Fatalf("second activation: %v", err)
+	if got := len(me.ManaPool); got != 2 {
+		t.Fatalf("mana pool = %d after the first sacrifice, want {C}{C}", got)
 	}
-	if len(me.ManaPool) != 0 {
-		t.Fatalf("mana pool = %d with both activations still asking — nothing is paid before the answer", len(me.ManaPool))
-	}
-	if len(g.PendingChoices) != 2 {
-		t.Fatalf("pending choices = %d, want one parked prompt per activation", len(g.PendingChoices))
-	}
-	first, second := g.PendingChoices[0].ID, g.PendingChoices[1].ID
-	if err := g.ResolveOptionalReplacement(first, opp.ID, true); err != nil {
-		t.Fatalf("first answer: %v", err)
-	}
-	if !opp.Command.Contains(cmd) {
-		t.Fatal("the commander did not reach its owner's command zone")
-	}
-	before := len(g.Events)
-	// The opponent answering the second question is not handed the
-	// activator's refusal; the log carries it.
-	if err := g.ResolveOptionalReplacement(second, opp.ID, true); err != nil {
-		t.Fatalf("second answer returned %v to the owner, want nil", err)
+	assertOnlyIn(t, cmd, opp.Graveyard, g.Battlefield, opp.Command)
+	if err := sac(); err == nil {
+		t.Fatal("a second activation sacrificed a commander that is already in the graveyard")
 	}
 	if got := len(me.ManaPool); got != 2 {
 		t.Errorf("mana pool = %d, want the {C}{C} of ONE sacrifice", got)
 	}
-	logged := false
-	for _, ev := range g.Events[before:] {
-		if ev.Kind == EventEffectError && ev.Actor == me.ID {
-			logged = true
-		}
-	}
-	if !logged {
-		t.Error("the refused second payment left nothing in the log")
-	}
+	answerCommanderReturn(t, g, opp, cmd, true)
+	assertOnlyIn(t, cmd, opp.Command, opp.Graveyard, g.Battlefield)
+}
+
+// returnOutlet seats an artifact whose ability costs "return N
+// creatures you control to their owners' hands".
+func returnOutlet(g *Game, owner *Player, n int) uuid.UUID {
+	return abilitySource(g, owner, AbilityCost{ReturnToHand: &ReturnToHandCost{Count: n, Filter: creatureCostSpec(), Label: "a creature you control"}})
 }
 
 // When the payer is the one answering, the refusal of a re-run that no
-// longer validates comes back to them, because they can act on it.
+// longer validates comes back to them, because they can act on it. A
+// return-to-hand cost since ADR 0115: it is the kind still asked first
+// (CR 903.9b).
 func TestAParkedCostTheBoardNoLongerPaysIsRefusedToThePayer(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me := g.Seats[0]
-	src := pushDiscardOutlet(g, me, discardOutletAbility(1, "a card", nil))
-	cmd := seedCostCard(me.Hand, me.ID, me.ID, true, nil)
-	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{DiscardIDs: []uuid.UUID{cmd}}); err != nil {
+	src := returnOutlet(g, me, 1)
+	cmd := seedCostCard(g.Battlefield, me.ID, me.ID, true, nil)
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{ReturnIDs: []uuid.UUID{cmd}}); err != nil {
 		t.Fatalf("announce: %v", err)
 	}
 	c := parkedCostPrompt(t, g, me.ID, cmd)
-	// The payer spends the card elsewhere while the question is open.
+	// The card leaves the battlefield while the question is open.
 	g.WithWriteLock(func() {
-		if _, err := MoveCard(me.Hand, me.Graveyard, cmd); err != nil {
+		if _, err := MoveCard(g.Battlefield, me.Hand, cmd); err != nil {
 			t.Fatal(err)
 		}
 	})
-	if err := g.ResolveOptionalReplacement(c.ID, me.ID, true); !errors.Is(err, ErrCardNotFound) {
-		t.Fatalf("answer = %v, want ErrCardNotFound — the discard can no longer be paid", err)
+	if err := g.ResolveOptionalReplacement(c.ID, me.ID, true); err == nil {
+		t.Fatal("answer = nil, want the refusal — the return can no longer be paid")
 	}
 	if len(g.StackMeta) != 0 {
 		t.Error("an announcement whose cost could not be paid reached the stack")
@@ -595,29 +701,30 @@ func TestAParkedCostTheBoardNoLongerPaysIsRefusedToThePayer(t *testing.T) {
 
 // Two commanders in one payment are asked about one at a time, and the
 // first answer is carried to the second prompt rather than asked again.
+// Two returns to hand since ADR 0115 (CR 903.9b).
 func TestTwoCommandersInOnePaymentAreAskedInTurn(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me := g.Seats[0]
-	src := pushDiscardOutlet(g, me, discardOutletAbility(2, "two cards", nil))
-	a := seedCostCard(me.Hand, me.ID, me.ID, true, nil)
-	b := seedCostCard(me.Hand, me.ID, me.ID, true, nil)
-	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{DiscardIDs: []uuid.UUID{a, b}}); err != nil {
+	src := returnOutlet(g, me, 2)
+	a := seedCostCard(g.Battlefield, me.ID, me.ID, true, nil)
+	b := seedCostCard(g.Battlefield, me.ID, me.ID, true, nil)
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{ReturnIDs: []uuid.UUID{a, b}}); err != nil {
 		t.Fatalf("announce: %v", err)
 	}
 	c := parkedCostPrompt(t, g, me.ID, a)
 	if err := g.ResolveOptionalReplacement(c.ID, me.ID, true); err != nil {
 		t.Fatalf("first answer: %v", err)
 	}
-	if len(g.StackMeta) != 0 || !me.Hand.Contains(a) {
+	if len(g.StackMeta) != 0 || !g.Battlefield.Contains(a) {
 		t.Fatal("the payment began with one commander still unanswered")
 	}
 	c = parkedCostPrompt(t, g, me.ID, b)
 	if err := g.ResolveOptionalReplacement(c.ID, me.ID, false); err != nil {
 		t.Fatalf("second answer: %v", err)
 	}
-	assertOnlyIn(t, a, me.Command, me.Graveyard, me.Hand)
-	assertOnlyIn(t, b, me.Graveyard, me.Command, me.Hand)
+	assertOnlyIn(t, a, me.Command, me.Hand, g.Battlefield)
+	assertOnlyIn(t, b, me.Hand, me.Command, g.Battlefield)
 	if len(g.StackMeta) != 1 {
 		t.Errorf("StackMeta = %d, want the one ability", len(g.StackMeta))
 	}
@@ -647,10 +754,12 @@ func TestACostCommanderWhoseOwnerHasLeftIsNotAsked(t *testing.T) {
 	}
 }
 
-// The answer rides the route, not the game: a sacrificed commander
-// whose owner said yes still meets another replacement on its way out
-// (Rest in Peace's "exile it instead") in the ordinary CR 616 way, and
-// the command zone still wins because the owner already chose it.
+// The answer rides the route, not the game: a returned commander whose
+// owner said yes still meets another replacement on its way out (a
+// test "if a card would be put into a hand, exile it instead") in the
+// ordinary CR 616 way, and the command zone still wins because the
+// owner already chose it. A return to hand since ADR 0115: a cost that
+// goes to a graveyard or exile is no longer asked first.
 func TestAnAcceptedCostAnswerStillMeetsOtherReplacements(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
@@ -658,6 +767,42 @@ func TestAnAcceptedCostAnswerStillMeetsOtherReplacements(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(ReplacementEffect{
 			Watches: []EventKind{EventZoneMove},
+			Label:   "Test hand-to-exile",
+			AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
+				return isExitMove(ev.Kind) && ev.NewZone == ZoneHand
+			},
+			Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+				ev.NewZone = ZoneExile
+				return nil
+			},
+		})
+	})
+	cmd := seedCostCard(g.Battlefield, me.ID, me.ID, true, nil)
+	src := returnOutlet(g, me, 1)
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{ReturnIDs: []uuid.UUID{cmd}}); err != nil {
+		t.Fatalf("announce: %v", err)
+	}
+	c := parkedCostPrompt(t, g, me.ID, cmd)
+	if err := g.ResolveOptionalReplacement(c.ID, me.ID, true); err != nil {
+		t.Fatalf("answer: %v", err)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("a settle-now cost paused on %d prompt(s)", len(g.PendingChoices))
+	}
+	assertOnlyIn(t, cmd, me.Command, g.Exile, g.Battlefield, me.Hand)
+}
+
+// ADR 0115 §5: a discarded commander meets Rest in Peace like any other
+// card. It is exiled instead of going to the graveyard, with no CR 616
+// ordering prompt (there is no second replacement to order any more),
+// and CR 903.9a then offers it from exile.
+func TestADiscardedCommanderMeetsRestInPeaceThenIsOffered(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	g.WithWriteLock(func() {
+		g.RegisterReplacementForTest(ReplacementEffect{
+			Watches: []EventKind{EventZoneMove, EventDiscardCard},
 			Label:   "Test Rest in Peace",
 			AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
 				return isExitMove(ev.Kind) && ev.NewZone == ZoneGraveyard
@@ -673,12 +818,10 @@ func TestAnAcceptedCostAnswerStillMeetsOtherReplacements(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{DiscardIDs: []uuid.UUID{pitch}}); err != nil {
 		t.Fatalf("announce: %v", err)
 	}
-	c := parkedCostPrompt(t, g, me.ID, pitch)
-	if err := g.ResolveOptionalReplacement(c.ID, me.ID, true); err != nil {
-		t.Fatalf("answer: %v", err)
+	if len(g.StackMeta) != 1 {
+		t.Fatal("the ability was not activated")
 	}
-	if len(g.PendingChoices) != 0 {
-		t.Fatalf("a settle-now cost paused on %d prompt(s)", len(g.PendingChoices))
-	}
+	assertOnlyIn(t, pitch, g.Exile, me.Graveyard, me.Hand, me.Command)
+	answerCommanderReturn(t, g, me, pitch, true)
 	assertOnlyIn(t, pitch, me.Command, g.Exile, me.Graveyard, me.Hand)
 }

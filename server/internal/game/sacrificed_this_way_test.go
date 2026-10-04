@@ -71,11 +71,13 @@ func TestSacrificeAllThenReportsWhatLeftTheBattlefield(t *testing.T) {
 	}
 }
 
-// TestASacrificedCommanderIsStillSacrificed is the CR 903.9 half and
-// the issue's shape: the list cannot be taken while the prompt is
-// open, so the rest of the batch waits for it — and the commander
-// counts on both answers, because the sacrifice happened either way
-// and only where the card went was replaced.
+// TestASacrificedCommanderIsStillSacrificed is the commander half. Since
+// ADR 0115 a sacrificed commander goes to its owner's graveyard with
+// the rest of the batch, the list is taken at once and counts it, and
+// CR 903.9a asks the owner afterwards. Both answers leave it
+// sacrificed: the sacrifice happened, and the question is only where
+// the card goes next. (Before ADR 0115 the commander's leg paused on
+// the CR 903.9 replacement and the batch waited for it.)
 func TestASacrificedCommanderIsStillSacrificed(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -89,24 +91,14 @@ func TestASacrificedCommanderIsStillSacrificed(t *testing.T) {
 
 			got, ran := sacrificeAllThen(t, g, []uuid.UUID{commander, bear})
 
-			if *ran != 0 {
-				t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0", *ran)
-			}
-			if findBattlefieldCard(g, bear) == nil {
-				t.Error("the rest of the batch waits for the paused leg")
-			}
-			if findBattlefieldCard(g, commander) == nil {
-				t.Error("a paused leg has moved nothing")
-			}
-
-			prompt := expectCommanderPrompt(t, g, me)
-			if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, tc.commandZone); err != nil {
-				t.Fatalf("ResolveOptionalReplacement: %v", err)
-			}
-
 			if *ran != 1 {
-				t.Fatalf("the continuation ran %d times after the answer, want 1", *ran)
+				t.Fatalf("the continuation ran %d times, want 1 — nothing waits on the owner", *ran)
 			}
+			if !me.Graveyard.Contains(commander) || !me.Graveyard.Contains(bear) {
+				t.Fatal("the batch did not put both permanents into the graveyard")
+			}
+			answerCommanderReturn(t, g, me, commander, tc.commandZone)
+
 			if !idsEqual(*got, []uuid.UUID{commander, bear}) {
 				t.Errorf("sacrificed this way = %v, want both — the commander was sacrificed "+
 					"whichever zone it went to (CR 701.17a)", *got)
@@ -119,7 +111,7 @@ func TestASacrificedCommanderIsStillSacrificed(t *testing.T) {
 				t.Errorf("the commander is in the %s", landed.Kind)
 			}
 			if !me.Graveyard.Contains(bear) {
-				t.Error("the rest of the batch lands once the prompt is answered")
+				t.Error("the bear is not in the graveyard")
 			}
 		})
 	}
@@ -191,7 +183,7 @@ func TestACancelledSacrificeIsNotASacrifice(t *testing.T) {
 func TestUndoAcrossAPausedSacrificeLegReplays(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	commander := seatCommander(t, g.Battlefield, me)
+	commander := seatDetouredCard(t, g, g.Battlefield, me)
 	bear := pushBear(g, me.ID)
 
 	got, ran := sacrificeAllThen(t, g, []uuid.UUID{commander, bear})
@@ -232,7 +224,7 @@ func TestUndoAcrossAPausedSacrificeLegReplays(t *testing.T) {
 func TestFireAndForgetSacrificeCountsWhatSettled(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	commander := seatCommander(t, g.Battlefield, me)
+	commander := seatDetouredCard(t, g, g.Battlefield, me)
 	bear := pushBear(g, me.ID)
 
 	var n int

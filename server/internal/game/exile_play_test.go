@@ -343,18 +343,19 @@ func TestExileTopWithPermissionTakesTheTopNotTheBottom(t *testing.T) {
 	}
 }
 
-// --- CR 903.9 (#1587) ---------------------------------------------
+// --- the commander (#1587, ADR 0115) ------------------------------
 //
 // Before #1587, ExileTopWithPermissionForEffect moved cards with a
 // raw MoveCard and never opened the CR 614 replacement window, so a
 // commander impulse-exiled off the top of its owner's library was
-// never offered the command zone. These pin the fix: the prompt is
-// offered, nothing moves until it's answered, and the exile-play
-// grant lands only on a card that actually reaches exile.
+// never offered the command zone. Since ADR 0115 the offer is
+// CR 903.9a's: the commander is exiled like any other card and gets
+// the grant, and its owner is asked afterwards.
 
 // TestImpulseExiledCommanderOffersCommandZone is #1587's own repro:
 // Ragavan-shaped impulse exile off the top of the victim's library,
-// with a commander on top.
+// with a commander on top. It lands in exile at once, and a "yes"
+// sends it home.
 func TestImpulseExiledCommanderOffersCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	owner, thief := g.Seats[0], g.Seats[1]
@@ -369,34 +370,19 @@ func TestImpulseExiledCommanderOffersCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExileTopWithPermissionForEffect: %v", err)
 	}
-	if len(ids) != 0 {
-		t.Fatalf("landed %v before the CR 903.9 prompt was answered, want none", ids)
+	if len(ids) != 1 || ids[0] != cmdID {
+		t.Fatalf("landed %v, want the commander [%v]", ids, cmdID)
 	}
-	if g.Exile.Contains(cmdID) {
-		t.Fatalf("impulse-exiled commander hit exile before the prompt was answered")
-	}
-	if !owner.Library.Contains(cmdID) {
-		t.Fatalf("commander left the library before the prompt was answered")
-	}
+	assertOnlyIn(t, cmdID, g.Exile, owner.Library, owner.Command)
 
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	assertOnlyIn(t, cmdID, owner.Command, g.Exile, owner.Library)
-
-	// The commander went to the command zone, not to exile — CR 400.7
-	// says it is not the object the exile grant names, so it gets no
-	// grant at all.
-	if perm := g.CastPermissionOnCardByIDForEffect(cmdID); perm.Granted() {
-		t.Errorf("a commander sent to the command zone should not carry an exile-play grant")
-	}
 }
 
 // TestImpulseExiledCommanderDeclineGrantsPlay is the other half: the
 // owner may decline the command zone, and then the card stays in
-// exile and gets exactly the grant it would have gotten if it were
-// any other card.
+// exile with exactly the grant it would have gotten if it were any
+// other card.
 func TestImpulseExiledCommanderDeclineGrantsPlay(t *testing.T) {
 	g := newActiveGame(t)
 	owner, thief := g.Seats[0], g.Seats[1]
@@ -408,10 +394,7 @@ func TestImpulseExiledCommanderDeclineGrantsPlay(t *testing.T) {
 			t.Fatalf("ExileTopWithPermissionForEffect: %v", err)
 		}
 	})
-	prompt := expectCommanderPrompt(t, g, owner)
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, false)
 	assertOnlyIn(t, cmdID, g.Exile, owner.Command, owner.Library)
 
 	perm := g.CastPermissionOnCardByIDForEffect(cmdID)
@@ -462,16 +445,17 @@ func TestImpulseExileOfANonCommanderIsUnchanged(t *testing.T) {
 }
 
 // TestImpulseExileThenWaitsForTheWholeBatch pins the continuation
-// form Bonehoard Dracosaur needs: with a commander among the exiled
-// cards, `then` does not run until the CR 903.9 prompt is answered,
-// and it is handed the true final landed list — not the commander,
-// which went to the command zone.
+// form Bonehoard Dracosaur needs: with a paused card among the exiled
+// cards, `then` does not run until the prompt is answered, and it is
+// handed the true final landed list — not the paused card, which went
+// to the command zone. (The paused card is a test "may" replacement,
+// may_detour_test.go; it was a commander before ADR 0115.)
 func TestImpulseExileThenWaitsForTheWholeBatch(t *testing.T) {
 	g := newActiveGame(t)
 	owner, thief := g.Seats[0], g.Seats[1]
 	owner.Library.Cards = nil
 	loot := seedLibraryTop(owner, "Stolen Bolt", "Instant")
-	cmdID := seatCommander(t, owner.Library, owner) // pushed on top, after loot
+	cmdID := seatDetouredCard(t, g, owner.Library, owner) // pushed on top, after loot
 
 	var thenCalls int
 	var gotLanded []uuid.UUID

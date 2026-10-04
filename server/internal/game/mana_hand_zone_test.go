@@ -152,11 +152,11 @@ func TestManaAbilityFromHandStampsTheSourceKinds(t *testing.T) {
 
 // CR 601.2h / 602.2b: a cost is one indivisible step, so the exit
 // settles itself — and CR 605.3a gives a mana ability no window to
-// pause in. Since #1397 a COMMANDER spent as a Spirit Guide's cost is
-// still offered CR 903.9: the question is asked before the activation
-// begins, no mana is made while it is open, and the answer activates
-// the ability with the commander going where its owner said.
-func TestManaAbilityFromHandAsksTheCommanderQuestionFirst(t *testing.T) {
+// pause in. #1397 asked a COMMANDER spent as a Spirit Guide's cost the
+// CR 903.9 question before the activation began. Since ADR 0115 the
+// exile is paid like any other: the mana arrives at once, the commander
+// is in exile, and CR 903.9a asks its owner at the next check.
+func TestManaAbilityFromHandExilesACommanderThenAsks(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	id := seatCommander(t, me.Hand, me)
@@ -169,21 +169,18 @@ func TestManaAbilityFromHandAsksTheCommanderQuestionFirst(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	prompt := expectCommanderPrompt(t, g, me)
-	if len(me.ManaPool) != 0 || !me.Hand.Contains(id) {
-		t.Fatal("the mana ability was activated before the owner answered")
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceOptionalReplacement {
+			t.Fatal("the mana ability asked CR 903.9b before it began")
+		}
 	}
-	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
-		t.Fatalf("decline: %v", err)
-	}
-	if n := len(g.PendingChoices); n != 0 {
-		t.Fatalf("%d pending choices after the answer — CR 605.3a does not pause", n)
-	}
-	// Fails the test if the commander is anywhere else.
-	exiledCard(t, g, id)
 	if len(me.ManaPool) != 1 {
 		t.Error("the mana did not arrive")
 	}
+	// Fails the test if the commander is anywhere else.
+	exiledCard(t, g, id)
+	answerCommanderReturn(t, g, me, id, false)
+	exiledCard(t, g, id)
 }
 
 // The activation emits the same event a battlefield one does, so

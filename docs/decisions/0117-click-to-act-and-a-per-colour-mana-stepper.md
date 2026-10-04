@@ -5,6 +5,7 @@
 **Owner decisions:** the direction of 2026-10-04 and the four answers given the same day, quoted under [Owner direction and answers](#owner-direction-and-answers-2026-10-04). They are binding. This ADR also makes six smaller calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review. Accepted on 2026-10-04 with the owner's answers in hand. Any of the six calls can still be overturned by an amendment before PR 3 lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-04. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 36 remote heads: `origin/develop`, `origin/main`, the `feat/1107-*`, `feat/1112-*`, `feat/1117-*` and `feat/batch*` card branches, and the other chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0116, on `origin/develop` and `origin/feat/1548-heuristic-gang-blocks`. No branch has 0117, so this ADR takes **0117**. 0118 is reserved for #2188 by the tracker; it does not exist on any branch yet.
 **Amends:** [ADR 0020](0020-activated-abilities.md) Consequences (the activation popover also opens on a left-click). [ADR 0093](0093-abilities-granted-to-other-permanents.md) Decision 8, "Click behaviour" (the sandbox tap moves from the context menu to the popover's Sandbox section; a granted ability is clicked through the same rule as any other). [ADR 0040](0040-mana-pipeline.md), the 2026-09-24 amendment (#1443), its Client paragraph (two or more colour picks are a stepper, not a list of combinations). [ADR 0076](0076-tutorial.md) §2.1, step 7's hint.
+**Amended:** 2026-10-04 by [#2201](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2201): a permanent with exactly one usable ability activates it on a left-click. See [Amendment 2026-10-04](#amendment-2026-10-04-one-usable-ability-activates-on-click-2201). It changes §1 step 2 and the §1 table; the rest of the ADR stands.
 **Builds on:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the pool and the auto-tapper, unchanged here), [ADR 0028](0028-admin-context-menu.md) §5 (right-click with admin overrides opens the override menu, unchanged), [ADR 0105](0105-legal-action-highlights.md) §7 (pips open the popover), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 6 (any-player rows), [ADR 0111](0111-action-dock.md) owner decision 5 (card-local menus and the mana picker stay at the card).
 
 This ADR was written plan-first. No code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
@@ -114,7 +115,7 @@ The intercepts stay first and unchanged: targeting, the combat selects, attack o
 After the intercepts:
 
 1. **Usable rows.** Work out the card's usable rows with the one shared predicate of §2. These are its special-action rows, its activated rows (own, granted, loyalty, and the manual loyalty rows of §3) and its mana rows. For a permanent the viewer does not control, only the any-player rows count (ADR 0106).
-2. **Any usable non-mana row** (an activated row, a loyalty row or a special action): open the light ability popover at the card, mana rows first, and emit `ability-menu-opened`. This is owner answer 2. A left-click never opens the override menu.
+2. **Any usable non-mana row** (an activated row, a loyalty row or a special action): open the light ability popover at the card, mana rows first, and emit `ability-menu-opened`. This is owner answer 2. A left-click never opens the override menu. *(Amended 2026-10-04, #2201: when that row is the card's only usable row, the click activates it instead. See the [amendment](#amendment-2026-10-04-one-usable-ability-activates-on-click-2201).)*
 3. **Otherwise, usable mana rows only:**
    - one ability with no colour choice: activate it at once (#1438 as today);
    - one ability with one picking slot: today's colour buttons;
@@ -302,3 +303,56 @@ The owner's answers did not settle these. Each is decided above, and each can be
 4. **Special actions count as usable rows** (§1), so a face-down creature's click opens the popover to turn it face up (CR 116.2b).
 5. **The not-yours click opens the light popover,** not the override menu (§1). Its condition is unchanged.
 6. **No tooltip** on a card whose click does nothing (§1): the hover zoom and the ready ring already say enough.
+
+---
+
+## Amendment 2026-10-04: one usable ability activates on click (#2201)
+
+**Status:** Accepted · 2026-10-04 · S59. **Issue:** [#2201](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2201). Client only; no server or protocol change.
+
+### Why
+
+The owner's feedback on cmd-dev after PR 3 shipped: "lands tapping for mana looks good. Fetch lands only have one activated ability and left clicking should activate that ability (unless they are granted another ability like urborg making all lands swamps)". Under §1 step 2, a fetch land's one ability ("{T}, Pay 1 life, Sacrifice this land: Search …") opened the popover, so fetching took two clicks.
+
+### The owner's answers (2026-10-04, binding)
+
+1. **Scope: every permanent.** One rule: when a permanent you control has **exactly one usable ability of any kind**, a left-click activates it. That covers a fetch land fetching, Prodigal Sorcerer's ping starting its targeting, and an Equipment's lone Equip starting the creature choice. Two or more usable abilities still open the popover: a planeswalker, a land under Urborg, Tomb of Yawgmoth, or any land given a mana ability next to its own.
+2. **Irreversible costs** (sacrifice, pay life, exile): **activate at once**. The cost is paid on the click, as for any lone ability, and the table's Undo (where the table allows it) covers a misclick. No confirm step.
+3. **Not in the 2026-10-04 promotion (#2199).** This lands in the next one.
+
+### The rule, as amended
+
+§1 step 2 changes. Steps 1, 3 and 4, the intercepts, Alt-click, the cursor and the not-yours condition are unchanged.
+
+1. **Count the usable rows** exactly as the popover lists them, judged by §2's one predicate: special actions, mana rows, and activated rows, including granted rows, catalogued loyalty rows, an uncatalogued planeswalker's manual loyalty rows (§3) and, on a permanent the viewer does not control, its any-player rows. The Sandbox Tap / Untap row never counts. A greyed row never counts, so a fetch land whose only other row is greyed still activates on click.
+2. **Exactly one usable row, and it is not a mana row:** activate it through the same path the popover's row takes. An activated row goes to the board's activation flow, so its costs, X, modes and targets are asked exactly as from the popover (CR 602.2, 602.2b). A special action or a manual loyalty row sends the action its row sends. No menu opens, so `ability-menu-opened` is not emitted.
+3. **Exactly one usable row, and it is a mana row:** today's mana path (§1 step 3), unchanged. One ability with no colour choice activates at once, a colour choice shows the buttons, and two or more picking slots show the stepper.
+4. **Two or more usable rows, one of them not a mana row:** the popover, unchanged.
+5. **Only mana rows usable, two or more of them:** the picker, unchanged. It never chooses silently between two mana abilities (ADR 0093). A basic Forest under Urborg is this case: two mana rows, so the picker, as before this amendment.
+6. **No usable row:** nothing, unchanged.
+
+The not-yours case applies the same count to the any-player rows: one usable any-player row activates on click, two or more open the popover.
+
+### The §1 table, rows that change or are added
+
+| Permanent you control | Under §1 as accepted | As amended |
+|---|---|---|
+| A fetch land (Polluted Delta: `{T}, Pay 1 life, Sacrifice this land: Search …`) | the popover | activates it: the life and the sacrifice are paid on the click |
+| A fetch land under Urborg, Tomb of Yawgmoth (its own row and the Swamp's `{T}: Add {B}`, CR 305.6) | the popover, mana row first | the popover, mana row first (two usable rows) |
+| Rogue's Passage | the popover, mana row first | the popover, mana row first (two usable rows) |
+| Prodigal Sorcerer | the popover | starts its targeting |
+| An Equipment in your main phase | the popover (Equip) | starts Equip's creature choice |
+| A planeswalker with two or more usable loyalty abilities | the popover | the popover |
+| A planeswalker with exactly one usable loyalty ability (another row greyed: a −N it cannot pay, CR 606.6) | the popover | activates it |
+| A summoning-sick creature with a `{T}` row (greyed, CR 302.6) and one usable row without `{T}` | the popover | activates the usable row |
+| A face-down creature | the popover (turn face up) | turns it face up (its one row, CR 116.2b) |
+| Relic of Sauron, both rows usable | the popover, mana row first | the popover, mana row first |
+
+Every other row of the §1 table stands. An uncatalogued planeswalker always offers several manual loyalty rows, so it still opens the popover when they are usable.
+
+### What else changes
+
+- **Call 4** (special actions count as usable rows) stands. A face-down creature's lone "turn face up" row is now activated by the click instead of opening the popover.
+- **§6, the tutorial.** Step 7's hint ("A left click only acts when an ability is ready to use") stays true and is unchanged. Its usual anchor is the summoning-sick mana creature cast in step 6, whose left-click still does nothing. The step completes on `ability-menu-opened`, which a lone-row click does not emit; the right-click and the pip still emit it.
+- **§7, the tests.** The agreement test (`abilityClick.render.test.ts`) gains the "activate" outcome. For a card whose popover shows one usable row, it chooses that row, records what was sent, and checks that the left-click sends exactly the same. `loneAbilityClick.render.test.ts` runs the amended rows above on the real Board.
+- **Accessible names.** None added or renamed.

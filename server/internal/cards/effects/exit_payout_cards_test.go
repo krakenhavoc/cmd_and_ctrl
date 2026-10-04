@@ -32,6 +32,13 @@ import (
 //     write the next instruction on the line after a mill that can
 //     pause; the Aberration's loop then re-read the top of the library
 //     and milled the same paused card again.
+//
+// ADR 0115: a commander sacrificed or milled no longer pauses. It lands
+// in the graveyard like any other card and CR 903.9a asks its owner
+// afterwards, so the Technomancer, Chain of Vapor's sacrifice, Hermit
+// Druid and the Aberration tests below pin that the payout happens at
+// once and is not disturbed by the later answer. Boomerang Basics and
+// Chain of Vapor's bounce are CR 903.9b and still ask first.
 
 // --- Boomerang Basics ----------------------------------------------
 
@@ -169,13 +176,13 @@ func TestChainOfVaporStillAsksWhenTheReturnWasReplacedAway(t *testing.T) {
 	}
 }
 
-// TestChainOfVaporCopyQuestionWaitsForTheSacrificedLand is the
+// TestChainOfVaporCopyQuestionFollowsTheSacrificedLand is the
 // SacrificeChoice half of the same fix. Its doc says "Then runs once
-// the permanent has gone", and the prompt's continuation used to call
-// the fire-and-forget sacrifice and then run the clause on the next
-// line — so a sacrificed commander LAND had its owner offered the copy
-// while they were still being asked about the command zone.
-func TestChainOfVaporCopyQuestionWaitsForTheSacrificedLand(t *testing.T) {
+// the permanent has gone". A sacrificed commander LAND used to pause on
+// CR 903.9 with the copy question already asked; since ADR 0115 it goes
+// to the graveyard at once, the copy question follows, and CR 903.9a
+// asks its owner about the command zone only after the resolution.
+func TestChainOfVaporCopyQuestionFollowsTheSacrificedLand(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]
 	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
@@ -194,37 +201,35 @@ func TestChainOfVaporCopyQuestionWaitsForTheSacrificedLand(t *testing.T) {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
 
-	if n := countPendingFor(g, opp.ID, game.PendingChoiceConfirm); n != 0 {
-		t.Fatalf("%d copy questions while the sacrificed land's CR 903.9 prompt is open, want 0 — "+
-			"SacrificeChoice.Then runs once the permanent has gone", n)
-	}
-	b21DeclineCommandZone(t, g, opp.ID)
-	if g.Battlefield.Contains(land) {
-		t.Fatal("declining sends the sacrificed land to its owner's graveyard")
+	if !opp.Graveyard.Contains(land) {
+		t.Fatalf("the sacrificed land is in %s, want its owner's graveyard", b12ZoneOf(g, land))
 	}
 	if n := countPendingFor(g, opp.ID, game.PendingChoiceConfirm); n != 1 {
 		t.Errorf("%d copy questions once the sacrifice has settled, want 1", n)
+	}
+	if n := countPendingFor(g, opp.ID, game.PendingChoiceOptionalReplacement); n != 0 {
+		t.Errorf("%d CR 903.9b prompts for a sacrificed land, want 0", n)
 	}
 }
 
 // --- Ruthless Technomancer ------------------------------------------
 
 // TestRuthlessTechnomancerPaysForASacrificedCommander is the clause
-// that IS gated, and the outcome the old live-board read got wrong. A
-// sacrificed commander sits on the battlefield while its owner answers
-// CR 903.9, so "is it still on the battlefield?" said "not sacrificed"
-// and no Treasure was ever made.
+// that IS gated, and the outcome the old live-board read got wrong: a
+// sacrificed commander used to sit on the battlefield while its owner
+// answered CR 903.9, so "is it still on the battlefield?" said "not
+// sacrificed" and no Treasure was ever made.
 //
-// Both answers pay, and CR 701.17a is why: the keyword action is the
-// controller's move OFF the battlefield, and a replacement rewrites
-// only where the permanent goes.
+// Since ADR 0115 the commander is sacrificed into its owner's graveyard
+// like any other creature, the Treasures are made at once, and the
+// CR 903.9a answer that follows changes nothing.
 func TestRuthlessTechnomancerPaysForASacrificedCommander(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
 	}{
-		{"to the command zone: still sacrificed", true},
-		{"to the graveyard: sacrificed", false},
+		{"then to the command zone: still sacrificed", true},
+		{"left in the graveyard: sacrificed", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -234,24 +239,21 @@ func TestRuthlessTechnomancerPaysForASacrificedCommander(t *testing.T) {
 
 			technomancerETB(t, g, me, victim)
 
-			if n, _ := b14Tokens(g, me.ID, "Treasure"); n != 0 {
-				t.Fatalf("%d Treasures while the CR 903.9 prompt is open, want 0 — the clause "+
-					"waits for the answer", n)
-			}
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, me.ID)
-				if !me.Command.Contains(victim) {
-					t.Fatal("accepting puts the commander in the command zone")
-				}
-			} else {
-				b21DeclineCommandZone(t, g, me.ID)
-				if !me.Graveyard.Contains(victim) {
-					t.Fatal("declining puts it in its owner's graveyard")
-				}
+			if !me.Graveyard.Contains(victim) {
+				t.Fatal("the sacrificed commander is in its owner's graveyard")
 			}
 			if n, _ := b14Tokens(g, me.ID, "Treasure"); n != 3 {
-				t.Errorf("%d Treasures, want 3 — the creature's power, and it WAS sacrificed "+
-					"(CR 701.17a: only where it went was replaced)", n)
+				t.Fatalf("%d Treasures before the CR 903.9a answer, want 3 — the creature's power", n)
+			}
+			answerCommanderReturn(t, g, me.ID, tc.commandZone)
+			if tc.commandZone && !me.Command.Contains(victim) {
+				t.Fatal("yes puts the commander in the command zone")
+			}
+			if !tc.commandZone && !me.Graveyard.Contains(victim) {
+				t.Fatal("no leaves it in its owner's graveyard")
+			}
+			if n, _ := b14Tokens(g, me.ID, "Treasure"); n != 3 {
+				t.Errorf("%d Treasures after the answer, want 3", n)
 			}
 		})
 	}
@@ -295,9 +297,9 @@ func technomancerETB(t *testing.T, g *game.Game, me *game.Player, victim uuid.UU
 // TestHermitDruidPutsTheLandInHandAfterTheMillSettles. "Put that card
 // into your hand and all other cards revealed this way into your
 // graveyard" is one instruction about a settled run, and one of the
-// cards above the land is a commander whose owner has been asked about
-// the command zone. The land used to reach hand while that question was
-// open and cards above it were still in the library.
+// cards above the land is a commander. Since ADR 0115 the commander is
+// milled with the rest of the run, the land reaches hand, and CR 903.9a
+// asks its owner about the command zone afterwards.
 func TestHermitDruidPutsTheLandInHandAfterTheMillSettles(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -319,33 +321,33 @@ func TestHermitDruidPutsTheLandInHandAfterTheMillSettles(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	if me.Hand.Contains(land) {
-		t.Fatal("the basic land is in hand while the CR 903.9 prompt is still open — the hand-off " +
-			"is the mill's continuation")
+	if !me.Graveyard.Contains(commander) {
+		t.Fatal("the commander card is milled with the rest of the run")
 	}
-	b21DeclineCommandZone(t, g, me.ID)
+	answerCommanderReturn(t, g, me.ID, false)
 
 	if !me.Hand.Contains(land) {
 		t.Errorf("the basic land should be in hand once the mill has settled; it is in %s",
 			b12ZoneOf(g, land))
 	}
 	if !me.Graveyard.Contains(commander) {
-		t.Error("declining puts the commander card in its owner's graveyard with the rest of the run")
+		t.Error("declining leaves the commander card in its owner's graveyard with the rest of the run")
 	}
 }
 
 // --- Consuming Aberration -------------------------------------------
 
-// TestConsumingAberrationDoesNotReMillAPausedCommander is the loop that
-// spun. The old body read the top of the library, milled one card, and
-// asked whether the card it had read was a land; a milled commander's
-// prompt leaves the card exactly where it was, so the next pass read
-// the same card and milled it again — round and round until the fuse
-// blew or somebody answered.
+// TestConsumingAberrationMillsACommanderOnce is the loop that spun. The
+// old body read the top of the library, milled one card, and asked
+// whether the card it had read was a land; a milled commander's prompt
+// left the card exactly where it was, so the next pass read the same
+// card and milled it again — round and round until the fuse blew or
+// somebody answered.
 //
-// The run is chosen up front now, so the commander is one leg of it and
-// the rest of the run waits behind its answer.
-func TestConsumingAberrationDoesNotReMillAPausedCommander(t *testing.T) {
+// The run is chosen up front now, and since ADR 0115 a milled commander
+// does not pause at all: it is milled once with the rest of the run and
+// CR 903.9a asks its owner afterwards.
+func TestConsumingAberrationMillsACommanderOnce(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
 	b12Push(g, me.ID, "Consuming Aberration", "Creature — Horror", b14ConsumingAberrationOracle, 0, 0)
@@ -364,17 +366,13 @@ func TestConsumingAberrationDoesNotReMillAPausedCommander(t *testing.T) {
 	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
 
-	if !opp.Library.Contains(commander) {
-		t.Fatal("nothing moves for the paused leg until the command-zone question is answered")
-	}
-	b21DeclineCommandZone(t, g, opp.ID)
-
 	if got := before - opp.Library.Size(); got != 3 {
-		t.Errorf("milled %d, want 3 (up to and including the land) — a paused leg must not shorten "+
+		t.Errorf("milled %d, want 3 (up to and including the land) — the commander must not shorten "+
 			"the run, and must not be milled twice", got)
 	}
+	answerCommanderReturn(t, g, opp.ID, false)
 	if !opp.Graveyard.Contains(commander) {
-		t.Error("declining puts the commander card in its owner's graveyard")
+		t.Error("declining leaves the commander card in its owner's graveyard")
 	}
 	if n := countInZone(opp.Graveyard, commander); n != 1 {
 		t.Errorf("the commander card is in the graveyard %d times, want 1 — the loop used to "+

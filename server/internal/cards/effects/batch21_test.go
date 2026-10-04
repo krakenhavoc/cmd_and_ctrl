@@ -988,11 +988,14 @@ func TestB21AgentOfTheIronThroneDrainsWhileYouControlYourCommander(t *testing.T)
 	if me.Life != before[0] {
 		t.Error("you lose nothing")
 	}
-	// The commander's own death looks back and drains — once its
-	// owner declines the command zone, so it really reaches the
-	// graveyard.
+	// The commander's own death looks back and drains. Since ADR 0115
+	// it dies like any other creature, so it drains even when its owner
+	// then sends it to the command zone (CR 903.9a).
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(commander) })
-	b21DeclineCommandZone(t, g, me.ID)
+	answerCommanderReturn(t, g, me.ID, true)
+	if !me.Command.Contains(commander) {
+		t.Error("the commander went home after the yes")
+	}
 	passPriorityAroundTable(t, g)
 	if g.Seats[1].Life != before[1]-3 {
 		t.Errorf("the commander dying drains: life %d, want %d", g.Seats[1].Life, before[1]-3)

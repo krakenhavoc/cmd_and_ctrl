@@ -3,25 +3,16 @@ package game
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
-// commander_return_test.go — ADR 0115 PR 2: CR 903.9a's state-based
-// action, shipped switched OFF. The first test is the one that matters
-// for this PR: with the switch off, nothing a commander does is any
-// different. The rest switch it on for the length of one test and pin
-// the plumbing PR 3 will turn on.
-
-// withCommanderReturnSBA switches ADR 0115's state-based action on for
-// one test.
-func withCommanderReturnSBA(t *testing.T) {
-	t.Helper()
-	commanderReturnSBA = true
-	t.Cleanup(func() { commanderReturnSBA = false })
-}
+// commander_return_test.go — ADR 0115: CR 903.9a's state-based
+// action. PR 2 shipped it switched off; PR 3 turned it on and removed
+// the switch. The first test is the end-to-end promise: a destroyed
+// commander dies, lands in its graveyard, and only then is its owner
+// asked.
 
 // commanderOnBattlefield puts a commander card owned by `owner` and
 // controlled by `controller` on the battlefield.
@@ -70,55 +61,50 @@ func cardIn(z *Zone, id uuid.UUID) *Card {
 	return nil
 }
 
-// TestCommanderReturnIsInertWhileSwitchedOff is PR 2's promise: the
-// plumbing ships and nothing changes. A destroyed commander still asks
-// the CR 903.9 replacement before it moves, no card is marked, no
-// commander_return prompt is ever queued, and the snapshot carries no
-// new key.
-func TestCommanderReturnIsInertWhileSwitchedOff(t *testing.T) {
-	if commanderReturnSBA {
-		t.Fatal("commanderReturnSBA is on: ADR 0115 PR 2 ships it off")
-	}
+// TestDestroyedCommanderDiesThenIsOffered is ADR 0115 PR 3's promise.
+// A destroyed commander is not asked before it moves: it goes to its
+// owner's graveyard, the move is a death (an EventLTB into the
+// graveyard, CR 700.4), and the CR 903.9a check then asks the owner.
+// The CR 903.9 replacement prompt of before is never queued.
+func TestDestroyedCommanderDiesThenIsOffered(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, owner.ID)
+	before := len(g.Events)
 
 	var err error
 	g.WithWriteLock(func() { err = g.DestroyPermanentForEffect(id) })
 	if err != nil {
 		t.Fatalf("DestroyPermanentForEffect: %v", err)
 	}
-	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceOptionalReplacement {
-		t.Fatalf("pending choices = %+v, want today's one CR 903.9 replacement prompt", g.PendingChoices)
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceOptionalReplacement {
+			t.Fatalf("a destroyed commander was asked the CR 903.9b replacement: %+v", c)
+		}
 	}
-	answerOnlyCommanderPrompt(t, g, owner.ID, false)
-	c := cardIn(owner.Graveyard, id)
-	if c == nil {
-		t.Fatal("declining the replacement did not leave the commander in the graveyard")
+	if cardIn(owner.Graveyard, id) == nil {
+		t.Fatal("the destroyed commander is not in its owner's graveyard")
 	}
-	if c.CommanderReturnDue {
-		t.Error("a commander in the graveyard was marked with the switch off")
+	died := false
+	for _, ev := range g.Events[before:] {
+		if ev.Kind == EventLTB && ev.CardID == id && ev.NewZone == ZoneGraveyard {
+			died = true
+		}
 	}
-	runChecks(g)
-	if n := len(commanderReturnPrompts(g)); n != 0 {
-		t.Errorf("%d commander_return prompts queued with the switch off", n)
+	if !died {
+		t.Error("no EventLTB into the graveyard: the commander did not die")
 	}
 
-	// A plain MoveCard into exile does not mark it either.
-	g.WithWriteLock(func() {
-		if _, err := MoveCard(owner.Graveyard, g.Exile, id); err != nil {
-			t.Fatalf("MoveCard: %v", err)
-		}
-	})
-	if cardIn(g.Exile, id).CommanderReturnDue {
-		t.Error("a commander moved into exile was marked with the switch off")
+	runChecks(g)
+	prompts := commanderReturnPrompts(g)
+	if len(prompts) != 1 || prompts[0].Chooser != owner.ID || prompts[0].Source != id {
+		t.Fatalf("commander_return prompts = %+v, want one to the owner about the card", prompts)
 	}
-	raw, err := json.Marshal(g.CaptureSnapshot())
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+	if err := g.ResolveCommanderReturn(prompts[0].ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveCommanderReturn: %v", err)
 	}
-	if strings.Contains(string(raw), "commanderReturnDue") {
-		t.Error("the snapshot names commanderReturnDue with the switch off")
+	if cardIn(owner.Command, id) == nil {
+		t.Error("yes did not reach the command zone")
 	}
 }
 
@@ -126,7 +112,6 @@ func TestCommanderReturnIsInertWhileSwitchedOff(t *testing.T) {
 // lands, the check asks once and clears it, and a second pass does not
 // ask again.
 func TestCommanderReturnAsksTheOwnerOnce(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, owner.ID)
@@ -160,7 +145,6 @@ func TestCommanderReturnAsksTheOwnerOnce(t *testing.T) {
 // TestCommanderReturnYesMovesItHome: a "yes" moves the card from the
 // graveyard to its owner's command zone and says where it came from.
 func TestCommanderReturnYesMovesItHome(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, owner.ID)
@@ -196,7 +180,6 @@ func TestCommanderReturnYesMovesItHome(t *testing.T) {
 // and is not asked again on the next pass; moving it from the graveyard
 // into exile asks again (ADR 0115 decision 1).
 func TestCommanderReturnNoIsNotAskedAgain(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, owner.ID)
@@ -234,7 +217,6 @@ func TestCommanderReturnNoIsNotAskedAgain(t *testing.T) {
 // TestCommanderReturnAsksTheOwnerNotTheController: a stolen commander
 // that dies is its owner's question (CR 903.9a, "its owner").
 func TestCommanderReturnAsksTheOwnerNotTheController(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner, thief := g.Seats[1], g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, thief.ID)
@@ -253,7 +235,6 @@ func TestCommanderReturnAsksTheOwnerNotTheController(t *testing.T) {
 // commander (CR 903.3), and a commander whose owner has left the game
 // is not asked about (CR 800.4a).
 func TestCommanderReturnSkipsTokensAndDepartedOwners(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	tok := NewCommander("Test Commander", me.ID)
@@ -282,7 +263,6 @@ func TestCommanderReturnSkipsTokensAndDepartedOwners(t *testing.T) {
 // waiting trigger goes on the stack (CR 704.3, ADR 0115 decision 3);
 // the answer releases them.
 func TestCommanderReturnHoldsTheTriggers(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	src := pushCreatureToBattlefield(t, g, owner)
@@ -315,7 +295,6 @@ func TestCommanderReturnHoldsTheTriggers(t *testing.T) {
 // the end step and the cleanup step's CR 514.3a check asks.
 func commanderDiesInCleanup(t *testing.T) (*Game, *Player, *PendingChoice) {
 	t.Helper()
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	advanceTo(t, g, StepEnd)
 	owner := g.Seats[g.Turn.ActiveSeat]
@@ -368,7 +347,6 @@ func TestCommanderReturnNoInCleanupEndsTheTurn(t *testing.T) {
 // so a table waiting on it captures as a restore point, restores with
 // the question open, and the question can be answered.
 func TestCommanderReturnPromptIsARestorePoint(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, owner.ID)
@@ -405,7 +383,6 @@ func TestCommanderReturnPromptIsARestorePoint(t *testing.T) {
 // TestCommanderReturnDueSurvivesASnapshot: the mark is carried, so a
 // table captured between the move and the check still asks.
 func TestCommanderReturnDueSurvivesASnapshot(t *testing.T) {
-	withCommanderReturnSBA(t)
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	id := commanderOnBattlefield(g, owner.ID, owner.ID)

@@ -80,13 +80,12 @@ func TestAangAirbendsAnOpponentsPermanentAndOwnerRebuysIt(t *testing.T) {
 	_ = aang
 }
 
-// #1304 / #1299: airbending an opposing COMMANDER. Exiling it opens
-// the CR 903.9 window, so its owner is asked about the command zone
-// before anything moves. A "no" must leave the commander in exile
-// WITH the airbend grant — the old primitive stamped the grant on the
-// line after a paused exile, found nothing in exile, and stranded the
-// card — and the owner must then be able to cast it for {2}. A "yes"
-// sends it home, where there is nothing to grant.
+// #1304 / #1299: airbending an opposing COMMANDER. It is exiled like
+// any other permanent and, since ADR 0115, the CR 903.9a state-based
+// action then asks its owner about the command zone. A "no" must leave
+// the commander in exile WITH the airbend grant, and the owner must then
+// be able to cast it for {2}. A "yes" sends it home, a new object
+// (CR 400.7), where there is nothing to grant.
 func TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)
@@ -104,12 +103,15 @@ func TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines(t *testing.T) {
 		pickCard(t, g, me.ID, vivi)
 		passPriorityAroundTable(t, g)
 
-		offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
-		if offer == nil || offer.Chooser != opp.ID {
-			t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9)")
+		if !g.Exile.Contains(vivi) {
+			t.Fatalf("the airbent commander is not in exile before its owner answers")
 		}
-		if err := g.ResolveOptionalReplacement(offer.ID, opp.ID, takeCommandZone); err != nil {
-			t.Fatalf("ResolveOptionalReplacement: %v", err)
+		offer := commanderReturnPromptFor(g, opp.ID)
+		if offer == nil {
+			t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9a)")
+		}
+		if err := g.ResolveCommanderReturn(offer.ID, opp.ID, takeCommandZone); err != nil {
+			t.Fatalf("ResolveCommanderReturn: %v", err)
 		}
 		passPriorityAroundTable(t, g)
 
@@ -286,9 +288,10 @@ func TestAppaCannotTargetHimself(t *testing.T) {
 }
 
 // The card's headline play: Appa airbends your own commander (with
-// other permanents) out of harm's way. The whole group leaves; the
-// commander's owner is asked about the command zone, declines, and
-// every card — the commander included — is left castable for {2}.
+// other permanents) out of harm's way. The whole group is exiled; the
+// commander's owner is then asked about the command zone (CR 903.9a),
+// declines, and every card — the commander included — is left castable
+// for {2}.
 func TestAppaAirbendsYourOwnCommanderAndKeepsItsRebuy(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -314,12 +317,12 @@ func TestAppaAirbendsYourOwnCommanderAndKeepsItsRebuy(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
-	if offer == nil || offer.Chooser != me.ID {
-		t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9)")
+	offer := commanderReturnPromptFor(g, me.ID)
+	if offer == nil {
+		t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9a)")
 	}
-	if err := g.ResolveOptionalReplacement(offer.ID, me.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	if err := g.ResolveCommanderReturn(offer.ID, me.ID, false); err != nil {
+		t.Fatalf("ResolveCommanderReturn: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 

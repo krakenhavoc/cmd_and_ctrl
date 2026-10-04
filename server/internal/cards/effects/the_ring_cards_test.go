@@ -341,9 +341,11 @@ func TestSauronLordOfTheRingsCastTrigger(t *testing.T) {
 }
 
 // "Whenever a commander an opponent controls dies, the Ring tempts
-// you." An opponent's commander whose owner lets it go to the graveyard
-// triggers it; your own does not. One whose owner takes the command
-// zone does not either — the card's caveat, until #2085.
+// you." An opponent's commander that dies triggers it; your own does
+// not. Since ADR 0115 (#2085) the commander dies before its owner is
+// asked about the command zone (CR 903.9a), so it triggers "even if the
+// owner of the commander that died chooses to return it to the command
+// zone after it dies" (the card's ruling).
 func TestSauronLordOfTheRingsTemptsWhenAnOpponentsCommanderDies(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -351,9 +353,10 @@ func TestSauronLordOfTheRingsTemptsWhenAnOpponentsCommanderDies(t *testing.T) {
 		commandZone bool
 		want        int
 	}{
-		{"opponent's commander to the graveyard", true, false, 1},
-		{"opponent's commander to the command zone (caveat)", true, true, 0},
-		{"my own commander to the graveyard", false, false, 0},
+		{"opponent's commander left in the graveyard", true, false, 1},
+		{"opponent's commander then sent to the command zone", true, true, 1},
+		{"my own commander left in the graveyard", false, false, 0},
+		{"my own commander then sent to the command zone", false, true, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -372,13 +375,10 @@ func TestSauronLordOfTheRingsTemptsWhenAnOpponentsCommanderDies(t *testing.T) {
 					t.Fatalf("destroy: %v", err)
 				}
 			})
-			offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
-			if offer == nil {
-				t.Fatal("setup: the commander's owner was not offered the command zone")
+			if !owner.Graveyard.Contains(commander) {
+				t.Fatal("setup: the destroyed commander is not in its owner's graveyard")
 			}
-			if err := g.ResolveOptionalReplacement(offer.ID, owner.ID, tc.commandZone); err != nil {
-				t.Fatalf("ResolveOptionalReplacement: %v", err)
-			}
+			answerCommanderReturn(t, g, owner.ID, tc.commandZone)
 			ringSettle(t, g)
 			if got := ringCount(g, me.ID); got != tc.want {
 				t.Fatalf("the Ring tempted Sauron's controller %d times, want %d", got, tc.want)

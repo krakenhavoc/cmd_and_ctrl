@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { get } from "svelte/store";
 import type { ActionType, CardView, GameView, PlayerView, ZoneView } from "./protocol";
-import { battlefieldClickIntent, buildMenuSections, type MenuSection } from "./contextMenu.logic";
+import {
+  battlefieldClickIntent,
+  battlefieldClickPlan,
+  buildMenuSections,
+  type MenuSection,
+} from "./contextMenu.logic";
 import { beginForAbility, canConfirm, isMultiPick, targeting } from "./targeting";
 import { canActivateLoyalty } from "./timing";
 
@@ -130,6 +135,16 @@ describe("battlefieldClickIntent (ADR 0117 §1)", () => {
     expect(battlefieldClickIntent(walker(), "a", false, live(walker()))).toBe("popover");
   });
 
+  it("activates a planeswalker's one usable loyalty ability (#2201)", () => {
+    // Two loyalty: the −3 cannot be paid (CR 606.6), so the +1 is the
+    // only usable row, and the click activates it.
+    const low = walker({ counters: { loyalty: 2 } });
+    expect(battlefieldClickPlan(low, "a", false, live(low))).toEqual({
+      intent: "activate",
+      row: { kind: "activated", index: 0 },
+    });
+  });
+
   it("does nothing once a loyalty ability was activated this turn", () => {
     const used = walker({ loyalty_activated: true });
     expect(battlefieldClickIntent(used, "a", false, live(used))).toBe("none");
@@ -173,7 +188,7 @@ describe("battlefieldClickIntent (ADR 0117 §1)", () => {
 
   // --- #368: the same shape on a utility land ----------------------
 
-  it("opens a fetchland's popover instead of tapping it", () => {
+  it("activates a fetchland's one ability instead of tapping it (#2201)", () => {
     const passage: CardView = {
       instance_id: "l1",
       name: "Fabled Passage",
@@ -184,7 +199,10 @@ describe("battlefieldClickIntent (ADR 0117 §1)", () => {
         { index: 0, label: "{T}, Sacrifice this land: Search for a basic land", tap_cost: true },
       ],
     };
-    expect(battlefieldClickIntent(passage, "a", false)).toBe("popover");
+    expect(battlefieldClickPlan(passage, "a", false)).toEqual({
+      intent: "activate",
+      row: { kind: "activated", index: 0 },
+    });
   });
 
   it("taps a plain land for mana, and does nothing on one that is tapped", () => {
@@ -202,7 +220,7 @@ describe("battlefieldClickIntent (ADR 0117 §1)", () => {
     ).toBe("none");
   });
 
-  it("opens an animated manland's popover for its ability", () => {
+  it("activates a manland's one ability (#2201)", () => {
     const manland: CardView = {
       instance_id: "l3",
       name: "Celestial Colonnade",
@@ -211,7 +229,13 @@ describe("battlefieldClickIntent (ADR 0117 §1)", () => {
       type_line: "Creature Land — Elemental",
       activated_abilities: [{ index: 0, label: "{3}{W}{U}: becomes a 4/4" }],
     };
-    expect(battlefieldClickIntent(manland, "a", false)).toBe("popover");
+    expect(battlefieldClickIntent(manland, "a", false)).toBe("activate");
+    // With its mana ability usable too, two rows: the popover.
+    const withMana = {
+      ...manland,
+      mana_abilities: [{ index: 0, label: "{T}: Add {W} or {U}", tap_cost: true }],
+    };
+    expect(battlefieldClickIntent(withMana, "a", false, { manaClick: true })).toBe("popover");
   });
 });
 

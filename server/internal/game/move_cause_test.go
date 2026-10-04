@@ -159,7 +159,7 @@ func TestForetellIsASpecialAction(t *testing.T) {
 func TestPausedExileKeepsItsCause(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	cmd := seatCommander(t, g.Battlefield, opp)
+	cmd := seatDetouredCard(t, g, g.Battlefield, opp)
 	g.mu.Lock()
 	resolvingAbilityOf(g, me.ID)
 	err := g.ExileCardForEffect(cmd)

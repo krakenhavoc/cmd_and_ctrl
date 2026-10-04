@@ -469,17 +469,14 @@ func TestShieldsSurviveASnapshotRoundTrip(t *testing.T) {
 
 // --- the shield alongside CR 903.9 --------------------------------
 
-// A shielded COMMANDER is the one window where two replacements apply
-// to one destruction: the shield and CR 903.9's command-zone offer.
-// CR 616.1 gives the choice to the affected player, so the engine
-// prompts — which is the rules-correct outcome, and the reason the
-// built-in is not flagged PureCancel.
-//
-// Whichever order is chosen, the commander survives on the
-// battlefield: regeneration first cancels the move; CR 903.9 first
-// rewrites the destination of a move the CR 616.1f re-check then lets
-// the shield cancel anyway.
-func TestAShieldedCommanderIsAnOrderingPrompt(t *testing.T) {
+// A shielded COMMANDER used to be the one window where two replacements
+// applied to one destruction — the shield and CR 903.9's command-zone
+// offer — and the engine asked a CR 616 ordering question. Since
+// ADR 0115 a commander headed for the graveyard is not replaced (CR
+// 903.9a asks after it lands), so the shield is the only replacement:
+// it regenerates the commander with no prompt, and since nothing was
+// put into a graveyard there is no CR 903.9a question either.
+func TestAShieldedCommanderRegeneratesWithNoPrompt(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	cmdID := uuid.New()
@@ -496,25 +493,23 @@ func TestAShieldedCommanderIsAnOrderingPrompt(t *testing.T) {
 	regenerate(t, g, cmdID)
 
 	destroy(t, g, cmdID)
+	runChecks(g)
 
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("expected one CR 616 ordering prompt, got %d choices", len(g.PendingChoices))
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("a regenerated commander left %d prompt(s), want none", len(g.PendingChoices))
 	}
-	prompt := g.PendingChoices[0]
-	if prompt.Kind != PendingChoiceReplacementOrder {
-		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, PendingChoiceReplacementOrder)
+	if findBattlefieldCard(g, cmdID) == nil {
+		t.Fatal("the shield did not keep the commander on the battlefield")
 	}
-	if prompt.Chooser != owner.ID {
-		t.Errorf("chooser = %s, want the commander's controller %s", prompt.Chooser, owner.ID)
-	}
-	if len(prompt.ReplacementEffectIDs) != 2 {
-		t.Fatalf("options = %d, want 2 (the shield and CR 903.9)", len(prompt.ReplacementEffectIDs))
+	if owner.Graveyard.Contains(cmdID) || owner.Command.Contains(cmdID) {
+		t.Error("the regenerated commander left the battlefield")
 	}
 }
 
 // A commander that has ALREADY spent its shield takes the ordinary
-// CR 903.9 route, which is the regression this pins: the shield must
-// not swallow the offer once it is gone.
+// route, which is the regression this pins: the shield must not
+// swallow the offer once it is gone. Since ADR 0115 that route is the
+// graveyard, then the CR 903.9a question.
 func TestASpentShieldLeavesTheCommanderOffer(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -532,12 +527,10 @@ func TestASpentShieldLeavesTheCommanderOffer(t *testing.T) {
 
 	destroy(t, g, cmdID)
 
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("expected the CR 903.9 prompt, got %d choices", len(g.PendingChoices))
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Fatal("the unshielded commander did not die")
 	}
-	if g.PendingChoices[0].Kind != PendingChoiceOptionalReplacement {
-		t.Errorf("prompt kind = %q, want the CR 903.9 yes/no", g.PendingChoices[0].Kind)
-	}
+	expectCommanderReturn(t, g, owner, cmdID)
 }
 
 // --- the primitive ------------------------------------------------

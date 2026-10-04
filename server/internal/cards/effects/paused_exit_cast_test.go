@@ -10,13 +10,15 @@ import (
 )
 
 // paused_exit_cast_test.go — #1474 with real cards. A commander an
-// effect is exiling or destroying waits where it was while its owner
-// answers CR 903.9, and in that window it can be neither cast nor the
-// source of a counter cost: Bennie Bracks cast out of a hand an effect
-// is exiling it from, Devoted Druid's "Put a -1/-1 counter on this
-// creature", Jace, the Mind Sculptor's loyalty ability, and Heart of
-// Kiran's "remove a loyalty counter from a planeswalker you control"
-// naming a destroyed walker. Without the gate each of them spent the
+// effect is putting into its owner's library or hand waits where it was
+// while its owner answers CR 903.9b, and in that window it can be
+// neither cast nor the source of a counter cost: Bennie Bracks cast out
+// of a hand an effect is tucking it from, Devoted Druid's "Put a -1/-1
+// counter on this creature", Jace, the Mind Sculptor's loyalty ability,
+// and Heart of Kiran's "remove a loyalty counter from a planeswalker you
+// control" naming a bounced walker. (ADR 0115: these used to exile or
+// destroy the commander, which no longer pauses; CR 903.9a asks after
+// the move instead.) Without the gate each of them spent the
 // commander while its owner was still deciding. The engine half is
 // game/paused_exit_cast_test.go; the move and tap costs are #1445's and
 // #1427's files beside this one.
@@ -36,18 +38,18 @@ func assertPausedRefusal(t *testing.T, g *game.Game, prompt *game.PendingChoice,
 	}
 }
 
-// destroyPaused destroys `id` by effect and returns its owner's open
-// CR 903.9 prompt.
-func destroyPaused(t *testing.T, g *game.Game, id uuid.UUID) *game.PendingChoice {
+// bouncePaused returns `id` to its owner's hand by effect and returns
+// its owner's open CR 903.9b prompt.
+func bouncePaused(t *testing.T, g *game.Game, id uuid.UUID) *game.PendingChoice {
 	t.Helper()
-	if err := g.DestroyPermanentForEffect(id); err != nil {
-		t.Fatalf("DestroyPermanentForEffect: %v", err)
+	if err := g.BounceToHandForEffect(id); err != nil {
+		t.Fatalf("BounceToHandForEffect: %v", err)
 	}
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != game.PendingChoiceOptionalReplacement {
-		t.Fatalf("want exactly one CR 903.9 prompt, have %d pending choices", len(g.PendingChoices))
+		t.Fatalf("want exactly one CR 903.9b prompt, have %d pending choices", len(g.PendingChoices))
 	}
 	if _, ok := battlefieldCard(g, id); !ok {
-		t.Fatal("the destroyed commander left before its owner answered — the premise is gone")
+		t.Fatal("the bounced commander left before its owner answered — the premise is gone")
 	}
 	return g.PendingChoices[0]
 }
@@ -61,7 +63,7 @@ func markCommander(g *game.Game, id uuid.UUID) {
 	}
 }
 
-func TestBennieBracksCannotBeCastWhileAnEffectIsExilingItFromHand(t *testing.T) {
+func TestBennieBracksCannotBeCastWhileAnEffectIsTuckingItFromHand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMainPhase(t, g)
@@ -74,11 +76,11 @@ func TestBennieBracksCannotBeCastWhileAnEffectIsExilingItFromHand(t *testing.T) 
 		})
 	})
 	floatForTest(g, me, "WWWW")
-	if err := g.ExileCardForEffect(bennie); err != nil {
-		t.Fatalf("ExileCardForEffect: %v", err)
+	if err := g.TuckToLibraryForEffect(bennie, false); err != nil {
+		t.Fatalf("TuckToLibraryForEffect: %v", err)
 	}
 	if len(g.PendingChoices) != 1 || !me.Hand.Contains(bennie) {
-		t.Fatalf("premise: the exile did not pause in hand (%d pending)", len(g.PendingChoices))
+		t.Fatalf("premise: the tuck did not pause in hand (%d pending)", len(g.PendingChoices))
 	}
 	prompt := g.PendingChoices[0]
 
@@ -106,11 +108,11 @@ func TestDevotedDruidCommanderCannotPutACounterOnWhileAsked(t *testing.T) {
 	druid := b12Push(g, me.ID, "Devoted Druid", "Legendary Creature — Elf Druid", devotedDruidOracle, 0, 2)
 	markCommander(g, druid)
 	other := b12Push(g, me.ID, "Devoted Druid", "Creature — Elf Druid", devotedDruidOracle, 0, 2)
-	prompt := destroyPaused(t, g, druid)
+	prompt := bouncePaused(t, g, druid)
 
 	assertPausedRefusal(t, g, prompt, g.ActivateCatalogAbility(me.ID, druid, 0, game.ActivateAbilityParams{}))
 	if got := counterCount(g, druid, game.CounterMinusOne); got != 0 {
-		t.Errorf("-1/-1 counters on the destroyed Druid = %d, want 0", got)
+		t.Errorf("-1/-1 counters on the bounced Druid = %d, want 0", got)
 	}
 
 	// An ordinary Druid pays with the prompt open.
@@ -128,7 +130,7 @@ func TestJaceTheMindSculptorCommanderCannotActivateLoyaltyWhileAsked(t *testing.
 	toMainPhase(t, g)
 	jace := pushCatalogWalker(g, me.ID, "Jace, the Mind Sculptor", jaceTheMindSculptorOracle, 3)
 	markCommander(g, jace)
-	prompt := destroyPaused(t, g, jace)
+	prompt := bouncePaused(t, g, jace)
 
 	// "0: Draw three cards, then put two cards back."
 	assertPausedRefusal(t, g, prompt, g.ActivateCatalogAbility(me.ID, jace, 1, game.ActivateAbilityParams{}))
@@ -144,7 +146,7 @@ func TestJaceTheMindSculptorCommanderCannotActivateLoyaltyWhileAsked(t *testing.
 	}
 }
 
-func TestHeartOfKiranCannotRemoveLoyaltyFromADestroyedCommanderWalker(t *testing.T) {
+func TestHeartOfKiranCannotRemoveLoyaltyFromABouncedCommanderWalker(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMainPhase(t, g)
@@ -153,12 +155,12 @@ func TestHeartOfKiranCannotRemoveLoyaltyFromADestroyedCommanderWalker(t *testing
 	markCommander(g, walker)
 	other := pushWalkerForCounterCost(g, me.ID, 3)
 	renameBattlefieldForCounterCost(g, other, "Other Walker")
-	prompt := destroyPaused(t, g, walker)
+	prompt := bouncePaused(t, g, walker)
 
 	assertPausedRefusal(t, g, prompt,
 		g.ActivateCatalogAbility(me.ID, heart, 1, game.ActivateAbilityParams{CounterSourceIDs: []uuid.UUID{walker}}))
 	if got := counterCount(g, walker, game.CounterLoyalty); got != 3 {
-		t.Errorf("the destroyed walker's loyalty = %d, want 3", got)
+		t.Errorf("the bounced walker's loyalty = %d, want 3", got)
 	}
 
 	// An ordinary walker pays with the prompt open.

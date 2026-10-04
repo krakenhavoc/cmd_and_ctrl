@@ -228,13 +228,78 @@ describe("settings", () => {
     expect(s.shortcuts.bindings).toEqual({ undo: "z" });
   });
 
-  // #1954: experimental, off by default, and it survives a reload.
-  it("artOnlyCards defaults off and persists once turned on", async () => {
+  // #2209: art tiles on the battlefield by default, full cards in the
+  // hand, and each choice survives a reload.
+  it("battlefieldArt defaults on, handArt off, and both persist once changed", async () => {
     let m = await freshModule();
-    expect(get(m.settings).display.artOnlyCards).toBe(false);
-    m.updateSettings("display", "artOnlyCards", true);
+    expect(get(m.settings).display.battlefieldArt).toBe(true);
+    expect(get(m.settings).display.handArt).toBe(false);
+    expect(m.defaultSettings().display.battlefieldArt).toBe(true);
+    expect(m.defaultSettings().display.handArt).toBe(false);
+    m.updateSettings("display", "battlefieldArt", false);
+    m.updateSettings("display", "handArt", true);
     m = await freshModule();
-    expect(get(m.settings).display.artOnlyCards).toBe(true);
+    expect(get(m.settings).display.battlefieldArt).toBe(false);
+    expect(get(m.settings).display.handArt).toBe(true);
+  });
+
+  // #2209 migration. A v15 blob always carries artOnlyCards, default
+  // included, so only `true` is known to be a choice.
+  it("v16 keeps a v15 artOnlyCards: true as art in both places", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 15, display: { artOnlyCards: true, cardSize: "large" } }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(s.__version).toBe(SETTINGS_VERSION);
+    expect(s.display.battlefieldArt).toBe(true);
+    expect(s.display.handArt).toBe(true);
+    expect(s.display.cardSize).toBe("large");
+    expect("artOnlyCards" in s.display).toBe(false);
+  });
+
+  it("v16 gives a v15 artOnlyCards: false (or none) the new defaults", async () => {
+    for (const display of [{ artOnlyCards: false }, {}]) {
+      localStorage.clear();
+      localStorage.setItem("cmdctrl.settings.v1", JSON.stringify({ __version: 15, display }));
+      const { settings } = await freshModule();
+      const s = get(settings);
+      expect(s.display.battlefieldArt).toBe(true);
+      expect(s.display.handArt).toBe(false);
+      expect("artOnlyCards" in s.display).toBe(false);
+    }
+  });
+
+  it("from v16 on, the stored art choices are honoured", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 16, display: { battlefieldArt: false, handArt: true } }),
+    );
+    const { settings } = await freshModule();
+    const s = get(settings);
+    expect(s.display.battlefieldArt).toBe(false);
+    expect(s.display.handArt).toBe(true);
+  });
+
+  it("an account copy from a v15 client migrates the same way (ADR 0110 §4)", async () => {
+    const m = await freshModule();
+    const base = m.defaultSettings();
+    base.display.battlefieldArt = false;
+    const on = m.applySyncedCopy(base, { display: { artOnlyCards: true } }, 15);
+    expect(on.display.battlefieldArt).toBe(true);
+    expect(on.display.handArt).toBe(true);
+    const off = m.applySyncedCopy(base, { display: { artOnlyCards: false } }, 15);
+    expect(off.display.battlefieldArt).toBe(true);
+    expect(off.display.handArt).toBe(false);
+    const v16 = m.applySyncedCopy(
+      m.defaultSettings(),
+      { display: { battlefieldArt: false, handArt: true } },
+      16,
+    );
+    expect(v16.display.battlefieldArt).toBe(false);
+    expect(v16.display.handArt).toBe(true);
+    expect(m.syncedSubset(v16).display).not.toHaveProperty("artOnlyCards");
   });
 
   it("v11 keeps an explicit opponentDetail: full across a load", async () => {

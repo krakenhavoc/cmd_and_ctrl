@@ -16,6 +16,12 @@ import (
 // to the commander's owner, pays nothing until it is answered, and
 // finishes the card once it is. The engine half — every component,
 // both answers, undo — is game/cost_commander_choice_test.go.
+//
+// ADR 0115 narrowed that to the costs that put a card into a HAND or a
+// LIBRARY (CR 903.9b): ninjutsu below still asks first. A commander
+// discarded, exiled or sacrificed to pay a cost is paid like any other
+// card, and the CR 903.9a state-based action asks its owner afterwards;
+// the other four cards here pin that order.
 
 // costCommander builds a commander card owned by `owner`.
 func costCommander(owner uuid.UUID, name string) game.Card {
@@ -80,9 +86,10 @@ func TestNinjutsuOnAnAttackingCommanderAsksItsOwner(t *testing.T) {
 }
 
 // Thrill of Possibility — "As an additional cost to cast this spell,
-// discard a card." A commander pitched to it and declined goes to the
-// graveyard, and the spell is cast and draws its two.
-func TestThrillOfPossibilityDiscardingACommanderAsksItsOwner(t *testing.T) {
+// discard a card." A commander discarded to it goes to the graveyard as
+// the cost is paid, the spell is cast, and its owner is asked about the
+// command zone afterwards (CR 903.9a); declined, it stays there.
+func TestThrillOfPossibilityDiscardingACommanderPaysThenAsksItsOwner(t *testing.T) {
 	g := newCatalogGame(t)
 	advanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -95,10 +102,10 @@ func TestThrillOfPossibilityDiscardingACommanderAsksItsOwner(t *testing.T) {
 	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{DiscardIDs: []uuid.UUID{cmd.InstanceID}}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	if !me.Hand.Contains(cmd.InstanceID) || g.Stack.Contains(spell) {
-		t.Fatal("the spell was paid for before the commander's owner answered")
+	if !me.Graveyard.Contains(cmd.InstanceID) || !g.Stack.Contains(spell) {
+		t.Fatal("the discard was not paid and the spell cast without asking first")
 	}
-	answerCostCommander(t, g, me.ID, false)
+	answerCommanderReturn(t, g, me.ID, false)
 	if !me.Graveyard.Contains(cmd.InstanceID) {
 		t.Fatal("the declined commander is not in the graveyard")
 	}
@@ -109,10 +116,10 @@ func TestThrillOfPossibilityDiscardingACommanderAsksItsOwner(t *testing.T) {
 }
 
 // Cadaverous Bloom — "Exile a card from your hand: Add {B}{B} or
-// {G}{G}." A mana ability (CR 605.3a) that cannot pause once begun, so
-// the question comes before it begins; answered "command zone", the
-// commander goes there and the ability then asks its colour.
-func TestCadaverousBloomExilingACommanderAsksItsOwner(t *testing.T) {
+// {G}{G}." A mana ability (CR 605.3a): the commander is exiled as the
+// cost is paid and the ability asks its colour; its owner is then asked
+// about the command zone (CR 903.9a) and takes it.
+func TestCadaverousBloomExilingACommanderPaysThenAsksItsOwner(t *testing.T) {
 	g, me, bloom, _ := seatBloomWithHand(t, 0)
 	cmd := costCommander(me.ID, "My Commander")
 	me.Hand.PushTop(cmd)
@@ -120,23 +127,24 @@ func TestCadaverousBloomExilingACommanderAsksItsOwner(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, bloom, 0, game.ManaAbilityParams{ExileIDs: []uuid.UUID{cmd.InstanceID}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if !me.Hand.Contains(cmd.InstanceID) {
-		t.Fatal("the Bloom was paid before the commander's owner answered")
+	if !g.Exile.Contains(cmd.InstanceID) {
+		t.Fatal("the commander was not exiled to pay for the Bloom")
 	}
-	answerCostCommander(t, g, me.ID, true)
+	if latestChoiceOfKind(g, game.PendingChoiceMana) == nil {
+		t.Fatal("want the Bloom's {B}{B} / {G}{G} pick")
+	}
+	answerCommanderReturn(t, g, me.ID, true)
 	if !me.Command.Contains(cmd.InstanceID) || g.Exile.Contains(cmd.InstanceID) {
 		t.Fatal("the commander did not take the command zone")
-	}
-	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != game.PendingChoiceMana {
-		t.Fatalf("want the Bloom's {B}{B} / {G}{G} pick after the answer, got %d prompt(s)", len(g.PendingChoices))
 	}
 }
 
 // Grim Lavamancer — "{R}, {T}, Exile two cards from your graveyard:
 // This creature deals 2 damage to any target." One of the two is a
-// commander its owner let die; asked again as the cost is paid, the
-// owner takes the command zone, and the other card is exiled as named.
-func TestGrimLavamancerExilingACommanderFromTheGraveyardAsksItsOwner(t *testing.T) {
+// commander its owner let die. Both are exiled as the cost is paid,
+// the ability goes on the stack, and the owner is asked again about
+// the command zone (CR 903.9a: it was put into exile) and takes it.
+func TestGrimLavamancerExilingACommanderFromTheGraveyardPaysThenAsksItsOwner(t *testing.T) {
 	g, me, opp := exileCostTable(t)
 	lava := pushCatalogPermanent(g, me.ID, "Grim Lavamancer", "Creature — Human Wizard", grimLavamancerOracle, false)
 	cmd := costCommander(me.ID, "My Commander")
@@ -151,18 +159,15 @@ func TestGrimLavamancerExilingACommanderFromTheGraveyardAsksItsOwner(t *testing.
 	if err := g.ActivateCatalogAbility(me.ID, lava, 0, params); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if !me.Graveyard.Contains(cmd.InstanceID) || !me.Graveyard.Contains(other) || len(g.StackMeta) != 0 {
-		t.Fatal("the Lavamancer was paid before the commander's owner answered")
-	}
-	answerCostCommander(t, g, me.ID, true)
-	if !me.Command.Contains(cmd.InstanceID) {
-		t.Error("the commander did not take the command zone")
-	}
-	if !g.Exile.Contains(other) {
-		t.Error("the other named card was not exiled")
+	if !g.Exile.Contains(cmd.InstanceID) || !g.Exile.Contains(other) {
+		t.Fatal("the two named cards were not exiled to pay for the Lavamancer")
 	}
 	if len(g.StackMeta) != 1 {
 		t.Fatalf("StackMeta = %d, want the Lavamancer's ability", len(g.StackMeta))
+	}
+	answerCommanderReturn(t, g, me.ID, true)
+	if !me.Command.Contains(cmd.InstanceID) {
+		t.Error("the commander did not take the command zone")
 	}
 	life := opp.Life
 	passPriorityAroundTable(t, g)
@@ -172,10 +177,10 @@ func TestGrimLavamancerExilingACommanderFromTheGraveyardAsksItsOwner(t *testing.
 }
 
 // Viscera Seer — "Sacrifice a creature: Scry 1." The creature is an
-// OPPONENT's commander I have stolen, so the question goes to them, not
-// to me; and nothing is sacrificed while they decide, which is what
-// kept the same commander from being sacrificed twice.
-func TestVisceraSeerSacrificingAStolenCommanderAsksItsOwner(t *testing.T) {
+// OPPONENT's commander I have stolen. It is sacrificed as the cost is
+// paid (so it cannot be spent twice), and the question afterwards goes
+// to its OWNER, not to me (CR 903.9a, "its owner").
+func TestVisceraSeerSacrificingAStolenCommanderPaysThenAsksItsOwner(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	seer := pushCatalogPermanent(g, me.ID, "Viscera Seer", "Creature — Vampire Wizard", visceraSeerOracle, false)
@@ -186,14 +191,17 @@ func TestVisceraSeerSacrificingAStolenCommanderAsksItsOwner(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, seer, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{cmd}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if !g.Battlefield.Contains(cmd) || len(g.StackMeta) != 0 {
-		t.Fatal("the Seer was paid before the commander's owner answered")
-	}
-	answerCostCommander(t, g, opp.ID, true)
-	if !opp.Command.Contains(cmd) {
-		t.Fatal("the stolen commander did not reach its OWNER's command zone")
+	if g.Battlefield.Contains(cmd) || !opp.Graveyard.Contains(cmd) {
+		t.Fatal("the stolen commander was not sacrificed into its owner's graveyard")
 	}
 	if len(g.StackMeta) != 1 {
 		t.Errorf("StackMeta = %d, want the Seer's scry", len(g.StackMeta))
+	}
+	if commanderReturnPromptFor(g, me.ID) != nil {
+		t.Error("the controller was asked; the question is the owner's")
+	}
+	answerCommanderReturn(t, g, opp.ID, true)
+	if !opp.Command.Contains(cmd) {
+		t.Fatal("the stolen commander did not reach its OWNER's command zone")
 	}
 }
