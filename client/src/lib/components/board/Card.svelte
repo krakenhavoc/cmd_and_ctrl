@@ -37,6 +37,7 @@
   import { openCardMenu } from "../../contextMenu";
   import {
     acrossFor,
+    castAnywayItem,
     manualLoyaltyRows,
     menuAbilityRows,
     menuManaRows,
@@ -165,6 +166,17 @@
     // controls the card, so an opponent's Aura drawn on the viewer's
     // creature never offers it.
     onRawTap?: () => void;
+    // ADR 0118 §2: the popover's "Cast anyway (don't pay)" row, on a card
+    // the viewer could cast (a hand card, a strip card, the command-zone
+    // panel's commander) while strict payment is on. It opens the dock's
+    // confirmation; the parent closes over the card and its zone. It
+    // counts toward `hasMenu`, so a plain spell's right-click opens the
+    // popover. It draws no pip and does not light the ready ring.
+    // Undefined: no row.
+    onCastAnyway?: () => void;
+    // Why that row is greyed (timing.ts castAnywayBlocked), or "" when it
+    // is live.
+    castAnywayBlocked?: string;
     // ADR 0117 §3: sends a manual loyalty row's `activate_loyalty`, for
     // an uncatalogued planeswalker the viewer controls. Its rows need
     // `view` to judge the window. Set by BattlefieldRow on the viewer's
@@ -283,6 +295,8 @@
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
+    onCastAnyway,
+    castAnywayBlocked = "",
     onMenuAction,
     view,
     inert = false,
@@ -351,6 +365,9 @@
   const sandbox = $derived(
     !!onRawTap && (viewerID == null || (card.controller || card.owner) === viewerID),
   );
+  // ADR 0118 §2: the Sandbox section's Cast anyway row, one builder with
+  // the admin menu's (contextMenu.logic.ts castAnywayItem).
+  const castAnywayRow = $derived(onCastAnyway ? castAnywayItem(castAnywayBlocked) : undefined);
   // hasMenu: the popover has at least one row to show. Since ADR 0117
   // §3 that is every permanent the viewer controls (its Sandbox row),
   // so a right-click on a vanilla creature opens the popover with Tap.
@@ -359,7 +376,8 @@
       (!!onActivateAbility && menuAbilities.length > 0) ||
       specialRows.length > 0 ||
       loyaltyRows.length > 0 ||
-      sandbox,
+      sandbox ||
+      !!castAnywayRow,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
@@ -1154,6 +1172,8 @@
         manualLoyalty={loyaltyRows}
         onMenuAction={(action) => onMenuAction?.(action)}
         onRawTap={sandbox ? onRawTap : undefined}
+        castAnyway={castAnywayRow}
+        {onCastAnyway}
         onClose={closeAbilityPopover}
       />
     </div>

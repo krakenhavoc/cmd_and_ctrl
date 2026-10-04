@@ -235,3 +235,60 @@ export function insufficientManaRequest(
     ],
   };
 }
+
+export interface CastAnywayConfirmHandlers {
+  onCast: () => void;
+  onCancel: () => void;
+}
+
+// castAnywayConfirmLabel is the confirmation's dialog name (ADR 0118 §2,
+// owner decision 6), e.g. "Cast Craw Wurm without paying its mana cost?".
+// A label contract (AGENTS.md §5, ADR 0111 §10): cast-anyway-2188.spec.ts
+// selects the dialog by it.
+export function castAnywayConfirmLabel(cardName: string): string {
+  return `Cast ${cardName} without paying its mana cost?`;
+}
+
+// castAnywayConfirmRequest: the "Cast anyway (don't pay)" row was chosen
+// from a card's menu, and nothing has been sent yet (ADR 0118 §2, owner
+// decision 6). The question is the dialog's name; Cast and Cancel are
+// its two buttons, and both names are a label contract. Cancel answers
+// Escape. Cast has no key, for the reason the insufficient-mana
+// request's Cast anyway has none: no keystroke should reach an unpaid
+// cast. A flow does not move focus today; should the dock ever move it,
+// it goes to the dialog, never to Cast (`focus: "dialog"`).
+//
+// The dock's own Cast anyway, on a refused cast (insufficientManaRequest
+// above), does not open this: it is already the second step of a choice
+// the player made.
+export function castAnywayConfirmRequest(
+  cardName: string,
+  h: CastAnywayConfirmHandlers,
+): DockRequest {
+  const question = castAnywayConfirmLabel(cardName);
+  return {
+    rank: "flow",
+    label: question,
+    tag: "unpaid",
+    tone: "gold",
+    question,
+    hint: "No mana is spent. Life and any other costs are still paid, and the game log shows the table.",
+    focus: "dialog",
+    primary: {
+      id: "cast",
+      label: "Cast",
+      title: "cast it without paying its mana cost; the game log says so",
+      onPress: h.onCast,
+    },
+    secondary: [
+      {
+        id: "cancel",
+        label: "Cancel",
+        title: "don't cast it",
+        keyShortcuts: "Escape",
+        cap: "Esc",
+        onPress: h.onCancel,
+      },
+    ],
+  };
+}
