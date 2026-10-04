@@ -41,7 +41,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:  "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
 			Cost:   Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
-			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
+			Effect: putIndestructibleCounterOnSource(),
 		}},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},

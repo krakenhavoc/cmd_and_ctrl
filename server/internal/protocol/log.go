@@ -216,6 +216,13 @@ const (
 	// and the only trace of Gifts Ungiven is two cards appearing in a
 	// graveyard.
 	LogChooseCards LogKind = "choose_cards"
+	// LogRingTempted — the Ring tempted a player (CR 701.54, ADR 0114
+	// §9). `Seat` is the player, `Amount` how many times the Ring has
+	// now tempted them, `CardID` the creature chosen as their
+	// Ring-bearer (empty when they controlled none), and `Cause` is
+	// "forced" when that creature was their only one and was chosen
+	// for them (owner decision 2).
+	LogRingTempted LogKind = "ring_tempted"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -1138,6 +1145,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Target = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventRingTempted:
+		// ADR 0114 §9. One line per temptation, with or without a
+		// Ring-bearer (CR 701.54d).
+		base.Kind = LogRingTempted
+		base.Amount = ev.Amount
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if ev.Label == game.RingTemptedForced {
+			base.Cause = game.RingTemptedForced
+		}
+		return base, true
+
 	case game.EventControlChanged:
 		// CR 613.1b, #930 / #1008. "Ian gained control of Grizzly
 		// Bears" is a thing a player says out loud, and until #1021
@@ -1897,6 +1915,19 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s chose a card for %s", actor, target)
 		default:
 			return fmt.Sprintf("%s chose %d cards for %s", actor, e.Amount, target)
+		}
+	case LogRingTempted:
+		// ADR 0114 §9 and owner decision 2: "The Ring tempts Alice (2)
+		// — Alice chooses Nazgûl as their Ring-bearer". The engine
+		// does not know a player's pronoun, so it is "their".
+		head := fmt.Sprintf("The Ring tempts %s (%d)", actor, e.Amount)
+		switch {
+		case e.CardID == "":
+			return fmt.Sprintf("%s — %s controls no creature", head, actor)
+		case e.Cause == game.RingTemptedForced:
+			return fmt.Sprintf("%s — %s's only creature, %s, becomes their Ring-bearer", head, actor, card)
+		default:
+			return fmt.Sprintf("%s — %s chooses %s as their Ring-bearer", head, actor, card)
 		}
 	case LogControl:
 		// `target` is the seat that lost control, for the same reason.

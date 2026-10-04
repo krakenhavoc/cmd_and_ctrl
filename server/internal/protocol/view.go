@@ -1667,6 +1667,22 @@ type EmblemView struct {
 	InstanceID string `json:"instance_id"`
 	Label      string `json:"label"`
 	Text       string `json:"text"`
+	// Level is how many times the Ring has tempted the emblem's owner
+	// (ADR 0114 §2, §9). Absent on every other emblem. For the Ring,
+	// Text is the lines it has gained so far.
+	Level int `json:"level,omitempty"`
+	// Lines are every line of an emblem whose abilities are gained one
+	// by one (the Ring), each with the count it is gained at — so the
+	// table can show the lines still to come beside the ones gained
+	// (ADR 0114 owner decision 1). Absent on every other emblem.
+	Lines []EmblemLineView `json:"lines,omitempty"`
+}
+
+// EmblemLineView is one line of the Ring: its text, and how many
+// temptations it takes (CR 701.54c).
+type EmblemLineView struct {
+	Text string `json:"text"`
+	At   int    `json:"at"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -2250,6 +2266,12 @@ type CardView struct {
 	// Public, like Harnessed, and set straight off the card for the
 	// same reason: no card type owns monstrosity.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
+	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
+	// Public, and set straight off the card. Unlike Monstrous it is NOT
+	// cleared on a face-down permanent: the designation was chosen in
+	// public and says nothing about the hidden card.
+	RingBearer bool `json:"ring_bearer,omitempty"`
 	// Prepared is a permanent's CR 722.3a prepared designation
 	// (ADR 0090): while it is set, its controller may cast the copy of
 	// its prepare spell that sits in exile — which the wire already
@@ -7232,11 +7254,16 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 	// shows the new wording.
 	var emblems []EmblemView
 	for _, e := range g.EmblemsForPlayer(p.ID) {
-		emblems = append(emblems, EmblemView{
+		ev := EmblemView{
 			InstanceID: e.InstanceID.String(),
 			Label:      e.Label,
 			Text:       e.Text,
-		})
+			Level:      e.Level,
+		}
+		for _, l := range e.Lines {
+			ev.Lines = append(ev.Lines, EmblemLineView{Text: l.Text, At: l.At})
+		}
+		emblems = append(emblems, ev)
 	}
 	return PlayerView{
 		ID:                p.ID.String(),
@@ -8491,6 +8518,9 @@ func viewOfCard(c game.Card) CardView {
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
 	}
+	// ADR 0114 §9: the Ring-bearer designation, straight off the card —
+	// only a battlefield permanent ever carries it (CR 400.7).
+	view.RingBearer = c.RingBearer
 	// S27 battles. Both read straight off the card, so they need no
 	// game handle and land here rather than in a stamping pass; the
 	// attack-target KIND does need one and is stamped in
