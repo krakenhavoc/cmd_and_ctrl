@@ -220,8 +220,9 @@ func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error
 // case reveals the whole library, as printed.
 //
 // #993: the land reaches hand from the MILL's continuation, not on the
-// line after it. A milled commander stops to ask its owner about the
-// command zone (CR 903.9), and the rest of the mill waits for the
+// line after it. A milled commander lands in the graveyard and is offered
+// the command zone afterwards (CR 903.9a, ADR 0115), and a prompt from
+// any other replacement makes the rest of the mill wait for the
 // answer — so a bounce written on the next line put the basic land in
 // its owner's hand with cards above it still sitting in the library and
 // a question open about one of them. "Put that card into your hand and
@@ -288,8 +289,8 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 		To:     game.ZoneExile,
 		// #893: the exile zone is walked from the continuation, because
 		// the four cards are not all in it yet on the line after the
-		// exile — a commander among them stops to answer CR 903.9, and
-		// a card that takes the offer never reaches exile at all.
+		// exile — a replacement's prompt may stop a leg, and a card it
+		// sends elsewhere never reaches exile at all.
 		Then: func(ctx *Context, _ []uuid.UUID) error {
 			// CR 406.3a: a card exiled face down (a foretold card) has
 			// no characteristics, so it is not a land card and is not

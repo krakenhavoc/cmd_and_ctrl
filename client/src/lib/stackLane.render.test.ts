@@ -131,7 +131,7 @@ describe("the attention strip", () => {
 });
 
 describe("the stack's display style (#1467)", () => {
-  it("compact, the default, draws the docked card and no lane", () => {
+  it("compact draws the docked card and no lane", () => {
     const b = mountBoard("compact", [trigger]);
     expect(b.q(".strip .overlay")).not.toBeNull();
     expect(b.q(".stack-lane")).toBeNull();
@@ -139,7 +139,7 @@ describe("the stack's display style (#1467)", () => {
     expect(b.container.textContent).toContain("Mulldrifter — draw two cards");
   });
 
-  for (const style of ["fan", "spotlight", "ribbon"] as const) {
+  for (const style of ["pile", "fan", "spotlight", "ribbon"] as const) {
     it(`${style} floats a lane while the stack is live, instead of the docked card`, () => {
       const b = mountBoard(style, [trigger]);
       const lane = b.q(".stack-lane");

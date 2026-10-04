@@ -22,6 +22,7 @@
 // and draws what comes back.
 
 import type { StackLaneItem, StackLaneTargetKind } from "./stackLane";
+import { findAnchor, hasSize } from "./boardAnchor";
 
 export interface Point {
   x: number;
@@ -281,18 +282,14 @@ export function curvePath(c: Curve): string {
 // ---------------------------------------------------------------- //
 // DOM measuring
 
-function hasSize(el: Element): boolean {
-  const r = el.getBoundingClientRect();
-  return r.width > 0 || r.height > 0;
-}
-
 /**
  * The element a target resolves to, or null. A permanent or player is
  * looked for on the board OUTSIDE the lane (the lane never carries
  * those attributes today, but a style that did must not point at
  * itself); a stack target only inside it. An element with no size —
  * a collapsed seat, a hidden duplicate — is passed over: there is
- * nothing on screen to point at.
+ * nothing on screen to point at. A board target goes through
+ * boardAnchor, so an expanded overlay's copy wins (ADR 0120 §3).
  */
 export function findTarget(
   board: ParentNode,
@@ -305,11 +302,7 @@ export function findTarget(
     const el = lane.querySelector<HTMLElement>(sel);
     return el && hasSize(el) ? el : null;
   }
-  for (const el of board.querySelectorAll<HTMLElement>(sel)) {
-    if (lane.contains(el)) continue;
-    if (hasSize(el)) return el;
-  }
-  return null;
+  return findAnchor(board, sel, { accept: (el) => !lane.contains(el) && hasSize(el) });
 }
 
 /** A board element the lane is pointing at, for the highlight ring. */

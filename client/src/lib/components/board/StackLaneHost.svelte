@@ -20,8 +20,16 @@
   //     item, and the #322 hover preview (lib/stackHover.ts);
   //   - an aria-live region that reads out the top item's line.
   //
-  // The design itself is STYLE_BODIES[style]: StackLaneFan,
-  // StackLaneSpotlight or StackLaneRibbon.
+  // The design itself is STYLE_BODIES[style]: StackLanePile,
+  // StackLaneFan, StackLaneSpotlight or StackLaneRibbon.
+  //
+  // ADR 0119 §1: the pile, the default, is placed differently from the
+  // other three. They centre across the table; the pile anchors 12px
+  // from the board's left edge, centred on the same seam but kept below
+  // the attention strip's content and above a bottom-left fixture (the
+  // tutorial's coach card, the dev dock), with its card sized to the
+  // room it has (lib/stackPile.ts). It also gets a collapse button on
+  // the header, and shrinks while the viewer chooses a target.
 
   import type { Component } from "svelte";
   import { untrack } from "svelte";
@@ -32,13 +40,25 @@
     type StackLaneItem,
     type StackLaneStyle,
     type StackLaneStyleProps,
+    type StackPileSizing,
   } from "../../stackLane";
+  import {
+    PILE_INSET,
+    bottomLeftFixtureTop,
+    pileBounds,
+    pileCardWidth,
+    pileDepth,
+    pileTop,
+    stripContentBottom,
+  } from "../../stackPile";
   import { createStackHover } from "../../stackHover";
+  import { previewableCard } from "../../stackPreview";
   import { hoveredCard } from "../../cardTypes";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget } from "../../targeting";
   import { metaFor } from "../../cardMetaCache";
   import Icon from "../Icon.svelte";
+  import StackLanePile from "./StackLanePile.svelte";
   import StackLaneFan from "./StackLaneFan.svelte";
   import StackLaneSpotlight from "./StackLaneSpotlight.svelte";
   import StackLaneRibbon from "./StackLaneRibbon.svelte";
@@ -69,6 +89,7 @@
   // an entry here and nothing else.
   type StyleBody = Component<StackLaneStyleProps & { styleName: StackLaneStyle }>;
   const STYLE_BODIES: Record<StackLaneStyle, StyleBody> = {
+    pile: StackLanePile,
     fan: StackLaneFan,
     spotlight: StackLaneSpotlight,
     ribbon: StackLaneRibbon,
@@ -76,17 +97,44 @@
   const Body = $derived(STYLE_BODIES[style]);
 
   // ---- oracle text for the effect summary --------------------------
-  // Only the stack's own spell cards, only ones the viewer may read.
-  // The key is a string so the effect below re-subscribes when the
-  // set of printings changes, not on every snapshot.
+  // The stack's own spell cards, and (ADR 0119 §1, for the pile's image
+  // alt) every ability's source the viewer may see — only ones the
+  // viewer may read. The key is a string so the effect below
+  // re-subscribes when the set of printings changes, not on every
+  // snapshot.
   let oracle = $state<Record<string, string>>({});
+
+  function abilitySourcePrintings(v: GameView): string[] {
+    const sources = new Set(
+      [...(v.stack_items ?? []), ...(v.pending_triggers ?? [])]
+        .filter((it) => it.kind !== "spell")
+        .map((it) => it.source_card_id),
+    );
+    if (sources.size === 0) return [];
+    const zones = [
+      v.battlefield?.cards ?? [],
+      v.exile?.cards ?? [],
+      ...v.seats.map((s) => s.graveyard?.cards ?? []),
+    ];
+    const out: string[] = [];
+    for (const cards of zones) {
+      for (const c of cards) {
+        if (!sources.has(c.instance_id)) continue;
+        const id = previewableCard(c)?.scryfall_id;
+        if (id) out.push(id);
+      }
+    }
+    return out;
+  }
+
   const printingKey = $derived(
     [
-      ...new Set(
-        view.stack.cards
+      ...new Set([
+        ...view.stack.cards
           .filter((c) => c.known_by_you === true && c.scryfall_id)
           .map((c) => c.scryfall_id as string),
-      ),
+        ...abilitySourcePrintings(view),
+      ]),
     ]
       .sort()
       .join(","),
@@ -167,12 +215,18 @@
   let laneEl: HTMLElement | null = $state(null);
   let seamY = $state<number | null>(null);
   let boardH = $state(0);
+  let boardW = $state(0);
   let laneH = $state(0);
+  // ADR 0119 §1, the pile's clamps: the attention strip's content
+  // bottom and a bottom-left fixture's top, in board pixels.
+  let stripBottom = $state<number | null>(null);
+  let fixtureTop = $state<number | null>(null);
 
   function measure(): void {
     if (!boardEl) return;
     const b = boardEl.getBoundingClientRect();
     boardH = b.height;
+    boardW = b.width;
     const self = boardEl.querySelector<HTMLElement>(':scope > .slot[data-pos="self"]');
     const opponents = boardEl.querySelectorAll(':scope > .slot:not([data-pos="self"])');
     if (!self || opponents.length === 0) {
@@ -182,6 +236,13 @@
       seamY = self.getBoundingClientRect().top - b.top - 4;
     }
     laneH = laneEl?.offsetHeight ?? 0;
+    if (style === "pile") {
+      stripBottom = stripContentBottom(boardEl);
+      fixtureTop = bottomLeftFixtureTop(boardEl, PILE_INSET + (laneEl?.offsetWidth ?? 0));
+    } else {
+      stripBottom = null;
+      fixtureTop = null;
+    }
   }
 
   $effect(() => {
@@ -189,6 +250,8 @@
     // Re-measure on every snapshot too: a seat expanding or collapsing
     // (ADR 0077) moves the seam without resizing the board.
     void view;
+    void style;
+    void collapsed;
     void model.items.length;
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -197,12 +260,21 @@
     const self = boardEl.querySelector<HTMLElement>(':scope > .slot[data-pos="self"]');
     if (self) ro.observe(self);
     if (laneEl) ro.observe(laneEl);
+    // The pile moves when the strip's content (a toast, a reveal)
+    // grows or shrinks.
+    const strip = boardEl.querySelector<HTMLElement>(
+      ':scope > [role="region"][aria-label="attention"]',
+    );
+    if (strip && style === "pile") ro.observe(strip);
     return () => ro.disconnect();
   });
 
   // In pixels from the board's top edge, or null for the CSS fallback.
   const laneTop = $derived.by((): number | null => {
     if (boardH <= 0) return null;
+    if (style === "pile") {
+      return pileTop({ boardH, seamY, pileH: laneH, stripBottom, fixtureTop });
+    }
     const anchor = seamY ?? boardH / 2;
     const margin = 8;
     const top = anchor - laneH / 2;
@@ -210,6 +282,39 @@
   });
 
   const stackCount = $derived(model.stackItems.length);
+
+  // ---- the pile's size, collapse and shrink (ADR 0119 §1) -------------
+  // Folded to a tab for the rest of the stack's life; a new item on an
+  // empty stack starts expanded.
+  let collapsed = $state(false);
+  $effect(() => {
+    if (stackCount === 0) collapsed = false;
+  });
+
+  // While the viewer chooses a target the pile drops to its top card,
+  // so the board under it can be reached — unless a stack item is a
+  // legal target, when the lower items are what has to be clicked.
+  const pileShrunk = $derived.by((): boolean => {
+    const t = $targeting;
+    if (style !== "pile" || t === null) return false;
+    return !model.stackItems.some((it) => isLegalCardTarget(t, it.id));
+  });
+
+  const pileSizing = $derived.by((): StackPileSizing | undefined => {
+    if (style !== "pile") return undefined;
+    if (boardH <= 0 || boardW <= 0) return { cardWidth: 240, shrunk: pileShrunk };
+    const { room } = pileBounds({ boardH, stripBottom, fixtureTop });
+    return {
+      cardWidth: pileCardWidth({
+        boardW,
+        boardH,
+        room,
+        peeking: pileDepth(stackCount).peeking,
+        pendingCount: model.pendingTriggers.length,
+      }),
+      shrunk: pileShrunk,
+    };
+  });
 </script>
 
 {#if model.live}
@@ -219,33 +324,65 @@
     style:top={laneTop !== null ? `${laneTop}px` : null}
     data-stack-style={style}
   >
-    <section class="stack-lane" bind:this={laneEl} aria-label={`stack: ${stackCount} on the stack`}>
-      <header class="head">
-        <span class="label">the stack <b class="count">{stackCount}</b></span>
-        {#if model.splitSecond}
-          <span class="status split-second" title="no responses allowed (split second is active)">
-            <Icon name="bolt" size={11} /> split second — no responses
-          </span>
-        {:else if model.priority.viewerHolds}
-          <span class="status mine">you hold priority</span>
-        {:else if model.priority.holderName}
-          <span class="status">
-            {#if model.priority.considering}
-              {model.priority.holderName} is considering a response…
-            {:else}
-              {model.priority.holderName} holds priority
-            {/if}
-          </span>
-        {/if}
-        <!-- ADR 0111 §7: no hold or Pass on the lane. Both live in the
+    {#if style === "pile" && collapsed}
+      <section
+        class="stack-lane collapsed"
+        bind:this={laneEl}
+        aria-label={`stack: ${stackCount} on the stack`}
+      >
+        <button
+          type="button"
+          class="stack-tab"
+          aria-label="show the stack"
+          onclick={() => (collapsed = false)}
+        >
+          Stack · {stackCount}
+        </button>
+      </section>
+    {:else}
+      <section
+        class="stack-lane"
+        bind:this={laneEl}
+        aria-label={`stack: ${stackCount} on the stack`}
+      >
+        <header class="head">
+          <span class="label">the stack <b class="count">{stackCount}</b></span>
+          {#if model.splitSecond}
+            <span class="status split-second" title="no responses allowed (split second is active)">
+              <Icon name="bolt" size={11} /> split second — no responses
+            </span>
+          {:else if model.priority.viewerHolds}
+            <span class="status mine">you hold priority</span>
+          {:else if model.priority.holderName}
+            <span class="status">
+              {#if model.priority.considering}
+                {model.priority.holderName} is considering a response…
+              {:else}
+                {model.priority.holderName} holds priority
+              {/if}
+            </span>
+          {/if}
+          <!-- ADR 0111 §7: no hold or Pass on the lane. Both live in the
              action dock (bottom right), and its `next` is the one pass
              button. -->
-      </header>
-      {#if model.summary}
-        <p class="summary">{model.summary}</p>
-      {/if}
-      <Body {model} {controls} styleName={style} />
-    </section>
+          {#if style === "pile"}
+            <button
+              type="button"
+              class="collapse"
+              aria-label="hide the stack"
+              title="fold the stack to a tab until it empties"
+              onclick={() => (collapsed = true)}
+            >
+              <Icon name="chevron-up" size={14} />
+            </button>
+          {/if}
+        </header>
+        {#if model.summary}
+          <p class="summary">{model.summary}</p>
+        {/if}
+        <Body {model} {controls} styleName={style} pile={pileSizing} />
+      </section>
+    {/if}
   </div>
 {/if}
 <!-- Outside the {#if}: a live region has to exist before its text
@@ -292,6 +429,61 @@
       var(--shadow-lg);
     color: var(--fg);
     font-size: 12px;
+  }
+  /* ADR 0119 §1: the pile anchors 12px from the board's left edge (the
+     attention strip's inset) and is as wide as its card. The host sets
+     `top` from lib/stackPile.ts; the CSS fallback is the same 40%. */
+  .lane-host[data-stack-style="pile"] {
+    left: 12px;
+    transform: translateY(-50%);
+    width: auto;
+    justify-content: flex-start;
+  }
+  .lane-host[data-stack-style="pile"].measured {
+    transform: none;
+  }
+  .lane-host[data-stack-style="pile"] .stack-lane {
+    width: auto;
+    max-height: none;
+    padding: 8px 10px 10px;
+    gap: 6px;
+  }
+  .lane-host[data-stack-style="pile"] .summary,
+  .lane-host[data-stack-style="pile"] .head {
+    /* As wide as the card under them, never wider. */
+    width: 0;
+    min-width: 100%;
+  }
+  .lane-host[data-stack-style="pile"] .summary {
+    font-size: 12.5px;
+  }
+  .collapse {
+    margin-left: auto;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+  }
+  .stack-lane.collapsed {
+    padding: 0;
+    border-radius: var(--radius-lg);
+  }
+  .stack-tab {
+    height: 32px;
+    padding: 0 14px;
+    border: 0;
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border-radius: var(--radius-lg);
   }
   .head {
     display: flex;

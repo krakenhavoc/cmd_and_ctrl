@@ -10,11 +10,16 @@
 // renames one breaks board-layout.spec.ts before it breaks a new
 // player's first session.
 //
+// A card or a seat is looked up through boardAnchor (ADR 0120 §3), so
+// while a seat's board is expanded over the table the spotlight goes
+// round the overlay's copy, the one the player can see.
+//
 // "Missing" means no element, or only elements with no area: an empty
 // list collapses to height 0, and a hole round nothing is exactly the
 // "spotlighting empty space" §2.4 rules out. The caller advances the step.
 
 import type { Anchor } from "./tutorial";
+import { findCardAnchor, findSeatAnchor } from "./boardAnchor";
 
 export interface AnchorRect {
   left: number;
@@ -32,10 +37,10 @@ function esc(s: string): string {
 /** resolveAnchor finds the element an anchor names, or null. */
 export function resolveAnchor(a: Anchor, root: ParentNode = document): Element | null {
   if ("cardID" in a) {
-    return root.querySelector(`[data-instance-id="${esc(a.cardID)}"]`);
+    return findCardAnchor(root, a.cardID);
   }
   if ("seatID" in a) {
-    return root.querySelector(`[data-seat-id="${esc(a.seatID)}"]`);
+    return findSeatAnchor(root, a.seatID);
   }
   let scope: ParentNode = root;
   if (a.within !== undefined) {

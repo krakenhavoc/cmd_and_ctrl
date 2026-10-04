@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { CardView, PlayerView, StackItemView, ZoneView } from "./protocol";
 import { seatColor } from "./colors";
 import {
+  DEFAULT_STACK_STYLE,
+  STACK_STYLES,
   buildStackLane,
   isStackStyle,
   joinPhrases,
@@ -146,6 +148,17 @@ describe("stack lane items", () => {
     const hidden = card("bolt", "", ME, { known_by_you: false });
     const m = buildStackLane(input({ stack: zone("stack", [hidden, counterspell]) }));
     expect(m.stackItems[1].previewCard).toBeNull();
+    // ADR 0119 §1: nor read out its text.
+    expect(m.stackItems[1].cardText).toBeNull();
+  });
+
+  it("carries the previewed card's oracle text for the pile's alt (ADR 0119 §1)", () => {
+    const m = buildStackLane(input());
+    expect(m.stackItems.map((i) => i.cardText)).toEqual([
+      "Counter target spell.",
+      "Lightning Bolt deals 3 damage to any target.",
+    ]);
+    expect(buildStackLane(input({ oracleTextFor: undefined })).top?.cardText).toBeNull();
   });
 
   it("keeps the doubled-trigger label", () => {
@@ -421,8 +434,12 @@ describe("helpers", () => {
     expect(joinPhrases(["a", "b", "c"])).toBe("a, b and c");
   });
 
-  it("isStackStyle accepts exactly the four styles", () => {
-    for (const s of ["compact", "fan", "spotlight", "ribbon"]) expect(isStackStyle(s)).toBe(true);
+  it("isStackStyle accepts exactly the five styles, the pile first and default", () => {
+    for (const s of ["pile", "compact", "fan", "spotlight", "ribbon"]) {
+      expect(isStackStyle(s)).toBe(true);
+    }
+    expect(STACK_STYLES[0]).toBe("pile");
+    expect(DEFAULT_STACK_STYLE).toBe("pile");
     expect(isStackStyle("carousel")).toBe(false);
     expect(isStackStyle(undefined)).toBe(false);
   });

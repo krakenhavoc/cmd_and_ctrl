@@ -52,7 +52,13 @@
   // of the lower-right corner.
   import StackOverlay from "./StackOverlay.svelte";
   import StackLaneHost from "./StackLaneHost.svelte";
-  import { isStackStyle, stackLaneLive, type StackLaneStyle } from "../../stackLane";
+  import {
+    DEFAULT_STACK_STYLE,
+    isStackStyle,
+    stackLaneLive,
+    type StackLaneStyle,
+  } from "../../stackLane";
+  import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
@@ -2474,9 +2480,40 @@
   // while the stack or pending triggers are live (the host keeps its
   // aria-live announcer mounted in between). While the lane is showing
   // the stack, the docked card is not rendered.
+  //
+  // ADR 0119 §1: `pile`, the default, falls back to the docked card on
+  // a phone and on a board too short for a 200px top card between the
+  // strip and the bottom (lib/stackPile.ts). The stored setting is not
+  // touched, so the pile comes back when the window grows.
+  let pileFallback = $state(false);
+  $effect(() => {
+    const board = boardEl;
+    if (!board) return;
+    const mq = typeof matchMedia === "function" ? matchMedia("(max-width: 599px)") : null;
+    const read = (): void => {
+      pileFallback = pileFallsBack({
+        phone: mq?.matches ?? false,
+        boardH: board.getBoundingClientRect().height,
+        stripBottom: stripContentBottom(board),
+      });
+    };
+    read();
+    mq?.addEventListener?.("change", read);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(read);
+    ro?.observe(board);
+    const strip = attentionStrip(board);
+    if (strip) ro?.observe(strip);
+    return () => {
+      mq?.removeEventListener?.("change", read);
+      ro?.disconnect();
+    };
+  });
   const floatingStackStyle = $derived.by((): StackLaneStyle | null => {
-    const s = $settings.display.stackStyle;
-    return s === "compact" || !isStackStyle(s) ? null : s;
+    const stored = $settings.display.stackStyle;
+    const s = isStackStyle(stored) ? stored : DEFAULT_STACK_STYLE;
+    if (s === "compact") return null;
+    if (s === "pile" && pileFallback) return null;
+    return s;
   });
   const laneShowsStack = $derived(
     floatingStackStyle !== null && stackLaneLive(view.stack_items, view.pending_triggers),
@@ -2614,12 +2651,16 @@
     {/each}
   {/if}
 
-  <!-- #1467: the fan lane draws its own stack-target arrows. -->
+  <!-- #1467: the fan lane draws its own stack-target arrows, and so
+       does the pile (ADR 0119 §1). -->
   <CombatArrows
     {view}
     {boardEl}
     {beatsPrimeKey}
-    stackTargets={!(laneShowsStack && floatingStackStyle === "fan")}
+    stackTargets={!(
+      laneShowsStack &&
+      (floatingStackStyle === "fan" || floatingStackStyle === "pile")
+    )}
   />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
@@ -2630,8 +2671,9 @@
        it has something to show. The docked card is not rendered at
        all then (rather than hidden), so the stack is never on screen
        twice and nothing in the strip is focusable behind the lane.
-       `compact` — the default — and the rare frame with a stack card
-       but no stack item record both keep the docked card. -->
+       `compact`, the pile's phone and short-board fallback (ADR 0119
+       §1) and the rare frame with a stack card but no stack item
+       record all keep the docked card. -->
   {#if floatingStackStyle}
     <StackLaneHost
       {view}
