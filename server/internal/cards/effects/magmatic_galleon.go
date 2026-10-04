@@ -69,21 +69,5 @@ func magmaticGalleonETBDamage(g *game.Game, item *game.StackItem) error {
 // (see the file comment for why the before/after subtraction
 // matters).
 func magmaticGalleonExcessNoncombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventDealDamage || ev.Combat || ev.Amount <= 0 {
-		return false
-	}
-	target, ok := g.LookupCardForEffect(ev.Target)
-	if !ok || !target.IsCreature() || target.Controller == source.Controller {
-		return false
-	}
-	toughness := target.CurrentToughness()
-	after := target.DamageMarked - toughness
-	if after <= 0 {
-		return false
-	}
-	before := (target.DamageMarked - ev.Amount) - toughness
-	if before < 0 {
-		before = 0
-	}
-	return after > before
+	return excessNoncombatDamageToOpponentCreature(ev, source, g) > 0
 }
