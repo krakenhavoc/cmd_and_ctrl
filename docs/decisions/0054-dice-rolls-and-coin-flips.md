@@ -5,6 +5,10 @@
 replaces the derived `Turn.Number*MaxPlayers + ActiveSeat` stream index
 with `Turn.Seq`. It preserves the intended next-turn reset and also
 distinguishes consecutive turns taken by the same seat.
+**Amended by:** [ADR 0121](0121-animated-dice.md) (2026-10-04). Owner
+decision 3 below ("no animation") is reversed by the owner: every roll
+and flip now animates for the whole table, alongside the log line and
+the reveal-strip cue, which stay.
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)) and is
 skipped here, as ADR 0053 also skips it. On 2026-09-17 every remote

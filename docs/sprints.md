@@ -103,6 +103,7 @@ planned just-in-time from the S12 pain-point triage.
 | S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
 | S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
 | S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | in progress |
+| S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | in progress |
 
 ### How to read the status column
 
@@ -3377,6 +3378,35 @@ From the tracker, [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/220
 ### Status
 
 **In progress.** ADR 0119 was accepted on 2026-10-04. No delivery PR has opened yet.
+
+---
+
+## S61 — Dice you can watch
+
+**Phase:** 7 · **Goal:** dice the whole table can see. A game starts with every seat rolling a d20 at the table, all at once, and the high roll choosing who takes the first turn (CR 103.1) before anything is shuffled or drawn; every die a card rolls and every coin it flips tumbles at the roller's seat; and any player can roll a d6 or a d20, or flip a coin, at any time without stopping anyone. Per [ADR 0121](decisions/0121-animated-dice.md). Milestone *S61 — Dice you can watch*; issue [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229), which is also the sprint's only issue.
+
+Opened 2026-10-04 from the owner's request on #2229: "Make dice rolls visible and fun: an animated die that the whole table sees, and rolls that never lock other players out." The owner answered four questions the same day, recorded in ADR 0121: the opening roll happens at the table before mulligans, every seat rolling concurrently and bots rolling for themselves, tied leaders rerolling; the winner chooses who starts; no timer, but the host gets a "roll for everyone left" button; and the animation covers the opening roll, every card roll and coin flip (amending ADR 0054's "no animation") and a new non-blocking Roll a die action. Three more answers came in review the same day: an idle chooser holds the table (no host override), giving the first turn away asks for a confirm, and mulligans in turn order (CR 103.5) are a follow-up, [#2237](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2237). The members are ADR 0121's Delivery PRs.
+
+- [x] ADR 0121: animated dice (PR 1, with this section)
+- [ ] PR 2 — server, the opening roll window: `OpeningRoll` and `StartWithOpeningRoll`; the shuffle and the deal moved after the choice (CR 103.3, 103.5, 903.7); `roll_opening`, `host_roll_remaining` and `choose_starting_player`; the dispatch allowlist; no undo entries for the roll; the view field, log kinds and snapshot field. The lobby keeps the automatic roll until PR 5
+- [ ] PR 3 — bots: the enumerator offers the roll and the choice; Layer A and the heuristic roll and choose themselves
+- [ ] PR 4 — client, the dice layer: card rolls and coin flips tumble at the roller's seat for everyone; batches, bursts, reduced motion and the `animations.dice` toggle
+- [ ] PR 5 — client and lobby, the opening roll at the table: Roll and Roll for everyone left in the dock, the chooser's sheet with a confirm before giving the first turn away, the `opening roll` banner; the lobby switches to the interactive roll; the e2e helper and `full-game.spec.ts`
+- [ ] PR 6 — server and client, Roll a die: d6, d20 or a coin from the ⋯ menu, on its own stream, never undone, never a trigger; its log line survives other players' undos
+
+### Exit criteria
+
+From [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229):
+
+1. ADR 0121 is accepted and every PR in its Delivery table has merged. The ADR was accepted on 2026-10-04.
+2. The nightly E2E passes on `develop` after the last client PR.
+3. On cmd-dev, at a table of two people and a bot: all three roll at once, the winner hands the first turn to another seat, a card's d20 tumbles at its controller's seat, and a table d20 rolled mid-turn shows in both players' logs.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with ADR 0121).
+5. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** ADR 0121 was accepted on 2026-10-04. No delivery PR has opened yet.
 
 ---
 
