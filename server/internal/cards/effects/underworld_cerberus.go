@@ -23,9 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     returned. Then every creature card in every graveyard goes to its
 //     owner's hand as one simultaneous move. The return does not depend
 //     on the exile: it happens even when the Cerberus could not be
-//     exiled. A Cerberus commander may take CR 903.9's offer instead of
-//     exile, which pauses the trigger, so the return runs in the
-//     exile's continuation.
+//     exiled. A Cerberus commander dies first and its owner is offered
+//     the command zone afterwards (CR 903.9a, ADR 0115); a "yes" leaves
+//     the trigger nothing to exile and the return still runs.
 //
 // No simplification.
 func init() {

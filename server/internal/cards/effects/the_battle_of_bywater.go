@@ -21,12 +21,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one of yours counts for a Food like any other creature you control.
 //
 // The Food count cannot simply read the board after the sweep. A
-// commander of yours with power 3 or more is destroyed, but CR 903.9
-// queues its owner's command-zone prompt and the card stays on the
-// battlefield until they answer. So the Then clause leaves out every
-// card in `swept`: those are the creatures that were destroyed this
-// way, and none of them is a creature you control any more, whichever
-// zone their owners picked.
+// commander of yours with power 3 or more is destroyed and goes to the
+// graveyard like any creature (CR 903.9a, ADR 0115), whatever its
+// owner then answers. The Then clause still leaves out every card in
+// `swept`: those are the creatures that were destroyed this way, and
+// none of them is a creature you control any more.
 //
 // #815: the Foods are made from the destruction's continuation, so
 // they are created when that last answer arrives rather than while

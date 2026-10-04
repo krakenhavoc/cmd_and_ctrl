@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { entrySeats, filterBySeat, groupLog, logTone, seatName } from "./gameLog";
+import {
+  ALL_LOG_KINDS,
+  entrySeats,
+  filterBySeat,
+  groupLog,
+  logIcon,
+  logTone,
+  seatName,
+} from "./gameLog";
+import { ICONS } from "./icons";
 import type { GameView, LogEvent, LogKind } from "./protocol";
 
 let seq = 0;
@@ -117,6 +126,31 @@ describe("logTone", () => {
       "choose_player",
     ];
     for (const k of kinds) expect(logTone(k)).toMatch(/^tone-/);
+  });
+
+  // ADR 0119 §5: the two stack-arrival kinds read like a cast.
+  it("tones a trigger and an activation like a cast", () => {
+    expect(logTone("trigger")).toBe("tone-cast");
+    expect(logTone("activate")).toBe("tone-cast");
+  });
+});
+
+describe("logIcon", () => {
+  it("marks a trigger and an activation, and nothing else", () => {
+    expect(logIcon("trigger")).toBe("spark");
+    expect(logIcon("activate")).toBe("bolt");
+    expect(logIcon("activate_across")).toBe("bolt");
+    for (const k of ALL_LOG_KINDS) {
+      if (k === "trigger" || k === "activate" || k === "activate_across") continue;
+      expect(logIcon(k), k).toBeNull();
+    }
+  });
+
+  it("names only icons the shared set has", () => {
+    for (const k of ALL_LOG_KINDS) {
+      const icon = logIcon(k);
+      if (icon) expect(ICONS[icon], icon).toBeDefined();
+    }
   });
 });
 

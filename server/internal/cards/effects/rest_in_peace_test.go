@@ -202,3 +202,66 @@ func exileHasNamed(g *game.Game, name string) bool {
 	}
 	return false
 }
+
+// A dying commander under Rest in Peace or Leyline of the Void (ADR 0115,
+// CR 903.9a). The replacement exiles it like any card, with no ordering
+// prompt, and only then is its owner offered the command zone. Leyline
+// is one-sided, so a commander of the caster's own dies normally.
+func TestAGraveyardHateEnchantmentExilesADyingCommanderThenItsOwnerIsOffered(t *testing.T) {
+	for _, tc := range []struct {
+		name, card, oracle string
+		theirs, exiled     bool
+	}{
+		{"Rest in Peace, my commander", "Rest in Peace", restInPeaceOracle, false, true},
+		{"Rest in Peace, their commander", "Rest in Peace", restInPeaceOracle, true, true},
+		{"Leyline, their commander", "Leyline of the Void", leylineOfTheVoidOracle, true, true},
+		{"Leyline, my commander", "Leyline of the Void", leylineOfTheVoidOracle, false, false},
+	} {
+		for _, home := range []bool{false, true} {
+			name := tc.name + " declined"
+			if home {
+				name = tc.name + " taken home"
+			}
+			t.Run(name, func(t *testing.T) {
+				g := newCatalogGame(t)
+				me := g.Seats[g.Turn.ActiveSeat]
+				owner := me
+				if tc.theirs {
+					owner = g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+				}
+				castCatalogSpell(t, g, tc.card, "Enchantment", tc.oracle, nil)
+				passPriorityAroundTable(t, g)
+
+				commander := uuid.New()
+				g.Battlefield.PushTop(game.Card{
+					InstanceID: commander, Name: "A Commander", TypeLine: "Legendary Creature — Human",
+					Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID, IsCommander: true,
+				})
+				g.WithWriteLock(func() {
+					if err := g.DestroyPermanentForEffect(commander); err != nil {
+						t.Fatalf("DestroyPermanentForEffect: %v", err)
+					}
+				})
+				for _, c := range g.PendingChoices {
+					if c != nil && (c.Kind == game.PendingChoiceReplacementOrder || c.Kind == game.PendingChoiceOptionalReplacement) {
+						t.Fatalf("unexpected %s prompt: nothing orders against a dying commander", c.Kind)
+					}
+				}
+				if tc.exiled {
+					if !g.Exile.Contains(commander) || owner.Graveyard.Contains(commander) {
+						t.Fatal("the dying commander was not exiled instead of reaching the graveyard")
+					}
+				} else if !owner.Graveyard.Contains(commander) {
+					t.Fatal("Leyline touched its own controller's commander")
+				}
+				if commanderReturnPromptFor(g, owner.ID) == nil {
+					t.Fatal("the commander's owner was never offered the command zone")
+				}
+				answerCommanderReturn(t, g, owner.ID, home)
+				if got := owner.Command.Contains(commander); got != home {
+					t.Fatalf("in the command zone = %v, want %v", got, home)
+				}
+			})
+		}
+	}
+}

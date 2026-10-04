@@ -29,9 +29,9 @@ import "github.com/google/uuid"
 // than a technicality.
 //
 // The fix, and why it is small. Making the MOVES simultaneous would
-// mean restructuring the replacement pipeline (the CR 903.9 commander
-// prompt is asynchronous — see routeBattlefieldCardToOwnerGraveyardLocked)
-// for no gain, because nothing in the engine can observe the moves
+// mean restructuring the replacement pipeline (a prompt such as the
+// CR 903.9b commander offer for a bounce is asynchronous — see
+// routeBattlefieldCardToOwnerGraveyardLocked) for no gain, because nothing in the engine can observe the moves
 // themselves. What IS observed is the harvest, and the harvest is
 // wrong for exactly one reason: a watcher that already left the
 // battlefield is no longer in the zone the harvester scans.
@@ -64,22 +64,23 @@ import "github.com/google/uuid"
 // for four sprints while every board wipe killed an Avacyn
 // (#470 / #446). DestroyPermanentsForEffect now filters the set
 // through DestructibleForEffect before the batch opens.
-//   - The CR 903.9 commander replacement still fires per card, and
-//     still fires ASYNCHRONOUSLY: a commander in the batch queues its
-//     owner's yes/no prompt and does not move until they answer. That
-//     is the pre-existing shape and the batch preserves it — the
-//     commander is counted as destroyed either way, because CR 903.9
-//     replaces the zone change, not the destruction.
+//   - A commander in the batch is destroyed like any other creature
+//     (CR 903.9a, ADR 0115): it lands in its owner's graveyard, every
+//     dies-trigger fires, and only then does the state-based action
+//     ask its owner about the command zone. Before ADR 0115 the
+//     CR 903.9 replacement stopped it first, asynchronously, with a
+//     yes/no prompt, and this batch had to wait on the answer. A
+//     bounce or a tuck of a commander (CR 903.9b) is still replaced
+//     and still pauses.
 //
-// #815 changed one thing about that last note and left the rest
-// standing. "Counted either way" was being applied to the prompt as
-// well as to the answer: a leg that had merely PAUSED counted as a
-// destruction before anybody had said anything, and so did one the
-// window had CANCELLED outright. The count now comes from the landed
-// outcome (destroyedThisWayLocked), and the caller that needs it waits
-// for the answer through DestroyPermanentsThenForEffect. A commander
-// that takes the offer is still destroyed; a creature that an "exile
-// it instead" replacement removed is not (CR 701.7a).
+// #815 changed one thing about how that was counted. "Counted either
+// way" was being applied to a prompt as well as to its answer: a leg
+// that had merely PAUSED counted as a destruction before anybody had
+// said anything, and so did one the window had CANCELLED outright. The
+// count now comes from the landed outcome (destroyedThisWayLocked),
+// and the caller that needs it waits for any answer through
+// DestroyPermanentsThenForEffect. A commander is destroyed; a creature
+// that an "exile it instead" replacement removed is not (CR 701.7a).
 //
 // #866 finished that: exile and bounce were still counting the attempt
 // rather than the arrival, and Settle the Wreckage was searching for a
@@ -109,8 +110,10 @@ func (g *Game) beginSimultaneousExitLocked(ids []uuid.UUID) func() {
 // batch that can PAUSE has to carry its copies across the pause: the
 // destroy-with-a-continuation path (#815) takes them once, before the
 // first move, and re-publishes the SAME copies from each leg's
-// continuation, so a wipe whose commander stops to answer CR 903.9
-// still looks like one event to every dies-trigger in it. Re-taking
+// continuation, so a wipe with a leg that stops to answer a prompt
+// (a replacement's "may", since ADR 0115 no longer the commander's
+// CR 903.9a offer) still looks like one event to every dies-trigger
+// in it. Re-taking
 // them on the far side of the prompt would find the creatures that
 // already left missing, which is the whole thing this file exists to
 // prevent.
@@ -209,7 +212,7 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 //
 // The FIRE-AND-FORGET form. The count it returns is the one taken
 // while the call is still on the stack, so it cannot include a leg
-// that PAUSED on the CR 903.9 prompt — a card that reads "for each
+// that PAUSED on a replacement's prompt — a card that reads "for each
 // creature destroyed this way" must use
 // DestroyPermanentsThenForEffect, which waits (#815).
 //
@@ -238,9 +241,10 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOption
 //
 // It is a continuation rather than a return value for the reason
 // LoseLifeEachThenForEffect and DealDamageEachThenForEffect are
-// (ADR 0013 §5b, §5c): any leg can pause. A commander caught in the
-// wipe stops to answer CR 903.9, and the number is not knowable until
-// it does. The legs are therefore destroyed IN SEQUENCE, each from the
+// (ADR 0013 §5b, §5c): any leg can pause, on a replacement's "may"
+// (a commander's own CR 903.9a offer is no longer one, ADR 0115: it
+// comes after the destruction), and the number is not knowable until
+// it is answered. The legs are therefore destroyed IN SEQUENCE, each from the
 // previous one's continuation, with the landed list carried forward by
 // value — which is what makes an undo across the prompt replay
 // identically, and what lets the count be true rather than optimistic.
@@ -269,11 +273,11 @@ func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game
 // outcome, not off the attempt, and there are three of them:
 //
 //   - the permanent is in a graveyard. Destroyed.
-//   - the permanent is in the command zone. Destroyed: CR 903.9
-//     replaces where the card goes, not whether it was destroyed, and
-//     the engine has counted a commander either way since S23 (see the
-//     note at the top of this file). Declared rather than derived —
-//     this is the one place to change it if that ever flips.
+//   - the permanent is in the command zone. Destroyed: a commander
+//     reaches the graveyard first (CR 903.9a, ADR 0115) and its owner
+//     may move it home afterwards, which does not undo the
+//     destruction. Declared rather than derived, for a commander
+//     already moved by the time this reads the board.
 //   - anything else. NOT destroyed. A permanent still on the
 //     battlefield had its destruction cancelled outright
 //     (indestructible granted mid-window, "it isn't destroyed"), and
@@ -283,7 +287,7 @@ func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game
 //
 // Read off the live board rather than off the event, because that is
 // the reading that is still true after an undo rewinds into an open
-// CR 903.9 prompt and the answer is replayed.
+// prompt and the answer is replayed.
 //
 // Caller must hold g.mu.
 func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
@@ -305,7 +309,8 @@ func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
 // "is it still on the battlefield":
 //
 //   - anywhere else. Sacrificed. A graveyard is the printed
-//     destination; the command zone is CR 903.9 taking the offer; exile
+//     destination; the command zone is a commander its owner already
+//     took home (CR 903.9a, after it landed); exile
 //     is Rest in Peace or Liesa, and a hand or a library is some other
 //     rewrite. All of them replaced the destination of a sacrifice
 //     that had already happened.
@@ -341,9 +346,11 @@ func (g *Game) sacrificedThisWayLocked(cardID uuid.UUID) bool {
 // that ARRIVED is the one the effect moved.
 //
 // So a leg a replacement sent somewhere else did not go this way,
-// however thoroughly it left. A commander that took CR 903.9's offer
-// went to the command zone rather than to exile, and "for each card
-// exiled this way" does not see it. A leg the CR 614 window cancelled,
+// however thoroughly it left. A commander exiled by an effect IS
+// exiled this way: its owner's CR 903.9a offer comes afterwards
+// (ADR 0115). A commander bounced or tucked (CR 903.9b) whose owner
+// took the offer went to the command zone instead, and "for each card
+// returned this way" does not see it. A leg the CR 614 window cancelled,
 // and one whose prompt was abandoned (#865), never moved at all.
 //
 // Destroy is the one route that does NOT use this, because CR 701.7a
@@ -456,8 +463,9 @@ func sacrificeRoute(source uuid.UUID) zoneRoute {
 //     library", which is not a mill at all. Mill is set only for the
 //     graveyard, so EventMill fires for a mill and an ordinary zone
 //     move fires for the exile — the distinction executeZoneRouteLocked
-//     already makes off the SETTLED destination, so a commander that
-//     took CR 903.9's offer emits neither.
+//     already makes off the SETTLED destination. A milled or exiled
+//     commander emits its event like any other card (CR 903.9a,
+//     ADR 0115).
 //   - the Actor, which is the player whose library is being read. It
 //     is stamped on the events, and it is not the card's owner: an
 //     opponent's Glimpse the Unthinkable mills YOUR library.
@@ -823,9 +831,9 @@ func (g *Game) sweepDoomedPermanentsLocked(doomed []doomedPermanent) {
 // The FIRE-AND-FORGET form, and #866 made its count mean what the
 // destroy sweep's has meant since #815: the LANDED outcome, not "the
 // call returned no error". A leg the CR 614 window cancelled is not
-// in it, nor is a commander CR 903.9 sent to the command zone instead
-// — that card left, but not to exile. A leg that merely PAUSED cannot
-// be in it either, which is exactly why a card that reads the number
+// in it. A commander is in it, since it is exiled before its owner is
+// offered the command zone (CR 903.9a, ADR 0115). A leg that merely
+// PAUSED cannot be in it, which is exactly why a card that reads the number
 // uses ExileCardsThenForEffect, which waits.
 //
 // Caller must hold g.mu in write mode.
@@ -840,17 +848,16 @@ func (g *Game) ExileCardsForEffect(ids []uuid.UUID) int {
 //
 // The `Then` half of the same pair DestroyPermanentsThenForEffect is
 // the destroy side of (ADR 0013 §5i, §5k), built on the same body for
-// the same reason: any leg can pause on the CR 903.9 prompt, so the
-// number is not knowable on the line after the sweep. The legs are
+// the same reason: any leg can pause on a replacement's prompt, so
+// the number is not knowable on the line after the sweep. The legs are
 // exiled IN SEQUENCE, each from the previous one's continuation, with
 // the landed list carried forward by value.
 //
 // CR 400.7 decides what "this way" means: the object that ARRIVED in
 // exile is the one the effect exiled. A leg a replacement sent
-// somewhere else — a commander taking CR 903.9's offer, Stone of
-// Erech's graveyard rewrite — left, but not to exile, so it is not in
-// the list. That is the one place this differs from the destroy side,
-// which counts the command zone by a declared carry-over (§5i).
+// somewhere else — Stone of Erech's graveyard rewrite — left, but not
+// to exile, so it is not in the list. A commander is in it, exiled
+// before its owner is offered the command zone (CR 903.9a, ADR 0115).
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exiled []uuid.UUID) error) error {
@@ -873,9 +880,9 @@ func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exile
 // harvest skips the card whose own move is being reported.
 //
 // `exiled` is CR 400.7's reading, the batch's: true when the card is
-// in exile, false when the window cancelled the move, when a
-// replacement sent it somewhere else, and when a commander took
-// CR 903.9's offer — it left, but not to exile.
+// in exile, false when the window cancelled the move or a
+// replacement sent it somewhere else. A commander counts: it is
+// exiled before CR 903.9a asks its owner (ADR 0115).
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exiled bool) error) error {
@@ -892,10 +899,10 @@ func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exile
 // ones that actually reached the graveyard — Valakut Exploration's
 // "put them into their owner's graveyard, then this enchantment deals
 // that much damage" (#1218) needs the count AFTER the move lands, not
-// before: a leg can pause on the CR 903.9 prompt exactly as an exile
-// or a destroy leg can (ADR 0013 §5t), so a caller that read back a
-// pre-move tally would pay out for a move the window has not answered
-// yet. PutIntoGraveyardForEffect (random_bottom.go) is the same exit
+// before: a leg can pause on a replacement's prompt exactly as an
+// exile or a destroy leg can (ADR 0013 §5t), so a caller that read
+// back a pre-move tally would pay out for a move the window has not
+// answered yet. PutIntoGraveyardForEffect (random_bottom.go) is the same exit
 // with no continuation, for a caller that never needs the count.
 //
 // Refuses any id still on the battlefield (ErrInvalidParam), for the
@@ -934,19 +941,20 @@ func (g *Game) PutIntoGraveyardThenForEffect(cardID uuid.UUID, then func(g *Game
 // #910. Destroy, exile, bounce, tuck and mill have all had this since
 // #815 / #866 / #893; sacrifice had only the per-card call, so Living
 // Death's second pass fired and forgot and any follow-up ran on the
-// next line with a commander's CR 903.9 prompt still open.
+// next line with a replacement's prompt still open.
 //
 // Sacrifice is not replaceable (CR 701.17a: sacrificing doesn't
 // destroy, so nothing that replaces destruction touches it, and no
 // replacement stops the sacrifice itself) — but the MOVE it makes is
-// an ordinary zone change, so a sacrificed commander opens the CR 903.9
-// window and a leg can PAUSE exactly like a destroy leg. That is the
-// whole reason this is a continuation rather than a return value.
+// an ordinary zone change, so a leg can PAUSE on a replacement's
+// prompt exactly like a destroy leg. That is the whole reason this is
+// a continuation rather than a return value. A sacrificed commander
+// lands in the graveyard first and is offered the command zone
+// afterwards (CR 903.9a, ADR 0115).
 //
 // `sacrificed` is sacrificedThisWayLocked's answer: the permanents that
-// really left the battlefield. A commander that took the command zone
-// IS in it — it was sacrificed, and only where the card went was
-// replaced — and so is one an "exile it instead" replacement took.
+// really left the battlefield. A commander IS in it, and so is one an
+// "exile it instead" replacement took.
 //
 // `source` is the card that asked, stamped on each EventSacrifice.
 //
@@ -985,8 +993,8 @@ func (g *Game) SacrificeThenForEffect(source, cardID uuid.UUID, then func(g *Gam
 // declared caveat until this existed.
 //
 // The count is how many of the legs that SETTLED were sacrificed. A
-// leg that paused on the CR 903.9 prompt cannot be in it — nothing has
-// left yet — which is why a card that READS the number uses
+// leg that paused on a replacement's prompt cannot be in it — nothing
+// has left yet — which is why a card that READS the number uses
 // SacrificeAllThenForEffect.
 //
 // Caller must hold g.mu in write mode.
