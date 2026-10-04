@@ -28,23 +28,15 @@ import (
 // yours that an opponent stole counts, and a noncreature commander
 // counts too.
 //
-// Caveat (ADR 0114 owner decision 4, #2085): the ruling says the
-// trigger sees the commander die "even if the owner of the commander
-// that died chooses to return it to the command zone after it dies",
-// because CR 903.9a moves the commander after it reaches the graveyard.
-// The engine still applies CR 903.9 to a graveyard move as a
-// replacement, so a commander whose owner takes the command zone never
-// reaches the graveyard and Sauron does not see it die. One the owner
-// lets go to the graveyard does trigger it. The caveat comes off with
-// ADR 0115's PR 4.
+// A commander dies like any creature (CR 903.9a, ADR 0115): the trigger
+// sees it die "even if the owner of the commander that died chooses to
+// return it to the command zone after it dies" (the card's ruling),
+// because the owner is only asked once it is in the graveyard.
 func init() {
 	Register(Spec{
-		OracleID:     "69c674c7-48a5-49c8-b0be-3f2b5c6a548c",
-		Name:         "Sauron, Lord of the Rings",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"It doesn't see an opponent's commander die when that commander goes to the command zone instead.",
-		},
+		OracleID:        "69c674c7-48a5-49c8-b0be-3f2b5c6a548c",
+		Name:            "Sauron, Lord of the Rings",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
 			{

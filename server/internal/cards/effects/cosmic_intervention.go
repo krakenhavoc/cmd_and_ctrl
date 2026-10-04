@@ -48,18 +48,14 @@ import (
 //     NotBeforeSeq floor, plus ADR 0069's face-down kind for the
 //     owner-only look.
 //
-// A dying COMMANDER is saved too, and its owner decides. The old
-// caveat here ("a dying commander still goes to the command zone")
-// described an engine that no longer exists. CR 903.9a (pinned
-// edition) makes a commander's trip from a graveyard or exile a
-// state-based "may" AFTER it arrives, so in paper this replacement
-// exiles the commander and its owner then chooses: command zone now,
-// or stay exiled and come back at the end step. The engine models the
-// command-zone rule as an optional replacement on the same move
-// (builtin_replacements.go), and the two meet in the CR 616 apply
-// loop: the controller orders them, the commander offer is asked, and
-// "no" leaves this effect to exile the card and schedule its return.
-// Both printed outcomes are reachable and nothing else is — pinned by
+// A dying COMMANDER is saved too, and its owner decides. CR 903.9a
+// (pinned edition, ADR 0115) makes a commander's trip from a
+// graveyard or exile a state-based "may" AFTER it arrives, and the
+// engine runs it in that order: this replacement exiles the
+// commander (no ordering prompt, it is the only one that applies),
+// and its owner is then offered the command zone: now, or stay
+// exiled and come back at the end step. Both printed outcomes are
+// reachable and nothing else, pinned by
 // TestCosmicInterventionSavesACommanderWhoseOwnerDeclines.
 //
 // No simplification.
