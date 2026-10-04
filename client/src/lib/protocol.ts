@@ -1624,7 +1624,10 @@ export interface PlayerView {
   // `energy` ints above stay populated for backwards compat.
   counters?: Record<string, number>;
   // Per-player cleanup-step hand-size cap (S13.4, CR 402.2).
-  // 7 by default; -1 = no cap (Reliquary Tower / Thought Vessel).
+  // 7 by default; -1 = no cap (Reliquary Tower / Thought Vessel);
+  // otherwise 0 or more (ADR 0113 §3: Null Profusion's 2,
+  // Jin-Gitaxias's 0). The EFFECTIVE value. playerKeywordBadges.ts
+  // shows a badge on a seat whose value is not 7.
   // Always present on the wire; the field is non-omitempty so
   // clients know the cap even when it's the default.
   max_hand_size?: number;

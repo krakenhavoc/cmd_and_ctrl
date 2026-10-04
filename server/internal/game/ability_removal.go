@@ -9,7 +9,7 @@ package game
 // for triggered abilities, `CatalogActivatedAbilities`,
 // `CatalogManaAbilities`, `CatalogStaticAbilities`,
 // `CatalogReplacements`, `CatalogCostModifiers`,
-// `CatalogUntapStepPermissions`, `CatalogNoMaxHandSize`. Those hooks
+// `CatalogUntapStepPermissions`, `CatalogHandSize`. Those hooks
 // answer *what the printed card says*, which is the right question
 // almost always and the wrong question under a layer-6 effect that
 // takes the abilities away. Layer 6 could already clear

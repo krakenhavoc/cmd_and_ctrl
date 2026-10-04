@@ -2226,6 +2226,18 @@ var items = []Item{
 		},
 		Examples: []string{"Teferi, Temporal Archmage"},
 	},
+	{
+		Slug: "max-hand-size-statics", Name: "Maximum hand size", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Cards that set or change a player's maximum hand size, or give other players none, applied in the order they arrived.",
+		Rules:   []string{"402.2", "514.1", "613.11"},
+		Issue:   2074,
+		ADR:     "0113-small-seams-for-the-s58-deck-requests.md",
+		Probe: func(s effects.Spec) bool {
+			return len(s.HandSize) > 0
+		},
+		Examples:    []string{"Jin-Gitaxias, Core Augur", "Null Profusion", "Price of Knowledge"},
+		EngineNotes: "**Shipped** (ADR 0113 §3): `Spec.HandSize` declares `game.HandSizeStatic{Players, Kind, N, When}` (you, each opponent, each player or the chosen player; no maximum, set to N or change by N), and `Spec.NoMaxHandSize` folds into it. `Game.EffectiveMaxHandSizeLocked` folds every entry that reaches a player in CR 613.11 timestamp order from seven: battlefield statics through `CatalogAbilityKey` at `Card.layerTimestamp()`, and the player's own grant at `Player.MaxHandSizeAt` (an additive snapshot field). The result is no maximum or max(0, value) (CR 107.1b). The cleanup discard still asks only the active player, against their own maximum (CR 514.1).",
+	},
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.

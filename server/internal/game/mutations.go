@@ -5629,7 +5629,9 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 // playgroup adjustments.
 //
 // `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
-// negative value is rejected with ErrInvalidParam. Doesn't fire
+// negative value is rejected with ErrInvalidParam. Stamped like
+// SetMaxHandSizeForEffect, so the sandbox value is folded in CR
+// 613.11's timestamp order (ADR 0113 §3 decision 3). Doesn't fire
 // the SBA loop — the cap only matters at cleanup-step entry, which
 // has its own re-check via populateDiscardPendingLocked.
 //
@@ -5650,6 +5652,7 @@ func (g *Game) SetMaxHandSize(playerID uuid.UUID, value int) error {
 		return ErrPlayerNotFound
 	}
 	p.MaxHandSize = value
+	p.MaxHandSizeAt = timeNowUnixNano()
 	return nil
 }
 
