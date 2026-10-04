@@ -91,6 +91,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		UndoLimit:     3,
 		Settings:      &TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		StartingSeat:  1,
+		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
+			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
+		}},
 
 		StackItems:      []StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: "card-1"}},
 		PendingTriggers: []StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: "card-2"}},

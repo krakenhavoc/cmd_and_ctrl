@@ -431,7 +431,57 @@ func corpusBoards() []corpusBoard {
 		// pendingChoices[].discardOptions naming the two spells and
 		// discardLabel, every card in the hand known to every seat.
 		{"revealed_hand_discard_filtered", corpusRevealedHandDiscard},
+		// v7, added by ADR 0121 PR 2 (#2229) as a new file: a four-seat
+		// table mid-way through the opening roll — round 1 rolled in
+		// full (one die by the host for a seat that had not), seats 2
+		// and 3 tied on 8, and round 2 half rolled (openingRoll, with
+		// its rounds, seats, results and presser). No hand dealt yet.
+		{"opening_roll_tie", corpusOpeningRollTie},
 	}
+}
+
+// corpusOpeningRollTie is ADR 0121 §1's board: four seats roll for the
+// first turn on a key whose round 1 ties seats 2 and 3 on 8. Seats 2,
+// 0 and 3 roll for themselves, the host (seat 0) rolls for seat 1, and
+// in round 2 seat 3 has rolled and seat 2 has not.
+func corpusOpeningRollTie(t *testing.T) *game.Game {
+	t.Helper()
+	g := game.NewGame()
+	for i, name := range []string{"P1", "P2", "P3", "P4"} {
+		deck := []game.Card{{
+			InstanceID:  uuid.New(),
+			Name:        fmt.Sprintf("Test Commander %d", i+1),
+			TypeLine:    "Legendary Creature — Test",
+			Power:       3,
+			Toughness:   3,
+			IsCommander: true,
+		}}
+		for range 11 {
+			deck = append(deck, game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest"})
+		}
+		if _, err := g.AddPlayer(name, deck); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.StartWithOpeningRoll(rand.New(rand.NewPCG(22, 2048))); err != nil {
+		t.Fatalf("StartWithOpeningRoll: %v", err)
+	}
+	for _, seat := range []int{2, 0, 3} {
+		if err := g.RollOpening(g.Seats[seat].ID); err != nil {
+			t.Fatalf("RollOpening seat %d: %v", seat, err)
+		}
+	}
+	if err := g.HostRollRemaining(g.Seats[0].ID); err != nil {
+		t.Fatalf("HostRollRemaining: %v", err)
+	}
+	if err := g.RollOpening(g.Seats[3].ID); err != nil {
+		t.Fatalf("RollOpening seat 3 in round 2: %v", err)
+	}
+	or := g.OpeningRoll
+	if or == nil || len(or.Rounds) != 2 || len(or.Rounds[1].Seats) != 2 || len(or.Rounds[1].Rolls) != 1 || or.Chooser != -1 {
+		t.Fatalf("opening roll = %+v, want round 2 of seats 2 and 3 with one die rolled", or)
+	}
+	return g
 }
 
 // corpusRevealedHandDiscard is ADR 0116 §9's board: seat 1 has
