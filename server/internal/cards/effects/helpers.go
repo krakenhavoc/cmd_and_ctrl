@@ -100,6 +100,15 @@ func IsBasicLand(c game.Card) bool {
 // has left, is skipped and the draw still happens — the draw is not
 // conditional on the look.
 func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
+	lookAtTargetPlayersHand(item, ctx)
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// lookAtTargetPlayersHand is "Look at target player's hand": the body
+// of lookAtTargetPlayersHandThenDraw without the draw, and Glasses of
+// Urza's whole ability. Only the resolving effect's controller learns
+// the hand (see above).
+func lookAtTargetPlayersHand(item *game.StackItem, ctx *Context) {
 	if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetPlayer {
 		if p := ctx.PlayerByID(item.Targets[0].ID); p != nil && p.Hand != nil {
 			for i := range p.Hand.Cards {
@@ -107,7 +116,6 @@ func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
 			}
 		}
 	}
-	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 }
 
 // returnTargetedCardToHand returns the resolving item's first
