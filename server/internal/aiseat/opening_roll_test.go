@@ -69,7 +69,11 @@ func TestPoliciesAnswerEveryOpeningRollWindow(t *testing.T) {
 			}
 			in := aiseat.Input{View: protocol.ViewOfGameFor(g, p.ID.String()), Seat: p.ID, Moves: moves}
 			v := rules.Resolve(in)
-			if !v.Absorbed() || v.Rule != rules.RuleOpeningRoll {
+			wantRule := rules.RuleOpeningRoll
+			if v.Index >= 0 && v.Index < len(moves) && moves[v.Index].Type == legal.TypeChooseStartingPlayer {
+				wantRule = rules.RuleOpeningChoice
+			}
+			if !v.Absorbed() || v.Rule != wantRule {
 				t.Fatalf("seat %d: Layer A did not absorb %+v: %#v", p.Seat, moves, v)
 			}
 			d, err := h.Decide(ctx, in)
@@ -168,7 +172,7 @@ func (o *openingRollTally) Observe(ev aiseat.DecisionEvent) {
 		o.rejected = append(o.rejected, fmt.Sprintf("%s: %s: %v", ev.Policy, mv.Label, ev.RejectErr))
 		return
 	}
-	if strings.HasPrefix(ev.Policy, "rules+") && (ev.Trace.Layer != "A" || ev.Trace.Rule != rules.RuleOpeningRoll) {
+	if strings.HasPrefix(ev.Policy, "rules+") && (ev.Trace.Layer != "A" || (ev.Trace.Rule != rules.RuleOpeningRoll && ev.Trace.Rule != rules.RuleOpeningChoice)) {
 		o.notA = append(o.notA, fmt.Sprintf("%s: %s (layer %q rule %q)", ev.Policy, mv.Label, ev.Trace.Layer, ev.Trace.Rule))
 	}
 	if o.rolls == nil {
@@ -245,9 +249,9 @@ func TestBotsRollAndChooseThroughTheOpeningRollAndPlayOn(t *testing.T) {
 	if len(tally.choices) != 1 {
 		t.Errorf("choices by %d seats, want the winner's only: %v", len(tally.choices), tally.choices)
 	}
-	if st := meter.Stats(); st.ByRule[rules.RuleOpeningRoll] != 5 {
-		t.Errorf("Layer A absorbed %d opening-roll windows, want 5 (two seats' dice, one reroll each, and the choice): %+v",
-			st.ByRule[rules.RuleOpeningRoll], st.ByRule)
+	if st := meter.Stats(); st.ByRule[rules.RuleOpeningRoll] != 4 || st.ByRule[rules.RuleOpeningChoice] != 1 {
+		t.Errorf("Layer A absorbed %d opening dice and %d choices, want 4 (two seats' dice, one reroll each) and 1: %+v",
+			st.ByRule[rules.RuleOpeningRoll], st.ByRule[rules.RuleOpeningChoice], st.ByRule)
 	}
 	var starting int
 	g.ReadSnapshot(func() { starting = g.StartingSeat })

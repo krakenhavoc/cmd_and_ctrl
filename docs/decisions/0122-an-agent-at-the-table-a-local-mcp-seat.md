@@ -236,14 +236,16 @@ The binary calls `rules.Resolve` on every window, building `aiseat.Input{View, S
 | `forced`: exactly one legal move | yes | Nothing to decide. Mostly the pass-only window. |
 | `mana-only`: the only alternatives to passing are mana abilities | yes | Casts auto-tap, and floating mana empties at the step boundary (CR 106.4). |
 | `coin-call`: heads or tails with no stop | yes | Both calls have the same odds. |
+| `opening-roll`: a d20 to roll in the opening roll (ADR 0121) | yes | A die has nothing in it to choose. |
+| `opening-choice`: the opening roll's winner choosing who takes the first turn | **no, escalates** | It is a real choice (CR 103.1). The model sees it as `choice:starting_player`. |
 | `no-moves` | yes (nothing is sent) | Degenerate. |
 | `same-land`: the only alternatives are copies of one land | **no, escalates** | It plays a land, which is an action, not a pass. Holding a land drop for after combat (landfall) or for a discard outlet is a decision, and the owner's list ("empty priority passes, forced moves, mana steps") did not include it. It costs about one model call per turn. |
 
-Whatever ADR 0121 PR 3 adds to Layer A for the opening roll applies here unchanged. Rolling with nothing else on offer is a `forced` window. Choosing who starts is a real choice and reaches the model.
+ADR 0121 PR 3 added the opening roll to Layer A as one rule, ahead of `forced`, so the die escalated here as a one-move `priority` window. ADR 0121 PR 5 splits it in two: `opening-roll` (the die, absorbed) and `opening-choice` (the winner's choice, which reaches the model). A bot's play is unchanged: Layer A still answers both for it.
 
 One more rule comes from the runner, not from `Resolve`. **While `loop_notice` is up, nothing is passed automatically** (CR 732, ADR 0055). The notice is the server telling every client that a person has to ask for the next iteration, and here the agent is the person. **Combat declarations always escalate**: they carry no pass, so `Resolve` already sends them on unless exactly one move is offered.
 
-**The owner may tune it only toward the model.** `--absorb=forced,mana-only,coin-call` lists the absorbed rules. A rule can be removed so more windows reach the model. A rule cannot be added, and there is no flag that answers anything Layer A would not. `same-land` can be switched on with the same flag if one call per turn turns out not to be worth it.
+**The owner may tune it only toward the model.** `--absorb=forced,mana-only,coin-call,opening-roll` lists the absorbed rules. A rule can be removed so more windows reach the model. A rule cannot be added, and there is no flag that answers anything Layer A would not. `same-land` can be switched on with the same flag if one call per turn turns out not to be worth it.
 
 **`pass_until` is the model's own autopass, off by default.** With `wait_for_decision(pass_until: "my_turn_or_stack")`, the binary also passes a priority window on another player's turn when the stack is empty, nothing is owed and the window is not a combat declaration. It stops at once for anything on the stack, a pending choice, a combat declaration, the loop notice, or the start of the seat's own turn. The start of the turn also clears it, as the client's safety belt does (ADR 0009 §7). This is the convenience a human gets from the browser's autopass toggle. It is the model's choice for its own seat, and it never answers a choice. A model holding an instant for an opponent's end step leaves it off.
 

@@ -33,8 +33,9 @@
 //   - the only non-pass moves are land drops for copies of the same
 //     card — the land is free, once a turn, and the copies are
 //     interchangeable
-//   - the opening roll (ADR 0121 §4) — a die to roll, or the winner
-//     taking the first turn; no hand exists yet to argue otherwise
+//   - the opening roll (ADR 0121 §4) — a die to roll (opening-roll),
+//     or the winner taking the first turn (opening-choice); no hand
+//     exists yet to argue otherwise
 //
 // Anything that needs a view on what the board is worth — which
 // removal spell, whether to block, whether to hold up the counter —
@@ -86,10 +87,14 @@ const (
 	// RuleCoinCall absorbs a coin call with no stop decision. The call is
 	// derived from the choice UUID, never from game RNG.
 	RuleCoinCall = "coin-call"
-	// RuleOpeningRoll absorbs the opening roll (ADR 0121 §4): a seat
-	// rolls its die, and a winner takes the first turn itself
-	// (aiseat.OpeningRollIndex).
+	// RuleOpeningRoll absorbs a seat's opening die (ADR 0121 §4): the
+	// window offers nothing but the roll (aiseat.OpeningRollIndex).
 	RuleOpeningRoll = "opening-roll"
+	// RuleOpeningChoice absorbs the opening roll's winner choosing who
+	// takes the first turn: a bot takes it itself (ADR 0121 §4). It is
+	// its own rule because it is a choice, not a die: the MCP seat
+	// (ADR 0122 §4) absorbs the die and hands this to its model.
+	RuleOpeningChoice = "opening-choice"
 )
 
 // Verdict is Layer A's answer for one window.
@@ -118,7 +123,11 @@ func Resolve(in aiseat.Input) Verdict {
 	// a position: no hand exists yet. The heuristic answers it through
 	// the same function, so the two agree.
 	if i, why := aiseat.OpeningRollIndex(in); i >= 0 {
-		return Verdict{Outcome: Take, Index: i, Rule: RuleOpeningRoll, Reason: why}
+		rule := RuleOpeningRoll
+		if moves[i].Type == legal.TypeChooseStartingPlayer {
+			rule = RuleOpeningChoice
+		}
+		return Verdict{Outcome: Take, Index: i, Rule: rule, Reason: why}
 	}
 	// A heads/tails call without an offered stop is mechanically arbitrary:
 	// each call has identical odds. Absorb it so a model tier does not spend a

@@ -566,7 +566,9 @@ func eachCard(v *protocol.GameView, fn func(*protocol.CardView, string) bool) {
 }
 
 // windowKind names a window for the model (§3): mulligan, priority,
-// response, attack, block, or choice:<kind>.
+// response, attack, block, or choice:<kind>. The opening roll (ADR 0121)
+// is `opening_roll` for a die to roll (absorbed by default) and
+// `choice:starting_player` for the winner choosing who goes first.
 func windowKind(v *protocol.GameView, me string, moves []legal.Move) string {
 	for i := range v.PendingChoices {
 		if v.PendingChoices[i].Chooser == me {
@@ -583,6 +585,10 @@ func windowKind(v *protocol.GameView, me string, moves []legal.Move) string {
 			return "attack"
 		case legal.TypeDeclareBlocker, legal.TypeDeclareBlockers, legal.TypeFinishBlocks:
 			return "block"
+		case legal.TypeRollOpening:
+			return "opening_roll"
+		case legal.TypeChooseStartingPlayer:
+			return "choice:starting_player"
 		}
 	}
 	if len(v.StackItems) > 0 {

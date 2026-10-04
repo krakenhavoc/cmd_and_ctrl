@@ -38,7 +38,7 @@ func main() {
 func run() error {
 	var origins listFlag
 	flag.Var(&origins, "allow-origin", "a server join may use, as scheme://host[:port] (port may be *); repeatable. Default: "+strings.Join(mcpseat.DefaultOrigins, ", "))
-	absorb := flag.String("absorb", strings.Join(mcpseat.DefaultAbsorb, ","), "Layer A rules answered without the model: a subset of forced,mana-only,coin-call,same-land, or none")
+	absorb := flag.String("absorb", strings.Join(mcpseat.DefaultAbsorb, ","), "Layer A rules answered without the model: a subset of forced,mana-only,coin-call,same-land,opening-roll,opening-choice, or none")
 	logFile := flag.String("log-file", "", "write the log here (mode 0600) instead of stderr")
 	stateDir := flag.String("state-dir", "", "where saved sessions live (default $XDG_STATE_HOME/cmdctrl-mcpseat)")
 	verbose := flag.Bool("v", false, "debug logging")

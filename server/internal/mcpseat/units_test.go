@@ -1,6 +1,7 @@
 package mcpseat
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -181,6 +182,22 @@ func TestDecideAutomaticallyFollowsTheTable(t *testing.T) {
 		}
 	}
 
+	// ADR 0121: the opening roll. The die is absorbed by default; the
+	// winner's choice of who goes first reaches the model unless the
+	// owner absorbs it too, and then Layer A takes the first turn.
+	roll := legal.Move{Type: legal.TypeRollOpening, Kind: legal.KindOpeningRoll, Label: "Roll a d20 for the first turn", AlwaysLegal: true}
+	chooseOther := legal.Move{Type: legal.TypeChooseStartingPlayer, Kind: legal.KindOpeningRoll, Label: "Them goes first", Params: json.RawMessage(`{"seat":1}`)}
+	chooseMe := legal.Move{Type: legal.TypeChooseStartingPlayer, Kind: legal.KindOpeningRoll, Label: "I go first", Params: json.RawMessage(`{"seat":0}`), AlwaysLegal: true}
+	if ans, ok := decideAutomatically(v, me, []legal.Move{roll}, def, false); !ok || ans.rule != rules.RuleOpeningRoll {
+		t.Errorf("the opening die: auto=%v rule=%q, want absorbed as %q", ok, ans.rule, rules.RuleOpeningRoll)
+	}
+	if ans, ok := decideAutomatically(v, me, []legal.Move{chooseOther, chooseMe}, def, true); ok {
+		t.Errorf("the opening roll's choice was answered without the model (%q); CR 103.1 makes it a real choice", ans.rule)
+	}
+	if ans, ok := decideAutomatically(v, me, []legal.Move{chooseOther, chooseMe}, map[string]bool{rules.RuleOpeningChoice: true}, false); !ok || ans.rule != rules.RuleOpeningChoice || ans.index != 1 {
+		t.Errorf("opening-choice switched on: %+v %v, want the seat's own first turn (1)", ans, ok)
+	}
+
 	stacked := *v
 	stacked.StackItems = []protocol.StackItemView{{ID: "x"}}
 	if _, ok := decideAutomatically(&stacked, me, []legal.Move{pass, cast}, def, true); ok {
@@ -195,6 +212,21 @@ func TestDecideAutomaticallyFollowsTheTable(t *testing.T) {
 	loop.LoopNotice = &protocol.LoopNoticeView{Label: "x", Count: 3}
 	if _, ok := decideAutomatically(&loop, me, []legal.Move{pass}, def, true); ok {
 		t.Error("a pass went out under the loop notice")
+	}
+}
+
+// ADR 0121: the opening roll's windows have kinds of their own, never
+// "priority" (nothing has priority before the first turn).
+func TestTheOpeningRollWindowsAreNamed(t *testing.T) {
+	me := uuid.NewString()
+	v := &protocol.GameView{State: "active", MulligansOpen: true, Seats: []protocol.PlayerView{{ID: me, Seat: 0}}}
+	roll := legal.Move{Type: legal.TypeRollOpening, Kind: legal.KindOpeningRoll}
+	choose := legal.Move{Type: legal.TypeChooseStartingPlayer, Kind: legal.KindOpeningRoll}
+	if got := windowKind(v, me, []legal.Move{roll}); got != "opening_roll" {
+		t.Errorf("the die's window: %q, want opening_roll", got)
+	}
+	if got := windowKind(v, me, []legal.Move{choose, choose}); got != "choice:starting_player" {
+		t.Errorf("the winner's window: %q, want choice:starting_player", got)
 	}
 }
 

@@ -14,25 +14,30 @@ import (
 )
 
 // DefaultAbsorb is the Layer A rules the seat answers for the agent
-// (§4): forced moves, mana-only windows and coin calls. `same-land` is
-// not among them: playing a land is an action whose timing can matter
+// (§4): forced moves, mana-only windows, coin calls and the opening
+// roll's die (ADR 0121: a d20 to roll has nothing to choose). `same-land`
+// is not among them: playing a land is an action whose timing can matter
 // (landfall, a discard outlet), and the owner's list ("empty priority
-// passes, forced moves, mana steps") did not include it.
-var DefaultAbsorb = []string{rules.RuleForced, rules.RuleManaOnly, rules.RuleCoinCall}
+// passes, forced moves, mana steps") did not include it. Neither is
+// `opening-choice`: who takes the first turn is a real choice (CR 103.1),
+// so the winner's window reaches the model.
+var DefaultAbsorb = []string{rules.RuleForced, rules.RuleManaOnly, rules.RuleCoinCall, rules.RuleOpeningRoll}
 
 // absorbable is every rule --absorb may name. A rule can be removed so
 // more windows reach the model; nothing outside Layer A can be added,
 // and there is no flag that answers anything Layer A would not.
 var absorbable = map[string]bool{
-	rules.RuleForced:   true,
-	rules.RuleManaOnly: true,
-	rules.RuleCoinCall: true,
-	rules.RuleSameLand: true,
+	rules.RuleForced:        true,
+	rules.RuleManaOnly:      true,
+	rules.RuleCoinCall:      true,
+	rules.RuleSameLand:      true,
+	rules.RuleOpeningRoll:   true,
+	rules.RuleOpeningChoice: true,
 }
 
 // ParseAbsorb reads --absorb: a comma-separated subset of forced,
-// mana-only, coin-call and same-land. "none" absorbs nothing, so every
-// window reaches the model.
+// mana-only, coin-call, same-land, opening-roll and opening-choice.
+// "none" absorbs nothing, so every window reaches the model.
 func ParseAbsorb(s string) (map[string]bool, error) {
 	out := map[string]bool{}
 	s = strings.TrimSpace(s)

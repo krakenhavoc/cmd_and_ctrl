@@ -157,13 +157,14 @@ var (
 	moveLineRE  = regexp.MustCompile(`(?m)^  (\d+): (.*)$`)
 )
 
-// choose is the scripted chooser: keep the hand, pass when a pass is
-// offered, otherwise move 0.
+// choose is the scripted chooser: keep the hand, take the first turn
+// when it wins the opening roll, pass when a pass is offered, otherwise
+// move 0.
 func choose(text string) int {
 	pick := 0
 	for _, m := range moveLineRE.FindAllStringSubmatch(text, -1) {
 		label := strings.ToLower(m[2])
-		if strings.HasPrefix(label, "keep") || strings.HasPrefix(label, "pass") {
+		if strings.HasPrefix(label, "keep") || strings.HasPrefix(label, "pass") || strings.HasPrefix(label, "i go first") {
 			pick, _ = strconv.Atoi(m[1])
 			return pick
 		}
@@ -309,6 +310,16 @@ func TestE2EAnAgentPlaysARealTable(t *testing.T) {
 		n, _ := strconv.Atoi(m[1])
 		if n < 2 {
 			t.Errorf("a one-move window reached the model; Layer A absorbs it (§4):\n%s", text)
+		}
+		// ADR 0121: the lobby opens the opening roll. The agent's die is
+		// absorbed; if it wins, the choice of who goes first is the one
+		// opening-roll window the model sees, named for what it is.
+		if strings.Contains(text, "kind: opening_roll") {
+			t.Errorf("the agent's opening die reached the model; Layer A rolls it:\n%s", text)
+		}
+		if strings.Contains(text, "kind: choice:starting_player") &&
+			(!strings.Contains(text, "I go first") || !strings.Contains(text, "goes first")) {
+			t.Errorf("the opening roll's choice does not offer every seat:\n%s", text)
 		}
 		if n > 48 {
 			sawFullList = true
