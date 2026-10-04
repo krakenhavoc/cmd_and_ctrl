@@ -18,6 +18,7 @@ import {
   ABILITY_NOT_RIGHT_NOW,
   NOT_ENOUGH_LIFE,
   battlefieldClickIntent,
+  battlefieldClickPlan,
   buildMenuSections,
   mayActivateAcross,
   menuAbilityRows,
@@ -99,13 +100,28 @@ function gameView(cards: CardView[], extra: Partial<GameView> = {}): GameView {
 }
 
 describe("the click on another player's permanent", () => {
-  it("opens the light popover for a seated non-controller when it has an any-player row", () => {
+  it("activates the one any-player row for a seated non-controller (#2201)", () => {
     expect(mayActivateAcross(xantcha(), ME)).toBe(true);
-    expect(battlefieldClickIntent(xantcha(), ME, false)).toBe("popover");
+    // The controller-only row is not the viewer's, so the any-player
+    // row is the one usable row, and the click activates it.
+    expect(battlefieldClickPlan(xantcha(), ME, false)).toEqual({
+      intent: "activate",
+      row: { kind: "activated", index: 0 },
+    });
     // Even with the mana and raw-tap flags: none of it is the viewer's.
     expect(battlefieldClickIntent(xantcha(), ME, false, { manaClick: true, rawTap: true })).toBe(
-      "popover",
+      "activate",
     );
+  });
+
+  it("opens the light popover for a seated non-controller with two any-player rows", () => {
+    const two = xantcha({
+      activated_abilities: [
+        row(0, { label: "{3}: Draw", any_player: true }),
+        row(1, { label: "{2}: Scry 1", any_player: true }),
+      ],
+    });
+    expect(battlefieldClickIntent(two, ME, false)).toBe("popover");
   });
 
   it("does nothing when the digest refuses the any-player row (ADR 0117 §2)", () => {
