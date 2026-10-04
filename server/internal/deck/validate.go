@@ -2,7 +2,9 @@ package deck
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
@@ -151,22 +153,32 @@ func Validate(list *List) error {
 		})
 	}
 
-	// Singleton: at most one of each non-basic card.
+	// Singleton: at most one of each non-basic card, unless the card's
+	// own text says otherwise (CR 113.6n, CR 903.5b's exception).
 	seen := make(map[string]int, len(list.Mainboard))
+	limits := make(map[string]copyLimit, len(list.Mainboard))
 	for _, c := range list.Mainboard {
 		if isBasicLand(c) {
 			continue
 		}
 		seen[c.Name]++
+		limits[c.Name] = deckCopyLimit(c)
 	}
-	for name, n := range seen {
-		if n > 1 {
-			vs = append(vs, Violation{
-				Code:    CodeSingleton,
-				Card:    name,
-				Message: fmt.Sprintf("%q appears %d times; Commander is singleton", name, n),
-			})
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		n, lim := seen[name], limits[name]
+		if lim.any || n <= lim.max {
+			continue
 		}
+		msg := fmt.Sprintf("%q appears %d times; Commander is singleton", name, n)
+		if lim.max > 1 {
+			msg = fmt.Sprintf("%q appears %d times; a deck can have up to %d cards named %s", name, n, lim.max, name)
+		}
+		vs = append(vs, Violation{Code: CodeSingleton, Card: name, Message: msg})
 	}
 
 	// Format legality: every card must be commander-legal.
@@ -375,4 +387,52 @@ func frontFaceName(c cards.Card) string {
 		return c.CardFaces[0].Name
 	}
 	return c.Name
+}
+
+// copyLimit is how many copies of one card a deck may hold. The zero
+// value is the Commander default of one.
+type copyLimit struct {
+	any bool // "any number of cards named ~"
+	max int  // "up to N cards named ~"; 1 when the card says nothing
+}
+
+// deckCopyRule matches the printed deck-construction exception
+// (CR 113.6n): "A deck can have any number of cards named ~." and
+// "A deck can have up to nine cards named ~."
+var deckCopyRule = regexp.MustCompile(`(?i)a deck can have (any number of|up to ([a-z0-9-]+)) cards? named`)
+
+var numberWords = map[string]int{
+	"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
+	"eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+	"thirteen": 13, "fourteen": 14, "fifteen": 15, "twenty": 20,
+}
+
+// deckCopyLimit reads a card's allowance from its own oracle text, on
+// any face, so no card is named in the validator. A phrase it cannot
+// read (an unknown number word) leaves the singleton default, the
+// strict direction.
+func deckCopyLimit(c cards.Card) copyLimit {
+	lim := copyLimit{max: 1}
+	texts := []string{c.OracleText}
+	for _, f := range c.CardFaces {
+		texts = append(texts, f.OracleText)
+	}
+	for _, t := range texts {
+		m := deckCopyRule.FindStringSubmatch(t)
+		if m == nil {
+			continue
+		}
+		if !strings.HasPrefix(strings.ToLower(m[1]), "up to") {
+			return copyLimit{any: true}
+		}
+		w := strings.ToLower(m[2])
+		n, ok := numberWords[w]
+		if !ok {
+			n, _ = strconv.Atoi(w)
+		}
+		if n > lim.max {
+			lim.max = n
+		}
+	}
+	return lim
 }
