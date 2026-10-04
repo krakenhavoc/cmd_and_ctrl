@@ -1,7 +1,7 @@
 # ADR 0114 — The Ring tempts you
 
 **Status:** Proposed · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
-**Owner decisions:** pending. The four questions are under [Open questions for the owner](#open-questions-for-the-owner). Nothing is built until they are answered.
+**Owner decisions:** all four questions answered on 2026-10-03; see [Owner decisions (2026-10-03)](#owner-decisions-2026-10-03).
 **Issues:** [#2076](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2076) (the seam), [#2062](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2062) (Night - Sauron The Slayer, the deck that asked for it).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-03. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 36 remote heads (`origin/develop`, `origin/main`, `origin/feat/s58-pr1-stamps-mdfc` and the other chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0112. `docs/s58-small-seams-adr` is being written at the same time and takes the first free number, 0113, so this ADR takes **0114**.
 **Builds on:** [ADR 0064](0064-emblems.md) (emblems), [ADR 0071](0071-designations-that-switch-abilities-on.md) (designations and the `ActiveWhen` gate), [ADR 0045](0045-combat-restrictions.md) addendum (block rules), [ADR 0087](0087-amass.md) (amass and its forced-answer shortcut), [ADR 0060](0060-leaving-the-game.md) (CR 800.4 and the choice departure table), [ADR 0041](0041-game-persistence.md) (snapshots), [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator) and [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) owner decision 6 (a PR lands every card its seam unblocks).
@@ -35,7 +35,7 @@ The surrounding rules:
 - **Control.** A control change ends the designation (CR 701.54a) and removes the creature from combat (CR 506.4).
 - **Zones and phasing.** A Ring-bearer that leaves the battlefield is a new object with no designation (CR 400.7). Phasing is not a zone or control change (CR 702.26d), so a phased-out Ring-bearer keeps the designation, but while phased out it is treated as though it does not exist (CR 702.26b), so it is nobody's Ring-bearer for CR 701.54e.
 - **Multiplayer.** Every player has their own emblem and their own Ring-bearer. "Each opponent" in the level 4 ability is every opponent still in the game, not only the one dealt damage. A player who leaves the game takes their emblem with them (CR 800.4a). A prompt they owe is handled by CR 800.4g and 800.4h.
-- **Commander.** A commander can be a Ring-bearer, and is already legendary. CR 903.9a makes a commander that goes to a graveyard or exile a state-based-action choice *after* the move. That matters for Sauron, Lord of the Rings ([question 4](#4-sauron-lord-of-the-rings-and-a-commander-that-dies)).
+- **Commander.** A commander can be a Ring-bearer, and is already legendary. CR 903.9a makes a commander that goes to a graveyard or exile a state-based-action choice *after* the move. That matters for Sauron, Lord of the Rings ([owner decision 4](#4-sauron-lord-of-the-rings-and-a-commander-that-dies), [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085)).
 
 ### What exists, what is missing
 
@@ -61,7 +61,7 @@ I read each one's full text and asked whether everything except the Ring has a s
 
 - **✓ (38):** Bilbo, Retired Burglar; Birthday Escape; Bombadil's Song; Breaking of the Fellowship; Call of the Ring; Claim the Precious; Dreadful as the Storm; Dúnedain Rangers; Enraged Huorn; Faramir, Field Commander; Fiery Inscription; Galadriel of Lothlórien; Glorious Gale; Gollum, Patient Plotter; Gollum's Bite; Horses of the Bruinen; Inherited Envelope; Mirrormere Guardian; Nazgûl; Now for Wrath, Now for Ruin!; One Ring to Rule Them All; Ranger's Firebrand; Relentless Rohirrim; Ringsight; Ringwraiths; Rohirrim Lancer; Sam's Desperate Rescue; Sauron, the Dark Lord; Shortcut to Mushrooms; Slip On the Ring; Sméagol, Helpful Guide; Soothing of Sméagol; Stalwarts of Osgiliath; The Black Breath; The Ring Goes South; Took Reaper; Uruk-hai Berserker; War of the Last Alliance.
 - **? (16):** Aragorn, Company Leader (a counter kind of your choice, and "whenever you put one or more counters on Aragorn"); Boromir, Warden of the Tower ("if no mana was spent to cast it"); Elrond, Lord of Rivendell ("the second time this ability has resolved this turn"); Frodo, Adventurous Hobbit (partner with); Frodo Baggins (a conditional "must be blocked if able"); Frodo, Sauron's Bane (becomes a new creature type with a granted ability that ends the game); Gandalf, Friend of the Shire (sorceries as though they had flash); In the Darkness Bind Them (one theft per opponent); Rangers of Ithilien; Samwise the Stouthearted ("put there from the battlefield this turn"); Sauron's Ransom (a face-down and a face-up pile); Scroll of Isildur; There and Back Again; Witch-king of Angmar; Lord of the Nazgûl (protection from a designation); Sauron, the Necromancer.
-- **Not alone (2):** Galadriel, Elven-Queen needs voting (Will of the council, an open seam on the S58 tracker). Sauron, Lord of the Rings is question 4.
+- **Not alone (2):** Galadriel, Elven-Queen needs voting (Will of the council, an open seam on the S58 tracker). Sauron, Lord of the Rings ships with a caveat until [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085) lands (owner decision 4).
 
 About 46 of 56.
 
@@ -75,7 +75,7 @@ About 46 of 56.
 
 1. **The emblem.** If the player has no Ring emblem, they get one (§2).
 2. **The count.** The emblem's count goes up by one. The layer version is bumped, because a static or a trigger may just have switched on.
-3. **The choice.** The candidates are the creatures the player controls that are on the battlefield and phased in. With none, nothing is chosen. With two or more, the player is asked (§4). With exactly one, the answer is forced, and question 2 decides whether it is still asked.
+3. **The choice.** The candidates are the creatures the player controls that are on the battlefield and phased in. With none, nothing is chosen. With two or more, the player is asked (§4). With exactly one, the answer is forced: it is chosen automatically and logged, not asked (owner decision 2).
 4. **The designation.** The chosen creature becomes the player's Ring-bearer (§3). The player's previous Ring-bearer stops being one, even if it is phased out. Choosing the creature that already is the Ring-bearer changes nothing on the board, but it still counts as choosing it.
 5. **The event.** `EventRingTempted` is emitted with `Actor` the player, `CardID` the creature chosen (or `uuid.Nil`) and `Amount` the new count. This is the "complete the actions" of CR 701.54d, so it is emitted even when nothing could be chosen.
 6. **The rest of the sentence.** `then` runs with the chosen creature. Ringsight's search and One Ring to Rule Them All's mill come after the tempt, and Galadriel, Elven-Queen puts a counter on "your Ring-bearer". This is amass's continuation shape (`amass.go`).
@@ -102,7 +102,7 @@ The Ring is an ordinary ADR 0064 emblem in `Player.Emblems`. Only its key differ
   - n = 4: `On(EventDealDamage, …)` for combat damage from the owner's Ring-bearer to a player. The effect is that each opponent of the emblem's owner loses 3 life.
 - **The count.** The count lives on the emblem object, in a new field `Card.RingTemptations int`, and `DesignationRingTempted` reads it: `Active` is `c.RingTemptations >= d.N`. The count is a fact about the player, but the emblem is created at the first temptation and never leaves while its owner is in the game, so the count on the emblem *is* the player's count. That makes it one source of truth, read by the object-only gate ADR 0071 requires. `RingTemptCount` reads it, and answers 0 for a player with no emblem.
 - **Why an emblem and not the monarch's listener.** CR 725.2 says the monarch's two triggers have no source, which is why `monarch.go` is a `Listener`. The Ring's abilities belong to the emblem (CR 701.54c, 113.7), so they are harvested, ordered, put on the stack and answerable like any emblem trigger. This also gives the wire, the persistence and the CR 800.4a exit for free.
-- **What the emblem chip says.** `EmblemView` gains `level` (the count). Its `text` for the Ring is the lines the emblem has right now, derived on every projection, because the emblem has no other abilities (CR 114.1). Question 1 asks how the table shows the rest.
+- **What the emblem chip says.** `EmblemView` gains `level` (the count). Its `text` for the Ring is the lines the emblem has right now, derived on every projection, because the emblem has no other abilities (CR 114.1). Owner decision 1 sets how the table shows the rest.
 
 ### 3. Ring-bearer is a designation on the permanent
 
@@ -175,9 +175,9 @@ Each PR lands test first. Each verifies every card it lands against its full ora
 |---|---|---|---|
 | 1 | §6: CR 113.6n in `deck.Validate` | none in the catalog; #2062 becomes uploadable | — |
 | 2 | §1–§5, §7–§9 for level 1: the tempt, the emblem and its key, `RingTemptations`, `RingBearer`, `ring_bearer` and its three rows, `EventRingTempted`, `DesignationRingTempted`, the emblem block-rule walk, the wire fields, the log line, a minimal client answer, the enumerator and heuristic, the shape and the fixture | none; it is a seam PR, like ADR 0108's PR 0 | — |
-| 3 | The emblem's levels 2 to 4, the registered delayed sacrifice, and the five deck cards | Call of the Ring, Nazgûl, Ringsight, Sauron, the Dark Lord: Full. Sauron, Lord of the Rings: per question 4 | 1 (Nazgûl's deck rule), 2 |
-| 4 | Client display, per question 1 | none | 2 |
-| 5 | Every other Ring card that needs nothing else, per question 3 | about 41 of the remaining 51 | 3 |
+| 3 | The emblem's levels 2 to 4, the registered delayed sacrifice, and the five deck cards | Call of the Ring, Nazgûl, Ringsight, Sauron, the Dark Lord: Full. Sauron, Lord of the Rings: with one caveat until [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085) lands (owner decision 4) | 1 (Nazgûl's deck rule), 2 |
+| 4 | Client display, per owner decision 1 | none | 2 |
+| 5 | Every other Ring card that needs nothing else, per owner decision 3 | about 41 of the remaining 51 | 3 |
 
 PR 2 lands no cards on purpose. A card that tempts while the emblem has only its first line would be weaker than printed for everyone who reaches level 2, so no card ships until PR 3 has all four.
 
@@ -226,12 +226,12 @@ PR 2 lands no cards on purpose. A card that tempts while the emblem has only its
   - **Nazgûl:** deathtouch, an ETB tempt, and `WheneverTheRingTemptsYou` with a +1/+1 counter on each Wraith you control. The deck rule is PR 1's. Full.
   - **Ringsight:** tempt, then a library search for a card that shares a color with a legendary creature you control, read after the tempt. Per the rulings, the new Ring-bearer counts and a colorless legend adds nothing. Full.
   - **Sauron, the Dark Lord:** `WardSacrifice` over legendary artifacts and legendary creatures (an opponent's Ring-bearer qualifies); amass Orcs 1 when an opponent casts a spell; a tempt when an Army you control deals combat damage to a player; and `MayChoice` to discard the hand and draw four. Full.
-  - **Sauron, Lord of the Rings:** the cast trigger (amass Orcs 5, mill five, then return a creature card of your choice from your graveyard, which need not be one you milled), trample, and "Whenever a commander an opponent controls dies, the Ring tempts you". Caveats, or not in this PR: see question 4.
+  - **Sauron, Lord of the Rings:** the cast trigger (amass Orcs 5, mill five, then return a creature card of your choice from your graveyard, which need not be one you milled), trample, and "Whenever a commander an opponent controls dies, the Ring tempts you". Ships with one caveat, "Doesn't trigger when an opponent's commander dies and its owner moves it to the command zone", which comes off when [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085) lands (owner decision 4).
 - **Registry:** the row goes to `StatusPartial` with the landed cards as `Examples`.
 
 ### PR 4 — what the table shows
 
-Per question 1: the Ring chip with its level and lines, the Ring-bearer marker on the card, its hover title, and the log line's rendering. The labels it adds (the marker's `aria-label` "Ring-bearer", and the "choose your Ring-bearer" dialog) are new, not renamed. The PR still runs the nightly Playwright job on its branch, as AGENTS.md's labels contract asks of a change to the dock.
+Per owner decision 1: the Ring chip with its level and lines, the Ring-bearer marker on the card, its hover title, and the log line's rendering. The labels it adds (the marker's `aria-label` "Ring-bearer", and the "choose your Ring-bearer" dialog) are new, not renamed. The PR still runs the nightly Playwright job on its branch, as AGENTS.md's labels contract asks of a change to the dock.
 
 ### PR 5 — the rest of the Ring cards
 
@@ -265,43 +265,28 @@ PR 1 has no dependencies and goes first, so #2062 can be uploaded and played in 
 
 ## Out of scope
 
-- CR 903.9a as a state-based action (question 4 proposes its own issue and ADR).
+- CR 903.9a as a state-based action (its own issue and ADR, [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085), owner decision 4).
 - Voting (Galadriel, Elven-Queen).
 - Making an open `ring_bearer` prompt a restore point. That is ADR 0041 phase 3's general work on resume frames, not this seam's.
 
 ---
 
-## Open questions for the owner
-
-Each has options and a recommended answer. Nothing else in this ADR is a choice: the rules and the earlier owner decisions settle it.
+## Owner decisions (2026-10-03)
 
 ### 1. How the table shows the Ring and the Ring-bearer
 
-Every seat may have its own Ring at its own level, and its own Ring-bearer.
-
-- **(a) Recommended:** the Ring is the existing emblem chip on the player panel, with its level as a pip ("The Ring · 3"). Its hover lists all four lines, the gained ones in full and the rest dimmed with "after the 4th temptation", so a player can see what is coming. The Ring-bearer gets its own small ring marker on the card, in a corner that is not the designation badge slot, with the title "Alice's Ring-bearer". A Ring-bearer can also be monstrous or harnessed, and the one badge slot shows only one of them (`Card.svelte:385`).
-- (b) The same chip, but its hover shows only the gained lines (the emblem's actual abilities), and the Ring-bearer takes the designation badge slot as "RING-BEARER", after the existing tenants in the priority chain.
-- (c) A marker in the panel's marker column beside the monarch crown, with the level, instead of an emblem chip.
+The Ring is the existing emblem chip on the player panel, with its level as a pip ("The Ring · 3"). Its hover lists all four lines, the gained ones in full and the rest dimmed with "after the 4th temptation". The Ring-bearer gets its own small ring marker on the card, in a corner that is not the designation badge slot, with the title "Alice's Ring-bearer". Rejected: gained lines only with the Ring-bearer in the badge slot; a marker-column entry instead of a chip.
 
 ### 2. A forced choice: ask, or choose for the player?
 
-With exactly one creature, the rules leave no choice (the ruling: "you must choose a creature if you control one").
-
-- **(a) Recommended:** choose it without a prompt, and say so in the log line ("Alice's only creature, Nazgûl, becomes her Ring-bearer"). This is amass's precedent (`amass.go`: "the prompt queue is not the place to make the player click through a forced answer"). Nine Nazgûl and an upkeep trigger make it a frequent case, and the bot loses nothing.
-- (b) Always ask, even with one candidate, so a player always sees the moment the Ring-bearer is set. It costs a click per tempt and one more table-blocking prompt.
+With exactly one creature, it is chosen automatically and the log line says so ("Alice's only creature, Nazgûl, becomes her Ring-bearer"), as amass does. Rejected: always asking.
 
 ### 3. Which cards land, and when
 
-ADR 0106 owner decision 6 says a PR lands every card its seam unblocks. Applied here, that is about 46 cards.
-
-- **(a) Recommended:** PR 3 lands the deck's five, and PR 5 lands every other Ring card that needs nothing else, in its own PR so the deck is not held up by the breadth.
-- (b) PR 3 lands all of them at once. One PR, but the deck waits for about 46 card files and their tests.
-- (c) The five only. The other 51 wait on the row's `Waiting` list until a deck asks for them.
+PR 3 lands the deck's five cards, and PR 5 lands every other Ring card that needs nothing else, in its own PR. Rejected: all of them in PR 3; only the five.
 
 ### 4. Sauron, Lord of the Rings and a commander that dies
 
 "Whenever a commander an opponent controls dies" triggers "even if the owner of the commander that died chooses to return it to the command zone after it dies" (ruling), because CR 903.9a puts the commander in the graveyard first and moves it as a state-based action. The engine applies CR 903.9 as a replacement to graveyard and exile moves too (`builtin_replacements.go:33`), so a commander whose owner takes the command zone never dies, and the trigger never sees it. The same gap affects every "dies" trigger in the catalog that can see a commander.
 
-- **(a) Recommended:** open a separate issue and ADR to bring graveyard and exile under CR 903.9a (move first, then the state-based choice), keeping the replacement for hand and library (CR 903.9b). Sauron, Lord of the Rings lands in PR 3 with one caveat ("Doesn't trigger when an opponent's commander dies and its owner moves it to the command zone"), which comes off when that ADR ships. It is the most rules-faithful end state, and it is not held up by this seam.
-- (b) The same separate ADR, but Sauron, Lord of the Rings waits for it on the row's `Waiting` list rather than shipping with a caveat.
-- (c) A narrow fix in this seam: Sauron's trigger also watches a commander redirected from the battlefield to the command zone. It is smaller, but it gives "dies" a second meaning for one card while every other dies trigger keeps the gap.
+The fix is a separate issue and ADR, [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085): bring graveyard and exile under CR 903.9a (move first, then the state-based choice), keeping the replacement for hand and library (CR 903.9b). Sauron, Lord of the Rings ships now in PR 3 with one caveat ("Doesn't trigger when an opponent's commander dies and its owner moves it to the command zone"), which comes off when #2085 lands. Rejected: Sauron waiting on the `Waiting` list; a narrow fix in this seam.
