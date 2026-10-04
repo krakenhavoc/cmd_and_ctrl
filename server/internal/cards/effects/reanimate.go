@@ -31,9 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is the right primitive and DealDamage is not.
 func init() {
 	Register(Spec{
-		OracleID: "a044474a-cd72-4e9d-bd8d-a08f2de9cdc0",
-		Name:     "Reanimate",
-		Targets:  targetCreatureInAnyGraveyard(),
+		OracleID:     "a044474a-cd72-4e9d-bd8d-a08f2de9cdc0",
+		Name:         "Reanimate",
+		Completeness: CompletenessFull,
+		Targets:      targetCreatureInAnyGraveyard(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			card, ok := reanimateSingleTarget(ctx, ctx.Controller())
 			if !ok {

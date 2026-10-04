@@ -784,6 +784,15 @@ var items = []Item{
 		EngineNotes: "primitive: modular (CR 702.43a) is two abilities, an entry with N +1/+1 counters and a dies trigger that moves one counter per +1/+1 counter the permanent had onto target artifact creature; CR 702.43b makes each instance work separately. Neither half exists: `modular` is not in `canonicalKeywords`. The likely shape is an engine-derived keyword like riot (ADR 0109 §10): the counters as one entry replacement per instance through the entry look-ahead, and the dies trigger reading last-known counters (`LastKnownCountersForEffect`, CR 603.10a). Arcbound Slasher's riot already works (#1556). Found landing the riot cards.",
 	},
 	{
+		Slug: "revealed-hand-restricted-pick", Name: "Choosing a card from a revealed hand with a restriction", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Spells that reveal an opponent's hand and make you choose a card of a kind, such as Pelakka Predation's mana value 3 or greater.",
+		Missing:     "The pick from a revealed hand can't be limited to a kind of card, so a card that asks for one can't be added without letting you take any card.",
+		Rules:       []string{"701.9"},
+		Issue:       2078,
+		Waiting:     []string{"Pelakka Predation"},
+		EngineNotes: "prompt: `PendingChoiceDiscardFromHand` (`Game.QueueDiscardFromRevealedHand`) carries no card filter, and `ResolvePendingChoice` only checks that each pick sits in the hand, so \"nonland\" (Thoughtseize ships with a caveat for it) and \"with mana value 3 or greater\" are not enforced. The likely shape is a card predicate on the choice, checked on resolve and forwarded by the view's hand pool and `legal.EnumerateFor`, with a no-pick answer when the hand holds no legal card. Pelakka Predation's land back already exists in `mdfc_lands.go`; only the front face waits.",
+	},
+	{
 		Slug: "player-hexproof-during-your-turn", Name: "\"You have hexproof\" only during your turn", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Permanents that give you hexproof only some of the time, such as Gruul Spellbreaker during your turn.",
 		Missing:     "A permanent can't yet give you hexproof only during your turn.",
