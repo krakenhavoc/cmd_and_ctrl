@@ -135,6 +135,15 @@ const (
 	// Appended rather than slotted beside Harnessed so no existing
 	// kind's value moves.
 	DesignationMonstrous
+
+	// DesignationRingTempted is CR 701.54c's "as long as the Ring has
+	// tempted that player N or more times": an ability of the Ring
+	// emblem exists while the emblem's count (Card.RingTemptations) is
+	// N or greater (ADR 0114 §2). The one gate read off an object in
+	// the command zone rather than on the battlefield, which is why the
+	// count lives on the emblem: the gate stays an object-only
+	// question. Appended so no existing kind's value moves.
+	DesignationRingTempted
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -197,6 +206,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Harnessed
 	case DesignationMonstrous:
 		return c.Monstrous
+	case DesignationRingTempted:
+		return c.RingTemptations >= d.N
 	case DesignationChosenOption:
 		// An unanswered prompt ("") matches no anchor word, so a
 		// Siege has NEITHER ability before its controller chooses —

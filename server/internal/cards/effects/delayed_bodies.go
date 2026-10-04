@@ -151,6 +151,10 @@ var (
 	// "That spell gains sunburst" for the spell an event-conditioned
 	// trigger fired on (Solar Array, ADR 0109 §11).
 	thatSpellGainsSunburstBody = game.SimpleDelayedBody("sunburst/that-spell-gains", thatSpellYouJustCastGainsSunburst)
+
+	// Berserk: destroy the creature <Object> at the next end step if it
+	// is still that object and it attacked this turn.
+	berserkDestroyIfAttackedBody = game.DelayedBody("berserk/destroy-if-attacked", berserkDestroyIfAttacked)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
