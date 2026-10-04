@@ -2349,10 +2349,10 @@ the recipient's summoning sickness. Three things reach the wire.
   unaltered sends it too.
 - **`granted_by: {id, name}` on a granted row.** Absent on the
   permanent's own and intrinsic rows. `name` is the grantor's name when
-  it is on the battlefield. A client opens its ability picker on
-  left-click for any permanent with a granted mana or activated row, and
-  never picks a silent default between two mana abilities (ADR 0093
-  Decision 8; the client half is a later slice).
+  it is on the battlefield. A client's left-click opens the ability
+  popover for a usable granted activated row, and the mana picker for a
+  granted mana row, and never picks a silent default between two mana
+  abilities (ADR 0093 Decision 8, as ADR 0117 §1 amends it).
 - **`granted_abilities: [{text, source_id?, source_name?}]` on the
   CardView.** The printed text of every ability another effect gave the
   permanent — layer-6 grants, and a copy's CR 707.9a grant (Phantasmal

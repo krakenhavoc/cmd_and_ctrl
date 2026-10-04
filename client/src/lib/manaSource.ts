@@ -3,8 +3,9 @@
 // Ian: "when you click on mana and it taps can you have it tap for that
 // mana and put it in the floating mana pool". Until #1438 a left-click
 // on a Forest sent a raw `tap`, which turns the card sideways and adds
-// nothing (#1296's reporter). Now a left-click on an untapped permanent
-// you control that has a mana ability activates it:
+// nothing (#1296's reporter). Now a left-click on a permanent you
+// control whose only usable rows are mana rows activates one (ADR 0117
+// §1; a card with another usable ability opens its popover instead):
 //
 //   - one fixed output (a Swamp, a Sol Ring) → `activate_mana_ability`
 //     straight away.
@@ -30,11 +31,7 @@
 // mana_pick prompt) and ManaSourcePicker (the anchored popover).
 
 import { grantedFromLabel } from "./abilityRef";
-import {
-  ABILITY_EXHAUSTED,
-  ACTIVATION_CONDITION_UNMET,
-  NO_COMMANDER_IDENTITY,
-} from "./contextMenu.logic";
+import { abilityRowBlocked, abilityRowContext } from "./contextMenu.logic";
 import type { ColorButton } from "./manaPick";
 import { manaSymbolMeta, manaSymbols } from "./manaSymbol";
 import type { CardView, ManaAbilityView } from "./protocol";
@@ -78,18 +75,25 @@ export interface ManaPickOption {
   granted?: string;
 }
 
-// The server's own "can't" flags on a mana ability, in words. These
-// are verdicts the server published, not rules the client derives:
-// summoning sickness and unpayable costs are deliberately NOT here —
-// the activation goes out and the server's refusal is shown.
-function blockedReason(card: CardView, a: ManaAbilityView): string {
-  if ((card.restrictions ?? []).includes("cant_activate_mana")) {
-    return "an effect stops its abilities";
-  }
-  if (a.exhausted) return ABILITY_EXHAUSTED;
-  if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
-  if (a.adds_no_mana) return NO_COMMANDER_IDENTITY;
-  return "";
+// ManaOptionContext is what the picker knows beyond the card: the
+// paying player's life, for a "Pay N life" cost (#1690).
+export interface ManaOptionContext {
+  payerLife?: number;
+}
+
+// Why a mana ability cannot be used right now, in words, or "". ADR
+// 0117 §2: the one predicate the click rule and the popover use, so
+// the picker greys exactly what the popover greys. That ends #1438's
+// old posture of sending a summoning-sick activation for the server to
+// refuse: the popover has greyed that row since ADR 0020.
+function blockedReason(card: CardView, a: ManaAbilityView, ctx: ManaOptionContext = {}): string {
+  // The picker has no panel words for a shut window; a mana ability is
+  // almost never timed, and "" reads as "Can't activate this right now".
+  return abilityRowBlocked(
+    a,
+    "mana",
+    abilityRowContext(card, { payerLife: ctx.payerLife, timingWords: "" }),
+  );
 }
 
 // The damage rider the server spells out in the label rather than as
@@ -148,7 +152,11 @@ function captionFor(symbols: string[], choice: boolean): string {
  * output is computed at activation (Cabal Coffers) publishes none, and
  * its option shows the server's label instead of symbols.
  */
-export function manaAbilityOption(card: CardView, a: ManaAbilityView): ManaPickOption {
+export function manaAbilityOption(
+  card: CardView,
+  a: ManaAbilityView,
+  ctx: ManaOptionContext = {},
+): ManaPickOption {
   const produced = a.produced ?? "";
   const slots = manaSymbols(produced);
   const choice = slots.some((s) => s.includes("|"));
@@ -157,7 +165,7 @@ export function manaAbilityOption(card: CardView, a: ManaAbilityView): ManaPickO
   const granted = grantedFromLabel(a);
   const rider = [manaAbilityRider(a), granted].filter(Boolean).join(" · ");
   const caption = captionFor(symbols, choice) || a.label || "Add mana";
-  const disabled = blockedReason(card, a);
+  const disabled = blockedReason(card, a, ctx);
   const what = a.label || (produced ? `Add ${produced}` : "Add mana");
   return {
     key: `ability-${a.index}`,
@@ -233,8 +241,12 @@ function symbolsForAnswer(produced: string, colors: readonly string[]): string[]
  * naming its colours so the activation needs no second question. A
  * greyed ability stays one greyed option, so its reason is read once.
  */
-export function manaAbilityOptionsFor(card: CardView, a: ManaAbilityView): ManaPickOption[] {
-  const base = manaAbilityOption(card, a);
+export function manaAbilityOptionsFor(
+  card: CardView,
+  a: ManaAbilityView,
+  ctx: ManaOptionContext = {},
+): ManaPickOption[] {
+  const base = manaAbilityOption(card, a, ctx);
   const slots = a.color_options ?? [];
   if (base.disabled || slots.length === 0 || slots.some((s) => s.length === 0)) return [base];
   const combos = colorCombos(slots);
@@ -256,8 +268,8 @@ export function manaAbilityOptionsFor(card: CardView, a: ManaAbilityView): ManaP
 }
 
 /** Every final result `card`'s mana abilities offer, in the server's order. */
-export function manaAbilityOptions(card: CardView): ManaPickOption[] {
-  return (card.mana_abilities ?? []).flatMap((a) => manaAbilityOptionsFor(card, a));
+export function manaAbilityOptions(card: CardView, ctx: ManaOptionContext = {}): ManaPickOption[] {
+  return (card.mana_abilities ?? []).flatMap((a) => manaAbilityOptionsFor(card, a, ctx));
 }
 
 /**
@@ -287,12 +299,14 @@ export type ManaClickPlan =
   | { kind: "pick"; options: ManaPickOption[] };
 
 /**
- * manaClickPlan decides what a left-click on an untapped mana source
- * does. Null when the card has no mana ability (the caller keeps its
- * old click). One live result goes out at once — a Swamp, and also a
- * Command Tower whose identity names one colour. A lone ability the
- * server has greyed still opens the picker, so the player reads WHY
- * instead of seeing nothing happen.
+ * manaClickPlan decides what a left-click does on a source whose only
+ * usable rows are mana rows (the click rule's "mana" answer, ADR 0117
+ * §1). Null when the card has no mana ability. One live result goes
+ * out at once — a Swamp, and also a Command Tower whose identity names
+ * one colour. With several abilities the picker opens and shows every
+ * one, a greyed one with its reason. The click rule never sends a card
+ * here with no usable mana row, so a lone greyed ability is not
+ * reached from a click.
  *
  * ADR 0093 (owner decision, 2026-09-24): a GRANTED option never goes
  * out on its own. A creature under Cryptolith Rite, a Birds with its
@@ -301,8 +315,8 @@ export type ManaClickPlan =
  * between two abilities, and a lone granted one is shown with its
  * grantor before it is used.
  */
-export function manaClickPlan(card: CardView): ManaClickPlan | null {
-  const options = manaAbilityOptions(card);
+export function manaClickPlan(card: CardView, ctx: ManaOptionContext = {}): ManaClickPlan | null {
+  const options = manaAbilityOptions(card, ctx);
   if (options.length === 0) return null;
   const [only] = options;
   if (options.length === 1 && !only.disabled && !only.granted && only.abilityIndex !== undefined) {

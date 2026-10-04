@@ -22,14 +22,15 @@
   // them 180° across the top so they read "across the table". The
   // panel itself is layout-only and doesn't know whether it's rotated.
   //
-  // Click routing for battlefield cards lives here so combat vs.
-  // tap-toggle logic stays in one place. The router mirrors the old
-  // Pixi wireTapClick: combat select on your own creature, declare-
-  // block on an incoming attacker, otherwise tap/untap — except for
-  // planeswalkers, whose click opens the card menu (#329), and mana
-  // sources, whose click taps them FOR mana (#1438). The
-  // decision itself is battlefieldClickIntent, in contextMenu.logic,
-  // so it is testable without rendering Svelte.
+  // Click routing for battlefield cards lives here so the combat
+  // intercepts and the click rule stay in one place: targeting, combat
+  // select on your own creature, an attack on a listed planeswalker or
+  // battle, declare-block on an incoming attacker, and then ADR 0117's
+  // click rule: the card's ability popover when it has a usable
+  // activated ability or special action, its mana when only mana rows
+  // are usable (#1438), and otherwise nothing. The rule itself is
+  // battlefieldClickIntent, in contextMenu.logic, so it is testable
+  // without rendering Svelte.
 
   import type {
     ActionPayload,
@@ -45,10 +46,10 @@
   import { ringBearerNames } from "../../ringEmblem";
   import { cantAttackByCard } from "../../cantAttack";
   import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
-  import { battlefieldClickIntent } from "../../contextMenu.logic";
+  import { battlefieldClickIntent, type BattlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
-  import { openCardMenu } from "../../contextMenu";
+  import { openAbilityPopover } from "../../abilityPopover";
   import { manaClickPlan, manaColorParams, type AnchorRect } from "../../manaSource";
   import { manaAbilityRef } from "../../abilityRef";
   import {
@@ -538,24 +539,17 @@
       onDeclareBlock(card.instance_id);
       return;
     }
-    // #329: a planeswalker's click means "which loyalty ability?",
-    // not "tap it". The card menu is the surface that already
-    // renders activated abilities (ADR 0028), and it carries the
-    // manual loyalty rows for the planeswalkers with no catalog
-    // entry — which is still most of them.
-    //
-    // #1438: a mana source is clicked FOR mana. Only this seat's own
-    // panel wires the activation, so an admin clicking somebody
-    // else's Forest still just turns it sideways.
-    const intent = battlefieldClickIntent(card, viewerID, isAdmin, {
-      manaClick: !!activateManaAbility,
-      rawTap: !!ev?.altKey,
-    });
+    // ADR 0117 §1: the click rule. A left-click acts on what the card
+    // does: its popover for a usable activated ability, loyalty ability
+    // or special action (at the card, never the override menu), its
+    // mana when only mana rows are usable, nothing otherwise. Alt-click
+    // still raw-taps wherever the viewer may drive the card.
+    const intent = clickIntent(card, !!ev?.altKey);
     switch (intent) {
       case "none":
         return;
-      case "abilities":
-        openCardMenu({ card, x: ev?.clientX ?? 0, y: ev?.clientY ?? 0 });
+      case "popover":
+        openAbilityPopover(card.instance_id);
         return;
       case "mana":
         clickForMana(card, ev);
@@ -563,6 +557,44 @@
       case "tap":
         onTapToggle(card);
     }
+  }
+
+  // clickIntent asks the click rule with exactly what this panel hands
+  // the popover (BattlefieldRow → Card → ManaAbilityMenu): the same
+  // wiring, life, timing words and digest gate, so a click never
+  // disagrees with the menu it would open (ADR 0117 §2).
+  function clickIntent(card: CardView, rawTap: boolean): BattlefieldClickIntent {
+    return battlefieldClickIntent(card, viewerID, isAdmin, {
+      manaClick: !!activateManaAbility,
+      special: !!sendSpecialAction,
+      rawTap,
+      view,
+      payerLife,
+      timingWords: rowTimingWords,
+      legalGate: rowGate,
+    });
+  }
+
+  // ADR 0117 §1, the cursor: a card whose left-click would do nothing
+  // right now drops its pointer affordance. Every intercept above that
+  // could take the click keeps it (a live targeting ring is Card's own
+  // to read).
+  function clickInert(card: CardView): boolean {
+    if (
+      (combatMode === "attack" || combatMode === "block") &&
+      card.controller === viewerID &&
+      isCreature(card)
+    ) {
+      return false;
+    }
+    if (
+      combatMode === "attack" &&
+      attackTargetListed(legalGate, selectedCombatCardID, card.instance_id)
+    ) {
+      return false;
+    }
+    if (combatMode === "block" && defendingPlayerOf(card) === viewerID) return false;
+    return clickIntent(card, false) === "none";
   }
 
   // clickForMana is the "mana" branch of the click router (#1438): one
@@ -574,7 +606,7 @@
       closeManaSourcePicker();
       return;
     }
-    const plan = manaClickPlan(card);
+    const plan = manaClickPlan(card, { payerLife });
     if (!plan || !activateManaAbility) return;
     if (plan.kind === "activate") {
       activateManaAbility(card, plan.index, plan.colors);
@@ -626,6 +658,8 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
+      {view}
+      {clickInert}
       {onActivateAbility}
       sorcerySpeedBlocked={rowTimingWords}
       {payerLife}
@@ -655,6 +689,8 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
+      {view}
+      {clickInert}
       {onActivateAbility}
       sorcerySpeedBlocked={rowTimingWords}
       {payerLife}
@@ -678,6 +714,8 @@
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
+      {view}
+      {clickInert}
       {onActivateAbility}
       sorcerySpeedBlocked={rowTimingWords}
       {payerLife}

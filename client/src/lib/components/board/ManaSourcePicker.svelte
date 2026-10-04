@@ -40,7 +40,12 @@
   // the picker is open (an exhaust spent elsewhere) greys its option.
   const card = $derived(findCard(view, open.cardID));
   const onBattlefield = $derived(locateCard(view, open.cardID)?.zone === "battlefield");
-  const options = $derived(card ? manaAbilityOptions(card) : []);
+  // ADR 0117 §2: greyed by the popover's own predicate, which reads the
+  // paying player's life for a "Pay N life" cost: the controller's.
+  const payerLife = $derived(
+    card ? view.seats.find((s) => s.id === (card.controller || card.owner))?.life : undefined,
+  );
+  const options = $derived(card ? manaAbilityOptions(card, { payerLife }) : []);
 
   // The source left the battlefield (or lost its mana abilities) while
   // the picker was open: there is nothing left to pick.

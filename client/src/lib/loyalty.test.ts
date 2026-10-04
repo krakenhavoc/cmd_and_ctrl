@@ -121,20 +121,37 @@ describe("activate_loyalty on the wire", () => {
 
 // --- #329: the click ---------------------------------------------
 
-describe("battlefieldClickIntent", () => {
-  it("offers a planeswalker's abilities instead of tapping it", () => {
-    expect(battlefieldClickIntent(walker(), "a", false)).toBe("abilities");
+describe("battlefieldClickIntent (ADR 0117 §1)", () => {
+  // The frame the click rule judges against: the walker on the
+  // battlefield, Alice's main phase, Alice holding priority.
+  const live = (pw: CardView) => ({ view: view({ battlefield: [pw] }), special: true });
+
+  it("opens a planeswalker's popover instead of tapping it (#329)", () => {
+    expect(battlefieldClickIntent(walker(), "a", false, live(walker()))).toBe("popover");
   });
 
-  it("still offers the menu for a planeswalker with no catalog abilities", () => {
-    // #329's actual card was Teferi, Who Slows the Sunset — no
-    // catalog entry, so no activated abilities. Tapping is still
-    // the wrong answer: the menu carries the manual loyalty rows.
+  it("does nothing once a loyalty ability was activated this turn", () => {
+    const used = walker({ loyalty_activated: true });
+    expect(battlefieldClickIntent(used, "a", false, live(used))).toBe("none");
+  });
+
+  it("does nothing while the window is shut (the server's timing_closed)", () => {
+    expect(battlefieldClickIntent(closedWalker(), "a", false, live(closedWalker()))).toBe("none");
+  });
+
+  it("opens the popover for a planeswalker with no catalog abilities: its manual loyalty rows", () => {
+    // #329's actual card was Teferi, Who Slows the Sunset — no catalog
+    // entry. ADR 0117 §3 moves the manual loyalty rows into the popover.
     const bare = walker({ activated_abilities: undefined });
-    expect(battlefieldClickIntent(bare, "a", false)).toBe("abilities");
+    expect(battlefieldClickIntent(bare, "a", false, live(bare))).toBe("popover");
+    // With nothing to judge the window by, the rows are greyed: nothing.
+    expect(battlefieldClickIntent(bare, "a", false)).toBe("none");
+    // Out of the window: nothing.
+    const offTurn = { view: view({ battlefield: [bare], active: 1, priority: 1 }), special: true };
+    expect(battlefieldClickIntent(bare, "a", false, offTurn)).toBe("none");
   });
 
-  it("taps everything that is not a planeswalker", () => {
+  it("does nothing for a creature with no ability", () => {
     const bear: CardView = {
       instance_id: "c1",
       name: "Bear",
@@ -142,20 +159,21 @@ describe("battlefieldClickIntent", () => {
       controller: "a",
       type_line: "Creature — Bear",
     };
-    expect(battlefieldClickIntent(bear, "a", false)).toBe("tap");
+    expect(battlefieldClickIntent(bear, "a", false)).toBe("none");
   });
 
   it("does nothing for a card the viewer neither controls nor admins", () => {
     expect(battlefieldClickIntent(walker({ controller: "b" }), "a", false)).toBe("none");
   });
 
-  it("lets an admin drive someone else's planeswalker", () => {
-    expect(battlefieldClickIntent(walker({ controller: "b" }), "a", true)).toBe("abilities");
+  it("does nothing on an admin's plain click on someone else's planeswalker", () => {
+    // Who the card belongs to is the viewer's seat, not canOverride.
+    expect(battlefieldClickIntent(walker({ controller: "b" }), "a", true)).toBe("none");
   });
 
   // --- #368: the same shape on a utility land ----------------------
 
-  it("offers a fetchland's abilities instead of tapping it", () => {
+  it("opens a fetchland's popover instead of tapping it", () => {
     const passage: CardView = {
       instance_id: "l1",
       name: "Fabled Passage",
@@ -163,13 +181,13 @@ describe("battlefieldClickIntent", () => {
       controller: "a",
       type_line: "Land",
       activated_abilities: [
-        { index: 0, label: "{T}, Sacrifice this land: Search for a basic land" },
+        { index: 0, label: "{T}, Sacrifice this land: Search for a basic land", tap_cost: true },
       ],
     };
-    expect(battlefieldClickIntent(passage, "a", false)).toBe("abilities");
+    expect(battlefieldClickIntent(passage, "a", false)).toBe("popover");
   });
 
-  it("still taps a plain land, which has mana abilities and nothing else", () => {
+  it("taps a plain land for mana, and does nothing on one that is tapped", () => {
     const forest: CardView = {
       instance_id: "l2",
       name: "Forest",
@@ -178,10 +196,13 @@ describe("battlefieldClickIntent", () => {
       type_line: "Basic Land — Forest",
       mana_abilities: [{ index: 0, label: "{T}: Add {G}", tap_cost: true }],
     };
-    expect(battlefieldClickIntent(forest, "a", false)).toBe("tap");
+    expect(battlefieldClickIntent(forest, "a", false, { manaClick: true })).toBe("mana");
+    expect(
+      battlefieldClickIntent({ ...forest, tapped: true }, "a", false, { manaClick: true }),
+    ).toBe("none");
   });
 
-  it("still taps an animated manland so it stays combat-selectable", () => {
+  it("opens an animated manland's popover for its ability", () => {
     const manland: CardView = {
       instance_id: "l3",
       name: "Celestial Colonnade",
@@ -190,7 +211,7 @@ describe("battlefieldClickIntent", () => {
       type_line: "Creature Land — Elemental",
       activated_abilities: [{ index: 0, label: "{3}{W}{U}: becomes a 4/4" }],
     };
-    expect(battlefieldClickIntent(manland, "a", false)).toBe("tap");
+    expect(battlefieldClickIntent(manland, "a", false)).toBe("popover");
   });
 });
 

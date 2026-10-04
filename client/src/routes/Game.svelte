@@ -25,6 +25,7 @@
   import { isStaleAbilityRefError } from "../lib/abilityRef";
   import { closeCardMenu } from "../lib/contextMenu";
   import { closeManaSourcePicker } from "../lib/manaSourcePicker";
+  import { closeAbilityPopover } from "../lib/abilityPopover";
   import {
     canManageTable,
     canSpawn,
@@ -574,6 +575,7 @@
   $effect(() => {
     if (!staleAbilityRef) return;
     closeManaSourcePicker();
+    closeAbilityPopover();
     closeCardMenu();
   });
   function castAnyway(): void {

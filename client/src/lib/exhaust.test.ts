@@ -3,7 +3,7 @@ import {
   abilityBlocked,
   ABILITY_EXHAUSTED,
   ACTIVATION_CONDITION_UNMET,
-  NO_COMMANDER_IDENTITY,
+  ADDS_NO_MANA,
 } from "./contextMenu.logic";
 import type { ManaAbilityView } from "./protocol";
 
@@ -72,6 +72,6 @@ describe("abilityBlocked and exhausted", () => {
     expect(abilityBlocked({ exhausted: true, adds_no_mana: true }, false, false)).toBe(
       ABILITY_EXHAUSTED,
     );
-    expect(abilityBlocked({ adds_no_mana: true }, false, false)).toBe(NO_COMMANDER_IDENTITY);
+    expect(abilityBlocked({ adds_no_mana: true }, false, false)).toBe(ADDS_NO_MANA);
   });
 });

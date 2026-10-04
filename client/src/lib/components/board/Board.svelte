@@ -64,6 +64,7 @@
   import { cardMenu, closeCardMenu } from "../../contextMenu";
   import ManaSourcePicker from "./ManaSourcePicker.svelte";
   import { manaSourcePicker, closeManaSourcePicker } from "../../manaSourcePicker";
+  import { closeAbilityPopover } from "../../abilityPopover";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
   import type { MenuActivate } from "../../contextMenu.logic";
@@ -387,10 +388,14 @@
     };
   });
 
-  // #1438: the mana picker's store is module-scoped, so leaving the
-  // table must not leave a picker waiting for the next one.
+  // #1438: the mana picker's store is module-scoped, and since ADR 0117
+  // so is the open ability popover, so leaving the table must not leave
+  // either waiting for the next one.
   $effect(() => {
-    return () => closeManaSourcePicker();
+    return () => {
+      closeManaSourcePicker();
+      closeAbilityPopover();
+    };
   });
 
   function handleTapToggle(card: CardView): void {

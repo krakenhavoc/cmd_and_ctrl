@@ -11,21 +11,16 @@
   // layout concerns out of this component lets the battlefield
   // figure out overflow / flip-to-top-if-near-edge itself.
 
-  import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
+  import type { ActivatedAbilityView, CardView, GameView, ManaAbilityView } from "../../protocol";
   import {
-    abilityBlocked as sharedAbilityBlocked,
     chargedManaCostLabel,
     chargedManaCostNote,
-    type AbilityCost,
+    judgeAbilityRows,
+    type AbilityRowContext,
     type MenuAction,
     type MenuItem,
   } from "../../contextMenu.logic";
-  import {
-    NO_LEGAL_ACTIONS,
-    digestRefusesRow,
-    readyFirst,
-    type LegalActions,
-  } from "../../legalActions";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -73,10 +68,24 @@
     // section.
     special?: MenuItem[];
     onSpecialAction?: (action: MenuAction) => void;
-    // #1438: a left-click on a mana source taps it FOR mana now, so
-    // turning it sideways WITHOUT making mana lives here, labelled so
-    // nobody mistakes it for the mana row. Undefined hides it.
+    // ADR 0117 §3: the Sandbox section, one row at the bottom: Tap or
+    // Untap, whichever applies (CR 701.26a, 701.26b). It sends the raw
+    // tap / untap, which adds no mana and activates nothing. Card sets
+    // it on every permanent the viewer controls. On a mana source the
+    // Tap row keeps #1438's label, "Tap (no mana)". Undefined hides it.
     onRawTap?: () => void;
+    // ADR 0117 §2: the card the rows belong to, for its restrictions
+    // (Arrest, Faith's Fetters) and, with `view` and `viewerID`, a
+    // planeswalker's "already activated this turn" and the −N it cannot
+    // pay. Absent (a popover mounted on its own) reads none of those.
+    card?: CardView;
+    view?: GameView | null;
+    viewerID?: string | null;
+    // ADR 0117 §3: an uncatalogued planeswalker's manual loyalty rows
+    // (contextMenu.logic.ts manualLoyaltyRows), listed with the
+    // activated rows. A row fires `onMenuAction` with its action.
+    manualLoyalty?: MenuItem[];
+    onMenuAction?: (action: MenuAction) => void;
     onClose?: () => void;
     // #1695: the paying player's current life — the card's
     // controller, same as the right-click context menu's rule. A
@@ -112,6 +121,11 @@
     onClose,
     payerLife,
     across = false,
+    card,
+    view,
+    viewerID,
+    manualLoyalty = [],
+    onMenuAction,
   }: Props = $props();
 
   function fireSpecial(item: MenuItem): void {
@@ -120,79 +134,55 @@
     onClose?.();
   }
 
-  // The fallback sentence when the server shut a window the panel's
-  // words call open: a per-player restriction, or a digest that
-  // leaves the row out for a reason other than timing (the cost).
-  const NOT_RIGHT_NOW = "Can't activate this right now";
-
   function activate(index: number): void {
     onActivate(index);
     onClose?.();
   }
 
-  // An ability is unavailable when its tap cost can't be paid, its
-  // life cost is more than the payer has, a sacrifice / return /
-  // tap-other cost has nothing to pay it with, or any of the other
-  // reasons the right-click context menu already judges through
-  // `abilityBlocked` in contextMenu.logic.ts (#1695 — this used to be
-  // a second, hand-maintained copy of that whole predicate, and the
-  // copy never grew a life-cost check at all, which is what let an
-  // unaffordable "Pay N life" ability stay clickable here after #1690
-  // fixed the context menu's copy).
+  // Whether each row can be used is ADR 0117 §2's one predicate
+  // (contextMenu.logic.ts abilityRowBlocked), the same one the
+  // left-click rule, the mana picker and the override menu ask, so a
+  // click never disagrees with this menu. #1695 began it: this popover
+  // used to keep a hand-maintained copy that never grew a life check.
   //
-  // Timing is the server's answer, in two parts (ADR 0105 sub-PR 3):
-  //
-  //   - `timing_closed`, the row's own verdict (#1208). Checked here
-  //     rather than left to the shared predicate so that it covers
-  //     loyalty rows too: the shared predicate reads those only with a
-  //     LoyaltyContext, which this popover does not have. The words
-  //     are the panel's.
-  //   - the digest, after every row-field reason so that a more
-  //     specific sentence wins. A sorcery-speed row the exact digest
-  //     leaves out greys: the server would refuse it, whether for
-  //     priority or for the cost. Only sorcery-speed rows, which are
-  //     the rows the old client gate covered. An instant-speed row the
-  //     digest misses stays live, so a gap in the enumerator leaves
-  //     the row unmarked but never greys a move the engine accepts
-  //     (ADR 0105, Consequences).
-  //
-  // With no digest (no decision owed, an older server, the capped
-  // fallback) only the row fields judge, so nothing is newly greyed.
-  function abilityBlocked(a: AbilityCost & { ref?: string }, activated: boolean): string {
-    if (a.tap_cost && tapped) return "already tapped";
-    if (a.tap_cost && summoningSick) return "summoning sickness";
-    if (a.timing_closed) return timingReason || NOT_RIGHT_NOW;
-    const fromRow = sharedAbilityBlocked(a, tapped, summoningSick, undefined, payerLife);
-    if (fromRow) return fromRow;
-    if (activated && (a.sorcery_speed || across) && digestRefusesRow(legalGate, cardID, a.ref)) {
-      return NOT_RIGHT_NOW;
-    }
-    return "";
+  // Timing is the server's answer (ADR 0105 sub-PR 3): the row's own
+  // `timing_closed` (#1208), said in the panel's words, and the digest,
+  // which greys a sorcery-speed row (or, `across`, any any-player row)
+  // whose ref the exact digest leaves out. With no digest only the row
+  // fields judge, so nothing is newly greyed. A ready row (ADR 0105
+  // §2) takes the accent and sorts first, and a greyed row never does.
+  const ctx = $derived<AbilityRowContext>({
+    card,
+    cardID,
+    tapped,
+    sick: summoningSick,
+    payerLife,
+    timingWords: timingReason,
+    legalGate,
+    across,
+    loyalty: card ? { card, view, viewerID: viewerID ?? null } : undefined,
+  });
+  const manaRows = $derived(judgeAbilityRows(abilities, "mana", ctx, legal.readyManaRefs(cardID)));
+  const activatedRows = $derived(
+    judgeAbilityRows(activated, "activated", ctx, legal.readyAbilityRefs(cardID)),
+  );
+
+  function fireLoyalty(item: MenuItem): void {
+    if (item.disabled || !item.action) return;
+    onMenuAction?.(item.action);
+    onClose?.();
   }
 
-  // ADR 0105 §2: a row the server would accept right now takes the
-  // ready accent and sorts first. Legality is the digest's ref list
-  // and nothing else. A row the row fields grey is never accented,
-  // even if the two ever disagreed: an accent on a disabled button
-  // would say two things at once.
-  interface Row<T> {
-    a: T;
-    blocked: string;
-    ready: boolean;
-  }
-  function rows<T extends AbilityCost & { ref?: string }>(
-    list: readonly T[],
-    refs: readonly string[],
-    activated: boolean,
-  ): Row<T>[] {
-    const out = list.map((a) => {
-      const blocked = abilityBlocked(a, activated);
-      return { a, blocked, ready: !blocked && !!a.ref && refs.includes(a.ref) };
-    });
-    return readyFirst(out, (r) => r.ready);
-  }
-  const manaRows = $derived(rows(abilities, legal.readyManaRefs(cardID), false));
-  const activatedRows = $derived(rows(activated, legal.readyAbilityRefs(cardID), true));
+  // ADR 0117 §3: the Sandbox row's words. On a mana source the Tap row
+  // keeps "Tap (no mana)" (#1438), so nobody mistakes it for the mana
+  // row.
+  const makesMana = $derived(abilities.length > 0);
+  const sandboxLabel = $derived(tapped ? "Untap" : makesMana ? "Tap (no mana)" : "Tap");
+  const sandboxTitle = $derived(
+    tapped
+      ? "Untap it by hand: a manual change that activates nothing"
+      : "Turn it sideways by hand: a manual change that adds no mana and activates nothing",
+  );
 
   function activateAbility(index: number): void {
     onActivateAbility?.(index);
@@ -231,7 +221,7 @@
       <span class="cost" aria-hidden="true">✦</span>
     </button>
   {/each}
-  {#if special.length > 0 && (abilities.length > 0 || activated.length > 0)}
+  {#if special.length > 0 && (abilities.length > 0 || activated.length > 0 || manualLoyalty.length > 0)}
     <div class="divider" role="separator"></div>
   {/if}
   {#each manaRows as { a, blocked, ready } (a.index)}
@@ -243,6 +233,7 @@
       role="menuitem"
       disabled={!!blocked}
       title={blocked || (a.produced ? `produces ${a.produced}` : a.label)}
+      data-kind="mana"
       onclick={(ev) => {
         ev.stopPropagation();
         if (!blocked) activate(a.index);
@@ -275,7 +266,7 @@
       {/if}
     </button>
   {/each}
-  {#if activated.length > 0}
+  {#if activated.length > 0 || manualLoyalty.length > 0}
     {#if abilities.length > 0}
       <div class="divider" role="separator"></div>
     {/if}
@@ -288,6 +279,7 @@
         role="menuitem"
         disabled={!!blocked}
         title={blocked || a.label}
+        data-kind="activated"
         onclick={(ev) => {
           ev.stopPropagation();
           if (!blocked) activateAbility(a.index);
@@ -309,24 +301,48 @@
         {/if}
       </button>
     {/each}
+    {#each manualLoyalty as item (item.id)}
+      <!-- ADR 0117 §3: a real activate_loyalty with a delta, whose text
+           the players resolve. Greyed by canActivateLoyalty. -->
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        disabled={item.disabled}
+        title={item.hint || item.label}
+        data-loyalty={item.id}
+        onclick={(ev) => {
+          ev.stopPropagation();
+          fireLoyalty(item);
+        }}
+      >
+        <span class="label">{item.label}</span>
+      </button>
+    {/each}
   {/if}
   {#if onRawTap}
+    <!-- ADR 0117 §3: the Sandbox section. Never a pip, never counted by
+         the click rule: it is on every permanent the viewer controls. -->
     <div class="divider" role="separator"></div>
-    <button
-      type="button"
-      class="menu-item"
-      role="menuitem"
-      title="Turn it sideways without adding mana"
-      data-raw-tap
-      onclick={(ev) => {
-        ev.stopPropagation();
-        onRawTap?.();
-        onClose?.();
-      }}
-    >
-      <span class="label">Tap (no mana)</span>
-      <span class="cost" aria-hidden="true">↻</span>
-    </button>
+    <div class="sandbox" role="group" aria-label="sandbox">
+      <span class="section-label" aria-hidden="true">Sandbox</span>
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        title={sandboxTitle}
+        data-raw-tap
+        data-sandbox={tapped ? "untap" : "tap"}
+        onclick={(ev) => {
+          ev.stopPropagation();
+          onRawTap?.();
+          onClose?.();
+        }}
+      >
+        <span class="label">{sandboxLabel}</span>
+        <span class="cost" aria-hidden="true">↻</span>
+      </button>
+    </div>
   {/if}
 </div>
 
@@ -335,6 +351,19 @@
     height: 1px;
     margin: 4px 2px;
     background: rgba(200, 168, 106, 0.35);
+  }
+
+  .sandbox {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .section-label {
+    padding: 0 8px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.6;
   }
 
   .mana-menu {

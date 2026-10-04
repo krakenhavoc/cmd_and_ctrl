@@ -79,13 +79,21 @@ describe("manaClickPlan", () => {
     expect(manaClickPlan(birds)).toEqual({ kind: "activate", index: 0 });
   });
 
-  it("does not pre-empt summoning sickness — the server refuses it", () => {
+  // ADR 0117 §2: the picker greys with the popover's predicate, so a
+  // summoning-sick dork's {T} row is greyed rather than sent for the
+  // server to refuse (#1438's old posture). The click rule never sends
+  // it here at all: its only row is unusable, so the click does nothing.
+  it("greys summoning sickness, as the popover does", () => {
     const sick = card({
       type_line: "Creature — Elf Druid",
       summoning_sick: true,
       mana_abilities: [ability(0, { produced: "{G}" })],
     });
-    expect(manaClickPlan(sick)).toEqual({ kind: "activate", index: 0 });
+    const plan = manaClickPlan(sick);
+    expect(plan?.kind).toBe("pick");
+    if (plan?.kind !== "pick") return;
+    expect(plan.options[0].disabled).toBe("summoning sickness");
+    expect(battlefieldClickIntent(sick, "me", false, { manaClick: true })).toBe("none");
   });
 
   it("opens the picker for a source with several abilities, in the server's order", () => {
@@ -103,7 +111,7 @@ describe("manaClickPlan", () => {
     });
   });
 
-  it("opens the picker to say why when the only ability is greyed by the server", () => {
+  it("greys an ability that adds no mana right now with the generic reason (ADR 0117 §5)", () => {
     const tower = card({
       name: "Command Tower",
       type_line: "Land",
@@ -112,7 +120,19 @@ describe("manaClickPlan", () => {
     const plan = manaClickPlan(tower);
     expect(plan?.kind).toBe("pick");
     if (plan?.kind !== "pick") return;
-    expect(plan.options[0].disabled).toMatch(/commander/);
+    expect(plan.options[0].disabled).toBe("adds no mana right now");
+    // And the click never reaches it: its only row is unusable.
+    expect(battlefieldClickIntent(tower, "me", false, { manaClick: true })).toBe("none");
+  });
+
+  it("greys a life cost the payer cannot afford, when the picker knows the life", () => {
+    const confluence = card({
+      name: "Mana Confluence",
+      type_line: "Land",
+      mana_abilities: [ability(0, { produced: "{W|U|B|R|G}", life_cost: 1 })],
+    });
+    expect(manaClickPlan(confluence, { payerLife: 0 })).toMatchObject({ kind: "pick" });
+    expect(manaClickPlan(confluence, { payerLife: 1 })).toEqual({ kind: "activate", index: 0 });
   });
 
   it("has no plan for a permanent without mana abilities", () => {
@@ -263,7 +283,7 @@ describe("placePopover", () => {
   });
 });
 
-describe("battlefieldClickIntent — #1438 click for mana", () => {
+describe("battlefieldClickIntent — the mana half of ADR 0117's click rule", () => {
   const mana = { manaClick: true };
 
   it("clicks an untapped mana source for mana", () => {
@@ -271,40 +291,44 @@ describe("battlefieldClickIntent — #1438 click for mana", () => {
     expect(battlefieldClickIntent(forge(), "me", false, mana)).toBe("mana");
   });
 
-  it("untaps a tapped source with one click", () => {
+  it("does nothing on a tapped source: its {T} row is unusable, and Untap is in the popover", () => {
     const tapped = { ...swamp(), tapped: true };
-    expect(battlefieldClickIntent(tapped, "me", false, mana)).toBe("tap");
+    expect(battlefieldClickIntent(tapped, "me", false, mana)).toBe("none");
   });
 
   it("raw-taps on Alt-click", () => {
     expect(battlefieldClickIntent(swamp(), "me", false, { ...mana, rawTap: true })).toBe("tap");
   });
 
-  it("keeps click-to-tap for a permanent with no mana ability", () => {
+  it("does nothing on a permanent with no ability at all", () => {
     const bear = card({ type_line: "Creature — Bear" });
-    expect(battlefieldClickIntent(bear, "me", false, mana)).toBe("tap");
+    expect(battlefieldClickIntent(bear, "me", false, mana)).toBe("none");
   });
 
-  it("raw-taps where the panel cannot activate (an admin on another seat's land)", () => {
-    expect(battlefieldClickIntent(swamp(), "admin", true)).toBe("tap");
+  it("does nothing on an admin's plain click on another seat's land; Alt-click still taps it", () => {
+    expect(battlefieldClickIntent(swamp(), "admin", true)).toBe("none");
+    expect(battlefieldClickIntent(swamp(), "admin", true, { rawTap: true })).toBe("tap");
   });
 
-  it("clicks a utility land that also makes mana for its mana (Rogue's Passage)", () => {
+  it("opens the popover for a utility land that also makes mana (Rogue's Passage)", () => {
     const passage = card({
       name: "Rogue's Passage",
       type_line: "Land",
       mana_abilities: [ability(0, { produced: "{C}" })],
-      activated_abilities: [{ index: 0, label: "{4}, {T}: can't be blocked" }],
+      activated_abilities: [{ index: 0, label: "{4}, {T}: can't be blocked", tap_cost: true }],
     } as Partial<CardView>);
-    expect(battlefieldClickIntent(passage, "me", false, mana)).toBe("mana");
+    expect(battlefieldClickIntent(passage, "me", false, mana)).toBe("popover");
+    // Tapped, neither row can be used.
+    expect(battlefieldClickIntent({ ...passage, tapped: true }, "me", false, mana)).toBe("none");
   });
 
-  it("still opens a planeswalker's menu (#329)", () => {
+  it("taps a planeswalker with only a mana ability for its mana", () => {
+    // No catalog loyalty rows, and no frame to judge manual ones by.
     const walker = card({
       type_line: "Legendary Planeswalker — Nissa",
       mana_abilities: [ability(0, { produced: "{G}" })],
     });
-    expect(battlefieldClickIntent(walker, "me", false, mana)).toBe("abilities");
+    expect(battlefieldClickIntent(walker, "me", false, mana)).toBe("mana");
   });
 
   it("does nothing on an opponent's source", () => {
