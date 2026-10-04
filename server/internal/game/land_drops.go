@@ -31,7 +31,7 @@ import "github.com/google/uuid"
 //     DERIVED rather than written into the player: two Explorations
 //     have to compose, and one of them leaving must not restore an
 //     allowance the other is still granting. Same argument, verbatim,
-//     as CatalogNoMaxHandSize (#338) — see effect_hooks.go.
+//     as CatalogHandSize (#338, #2074) — see max_hand_size.go.
 //   - Game.ExtraLandDropsThisTurn — one-shot grants that expire with
 //     the turn ("you may play an additional land this turn"), written
 //     by GrantAdditionalLandPlayForEffect and cleared in
@@ -56,7 +56,7 @@ const DefaultLandDropsPerTurn = 1
 // cards/effects package from `effects.Spec.AdditionalLandPlays`.
 //
 // Player-scoped continuous effect, so it is a derived hook rather
-// than a CR 613 layer, for the reasons CatalogNoMaxHandSize spells
+// than a CR 613 layer, for the reasons CatalogHandSize spells
 // out: the layer engine models characteristics of objects and "you
 // may play an additional land" is not one.
 var CatalogAdditionalLandPlays func(oracleID string) int
