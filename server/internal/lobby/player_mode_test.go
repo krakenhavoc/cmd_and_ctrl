@@ -18,6 +18,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -609,27 +610,25 @@ var keptServerCredentialSites = map[string]int{
 // the same-answer table.
 func TestServerCredentialSitesAreAllKept(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(fi fs.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") }, 0)
+	files, err := parseNonTestGoFiles(fset, ".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := map[string]int{}
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Files {
-			for _, decl := range f.Decls {
-				fd, ok := decl.(*ast.FuncDecl)
-				if !ok || fd.Body == nil || fd.Name.Name == "isAdminPrincipal" {
-					continue
-				}
-				ast.Inspect(fd.Body, func(n ast.Node) bool {
-					if call, ok := n.(*ast.CallExpr); ok {
-						if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "isServerCredential" {
-							got[fd.Name.Name]++
-						}
-					}
-					return true
-				})
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok || fd.Body == nil || fd.Name.Name == "isAdminPrincipal" {
+				continue
 			}
+			ast.Inspect(fd.Body, func(n ast.Node) bool {
+				if call, ok := n.(*ast.CallExpr); ok {
+					if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "isServerCredential" {
+						got[fd.Name.Name]++
+					}
+				}
+				return true
+			})
 		}
 	}
 	for fn, n := range got {
@@ -649,28 +648,26 @@ func TestServerCredentialSitesAreAllKept(t *testing.T) {
 func TestIsAllowlistedIsAskedOnlyByTheSwitchAndMe(t *testing.T) {
 	allowed := map[string]bool{"isAdminPrincipal": true, "adminModeOf": true, "putAdminMode": true, "me": true}
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(fi fs.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") }, 0)
+	files, err := parseNonTestGoFiles(fset, ".")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Files {
-			for _, decl := range f.Decls {
-				name := ""
-				if fd, ok := decl.(*ast.FuncDecl); ok {
-					name = fd.Name.Name
-				}
-				ast.Inspect(decl, func(n ast.Node) bool {
-					call, ok := n.(*ast.CallExpr)
-					if !ok {
-						return true
-					}
-					if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "isAllowlisted" && !allowed[name] {
-						t.Errorf("%s: isAllowlisted in %s; an admin decision asks isAdmin(p), which also checks the mode (ADR 0112 §2 item 2)", fset.Position(call.Pos()), name)
-					}
-					return true
-				})
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			name := ""
+			if fd, ok := decl.(*ast.FuncDecl); ok {
+				name = fd.Name.Name
 			}
+			ast.Inspect(decl, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "isAllowlisted" && !allowed[name] {
+					t.Errorf("%s: isAllowlisted in %s; an admin decision asks isAdmin(p), which also checks the mode (ADR 0112 §2 item 2)", fset.Position(call.Pos()), name)
+				}
+				return true
+			})
 		}
 	}
 }
@@ -717,7 +714,7 @@ func fine(c *Card) bool { return c.Unlocked.Has(1) }`, 0},
 func adminCallSites(t *testing.T) map[string]bool {
 	t.Helper()
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(fi fs.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") }, 0)
+	files, err := parseNonTestGoFiles(fset, ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -736,54 +733,52 @@ func adminCallSites(t *testing.T) map[string]bool {
 		return false
 	}
 	sites := map[string]bool{}
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Files {
-			for _, decl := range f.Decls {
-				fd, ok := decl.(*ast.FuncDecl)
-				if !ok || fd.Body == nil || definitions[fd.Name.Name] {
-					continue
-				}
-				if fd.Name.Name == "Handler" {
-					ast.Inspect(fd.Body, func(n ast.Node) bool {
-						call, ok := n.(*ast.CallExpr)
-						if !ok || len(call.Args) != 2 {
-							return true
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok || fd.Body == nil || definitions[fd.Name.Name] {
+				continue
+			}
+			if fd.Name.Name == "Handler" {
+				ast.Inspect(fd.Body, func(n ast.Node) bool {
+					call, ok := n.(*ast.CallExpr)
+					if !ok || len(call.Args) != 2 {
+						return true
+					}
+					sel, ok := call.Fun.(*ast.SelectorExpr)
+					if !ok || sel.Sel.Name != "Handle" {
+						return true
+					}
+					admin := false
+					ast.Inspect(call.Args[1], func(n ast.Node) bool {
+						if isAdminCall(n) {
+							admin = true
 						}
-						sel, ok := call.Fun.(*ast.SelectorExpr)
-						if !ok || sel.Sel.Name != "Handle" {
-							return true
-						}
-						admin := false
-						ast.Inspect(call.Args[1], func(n ast.Node) bool {
-							if isAdminCall(n) {
-								admin = true
-							}
-							return true
-						})
-						if !admin {
-							return true
-						}
-						lit, ok := call.Args[0].(*ast.BasicLit)
-						if !ok {
-							t.Errorf("an admin route in Handler with a non-literal pattern at %s", fset.Position(call.Pos()))
-							return true
-						}
-						pattern, _ := strconv.Unquote(lit.Value)
-						sites["route:"+pattern] = true
 						return true
 					})
-					continue
-				}
-				found := false
-				ast.Inspect(fd.Body, func(n ast.Node) bool {
-					if isAdminCall(n) {
-						found = true
+					if !admin {
+						return true
 					}
-					return !found
+					lit, ok := call.Args[0].(*ast.BasicLit)
+					if !ok {
+						t.Errorf("an admin route in Handler with a non-literal pattern at %s", fset.Position(call.Pos()))
+						return true
+					}
+					pattern, _ := strconv.Unquote(lit.Value)
+					sites["route:"+pattern] = true
+					return true
 				})
-				if found {
-					sites[fd.Name.Name] = true
+				continue
+			}
+			found := false
+			ast.Inspect(fd.Body, func(n ast.Node) bool {
+				if isAdminCall(n) {
+					found = true
 				}
+				return !found
+			})
+			if found {
+				sites[fd.Name.Name] = true
 			}
 		}
 	}
@@ -1177,4 +1172,27 @@ func TestEveryAdminCallSiteIsInTheSameAnswerTable(t *testing.T) {
 	if len(want) < 25 {
 		t.Errorf("found only %d admin call sites; the census is not reading the package", len(want))
 	}
+}
+
+// parseNonTestGoFiles parses every non-test Go file in dir. It replaces
+// go/parser.ParseDir, deprecated since Go 1.25; like the call it
+// replaces, it ignores build tags.
+func parseNonTestGoFiles(fset *token.FileSet, dir string) ([]*ast.File, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []*ast.File
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, 0)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, f)
+	}
+	return files, nil
 }

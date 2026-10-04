@@ -152,7 +152,7 @@ func fillEveryField(t *testing.T, v reflect.Value) {
 				fillEveryField(t, v.Field(i))
 			}
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		p := reflect.New(v.Type().Elem())
 		fillEveryField(t, p.Elem())
 		v.Set(p)

@@ -127,12 +127,11 @@ type PlayerStatic struct {
 	// Plain data, like everything else here — CastTimingRule is
 	// flags, two strings and a zone.
 	//
-	// No `omitzero`: `encoding/json` only honours that option from Go
-	// 1.24, and this field is part of GameSnapshot's graph
-	// (PlayerSnapshot.Statics[].Timing), so a build with an older
-	// toolchain (CI's pinned 1.22) always wrote it while a newer local
-	// one silently omitted it at its zero value — the divergence
-	// #1492 found. Always writing it is toolchain-independent.
+	// No `omitzero`: this field is part of GameSnapshot's graph
+	// (PlayerSnapshot.Statics[].Timing). When the module's floor was
+	// below Go 1.24 a build on an older toolchain always wrote it while
+	// a newer one omitted it at its zero value — the divergence #1492
+	// found. It is always written; omitzero_tag_guard_test.go holds that.
 	Timing CastTimingRule `json:"timing"`
 
 	// LifeTotalLocked is "your life total can't change" (CR 119.7,

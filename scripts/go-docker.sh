@@ -12,9 +12,8 @@
 # script through tail or head: that replaces the status with the pipe's.
 set -euo pipefail
 
-GO_IMAGE="${CMDCTRL_GO_IMAGE:-golang:1.22}"     # matches server/go.mod
-LINT_IMAGE="${CMDCTRL_LINT_IMAGE:-golang:1.24}" # golangci-lint v1.64.8 needs a newer Go
-LINT_PKG="github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8" # keep in step with server/Makefile
+GO_IMAGE="${CMDCTRL_GO_IMAGE:-golang:1.27}" # matches server/go.mod; lint runs on it too
+LINT_PKG="github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0" # keep in step with server/Makefile
 MAX_GB="${CMDCTRL_GOCACHE_MAX_GB:-15}"
 
 VOL_MOD=cmdctrl-gomod
@@ -31,11 +30,13 @@ Runs the Go server toolchain in Docker with the repo mounted at /work and the
 three shared cache volumes (cmdctrl-gomod, cmdctrl-gobuild, cmdctrl-golangci).
 Never create any other cache volume. The exit status is the command's own.
 
+Every command runs on golang:1.27, the version server/go.mod declares.
+
 Commands:
-  test [args]    go test -race -cover [args]      (default ./...)  golang:1.22
-  vet [args]     go vet [args]                    (default ./...)  golang:1.22
-  lint [args]    golangci-lint v1.64.8 run [args] (default ./...)  golang:1.24
-  go <args>      go <args>, run in server/                         golang:1.22
+  test [args]    go test -race -cover [args]      (default ./...)
+  vet [args]     go vet [args]                    (default ./...)
+  lint [args]    golangci-lint v2.14.0 run [args] (default ./...)
+  go <args>      go <args>, run in server/
   prune          empty the build cache and the lint cache
   -h, --help     this text
 
@@ -91,8 +92,7 @@ case "$cmd" in
   lint)
     [ $# -gt 0 ] || set -- ./...
     run_cmd=(go run "$LINT_PKG" run "$@")
-    image="$LINT_IMAGE"
-    flags=(-e GOTOOLCHAIN=auto -e GOFLAGS=-buildvcs=false)
+    flags=(-e GOFLAGS=-buildvcs=false)
     ;;
   go)
     run_cmd=(go "$@")
