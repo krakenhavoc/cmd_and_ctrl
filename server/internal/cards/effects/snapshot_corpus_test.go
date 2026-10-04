@@ -408,6 +408,12 @@ func corpusBoards() []corpusBoard {
 		// data and so a restore point.
 		{"commander_return_due", corpusCommanderReturnDue},
 		{"commander_return_prompt", corpusCommanderReturnPrompt},
+		// v7, added by ADR 0114 PR 2 (#2076) as a new file: the Ring
+		// tempts two players once each — each one's Ring emblem
+		// (emblem:the-ring, Card.ringTemptations) and their Ring-bearer
+		// (Card.ringBearer), one chosen at the prompt and one the only
+		// creature. PR 3 adds the level 4 board.
+		{"the_ring", corpusTheRing},
 	}
 }
 
@@ -486,6 +492,43 @@ func corpusSacrificeCostObjects(t *testing.T) *game.Game {
 	if item := g.StackMeta[id]; item == nil || len(item.Paid.SacrificedObjects) != 1 {
 		t.Fatal("setup: Fling's payment record names no sacrificed creature")
 	}
+	return g
+}
+
+// corpusTheRing is two players the Ring has tempted once each, a
+// Ring-bearer each: one chosen at the ring_bearer prompt, one forced.
+func corpusTheRing(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	bearer := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Runeclaw Bear", 2, 2))
+	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Balduvian Bears", 2, 2))
+	var err error
+	g.WithWriteLock(func() {
+		if err = g.RingTemptsForEffect(me, uuid.Nil, nil); err == nil {
+			err = g.RingTemptsForEffect(opp, uuid.Nil, nil)
+		}
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	var prompt *game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceRingBearer {
+			prompt = c
+		}
+	}
+	if prompt == nil {
+		t.Fatal("setup: two creatures and no ring_bearer prompt")
+	}
+	if err := g.ResolveRingBearer(prompt.ID, me, []uuid.UUID{bearer}); err != nil {
+		t.Fatalf("setup: ResolveRingBearer: %v", err)
+	}
+	g.ReadSnapshot(func() {
+		if game.RingBearerOf(g, me) != bearer || game.RingBearerOf(g, opp) != theirs {
+			t.Fatal("setup: the Ring-bearers are not the ones chosen")
+		}
+	})
 	return g
 }
 

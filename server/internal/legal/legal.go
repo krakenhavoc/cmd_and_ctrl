@@ -352,7 +352,30 @@ type Options struct {
 	// enumerator spends the BOTTOM of it. A policy that answered one
 	// with the other would pitch its best card every time.
 	OrderCostFuel CostFuelOrder
+
+	// OrderRingBearer ranks the candidates of a ring_bearer prompt
+	// (ADR 0114 §4, §7) — "choose your Ring-bearer" — so the creature
+	// the seat most wants to be legendary and evasive reaches
+	// MaxExpansionPerSource first.
+	//
+	// Nil — the default, and what every non-bot caller passes — keeps
+	// the candidates in battlefield order.
+	//
+	// A third hook rather than OrderTargets or OrderCostFuel because
+	// it asks a third question: not "what matters on somebody else's
+	// board" and not "what would I miss least", but "which of MY
+	// creatures do I most want carrying the Ring". Higher sorts
+	// earlier, like OrderTargets.
+	OrderRingBearer RingBearerOrder
 }
+
+// RingBearerOrder prices one candidate of a ring_bearer prompt for the
+// seat choosing: HIGHER is a better Ring-bearer, and sorts earlier.
+// The sort is stable, so equal prices keep the battlefield order.
+//
+// An ordering rather than a filter: nothing it returns can make a
+// candidate legal or illegal.
+type RingBearerOrder func(c TargetCandidate) float64
 
 // TargetCandidate is one object a target clause could be pointed at,
 // as the ordering hook sees it: an identity and nothing else.

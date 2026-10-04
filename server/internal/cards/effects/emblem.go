@@ -120,6 +120,21 @@ type EmblemSpec struct {
 	LandPlayRestrictions []game.LandPlayRestriction
 	GameEndGates         []game.GameEndGate
 	UntapCaps            []game.UntapCap
+
+	// BlockRules are the emblem's CR 509.1b block restrictions with a
+	// parameter (ADR 0114 §5): the Spec slot of the same name one zone
+	// over, built by the same constructors (block_rules.go). The
+	// block-rule walk reads every seat's emblems after the battlefield,
+	// with the emblem as the rule's source, so a scope's "your" is the
+	// emblem's owner: the Ring's "your Ring-bearer can't be blocked by
+	// creatures with greater power".
+	BlockRules []game.BlockRule
+
+	// Lines are the emblem's abilities line by line, each with the
+	// count it is gained at, for an emblem whose abilities switch on one
+	// by one (the Ring, CR 701.54c). The wire's text for it is derived
+	// from the lines it has right now. Empty for every card's emblem.
+	Lines []game.EmblemLine
 }
 
 // buildEmblemDef projects an EmblemSpec into the CardDef the engine
@@ -140,7 +155,10 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		LandPlayRestrictions: e.LandPlayRestrictions,
 		GameEndGates:         e.GameEndGates,
 		UntapCaps:            e.UntapCaps,
-		Emblem:               &game.EmblemDef{Label: e.Label, Text: e.Text},
+		// ADR 0114 §5: read through CatalogBlockRules by the
+		// block-rule walk's emblem half.
+		BlockRules: e.BlockRules,
+		Emblem:     &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
 	}
 }
 
@@ -159,7 +177,7 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	}
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
 		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
-		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 {
+		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)

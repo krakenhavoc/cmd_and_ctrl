@@ -99,6 +99,17 @@ func OnMatching(pred CardPredicate) BlockScope {
 	}
 }
 
+// YourRingBearer — "your Ring-bearer" (CR 701.54e): the creature on
+// the battlefield that the rule source's controller controls and that
+// has the Ring-bearer designation. On the Ring emblem the source's
+// controller is the emblem's owner (CR 114.2), so each player's Ring
+// binds only their own Ring-bearer (ADR 0114 §5).
+func YourRingBearer() BlockScope {
+	return func(_ *game.Game, c, source *game.Card) bool {
+		return source != nil && game.IsRingBearerOf(*c, source.Controller)
+	}
+}
+
 // PowerLessThanSource — "creatures with power less than this
 // creature's power" (Champion of Lambholt). Both sides read the power
 // the comparison rules use (CR 208.1, negative power included), live.
@@ -144,6 +155,38 @@ func CantBeBlockedBy(attackers BlockScope, forbidden CardPredicate, label string
 		Label:  label,
 		Pair: func(g *game.Game, attacker, blocker, source *game.Card) bool {
 			return attackers(g, attacker, source) && forbidden(g, blockRuleCaster(source), *blocker)
+		},
+	}
+}
+
+// BlockerAgainstAttacker is a condition on a blocker that is read
+// against the attacker it would block — "creatures with greater
+// power" compares the two, so it cannot be a CardPredicate, which sees
+// one card. Reads only, live, as the block is declared (CR 509.1b).
+type BlockerAgainstAttacker func(g *game.Game, attacker, blocker *game.Card) bool
+
+// GreaterPowerThanAttacker — "creatures with greater power": a blocker
+// whose power is greater than the attacker's. Both sides read the power
+// the comparison rules use (CR 208.1, negative power included): skulk's
+// comparison (CR 702.118b) without the keyword. Locke, Treasure Hunter
+// and the Ring (ADR 0114 §5).
+func GreaterPowerThanAttacker() BlockerAgainstAttacker {
+	return func(_ *game.Game, attacker, blocker *game.Card) bool {
+		return blocker.PowerForComparison() > attacker.PowerForComparison()
+	}
+}
+
+// CantBeBlockedByComparing — "<scope> can't be blocked by <blockers
+// that compare to it>" (Locke, Treasure Hunter's and the Ring's
+// "creatures with greater power"). CantBeBlockedBy for a condition that
+// reads the attacker as well as the blocker. `label` is the forbidden
+// set as the card prints it.
+func CantBeBlockedByComparing(attackers BlockScope, forbidden BlockerAgainstAttacker, label string) game.BlockRule {
+	return game.BlockRule{
+		Reason: game.BlockReasonCantBeBlockedBy,
+		Label:  label,
+		Pair: func(g *game.Game, attacker, blocker, source *game.Card) bool {
+			return attackers(g, attacker, source) && forbidden(g, attacker, blocker)
 		},
 	}
 }
