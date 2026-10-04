@@ -124,6 +124,76 @@ func (c *Context) Sacrificed() int {
 	return c.Paid().Sacrificed
 }
 
+// SacrificedPermanents is the permanents the announcement's cost
+// sacrificed, each as it last existed on the battlefield (ADR 0113 §1,
+// #2072) — Fling's "the sacrificed creature's power", Momentous Fall's
+// power and toughness, Corpse Cobble's "the sacrificed creatures".
+//
+// CR 400.7j lets the effect find an object its cost moved, and CR
+// 608.2h reads it with its last-known information: each ref on
+// PaidCost.SacrificedObjects goes through game.PermanentForEffect, so
+// an anthem's bonus and the counters it had count, and an object that
+// came back as a new one since is never mistaken for it. A ref with no
+// record (the object left by a route that bypasses the battlefield
+// exit, CR 800.4a) is skipped, which errs weaker. In the order named;
+// nil when the cost sacrificed nothing.
+//
+// Must be called under the write lock the resolution holds, which is
+// every OnResolve and Effect.
+func (c *Context) SacrificedPermanents() []game.PermanentInfo {
+	refs := c.Paid().SacrificedObjects
+	if len(refs) == 0 || c.Game == nil {
+		return nil
+	}
+	out := make([]game.PermanentInfo, 0, len(refs))
+	for _, ref := range refs {
+		if info, ok := c.Game.PermanentForEffect(ref); ok {
+			out = append(out, info)
+		}
+	}
+	return out
+}
+
+// SacrificedPermanent is the first permanent the cost sacrificed, as it
+// last existed on the battlefield — the reader for a clause that
+// sacrifices exactly one ("the sacrificed creature"). ok is false when
+// the cost sacrificed nothing the record can find.
+func (c *Context) SacrificedPermanent() (game.PermanentInfo, bool) {
+	all := c.SacrificedPermanents()
+	if len(all) == 0 {
+		return game.PermanentInfo{}, false
+	}
+	return all[0], true
+}
+
+// SacrificedPower is the sacrificed permanent's power as it last
+// existed on the battlefield, floored at zero: "damage equal to the
+// sacrificed creature's power" with a -1 power creature deals none (CR
+// 107.1b). Zero when the cost sacrificed nothing.
+func (c *Context) SacrificedPower() int {
+	info, ok := c.SacrificedPermanent()
+	if !ok || info.Power < 0 {
+		return 0
+	}
+	return info.Power
+}
+
+// SacrificedTotalPower is "the total power of the sacrificed creatures"
+// (Corpse Cobble): every sacrificed permanent's last-known power summed,
+// negatives included, and the TOTAL floored at zero, because CR 107.1b
+// replaces a negative result of a calculation that determines an effect
+// with zero — not each term of it.
+func (c *Context) SacrificedTotalPower() int {
+	total := 0
+	for _, info := range c.SacrificedPermanents() {
+		total += info.Power
+	}
+	if total < 0 {
+		return 0
+	}
+	return total
+}
+
 // ReturnedAttacking is what the permanent the announcement's
 // return-to-hand cost returned was ATTACKING — the player,
 // planeswalker or battle, uuid.Nil when it was attacking nothing.
