@@ -205,6 +205,16 @@ describe("the script", () => {
   });
 });
 
+// ADR 0118 §1 (amends ADR 0076 §2.1 step 1): the practice table forces
+// strict payment on, so the welcome says a click taps the lands.
+describe("step 1: welcome", () => {
+  it("says a click on a card your lands can pay for taps them", () => {
+    expect(WELCOME.body).toBe(
+      "You are seated against a practice bot. Click a card your lands can pay for and the game taps them for you. You can undo, so nothing here can go wrong.",
+    );
+  });
+});
+
 describe("step 2: read your hand", () => {
   it("completes on a 600ms rest, and a touch on the hand on a phone", () => {
     expect(READ_HAND.hover).toEqual({ ms: 600, event: "hand-hovered" });

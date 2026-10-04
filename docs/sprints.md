@@ -3328,7 +3328,7 @@ Opened 2026-10-04 from the owner's direction: "previously we were building the g
 - [x] ADR 0118: strict payment by default, Cast anyway, and alternative costs for every spell ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188), [#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163))
 - [ ] ADR 0118 PR 2 — Cast anyway (don't pay): the right-click row on every castable card in the hand, the castable-from-other-zones strip and the command zone while strict is on, confirmed in the dock ("Cast <card> without paying its mana cost?", Cast / Cancel), then sending `force_cast`; the log line "<player> cast <card> without paying its mana cost" (#2188)
 - [ ] ADR 0118 PR 3 — server: the auto-tapper tops up a partly funded pool, and the enumerator agrees (#2188)
-- [ ] ADR 0118 PR 4 — client, the default flip: `strictMana` on by default and a clicked cast auto-taps; settings v16 moves everyone to strict once; the Settings help; the practice table forces strict on; the tutorial's step 1 copy (#2188)
+- [ ] ADR 0118 PR 4 — client, the default flip: `strictMana` on by default and a clicked cast auto-taps; settings v19 (planned as v16) moves everyone to strict once; the Settings help; the practice table forces strict on; the tutorial's step 1 copy (#2188)
 - [ ] ADR 0118 PR 5 — server: a permanent's static adds an alternative cost to each spell its controller casts, read by the cast path, the enumerator, the auto-tapper and the view (#2163)
 - [ ] ADR 0118 PR 6 — server: Fist of Suns, Jodah, Archmage Eternal, Leyline of Mutation and Omniscience; the `granted-alternative-costs` seam closed (#2163)
 

@@ -14,7 +14,9 @@
 //   - Insufficient mana (S15). A strict cast the server refused for
 //     mana. Auto-tap & cast is the primary (it opens the auto-tap
 //     preview, which still confirms before anything is tapped), Cast
-//     anyway and Cancel the secondaries. It was a strip toast.
+//     anyway and Cancel the secondaries. It was a strip toast. Since
+//     ADR 0118 §1 a clicked cast is already auto-tapped, and its
+//     refusal drops Auto-tap & cast: Cancel is the primary.
 //
 // The names are the old ones (ADR 0111 §10): the request's dialog is
 // "Select target for <card>", which s19-triggers.spec.ts waits on, and
@@ -195,20 +197,55 @@ export interface InsufficientManaHandlers {
   onCancel: () => void;
 }
 
+export interface InsufficientManaOptions {
+  // The refused cast's payload already had `auto_tap` (every clicked
+  // cast under strict since ADR 0118 §1): the planner found no plan, so
+  // the preview would find none either.
+  autoTapped?: boolean;
+}
+
 // insufficientManaRequest: a strict cast was refused for mana (the
 // server's insufficient_mana, with what it is missing).
+//
+// ADR 0118 §1 (amends ADR 0111 PR 4): a refusal of a cast that was
+// already auto-tapped drops "Auto-tap & cast"; Cancel becomes the
+// primary and Cast anyway stays a secondary with no key. A refusal
+// without `auto_tap` (no client surface sends one now, but the server
+// accepts it) keeps all three buttons. The labels are unchanged (ADR
+// 0111 §10); only Cast anyway's title is.
 export function insufficientManaRequest(
   missing: readonly string[],
   cardName: string | undefined,
   h: InsufficientManaHandlers,
+  opts: InsufficientManaOptions = {},
 ): DockRequest {
-  return {
-    rank: "flow",
+  const cancel: DockAction = {
+    id: "cancel",
+    label: "Cancel",
+    title: "don't cast it",
+    keyShortcuts: "Escape",
+    cap: "Esc",
+    onPress: h.onCancel,
+  };
+  const castAnyway: DockAction = {
+    id: "cast-anyway",
+    label: "Cast anyway",
+    title: "cast it without paying its mana cost; the game log says so",
+    onPress: h.onCastAnyway,
+  };
+  const base = {
+    rank: "flow" as const,
     label: "insufficient mana",
     tag: "mana",
-    tone: "gold",
+    tone: "gold" as const,
     question: cardName ? `Insufficient mana for ${cardName}` : "Insufficient mana",
     detail: missing.length > 0 ? `missing ${missing.join(" ")}` : undefined,
+  };
+  if (opts.autoTapped) {
+    return { ...base, primary: cancel, secondary: [castAnyway] };
+  }
+  return {
+    ...base,
     primary: {
       id: "auto-tap",
       label: "Auto-tap & cast",
@@ -217,22 +254,7 @@ export function insufficientManaRequest(
       cap: "⏎",
       onPress: h.onAutoTap,
     },
-    secondary: [
-      {
-        id: "cancel",
-        label: "Cancel",
-        title: "don't cast it",
-        keyShortcuts: "Escape",
-        cap: "Esc",
-        onPress: h.onCancel,
-      },
-      {
-        id: "cast-anyway",
-        label: "Cast anyway",
-        title: "cast it without paying the missing mana (the sandbox override)",
-        onPress: h.onCastAnyway,
-      },
-    ],
+    secondary: [cancel, castAnyway],
   };
 }
 

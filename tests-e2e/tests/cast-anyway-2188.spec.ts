@@ -2,15 +2,27 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { adminLogin, createGame, startGameAs, uploadDeckAs } from "./lobby-api";
 import { COMMANDER_NAME } from "./deck-fixture";
 import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
-import { openAdminClient, playerByID, seedHandWithCard, type AdminClient } from "./s19-helpers";
+import {
+  openAdminClient,
+  playerByID,
+  returnToLibrary,
+  seedHandWithCard,
+  type AdminClient,
+  type SnapshotCard,
+  type SnapshotView,
+} from "./s19-helpers";
 
-// #2188 / ADR 0118 §2: "Cast anyway (don't pay)", end to end.
+// #2188 / ADR 0118 §§1–2: strict payment by default, and "Cast anyway
+// (don't pay)", end to end.
 //
-// With strict payment on (opt-in until ADR 0118 PR 4 flips the
-// default, so both seats seed it), a card the seat cannot pay for still
-// offers "Cast anyway (don't pay)" in its right-click popover. Choosing
-// it casts nothing yet: the action dock asks "Cast Craw Wurm without
-// paying its mana cost?" with Cast and Cancel (owner decision 6).
+// Neither seat seeds a setting: since ADR 0118 PR 4 a fresh browser
+// starts with strict payment on, and this spec is the proof. First,
+// with two untapped Forests, a click on Grizzly Bears taps both and
+// casts it (§1: a clicked cast is stamped `auto_tap`). Then a card the
+// seat cannot pay for still offers "Cast anyway (don't pay)" in its
+// right-click popover. Choosing it casts nothing yet: the action dock
+// asks "Cast Craw Wurm without paying its mana cost?" with Cast and
+// Cancel (owner decision 6).
 // Cancel closes it and the Wurm stays in hand. Choosing the row again,
 // then Cast, puts the Wurm on the stack without paying, and the game
 // log tells BOTH players: "<player> cast Craw Wurm without paying its
@@ -23,19 +35,31 @@ import { openAdminClient, playerByID, seedHandWithCard, type AdminClient } from 
 //
 // The board is staged through the admin WS, like the #1789 spec.
 
+const BEARS = "Grizzly Bears"; // {1}{G}: exactly the two Forests
 const WURM = "Craw Wurm"; // {4}{G}{G}: nothing on this board can pay it
 const LAND = "Forest";
 const ROW = "Cast anyway (don't pay)";
 const DIALOG = `Cast ${WURM} without paying its mana cost?`;
 
-const STRICT = { gameplay: { strictMana: true } };
+// The ready ring is the `ready` class on the card element (Card.svelte).
+const READY = /(^|\s)ready(\s|$)/;
 
 function makeDeck(): string {
   return (
-    ["Commander:", `1 ${COMMANDER_NAME}`, "", "Mainboard:", `1 ${WURM}`, `98 ${LAND}`].join(
-      "\n",
-    ) + "\n"
+    [
+      "Commander:",
+      `1 ${COMMANDER_NAME}`,
+      "",
+      "Mainboard:",
+      `1 ${BEARS}`,
+      `1 ${WURM}`,
+      `97 ${LAND}`,
+    ].join("\n") + "\n"
   );
+}
+
+function forestsInHand(admin: AdminClient, playerID: string): SnapshotCard[] {
+  return playerByID(admin.snapshot(), playerID).hand.cards.filter((c) => c.name === LAND);
 }
 
 // rightClick opens a hand card's popover the way the browser's
@@ -47,7 +71,22 @@ function makeDeck(): string {
 // testing.
 async function rightClick(card: Locator): Promise<void> {
   await expect(card).toBeVisible();
-  await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 });
+  await card.dispatchEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    button: 2,
+  });
+}
+
+// leftClick is the same for the card's own click (Card.svelte
+// handleClick), for the same reason.
+async function leftClick(card: Locator): Promise<void> {
+  await expect(card).toBeVisible();
+  await card.dispatchEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+  });
 }
 
 async function openLog(page: Page): Promise<Locator> {
@@ -60,7 +99,7 @@ async function openLog(page: Page): Promise<Locator> {
 }
 
 test.describe("#2188 Cast anyway (don't pay)", () => {
-  test("the row asks first; Cancel sends nothing; Cast casts unpaid and the log says so", async ({
+  test("a click taps the lands and casts; the row asks first; Cast casts unpaid and the log says so", async ({
     browser,
     request,
   }) => {
@@ -75,8 +114,9 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       const game = await createGame(request, adminToken, `Cast anyway 2188 ${Date.now()}`);
       if (!game.invite_token) throw new Error("invite token missing on fresh game");
 
-      first = await joinAsPlayer(browser, game.id, game.invite_token, "Seat One", STRICT);
-      second = await joinAsPlayer(browser, game.id, game.invite_token, "Seat Two", STRICT);
+      // No settings seed: strict payment is the default (ADR 0118 §1).
+      first = await joinAsPlayer(browser, game.id, game.invite_token, "Seat One");
+      second = await joinAsPlayer(browser, game.id, game.invite_token, "Seat Two");
 
       // Both seats get the deck: the starting player is rolled (#1486).
       await uploadDeckAs(request, adminToken, game.id, first.playerID, makeDeck());
@@ -100,7 +140,54 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       const me = activeID === first.playerID ? first : second;
       const them = me === first ? second : first;
 
+      // --- stage the hand and the mana -------------------------------
+      // seedHandWithCard draws until the named card surfaces, so the
+      // hand fills up with Forests on the way.
+      const bears = await seedHandWithCard(admin, me.playerID, BEARS);
       const wurm = await seedHandWithCard(admin, me.playerID, WURM);
+
+      // Two Forests onto the battlefield (a sandbox move, which is not
+      // a land drop and taps nothing).
+      // Three in hand: two for the battlefield, one to keep (below).
+      for (let i = 0; i < 6 && forestsInHand(admin, me.playerID).length < 3; i++) {
+        await admin.sendActionAsPlayer(me.playerID, "draw_card", {});
+      }
+      if (forestsInHand(admin, me.playerID).length < 3) {
+        throw new Error(
+          `need three Forests in hand, have ${forestsInHand(admin, me.playerID).length}`,
+        );
+      }
+      const forests = forestsInHand(admin, me.playerID).slice(0, 2);
+      for (const f of forests) {
+        await admin.sendActionAsPlayer(me.playerID, "move_card", {
+          src: { kind: "hand", owner: me.playerID },
+          dst: { kind: "battlefield" },
+          instance_id: f.instance_id,
+        });
+      }
+      const forestIDs = forests.map((f) => f.instance_id);
+      const forestsOnBoard = (v: SnapshotView) =>
+        v.battlefield.cards.filter((c) => forestIDs.includes(c.instance_id));
+      await admin.waitFor(
+        (v) => forestsOnBoard(v).length === 2 && forestsOnBoard(v).every((c) => !c.tapped),
+        "two untapped Forests on the battlefield",
+        10_000,
+      );
+      // The Bears and the Wurm are two cards in 99, so the draws above
+      // can leave dozens of Forests in hand. In one failed run the Bears
+      // never showed up lit and findable in a fan that full. Put the
+      // spare Forests back, but keep ONE: the open land drop is what
+      // holds this seat's main phase once the Bears resolve. With only
+      // an unpayable Wurm in hand, smart autopass (on by default) finds
+      // nothing to play and passes the step, so the Wurm's row is
+      // rightly greyed "Not your priority".
+      const spare = forestsInHand(admin, me.playerID).length - 1;
+      if (spare > 0) await returnToLibrary(admin, me.playerID, LAND, spare);
+      await admin.waitFor(
+        (v) => playerByID(v, me.playerID).hand.cards.filter((c) => c.name === LAND).length === 1,
+        "one Forest left in hand",
+        10_000,
+      );
       await admin.waitFor(
         (v) =>
           v.turn?.active_seat === activeSeat &&
@@ -112,7 +199,47 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
 
       const page = me.page;
       const hand = page.locator('[aria-label="your hand"]');
-      const wurmInHand = hand.locator(`.card[data-instance-id="${wurm.instance_id}"]`);
+      const inHand = (id: string): Locator => hand.locator(`.card[data-instance-id="${id}"]`);
+
+      // --- a click on Grizzly Bears taps both Forests and casts it -----
+      // The ready ring says the server's move list has the cast, which
+      // is also what wires the click (Hand.svelte).
+      const bearsInHand = inHand(bears.instance_id);
+      await expect(bearsInHand).toHaveClass(READY, { timeout: 15_000 });
+      await leftClick(bearsInHand);
+
+      // One click: no insufficient-mana request, no preview. The cast
+      // was stamped strict + auto_tap, so the server tapped both
+      // Forests for {1}{G} and put the Bears on the stack. Either seat's
+      // client may pass priority on, so the Bears may have resolved
+      // already.
+      await admin.waitFor(
+        (v) =>
+          !playerByID(v, me.playerID).hand.cards.some((c) => c.instance_id === bears.instance_id) &&
+          ((v.stack_items ?? []).some((s) => s.source_card_id === bears.instance_id) ||
+            v.battlefield.cards.some((c) => c.instance_id === bears.instance_id)),
+        "the Bears are on the stack (or resolved)",
+        15_000,
+      );
+      const tapped = forestsOnBoard(admin.snapshot());
+      expect(tapped).toHaveLength(2);
+      expect(tapped.every((c) => c.tapped === true)).toBe(true);
+      await expect(page.getByRole("dialog", { name: "insufficient mana" })).toHaveCount(0);
+
+      // The Bears resolve and priority comes back to the active player
+      // with an empty stack: the Wurm is a sorcery-speed cast.
+      await admin.waitFor(
+        (v) =>
+          v.battlefield.cards.some((c) => c.instance_id === bears.instance_id) &&
+          (v.stack_items ?? []).length === 0 &&
+          v.turn?.active_seat === activeSeat &&
+          v.turn?.step === "precombat_main" &&
+          v.turn?.priority_holder === activeSeat,
+        "the Bears resolved, and priority is back with the active player in precombat main",
+        20_000,
+      );
+
+      const wurmInHand = inHand(wurm.instance_id);
       await expect(wurmInHand).toBeVisible({ timeout: 15_000 });
 
       // --- the row opens the confirmation; Cancel sends nothing --------
@@ -154,7 +281,9 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       const line = `${me.name} cast ${WURM} without paying its mana cost`;
       for (const p of [me, them]) {
         const log = await openLog(p!.page);
-        await expect(log.getByText(line, { exact: true })).toBeVisible({ timeout: 15_000 });
+        await expect(log.getByText(line, { exact: true })).toBeVisible({
+          timeout: 15_000,
+        });
       }
     } finally {
       admin?.close();
