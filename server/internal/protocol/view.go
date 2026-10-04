@@ -3592,17 +3592,19 @@ type ManaAbilityView struct {
 	// not counted as producible (CR 106.7), so the row being greyed
 	// and the cast being priced agree.
 	Exhausted bool `json:"exhausted,omitempty"`
-	// AddsNoMana is CR 903.4f (#844): this ability's printed text
-	// says "any color in your commander's color identity" and the
-	// controller has no commander, or a commander whose colour
-	// identity is colourless (Kozilek, Karn). The quality is
-	// undefined or empty, so the ability adds no mana at all —
-	// Command Tower taps for nothing. The client greys the row with
-	// its own reason, the same way it greys ConditionUnmet; the
-	// server does not refuse the activation (the ability exists, it
-	// just does nothing), it simply stops offering it. Absent for
-	// every other ability, which is all but four cards. Stamped by
-	// stampManaIdentity, the pass with a game handle.
+	// AddsNoMana: this ability would add no mana at all right now,
+	// so nothing offers it. Two causes. CR 903.4f (#844): its printed
+	// text says "any color in your commander's color identity" and the
+	// controller has no commander, or one whose colour identity is
+	// colourless (Kozilek, Karn) — Command Tower taps for nothing.
+	// ADR 0117 §5: its output is computed and computes to nothing now
+	// (a power-0 Vivi Ornitier, a Selvala at greatest power 0, an
+	// Exotic Orchard with nothing to copy). The client greys the row
+	// with a generic reason, the same way it greys ConditionUnmet; the
+	// server does not refuse the activation (CR 605.1a: the ability
+	// exists, it just does nothing), it simply stops offering it.
+	// Absent for every other ability. Stamped by stampManaIdentity,
+	// the pass with a game handle.
 	AddsNoMana bool `json:"adds_no_mana,omitempty"`
 	// ColorOptions is, for each slot of this ability's output that
 	// asks for a colour, the colours that pick would offer the
