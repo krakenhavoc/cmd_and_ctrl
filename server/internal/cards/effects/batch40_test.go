@@ -600,8 +600,8 @@ func TestB40MurderousRedcapDealsDamageEqualToItsPower(t *testing.T) {
 		t.Errorf("a printed 2/2 pings for 2: %d → %d", before, opp.Life)
 	}
 	spec, _ := Lookup(b40MurderousRedcapOracle)
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("persist is not implemented and the card says so")
+	if spec.Completeness != CompletenessFull {
+		t.Error("persist is implemented (#2075): the Redcap is Full")
 	}
 }
 

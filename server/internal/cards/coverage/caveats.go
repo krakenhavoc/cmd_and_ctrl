@@ -658,6 +658,26 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordUnleash} — the engine does the rest`,
 	},
 	{
+		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords
+		// tokens whose dies triggers the engine derives from the
+		// departed permanent's last-known ability list
+		// (game/undying_persist.go). Same probe as evolve.
+		Name:       "undying",
+		Phrases:    []string{"undying"},
+		Implements: printedKeywordProbe(game.KeywordUndying),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "undying"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordUndying} — the engine does the rest`,
+	},
+	{
+		Name:       "persist",
+		Phrases:    []string{"persist"},
+		Implements: printedKeywordProbe(game.KeywordPersist),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "persist"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordPersist} — the engine does the rest`,
+	},
+	{
 		// #1519: split second is a canonicalKeywords token read off
 		// the spell at announce (game/split_second.go). Same probe as
 		// prowess, for the same reason: the declaration is the fact,
