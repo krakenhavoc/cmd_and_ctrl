@@ -108,3 +108,4 @@ body berserk/destroy-if-attacked
 body ugins-binding/bounce-all
 body persist/return
 body undying/return
+body foray-of-orcs/damage

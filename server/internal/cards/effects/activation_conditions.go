@@ -303,3 +303,13 @@ func OnlyAsAnInstant() ActivationCondition {
 		return g.InstantWindowOpenForEffect(controller)
 	}
 }
+
+// ACreatureDiedThisTurn is "Activate only if a creature died this turn"
+// (Barad-dûr): the table-wide per-turn tally of creatures that went to
+// a graveyard from the battlefield, tokens included, read off the
+// last-known battlefield characteristics (b11CreaturesDiedThisTurn).
+func ACreatureDiedThisTurn() ActivationCondition {
+	return func(g *game.Game, _, _ uuid.UUID) bool {
+		return b11CreaturesDiedThisTurn(g) > 0
+	}
+}

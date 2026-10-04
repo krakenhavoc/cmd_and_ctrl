@@ -2333,6 +2333,12 @@ HandSize: []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
 - **`Kind`** is `HandSizeNoMaximum`, `HandSizeSet` (to `N` ≥ 0) or
   `HandSizeModify` (by `N` ≠ 0; a reduction is a negative `N`).
   `Register` refuses a negative set and a zero modification.
+- **A number read at the time, or a condition**, is `Dynamic`: a
+  function of the game and the permanent that returns the number and
+  whether the entry applies right now ("equal to the number of hour
+  counters on this enchantment", Midnight Oil; Winter, Misanthropic
+  Guide's delirium). The entry keeps its permanent's timestamp. It runs
+  under the game lock, so read with the `ForEffect` accessors only.
 - **"You have no maximum hand size"** stays `Spec.NoMaxHandSize`, the
   shorthand; `buildDef` folds it into the list. `When` is the
   designation gate, as `NoMaxHandSizeWhen` is for the shorthand.
@@ -5756,6 +5762,16 @@ is gone. In its place:
   means the set of duplicates — or a group's size — really changed.
   The `file.go:closure@line` locations are still printed in the
   failure report, where a human wants them.
+
+Three small shared pieces came with the Sauron deck (S58 PR 7).
+"Activate only if a creature died this turn" is
+`ACreatureDiedThisTurn()` (Barad-dûr). "Is dealt excess noncombat
+damage" (CR 120.10) is `excessNoncombatDamageToOpponentCreature` in
+`excess_damage.go`, which returns the excess as a number: Magmatic
+Galleon tests it for being above zero, and Fall of Cair Andros carries it
+on the trigger's `Params.Amount` through a `Build` that declares its
+`Effect`. A fixed "deals N damage to target X" ability is
+`DealDamageToTheTarget(n)`.
 
 ### Winning, losing, and "can't lose" (S40, ADR 0057)
 
