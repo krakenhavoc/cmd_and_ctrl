@@ -742,6 +742,11 @@ export type LogKind =
   // there; `card_id` names the one card for a single-card pick and is
   // absent for any other count; `target` is the card that ASKED.
   | "choose_cards"
+  // ADR 0114 §9: the Ring tempted `seat`. `amount` is how many times it
+  // has now; `card_id` is the creature chosen as their Ring-bearer
+  // (absent when they controlled none); `cause` is "forced" when it was
+  // their only creature and was chosen for them.
+  | "ring_tempted"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -1112,6 +1117,14 @@ export interface PendingChoiceView {
     // stack still refers to), all public, so the options reach every
     // seat.
     | "choose_source"
+    // ADR 0114 §4 (#2076), CR 701.54a: "the Ring tempts you — choose a
+    // creature you control" as your Ring-bearer. Exactly one of
+    // `options` (two or more of the chooser's creatures; with one the
+    // server chooses it and logs it), answered with {choice_id,
+    // card_ids: [id]} on the shared grid. Not targeting. Public: the
+    // candidates are battlefield creatures. Its reason is "choose your
+    // Ring-bearer".
+    | "ring_bearer"
     // ADR 0108 §7 (#1904), CR 615.7: a charged prevention shield ("the
     // next 3 damage") that meets several damage events at once, more
     // than it can cover — the protected player divides the charge among
@@ -1703,6 +1716,19 @@ export interface EmblemView {
   instance_id: string;
   label: string;
   text: string;
+  // ADR 0114 §2: how many times the Ring has tempted the emblem's owner.
+  // Absent on every other emblem. For the Ring, `text` is the lines it
+  // has gained so far.
+  level?: number;
+  // ADR 0114 owner decision 1: every line of the Ring with the count it
+  // is gained at, so the table can show the lines still to come.
+  // Absent on every other emblem.
+  lines?: EmblemLineView[];
+}
+
+export interface EmblemLineView {
+  text: string;
+  at: number;
 }
 
 export interface LifeChangeView {
@@ -2999,6 +3025,11 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
+  // Ring-bearer. Public, and kept on a face-down permanent: the
+  // designation was chosen in public and says nothing about the card.
+  // Absent — not `false` — for everything else.
+  ring_bearer?: boolean;
   // #781 (CR 105.4 / CR 614.12): the answers this permanent's
   // controller gave to its "as this enters, choose a color" and "as
   // this enters, choose a creature type" instructions — one uppercase

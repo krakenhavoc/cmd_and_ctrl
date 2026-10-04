@@ -119,6 +119,23 @@ type CostFuelPricer interface {
 	CostFuelPrice(in Input) legal.CostFuelOrder
 }
 
+// RingBearerOrderer is an optional Policy extension (ADR 0114 §7). A
+// policy that implements it ranks its own creatures as Ring-bearers —
+// the creature it most wants to be legendary and evasive first — so a
+// "choose your Ring-bearer" prompt on a wide board offers the best
+// candidates within the enumerator's cap. One that does not gets the
+// battlefield order, exactly as before.
+//
+// Its own interface for the reason CostFuelPricer is not a
+// TargetOrderer: it asks a third question about a third set of objects.
+//
+// `in` carries the View and the Seat and NOT the moves: it is called to
+// build the move list. The returned function is called once per
+// candidate during that one enumeration and must not retain anything.
+type RingBearerOrderer interface {
+	RingBearerOrder(in Input) legal.RingBearerOrder
+}
+
 // Policy decides. Decide must respect ctx — the runner imposes a
 // hard deadline and falls back when it expires — and must be safe to
 // call from one goroutine at a time per seat.

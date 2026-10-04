@@ -659,6 +659,13 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// reassigned. The drop settles with no source, so the shield is
 	// simply never made and the rest of the card finishes.
 	PendingChoiceChooseSource: {onDrop: dropDefault},
+	// ADR 0114 §4. A ring_bearer's candidates are the departing
+	// player's own creatures, which CR 800.4a takes with them, so
+	// nothing is reassigned. The drop runs the continuation with
+	// nothing chosen: the tempt still completes (CR 701.54d) and no
+	// frame is stranded. A trigger it would cause is controlled by the
+	// player who left, so CR 800.4d keeps it off the stack.
+	PendingChoiceRingBearer: {onDrop: dropDefault},
 	// ADR 0108 §7. A divide_shield is the protected player's, and the
 	// shield was protecting them or their permanents, which CR 800.4a
 	// takes with them: nothing is reassigned. But the instance's other

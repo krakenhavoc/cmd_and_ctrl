@@ -443,6 +443,10 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
+	// emblem's count of temptations, carried for Harnessed's reason.
+	"RingBearer", carried, "",
+	"RingTemptations", carried, "",
 	"Unlocked", carried, "",
 	"Fused", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the

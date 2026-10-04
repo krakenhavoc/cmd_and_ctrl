@@ -166,6 +166,15 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		return v, "shield against the likeliest source"
 
+	case choiceRingBearer:
+		// ADR 0114 §7: the creature that attacks hardest carries the
+		// Ring (ring_bearer.go).
+		var v float64
+		for _, id := range cp.CardIDs {
+			v += st.ringBearerValue(lookup(id))
+		}
+		return v, "the Ring to the hardest hitter"
+
 	case choicePickTarget:
 		targets := cp.Targets
 		if cp.Target != nil {

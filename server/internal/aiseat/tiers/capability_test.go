@@ -35,6 +35,7 @@ import (
 type capabilities struct {
 	targetOrderer bool // concede.go — legal.Options.OrderTargets (#687)
 	fuelPricer    bool // concede.go — legal.Options.OrderCostFuel (#1013)
+	ringBearer    bool // concede.go — legal.Options.OrderRingBearer (ADR 0114 §7)
 	conceder      bool // concede.go — the seat scoops
 	tracer        bool // runner.go — DecideTraced for the decision log
 	improviser    bool // improvise.go — ADR 0033 §8 (#686)
@@ -45,6 +46,7 @@ func capabilitiesOf(p aiseat.Policy) capabilities {
 	var c capabilities
 	_, c.targetOrderer = aiseat.Capability[aiseat.TargetOrderer](p)
 	_, c.fuelPricer = aiseat.Capability[aiseat.CostFuelPricer](p)
+	_, c.ringBearer = aiseat.Capability[aiseat.RingBearerOrderer](p)
 	_, c.conceder = aiseat.Capability[aiseat.Conceder](p)
 	_, c.tracer = aiseat.Capability[aiseat.Tracer](p)
 	_, c.improviser = aiseat.Capability[aiseat.Improviser](p)
@@ -66,14 +68,14 @@ func TestEveryShippedTierForwardsItsOptionalHooks(t *testing.T) {
 	want := map[aiseat.Tier]capabilities{
 		aiseat.TierRandom: {},
 		aiseat.TierHeuristic: {
-			targetOrderer: true, fuelPricer: true, conceder: true, tracer: true,
+			targetOrderer: true, fuelPricer: true, ringBearer: true, conceder: true, tracer: true,
 		},
 		aiseat.TierAssisted: {
-			targetOrderer: true, fuelPricer: true, conceder: true, tracer: true,
+			targetOrderer: true, fuelPricer: true, ringBearer: true, conceder: true, tracer: true,
 			improviser: true, spender: true,
 		},
 		aiseat.TierStrong: {
-			targetOrderer: true, fuelPricer: true, conceder: true, tracer: true,
+			targetOrderer: true, fuelPricer: true, ringBearer: true, conceder: true, tracer: true,
 			improviser: true, spender: true,
 		},
 	}
@@ -117,7 +119,7 @@ func TestModelTiersKeepTheHeuristicsHooksWithNoTransport(t *testing.T) {
 			// client; what the missing transport removes is the
 			// behaviour behind them, which improvise.go and Spend()
 			// each answer for themselves.
-			if !got.targetOrderer || !got.fuelPricer {
+			if !got.targetOrderer || !got.fuelPricer || !got.ringBearer {
 				t.Errorf("%s with no transport lost the heuristic's ordering hooks: %+v\n"+
 					"the policy underneath a clientless funnel IS the heuristic, and #687 "+
 					"and #1013 are its opinions", tier, got)

@@ -286,6 +286,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// is monstrous — a flickered Polukranos is a new object that
 		// can become monstrous again.
 		c.Monstrous = false
+		// ADR 0114 §3 / CR 400.7 + CR 701.54a: and so is the
+		// Ring-bearer designation — a Ring-bearer that leaves and comes
+		// back is a new object and is nobody's Ring-bearer.
+		c.RingBearer = false
 		// ADR 0103 / CR 400.7: and so are a Room's unlocked
 		// designations (CR 709.5c) — a Room that leaves and comes back is
 		// a new object with both doors locked, unless it was cast (CR

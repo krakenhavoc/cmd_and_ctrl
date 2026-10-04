@@ -212,6 +212,12 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// prevention shield is created, mid-resolution, and the shield is
 	// the rest of the card: it blocks for option_pick's reason.
 	PendingChoiceChooseSource: true,
+	// ADR 0114 §4, CR 701.54a. "Choose your Ring-bearer" is asked
+	// mid-resolution, and the rest of the tempting spell or ability
+	// (the designation, the "whenever the Ring tempts you" event and
+	// the rest of the card's sentence) waits on it: it blocks for
+	// option_pick's reason.
+	PendingChoiceRingBearer: true,
 	// ADR 0108 §7, CR 615.7. "Divide this shield among the damage" holds
 	// an instance's damage events, which are dealt once it is answered:
 	// a table that could walk past the question would be dealing the

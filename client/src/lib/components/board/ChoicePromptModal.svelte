@@ -277,6 +277,9 @@
   // several zones, so each candidate is captioned with whose it is and
   // where it is (damageSource.ts).
   const isChooseSource = $derived(active?.kind === "choose_source");
+  // ADR 0114 §4, CR 701.54a: "choose your Ring-bearer" — one of the
+  // chooser's own creatures, untargeted.
+  const isRingBearer = $derived(active?.kind === "ring_bearer");
   // The kinds that share the bounded card-set grid.
   const isCardSetPick = $derived(
     isChooseCards ||
@@ -286,7 +289,8 @@
       isEntrySacrifice ||
       isRevealPick ||
       isPermanentPick ||
-      isChooseSource,
+      isChooseSource ||
+      isRingBearer,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -1375,10 +1379,12 @@
                         ? [c.reason || "Choose permanents", "choose · CR 608.2"]
                         : isChooseSource
                           ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
-                          : [
-                              `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                              isSelfSource ? "discard" : "reveal",
-                            ];
+                          : isRingBearer
+                            ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
+                            : [
+                                `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                isSelfSource ? "discard" : "reveal",
+                              ];
     const verb = isSacrifice
       ? "Sacrifice"
       : isSearch
@@ -1403,7 +1409,7 @@
                   ? "Sacrifice"
                   : isChooseSource
                     ? "Choose this source"
-                    : isChooseCards || isRevealPick || isPermanentPick
+                    : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
                       ? "Choose"
                       : "Confirm";
     const clearable = isSearch || isCopyTarget || (isCardSetPick && pickMin === 0);
@@ -2007,6 +2013,9 @@
             Pick between {pickMin} and {pickMax} of your permanents.
           {/if}
           Nothing here is targeted — the choice is being made now, as the card resolves.
+        {:else if isRingBearer}
+          The Ring tempts you. Pick one of your creatures to be your Ring-bearer. It isn't targeted,
+          so anything listed can be chosen.
         {:else if isChooseSource}
           Pick the source whose next damage this prevents. It isn't targeted, so anything listed can
           be chosen — a permanent, a spell on the stack, or a card that something on the stack still
