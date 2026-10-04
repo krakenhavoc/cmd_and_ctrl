@@ -29,9 +29,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	artifactYouDontControl := And(Artifact(), OpponentControls())
 	Register(Spec{
-		OracleID: "3567c3c8-b3c7-45b7-935b-b1fdbc973720",
-		Name:     "Vandalblast",
-		Targets:  TargetPermanent("target artifact you don't control", artifactYouDontControl),
+		OracleID:     "3567c3c8-b3c7-45b7-935b-b1fdbc973720",
+		Name:         "Vandalblast",
+		Completeness: CompletenessFull,
+		Targets:      TargetPermanent("target artifact you don't control", artifactYouDontControl),
 		AlternativeCosts: []game.AlternativeCost{
 			Overload("{4}{R}"),
 		},
