@@ -28,7 +28,14 @@
   import { commanderTax } from "../../castStrip";
   import Card from "./Card.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
-  import { canCastFromHand, type Legality } from "../../timing";
+  import {
+    canCastFromHand,
+    castAnywayBlocked,
+    castAnywayOffered,
+    type Legality,
+  } from "../../timing";
+  import { requestCastAnyway } from "../../castAnyway";
+  import { settings } from "../../settings";
   import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -122,6 +129,24 @@
     isSelf && !!visibleCard && legal.castableFrom(visibleCard.instance_id, "command"),
   );
 
+  // ADR 0118 §2: with strict payment on, the viewer's own visible
+  // commander offers "Cast anyway (don't pay)" in its popover, payable
+  // or not. The row opens the dock's confirmation (castAnyway.ts), which
+  // starts the Board's cast chain out of the command zone.
+  const castAnywayHere = $derived(
+    isSelf &&
+      !!onCastCard &&
+      !!visibleCard &&
+      $settings.gameplay.strictMana &&
+      castAnywayOffered(visibleCard, "command"),
+  );
+  const castAnywayReason = $derived(
+    castAnywayHere && visibleCard ? castAnywayBlocked(visibleCard, view, viewerID, "command") : "",
+  );
+  function castAnyway(): void {
+    if (visibleCard) requestCastAnyway(visibleCard, "command");
+  }
+
   function castVisible(): void {
     if (!isSelf || !visibleCard) return;
     if (!castGate.legal) return;
@@ -207,6 +232,8 @@
         readyZone="command"
         onClick={isSelf ? handleClick : openBrowser}
         onActivateAbility={activateVisible}
+        onCastAnyway={castAnywayHere ? castAnyway : undefined}
+        castAnywayBlocked={castAnywayReason}
         {sorcerySpeedBlocked}
         legal={isSelf ? legal : undefined}
         legalGate={isSelf ? legalGate : undefined}

@@ -434,6 +434,7 @@ events[].source	custom(uuid.UUID)
 events[].stack_item_id	custom(uuid.UUID)
 events[].step	string
 events[].target	custom(uuid.UUID)
+events[].unpaid	bool
 events[].won	bool
 exile	object
 exile.cards	array
@@ -1323,6 +1324,7 @@ lastKnownStack[].item.trigger.Event.source	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.step	string
 lastKnownStack[].item.trigger.Event.target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.unpaid	bool
 lastKnownStack[].item.trigger.Event.won	bool
 lastKnownStack[].item.trigger.Object	object
 lastKnownStack[].item.trigger.Object.Colors	array
@@ -1747,6 +1749,7 @@ pendingTriggers[].trigger.Event.source	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.step	string
 pendingTriggers[].trigger.Event.target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.unpaid	bool
 pendingTriggers[].trigger.Event.won	bool
 pendingTriggers[].trigger.Object	object
 pendingTriggers[].trigger.Object.Colors	array
@@ -4163,6 +4166,7 @@ stackMeta[].trigger.Event.source	custom(uuid.UUID)
 stackMeta[].trigger.Event.stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.step	string
 stackMeta[].trigger.Event.target	custom(uuid.UUID)
+stackMeta[].trigger.Event.unpaid	bool
 stackMeta[].trigger.Event.won	bool
 stackMeta[].trigger.Object	object
 stackMeta[].trigger.Object.Colors	array
