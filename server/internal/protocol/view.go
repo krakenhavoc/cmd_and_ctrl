@@ -471,6 +471,15 @@ type PendingChoiceView struct {
 	// "Cast it free", start the cast chain on it.
 	MayCastCard string `json:"may_cast_card,omitempty"`
 
+	// PlayableFromZone populates the "commander_return" kind (ADR 0115
+	// decision 2): whether the commander's owner could cast or play it
+	// from the graveyard or exile it is in now (escape, flashback, an
+	// adventurer on an adventure, a cast permission), ignoring timing
+	// and mana. Computed on every view, never stored. The client says
+	// so beside Yes / No, and a bot declines the command zone when it
+	// is set. Absent on every other kind.
+	PlayableFromZone bool `json:"playable_from_zone,omitempty"`
+
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
 	// Carried for the same reason legal.MoveCost.Life is (#547): a
@@ -6741,6 +6750,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+		}
+		// ADR 0115 decision 2: the one computed fact a CR 903.9a
+		// question carries. We are inside ViewOfGame's ReadSnapshot,
+		// which is what the Locked suffix means.
+		if c.Kind == game.PendingChoiceCommanderReturn {
+			v.PlayableFromZone = g.PlayableFromZoneLocked(c.Chooser, c.Source)
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel

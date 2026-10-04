@@ -410,3 +410,18 @@ func OtherSpellsCastThisTurn() func(q game.CostQuery) int {
 func SpellWithKeyword(kw string) CostPredicate {
 	return func(q game.CostQuery) bool { return game.HasKeyword(&q.Card, kw) }
 }
+
+// NoArtifactSpellCastYetThisTurn passes while the CASTER has cast no
+// artifact spell this turn. With ArtifactSpell() it is "the first
+// artifact spell you cast each turn" (Artificer Class).
+//
+// It reads the per-turn tally, so an artifact spell cast before the
+// modifier's source arrived still counts: that spell was the first
+// one, and nothing later in the turn is. The spell being priced is not
+// in the tally yet (OtherSpellsCastThisTurn says why), so "no artifact
+// spell so far" means "this one is the first".
+func NoArtifactSpellCastYetThisTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game == nil || q.Game.CastTallyFor(q.Controller).Artifact == 0
+	}
+}

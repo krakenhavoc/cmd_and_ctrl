@@ -390,7 +390,66 @@ func corpusBoards() []corpusBoard {
 		// the creature it sacrificed, and that creature's last-known
 		// record beside it.
 		{"sacrifice_cost_objects", corpusSacrificeCostObjects},
+		// v7, added by ADR 0115 PR 2 (#2085) as new files: CR 903.9a as
+		// a state-based action — a commander in its owner's graveyard
+		// with the check still owed (card.commanderReturnDue), and the
+		// commander_return prompt open to its owner, which is plain
+		// data and so a restore point.
+		{"commander_return_due", corpusCommanderReturnDue},
+		{"commander_return_prompt", corpusCommanderReturnPrompt},
 	}
+}
+
+// corpusCommanderInGraveyard moves seat 1's commander from its command
+// zone into its graveyard and returns it.
+func corpusCommanderInGraveyard(t *testing.T, g *game.Game) (*game.Player, uuid.UUID) {
+	t.Helper()
+	p := g.Seats[1]
+	if p.Command.Size() == 0 {
+		t.Fatal("setup: seat 1 has no commander in the command zone")
+	}
+	id := p.Command.Cards[0].InstanceID
+	g.WithWriteLock(func() {
+		if _, err := game.MoveCard(p.Command, p.Graveyard, id); err != nil {
+			t.Fatalf("setup: move the commander to the graveyard: %v", err)
+		}
+	})
+	return p, id
+}
+
+// corpusCommanderReturnDue is ADR 0115 §8's first board: a commander
+// put into its graveyard since the last state-based action check, so
+// CR 903.9a still owes its owner the question. The mark is set by hand
+// because ADR 0115 PR 2 ships the state-based action switched off.
+func corpusCommanderReturnDue(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	p, id := corpusCommanderInGraveyard(t, g)
+	g.WithWriteLock(func() {
+		for i := range p.Graveyard.Cards {
+			if p.Graveyard.Cards[i].InstanceID == id {
+				p.Graveyard.Cards[i].CommanderReturnDue = true
+			}
+		}
+	})
+	return g
+}
+
+// corpusCommanderReturnPrompt is ADR 0115 §8's second board: the check
+// has asked, so the mark is gone and the commander_return prompt is
+// open to the commander's owner.
+func corpusCommanderReturnPrompt(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	p, id := corpusCommanderInGraveyard(t, g)
+	g.WithWriteLock(func() {
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:    game.PendingChoiceCommanderReturn,
+			Chooser: p.ID,
+			Count:   1,
+			Source:  id,
+			Reason:  "Test Commander 2 — put it into the command zone?",
+		})
+	})
+	return g
 }
 
 // corpusSacrificeCostObjects is Fling cast at the next seat, its
