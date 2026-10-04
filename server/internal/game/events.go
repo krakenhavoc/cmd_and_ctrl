@@ -1155,6 +1155,17 @@ const (
 	// Public.
 	EventStartingPlayer EventKind = "starting_player"
 
+	// EventTableRoll — a player rolled a d6 or a d20, or flipped a
+	// coin, at the table, for fun (ADR 0121 §5, roll_table_die). It is
+	// not a game roll: no effect instructed it (CR 706.1), so it is
+	// never an EventRollDie or an EventFlipCoin and no "whenever you
+	// roll" or "whenever you win a coin flip" ability can see it, and
+	// no watcher matches this kind. Actor rolled; Sides is 6 or 20 with
+	// Amount the result, or 0 for a coin with Label "heads" or "tails";
+	// RollID names the roll across an undo, which re-emits the event
+	// under a new Seq (Game.reemitTableRollsLocked). Public.
+	EventTableRoll EventKind = "table_roll"
+
 	// EventSettingsChanged — one table setting changed (ADR 0075
 	// §2.3). Actor is the player who changed it (uuid.Nil for the
 	// server admin), Label is the setting's key (SettingUndoLimit,
@@ -1316,6 +1327,12 @@ type Event struct {
 	// Seats are the seat indexes an EventOpeningRoll names: the seats
 	// that tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
+
+	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
+	// game's tableRollNext after the roll, so 1 for the first table
+	// roll of a game. It survives the re-emission an undo makes, where
+	// Seq does not, and is what a client keys the roll's animation on.
+	RollID uint64 `json:"roll_id,omitempty"`
 
 	// Step is the step that began, on EventStepBegan. Typed so a
 	// trigger's predicate compares a constant rather than a string

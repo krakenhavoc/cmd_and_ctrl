@@ -52,6 +52,16 @@ func seatList(names []string) string {
 	return strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
 }
 
+// renderTableRollLogText writes a table roll's line (ADR 0121 §5):
+// "Alice rolled a d20 at the table: 14", "Alice flipped a coin at the
+// table: heads".
+func renderTableRollLogText(e LogEvent, actor string) string {
+	if e.Sides > 0 && len(e.Results) > 0 {
+		return fmt.Sprintf("%s rolled a d%d at the table: %d", actor, e.Sides, e.Results[0])
+	}
+	return fmt.Sprintf("%s flipped a coin at the table: %s", actor, strings.Join(e.Faces, ", "))
+}
+
 func renderRandomLogText(e LogEvent, actor, card string) string {
 	source := ""
 	if e.CardID != "" {

@@ -89,6 +89,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // structure the step spine narrates, so it is toned like a step.
   opening_roll: "tone-cast",
   starting_player: "tone-step",
+  // ADR 0121 §5: a table roll is not part of the game: quiet.
+  table_roll: "tone-quiet",
   // #984: an answer given out loud (CR 105.4, CR 614.12). Quiet —
   // it is a fact about one permanent, not a swing in the game — but
   // present, because the card's later abilities read it back and the
@@ -165,12 +167,14 @@ export function logTone(kind: LogKind): string {
 
 // LOG_ICON marks the entries that put an ability on the stack (ADR 0119
 // §5), so a reader scanning the log can tell "it triggered" and "they
-// activated it" from the resolve line that comes later. Decorative: the
-// text already says which. Every other kind has no icon.
+// activated it" from the resolve line that comes later, and a die or a
+// coin rolled at the table for fun (ADR 0121 §8). Decorative: the text
+// already says which. Every other kind has no icon.
 const LOG_ICON: Partial<Record<LogKind, IconName>> = {
   trigger: "spark",
   activate: "bolt",
   activate_across: "bolt",
+  table_roll: "die",
 };
 
 export function logIcon(kind: LogKind): IconName | null {

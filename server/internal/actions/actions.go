@@ -162,6 +162,12 @@ const (
 	TypeRollOpening          Type = "roll_opening"
 	TypeHostRollRemaining    Type = "host_roll_remaining"
 	TypeChooseStartingPlayer Type = "choose_starting_player"
+	// ADR 0121 §5 — "Roll a die": a d6, a d20 or a coin flip at the
+	// table, for fun, params `{die: "d6" | "d20" | "coin"}`. Not a game
+	// roll: nothing can trigger on it. Legal at any time while the game
+	// is active, the opening roll and the mulligan included; mints no
+	// undo entry (MintsNoUndo). The hub allows one per seat per 2 s.
+	TypeRollTableDie Type = "roll_table_die"
 )
 
 // openingRollActions are the only action types Dispatch accepts while
@@ -169,20 +175,22 @@ const (
 // concession, and the table settings. An ALLOWLIST, so every other
 // type — and every type added after this one — is refused with
 // game.ErrOpeningRollOpen until somebody decides otherwise here.
-// ADR 0121 §5's roll_table_die joins it when it lands.
+// ADR 0121 §5's roll_table_die is on it: a table roll is never a game
+// action, and decision 4 makes it legal at any time.
 var openingRollActions = map[Type]struct{}{
 	TypeRollOpening:          {},
 	TypeHostRollRemaining:    {},
 	TypeChooseStartingPlayer: {},
+	TypeRollTableDie:         {},
 	TypeConcede:              {},
 	TypeSetTableSettings:     {},
 	TypeSetUndoLimit:         {},
 }
 
 // MintsNoUndo reports whether an action of type t is applied without an
-// undo entry (ADR 0121 §3): the opening roll's verbs, the two table
-// settings verbs, and every action while the opening roll is open (in
-// practice a concession). The hub and the bot runner, the two callers
+// undo entry (ADR 0121 §3): the opening roll's verbs, a table roll
+// (§5), the two table settings verbs, and every action while the
+// opening roll is open (in practice a concession). The hub and the bot runner, the two callers
 // of ws.Room.Apply, route such an action through Room.ApplyExternal.
 //
 // The opening roll's dice are simultaneous: an undo entry for each would
@@ -198,7 +206,7 @@ var openingRollActions = map[Type]struct{}{
 func MintsNoUndo(g *game.Game, t Type) bool {
 	switch t {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
-		TypeSetTableSettings, TypeSetUndoLimit:
+		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit:
 		return true
 	}
 	return g.OpeningRollOpen()
@@ -465,6 +473,8 @@ var playerScopedActions = map[Type]struct{}{
 	// winner chooses who goes first. The admin acts for any seat.
 	TypeRollOpening:          {},
 	TypeChooseStartingPlayer: {},
+	// ADR 0121 §5: a seat rolls its own table die.
+	TypeRollTableDie: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
 	// initiative are NOT player-scoped — any seated player may flip
@@ -944,6 +954,22 @@ func dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("%w: %s seat", ErrMissingParams, a.Type)
 		}
 		return g.ChooseStartingPlayer(a.Player, *p.Seat)
+
+	case TypeRollTableDie:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Die string `json:"die"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.Die == "" {
+			return fmt.Errorf("%w: %s die", ErrMissingParams, a.Type)
+		}
+		_, err := g.RollTableDie(a.Player, p.Die)
+		return err
 
 	case TypeDeclareAttacker:
 		var p struct {

@@ -1026,8 +1026,22 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return
 	}
 
-	// ADR 0121 §3: the opening roll's verbs, and anything sent while
-	// the roll is open, mint no undo entry.
+	// ADR 0121 §5: one table roll per seat per 2 s, so a held-down
+	// button cannot push the game's history out of the log. The seat is
+	// the one rolling (the admin may roll for any seat, and is limited
+	// as that seat). A roll the game then refuses gives its slot back.
+	releaseTableRoll := func() {}
+	if action.Type == actions.TypeRollTableDie && action.Player != uuid.Nil {
+		release, ok := room.tableRolls.reserve(action.Player)
+		if !ok {
+			c.sendError(frame.ID, protocol.CodeBadRequest, tableRollTooSoon)
+			return
+		}
+		releaseTableRoll = release
+	}
+
+	// ADR 0121 §3: the opening roll's verbs, a table roll, and anything
+	// sent while the roll is open, mint no undo entry.
 	apply := func(fn func() error) (protocol.GameView, uint64, error) {
 		return room.Apply(c.playerID, fn)
 	}
@@ -1040,6 +1054,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		return actions.Dispatch(room.Game, action)
 	})
 	if err != nil {
+		releaseTableRoll()
 		// S15: the structured insufficient_mana error carries the
 		// missing-symbols slice so the client's "Override strict
 		// mode for this cast" toast knows what's short. Surface it
