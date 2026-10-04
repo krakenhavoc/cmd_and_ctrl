@@ -508,7 +508,7 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 		// removal accessor to read yet — and nothing for it to say,
 		// because a removal that has not been applied in this pass has
 		// not happened.
-		abilities := StaticAbilitiesForCard(*src)
+		abilities := staticAbilitiesOf(src)
 		if len(abilities) == 0 {
 			continue
 		}
@@ -768,8 +768,8 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 		if p.Graveyard == nil {
 			continue
 		}
-		for _, c := range p.Graveyard.Cards {
-			pc := c.printedCharacteristic()
+		for i := range p.Graveyard.Cards {
+			pc := printedShared(&p.Graveyard.Cards[i])
 			for _, t := range pc.Types {
 				seen[t] = struct{}{}
 			}
@@ -936,7 +936,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 			if c.BaseController == uuid.Nil {
 				c.BaseController = c.Controller
 			}
-			printed := c.printedCharacteristic()
+			// Fresh, not the printed cache: the pass below writes this
+			// baseline in place (printed_cache.go).
+			printed := printedFresh(c)
 			c.effective = &printed
 		}
 	}

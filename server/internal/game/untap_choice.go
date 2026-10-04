@@ -301,7 +301,7 @@ func (g *Game) activeUntapCapsLocked(activePlayer uuid.UUID) []boundUntapCap {
 	}
 	var out []boundUntapCap
 	gather := func(source *Card) bool {
-		key := CatalogAbilityKey(*source)
+		key := catalogAbilityKeyOf(source)
 		if key == "" {
 			return true
 		}
@@ -334,7 +334,7 @@ func (g *Game) activeUntapOptOutsLocked() []boundUntapOptOut {
 	var out []boundUntapOptOut
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*source)
+		key := catalogAbilityKeyOf(source)
 		if key == "" {
 			continue
 		}

@@ -776,7 +776,14 @@ func (c *Card) ClearFaceDown() {
 // suppression (CatalogKey). If it is true, this object is a 2/2
 // colourless creature with no name and no text, whatever the card
 // underneath says.
-func (c Card) FaceDownIsPermanent() bool {
+func (c Card) FaceDownIsPermanent() bool { return c.faceDownPermanent() }
+
+// faceDownPermanent is FaceDownIsPermanent on a pointer receiver. A
+// value-receiver method called through a *Card copies the whole card —
+// over a kilobyte — to make its receiver, inlined or not, and the
+// catalog-key and printed-cache reads ask this once per card per walk
+// (#1498). Code holding a *Card on a hot path asks this one.
+func (c *Card) faceDownPermanent() bool {
 	return c.FaceDown && c.FaceDownKind.IsPermanentState()
 }
 

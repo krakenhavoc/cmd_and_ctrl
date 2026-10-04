@@ -105,7 +105,7 @@ func (g *Game) spellsHaveDelveLocked(caster uuid.UUID) bool {
 		if c.Controller != caster {
 			continue
 		}
-		if key := CatalogAbilityKey(*c); key != "" && CatalogSpellsHaveDelve(key) {
+		if key := catalogAbilityKeyOf(c); key != "" && CatalogSpellsHaveDelve(key) {
 			return true
 		}
 	}

@@ -73,13 +73,24 @@ func (z *Zone) Bottom() (Card, error) {
 }
 
 // PushTop adds a card to the top of the zone.
+//
+// Every insertion also stamps the card's printed-characteristic cache
+// (#1498): a zone insertion runs under the game's write lock, and it
+// is the moment a card's printed values settle — a move resets its
+// face, an import has just set them — so it is where a card that is
+// about to be read by every view gets its baseline built once rather
+// than on every read. The stamp keeps an entry that still matches, so
+// a card moved without changing costs one comparison. See
+// printed_cache.go.
 func (z *Zone) PushTop(c Card) {
 	z.Cards = append(z.Cards, c)
+	z.Cards[len(z.Cards)-1].stampPrinted()
 }
 
 // PushBottom adds a card to the bottom of the zone.
 func (z *Zone) PushBottom(c Card) {
 	z.Cards = append([]Card{c}, z.Cards...)
+	z.Cards[0].stampPrinted()
 }
 
 // InsertFromTop puts a card `depth` cards down from the top: depth 1
@@ -103,6 +114,7 @@ func (z *Zone) InsertFromTop(c Card, depth int) {
 	z.Cards = append(z.Cards, Card{})
 	copy(z.Cards[idx+1:], z.Cards[idx:])
 	z.Cards[idx] = c
+	z.Cards[idx].stampPrinted()
 }
 
 // PopTop removes and returns the top card.

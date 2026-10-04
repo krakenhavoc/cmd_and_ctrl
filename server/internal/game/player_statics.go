@@ -314,7 +314,7 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 			// has lost its abilities (layer 6) stops granting it. The
 			// empty KEY is the skip, so a token is walked like any
 			// other permanent (ADR 0083 decision 3).
-			key := CatalogAbilityKey(*c)
+			key := catalogAbilityKeyOf(c)
 			if key == "" {
 				continue
 			}
