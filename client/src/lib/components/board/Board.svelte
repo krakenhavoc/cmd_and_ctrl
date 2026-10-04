@@ -34,7 +34,7 @@
   } from "../../protocol";
   import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
-  import { isResponseWindowFor, responseWindowKey } from "../../considering";
+  import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
   import SeatSummary from "./SeatSummary.svelte";
   import {
@@ -339,10 +339,10 @@
   // panel; the pure predicate stays in considering.ts so it's testable
   // without a component.
   //
-  // Automatic passes land in about one round trip — milliseconds — so
-  // this delay is long enough that nothing ever gets a chip.
-  const CONSIDERING_DELAY_MS = 800;
-
+  // The delay is consideringDelayMs: 800 ms, which an automatic pass
+  // always beats, or in a stack window the largest stack hold plus
+  // 800 ms, because an automatic pass there now waits for the holder's
+  // hold (ADR 0119 §2).
   let consideringSeatID = $state<string | null>(null);
   let consideringTimer: ReturnType<typeof setTimeout> | null = null;
   // Plain (non-reactive) watermark: `view` is a brand-new object on
@@ -372,6 +372,7 @@
       return;
     }
 
+    const delay = consideringDelayMs(view);
     consideringTimer = setTimeout(() => {
       consideringTimer = null;
       // Re-read fresh rather than trust the closure: the window this
@@ -382,7 +383,7 @@
       if (responseWindowKey(view) !== key) return;
       if (!isResponseWindowFor(view, holderIdx)) return;
       consideringSeatID = holder.id;
-    }, CONSIDERING_DELAY_MS);
+    }, delay);
   });
 
   // Teardown-only: clears an in-flight timer on unmount (leaving the

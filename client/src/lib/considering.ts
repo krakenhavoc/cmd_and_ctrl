@@ -18,9 +18,10 @@
 //
 // isResponseWindowFor and responseWindowKey are pure and read only
 // the fields every viewer already receives — Board.svelte owns the
-// timer and the 800ms threshold (see its "considering" section).
+// timer; the threshold is consideringDelayMs below.
 
 import type { GameView } from "./protocol";
+import { STACK_HOLD_MAX_MS } from "./stackHold";
 
 // stackDepth counts everything on the stack. Reads both
 // representations for the reason timing.ts's stackEmpty and
@@ -69,4 +70,22 @@ export function isResponseWindowFor(view: GameView | null | undefined, seat: num
 export function responseWindowKey(view: GameView | null | undefined): string {
   if (!view?.turn) return "";
   return [view.turn.seq, view.turn.step, view.turn.priority_holder, stackDepth(view)].join("|");
+}
+
+// CONSIDERING_DELAY_MS is how long a human seat must hold priority in
+// a response window before the chip shows. Automatic passes land in
+// about one round trip — milliseconds — so nothing that passes on its
+// own ever gets a chip.
+export const CONSIDERING_DELAY_MS = 800;
+
+// consideringDelayMs is the chip's delay for this window. ADR 0119 §2
+// (amending ADR 0009's "Considering a response…"): a seat's automatic
+// pass on someone else's stack item now waits for its stack hold, up
+// to STACK_HOLD_MAX_MS, so in a stack window the chip waits past the
+// largest hold any seat can have set. Every seat gets the same delay
+// whatever its own setting, and the hold is as long whether or not
+// the holder could answer, so the chip still says nothing about either.
+// Outside a stack window there is no hold, and the delay stays 800 ms.
+export function consideringDelayMs(view: GameView | null | undefined): number {
+  return stackDepth(view) > 0 ? STACK_HOLD_MAX_MS + CONSIDERING_DELAY_MS : CONSIDERING_DELAY_MS;
 }

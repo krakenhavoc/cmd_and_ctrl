@@ -144,9 +144,24 @@ export const UNDO_SCOPE_CHOICES: SettingChoice<TableSettingsView["undo_scope"]>[
 ];
 
 export const BOT_PACE_CHOICES: SettingChoice<TableSettingsView["bot_pace"]>[] = [
-  { value: "fast", label: "Fast", hint: "Bots answer almost immediately. Good for testing." },
-  { value: "normal", label: "Normal", hint: "A beat of thought before each move, like a person." },
-  { value: "slow", label: "Slow", hint: "Bots take their time, so the table can follow along." },
+  // ADR 0119 §2: the speed also sets how long a bot leaves another
+  // player's spell on the stack before passing (aiseat's
+  // botPacePresets: fast 0, normal 2 s, slow 3 s).
+  {
+    value: "fast",
+    label: "Fast",
+    hint: "Bots answer almost immediately and pass others' spells at once. Good for testing.",
+  },
+  {
+    value: "normal",
+    label: "Normal",
+    hint: "Bots think for about a second and leave others' spells on the stack for 2 s.",
+  },
+  {
+    value: "slow",
+    label: "Slow",
+    hint: "Bots take their time and leave others' spells on the stack for 3 s, so the table can follow along.",
+  },
 ];
 
 /**

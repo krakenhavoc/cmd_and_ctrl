@@ -73,6 +73,7 @@
   import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
+  import { stackHoldStatus, stackHoldStatusText } from "../../stackHold";
   import { settings } from "../../settings";
   import { ariaKeyshortcuts, effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import { passHint } from "../../dockHint";
@@ -365,6 +366,16 @@
     return () => clearInterval(id);
   });
   const bluffLine = $derived(bluffStatusText($bluffStatus, now));
+  // ADR 0119 §2: the stack hold's countdown, in tenths, so the table
+  // does not look stalled and the player knows `next` still works.
+  $effect(() => {
+    const s = $stackHoldStatus;
+    if (!s) return;
+    now = Date.now();
+    const id = setInterval(() => (now = Date.now()), 100);
+    return () => clearInterval(id);
+  });
+  const holdLine = $derived(stackHoldStatusText($stackHoldStatus, now));
   const hint = $derived(passHint(view, viewerHasPriority));
 
   // ---- phone header ----------------------------------------------------
@@ -429,6 +440,10 @@
     {:else if bluffLine}
       <!-- Only the viewer sees this line. -->
       <span class="bluff-status" role="status">{bluffLine}</span>
+    {:else if holdLine}
+      <!-- ADR 0119 §2. Only the viewer sees this line. A timer, not a
+           status: a countdown read aloud ten times a second is noise. -->
+      <span class="hold-status" role="timer">{holdLine}</span>
     {:else if hint && !reqTakesBar}
       <!-- What `next` will do — not while a request has taken the bar
            and `next` is not on it. -->
@@ -761,7 +776,8 @@
     min-width: 0;
   }
   .pass-hint,
-  .bluff-status {
+  .bluff-status,
+  .hold-status {
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -773,6 +789,10 @@
   .bluff-status {
     color: var(--magenta);
     opacity: 0.85;
+  }
+  .hold-status {
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
   }
   .loop-notice {
     display: flex;
