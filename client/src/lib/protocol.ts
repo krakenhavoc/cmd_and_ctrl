@@ -716,6 +716,11 @@ export type LogKind =
   // for both the log and the attention strip.
   | "roll"
   | "flip"
+  // ADR 0121 §3: the opening roll moved on (a tie, a winner, or the
+  // host rolling for everyone left), and the winner's choice of who
+  // takes the first turn. Server-rendered `text`, like `roll`.
+  | "opening_roll"
+  | "starting_player"
   // #984: a player answered a "choose a ..." prompt out loud. The
   // chosen VALUE is `choice` on the first two ("G", "Elf"); a chosen
   // PLAYER is `target_seat`, like every other player in the log. All
