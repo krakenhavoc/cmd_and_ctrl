@@ -50,7 +50,24 @@ func sendFrame(t *testing.T, conn *websocket.Conn, f protocol.Frame) {
 	}
 }
 
+// readFrame reads the next frame that is not an `ack`. Since ADR 0122
+// §6.4 every applied action is followed, on the connection that sent
+// it, by an ack after its snapshot; the tests written before that read
+// the snapshot and move on, and the acks they leave behind are not what
+// they are about. The ack's own contract is held by ack_test.go, which
+// reads with readRawFrame.
 func readFrame(t *testing.T, conn *websocket.Conn) protocol.Frame {
+	t.Helper()
+	for {
+		f := readRawFrame(t, conn)
+		if f.Kind != protocol.KindAck {
+			return f
+		}
+	}
+}
+
+// readRawFrame reads the next frame, whatever its kind.
+func readRawFrame(t *testing.T, conn *websocket.Conn) protocol.Frame {
 	t.Helper()
 	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	_, raw, err := conn.ReadMessage()

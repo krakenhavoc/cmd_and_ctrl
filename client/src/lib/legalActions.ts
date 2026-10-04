@@ -10,7 +10,11 @@
 //     for a server older than the digest. The cap keeps at least one
 //     move per (source, kind), so the card-level answers below are
 //     still exact; only the alternatives within a card (a second
-//     ability row, a second zone) can be missing.
+//     ability row, a second zone) can be missing. Since ADR 0122 §6.1
+//     the frame says when they are: `legal_moves_truncated` is set
+//     exactly when the cap dropped one. This lookup does not read it
+//     and `exact` stays false for the fallback; the flag is there for
+//     the reader that one day needs the alternatives.
 //
 // Absent digest AND absent list means "no information": the seat owes
 // no decision, or the server predates S31. Every lookup then answers

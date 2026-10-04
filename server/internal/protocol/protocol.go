@@ -20,6 +20,17 @@ const (
 	KindAction   Kind = "action"
 	KindSnapshot Kind = "snapshot"
 	KindChat     Kind = "chat"
+	// KindLegalMovesRequest (client → server) asks for the bound seat's
+	// whole legal-move list, or one card's or one prompt's expanded
+	// (ADR 0122 §6.1). Answered with KindLegalMoves, or an error.
+	KindLegalMovesRequest Kind = "legal_moves_request"
+	// KindLegalMoves (server → client) is the reply, carrying the
+	// request's id. See LegalMovesPayload.
+	KindLegalMoves Kind = "legal_moves"
+	// KindAck (server → client) acknowledges an applied action to the
+	// connection that sent it, carrying the action's id (ADR 0122
+	// §6.4). It always follows the snapshot of the state it names.
+	KindAck Kind = "ack"
 )
 
 // Error codes for Kind == KindError. Kept deliberately small at v0.
@@ -72,7 +83,21 @@ const (
 	// active player's pass_priority / advance_step in
 	// declare_attackers, which is the declaration's checkpoint.
 	CodeIllegalAttack = "illegal_attack"
+	// CodeNoDecision — a legal_moves_request from a seat that owes no
+	// decision right now: nothing to list (ADR 0122 §6.1). Ask again
+	// after a snapshot that gives the seat a decision.
+	CodeNoDecision = "no_decision"
+	// CodeRateLimited — a legal_moves_request past the per-connection
+	// limit of LegalMovesRequestsPerSecond (ADR 0122 §6.1). Nothing was
+	// enumerated; wait and ask again.
+	CodeRateLimited = "rate_limited"
 )
+
+// LegalMovesRequestsPerSecond is how many legal_moves_request frames
+// one connection may send in any one second (ADR 0122 §6.1). The
+// requests are answered one at a time on the connection's own read
+// goroutine, under the room's lock.
+const LegalMovesRequestsPerSecond = 4
 
 // AttackRefusalLimit is the ErrorPayload.Reason of an `illegal_attack`
 // frame refused by a CR 508.1c count limit (#1507). A stable token,
@@ -296,4 +321,47 @@ type ReplayAnnotation struct {
 	Reason string `json:"reason,omitempty"`
 	// Steps are the wire action types the bundle applied, in order.
 	Steps []string `json:"steps,omitempty"`
+}
+
+// LegalMovesRequestPayload is the payload of a legal_moves_request
+// (ADR 0122 §6.1). Both fields are optional. Empty asks for the bound
+// seat's whole list, uncapped by the wire. Source names one card — an
+// instance ID — and Choice one prompt — a pending choice's ID, or
+// "cleanup_discard" for the cleanup-step discard — whose moves come
+// back with every count cap raised to legal.ExpandCeiling. There is no
+// field naming a seat: the answer is always for the seat the
+// connection is bound to.
+type LegalMovesRequestPayload struct {
+	Source string `json:"source,omitempty"`
+	Choice string `json:"choice,omitempty"`
+}
+
+// LegalMovesPayload is the reply to a legal_moves_request, carrying
+// the request's id (ADR 0122 §6.1).
+//
+// Seq and Generation name the state the moves describe: they are the
+// seq and generation of the last snapshot, read under the same room
+// lock as the moves. A client discards a reply that is not the window
+// it is deciding in and asks again after the next snapshot.
+//
+// Moves is the seat's enumeration with no wire cap — the list
+// legal_moves is the capped projection of — or the one card's or
+// prompt's moves expanded. Never null. Truncated is the enumerator's
+// own cut report for what is listed: each count cap that still left
+// moves out.
+type LegalMovesPayload struct {
+	Seq        uint64          `json:"seq"`
+	Generation uint64          `json:"generation"`
+	Moves      []LegalMoveView `json:"moves"`
+	Truncated  []LegalCutView  `json:"truncated,omitempty"`
+}
+
+// AckPayload is the payload of an ack (ADR 0122 §6.4): the seq and
+// generation of the state the acknowledged action produced. On the
+// connection that sent the action the ack always arrives after that
+// state's snapshot, though snapshots of later actions may arrive
+// between the two.
+type AckPayload struct {
+	Seq        uint64 `json:"seq"`
+	Generation uint64 `json:"generation"`
 }
