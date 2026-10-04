@@ -18,14 +18,12 @@ import (
 //
 // `encoding/json`'s `omitzero` struct-tag option is honoured only from
 // Go 1.24 onward; on an older toolchain it is silently ignored and the
-// field is always written. go.mod pins this module's minimum to 1.22
-// (the devcontainer's own comment: "older collaborator installs stay
-// supported"), and CI's `setup-go` — for every job, including the one
-// that builds the deployed binary — is pinned to exactly 1.22. A
-// contributor building with a newer local Go (the devcontainer ships
-// latest) would silently omit a zero-valued `omitzero` field that
-// every CI-built binary, and every fixture CI's own `TestWriteSnapshotCorpus`
-// run produced, always writes. That divergence is exactly what made
+// field is always written. When #1492 was found, go.mod's minimum and
+// CI's `setup-go` were both 1.22, so a contributor building with a
+// newer local Go would silently omit a zero-valued `omitzero` field
+// that every CI-built binary, and every fixture CI's own
+// `TestWriteSnapshotCorpus` run produced, always writes. That
+// divergence is exactly what made
 // TestSnapshotCorpusRestores fail locally and pass in CI: three
 // GameSnapshot-reachable fields carried the tag, and three more
 // structs reachable from it (CastBanRule.Filter, CastTimingRule.Filter,
@@ -41,10 +39,13 @@ import (
 // at the point of introduction rather than as a "works in CI, fails
 // on my machine" report weeks later.
 //
-// If the module's minimum Go version is ever raised to 1.24 or above
-// (both go.mod AND every `setup-go` pin in .github/workflows, moved
-// together), `omitzero` becomes safe to use again and this guard
-// should be deleted or narrowed, not silenced with an allowlist.
+// Since ADR 0122 §1.1 the module declares Go 1.27, so every toolchain
+// that can build it honours the option and that divergence cannot
+// recur. The guard stays, by that ADR's call: every field it once
+// caught is now always written, the frozen snapshot fixtures carry
+// those keys, and adding `omitzero` to one drops a key at its zero
+// value — a change to what is written, not an addition to it. Narrow
+// it, or allowlist a site with its reason, rather than silence it.
 
 // omitzeroTagAllowlist exempts one "<file>:<line>" struct field, keyed
 // as the walk prints it, with the reason it is not the bug. An
@@ -60,10 +61,10 @@ func TestNoOmitzeroStructTagBelowGo124(t *testing.T) {
 		return
 	}
 	sort.Strings(findings)
-	t.Errorf("a struct field tag uses the `omitzero` JSON option, which `encoding/json` only honours "+
-		"from Go 1.24 — this module's go.mod floor is 1.22 and CI's setup-go pins 1.22, so the field's "+
-		"presence on the wire depends on which toolchain built the binary (#1492). Drop the option (or, "+
-		"if it is genuinely fine here, add the site to omitzeroTagAllowlist with the reason).\n  %s",
+	t.Errorf("a struct field tag uses the `omitzero` JSON option, which stops writing the key at its "+
+		"zero value — a change to what snapshots and the wire carry, not an addition (#1492, ADR 0122 "+
+		"§1.1). Drop the option (or, if it is genuinely fine here, add the site to omitzeroTagAllowlist "+
+		"with the reason).\n  %s",
 		strings.Join(findings, "\n  "))
 }
 

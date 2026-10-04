@@ -397,7 +397,7 @@ func TestScopedEffectIsPureData(t *testing.T) {
 		}
 		seen[rt] = true
 		switch rt.Kind() {
-		case reflect.Func, reflect.Interface, reflect.Ptr, reflect.Map, reflect.Chan, reflect.UnsafePointer:
+		case reflect.Func, reflect.Interface, reflect.Pointer, reflect.Map, reflect.Chan, reflect.UnsafePointer:
 			t.Errorf("%s is a %s; a ScopedEffect holds plain data only", path, rt.Kind())
 		case reflect.Slice, reflect.Array:
 			if rt == reflect.TypeOf(uuid.UUID{}) {

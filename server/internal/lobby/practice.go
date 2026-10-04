@@ -330,12 +330,9 @@ func (l *Lobby) watchPractice(entry *gameEntry, limits PracticeLimits) {
 		case <-entry.stop:
 			return
 		case <-wake:
-			if !idle.Stop() {
-				select {
-				case <-idle.C:
-				default:
-				}
-			}
+			// Go 1.23+ timer channels are unbuffered: after Reset, a
+			// receive never sees a value from the old deadline, so the
+			// Stop-and-drain this once needed is gone (ADR 0122 §1.1).
 			idle.Reset(limits.Idle)
 			continue
 		case <-idle.C:

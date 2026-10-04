@@ -27,6 +27,8 @@
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
+  import AgentChip from "../AgentChip.svelte";
+  import { isAgentSeat } from "../../agentSeat";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -160,6 +162,10 @@
   // bot holds priority, so the table is waiting on its runner. It
   // clears the moment priority moves.
   const botThinking = $derived(isBot && hasPriority && !seat.eliminated);
+  // ADR 0122 §7: an agent seat reads "thinking…" the same way, from the
+  // priority holder every viewer already has. No presence signal.
+  const isAgent = $derived(!isBot && isAgentSeat(seat));
+  const agentThinking = $derived(isAgent && hasPriority && !seat.eliminated);
   // S11.5: the pulse is an animation, so it obeys the animations
   // toggle and the reduce-motion preference. With either off the chip
   // still says "thinking" — the information survives, the motion does
@@ -231,7 +237,7 @@
   class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
   class:bot={isBot}
-  class:thinking={(botThinking || considering) && animateThinking}
+  class:thinking={(botThinking || agentThinking || considering) && animateThinking}
   style:--seat-color={seatColor(seat.seat)}
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
@@ -252,6 +258,11 @@
   {/if}
   {#if isBot}
     <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
+  {:else if isAgent}
+    <!-- ADR 0122 §7: an outside AI agent plays this seat. Same slot as
+         the bot chip, so a seat is a bot, an agent or neither, never
+         two; its own look, so it never reads as the server's bot. -->
+    <AgentChip {seat} thinking={agentThinking} />
   {:else if considering}
     <!-- #1307: same slot the bot chip sits in, on a human seat that
          has been holding priority in a public response window longer

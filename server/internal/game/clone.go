@@ -597,6 +597,8 @@ func clonePlayer(p *Player) *Player {
 		IsBot:             p.IsBot,
 		BotTier:           p.BotTier,
 		BotDeck:           p.BotDeck,
+		Agent:             p.Agent,
+		AgentClient:       p.AgentClient,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)

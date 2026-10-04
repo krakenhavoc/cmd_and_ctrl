@@ -1,4 +1,5 @@
-# golangci-lint config for cmd_and_ctrl server.
+# golangci-lint config for cmd_and_ctrl server, in the v2 format
+# (golangci-lint v2.14.0; converted by `golangci-lint migrate`, ADR 0122 §1.1).
 # Deliberately conservative: start with stable, low-noise linters and add
 # more only when they catch real bugs. See https://golangci-lint.run/.
 #
@@ -10,43 +11,71 @@
 #     instead (#35), which also recurses into struct-valued fields
 #     Card embeds by value, such as AttachedTo and Provenance (#633).
 #   - shadow — too many false positives on common idioms.
+version: "2"
+
 run:
   # 6m: the old 3m budget measured 3m11s on the self-hosted runner with zero headroom (#1245).
+  # `migrate` drops this key (v2 has no timeout by default); it is kept on purpose.
   timeout: 6m
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - govet
     - ineffassign
-    - staticcheck
-    - unused
-    - gofmt
-    - goimports
     - misspell
+    - staticcheck
     - unconvert
     - unparam
-
-linters-settings:
-  misspell:
-    # "Compleat" and its family are Phyrexian spellings printed on real
-    # cards (Staff of Compleation, Elesh Norn, Mother of Machines). The
-    # card name is data, not prose, so misspell must not "correct" it.
-    ignore-words:
-      - compleation
-      - compleat
-      - compleated
+    - unused
+  settings:
+    staticcheck:
+      # v2 folded gosimple (S), stylecheck (ST) and the quickfix (QF)
+      # checks into staticcheck. Under v1 this linter ran the SA checks
+      # alone, and S, ST and QF were never enabled here, so this keeps
+      # its v1 meaning (ADR 0122 §1.1: the same linters). Widening it is
+      # its own change: on the tree at the switch it adds 60 findings,
+      # 39 of them QF1001 (De Morgan's law).
+      checks:
+        - SA*
+    misspell:
+      # "Compleat" and its family are Phyrexian spellings printed on real
+      # cards (Staff of Compleation, Elesh Norn, Mother of Machines). The
+      # card name is data, not prose, so misspell must not "correct" it.
+      ignore-rules:
+        - compleation
+        - compleat
+        - compleated
+  exclusions:
+    # v1's defaults, written out by `migrate`: lax generated-file
+    # detection and the three conventional directories. No preset is
+    # enabled, which is v1's `exclude-use-default: false`.
+    generated: lax
+    rules:
+      # Test code drops Close/Write errors on purpose and keeps helpers
+      # whose spare parameter documents intent. errcheck and unparam earn
+      # their keep in production code; in tests they are noise (#582).
+      - linters:
+          - errcheck
+          - unparam
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-    # Test code drops Close/Write errors on purpose and keeps helpers
-    # whose spare parameter documents intent. errcheck and unparam earn
-    # their keep in production code; in tests they are noise (#582).
-    - path: _test\.go
-      linters:
-        - errcheck
-        - unparam
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

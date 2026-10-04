@@ -60,6 +60,15 @@ var (
 	// links Discord to, a second seat at a table where they already
 	// hold one. One person, one seat per table (ADR 0051 sub-PR 4).
 	ErrAlreadySeated = errors.New("lobby: you already hold a seat at this table")
+
+	// ErrAgentSignedIn refuses an agent join that carries a signed-in
+	// person (ADR 0122 §7, decision 2): an agent seat joins as a guest
+	// and never has a user or a Discord identity.
+	ErrAgentSignedIn = errors.New("lobby: an agent seat joins as a guest")
+
+	// ErrSeatIsAgent refuses linking Discord to an agent seat (ADR
+	// 0122 §7): the seat stays a guest, and its badge stays on it.
+	ErrSeatIsAgent = errors.New("lobby: seat is an AI agent's guest seat")
 )
 
 // GameMeta is the lobby-facing projection of a game. It holds the
@@ -170,8 +179,18 @@ type SeatInfo struct {
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
 
+	// IsAgent / AgentClient mark a seat played by an AI agent through
+	// an MCP client (ADR 0122 §7): a guest seat whose join declared
+	// `agent`. AgentClient is the client's declared name, normalised
+	// by NormalizeAgentClient. Public: the lobby list and the invite
+	// preview carry them, exactly as the game view's PlayerView does.
+	// Read back from game.Player on restore (loadEntry), so they need
+	// no seats column. Never cleared once set.
+	IsAgent     bool   `json:"is_agent,omitempty"`
+	AgentClient string `json:"agent_client,omitempty"`
+
 	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
-	// seat. Mirrors GameMeta.HostPlayerID.
+	// or agent seat. Mirrors GameMeta.HostPlayerID.
 	IsHost bool `json:"is_host,omitempty"`
 
 	// UserID is the users row of the signed-in person holding the seat
@@ -622,6 +641,69 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 // /me/games/{id}/session) finds "the seat whose user_id is theirs",
 // and two of them would make that a guess.
 func (l *Lobby) JoinAs(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID) (GameMeta, uuid.UUID, error) {
+	return l.join(id, invite, playerName, identity, userID, nil)
+}
+
+// AgentDecl is an agent client's declaration at join (ADR 0122 §7):
+// the `agent` field of the join body. Client is the MCP client's
+// clientInfo.name, normalised by NormalizeAgentClient.
+type AgentDecl struct {
+	Client string
+}
+
+// maxAgentClientLen caps AgentClient (ADR 0122 §7: "cut to 32
+// characters of [a-z0-9._-]").
+const maxAgentClientLen = 32
+
+// NormalizeAgentClient turns a declared MCP client name into the label
+// the badge carries: lower case, every character outside [a-z0-9._-]
+// replaced by "-", leading and trailing "-" trimmed, cut to 32
+// characters. An empty result is "unknown". The server does this
+// rather than refusing a name it does not like, because the badge is
+// the point: an odd client name must still produce a badged seat.
+func NormalizeAgentClient(raw string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(raw) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('-')
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if len(out) > maxAgentClientLen {
+		out = strings.Trim(out[:maxAgentClientLen], "-")
+	}
+	if out == "" {
+		return "unknown"
+	}
+	return out
+}
+
+// JoinAgent claims a guest seat for an AI agent's MCP client (ADR 0122
+// §7). It is JoinAs with no identity and no user, and with the badge
+// set on the engine's player inside the join's own apply, so no
+// capture ever shows the seat without it. An agent seat never becomes
+// the table's host.
+//
+// Refusing an agent join from a signed-in session is the HTTP layer's
+// job (it is the one that sees the session); this function takes no
+// identity at all, so it cannot give an agent seat one.
+func (l *Lobby) JoinAgent(id uuid.UUID, invite, playerName string, decl AgentDecl) (GameMeta, uuid.UUID, error) {
+	decl.Client = NormalizeAgentClient(decl.Client)
+	return l.join(id, invite, playerName, DiscordIdentity{}, uuid.Nil, &decl)
+}
+
+// join is the one seat claim behind JoinAs and JoinAgent. agent is nil
+// for every seat but an agent's.
+func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID, agent *AgentDecl) (GameMeta, uuid.UUID, error) {
+	if agent != nil && (identity.Populated() || userID != uuid.Nil) {
+		// Decision 2: an agent seat is a guest. The HTTP layer
+		// already refuses a signed-in agent join; this keeps the rule
+		// true for any other caller.
+		return GameMeta{}, uuid.Nil, ErrAgentSignedIn
+	}
 	// Fall back to the Discord display name when the caller didn't
 	// pass an explicit override. This is the path the OAuth
 	// callback takes — the user never typed a name.
@@ -682,13 +764,25 @@ func (l *Lobby) JoinAs(id uuid.UUID, invite, playerName string, identity Discord
 			return addErr
 		}
 		p = added
+		if agent != nil {
+			// ADR 0122 §7: the badge goes on before the seat is
+			// visible to anyone, in the same commit that adds it.
+			if setErr := entry.room.Game.SetAgent(p.ID, agent.Client); setErr != nil {
+				return setErr
+			}
+		}
 		// ADR 0075 §2.1: the named host takes the table when they sit
 		// down; otherwise the first human to join hosts. Set inside
 		// the apply so this commit's capture already carries is_host.
-		if identity.Populated() && entry.meta.HostDiscordID != "" && identity.ID == entry.meta.HostDiscordID {
+		// An agent seat never hosts (ADR 0122 §7).
+		switch {
+		case agent != nil:
+			// Neither: an agent is not a person who can manage the
+			// table, so the next human to sit down takes it.
+		case identity.Populated() && entry.meta.HostDiscordID != "" && identity.ID == entry.meta.HostDiscordID:
 			entry.room.SetHost(p.ID)
 			bindNamedHost = true
-		} else if entry.room.HostPlayerID() == uuid.Nil {
+		case entry.room.HostPlayerID() == uuid.Nil:
 			entry.room.SetHost(p.ID)
 		}
 		if identity.Populated() {
@@ -734,6 +828,10 @@ func (l *Lobby) JoinAs(id uuid.UUID, invite, playerName string, identity Discord
 	}
 	if userID != uuid.Nil {
 		seat.UserID = userID.String()
+	}
+	if agent != nil {
+		seat.IsAgent = true
+		seat.AgentClient = agent.Client
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)

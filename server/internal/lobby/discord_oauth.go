@@ -360,6 +360,11 @@ func discordLink(c Config, w http.ResponseWriter, r *http.Request) error {
 	if seat.IsBot {
 		return ErrSeatIsBot
 	}
+	if seat.IsAgent {
+		// ADR 0122 §7: an agent seat stays a guest. Refused here,
+		// before the consent screen, and again in LinkSeat.
+		return ErrSeatIsAgent
+	}
 
 	// prompt=consent, always (ADR 0110 §2 item 4): this attaches an
 	// account to a seat, so the person sees which account it is.

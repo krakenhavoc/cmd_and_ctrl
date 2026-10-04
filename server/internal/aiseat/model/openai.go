@@ -23,8 +23,8 @@ import (
 // anthropic.go's doc says the swap point is "implement Client with
 // the SDK and delete this file". This is that seam used in the other
 // direction: a second implementation of a two-method interface, under
-// the same constraints as the first — raw net/http (server/go.mod has
-// three direct dependencies and pins go 1.22 on purpose), no
+// the same constraints as the first — raw net/http (server/go.mod
+// keeps its dependencies few on purpose), no
 // streaming, no tools, no retries, and ctx is the deadline that
 // matters.
 //

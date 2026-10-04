@@ -87,9 +87,8 @@ type CastBanRule struct {
 	// everything, so an unset Filter is not a second thing to test).
 	//
 	// No `omitzero`: this is part of GameSnapshot's serialization
-	// graph (PlayerStatic.CastBan.Filter), and that option's
-	// behaviour depends on the building Go toolchain below 1.24
-	// (#1492) — CI is pinned to 1.22.
+	// graph (PlayerStatic.CastBan.Filter), which writes it at its zero
+	// value too; omitzero_tag_guard_test.go holds that (#1492).
 	Filter PermissionFilter `json:"filter"`
 
 	// ExceptFromZone is the one zone this ban does NOT reach — Avatar's
