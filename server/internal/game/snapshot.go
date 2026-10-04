@@ -703,8 +703,12 @@ type cardSnapshot struct {
 	// ordered at its permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
-	AttackingTarget  uuid.UUID        `json:"attackingTarget"`
-	BlockingTarget   uuid.UUID        `json:"blockingTarget"`
+	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
+	// CR 903.9a check is owed to this commander. Additive within v7;
+	// an older file has none, which is what every game before it was.
+	CommanderReturnDue bool      `json:"commanderReturnDue,omitempty"`
+	AttackingTarget    uuid.UUID `json:"attackingTarget"`
+	BlockingTarget     uuid.UUID `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -1849,6 +1853,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
@@ -2654,6 +2659,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
