@@ -1531,13 +1531,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// creatures", "sacrifice X lands"), and this record is the
 		// only place the count lives: Vicious Betrayal's "+2/+2 for
 		// each creature sacrificed this way" reads it through
-		// ctx.Sacrificed().
+		// ctx.Sacrificed(). ADR 0113 §1 (#2072): and WHICH ones, named
+		// here while they are still on the battlefield (the payment
+		// below moves them) — Fling's "the sacrificed creature's power"
+		// reads them through ctx.SacrificedPermanents().
 		//
 		// ADR 0100 §2: and which either/or branch was paid and which
 		// cards the additional cost discarded — Grab the Prize's "if
 		// the discarded card wasn't a land card".
 		Paid: paidWithBranchAndDiscards(
-			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
+			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.GiftOpponent),
 			params.CostBranch, params.DiscardIDs),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
@@ -6528,6 +6531,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// pool below — CR 605.3b: a mana ability resolves immediately,
 	// without the stack, so the sacrifices and the mana are one
 	// atomic step.
+	// ADR 0113 §1 (#2072): which objects the sacrifice takes, named
+	// before they move.
+	paid.SacrificedObjects = g.sacrificeRefsLocked(sacrifices)
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.

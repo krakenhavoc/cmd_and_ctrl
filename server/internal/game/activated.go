@@ -1625,14 +1625,19 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
+	// ADR 0113 §1: which objects they were, named before they move.
+	sacrificedRefs := g.sacrificeRefsLocked(sacrifices)
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1213: how many this announcement actually sacrificed, recorded
 	// before the permanents are unreachable. Radiant Lotus's "for each
 	// artifact sacrificed this way" reads it at resolution through
-	// Context.Sacrificed().
+	// Context.Sacrificed(). ADR 0113 §1 (#2072): and which ones — Jarad's
+	// "the sacrificed creature's power" reads them through
+	// Context.SacrificedPermanents().
 	paid.Sacrificed = len(sacrifices)
+	paid.SacrificedObjects = sacrificedRefs
 	// #1213: the return-to-hand component, beside the sacrifices and
 	// for the same reason — it moves cards, so it goes after every
 	// component that needs the source still on the battlefield, and

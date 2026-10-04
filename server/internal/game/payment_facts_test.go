@@ -16,14 +16,33 @@ import (
 // own.
 func TestAbilityCopyCarriesEveryObjectTheCostMoved(t *testing.T) {
 	discarded, exiled, attacked := uuid.New(), uuid.New(), uuid.New()
+	sacA, sacB := ObjectRef{ID: uuid.New(), Epoch: 1}, ObjectRef{ID: uuid.New(), Epoch: 0}
 	p := PaidCost{
 		Discarded:         []uuid.UUID{discarded},
 		Exiled:            []uuid.UUID{exiled},
 		Sacrificed:        2,
+		SacrificedObjects: []ObjectRef{sacA, sacB},
 		ReturnedAttacking: attacked,
 		CountersRemoved:   3,
 	}
 	c := copiedPaidCost(p)
+	// ADR 0113 §1: the sacrificed objects travel with the count.
+	if len(c.SacrificedObjects) != 2 || c.SacrificedObjects[0] != sacA || c.SacrificedObjects[1] != sacB {
+		t.Errorf("copy's SacrificedObjects = %v, want [%v %v]", c.SacrificedObjects, sacA, sacB)
+	}
+	c.SacrificedObjects[0] = ObjectRef{}
+	if p.SacrificedObjects[0] != sacA {
+		t.Error("the copy's sacrificed list aliases the original's")
+	}
+	// clonePaidCost deep-copies it too, and IsZero sees it.
+	cl := clonePaidCost(p)
+	cl.SacrificedObjects[1] = ObjectRef{}
+	if p.SacrificedObjects[1] != sacB {
+		t.Error("clonePaidCost aliases the sacrificed list")
+	}
+	if (PaidCost{SacrificedObjects: []ObjectRef{sacA}}).IsZero() {
+		t.Error("a record naming a sacrificed object is not zero")
+	}
 	if len(c.Discarded) != 1 || c.Discarded[0] != discarded {
 		t.Errorf("copy's Discarded = %v, want [%v]", c.Discarded, discarded)
 	}
