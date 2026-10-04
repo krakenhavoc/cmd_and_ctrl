@@ -460,6 +460,11 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	if len(in.Moves) == 1 {
 		return aiseat.Decision{Index: 0, Reason: "only legal move"}, nil
 	}
+	// ADR 0121 §4: the opening roll. Roll, or take the first turn —
+	// the same answer Layer A gives, from the same function.
+	if i, why := aiseat.OpeningRollIndex(in); i >= 0 {
+		return aiseat.Decision{Index: i, Reason: why}, nil
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
