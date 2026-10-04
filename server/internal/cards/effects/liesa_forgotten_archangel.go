@@ -34,18 +34,14 @@ import (
 //     creature's own dies-triggers do not fire, because it never
 //     died (CR 700.4).
 //
-// An opponent's dying COMMANDER is exiled too, and its owner
-// separately decides. CR 903.9a (pinned edition) makes a commander's
+// An opponent's dying COMMANDER is exiled too, and its owner then
+// decides. CR 903.9a (pinned edition, ADR 0115) makes a commander's
 // trip from a graveyard or exile a state-based "may" AFTER it
 // arrives, so this replacement exiles the commander like any other of
-// the opponent's creatures, and the built-in command-zone replacement
-// (builtin_replacements.go) meets it in the CR 616 apply loop: the
-// commander's OWNER orders the two (CR 616.1 gives that choice to the
-// affected object's controller, not to Liesa's), the command-zone
-// offer is asked, and "no" leaves this effect to exile the creature.
-// Both printed outcomes are reachable and nothing else is — the same
-// reasoning that closed Cosmic Intervention's identical stale caveat,
-// pinned here by
+// the opponent's creatures (no ordering prompt: it is the only
+// replacement that applies), and the owner is then offered the
+// command zone. Both printed outcomes are reachable and nothing else
+// is, pinned by
 // TestB19LiesaExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines.
 func init() {
 	Register(Spec{

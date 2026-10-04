@@ -511,9 +511,10 @@ func destroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 
 // b17FoodPerCreatureYouControl is The Battle of Bywater's second
 // sentence: a Food for each creature the controller controls, read
-// after the destruction. `destroyed` is the sweep's set. A card from
-// it that is still on the battlefield is a commander waiting on its
-// owner's CR 903.9 answer: it was destroyed, so it does not count.
+// after the destruction. `destroyed` is the sweep's set, left out in
+// case a card from it is somehow still on the battlefield: a
+// commander is destroyed like any creature (CR 903.9a, ADR 0115) and
+// does not count.
 func b17FoodPerCreatureYouControl(ctx *Context, destroyed []game.Card) error {
 	gone := make(map[uuid.UUID]bool, len(destroyed))
 	for _, c := range destroyed {

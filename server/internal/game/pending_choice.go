@@ -1864,8 +1864,11 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 // in the command zone while the Aura sat on the battlefield attached to
 // a card that is no longer there — CR 704.5m never re-checked, and the
 // client drew the orphan in the enchantments row. Since #539 made the
-// CR 903.9 window open on every exit "from anywhere", this is the
-// ordinary way a commander leaves, not a corner.
+// CR 903.9 window open on every exit "from anywhere", this was the
+// ordinary way a commander left, not a corner. After ADR 0115 a
+// commander that dies leaves first and is asked afterwards, so this
+// boundary still matters for a bounce or a tuck (CR 903.9b) and for
+// any other prompt that pauses an exit.
 //
 // Not run on the two early returns above: errReplacementPending means
 // another prompt is open and its own resume owns the boundary, and a
@@ -4100,10 +4103,10 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	// #1019: the picked permanent goes through the sacrifice's own
 	// CONTINUATION rather than the fire-and-forget call, for the two
 	// reasons ADR 0013 §5x gives. It is what lets a run wait for a leg
-	// the CR 903.9 window has merely PAUSED — a sacrificed commander
-	// is still on the battlefield while its owner answers, and a run
-	// that settled on this line would pay out with the permanent still
-	// in play — and what lands in the run is
+	// a replacement's window has merely PAUSED — a sacrificed
+	// permanent is still on the battlefield while its owner answers,
+	// and a run that settled on this line would pay out with the
+	// permanent still in play — and what lands in the run is
 	// sacrificedThisWayLocked's answer rather than a re-read of the
 	// board on the next line.
 	//
@@ -4457,9 +4460,10 @@ func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
 }
 
 // zoneChangePausedLocked reports whether an exit for cardID is already
-// waiting on a player's answer — the CR 903.9 "send your commander to
-// the command zone instead?" prompt, today the only one that pauses a
-// card on its way off the battlefield.
+// waiting on a player's answer — a replacement's "may" prompt, such as
+// CR 903.9b's "send your commander to the command zone instead?" for a
+// bounce or a tuck, which pauses a card on its way off the battlefield.
+// A death or an exile is not paused by CR 903.9 (ADR 0115).
 //
 // The SBA sweep consults it because a paused exit leaves the doomed
 // permanent ON the battlefield with the condition that doomed it
