@@ -120,6 +120,17 @@ describe("the .panel --card-h-max ceiling", () => {
     expect(px(resolve(["panel", "opponent", "flipped", "spectator"], "--card-h-max"))).toBe(240);
   });
 
+  // ADR 0120 §3: the expanded overlay's copy of a board. PlayerPanel
+  // never sets `flipped` alongside `expanded`, so these are the two
+  // class sets it can carry.
+  it("is 240px for an expanded opponent panel, as on a spectator's", () => {
+    expect(px(resolve(["panel", "opponent", "expanded"], "--card-h-max"))).toBe(240);
+  });
+
+  it("is 240px for the viewer's own expanded panel", () => {
+    expect(px(resolve(["panel", "self", "expanded"], "--card-h-max"))).toBe(240);
+  });
+
   it("leaves the opponent formula's floor and slope untouched", () => {
     // 123px floor, "43cqh - 31px" slope — the same numbers #1071's
     // measurement table cites. Only the ceiling should have moved.
