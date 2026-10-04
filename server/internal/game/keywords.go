@@ -231,6 +231,15 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. CUMULATIVE (CR 702.100d: each instance triggers
 	// separately), so AppendKeywordAbility keeps every granted instance.
 	KeywordEvolve: true,
+	// annihilator (CR 702.86) joins with #2073 (ADR 0113 §2), in the
+	// same change that teaches the engine to honour it. The third
+	// TRIGGERED keyword, built like prowess and evolve
+	// (keywordTriggersFor, annihilator.go), and NUMBERED like toxic:
+	// stored as its family key, the tokens are "annihilator N" minted
+	// by CanonicalAnnihilatorToken, and a bare "annihilator" is
+	// refused. CUMULATIVE (CR 702.86b: each instance triggers
+	// separately).
+	KeywordAnnihilator: true,
 	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
 	// change that teaches the engine to honour it. Its consumer is the
 	// stack's graveyard route (routeStackCardToGraveyardLocked, through
@@ -272,6 +281,13 @@ var canonicalKeywords = map[string]bool{
 	// granted one are two questions.
 	KeywordRiot:    true,
 	KeywordUnleash: true,
+	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
+	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
+	// the LAST-KNOWN ability list (undying_persist.go), so a printed,
+	// token or granted instance works with no catalog entry.
+	// CUMULATIVE (CR 113.2c).
+	KeywordUndying: true,
+	KeywordPersist: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -451,7 +467,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // same call for "Hexproof from").
 func CanonicalKeywords(s string) ([]string, bool) {
 	kw := strings.ToLower(strings.TrimSpace(s))
-	if kw == KeywordProtection || kw == KeywordToxic {
+	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator {
 		return nil, false
 	}
 	if canonicalKeywords[kw] {
@@ -462,6 +478,11 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	// because Scryfall's array carries only the word and the amount
 	// lives in the oracle line (ADR 0056 Decision 1).
 	if tok, ok := CanonicalToxicToken(s); ok {
+		return []string{tok}, true
+	}
+	// Annihilator (CR 702.86) is numbered the same way: "Annihilator 4"
+	// is one token, "annihilator 4" (ADR 0113 §2).
+	if tok, ok := CanonicalAnnihilatorToken(s); ok {
 		return []string{tok}, true
 	}
 	if toks, ok := ProtectionTokens(s); ok {
@@ -479,7 +500,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
 // "split second", rebound, sunburst, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
-// ToxicTotal.
+// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts.
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other
@@ -580,7 +601,7 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 	// PrintedKeywords today — its keywords ride the Card above — so
 	// this is the gate asking the right question rather than a
 	// behaviour change.
-	key := CatalogKey(*c)
+	key := catalogKeyOf(c)
 	if key == "" {
 		return
 	}

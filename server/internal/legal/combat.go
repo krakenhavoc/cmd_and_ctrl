@@ -129,7 +129,7 @@ func (e *enumerator) combatMoves() {
 				if !price.IsFree() {
 					// #1600: widened as the engine's tax payment
 					// widens it (payAbilityManaCostLocked).
-					total := e.g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, price.Total)
+					total := e.g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, price.Total, 0)
 					if !e.p.ManaPool.CanPayFor(total, 0, game.ManaSpendContext{}) {
 						// Only the tapper can cover it, so the move
 						// has to say so — and if the tapper cannot

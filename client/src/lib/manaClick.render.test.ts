@@ -218,11 +218,18 @@ describe("left-click on your own permanents (#1438)", () => {
     expect(p.sent).toEqual([]);
   });
 
-  it("keeps click-to-tap for a permanent with no mana ability", () => {
+  // ADR 0117 §1, owner answer 1: a permanent with nothing usable does
+  // nothing on a plain click, and drops its pointer affordance. It keeps
+  // its role and tab stop.
+  it("does nothing on a permanent with no ability", () => {
     const p = mountPanel([bear()]);
+    expect(p.tile("bear").classList.contains("clickable")).toBe(false);
+    expect(p.tile("bear").getAttribute("role")).toBe("button");
+    expect(p.tile("bear").tabIndex).toBe(0);
     click(p.tile("bear"));
-    expect(p.tapped).toEqual(["bear"]);
+    expect(p.tapped).toEqual([]);
     expect(p.sent).toEqual([]);
+    expect(p.container.querySelector(".mana-menu")).toBeNull();
   });
 
   it("raw-taps a mana source on Alt-click", () => {
@@ -232,24 +239,56 @@ describe("left-click on your own permanents (#1438)", () => {
     expect(p.sent).toEqual([]);
   });
 
-  it("untaps a tapped mana source with one click", () => {
+  it("does nothing on a tapped mana source: Untap is in the popover", () => {
     const p = mountPanel([swamp({ tapped: true })]);
+    expect(p.tile("swamp").classList.contains("clickable")).toBe(false);
     click(p.tile("swamp"));
+    expect(p.tapped).toEqual([]);
+    expect(p.sent).toEqual([]);
+  });
+
+  const rightClick = (el: HTMLElement) => {
+    el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    flushSync();
+  };
+  const sandboxRow = (p: ReturnType<typeof mountPanel>) =>
+    p.container.querySelector<HTMLElement>('[role="group"][aria-label="sandbox"] [data-raw-tap]');
+
+  it("offers 'Tap (no mana)' in the popover's Sandbox section on a mana source", () => {
+    const p = mountPanel([swamp()]);
+    rightClick(p.tile("swamp"));
+    const row = sandboxRow(p);
+    expect(row?.textContent).toContain("Tap (no mana)");
+    expect(row?.dataset.sandbox).toBe("tap");
+    click(row!);
     expect(p.tapped).toEqual(["swamp"]);
     expect(p.sent).toEqual([]);
   });
 
-  it("offers 'Tap (no mana)' on right-click", () => {
-    const p = mountPanel([swamp()]);
-    p.tile("swamp").dispatchEvent(
-      new MouseEvent("contextmenu", { bubbles: true, cancelable: true }),
-    );
-    flushSync();
-    const row = p.container.querySelector<HTMLElement>("[data-raw-tap]");
-    expect(row?.textContent).toContain("Tap (no mana)");
+  it("offers Untap in the Sandbox section on a tapped source", () => {
+    const p = mountPanel([swamp({ tapped: true })]);
+    rightClick(p.tile("swamp"));
+    const row = sandboxRow(p);
+    expect(row?.textContent?.trim()).toMatch(/^Untap/);
+    expect(row?.dataset.sandbox).toBe("untap");
     click(row!);
     expect(p.tapped).toEqual(["swamp"]);
-    expect(p.sent).toEqual([]);
+  });
+
+  it("opens a vanilla creature's popover on right-click, with Tap, and Untap once tapped", () => {
+    const p = mountPanel([bear()]);
+    rightClick(p.tile("bear"));
+    expect(sandboxRow(p)?.textContent?.trim()).toMatch(/^Tap/);
+    expect(sandboxRow(p)?.textContent).not.toContain("no mana");
+    expect(sandboxRow(p)?.title).toMatch(/manual change that adds no mana and activates nothing/);
+    // No pip for the Sandbox row.
+    expect(p.tile("bear").querySelector(".ready-pip")).toBeNull();
+    click(sandboxRow(p)!);
+    expect(p.tapped).toEqual(["bear"]);
+
+    const q = mountPanel([bear()].map((c) => ({ ...c, instance_id: "bear2", tapped: true })));
+    rightClick(q.tile("bear2"));
+    expect(sandboxRow(q)?.textContent?.trim()).toMatch(/^Untap/);
   });
 });
 

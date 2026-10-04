@@ -46,6 +46,30 @@ const (
 	FallbackPolicyError = "policy-error"
 )
 
+// Pick kinds: how a model reply that WAS used mapped onto the move
+// list (#2196). The reply carries a number and that entry's label, and
+// the two can disagree; these say which one decided, so a run can
+// tell a model that numbers its moves correctly from one the label is
+// carrying. A reply that named nothing on the list is not a pick at
+// all — it is FallbackOutOfRange.
+const (
+	// PickIndex — the number named a move and the label agreed.
+	PickIndex = "index"
+	// PickUnlabelled — the number named a move and no label came with
+	// it (a bare integer, or a reply in the old index-only shape).
+	PickUnlabelled = "index-unlabelled"
+	// PickLabelRescued — the number is not a move, and the label
+	// named exactly one listed move, which was taken.
+	PickLabelRescued = "label-rescued"
+	// PickLabelCorrected — the number named one listed move and the
+	// label exactly one OTHER; the label was taken.
+	PickLabelCorrected = "label-corrected"
+	// PickLabelMismatch — the number named a move, and the label
+	// named no single listed move (nothing, or two identical
+	// entries); the number was taken.
+	PickLabelMismatch = "label-mismatch"
+)
+
 // DecisionRecord is one window, after the fact.
 type DecisionRecord struct {
 	// Layer is which layer produced the answer.
@@ -75,6 +99,10 @@ type DecisionRecord struct {
 	ModelLatency time.Duration
 	// Usage is what the call cost.
 	Usage Usage
+	// Pick is how the model's reply mapped onto the move list — one
+	// of the Pick* constants — when Layer C's answer was used; empty
+	// otherwise.
+	Pick string
 	// Index and Reason are the decision that came out.
 	Index  int
 	Reason string
@@ -91,6 +119,12 @@ type Stats struct {
 	ByEscalation map[string]int64
 	// ByFallback counts the reasons Layer C's answer was discarded.
 	ByFallback map[string]int64
+	// ByPick counts how the replies Layer C's answer WAS taken from
+	// mapped onto the move list: by their number, or by the label
+	// when the number disagreed (#2196). Read it next to
+	// ByFallback[FallbackOutOfRange]: those are the replies neither
+	// could place.
+	ByPick map[string]int64
 	// Escalated counts windows where at least one trigger fired —
 	// i.e. windows that asked the frontier model rather than the
 	// cheap one. Counted once per window, unlike ByEscalation.
@@ -189,6 +223,7 @@ func newRecorder(keep int) *recorder {
 			ByLayer:      map[string]int64{},
 			ByEscalation: map[string]int64{},
 			ByFallback:   map[string]int64{},
+			ByPick:       map[string]int64{},
 			ByImprov:     map[string]int64{},
 		},
 	}
@@ -226,6 +261,9 @@ func (r *recorder) record(rec DecisionRecord) {
 	if rec.Fallback != "" {
 		r.stats.ByFallback[rec.Fallback]++
 	}
+	if rec.Pick != "" {
+		r.stats.ByPick[rec.Pick]++
+	}
 	if rec.TimedOut {
 		r.stats.ModelTimeouts++
 	}
@@ -256,6 +294,7 @@ func (r *recorder) snapshot() Stats {
 	out.ByLayer = copyCounts(r.stats.ByLayer)
 	out.ByEscalation = copyCounts(r.stats.ByEscalation)
 	out.ByFallback = copyCounts(r.stats.ByFallback)
+	out.ByPick = copyCounts(r.stats.ByPick)
 	out.ByImprov = copyCounts(r.stats.ByImprov)
 	return out
 }

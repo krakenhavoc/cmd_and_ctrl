@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Blightsteel Colossus — Artifact Creature — Phyrexian Golem {12},
 // 11/11:
@@ -50,23 +46,8 @@ func init() {
 		Name:            "Blightsteel Colossus",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample", "infect", "indestructible"},
-		Replacements: []game.ReplacementEffect{{
-			Watches:         []game.EventKind{game.EventZoneMove, game.EventDiscardCard},
-			SelfReplacement: true,
-			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-				fromMove := ev.Kind == game.RepEventMove || ev.Kind == game.RepEventDiscard
-				return fromMove && ev.CardID == src.InstanceID && ev.NewZone == game.ZoneGraveyard
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.NewZone = game.ZoneLibrary
-				ev.NewZoneOwner = uuid.Nil
-				ev.ShuffleDestinationLibrary = true
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Blightsteel Colossus: shuffled into its owner's library instead",
-		}},
+		Replacements: []game.ReplacementEffect{
+			ShuffleIntoOwnersLibraryInstead("Blightsteel Colossus: shuffled into its owner's library instead"),
+		},
 	})
 }

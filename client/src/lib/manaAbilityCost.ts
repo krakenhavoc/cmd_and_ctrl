@@ -19,6 +19,8 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
     !!ability.tap_others_options ||
     !!ability.discard_cost_n ||
     !!ability.exile_cost_n ||
+    // #1600: Food Chain's "Exile a creature you control".
+    !!ability.exile_permanent_options ||
     counterCostNeedsPrompt(ability)
   );
 }
@@ -28,4 +30,12 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
 // the exact wire name (#758).
 export function manaTapPayment(tapIDs: string[]): { tap_ids?: string[] } {
   return tapIDs.length > 0 ? { tap_ids: [...tapIDs] } : {};
+}
+
+// #1600: the permanents Food Chain's "Exile a creature you control"
+// names, on their own wire field — `exile_ids` names cards in a hand or
+// a graveyard. Absent when there are none, so every other mana ability's
+// payload is unchanged.
+export function manaExilePermanentPayment(ids: string[]): { exile_permanent_ids?: string[] } {
+  return ids.length > 0 ? { exile_permanent_ids: [...ids] } : {};
 }

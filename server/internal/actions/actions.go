@@ -1263,6 +1263,11 @@ func dispatch(g *game.Game, a Action) error {
 			// Exactly the clause's count, each once, each on the
 			// battlefield under the activator's control.
 			ReturnIDs []string `json:"return_ids,omitempty"`
+			// #1600 — exile_permanent_ids names the permanents paid to
+			// an "Exile a creature you control" cost (The Soul Stone's
+			// harness, Altar of Bhaal). Its own field rather than
+			// exile_ids, which names cards in a hand or a graveyard.
+			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 			// #1310 — waterbend_ids names the untapped artifacts and
 			// creatures tapped to pay part of a "Waterbend {N}" cost
 			// (CR 701.67a), each covering {1} of its generic mana.
@@ -1357,6 +1362,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				returnIDs = append(returnIDs, id)
 			}
+			exilePermanentIDs := make([]uuid.UUID, 0, len(p.ExilePermanentIDs))
+			for _, raw := range p.ExilePermanentIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability exile_permanent_ids: %w", err)
+				}
+				exilePermanentIDs = append(exilePermanentIDs, id)
+			}
 			waterbendIDs := make([]uuid.UUID, 0, len(p.WaterbendIDs))
 			for _, raw := range p.WaterbendIDs {
 				id, err := uuid.Parse(raw)
@@ -1378,20 +1391,21 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("activate_ability: %w", err)
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
-				Ref:              p.Ref,
-				SacrificeIDs:     sacIDs,
-				TapIDs:           tapIDs,
-				CrewIDs:          crewIDs,
-				CounterSourceIDs: counterIDs,
-				CounterCounts:    p.CounterCounts,
-				CounterKind:      p.CounterKind,
-				CounterKinds:     p.CounterKinds,
-				DiscardIDs:       discardIDs,
-				ExileIDs:         exileIDs,
-				TopIDs:           topIDs,
-				ReturnIDs:        returnIDs,
-				WaterbendIDs:     waterbendIDs,
-				Targets:          refs,
+				Ref:               p.Ref,
+				SacrificeIDs:      sacIDs,
+				TapIDs:            tapIDs,
+				CrewIDs:           crewIDs,
+				CounterSourceIDs:  counterIDs,
+				CounterCounts:     p.CounterCounts,
+				CounterKind:       p.CounterKind,
+				CounterKinds:      p.CounterKinds,
+				DiscardIDs:        discardIDs,
+				ExileIDs:          exileIDs,
+				TopIDs:            topIDs,
+				ReturnIDs:         returnIDs,
+				ExilePermanentIDs: exilePermanentIDs,
+				WaterbendIDs:      waterbendIDs,
+				Targets:           refs,
 				// #1563, CR 601.2d via 602.2b: the division, with
 				// the targets it divides among.
 				Distribution: dist,
@@ -1832,6 +1846,10 @@ func dispatch(g *game.Game, a Action) error {
 				// +1/+1 counter ("you may"), and not applying takes
 				// haste ("if you don't").
 				return g.ResolveEntryRiot(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceCommanderReturn:
+				// CR 903.9a (ADR 0115): apply puts the commander into
+				// its owner's command zone.
+				return g.ResolveCommanderReturn(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}
@@ -1950,6 +1968,11 @@ func dispatch(g *game.Game, a Action) error {
 				// ADR 0107 §6, CR 609.7a: "a source of your choice" —
 				// exactly one, from the prompt's candidates.
 				return g.ResolveChooseSource(choiceID, a.Player, ids)
+			case game.PendingChoiceRingBearer:
+				// ADR 0114 §4, CR 701.54a: "choose a creature you
+				// control" as the Ring tempts you — exactly one, from
+				// the prompt's candidates.
+				return g.ResolveRingBearer(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for
@@ -2008,6 +2031,10 @@ func dispatch(g *game.Game, a Action) error {
 			// than discard_ids, because it is its own component: an
 			// exiled card is not discarded.
 			ExileIDs []string `json:"exile_ids,omitempty"`
+			// #1600 — exile_permanent_ids names the permanents paid to
+			// an "Exile a creature you control" cost on a MANA ability
+			// (Food Chain). The same field activate_ability uses.
+			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 			// #1443 — the colour a pipe slot adds, named BEFORE the
 			// source is tapped, so no mana_pick is queued. `color` is
 			// the one-slot spelling (a painland, Birds of Paradise,
@@ -2073,17 +2100,26 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			manaExileIDs = append(manaExileIDs, id)
 		}
+		manaExilePermanentIDs := make([]uuid.UUID, 0, len(p.ExilePermanentIDs))
+		for _, raw := range p.ExilePermanentIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability exile_permanent_ids: %w", err)
+			}
+			manaExilePermanentIDs = append(manaExilePermanentIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
-			Ref:              p.Ref,
-			SacrificeIDs:     sacIDs,
-			TapIDs:           manaTapIDs,
-			CounterSourceIDs: manaCounterIDs,
-			CounterCounts:    p.CounterCounts,
-			CounterKind:      p.CounterKind,
-			CounterKinds:     p.CounterKinds,
-			DiscardIDs:       manaDiscardIDs,
-			ExileIDs:         manaExileIDs,
-			Colors:           manaColors,
+			Ref:               p.Ref,
+			SacrificeIDs:      sacIDs,
+			TapIDs:            manaTapIDs,
+			CounterSourceIDs:  manaCounterIDs,
+			CounterCounts:     p.CounterCounts,
+			CounterKind:       p.CounterKind,
+			CounterKinds:      p.CounterKinds,
+			DiscardIDs:        manaDiscardIDs,
+			ExileIDs:          manaExileIDs,
+			ExilePermanentIDs: manaExilePermanentIDs,
+			Colors:            manaColors,
 		})
 
 	case TypeSetMaxHandSize:

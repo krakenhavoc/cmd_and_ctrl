@@ -43,8 +43,9 @@ import "github.com/google/uuid"
 //     Decision 47), which counts each defending player's blocks on
 //     their own.
 //
-// Rules come from two places, both walked on every check: the
-// battlefield, through CatalogBlockRules, and — since ADR 0041 phase 3
+// Rules come from three places, all walked on every check: the
+// battlefield and every seat's emblems (ADR 0114 §5), through
+// CatalogBlockRules, and — since ADR 0041 phase 3
 // tier 3b (#1497) — the ScopedEffect records whose mod is a block-rule
 // kind (Gingerbrute's shape), adapted by forEachScopedBlockRuleLocked
 // in scoped_block_rules.go and swept with every other duration.
@@ -148,26 +149,47 @@ var CatalogBlockRules func(key string) []BlockRule
 //
 // Caller must hold g.mu (read or write) with fresh layers. Reads only.
 func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool) {
-	if CatalogBlockRules == nil || g.Battlefield == nil {
+	if CatalogBlockRules == nil {
 		return
 	}
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
-		// The empty KEY is the skip, not an empty oracle ID: a token
-		// has a catalog key of its own since #521, and Avatar Kuruk's
-		// Spirit token ("can't block or be blocked by non-Spirit
-		// creatures") is a token that prints a pair rule. ADR 0083
-		// decision 3.
-		key := CatalogAbilityKey(*src)
-		if key == "" {
-			continue
-		}
-		for _, r := range CatalogBlockRules(key) {
-			if !fn(r, src) {
-				return
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			src := &g.Battlefield.Cards[i]
+			// The empty KEY is the skip, not an empty oracle ID: a
+			// token has a catalog key of its own since #521, and
+			// Avatar Kuruk's Spirit token ("can't block or be blocked
+			// by non-Spirit creatures") is a token that prints a pair
+			// rule. ADR 0083 decision 3.
+			key := catalogAbilityKeyOf(src)
+			if key == "" {
+				continue
+			}
+			for _, r := range CatalogBlockRules(key) {
+				if !fn(r, src) {
+					return
+				}
 			}
 		}
 	}
+	// ADR 0114 §5: an emblem's block rules, after the battlefield (CR
+	// 114.4 — an emblem's abilities function in the command zone). The
+	// emblem is the rule's source, so a scope reads "your" off its
+	// controller, which is its owner and never changes (CR 114.2): the
+	// Ring's "your Ring-bearer can't be blocked by creatures with
+	// greater power". CatalogKey, not CatalogAbilityKey: nothing can
+	// name an emblem to remove its abilities.
+	g.forEachEmblemLocked(func(src *Card) bool {
+		key := CatalogKey(*src)
+		if key == "" {
+			return true
+		}
+		for _, r := range CatalogBlockRules(key) {
+			if !fn(r, src) {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 // blockRuleRefusalLocked is slot 4 of BlockPairRefusalLocked: the

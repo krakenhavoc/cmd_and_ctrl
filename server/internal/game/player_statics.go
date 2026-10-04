@@ -25,7 +25,7 @@ import "github.com/google/uuid"
 //     Declared as effects.Spec.PlayerKeywords, read through
 //     CatalogPlayerKeywords on every query and written nowhere. Two
 //     Leylines therefore compose, and one of them leaving cannot
-//     revoke the other's grant — the argument CatalogNoMaxHandSize
+//     revoke the other's grant — the argument CatalogHandSize
 //     (#338) and land_drops.go both make at length.
 //
 //   - GRANTED — a resolved spell or triggered ability, "you gain
@@ -243,7 +243,7 @@ type PlayerStatic struct {
 // package from effects.Spec.PlayerKeywords. A nil hook (no catalog
 // wired) means no player has a derived ability.
 //
-// Derived rather than written, for the reason CatalogNoMaxHandSize
+// Derived rather than written, for the reason CatalogHandSize
 // spells out: a "set on enter, restore on leave" design has to answer
 // "restore to what?", and gets two real cases wrong — two Leylines,
 // where the first to leave would strip a hexproof the second is still
@@ -314,7 +314,7 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 			// has lost its abilities (layer 6) stops granting it. The
 			// empty KEY is the skip, so a token is walked like any
 			// other permanent (ADR 0083 decision 3).
-			key := CatalogAbilityKey(*c)
+			key := catalogAbilityKeyOf(c)
 			if key == "" {
 				continue
 			}

@@ -310,6 +310,16 @@ type PendingChoiceView struct {
 	Source     string     `json:"source,omitempty"`
 	Reason     string     `json:"reason,omitempty"`
 	Options    []CardView `json:"options,omitempty"`
+	// Eligible is, for a discard_from_hand, the instance IDs among
+	// Options the chooser may pick (ADR 0116 §7): "you choose a
+	// nonland card from it". Options stays the whole revealed hand.
+	// Filtered per viewer by the same rule as Options — an ID whose
+	// card this viewer did not get is not sent. Absent on a prompt
+	// queued before ADR 0116, which means every option.
+	Eligible []string `json:"eligible,omitempty"`
+	// EligibleLabel names what Eligible holds, the way the card
+	// prints it: "nonland card".
+	EligibleLabel string `json:"eligible_label,omitempty"`
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
@@ -470,6 +480,15 @@ type PendingChoiceView struct {
 	// wire; this says which one, so the client can show it and, after
 	// "Cast it free", start the cast chain on it.
 	MayCastCard string `json:"may_cast_card,omitempty"`
+
+	// PlayableFromZone populates the "commander_return" kind (ADR 0115
+	// decision 2): whether the commander's owner could cast or play it
+	// from the graveyard or exile it is in now (escape, flashback, an
+	// adventurer on an adventure, a cast permission), ignoring timing
+	// and mana. Computed on every view, never stored. The client says
+	// so beside Yes / No, and a bot declines the command zone when it
+	// is set. Absent on every other kind.
+	PlayableFromZone bool `json:"playable_from_zone,omitempty"`
 
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -1464,7 +1483,10 @@ type PlayerView struct {
 	// a controlled permanent with Spec.NoMaxHandSize reports -1
 	// here without the underlying field being written. Otherwise the
 	// badge would keep saying "10 / 7" for a player the cleanup step
-	// is (correctly) never going to prompt (#338).
+	// is (correctly) never going to prompt (#338). Since ADR 0113 §3
+	// (#2074) it is the CR 613.11 timestamp-order fold of every
+	// maximum-hand-size static and grant, never below 0, so -1 only
+	// ever means no maximum.
 	MaxHandSize int `json:"max_hand_size"`
 
 	// LandDropsPerTurn / LandsPlayedThisTurn are the two halves of
@@ -1655,6 +1677,22 @@ type EmblemView struct {
 	InstanceID string `json:"instance_id"`
 	Label      string `json:"label"`
 	Text       string `json:"text"`
+	// Level is how many times the Ring has tempted the emblem's owner
+	// (ADR 0114 §2, §9). Absent on every other emblem. For the Ring,
+	// Text is the lines it has gained so far.
+	Level int `json:"level,omitempty"`
+	// Lines are every line of an emblem whose abilities are gained one
+	// by one (the Ring), each with the count it is gained at — so the
+	// table can show the lines still to come beside the ones gained
+	// (ADR 0114 owner decision 1). Absent on every other emblem.
+	Lines []EmblemLineView `json:"lines,omitempty"`
+}
+
+// EmblemLineView is one line of the Ring: its text, and how many
+// temptations it takes (CR 701.54c).
+type EmblemLineView struct {
+	Text string `json:"text"`
+	At   int    `json:"at"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -2238,6 +2276,12 @@ type CardView struct {
 	// Public, like Harnessed, and set straight off the card for the
 	// same reason: no card type owns monstrosity.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
+	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
+	// Public, and set straight off the card. Unlike Monstrous it is NOT
+	// cleared on a face-down permanent: the designation was chosen in
+	// public and says nothing about the hidden card.
+	RingBearer bool `json:"ring_bearer,omitempty"`
 	// Prepared is a permanent's CR 722.3a prepared designation
 	// (ADR 0090): while it is set, its controller may cast the copy of
 	// its prepare spell that sits in exile — which the wire already
@@ -3190,6 +3234,22 @@ type ActivatedAbilityView struct {
 	// control is on this list.
 	ReturnLabel   string            `json:"return_label,omitempty"`
 	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
+	// ExilePermanentLabel / ExilePermanentOptions describe an "Exile a
+	// creature you control" cost component (#1600) — The Soul Stone's
+	// harness, Altar of Bhaal, City of Shadows. ReturnLabel /
+	// ReturnOptions one destination over: the same LegalTargetsView with
+	// min and max the clause's count, the permanents that could pay right
+	// now in payment order (game.ExilePermanentsOptionsForEffect), so the
+	// client reuses the sacrifice picker with the verb "Exile". The
+	// chosen permanents go back as `exile_permanent_ids`. Absent when the
+	// cost has no such component; present with too few cards means the
+	// cost cannot be paid (CR 118.3).
+	//
+	// NOT the exile_cost_* fields, which name CARDS in a hand or a
+	// graveyard, and NOT a target list: a hexproof creature you control
+	// is on it (CR 601.2h).
+	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
+	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
 	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
 	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
 	// the SAME TapCostView shape a hand card's convoke / waterbend
@@ -3436,6 +3496,13 @@ type ManaAbilityView struct {
 	// Tap picker and sends the answer as activate_mana_ability.tap_ids.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// ExilePermanentLabel / ExilePermanentOptions are the mana-ability
+	// half of #1600's exile-a-permanent component — Food Chain's "Exile
+	// a creature you control". Same wire names and option shape as
+	// ActivatedAbilityView, so the client reuses the one picker and sends
+	// the answer as activate_mana_ability.exile_permanent_ids.
+	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
+	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
 	// LifeCost is a "Pay N life" component of the activation cost —
 	// Mana Confluence's "{T}, Pay 1 life:". Advisory, exactly like
 	// ActivatedAbilityView.LifeCost: the client renders the cost
@@ -3525,17 +3592,19 @@ type ManaAbilityView struct {
 	// not counted as producible (CR 106.7), so the row being greyed
 	// and the cast being priced agree.
 	Exhausted bool `json:"exhausted,omitempty"`
-	// AddsNoMana is CR 903.4f (#844): this ability's printed text
-	// says "any color in your commander's color identity" and the
-	// controller has no commander, or a commander whose colour
-	// identity is colourless (Kozilek, Karn). The quality is
-	// undefined or empty, so the ability adds no mana at all —
-	// Command Tower taps for nothing. The client greys the row with
-	// its own reason, the same way it greys ConditionUnmet; the
-	// server does not refuse the activation (the ability exists, it
-	// just does nothing), it simply stops offering it. Absent for
-	// every other ability, which is all but four cards. Stamped by
-	// stampManaIdentity, the pass with a game handle.
+	// AddsNoMana: this ability would add no mana at all right now,
+	// so nothing offers it. Two causes. CR 903.4f (#844): its printed
+	// text says "any color in your commander's color identity" and the
+	// controller has no commander, or one whose colour identity is
+	// colourless (Kozilek, Karn) — Command Tower taps for nothing.
+	// ADR 0117 §5: its output is computed and computes to nothing now
+	// (a power-0 Vivi Ornitier, a Selvala at greatest power 0, an
+	// Exotic Orchard with nothing to copy). The client greys the row
+	// with a generic reason, the same way it greys ConditionUnmet; the
+	// server does not refuse the activation (CR 605.1a: the ability
+	// exists, it just does nothing), it simply stops offering it.
+	// Absent for every other ability. Stamped by stampManaIdentity,
+	// the pass with a game handle.
 	AddsNoMana bool `json:"adds_no_mana,omitempty"`
 	// ColorOptions is, for each slot of this ability's output that
 	// asks for a colour, the colours that pick would offer the
@@ -6563,6 +6632,12 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			views[i].TapOthersLabel = tc.Label
 			views[i].TapOthersOptions = tapOthersCostOptions(g, controller, card.InstanceID, tc, raw[i].TapCost)
 		}
+		// #1600: the exile-a-permanent component (Food Chain), off the
+		// walk the engine validates against.
+		if ec := raw[i].ExilePermanents; !ec.Empty() {
+			views[i].ExilePermanentLabel = ec.Label
+			views[i].ExilePermanentOptions = exilePermanentCostOptions(g, controller, card.InstanceID, ec)
+		}
 		// #1213: the same three fields the activated view carries,
 		// off the same walk, so the client's picker is one component
 		// for both ability kinds.
@@ -6649,6 +6724,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					v.Options[i] = viewOfCard(card)
 				}
 			}
+			// ADR 0116 §7: which of those the card lets you choose.
+			if c.DiscardOptions != nil {
+				v.Eligible = cardIDStrings(c.DiscardOptions)
+				v.EligibleLabel = c.DiscardLabel
+			}
 		}
 		// PendingChoiceSacrifice — "each player sacrifices a
 		// creature". Inline the chooser's own candidate permanents as
@@ -6712,6 +6792,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+		}
+		// ADR 0115 decision 2: the one computed fact a CR 903.9a
+		// question carries. We are inside ViewOfGame's ReadSnapshot,
+		// which is what the Locked suffix means.
+		if c.Kind == game.PendingChoiceCommanderReturn {
+			v.PlayableFromZone = g.PlayableFromZoneLocked(c.Chooser, c.Source)
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel
@@ -7185,11 +7271,16 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 	// shows the new wording.
 	var emblems []EmblemView
 	for _, e := range g.EmblemsForPlayer(p.ID) {
-		emblems = append(emblems, EmblemView{
+		ev := EmblemView{
 			InstanceID: e.InstanceID.String(),
 			Label:      e.Label,
 			Text:       e.Text,
-		})
+			Level:      e.Level,
+		}
+		for _, l := range e.Lines {
+			ev.Lines = append(ev.Lines, EmblemLineView{Text: l.Text, At: l.At})
+		}
+		emblems = append(emblems, ev)
 	}
 	return PlayerView{
 		ID:                p.ID.String(),
@@ -7732,6 +7823,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if len(c.Options) > 0 {
 			out[i].Options = redactChoiceCards(c, c.Options, isKnower, viewerID)
 		}
+		// ADR 0116 §7: Eligible is a list of the same cards' IDs, so it
+		// follows Options — an ID whose card the redaction dropped for
+		// this viewer is dropped here too.
+		if len(c.Eligible) > 0 {
+			out[i].Eligible = keepOptionIDs(c.Eligible, out[i].Options)
+		}
 		// #568: an option's pile rides the SAME pass. A second card
 		// list on a prompt that the filter did not know about would
 		// be raw identity on every seat's wire, which is the leak PR
@@ -7743,6 +7840,23 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 				opts[j].Cards = redactChoiceCards(c, opt.Cards, isKnower, viewerID)
 			}
 			out[i].PickOptions = opts
+		}
+	}
+	return out
+}
+
+// keepOptionIDs is ids restricted to the instance IDs present in
+// options, in ids' order. Never nil when ids is non-empty, so a viewer
+// who kept no option gets an empty list rather than "every option".
+func keepOptionIDs(ids []string, options []CardView) []string {
+	present := make(map[string]bool, len(options))
+	for _, o := range options {
+		present[o.InstanceID] = true
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if present[id] {
+			out = append(out, id)
 		}
 	}
 	return out
@@ -7792,8 +7906,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 // definitionally: the kind means "pick from FromPlayer's hand", and
 // viewOfPendingChoices inlines exactly that zone. Thoughtseize is
 // unaffected for a second reason as well — QueueDiscardFromRevealedHand
-// marks the caster a knower of every card first, so nothing is a back
-// to begin with.
+// reveals the hand to every seat first (ADR 0116, CR 701.20a), so
+// nothing is a back to begin with, for the chooser or anyone else.
 func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(CardView) bool, viewerID string) []CardView {
 	if len(cards) == 0 {
 		return nil
@@ -8365,6 +8479,8 @@ func viewOfCard(c game.Card) CardView {
 	// changes (the vast majority) reproduce the printed type-line
 	// byte-for-byte via the parser round-trip.
 	eff := c.Effective()
+	// One read for all three P/T fields below (#1498).
+	power, powerForComparison, toughness := c.PowerToughness()
 	view := CardView{
 		InstanceID: c.InstanceID.String(),
 		Name:       eff.Name,
@@ -8383,9 +8499,9 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:         c.CurrentPower(),
-		NegativePower: min(0, c.PowerForComparison()),
-		Toughness:     c.CurrentToughness(),
+		Power:         power,
+		NegativePower: min(0, powerForComparison),
+		Toughness:     toughness,
 		Tapped:        c.Tapped,
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
@@ -8444,6 +8560,9 @@ func viewOfCard(c game.Card) CardView {
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
 	}
+	// ADR 0114 §9: the Ring-bearer designation, straight off the card —
+	// only a battlefield permanent ever carries it (CR 400.7).
+	view.RingBearer = c.RingBearer
 	// S27 battles. Both read straight off the card, so they need no
 	// game handle and land here rather than in a stamping pass; the
 	// attack-target KIND does need one and is stamped in
@@ -8813,9 +8932,9 @@ func effectiveTypeLine(c game.Card, eff game.Characteristic) string {
 	}
 	// Round-trip parse the printed line; if eff matches printed (no
 	// layer mutation), return printed verbatim to avoid drift like
-	// double spaces.
-	pSuper, pTypes, pSubs := game.ParseTypeLine(c.TypeLine)
-	if equalStrings(pSuper, eff.Supertypes) && equalStrings(pTypes, eff.Types) && equalStrings(pSubs, eff.Subtypes) {
+	// double spaces. The parse is the card's cached one (#1498), not a
+	// fresh ParseTypeLine per card per view.
+	if c.PrintedTypeLineIs(eff.Supertypes, eff.Types, eff.Subtypes) {
 		return c.TypeLine
 	}
 	// Rebuild from eff. Format mirrors Scryfall: supertypes + types
@@ -8846,22 +8965,6 @@ func joinSpace(ss []string) string {
 		out += s
 	}
 	return out
-}
-
-// equalStrings reports whether two []string slices contain the
-// same elements in the same order. Used to decide when the
-// printed type-line and the post-layer types match (the no-op
-// fast path in effectiveTypeLine).
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // viewOfManaAbilities projects a card's catalog + synthetic mana
@@ -9023,6 +9126,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if rc := a.Cost.ReturnToHand; !rc.Empty() {
 			v.ReturnLabel = rc.Label
 			v.ReturnOptions = returnCostOptions(g, caster, c.InstanceID, rc)
+		}
+		// #1600: the exile-a-permanent component, the return's sibling,
+		// stamped from the same kind of walk.
+		if ec := a.Cost.ExilePermanents; !ec.Empty() {
+			v.ExilePermanentLabel = ec.Label
+			v.ExilePermanentOptions = exilePermanentCostOptions(g, caster, c.InstanceID, ec)
 		}
 		// #1310: the waterbend clause, sized against the same priced
 		// cost the activation path charges. X is not announced yet,
@@ -9293,6 +9402,25 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 	}
 	ids := g.ReturnToHandOptionsForEffect(controller, sourceID, rc)
 	out := &LegalTargetsView{Min: rc.Count, Max: rc.Count}
+	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		out.Cards = append(out.Cards, id.String())
+	}
+	return out
+}
+
+// exilePermanentCostOptions is returnCostOptions one destination over
+// (#1600): the permanents that could pay an exile-a-permanent cost
+// right now, in payment order, min and max both the clause's count. The
+// walk is the engine's own (ExilePermanentsOptionsForEffect), so an
+// option offered here is one validateExilePermanentsCostLocked accepts.
+//
+// Caller must hold g.mu.
+func exilePermanentCostOptions(g *game.Game, controller, sourceID uuid.UUID, ec *game.ExilePermanentsCost) *LegalTargetsView {
+	if ec.Empty() {
+		return nil
+	}
+	ids := g.ExilePermanentsOptionsForEffect(controller, sourceID, ec)
+	out := &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
 		out.Cards = append(out.Cards, id.String())
 	}

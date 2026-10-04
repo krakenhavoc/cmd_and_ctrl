@@ -377,6 +377,7 @@ func (p *Policy) PolicyStats() aiseat.PolicyStats {
 		ByLayer:         st.ByLayer,
 		ByEscalation:    st.ByEscalation,
 		ByFallback:      st.ByFallback,
+		ByPick:          st.ByPick,
 		Escalated:       st.Escalated,
 		ModelCalls:      st.ModelCalls,
 		ModelTimeouts:   st.ModelTimeouts,
@@ -512,7 +513,7 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 	rec.Model = profile.ID
 	tr.Model = profile.ID
 
-	delta, _ := p.buildDelta(in, cands, base.Index)
+	delta, shown := p.buildDelta(in, cands, base.Index)
 	req := Request{
 		Model:     profile.ID,
 		System:    p.static,
@@ -520,6 +521,7 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 		MaxTokens: profile.MaxTokens,
 		Effort:    profile.Effort,
 		Thinking:  profile.Thinking,
+		Choices:   choicesOf(shown),
 	}
 	tr.Prompt = tracePrompt(req)
 
@@ -555,39 +557,47 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 		return d, tr, nil
 	}
 
-	idx, why, perr := parseAnswer(resp.Text)
-	if perr == nil {
-		parsed := idx
+	ans := ResolveAnswer(resp.Text, req.Choices, len(in.Moves))
+	if ans.Err == nil {
+		parsed := ans.Parsed
 		tr.ParsedIndex = &parsed
+		tr.ParsedMove = ans.Move
 	}
-	switch {
-	case perr != nil:
+	switch ans.Fallback {
+	case FallbackMalformed:
 		rec.Fallback = FallbackMalformed
 		p.cfg.Log.Warn("bot model reply was not an index; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "reply", Truncate(resp.Text, 200))
 		d, tr := finish(base)
 		return d, tr, nil
-	case idx < 0 || idx >= len(in.Moves):
+	case FallbackOutOfRange:
 		// The one failure the closed move list makes harmless: a
-		// number that is not a move is not a move, and there is
-		// nothing to validate beyond the bounds.
-		//
-		// -1 is caught here too, deliberately. It is aiseat.Decline
-		// on the Go side, but the model was never told that and
-		// "none of these" is not one of the things it is being asked.
-		// Declining belongs to Layer B, which owns the judgement and
-		// whose answer this falls back to anyway.
+		// number that is not a move, with no label that names exactly
+		// one listed move either, is not a move. See answer.go.
 		rec.Fallback = FallbackOutOfRange
 		p.cfg.Log.Warn("bot model chose a move that was not offered; playing the heuristic's move",
-			"tier", p.cfg.Tier, "model", profile.ID, "index", idx, "moves", len(in.Moves))
+			"tier", p.cfg.Tier, "model", profile.ID, "index", ans.Parsed,
+			"move", Truncate(OneLine(ans.Move), 120), "moves", len(in.Moves))
 		d, tr := finish(base)
 		return d, tr, nil
 	}
+	if ans.Pick != PickIndex && ans.Pick != PickUnlabelled {
+		// The number and the words disagreed and one of them was
+		// taken. Not a failure — the answer is a listed move — but
+		// the rate at which it happens is what says whether a model
+		// can number its moves at all, so each one is a line.
+		p.cfg.Log.Info("bot model's number and label disagreed; resolved by "+ans.Pick,
+			"tier", p.cfg.Tier, "model", profile.ID, "index", ans.Parsed,
+			"move", Truncate(OneLine(ans.Move), 120), "took", ans.Index)
+	}
 
 	rec.Layer = LayerC
-	rec.Index = idx
-	rec.Reason = modelReason(profile.ID, why)
-	d, tr := finish(aiseat.Decision{Index: idx, Reason: rec.Reason})
+	rec.Index = ans.Index
+	rec.Pick = ans.Pick
+	rec.Reason = modelReason(profile.ID, ans.Why)
+	chosen := ans.Index
+	tr.ModelIndex, tr.Pick = &chosen, ans.Pick
+	d, tr := finish(aiseat.Decision{Index: ans.Index, Reason: rec.Reason})
 	return d, tr, nil
 }
 
@@ -624,7 +634,7 @@ func (p *Policy) BuildRequest(ctx context.Context, in aiseat.Input) (Request, []
 	if len(p.escalationReasons(in, cands)) > 0 {
 		profile = p.cfg.Frontier
 	}
-	delta, _ := p.buildDelta(in, cands, fallback)
+	delta, shown := p.buildDelta(in, cands, fallback)
 	return Request{
 		Model:     profile.ID,
 		System:    p.static,
@@ -632,6 +642,7 @@ func (p *Policy) BuildRequest(ctx context.Context, in aiseat.Input) (Request, []
 		MaxTokens: profile.MaxTokens,
 		Effort:    profile.Effort,
 		Thinking:  profile.Thinking,
+		Choices:   choicesOf(shown),
 	}, cands, v
 }
 
@@ -683,21 +694,23 @@ func (p *Policy) budget(ctx context.Context) time.Duration {
 
 // --- parsing the reply ---------------------------------------------
 
-type answer struct {
+// wireAnswer is the reply's JSON shape. Move is the label the model
+// copied (#2196); a reply without it is still an answer.
+type wireAnswer struct {
 	Index *int   `json:"index"`
+	Move  string `json:"move"`
 	Why   string `json:"why"`
 }
 
-// ParseAnswerIndex is the funnel's own reply parser, exported for the
-// tools that have to score a raw reply exactly the way a live seat
-// would — `boteval probe` sends one request by hand and has to
-// classify the answer identically or it is measuring its own parser.
-func ParseAnswerIndex(text string) (int, error) {
-	i, _, err := parseAnswer(text)
-	return i, err
+// reply is a parsed reply, before it is resolved against the list.
+type reply struct {
+	index int
+	move  string
+	why   string
 }
 
-// parseAnswer pulls an index out of the reply.
+// parseAnswer pulls an index, and the label beside it, out of the
+// reply. ResolveAnswer decides what they mean.
 //
 // It is deliberately tolerant of packaging and strict about content:
 // a fenced block, leading prose or a trailing sentence are all
@@ -706,23 +719,23 @@ func ParseAnswerIndex(text string) (int, error) {
 // fence. Anything that is not ultimately an integer is malformed and
 // goes to Layer B — which is the specified behaviour and a cheap
 // failure.
-func parseAnswer(text string) (int, string, error) {
+func parseAnswer(text string) (reply, error) {
 	s := strings.TrimSpace(text)
 	if s == "" {
-		return 0, "", errors.New("empty reply")
+		return reply{}, errors.New("empty reply")
 	}
 	// A bare integer is a valid answer and costs the fewest tokens.
 	if n, err := strconv.Atoi(s); err == nil {
-		return n, "", nil
+		return reply{index: n}, nil
 	}
 	// Otherwise the first balanced JSON object in the reply.
 	if obj := firstJSONObject(s); obj != "" {
-		var a answer
+		var a wireAnswer
 		if err := json.Unmarshal([]byte(obj), &a); err == nil && a.Index != nil {
-			return *a.Index, a.Why, nil
+			return reply{index: *a.Index, move: a.Move, why: a.Why}, nil
 		}
 	}
-	return 0, "", fmt.Errorf("no index in reply %q", Truncate(s, 120))
+	return reply{}, fmt.Errorf("no index in reply %q", Truncate(s, 120))
 }
 
 // firstJSONObject returns the first balanced {...} run in s, ignoring

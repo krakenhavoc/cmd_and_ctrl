@@ -98,10 +98,19 @@ func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacr
 // for a random discard. A Spirit Guide named to Penance's cost, or
 // drawn for Pyromancy's, is the payment and can't also be exiled for
 // mana (CR 118.3), exactly as one named to a discard can't.
+//
+// #1600: and the permanents named to an exile-a-permanent cost, for the
+// sacrifice's reason (#1242): an Eldrazi Spawn named to The Soul
+// Stone's "Exile a creature you control" is also a sacrifice-for-mana
+// source, and a plan that cracked it for the {6}{B} would leave the
+// exile with nothing to pay. A mana creature that merely TAPS for the
+// mana and is then exiled would be a legal paper line (CR 601.2g before
+// 601.2h); refusing it is the weaker-than-printed direction, and the
+// player can float the mana by hand first.
 func ActivationAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, params ActivateAbilityParams) map[uuid.UUID]bool {
 	return WithAutoTapExclusions(
 		AbilityAutoTapExclusions(sourceID, cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs, params.ExileIDs),
-		params.WaterbendIDs, params.TopIDs, params.randomDiscards)
+		params.WaterbendIDs, params.TopIDs, params.randomDiscards, params.ExilePermanentIDs)
 }
 
 // WithAutoTapExclusions returns `base` plus `ids`, copying rather than

@@ -277,6 +277,9 @@
   // several zones, so each candidate is captioned with whose it is and
   // where it is (damageSource.ts).
   const isChooseSource = $derived(active?.kind === "choose_source");
+  // ADR 0114 §4, CR 701.54a: "choose your Ring-bearer" — one of the
+  // chooser's own creatures, untargeted.
+  const isRingBearer = $derived(active?.kind === "ring_bearer");
   // The kinds that share the bounded card-set grid.
   const isCardSetPick = $derived(
     isChooseCards ||
@@ -286,7 +289,8 @@
       isEntrySacrifice ||
       isRevealPick ||
       isPermanentPick ||
-      isChooseSource,
+      isChooseSource ||
+      isRingBearer,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -304,8 +308,28 @@
   );
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
+  // ADR 0116: a revealed-hand pick shows the whole hand, but only the
+  // cards the card lets you choose ("a nonland card") can be picked.
+  // `eligible` absent means every option. The server refuses any other
+  // pick, so this is the courtesy, not the rule.
+  const eligibleSet = $derived<Set<string> | null>(
+    active?.kind === "discard_from_hand" && active.eligible ? new Set(active.eligible) : null,
+  );
+  function isEligible(id: string): boolean {
+    return eligibleSet === null || eligibleSet.has(id);
+  }
+  // The hint's object: "a nonland card", "2 cards".
+  const pickWhat = $derived.by(() => {
+    const n = active?.count ?? 0;
+    const label = active?.eligible_label;
+    if (!label) return `${n} card${n === 1 ? "" : "s"}`;
+    if (n === 1) return `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`;
+    return `${n} of these, each a ${label}`;
+  });
+
   function toggle(id: string): void {
     if (!active) return;
+    if (!isEligible(id)) return;
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else if (next.size < pickMax) next.add(id);
@@ -483,6 +507,10 @@
   // commander's owner picks yes (route to command zone) or no
   // (let the event proceed to graveyard/exile/hand/library).
   const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
+  // ADR 0115 (CR 903.9a): the commander's owner decides whether it goes
+  // from its graveyard or exile to the command zone. Same {apply}
+  // payload; answered in the dock (choiceDock.ts).
+  const isCommanderReturn = $derived(active?.kind === "commander_return");
 
   // S19 sub-PR 2 trigger-prompt branch — CR 603.5 "you may" prompt
   // for an optional triggered ability. Same {choice_id, apply}
@@ -905,6 +933,7 @@
   // Ignored while typing in a field.
   const isYesNo = $derived(
     isOptionalReplacement ||
+      isCommanderReturn ||
       isTriggerPrompt ||
       isPayUnless ||
       isEntryPayLife ||
@@ -1375,10 +1404,12 @@
                         ? [c.reason || "Choose permanents", "choose · CR 608.2"]
                         : isChooseSource
                           ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
-                          : [
-                              `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                              isSelfSource ? "discard" : "reveal",
-                            ];
+                          : isRingBearer
+                            ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
+                            : [
+                                `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                isSelfSource ? "discard" : "reveal",
+                              ];
     const verb = isSacrifice
       ? "Sacrifice"
       : isSearch
@@ -1403,7 +1434,7 @@
                   ? "Sacrifice"
                   : isChooseSource
                     ? "Choose this source"
-                    : isChooseCards || isRevealPick || isPermanentPick
+                    : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
                       ? "Choose"
                       : "Confirm";
     const clearable = isSearch || isCopyTarget || (isCardSetPick && pickMin === 0);
@@ -2007,17 +2038,23 @@
             Pick between {pickMin} and {pickMax} of your permanents.
           {/if}
           Nothing here is targeted — the choice is being made now, as the card resolves.
+        {:else if isRingBearer}
+          The Ring tempts you. Pick one of your creatures to be your Ring-bearer. It isn't targeted,
+          so anything listed can be chosen.
         {:else if isChooseSource}
           Pick the source whose next damage this prevents. It isn't targeted, so anything listed can
           be chosen — a permanent, a spell on the stack, or a card that something on the stack still
           refers to. If the card names a kind of source, that is checked again when the damage would
           be dealt.
         {:else if isSelfSource}
-          Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
+          Pick {pickWhat} from your hand to discard.
         {:else}
-          Pick {active.count} card{active.count === 1 ? "" : "s"} from
+          Pick {pickWhat} from
           <strong>{fromName}</strong>'s revealed hand.
           <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
+        {/if}
+        {#if eligibleSet && active.eligible_label}
+          Cards that aren't {pickWhat.replace(/^\d+ of these, each /, "")} are greyed out.
         {/if}
       </p>
       <div class="card-grid">
@@ -2026,7 +2063,8 @@
             type="button"
             class="card-pick"
             class:selected={selected.has(c.instance_id)}
-            disabled={!selected.has(c.instance_id) && selected.size >= pickMax}
+            disabled={!isEligible(c.instance_id) ||
+              (!selected.has(c.instance_id) && selected.size >= pickMax)}
             onclick={() => toggle(c.instance_id)}
             aria-pressed={selected.has(c.instance_id)}
             aria-label={`select ${c.name || "card"}`}

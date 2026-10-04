@@ -179,6 +179,36 @@ func SacrificeCountLegal(spec *TargetSpec, x, named int) bool {
 	return hi == 0 || named <= hi
 }
 
+// sacrificeRefsLocked names the permanents a sacrifice payment is about
+// to take as the battlefield OBJECTS they are (ADR 0113 §1, #2072):
+// one ObjectRef per ID, in the order named, for
+// PaidCost.SacrificedObjects. Read BEFORE payCostSacrificesLocked moves
+// them, the way a PaidTap is read before the tap, because the epoch is
+// a fact about the object on the battlefield.
+//
+// One ref per ID always, so the list names exactly the set
+// PaidCost.Sacrificed counts. Every ID was validated as a permanent on
+// the battlefield, so the fallback (the card's most recent battlefield
+// object this turn, else the bare ID at epoch zero) is never taken by a
+// payment that passed validation; it keeps the two fields in step if
+// one ever were. Nil for no IDs.
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificeRefsLocked(ids []uuid.UUID) []ObjectRef {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]ObjectRef, 0, len(ids))
+	for _, id := range ids {
+		ref, ok := g.PermanentRefForEffect(id)
+		if !ok {
+			ref = ObjectRef{ID: id}
+		}
+		out = append(out, ref)
+	}
+	return out
+}
+
 // payCostSacrificesLocked sacrifices every permanent of one cost
 // payment — the source when the cost sacrifices it, and the N
 // permanents of the clause — as ONE simultaneous battlefield exit.

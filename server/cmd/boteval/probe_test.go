@@ -111,9 +111,21 @@ func TestTruncationVerdict(t *testing.T) {
 			want: "TRUNCATION: not detected",
 		},
 		{
-			name: "an in-shape reply naming a move that does not exist is still not truncation evidence we can read",
+			// #2196: the shape qwen3.6:35b-a3b returned on half the
+			// probe's windows. The prompt arrived and the format was
+			// followed; the NUMBER is the problem, and the INDEX line
+			// says so.
+			name: "an in-shape reply naming a move that does not exist is not truncation",
 			res: probeResult{
 				SystemBytes: 8000, UserBytes: 1000, PromptTokens: 2900,
+				Moves: 8, Reply: `{"index": 99}`, ParsedIndex: 99,
+			},
+			want: "TRUNCATION: not detected",
+		},
+		{
+			name: "a short token count is truncation whatever the number",
+			res: probeResult{
+				SystemBytes: 8000, UserBytes: 1000, PromptTokens: 1200,
 				Moves: 8, Reply: `{"index": 99}`, ParsedIndex: 99,
 			},
 			want: "TRUNCATION: likely",
@@ -208,7 +220,7 @@ func TestProbeReadsTheQwenReplyOffTheWire(t *testing.T) {
 	res.FinishReason = resp.StopReason
 	res.Reply = resp.Text
 	res.Reasoning = resp.Reasoning
-	res.ParsedIndex, res.ParseErr = model.ParseAnswerIndex(resp.Text)
+	readAnswer(&res, resp.Text)
 
 	if res.PromptTokens != 6231 || res.CompletionTokens != 128 {
 		t.Errorf("usage not decoded: %+v", res)
@@ -324,4 +336,42 @@ func TestRepresentativeInputFindsAnEscalatedWindow(t *testing.T) {
 	t.Logf("probe window: turn %d %s, %d moves, system %d bytes, user %d bytes (~%d tokens)",
 		in.View.Turn.Number, in.View.Turn.Step, len(in.Moves),
 		systemBytes(req), len(req.User), (systemBytes(req)+len(req.User))/estimateDivisor)
+}
+
+// #2196: the third verdict reads the reply exactly as a seat would
+// (model.ResolveAnswer) and says which move it came to, or that it
+// came to none and why.
+func TestAnswerVerdict(t *testing.T) {
+	shown := []model.Choice{
+		{Index: 0, Label: "Pass priority"},
+		{Index: 1, Label: "Scrounging Skyray: Cycling {2}"},
+		{Index: 2, Label: "Mountain: Add {R}"},
+		{Index: 3, Label: "Mountain: Add {R}"},
+		{Index: 4, Label: "Steam Vents: Add {U} or {R}"},
+	}
+	cases := []struct {
+		name  string
+		reply string
+		want  string
+	}{
+		{"the measured failure", `{"index": 5, "why": "Cast Big Score"}`, "INDEX: out of range"},
+		{"out of range, label names nothing", `{"index": 5, "move": "Cast Big Score"}`, "INDEX: out of range"},
+		{"out of range, rescued", `{"index": 5, "move": "Scrounging Skyray: Cycling {2}"}`, `ANSWER: move 1 "Scrounging Skyray: Cycling {2}" — RESCUED`},
+		{"agreed", `{"index": 4, "move": "Steam Vents: Add {U} or {R}"}`, "ANSWER: move 4"},
+		{"label overrode", `{"index": 4, "move": "Pass priority"}`, `ANSWER: move 0 "Pass priority" — the label overrode`},
+		{"mismatch", `{"index": 4, "move": "Cast Big Score"}`, "ANSWER: move 4"},
+		{"malformed", `I would cast Big Score.`, "ANSWER: malformed"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := probeResult{SystemBytes: 8000, UserBytes: 1000, PromptTokens: 2900, Moves: 5, Shown: shown, Reply: tc.reply}
+			readAnswer(&res, tc.reply)
+			if got := answerVerdict(res); !strings.HasPrefix(got, tc.want) {
+				t.Errorf("answerVerdict = %q, want it to start %q", got, tc.want)
+			}
+		})
+	}
+	if got := answerVerdict(probeResult{CallErr: errors.New("refused")}); !strings.HasPrefix(got, "ANSWER: unknown") {
+		t.Errorf("a failed call: %q", got)
+	}
 }

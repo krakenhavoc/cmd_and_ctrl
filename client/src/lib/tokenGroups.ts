@@ -30,7 +30,8 @@
 //     board, and its name is a badge on the row.
 //   - Face-down and phased-out objects never group: the first shows a
 //     card back that must not be merged with anything, the second is
-//     "treated as though it does not exist" and is drawn inert.
+//     "treated as though it does not exist" and is drawn inert. Nor
+//     does a Ring-bearer (ADR 0114): its marker belongs on one card.
 //   - A group needs two members. A lone token draws as itself.
 //
 // Nothing here hides a choice: every member is still reachable through
@@ -88,6 +89,9 @@ function basePT(c: CardView): string {
 export function canGroup(c: CardView): boolean {
   if (!isToken(c)) return false;
   if (c.is_commander || c.face_down || c.phased_out || c.known_by_you === false) return false;
+  // ADR 0114: a Ring-bearer is one of a kind (one per player), and its
+  // marker must stay on a card of its own rather than behind a count.
+  if (c.ring_bearer) return false;
   return true;
 }
 

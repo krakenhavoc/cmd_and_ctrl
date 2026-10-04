@@ -1303,6 +1303,13 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 	if a.ExileCards != nil {
 		return false
 	}
+	// #1600: and the exile-a-permanent clause one zone over — Food
+	// Chain asks which creature leaves the battlefield, and exiling a
+	// creature the player was keeping is a decision the planner makes
+	// none of.
+	if !a.ExilePermanents.Empty() {
+		return false
+	}
 	return true
 }
 
@@ -1352,6 +1359,9 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 		return false
 	}
 	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
+		return false
+	}
+	if !a.ExilePermanents.Empty() {
 		return false
 	}
 	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil {
@@ -1434,7 +1444,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if a.AddCounter != nil || a.RemoveCounters != nil {
 			continue
 		}
-		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil {
+		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() {
 			continue
 		}
 		return &a

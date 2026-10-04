@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sacrifice itself the turn it lands.
 func init() {
 	Register(Spec{
-		OracleID: "e3afc704-220f-498f-9eaa-0821b17dc24c",
-		Name:     "Sakura-Tribe Elder",
+		OracleID:     "e3afc704-220f-498f-9eaa-0821b17dc24c",
+		Name:         "Sakura-Tribe Elder",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
 			Cost:  SacrificeThis(),
@@ -26,7 +27,6 @@ func init() {
 					Predicate:     IsBasicLand,
 					Dest:          game.ZoneBattlefield,
 					Limit:         1,
-					Reveal:        true,
 					Shuffle:       true,
 					TappedOnEntry: true,
 					Reason:        "Sakura-Tribe Elder — a basic land",

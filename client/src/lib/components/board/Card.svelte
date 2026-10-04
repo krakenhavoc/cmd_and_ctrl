@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { emit as tutorialEmit } from "../../tutorialBus";
   // Card is the visual primitive for one Magic card in the new HTML/
   // CSS board. Replaces the Pixi CardTile from client/src/lib/card-tile.ts.
   //
@@ -21,7 +20,7 @@
   // rows that 2-D placement is meaningless. A follow-up can wire
   // within-row reordering when the UX is designed for it.
 
-  import type { CardView } from "../../protocol";
+  import type { CardView, GameView } from "../../protocol";
   import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
@@ -36,12 +35,24 @@
   import { deathMarkBadge } from "../../deathMarks";
   import { landTypeBadge } from "../../landTypes";
   import { openCardMenu } from "../../contextMenu";
-  import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
+  import {
+    acrossFor,
+    manualLoyaltyRows,
+    menuAbilityRows,
+    menuManaRows,
+    specialActionItems,
+    type MenuAction,
+  } from "../../contextMenu.logic";
+  import { abilityPopover, closeAbilityPopover, openAbilityPopover } from "../../abilityPopover";
+  import { manaRowNeedsPicker } from "../../manaSource";
+  import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import { displayName } from "../../faces";
+  import { ICONS } from "../../icons";
+  import { ringBearerTitle } from "../../ringEmblem";
   import {
     DROP_PIP_LABEL,
     NO_LEGAL_ACTIONS,
@@ -138,11 +149,27 @@
     // suppresses the menu entirely (opponent permanents, zones where
     // activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
-    // #1438: a left-click on a mana source now taps it FOR mana, so
-    // the menu carries the plain tap as "Tap (no mana)". Set by
-    // BattlefieldRow on the viewer's own permanents; undefined hides
-    // the row (hand cards, opponents).
+    // ADR 0117 §3: the popover's Sandbox row, Tap or Untap, on every
+    // permanent the viewer controls ("Tap (no mana)" on a mana source,
+    // #1438). Set by BattlefieldRow on the viewer's own panel; undefined
+    // hides the row (hand cards, opponents). Shown only when `viewerID`
+    // controls the card, so an opponent's Aura drawn on the viewer's
+    // creature never offers it.
     onRawTap?: () => void;
+    // ADR 0117 §3: sends a manual loyalty row's `activate_loyalty`, for
+    // an uncatalogued planeswalker the viewer controls. Its rows need
+    // `view` to judge the window. Set by BattlefieldRow on the viewer's
+    // own panel.
+    onMenuAction?: (action: MenuAction) => void;
+    // The frame, for the manual loyalty rows' window and a
+    // planeswalker's rows. BattlefieldRow passes it; elsewhere absent.
+    view?: GameView | null;
+    // ADR 0117 §1: the panel's click rule says a left-click on this card
+    // does nothing right now, so it drops the `clickable` class: no
+    // pointer cursor, no hover lift. It keeps role="button" and its tab
+    // stop (a keyboard player still opens the popover from it, and the
+    // e2e suite selects cards by role). A live targeting ring wins.
+    inert?: boolean;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls, and
     // since #660 by Hand.svelte for the viewer's own hand — a card in
@@ -189,6 +216,12 @@
     // greyed target ring. Supplied by BattlefieldRow from the card
     // view's attack_target_restrictions; undefined for nearly every card.
     cantAttack?: CantAttackChip;
+    // ADR 0114 owner decision 1: the controller's name when this
+    // permanent is their Ring-bearer, for the marker's title ("Alice's
+    // Ring-bearer"). Supplied by BattlefieldRow; the marker itself
+    // follows `card.ring_bearer` and reads plain "Ring-bearer" without
+    // it.
+    ringBearerOf?: string;
     // #33: request this card's art with fetchpriority="high". Opt-in,
     // set only by Hand.svelte for the viewer's own hand — the art
     // that is above the fold and latency-visible. Card is shared by
@@ -241,6 +274,9 @@
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
+    onMenuAction,
+    view,
+    inert = false,
     onActivateAbility,
     onSpecialAction,
     sorcerySpeedBlocked = "",
@@ -248,18 +284,20 @@
     enchantedPlayer,
     takenFrom,
     cantAttack,
+    ringBearerOf,
     priority = false,
     memberIDs,
     viewerID,
     onClick,
   }: Props = $props();
 
-  // manaMenuOpen — Card-local state driving the ManaAbilityMenu
-  // pop-over. Flipped true by oncontextmenu when the card has at
-  // least one mana ability and a parent wired onActivateManaAbility.
-  // Dismissed on selection, Escape (handled inside the menu), or
-  // click elsewhere (the window-level onclick handler below).
-  let manaMenuOpen = $state(false);
+  // manaMenuOpen — whether this card's ManaAbilityMenu popover is
+  // open. ADR 0117 §1: it lives in the abilityPopover store, keyed by
+  // instance ID, because a LEFT-click opens it too and that click is
+  // routed in PlayerPanel. A right-click or a pip writes the same store.
+  // Dismissed on selection, Escape (handled inside the menu), or a
+  // click on the card.
+  const manaMenuOpen = $derived($abilityPopover?.cardID === card.instance_id);
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
@@ -272,14 +310,13 @@
   const menuAbilities = $derived(menuAbilityRows(card, viewerID));
   // Those rows are the viewer's to activate on another player's
   // permanent, and the popover greys any the exact digest leaves out.
-  const across = $derived(
-    !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID,
-  );
+  const across = $derived(acrossFor(card, viewerID));
   // #1228: and the same sentence for the CR 605 list. A permanent
   // publishes `mana_abilities`; a card in hand whose mana ability
   // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
   // and the index means the same thing on the wire either way.
-  const menuManaAbilities = $derived(card.mana_abilities ?? card.zone_mana_abilities ?? []);
+  // ADR 0117: the controller's alone (contextMenu.logic.ts menuManaRows).
+  const menuManaAbilities = $derived(menuManaRows(card, viewerID));
   // ADR 0105 sub-PR 4: the special-action rows, from the same builder
   // the admin card menu uses, with the actor it would use: a face-down
   // permanent is turned up by its controller (CR 708.6), and a hand
@@ -290,11 +327,25 @@
       ? specialActionItems(card, card.controller || card.owner, legal, legalGate)
       : [],
   );
-  // hasMenu: the popover has at least one row to show.
+  // ADR 0117 §3: an uncatalogued planeswalker's manual loyalty rows,
+  // in the activated section. Only with the frame to judge them.
+  const loyaltyRows = $derived(
+    onMenuAction && onActivateAbility ? manualLoyaltyRows(card, view, viewerID ?? null) : [],
+  );
+  // ADR 0117 §3: the Sandbox row, on every permanent the viewer
+  // controls. A Card with no viewer in scope trusts its parent.
+  const sandbox = $derived(
+    !!onRawTap && (viewerID == null || (card.controller || card.owner) === viewerID),
+  );
+  // hasMenu: the popover has at least one row to show. Since ADR 0117
+  // §3 that is every permanent the viewer controls (its Sandbox row),
+  // so a right-click on a vanilla creature opens the popover with Tap.
   const hasMenu = $derived(
     (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
       (!!onActivateAbility && menuAbilities.length > 0) ||
-      specialRows.length > 0,
+      specialRows.length > 0 ||
+      loyaltyRows.length > 0 ||
+      sandbox,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
@@ -309,9 +360,14 @@
 
   // ADR 0105 §7: a ready card's accessible name gains a phrase saying
   // what it is ready FOR. Built only while the ring is drawn.
+  //
+  // ADR 0114: a Ring-bearer says so in its name too. The marker's own
+  // label sits inside the card's role, whose children assistive tech
+  // does not read, so the name is the route that reaches it.
+  const ringTitle = $derived(ringBearerTitle(ringBearerOf));
   const accessibleName = $derived.by(() => {
-    if (showBack) return "face-down card";
-    const name = displayName(card);
+    if (showBack) return card.ring_bearer ? `face-down card, ${ringTitle}` : "face-down card";
+    const name = card.ring_bearer ? `${displayName(card)}, ${ringTitle}` : displayName(card);
     if (!ready) return name;
     return readyCardLabel(name, true, readyPhrases(legal, card, readyZone, combatTarget));
   });
@@ -350,6 +406,8 @@
   // ("Island until end of turn — Tidal Warrior").
   const landTypeMark = $derived(landTypeBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
+  // ADR 0117 §1: the pointer affordance follows what a click would do.
+  const clickable = $derived(interactive && (!inert || targetable));
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
   // the controller of their own morph or manifest (CR 708.5), the
@@ -478,7 +536,7 @@
     // outer-click dismiss fires BEFORE the menu receives its
     // button click because the menu's onclick uses stopPropagation.
     if (manaMenuOpen) {
-      manaMenuOpen = false;
+      closeAbilityPopover();
       return;
     }
     // CR 702.26b: a phased-out permanent "can't affect or be affected
@@ -497,15 +555,15 @@
     if ($settings.gameplay.adminOverrides) {
       ev.preventDefault();
       ev.stopPropagation();
-      manaMenuOpen = false;
+      if (manaMenuOpen) closeAbilityPopover();
       openCardMenu({ card, x: ev.clientX, y: ev.clientY });
       return;
     }
     if (!hasMenu) return;
     ev.preventDefault();
     ev.stopPropagation();
-    manaMenuOpen = !manaMenuOpen;
-    if (manaMenuOpen) tutorialEmit("ability-menu-opened");
+    if (manaMenuOpen) closeAbilityPopover();
+    else openAbilityPopover(card.instance_id);
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -526,14 +584,32 @@
     if (phasedOut) return;
     if ($settings.gameplay.adminOverrides) {
       const r = (ev.currentTarget as HTMLElement | null)?.getBoundingClientRect();
-      manaMenuOpen = false;
+      if (manaMenuOpen) closeAbilityPopover();
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) {
-      manaMenuOpen = true;
-      tutorialEmit("ability-menu-opened");
+    if (hasMenu) openAbilityPopover(card.instance_id);
+  }
+
+  // ADR 0117 §4, "Right-click": the popover's mana row for an ability
+  // with a colour choice opens the anchored picker on that one ability
+  // (its colour buttons, or its stepper for two or more picking slots)
+  // instead of activating with no colours and leaving the server to ask
+  // once per slot. A permanent's own `mana_abilities` only: the picker
+  // is a battlefield picker, and a hand card's mana ability (a Spirit
+  // Guide) has no colour choice.
+  function activateManaRow(index: number): void {
+    const a = (card.mana_abilities ?? []).find((m) => m.index === index);
+    if (a && manaRowNeedsPicker(a) && cardEl) {
+      const r = cardEl.getBoundingClientRect();
+      openManaSourcePicker({
+        cardID: card.instance_id,
+        anchor: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
+        abilityIndex: index,
+      });
+      return;
     }
+    onActivateManaAbility?.(index);
   }
 
   function handlePipKeydown(ev: KeyboardEvent): void {
@@ -543,6 +619,10 @@
 
   function handleKeydown(ev: KeyboardEvent): void {
     if (ev.key !== "Enter" && ev.key !== " ") return;
+    // ADR 0117: Enter on the card can open its popover, whose rows are
+    // buttons inside this element. Their own Enter must reach them, not
+    // be taken here as another click on the card.
+    if (ev.target !== ev.currentTarget) return;
     ev.preventDefault();
     onClick?.(card, ev as unknown as MouseEvent);
   }
@@ -585,8 +665,9 @@
   class:ready
   class:ready-idle={ready && !!idleHint}
   class:combat-target={combatTarget}
-  class:clickable={interactive}
+  class:clickable
   class:phased-out={phasedOut}
+  class:ring-bearer={!!card.ring_bearer}
   class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
   data-tapped={card.tapped ? "true" : "false"}
@@ -917,6 +998,20 @@
       {designationBadge}
     </span>
   {/if}
+  {#if card.ring_bearer}
+    <!-- ADR 0114 owner decision 1: the Ring-bearer's own marker, apart
+         from the designation slot above, because a Ring-bearer can also
+         be monstrous or harnessed. Outside the art / back branches on
+         purpose: the designation was chosen in public, so a face-down
+         Ring-bearer shows it too (ADR 0114 §9). -->
+    <span class="ring-marker" role="img" aria-label="Ring-bearer" title={ringTitle}>
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        {#each ICONS.ring as prim, i (i)}
+          {#if prim.t === "path"}<path d={prim.d} />{/if}
+        {/each}
+      </svg>
+    </span>
+  {/if}
   {#if anyPip || swordPip || shieldPip}
     <!-- ADR 0105 §2/§7 (#1789): what this card can do right now, by
          shape: a star for a special action (any kind, including one
@@ -1013,7 +1108,7 @@
         onSpecialAction={(action) => onSpecialAction?.(action)}
         abilities={onActivateManaAbility ? menuManaAbilities : []}
         tapped={!!card.tapped}
-        onActivate={(idx) => onActivateManaAbility?.(idx)}
+        onActivate={activateManaRow}
         activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
@@ -1023,10 +1118,13 @@
         {legalGate}
         {payerLife}
         {across}
-        onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
-          ? onRawTap
-          : undefined}
-        onClose={() => (manaMenuOpen = false)}
+        {card}
+        {view}
+        {viewerID}
+        manualLoyalty={loyaltyRows}
+        onMenuAction={(action) => onMenuAction?.(action)}
+        onRawTap={sandbox ? onRawTap : undefined}
+        onClose={closeAbilityPopover}
       />
     </div>
   {/if}
@@ -1497,6 +1595,59 @@
   }
   .card.ready.ready-idle::after {
     box-shadow: none;
+  }
+  /* ADR 0114 owner decision 1: the Ring-bearer's marker. A gold disc
+     with the ring glyph on the left edge, one badge row down — under
+     CMD, which a commander Ring-bearer also wears, and clear of the
+     designation slot at top centre, so MONSTROUS or HARNESSED shows
+     beside it. The left edge of an untapped tile is the part that
+     stays visible where tiles overlap (see the failed-art pip above),
+     and the ready pips start below it. A tapped tile turns, so the
+     marker follows the failed-art pip to 58% to stay out from under a
+     tapped neighbour. Gold like the Ring chip on the player panel; the
+     same dark ring around it on every theme, because it sits on card
+     art, not on the page. */
+  .card.ring-bearer {
+    --ring-size: max(15px, calc(var(--card-w, 80px) * 0.16));
+    /* The failed-art pip shares the marker's row; it steps right of it. */
+    --art-error-left: calc(var(--ring-size) + 7px);
+  }
+  .ring-marker {
+    position: absolute;
+    top: 21px;
+    left: 3px;
+    z-index: 4;
+    box-sizing: border-box;
+    width: var(--ring-size, 15px);
+    height: var(--ring-size, 15px);
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffe9a8, #d9b45c 60%, #8a6a1e);
+    color: #2a1d00;
+    border: 1px solid rgba(20, 14, 0, 0.8);
+    box-shadow:
+      0 0 0 1px rgba(255, 220, 140, 0.45),
+      0 1px 4px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+  }
+  .card.tapped .ring-marker {
+    top: 58%;
+  }
+  .ring-marker svg {
+    width: 78%;
+    height: 78%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  :global(:root[data-theme="high-contrast"]) .ring-marker {
+    background: #ffd400;
+    color: #000;
+    border-color: #000;
+    box-shadow: 0 0 0 1px #fff;
   }
   /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
      below the top badge row (CMD) and the failed-art pip (22px): that

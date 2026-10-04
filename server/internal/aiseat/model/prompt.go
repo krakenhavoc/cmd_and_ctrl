@@ -41,6 +41,13 @@ import (
 // list is capped, the entries that are dropped simply do not appear,
 // and their indices are absent from the sequence — which is fine,
 // because the only contract is "an integer that indexes Moves".
+//
+// The reply also copies the chosen entry's label (#2196). A model
+// that names the move it wants in words but writes a number that is
+// not on the list has still said which move it meant, and
+// ResolveAnswer takes the words when they name exactly one listed
+// entry. The label is looked up in the shown list and nowhere else,
+// so it can select a move and never describe one.
 
 // DeckCard is one card in the bot's own list, as the static block
 // describes it. Plain data: no engine types, nothing derived from a
@@ -75,7 +82,9 @@ const rulesPrimer = `You are playing one seat in a four-player game of Magic: th
 
 How you act:
 - You are given a numbered list of the legal moves your seat may make right now. The list is closed and it is complete — it was produced by the server's rules engine, and every entry is a move the server will accept.
-- You answer with ONE NUMBER from that list. You never describe an action, never name a card as your answer, and never propose a move that is not listed. A number that is not in the list is discarded and a rule-based fallback plays instead.
+- You answer with ONE NUMBER from that list, and copy that entry's text beside it. You never describe an action of your own, and never propose a move that is not listed. An answer that names nothing on the list is discarded and a rule-based fallback plays instead.
+- The list is everything you can do right now. A card in your hand that is not listed cannot be played in this window: it is the wrong step for it, or you cannot pay for it yet. Never answer with a number that is not listed.
+- A line such as "Mountain: Add {R}" taps a land you already control for mana. It is not a land drop, and mana you do not spend empties at the end of the step, so tap for mana only when you are about to spend it.
 - You see only what your seat is entitled to see: your own hand and command zone, and public information. Opponents' hands are counts. Do not reason about specific cards you have not been shown.
 
 What this server is:
@@ -84,7 +93,7 @@ What this server is:
 
 How to answer:
 - Reply with a single JSON object and nothing else, in this exact shape:
-  {"index": <number>, "why": "<at most twelve words>"}
+  {"index": <number>, "move": "<that entry's text, copied exactly as it is listed>", "why": "<at most twelve words>"}
 - No preamble, no code fence, no explanation outside the JSON, and no internal or system XML tags.`
 
 // staticBlocks builds the cached half. The breakpoint goes on the
@@ -128,6 +137,12 @@ func (d DeckProfile) staticBlocks() []Block {
 }
 
 // --- the per-decision delta ----------------------------------------
+
+// fallbackMarker ends the line of the move Layer B would take. It is a
+// constant because three readers depend on its exact text: the model,
+// fake.go's indexFromPrompt, and normLabel, which takes it off a label
+// a model copied along with it.
+const fallbackMarker = "<- the rule-based fallback would take this"
 
 // shownMove is one entry of the move list as the model sees it.
 type shownMove struct {
@@ -188,6 +203,10 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 			fmt.Fprintf(&b, ", %s", gates)
 		}
 		b.WriteByte('\n')
+		// ADR 0114 §7: one line per emblem, the Ring with its count.
+		for _, e := range s.Emblems {
+			fmt.Fprintf(&b, "  emblem: %s\n", emblemLine(e))
+		}
 		if bf := p.battlefieldOf(v, s.ID); bf != "" {
 			fmt.Fprintf(&b, "  battlefield: %s\n", bf)
 		}
@@ -224,6 +243,11 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}
+		// ADR 0115 decision 4: the one fact the CR 903.9a question
+		// carries beyond its card.
+		if ch.Kind == "commander_return" && ch.PlayableFromZone {
+			b.WriteString(" (you could cast it from where it is now)")
+		}
 		if ch.Count > 0 {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}
@@ -235,7 +259,7 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 	for _, m := range shown {
 		fmt.Fprintf(&b, "  %d: %s", m.index, m.label)
 		if m.index == fallback {
-			b.WriteString("   <- the rule-based fallback would take this")
+			b.WriteString("   " + fallbackMarker)
 		}
 		b.WriteByte('\n')
 	}
@@ -290,6 +314,18 @@ func (p *Policy) selectShown(in aiseat.Input, cands []heuristic.Candidate, fallb
 	return out
 }
 
+// choicesOf is the shown list as Request.Choices carries it: what a
+// transport may constrain the reply to, and what ResolveAnswer looks a
+// reply up in. The same entries the prompt rendered, in the same
+// order, and nothing else — a move the cap dropped is not a choice.
+func choicesOf(shown []shownMove) []Choice {
+	out := make([]Choice, 0, len(shown))
+	for _, m := range shown {
+		out = append(out, Choice{Index: m.index, Label: m.label})
+	}
+	return out
+}
+
 // --- small renderers -----------------------------------------------
 
 func (p *Policy) battlefieldOf(v *protocol.GameView, seat string) string {
@@ -336,6 +372,10 @@ func permanentLabel(c *protocol.CardView) string {
 	if c.IsCommander {
 		flags = append(flags, "commander")
 	}
+	if c.RingBearer {
+		// ADR 0114 §7: whose Ring-bearer it is, is its controller.
+		flags = append(flags, "Ring-bearer")
+	}
 	if c.Unimplemented {
 		flags = append(flags, "unimplemented")
 	}
@@ -347,6 +387,24 @@ func permanentLabel(c *protocol.CardView) string {
 		b.WriteString(" (" + strings.Join(flags, ", ") + ")")
 	}
 	return b.String()
+}
+
+// emblemLine renders one emblem for the board text: its label and its
+// current text, and for the Ring how many times it has tempted ("The
+// Ring (tempted 3 times): …"). The text's line breaks become spaces.
+func emblemLine(e protocol.EmblemView) string {
+	label := e.Label
+	if e.Level > 0 {
+		times := "times"
+		if e.Level == 1 {
+			times = "time"
+		}
+		label = fmt.Sprintf("%s (tempted %d %s)", label, e.Level, times)
+	}
+	if e.Text == "" {
+		return label
+	}
+	return label + ": " + strings.ReplaceAll(e.Text, "\n", " ")
 }
 
 // sortedCounters renders counters deterministically. Map iteration

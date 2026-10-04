@@ -883,6 +883,21 @@ type Spec struct {
 	// no gate. The Room constructor sets it; a card file seldom does.
 	NoMaxHandSizeWhen game.Designation
 
+	// HandSize declares the printed statics that SET or CHANGE a
+	// player's maximum hand size, or reach a player other than the
+	// controller (ADR 0113 §3, #2074): "your maximum hand size is two"
+	// (Null Profusion), "each opponent's maximum hand size is reduced
+	// by seven" (Jin-Gitaxias, Core Augur), "players have no maximum
+	// hand size" (Price of Knowledge). NoMaxHandSize above stays the
+	// shorthand for the controller-only "no maximum"; buildDef folds it
+	// into this list.
+	//
+	// Not a Static entry, for NoMaxHandSize's reason: it modifies a
+	// PLAYER. The engine folds every entry that reaches a player in
+	// CR 613.11's timestamp order (game.Game.EffectiveMaxHandSizeLocked).
+	// Register refuses a Set below zero and a Modify by zero.
+	HandSize []game.HandSizeStatic
+
 	// room marks a Spec built by Room (ADR 0103), so Register holds it
 	// to the door-gate rules (checkRoomSpec). Unexported: a card file
 	// gets it only by building its Spec with Room.
@@ -1850,6 +1865,24 @@ type ManaAbilityCost struct {
 	// The auto-tapper never plans a source that has one: which card to
 	// exile is a decision, and the planner makes none.
 	ExileCards *game.ExileCost
+
+	// ExilePermanents is an "Exile a creature you control" component of
+	// the activation cost (#1600) — Food Chain's "Exile a creature you
+	// control: Add X mana of any one color, where X is 1 plus the
+	// exiled creature's mana value." Build it with the same constructor
+	// an activated ability's cost uses, reading the component off the
+	// returned AbilityCost:
+	//
+	//	ExileACreatureYouControl().ExilePermanents
+	//
+	// One game.ExilePermanentsCost with two owners. Not a sacrifice:
+	// nothing dies. The exiled permanents ride the paid-cost record to
+	// ProducedForPaid (paid.Exiled), and "the exiled creature's mana
+	// value" is LastKnownPermanentForEffect(id).ManaValue.
+	//
+	// The auto-tapper never plans a source that has one: which
+	// permanent to exile is a decision, and the planner makes none.
+	ExilePermanents *game.ExilePermanentsCost
 
 	// ExileSelf exiles the card that has the ability, out of the zone
 	// the ability functions from, as the activation cost (#1228):

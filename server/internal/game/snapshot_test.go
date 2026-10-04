@@ -301,6 +301,7 @@ func enrich(t *testing.T, g *Game) {
 		p0.Energy = 2
 		p0.Counters = map[string]int{"experience": 1}
 		p0.MaxHandSize = 9
+		p0.MaxHandSizeAt = 1700000000000000042
 		p0.CommanderDamage = map[uuid.UUID]int{p1.ID: 7}
 		p0.CommanderCasts = map[uuid.UUID]int{p0.ID: 2}
 		p0.LifeHistory = []LifeChange{

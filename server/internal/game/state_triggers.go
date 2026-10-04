@@ -247,7 +247,7 @@ func mayHaveStateTrigger(c *Card, keys map[string]struct{}) bool {
 	// this is only a pre-filter: an own key the cache would have
 	// emptied (a new ability-removing effect) is still a candidate, and
 	// TriggersForCard on the caught-up cache says no.
-	key := CatalogKey(*c)
+	key := catalogKeyOf(c)
 	if has(key) {
 		return true
 	}
@@ -342,7 +342,7 @@ func (g *Game) stateTriggersLocked() {
 		if !mayHaveStateTrigger(c, keys) {
 			continue
 		}
-		for _, t := range TriggersForCard(*c) {
+		for _, t := range triggersOf(c) {
 			if t.State == "" || !TriggerWatchesFromZone(t, ZoneBattlefield) {
 				continue
 			}

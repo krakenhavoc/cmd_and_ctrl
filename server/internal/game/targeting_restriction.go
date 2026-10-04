@@ -104,11 +104,16 @@ var CatalogTargetingRestrictions func(key string) []TargetingRestriction
 // TargetingRestrictionsForCard returns the restrictions a permanent
 // contributes right now: none under an ability-removing effect, and none
 // for one whose designation gate is unsatisfied.
-func TargetingRestrictionsForCard(c Card) []TargetingRestriction {
+func TargetingRestrictionsForCard(c Card) []TargetingRestriction { return targetingRestrictionsOf(&c) }
+
+// targetingRestrictionsOf is TargetingRestrictionsForCard without the
+// copy: Card is over a kilobyte and this is asked per permanent per
+// walk (#1498).
+func targetingRestrictionsOf(c *Card) []TargetingRestriction {
 	if CatalogTargetingRestrictions == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -142,7 +147,7 @@ func (g *Game) activeTargetingRestrictionsLocked() targetingRestrictions {
 	var out targetingRestrictions
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		for _, r := range TargetingRestrictionsForCard(*src) {
+		for _, r := range targetingRestrictionsOf(src) {
 			if r.Forbids == nil || len(r.Zones) == 0 {
 				continue
 			}

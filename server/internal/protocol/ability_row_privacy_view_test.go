@@ -83,6 +83,9 @@ var activatedRowScopes = map[string]rowScope{
 	// count for themselves.
 	"SacrificeOptions": rowPublic, "CrewOptions": rowPublic, "ReturnOptions": rowPublic,
 	"Waterbend": rowPublic, "TapOthersOptions": rowPublic,
+	// #1600: "Exile a creature you control" — its words, and the
+	// permanents on the battlefield that could pay.
+	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
 	// Target sets: an activated ability never targets a card in a
 	// hand (game.zonesOfKindLocked's hidden-zone caution).
 	"LegalTargets": rowPublic, "Clauses": rowPublic,
@@ -118,6 +121,8 @@ var manaRowScopes = map[string]rowScope{
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
+	// #1600: Food Chain's exile clause, read off the battlefield.
+	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
 	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
 	// #1443: the commander identity it is narrowed and ordered by is

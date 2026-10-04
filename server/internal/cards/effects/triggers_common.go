@@ -986,3 +986,55 @@ func ThisDealtDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Charac
 	p := g.PlayerByIDForEffect(ev.Target)
 	return p != nil && p.ID != source.Controller
 }
+
+// AnOpponentCastTheirFirstNoncreatureSpellThisTurn — "Whenever an
+// opponent casts their first noncreature spell each turn" (Esper
+// Sentinel, Shadow in the Warp). The per-player cast tally is bumped
+// before EventCast fires, so the spell that makes the count one is the
+// first; spells cast before the source arrived still count.
+func AnOpponentCastTheirFirstNoncreatureSpellThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor == source.Controller {
+		return false
+	}
+	spell, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || spell.IsCreature() {
+		return false
+	}
+	return g.CastTallyFor(ev.Actor).Noncreature == 1
+}
+
+// YouPlayedACard — "whenever you play a card" (Null Profusion,
+// Recycle): you played a land (b20LandPlayed: a land put onto the
+// battlefield as a play, Event.Played) or cast a spell (EventCast). A
+// copy of a spell is never cast in this engine (CR 707.10: it is put
+// on the stack, and the one EventCast site is the cast path), so the
+// 2007 ruling's "won't trigger when you play a copy of a card" holds.
+func YouPlayedACard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Actor != source.Controller {
+		return false
+	}
+	return ev.Kind == game.EventCast || b20LandPlayed(ev, g)
+}
+
+// WheneverYouPlayACard — "Whenever you play a card".
+func WheneverYouPlayACard(label string, effect Effect) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventCast, game.EventZoneMove}, YouPlayedACard, label, effect)
+}
+
+// AtEachOpponentsUpkeep — "At the beginning of each opponent's
+// upkeep": the upkeep's player is an opponent of the source's
+// controller. The player is read off the trigger's event Actor
+// (Viseling, Iron Maiden, Dark Suspicions).
+func AtEachOpponentsUpkeep(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventBeginUpkeep, ByAnOpponent, label, effect)
+}
+
+// ThisDealtDamageToAPlayer — the source dealt damage, combat or not,
+// to any player, its controller included (Entropic Specter's "deals
+// damage to a player"). The sibling of ThisDealtDamageToAnOpponent.
+func ThisDealtDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Source != source.InstanceID || ev.Amount <= 0 {
+		return false
+	}
+	return g.PlayerByIDForEffect(ev.Target) != nil
+}

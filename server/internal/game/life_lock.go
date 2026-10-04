@@ -69,7 +69,7 @@ import "github.com/google/uuid"
 // by the cards/effects package from effects.Spec.PlayerLifeTotalLocked.
 // A nil hook (no catalog wired) means no permanent locks anything.
 //
-// Derived rather than written, for the reason CatalogNoMaxHandSize and
+// Derived rather than written, for the reason CatalogHandSize and
 // CatalogPlayerKeywords both spell out: a "set on enter, restore on
 // leave" design has to answer "restore to what?", and gets two real
 // cases wrong — two copies, and a player whose state was changed by
@@ -146,7 +146,7 @@ func (g *Game) playerLifeTotalCantChangeLocked(p *Player) bool {
 			// an Emperion that has lost its abilities (layer 6) stops
 			// locking. The empty KEY is the skip, so a token is walked
 			// like any other permanent (ADR 0083 decision 3).
-			key := CatalogAbilityKey(*c)
+			key := catalogAbilityKeyOf(c)
 			if key == "" {
 				continue
 			}

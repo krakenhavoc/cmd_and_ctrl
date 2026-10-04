@@ -100,6 +100,21 @@ type EmblemDef struct {
 	Label string
 	// Text is the emblem's printed ability, verbatim.
 	Text string
+	// Lines are the emblem's abilities line by line, each with the
+	// count it is gained at — set only on an emblem whose abilities
+	// switch on one by one (the Ring, CR 701.54c, ADR 0114 §2). For
+	// such an emblem, EmblemsForPlayer derives Text from the lines it
+	// has right now, because the emblem has no other text (CR 114.1).
+	Lines []EmblemLine
+}
+
+// EmblemLine is one line of an emblem whose abilities are gained in
+// order: its text and the count at which the emblem gains it (CR
+// 701.54c: "as long as the Ring has tempted that player N or more
+// times").
+type EmblemLine struct {
+	Text string
+	At   int
 }
 
 // EmblemView is one emblem as the projection and the tests read it.
@@ -110,6 +125,13 @@ type EmblemView struct {
 	InstanceID uuid.UUID
 	Label      string
 	Text       string
+	// Level is how many times the Ring has tempted the emblem's owner
+	// (Card.RingTemptations, ADR 0114 §2); 0 for every other emblem.
+	Level int
+	// Lines are the catalog's EmblemDef.Lines, every one of them, so a
+	// display can show the lines not gained yet beside the ones that
+	// are (ADR 0114 owner decision 1). Nil for an ordinary emblem.
+	Lines []EmblemLine
 }
 
 // CreateEmblemForEffect is CR 114.5's "you get an emblem": the one
@@ -138,7 +160,7 @@ func (g *Game) CreateEmblemForEffect(owner uuid.UUID, sourceCardID uuid.UUID) er
 	// BaseCatalogKey: the emblem is filed under the CARD's key, so a
 	// source carrying CR 707.9a granted abilities must not derive a
 	// key nothing registered (copy_grants.go).
-	key := EmblemKey(BaseCatalogKey(CatalogKey(*src)))
+	key := EmblemKey(BaseCatalogKey(catalogKeyOf(src)))
 	def := catalogDef(key)
 	if def == nil || def.Emblem == nil {
 		return ErrNoEmblemRegistered
@@ -185,14 +207,54 @@ func (g *Game) EmblemsForPlayer(playerID uuid.UUID) []EmblemView {
 	}
 	out := make([]EmblemView, 0, len(p.Emblems.Cards))
 	for _, c := range p.Emblems.Cards {
-		v := EmblemView{InstanceID: c.InstanceID, Label: c.Name}
+		v := EmblemView{InstanceID: c.InstanceID, Label: c.Name, Level: c.RingTemptations}
 		if def := catalogDef(CatalogKey(c)); def != nil && def.Emblem != nil {
 			v.Label = def.Emblem.Label
 			v.Text = def.Emblem.Text
+			if len(def.Emblem.Lines) > 0 {
+				v.Lines = append([]EmblemLine(nil), def.Emblem.Lines...)
+				v.Text = emblemTextAt(def.Emblem.Lines, c.RingTemptations)
+			}
 		}
 		out = append(out, v)
 	}
 	return out
+}
+
+// emblemLabelLocked is the board label of the emblem with instance ID
+// `id`, if `id` names an emblem: the catalog's label, falling back to
+// the object's name. Used where a rule read off an emblem has to be
+// named to a player (ADR 0114 §5).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) emblemLabelLocked(id uuid.UUID) (string, bool) {
+	if id == uuid.Nil {
+		return "", false
+	}
+	label, found := "", false
+	g.forEachEmblemLocked(func(src *Card) bool {
+		if src.InstanceID != id {
+			return true
+		}
+		found, label = true, src.Name
+		if def := catalogDef(CatalogKey(*src)); def != nil && def.Emblem != nil && def.Emblem.Label != "" {
+			label = def.Emblem.Label
+		}
+		return false
+	})
+	return label, found
+}
+
+// emblemTextAt is the text of the lines an emblem has at `level`: every
+// line gained at that count or lower, in order, one per line.
+func emblemTextAt(lines []EmblemLine, level int) string {
+	var parts []string
+	for _, l := range lines {
+		if l.At <= level {
+			parts = append(parts, l.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 // emblemContinuousEffectsLocked is the emblem half of the layer pass's
@@ -223,7 +285,7 @@ func (g *Game) emblemContinuousEffectsLocked() []ContinuousEffect {
 		}
 		for i := range p.Emblems.Cards {
 			src := &p.Emblems.Cards[i]
-			abilities := StaticAbilitiesForCard(*src)
+			abilities := staticAbilitiesOf(src)
 			for _, ab := range abilities {
 				out = append(out, staticContinuousEffect{
 					ability:   ab,

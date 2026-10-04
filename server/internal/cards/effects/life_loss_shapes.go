@@ -46,3 +46,14 @@ func playerLosesHalfTheirLife(g *game.Game, item *game.StackItem, player uuid.UU
 	}
 	return g.ChangePlayerLifeForEffect(item.SourceCardID, player, -((p.Life + 1) / 2))
 }
+
+// triggeringTargetLosesHalfTheirLife is "they lose half their life,
+// rounded up" for a trigger whose event names the player in Target —
+// Unstoppable Slasher's combat damage. The halving is
+// playerLosesHalfTheirLife's.
+func triggeringTargetLosesHalfTheirLife(g *game.Game, item *game.StackItem) error {
+	if item.Trigger == nil {
+		return nil
+	}
+	return playerLosesHalfTheirLife(g, item, item.Trigger.Event.Target)
+}

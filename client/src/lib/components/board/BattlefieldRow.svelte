@@ -11,8 +11,9 @@
   // both axes to 0 for cards that have never been positioned.
 
   import type { CantAttackChip } from "../../cantAttack";
-  import type { CardView } from "../../protocol";
+  import type { CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
+  import { abilityPopover } from "../../abilityPopover";
   import { settings } from "../../settings";
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
@@ -39,9 +40,16 @@
     // Card.svelte so the right-click / context menu can hit it.
     // Undefined suppresses the menu entirely (opponent panels).
     onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
-    // #1438: "Tap (no mana)" in the same menu — a left-click on a
-    // mana source now taps it FOR mana, so the raw tap moved here.
+    // ADR 0117 §3: the popover's Sandbox row (Tap / Untap; "Tap (no
+    // mana)" on a mana source, #1438). Wired on the viewer's own panel.
     onRawTap?: (card: CardView) => void;
+    // The frame, for the popover's manual loyalty rows (ADR 0117 §3).
+    view?: GameView | null;
+    // ADR 0117 §1: true when a left-click on this card would do nothing
+    // right now (PlayerPanel's click rule, after its intercepts). The
+    // card then drops its pointer affordance. Undefined: every card
+    // keeps it.
+    clickInert?: (card: CardView) => boolean;
     // S21 sub-PR 2: CR 602 activated abilities, same menu.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
@@ -81,6 +89,10 @@
     // controls — a stolen permanent, or the permanent a stolen spell
     // became. Derived by PlayerPanel, for curseTargets' reason.
     takenFrom?: Record<string, string>;
+    // ADR 0114 owner decision 1: the controller's name for each
+    // Ring-bearer, for its marker's title. Derived by PlayerPanel, for
+    // curseTargets' reason.
+    ringBearers?: Record<string, string>;
     // ADR 0106 §2 (#1794): the CAN'T ATTACK chip for each creature that
     // can't attack its owner, keyed by instance ID. Derived by
     // PlayerPanel from the card views, for curseTargets' reason.
@@ -124,6 +136,8 @@
     onCardClick,
     onActivateManaAbility,
     onRawTap,
+    view,
+    clickInert,
     onActivateAbility,
     sorcerySpeedBlocked = "",
     payerLife,
@@ -132,6 +146,7 @@
     attachmentsByHost = {},
     curseTargets = {},
     takenFrom = {},
+    ringBearers = {},
     cantAttack = {},
     onGroupClick,
     legal = NO_LEGAL_ACTIONS,
@@ -191,15 +206,22 @@
   const piles = $derived.by((): Pile[] => {
     const out: Pile[] = [];
     const byName = new Map<string, Pile>();
+    // ADR 0117 §1: "Use this one" in a group's member list can open
+    // the ability popover on a member that is not the drawn one. The
+    // group then draws THAT member while its popover is open, so the
+    // popover opens at the group's card and its rows act on the member
+    // the player chose.
+    const popoverID = $abilityPopover?.cardID;
     for (const e of entries) {
       if (e.kind === "group") {
+        const drawn = e.members.find((m) => m.instance_id === popoverID) ?? e.rep;
         out.push({
           key: e.key,
           tapped: e.tapped,
-          cards: [e.rep],
+          cards: [drawn],
           group: {
             groupKey: e.groupKey,
-            members: [e.rep, ...e.members.filter((m) => m !== e.rep)],
+            members: [drawn, ...e.members.filter((m) => m !== drawn)],
           },
         });
         continue;
@@ -277,12 +299,16 @@
                     {legalGate}
                     enchantedPlayer={curseTargets[a.instance_id]}
                     takenFrom={takenFrom[a.instance_id]}
+                    ringBearerOf={ringBearers[a.instance_id]}
                     cantAttack={cantAttack[a.instance_id]}
                     onClick={onCardClick}
                     onActivateManaAbility={onActivateManaAbility
                       ? (idx) => onActivateManaAbility(a, idx)
                       : undefined}
                     onRawTap={onRawTap ? () => onRawTap(a) : undefined}
+                    onMenuAction={onSpecialAction}
+                    {view}
+                    inert={clickInert?.(a) ?? false}
                     onActivateAbility={onActivateAbility
                       ? (idx) => onActivateAbility(a, idx)
                       : undefined}
@@ -305,6 +331,7 @@
                   {legalGate}
                   enchantedPlayer={curseTargets[c.instance_id]}
                   takenFrom={takenFrom[c.instance_id]}
+                  ringBearerOf={ringBearers[c.instance_id]}
                   cantAttack={cantAttack[c.instance_id]}
                   selected={memberIDs
                     ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
@@ -319,6 +346,9 @@
                     ? (idx) => onActivateManaAbility(c, idx)
                     : undefined}
                   onRawTap={onRawTap ? () => onRawTap(c) : undefined}
+                  onMenuAction={onSpecialAction}
+                  {view}
+                  inert={!p.group && (clickInert?.(c) ?? false)}
                   onActivateAbility={onActivateAbility
                     ? (idx) => onActivateAbility(c, idx)
                     : undefined}

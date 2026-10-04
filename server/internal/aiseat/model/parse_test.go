@@ -13,8 +13,11 @@ func TestParseAnswer(t *testing.T) {
 		in   string
 		want int
 		why  string
+		move string
 		err  bool
 	}{
+		{name: "the contracted shape with the move copied (#2196)", in: `{"index": 1, "move": "Cast Bear", "why": "develop"}`, want: 1, move: "Cast Bear", why: "develop"},
+		{name: "the move copied but the number off the list still parses", in: `{"index": 5, "move": "Cast Bear"}`, want: 5, move: "Cast Bear"},
 		{name: "the contracted shape", in: `{"index": 3, "why": "removal on the biggest threat"}`, want: 3, why: "removal on the biggest threat"},
 		{name: "no why", in: `{"index":0}`, want: 0},
 		{name: "index zero", in: `{"index": 0, "why": "pass"}`, want: 0, why: "pass"},
@@ -32,26 +35,30 @@ func TestParseAnswer(t *testing.T) {
 		{name: "prose with no number", in: "I would cast the Bear.", err: true},
 		{name: "a card name instead of an index", in: `{"index": "Lightning Bolt"}`, err: true},
 		{name: "the wrong key", in: `{"move": 3}`, err: true},
+		{name: "a move with no number is not an answer", in: `{"move": "Cast Bear"}`, err: true},
 		{name: "an unterminated object", in: `{"index": 3`, err: true},
 		{name: "a number in prose is not an answer", in: "Move 3 looks strong to me.", err: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, why, err := parseAnswer(tc.in)
+			r, err := parseAnswer(tc.in)
 			if tc.err {
 				if err == nil {
-					t.Fatalf("parseAnswer(%q) = %d, want an error", tc.in, got)
+					t.Fatalf("parseAnswer(%q) = %d, want an error", tc.in, r.index)
 				}
 				return
 			}
 			if err != nil {
 				t.Fatalf("parseAnswer(%q): %v", tc.in, err)
 			}
-			if got != tc.want {
-				t.Errorf("index = %d, want %d", got, tc.want)
+			if r.index != tc.want {
+				t.Errorf("index = %d, want %d", r.index, tc.want)
 			}
-			if why != tc.why {
-				t.Errorf("why = %q, want %q", why, tc.why)
+			if r.why != tc.why {
+				t.Errorf("why = %q, want %q", r.why, tc.why)
+			}
+			if r.move != tc.move {
+				t.Errorf("move = %q, want %q", r.move, tc.move)
 			}
 		})
 	}

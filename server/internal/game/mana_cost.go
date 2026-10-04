@@ -82,6 +82,23 @@ type ParsedCost struct {
 	// delveBudget subtracts it. Zero for every cost no grant touched.
 	// ADR 0100 §1.
 	FoldedColored int
+
+	// SpendOnly is a COST-side spend restriction, resolved: "Spend
+	// only mana of the chosen color to activate this ability" (Throne
+	// of Eldraine), "Spend only black mana on X" (Crypt Rats). Nil for
+	// every cost that does not print one, which is nearly all of them.
+	//
+	// It is stamped by the pricer that owns the printed clause
+	// (AbilityManaCostForTargetsForEffect, from AbilityCost.SpendOnly)
+	// with the colours already resolved — a chosen colour read off the
+	// source — and it changes neither the price shown nor the mana
+	// value: String() and ManaValue() ignore it, because the cost is
+	// still {3}. What it changes is which mana PAYS, and that is read
+	// at the one place every payment and every affordability probe
+	// already reads "how may this player pay" (costAsPaidByLocked,
+	// spend_only.go), which folds the restricted part into coloured
+	// requirements the solvers already understand.
+	SpendOnly *ManaSpendOnly
 }
 
 // ColorRequirement is one colored-mana slot — ONE symbol, whatever

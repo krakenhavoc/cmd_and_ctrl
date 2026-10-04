@@ -297,6 +297,17 @@ entering creature would be the bot's only untapped creature, which a
 counter would stop from blocking (CR 702.98a). See
 `aiseat/heuristic/riot.go`.
 
+**Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
+CR 903.9a).** When the bot's commander has been put into a graveyard or
+exile, the state-based action asks its owner whether it goes to the
+command zone. The bot says yes, unless the prompt's `playable_from_zone`
+is set, meaning it could cast the commander from where it is (escape,
+flashback, an adventure in exile). Then it says no and leaves the card
+there (owner decision 2). The model prompt names the card and says when
+it is castable where it is. The prompt ships switched off in ADR 0115
+PR 2: until PR 3, the commander-zone question is still the
+`optional_replacement` above.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's
@@ -381,15 +392,40 @@ endpoint and model it dialled, the prompt's byte size and a rough
 token estimate, `usage.prompt_tokens` and `completion_tokens`, the
 server's prefix-cache hit count, `finish_reason`, whether the reply
 text was empty, whether a `reasoning` field came back, the first 300
-characters of the reply, the parsed index or the parse error, and the
-wall time. It ends with a verdict line for each of the two failures
-that make a model seat look like a heuristic seat: **truncation** (the
-server counted far fewer prompt tokens than were sent, so it silently
-dropped the front of the prompt — the primer and the instructions),
-and **thinking not suppressed** (a `reasoning` field came back, or
-`finish_reason` was `length` with nothing usable in `content`). It
-always exits 0: it is a diagnostic, and "the endpoint is down" is a
-finding.
+characters of the reply, the parsed index and copied label or the
+parse error, whether the reply was constrained by a `json_schema`, the
+move list it was shown with the answer marked, and the wall time. It
+ends with a verdict line for each of the three failures that make a
+model seat look like a heuristic seat: **truncation** (the server
+counted far fewer prompt tokens than were sent, so it silently dropped
+the front of the prompt — the primer and the instructions), **thinking
+not suppressed** (a `reasoning` field came back, or `finish_reason` was
+`length` with nothing usable in `content`), and the **answer** — which
+move the reply comes to, read exactly as a seat reads it, or `INDEX:
+out of range` when it names a number that is not on the list and no
+label that picks one out (#2196). It always exits 0: it is a
+diagnostic, and "the endpoint is down" is a finding.
+
+**The reply names its move twice, and on a local endpoint it cannot
+name one that is not listed (#2196).** The model answers `{"index": n,
+"move": "<that entry's text>", "why": "…"}`. On the OpenAI-compatible
+transport the request carries `response_format: json_schema` with
+`index` an enum of exactly the listed indices and `move` an enum of
+their labels, so a server that applies the schema as a grammar (Ollama
+does) cannot write a number past the end of the list — which was half
+of qwen3.6:35b-a3b's replies on the probe's window before this. A
+server that 400s on `response_format` is asked again without it, once,
+and is not sent it again for the life of the process. Whatever the
+transport, the funnel then resolves the reply against the list it
+showed: the number when the label agrees or is absent; the label when
+the number is off the list or names a different move and the label
+names exactly one listed entry; the number again when the label names
+none (or names two identical lines); and the heuristic's move when
+neither names a move. Neither can select a move that was not shown.
+How each used reply resolved is counted in `Stats.ByPick` and the
+arena's `picks` column (`index`, `index-unlabelled`, `label-rescued`,
+`label-corrected`, `label-mismatch`), next to `out-of-range` under
+`fallbacks`.
 
 The probe sends what the seat sends — the same `OpenAIClient`, so both
 thinking-off fields go with it — which means **`THINKING: suppressed`
@@ -752,7 +788,8 @@ per game — `<dir>/<game-id>.decisions.jsonl` — with one line per
 decision window per bot seat. A line records the turn and step, which
 seat, which layer of the funnel answered, the Layer A rule or the
 heuristic's whole ranking, the exact prompt the model was shown and
-its raw reply, the index parsed out of it, the runner's own fallback
+its raw reply, the index and label parsed out of it and the move they
+resolved to (`parsed_index`, `parsed_move`, `model_index`, `pick`), the runner's own fallback
 cause when it overruled the policy, whether the engine accepted the
 move, and how long the decision took.
 
@@ -1574,6 +1611,33 @@ that quietly stops happening. The runtime half is
 `TestEveryShippedTierForwardsItsOptionalHooks`, which builds every
 tier through the factory and asks it everything the runner and the
 enumerator will ask it.
+
+## Choosing a Ring-bearer (ADR 0114 §7)
+
+When the Ring tempts a bot seat that controls two or more creatures, it
+owes a `ring_bearer` prompt (one creature is chosen by the server). The
+enumerator offers one move per creature, labelled `choose your
+Ring-bearer: choose Ring-bearer <name>`, and the prompt always has an
+answer: it is only asked with candidates, and the submit re-check
+refuses only a creature that has gone, leaving the rest open.
+
+The heuristic gives the Ring to the creature that attacks hardest: the
+highest power, then one that can attack this turn (untapped, not
+summoning sick), then the current Ring-bearer, which costs nothing to
+keep. A creature the Ring's "is legendary" would put into the legend
+rule against a same-named legendary permanent the seat already controls
+goes last. The same price orders the pool before the enumerator's cap
+(`legal.Options.OrderRingBearer`, the `aiseat.RingBearerOrderer` hook,
+forwarded through every wrapper like the two above), so on a wide board
+the best candidates are the ones offered.
+
+The model tiers see the Ring in the board text: one `emblem:` line per
+emblem, the Ring with its count ("The Ring (tempted 3 times): …"), and
+a `Ring-bearer` tag on the creature. Legendary and the evasion reach the
+evaluator through the effective type line and the block refusals, with
+nothing new. The Ring's other three lines (ADR 0114 PR 3) are ordinary
+triggers the seat controls: the loot's discard is the usual discard
+prompt, and the end-of-combat sacrifice and the life loss ask nothing.
 
 ## Never offered a banned cast (#760)
 

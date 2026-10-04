@@ -1566,7 +1566,7 @@ func (e *enumerator) canPayExcluding(
 	// action, delve, waterbend and pay-unless moves all ask, so none of
 	// them can offer a payment the engine would refuse or hide one it
 	// would accept.
-	cost = e.g.CostAsPaidByForEffect(e.seat, spend, cost)
+	cost = e.g.CostAsPaidByForEffect(e.seat, spend, cost, x)
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
 	}

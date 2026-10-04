@@ -289,6 +289,13 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				v -= st.permanentValue(c)
 			}
 		}
+		// #1600: a permanent exiled to pay the cost leaves the board as
+		// surely as a sacrificed one, so it costs the same.
+		for _, id := range cp.ExilePermanentIDs {
+			if c := st.bf[id]; c != nil {
+				v -= st.permanentValue(c)
+			}
+		}
 		// #1297: an exile-N-cards cost spends real cards — a graveyard
 		// card the seat might have recast, a card in hand. One price
 		// for both, and it is the SAME one the enumerator ordered the

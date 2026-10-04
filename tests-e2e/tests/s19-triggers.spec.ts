@@ -49,11 +49,14 @@ const dockOf = (page: Page) => page.getByRole("region", { name: "actions", exact
 // actually entered targeting mode.
 //
 // Both halves matter. The admin snapshot is not the chooser's page:
-// clicking a board card before the page has processed the delta is a
-// SILENT no-op — PlayerPanel falls through to its tap/untap default,
-// which a non-controller isn't allowed to do — so the click is
-// swallowed and the test then waits out the clock for a pick that
-// never happened. Every board-click target pick has to gate on the
+// clicking a board card before the page has processed the delta is not
+// a pick. With no targeting live, PlayerPanel's click rule (ADR 0117)
+// does what the card does: nothing on a card the chooser doesn't
+// control (unless it has an any-player ability, which opens its
+// popover), and on their own card it may open the ability popover or
+// tap it for mana. Either way the click is spent and the test then
+// waits out the clock for a pick that never happened. Every
+// board-click target pick has to gate on the
 // targeting banner, which is the page's own proof it is ready.
 //
 // (Modal clicks don't need this: the button doesn't exist until the

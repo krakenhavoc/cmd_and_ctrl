@@ -73,13 +73,24 @@ func (z *Zone) Bottom() (Card, error) {
 }
 
 // PushTop adds a card to the top of the zone.
+//
+// Every insertion also stamps the card's printed-characteristic cache
+// (#1498): a zone insertion runs under the game's write lock, and it
+// is the moment a card's printed values settle — a move resets its
+// face, an import has just set them — so it is where a card that is
+// about to be read by every view gets its baseline built once rather
+// than on every read. The stamp keeps an entry that still matches, so
+// a card moved without changing costs one comparison. See
+// printed_cache.go.
 func (z *Zone) PushTop(c Card) {
 	z.Cards = append(z.Cards, c)
+	z.Cards[len(z.Cards)-1].stampPrinted()
 }
 
 // PushBottom adds a card to the bottom of the zone.
 func (z *Zone) PushBottom(c Card) {
 	z.Cards = append([]Card{c}, z.Cards...)
+	z.Cards[0].stampPrinted()
 }
 
 // InsertFromTop puts a card `depth` cards down from the top: depth 1
@@ -103,6 +114,7 @@ func (z *Zone) InsertFromTop(c Card, depth int) {
 	z.Cards = append(z.Cards, Card{})
 	copy(z.Cards[idx+1:], z.Cards[idx:])
 	z.Cards[idx] = c
+	z.Cards[idx].stampPrinted()
 }
 
 // PopTop removes and returns the top card.
@@ -286,6 +298,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// is monstrous — a flickered Polukranos is a new object that
 		// can become monstrous again.
 		c.Monstrous = false
+		// ADR 0114 §3 / CR 400.7 + CR 701.54a: and so is the
+		// Ring-bearer designation — a Ring-bearer that leaves and comes
+		// back is a new object and is nobody's Ring-bearer.
+		c.RingBearer = false
 		// ADR 0103 / CR 400.7: and so are a Room's unlocked
 		// designations (CR 709.5c) — a Room that leaves and comes back is
 		// a new object with both doors locked, unless it was cast (CR
@@ -436,6 +452,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 			c.materialiseSplitWhole()
 		}
 	}
+	// ADR 0115 decision 1, CR 903.9a: a commander put into a graveyard
+	// or exile is owed the state-based action's question, and any other
+	// move ends that debt. Here because every route ends here and this
+	// is where the destination's kind is known, so no mover has to
+	// remember it (commander_return.go).
+	c.CommanderReturnDue = commanderReturnDueOn(c, dst.Kind)
 	dst.PushTop(c)
 	return c, nil
 }

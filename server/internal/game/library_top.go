@@ -71,7 +71,7 @@ const (
 // visible. Populated at init from CardDef.LibraryTopVisible.
 //
 // A derived hook rather than a CR 613 layer, for the reason
-// CatalogAdditionalLandPlays and CatalogNoMaxHandSize give: the layer
+// CatalogAdditionalLandPlays and CatalogHandSize give: the layer
 // engine models characteristics of objects, and "you may look at the
 // top card of your library" is not one.
 var CatalogLibraryTopVisible func(oracleID string) LibraryTopVisibility
@@ -98,7 +98,7 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 		// The gate is "has no catalog entry", not "has no oracle ID"
 		// (ADR 0083 decision 3): a TOKEN has a key of its own since
 		// #521, and an object CR 708.2a has silenced has none.
-		key := CatalogAbilityKey(*c)
+		key := catalogAbilityKeyOf(c)
 		if key == "" {
 			continue
 		}

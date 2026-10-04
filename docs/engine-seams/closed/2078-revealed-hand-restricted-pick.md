@@ -1,0 +1,6 @@
+---
+title: "Choosing a card from a revealed hand with a restriction"
+date: 2026-10-03
+issues: [2078]
+---
+**Choosing a card from a revealed hand with a restriction** (#2078, [ADR 0116](decisions/0116-a-card-filter-on-the-revealed-hand-pick.md)) — `Game.QueueDiscardFromRevealedHand` now takes a `RevealedHandDiscard` with a card filter and its label. It reveals the whole hand to every player (`RevealForEffect`, CR 701.20a), runs the filter once over the hand and stores the matching cards on the prompt as `PendingChoice.DiscardOptions`, an additive v7 snapshot field with a new corpus board. It caps the count at the matches and queues nothing when there are none: the hand is revealed and nothing is discarded (CR 609.3). `ResolvePendingChoice` refuses a pick outside the list or named twice, `legal.EnumerateFor` offers only the list, and the wire sends it as `eligible` / `eligible_label`, so the prompt shows the whole revealed hand with the other cards greyed out. Card side: `effects.ChooseFromRevealedHand` and `TargetRevealsYouChooseDiscard` over an ordinary `CardPredicate`. **Cards:** Thoughtseize (Caveats to Full), Unmask and Pelakka Predation (Full). **Moved to other rows:** the exile, optional-pick and reads-the-chosen-card variants (#2115, `revealed-hand-pick-variants`).

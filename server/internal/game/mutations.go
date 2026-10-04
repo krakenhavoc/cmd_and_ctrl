@@ -1531,13 +1531,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// creatures", "sacrifice X lands"), and this record is the
 		// only place the count lives: Vicious Betrayal's "+2/+2 for
 		// each creature sacrificed this way" reads it through
-		// ctx.Sacrificed().
+		// ctx.Sacrificed(). ADR 0113 §1 (#2072): and WHICH ones, named
+		// here while they are still on the battlefield (the payment
+		// below moves them) — Fling's "the sacrificed creature's power"
+		// reads them through ctx.SacrificedPermanents().
 		//
 		// ADR 0100 §2: and which either/or branch was paid and which
 		// cards the additional cost discarded — Grab the Prize's "if
 		// the discarded card wasn't a land card".
 		Paid: paidWithBranchAndDiscards(
-			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
+			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.GiftOpponent),
 			params.CostBranch, params.DiscardIDs),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
@@ -1663,8 +1666,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {
 		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
-			if ch := SourceCharacteristics(sc); characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
+			ch := SourceCharacteristics(sc)
+			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
+			}
+			// Artificer Class's "first artifact spell you cast each turn".
+			if characteristicHasType(ch, "Artifact") {
+				tally.Artifact++
 			}
 			break
 		}
@@ -1778,7 +1786,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// any color" (Chromatic Orrery) widens what may pay the cost — read
 	// here, after convoke and delve have taken their share and before
 	// the Phyrexian strike, exactly as applyAutoTapLocked reads it.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost, params.XValue)
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
 	// is paid below — after the mana half is known to be payable, so a
@@ -1895,7 +1903,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// #1600: the cost as this caster may pay it — the same widening
 	// applyCastCostLocked will pay under, so the plan funds exactly
 	// what the payment accepts.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost, params.XValue)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -2398,7 +2406,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if card == nil || card.Owner != p.ID {
 		return
 	}
-	ab := g.autoManaExileAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card), zone)
+	ab := g.autoManaExileAbilityFor(p.ID, *card, manaAbilitiesOf(card), zone)
 	if ab == nil {
 		return
 	}
@@ -4010,17 +4018,27 @@ func clearKnownInZoneLocked(zone *Zone) {
 //   - 704.5d: a token in any zone other than the battlefield ceases
 //     to exist — see token_existence.go
 //
-// Counter ordering (CR 704.3): the +1/+1 / -1/-1 cancel runs BEFORE
-// the lethal-damage check so a 2/2 with one +1/+1 and one -1/-1 +
-// 1 marked damage doesn't die — the counters cancel first, leaving
-// it a 2/2 with 1 damage. The implementation enforces this by
-// running the counter cancel pass before destruction collection.
+// Counter ordering (CR 704.3): every action in one check is performed
+// simultaneously, so the +1/+1 / -1/-1 cancel runs AFTER the doomed set
+// is collected and swept. It never changes power or toughness, so the
+// order cannot change which creatures die; it decides only that a
+// creature dying in this check leaves with both kinds of counter, which
+// is what undying and persist read (#2075).
 //
 // Caller must hold g.mu.
 func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.State != StateActive {
 		return false, false
 	}
+	// ADR 0115 decision 1, CR 903.9a / CR 704.6d: a commander put into
+	// a graveyard or exile since the last check is offered the command
+	// zone. FIRST, so it collects its cards off the same board the rest
+	// of the pass reads (CR 704.3); a commander this pass kills is
+	// marked by that move and asked on the next pass. Not "fired": a
+	// question is not an action performed, and runStateChecksLocked
+	// holds the boundary while it is open. A no-op while
+	// commanderReturnSBA is off. See commander_return.go.
+	g.commanderReturnSBALocked()
 	// #1199 / CR 702.26, ADR 0084: the "phases out until ~ leaves the
 	// battlefield" family comes back the moment its source is gone —
 	// Oubliette destroyed, Out of Time's last time counter removed.
@@ -4059,41 +4077,6 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// in the same settling rather than surviving a round.
 	if g.attachmentSBALocked() {
 		fired = true
-	}
-
-	// Counter cancel (704.5q). Must run before destruction so the
-	// post-cancel state is what the lethal-damage SBA sees.
-	//
-	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
-	// changes power and toughness (PTCounterDelta), but CR 704.5q
-	// names these two and no others: a +1/+0 and a -1/-0 on one
-	// creature both stay, as do a +1/+1 and a -2/-1.
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if !c.IsCreature() || c.Counters == nil {
-			continue
-		}
-		plus := c.Counters["+1/+1"]
-		minus := c.Counters["-1/-1"]
-		if plus > 0 && minus > 0 {
-			cancel := plus
-			if minus < cancel {
-				cancel = minus
-			}
-			c.Counters["+1/+1"] -= cancel
-			c.Counters["-1/-1"] -= cancel
-			if c.Counters["+1/+1"] <= 0 {
-				delete(c.Counters, "+1/+1")
-			}
-			if c.Counters["-1/-1"] <= 0 {
-				delete(c.Counters, "-1/-1")
-			}
-			if len(c.Counters) == 0 {
-				c.Counters = nil
-				c.LostLastCounter = true
-			}
-			fired = true
-		}
 	}
 
 	// Player-loss SBAs (ADR 0057 Decision 2). CR 704.3 performs them
@@ -4186,7 +4169,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			continue
 		}
 		if c.IsCreature() {
-			if !c.ToughnessIsKnown() {
+			// Whether the toughness is KNOWN is judged as if this
+			// check's CR 704.5q cancel had already happened: a `*`
+			// placeholder whose counters cancel to nothing is as
+			// unknown as one that never had any (the cancel itself
+			// runs after the sweep, below).
+			if !afterPlusMinusCancel(c).ToughnessIsKnown() {
 				continue
 			}
 			curT := c.CurrentToughness()
@@ -4286,6 +4274,27 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		// still has to be looked at again, and one whose exit is paused on
 		// the CR 903.9 prompt is skipped by the collector above on the next
 		// pass. Both are answered by the set this pass COLLECTED.
+		fired = true
+	}
+
+	// Counter cancel (704.5q). AFTER the doomed set is collected and
+	// swept, for CR 704.3: every state-based action in one check is
+	// performed simultaneously, so a creature this check puts into a
+	// graveyard leaves with the counters it had, both kinds included.
+	// Its last-known counters are what undying and persist read
+	// (#2075, ADR 0113 §4): a 1/1 undying creature with a +1/+1 counter
+	// that gets two -1/-1 counters dies with its +1/+1 counter and does
+	// not return. Running the cancel first would have removed that
+	// counter before the creature died, and brought it back. The
+	// cancel removes as many of one kind as of the other, so it never
+	// changes power or toughness and cannot change which creatures the
+	// pre-pass dooms.
+	//
+	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
+	// changes power and toughness (PTCounterDelta), but CR 704.5q
+	// names these two and no others: a +1/+0 and a -1/-0 on one
+	// creature both stay, as do a +1/+1 and a -2/-1.
+	if g.cancelPlusMinusCountersLocked() {
 		fired = true
 	}
 
@@ -4411,6 +4420,13 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	const maxIter = 32
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
+		// ADR 0115 decision 3, CR 704.3: the CR 903.9a question is part
+		// of the state-based actions, so nothing goes on the stack and
+		// no further pass runs until every commander_return prompt is
+		// answered. ResolveCommanderReturn runs the checks again.
+		if g.holdForCommanderReturnLocked() {
+			return sbaFired
+		}
 		// #809 / CR 603.3d: a targeted trigger dispatched from inside a
 		// resolving spell's own events froze its legal set while that
 		// spell was still on the stack. This is the priority-grant
@@ -4447,6 +4463,16 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		// earlier one) already eliminated. See sweepEliminatedChoicesLocked.
 		g.sweepEliminatedChoicesLocked()
 		departuresPending = departuresPending || left
+		// ADR 0115 decision 3: the pass that asked a CR 903.9a question
+		// ends the boundary here. A departure this pass performed still
+		// owes its rotation, so it is deferred to the run the answer
+		// starts, through the flag a mid-resolution loss already uses.
+		if g.holdForCommanderReturnLocked() {
+			if departuresPending && g.State == StateActive {
+				g.ActiveSeatLeftPending = true
+			}
+			return sbaFired
+		}
 		if departuresPending && g.State == StateActive {
 			if fired {
 				// CR 704.3 repeats the checks before anything gets priority.
@@ -5595,7 +5621,9 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 // playgroup adjustments.
 //
 // `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
-// negative value is rejected with ErrInvalidParam. Doesn't fire
+// negative value is rejected with ErrInvalidParam. Stamped like
+// SetMaxHandSizeForEffect, so the sandbox value is folded in CR
+// 613.11's timestamp order (ADR 0113 §3 decision 3). Doesn't fire
 // the SBA loop — the cap only matters at cleanup-step entry, which
 // has its own re-check via populateDiscardPendingLocked.
 //
@@ -5616,6 +5644,7 @@ func (g *Game) SetMaxHandSize(playerID uuid.UUID, value int) error {
 		return ErrPlayerNotFound
 	}
 	p.MaxHandSize = value
+	p.MaxHandSizeAt = timeNowUnixNano()
 	return nil
 }
 
@@ -6054,6 +6083,12 @@ type ManaAbilityParams struct {
 	// sends none.
 	ExileIDs []uuid.UUID
 
+	// ExilePermanentIDs names the permanents paying an ExilePermanents
+	// component (#1600) — Food Chain's "Exile a creature you control",
+	// with exactly the meaning ActivateAbilityParams.ExilePermanentIDs
+	// gives them. On the wire as `exile_permanent_ids`.
+	ExilePermanentIDs []uuid.UUID
+
 	// Colors names, up front, the colour each PICKING slot of the
 	// output adds (#1443): one entry per entry of
 	// ManaAbilityColorOptions, in output order — a painland's "{R|W}"
@@ -6136,7 +6171,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	abilities, origins := ManaAbilitiesWithOrigins(*card)
+	abilities, origins := manaAbilityRows(card, true)
 	// ADR 0093 Decision 5: the ref names the row the activator meant.
 	// A grant appearing or vanishing since the view moved the rows;
 	// refuse the stale move before anything is paid (#544).
@@ -6294,6 +6329,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := g.validateManaExileSelfCostLocked(srcZone, ab); err != nil {
 		return err
 	}
+	// #1600: the exile-a-permanent component (Food Chain), validated by
+	// the SAME function the CR 602 path uses, against the sacrifices
+	// (the source among them when the cost sacrifices it) — one
+	// permanent pays one component (CR 118.3).
+	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.ExilePermanents, params.ExilePermanentIDs,
+		movedSourceAlso(cardID, ab.ExileSelf, sacrifices)); err != nil {
+		return err
+	}
 	// CR 118.3, as on the activated path: a cost that prints both
 	// {T} and "tap another untapped creature you control" (Jaspera
 	// Sentinel) has already spent the source, so naming it here
@@ -6340,7 +6383,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// #1600: an Orrery's controller may pay a filter land's {W/U}
 		// with colourless — the same widening the pay step below
 		// spends under, because it spends this manaCost.
-		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced)
+		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, 0)
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
 			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 		}
@@ -6357,6 +6400,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if ab.ExileSelf {
 		moving = append(moving, cardID)
 	}
+	// #1600: a commander exiled to Food Chain is offered the command
+	// zone here, before anything is paid.
+	moving = append(moving, params.ExilePermanentIDs...)
 	// #1427: every permanent the cost TAPS — the source's {T} and
 	// the tap-another picks.
 	tapping := append([]uuid.UUID(nil), params.TapIDs...)
@@ -6508,6 +6554,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// pool below — CR 605.3b: a mana ability resolves immediately,
 	// without the stack, so the sacrifices and the mana are one
 	// atomic step.
+	// ADR 0113 §1 (#2072): which objects the sacrifice takes, named
+	// before they move.
+	paid.SacrificedObjects = g.sacrificeRefsLocked(sacrifices)
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
@@ -6524,6 +6573,23 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		needStateChecks = true
 	}
 	paid.Sacrificed = len(sacrifices)
+	// #1600: the exile-a-permanent component, beside the sacrifices and
+	// for the same reason: it moves permanents, so it goes after the
+	// tap and the counters, and `card` may no longer point at the
+	// source afterwards (a removal shifts the battlefield slice).
+	// Recorded on the paid-cost record, which is how Food Chain's
+	// ProducedForPaid finds "the exiled creature". The leaves-triggers
+	// it queues wait for the state-check pass on the way out, so they
+	// reach the stack with the mana already in the pool (CR 605.3a).
+	if len(params.ExilePermanentIDs) > 0 {
+		exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+		if err != nil {
+			return err
+		}
+		paid.Exiled = append(paid.Exiled, exiledPermanents...)
+		card = nil
+		needStateChecks = true
+	}
 	// #1213: the discard component, LAST — it moves cards out of the
 	// hand, and it goes through the ONE discard helper with cause
 	// cost, so EventDiscardCard still fires per card, the CR 614
@@ -6845,7 +6911,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 // layer-6 effect granted the object (Cryptolith Rite, Chromatic
 // Lantern). The body — and each row's stable ref — is manaAbilityRows
 // in granted_abilities.go.
-func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
+func ManaAbilitiesForCard(c Card) []ManaAbilityShape { return manaAbilitiesOf(&c) }
+
+// manaAbilitiesOf is ManaAbilitiesForCard without the copy (#1498).
+func manaAbilitiesOf(c *Card) []ManaAbilityShape {
 	abs, _ := manaAbilityRows(c, false)
 	return abs
 }
@@ -6854,12 +6923,17 @@ func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
 // mana their intrinsic ability produces. Order is only a tie-break
 // for cards whose effective subtypes are unordered; the real
 // ordering comes from the subtype list itself.
-var landTypeMana = [...]struct{ Subtype, Color string }{
-	{"Plains", "W"},
-	{"Island", "U"},
-	{"Swamp", "B"},
-	{"Mountain", "R"},
-	{"Forest", "G"},
+//
+// Produced and Label are the ability's two strings, spelled out rather
+// than concatenated from Color per call: intrinsicLandManaAbilities
+// runs for every land in every view, and the concatenation was most of
+// its cost (#1498). TestLandTypeManaStringsMatchTheColor pins them.
+var landTypeMana = [...]struct{ Subtype, Color, Produced, Label string }{
+	{"Plains", "W", "{W}", "Add {W}"},
+	{"Island", "U", "{U}", "Add {U}"},
+	{"Swamp", "B", "{B}", "Add {B}"},
+	{"Mountain", "R", "{R}", "Add {R}"},
+	{"Forest", "G", "{G}", "Add {G}"},
 }
 
 // intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
@@ -6883,22 +6957,22 @@ var landTypeMana = [...]struct{ Subtype, Color string }{
 // static on it keeps the exact ability list (and therefore the
 // exact ability indices, and the exact auto-tapper first choice)
 // it had before.
-func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
-	if !c.IsLand() {
+func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
+	if !hasCardType(c, "land") {
 		return nil
 	}
 	var subtypes []string
 	switch {
 	case c.effective != nil:
 		subtypes = c.effective.Subtypes
-	case c.FaceDownIsPermanent():
+	case c.faceDownPermanent():
 		// CR 708.2: the body's subtypes, not the card's — a
 		// manifested Forest has none, Yedora's face-down Forest has
 		// "Forest" (#1270). HasCardType's cold path makes the same
 		// guard for the IsLand above.
-		subtypes = faceDownCharacteristic(c).Subtypes
+		subtypes = faceDownCharacteristic(*c).Subtypes
 	default:
-		_, _, subtypes = ParseTypeLine(c.TypeLine)
+		_, _, subtypes = printedTypeParts(c)
 	}
 	if len(subtypes) == 0 {
 		return nil
@@ -6916,8 +6990,8 @@ func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
 			seen |= 1 << i
 			out = append(out, ManaAbilityShape{
 				TapCost:  true,
-				Produced: "{" + lt.Color + "}",
-				Label:    "Add {" + lt.Color + "}",
+				Produced: lt.Produced,
+				Label:    lt.Label,
 			})
 		}
 	}
@@ -7132,31 +7206,51 @@ func (g *Game) MaxCounterPaymentForEffect(playerID, sourceID uuid.UUID, rc *Coun
 	return g.maxCounterPaymentLocked(playerID, sourceID, rc).CountersRemoved
 }
 
-// ManaAbilityAddsNoMana reports CR 903.4f for one mana ability: it
-// would add no mana at all, so nothing should offer it. True only for
-// an ability whose printed text says "any color in your commander's
-// color identity" (NarrowToCommanderIdentity) activated by a player
-// who has no commander, or whose commander's colour identity is
-// colourless — the identity is undefined or empty, and "that part of
-// the ability won't do anything".
+// ManaAbilityAddsNoMana reports that one mana ability would add no
+// mana at all right now, so nothing should offer it. Two cases:
 //
-// The engine still ACCEPTS such an activation (the ability exists; it
-// just does nothing, which is what the rulings on Command Tower,
-// Arcane Signet, Commander's Sphere and Path of Ancestry say). This is
-// what keeps it from being OFFERED: the legal-move enumerator drops
-// the move, the view greys the row, and the auto-tapper skips the
-// source through the same narrowing (gatherTapSources).
+//   - CR 903.4f: an ability whose printed text says "any color in your
+//     commander's color identity" (NarrowToCommanderIdentity) activated
+//     by a player who has no commander, or whose commander's colour
+//     identity is colourless — the identity is undefined or empty, and
+//     "that part of the ability won't do anything".
+//   - ADR 0117 §5: an ability whose output is COMPUTED (ProducedFunc,
+//     ProducedForPaid or DerivedMatch) and computes to no mana right
+//     now — a power-0 Vivi Ornitier, a Selvala whose greatest power is
+//     0, an Exotic Orchard with nothing to copy, a Mage-Ring Network
+//     with no counters. It is read the way every "what would this
+//     make" reader reads it: manaAbilityProducedLocked with the largest
+//     counter payment. A static Produced of "" stays out of it.
+//
+// The engine still ACCEPTS such an activation (CR 605.1a: the ability
+// exists and may be activated; it just does nothing, which is what the
+// rulings on Command Tower and its kin say). This is what keeps it from
+// being OFFERED: the legal-move enumerator drops the move, the view
+// greys the row, and the auto-tapper skips the source (it never plans
+// a source with no output).
 //
 // Read-only. Callers hold whatever lock their read path already holds
 // — the legal enumerator reads the battlefield the same way.
 func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilityShape) bool {
-	if g == nil || !ab.NarrowToCommanderIdentity {
+	if g == nil {
+		return false
+	}
+	computed := ab.ProducedFunc != nil || ab.ProducedForPaid != nil || ab.DerivedMatch != nil
+	if !ab.NarrowToCommanderIdentity && !computed {
 		return false
 	}
 	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	slots, err := ParseProducedMana(produced)
-	if err != nil || len(slots) == 0 {
-		// A broken or empty declaration is not this rule's business.
+	if err != nil {
+		// A broken declaration is not this rule's business.
+		return false
+	}
+	if len(slots) == 0 {
+		// Empty output: only a computed one is "adds nothing right
+		// now"; a static empty declaration is left alone.
+		return computed
+	}
+	if !ab.NarrowToCommanderIdentity {
 		return false
 	}
 	identity := commanderIdentityFor(g, g.playerByIDLocked(playerID))
@@ -9536,4 +9630,49 @@ func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asComman
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.moveCardByRefLocked(src, dst, cardID, asCommander, true)
+}
+
+// cancelPlusMinusCountersLocked is CR 704.5q: N +1/+1 and N -1/-1
+// counters are removed from a creature that has both, N the smaller
+// count. Reports whether it removed any.
+//
+// Caller must hold g.mu.
+func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if !c.IsCreature() || c.Counters == nil {
+			continue
+		}
+		if c.Counters[CounterPlusOne] > 0 && c.Counters[CounterMinusOne] > 0 {
+			*c = afterPlusMinusCancel(*c)
+			fired = true
+		}
+	}
+	return fired
+}
+
+// afterPlusMinusCancel is the card as CR 704.5q leaves it: N of each of
+// +1/+1 and -1/-1 removed, N the smaller count, on a fresh counter map.
+// A card with not both kinds comes back unchanged.
+func afterPlusMinusCancel(c Card) Card {
+	plus, minus := c.Counters[CounterPlusOne], c.Counters[CounterMinusOne]
+	if plus <= 0 || minus <= 0 {
+		return c
+	}
+	cancel := min(plus, minus)
+	counters := copyStringIntMap(c.Counters)
+	counters[CounterPlusOne] -= cancel
+	counters[CounterMinusOne] -= cancel
+	if counters[CounterPlusOne] <= 0 {
+		delete(counters, CounterPlusOne)
+	}
+	if counters[CounterMinusOne] <= 0 {
+		delete(counters, CounterMinusOne)
+	}
+	if len(counters) == 0 {
+		counters = nil
+		c.LostLastCounter = true
+	}
+	c.Counters = counters
+	return c
 }

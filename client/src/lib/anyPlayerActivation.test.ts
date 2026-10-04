@@ -99,13 +99,25 @@ function gameView(cards: CardView[], extra: Partial<GameView> = {}): GameView {
 }
 
 describe("the click on another player's permanent", () => {
-  it("opens the abilities for a seated non-controller when it has an any-player row", () => {
+  it("opens the light popover for a seated non-controller when it has an any-player row", () => {
     expect(mayActivateAcross(xantcha(), ME)).toBe(true);
-    expect(battlefieldClickIntent(xantcha(), ME, false)).toBe("abilities");
+    expect(battlefieldClickIntent(xantcha(), ME, false)).toBe("popover");
     // Even with the mana and raw-tap flags: none of it is the viewer's.
     expect(battlefieldClickIntent(xantcha(), ME, false, { manaClick: true, rawTap: true })).toBe(
-      "abilities",
+      "popover",
     );
+  });
+
+  it("does nothing when the digest refuses the any-player row (ADR 0117 §2)", () => {
+    // The exact digest lists no activation for the viewer on Xantcha.
+    const view = gameView([xantcha()], { legal_actions: { pass: true, sources: {} } });
+    const gate = acrossActions(legalActionsOf(view), view.battlefield.cards, ME);
+    expect(battlefieldClickIntent(xantcha(), ME, false, { legalGate: gate })).toBe("none");
+  });
+
+  it("does nothing when an effect stops its abilities (Arrest)", () => {
+    const arrested = xantcha({ restrictions: ["cant_activate"] });
+    expect(battlefieldClickIntent(arrested, ME, false)).toBe("none");
   });
 
   it("does nothing without an any-player row", () => {
@@ -118,9 +130,9 @@ describe("the click on another player's permanent", () => {
     expect(battlefieldClickIntent(xantcha(), null, false)).toBe("none");
   });
 
-  it("is unchanged for the controller", () => {
+  it("opens the controller's popover too: both rows are theirs", () => {
     expect(mayActivateAcross(xantcha(), ALICE)).toBe(false);
-    expect(battlefieldClickIntent(xantcha(), ALICE, false)).toBe("tap");
+    expect(battlefieldClickIntent(xantcha(), ALICE, false)).toBe("popover");
   });
 });
 

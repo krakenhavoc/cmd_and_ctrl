@@ -409,3 +409,29 @@ func printedNoncreatureCastWizardToken() tokenTemplate {
 		Text: "Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.",
 	}
 }
+
+// SmaugToken is There and Back Again's chapter III token: Smaug, a
+// legendary 6/6 red Dragon with flying, haste, and "When Smaug dies,
+// create fourteen Treasure tokens."
+func SmaugToken() game.Card { return tokenFromCatalog(printedSmaugToken) }
+
+// printedSmaugToken is Smaug as PRINTED. Its trigger looks back (CR
+// 603.10a): the Treasures are its controller's as it died, which is
+// item.Controller.
+func printedSmaugToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "smaug",
+		Card: game.Card{
+			Name:      "Smaug",
+			TypeLine:  "Token Legendary Creature — Dragon",
+			Power:     6,
+			Toughness: 6,
+			Colors:    []string{"R"},
+			Keywords:  []string{"flying", "haste"},
+		},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDies("Smaug — create fourteen Treasure tokens", Do(CreateToken{Template: TreasureToken(), N: 14})),
+		},
+		Text: "Flying, haste\nWhen this creature dies, create fourteen Treasure tokens.",
+	}
+}

@@ -51,6 +51,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "afaef788-34d1-460b-b884-9d7ae6ddeb18",
 		Name:           "Toxic Deluge",
+		Completeness:   CompletenessFull,
 		XMatters:       true,
 		AdditionalCost: PayXLifeCost(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

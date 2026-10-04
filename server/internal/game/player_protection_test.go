@@ -400,7 +400,7 @@ func TestChoosingAProtectedPlayerForACostIsStillLegal(t *testing.T) {
 // argument for deriving rather than writing, in one test: two
 // Leylines, one leaves, the player is still hexproof. A "set on
 // enter, restore on leave" design gets exactly this case wrong, which
-// is the case CatalogNoMaxHandSize's comment describes at length.
+// is the case CatalogHandSize's comment describes at length.
 func TestTwoDerivedGrantsComposeAndOneLeavingDoesNotRevoke(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]

@@ -16,6 +16,7 @@ import TokenGroupModal from "./components/board/TokenGroupModal.svelte";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 import { targeting, type TargetingState } from "./targeting";
 import { modalDepth } from "./modalLayers";
+import { abilityPopover } from "./abilityPopover";
 import { get } from "svelte/store";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
 
@@ -327,6 +328,8 @@ describe("the token group's list (#1724)", () => {
 function mountPanel(cards: CardView[], combatMode: "idle" | "attack" | "block", view?: GameView) {
   const sent: Array<{ type: string; params?: unknown }> = [];
   const declared: Array<{ ids: string[]; seat: string }> = [];
+  const tapped: string[] = [];
+  const activated: Array<[string, number]> = [];
   const v = view ?? snap(cards);
   const r = render(
     PlayerPanel as never,
@@ -348,15 +351,16 @@ function mountPanel(cards: CardView[], combatMode: "idle" | "attack" | "block", 
       onSelectCombatCard: () => {},
       onDeclareAttack: () => {},
       onDeclareBlock: () => {},
-      onTapToggle: () => {},
+      onTapToggle: (c: CardView) => tapped.push(c.instance_id),
       onPlayCard: () => {},
       onDrawCard: () => {},
       onManaAbilityCost: () => {},
+      onActivateAbility: (c: CardView, i: number) => activated.push([c.instance_id, i]),
       onDeclareAttackers: (ids: string[], seatID: string) => declared.push({ ids, seat: seatID }),
     } as never,
   );
   const groupCard = () => r.container.querySelector<HTMLElement>(".pile.group .card")!;
-  return { ...r, sent, declared, groupCard };
+  return { ...r, sent, declared, tapped, activated, groupCard };
 }
 
 describe("a token group in the player's panel (#1724)", () => {
@@ -395,6 +399,62 @@ describe("a token group in the player's panel (#1724)", () => {
       { type: "declare_blocker", params: { blocker: "s1", attacker: "ogre" } },
       { type: "declare_blocker", params: { blocker: "s2", attacker: "ogre" } },
     ]);
+  });
+
+  // ADR 0117 §1: "Use this one" is the board click on that member, so
+  // it follows the click rule. A token with nothing usable does nothing.
+  it("'Use this one' on a vanilla token does nothing, as its board click does", () => {
+    const cards = [soldier("s1"), soldier("s2")];
+    const p = mountPanel(cards, "idle", snap(cards, "main"));
+    click(p.groupCard());
+    click(rowButtons()[1]);
+    click(button(/^Use this one$/));
+    expect(p.sent).toEqual([]);
+    expect(p.tapped).toEqual([]);
+    expect(get(abilityPopover)).toBeNull();
+  });
+
+  // A token with a usable ability opens its popover, at the group's
+  // drawn card, on the member the player chose: the group draws that
+  // member while its popover is open, and its rows act on it.
+  it("'Use this one' on a token with a usable ability opens its popover at the group's card", () => {
+    const clue = (id: string): CardView => ({
+      instance_id: id,
+      name: "Clue",
+      owner: "me",
+      controller: "me",
+      type_line: "Token Artifact — Clue",
+      battle_x: Number(id.slice(1)),
+      activated_abilities: [
+        {
+          index: 0,
+          ref: "own:0",
+          label: "{2}, Sacrifice this artifact: Draw a card.",
+          mana_cost: "{2}",
+        },
+      ],
+    });
+    const cards = [clue("c1"), clue("c2"), clue("c3")];
+    const p = mountPanel(cards, "idle", snap(cards, "main"));
+    click(p.groupCard());
+    click(rowButtons()[1]);
+    click(button(/^Use this one$/));
+    expect(get(abilityPopover)?.cardID).toBe("c2");
+    // One group card, now drawn as the chosen member, with the popover.
+    expect(p.container.querySelectorAll(".pile.group .card")).toHaveLength(1);
+    expect(p.groupCard().dataset.instanceId).toBe("c2");
+    const rows = [
+      ...p
+        .groupCard()
+        .querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item:not([data-raw-tap])"),
+    ];
+    expect(rows).toHaveLength(1);
+    rows[0].click();
+    flushSync();
+    expect(p.activated).toEqual([["c2", 0]]);
+    // Closed, the group draws its first member again.
+    expect(get(abilityPopover)).toBeNull();
+    expect(p.groupCard().dataset.instanceId).toBe("c1");
   });
 
   it("a Treasure picked from the list is clicked for mana, as it would be on the board", () => {

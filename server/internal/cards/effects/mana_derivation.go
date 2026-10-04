@@ -60,6 +60,12 @@ const (
 	// ManaRestrictNotNonartifactSpell — "can't be spent to cast a
 	// nonartifact spell" (Powerstone).
 	ManaRestrictNotNonartifactSpell = game.ManaRestrictNotNonartifactSpell
+	// ManaRestrictMonocolored — spend only on an object of exactly one
+	// colour (Throne of Eldraine, with ManaRestrictColor; #1600).
+	ManaRestrictMonocolored = game.ManaRestrictMonocolored
+	// ManaRestrictMulticolored — spend only on an object of two or more
+	// colours (Pillar of the Paruns, Obsidian Obelisk; #1600).
+	ManaRestrictMulticolored = game.ManaRestrictMulticolored
 )
 
 // ManaRestrictType restricts a token to objects with the named card
@@ -295,4 +301,36 @@ func hasFold(xs []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// ProducedPerCounterOnThis is "Add {SYMBOL} for each <kind> counter on
+// this <permanent>" — City of Shadows' "{T}: Add {C} for each storage
+// counter on this land" is ProducedPerCounterOnThis(game.CounterStorage,
+// "C") (#1600). The count is read at activation, off the source as it
+// is then. Mage-Ring Network's payout is the other storage-land shape:
+// it REMOVES its counters as a cost and is ProducedPerCounterRemoved.
+//
+// No counters returns "", which adds no mana and still taps the land.
+func ProducedPerCounterOnThis(kind, symbol string) func(*game.Game, uuid.UUID, uuid.UUID) string {
+	slot := "{" + strings.ToUpper(symbol) + "}"
+	return func(g *game.Game, _, source uuid.UUID) string {
+		c, ok := g.LookupCardForEffect(source)
+		if !ok {
+			return ""
+		}
+		return strings.Repeat(slot, c.Counters[kind])
+	}
+}
+
+// putStorageCounterOnThis is the storage lands' banking ability's
+// effect, "Put a storage counter on this land" — Mage-Ring Network's
+// "{1}, {T}:" and City of Shadows' "{T}, Exile a creature you
+// control:". An activated ability, not a mana one: it adds no mana, so
+// it uses the stack (CR 605.1a).
+func putStorageCounterOnThis(g *game.Game, item *game.StackItem) error {
+	return AddCounter{
+		Target: item.SourceCardID,
+		Kind:   game.CounterStorage,
+		N:      1,
+	}.Apply(NewContext(g, item))
 }

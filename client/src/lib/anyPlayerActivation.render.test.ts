@@ -8,8 +8,10 @@
 //   - it wears the bolt pip and the ready ring exactly when the
 //     viewer's own digest lists it (decision 6), on a frame where
 //     highlights are live;
-//   - a left-click on it opens the card menu, and that menu's only row
-//     is the any-player row, which hands the activation to Board;
+//   - a left-click on it opens the light ability popover at the card
+//     (ADR 0117 §1, call 5), whose only row is the any-player row;
+//   - the override menu, opened with admin overrides on, lists only that
+//     row too, and hands the activation to Board;
 //   - its right-click popover lists only that row, greyed when the
 //     exact digest leaves it out.
 
@@ -21,6 +23,7 @@ vi.mock("./sounds", () => ({ play: () => {} }));
 import PlayerPanel from "./components/board/PlayerPanel.svelte";
 import CardContextMenu from "./components/board/CardContextMenu.svelte";
 import { cardMenu, closeCardMenu } from "./contextMenu";
+import { abilityPopover } from "./abilityPopover";
 import { legalActionsOf, visibleHighlights, type LegalActions } from "./legalActions";
 import type {
   ActivatedAbilityView,
@@ -183,11 +186,23 @@ describe("the bolt pip on another player's permanent", () => {
 });
 
 describe("the left-click on another player's permanent", () => {
-  it("opens the card menu rather than tapping it", () => {
+  it("opens the light popover at the card, not the override menu, and never taps", () => {
     const p = live(gameView({ legal_actions: listed }));
     p.tile().click();
     flushSync();
-    expect(get(cardMenu)?.card.instance_id).toBe("xantcha");
+    expect(get(abilityPopover)?.cardID).toBe("xantcha");
+    expect(get(cardMenu)).toBeNull();
+    const rows = [
+      ...p.tile().querySelectorAll<HTMLButtonElement>(".mana-menu .menu-item:not([data-raw-tap])"),
+    ];
+    expect(rows.map((b) => b.textContent?.trim())).toEqual([
+      expect.stringContaining("{3}: Draw a card"),
+    ]);
+    // Not Alice's sandbox row: the card is not the viewer's.
+    expect(p.tile().querySelector("[data-raw-tap]")).toBeNull();
+    rows[0].click();
+    flushSync();
+    expect(p.activated).toEqual([["xantcha", 0]]);
   });
 });
 

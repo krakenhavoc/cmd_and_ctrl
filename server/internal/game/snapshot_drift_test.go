@@ -307,6 +307,10 @@ var cardFields = plan(
 	"Counters", carried, "",
 	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
+	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
+	// check" mark. Carried: a restore that dropped it would skip the
+	// owner's question.
+	"CommanderReturnDue", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
 	// #1706: a multi-blocker's further attackers.
@@ -443,6 +447,10 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
+	// emblem's count of temptations, carried for Harnessed's reason.
+	"RingBearer", carried, "",
+	"RingTemptations", carried, "",
 	"Unlocked", carried, "",
 	"Fused", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
@@ -481,6 +489,7 @@ var cardFields = plan(
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
+	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 )
 
@@ -532,6 +541,8 @@ var playerFields = plan(
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
+	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.
+	"MaxHandSizeAt", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
 	// ADR 0066 granted cast and play permissions. Carried, not
@@ -794,6 +805,11 @@ var pendingChoiceFields = plan(
 	"ModeUsedLabel", carried, "",
 	"ModeNotChosen", carried, "",
 	"SacrificeOptions", carried, "",
+	// ADR 0116: the revealed-hand pick's legal cards. Carried for the
+	// same reason SacrificeOptions is — a restored game that forgot
+	// them would let the chooser take a land with Thoughtseize.
+	"DiscardOptions", carried, "",
+	"DiscardLabel", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",

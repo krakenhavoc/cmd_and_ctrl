@@ -190,15 +190,19 @@ func matchesFallback(rec decisionlog.Record, want []string) bool {
 // disagreed reports whether the model and the heuristic wanted
 // different moves, both of them valid.
 //
-// It reads ParsedIndex rather than the final index on purpose: a
-// model answer that was parsed and then discarded (out of range,
-// or overruled) is still what the model wanted, and a window where
-// the two layers pulled apart is worth labelling whichever one won.
+// It reads the model's own pick rather than the final index on
+// purpose: a model answer that was parsed and then discarded (out of
+// range, or overruled) is still what the model wanted, and a window
+// where the two layers pulled apart is worth labelling whichever one
+// won. The pick is ModelIndex when the record has one (#2196) — the
+// move the reply resolved to once its label was checked — and
+// ParsedIndex otherwise.
 func disagreed(rec decisionlog.Record) bool {
-	if rec.Trace.ParsedIndex == nil || rec.Input == nil {
+	mi := modelPick(rec.Trace)
+	if mi == nil || rec.Input == nil {
 		return false
 	}
-	m, h, n := *rec.Trace.ParsedIndex, rec.Trace.HeuristicIndex, len(rec.Input.Moves)
+	m, h, n := *mi, rec.Trace.HeuristicIndex, len(rec.Input.Moves)
 	if m < 0 || m >= n || h < 0 || h >= n {
 		return false
 	}
@@ -292,8 +296,8 @@ func captureOf(rec decisionlog.Record) AtCapture {
 	if h := rec.Trace.HeuristicIndex; h >= 0 && h < n {
 		ac.Heuristic = &Pick{Index: h, Label: rec.Input.Moves[h].Label}
 	}
-	if rec.Trace.Layer == model.LayerC && rec.Trace.ParsedIndex != nil {
-		m := *rec.Trace.ParsedIndex
+	if mi := modelPick(rec.Trace); rec.Trace.Layer == model.LayerC && mi != nil {
+		m := *mi
 		pick := &ModelPick{Index: m, ID: rec.Trace.Model, Layer: rec.Trace.Layer}
 		if m >= 0 && m < n {
 			pick.Label = rec.Input.Moves[m].Label
@@ -301,6 +305,15 @@ func captureOf(rec decisionlog.Record) AtCapture {
 		ac.Model = pick
 	}
 	return ac
+}
+
+// modelPick is the move a model reply resolved to: ModelIndex, which
+// a record written since #2196 carries, else the number it wrote.
+func modelPick(tr aiseat.Trace) *int {
+	if tr.ModelIndex != nil {
+		return tr.ModelIndex
+	}
+	return tr.ParsedIndex
 }
 
 // harvestID is <game[:8]>-s<seat>-seq<seq>: short enough to type,

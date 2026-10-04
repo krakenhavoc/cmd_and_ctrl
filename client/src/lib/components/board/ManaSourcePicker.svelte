@@ -16,6 +16,14 @@
   // outside, or clicking the card again closes it with nothing sent,
   // so nothing is tapped.
   //
+  // ADR 0117 §4: an ability with two or more picking slots (Vivi
+  // Ornitier, Relic of Sauron, a filter land) is one option here, and
+  // picking it turns this picker into the per-colour stepper in place
+  // (ManaSplitStepper), named "Split N mana from <card>". Opened on one
+  // ability (`open.abilityIndex`: a lone such ability clicked, or the
+  // popover's mana row with a colour choice), the picker lists only
+  // that ability, and goes straight to its stepper when it has one.
+  //
   // position: fixed and mounted by Board, never inside the Card: the
   // card's tap rotation is a CSS transform, and a transformed ancestor
   // would pin a fixed box to the card instead of the viewport.
@@ -24,7 +32,9 @@
   import { findCard, locateCard } from "../../contextMenu.logic";
   import { manaAbilityOptions, placePopover, type ManaPickOption } from "../../manaSource";
   import type { ManaSourcePickerOpen } from "../../manaSourcePicker";
+  import { splitMemoryKey, stepperSlots } from "../../manaStepper";
   import ModalLayer from "../ModalLayer.svelte";
+  import ManaSplitStepper from "./ManaSplitStepper.svelte";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
 
   interface Props {
@@ -40,7 +50,42 @@
   // the picker is open (an exhaust spent elsewhere) greys its option.
   const card = $derived(findCard(view, open.cardID));
   const onBattlefield = $derived(locateCard(view, open.cardID)?.zone === "battlefield");
-  const options = $derived(card ? manaAbilityOptions(card) : []);
+  // ADR 0117 §2: greyed by the popover's own predicate, which reads the
+  // paying player's life for a "Pay N life" cost: the controller's.
+  const payerLife = $derived(
+    card ? view.seats.find((s) => s.id === (card.controller || card.owner))?.life : undefined,
+  );
+  const options = $derived(
+    card
+      ? manaAbilityOptions(card, { payerLife }).filter(
+          (o) => open.abilityIndex === undefined || o.abilityIndex === open.abilityIndex,
+        )
+      : [],
+  );
+  const optionCount = $derived(options.length);
+
+  // ADR 0117 §4: the ability whose stepper is showing. Chosen from the
+  // list (a split option picked), or the one ability the picker was
+  // opened on when that ability is a live split.
+  // Held with the `open` it was chosen in, so a picker re-opened on
+  // another card (the same component, a new `open`) starts on its list.
+  let chosen = $state.raw<{ open: ManaSourcePickerOpen; index: number } | null>(null);
+  const chosenSplit = $derived(chosen && chosen.open === open ? chosen.index : null);
+  const openedSplit = $derived(
+    open.abilityIndex !== undefined && options.length === 1 && options[0].split
+      ? open.abilityIndex
+      : null,
+  );
+  const stepIndex = $derived(chosenSplit ?? openedSplit);
+  // Re-read from every frame: Vivi's power is the number of lists.
+  const stepLists = $derived.by(() => {
+    if (stepIndex === null || !card) return null;
+    const a = (card.mana_abilities ?? []).find((m) => m.index === stepIndex);
+    return a ? stepperSlots(a) : null;
+  });
+  const stepTotal = $derived(stepLists?.length ?? 0);
+  const stepping = $derived(stepLists !== null);
+  const stepDisabled = $derived(options.find((o) => o.abilityIndex === stepIndex)?.disabled ?? "");
 
   // The source left the battlefield (or lost its mana abilities) while
   // the picker was open: there is nothing left to pick.
@@ -52,6 +97,11 @@
   let left = $state(-9999);
   let top = $state(-9999);
   let side = $state<"above" | "below">("above");
+
+  // Focus moves in only when what is shown changes (opened, or turned
+  // into the stepper), never on an ordinary frame: a snapshot landing
+  // while the player steps must not pull focus off the row.
+  let focusedFor = "";
 
   async function place(): Promise<void> {
     await tick();
@@ -67,14 +117,24 @@
     left = p.left;
     top = p.top;
     side = p.side;
-    node.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus({ preventScroll: true });
+    const shown = `${open.cardID}:${stepping ? `split-${stepIndex}` : "options"}`;
+    if (shown === focusedFor) return;
+    focusedFor = shown;
+    const first = stepping
+      ? (node.querySelector<HTMLButtonElement>("button[data-add-mana]:not([disabled])") ??
+        node.querySelector<HTMLButtonElement>(".split button:not([disabled])"))
+      : node.querySelector<HTMLButtonElement>("button:not([disabled])");
+    first?.focus({ preventScroll: true });
   }
 
   $effect(() => {
-    // Re-place when the anchor moves (a second card clicked) or the
-    // option count changes the box's size.
+    // Re-place when the anchor moves (a second card clicked), the
+    // option count changes the box's size, or the stepper opens or
+    // changes its total.
     void open.anchor;
-    void options.length;
+    void optionCount;
+    void stepping;
+    void stepTotal;
     if (el) place();
   });
 
@@ -103,8 +163,21 @@
     // picker alone, with a fixed `open`) could not see.
     const source = card;
     if (!source || o.abilityIndex === undefined) return;
+    // ADR 0117 §4: a split option opens its stepper in place.
+    if (o.split) {
+      chosen = { open, index: o.abilityIndex };
+      return;
+    }
     onClose();
     onPick(source, o.abilityIndex, o.colors);
+  }
+
+  function confirmSplit(colors: string[]): void {
+    const source = card;
+    const index = stepIndex;
+    if (!source || index === null) return;
+    onClose();
+    onPick(source, index, colors);
   }
 </script>
 
@@ -117,20 +190,42 @@
     style:left={`${left}px`}
     style:top={`${top}px`}
     role="dialog"
-    aria-label={`Tap ${card.name} for mana`}
+    aria-label={stepping
+      ? `Split ${stepTotal} mana from ${card.name}`
+      : `Tap ${card.name} for mana`}
   >
     <div class="head">
-      <span class="title">Tap <strong>{card.name}</strong> for</span>
+      {#if stepping}
+        <span class="title"
+          >Split <strong>{stepTotal}</strong> mana from <strong>{card.name}</strong></span
+        >
+      {:else}
+        <span class="title">Tap <strong>{card.name}</strong> for</span>
+      {/if}
       <button type="button" class="close" aria-label="cancel" title="Cancel (Esc)" onclick={onClose}
         >×</button
       >
     </div>
-    <ManaSymbolPicker
-      {options}
-      onPick={pick}
-      onCancel={onClose}
-      label={`mana abilities of ${card.name}`}
-    />
+    {#if stepping && stepLists && stepIndex !== null}
+      {@const memoryKey = splitMemoryKey(view.id, card.instance_id, stepIndex)}
+      <!-- Keyed, so another card's stepper starts from its own state. -->
+      {#key memoryKey}
+        <ManaSplitStepper
+          lists={stepLists}
+          {memoryKey}
+          disabled={stepDisabled}
+          onConfirm={confirmSplit}
+          onCancel={onClose}
+        />
+      {/key}
+    {:else}
+      <ManaSymbolPicker
+        {options}
+        onPick={pick}
+        onCancel={onClose}
+        label={`mana abilities of ${card.name}`}
+      />
+    {/if}
   </div>
 {/if}
 

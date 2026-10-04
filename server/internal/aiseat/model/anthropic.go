@@ -41,6 +41,15 @@ import (
 // Layer B's answer is already waiting inside), and no conversation
 // history (each decision is independent; ADR 0033 §7's "stateless
 // between games" applies within one too).
+//
+// Request.Choices is not sent either (#2196). The OpenAI-compatible
+// client turns it into a json_schema enum so a local model cannot
+// write an unlisted number; the equivalent here (a forced tool call
+// with an enum, or a structured-output format) has not been measured
+// against the hosted models this tier names, and a wrong field is a
+// 400 on every window. The reply still copies the move's label, and
+// ResolveAnswer's label check covers a misnumbered answer on this
+// transport the same way.
 
 const (
 	defaultEndpoint   = "https://api.anthropic.com/v1/messages"

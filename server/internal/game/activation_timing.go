@@ -153,11 +153,16 @@ var CatalogActivationTimings func(oracleID string) []ActivationTiming
 // and none for one whose designation gate is unsatisfied.
 //
 // Field-for-field ActivationRestrictionsForCard, on purpose.
-func ActivationTimingsForCard(c Card) []ActivationTiming {
+func ActivationTimingsForCard(c Card) []ActivationTiming { return activationTimingsOf(&c) }
+
+// activationTimingsOf is ActivationTimingsForCard without the copy:
+// Card is over a kilobyte and this is asked per permanent per walk
+// (#1498).
+func activationTimingsOf(c *Card) []ActivationTiming {
 	if CatalogActivationTimings == nil {
 		return nil
 	}
-	key := CatalogAbilityKey(c)
+	key := catalogAbilityKeyOf(c)
 	if key == "" {
 		return nil
 	}
@@ -201,15 +206,17 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 	if g == nil || CatalogActivationTimings == nil {
 		return v
 	}
-	fold := func(src Card) {
-		for _, t := range ActivationTimingsForCard(src) {
+	// A pointer, so the walk copies a permanent only when it actually
+	// makes a timing statement (#1498).
+	fold := func(src *Card) {
+		for _, t := range activationTimingsOf(src) {
 			// A statement that says nothing, or covers nothing, is
 			// skipped before the predicate runs — the cheapest way
 			// to not be this walk's business is to say so first.
 			if t.Covers == nil || (!t.Grants() && !t.Restricts()) {
 				continue
 			}
-			q.Source = src
+			q.Source = *src
 			if !t.Covers(q) {
 				continue
 			}
@@ -225,7 +232,7 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 	}
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
-			fold(g.Battlefield.Cards[i])
+			fold(&g.Battlefield.Cards[i])
 		}
 	}
 	// #1275, CR 114.3: an emblem's abilities function in the command
@@ -247,7 +254,7 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 			continue
 		}
 		for i := range p.Emblems.Cards {
-			fold(p.Emblems.Cards[i])
+			fold(&p.Emblems.Cards[i])
 		}
 	}
 	return v

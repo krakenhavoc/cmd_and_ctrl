@@ -214,7 +214,7 @@ func (g *Game) forEachGameEndGateLocked(p *Player, fn func(gate GameEndGate, sou
 	}
 	// walk reports false once fn has asked to stop.
 	walk := func(c *Card) bool {
-		key := CatalogAbilityKey(*c)
+		key := catalogAbilityKeyOf(c)
 		if key == "" {
 			return true
 		}

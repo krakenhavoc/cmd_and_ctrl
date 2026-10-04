@@ -22,6 +22,8 @@
   import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
+  import { isLevelledEmblem } from "../../ringEmblem";
+  import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -109,7 +111,8 @@
   // playerKeywordBadges.ts for the mapping; this component only
   // renders what it returns.
   // ADR 0057 (#749): and the "can't lose" / "can't win" badges, whose
-  // tooltip names the sources.
+  // tooltip names the sources. ADR 0113 §3 (#2074): and a maximum hand
+  // size other than seven.
   const keywordBadges = $derived(playerKeywordBadges(seat.keywords, seat.life_total_locked, seat));
 
   // --- bot seats (S31, ADR 0033) ---------------------------------
@@ -498,9 +501,15 @@
   {#if seat.emblems && seat.emblems.length > 0}
     <div class="emblems" aria-label="emblems">
       {#each seat.emblems as emblem (emblem.instance_id)}
-        <span class="emblem" title={`${emblem.label} — ${emblem.text}`}>
-          <Icon name="star" size={11} />{emblem.label}
-        </span>
+        {#if isLevelledEmblem(emblem)}
+          <!-- ADR 0114 owner decision 1: the Ring, with its level and
+               every line it has and has yet to gain. -->
+          <EmblemLevelChip {emblem} />
+        {:else}
+          <span class="emblem" title={`${emblem.label} — ${emblem.text}`}>
+            <Icon name="star" size={11} />{emblem.label}
+          </span>
+        {/if}
       {/each}
     </div>
   {/if}

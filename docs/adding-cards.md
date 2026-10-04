@@ -415,6 +415,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
 | Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
+| Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
 "Exile a card from your hand" is NOT a discard with a different
 destination: the card leaves through the one exit primitive, fires no
@@ -585,6 +586,32 @@ were mana of any color to cast that spell") is a cast permission's
 `AnyColor` instead. "Spend WHITE mana as though it were mana of any
 color" (Celestial Dawn) and a grant over one permanent's own abilities
 (Manascape Refractor) have no shape yet. See ADR 0066's 2026-10-02
+amendment.
+
+**Mana only some spells may use, and costs only some mana may pay
+(#1600).** Mana restricted to spells of exactly one colour, or of two or
+more, carries the tags `ManaRestrictMonocolored` / `ManaRestrictMulticolored`
+beside `ManaRestrictCast`; a hybrid spell is multicolored (CR 202.2d). A
+COST that says which mana pays it is a cost component, composed with
+`Plus` beside the mana it restricts — the constructors are in
+[spend_only.go](../server/internal/cards/effects/spend_only.go):
+
+```go
+Restrictions:     []string{ManaRestrictCast, ManaRestrictMulticolored},           // Pillar of the Paruns
+RestrictionsFunc: MonocoloredSpellsOfTheChosenColor(),                           // Throne of Eldraine's mana
+ProducedFunc:     ProducedChosenColorAmount(4),                                  // "Add four mana of the chosen color"
+Cost: Plus(ManaCost("{3}"), TapCost(), SpendOnlyManaOfTheChosenColor()),        // Throne of Eldraine's draw
+Cost: Plus(ManaCost("{X}"), SpendOnlyOnX("B")),                                  // Crypt Rats
+```
+
+The price shown stays printed; the engine folds the clause into coloured
+symbols wherever a payment or an affordability check reads the cost, so the
+auto-tapper, the bot and the view all agree with the payment. Under
+Chromatic Orrery any mana pays such a COST (CR 609.4b), while a mana
+RESTRICTION still binds. The clause works on activated abilities only:
+"Spend only black mana on X" on a SPELL (Drain Life), "Spend only mana
+produced by basic lands" (Imperiosaur) and Emblazoned Golem's
+one-of-each-colour cap have no shape yet. See ADR 0040's 2026-10-03
 amendment.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
@@ -1772,8 +1799,10 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
+| `"annihilator N"` | Annihilator (CR 702.86) — #2073, the third TRIGGERED keyword: numbered like toxic and triggered like prowess. One attack trigger per instance (`game/annihilator.go`, CR 702.86b); the defending player (CR 508.5, read per attacker) chooses N permanents they control in one prompt and sacrifices them together. Declare it in `PrintedKeywords` (`"annihilator 4"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.AnnihilatorAmounts`, never `HasKeyword`. "Annihilator X" read at resolution is the catalog row `AnnihilatorCounted(label, count)` (Ulamog, the Defiler). A creature whose only text is annihilator and other tokens here needs no card file ([ADR 0113 §2](decisions/0113-small-seams-for-the-s58-deck-requests.md#2-annihilator-2073)) |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
+| `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 
@@ -1797,7 +1826,7 @@ keywords are not enforced: a card that places one ships with a caveat.
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess, evolve) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve, undying, persist) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
@@ -2283,6 +2312,52 @@ GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCoun
 - `From` is the card's name, shown on the seat's NO COUNTER badge
   (`counter_shields` on the player view) beside the printed `text`.
 
+### Maximum hand size (ADR 0113 §3, #2074)
+
+A permanent's static that sets or changes a player's maximum hand size
+is `Spec.HandSize`, a list of `game.HandSizeStatic{Players, Kind, N, When}`
+([ADR 0113](decisions/0113-small-seams-for-the-s58-deck-requests.md) §3):
+
+```go
+// "Each opponent's maximum hand size is reduced by seven."
+HandSize: []game.HandSizeStatic{EachOpponentsMaxHandSizeReducedBy(7)},
+// "Your maximum hand size is two."
+HandSize: []game.HandSizeStatic{YourMaxHandSizeIs(2)},
+// "Players have no maximum hand size."
+HandSize: []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
+```
+
+- **`Players`** is relative to the permanent's controller:
+  `HandSizeYou`, `HandSizeEachOpponent` (every other player, CR 102.3),
+  `HandSizeEachPlayer`, or `HandSizeChosenPlayer` (the permanent's
+  `Card.ChosenPlayer`, for "the chosen player's maximum hand size").
+- **`Kind`** is `HandSizeNoMaximum`, `HandSizeSet` (to `N` ≥ 0) or
+  `HandSizeModify` (by `N` ≠ 0; a reduction is a negative `N`).
+  `Register` refuses a negative set and a zero modification.
+- **A number read at the time, or a condition**, is `Dynamic`: a
+  function of the game and the permanent that returns the number and
+  whether the entry applies right now ("equal to the number of hour
+  counters on this enchantment", Midnight Oil; Winter, Misanthropic
+  Guide's delirium). The entry keeps its permanent's timestamp. It runs
+  under the game lock, so read with the `ForEffect` accessors only.
+- **"You have no maximum hand size"** stays `Spec.NoMaxHandSize`, the
+  shorthand; `buildDef` folds it into the list. `When` is the
+  designation gate, as `NoMaxHandSizeWhen` is for the shorthand.
+- **Nothing is written to the player.** `Game.EffectiveMaxHandSizeLocked`
+  folds every entry that reaches a player from seven in CR 613.11
+  timestamp order: each permanent at its own timestamp, and the player's
+  rest-of-the-game grant (`SetMaxHandSizeForEffect`, Finale of
+  Revelation) at the time it resolved. A set replaces "no maximum"; a
+  modification leaves "no maximum" alone. The result is never below
+  zero (CR 107.1b). A permanent that has lost its abilities gives
+  nothing.
+- **The cleanup discard is the active player's only** (CR 514.1),
+  against their own maximum, so "each opponent" never makes the
+  controller discard.
+- **A grant for a duration** ("until your next turn", "for as long as
+  you control this Saga") has no shape yet; only the rest of the game
+  does.
+
 ### Attaching, and an ability whose source has gone (#812)
 
 Two rules, each at one choke point, and no card file checks either.
@@ -2448,6 +2523,10 @@ is a closure rather than `Do`. Add a missing shape or predicate to
 the battlefield unless it says otherwise, and the ones that say
 otherwise wrap the shape: `InGraveyard(Landfall(...))` is Bloodghast,
 `WhenThisIsPutIntoYourGraveyardFromYourLibrary(...)` is Narcomoeba,
+`WhenThisIsPutIntoAGraveyardFromAnywhere(...)` is the Eldrazi titans'
+shuffle (#2073: death, sacrifice, discard, mill or counter, one
+trigger per arrival; `ShuffleYourGraveyardIntoYourLibrary` is its
+effect),
 `InExile(AtYourUpkeep(...))` is suspend's countdown (#659). The
 wrapper sets `game.TriggeredAbility.Zones`, which REPLACES the default
 rather than adding to it — an ability printed to work from the
@@ -2638,6 +2717,23 @@ announce (`exile_ids`); they are exiled, not discarded, and the effect
 reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
+
+**"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
+or `ExileAPermanentYouControl(label, preds...)` for another clause,
+composed with `Plus` — The Soul Stone's harness is
+`Plus(ManaCost("{6}{B}"), TapCost(), ExileACreatureYouControl())`, and a
+mana ability takes the component off it (Food Chain:
+`ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}`).
+The activator names the permanent at announce (`exile_permanent_ids`);
+it is the battlefield sibling of the return-to-hand cost, not a
+sacrifice: leaves-the-battlefield triggers fire, dies and sacrifice
+triggers do not, and a commander is offered the command zone before
+anything is paid. The exiled permanents are on `ctx.Exiled()` (and on a
+mana ability's `paid.Exiled`); read "the exiled creature's mana value"
+with `g.LastKnownPermanentForEffect(id).ManaValue`, as it last existed
+on the battlefield. The auto-tapper never uses a mana ability with it.
+A variable count ("one or more other artifacts with total mana value
+X") and craft's two-zone clause have no shape yet.
 
 **Library costs and random discards (ADR 0109 §7, #1902):**
 `ExileTopOfLibrary(n)` is "Exile the top N cards of your library"
@@ -2833,11 +2929,32 @@ charge the discounted price. Register refuses a variable clause in an
 optional cost or an either/or branch, beside any other sacrifice in the
 plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
 life"; "any number" on an ability is still refused, because a cost an
-ability can pay with nothing is free. A card whose text reads the
-SACRIFICED permanents themselves — Corpse Cobble's "the total power of
-the sacrificed creatures" — needs last-known information for the list,
-which does not exist yet: leave it out (the Variable sacrifice costs on spells
-registry row lists it).
+ability can pay with nothing is free.
+
+**The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
+payment record names each one (`PaidCost.SacrificedObjects`, written at
+every payment site: a spell's additional cost, an activated ability and
+a mana ability), and the effect reads them as they last existed on the
+battlefield (CR 400.7j, 608.2h):
+
+```go
+OnResolve: damageEqualToSacrificedPower, // Fling: "damage equal to the sacrificed creature's power"
+info, ok := ctx.SacrificedPermanent()    // Momentous Fall: info.Power, then info.Toughness
+n := ctx.SacrificedPower()               // Tend the Pests: the first one's power, floored at zero
+x := ctx.SacrificedTotalPower()          // Corpse Cobble: the sum, the TOTAL floored at zero (CR 107.1b)
+all := ctx.SacrificedPermanents()        // every one, in the order named
+```
+
+Each answer is a `game.PermanentInfo`: post-layer characteristics,
+counter-aware power and toughness, mana value, colours and counters, so
+an anthem's bonus counts and a permanent that came back as a new object
+is never mistaken for the one sacrificed. A token and a commander are
+read like anything else. A CR 707.10 copy carries the original's record,
+so a copied spell reads the permanents the ORIGINAL sacrificed; never
+read the event log for this (`b17PermanentSacrificedToPay` keeps its log
+scan only for old restore points). Shared bodies go in
+`sacrificed_this_way.go`. An alternative cost's sacrifice is not
+recorded: no printed card reads it.
 
 **Gift (CR 702.174, [ADR 0089](decisions/0089-gift.md)):** one
 field, and never a hand-rolled optional cost:
@@ -5004,6 +5121,39 @@ OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets
 are answers.
 
+### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
+
+"Target player reveals their hand. You choose a nonland card from it.
+That player discards that card." is one call:
+
+```go
+Targets:   TargetPlayer("target player"),
+OnResolve: TargetRevealsYouChooseDiscard(Nonland(), "nonland card"),
+```
+
+Pass the restriction as an ordinary `CardPredicate` (`Nonland()`,
+`ManaValueGE(3)`, `And(Noncreature(), Nonland())`, `Or(Creature(),
+Planeswalker())`) and its label the way the card prints it. `nil` is "a
+card". A card with text after the discard calls
+`ChooseFromRevealedHand{Player: TargetedPlayer(ctx), Filter: …, Label:
+…}.Apply(ctx)` and carries on, as Thoughtseize does with its life loss.
+What the engine does for you:
+
+- The hand is revealed to every player (CR 701.20a), not only to you.
+- The filter reads each card as it is in a hand: an MDFC by its front
+  face (CR 712.8a), a split card by its combined cost (CR 709.4b), X as
+  0 (CR 202.3e).
+- The matching cards are fixed at the reveal. A hand with none is
+  revealed and nothing is discarded (CR 609.3); the rest of your
+  `OnResolve` still runs.
+- The server refuses any other pick, the bot is offered only the
+  matches, and the prompt greys out the rest of the hand.
+
+Not this shape, so leave the card out and put it on
+`revealed-hand-pick-variants` (#2115): the chosen card is **exiled**
+rather than discarded, the pick is "**you may** choose … if you do / if
+you don't", or a later clause **reads the chosen card**.
+
 ### Adding a `PendingChoiceKind` (#730, #794)
 
 A new prompt kind owes two answers, and neither has a compiler behind
@@ -5651,6 +5801,16 @@ is gone. In its place:
   The `file.go:closure@line` locations are still printed in the
   failure report, where a human wants them.
 
+Three small shared pieces came with the Sauron deck (S58 PR 7).
+"Activate only if a creature died this turn" is
+`ACreatureDiedThisTurn()` (Barad-dûr). "Is dealt excess noncombat
+damage" (CR 120.10) is `excessNoncombatDamageToOpponentCreature` in
+`excess_damage.go`, which returns the excess as a number: Magmatic
+Galleon tests it for being above zero, and Fall of Cair Andros carries it
+on the trigger's `Params.Amount` through a `Build` that declares its
+`Effect`. A fixed "deals N damage to target X" ability is
+`DealDamageToTheTarget(n)`.
+
 ### Winning, losing, and "can't lose" (S40, ADR 0057)
 
 A card that says "you win the game" or "<player> loses the game" calls
@@ -5714,6 +5874,17 @@ to the turn: pass the ref `TakeExtraTurnsForEffect` returned as
 step, and is swept if that turn never reaches one. Do not schedule an
 unbound "next end step" trigger for it. An instant cast in an end step
 would fire it in the wrong turn.
+
+A spell that takes the turn and then puts itself back in the library
+(Beacon of Tomorrows) tucks and shuffles the resolving card with
+`TuckToLibraryThenForEffect`, the way Blue Sun's Zenith does; one that
+says "if this would be put into a graveyard from anywhere, shuffle it
+into its owner's library instead" (Nexus of Fate, Blightsteel Colossus)
+declares `ShuffleIntoOwnersLibraryInstead(label)` in `Replacements`.
+A spell file that moves its own card (Beacon, Rise of the Eldrazi's
+"Exile Rise of the Eldrazi") goes in the `spells` list of
+`TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
+spell moving itself is not a permanent's ability.
 
 Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
 no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
@@ -6059,6 +6230,66 @@ Three things to know:
   Never write an emblem's "can't" as a `CastBanRule` granted to each
   opponent: that record is invisible on the board, frozen when it is
   made, and does not end when the emblem's owner leaves (CR 800.4a).
+- **An emblem's block rules** (ADR 0114 §5) are `EmblemSpec.BlockRules`,
+  built by the `Spec.BlockRules` constructors. The block-rule walk reads
+  every seat's emblems after the battlefield, with the emblem as the
+  source, so a scope's "your" is the emblem's owner, and a refusal names
+  the emblem by its label.
+
+### The Ring tempts you (ADR 0114, #2076)
+
+"The Ring tempts you" (CR 701.54) is one primitive. Its player is the
+controller, and `Then` is the rest of the sentence, handed the creature
+chosen as the Ring-bearer:
+
+```go
+Do(TheRingTemptsYou{})                                  // "the Ring tempts you."
+TheRingTemptsYou{Then: func(ctx *Context, rb uuid.UUID) error {
+    // "Then …" — runs after the tempt, with the new Ring-bearer
+    // (uuid.Nil when you controlled no creature).
+}}
+```
+
+The engine does the rest (`game.RingTemptsForEffect`, `game/ring.go`):
+the Ring emblem at the first temptation, its count, the choice (asked
+with the `ring_bearer` prompt only when you control two or more
+creatures; one is chosen for you), the Ring-bearer designation and the
+event. The Ring's own abilities live once, in
+[the_ring.go](../server/internal/cards/effects/the_ring.go), behind
+`game.RingTempted(n)`. A card never declares them.
+
+The trigger shapes:
+
+- `WheneverTheRingTemptsYou(label, effect)` — every temptation, including
+  one where you controlled no creature (CR 701.54d).
+- `WheneverYouChooseARingBearer(label, effect)` — only when a creature was
+  chosen, including the one that already was your Ring-bearer (Call of
+  the Ring).
+- `IfYouChoseAnotherRingBearer(trigger)` — the intervening "if you chose
+  a creature other than ~ as your Ring-bearer" (CR 603.4), wrapped round
+  either of the above.
+
+Readers: `game.RingBearerOf(g, player)` ("your Ring-bearer", CR
+701.54e: on the battlefield, phased in, under your control),
+`game.IsRingBearerOf(card, player)` for a predicate that has the card
+already, `YourRingBearer()` as a block-rule scope, and
+`game.RingTemptCount(g, player)` ("if the Ring has tempted you N or more
+times this game").
+
+Three things to know:
+
+- **Never set `Card.RingBearer` from a card.** The tempt is its one write
+  site, which is what keeps one Ring-bearer per player. A control change
+  and CR 400.7 clear it; phasing does not.
+- **Choosing a Ring-bearer is not targeting.** Hexproof and protection do
+  not stop it, and nothing can respond to the choice.
+- **The Ring's four lines are the emblem's, never the card's.** Lines 2
+  to 4 (the loot, the end-of-combat sacrifice, "each opponent loses 3
+  life") are emblem triggers behind `game.RingTempted(n)` and fire for
+  every card that tempts. A card writes only its own text: Nazgûl's
+  `WheneverTheRingTemptsYou`, Call of the Ring's
+  `WheneverYouChooseARingBearer`, Ringsight's search in `Then` (read the
+  board there, after the tempt: the new Ring-bearer is legendary).
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 

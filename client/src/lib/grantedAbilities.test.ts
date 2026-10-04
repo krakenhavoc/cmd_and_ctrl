@@ -139,8 +139,8 @@ describe("left-click on a permanent with a granted ability (owner decision, 2026
     expect(manaClickPlan(forestUnderLantern())?.kind).toBe("pick");
   });
 
-  it("opens the ability menu for a land enchanted by Squirrel Nest", () => {
-    expect(battlefieldClickIntent(nestLand(), "me", false, mana)).toBe("abilities");
+  it("opens the ability popover for a land enchanted by Squirrel Nest", () => {
+    expect(battlefieldClickIntent(nestLand(), "me", false, mana)).toBe("popover");
   });
 
   it("labels a granted picker option with its grantor", () => {
