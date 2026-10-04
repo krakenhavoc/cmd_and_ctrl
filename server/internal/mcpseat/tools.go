@@ -46,7 +46,8 @@ type GetStateInput struct {
 
 // LegalMovesInput is `legal_moves`'s input.
 type LegalMovesInput struct {
-	Card string `json:"card,omitempty" jsonschema:"optional card instance id: list that card's moves with the enumerator's caps lifted"`
+	Card   string `json:"card,omitempty" jsonschema:"optional card instance id: list that card's moves with the enumerator's caps lifted"`
+	Choice string `json:"choice,omitempty" jsonschema:"optional pending choice id, or cleanup_discard: list that prompt's answers with the caps lifted"`
 }
 
 // CardInput is `card`'s input.
@@ -511,9 +512,10 @@ func (s *Seat) GetState(_ context.Context, in GetStateInput) (Result, error) {
 
 // --- legal_moves ----------------------------------------------------------
 
-// LegalMoves is the current window's full numbered list, or one card's
-// moves with the enumerator's caps lifted (§6.2).
+// LegalMoves is the current window's full numbered list, or one card's or
+// one prompt's moves with the enumerator's caps lifted (§6.2).
 func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, error) {
+	req := moveRequest{Source: strings.TrimSpace(in.Card), Choice: strings.TrimSpace(in.Choice)}
 	s.mu.Lock()
 	if s.sess == nil {
 		s.mu.Unlock()
@@ -525,65 +527,79 @@ func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, erro
 		return errorResult("no decision is open for you right now: call wait_for_decision"), nil
 	}
 	view := s.view
-	if in.Card == "" {
+	if req.Source == "" && req.Choice == "" {
 		text := renderMoves(view, w, "")
 		s.stats.noteMovesShown(len(w.moves), len(text))
 		s.mu.Unlock()
 		return textResult("window: "+w.token, text), nil
 	}
-	if c, _ := findCard(view, in.Card); c == nil {
+	if req.Source != "" && req.Choice != "" {
 		s.mu.Unlock()
-		return errorResult("no card with instance id %q is visible to you", in.Card), nil
+		return errorResult("name a card or a choice, not both"), nil
+	}
+	if req.Source != "" {
+		if c, _ := findCard(view, req.Source); c == nil {
+			s.mu.Unlock()
+			return errorResult("no card with instance id %q is visible to you", req.Source), nil
+		}
 	}
 	s.mu.Unlock()
 
-	rep, err := s.requestMoves(ctx, in.Card)
+	rep, err := s.requestMoves(ctx, req)
+	if errors.Is(err, errNoDecision) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.staleLocked(), nil
+	}
 	if err != nil {
 		s.mu.Lock()
-		text := renderMoves(view, w, in.Card)
+		text := renderMoves(view, w, req.Source)
 		s.mu.Unlock()
-		return textResult("could not expand the card: "+err.Error(), "", "window: "+w.token, text), nil
+		return textResult("could not expand it: "+err.Error(), "", "window: "+w.token, text), nil
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.win != w || rep.Generation != w.key.gen || rep.Seq != w.key.seq {
 		return s.staleLocked(), nil
 	}
-	mergeMoves(w, rep, in.Card)
-	text := renderMoves(view, w, in.Card)
+	added := mergeMoves(w, rep, req)
+	text := renderMoves(view, w, req.Source)
 	s.stats.noteMovesShown(len(w.moves), len(text))
-	return textResult("window: "+w.token, text), nil
+	note := fmt.Sprintf("%d moves added to this window's list.", added)
+	if len(rep.Moves) == 0 {
+		note = "The server lists no moves for it right now."
+	}
+	return textResult("window: "+w.token, note, text), nil
 }
 
 // mergeMoves appends a card's expanded moves to the window, so every
 // index still names one move of one window, and replaces that card's
 // cut report with the expanded request's.
-func mergeMoves(w *window, rep *legalMovesReply, source string) {
+func mergeMoves(w *window, rep *protocol.LegalMovesPayload, req moveRequest) int {
 	have := map[string]bool{}
 	for _, m := range w.moves {
 		have[moveKey(m)] = true
 	}
+	added := 0
 	for _, m := range rep.Moves {
 		if k := moveKey(m); !have[k] {
 			have[k] = true
 			w.moves = append(w.moves, m)
+			added++
 		}
 	}
 	cuts := w.cuts[:0:0]
 	for _, c := range w.cuts {
-		if c.Source != source {
+		if !(req.Source != "" && c.Source == req.Source) && !(req.Choice != "" && c.Choice == req.Choice) {
 			cuts = append(cuts, c)
 		}
 	}
-	for _, c := range rep.Truncated {
-		if c.Source == source || c.Source == "" {
-			cuts = append(cuts, c)
-		}
-	}
+	cuts = append(cuts, rep.Truncated...)
 	w.cuts = cuts
+	return added
 }
 
-func moveKey(m wireMove) string {
+func moveKey(m legal.Move) string {
 	return m.Type + "|" + m.Player.String() + "|" + string(m.Params)
 }
 
@@ -779,13 +795,13 @@ func (s *Seat) Act(ctx context.Context, in ActInput) (Result, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	switch r.kind {
-	case kindAck:
+	case protocol.KindAck:
 		if s.win == w {
 			w.state = winActed
 		}
 		s.stats.decisionTimes = append(s.stats.decisionTimes, s.now().Sub(w.openedAt))
 		return textResult("status: accepted", fmt.Sprintf("seq: %d", r.ack.Seq), "Call wait_for_decision for the next decision."), nil
-	case string(protocol.KindError):
+	case protocol.KindError:
 		s.stats.rejections++
 		w.rejections++
 		lines := []string{"status: rejected", "code: " + r.err.Code, "message: " + nameWrapperFor(s.view).apply(r.err.Message)}
@@ -813,10 +829,18 @@ func nameWrapperFor(v *protocol.GameView) nameWrapper {
 	return newNameWrapper(v)
 }
 
+// valueParamKey is the action parameter each open set fills: the keys
+// legal writes for the same answers (choiceParams.CardName, and the cast /
+// activate XValue), as legal.ValueCardName and legal.ValueX document.
+var valueParamKey = map[string]string{
+	legal.ValueCardName: "card_name",
+	legal.ValueX:        "x_value",
+}
+
 // applyValue fills a move's open set (§6.2) from act's value, checked
 // against the set the server stated. A move with no open set takes no
 // value.
-func applyValue(m wireMove, value any) (json.RawMessage, error) {
+func applyValue(m legal.Move, value any) (json.RawMessage, error) {
 	if value == nil {
 		return m.Params, nil
 	}
@@ -829,14 +853,14 @@ func applyValue(m wireMove, value any) (json.RawMessage, error) {
 	}
 	var filled any
 	switch m.Value.Kind {
-	case valueCardName:
+	case legal.ValueCardName:
 		name, ok := value.(string)
 		name = strings.TrimSpace(name)
 		if !ok || name == "" || utf8.RuneCountInString(name) > maxCardNameValue {
 			return nil, fmt.Errorf("value must be a card name of 1 to %d characters", maxCardNameValue)
 		}
 		filled = name
-	case valueX:
+	case legal.ValueX:
 		f, ok := value.(float64)
 		if !ok || f != math.Trunc(f) {
 			return nil, errors.New("value must be a whole number for X")
@@ -903,7 +927,7 @@ func (s *Seat) Concede(ctx context.Context, in ConcedeInput) (Result, error) {
 	if view == nil || view.State != "active" {
 		return errorResult("there is no game in progress to concede"), nil
 	}
-	m := wireMove{Move: legal.Move{Type: "concede", Player: sess.PlayerID}}
+	m := legal.Move{Type: "concede", Player: sess.PlayerID}
 	ch, err := s.sendAction(m, nil)
 	if err != nil {
 		return errorResult("not sent: %v", err), nil
@@ -914,9 +938,9 @@ func (s *Seat) Concede(ctx context.Context, in ConcedeInput) (Result, error) {
 	select {
 	case r := <-ch:
 		switch r.kind {
-		case kindAck:
+		case protocol.KindAck:
 			return textResult("status: conceded"), nil
-		case string(protocol.KindError):
+		case protocol.KindError:
 			return errorResult("status: rejected\n%s", r.err.Message), nil
 		}
 		return textResult("status: unknown", "The connection dropped; call wait_for_decision to read the state."), nil

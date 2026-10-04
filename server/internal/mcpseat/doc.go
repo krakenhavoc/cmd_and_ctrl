@@ -23,9 +23,10 @@
 //     is the lobby's HTTP routes.
 //   - render.go is the compact view: aiseat/boardtext's board, with the
 //     table's own text wrapped and cut (§8), held to the §5 budgets.
-//   - wire_*.go are the frames and fields that ADR 0122 PRs 2 and 5 add to
-//     the server. Each is one small file so it can be swapped for the
-//     server's own type when that lands.
+//   - wire_join.go is the join body's agent declaration (ADR 0122 PR 2).
+//     Every other frame and field is the protocol package's own type:
+//     the ack, legal_moves_request and its reply, the cut report and the
+//     open-set value marker (PR 5).
 //
 // # What it may import
 //

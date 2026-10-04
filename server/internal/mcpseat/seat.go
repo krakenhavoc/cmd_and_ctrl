@@ -84,8 +84,8 @@ func (k windowKey) token() string { return fmt.Sprintf("w%d.%d", k.gen, k.seq) }
 type window struct {
 	key        windowKey
 	token      string
-	moves      []wireMove
-	cuts       []cutReport
+	moves      []legal.Move
+	cuts       []protocol.LegalCutView
 	partial    bool
 	state      winState
 	rejections int
@@ -96,13 +96,13 @@ type window struct {
 // reply is a frame answering one of the seat's own frames, by id, or the
 // news that the socket dropped before one came.
 type reply struct {
-	kind    string // kindAck, protocol.KindError, kindLegalMovesReply, or "dropped"
-	ack     ackPayload
+	kind    protocol.Kind // KindAck, KindError, KindLegalMoves, or replyDropped
+	ack     protocol.AckPayload
 	err     protocol.ErrorPayload
 	payload json.RawMessage
 }
 
-const replyDropped = "dropped"
+const replyDropped protocol.Kind = "dropped"
 
 // Seat is the one seat this process holds. One binary, one seat: two
 // seats are two MCP server entries (Out of scope).
@@ -134,7 +134,7 @@ type Seat struct {
 	haveView    bool
 	view        *protocol.GameView
 	key         windowKey
-	moves       []wireMove
+	moves       []legal.Move
 	truncated   bool
 
 	win          *window
@@ -301,13 +301,13 @@ func (s *Seat) probeWire() {
 		return
 	}
 	defer func() { <-s.moveSem }()
-	ch, err := s.sendFrame(kindLegalMovesRequest, legalMovesRequest{})
+	ch, err := s.sendFrame(protocol.KindLegalMovesRequest, protocol.LegalMovesRequestPayload{})
 	if err != nil {
 		return
 	}
 	select {
 	case r := <-ch:
-		if r.kind == string(protocol.KindError) && r.err.Code == protocol.CodeBadRequest &&
+		if r.kind == protocol.KindError && r.err.Code == protocol.CodeBadRequest &&
 			strings.Contains(r.err.Message, "unknown or unsupported kind") {
 			s.mu.Lock()
 			s.noMoveReq = true
@@ -362,18 +362,18 @@ func (s *Seat) frame(f protocol.Frame) {
 	switch string(f.Kind) {
 	case string(protocol.KindSnapshot):
 		s.onSnapshot(f.Payload)
-	case kindAck:
-		var p ackPayload
+	case string(protocol.KindAck):
+		var p protocol.AckPayload
 		_ = json.Unmarshal(f.Payload, &p)
-		s.deliver(f.ID, reply{kind: kindAck, ack: p})
+		s.deliver(f.ID, reply{kind: protocol.KindAck, ack: p})
 	case string(protocol.KindError):
 		var p protocol.ErrorPayload
 		_ = json.Unmarshal(f.Payload, &p)
-		if !s.deliver(f.ID, reply{kind: string(protocol.KindError), err: p}) {
+		if !s.deliver(f.ID, reply{kind: protocol.KindError, err: p}) {
 			s.log.Info("server error", "code", p.Code, "message", p.Message)
 		}
-	case kindLegalMovesReply:
-		s.deliver(f.ID, reply{kind: kindLegalMovesReply, payload: f.Payload})
+	case string(protocol.KindLegalMoves):
+		s.deliver(f.ID, reply{kind: protocol.KindLegalMoves, payload: f.Payload})
 	case string(protocol.KindChat):
 		var p protocol.ChatPayload
 		if json.Unmarshal(f.Payload, &p) != nil {
@@ -413,11 +413,6 @@ func (s *Seat) onSnapshot(raw json.RawMessage) {
 		s.log.Warn("unreadable snapshot", "err", err)
 		return
 	}
-	sm, err := decodeSnapshotMoves(raw)
-	if err != nil {
-		s.log.Warn("unreadable move list", "err", err)
-		return
-	}
 	s.mu.Lock()
 	// docs/protocol.md: seq never falls within a generation; a new
 	// generation is a deliberate rewind and is always taken.
@@ -429,8 +424,8 @@ func (s *Seat) onSnapshot(raw json.RawMessage) {
 	s.view = &view
 	s.haveView = true
 	s.key = windowKey{gen: p.Generation, seq: p.Seq}
-	s.moves = sm.Game.LegalMoves
-	s.truncated = sm.Game.Truncated
+	s.moves = view.LegalMoves
+	s.truncated = view.LegalMovesTruncated
 	if self := s.selfLocked(); self != nil {
 		// The start of the seat's own turn clears pass_until (§4), as
 		// the browser's safety belt does.
@@ -494,15 +489,6 @@ func (s *Seat) autopilot(stop <-chan struct{}, done chan<- struct{}) {
 	}
 }
 
-// legalMoves strips the wire extras off a list, for Layer A.
-func legalMoves(ws []wireMove) []legal.Move {
-	out := make([]legal.Move, len(ws))
-	for i := range ws {
-		out[i] = ws[i].Move
-	}
-	return out
-}
-
 // step opens a window for the current state, if the seat owes a decision
 // and none is open for it yet, and answers it or hands it to the model.
 func (s *Seat) step(ctx context.Context) {
@@ -520,7 +506,7 @@ func (s *Seat) step(ctx context.Context) {
 		s.mu.Unlock()
 		return
 	}
-	w := &window{key: key, token: key.token(), moves: append([]wireMove(nil), s.moves...), state: winPending}
+	w := &window{key: key, token: key.token(), moves: append([]legal.Move(nil), s.moves...), state: winPending}
 	s.win = w
 	if key != s.lastCounted {
 		s.lastCounted = key
@@ -540,14 +526,14 @@ func (s *Seat) step(ctx context.Context) {
 			w.partial = true
 			s.mu.Unlock()
 		} else {
-			rep, err := s.requestMoves(ctx, "")
+			rep, err := s.requestMoves(ctx, moveRequest{})
 			s.mu.Lock()
 			if s.win != w {
 				s.mu.Unlock()
 				return
 			}
 			switch {
-			case err == nil && (rep.Generation != key.gen || rep.Seq != key.seq):
+			case errors.Is(err, errNoDecision), err == nil && (rep.Generation != key.gen || rep.Seq != key.seq):
 				// The board moved while the request was out: the
 				// next snapshot opens the next window.
 				s.win = nil
@@ -570,7 +556,7 @@ func (s *Seat) step(ctx context.Context) {
 		return
 	}
 	view, me := s.view, s.sess.PlayerID
-	ans, auto := decideAutomatically(view, me, legalMoves(w.moves), s.cfg.Absorb, s.passUntil)
+	ans, auto := decideAutomatically(view, me, w.moves, s.cfg.Absorb, s.passUntil)
 	if !auto {
 		s.openDecisionLocked(w)
 		s.mu.Unlock()
@@ -617,7 +603,7 @@ func (s *Seat) awaitAuto(w *window, ch chan reply) {
 	case <-t.C:
 		return
 	}
-	if r.kind != string(protocol.KindError) {
+	if r.kind != protocol.KindError {
 		return
 	}
 	s.mu.Lock()
@@ -632,7 +618,7 @@ func (s *Seat) awaitAuto(w *window, ch chan reply) {
 
 // sendAction sends a move as an action frame with a fresh id, and returns
 // the channel its ack or error will arrive on.
-func (s *Seat) sendAction(m wireMove, params json.RawMessage) (chan reply, error) {
+func (s *Seat) sendAction(m legal.Move, params json.RawMessage) (chan reply, error) {
 	if params == nil {
 		params = m.Params
 	}
@@ -640,11 +626,11 @@ func (s *Seat) sendAction(m wireMove, params json.RawMessage) (chan reply, error
 	if m.Player != uuid.Nil {
 		p.Player = m.Player.String()
 	}
-	return s.sendFrame(string(protocol.KindAction), p)
+	return s.sendFrame(protocol.KindAction, p)
 }
 
 // sendFrame sends a frame that the server answers by id.
-func (s *Seat) sendFrame(kind string, payload any) (chan reply, error) {
+func (s *Seat) sendFrame(kind protocol.Kind, payload any) (chan reply, error) {
 	id := uuid.NewString()
 	ch := make(chan reply, 1)
 	s.mu.Lock()
@@ -655,7 +641,7 @@ func (s *Seat) sendFrame(kind string, payload any) (chan reply, error) {
 	}
 	s.pending[id] = ch
 	s.mu.Unlock()
-	if err := conn.send(kind, id, payload); err != nil {
+	if err := conn.send(string(kind), id, payload); err != nil {
 		s.mu.Lock()
 		delete(s.pending, id)
 		s.mu.Unlock()
@@ -667,19 +653,44 @@ func (s *Seat) sendFrame(kind string, payload any) (chan reply, error) {
 // errNoMoveRequest is an older server's answer to legal_moves_request.
 var errNoMoveRequest = errors.New("this server cannot send a full move list (it predates ADR 0122 PR 5)")
 
-// requestMoves asks for the seat's full move list, or one card's moves
-// with the caps lifted (§6.1, §6.2). At most one request is in flight.
-func (s *Seat) requestMoves(ctx context.Context, source string) (*legalMovesReply, error) {
+// moveRequest names what a legal_moves_request asks for: the whole list
+// (both empty), one card, or one prompt (a pending choice's id, or
+// "cleanup_discard").
+type moveRequest = protocol.LegalMovesRequestPayload
+
+// errNoDecision is the server's no_decision: the seat owes nothing in the
+// state the server holds now, so the window the request was for has
+// closed.
+var errNoDecision = errors.New("the server says this seat owes no decision now: the board moved")
+
+// requestMoves asks for the seat's full move list, or one card's or one
+// prompt's moves with the caps lifted (§6.1, §6.2). At most one request
+// is in flight; a rate_limited answer is retried after a short wait.
+func (s *Seat) requestMoves(ctx context.Context, req moveRequest) (*protocol.LegalMovesPayload, error) {
 	select {
 	case s.moveSem <- struct{}{}:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 	defer func() { <-s.moveSem }()
+	for attempt := 0; ; attempt++ {
+		rep, err := s.requestMovesOnce(ctx, req)
+		if !errors.Is(err, errMovesRateLimited) || attempt >= 3 {
+			return rep, err
+		}
+		if err := sleepCtx(ctx, 300*time.Millisecond); err != nil {
+			return nil, err
+		}
+	}
+}
+
+var errMovesRateLimited = errors.New("the server rate-limited the move-list request")
+
+func (s *Seat) requestMovesOnce(ctx context.Context, req moveRequest) (*protocol.LegalMovesPayload, error) {
 	s.mu.Lock()
 	s.stats.fullListRequests++
 	s.mu.Unlock()
-	ch, err := s.sendFrame(kindLegalMovesRequest, legalMovesRequest{Source: source})
+	ch, err := s.sendFrame(protocol.KindLegalMovesRequest, req)
 	if err != nil {
 		return nil, err
 	}
@@ -694,14 +705,19 @@ func (s *Seat) requestMoves(ctx context.Context, source string) (*legalMovesRepl
 		return nil, ctx.Err()
 	}
 	switch r.kind {
-	case kindLegalMovesReply:
-		var rep legalMovesReply
+	case protocol.KindLegalMoves:
+		var rep protocol.LegalMovesPayload
 		if err := json.Unmarshal(r.payload, &rep); err != nil {
 			return nil, err
 		}
 		return &rep, nil
-	case string(protocol.KindError):
-		if r.err.Code == protocol.CodeBadRequest && strings.Contains(r.err.Message, "unknown or unsupported kind") {
+	case protocol.KindError:
+		switch {
+		case r.err.Code == protocol.CodeNoDecision:
+			return nil, errNoDecision
+		case r.err.Code == protocol.CodeRateLimited:
+			return nil, errMovesRateLimited
+		case r.err.Code == protocol.CodeBadRequest && strings.Contains(r.err.Message, "unknown or unsupported kind"):
 			s.mu.Lock()
 			s.noMoveReq = true
 			s.mu.Unlock()

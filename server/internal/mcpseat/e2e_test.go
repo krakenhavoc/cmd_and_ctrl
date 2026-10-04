@@ -41,16 +41,6 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
-// e2eNeeds names what this branch is missing. The test needs the server
-// half of ADR 0122: PR 2's badge (`agent` on the join body, `is_agent` on
-// PlayerView and SeatInfo), which has merged into this branch, and PR 5's
-// wire (the `ack` frame, and `legal_moves_truncated` with
-// `legal_moves_request`), which has not. Without the ack every act reads
-// `unknown`, which is the honest answer and not a pass, and without the
-// flag the capped window is never fetched in full. Delete this skip when
-// PR 5 has merged into the branch.
-const e2eNeeds = "needs ADR 0122 PR 5 (the ack frame, legal_moves_truncated and legal_moves_request) on the server, which has not merged into this branch yet"
-
 const (
 	e2eAdminToken = "e2e-admin-token-0123456789"
 	oracleBolt    = "4457ed35-7c10-48c8-9776-456485fdf070"
@@ -205,8 +195,6 @@ func boardBytes(text string) int {
 }
 
 func TestE2EAnAgentPlaysARealTable(t *testing.T) {
-	t.Skip(e2eNeeds)
-
 	st := newE2EStack(t)
 	meta, err := st.lobby.Create("e2e")
 	if err != nil {

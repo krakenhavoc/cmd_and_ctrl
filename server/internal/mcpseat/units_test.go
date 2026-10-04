@@ -245,7 +245,7 @@ func TestTheCompactBoardHoldsItsBudgetAndTheMovesAreNeverCut(t *testing.T) {
 
 	w := &window{token: "w0.1"}
 	for i := 0; i < 400; i++ {
-		w.moves = append(w.moves, wireMove{Move: legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: fmt.Sprintf("Cast thing %d", i)}})
+		w.moves = append(w.moves, legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: fmt.Sprintf("Cast thing %d", i)})
 	}
 	moves := renderMoves(v, w, "")
 	if !strings.Contains(moves, "  399: Cast thing 399") {

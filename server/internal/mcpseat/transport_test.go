@@ -46,7 +46,7 @@ func TestEveryToolIsRegisteredWithItsSchema(t *testing.T) {
 		"set_deck":          {[]string{"deck"}, []string{"deck"}},
 		"wait_for_decision": {[]string{"pass_until", "timeout_s"}, nil},
 		"get_state":         {[]string{"detail"}, nil},
-		"legal_moves":       {[]string{"card"}, nil},
+		"legal_moves":       {[]string{"card", "choice"}, nil},
 		"card":              {[]string{"ref"}, []string{"ref"}},
 		"act":               {[]string{"move", "value", "window"}, []string{"move", "window"}},
 		"say":               {[]string{"text"}, []string{"text"}},

@@ -34,7 +34,7 @@ var toolSpecs = []struct{ name, desc string }{
 	{"set_deck", "Install a deck on your seat before the game starts: {id} for one of the server's pre-built decks, or {list} for a decklist."},
 	{"wait_for_decision", "Wait (up to timeout_s, default 25, max 50) until you have a real choice, then return the window token, the board and the numbered moves. Statuses: decision, waiting (call again), not_started, eliminated, game_over."},
 	{"get_state", "The board as your seat sees it: compact (default) or full."},
-	{"legal_moves", "The open window's full numbered move list, grouped by card. With card, that card's moves with the enumerator's caps lifted."},
+	{"legal_moves", "The open window's full numbered move list, grouped by card. With card (or choice, for a prompt), its moves with the enumerator's caps lifted."},
 	{"card", "A card's printed text: name, type, cost, power/toughness and oracle text, by instance id or by a name on the table."},
 	{"act", "Make one move: the window token and the move's number from that window's list. Reports accepted, rejected (with the server's reason), stale (the board moved; nothing sent) or unknown."},
 	{"say", "Send one line of table chat (1 to 500 characters, one line per 5 seconds)."},

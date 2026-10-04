@@ -393,21 +393,32 @@ func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 			b.WriteString(moveLine(i, w.moves[i], nw))
 		}
 	}
-	// Cuts for a card that has no move in the list at all.
+	// Cuts for a card that has no move in the list at all, and for a
+	// prompt.
 	for _, c := range w.cuts {
 		if c.Source != "" && bySource[c.Source] == nil && (onlySource == "" || onlySource == c.Source) {
-			fmt.Fprintf(&b, "%s: %d moves not listed (cap %s) — legal_moves(card: %q) expands it\n",
-				cardRef(v, c.Source), c.Omitted, c.Cap, c.Source)
+			fmt.Fprintf(&b, "%s: %s moves not listed (cap %s) — legal_moves(card: %q) expands it\n",
+				cardRef(v, c.Source), omitted(c), c.Cap, c.Source)
 		}
-		if c.Choice != "" && onlySource == "" {
-			fmt.Fprintf(&b, "choice %s: %d answers not listed (cap %s)\n", c.Choice, c.Omitted, c.Cap)
+		if c.Source == "" && c.Choice != "" && onlySource == "" {
+			fmt.Fprintf(&b, "choice %s: %s answers not listed (cap %s) — legal_moves(choice: %q) expands it\n",
+				c.Choice, omitted(c), c.Cap, c.Choice)
 		}
 	}
 	return b.String()
 }
 
-func cutsBySource(cuts []cutReport) map[string][]cutReport {
-	out := map[string][]cutReport{}
+// omitted is a cut's count, "at least N" when the server could only
+// bound it.
+func omitted(c protocol.LegalCutView) string {
+	if c.AtLeast {
+		return "at least " + strconv.Itoa(c.Omitted)
+	}
+	return strconv.Itoa(c.Omitted)
+}
+
+func cutsBySource(cuts []protocol.LegalCutView) map[string][]protocol.LegalCutView {
+	out := map[string][]protocol.LegalCutView{}
 	for _, c := range cuts {
 		if c.Source != "" {
 			out[c.Source] = append(out[c.Source], c)
@@ -417,13 +428,13 @@ func cutsBySource(cuts []cutReport) map[string][]cutReport {
 }
 
 // groupHeader names a group's card, its cost and where it is.
-func groupHeader(v *protocol.GameView, source string, cuts []cutReport) string {
+func groupHeader(v *protocol.GameView, source string, cuts []protocol.LegalCutView) string {
 	if source == "" {
 		return "general:\n"
 	}
 	h := cardRef(v, source)
 	for _, c := range cuts {
-		h += fmt.Sprintf(" [%d more not listed, cap %s: legal_moves(card: %q) expands it]", c.Omitted, c.Cap, source)
+		h += fmt.Sprintf(" [%s more not listed, cap %s: legal_moves(card: %q) expands it]", omitted(c), c.Cap, source)
 	}
 	return h + ":\n"
 }
@@ -446,7 +457,7 @@ func cardRef(v *protocol.GameView, id string) string {
 
 // moveLine is one alternative: its number, its label, and what the label
 // does not say (an extra cost, an idle hint, an open value, always-legal).
-func moveLine(i int, m wireMove, nw nameWrapper) string {
+func moveLine(i int, m legal.Move, nw nameWrapper) string {
 	var notes []string
 	if m.Cost != nil {
 		if m.Cost.Life > 0 {
@@ -461,9 +472,9 @@ func moveLine(i int, m wireMove, nw nameWrapper) string {
 	}
 	if m.Value != nil {
 		switch m.Value.Kind {
-		case valueCardName:
+		case legal.ValueCardName:
 			notes = append(notes, "open: pass value = any card name (CR 201.2)")
-		case valueX:
+		case legal.ValueX:
 			lo, hi := "0", "?"
 			if m.Value.Min != nil {
 				lo = strconv.Itoa(*m.Value.Min)
@@ -556,7 +567,7 @@ func eachCard(v *protocol.GameView, fn func(*protocol.CardView, string) bool) {
 
 // windowKind names a window for the model (§3): mulligan, priority,
 // response, attack, block, or choice:<kind>.
-func windowKind(v *protocol.GameView, me string, moves []wireMove) string {
+func windowKind(v *protocol.GameView, me string, moves []legal.Move) string {
 	for i := range v.PendingChoices {
 		if v.PendingChoices[i].Chooser == me {
 			return "choice:" + v.PendingChoices[i].Kind

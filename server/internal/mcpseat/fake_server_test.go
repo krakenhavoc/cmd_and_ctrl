@@ -40,13 +40,13 @@ type fakeServer struct {
 	wsQueries []string
 	actions   []protocol.ActionPayload
 	chats     []string
-	moveReqs  []legalMovesRequest
+	moveReqs  []protocol.LegalMovesRequestPayload
 	conn      *websocket.Conn
 	wmu       sync.Mutex
 	seq       uint64
 	gen       uint64
 	view      protocol.GameView
-	moves     []wireMove
+	moves     []legal.Move
 	truncated bool
 	conns     int
 
@@ -57,8 +57,8 @@ type fakeServer struct {
 	// nothing. Nil acks everything.
 	onAction func(a protocol.ActionPayload) string
 	// fullMoves is what legal_moves_request answers with.
-	fullMoves []wireMove
-	cuts      []cutReport
+	fullMoves []legal.Move
+	cuts      []protocol.LegalCutView
 	meStatus  int
 	joinCode  int
 	joinMsg   string
@@ -216,26 +216,26 @@ func (f *fakeServer) handleWS(w http.ResponseWriter, r *http.Request) {
 					f.mu.Lock()
 					seq, gen := f.seq, f.gen
 					f.mu.Unlock()
-					f.write(protocol.Frame{V: 0, Kind: kindAck, ID: fr.ID, Payload: mustJSON(ackPayload{Seq: seq, Generation: gen})})
+					f.write(protocol.Frame{V: 0, Kind: protocol.KindAck, ID: fr.ID, Payload: mustJSON(protocol.AckPayload{Seq: seq, Generation: gen})})
 				}
 			case "error":
 				f.write(protocol.Frame{V: 0, Kind: protocol.KindError, ID: fr.ID,
 					Payload: mustJSON(protocol.ErrorPayload{Code: "bad_request", Message: "Bob says no"})})
 			}
-		case kindLegalMovesRequest:
-			var req legalMovesRequest
+		case string(protocol.KindLegalMovesRequest):
+			var req protocol.LegalMovesRequestPayload
 			_ = json.Unmarshal(fr.Payload, &req)
 			f.mu.Lock()
 			f.moveReqs = append(f.moveReqs, req)
 			old := f.oldServer
-			rep := legalMovesReply{Seq: f.seq, Generation: f.gen, Moves: f.fullMoves, Truncated: f.cuts}
+			rep := protocol.LegalMovesPayload{Seq: f.seq, Generation: f.gen, Moves: f.fullMoves, Truncated: f.cuts}
 			f.mu.Unlock()
 			if old {
 				f.write(protocol.Frame{V: 0, Kind: protocol.KindError, ID: fr.ID,
 					Payload: mustJSON(protocol.ErrorPayload{Code: protocol.CodeBadRequest, Message: "unknown or unsupported kind"})})
 				continue
 			}
-			f.write(protocol.Frame{V: 0, Kind: kindLegalMovesReply, ID: fr.ID, Payload: mustJSON(rep)})
+			f.write(protocol.Frame{V: 0, Kind: protocol.KindLegalMoves, ID: fr.ID, Payload: mustJSON(rep)})
 		case string(protocol.KindChat):
 			var p protocol.ChatPayload
 			_ = json.Unmarshal(fr.Payload, &p)
@@ -268,7 +268,7 @@ func (f *fakeServer) write(fr protocol.Frame) {
 
 // setState replaces the view and the seat's move list and broadcasts a
 // snapshot with the next seq.
-func (f *fakeServer) setState(v protocol.GameView, moves []wireMove, truncated bool) {
+func (f *fakeServer) setState(v protocol.GameView, moves []legal.Move, truncated bool) {
 	f.mu.Lock()
 	f.view, f.moves, f.truncated = v, moves, truncated
 	f.mu.Unlock()
@@ -311,23 +311,23 @@ func (f *fakeServer) lastAction() protocol.ActionPayload {
 
 // --- moves ---------------------------------------------------------------
 
-func (f *fakeServer) pass() wireMove {
-	return wireMove{Move: legal.Move{Type: legal.TypePassPriority, Player: f.playerID, Kind: legal.KindPass, Label: "Pass priority", AlwaysLegal: true}}
+func (f *fakeServer) pass() legal.Move {
+	return legal.Move{Type: legal.TypePassPriority, Player: f.playerID, Kind: legal.KindPass, Label: "Pass priority", AlwaysLegal: true}
 }
 
-func (f *fakeServer) mana(card uuid.UUID) wireMove {
-	return wireMove{Move: legal.Move{Type: legal.TypeActivateManaAbility, Player: f.playerID, Kind: legal.KindMana, Label: "Tap Forest for {G}", Source: card,
-		Params: mustJSON(map[string]any{"instance_id": card})}}
+func (f *fakeServer) mana(card uuid.UUID) legal.Move {
+	return legal.Move{Type: legal.TypeActivateManaAbility, Player: f.playerID, Kind: legal.KindMana, Label: "Tap Forest for {G}", Source: card,
+		Params: mustJSON(map[string]any{"instance_id": card})}
 }
 
-func (f *fakeServer) cast(card uuid.UUID, label string) wireMove {
-	return wireMove{Move: legal.Move{Type: legal.TypeCastSpell, Player: f.playerID, Kind: legal.KindCast, Label: label, Source: card,
-		Params: mustJSON(map[string]any{"instance_id": card})}}
+func (f *fakeServer) cast(card uuid.UUID, label string) legal.Move {
+	return legal.Move{Type: legal.TypeCastSpell, Player: f.playerID, Kind: legal.KindCast, Label: label, Source: card,
+		Params: mustJSON(map[string]any{"instance_id": card})}
 }
 
-func (f *fakeServer) land(card uuid.UUID, label string) wireMove {
-	return wireMove{Move: legal.Move{Type: "play_land", Player: f.playerID, Kind: legal.KindLand, Label: label, Source: card,
-		Params: mustJSON(map[string]any{"instance_id": card})}}
+func (f *fakeServer) land(card uuid.UUID, label string) legal.Move {
+	return legal.Move{Type: "play_land", Player: f.playerID, Kind: legal.KindLand, Label: label, Source: card,
+		Params: mustJSON(map[string]any{"instance_id": card})}
 }
 
 // --- the seat ------------------------------------------------------------

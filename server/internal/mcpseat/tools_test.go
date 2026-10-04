@@ -127,7 +127,7 @@ func TestLayerAAnswersTrivialWindowsAndTheModelGetsTheRest(t *testing.T) {
 
 	// A pass-only window: forced, answered without the model.
 	v := activeView(f)
-	f.setState(v, []wireMove{f.pass()}, false)
+	f.setState(v, []legal.Move{f.pass()}, false)
 	waitFor(t, "the forced pass", func() bool { return f.actionCount() >= 1 })
 	if a := f.lastAction(); a.Type != legal.TypePassPriority {
 		t.Fatalf("automatic answer = %+v", a)
@@ -135,13 +135,13 @@ func TestLayerAAnswersTrivialWindowsAndTheModelGetsTheRest(t *testing.T) {
 
 	// Mana-only: passed.
 	forest := uuid.New()
-	f.setState(v, []wireMove{f.pass(), f.mana(forest)}, false)
+	f.setState(v, []legal.Move{f.pass(), f.mana(forest)}, false)
 	waitFor(t, "the mana-only pass", func() bool { return f.actionCount() >= 2 })
 
 	// Same-land is NOT absorbed for the agent (§4): it escalates.
 	l1, l2 := uuid.New(), uuid.New()
 	v.Seats[0].Hand.Cards = []protocol.CardView{{InstanceID: l1.String(), Name: "Forest"}, {InstanceID: l2.String(), Name: "Forest"}}
-	f.setState(v, []wireMove{f.pass(), f.land(l1, "Play Forest"), f.land(l2, "Play Forest")}, false)
+	f.setState(v, []legal.Move{f.pass(), f.land(l1, "Play Forest"), f.land(l2, "Play Forest")}, false)
 	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 5})
 	results = append(results, r.Text)
 	if !strings.Contains(r.Text, "status: decision") || !strings.Contains(r.Text, "kind: priority") {
@@ -165,7 +165,7 @@ func TestTheLoopNoticeStopsEveryAutomaticPass(t *testing.T) {
 	joinFake(t, f, s)
 	v := activeView(f)
 	v.LoopNotice = &protocol.LoopNoticeView{Label: "Some Card — draw", Count: 3}
-	f.setState(v, []wireMove{f.pass()}, false)
+	f.setState(v, []legal.Move{f.pass()}, false)
 	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 5})
 	if !strings.Contains(r.Text, "status: decision") || !strings.Contains(r.Text, "LOOP NOTICE") {
 		t.Fatalf("the loop notice's pass was not left to the model:\n%s", r.Text)
@@ -190,9 +190,9 @@ func decisionWindow(t *testing.T, s *testSeat) (string, string) {
 	return "", ""
 }
 
-func twoChoices(f *fakeServer) []wireMove {
+func twoChoices(f *fakeServer) []legal.Move {
 	bolt := uuid.New()
-	return []wireMove{f.pass(), f.cast(bolt, "Cast Lightning Bolt targeting Bob")}
+	return []legal.Move{f.pass(), f.cast(bolt, "Cast Lightning Bolt targeting Bob")}
 }
 
 func TestActReportsTheAckAndTheRefusal(t *testing.T) {
@@ -263,18 +263,18 @@ func TestATruncatedListIsFetchedInFullBeforeAnyoneSeesIt(t *testing.T) {
 	v := activeView(f)
 	bolt := uuid.New()
 	v.Seats[0].Hand.Cards = []protocol.CardView{{InstanceID: bolt.String(), Name: "Lightning Bolt", ManaCost: "{R}"}}
-	capped := []wireMove{f.pass(), f.cast(bolt, "Cast Lightning Bolt targeting Bob")}
-	full := append(append([]wireMove(nil), capped...), f.cast(bolt, "Cast Lightning Bolt targeting Agent"))
+	capped := []legal.Move{f.pass(), f.cast(bolt, "Cast Lightning Bolt targeting Bob")}
+	full := append(append([]legal.Move(nil), capped...), f.cast(bolt, "Cast Lightning Bolt targeting Agent"))
 	f.mu.Lock()
 	f.fullMoves = full
-	f.cuts = []cutReport{{Source: bolt.String(), Cap: "max_expansion_per_source", Omitted: 4}}
+	f.cuts = []protocol.LegalCutView{{Source: bolt.String(), Cap: "per_source", Omitted: 4, AtLeast: true}}
 	f.mu.Unlock()
 	f.setState(v, capped, true)
 	_, text := decisionWindow(t, s)
 	if !strings.Contains(text, "MOVES (3)") || !strings.Contains(text, "targeting «Agent»") {
 		t.Fatalf("the full list was not used:\n%s", text)
 	}
-	if !strings.Contains(text, "4 more not listed") {
+	if !strings.Contains(text, "at least 4 more not listed") {
 		t.Errorf("the enumerator's cut is not reported:\n%s", text)
 	}
 	s.mu.Lock()
@@ -500,7 +500,7 @@ func TestSetDeckAndCard(t *testing.T) {
 
 func TestApplyValueFillsOnlyAStatedOpenSet(t *testing.T) {
 	min, max := 0, 5
-	x := wireMove{Move: legal.Move{Params: json.RawMessage(`{"instance_id":"a"}`)}, Value: &moveValue{Kind: valueX, Min: &min, Max: &max}}
+	x := legal.Move{Params: json.RawMessage(`{"instance_id":"a"}`), Value: &legal.MoveValue{Kind: legal.ValueX, Min: &min, Max: &max}}
 	raw, err := applyValue(x, float64(3))
 	if err != nil || !strings.Contains(string(raw), `"x_value":3`) {
 		t.Fatalf("x: %s %v", raw, err)
@@ -511,7 +511,7 @@ func TestApplyValueFillsOnlyAStatedOpenSet(t *testing.T) {
 	if _, err := applyValue(x, 2.5); err == nil {
 		t.Error("a fractional X was accepted")
 	}
-	name := wireMove{Move: legal.Move{Params: json.RawMessage(`{"choice_id":"c"}`)}, Value: &moveValue{Kind: valueCardName}}
+	name := legal.Move{Params: json.RawMessage(`{"choice_id":"c"}`), Value: &legal.MoveValue{Kind: legal.ValueCardName}}
 	raw, err = applyValue(name, "Sol Ring")
 	if err != nil || !strings.Contains(string(raw), `"card_name":"Sol Ring"`) {
 		t.Fatalf("name: %s %v", raw, err)
@@ -519,7 +519,7 @@ func TestApplyValueFillsOnlyAStatedOpenSet(t *testing.T) {
 	if _, err := applyValue(name, strings.Repeat("a", 201)); err == nil {
 		t.Error("a 201-character name was accepted")
 	}
-	if _, err := applyValue(wireMove{}, "x"); err == nil {
+	if _, err := applyValue(legal.Move{}, "x"); err == nil {
 		t.Error("a value on a move with no open set was accepted")
 	}
 }
