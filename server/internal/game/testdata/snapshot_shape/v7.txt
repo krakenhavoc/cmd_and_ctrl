@@ -270,6 +270,8 @@ battlefield.cards[].provenance.optionalCosts	array
 battlefield.cards[].provenance.optionalCosts[]	number:int
 battlefield.cards[].provenance.x	number:int
 battlefield.cards[].regenerationShields	number:int
+battlefield.cards[].ringBearer	bool
+battlefield.cards[].ringTemptations	number:int
 battlefield.cards[].scryfallId	string
 battlefield.cards[].solved	bool
 battlefield.cards[].startingDefense	number:int
@@ -679,6 +681,8 @@ exile.cards[].provenance.optionalCosts	array
 exile.cards[].provenance.optionalCosts[]	number:int
 exile.cards[].provenance.x	number:int
 exile.cards[].regenerationShields	number:int
+exile.cards[].ringBearer	bool
+exile.cards[].ringTemptations	number:int
 exile.cards[].scryfallId	string
 exile.cards[].solved	bool
 exile.cards[].startingDefense	number:int
@@ -1135,6 +1139,8 @@ lastKnownStack[].card.provenance.optionalCosts	array
 lastKnownStack[].card.provenance.optionalCosts[]	number:int
 lastKnownStack[].card.provenance.x	number:int
 lastKnownStack[].card.regenerationShields	number:int
+lastKnownStack[].card.ringBearer	bool
+lastKnownStack[].card.ringTemptations	number:int
 lastKnownStack[].card.scryfallId	string
 lastKnownStack[].card.solved	bool
 lastKnownStack[].card.startingDefense	number:int
@@ -2002,6 +2008,8 @@ phasedOut.cards[].provenance.optionalCosts	array
 phasedOut.cards[].provenance.optionalCosts[]	number:int
 phasedOut.cards[].provenance.x	number:int
 phasedOut.cards[].regenerationShields	number:int
+phasedOut.cards[].ringBearer	bool
+phasedOut.cards[].ringTemptations	number:int
 phasedOut.cards[].scryfallId	string
 phasedOut.cards[].solved	bool
 phasedOut.cards[].startingDefense	number:int
@@ -2491,6 +2499,8 @@ seats[].command.cards[].provenance.optionalCosts	array
 seats[].command.cards[].provenance.optionalCosts[]	number:int
 seats[].command.cards[].provenance.x	number:int
 seats[].command.cards[].regenerationShields	number:int
+seats[].command.cards[].ringBearer	bool
+seats[].command.cards[].ringTemptations	number:int
 seats[].command.cards[].scryfallId	string
 seats[].command.cards[].solved	bool
 seats[].command.cards[].startingDefense	number:int
@@ -2764,6 +2774,8 @@ seats[].emblems.cards[].provenance.optionalCosts	array
 seats[].emblems.cards[].provenance.optionalCosts[]	number:int
 seats[].emblems.cards[].provenance.x	number:int
 seats[].emblems.cards[].regenerationShields	number:int
+seats[].emblems.cards[].ringBearer	bool
+seats[].emblems.cards[].ringTemptations	number:int
 seats[].emblems.cards[].scryfallId	string
 seats[].emblems.cards[].solved	bool
 seats[].emblems.cards[].startingDefense	number:int
@@ -3027,6 +3039,8 @@ seats[].graveyard.cards[].provenance.optionalCosts	array
 seats[].graveyard.cards[].provenance.optionalCosts[]	number:int
 seats[].graveyard.cards[].provenance.x	number:int
 seats[].graveyard.cards[].regenerationShields	number:int
+seats[].graveyard.cards[].ringBearer	bool
+seats[].graveyard.cards[].ringTemptations	number:int
 seats[].graveyard.cards[].scryfallId	string
 seats[].graveyard.cards[].solved	bool
 seats[].graveyard.cards[].startingDefense	number:int
@@ -3289,6 +3303,8 @@ seats[].hand.cards[].provenance.optionalCosts	array
 seats[].hand.cards[].provenance.optionalCosts[]	number:int
 seats[].hand.cards[].provenance.x	number:int
 seats[].hand.cards[].regenerationShields	number:int
+seats[].hand.cards[].ringBearer	bool
+seats[].hand.cards[].ringTemptations	number:int
 seats[].hand.cards[].scryfallId	string
 seats[].hand.cards[].solved	bool
 seats[].hand.cards[].startingDefense	number:int
@@ -3561,6 +3577,8 @@ seats[].library.cards[].provenance.optionalCosts	array
 seats[].library.cards[].provenance.optionalCosts[]	number:int
 seats[].library.cards[].provenance.x	number:int
 seats[].library.cards[].regenerationShields	number:int
+seats[].library.cards[].ringBearer	bool
+seats[].library.cards[].ringTemptations	number:int
 seats[].library.cards[].scryfallId	string
 seats[].library.cards[].solved	bool
 seats[].library.cards[].startingDefense	number:int
@@ -3953,6 +3971,8 @@ stack.cards[].provenance.optionalCosts	array
 stack.cards[].provenance.optionalCosts[]	number:int
 stack.cards[].provenance.x	number:int
 stack.cards[].regenerationShields	number:int
+stack.cards[].ringBearer	bool
+stack.cards[].ringTemptations	number:int
 stack.cards[].scryfallId	string
 stack.cards[].solved	bool
 stack.cards[].startingDefense	number:int

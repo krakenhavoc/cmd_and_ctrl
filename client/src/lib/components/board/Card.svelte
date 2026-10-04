@@ -619,6 +619,10 @@
            even though nobody may look at the face. -->
       <span class="badge face-down">{faceDownLabel}</span>
     {/if}
+    {#if card.ring_bearer}
+      <!-- ADR 0114 §9: public on a face-down permanent too. -->
+      <span class="badge ring-bearer" title="Ring-bearer" aria-label="Ring-bearer">RING</span>
+    {/if}
   {:else if imgSrc}
     <!-- use:cardArt (#33): retry once, then a click-to-retry pip.
          Front face only — the back above is a bundled asset. -->
@@ -660,6 +664,11 @@
     {/if}
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
+    {#if card.ring_bearer}
+      <!-- ADR 0114 §9: a plain text marker until the table's Ring
+           display lands (ADR 0114 PR 4, owner decision 1). -->
+      <span class="badge ring-bearer" title="Ring-bearer" aria-label="Ring-bearer">RING</span>
     {/if}
     {#if card.must_attack}
       <span class="badge must-attack" title="must attack this combat" aria-label="must attack"
@@ -797,6 +806,11 @@
     {/if}
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
+    {#if card.ring_bearer}
+      <!-- ADR 0114 §9: a plain text marker until the table's Ring
+           display lands (ADR 0114 PR 4, owner decision 1). -->
+      <span class="badge ring-bearer" title="Ring-bearer" aria-label="Ring-bearer">RING</span>
     {/if}
     {#if card.must_attack}
       <span class="badge must-attack" title="must attack this combat" aria-label="must attack"
@@ -1211,6 +1225,15 @@
     color: var(--danger);
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
+  }
+  .badge.ring-bearer {
+    /* ADR 0114 §9: below the CMD pip on the left edge, clear of the
+       designation slot. A placeholder until ADR 0114 PR 4's marker. */
+    top: 24px;
+    font-size: 7px;
+    color: #ffd27a;
+    background: rgba(50, 35, 0, 0.85);
+    border-color: rgba(255, 210, 122, 0.5);
   }
   .badge.must-attack {
     /* #1571: a requirement the declaration still owes. Bottom edge, so

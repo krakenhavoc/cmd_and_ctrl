@@ -188,6 +188,10 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 			fmt.Fprintf(&b, ", %s", gates)
 		}
 		b.WriteByte('\n')
+		// ADR 0114 §7: one line per emblem, the Ring with its count.
+		for _, e := range s.Emblems {
+			fmt.Fprintf(&b, "  emblem: %s\n", emblemLine(e))
+		}
 		if bf := p.battlefieldOf(v, s.ID); bf != "" {
 			fmt.Fprintf(&b, "  battlefield: %s\n", bf)
 		}
@@ -341,6 +345,10 @@ func permanentLabel(c *protocol.CardView) string {
 	if c.IsCommander {
 		flags = append(flags, "commander")
 	}
+	if c.RingBearer {
+		// ADR 0114 §7: whose Ring-bearer it is, is its controller.
+		flags = append(flags, "Ring-bearer")
+	}
 	if c.Unimplemented {
 		flags = append(flags, "unimplemented")
 	}
@@ -352,6 +360,24 @@ func permanentLabel(c *protocol.CardView) string {
 		b.WriteString(" (" + strings.Join(flags, ", ") + ")")
 	}
 	return b.String()
+}
+
+// emblemLine renders one emblem for the board text: its label and its
+// current text, and for the Ring how many times it has tempted ("The
+// Ring (tempted 3 times): …"). The text's line breaks become spaces.
+func emblemLine(e protocol.EmblemView) string {
+	label := e.Label
+	if e.Level > 0 {
+		times := "times"
+		if e.Level == 1 {
+			times = "time"
+		}
+		label = fmt.Sprintf("%s (tempted %d %s)", label, e.Level, times)
+	}
+	if e.Text == "" {
+		return label
+	}
+	return label + ": " + strings.ReplaceAll(e.Text, "\n", " ")
 }
 
 // sortedCounters renders counters deterministically. Map iteration

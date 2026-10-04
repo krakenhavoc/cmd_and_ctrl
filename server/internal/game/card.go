@@ -860,6 +860,14 @@ type Card struct {
 	// S46 (#757).
 	ClassLevel int
 
+	// RingTemptations is how many times the Ring has tempted this
+	// emblem's owner (CR 701.54c), set only on the Ring emblem
+	// (RingEmblemKey) and read by DesignationRingTempted and
+	// RingTemptCount. The emblem is created at the first temptation and
+	// never leaves while its owner is in the game, so the count on it is
+	// the player's count (ADR 0114 §2). Zero on every other object.
+	RingTemptations int
+
 	// PreparedBy is set on a CR 722.3c prepare copy only: the
 	// permanent OBJECT — instance and CR 400.7 epoch — whose prepared
 	// designation keeps this copy in exile and castable (ADR 0090).
@@ -1112,6 +1120,19 @@ type Card struct {
 	// cleared when the permanent leaves the battlefield (CR 400.7),
 	// carried by clone and the snapshot.
 	Monstrous bool
+
+	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
+	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by
+	// nothing else; the one write site first clears every other
+	// permanent the chooser controls, which keeps one Ring-bearer per
+	// player. Cleared when the permanent leaves the battlefield (CR
+	// 400.7) and when another player gains control of it (CR 701.54a,
+	// materialiseControlLocked). Kept through phasing (CR 702.26d), a
+	// face change and ceasing to be a creature. Not copiable (CR
+	// 701.54b): CopiableValuesOf never reads it. Read only through
+	// IsRingBearerOf / RingBearerOf, which apply CR 701.54e. Carried by
+	// clone and the snapshot.
+	RingBearer bool
 
 	// Prepared is the CR 722.3a designation on a permanent with a
 	// prepare spell (ADR 0090): while it is set, the permanent's

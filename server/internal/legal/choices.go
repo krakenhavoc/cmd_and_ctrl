@@ -594,7 +594,7 @@ func (e *enumerator) choiceMoves() bool {
 			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
 			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
 			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents,
-			game.PendingChoiceChooseSource:
+			game.PendingChoiceChooseSource, game.PendingChoiceRingBearer:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -677,6 +677,11 @@ func (e *enumerator) choiceMoves() bool {
 				// ADR 0107 §6 decision 4: the model tiers see each
 				// source with its controller (sourceControllerSuffix).
 				verb = ": choose source"
+			case game.PendingChoiceRingBearer:
+				// ADR 0114 §4: one move per creature, floor one. The
+				// prompt is only asked with two or more candidates, so
+				// it always has an answer.
+				verb = ": choose Ring-bearer"
 			}
 			for _, set := range sets {
 				p := base()
@@ -1609,8 +1614,28 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		// ADR 0098: a discard or a sacrifice SPENDS what it names, so
 		// the cheapest cards come first and survive the budget.
 		return e.cheapestFuelFirst(c.ChooseCards)
+	case game.PendingChoiceRingBearer:
+		// ADR 0114 §7: the seat's own creatures, best Ring-bearer
+		// first — the opposite end from own_permanents'.
+		return e.bestRingBearerFirst(c.ChooseCards)
 	}
 	return c.ChooseCards
+}
+
+// bestRingBearerFirst orders a ring_bearer prompt's candidates by the
+// seat's Options.OrderRingBearer, highest first, on a fresh slice. A
+// no-op without the hook.
+func (e *enumerator) bestRingBearerFirst(pool []uuid.UUID) []uuid.UUID {
+	if e.opts.OrderRingBearer == nil || len(pool) < 2 {
+		return pool
+	}
+	out := append([]uuid.UUID(nil), pool...)
+	score := make(map[uuid.UUID]float64, len(out))
+	for _, id := range out {
+		score[id] = e.opts.OrderRingBearer(TargetCandidate{ID: id})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return score[out[i]] > score[out[j]] })
+	return out
 }
 
 // mostValuableFirst is orderCandidates for a plain ID list: the same

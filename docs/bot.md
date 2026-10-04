@@ -1586,6 +1586,31 @@ that quietly stops happening. The runtime half is
 tier through the factory and asks it everything the runner and the
 enumerator will ask it.
 
+## Choosing a Ring-bearer (ADR 0114 §7)
+
+When the Ring tempts a bot seat that controls two or more creatures, it
+owes a `ring_bearer` prompt (one creature is chosen by the server). The
+enumerator offers one move per creature, labelled `choose your
+Ring-bearer: choose Ring-bearer <name>`, and the prompt always has an
+answer: it is only asked with candidates, and the submit re-check
+refuses only a creature that has gone, leaving the rest open.
+
+The heuristic gives the Ring to the creature that attacks hardest: the
+highest power, then one that can attack this turn (untapped, not
+summoning sick), then the current Ring-bearer, which costs nothing to
+keep. A creature the Ring's "is legendary" would put into the legend
+rule against a same-named legendary permanent the seat already controls
+goes last. The same price orders the pool before the enumerator's cap
+(`legal.Options.OrderRingBearer`, the `aiseat.RingBearerOrderer` hook,
+forwarded through every wrapper like the two above), so on a wide board
+the best candidates are the ones offered.
+
+The model tiers see the Ring in the board text: one `emblem:` line per
+emblem, the Ring with its count ("The Ring (tempted 3 times): …"), and
+a `Ring-bearer` tag on the creature. Legendary and the evasion reach the
+evaluator through the effective type line and the block refusals, with
+nothing new.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per

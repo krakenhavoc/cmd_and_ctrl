@@ -492,6 +492,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [When NOT to add a catalog entry](docs/adding-cards.md#when-not-to-add-a-catalog-entry)
   - [Adding a trigger doubler (#752)](docs/adding-cards.md#adding-a-trigger-doubler-752)
   - [Emblems (#623)](docs/adding-cards.md#emblems-623)
+  - [The Ring tempts you (ADR 0114, #2076)](docs/adding-cards.md#the-ring-tempts-you-adr-0114-2076)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](docs/adding-cards.md#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Adding a Room or a split card (ADR 0103, #1756)](docs/adding-cards.md#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](docs/adding-cards.md#abilities-from-the-hand-660)
