@@ -46,6 +46,7 @@
   import type { CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
   import ManaSymbol from "./ManaSymbol.svelte";
+  import { pipRun } from "../../manaSymbol";
   import { dealIn, dealOut } from "../../animations";
   import { handOverlap } from "../../handFan";
   import { settings } from "../../settings";
@@ -474,8 +475,8 @@
               />
               {#if badge}
                 <span class="cost-tag" title={badge.title} aria-label={badge.label}>
-                  {#each badge.symbols as s, i (i)}
-                    <ManaSymbol symbol={s} size={15} />
+                  {#each pipRun(badge.symbols) as p, i (i)}
+                    <ManaSymbol symbol={p.symbol} size={15} />
                   {/each}
                   {#if badge.life}
                     <span class="life">+{badge.life}♥</span>

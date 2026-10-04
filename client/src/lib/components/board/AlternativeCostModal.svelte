@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManaCost from "./ManaCost.svelte";
   // AlternativeCostModal — S22: choose the cost a spell is cast for
   // when the card offers one paid INSTEAD of its mana cost. Overload,
   // evoke, cleave.
@@ -245,7 +246,7 @@
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name">Its mana cost</span>
               {#if card.mana_cost}
-                <span class="note cost">{card.mana_cost}</span>
+                <span class="note cost"><ManaCost cost={card.mana_cost} size={14} /></span>
               {/if}
             </button>
           </li>
@@ -262,7 +263,7 @@
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name">{offer.label ?? offer.key}</span>
               {#if offer.mana_cost}
-                <span class="note cost">{offer.mana_cost}</span>
+                <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
               {/if}
             </button>
           </li>
@@ -290,7 +291,7 @@
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name">{b.label ?? b.key}</span>
               {#if b.mana_cost}
-                <span class="note cost">{b.mana_cost}</span>
+                <span class="note cost"><ManaCost cost={b.mana_cost} size={14} /></span>
               {/if}
             </button>
           </li>
@@ -308,7 +309,7 @@
               <div class="prompt-opt stepper" class:on={timesPaid(offer.index) > 0}>
                 <span class="name">{offer.label ?? offer.key}</span>
                 {#if offer.mana_cost}
-                  <span class="note cost">{offer.mana_cost}</span>
+                  <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
                 {/if}
                 <button
                   type="button"
@@ -339,7 +340,7 @@
                 <span class="prompt-radio" aria-hidden="true"></span>
                 <span class="name">{offer.label ?? offer.key}</span>
                 {#if offer.mana_cost}
-                  <span class="note cost">{offer.mana_cost}</span>
+                  <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
                 {/if}
               </button>
               {#if offer.chooses_opponent && timesPaid(offer.index) > 0}
