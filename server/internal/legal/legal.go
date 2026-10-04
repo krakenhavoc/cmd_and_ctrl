@@ -62,6 +62,14 @@ const (
 	// declaration's unconditional answer, so a seat whose policy
 	// declines every block still has a move that ends the declaration.
 	KindFinishBlocks Kind = "finish_blocks"
+	// KindOpeningRoll is a move of the opening roll (ADR 0121 §4): a
+	// seat's own d20 (roll_opening) and the winner's choice of who
+	// takes the first turn (choose_starting_player). While the roll is
+	// open these are the only moves anyone is offered, and no hand
+	// exists yet. Its own kind so a policy can recognise the window
+	// without parsing labels, and so nothing that prices game moves
+	// ever prices one.
+	KindOpeningRoll Kind = "opening_roll"
 )
 
 // Wire action types this package emits. Kept as strings rather than
@@ -87,6 +95,11 @@ const (
 	TypeMulligan         = "mulligan"
 	TypeDiscardSelection = "discard_selection"
 	TypeSpecialAction    = "special_action"
+	// ADR 0121 §4: the opening roll's two seat-scoped verbs. Never
+	// host_roll_remaining (a bot is never the host) and never a table
+	// roll (it changes nothing in the game).
+	TypeRollOpening          = "roll_opening"
+	TypeChooseStartingPlayer = "choose_starting_player"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type
@@ -483,11 +496,11 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 	e := &enumerator{g: g, p: p, seat: seat, opts: opts}
 
 	// ADR 0121 §1: the opening roll comes before the mulligan, and while
-	// it is open nobody has a hand to keep. Its own moves (§4) are not
-	// offered yet, so a bot seat sits the roll out rather than being
-	// handed keep and mulligan moves the engine refuses.
+	// it is open nobody has a hand to keep. The roll's own moves (§4)
+	// are the only ones on offer.
 	if g.OpeningRoll != nil {
-		return nil
+		e.openingRollMoves()
+		return e.out
 	}
 
 	// The mulligan window is its own world: the cursor is parked on

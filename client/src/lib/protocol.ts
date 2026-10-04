@@ -549,9 +549,9 @@ export interface LegalActionsView {
 }
 
 export interface LegalSourceView {
-  // Distinct move kinds, in enumeration order. Never pass, choice or
-  // mulligan.
-  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan">[];
+  // Distinct move kinds, in enumeration order. Never pass, choice,
+  // mulligan or opening_roll.
+  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan" | "opening_roll">[];
   // Moves in the uncapped list that involve this card.
   moves: number;
   // ADR 0093 refs of live activated_abilities / zone_abilities rows.
@@ -593,7 +593,10 @@ export interface LegalMoveView {
     // #1501: a declaring defender's finish_blocks ("No blocks" /
     // "Done blocking"). Not a pass: nobody holds priority while a
     // defender declares. Carries no card.
-    | "finish_blocks";
+    | "finish_blocks"
+    // ADR 0121 §4: roll_opening and choose_starting_player, the only
+    // moves while `opening_roll` is open. Carries no card.
+    | "opening_roll";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
