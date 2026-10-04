@@ -1113,7 +1113,12 @@ Violation codes (stable strings, keyable by the client):
 - `missing_commander` / `too_many_commanders` / `not_a_legal_commander`
 - `color_identity_violation` — mainboard card outside commander's
   color identity (carries the offending `card` field)
-- `singleton_violation` — non-basic-land card appears more than once
+- `singleton_violation` — a non-basic-land card appears more than once,
+  unless its own text allows it (CR 113.6n: "A deck can have any number
+  of cards named ~" or "up to N cards named ~", read from the oracle
+  text, so Nazgûl runs nine and Relentless Rats any number). Past a
+  printed limit the message names it, e.g. `"Nazgûl" appears 10 times;
+  a deck can have up to 9 cards named Nazgûl`.
 - `not_legal_in_format` — card is banned or not legal in Commander
 - `unknown_card` — decklist name that did not resolve against the
   Scryfall index (carries `card`)
