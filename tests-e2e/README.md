@@ -13,6 +13,7 @@ tests-e2e/
 ├── tsconfig.json
 └── tests/
     ├── auth.spec.ts           # admin login, logout, invite-URL paste
+    ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
