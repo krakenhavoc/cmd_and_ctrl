@@ -789,7 +789,7 @@ var items = []Item{
 		Missing:     "The pick from a revealed hand can't be limited to a kind of card, so a card that asks for one can't be added without letting you take any card.",
 		Rules:       []string{"701.9"},
 		Issue:       2078,
-		Waiting:     []string{"Pelakka Predation"},
+		Waiting:     []string{"Pelakka Predation", "Unmask"},
 		EngineNotes: "prompt: `PendingChoiceDiscardFromHand` (`Game.QueueDiscardFromRevealedHand`) carries no card filter, and `ResolvePendingChoice` only checks that each pick sits in the hand, so \"nonland\" (Thoughtseize ships with a caveat for it) and \"with mana value 3 or greater\" are not enforced. The likely shape is a card predicate on the choice, checked on resolve and forwarded by the view's hand pool and `legal.EnumerateFor`, with a no-pick answer when the hand holds no legal card. Pelakka Predation's land back already exists in `mdfc_lands.go`; only the front face waits.",
 	},
 	{
