@@ -142,7 +142,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
+          go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
           cache-dependency-path: server/go.sum
 
@@ -236,7 +236,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
+          go-version: "1.27"
           cache: false
 
       - name: Compute Scryfall cache key
@@ -369,7 +369,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
+          go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
           cache-dependency-path: server/go.sum
 
@@ -679,7 +679,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
+          go-version: "1.27"
           cache: false
 
       # No `cache:` input, for the same reason as Go above -- ~/.npm

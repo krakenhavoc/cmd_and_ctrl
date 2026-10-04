@@ -92,6 +92,9 @@ var gameFields = plan(
 	"PhasedOut", carried, "",
 	"Turn", carried, "",
 	"MulligansOpen", carried, "",
+	// ADR 0121 §1: the open opening roll. Plain data; a restored game
+	// mid-roll continues where it stopped.
+	"OpeningRoll", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
 	"Settings", carried, "",
@@ -537,6 +540,8 @@ var playerFields = plan(
 	"IsBot", carried, "",
 	"BotTier", carried, "",
 	"BotDeck", carried, "",
+	"Agent", carried, "",
+	"AgentClient", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
@@ -1027,6 +1032,8 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		// permission is a struct of flags rather than a predicate is
 		// that it has to survive this check.
 		CastPermission{},
+		// ADR 0121 §1: the opening roll is embedded by value.
+		OpeningRoll{}, OpeningRollRound{}, OpeningRollDie{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)
@@ -1068,7 +1075,7 @@ func TestSnapshotMirrorsHaveNoFuncs(t *testing.T) {
 		switch rt.Kind() {
 		case reflect.Func, reflect.Chan, reflect.UnsafePointer:
 			t.Errorf("%s is a %s — GameSnapshot must be serialisable all the way down", path, rt.Kind())
-		case reflect.Ptr, reflect.Slice, reflect.Array:
+		case reflect.Pointer, reflect.Slice, reflect.Array:
 			walk(rt.Elem(), path+"[]", seen)
 		case reflect.Map:
 			walk(rt.Key(), path+"{key}", seen)

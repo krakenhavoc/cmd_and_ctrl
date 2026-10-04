@@ -128,6 +128,13 @@ describe("logTone", () => {
     for (const k of kinds) expect(logTone(k)).toMatch(/^tone-/);
   });
 
+  // ADR 0121 §3: an opening-roll line reads like the dice beside it;
+  // who takes the first turn starts the turn structure, like a step.
+  it("tones the opening roll like a roll and the starting player like a step", () => {
+    expect(logTone("opening_roll")).toBe(logTone("roll"));
+    expect(logTone("starting_player")).toBe("tone-step");
+  });
+
   // ADR 0119 §5: the two stack-arrival kinds read like a cast.
   it("tones a trigger and an activation like a cast", () => {
     expect(logTone("trigger")).toBe("tone-cast");

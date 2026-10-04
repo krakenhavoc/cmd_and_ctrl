@@ -37,6 +37,7 @@ func (g *Game) cloneLocked() *Game {
 		State:             g.State,
 		Turn:              g.Turn,
 		MulligansOpen:     g.MulligansOpen,
+		OpeningRoll:       cloneOpeningRoll(g.OpeningRoll),
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
 		Settings:          g.Settings,
@@ -596,6 +597,8 @@ func clonePlayer(p *Player) *Player {
 		IsBot:             p.IsBot,
 		BotTier:           p.BotTier,
 		BotDeck:           p.BotDeck,
+		Agent:             p.Agent,
+		AgentClient:       p.AgentClient,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -955,6 +958,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.PhasedOut = src.PhasedOut
 	g.Turn = src.Turn
 	g.MulligansOpen = src.MulligansOpen
+	g.OpeningRoll = src.OpeningRoll
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
 	// Settings are NOT restored (ADR 0075 §2.3): the live value is

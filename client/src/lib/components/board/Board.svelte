@@ -61,6 +61,7 @@
   } from "../../stackLane";
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
+  import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
@@ -2666,6 +2667,10 @@
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
     )}
   />
+  <!-- ADR 0121 §7: every die a card rolls and every coin it flips
+       tumbles at the roller's seat, z 41, aria-hidden, no pointer
+       events. -->
+  <DiceLayer {view} {boardEl} {beatsPrimeKey} />
   <!-- ADR 0119 §4: what the stack targets is ringed in every style,
        compact included; and while the viewer chooses targets, the
        source glows and an arrow runs to each pick and to the pointer. -->

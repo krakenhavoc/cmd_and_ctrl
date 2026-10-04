@@ -118,11 +118,17 @@
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
+  import { provideDiceQueue } from "../lib/diceQueue.svelte";
 
   interface Props {
     gameID: string;
   }
   const { gameID }: Props = $props();
+
+  // ADR 0121 §7: one dice schedule for the screen. The board's dice
+  // layer fills it and draws from it; the strip's roll cue waits on it.
+  const diceQueue = provideDiceQueue();
+  onDestroy(() => diceQueue.dispose());
 
   // Build the WS URL from the stored session + route. Query string
   // carries the session token (browsers can't send Authorization on
@@ -1794,7 +1800,7 @@
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot
                  reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
-            <BotFeed chat={$chat} />
+            <BotFeed chat={$chat} {seats} />
 
             <!-- S22 broadcast reveals (CR 701.20). The strip rather than
                  a modal on purpose: a reveal asks nobody a question, and

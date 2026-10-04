@@ -172,6 +172,15 @@ const (
 	LogReveal LogKind = "reveal"
 	LogRoll   LogKind = "roll"
 	LogFlip   LogKind = "flip"
+	// LogOpeningRoll — the opening roll moved on (ADR 0121 §3). `Label`
+	// says how: "tie" (`Seats` tied on `Results[0]` and roll again),
+	// "won" (`Seat` won with `Results[0]` and chooses who goes first)
+	// or "rolled_for" (`Seat`, the host — NoSeat for the server admin —
+	// rolled for `Seats`). Each die is its own `roll` line.
+	LogOpeningRoll LogKind = "opening_roll"
+	// LogStartingPlayer — the winner of the opening roll (`Seat`) chose
+	// who takes the first turn (`TargetSeat`), CR 103.1. ADR 0121 §2.
+	LogStartingPlayer LogKind = "starting_player"
 	// LogChooseColor — a player answered a "choose a color" prompt
 	// (CR 105.4): Coldsteel Heart as it enters, Wash Out as it
 	// resolves. `Choice` is the colour LETTER and CardID the card the
@@ -541,6 +550,9 @@ type LogEvent struct {
 	Faces   []string `json:"faces,omitempty"`
 	Call    string   `json:"call,omitempty"`
 	Wins    int      `json:"wins,omitempty"`
+	// Seats are the seats a LogOpeningRoll entry names: the seats that
+	// tied, or the seats the host rolled for (ADR 0121 §3).
+	Seats []int `json:"seats,omitempty"`
 	// Choice is the VALUE a player named at a "choose a ..." prompt:
 	// the colour letter on a LogChooseColor entry ("G"), the
 	// canonical creature type on a LogChooseType one ("Elf"). A
@@ -602,6 +614,8 @@ type LogEvent struct {
 	// GameView.Seats already carries them.
 	actorName      string
 	targetSeatName string
+	// seatNames are the display names of Seats, in order (ADR 0121).
+	seatNames []string
 	// revealSeq / revealIDs / revealNames are LogReveal's render
 	// inputs. The instance IDs exist only between projection and name
 	// resolution — resolveLogNames swaps them for printed names and
@@ -981,6 +995,26 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 			if ev.Won {
 				base.Wins = 1
 			}
+		}
+		return base, true
+
+	case game.EventOpeningRoll:
+		// ADR 0121 §3: a round ended (a tie, or a winner) or the host
+		// rolled for the seats that had not.
+		base.Kind = LogOpeningRoll
+		base.Label = ev.Label
+		base.Seats = append([]int(nil), ev.Seats...)
+		if ev.Amount > 0 {
+			base.Results = []int{ev.Amount}
+		}
+		return base, true
+
+	case game.EventStartingPlayer:
+		// ADR 0121 §2, CR 103.1: who takes the first turn, and who
+		// chose it.
+		base.Kind = LogStartingPlayer
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
 		}
 		return base, true
 
@@ -1668,6 +1702,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		if e.TargetSeat != nil {
 			e.targetSeatName = nameOfSeat(*e.TargetSeat)
 		}
+		if len(e.Seats) > 0 {
+			e.seatNames = make([]string, len(e.Seats))
+			for j, s := range e.Seats {
+				e.seatNames[j] = nameOfSeat(s)
+			}
+		}
 		if c, ok := cards[e.CardID]; ok {
 			e.cardName = logNameOf(c)
 			e.cardKnowers = c.knowers
@@ -1932,6 +1972,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	switch e.Kind {
 	case LogRoll, LogFlip:
 		return renderRandomLogText(e, actor, card)
+	case LogOpeningRoll, LogStartingPlayer:
+		return renderOpeningRollLogText(e, actor, target)
 	case LogStep:
 		round := e.Round
 		if round == 0 {

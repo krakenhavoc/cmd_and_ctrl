@@ -58,6 +58,10 @@ export interface Settings {
     cardFlip: boolean;
     particlesEtb: boolean;
     damagePopups: boolean;
+    // ADR 0121 §7: dice and coins tumble at the roller's seat. Off (or
+    // the master switch off, or reduced motion) the result still shows,
+    // settled, for the same hold; only the motion goes.
+    dice: boolean;
   };
 
   display: {
@@ -355,6 +359,7 @@ export function defaultSettings(): Settings {
       cardFlip: true,
       particlesEtb: true,
       damagePopups: true,
+      dice: true,
     },
     display: {
       theme: "dark",
@@ -504,6 +509,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     cardFlip: "synced",
     particlesEtb: "synced",
     damagePopups: "synced",
+    dice: "synced",
   },
   display: {
     theme: "synced",
@@ -976,6 +982,7 @@ settings.subscribe((s) => {
     cardFlip: s.animations.cardFlip,
     particlesEtb: s.animations.particlesEtb,
     damagePopups: s.animations.damagePopups,
+    dice: s.animations.dice,
   });
 });
 

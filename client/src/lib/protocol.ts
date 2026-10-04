@@ -549,9 +549,9 @@ export interface LegalActionsView {
 }
 
 export interface LegalSourceView {
-  // Distinct move kinds, in enumeration order. Never pass, choice or
-  // mulligan.
-  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan">[];
+  // Distinct move kinds, in enumeration order. Never pass, choice,
+  // mulligan or opening_roll.
+  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan" | "opening_roll">[];
   // Moves in the uncapped list that involve this card.
   moves: number;
   // ADR 0093 refs of live activated_abilities / zone_abilities rows.
@@ -593,7 +593,10 @@ export interface LegalMoveView {
     // #1501: a declaring defender's finish_blocks ("No blocks" /
     // "Done blocking"). Not a pass: nobody holds priority while a
     // defender declares. Carries no card.
-    | "finish_blocks";
+    | "finish_blocks"
+    // ADR 0121 §4: roll_opening and choose_starting_player, the only
+    // moves while `opening_roll` is open. Carries no card.
+    | "opening_roll";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
@@ -713,6 +716,11 @@ export type LogKind =
   // for both the log and the attention strip.
   | "roll"
   | "flip"
+  // ADR 0121 §3: the opening roll moved on (a tie, a winner, or the
+  // host rolling for everyone left), and the winner's choice of who
+  // takes the first turn. Server-rendered `text`, like `roll`.
+  | "opening_roll"
+  | "starting_player"
   // #984: a player answered a "choose a ..." prompt out loud. The
   // chosen VALUE is `choice` on the first two ("G", "Elf"); a chosen
   // PLAYER is `target_seat`, like every other player in the log. All
@@ -1640,6 +1648,12 @@ export interface PlayerView {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // AI agent seat (ADR 0122 §7): an outside model joined as a guest
+  // through the MCP seat binary. NOT a bot. Declared at join, never
+  // cleared, identical for every viewer. agent_client is the MCP
+  // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
+  is_agent?: boolean;
+  agent_client?: string;
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;
