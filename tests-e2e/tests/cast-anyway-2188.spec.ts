@@ -38,6 +38,18 @@ function makeDeck(): string {
   );
 }
 
+// rightClick opens a hand card's popover the way the browser's
+// right-click does: a `contextmenu` event on the card (Card.svelte
+// handleContextMenu). It is dispatched rather than clicked because the
+// hand is a fan of overlapping, animated cards, and a pointer right-click
+// can wait out the whole test on a neighbour or the hover zoom that
+// intercepts the pointer. What is under test is the menu, not the hit
+// testing.
+async function rightClick(card: Locator): Promise<void> {
+  await expect(card).toBeVisible();
+  await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 });
+}
+
 async function openLog(page: Page): Promise<Locator> {
   const log = page.locator('[aria-label="game log"]');
   if (!(await log.isVisible())) {
@@ -104,7 +116,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       await expect(wurmInHand).toBeVisible({ timeout: 15_000 });
 
       // --- the row opens the confirmation; Cancel sends nothing --------
-      await wurmInHand.click({ button: "right" });
+      await rightClick(wurmInHand);
       await page.getByRole("menuitem", { name: ROW }).click();
       const dialog = page.getByRole("dialog", { name: DIALOG });
       await expect(dialog).toBeVisible();
@@ -120,7 +132,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       ).toBe(true);
 
       // --- again, and Cast: the Wurm is cast without paying ------------
-      await wurmInHand.click({ button: "right" });
+      await rightClick(wurmInHand);
       await page.getByRole("menuitem", { name: ROW }).click();
       await expect(dialog).toBeVisible();
       await dialog.getByRole("button", { name: "Cast", exact: true }).click();
