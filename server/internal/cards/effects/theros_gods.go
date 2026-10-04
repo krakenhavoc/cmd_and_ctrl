@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"slices"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -38,12 +36,11 @@ func godUnlessDevotion(color string) game.StaticAbility {
 	}
 }
 
-// devotionToColors is CR 700.5's devotion to a COMBINATION of colours:
-// the mana symbols among the mana costs of permanents `controller`
-// controls that are any of `colors`. A symbol counts once however many
-// of the colours it is, so {R/G} adds one to a devotion to red and
-// green, not two (the Xenagos, God of Revels ruling). An unparseable
-// or empty mana cost contributes nothing.
+// devotionToColors is CR 700.5's two-colour devotion, "your devotion to
+// black and red": the number of mana symbols among the mana costs of
+// permanents `controller` controls that are any of `colors`. A hybrid
+// symbol of both ({B/R}) is one symbol, not one per colour, which is
+// the difference from adding devotionTo(B) and devotionTo(R).
 func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -55,7 +52,7 @@ func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int 
 			continue
 		}
 		for _, req := range cost.Required {
-			if slices.ContainsFunc(req.Options, func(opt string) bool { return slices.Contains(colors, opt) }) {
+			if symbolIsAnyColor(req.Options, colors) {
 				n++
 			}
 		}
@@ -63,10 +60,21 @@ func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int 
 	return n
 }
 
-// godUnlessDevotionTo is the God clause with any threshold and any
-// colours: "As long as your devotion to red and green is less than
-// seven, Xenagos isn't a creature" is godUnlessDevotionTo(7, "R", "G").
-func godUnlessDevotionTo(threshold int, colors ...string) game.StaticAbility {
+func symbolIsAnyColor(options, colors []string) bool {
+	for _, opt := range options {
+		for _, col := range colors {
+			if opt == col {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// godUnlessDevotionToColors is the God clause for "As long as your
+// devotion to <colour> and <colour> is less than <threshold>, <this>
+// isn't a creature" (Mogis, God of Slaughter: black and red, seven).
+func godUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

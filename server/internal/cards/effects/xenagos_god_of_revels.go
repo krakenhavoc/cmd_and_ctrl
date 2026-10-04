@@ -36,7 +36,7 @@ func init() {
 		Name:            "Xenagos, God of Revels",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
-		Static:          []game.StaticAbility{godUnlessDevotionTo(7, "R", "G")},
+		Static:          []game.StaticAbility{godUnlessDevotionToColors(7, "R", "G")},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				AtBeginningOfYourCombat("Xenagos, God of Revels — another creature you control gains haste and gets +X/+X",
