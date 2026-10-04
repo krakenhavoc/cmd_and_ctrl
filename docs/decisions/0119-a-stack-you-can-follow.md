@@ -148,6 +148,8 @@ It floats over the left part of both rows and never reflows the grid, like the o
 - `events[].stack_item_id` is already in the snapshot shape (`game/testdata/snapshot_shape/v7.txt:433`), so this writes a value into an existing field. There is no schema change and no protocol version change.
 - PR 4 checks that no watcher keys on `StackItemID` for these kinds before stamping it.
 
+**Amendment 2026-10-04:** the id travels in a new omitempty event field, `Event.ResolvedStackItemID`, because stamping `Event.StackItemID` would change frozen v7 fixture values (AGENTS.md §5). The bullets above that say the engine stamps `StackItemID` and that the field is already in the shape are superseded: the new key is recorded additively under v7, and `LogEvent.stack_item_id` on the wire is unchanged.
+
 An item that leaves with no such entry (an undo, an effect that returns a spell to its owner's hand, a reconnect) gets **no** linger. It fades out in 200 ms, because a badge would be a claim the client cannot back. The first frame after mounting, a reconnect or a replay toggle primes the tracker without lingering, as `beatsPrimeKey` does for combat beats.
 
 **What the player sees.** The departed card stays where it was drawn in the pile (or the compact row, or the lane tile) for 1.5 s, with an outcome badge:

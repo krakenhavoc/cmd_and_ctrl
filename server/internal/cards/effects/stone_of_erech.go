@@ -21,17 +21,13 @@ import (
 // ability is Stonespeaker Crystal's narrowed to one target player,
 // with the draw after the exile in printed order.
 //
-// An opponent's dying COMMANDER is exiled too, and its owner
-// separately decides — Liesa's reasoning, shared because the
-// replacement is Liesa's. CR 903.9a (pinned edition) makes a
-// commander's trip from a graveyard or exile a state-based "may"
-// AFTER it arrives, so this replacement exiles the commander like any
-// other of the opponent's creatures, and the built-in command-zone
-// replacement (builtin_replacements.go) meets it in the CR 616 apply
-// loop: the commander's OWNER orders the two (CR 616.1 gives that
-// choice to the affected object's controller, not to the Stone's),
-// the command-zone offer is asked, and "no" leaves this effect to
-// exile the creature. Pinned by
+// An opponent's dying COMMANDER is exiled too, and its owner then
+// decides — Liesa's reasoning, shared because the replacement is
+// Liesa's. CR 903.9a (pinned edition, ADR 0115) makes a commander's
+// trip from a graveyard or exile a state-based "may" AFTER it
+// arrives, so this replacement exiles the commander like any other
+// of the opponent's creatures and the owner is then offered the
+// command zone. Pinned by
 // TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines.
 func init() {
 	Register(Spec{

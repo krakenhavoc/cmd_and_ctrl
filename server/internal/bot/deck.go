@@ -292,9 +292,18 @@ func deckCheckContent(report DeckCoverageReport, clientBaseURL string, src DeckS
 		name = "This deck"
 	}
 	fmt.Fprintf(&b, "**%s**\n", name)
-	fmt.Fprintf(&b, "%d need manual play, %d are unreviewed, %d work with caveats, %d are fully automated, %d need no automation.\n",
-		report.Counts[BucketManual], report.Counts[BucketUnreviewed], report.Counts[BucketCaveats],
-		report.Counts[BucketAutomated], report.Counts[BucketNoEffect])
+	// By copies, so a Commander deck totals its size and the site agrees
+	// (#2220); an older server's report has no copies and reads by card.
+	c := report.bucketCopies()
+	if total := report.deckSize(); total > 0 {
+		fmt.Fprintf(&b, "%d of %d cards play as printed.\n", c[BucketAutomated]+c[BucketNoEffect], total)
+	}
+	fmt.Fprintf(&b, "%d need manual play, %d are unreviewed, %d work with caveats, %d are fully automated, %d need no automation (lands, vanilla).",
+		c[BucketManual], c[BucketUnreviewed], c[BucketCaveats], c[BucketAutomated], c[BucketNoEffect])
+	if report.UnknownCopies > 0 {
+		fmt.Fprintf(&b, " %d not found.", report.UnknownCopies)
+	}
+	b.WriteString("\n")
 	if names := manualCardNamesLine(report, 15); names != "" {
 		b.WriteString(names)
 		b.WriteString("\n")
@@ -528,8 +537,9 @@ func countsSentence(report *DeckCoverageReport) string {
 	if report == nil {
 		return ""
 	}
+	c := report.bucketCopies()
 	return fmt.Sprintf("(%d automated, %d with caveats, %d need no automation)",
-		report.Counts[BucketAutomated], report.Counts[BucketCaveats], report.Counts[BucketNoEffect])
+		c[BucketAutomated], c[BucketCaveats], c[BucketNoEffect])
 }
 
 // retryAfterWords renders a retry_after second count as hours and

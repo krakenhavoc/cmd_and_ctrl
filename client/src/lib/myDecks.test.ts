@@ -79,23 +79,30 @@ const COVERAGE = {
   unknown: 1,
   as_printed: 78,
   resolved: 90,
+  // By copies: a Commander deck, 100 cards with two names not found.
+  copies: { manual: 3, unreviewed: 5, caveats: 4, automated: 40, no_effect: 46 },
+  unknown_copies: 2,
+  as_printed_copies: 86,
+  deck_size: 100,
 };
 
 describe("coverageLine", () => {
   it("says N of M cards play as printed", () => {
-    expect(coverageLine(deck({ coverage: COVERAGE }))).toBe("78 of 90 cards play as printed");
+    expect(coverageLine(deck({ coverage: COVERAGE }))).toBe("86 of 100 cards play as printed");
   });
 
   it("is empty with no coverage or nothing resolved, never a wrong number", () => {
     expect(coverageLine(deck({}))).toBe("");
-    expect(coverageLine(deck({ coverage: { ...COVERAGE, resolved: 0, as_printed: 0 } }))).toBe("");
+    expect(
+      coverageLine(deck({ coverage: { ...COVERAGE, deck_size: 0, as_printed_copies: 0 } })),
+    ).toBe("");
   });
 });
 
 describe("coverageDetail", () => {
   it("names the rest in the report's words and skips zero buckets", () => {
     expect(coverageDetail(deck({ coverage: COVERAGE }))).toBe(
-      "4 simplified · 5 not checked yet · 3 you resolve by hand · 1 not found",
+      "4 simplified · 5 not checked yet · 3 you resolve by hand · 2 not found",
     );
     expect(
       coverageDetail(
@@ -103,7 +110,8 @@ describe("coverageDetail", () => {
           coverage: {
             ...COVERAGE,
             unknown: 0,
-            counts: { manual: 0, unreviewed: 0, caveats: 0, automated: 1, no_effect: 1 },
+            unknown_copies: 0,
+            copies: { manual: 0, unreviewed: 0, caveats: 0, automated: 1, no_effect: 1 },
           },
         }),
       ),
@@ -138,7 +146,7 @@ describe("library requests", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const res = await fetchMyDecks();
-    expect(coverageLine(res.decks[0])).toBe("78 of 90 cards play as printed");
+    expect(coverageLine(res.decks[0])).toBe("86 of 100 cards play as printed");
     expect(fetchMock.mock.calls[0][0]).toBe("/me/decks");
   });
 

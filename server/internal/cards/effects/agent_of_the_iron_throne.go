@@ -25,10 +25,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     last-known abilities (CR 603.10a), not because a gate special-
 //     cases it.
 //
-// A commander whose death is replaced by the command zone (the
-// engine's CR 903.9 prompt) never reaches a graveyard, so that death
-// does not drain, as printed. "Choose a Background" is a
-// deck-construction rule (CR 702.124), the deck importer's business.
+// A commander's death drains like any other (CR 903.9a, ADR 0115): it
+// reaches the graveyard and its triggers fire first, and only then is
+// its owner offered the command zone, so taking the offer does not
+// undo the drain. "Choose a Background" is a deck-construction rule
+// (CR 702.124), the deck importer's business.
 //
 // No simplification.
 const agentOfTheIronThroneGrant = "agent-of-the-iron-throne/drain"

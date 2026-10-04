@@ -423,6 +423,7 @@ events[].loyalty	bool
 events[].new_zone	string
 events[].old_zone	string
 events[].played	bool
+events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
 events[].round	number:int
 events[].seq	number:uint64
@@ -1311,6 +1312,7 @@ lastKnownStack[].item.trigger.Event.loyalty	bool
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
+lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
 lastKnownStack[].item.trigger.Event.round	number:int
 lastKnownStack[].item.trigger.Event.seq	number:uint64
@@ -1734,6 +1736,7 @@ pendingTriggers[].trigger.Event.loyalty	bool
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
+pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
 pendingTriggers[].trigger.Event.round	number:int
 pendingTriggers[].trigger.Event.seq	number:uint64
@@ -4149,6 +4152,7 @@ stackMeta[].trigger.Event.loyalty	bool
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool
+stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
 stackMeta[].trigger.Event.round	number:int
 stackMeta[].trigger.Event.seq	number:uint64

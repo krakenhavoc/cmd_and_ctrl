@@ -8,10 +8,12 @@
   // Source/target positions are read from the live DOM via
   // `getBoundingClientRect()` on `[data-instance-id="…"]` (cards) and
   // `[data-seat-id="…"]` (player headers), then translated into
-  // board-relative coordinates. Re-measured on every snapshot tick
-  // and on board resize, since opponent rotation, the hand fan, and
-  // the auto-sized rows can all reflow card positions independently
-  // of the combat state itself.
+  // board-relative coordinates. Every lookup goes through boardAnchor,
+  // so while a seat's board is expanded over the table (ADR 0120 §3) an
+  // arrow ends on the overlay's copy of a card or avatar. Re-measured
+  // on every snapshot tick and on board resize, since opponent
+  // rotation, the hand fan, and the auto-sized rows can all reflow card
+  // positions independently of the combat state itself.
   //
   // The arrows themselves use a quadratic bezier curve with a control
   // point pulled toward the table centre, which reads as "an arc
@@ -38,6 +40,7 @@
   import { blockedAttackersOf } from "../../attackTargets";
   import { gsap } from "gsap";
   import { settings } from "../../settings";
+  import { cardAnchors, cardSelector, findAnchor, seatSelector } from "../../boardAnchor";
   import {
     BeatDirector,
     beatMode,
@@ -151,7 +154,7 @@
 
   function rectIn(boardRect: DOMRect, sel: string): { x: number; y: number } | null {
     if (!boardEl) return null;
-    const el = boardEl.querySelector(sel) as HTMLElement | null;
+    const el = findAnchor(boardEl, sel);
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return {
@@ -173,14 +176,14 @@
       // in each case.
       let from: { x: number; y: number } | null = null;
       if (p.kind === "attack" || p.kind === "block") {
-        from = rectIn(boardRect, `[data-instance-id="${cssEscape(p.fromCardID)}"]`);
+        from = rectIn(boardRect, cardSelector(p.fromCardID));
       } else {
         from = rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.fromStackID)}"]`);
       }
       if (!from) continue;
       let to: { x: number; y: number } | null = null;
       if (p.kind === "attack" || p.kind === "stack-target-player") {
-        to = rectIn(boardRect, `[data-seat-id="${cssEscape(p.toSeatID)}"]`);
+        to = rectIn(boardRect, seatSelector(p.toSeatID));
       } else {
         // Card targets can live in two places: the battlefield (via
         // data-instance-id on Card.svelte) or the stack (via
@@ -191,7 +194,7 @@
         // to the stack to cover Counterspell-style stack-on-stack
         // targeting.
         to =
-          rectIn(boardRect, `[data-instance-id="${cssEscape(p.toCardID)}"]`) ??
+          rectIn(boardRect, cardSelector(p.toCardID)) ??
           rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.toCardID)}"]`);
       }
       if (!to) continue;
@@ -246,12 +249,9 @@
     if (!boardEl) return;
     const onBattlefield = new Set(view.battlefield.cards.map((c) => c.instance_id));
     const board = { w: boardRect.width, h: boardRect.height };
-    const seen = new Set<string>();
-    // First match per ID, as rectIn's querySelector picks.
-    for (const el of boardEl.querySelectorAll<HTMLElement>("[data-instance-id]")) {
-      const id = el.dataset.instanceId;
-      if (!id || seen.has(id) || !onBattlefield.has(id)) continue;
-      seen.add(id);
+    // One element per ID, the one rectIn's findAnchor picks.
+    for (const [id, el] of cardAnchors(boardEl)) {
+      if (!onBattlefield.has(id)) continue;
       const r = el.getBoundingClientRect();
       cardCache.set(id, {
         at: { x: r.left + r.width / 2 - boardRect.left, y: r.top + r.height / 2 - boardRect.top },
@@ -312,9 +312,9 @@
   // dead creature's instance can still be drawn in a graveyard pile,
   // and a ghost must not point there.
   function measure(boardRect: DOMRect, cardID?: string, seatID?: string): Point | null {
-    if (seatID) return rectIn(boardRect, `[data-seat-id="${cssEscape(seatID)}"]`);
+    if (seatID) return rectIn(boardRect, seatSelector(seatID));
     if (!cardID || !view.battlefield.cards.some((c) => c.instance_id === cardID)) return null;
-    return rectIn(boardRect, `[data-instance-id="${cssEscape(cardID)}"]`);
+    return rectIn(boardRect, cardSelector(cardID));
   }
 
   function playCue(cue: ScheduledCue): void {

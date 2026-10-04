@@ -97,6 +97,18 @@ type CoverageReport struct {
 because the bot's improvisation (ADR 0033 §8), the stack overlay's `manual` chip and the upload
 summary already share that bit.
 
+**Note 2026-10-04 (#2220): `copies`.** `Counts` is by distinct card, so thirty
+Forests counted once and a 100-card deck read "61 of 68 play as printed". The report now also
+carries `copies`, the same five buckets summed over each card's `Count`, and `unknown_copies`,
+the copies of the names in `Unknown` (sideboard rows excluded). The buckets plus
+`unknown_copies` total the deck's size, so a legal Commander deck reads 100. `Counts` is
+unchanged and stays the distinct-card tally (the request issue's table and checklists use it).
+The site's headline "N of 100 cards play as printed", its bucket bar, the library's headline
+(ADR 0110 §6) and the bot's `/c2-deck-check` reply all read `copies`. The `no_effect` bucket is
+labelled "Nothing to automate (lands, vanilla)" so basics visibly count, and a name the index
+could not find shows as "K not found" inside the total. Additive: an older client ignores both
+fields.
+
 **Validation.** The report runs `deck.Validate` and returns the violations beside the buckets.
 They are informational only: a 60-card list or a deck with an illegal commander still gets a
 report. The checker answers "how much of this is automated", not "is this legal".

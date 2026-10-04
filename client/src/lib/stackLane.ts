@@ -1,6 +1,9 @@
 // stackLane — the one model of "what is on the stack, and what does it
 // mean", shared by every way the board draws the stack (#1467).
 //
+// ADR 0119 §1 added a fifth design, the pile (large cards on the
+// left of the table), and made it the default.
+//
 // #1467 asked for the stack to move from a small docked card to the
 // centre of the table, in three competing designs (a fan of cards with
 // target arrows, a spotlight on the next item, a compact numbered
@@ -55,11 +58,23 @@ import { seatColor } from "./colors";
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { previewableCard } from "./stackPreview";
 
-/** The four ways the board can draw the stack (settings.display.stackStyle). */
-export type StackStyle = "compact" | "fan" | "spotlight" | "ribbon";
+/** The five ways the board can draw the stack (settings.display.stackStyle). */
+export type StackStyle = "pile" | "compact" | "fan" | "spotlight" | "ribbon";
 
 /** Every style, in the order the settings panel lists them. */
-export const STACK_STYLES: readonly StackStyle[] = ["compact", "fan", "spotlight", "ribbon"];
+export const STACK_STYLES: readonly StackStyle[] = [
+  "pile",
+  "compact",
+  "fan",
+  "spotlight",
+  "ribbon",
+];
+
+/**
+ * ADR 0119 §1: the pile of large cards on the left is the default, and
+ * the style an unknown stored value falls back to.
+ */
+export const DEFAULT_STACK_STYLE: StackStyle = "pile";
 
 /** The floating styles — every style but the docked "compact" panel. */
 export type StackLaneStyle = Exclude<StackStyle, "compact">;
@@ -136,6 +151,12 @@ export interface StackLaneItem {
   artCard: CardView | null;
   /** The card the hover preview may zoom, or null when the viewer may not see it (#697). */
   previewCard: CardView | null;
+  /**
+   * ADR 0119 §1: the oracle text of `previewCard`, from the /cards
+   * cache, for the pile's image `alt`. Null when the viewer may not see
+   * the card, or the host has no text for it yet.
+   */
+  cardText: string | null;
   casterSeat: string;
   casterName: string;
   casterSeatNum: number;
@@ -221,10 +242,22 @@ export interface StackLaneControls {
   hoverLeave(item: StackLaneItem): void;
 }
 
+/**
+ * ADR 0119 §1: what the host measured for the pile. The other styles
+ * ignore it.
+ */
+export interface StackPileSizing {
+  /** The top card's width in px. */
+  cardWidth: number;
+  /** True while the viewer chooses a target: top card only, small. */
+  shrunk: boolean;
+}
+
 /** Props every floating lane style component takes. */
 export interface StackLaneStyleProps {
   model: StackLaneModel;
   controls: StackLaneControls;
+  pile?: StackPileSizing;
 }
 
 /** Whether the lane has anything to show — cheap enough for Board to ask every frame. */
@@ -571,13 +604,15 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
         ? (stackCards.get(item.id)?.name ?? null)
         : (anyCard.get(item.source_card_id)?.card.name ?? labelSource(item.label));
     const isStack = kind !== "pending";
+    const preview = previewableCard(art);
     return {
       id: item.id,
       kind,
       name: kind === "pending" ? item.label || "trigger" : titleFor(item),
       sourceName: sourceName || null,
       artCard: art ?? null,
-      previewCard: previewableCard(art),
+      previewCard: preview,
+      cardText: (preview && oracleTextFor?.(preview)) || null,
       casterSeat: item.controller,
       casterName: caster?.name ?? "?",
       casterSeatNum: caster?.seat ?? 0,

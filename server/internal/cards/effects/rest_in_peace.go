@@ -28,17 +28,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // replacement is gathered while the enchantment is still on the
 // battlefield, which is the printed behaviour.
 //
-// One declared deviation, the one Liesa and Stone of Erech share and
-// for the same reason: a COMMANDER whose owner takes CR 903.9's offer
-// goes to the command zone rather than to exile. The built-in rewrites
-// the destination first, and once it is the command zone this
-// replacement no longer applies. Weaker than printed, never stronger.
+// A COMMANDER is exiled like any other card (CR 903.9a, ADR 0115):
+// the exile lands, its triggers fire, and only then is its owner
+// offered the command zone, so the replacement never competes with the
+// commander rule and no ordering prompt is asked.
 func init() {
 	Register(Spec{
 		OracleID:     "087f9ad7-e74f-40e2-8102-1ed2925d0418",
 		Name:         "Rest in Peace",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A dying commander whose owner sends it to the command zone goes there instead of being exiled."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			Label: "Rest in Peace: exile instead of a graveyard",
 		}.Build()},

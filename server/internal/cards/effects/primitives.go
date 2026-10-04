@@ -229,9 +229,10 @@ type SacrificePermanent struct {
 	//
 	// #993, and the same shape as ExileTarget.Then (#870). A sacrifice
 	// is not itself replaceable (CR 701.17a), but the MOVE it makes is
-	// an ordinary zone change, so a sacrificed commander opens the
-	// CR 903.9 window and the permanent is still on the battlefield
-	// while the question is open. A clause written on the next line
+	// an ordinary zone change, so a replacement's window opens and the
+	// permanent is still on the battlefield while its question is open
+	// (a sacrificed commander is not one: it lands in the graveyard and
+	// CR 903.9a asks afterwards, ADR 0115). A clause written on the next line
 	// therefore reads "still here, so it was not sacrificed" for a leg
 	// that is merely PAUSED and pays out nothing for a sacrifice that
 	// does land a beat later.
@@ -286,11 +287,11 @@ type ExileTarget struct {
 	//
 	// #870: it runs from a CONTINUATION for the reason
 	// ExileAllMatching.Then does — the exile opens the CR 614 window,
-	// so a commander stops to answer CR 903.9 and whether it was
-	// exiled is not knowable on the next line. `exiled` is false when
-	// the window cancelled the move, when a replacement sent the card
-	// somewhere else, and when a commander took the command zone: it
-	// left, but not to exile (CR 400.7). Write the clause as
+	// so a replacement may stop to ask and whether it was exiled is
+	// not knowable on the next line. `exiled` is false when the window
+	// cancelled the move or a replacement sent the card somewhere
+	// else (CR 400.7). A commander is exiled like any card; CR 903.9a
+	// asks its owner afterwards (ADR 0115). Write the clause as
 	// something that acts on what it is told, not as the next line of
 	// the card.
 	Then func(ctx *Context, exiled bool) error
@@ -348,7 +349,7 @@ func ExileFirstTarget(g *game.Game, item *game.StackItem) error {
 // `Then` is fire-and-forget: it returns nil when the CR 614 window
 // CANCELLED the exile ("cards in graveyards can't be exiled"), when a
 // replacement sent the card somewhere else, and when the move merely
-// PAUSED on a commander card's CR 903.9 prompt. All three paid out
+// PAUSED on a replacement's prompt. All three paid out
 // anyway — life, a +1/+1 counter, a Zombie — for a card that was still
 // sitting in its graveyard. So the clause hangs off `ExileTarget.Then`
 // and is gated on `exiled`, CR 400.7's reading: the card that ARRIVED
@@ -370,9 +371,10 @@ func ExileFirstTarget(g *game.Game, item *game.StackItem) error {
 // there the second sentence is about a player, makes no claim about the
 // card, and happens either way.
 //
-// A commander card that takes CR 903.9's offer left the graveyard but
-// did not reach exile, so it pays out nothing either — the same answer
-// the batch gives "for each card exiled this way".
+// A commander card is exiled like any other: it arrives in exile and
+// the clause pays out, and its owner is offered the command zone
+// afterwards (CR 903.9a, ADR 0115) — the same answer the batch gives
+// "for each card exiled this way".
 type ExileThenIfItWas struct {
 	Target uuid.UUID
 
@@ -1393,15 +1395,15 @@ type MillToZone struct {
 	// each one rather than routing every leg on one line (Apply picks
 	// the form). Nothing is lost by it — the fire-and-forget form's
 	// returned list is discarded here anyway — and what it buys is a
-	// run that cannot walk past a leg paused on CR 903.9 and keep
+	// run that cannot walk past a leg paused on a prompt and keep
 	// milling.
 	//
 	// `landed` is the cards that have actually reached To so far, top
 	// of the library first, and it is never empty when the clause is
-	// asked. #1159: a card the CR 614 window sent somewhere else — a
-	// commander taking the command zone (CR 903.9), "if a card would
-	// be put into a graveyard from anywhere, exile it instead" — was
-	// never put into To, so it is not in the list and does not end the
+	// asked. #1159: a card the CR 614 window sent somewhere else —
+	// "if a card would be put into a graveyard from anywhere, exile
+	// it instead" — was never put into To (a milled commander was: its
+	// owner's CR 903.9a offer comes afterwards, ADR 0115), so it is not in the list and does not end the
 	// run. Same reading as Then's `milled`, because it is the same
 	// rule (CR 400.7).
 	//
@@ -1420,12 +1422,11 @@ type MillToZone struct {
 	//
 	// #893: it runs from a CONTINUATION, for the reason
 	// ExileTarget.Then and DestroyAllMatching.Then do — a mill opens
-	// the CR 614 window per card, so a commander coming off the top
-	// stops to answer CR 903.9 and what was milled is not knowable on
-	// the next line. `milled` is CR 400.7's reading: a card a
-	// replacement sent somewhere else (the command zone, or exile
-	// under "if a card would be put into a graveyard from anywhere,
-	// exile it instead") is not in it, however thoroughly it left the
+	// the CR 614 window per card, so a replacement may stop to ask
+	// and what was milled is not knowable on the next line. `milled`
+	// is CR 400.7's reading: a card a replacement sent somewhere else
+	// (exile under "if a card would be put into a graveyard from
+	// anywhere, exile it instead") is not in it, however thoroughly it left the
 	// library. Write the clause as something that acts on what it is
 	// told, not as the next line of the card.
 	Then func(ctx *Context, milled []uuid.UUID) error
@@ -1453,8 +1454,8 @@ func (m MillToZone) Apply(ctx *Context) error {
 	if m.Then == nil && m.Until == nil {
 		// Nothing is waiting on the list and nothing is watching what
 		// lands, so the mill stays fire-and-forget: every card is
-		// routed on this line and a commander's CR 903.9 prompt lands
-		// its own card later without holding the rest of the mill up.
+		// routed on this line and a replacement's prompt lands its own
+		// card later without holding the rest of the mill up.
 		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest)
 		return err
 	}

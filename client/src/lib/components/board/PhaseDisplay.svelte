@@ -8,10 +8,12 @@
   // Two stacked rows:
   //   1. Turn number + active player (dot + name) … step label
   //   2. Phase track — one icon per step in canonical turn order, with
-  //      the current step highlighted. Phase boundaries (beginning /
-  //      precombat main / combat / postcombat / ending) are separated
-  //      by a faint gap so the structure of a turn is visible at a
-  //      glance. A priority-granting step can be clicked to pin a stop.
+  //      the current step highlighted, in five groups: CR 500.1's
+  //      phases (beginning / precombat main / combat / postcombat main
+  //      / ending), each `role="group"` with a tiny caption under it
+  //      (BEGIN, MAIN 1, COMBAT, MAIN 2, END) and a hairline between
+  //      groups (#2214). A priority-granting step can be clicked to pin
+  //      a stop; its button name (its title) is unchanged by #2214.
   //   The step label ends the turn line, with "no priority" during
   //   Untap / Cleanup (CR 502.4 / 514.3).
   //
@@ -23,7 +25,7 @@
   import { seatColor } from "../../colors";
   import { avatarURL } from "../../api";
   import { getAvatarColor } from "../../avatarColor";
-  import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
+  import { STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import PhaseIcon from "./PhaseIcon.svelte";
   import {
@@ -105,14 +107,51 @@
     return seats[seat]?.name ?? `seat ${seat}`;
   });
 
-  // Phase-group boundaries: a faint separator between groups of steps
-  // makes the five MTG phases (beginning / precombat main / combat /
-  // postcombat / ending) visually distinct without labels.
-  // Indices into STEP_IDS: before precombat_main, before begin_combat,
-  // before end_combat and before postcombat_main. They move whenever a
-  // step is added to the list — first_strike_damage (#717) pushed the
-  // last two along by one.
-  const BOUNDARIES: ReadonlySet<number> = new Set([3, 4, 9, 10]);
+  // #2214: the track is CR 500.1's five phases, each a labelled group
+  // with a tiny caption under its steps. `name` is the group's
+  // accessible name (new in #2214; the step buttons' names did not
+  // change), `caption` the visible one. Every step of STEP_IDS sits in
+  // exactly one group, in order: phaseDisplay.track.render.test.ts
+  // fails when a step is added to turn.ts and not here.
+  const PHASES: ReadonlyArray<{
+    key: string;
+    name: string;
+    caption: string;
+    steps: readonly StepID[];
+  }> = [
+    {
+      key: "beginning",
+      name: "beginning phase",
+      caption: "Begin",
+      steps: ["untap", "upkeep", "draw"],
+    },
+    {
+      key: "precombat_main",
+      name: "precombat main phase",
+      caption: "Main 1",
+      steps: ["precombat_main"],
+    },
+    {
+      key: "combat",
+      name: "combat phase",
+      caption: "Combat",
+      steps: [
+        "begin_combat",
+        "declare_attackers",
+        "declare_blockers",
+        "first_strike_damage",
+        "combat_damage",
+        "end_combat",
+      ],
+    },
+    {
+      key: "postcombat_main",
+      name: "postcombat main phase",
+      caption: "Main 2",
+      steps: ["postcombat_main"],
+    },
+    { key: "ending", name: "ending phase", caption: "End", steps: ["end", "cleanup"] },
+  ];
 
   // Per-seat accent colour, keyed by player id. Seeded synchronously
   // from seatColor() so first paint has the right shape; avatarColor
@@ -187,30 +226,46 @@
   </div>
 
   <div class="row track" id="dock-phase-track" aria-label="phase track">
-    {#each STEP_IDS as id, i (id)}
-      {#if BOUNDARIES.has(i)}
+    {#each PHASES as phase, gi (phase.key)}
+      {#if gi > 0}
         <span class="track-gap" aria-hidden="true"></span>
       {/if}
-      {@const clickable = canManuallyStop(id)}
-      {@const isPinned = pinned.has(id)}
-      <button
-        type="button"
-        class="step-icon"
-        class:current={turn.step === id}
-        class:pinned={isPinned}
-        class:clickable
-        disabled={!clickable}
-        title={clickable
-          ? isPinned
-            ? `${STEP_LABELS[id]} — click to unpin`
-            : `${STEP_LABELS[id]} — click to pin a one-time stop`
-          : `${STEP_LABELS[id]} — no priority`}
-        aria-current={turn.step === id ? "step" : undefined}
-        aria-pressed={clickable ? isPinned : undefined}
-        onclick={() => onIconClick(id)}
+      <div
+        class="phase-group"
+        class:current-phase={phase.steps.includes(turn.step as StepID)}
+        role="group"
+        aria-label={phase.name}
+        data-phase={phase.key}
       >
-        <PhaseIcon step={id} />
-      </button>
+        <div class="phase-steps">
+          {#each phase.steps as id (id)}
+            {@const clickable = canManuallyStop(id)}
+            {@const isPinned = pinned.has(id)}
+            <button
+              type="button"
+              class="step-icon"
+              class:current={turn.step === id}
+              class:pinned={isPinned}
+              class:clickable
+              disabled={!clickable}
+              title={clickable
+                ? isPinned
+                  ? `${STEP_LABELS[id]} — click to unpin`
+                  : `${STEP_LABELS[id]} — click to pin a one-time stop`
+                : `${STEP_LABELS[id]} — no priority`}
+              aria-current={turn.step === id ? "step" : undefined}
+              aria-pressed={clickable ? isPinned : undefined}
+              data-step={id}
+              onclick={() => onIconClick(id)}
+            >
+              <PhaseIcon step={id} />
+            </button>
+          {/each}
+        </div>
+        <!-- The group's name says it to a screen reader; this is the
+             sighted half. -->
+        <span class="phase-caption" aria-hidden="true">{phase.caption}</span>
+      </div>
     {/each}
   </div>
 
@@ -306,13 +361,43 @@
      render at low opacity in the chrome colour so the row reads as a
      subtle timeline rather than a noisy icon strip. */
   .track {
-    gap: 3px;
-    padding: 2px 0;
+    gap: 0;
+    padding: 2px 0 0;
     flex-wrap: nowrap;
+    align-items: stretch;
+    min-width: 0;
+  }
+  /* #2214: one group per phase, its steps over a tiny caption. A main
+     phase is one step under a wider caption, so the group is as wide
+     as the wider of the two. */
+  .phase-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+  }
+  .phase-steps {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .phase-caption {
+    font-size: 0.5rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--fg-dim);
+    transition: color 160ms var(--ease);
+  }
+  .phase-group.current-phase .phase-caption {
+    color: var(--active-player-color, var(--fg));
   }
   .step-icon {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
@@ -324,7 +409,9 @@
     margin: 0;
     border: none;
     background: transparent;
-    color: rgba(255, 255, 255, 0.3);
+    /* From --fg, not a fixed white, so the light theme draws the
+       idle steps too (#2214). */
+    color: color-mix(in srgb, var(--fg) 40%, transparent);
     opacity: 0.85;
     cursor: default;
     transition:
@@ -337,7 +424,7 @@
     cursor: pointer;
   }
   .step-icon.clickable:hover {
-    color: rgba(255, 255, 255, 0.55);
+    color: color-mix(in srgb, var(--fg) 62%, transparent);
   }
   .step-icon.clickable:focus-visible {
     outline: 1px solid var(--accent);
@@ -373,10 +460,15 @@
     background: var(--accent);
     box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 75%, transparent);
   }
+  /* Between two phases: a hairline beside the icons, with the spare
+     width of a wide dock shared out between the four of them. */
   .track-gap {
-    width: 8px;
-    height: 1px;
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 3px;
+    max-width: 26px;
+    align-self: stretch;
+    --gap-line: color-mix(in srgb, var(--fg) 16%, transparent);
+    background: linear-gradient(var(--gap-line), var(--gap-line)) center 1px / 1px 14px no-repeat;
   }
   .step-label {
     margin-left: auto;
@@ -417,6 +509,17 @@
   @media (max-width: 599px) {
     .phase-display:not(.track-open) .track {
       display: none;
+    }
+  }
+  /* The narrowest phones (a 320px screen leaves the track ~250px):
+     the icons drop to 14px so the five groups still fit on one line. */
+  @media (max-width: 359px) {
+    .phase-steps {
+      gap: 1px;
+    }
+    .step-icon {
+      width: 14px;
+      height: 14px;
     }
   }
 </style>

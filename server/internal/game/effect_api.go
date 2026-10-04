@@ -1044,8 +1044,9 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 // branch any more: every game draws from a key (rng.go).
 //
 // THE FIRE-AND-FORGET FORM. A discard is an exit (ADR 0013 §5g) and a
-// discarded commander's CR 903.9 prompt pauses the batch, so nil means
-// "no error", never "the cards are in the graveyard". A card with a
+// replacement's prompt can pause the batch (a discarded commander no
+// longer does: it reaches the graveyard first, CR 903.9a, ADR 0115),
+// so nil means "no error", never "the cards are in the graveyard". A card with a
 // clause hanging off the discard uses DiscardRandomThenForEffect.
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	return g.DiscardRandomThenForEffect(playerID, n, nil)
@@ -1105,20 +1106,20 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // The FIRE-AND-FORGET form, and since #893 its slice means what
 // ExileCardsForEffect's count has meant since #866: the CR 400.7
 // arrived-object reading (landedInZoneLocked). A card a replacement
-// sent somewhere else is not in it — a commander whose owner took
-// CR 903.9's offer went to the command zone rather than to a
-// graveyard, and "if a card would be put into a graveyard from
-// anywhere, exile it instead" moved the card to exile — and neither is
-// a leg the CR 614 window cancelled. A leg that merely PAUSED on the
-// CR 903.9 prompt cannot be in it either, because nothing has moved
-// yet; that is what MillToZoneThenForEffect is for, and a caller that
+// sent somewhere else is not in it — "if a card would be put into a
+// graveyard from anywhere, exile it instead" moved the card to exile
+// — and neither is a leg the CR 614 window cancelled. A milled
+// commander IS in it: it reaches the graveyard before its owner is
+// offered the command zone (CR 903.9a, ADR 0115). A leg that merely
+// PAUSED on a replacement's prompt cannot be in it, because nothing
+// has moved yet; that is what MillToZoneThenForEffect is for, and a caller that
 // reads the slice should use it.
 //
 // There is NO `until` clause on this form, and #1161 took the
 // parameter away rather than documenting a rule about it. A run that
 // ends on what LANDED has to wait for each leg to land, and this form
-// is the one that does not wait: a leg paused on the CR 903.9 prompt
-// has not arrived when the loop asks, so the run walks past it. With
+// is the one that does not wait: a leg paused on a replacement's
+// prompt has not arrived when the loop asks, so the run walks past it. With
 // a "stop after the first creature card" that costs one card; with
 // Helm of Obedience's "or X cards", where the bound itself counts
 // arrivals (#1161), it costs the whole library. So the clause lives
@@ -1171,18 +1172,19 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]
 // "for each card of the chosen color exiled this way" (Oona).
 //
 // #893, and the same pair ExileCardsThenForEffect / ExileCardsForEffect
-// are two halves of (ADR 0013 §5k). Any leg can pause on the CR 903.9
-// prompt, so what was milled is not knowable on the line after the
-// mill: a commander on top of the library queues its owner's question
-// and moves nowhere until they answer it. The legs therefore go IN
+// are two halves of (ADR 0013 §5k). Any leg can pause on a
+// replacement's prompt, so what was milled is not knowable on the
+// line after the mill. (A milled commander is not such a leg since
+// ADR 0115: it lands in the graveyard and CR 903.9a asks afterwards.)
+// The legs therefore go IN
 // SEQUENCE, each from the previous one's continuation, with the landed
 // list carried forward BY VALUE — the property that makes an undo
 // across the prompt replay identically.
 //
 // What "this way" means is CR 400.7's, landedInZoneLocked's: the
-// object that ARRIVED in `dest`. A commander that took the command
-// zone was not milled, and neither was a card an "exile it instead"
-// replacement rewrote on the way to a graveyard.
+// object that ARRIVED in `dest`. A milled commander was milled, and
+// a card an "exile it instead" replacement rewrote on the way to a
+// graveyard was not.
 //
 // The cost of waiting, which the fire-and-forget form does not pay:
 // the rest of the mill happens when the prompt is answered rather than
@@ -1222,7 +1224,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]
 //
 // Why the clause is on the sequencing form and nowhere else: it is
 // answered about cards that have ARRIVED, and only this form waits for
-// them. The fire-and-forget loop walks past a leg paused on CR 903.9,
+// them. The fire-and-forget loop walks past a leg paused on a prompt,
 // which with a landed-count bound would mill the whole library while
 // the prompts piled up. MillToZoneForEffect therefore takes no `until`
 // at all — the combination is unspellable rather than guarded against.
@@ -1254,8 +1256,8 @@ func (g *Game) MillToZoneThenForEffect(
 // addressed by ID from there — rather than by repeatedly popping
 // whatever is on top.
 //
-// A milled commander gets the CR 903.9 prompt, and a queued prompt
-// leaves that card exactly where it was: still on top of the library.
+// A queued prompt (a milled commander's was one before ADR 0115) leaves
+// that card exactly where it was: still on top of the library.
 // Re-reading the top each iteration would hand back the same commander
 // every time and mill nothing else. Choosing the set first lets the
 // fire-and-forget mill proceed AROUND the paused card, which is both
@@ -1323,8 +1325,8 @@ func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID, opts ...DestroyOption
 // behalf of its controller (CR 701.21): EventSacrifice fires while
 // the card is still on the battlefield, then it takes the ordinary
 // route to its owner's graveyard (emitting ZoneMove + LTB, so
-// dies-triggers see it and the CR 903.9 commander-zone replacement
-// still gets its say).
+// dies-triggers see it, and the CR 903.9a offer follows once it has
+// landed).
 //
 // Sacrifice is not destruction — no indestructible / regeneration
 // check applies, which is why this doesn't reuse the destroy path's
@@ -1340,11 +1342,13 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 // the shared exile zone. The source zone is found by scanning; if
 // the card is already in exile, the call is a no-op.
 //
-// #529: routed through the shared exit primitive, so exile — a CR
-// 903.9 destination — offers a commander's owner the command zone.
-// That is #372 (Airbend exiles a commander with no prompt). When the
-// prompt is queued nothing has moved yet and this returns nil; the
-// move completes when the owner answers.
+// #529: routed through the shared exit primitive so every
+// replacement window sees the move. A commander is exiled like any
+// other card and its owner is offered the command zone afterwards
+// (CR 903.9a, ADR 0115; #372 asked for the offer, and before ADR 0115
+// it was a replacement that queued before the move). When a
+// replacement's prompt is queued nothing has moved yet and this
+// returns nil.
 //
 // Which is why this is the FIRE-AND-FORGET form: nil means "no error",
 // never "it is in exile". A caller with an "if you do" or a "for each

@@ -63,7 +63,8 @@
 </script>
 
 {#if $showFrames || $showSpawn || $showReplay || showSeats}
-  <div class="dock">
+  <!-- data-bottom-left-fixture: the stack pile stays above it (ADR 0119 §1). -->
+  <div class="dock" data-bottom-left-fixture>
     {#if open}
       <div class="panel">
         {#if open === "frames"}

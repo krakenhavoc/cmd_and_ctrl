@@ -889,7 +889,7 @@ var deckBucketLabels = map[deckcoverage.Bucket]string{
 	deckcoverage.Unreviewed: "In the engine, not yet reviewed",
 	deckcoverage.Caveats:    "Automated with caveats",
 	deckcoverage.Automated:  "Automated",
-	deckcoverage.NoEffect:   "Nothing to automate",
+	deckcoverage.NoEffect:   "Nothing to automate (lands, vanilla)",
 }
 
 // renderDeckRequestIssue is ADR 0095 §3 step 4's body: the deck link,

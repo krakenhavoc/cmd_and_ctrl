@@ -38,6 +38,8 @@ function report(over: Partial<CoverageReport> = {}): CoverageReport {
     deck_key: "moxfield:AbC123",
     commanders: [],
     counts: { manual: 0, unreviewed: 0, caveats: 0, automated: 0, no_effect: 0 },
+    copies: { manual: 0, unreviewed: 0, caveats: 0, automated: 0, no_effect: 0 },
+    unknown_copies: 0,
     cards: [],
     unknown: [],
     violations: [],

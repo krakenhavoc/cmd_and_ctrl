@@ -140,7 +140,9 @@
 </script>
 
 {#if visible}
-  <div class="overlay" aria-label={`stack: ${displayItems.length} on the stack`}>
+  <!-- data-stack-overlay: lib/stackPile.ts leaves this card out when it
+       measures the strip's content (ADR 0119 §1). -->
+  <div class="overlay" data-stack-overlay aria-label={`stack: ${displayItems.length} on the stack`}>
     <header class="stack-head">
       <span class="label">stack <b class="count">{displayItems.length}</b></span>
       {#if splitSecondActive}
