@@ -1167,6 +1167,14 @@ export interface PendingChoiceView {
   source?: string;
   reason?: string;
   options?: CardView[];
+  // ADR 0116: for "discard_from_hand", the instance IDs among
+  // `options` the chooser may pick ("you choose a nonland card from
+  // it"). `options` stays the whole revealed hand. Absent means every
+  // option (a prompt from before the filter).
+  eligible?: string[];
+  // ADR 0116: what `eligible` holds, as the card prints it — "nonland
+  // card", "card with mana value 3 or greater".
+  eligible_label?: string;
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
   // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
