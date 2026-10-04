@@ -204,6 +204,10 @@ export type ActionType =
   | "pass_priority"
   | "pass_turn"
   | "resolve_choice"
+  // ADR 0121 §5: "Roll a die" — `{die: "d6" | "d20" | "coin"}`, a roll
+  // at the table for fun. Never a game roll, never undoable, and the
+  // server takes one per seat per 2 s.
+  | "roll_table_die"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -782,6 +786,10 @@ export type LogKind =
   // takes the first turn. Server-rendered `text`, like `roll`.
   | "opening_roll"
   | "starting_player"
+  // ADR 0121 §5: a d6, a d20 or a coin rolled at the table for fun.
+  // `sides` and `results`, or `faces` for a coin, and `roll_id`, which
+  // an undo keeps when it writes the line again under a new `seq`.
+  | "table_roll"
   // #984: a player answered a "choose a ..." prompt out loud. The
   // chosen VALUE is `choice` on the first two ("G", "Elf"); a chosen
   // PLAYER is `target_seat`, like every other player in the log. All
@@ -1007,6 +1015,11 @@ export interface LogEvent {
   faces?: string[];
   call?: "heads" | "tails";
   wins?: number;
+  // ADR 0121 §5: a `table_roll` entry's identity, the game's table-roll
+  // count after it (1 for the first). An undo of an earlier action
+  // writes the line again under a new `seq` and the same `roll_id`, so
+  // the dice layer keys the roll on this and plays it once.
+  roll_id?: number;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
