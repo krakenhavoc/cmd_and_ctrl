@@ -167,3 +167,49 @@ describe("the seat keyword badge", () => {
     expect(got[0].title).toContain("— Insist");
   });
 });
+
+// ADR 0113 §3, owner decision 1 (#2074, CR 402.2): a seat whose
+// effective maximum hand size is not seven shows it, from the existing
+// max_hand_size field. Seven, or no field at all, shows nothing.
+describe("the seat's maximum hand size badge", () => {
+  const withMax = (max?: number): PlayerView => ({ ...seat(), max_hand_size: max }) as PlayerView;
+
+  it("is absent at the default seven", () => {
+    const { container } = render(PlayerIdentity as never, props(withMax(7)) as never);
+    expect(badges(container)).toHaveLength(0);
+  });
+
+  it("is absent when the view carries no maximum", () => {
+    const { container } = render(PlayerIdentity as never, props(withMax(undefined)) as never);
+    expect(badges(container)).toHaveLength(0);
+  });
+
+  it("shows HAND MAX 0 under Jin-Gitaxias", () => {
+    const { container } = render(PlayerIdentity as never, props(withMax(0)) as never);
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("HAND MAX 0");
+    expect(got[0].title).toContain("Maximum hand size 0");
+  });
+
+  it("shows a raised maximum too", () => {
+    const { container } = render(PlayerIdentity as never, props(withMax(11)) as never);
+    expect(badges(container).map((b) => b.text)).toEqual(["HAND MAX 11"]);
+  });
+
+  it("shows NO HAND MAX for no maximum hand size", () => {
+    const { container } = render(PlayerIdentity as never, props(withMax(-1)) as never);
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("NO HAND MAX");
+    expect(got[0].title).toContain("No maximum hand size");
+  });
+
+  it("renders on your own seat as well as an opponent's", () => {
+    const { container } = render(
+      PlayerIdentity as never,
+      props(withMax(2), { isSelf: true }) as never,
+    );
+    expect(badges(container).map((b) => b.text)).toEqual(["HAND MAX 2"]);
+  });
+});

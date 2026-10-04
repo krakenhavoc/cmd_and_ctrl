@@ -73,8 +73,8 @@ func TestWizardClassStartsAtLevelOneWithOnlyItsLevelOneAbility(t *testing.T) {
 	// Level 1 — "You have no maximum hand size" — is on from the
 	// start, and it is the printed NoMaxHandSize slot rather than a
 	// gated static, because a level-1 line has nothing to wait for.
-	if !game.CatalogNoMaxHandSize(wizardClassOracle) {
-		t.Error("Wizard Class level 1 should declare NoMaxHandSize")
+	if hs := game.CatalogHandSize(wizardClassOracle); len(hs) != 1 || hs[0].Kind != game.HandSizeNoMaximum || hs[0].Players != game.HandSizeYou {
+		t.Errorf("Wizard Class level 1 should declare NoMaxHandSize, got %+v", hs)
 	}
 
 	card := layeredCard(t, g, id)

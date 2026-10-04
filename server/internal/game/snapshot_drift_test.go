@@ -536,6 +536,8 @@ var playerFields = plan(
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
+	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.
+	"MaxHandSizeAt", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
 	// ADR 0066 granted cast and play permissions. Carried, not

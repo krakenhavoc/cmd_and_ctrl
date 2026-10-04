@@ -64,6 +64,7 @@ func Register(spec Spec) {
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
 	checkPlayerKeywords(spec)
+	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
 		// #1723: an X-bound target clause is allowed on an activated
