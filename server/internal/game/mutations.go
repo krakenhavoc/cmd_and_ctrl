@@ -7206,31 +7206,51 @@ func (g *Game) MaxCounterPaymentForEffect(playerID, sourceID uuid.UUID, rc *Coun
 	return g.maxCounterPaymentLocked(playerID, sourceID, rc).CountersRemoved
 }
 
-// ManaAbilityAddsNoMana reports CR 903.4f for one mana ability: it
-// would add no mana at all, so nothing should offer it. True only for
-// an ability whose printed text says "any color in your commander's
-// color identity" (NarrowToCommanderIdentity) activated by a player
-// who has no commander, or whose commander's colour identity is
-// colourless — the identity is undefined or empty, and "that part of
-// the ability won't do anything".
+// ManaAbilityAddsNoMana reports that one mana ability would add no
+// mana at all right now, so nothing should offer it. Two cases:
 //
-// The engine still ACCEPTS such an activation (the ability exists; it
-// just does nothing, which is what the rulings on Command Tower,
-// Arcane Signet, Commander's Sphere and Path of Ancestry say). This is
-// what keeps it from being OFFERED: the legal-move enumerator drops
-// the move, the view greys the row, and the auto-tapper skips the
-// source through the same narrowing (gatherTapSources).
+//   - CR 903.4f: an ability whose printed text says "any color in your
+//     commander's color identity" (NarrowToCommanderIdentity) activated
+//     by a player who has no commander, or whose commander's colour
+//     identity is colourless — the identity is undefined or empty, and
+//     "that part of the ability won't do anything".
+//   - ADR 0117 §5: an ability whose output is COMPUTED (ProducedFunc,
+//     ProducedForPaid or DerivedMatch) and computes to no mana right
+//     now — a power-0 Vivi Ornitier, a Selvala whose greatest power is
+//     0, an Exotic Orchard with nothing to copy, a Mage-Ring Network
+//     with no counters. It is read the way every "what would this
+//     make" reader reads it: manaAbilityProducedLocked with the largest
+//     counter payment. A static Produced of "" stays out of it.
+//
+// The engine still ACCEPTS such an activation (CR 605.1a: the ability
+// exists and may be activated; it just does nothing, which is what the
+// rulings on Command Tower and its kin say). This is what keeps it from
+// being OFFERED: the legal-move enumerator drops the move, the view
+// greys the row, and the auto-tapper skips the source (it never plans
+// a source with no output).
 //
 // Read-only. Callers hold whatever lock their read path already holds
 // — the legal enumerator reads the battlefield the same way.
 func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilityShape) bool {
-	if g == nil || !ab.NarrowToCommanderIdentity {
+	if g == nil {
+		return false
+	}
+	computed := ab.ProducedFunc != nil || ab.ProducedForPaid != nil || ab.DerivedMatch != nil
+	if !ab.NarrowToCommanderIdentity && !computed {
 		return false
 	}
 	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	slots, err := ParseProducedMana(produced)
-	if err != nil || len(slots) == 0 {
-		// A broken or empty declaration is not this rule's business.
+	if err != nil {
+		// A broken declaration is not this rule's business.
+		return false
+	}
+	if len(slots) == 0 {
+		// Empty output: only a computed one is "adds nothing right
+		// now"; a static empty declaration is left alone.
+		return computed
+	}
+	if !ab.NarrowToCommanderIdentity {
 		return false
 	}
 	identity := commanderIdentityFor(g, g.playerByIDLocked(playerID))
