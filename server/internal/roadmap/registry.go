@@ -950,16 +950,27 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0100 sub-PR 3): `AdditionalCost.Either` — one mandatory cost whose branches are ordinary `AdditionalCost`s with a `Key`, built with `effects.EitherCost(…)` and `.Keyed(…)` — plus the fixed `PayLife` component (`effects.PayLifeCost`), a mana branch (`effects.ManaAdditionalCost`) and blight in a branch (`effects.BlightCost`). The branch is announced as `CastSpellParams.CostBranch` (`cost_branch` on the wire and on the auto-tap preview), required on a branched card and refused on any other; `game.ChosenAdditionalCost` hands the chosen branch to `castCostPayments` as the plan's mandatory entry, so there is still one validator and one payer. `game.AdditionalCostMana` (which replaced `AddOptionalCostMana`) prices the branch's mana with the optional costs' at CR 601.2f. `Game.AdditionalCostBranchPayableLocked` is read by the view's `additional_cost.branches[].payable`, the enumerator (one move per payable branch) and `CastSpell`. `PaidCost.CostBranch` (index + 1, read by key through `ctx.PaidCostBranch`) and `PaidCost.Discarded` (every card the additional cost discarded, read through `ctx.Discarded`; owner decision 6, which is Grab the Prize) are additive within schema v7 and kept by a CR 707.10 copy. **Still open:** the branch components the cast path has no shape for yet — reveal a card from your hand (9 cards), behold (6), tap an untapped artifact (Disruption Protocol), exile two cards from your graveyard (Soaring Stoneglider), forage (Feed the Cycle) and \"choose a creature you control or reveal a creature card\" (Monstrous Emergence); each arrives with its first card as a new branch component. Titania, Rugged Rumbler's cast cost works but her \"Ward—Discard a card or pay {2}\" is an either/or on a WARD. Dusk Mangler pays its cost today and is held for its entry trigger's sacrifice, discard and life loss in printed order. Betrayer's Bargain shipped with ADR 0108 PR 1 (#1886).",
 	},
 	{
-		Slug: "variable-sacrifice-cast-cost", Name: "Variable sacrifice costs on spells", Kind: KindSeam, Status: StatusPartial,
-		Summary:     "Spells that ask you to sacrifice X permanents, or any number of them, let you pick how many as you cast them — and the ones that cost less for each permanent sacrificed are priced with the discount.",
-		Missing:     "A spell that reads the sacrificed permanents themselves, like the total power of the creatures sacrificed, isn't supported yet.",
-		Rules:       []string{"601.2b", "601.2f", "601.2h", "107.3a"},
-		Issue:       1732,
-		ADR:         "0100-delve-either-or-and-variable-sacrifice-costs.md",
-		Mechanic:    "variable sacrifice cost",
-		Examples:    []string{"Vicious Betrayal", "Torgaar, Famine Incarnate", "Plumb the Forbidden"},
-		Waiting:     []string{"Corpse Cobble", "Extus, Oriq Overlord"},
-		EngineNotes: "**Shipped** (ADR 0100 sub-PR 4): two variable shapes of a cast's MANDATORY sacrifice clause — `effects.SacrificeAnyNumberCost` (Min 0 / Max 0, `game.SacrificeAnyNumber`: \"sacrifice any number of\", \"you may sacrifice any number of\", \"you may sacrifice one or more\") and `effects.SacrificeXCost` (`CountFromX`, the announced `XValue`, CR 107.3a / 107.3i). The rule that makes the flat `sacrifice_ids` list unambiguous: a cast's plan holds at most one variable sacrifice clause and, with one, no other sacrifice (`effects.checkVariableSacrificePlan`, beside `checkEitherCost`), so `validateAdditionalCostLocked` hands the variable clause whatever is left of the list and checks it with `SacrificeCountLegal` at the announced X. `checkSacrificeClause` grew `allowZero`, true only for a cast's mandatory slot; a variable clause is still refused in an optional cost, in an either/or branch, beside a sacrificing kicker or buyback, and (for X) beside \"pay X life\". The count is `PaidCost.Sacrificed` (`ctx.Sacrificed`); `CostQuery.Sacrificing`, filled from `len(SacrificeIDs)` by the one pricer, carries it to the per-sacrifice discount `effects.CostsLessPerSacrificed`, so the auto-tap preview, the bot and `CastSpell` price Torgaar alike. `PlayerTurnTally.ArtifactsOrCreaturesSacrificed` (additive within schema v7) is Dargo, the Shipwrecker's second discount. The wire is the existing `additional_cost.sacrifice_options` (min 0 / max 0 open; `count_from_x` for X, the number picked sent as `x_value`); bots are offered zero plus up to three positive counts, each priced on its own, and for \"sacrifice X … destroy X target …\" the targets fix the payment. Torment of Hailfire's punisher moved to `punisherRepeat` for Rottenmouth Viper. **Still open:** Corpse Cobble (\"X is the total power of the sacrificed creatures\") needs last-known information for a LIST of sacrificed permanents (owner decision 5); Extus, Oriq Overlord's back face, Awaken the Blood Avatar, pays this cost today and the card is held for its other text (the front face's magecraft, which also fires on copied spells, and the back face's Avatar token with its attack trigger).",
+		Slug: "variable-sacrifice-cast-cost", Name: "Variable sacrifice costs on spells", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Spells that ask you to sacrifice X permanents, or any number of them, let you pick how many as you cast them — and the ones that cost less for each permanent sacrificed are priced with the discount. A spell can also read the permanents it sacrificed, like Fling's power.",
+		Rules:    []string{"601.2b", "601.2f", "601.2h", "107.3a", "608.2h", "400.7j", "707.10"},
+		Issue:    2072,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Mechanic: "variable sacrifice cost",
+		// ADR 0113 §1: a card whose printed text reads the permanent its
+		// cost sacrificed. Fling's sacrifice is not variable, so the
+		// mechanic's probe alone cannot find it.
+		Printed:  `(?i)\bthe sacrificed (?:creature|creatures|permanent|artifact)\b`,
+		Examples: []string{"Vicious Betrayal", "Torgaar, Famine Incarnate", "Plumb the Forbidden", "Fling", "Corpse Cobble"},
+	},
+	{
+		Slug: "spell-copied-trigger", Name: "Magecraft's \"or copy\"", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that trigger whenever you cast or copy an instant or sorcery spell, such as Extus, Oriq Overlord's magecraft.",
+		Missing:     "Only casting a spell triggers them. Copying one does not.",
+		Rules:       []string{"707.10", "707.12"},
+		Issue:       2090,
+		Tracked:     "#2090 (found landing ADR 0113 §1, #2072)",
+		Waiting:     []string{"Extus, Oriq Overlord"},
+		EngineNotes: "trigger: `CopySpellForEffect` (`game/spell_copy.go`) puts a copy on the stack and emits no event of its own (a copy is not cast, CR 707.10), so a magecraft trigger can watch only `EventCast`. Needs an event where a spell copy is put on the stack, carrying the copy and its controller, and a shared cast-or-copied condition: one trigger per copy, none for a card copied in another zone unless that copy is then cast (CR 707.12). Archmage Emeritus, Sedgemoor Witch and Storm-Kiln Artist ship with a caveat for this gap. Extus's back face, Awaken the Blood Avatar, pays ADR 0100's variable sacrifice cost and discount today.",
 	},
 	{
 		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusImplemented,

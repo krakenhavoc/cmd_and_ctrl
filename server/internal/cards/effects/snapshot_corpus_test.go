@@ -385,6 +385,11 @@ func corpusBoards() []corpusBoard {
 		// charged source shield carrying its follow-up's target (Mod.To),
 		// and the turn's red instant in the cast tally.
 		{"redirections", corpusRedirections},
+		// v7, added by ADR 0113 §1 (#2072) as a new file: Fling on the
+		// stack after its cost was paid — paid.sacrificedObjects naming
+		// the creature it sacrificed, and that creature's last-known
+		// record beside it.
+		{"sacrifice_cost_objects", corpusSacrificeCostObjects},
 		// v7, added by ADR 0114 PR 2 (#2076) as a new file: the Ring
 		// tempts two players once each — each one's Ring emblem
 		// (emblem:the-ring, Card.ringTemptations) and their Ring-bearer
@@ -392,6 +397,32 @@ func corpusBoards() []corpusBoard {
 		// creature. PR 3 adds the level 4 board.
 		{"the_ring", corpusTheRing},
 	}
+}
+
+// corpusSacrificeCostObjects is Fling cast at the next seat, its
+// additional cost paid with a 3/3 that has a +1/+1 counter (ADR 0113
+// §1): the payment record names the creature and the turn's last-known
+// record holds it as it left.
+func corpusSacrificeCostObjects(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	foe := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	beast := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Beast", TypeLine: "Creature — Beast",
+		Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID,
+		Counters: map[string]int{game.CounterPlusOne: 1},
+	})
+	id, err := castWithTapParams(t, g, "Fling", "Instant", "{1}{R}", flingOracle, game.CastSpellParams{
+		Targets:      []game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}},
+		SacrificeIDs: []uuid.UUID{beast},
+	})
+	if err != nil {
+		t.Fatalf("setup: cast Fling: %v", err)
+	}
+	if item := g.StackMeta[id]; item == nil || len(item.Paid.SacrificedObjects) != 1 {
+		t.Fatal("setup: Fling's payment record names no sacrificed creature")
+	}
+	return g
 }
 
 // corpusTheRing is two players the Ring has tempted once each, a

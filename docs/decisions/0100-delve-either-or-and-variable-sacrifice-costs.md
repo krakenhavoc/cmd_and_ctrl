@@ -1,6 +1,7 @@
 # ADR 0100 — Delve, either/or additional costs, and a variable sacrifice count on a cast
 
 **Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth. The owner answered the seven open questions on 2026-09-30; the answers are recorded under [Owner decisions](#owner-decisions-2026-09-30) and folded into the Decisions below. No engine code lands with this ADR.
+**Amended by:** [ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) §1 (2026-10-03, [#2072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2072)) — owner decision 5 is closed: `PaidCost.SacrificedObjects` names each sacrificed permanent, and Corpse Cobble ships.
 **Issue:** [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732), rows 1, 3 and 6 (Demand Answers, Treasure Cruise, Plumb the Forbidden). It relates to #296 and #1731.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then listed `docs/decisions/` on every remote branch (37 heads). The highest number anywhere is **0098**. 0099, 0101 and 0102 are reserved for ADRs being written at the same time, so this one takes 0100.
 **Builds on:**
@@ -296,7 +297,7 @@ The owner answered all seven open questions on 2026-09-30. The Decisions above a
 2. **The delve picker gets "Choose for me"**, which fills the budget in the server's fuel order, like the sacrifice picker (ADR 0020 §16). See §5.
 3. **Bots are offered two delve payments**: the fewest cards that make the cast affordable, and the full budget. See §6.
 4. **The sub-PR order is 1 → 3 → 4 → 2**: delve core, then either/or, then variable sacrifice, then the delve readers and Teval.
-5. **Corpse Cobble waits.** Sub-PR 4 ships the cost and leaves the card out, until last-known information exists for a list of sacrificed permanents.
+5. **Corpse Cobble waits.** Sub-PR 4 ships the cost and leaves the card out, until last-known information exists for a list of sacrificed permanents. (Closed by [ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) §1, #2072.)
 6. **Sub-PR 3 adds `PaidCost.Discarded` and takes Grab the Prize.** See §2.
 7. **Each sub-PR adds its own registry row**, with its `Waiting` list and its closed-seam fragment. There is no separate rows PR.
 

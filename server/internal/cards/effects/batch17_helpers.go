@@ -116,8 +116,17 @@ func b17AttackersAllAvoid(g *game.Game, attacker, player uuid.UUID) bool {
 
 // b17PermanentSacrificedToPay is the permanent sacrificed to pay for
 // the activated ability `item` is resolving — Jarad's "the
-// sacrificed creature's power". The stack item does not carry it,
-// so it is read back off the event log: the ability's announce is
+// sacrificed creature's power".
+//
+// The payment record names it (PaidCost.SacrificedObjects, ADR 0113
+// §1, #2072), and that is the answer: the first object the cost
+// sacrificed. A copy of the ability carries the same record (CR
+// 707.10).
+//
+// The event-log scan below is only the fallback for an item whose
+// record has a count and no list, which only a restore point written
+// before SacrificedObjects existed can produce. It can be deleted once
+// no such restore point can exist. The scan: the ability's announce is
 // the EventTrigger naming its source in both Source and CardID (the
 // triggered-ability breadcrumb names the source only), and the
 // sacrifice it paid is the nearest EventSacrifice by the activator
@@ -127,6 +136,12 @@ func b17AttackersAllAvoid(g *game.Game, attacker, player uuid.UUID) bool {
 // the resolving item has already left StackMeta by the time its
 // Effect runs.
 func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
+	if refs := item.Paid.SacrificedObjects; len(refs) > 0 {
+		return refs[0].ID, true
+	}
+	if item.Paid.Sacrificed == 0 {
+		return uuid.Nil, false
+	}
 	older := 0
 	for _, other := range g.StackMeta {
 		if other != nil && other.Kind == game.StackItemActivated && other.SourceCardID == item.SourceCardID {
