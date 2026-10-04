@@ -48,6 +48,7 @@ const (
 	choiceEntryController     = "entry_controller"
 	choiceMayCast             = "may_cast"
 	choiceChooseSource        = "choose_source"
+	choiceCommanderReturn     = "commander_return"
 )
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
@@ -489,6 +490,24 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			return 1, "may cast: take the free cast"
 		}
 		return 0.5, "may cast: decline"
+
+	case choiceCommanderReturn:
+		// ADR 0115 owner decision 2: CR 903.9a's "may" — send the
+		// commander home, unless its owner could cast it from the
+		// graveyard or exile it went to (escape, flashback, an
+		// adventurer on an adventure). Home it is cast for its tax;
+		// where it is, it may be cast without one.
+		yes := cp.Apply != nil && *cp.Apply
+		if ch != nil && ch.PlayableFromZone {
+			if yes {
+				return 0.5, "commander: castable where it is, so leave it there"
+			}
+			return 1, "commander: leave it where it can be cast"
+		}
+		if yes {
+			return 1, "commander: send it to the command zone"
+		}
+		return 0.5, "commander: leave it"
 
 	case choiceReplacementOrder, choiceTriggerOrder:
 		// Either canonical order is as good as the other at this

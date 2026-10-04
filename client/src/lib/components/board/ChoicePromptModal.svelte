@@ -487,6 +487,10 @@
   // commander's owner picks yes (route to command zone) or no
   // (let the event proceed to graveyard/exile/hand/library).
   const isOptionalReplacement = $derived(active?.kind === "optional_replacement");
+  // ADR 0115 (CR 903.9a): the commander's owner decides whether it goes
+  // from its graveyard or exile to the command zone. Same {apply}
+  // payload; answered in the dock (choiceDock.ts).
+  const isCommanderReturn = $derived(active?.kind === "commander_return");
 
   // S19 sub-PR 2 trigger-prompt branch — CR 603.5 "you may" prompt
   // for an optional triggered ability. Same {choice_id, apply}
@@ -909,6 +913,7 @@
   // Ignored while typing in a field.
   const isYesNo = $derived(
     isOptionalReplacement ||
+      isCommanderReturn ||
       isTriggerPrompt ||
       isPayUnless ||
       isEntryPayLife ||

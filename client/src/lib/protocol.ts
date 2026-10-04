@@ -931,6 +931,12 @@ export interface PendingChoiceView {
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
+    // ADR 0115 (CR 903.9a): "your commander was put into a graveyard or
+    // exile; put it into the command zone?", asked of its owner as a
+    // state-based action. `source` is the commander. Answered with the
+    // shared yes/no {choice_id, apply} payload. `playable_from_zone`
+    // says whether the owner could cast it from where it is now.
+    | "commander_return"
     | "damage_assignment"
     | "trigger_prompt"
     | "pay_unless"
@@ -1305,6 +1311,11 @@ export interface PendingChoiceView {
   // accept_label / decline_label when the server named its branches.
   may_cast_keyword?: string;
   may_cast_card?: string;
+  // ADR 0115 decision 2: populated for kind "commander_return" — the
+  // owner could cast or play the commander from the graveyard or exile
+  // it is in now (escape, flashback, an adventure), ignoring timing and
+  // mana. Computed by the server on every view.
+  playable_from_zone?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything

@@ -193,7 +193,9 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, fmt.Sprintf("%s: resolve triggers in order %v", reason, order), p)
 			}
 
-		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt:
+		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt,
+			// ADR 0115 decision 4: CR 903.9a's question, yes and no.
+			game.PendingChoiceCommanderReturn:
 			for _, apply := range []bool{true, false} {
 				a := apply
 				p := base()

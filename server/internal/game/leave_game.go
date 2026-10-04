@@ -673,9 +673,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// engine's order, and everything is dealt.
 	PendingChoiceDivideShield: {onDrop: dropSettle},
 	PendingChoiceLegendRule:   {},
-	PendingChoiceScry:         {},
-	PendingChoiceSurveil:      {},
-	PendingChoiceLookAtTop:    {},
+	// ADR 0115: the CR 903.9a question is the commander's OWNER's, and
+	// CR 800.4a takes the owner's cards out of the game with them.
+	PendingChoiceCommanderReturn: {},
+	PendingChoiceScry:            {},
+	PendingChoiceSurveil:         {},
+	PendingChoiceLookAtTop:       {},
 	// ADR 0088. Most printed choosers own the pile, and CR 800.4a
 	// takes it out of the game with them; the cards stay where the
 	// effect left them. #1298 added three whose chooser does NOT own

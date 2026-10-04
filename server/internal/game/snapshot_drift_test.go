@@ -307,6 +307,10 @@ var cardFields = plan(
 	"Counters", carried, "",
 	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
+	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
+	// check" mark. Carried: a restore that dropped it would skip the
+	// owner's question.
+	"CommanderReturnDue", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
 	// #1706: a multi-blocker's further attackers.

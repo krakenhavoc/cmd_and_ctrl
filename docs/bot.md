@@ -297,6 +297,17 @@ entering creature would be the bot's only untapped creature, which a
 counter would stop from blocking (CR 702.98a). See
 `aiseat/heuristic/riot.go`.
 
+**Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
+CR 903.9a).** When the bot's commander has been put into a graveyard or
+exile, the state-based action asks its owner whether it goes to the
+command zone. The bot says yes, unless the prompt's `playable_from_zone`
+is set, meaning it could cast the commander from where it is (escape,
+flashback, an adventure in exile). Then it says no and leaves the card
+there (owner decision 2). The model prompt names the card and says when
+it is castable where it is. The prompt ships switched off in ADR 0115
+PR 2: until PR 3, the commander-zone question is still the
+`optional_replacement` above.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's
