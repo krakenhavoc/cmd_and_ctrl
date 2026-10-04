@@ -199,11 +199,48 @@ session they joined from, so `expires_at` is that session's, not
 (12 hours by default). The same rule holds for every route that mints
 a session; see [Session lifetimes](#session-lifetimes-adr-0110-1).
 
+**An agent seat** ([ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md)
+§7, S62). An AI agent's MCP client declares itself with an extra body
+field:
+
+```json
+{
+  "invite_token": "<token>",
+  "name": "Claude",
+  "agent": { "client": "claude-code" }
+}
+```
+
+`client` is the MCP client's `clientInfo.name`. The server lower-cases
+it, replaces every character outside `[a-z0-9._-]` with `-`, trims
+leading and trailing `-` and cuts it to 32 characters. An empty result,
+or `"agent": {}`, is `"unknown"`. Any `agent` object makes the seat an
+agent seat:
+
+- It is a **guest** seat. A request that carries a signed-in person's
+  session (as above: `identified`, or `player` / `spectator` with a
+  `user_id`) is refused with **400** `an agent seat joins as a guest`,
+  rather than seating the person. So an agent seat never has a
+  `user_id` or a Discord identity.
+- The seat carries `is_agent: true` and `agent_client` in every seat
+  list (`GET /games`, `GET /games/{id}`, the invite preview, the join
+  response) and in the game view's `PlayerView`
+  ([protocol.md](protocol.md)), for every viewer.
+- **The badge never comes off.** It is set in the same commit that
+  adds the seat, and no route, action, setting, reclaim, restart or
+  admin path clears it. It rides the engine snapshot, so it needs no
+  database column.
+- It **never hosts** ([The table host](#the-table-host)) and **cannot
+  link Discord** ([`GET /auth/discord/link`](#get-authdiscordlink)).
+- It is a declaration by a cooperating client. A client that does not
+  send `agent` is not marked, and the server cannot tell it from a
+  person.
+
 **Errors**
 
 | Status | Reason |
 |---|---|
-| 400 | empty name |
+| 400 | empty name; or `agent` with a signed-in session (`an agent seat joins as a guest`) |
 | 401 | invite token did not match |
 | 404 | game not found |
 | 409 | game already started, game full, or the signed-in person already holds a seat at this table |
@@ -241,6 +278,14 @@ comes from:
 | none, or a credential that no longer validates | Classic manual join — `name` is required |
 | `admin`, or a guest's `player` / `spectator` (no `user_id`) | 409 — a guest has no identity to carry to a second table, and the admin token is not a person |
 
+The body takes the same optional `agent` field as
+[`POST /games/{id}/join`](#post-gamesidjoin), with the same rules: the
+seat is a badged guest seat, and an `agent` join with a signed-in
+session (the first two rows) is a **400** `an agent seat joins as a
+guest` instead of a seat for that person. With no session it joins as a
+guest agent. A guest's or the admin's session is the 409 above, as for
+any join here.
+
 **Response 200** — identical to `POST /games/{id}/join`, cookie
 included. On the Discord path the principal also carries `discord_id`,
 `discord_username`, `discord_global_name` and `discord_avatar_hash`,
@@ -259,7 +304,7 @@ own it can do nothing else — the WS authorizer refuses it outright.
 
 | Status | Reason |
 |---|---|
-| 400 | empty name on the anonymous path |
+| 400 | empty name on the anonymous path; or `agent` with a signed-in session |
 | 401 | no live table has that invite code (an archived one reads the same way) |
 | 409 | game already started, game full, a session that already belongs to a table, or the signed-in person already holds a seat at this table |
 
@@ -627,14 +672,18 @@ Every table has at most one **host**: the seat that may manage the table
 - **Otherwise the first human seat to join hosts.** When the named host has
   not arrived yet, the first human hosts in the meantime and hands over when
   they sit down.
-- **A bot seat never hosts.** A table with only bots has no host.
+- **A bot seat never hosts, and neither does an agent seat**
+  ([ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md)
+  §7). A table with only bots and agents has no host. An agent that
+  joins before any person does not take the table; the first person
+  to sit down does.
 - **Transfer**: `POST /games/{id}/host` (below).
 - **What hosting lets you do**: change the table's settings, through
   `PATCH /games/{id}/settings` (below) or the `set_table_settings` WebSocket
   action. The deprecated `set_undo_limit` action is gated the same way.
 - **The host leaving passes it on.** When the host concedes or loses
   ([ADR 0060](decisions/0060-leaving-the-game.md)), hosting passes to the
-  next human seat in turn order, skipping bots and departed seats and
+  next human seat in turn order, skipping bots, agents and departed seats and
   wrapping around the table. If no human is left, nobody hosts and only the
   admin can manage the table. The pass is permanent: an undo that brings the
   old host back does not hand the table back.
@@ -686,7 +735,7 @@ claimant does not take the table back.
 | 401 | unauthenticated |
 | 403 | caller is neither the host of this table nor the admin |
 | 404 | game not found |
-| 422 | `player_id` is not a seat at this table, is a bot, or has left the game |
+| 422 | `player_id` is not a seat at this table, is a bot or an agent seat, or has left the game |
 
 ### `PATCH /games/{id}/settings`
 
@@ -2769,6 +2818,13 @@ Each entry in a game's `players` (and the lobby's `GET /games`) may carry:
 | `discord_id` | Discord snowflake, present only for a seat claimed through Discord. |
 | `discord_avatar_hash` | Avatar hash, present only when the account has one. |
 
+### `SeatInfo` agent fields
+
+| Field | Meaning |
+|---|---|
+| `is_agent` | `true` on a seat an AI agent's MCP client claimed with `agent` in its join body ([ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) §7). Absent on every other seat. Never cleared. |
+| `agent_client` | The client's declared name, normalised (`"claude-code"`, `"codex"`, `"unknown"`). Present only with `is_agent`. |
+
 ### `GET /auth/discord/link`
 
 Link Discord to a seat you already hold (S34 sub-PR 4, carried over
@@ -2813,7 +2869,7 @@ What the callback then does:
 | 403 | not a player session on `/link`; on the callback, the cookie is not the seat's own session |
 | 404 | the table is not live in this process |
 | 409 | `?game=` names another table; the table is archived; or the Discord account already holds a different seat at this table |
-| 422 | the seat is a bot |
+| 422 | the seat is a bot, or an agent seat ([ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) §7: it stays a guest) |
 | 503 | Discord is not configured on this server |
 
 ---

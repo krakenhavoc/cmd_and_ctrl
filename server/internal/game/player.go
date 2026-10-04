@@ -237,6 +237,20 @@ type Player struct {
 	BotTier string
 	BotDeck string
 
+	// Agent marks a seat played by an AI agent through an MCP client
+	// on someone's own machine (ADR 0122 §7): a guest seat whose
+	// client declared itself at join. AgentClient is the MCP client's
+	// name as declared ("claude-code", "codex", or "unknown"). Set by
+	// Game.SetAgent when the seat is claimed, before anyone can see
+	// it, and NEVER cleared: no route, action, setting, reclaim or
+	// restore writes false here, so a seat that joined as an agent
+	// cannot later pass as a person. TestAgentBadgeHasNoClearingWriter
+	// holds every writer to that. Carried in the snapshot and exposed
+	// through PlayerView. A seat is a bot, an agent or neither, never
+	// both.
+	Agent       bool
+	AgentClient string
+
 	// AttemptedEmptyDraw records the one fact CR 704.5b reads: this
 	// player has attempted to draw a card from an empty library since
 	// the last state-based-action check. The SBA loop eliminates a
