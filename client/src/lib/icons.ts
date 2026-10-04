@@ -90,6 +90,14 @@ export const ICONS = {
     p("M12 21a9 9 0 0 1-7.8-4.5l5.2-3A3 3 0 0 0 12 15z"),
   ],
   dot: [c(12, 12, 3, true)],
+  // ADR 0114 (#2076): the Ring — a band seen at an angle, so it reads
+  // as a ring and not as the exile circle or a target. The Ring chip's
+  // glyph and the Ring-bearer's marker on the card.
+  ring: [
+    p("M3.5 10.5a8.5 4.5 0 1 0 17 0a8.5 4.5 0 1 0 -17 0"),
+    p("M3.5 10.5v2.5a8.5 4.5 0 0 0 17 0v-2.5"),
+    p("M7.5 10.5a4.5 2.2 0 1 0 9 0a4.5 2.2 0 1 0 -9 0"),
+  ],
   spark: [p("M12 3l2 7 7 2-7 2-2 7-2-7-7-2 7-2z")],
   // brand mark: rotated square with a filled centre
   mark: [

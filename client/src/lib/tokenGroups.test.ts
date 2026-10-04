@@ -81,6 +81,10 @@ describe("tokenGroupKey", () => {
     expect(tokenGroupKey(soldier({ phased_out: true }))).toBeNull();
   });
 
+  it("never groups a Ring-bearer: its marker stays on a card of its own (ADR 0114)", () => {
+    expect(tokenGroupKey(soldier({ ring_bearer: true }))).toBeNull();
+  });
+
   it("keeps a token with +1/+1 counters in its group: the counters come back off the P/T", () => {
     expect(tokenGroupKey(soldier({ power: 3, toughness: 3, counters: { "+1/+1": 2 } }))).toBe(
       tokenGroupKey(soldier()),

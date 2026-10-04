@@ -13,11 +13,11 @@ import (
 )
 
 // the_ring_test.go — ADR 0114 PR 2: the tempt, the Ring emblem's first
-// line and the Ring-bearer (CR 701.54). No printed card tempts yet (PR
-// 3 lands the first ones together with the emblem's other three
-// lines), so these drive the keyword action directly and through
-// test-only sources: a permanent with "{0}: The Ring tempts you" and
-// watchers built from the trigger constructors.
+// line and the Ring-bearer (CR 701.54). These drive the keyword action
+// directly and through test-only sources: a permanent with "{0}: The
+// Ring tempts you" and watchers built from the trigger constructors.
+// The other three lines are the_ring_levels_test.go, and the printed
+// cards the_ring_cards_test.go (ADR 0114 PR 3).
 
 const (
 	ringTempterOracle = "test-ring-tempter"
@@ -731,7 +731,7 @@ func TestTheRingOnTheWire(t *testing.T) {
 	}
 	em := wire.Seats[0].Emblems
 	if len(em) != 1 || em[0].Label != "The Ring" || em[0].Level != 1 || em[0].Text != theRingLine1 ||
-		len(em[0].Lines) != 1 || em[0].Lines[0].At != 1 {
+		len(em[0].Lines) != 4 || em[0].Lines[0].At != 1 || em[0].Lines[3].At != 4 {
 		t.Fatalf("emblems %+v", em)
 	}
 	for _, c := range wire.Battlefield.Cards {

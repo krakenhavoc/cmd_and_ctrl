@@ -272,6 +272,13 @@ var canonicalKeywords = map[string]bool{
 	// granted one are two questions.
 	KeywordRiot:    true,
 	KeywordUnleash: true,
+	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
+	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
+	// the LAST-KNOWN ability list (undying_persist.go), so a printed,
+	// token or granted instance works with no catalog entry.
+	// CUMULATIVE (CR 113.2c).
+	KeywordUndying: true,
+	KeywordPersist: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

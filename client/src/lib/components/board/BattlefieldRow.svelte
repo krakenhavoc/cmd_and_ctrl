@@ -81,6 +81,10 @@
     // controls — a stolen permanent, or the permanent a stolen spell
     // became. Derived by PlayerPanel, for curseTargets' reason.
     takenFrom?: Record<string, string>;
+    // ADR 0114 owner decision 1: the controller's name for each
+    // Ring-bearer, for its marker's title. Derived by PlayerPanel, for
+    // curseTargets' reason.
+    ringBearers?: Record<string, string>;
     // ADR 0106 §2 (#1794): the CAN'T ATTACK chip for each creature that
     // can't attack its owner, keyed by instance ID. Derived by
     // PlayerPanel from the card views, for curseTargets' reason.
@@ -132,6 +136,7 @@
     attachmentsByHost = {},
     curseTargets = {},
     takenFrom = {},
+    ringBearers = {},
     cantAttack = {},
     onGroupClick,
     legal = NO_LEGAL_ACTIONS,
@@ -277,6 +282,7 @@
                     {legalGate}
                     enchantedPlayer={curseTargets[a.instance_id]}
                     takenFrom={takenFrom[a.instance_id]}
+                    ringBearerOf={ringBearers[a.instance_id]}
                     cantAttack={cantAttack[a.instance_id]}
                     onClick={onCardClick}
                     onActivateManaAbility={onActivateManaAbility
@@ -305,6 +311,7 @@
                   {legalGate}
                   enchantedPlayer={curseTargets[c.instance_id]}
                   takenFrom={takenFrom[c.instance_id]}
+                  ringBearerOf={ringBearers[c.instance_id]}
                   cantAttack={cantAttack[c.instance_id]}
                   selected={memberIDs
                     ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
