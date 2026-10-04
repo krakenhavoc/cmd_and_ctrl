@@ -28,7 +28,7 @@ func init() {
 		Completeness: CompletenessFull,
 		HandSize:     []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginUpkeep, ByAnOpponent, "Price of Knowledge — damage equal to that player's hand size", func(g *game.Game, item *game.StackItem) error {
+			AtEachOpponentsUpkeep("Price of Knowledge — damage equal to that player's hand size", func(g *game.Game, item *game.StackItem) error {
 				p := g.PlayerByIDForEffect(triggeringActor(item))
 				if p == nil || p.ID == uuid.Nil || p.Hand == nil || p.Hand.Size() == 0 {
 					return nil
