@@ -2636,6 +2636,10 @@ func restoreZone(z *zoneSnapshot, fallback ZoneKind) *Zone {
 		out.Cards = make([]Card, len(z.Cards))
 		for i := range z.Cards {
 			out.Cards[i] = restoreCard(&z.Cards[i])
+			// The printed-characteristic cache is derived and never
+			// snapshotted; build it here, as a zone insertion would
+			// (#1498, printed_cache.go).
+			out.Cards[i].stampPrinted()
 		}
 	}
 	return out

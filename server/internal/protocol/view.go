@@ -8477,6 +8477,8 @@ func viewOfCard(c game.Card) CardView {
 	// changes (the vast majority) reproduce the printed type-line
 	// byte-for-byte via the parser round-trip.
 	eff := c.Effective()
+	// One read for all three P/T fields below (#1498).
+	power, powerForComparison, toughness := c.PowerToughness()
 	view := CardView{
 		InstanceID: c.InstanceID.String(),
 		Name:       eff.Name,
@@ -8495,9 +8497,9 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:         c.CurrentPower(),
-		NegativePower: min(0, c.PowerForComparison()),
-		Toughness:     c.CurrentToughness(),
+		Power:         power,
+		NegativePower: min(0, powerForComparison),
+		Toughness:     toughness,
 		Tapped:        c.Tapped,
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
@@ -8928,9 +8930,9 @@ func effectiveTypeLine(c game.Card, eff game.Characteristic) string {
 	}
 	// Round-trip parse the printed line; if eff matches printed (no
 	// layer mutation), return printed verbatim to avoid drift like
-	// double spaces.
-	pSuper, pTypes, pSubs := game.ParseTypeLine(c.TypeLine)
-	if equalStrings(pSuper, eff.Supertypes) && equalStrings(pTypes, eff.Types) && equalStrings(pSubs, eff.Subtypes) {
+	// double spaces. The parse is the card's cached one (#1498), not a
+	// fresh ParseTypeLine per card per view.
+	if c.PrintedTypeLineIs(eff.Supertypes, eff.Types, eff.Subtypes) {
 		return c.TypeLine
 	}
 	// Rebuild from eff. Format mirrors Scryfall: supertypes + types
@@ -8961,22 +8963,6 @@ func joinSpace(ss []string) string {
 		out += s
 	}
 	return out
-}
-
-// equalStrings reports whether two []string slices contain the
-// same elements in the same order. Used to decide when the
-// printed type-line and the post-layer types match (the no-op
-// fast path in effectiveTypeLine).
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // viewOfManaAbilities projects a card's catalog + synthetic mana

@@ -588,7 +588,7 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 		// unsatisfied — an unsolved Case's "Solved — whenever …" is
 		// not a trigger that exists (ADR 0071). Off the battlefield
 		// the key degrades to CatalogKey exactly.
-		triggers := TriggersForCard(*source)
+		triggers := triggersOf(source)
 		if len(triggers) == 0 {
 			continue
 		}
@@ -630,7 +630,7 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 			continue
 		}
 		lki := card.Effective()
-		for _, t := range TriggersForCard(*card) {
+		for _, t := range triggersOf(card) {
 			if !t.FromStack || !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}

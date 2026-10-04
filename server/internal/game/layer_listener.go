@@ -471,7 +471,7 @@ func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		for _, ab := range StaticAbilitiesForCard(g.Battlefield.Cards[i]) {
+		for _, ab := range staticAbilitiesOf(&g.Battlefield.Cards[i]) {
 			if want(ab) {
 				return true
 			}

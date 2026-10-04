@@ -119,7 +119,7 @@ func (g *Game) oracleKeyOfStackItemLocked(item *StackItem) string {
 		return ""
 	}
 	if c := g.findCardByIDLocked(item.SourceCardID); c != nil {
-		return CatalogKey(*c)
+		return catalogKeyOf(c)
 	}
 	return ""
 }

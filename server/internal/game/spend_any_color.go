@@ -93,7 +93,7 @@ func (g *Game) spendsManaAsAnyColorLocked(payer uuid.UUID, ctx ManaSpendContext)
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*src)
+		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}

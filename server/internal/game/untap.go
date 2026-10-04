@@ -431,7 +431,7 @@ func (g *Game) activeUntapStepRestrictionsLocked() []boundUntapRestriction {
 	var out []boundUntapRestriction
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
-		key := CatalogAbilityKey(*source)
+		key := catalogAbilityKeyOf(source)
 		if key == "" {
 			continue
 		}
@@ -549,7 +549,7 @@ func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundU
 			// during each other player's untap step" is a static
 			// ability, and a Seedborn Muse that has lost all its
 			// abilities grants nothing.
-			oracle := CatalogAbilityKey(*src)
+			oracle := catalogAbilityKeyOf(src)
 			if oracle == "" {
 				continue
 			}
@@ -580,7 +580,7 @@ func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundU
 			// CatalogKey, not CatalogAbilityKey: nothing in the game
 			// can name an emblem to remove its abilities (emblem.go),
 			// so there is no removal state to read.
-			oracle := CatalogKey(*src)
+			oracle := catalogKeyOf(src)
 			if oracle == "" {
 				continue
 			}

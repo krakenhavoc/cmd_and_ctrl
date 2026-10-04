@@ -160,7 +160,7 @@ func (g *Game) CreateEmblemForEffect(owner uuid.UUID, sourceCardID uuid.UUID) er
 	// BaseCatalogKey: the emblem is filed under the CARD's key, so a
 	// source carrying CR 707.9a granted abilities must not derive a
 	// key nothing registered (copy_grants.go).
-	key := EmblemKey(BaseCatalogKey(CatalogKey(*src)))
+	key := EmblemKey(BaseCatalogKey(catalogKeyOf(src)))
 	def := catalogDef(key)
 	if def == nil || def.Emblem == nil {
 		return ErrNoEmblemRegistered
@@ -285,7 +285,7 @@ func (g *Game) emblemContinuousEffectsLocked() []ContinuousEffect {
 		}
 		for i := range p.Emblems.Cards {
 			src := &p.Emblems.Cards[i]
-			abilities := StaticAbilitiesForCard(*src)
+			abilities := staticAbilitiesOf(src)
 			for _, ab := range abilities {
 				out = append(out, staticContinuousEffect{
 					ability:   ab,
