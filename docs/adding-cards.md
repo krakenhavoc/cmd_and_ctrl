@@ -5120,6 +5120,39 @@ OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets
 are answers.
 
+### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
+
+"Target player reveals their hand. You choose a nonland card from it.
+That player discards that card." is one call:
+
+```go
+Targets:   TargetPlayer("target player"),
+OnResolve: TargetRevealsYouChooseDiscard(Nonland(), "nonland card"),
+```
+
+Pass the restriction as an ordinary `CardPredicate` (`Nonland()`,
+`ManaValueGE(3)`, `And(Noncreature(), Nonland())`, `Or(Creature(),
+Planeswalker())`) and its label the way the card prints it. `nil` is "a
+card". A card with text after the discard calls
+`ChooseFromRevealedHand{Player: TargetedPlayer(ctx), Filter: …, Label:
+…}.Apply(ctx)` and carries on, as Thoughtseize does with its life loss.
+What the engine does for you:
+
+- The hand is revealed to every player (CR 701.20a), not only to you.
+- The filter reads each card as it is in a hand: an MDFC by its front
+  face (CR 712.8a), a split card by its combined cost (CR 709.4b), X as
+  0 (CR 202.3e).
+- The matching cards are fixed at the reveal. A hand with none is
+  revealed and nothing is discarded (CR 609.3); the rest of your
+  `OnResolve` still runs.
+- The server refuses any other pick, the bot is offered only the
+  matches, and the prompt greys out the rest of the hand.
+
+Not this shape, so leave the card out and put it on
+`revealed-hand-pick-variants` (#2115): the chosen card is **exiled**
+rather than discarded, the pick is "**you may** choose … if you do / if
+you don't", or a later clause **reads the chosen card**.
+
 ### Adding a `PendingChoiceKind` (#730, #794)
 
 A new prompt kind owes two answers, and neither has a compiler behind
