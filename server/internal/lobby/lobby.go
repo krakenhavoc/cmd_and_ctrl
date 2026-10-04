@@ -1108,8 +1108,12 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 		}
 	}
 	var err error
+	// ADR 0121 §1: the table rolls for the first turn itself. Each seat
+	// presses Roll (a bot rolls on its own clock), the high roll chooses
+	// who goes first, and only then are libraries shuffled and hands
+	// dealt. The practice table keeps Start (ADR 0076).
 	if broadcast, err = l.applyLocked(id, entry, func() error {
-		return entry.room.Game.StartWithFirstPlayerRoll(nil)
+		return entry.room.Game.StartWithOpeningRoll(nil)
 	}); err != nil {
 		// Most likely ErrNotEnoughPlayers — surface as-is; the HTTP
 		// handler turns it into 409.

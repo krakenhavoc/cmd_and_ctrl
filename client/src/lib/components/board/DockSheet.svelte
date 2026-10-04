@@ -52,6 +52,10 @@
     primary?: DockAction | null;
     secondary?: DockAction[];
     refusal?: DockRefusal | null;
+    // A question line in the dock under the sheet, as a request's own
+    // (the opening roll's chooser, which has no bar buttons: without
+    // it the dialog would hold nothing but the floating sheet).
+    question?: string;
     children: Snippet;
   }
 
@@ -66,6 +70,7 @@
     primary = null,
     secondary = [],
     refusal = null,
+    question,
     children,
   }: Props = $props();
 
@@ -103,6 +108,7 @@
     primary,
     secondary,
     refusal,
+    question,
     sheet: { title: title ?? label, src, count, width, key: sheetKey, attach },
   });
 </script>

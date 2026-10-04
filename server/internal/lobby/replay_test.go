@@ -99,6 +99,8 @@ func newReplayFixtureWithDeckSize(t *testing.T, deckSize int) *replayFixture {
 	if _, err := l.Start(meta.ID); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
+	// The fixture needs dealt hands to redact.
+	finishOpeningRoll(t, l, meta.ID)
 
 	g, err := l.LookupGame(meta.ID)
 	if err != nil {

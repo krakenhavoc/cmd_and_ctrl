@@ -991,10 +991,16 @@ this route.
 ### `POST /games/{id}/start`
 
 Transition the game from `lobby` → `active`. Only admins and players
-seated in the game may call this. The server has every seated player roll a
-d20, rerolling only tied leaders until one winner remains; that seat takes the
-first turn. The rolls and winner are public in the opening-hand view and game
-log, and use the game's persisted RNG so reconnects and replay agree.
+seated in the game may call this. The game opens with the **opening roll**
+([ADR 0121](decisions/0121-animated-dice.md) §1, since S61): `GameView.opening_roll`
+is present, nothing is shuffled or dealt, and each seat rolls its own d20
+(`roll_opening`; a bot rolls on its own clock, and the host may `host_roll_remaining`).
+Tied leaders roll again until one remains, and that seat chooses who takes the
+first turn (`choose_starting_player`, CR 103.1). Only then are libraries
+shuffled and hands dealt, and the mulligan proceeds. The rolls and the choice
+are public in the view and the game log, and use the game's persisted RNG so
+reconnects and replay agree. See [protocol.md](protocol.md) for the three
+actions. The practice table never rolls: seat 0 goes first.
 
 **The start captures a setup** (ADR 0110 §5 item 1). On the transition, the
 server writes one person's last setup: the game's creator's, or, for a table

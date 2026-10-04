@@ -649,6 +649,9 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 	if _, err := l.Start(meta.ID); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
+	// draw_card waits for the first turn. Each roll and the choice is
+	// a replay line of its own; a tie makes it one more.
+	rollSteps := finishOpeningRoll(t, l, meta.ID)
 
 	// Fire an Apply by connecting a WS and sending draw_card. Each
 	// successful action produces exactly one replay line.
@@ -698,9 +701,10 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 	lines := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	// Lobby-phase mutations route through Room.ApplyExternal, so the
 	// replay records the full game setup too: 2 joins + 2 deck
-	// uploads + start, then the draw_card action.
-	if len(lines) != 6 {
-		t.Errorf("replay line count after setup + one action: got %d, want 6\n---\n%s", len(lines), body)
+	// uploads + start, the opening roll's steps, then the draw_card
+	// action.
+	if want := 6 + rollSteps; len(lines) != want {
+		t.Errorf("replay line count after setup + one action: got %d, want %d\n---\n%s", len(lines), want, body)
 	}
 
 	// Mid-game, a seated player must NOT get the replay — the JSONL

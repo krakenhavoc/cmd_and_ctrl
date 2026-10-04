@@ -181,6 +181,13 @@ export type ActionType =
   | "draw_card"
   | "end_vote"
   | "keep_hand"
+  // ADR 0121 §3: the opening roll. `roll_opening` rolls the caller's
+  // d20; `host_roll_remaining` (host or admin) rolls for every seat
+  // left in the round; `choose_starting_player` {seat} is the winner's
+  // choice of who takes the first turn.
+  | "roll_opening"
+  | "host_roll_remaining"
+  | "choose_starting_player"
   | "mark_damage"
   | "move_card"
   | "mulligan"
@@ -230,6 +237,30 @@ export interface SnapshotPayload {
   seq: number;
   generation: number;
   game: GameView;
+}
+
+// OpeningRollView mirrors protocol.OpeningRollView (ADR 0121 §3): the
+// open opening roll. Round 1 is every seat; each later round is the
+// tied leaders of the one before. `chooser` is present once one leader
+// remains. Everything in it is public.
+export interface OpeningRollView {
+  rounds: OpeningRollRoundView[];
+  chooser?: number;
+}
+
+export interface OpeningRollRoundView {
+  // The seats that roll in this round, in seat order.
+  seats: number[];
+  // Their dice, in the order rolled.
+  rolls: OpeningRollDieView[];
+}
+
+export interface OpeningRollDieView {
+  seat: number;
+  result: number;
+  // Present only when somebody other than the seat pressed the button:
+  // the host's seat, or -1 for the server admin.
+  by?: number;
 }
 
 // ChatPayload is the body of a Kind == "chat" frame in either
@@ -329,6 +360,10 @@ export interface GameView {
   // decode as 0 (Go's int zero), which matches the only seat games
   // ever started on before the field existed.
   starting_seat?: number;
+  // ADR 0121 §3: the opening roll, present only while it is open
+  // (between Start and the winner's choice). Public to every viewer.
+  // While it is present `starting_seat` means nothing (it reads 0).
+  opening_roll?: OpeningRollView;
   // Stack item announce-time metadata (S13.1). Indexed bottom..top —
   // the corresponding spell card (if any) lives in `stack` at the
   // same index. Empty when the stack is empty.
@@ -946,6 +981,9 @@ export interface LogEvent {
   faces?: string[];
   call?: "heads" | "tails";
   wins?: number;
+  // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
+  // that tied, or the seats the host rolled for.
+  seats?: number[];
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
