@@ -344,3 +344,16 @@ func TheModesTargetDiscards(n int) func(item *game.StackItem, ctx *Context, occ 
 		return nil
 	}
 }
+
+// ReturnTheModesGraveyardTargetToHand is "return target <card> from
+// your graveyard to your hand" as a modal bullet's body — Kolaghan's
+// Command's first bullet and Entomber Exarch's. A card that left the
+// graveyard in response is no longer a legal target (CR 608.2b) and
+// nothing moves.
+func ReturnTheModesGraveyardTargetToHand(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
+}
