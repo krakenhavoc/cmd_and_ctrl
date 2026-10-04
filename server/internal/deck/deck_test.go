@@ -609,3 +609,59 @@ func TestPrintedLoyaltyStampedOnGameCard(t *testing.T) {
 		}
 	}
 }
+
+// CR 113.6n: a card's own text may lift the singleton rule.
+func TestValidateCopyLimitFromOracleText(t *testing.T) {
+	withText := func(name, text string) cards.Card {
+		c := basicLegal(name, "Creature — Wraith", "B")
+		c.OracleText = text
+		return c
+	}
+	fill := func(c cards.Card, n int) *List {
+		list := buildValidDeck()
+		for i := 0; i < n; i++ {
+			list.Mainboard[i] = c
+		}
+		return list
+	}
+	nazgul := withText("Nazgûl", "Deathtouch\nA deck can have up to nine cards named Nazgûl.")
+	rats := withText("Relentless Rats", "A deck can have any number of cards named Relentless Rats.")
+	dwarves := withText("Seven Dwarves", "A deck can have up to seven cards named Seven Dwarves.")
+	dfc := basicLegal("Front // Back", "Creature", "B")
+	dfc.CardFaces = []cards.CardFace{{OracleText: "A deck can have up to two cards named Front."}}
+
+	if err := Validate(fill(nazgul, 9)); err != nil {
+		t.Errorf("nine Nazgûl: got %v, want nil", err)
+	}
+	err := Validate(fill(nazgul, 10))
+	assertHasViolation(t, err, CodeSingleton)
+	if !strings.Contains(err.Error(), "up to 9") {
+		t.Errorf("ten Nazgûl message should name the limit: %v", err)
+	}
+	assertHasViolation(t, Validate(fill(dwarves, 8)), CodeSingleton)
+	if err := Validate(fill(dwarves, 7)); err != nil {
+		t.Errorf("seven Dwarves: got %v", err)
+	}
+	if err := Validate(fill(rats, 30)); err != nil {
+		t.Errorf("thirty Relentless Rats: got %v, want nil", err)
+	}
+	assertHasViolation(t, Validate(fill(withText("Plain", "Flying"), 2)), CodeSingleton)
+	if err := Validate(fill(dfc, 2)); err != nil {
+		t.Errorf("face allowance: got %v", err)
+	}
+	assertHasViolation(t, Validate(fill(dfc, 3)), CodeSingleton)
+}
+
+func TestValidateOneCardsLimitDoesNotLiftAnother(t *testing.T) {
+	list := buildValidDeck()
+	rats := basicLegal("Relentless Rats", "Creature — Rat", "B")
+	rats.OracleText = "A deck can have any number of cards named Relentless Rats."
+	list.Mainboard[0], list.Mainboard[1] = rats, rats
+	list.Mainboard[2] = basicLegal("Sol Ring", "Artifact")
+	list.Mainboard[3] = basicLegal("Sol Ring", "Artifact")
+	err := Validate(list)
+	assertHasViolation(t, err, CodeSingleton)
+	if strings.Contains(err.Error(), "Relentless") {
+		t.Errorf("rats flagged: %v", err)
+	}
+}
