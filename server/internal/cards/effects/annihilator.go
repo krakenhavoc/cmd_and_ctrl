@@ -169,3 +169,26 @@ func targetOpponentExilesTopHalfOfTheirLibrary(g *game.Game, item *game.StackIte
 	}
 	return MillToZone{Player: p.ID, N: n, To: game.ZoneExile}.Apply(ctx)
 }
+
+// threatenAndGrant is the Eldrazi "gain control of that creature until
+// end of turn. Untap it. It gains <keywords> until end of turn."
+// (Flayer of Loyalties, Hideous Taskmaster): control, the untap and the
+// keyword grant, in that order, each for this turn. `name` labels the
+// three effects.
+func threatenAndGrant(ctx *Context, target uuid.UUID, name string, keywords ...string) error {
+	if err := (GainControl{
+		Target:   target,
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    name + " — gain control until end of turn",
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	if err := (UntapTarget{Target: target}).Apply(ctx); err != nil {
+		return err
+	}
+	return GrantKeywordUntilEOT{
+		Target:   target,
+		Keywords: keywords,
+		Label:    name + " — keywords until end of turn",
+	}.Apply(ctx)
+}
