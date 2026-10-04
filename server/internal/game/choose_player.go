@@ -245,14 +245,14 @@ func (g *Game) QueueChoosePlayerAsEntersForEffect(chooser, source uuid.UUID, que
 // choice was made and simply has nowhere to land, which is what CR
 // 608.2 does with an effect whose object has gone.
 //
-// No layer-version bump, and that is the one place this differs from
-// its two siblings. A named tribe and a chosen colour are AppliesTo
-// inputs to their permanent's static abilities, so the layer engine's
-// cached resolution has to be invalidated when they land. A chosen
-// player is not: protection rides the PRINTED keyword token, which has
-// been in Abilities since the permanent entered, and the one reader
-// binds the seat at check time rather than baking it into a
-// characteristic.
+// The layer-version bump is here for the same reason as a chosen
+// colour's or a named tribe's: the answer is an AppliesTo / Apply input
+// to the permanent's static abilities when a card reads it (Entropic
+// Specter's power and toughness come from the chosen player's hand), so
+// the cached resolution has to be dropped when it lands. Protection from
+// the chosen player does not need it, since it rides the printed keyword
+// token and binds the seat at check time; the bump is one atomic add and
+// costs that card nothing.
 //
 // Caller must hold g.mu.
 func (g *Game) setChosenPlayerLocked(source, chosen uuid.UUID) error {
@@ -260,6 +260,7 @@ func (g *Game) setChosenPlayerLocked(source, chosen uuid.UUID) error {
 	if i := findCardOnBattlefield(g, source); i >= 0 {
 		g.Battlefield.Cards[i].ChosenPlayer = chosen
 		actor = g.Battlefield.Cards[i].Controller
+		g.layerVersion.Add(1)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventPlayerChosen,
