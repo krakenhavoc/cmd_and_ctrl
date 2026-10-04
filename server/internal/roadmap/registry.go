@@ -1194,6 +1194,37 @@ var items = []Item{
 		Examples: []string{"Exava, Rakdos Blood Witch", "Chaos Imps", "Hellhole Flailer"},
 	},
 	{
+		// #2075 (ADR 0113 §4): dies keywords whose triggers the engine
+		// derives from the departed permanent's LAST-KNOWN ability list
+		// (game/undying_persist.go), so a printed, token or granted
+		// instance works with no catalog entry, and a creature whose
+		// only text is undying and other canonical keywords (Young
+		// Wolf, Butcher Ghoul) needs no card file. The return finds only
+		// the graveyard object the card became (CR 400.7e).
+		Slug: "undying", Name: "Undying", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "When a creature with undying dies with no +1/+1 counters on it, it returns to the battlefield under its owner's control with a +1/+1 counter, once for each instance of undying it has.",
+		Rules:    []string{"702.93", "603.10a", "400.7e"},
+		Issue:    2075,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Keywords: []string{game.KeywordUndying},
+		Mechanic: "undying",
+		Printed:  printedKeyword("undying"),
+		Examples: []string{"Gleeful Arsonist"},
+	},
+	{
+		// #2075 (ADR 0113 §4): undying's twin with -1/-1 counters.
+		// Murderous Redcap's caveat went with it.
+		Slug: "persist", Name: "Persist", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "When a creature with persist dies with no -1/-1 counters on it, it returns to the battlefield under its owner's control with a -1/-1 counter, once for each instance of persist it has.",
+		Rules:    []string{"702.79", "603.10a", "400.7e"},
+		Issue:    2075,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Keywords: []string{game.KeywordPersist},
+		Mechanic: "persist",
+		Printed:  printedKeyword("persist"),
+		Examples: []string{"Murderous Redcap", "Persistent Constrictor"},
+	},
+	{
 		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Abilities that say \"whenever a counter is put on\" a permanent trigger once for each counter, so two counters at once are two triggers.",
 		Missing:     "An ability that triggers for each counter put on a permanent can't trigger more than once for one placement yet.",

@@ -396,6 +396,12 @@ func corpusBoards() []corpusBoard {
 		// Profusion that entered after it, whose "your maximum hand size
 		// is two" is catalog data and so adds nothing but the permanent.
 		{"max_hand_size_grant", corpusMaxHandSizeGrant},
+		// v7, added by ADR 0113 §4 (#2075) as a new file: a persist
+		// trigger — an engine dies trigger with no catalog row, keyed by
+		// its persist/return body — waiting on the stack, its source
+		// object the graveyard card (CR 400.7e) and its trigger context
+		// the departed permanent whose last-known counters it re-reads.
+		{"persist_trigger_pending", corpusPersistTriggerPending},
 		// v7, added by ADR 0115 PR 2 (#2085) as new files: CR 903.9a as
 		// a state-based action — a commander in its owner's graveyard
 		// with the check still owed (card.commanderReturnDue), and the
@@ -2210,6 +2216,19 @@ func corpusProwessOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
 	if it := corpusSettleTrigger(t, g, monk); it.Body != "prowess/pump" {
 		t.Fatalf("setup: the prowess trigger names body %q, want prowess/pump", it.Body)
+	}
+	return g
+}
+
+// corpusPersistTriggerPending is a persist trigger (#2075) waiting on
+// the stack after a vanilla persist creature died.
+func corpusPersistTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	elite := pushDiesKeywordCreature(g, me, "Safehold Elite", 2, 2, game.KeywordPersist)
+	b25Destroy(g, elite)
+	if it := corpusSettleTrigger(t, g, elite); it.Body != "persist/return" {
+		t.Fatalf("setup: the persist trigger names body %q, want persist/return", it.Body)
 	}
 	return g
 }

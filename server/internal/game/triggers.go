@@ -876,15 +876,25 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if ok {
 		oracle = AbilityKeyFromLKI(source, lki)
 	}
-	if oracle == "" {
-		return
+	// #2075 (ADR 0113 §4): the dies keyword triggers — undying and
+	// persist — read off the LAST-KNOWN ability list, before any
+	// catalog key is asked for, so a permanent with no catalog entry
+	// (a vanilla persist creature, a token) still has them, a granted
+	// instance it died wearing counts, and one that died having lost
+	// all abilities has none (CR 603.10a). Only with a real snapshot:
+	// the missing-LKI fallback below has no ability list worth reading.
+	var triggers []TriggeredAbility
+	if ok {
+		triggers = ltbKeywordTriggersFor(lki)
 	}
 	// TriggersForKey, not TriggersForCard: this path has already
 	// chosen its key, and the designation gate is evaluated against
 	// the SNAPSHOT for the same CR 603.10 reason — a Case that was
 	// solved when it died has its solved dies-trigger, one that was
 	// not does not. ADR 0071.
-	triggers := TriggersForKey(oracle, source)
+	if oracle != "" {
+		triggers = append(triggers, TriggersForKey(oracle, source)...)
+	}
 	if len(triggers) == 0 {
 		return
 	}
