@@ -1327,6 +1327,18 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
+	// Unpaid marks an EventCast whose mana the caster chose not to
+	// pay: the cast was made with CastSpellParams.ForceCast, which is
+	// the client's "Cast anyway (don't pay)" row and the dock's Cast
+	// anyway after a refused cast (ADR 0118 §2). The log reads it to
+	// say "<player> cast <card> without paying its mana cost", so the
+	// table sees the cast. A permissive cast (strict off) does not set
+	// it: that seat may be paying on paper, and the line belongs to
+	// force_cast (ADR 0118 owner decision 2). Life for Phyrexian
+	// symbols and additional costs are still paid; only the mana gate
+	// is waived. False on every other kind. Added for #2188.
+	Unpaid bool `json:"unpaid,omitempty"`
+
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based
 	// action (CR 701.9a, 601.2h, 514.1). Empty on every other kind.

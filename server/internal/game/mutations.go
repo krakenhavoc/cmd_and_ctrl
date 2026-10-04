@@ -1718,6 +1718,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		CardID:  cardID,
 		OldZone: src.Kind,
 		NewZone: ZoneStack,
+		// ADR 0118 §2: a forced cast is announced as unpaid, so the
+		// log tells the table. ForceCast waives the whole mana gate
+		// (applyCastCostLocked), so the flag alone decides it.
+		Unpaid: params.ForceCast,
 	})
 	// CR 115.3: the objects named at 601.2c have now become targets.
 	// Emitted after EventCast so a "becomes the target" trigger and
