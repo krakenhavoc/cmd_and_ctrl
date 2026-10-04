@@ -60,6 +60,7 @@ func suiteUsage() {
   suite run      ask a policy every labelled position and report agreement.
                  boteval suite run [--dir DIR] [--policy heuristic|assisted|strong]
                                    [--deck ID] [--max-think 20s] [--parallel 1]
+                                   [--think] [--max-tokens N] [--note text]
                                    [--out report.json] [--md]
 
   suite harvest  pull candidate windows out of decision logs into an inbox of
@@ -74,7 +75,7 @@ func suiteUsage() {
                  boteval suite render --pos path/to/position.json [--deck ID]
 
 Env fallbacks: CMDCTRL_OPENAI_ENDPOINT, CMDCTRL_OPENAI_API_KEY, CMDCTRL_BOT_MODEL,
-CMDCTRL_BOT_MAX_THINK, CMDCTRL_SCRYFALL_DUMP.
+CMDCTRL_BOT_MAX_THINK, CMDCTRL_BOT_THINK, CMDCTRL_BOT_MAX_TOKENS, CMDCTRL_SCRYFALL_DUMP.
 `)
 }
 
@@ -89,6 +90,11 @@ type suiteRunOpts struct {
 	Parallel int
 	Out      string
 	MD       bool
+	// Think and MaxTokens are the thinking experiment (#2196); Note is
+	// free text for the report header.
+	Think     bool
+	MaxTokens int
+	Note      string
 }
 
 func parseSuiteRun(args []string) (suiteRunOpts, error) {
@@ -99,7 +105,10 @@ func parseSuiteRun(args []string) (suiteRunOpts, error) {
 	fs.StringVar(&o.Policy, "policy", "heuristic", "policy to ask: heuristic, assisted or strong")
 	fs.StringVar(&o.Deck, "deck", "izzet-aggro", "curated deck whose list becomes the static prompt block (model tiers only)")
 	fs.StringVar(&o.Dump, "dump", "", "Scryfall bulk dump for oracle text (default: $CMDCTRL_SCRYFALL_DUMP)")
-	fs.DurationVar(&o.MaxThink, "max-think", 0, "hard deadline per position (default: $CMDCTRL_BOT_MAX_THINK, else the suite's own)")
+	fs.DurationVar(&o.MaxThink, "max-think", 0, "hard deadline per position (default: $CMDCTRL_BOT_MAX_THINK, else the suite's own 60s, or 120s with --think)")
+	fs.BoolVar(&o.Think, "think", false, "let the model THINK before it answers (default: $CMDCTRL_BOT_THINK); model tiers only")
+	fs.IntVar(&o.MaxTokens, "max-tokens", 0, "the model's reply budget in tokens (default: $CMDCTRL_BOT_MAX_TOKENS, else 128/256, or 8000 with --think)")
+	fs.StringVar(&o.Note, "note", "", "free-form note recorded in the report header")
 	fs.IntVar(&o.Parallel, "parallel", 1, "positions in flight at once")
 	fs.StringVar(&o.Out, "out", "", "write the report as JSON to this path")
 	fs.BoolVar(&o.MD, "md", false, "print the markdown report block on stdout")
@@ -112,8 +121,16 @@ func parseSuiteRun(args []string) (suiteRunOpts, error) {
 	if _, err := tiers.Parse(o.Policy); err != nil {
 		return o, err
 	}
+	think, maxTokens, err := thinkingFlags(o.Think, o.MaxTokens)
+	if err != nil {
+		return o, err
+	}
+	o.Think, o.MaxTokens = think, maxTokens
 	if o.MaxThink <= 0 {
 		o.MaxThink = envDuration("CMDCTRL_BOT_MAX_THINK")
+	}
+	if o.MaxThink <= 0 && o.Think {
+		o.MaxThink = model.DefaultThinkingMaxThink
 	}
 	if o.MaxThink <= 0 {
 		o.MaxThink = suite.DefaultMaxThink
@@ -124,6 +141,9 @@ func parseSuiteRun(args []string) (suiteRunOpts, error) {
 func runSuiteRun(args []string) int {
 	o, err := parseSuiteRun(args)
 	if err != nil {
+		if err != flag.ErrHelp {
+			say(os.Stderr, "boteval suite run: %v\n", err)
+		}
 		return 2
 	}
 	out := os.Stdout
@@ -138,7 +158,7 @@ func runSuiteRun(args []string) int {
 		return 1
 	}
 
-	pol, err := buildSuitePolicy(out, o)
+	pol, note, err := buildSuitePolicy(out, o)
 	if err != nil {
 		say(os.Stderr, "%v\n", err)
 		return 1
@@ -148,6 +168,7 @@ func runSuiteRun(args []string) int {
 		MaxThink: o.MaxThink,
 		Parallel: o.Parallel,
 	})
+	rep.Note = note
 
 	if o.MD {
 		say(out, "%s\n", rep.Markdown())
@@ -185,34 +206,51 @@ func runSuiteRun(args []string) int {
 // B, which is exactly tiers.Factory.TierStatus's rule and for the
 // same reason: a report labelled `assisted` that measured the
 // heuristic is a false measurement.
-func buildSuitePolicy(out *os.File, o suiteRunOpts) (aiseat.Policy, error) {
+func buildSuitePolicy(out *os.File, o suiteRunOpts) (aiseat.Policy, string, error) {
 	tier, err := tiers.Parse(o.Policy)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	opt := tiers.Options{MaxThink: o.MaxThink}
+	opt := tiers.Options{MaxThink: o.MaxThink, Think: o.Think, MaxTokens: o.MaxTokens}
+	notes := []string{}
 	if tier.NeedsModel() {
 		client, url := buildClient("")
 		if client == nil {
-			return nil, fmt.Errorf("tier %q needs a model: set CMDCTRL_OPENAI_ENDPOINT to a local LLM (Ollama, LM Studio, llama.cpp, vLLM) or CMDCTRL_ANTHROPIC_API_KEY to a hosted one, then re-run", tier)
+			return nil, "", fmt.Errorf("tier %q needs a model: set CMDCTRL_OPENAI_ENDPOINT to a local LLM (Ollama, LM Studio, llama.cpp, vLLM) or CMDCTRL_ANTHROPIC_API_KEY to a hosted one, then re-run", tier)
 		}
 		id := strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL"))
 		if id == "" {
-			return nil, fmt.Errorf("tier %q needs a model id: set CMDCTRL_BOT_MODEL", tier)
+			return nil, "", fmt.Errorf("tier %q needs a model id: set CMDCTRL_BOT_MODEL", tier)
 		}
 		idx := loadIndex(out, o.Dump)
 		profile, source := buildProfile(idx, o.Deck)
 		say(out, "endpoint %s · model %s · deck profile %s\n", url, id, source)
+		if t := thinkingNote(o.Think, o.MaxTokens); t != "" {
+			say(out, "%s · deadline %s per position\n", t, o.MaxThink)
+		}
 		opt.Client = client
 		opt.Deck = profile
 		opt.Models = tiers.Models{Routine: id}
+		notes = append(notes, "model "+id)
+		if t := thinkingNote(o.Think, o.MaxTokens); t != "" {
+			notes = append(notes, t)
+		} else {
+			notes = append(notes, "thinking off")
+		}
 	}
-	return tiers.New(tier, opt)
+	if strings.TrimSpace(o.Note) != "" {
+		notes = append(notes, strings.TrimSpace(o.Note))
+	}
+	pol, err := tiers.New(tier, opt)
+	return pol, strings.Join(notes, " · "), err
 }
 
 func printSuiteReport(out *os.File, rep suite.Report) {
 	say(out, "--- boteval suite run -------------------------------------\n")
 	say(out, "policy             %s\n", rep.Policy)
+	if rep.Note != "" {
+		say(out, "run                %s · max think %s\n", rep.Note, rep.MaxThink)
+	}
 	say(out, "positions          %d (%d labelled, %d skipped)\n", rep.Positions, rep.Labelled, rep.Positions-rep.Labelled)
 	say(out, "agreement          %d/%d (%.0f%%)\n", rep.Agree, rep.Labelled, rep.AgreeRate()*100)
 	say(out, "reject-hits        %d\n", rep.RejectHits)
@@ -228,7 +266,10 @@ func printSuiteReport(out *os.File, rep suite.Report) {
 		say(out, "prompt bytes p50   %d\n", rep.PromptBytesP50)
 	}
 	if rep.Tokens.InputTokens > 0 || rep.Tokens.OutputTokens > 0 {
-		say(out, "tokens             in %d / out %d\n", rep.Tokens.InputTokens, rep.Tokens.OutputTokens)
+		say(out, "tokens             in %d / out %d (out p50 %d)\n", rep.Tokens.InputTokens, rep.Tokens.OutputTokens, rep.OutputTokensP50)
+	}
+	if rep.ReasoningReplies > 0 {
+		say(out, "reasoning          %d replies, chars p50 %d max %d\n", rep.ReasoningReplies, rep.ReasoningCharsP50, rep.ReasoningCharsMax)
 	}
 	tags := make([]string, 0, len(rep.ByTag))
 	for t := range rep.ByTag {

@@ -37,7 +37,7 @@ func TestSuiteDefaultDeadlineReachesModelTransport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := buildSuitePolicy(os.Stdout, opts)
+	policy, _, err := buildSuitePolicy(os.Stdout, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestSuiteNoBudgetDoesNotCountAsModelAgreement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := buildSuitePolicy(os.Stdout, opts)
+	policy, _, err := buildSuitePolicy(os.Stdout, opts)
 	if err != nil {
 		t.Fatal(err)
 	}

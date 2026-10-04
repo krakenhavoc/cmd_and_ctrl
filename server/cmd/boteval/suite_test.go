@@ -171,12 +171,12 @@ func TestSuiteRunRefusesAModelTierWithNoClient(t *testing.T) {
 	t.Setenv("CMDCTRL_OPENAI_ENDPOINT", "")
 	t.Setenv("CMDCTRL_ANTHROPIC_API_KEY", "")
 	t.Setenv("CMDCTRL_BOT_MODEL", "")
-	_, err := buildSuitePolicy(os.Stdout, suiteRunOpts{Policy: "assisted"})
+	_, _, err := buildSuitePolicy(os.Stdout, suiteRunOpts{Policy: "assisted"})
 	if err == nil {
 		t.Fatal("the assisted tier was built with no model transport")
 	}
 	// And the free tiers still build.
-	if _, err := buildSuitePolicy(os.Stdout, suiteRunOpts{Policy: "heuristic"}); err != nil {
+	if _, _, err := buildSuitePolicy(os.Stdout, suiteRunOpts{Policy: "heuristic"}); err != nil {
 		t.Fatalf("heuristic: %v", err)
 	}
 }

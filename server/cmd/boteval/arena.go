@@ -75,6 +75,10 @@ type arenaFlags struct {
 	wall     time.Duration
 	stall    time.Duration
 	maxThink time.Duration
+	// think and maxTokens are the thinking experiment (#2196): the
+	// model seats think before they answer, with this reply budget.
+	think     bool
+	maxTokens int
 	// blockGrace is the declare-blockers hold. 0 or less is OFF; see
 	// config, where it has to be spelled negative for the arena.
 	blockGrace time.Duration
@@ -94,8 +98,9 @@ type arenaFlags struct {
 	// the caller does not re-derive them.
 	needsModel bool
 	needsIndex bool
-	// thinkDefaulted records that the local 20s default was applied,
-	// so the run can say so out loud exactly once.
+	// thinkDefaulted records that a default deadline was applied (the
+	// local 20s, or 120s on a --think run), so the run can say so out
+	// loud exactly once.
 	thinkDefaulted bool
 }
 
@@ -112,7 +117,9 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	turns := fs.Int("turn-budget", 60, "stop a game that has not ended by this turn")
 	wall := fs.Duration("wall", 30*time.Minute, "per-game wall clock")
 	stall := fs.Duration("stall", 0, "declare a stall after this long with no committed move (default 3×max-think+15s)")
-	maxThink := fs.Duration("max-think", 0, "model tiers' per-window deadline (default: $CMDCTRL_BOT_MAX_THINK, or 20s against a local endpoint)")
+	maxThink := fs.Duration("max-think", 0, "model tiers' per-window deadline (default: $CMDCTRL_BOT_MAX_THINK, or 20s against a local endpoint, 120s with --think)")
+	think := fs.Bool("think", false, "let the model seats THINK before they answer (default: $CMDCTRL_BOT_THINK); an experiment, see docs/bot.md")
+	maxTokens := fs.Int("max-tokens", 0, "the model seats' reply budget in tokens (default: $CMDCTRL_BOT_MAX_TOKENS, else 128/256, or 8000 with --think)")
 	modelID := fs.String("model", "", "routine model id (default: $CMDCTRL_BOT_MODEL)")
 	frontier := fs.String("frontier-model", "", "escalated model id (default: $CMDCTRL_BOT_FRONTIER_MODEL, else --model)")
 	endpoint := fs.String("endpoint", "", "OpenAI-compatible endpoint (default: $CMDCTRL_OPENAI_ENDPOINT)")
@@ -131,7 +138,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 
 	a := &arenaFlags{
 		games: *games, seed: *seed, rotate: *rotate, lockstep: *lockstep, turns: *turns, wall: *wall,
-		stall: *stall, maxThink: *maxThink, blockGrace: *blockGrace, out: *out2,
+		stall: *stall, maxThink: *maxThink, think: *think, maxTokens: *maxTokens, blockGrace: *blockGrace, out: *out2,
 		decLog: *decLog, decMode: *decMode,
 		replays: *replays, note: *note, printMD: *printMD, printJSON: *printJSON,
 	}
@@ -168,7 +175,13 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 			a.maxThink = d
 		}
 	}
-	if a.endpoint != "" && a.maxThink == 0 {
+	if err := a.resolveThinking(); err != nil {
+		return nil, err
+	}
+	switch {
+	case a.endpoint != "" && a.maxThink == 0 && a.think:
+		a.maxThink, a.thinkDefaulted = model.DefaultThinkingMaxThink, true
+	case a.endpoint != "" && a.maxThink == 0:
 		a.maxThink, a.thinkDefaulted = localDefaultMaxThink, true
 	}
 	if _, merr := decisionlog.ParseMode(a.decMode); merr != nil {
@@ -187,6 +200,18 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 		a.printMD = true
 	}
 	return a, nil
+}
+
+// resolveThinking fills --think and --max-tokens from the environment
+// when the flags left them unset, and names the reply budget a thinking
+// run will actually use, so the report records it rather than a zero.
+func (a *arenaFlags) resolveThinking() error {
+	think, maxTokens, err := thinkingFlags(a.think, a.maxTokens)
+	if err != nil {
+		return err
+	}
+	a.think, a.maxTokens = think, maxTokens
+	return nil
 }
 
 func parseSeats(s string) ([]tiers.Tier, error) {
@@ -281,7 +306,7 @@ func (a *arenaFlags) config(idx *cards.Index, client model.Client, dl *decisionl
 	cfg := botarena.Config{
 		Seats: seats, Games: a.games, Seed: a.seed, Rotate: a.rotate, Lockstep: a.lockstep,
 		TurnBudget: a.turns, Wall: a.wall, Stall: a.stall,
-		Index: idx, Client: client, MaxThink: a.maxThink,
+		Index: idx, Client: client, MaxThink: a.maxThink, Think: a.think, MaxTokens: a.maxTokens,
 		Models:      tiers.Models{Routine: a.modelID, Frontier: a.frontier},
 		DecisionLog: dl, Log: log,
 	}
@@ -343,6 +368,9 @@ func runArena(args []string) int {
 		client = c
 		if a.thinkDefaulted {
 			say(progress, "bot think deadline raised to %s for the local model transport; pass --max-think to choose your own\n", a.maxThink)
+		}
+		if a.think {
+			say(progress, "THINKING IS ON: the model seats think before every answer, reply budget %d tokens, deadline %s\n", a.maxTokens, a.maxThink)
 		}
 		if a.maxThink < 5*time.Second {
 			say(progress, "WARNING: --max-think %s is short for a self-hosted model; windows that overrun it play the HEURISTIC's move under the model tier's name\n", a.maxThink)

@@ -99,6 +99,10 @@ type DecisionRecord struct {
 	ModelLatency time.Duration
 	// Usage is what the call cost.
 	Usage Usage
+	// ReasoningChars is the length, in bytes, of the thinking the
+	// reply carried apart from its answer (Response.Reasoning). Zero
+	// with thinking off, which is the default (#2196).
+	ReasoningChars int
 	// Pick is how the model's reply mapped onto the move list — one
 	// of the Pick* constants — when Layer C's answer was used; empty
 	// otherwise.
@@ -143,6 +147,13 @@ type Stats struct {
 	// MaxThink is in danger.
 	ModelLatency    time.Duration
 	MaxModelLatency time.Duration
+	// ReasoningReplies counts the decision calls whose reply carried
+	// thinking apart from the answer, and ReasoningChars totals its
+	// length in bytes. Both stay zero with thinking off, the default;
+	// with CMDCTRL_BOT_THINK on they say how much the model thought
+	// per answer (#2196).
+	ReasoningReplies int64
+	ReasoningChars   int64
 
 	// ByImprov counts the outcomes of ADR 0033 §8's improvisation
 	// windows — one entry per window in which this seat had an
@@ -279,6 +290,10 @@ func (r *recorder) record(rec DecisionRecord) {
 	r.stats.Usage.CacheReadTokens += rec.Usage.CacheReadTokens
 	r.stats.Usage.CacheWriteTokens += rec.Usage.CacheWriteTokens
 	r.stats.Usage.CachedPromptTokens += rec.Usage.CachedPromptTokens
+	if rec.ReasoningChars > 0 {
+		r.stats.ReasoningReplies++
+		r.stats.ReasoningChars += int64(rec.ReasoningChars)
+	}
 
 	r.ring[r.nextIdx] = rec
 	r.nextIdx = (r.nextIdx + 1) % r.keep
