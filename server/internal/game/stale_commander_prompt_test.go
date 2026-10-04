@@ -28,6 +28,12 @@ import (
 //
 // The tests below pin one prompt per death, and pin the prune that
 // catches the stale siblings if anything ever queues them again.
+//
+// Since ADR 0115 a commander's death no longer pauses: it is put into
+// the graveyard and CR 903.9a asks once, afterwards. The first two
+// tests pin that one question per death in the new shape. The prune
+// tests are about any paused exit, so they use a test "may"
+// replacement (may_detour_test.go) on a plain card.
 
 // seatBattlefieldCommander puts a 4/4 legendary commander on the
 // battlefield and returns its instance ID. `mut` doctors the card
@@ -54,8 +60,8 @@ func seatBattlefieldCommander(t *testing.T, g *Game, owner *Player, mut func(c *
 }
 
 // TestZeroToughnessCommanderQueuesOneCommandZonePrompt — a commander
-// whose toughness hits zero (CR 704.5f) is asked about the command
-// zone once, not once per state-check iteration.
+// whose toughness hits zero (CR 704.5f) dies once and is asked about
+// the command zone once, not once per state-check iteration.
 func TestZeroToughnessCommanderQueuesOneCommandZonePrompt(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -67,13 +73,10 @@ func TestZeroToughnessCommanderQueuesOneCommandZonePrompt(t *testing.T) {
 	g.runStateChecksLocked()
 	g.mu.Unlock()
 
-	prompt := expectCommanderPrompt(t, g, owner)
-	if !g.Battlefield.Contains(cmdID) {
-		t.Fatal("the commander moved before its owner answered")
+	if !owner.Graveyard.Contains(cmdID) {
+		t.Fatal("the zero-toughness commander did not die")
 	}
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	answerCommanderReturn(t, g, owner, cmdID, true)
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("%d prompts survived the answer", len(g.PendingChoices))
 	}
@@ -95,12 +98,9 @@ func TestDeathtouchedCommanderQueuesOneCommandZonePrompt(t *testing.T) {
 	g.runStateChecksLocked()
 	g.mu.Unlock()
 
-	prompt := expectCommanderPrompt(t, g, owner)
-	// Declining is the other half of the question and must still
-	// route the commander to its owner's graveyard.
-	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	// Declining is the other half of the question and leaves the
+	// commander in its owner's graveyard.
+	answerCommanderReturn(t, g, owner, cmdID, false)
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("%d prompts survived the answer", len(g.PendingChoices))
 	}
@@ -114,7 +114,7 @@ func TestDeathtouchedCommanderQueuesOneCommandZonePrompt(t *testing.T) {
 func TestStaleCommandZonePromptIsPrunedWhenItsCardLeaves(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
-	cmdID := seatBattlefieldCommander(t, g, owner, nil)
+	cmdID := seatDetouredCard(t, g, g.Battlefield, owner)
 
 	// Two exits for one card, both paused — the shape the SBA sweep
 	// used to produce on its own before the guard above existed.
@@ -153,7 +153,7 @@ func TestStaleCommandZonePromptIsPrunedWhenItsCardLeaves(t *testing.T) {
 func TestStaleCommandZonePromptAnswerIsDroppedNotRefused(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
-	cmdID := seatBattlefieldCommander(t, g, owner, nil)
+	cmdID := seatDetouredCard(t, g, g.Battlefield, owner)
 
 	g.mu.Lock()
 	if err := g.routeBattlefieldCardToOwnerGraveyardLocked(cmdID); err != nil {

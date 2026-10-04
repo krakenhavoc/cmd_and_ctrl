@@ -1037,7 +1037,7 @@ func TestB26InspiringLeaderPumpsTokensWhileYourCommanderIsOut(t *testing.T) {
 		t.Errorf("a nontoken creature does not: power %d", p)
 	}
 	leaveBattlefield(t, g, me.ID, cmd)
-	b21DeclineCommandZone(t, g, me.ID)
+	answerCommanderReturn(t, g, me.ID, false)
 	if p := effectivePower(t, g, mine); p != 1 {
 		t.Errorf("the commander gone, the anthem is gone: power %d", p)
 	}

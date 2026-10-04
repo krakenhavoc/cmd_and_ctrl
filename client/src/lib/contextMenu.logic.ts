@@ -1584,16 +1584,17 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
     label: d.label,
     action: buildMoveAction(card, location, d),
   }));
-  // CR 903.9 — route a commander leaving the battlefield through the
-  // replacement pipeline instead of dropping it straight in the
-  // command zone. #164 (shipped in #171) made that replacement fire
-  // on every path, and this manual trigger keeps it testable by hand.
+  // CR 903.9a (ADR 0115) — the commander dies into its owner's
+  // graveyard, so every dies trigger sees it, and `as_commander`
+  // answers the state-based action's "put it into the command zone?"
+  // with yes in the same click, rather than dropping the card straight
+  // into the command zone.
   if (card.is_commander && location.zone === "battlefield") {
     const gy: MoveDest = { id: "graveyard", label: "Graveyard", zone: "graveyard" };
     items.push({
       id: "move-commander-903-9",
-      label: "Graveyard → command zone (CR 903.9)",
-      hint: "fires the commander-zone replacement rather than moving directly",
+      label: "Graveyard → command zone (CR 903.9a)",
+      hint: "dies first, so dies triggers see it, then goes to the command zone",
       action: buildMoveAction(card, location, gy, true),
     });
   }

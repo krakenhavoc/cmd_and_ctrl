@@ -137,16 +137,16 @@ func TestAPromptedDiscardRunWaitsForEveryAskedSeat(t *testing.T) {
 	}
 }
 
-// TestAPromptedDiscardRunWaitsForAPausedCommanderLeg is the CR 903.9
+// TestAPromptedDiscardRunWaitsForAPausedLeg is the CR 903.9
 // half, and the reason the leg settles from inside the discard batch
 // rather than on the line after the answer: a discarded commander is
 // STILL IN THE HAND while its owner is asked about the command zone.
-func TestAPromptedDiscardRunWaitsForAPausedCommanderLeg(t *testing.T) {
+func TestAPromptedDiscardRunWaitsForAPausedLeg(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	source := departureTestSource(g, g.Seats[1].ID, "Mind Rot")
 	g.WithWriteLock(func() { me.Hand.Cards = nil })
-	commander := seatCommander(t, me.Hand, me)
+	commander := seatDetouredCard(t, g, me.Hand, me)
 
 	out := &discardRunCall{}
 	g.WithWriteLock(func() {

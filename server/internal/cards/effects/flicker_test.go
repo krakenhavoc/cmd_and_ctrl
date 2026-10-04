@@ -388,19 +388,18 @@ func TestCosmicInterventionExilesInsteadThenReturns(t *testing.T) {
 
 // A dying commander. CR 903.9a lets its owner send it to the command
 // zone once it has been exiled; Cosmic Intervention does the exiling.
-// So both outcomes must be reachable, whichever order the controller
-// puts the two replacements in: "no" to the command zone leaves the
-// commander in exile and it walks back at the end step; "yes" sends it
-// home and nothing comes back.
+// Since ADR 0115 that is the engine's order too: Cosmic Intervention's
+// replacement is the only one that applies (no CR 616 ordering prompt),
+// and the state-based action asks afterwards. "No" leaves the commander
+// in exile and it walks back at the end step; "yes" sends it home and
+// nothing comes back.
 func TestCosmicInterventionSavesACommanderWhoseOwnerDeclines(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
-		reverseOrder    bool
 		takeCommandZone bool
 	}{
-		{"declines, commander rule first", false, false},
-		{"declines, Cosmic Intervention first", true, false},
-		{"takes the command zone", false, true},
+		{"declines", false},
+		{"takes the command zone", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -419,38 +418,21 @@ func TestCosmicInterventionSavesACommanderWhoseOwnerDeclines(t *testing.T) {
 				}
 			})
 
-			asked := false
-			for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
-				c := g.PendingChoices[len(g.PendingChoices)-1]
-				if c.Chooser != me.ID {
-					t.Fatalf("prompt %s addressed to someone other than the commander's owner", c.Kind)
+			for _, c := range g.PendingChoices {
+				if c != nil && (c.Kind == game.PendingChoiceReplacementOrder || c.Kind == game.PendingChoiceOptionalReplacement) {
+					t.Fatalf("unexpected %s prompt: only Cosmic Intervention's replacement applies", c.Kind)
 				}
-				switch c.Kind {
-				case game.PendingChoiceReplacementOrder:
-					ids := append([]game.ReplacementEffectID(nil), c.ReplacementEffectIDs...)
-					if tc.reverseOrder {
-						for l, r := 0, len(ids)-1; l < r; l, r = l+1, r-1 {
-							ids[l], ids[r] = ids[r], ids[l]
-						}
-					}
-					if err := g.ResolveReplacementOrder(c.ID, me.ID, ids); err != nil {
-						t.Fatalf("ResolveReplacementOrder: %v", err)
-					}
-				case game.PendingChoiceOptionalReplacement:
-					asked = true
-					if err := g.ResolveOptionalReplacement(c.ID, me.ID, tc.takeCommandZone); err != nil {
-						t.Fatalf("ResolveOptionalReplacement: %v", err)
-					}
-				default:
-					t.Fatalf("unexpected prompt %s", c.Kind)
-				}
-			}
-			if !asked {
-				t.Fatal("the commander's owner was never offered the command zone")
 			}
 			if me.Graveyard.Contains(commander) {
 				t.Fatal("the commander hit the graveyard under Cosmic Intervention")
 			}
+			if !exileHas(g, commander) {
+				t.Fatal("Cosmic Intervention did not exile the dying commander")
+			}
+			if commanderReturnPromptFor(g, me.ID) == nil {
+				t.Fatal("the commander's owner was never offered the command zone")
+			}
+			answerCommanderReturn(t, g, me.ID, tc.takeCommandZone)
 
 			if tc.takeCommandZone {
 				if !me.Command.Contains(commander) {

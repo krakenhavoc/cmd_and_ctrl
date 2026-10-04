@@ -28,9 +28,11 @@ import (
 //   - REDIRECTED. "If a card would leave a graveyard, put it on the
 //     bottom of its owner's library instead" — the Leyline shape. The
 //     card left; it did not reach exile.
-//   - PAUSED. A commander card in the graveyard, so CR 903.9 asks its
-//     owner and nothing is knowable until they answer. Both answers
-//     are checked: the command zone pays nothing, exile pays.
+//   - A COMMANDER card in the graveyard. Before ADR 0115 CR 903.9 asked
+//     its owner before the exile and nothing was knowable until they
+//     answered. Now the card is exiled like any other, the clause pays
+//     at once, and CR 903.9a asks the owner afterwards; both answers
+//     are checked, and neither changes the payout.
 
 // cantLeaveTheGraveyard is the "cards in graveyards can't be exiled"
 // static, gated to one card.
@@ -120,17 +122,17 @@ func TestScavengingOozeDoesNotGrowForACardSentSomewhereElse(t *testing.T) {
 	}
 }
 
-// TestScavengingOozeWaitsForTheCommandZoneAnswer — a commander card in
-// the graveyard pauses the exile on CR 903.9, and the Ooze cannot know
-// what it ate until the answer. Both answers are the test.
-func TestScavengingOozeWaitsForTheCommandZoneAnswer(t *testing.T) {
+// TestScavengingOozeGrowsForAnExiledCommanderCard — a commander card
+// in the graveyard is exiled like any other creature card (ADR 0115),
+// so the Ooze grows at once; its owner is then asked about the command
+// zone (CR 903.9a), and neither answer takes the growth back.
+func TestScavengingOozeGrowsForAnExiledCommanderCard(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
-		wantCounter int
 	}{
-		{"to the command zone: nothing was exiled", true, 0},
-		{"to exile: the Ooze grows", false, 1},
+		{"then to the command zone", true},
+		{"left in exile", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -142,30 +144,25 @@ func TestScavengingOozeWaitsForTheCommandZoneAnswer(t *testing.T) {
 
 			oozeEats(t, g, me, ooze, prey)
 
-			if got := b12Counter(t, g, ooze, "+1/+1"); got != 0 {
-				t.Fatalf("+1/+1 counters = %d while the CR 903.9 prompt is open, want 0 — "+
-					"the clause waits for the answer", got)
+			if !g.Exile.Contains(prey) {
+				t.Fatal("the commander card is exiled before its owner is asked")
 			}
-			if me.Life != before {
-				t.Fatalf("life moved to %d while the prompt is open, want %d", me.Life, before)
-			}
-
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, opp.ID)
-				if !opp.Command.Contains(prey) {
-					t.Fatal("accepting puts the commander card in the command zone")
-				}
-			} else {
-				b21DeclineCommandZone(t, g, opp.ID)
-				if !g.Exile.Contains(prey) {
-					t.Fatal("declining exiles the commander card")
-				}
+			if got := b12Counter(t, g, ooze, "+1/+1"); got != 1 {
+				t.Fatalf("+1/+1 counters = %d, want 1 — a creature card was exiled", got)
 			}
 
-			if got := b12Counter(t, g, ooze, "+1/+1"); got != tc.wantCounter {
-				t.Errorf("+1/+1 counters = %d, want %d", got, tc.wantCounter)
+			answerCommanderReturn(t, g, opp.ID, tc.commandZone)
+			if tc.commandZone && !opp.Command.Contains(prey) {
+				t.Fatal("yes puts the commander card in the command zone")
 			}
-			if want := before + tc.wantCounter; me.Life != want {
+			if !tc.commandZone && !g.Exile.Contains(prey) {
+				t.Fatal("no leaves the commander card in exile")
+			}
+
+			if got := b12Counter(t, g, ooze, "+1/+1"); got != 1 {
+				t.Errorf("+1/+1 counters = %d, want 1", got)
+			}
+			if want := before + 1; me.Life != want {
 				t.Errorf("life %d → %d, want %d — the life rides the same clause as the counter",
 					before, me.Life, want)
 			}
@@ -253,16 +250,17 @@ func TestClingToDustStillDrawsForANoncreatureCardThatReachedExile(t *testing.T) 
 	}
 }
 
-// TestClingToDustWaitsForTheCommandZoneAnswer — the pause, on the card
-// whose payout is the most visible.
-func TestClingToDustWaitsForTheCommandZoneAnswer(t *testing.T) {
+// TestClingToDustGainsForAnExiledCommanderCard — the card whose payout
+// is the most visible. The commander card is exiled (ADR 0115), Cling
+// to Dust gains three life at once, and the CR 903.9a answer that
+// follows changes nothing.
+func TestClingToDustGainsForAnExiledCommanderCard(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
-		wantLife    int
 	}{
-		{"to the command zone: no life", true, 0},
-		{"to exile: three life", false, 3},
+		{"then to the command zone", true},
+		{"left in exile", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -275,18 +273,12 @@ func TestClingToDustWaitsForTheCommandZoneAnswer(t *testing.T) {
 				[]game.TargetRef{{Kind: game.TargetCard, ID: prey}})
 			passPriorityAroundTable(t, g)
 
-			if me.Life != lifeBefore || me.Hand.Size() != handBefore {
-				t.Fatalf("life %d and hand %d moved while the CR 903.9 prompt is open",
-					me.Life, me.Hand.Size())
+			if want := lifeBefore + 3; me.Life != want {
+				t.Fatalf("life %d → %d before the CR 903.9a answer, want %d", lifeBefore, me.Life, want)
 			}
+			answerCommanderReturn(t, g, opp.ID, tc.commandZone)
 
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, opp.ID)
-			} else {
-				b21DeclineCommandZone(t, g, opp.ID)
-			}
-
-			if want := lifeBefore + tc.wantLife; me.Life != want {
+			if want := lifeBefore + 3; me.Life != want {
 				t.Errorf("life %d → %d, want %d", lifeBefore, me.Life, want)
 			}
 			if me.Hand.Size() != handBefore {
@@ -339,15 +331,16 @@ func TestDelugeOfTheDeadMakesNoZombieForAnExileTheWindowCancelled(t *testing.T) 
 	}
 }
 
-// TestDelugeOfTheDeadWaitsForTheCommandZoneAnswer.
-func TestDelugeOfTheDeadWaitsForTheCommandZoneAnswer(t *testing.T) {
+// TestDelugeOfTheDeadMakesAZombieForAnExiledCommanderCard — the
+// commander card is exiled (ADR 0115), the Zombie is made at once, and
+// the CR 903.9a answer that follows does not take it back.
+func TestDelugeOfTheDeadMakesAZombieForAnExiledCommanderCard(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
-		wantZombies int
 	}{
-		{"to the command zone: no Zombie", true, 0},
-		{"to exile: one Zombie", false, 1},
+		{"then to the command zone", true},
+		{"left in exile", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -358,52 +351,13 @@ func TestDelugeOfTheDeadWaitsForTheCommandZoneAnswer(t *testing.T) {
 
 			delugeEats(t, g, me, deluge, prey)
 
-			if n := countBattlefieldNamed(g, me.ID, "Zombie"); n != 0 {
-				t.Fatalf("%d Zombies while the CR 903.9 prompt is open, want 0", n)
+			if n := countBattlefieldNamed(g, me.ID, "Zombie"); n != 1 {
+				t.Fatalf("%d Zombies before the CR 903.9a answer, want 1", n)
 			}
-
-			if tc.commandZone {
-				b36AcceptCommandZone(t, g, opp.ID)
-			} else {
-				b21DeclineCommandZone(t, g, opp.ID)
-			}
-
-			if n := countBattlefieldNamed(g, me.ID, "Zombie"); n != tc.wantZombies {
-				t.Errorf("%d Zombies, want %d", n, tc.wantZombies)
+			answerCommanderReturn(t, g, opp.ID, tc.commandZone)
+			if n := countBattlefieldNamed(g, me.ID, "Zombie"); n != 1 {
+				t.Errorf("%d Zombies after the answer, want 1", n)
 			}
 		})
-	}
-}
-
-// TestDelugeOfTheDeadUndoAcrossTheCommandZonePromptReplays is the undo
-// contract the continuation signs, on a card: rewind into the open
-// prompt, answer the OTHER way, and the board follows THAT answer.
-func TestDelugeOfTheDeadUndoAcrossTheCommandZonePromptReplays(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	meID, oppID := me.ID, opp.ID
-	deluge := pushDeluge(g, me)
-	prey := b17GraveyardCard(opp, "Their Commander", "Legendary Creature — Human", "{2}{B}")
-	markCommanderCard(t, g, opp, prey)
-
-	delugeEats(t, g, me, deluge, prey)
-	promptOpen := g.Clone()
-
-	b36AcceptCommandZone(t, g, oppID)
-	if n := countBattlefieldNamed(g, meID, "Zombie"); n != 0 {
-		t.Fatalf("%d Zombies after the command zone, want 0", n)
-	}
-
-	g.WithWriteLock(func() { g.RestoreFrom(promptOpen) })
-	if !g.Seats[1].Graveyard.Contains(prey) {
-		t.Fatal("the rewind puts the commander card back in its graveyard")
-	}
-
-	b21DeclineCommandZone(t, g, oppID)
-	if !g.Exile.Contains(prey) {
-		t.Fatal("the replayed answer exiles the commander card")
-	}
-	if n := countBattlefieldNamed(g, meID, "Zombie"); n != 1 {
-		t.Errorf("%d Zombies on the replay, want 1", n)
 	}
 }

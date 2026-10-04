@@ -85,6 +85,56 @@ func TestFeignDeathReturnsTheCreatureOnce(t *testing.T) {
 	}
 }
 
+// ADR 0115: a commander under Feign Death dies like any creature, and
+// its granted "when this creature dies, return it" waits while CR 903.9a
+// asks its owner (CR 704.3: the state-based action is performed before
+// the trigger goes on the stack). On a "no" the trigger finds the card
+// in the graveyard and returns it. On a "yes" the card has gone to the
+// command zone, a new object (CR 400.7), and the trigger, which looks
+// only in the first zone the card went to (CR 603.6c), returns nothing.
+func TestFeignDeathOnACommanderFollowsItsOwnersAnswer(t *testing.T) {
+	for _, home := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		cmd := b16Creature(g, me.ID, "Commander", "Legendary Creature — Bear", 2, 2, "G")
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == cmd {
+				g.Battlefield.Cards[i].IsCommander = true
+			}
+		}
+		dgCastOn(t, g, "Feign Death", feignDeathOracle, cmd)
+
+		g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(cmd) })
+		if !inGraveyardOf(g, me.ID, cmd) {
+			t.Fatalf("answer %v: the commander did not die", home)
+		}
+		if c := commanderReturnPromptFor(g, me.ID); c == nil {
+			t.Fatalf("answer %v: no CR 903.9a question", home)
+		}
+		if len(g.StackMeta) != 0 {
+			t.Fatalf("answer %v: the dies trigger went on the stack before the CR 903.9a answer", home)
+		}
+		answerCommanderReturn(t, g, me.ID, home)
+		passPriorityAroundTable(t, g)
+
+		back := findBattlefieldCardByID(g, cmd)
+		if home {
+			if back != nil {
+				t.Error("yes: Feign Death pulled the commander back out of the command zone")
+			}
+			if !me.Command.Contains(cmd) {
+				t.Error("yes: the commander is not in the command zone")
+			}
+			continue
+		}
+		if back == nil {
+			t.Error("no: Feign Death did not return the commander from the graveyard")
+		} else if !back.Tapped {
+			t.Error("no: it returns tapped")
+		}
+	}
+}
+
 // "Until end of turn": after the cleanup step the creature no longer
 // has the ability, and the record is gone.
 func TestFeignDeathEndsAtCleanup(t *testing.T) {

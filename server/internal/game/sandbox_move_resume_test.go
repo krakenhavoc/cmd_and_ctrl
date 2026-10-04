@@ -19,6 +19,13 @@ import (
 // same thing: nothing. The prompt closed, the card stayed where it was,
 // and the move was lost.
 //
+// Since ADR 0115 a commander moved by hand into a graveyard or exile is
+// not asked before it moves (CR 903.9a asks after it lands), so the
+// pause these tests resume is a test "may" replacement on a plain card
+// (may_detour_test.go). The resume they pin is the one every optional
+// exit replacement takes, and a bounce or tuck of a commander (CR
+// 903.9b) still takes it too.
+//
 // The fix is not a second resume — it is the shared exit primitive.
 // Every destination that is not the battlefield or the stack now goes
 // through routeCardToZoneLocked, whose zoneRoute frame carries the
@@ -43,7 +50,7 @@ func sandboxOrigins() []sandboxOrigin {
 		{
 			name: "library to graveyard (a mill by hand)",
 			seat: func(t *testing.T, g *Game, owner *Player) (uuid.UUID, ZoneRef) {
-				return seatCommander(t, owner.Library, owner),
+				return seatDetouredCard(t, g, owner.Library, owner),
 					ZoneRef{Kind: ZoneLibrary, Owner: owner.ID}
 			},
 			dst:      func(owner *Player) ZoneRef { return ZoneRef{Kind: ZoneGraveyard, Owner: owner.ID} },
@@ -52,7 +59,7 @@ func sandboxOrigins() []sandboxOrigin {
 		{
 			name: "stack to graveyard (a counter by hand)",
 			seat: func(t *testing.T, g *Game, owner *Player) (uuid.UUID, ZoneRef) {
-				id := seatCommander(t, g.Stack, owner)
+				id := seatDetouredCard(t, g, g.Stack, owner)
 				spell, _ := g.Stack.Top()
 				if _, err := g.Stack.Remove(id); err != nil {
 					t.Fatalf("Stack.Remove: %v", err)
@@ -66,7 +73,7 @@ func sandboxOrigins() []sandboxOrigin {
 		{
 			name: "hand to graveyard (a discard by hand)",
 			seat: func(t *testing.T, g *Game, owner *Player) (uuid.UUID, ZoneRef) {
-				return seatCommander(t, owner.Hand, owner),
+				return seatDetouredCard(t, g, owner.Hand, owner),
 					ZoneRef{Kind: ZoneHand, Owner: owner.ID}
 			},
 			dst:      func(owner *Player) ZoneRef { return ZoneRef{Kind: ZoneGraveyard, Owner: owner.ID} },
@@ -75,7 +82,7 @@ func sandboxOrigins() []sandboxOrigin {
 		{
 			name: "graveyard to exile",
 			seat: func(t *testing.T, g *Game, owner *Player) (uuid.UUID, ZoneRef) {
-				return seatCommander(t, owner.Graveyard, owner),
+				return seatDetouredCard(t, g, owner.Graveyard, owner),
 					ZoneRef{Kind: ZoneGraveyard, Owner: owner.ID}
 			},
 			dst:      func(_ *Player) ZoneRef { return ZoneRef{Kind: ZoneExile} },
@@ -84,10 +91,10 @@ func sandboxOrigins() []sandboxOrigin {
 	}
 }
 
-// TestSandboxCommanderMoveFinishesFromEveryOriginZone is the issue.
-// Both answers, from each of the four non-battlefield zones a
-// commander can be moved out of by hand.
-func TestSandboxCommanderMoveFinishesFromEveryOriginZone(t *testing.T) {
+// TestSandboxPausedMoveFinishesFromEveryOriginZone is the issue.
+// Both answers, from each of the four non-battlefield zones a card can
+// be moved out of by hand.
+func TestSandboxPausedMoveFinishesFromEveryOriginZone(t *testing.T) {
 	for _, tc := range sandboxOrigins() {
 		for _, toCommandZone := range []bool{true, false} {
 			answer := "declined"
@@ -138,7 +145,7 @@ func TestSandboxMoveOffTheStackRetiresTheStackItem(t *testing.T) {
 	for _, toCommandZone := range []bool{true, false} {
 		g := newActiveGame(t)
 		owner := g.Seats[0]
-		cmdID := seatCommander(t, g.Stack, owner)
+		cmdID := seatDetouredCard(t, g, g.Stack, owner)
 		spell, _ := g.Stack.Top()
 		if _, err := g.Stack.Remove(cmdID); err != nil {
 			t.Fatalf("Stack.Remove: %v", err)
@@ -249,7 +256,7 @@ func TestUndoAcrossASandboxMovePauseReplaysTheSameWay(t *testing.T) {
 	// RestoreFrom swaps g.Seats wholesale, so the seat (and its
 	// zones) is re-read after every rewind rather than captured once.
 	owner := func() *Player { return g.Seats[0] }
-	cmdID := seatCommander(t, owner().Graveyard, owner())
+	cmdID := seatDetouredCard(t, g, owner().Graveyard, owner())
 	move := func() {
 		if err := g.MoveCardByIDAsCommander(
 			ZoneRef{Kind: ZoneGraveyard, Owner: owner().ID},
@@ -299,7 +306,7 @@ func TestUndoAcrossASandboxMovePauseReplaysTheSameWay(t *testing.T) {
 func TestStaleSandboxMovePromptIsPruned(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
-	cmdID := seatCommander(t, owner.Graveyard, owner)
+	cmdID := seatDetouredCard(t, g, owner.Graveyard, owner)
 
 	for i := 0; i < 2; i++ {
 		if err := g.MoveCardByIDAsCommander(
@@ -343,7 +350,7 @@ func TestStaleSandboxMovePromptIsPruned(t *testing.T) {
 func TestStaleSandboxMoveAnswerIsDroppedNotRefused(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
-	cmdID := seatCommander(t, owner.Graveyard, owner)
+	cmdID := seatDetouredCard(t, g, owner.Graveyard, owner)
 
 	if err := g.MoveCardByIDAsCommander(
 		ZoneRef{Kind: ZoneGraveyard, Owner: owner.ID},

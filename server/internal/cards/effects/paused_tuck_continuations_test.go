@@ -214,15 +214,17 @@ func TestGodEternalCommanderReturnsThirdFromTopWithoutErroring(t *testing.T) {
 	}
 	before := len(g.Events)
 
-	// Dies. The graveyard is a CR 903.9 destination too, so the first
-	// question is about the death; decline it so the card reaches the
-	// graveyard and the dies-trigger fires.
+	// Dies. It reaches the graveyard and the dies-trigger fires; the
+	// first question is CR 903.9a's, asked after the death and before
+	// the trigger goes on the stack (ADR 0115). Decline it so the
+	// trigger still finds the card in the graveyard (CR 603.6c).
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(oketra) })
-	b21DeclineCommandZone(t, g, me.ID)
+	answerCommanderReturn(t, g, me.ID, false)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
-	// Second question: the tuck. Nothing has moved yet.
+	// Second question: the tuck's CR 903.9b replacement. Nothing has
+	// moved yet.
 	if !me.Graveyard.Contains(oketra) {
 		t.Fatal("the card waits in the graveyard until the tuck's question is answered")
 	}
@@ -253,7 +255,7 @@ func TestGodEternalCommanderTakingTheCommandZoneStaysThere(t *testing.T) {
 	before := len(g.Events)
 
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(oketra) })
-	b21DeclineCommandZone(t, g, me.ID)
+	answerCommanderReturn(t, g, me.ID, false)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	b36AcceptCommandZone(t, g, me.ID)

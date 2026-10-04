@@ -9,6 +9,18 @@ import (
 // zone_route.go is the engine's ONE zone-change path for an
 // effect-driven move into a zone other than the battlefield.
 //
+// AMENDED BY ADR 0115 (commanders die, CR 903.9a). The history below
+// is written for the CR 903.9 replacement as it was: one built-in that
+// rewrote a commander's move into a library, hand, graveyard or exile.
+// Since ADR 0115 PR 3 that built-in applies to a HAND or LIBRARY
+// destination only (CR 903.9b). A commander headed for a graveyard or
+// exile goes through this primitive like any other card and lands, so
+// it dies, is milled, discarded or exiled with every trigger of that
+// move, and the CR 903.9a state-based action (commander_return.go)
+// asks its owner afterwards. Everything below about a commander's
+// PAUSE now describes a bounce or a tuck, and the pause machinery
+// still serves any other optional ("may") exit replacement.
+//
 // Why it exists (#529). CR 903.9 — "if a commander would be put into
 // a library, hand, graveyard or exile from anywhere, its owner may
 // put it into the command zone instead" — is implemented as a CR 614
@@ -56,14 +68,14 @@ import (
 //
 //   - A batch exit (Farewell, Evacuation — simultaneous.go) that
 //     pauses on one card finishes the rest and lets the paused one
-//     land when its owner answers. So a commander caught in a wrath
-//     leaves the battlefield a moment after the rest of the board
-//     rather than simultaneously with it, and its leaves-the-
-//     battlefield event falls outside that batch. Holding a whole
-//     simultaneous exit open across a player prompt needs a
-//     continuation frame the engine does not have yet (#478); a
-//     commander that is asked one beat late is a far smaller
-//     deviation than a commander that is never asked at all.
+//     land when its owner answers. So a card whose exit pauses leaves
+//     the battlefield a moment after the rest of the board rather than
+//     simultaneously with it, and its leaves-the-battlefield event
+//     falls outside that batch. Holding a whole simultaneous exit open
+//     across a player prompt needs a continuation frame the engine
+//     does not have yet (#478). Before ADR 0115 that was every
+//     commander caught in a wrath; a destroyed commander no longer
+//     pauses, so it now dies in the batch with everything else.
 //
 // #853 folded the DISCARD in — the last exit that still moved a card
 // with a raw MoveCard, and therefore the last one that never opened
@@ -275,11 +287,14 @@ type zoneRoute struct {
 
 	// AsCommander is the sandbox move_card action's "yes, send this
 	// commander back to the command zone" flavour flag (#707). It is
-	// NOT a gate on the CR 903.9 built-in — that gate was dropped in
+	// NOT a gate on the CR 903.9b built-in — that gate was dropped in
 	// #171 and the replacement has been destination-only ever since —
 	// and it rides the route only so the breadcrumb on the event
 	// (ReplacementEvent.asCommanderMove) survives a pause along with
-	// everything else the move was asked for.
+	// everything else the move was asked for. Its one effect since
+	// ADR 0115 is moveCardByRefLocked's: for a graveyard or exile
+	// destination it pre-answers CR 903.9a once the move has landed
+	// (returnCommanderPreAnsweredLocked).
 	AsCommander bool
 
 	// commanderAnswer is the CR 903.9 answer the card's owner gave

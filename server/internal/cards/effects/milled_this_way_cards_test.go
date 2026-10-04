@@ -18,6 +18,10 @@ import (
 // still being ASKED about the command zone, both counted.
 //
 // CR 400.7: the object that ARRIVED is the one the effect moved.
+//
+// ADR 0115: a commander no longer pauses a mill or an exile. It arrives
+// like any other card, so it counts, and CR 903.9a asks its owner about
+// the command zone afterwards.
 
 // libraryCardFor pushes a card onto the top of p's library. The top is
 // the LAST element, so the last push is the first card milled.
@@ -41,14 +45,11 @@ func countFaeries(g *game.Game, controller uuid.UUID) int {
 	return n
 }
 
-// TestOonaMakesNoFaerieForACommanderThatTookTheCommandZone is the
-// issue's own card. Oona exiles two blue cards off an opponent's
-// library, one of them their commander: that commander is asked about
-// the command zone, the Faeries wait for the answer, and taking the
-// offer is one fewer Faerie because the card never reached exile.
-func TestOonaMakesNoFaerieForACommanderThatTookTheCommandZone(t *testing.T) {
-	g := newCatalogGame(t)
-	me, them := g.Seats[0], g.Seats[1]
+// oonaExilesTheirCommander activates Oona at X=2 against an opponent
+// whose top two cards are blue, one of them their commander, and
+// resolves it. Returns the commander's ID.
+func oonaExilesTheirCommander(t *testing.T, g *game.Game, me, them *game.Player) uuid.UUID {
+	t.Helper()
 	aangAdvanceToMain(t, g, 0)
 	oona := b31Push(g, me.ID, "Oona, Queen of the Fae", "Legendary Creature — Faerie Wizard",
 		"6052822d-47a2-4d69-a32d-40cdd600d7a9", "{3}{U/B}{U/B}{U/B}", 5, 5, "U", "B")
@@ -65,60 +66,56 @@ func TestOonaMakesNoFaerieForACommanderThatTookTheCommandZone(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 	answerColor(t, g, me.ID, "U")
+	return commander
+}
 
-	if n := countFaeries(g, me.ID); n != 0 {
-		t.Fatalf("%d Faeries while the CR 903.9 prompt is open, want none — "+
-			"what was exiled this way is not known yet", n)
+// TestOonaMakesAFaerieForACommanderThatThenGoesHome is the issue's own
+// card. Oona exiles two blue cards off an opponent's library, one of
+// them their commander. Since ADR 0115 the commander is exiled like the
+// other card, so both pay for a Faerie; its owner is then asked about
+// the command zone (CR 903.9a), and taking it does not undo the exile.
+func TestOonaMakesAFaerieForACommanderThatThenGoesHome(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	commander := oonaExilesTheirCommander(t, g, me, them)
+
+	if n := countFaeries(g, me.ID); n != 2 {
+		t.Fatalf("Faerie Rogues = %d before the CR 903.9a answer, want 2 — both blue cards reached exile", n)
 	}
-	b36AcceptCommandZone(t, g, them.ID)
-
+	answerCommanderReturn(t, g, them.ID, true)
 	if !them.Command.Contains(commander) {
 		t.Fatal("the commander took the offer and is in the command zone")
 	}
-	if n := countFaeries(g, me.ID); n != 1 {
-		t.Errorf("Faerie Rogues = %d, want 1 — the commander went to the command zone, not to exile, "+
-			"so it was not exiled this way (CR 400.7)", n)
+	if n := countFaeries(g, me.ID); n != 2 {
+		t.Errorf("Faerie Rogues = %d after the answer, want 2", n)
 	}
 }
 
 // TestOonaMakesAFaerieForACommanderThatWentToExile is the other
-// answer: declining really does exile the card, so it was exiled this
-// way and it pays for its Faerie — an action later than it used to.
+// answer: declined, the commander stays in exile, and it paid for its
+// Faerie when it got there.
 func TestOonaMakesAFaerieForACommanderThatWentToExile(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
-	aangAdvanceToMain(t, g, 0)
-	oona := b31Push(g, me.ID, "Oona, Queen of the Fae", "Legendary Creature — Faerie Wizard",
-		"6052822d-47a2-4d69-a32d-40cdd600d7a9", "{3}{U/B}{U/B}{U/B}", 5, 5, "U", "B")
-	libraryCardFor(them, "Brainstorm", "Instant", "U")
-	commander := libraryCardFor(them, "Their Commander", "Legendary Creature — Merfolk", "U")
-	markCommanderCard(t, g, them, commander)
-	b31AddMana(me, "U", "U", "U")
-
-	if err := g.ActivateCatalogAbility(me.ID, oona, 0, game.ActivateAbilityParams{
-		XValue:  2,
-		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: them.ID}},
-	}); err != nil {
-		t.Fatalf("ActivateCatalogAbility: %v", err)
-	}
-	passPriorityAroundTable(t, g)
-	answerColor(t, g, me.ID, "U")
-	b21DeclineCommandZone(t, g, them.ID)
+	commander := oonaExilesTheirCommander(t, g, me, them)
+	answerCommanderReturn(t, g, them.ID, false)
 
 	if !g.Exile.Contains(commander) {
-		t.Fatal("declining exiles the commander after all")
+		t.Fatal("declining leaves the commander in exile")
 	}
 	if n := countFaeries(g, me.ID); n != 2 {
 		t.Errorf("Faerie Rogues = %d, want 2 — both blue cards reached exile", n)
 	}
 }
 
-// TestHelmOfObedienceWaitsForAMilledCommandersAnswer — the Helm reads
-// "a creature card put into their graveyard", which a commander only
-// is once its owner declines the command zone. The old read-back
-// happened with that prompt still open, found nothing, and dropped the
-// Helm's own second half on the floor.
-func TestHelmOfObedienceWaitsForAMilledCommandersAnswer(t *testing.T) {
+// TestHelmOfObedienceReanimatesAMilledCommander — the Helm reads "a
+// creature card put into their graveyard". Before ADR 0115 a commander
+// was one only once its owner declined the command zone; now it is
+// milled into the graveyard like any other card, so the Helm stops on
+// it, is sacrificed, and puts it onto the battlefield under its
+// controller. It left the graveyard within the resolution, so CR 903.9a
+// never asks about it (CR 704.4).
+func TestHelmOfObedienceReanimatesAMilledCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	fillPool(me, 5)
@@ -137,13 +134,8 @@ func TestHelmOfObedienceWaitsForAMilledCommandersAnswer(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	if !g.Battlefield.Contains(helm) {
-		t.Fatal("the Helm is not sacrificed while the CR 903.9 prompt is open — nothing has been milled yet")
-	}
-	b21DeclineCommandZone(t, g, opp.ID)
-
 	if !g.Battlefield.Contains(commander) {
-		t.Fatalf("declining puts the commander in the graveyard, so the Helm reanimates it")
+		t.Fatalf("the milled commander is in %s, want the battlefield", b12ZoneOf(g, commander))
 	}
 	if c := findTestCard(g, commander); c == nil || c.Controller != me.ID {
 		t.Error(`the reanimated creature arrives under the activator's control ("under your control")`)
@@ -151,67 +143,7 @@ func TestHelmOfObedienceWaitsForAMilledCommandersAnswer(t *testing.T) {
 	if g.Battlefield.Contains(helm) {
 		t.Error("finding a creature sacrifices the Helm")
 	}
-}
-
-// TestHelmOfObedienceCarriesOnPastACommanderThatTookTheCommandZone is
-// the other answer to the same prompt, and the #1159 regression.
-//
-// "Until a creature card ... has been put into their graveyard this
-// way" is CR 400.7's reading: a commander whose owner ACCEPTS the
-// command zone was never put into that graveyard, so it does not end
-// the run. Before #1159 the `until` clause was answered against the
-// card that came off the library, so the Helm stopped on a creature
-// that never arrived, reanimated nothing, and left itself in play.
-//
-// The library is stacked commander-first, then a real creature, so the
-// run has to walk past the diverted card to find the card the Helm is
-// actually about.
-func TestHelmOfObedienceCarriesOnPastACommanderThatTookTheCommandZone(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	fillPool(me, 5)
-	helm := pushCatalogPermanent(g, me.ID, "Helm of Obedience", "Artifact", helmOfObedienceOracle, false)
-
-	// PushTop, so the LAST one pushed is milled first.
-	beast := libraryCardFor(opp, "Their Beast", "Creature — Beast")
-	commander := libraryCardFor(opp, "Their Commander", "Legendary Creature — Beast")
-	markCommanderCard(t, g, opp, commander)
-
-	if err := g.ActivateCatalogAbility(me.ID, helm, 0, game.ActivateAbilityParams{
-		XValue:  5,
-		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
-		Strict:  true,
-	}); err != nil {
-		t.Fatalf("activate: %v", err)
+	if commanderReturnPromptFor(g, opp.ID) != nil {
+		t.Error("a commander that left the graveyard within the resolution was offered the command zone")
 	}
-	passPriorityAroundTable(t, g)
-	b21AcceptCommandZone(t, g, opp.ID)
-
-	if !opp.Command.Contains(commander) {
-		t.Fatal("accepting did not put the commander into the command zone")
-	}
-	if !g.Battlefield.Contains(beast) {
-		t.Fatal("the run stopped on the diverted commander; it should have carried on to the Beast and reanimated it")
-	}
-	if c := findTestCard(g, beast); c == nil || c.Controller != me.ID {
-		t.Error(`the reanimated creature arrives under the activator's control ("under your control")`)
-	}
-	if g.Battlefield.Contains(helm) {
-		t.Error("a creature card really did reach the graveyard, so the Helm is sacrificed")
-	}
-}
-
-// b21AcceptCommandZone answers the CR 903.9 prompt with "yes, the
-// command zone" — the half b21DeclineCommandZone does not cover.
-func b21AcceptCommandZone(t *testing.T, g *game.Game, owner uuid.UUID) {
-	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceOptionalReplacement && c.Chooser == owner {
-			if err := g.ResolveOptionalReplacement(c.ID, owner, true); err != nil {
-				t.Fatalf("ResolveOptionalReplacement: %v", err)
-			}
-			return
-		}
-	}
-	t.Fatalf("no command-zone prompt for %s", owner)
 }

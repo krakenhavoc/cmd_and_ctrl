@@ -213,11 +213,11 @@ func TestPriceCastReportsTheDelveBudget(t *testing.T) {
 	}
 }
 
-// A commander in the graveyard named to delve is a card the payment
-// moves, so its owner is asked about the command zone BEFORE anything
-// is paid (#1397): the cast parks, nothing is exiled, and the spell is
-// still in hand.
-func TestDelveAsksAboutACommanderBeforePaying(t *testing.T) {
+// A commander in the graveyard named to delve is exiled as the cost is
+// paid, like any other card (ADR 0115 narrowed #1397's ask-first to
+// hand and library costs). It was put into exile, so the CR 903.9a
+// state-based action then asks its owner about the command zone.
+func TestDelveExilesACommanderThenAsksItsOwner(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	cmdr := uuid.New()
@@ -227,14 +227,18 @@ func TestDelveAsksAboutACommanderBeforePaying(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	if !me.Hand.Contains(id) {
-		t.Fatal("the cast was paid before the commander's owner answered")
+	if me.Hand.Contains(id) || !g.Stack.Contains(id) {
+		t.Fatal("the cast was not paid: the spell is not on the stack")
 	}
-	if !me.Graveyard.Contains(cmdr) {
-		t.Fatal("the commander left the graveyard before its owner answered")
+	if !g.Exile.Contains(cmdr) {
+		t.Fatal("the delved commander was not exiled")
 	}
-	if c := latestChoiceOfKindFor(g, game.PendingChoiceOptionalReplacement, me.ID); c == nil {
-		t.Fatalf("no CR 903.9 question for the delved commander: %+v", g.PendingChoices)
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceOptionalReplacement, me.ID); c != nil {
+		t.Fatalf("the delve asked the CR 903.9b replacement first: %+v", c)
+	}
+	answerCommanderReturn(t, g, me.ID, true)
+	if !me.Command.Contains(cmdr) {
+		t.Error("the delved commander did not take the command zone after the yes")
 	}
 }
 

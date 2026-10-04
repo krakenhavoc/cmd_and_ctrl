@@ -361,7 +361,7 @@ func TestWashAwayClauseWidensUnderCleave(t *testing.T) {
 // #529 / #364: this test used to assert ONLY `!Battlefield.Contains`,
 // which is true whether the countered commander goes to the graveyard
 // with no prompt (the bug) or to the command zone after one (the
-// rule). It passed for the entire life of the defect and read as
+// rule; since ADR 0115 by way of the graveyard, CR 903.9a). It passed for the entire life of the defect and read as
 // coverage for it. A zone-change assertion has to name where the card
 // ARRIVED, not just where it is absent from; "it left" is satisfied
 // by every wrong destination as well as the right one.
@@ -398,29 +398,30 @@ func TestWashAwayHardCastAnswersACommanderCast(t *testing.T) {
 		t.Fatalf("hard-cast Wash Away on a commander cast: %v", err)
 	}
 	// Pass until Wash Away resolves. The counter puts the commander
-	// into its owner's graveyard, and CR 903.9 makes that a choice,
-	// so the table stops on a prompt rather than draining the stack.
+	// into its owner's graveyard, and the CR 903.9a state-based action
+	// then asks its owner (ADR 0115), so the table stops on a prompt
+	// rather than draining the stack.
 	passPriorityUntilChoice(t, g)
 
 	if g.Battlefield.Contains(cmdID) {
 		t.Fatal("the commander resolved despite being countered")
 	}
 	if len(g.PendingChoices) != 1 {
-		t.Fatalf("countering a commander offered %d choices, want the CR 903.9 prompt", len(g.PendingChoices))
+		t.Fatalf("countering a commander offered %d choices, want the CR 903.9a prompt", len(g.PendingChoices))
 	}
 	prompt := g.PendingChoices[0]
-	if prompt.Kind != game.PendingChoiceOptionalReplacement {
-		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, game.PendingChoiceOptionalReplacement)
+	if prompt.Kind != game.PendingChoiceCommanderReturn {
+		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, game.PendingChoiceCommanderReturn)
 	}
 	if prompt.Chooser != active.ID {
 		t.Errorf("chooser = %s, want the commander's owner %s", prompt.Chooser, active.ID)
 	}
-	// Nothing has moved while the prompt is open.
-	if active.Graveyard.Contains(cmdID) {
-		t.Error("the commander hit the graveyard before its owner answered")
+	// The counter has already put it into the graveyard.
+	if !active.Graveyard.Contains(cmdID) {
+		t.Error("the countered commander is not in the graveyard while its owner is asked")
 	}
-	if err := g.ResolveOptionalReplacement(prompt.ID, active.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	if err := g.ResolveCommanderReturn(prompt.ID, active.ID, true); err != nil {
+		t.Fatalf("ResolveCommanderReturn: %v", err)
 	}
 	if !active.Command.Contains(cmdID) {
 		t.Error("the countered commander did not return to the command zone")

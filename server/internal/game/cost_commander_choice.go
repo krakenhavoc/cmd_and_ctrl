@@ -7,6 +7,16 @@ import (
 // cost_commander_choice.go — #1397: a commander moved to PAY A COST is
 // offered CR 903.9, and the payment never pauses to ask.
 //
+// NARROWED BY ADR 0115 (PR 3). Since then only a cost that puts a card
+// into a HAND or a LIBRARY is asked here (CR 903.9b): a return to hand
+// (ninjutsu, Quirion Ranger, Daze's alternative cost) or a card put on
+// top of its library. A commander sacrificed, discarded or exiled to
+// pay a cost is paid like any other card. It lands in the graveyard or
+// in exile, and the CR 903.9a state-based action offers its owner the
+// command zone afterwards (commander_return.go). The callers pass only
+// the hand and library moves to askCostCommanderLocked; the history
+// below describes the gate as #1397 built it, for every destination.
+//
 // Paying a cost moves cards: a discard (Thrill of Possibility, Fauna
 // Shaman, cycling), a return to hand (ninjutsu, Quirion Ranger), an
 // exile from hand or graveyard (Cadaverous Bloom, Grim Lavamancer,
@@ -133,6 +143,13 @@ type costCommanderFrame struct {
 // already taken, and the destroy's own prompt would then be withdrawn
 // as stale. Before this, one commander could be both destroyed and
 // sacrificed for mana (CR 118.3: one object pays one cost).
+//
+// Since ADR 0115 those three examples no longer pause: a destroyed,
+// exiled or discarded commander moves at once and is offered the
+// command zone afterwards (CR 903.9a). What still pauses is an effect
+// that BOUNCES or TUCKS a commander (Unsummon, Condemn, CR 903.9b), and
+// the gate below is unchanged because it keys off the open prompt,
+// whatever opened it.
 //
 // So a payment that would move a card whose exit is paused is refused
 // outright with ErrChoicePending — the same answer the table gives any

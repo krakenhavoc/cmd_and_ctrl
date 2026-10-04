@@ -87,12 +87,12 @@ func TestExiledThisWayCountsOnlyWhatLanded(t *testing.T) {
 	}
 }
 
-// TestAPausedCommanderExileLegIsCountedOnlyWhenItLandsInExile — the
+// TestAPausedExileLegIsCountedOnlyWhenItLandsInExile — the
 // CR 903.9 half, and the row that separates this rule from destroy's.
 // The count cannot be taken while the prompt is open, so the whole
 // sweep waits for it; when the answer arrives the commander counts only
 // if it actually went to exile.
-func TestAPausedCommanderExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
+func TestAPausedExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		commandZone bool
@@ -100,7 +100,7 @@ func TestAPausedCommanderExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newActiveGame(t)
 			owner := g.Seats[0]
-			commander := seatCommander(t, g.Battlefield, owner)
+			commander := seatDetouredCard(t, g, g.Battlefield, owner)
 			bear := wipeTarget(g, owner)
 
 			got, ran := exileAllThen(t, g, []uuid.UUID{commander, bear})
@@ -189,7 +189,7 @@ func TestReturnedThisWayCountsOnlyWhatLanded(t *testing.T) {
 func TestUndoAcrossAPausedExileLegReplays(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
-	commander := seatCommander(t, g.Battlefield, owner)
+	commander := seatDetouredCard(t, g, g.Battlefield, owner)
 	bear := wipeTarget(g, owner)
 
 	got, ran := exileAllThen(t, g, []uuid.UUID{commander, bear})
@@ -270,7 +270,7 @@ func TestSingleCardExileThenReportsWhatLanded(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newActiveGame(t)
 			owner := g.Seats[0]
-			commander := seatCommander(t, g.Battlefield, owner)
+			commander := seatDetouredCard(t, g, g.Battlefield, owner)
 
 			got, ran := false, 0
 			g.WithWriteLock(func() {

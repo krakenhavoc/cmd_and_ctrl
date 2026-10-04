@@ -10,10 +10,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
-// paused_exit_cast_view_test.go — #1474. A commander Bojuka Bog is
-// exiling out of its owner's graveyard waits there while its owner
-// answers CR 903.9, and CastSpell now refuses to cast or play it until
-// the answer is in. `castable_here` is the zone browser's cast button,
+// paused_exit_cast_view_test.go — #1474. A commander an effect is
+// shuffling out of its owner's graveyard into their library waits there
+// while its owner answers CR 903.9b, and CastSpell refuses to cast or
+// play it until the answer is in. (Bojuka Bog's exile was the vehicle
+// before ADR 0115; an exiled commander no longer pauses.) `castable_here` is the zone browser's cast button,
 // so it has to say the same thing: off while the exit is paused, and
 // the bot enumerator must not offer the move either.
 
@@ -63,11 +64,11 @@ func TestCastableHereIsClearedWhileTheCardsExitIsPaused(t *testing.T) {
 				t.Fatal("premise: the enumerator does not offer the card before anything paused it")
 			}
 
-			if err := g.ExileCardForEffect(id); err != nil {
-				t.Fatalf("ExileCardForEffect: %v", err)
+			if err := g.TuckToLibraryForEffect(id, false); err != nil {
+				t.Fatalf("TuckToLibraryForEffect: %v", err)
 			}
 			if len(g.PendingChoices) != 1 || !me.Graveyard.Contains(id) {
-				t.Fatalf("premise: the exile did not pause on the owner's CR 903.9 prompt (%d pending)", len(g.PendingChoices))
+				t.Fatalf("premise: the tuck did not pause on the owner's CR 903.9b prompt (%d pending)", len(g.PendingChoices))
 			}
 
 			c := cardInSeatZone(t, ViewOfGameFor(g, me.ID.String()).Seats[g.Turn.ActiveSeat].Graveyard, id)

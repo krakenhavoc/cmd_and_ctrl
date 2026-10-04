@@ -7,24 +7,19 @@ import (
 )
 
 // discard_commander_test.go pins #853: a DISCARD is an exit like any
-// other, so a discarded commander gets CR 903.9's "put it into the
-// command zone instead" offer.
+// other, so a discarded commander is offered the command zone.
 //
-// Before the fix every discard path moved the card hand → graveyard
-// with a raw MoveCard — the last exit in the engine that did not go
-// through routeCardToZoneLocked, and therefore the last one that never
-// opened the CR 614 window. Destroy, exile, mill, counter and bounce
-// have all offered it since #539/#851; a Mind Rot on your commander
-// put it in the bin and asked nobody. ADR 0013 §5f recorded the gap
-// and did not fix it.
+// Before #853 every discard path moved the card hand → graveyard with
+// a raw MoveCard — the last exit in the engine that did not go through
+// routeCardToZoneLocked — and a Mind Rot on your commander put it in
+// the bin and asked nobody. ADR 0013 §5f recorded the gap.
 //
-// Every test here asserts BOTH halves, the way commander_zone_routes_test.go
-// does: the prompt is offered, AND the card lands where the answer
-// says it should. It also asserts the halves that are new to a
-// discard — that EventDiscardCard fires either way (CR 701.9a: a card
-// put into the command zone instead was still discarded), that a
-// multi-card batch asks once per commander and runs its "then" once at
-// the end, and that a COST never asks at all (CR 601.2h).
+// Since ADR 0115 a discarded commander is discarded like any other
+// card: it goes to its owner's graveyard, EventDiscardCard names the
+// graveyard, the discard's "then" runs inline, and the CR 903.9a
+// state-based action asks the owner afterwards (commander_return).
+// Every test here asserts both halves: the card lands in the graveyard
+// first, AND it ends where the owner's answer says.
 
 // discardWatcher records what the discard actually emitted. A discard
 // has always been exactly one event — EventDiscardCard, never an
@@ -74,12 +69,14 @@ func commanderPromptCard(t *testing.T, c *PendingChoice) uuid.UUID {
 }
 
 // assertOneDiscardEvent checks the single event a one-card discard
-// owes: the discarding player, the card, out of the hand, and into
-// whatever zone the CR 903.9 answer settled on.
+// owes: the discarding player, the card, out of the hand, and into the
+// zone it landed in. A commander's later CR 903.9a move from the
+// graveyard to the command zone is its own EventZoneMove, out of the
+// graveyard, and is not counted against the discard.
 func assertOneDiscardEvent(t *testing.T, w *discardWatcher, actor, cardID uuid.UUID, landed ZoneKind) {
 	t.Helper()
 	if len(w.discards) != 1 {
-		t.Fatalf("EventDiscardCard x %d, want 1 — a commander put into the command zone was still discarded (CR 701.9a)", len(w.discards))
+		t.Fatalf("EventDiscardCard x %d, want 1", len(w.discards))
 	}
 	ev := w.discards[0]
 	if ev.Actor != actor || ev.CardID != cardID {
@@ -89,7 +86,7 @@ func assertOneDiscardEvent(t *testing.T, w *discardWatcher, actor, cardID uuid.U
 		t.Errorf("EventDiscardCard zones %s → %s, want hand → %s", ev.OldZone, ev.NewZone, landed)
 	}
 	for _, zm := range w.zoneMoves {
-		if zm.CardID == cardID {
+		if zm.CardID == cardID && zm.OldZone == ZoneHand {
 			t.Errorf("the discard also emitted EventZoneMove — Syr Konrad counts it twice")
 		}
 	}
@@ -99,8 +96,9 @@ func assertOneDiscardEvent(t *testing.T, w *discardWatcher, actor, cardID uuid.U
 
 // TestEffectDiscardOfACommanderOffersTheCommandZone is the issue, on
 // the path most discards take: QueueDiscardChoiceForEffect's
-// continuation (#797). Both answers, and the prompt's own "then" waits
-// for the card to land.
+// continuation (#797). The commander is discarded into the graveyard,
+// the prompt's own "then" runs at once, and CR 903.9a then asks. Both
+// answers.
 func TestEffectDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 	for _, toCommandZone := range []bool{true, false} {
 		name := "declined"
@@ -129,38 +127,26 @@ func TestEffectDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 				t.Fatalf("ResolveChooseCards: %v", err)
 			}
 
-			// The CR 903.9 prompt gates the move: nothing has left the
-			// hand, nothing has been emitted, and "then draw a card"
-			// has not happened yet.
-			if !p.Hand.Contains(cmdID) {
-				t.Fatal("the commander left the hand before the prompt was answered")
-			}
-			if len(w.discards) != 0 {
-				t.Errorf("EventDiscardCard fired before the card moved: %d", len(w.discards))
-			}
-			if thenRuns != 0 {
-				t.Errorf(`"then" ran %d times before the discard landed`, thenRuns)
+			// Nothing waits on the owner: the card is in the graveyard,
+			// the discard was emitted, and "then" has run.
+			assertOnlyIn(t, cmdID, p.Graveyard, p.Hand, p.Command)
+			assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneGraveyard)
+			if thenRuns != 1 {
+				t.Errorf(`"then" ran %d times, want 1 — the discard landed at once`, thenRuns)
 			}
 
-			prompt := expectCommanderPrompt(t, g, p)
-			if got := commanderPromptCard(t, prompt); got != cmdID {
-				t.Fatalf("the prompt is about %s, want the discarded commander %s", got, cmdID)
-			}
-			if err := g.ResolveOptionalReplacement(prompt.ID, p.ID, toCommandZone); err != nil {
-				t.Fatalf("ResolveOptionalReplacement: %v", err)
-			}
+			answerCommanderReturn(t, g, p, cmdID, toCommandZone)
 			if len(g.PendingChoices) != 0 {
 				t.Fatalf("%d prompts survived the answer", len(g.PendingChoices))
 			}
-
 			want, other := p.Command, p.Graveyard
 			if !toCommandZone {
 				want, other = p.Graveyard, p.Command
 			}
 			assertOnlyIn(t, cmdID, want, other, p.Hand, g.Exile)
-			assertOneDiscardEvent(t, w, p.ID, cmdID, want.Kind)
+			assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneGraveyard)
 			if thenRuns != 1 {
-				t.Errorf(`"then" ran %d times, want 1 — once the discard had landed`, thenRuns)
+				t.Errorf(`"then" ran %d times, want 1`, thenRuns)
 			}
 		})
 	}
@@ -168,11 +154,11 @@ func TestEffectDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 
 // --- (f) two commanders at once (partners) ---------------------------
 
-// TestTwoDiscardedCommandersAskTwiceAndRunThenOnce — a partner pair
-// pitched to one Mind Rot opens two windows. They are sequenced
-// through the resume, one per card, and the prompt's own "then" runs
-// once, after the LAST of them has landed.
-func TestTwoDiscardedCommandersAskTwiceAndRunThenOnce(t *testing.T) {
+// TestTwoDiscardedCommandersAreAskedOneEachAndRunThenOnce — a partner
+// pair pitched to one Mind Rot is discarded as one batch, the prompt's
+// own "then" runs once, and the CR 903.9a check then asks one question
+// per commander, both open at once (ADR 0115 decision 3).
+func TestTwoDiscardedCommandersAreAskedOneEachAndRunThenOnce(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[1]
 	ids := emptyHandWithCommanders(t, g, p, 2)
@@ -192,69 +178,50 @@ func TestTwoDiscardedCommandersAskTwiceAndRunThenOnce(t *testing.T) {
 	if err := g.ResolveChooseCards(c.ID, p.ID, []uuid.UUID{first, second}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
+	if thenRuns != 1 {
+		t.Errorf(`"then" ran %d times, want exactly 1 for the batch`, thenRuns)
+	}
+	assertOnlyIn(t, first, p.Graveyard, p.Hand)
+	assertOnlyIn(t, second, p.Graveyard, p.Hand)
 
-	// One window at a time: the second commander is still in hand,
-	// untouched, while the first one's question is open.
-	promptA := expectCommanderPrompt(t, g, p)
-	if got := commanderPromptCard(t, promptA); got != first {
-		t.Fatalf("first prompt is about %s, want %s", got, first)
+	runChecks(g)
+	prompts := commanderReturnPrompts(g)
+	if len(prompts) != 2 || len(g.PendingChoices) != 2 {
+		t.Fatalf("commander_return prompts = %d of %d pending, want 2", len(prompts), len(g.PendingChoices))
 	}
-	if !p.Hand.Contains(second) {
-		t.Error("the second commander moved while the first one's prompt was open")
+	answers := map[uuid.UUID]bool{first: true, second: false}
+	for _, pr := range prompts {
+		apply, ok := answers[pr.Source]
+		if !ok || pr.Chooser != p.ID {
+			t.Fatalf("prompt to %s about %s, want the owner about one of the two", pr.Chooser, pr.Source)
+		}
+		if err := g.ResolveCommanderReturn(pr.ID, p.ID, apply); err != nil {
+			t.Fatalf("ResolveCommanderReturn: %v", err)
+		}
 	}
-	if err := g.ResolveOptionalReplacement(promptA.ID, p.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement (first): %v", err)
-	}
-
-	promptB := expectCommanderPrompt(t, g, p)
-	if promptB.ID == promptA.ID {
-		t.Fatal("answering the first prompt did not queue a second one")
-	}
-	if got := commanderPromptCard(t, promptB); got != second {
-		t.Fatalf("second prompt is about %s, want %s", got, second)
-	}
-	if thenRuns != 0 {
-		t.Errorf(`"then" ran %d times with half the batch still owed`, thenRuns)
-	}
-	if err := g.ResolveOptionalReplacement(promptB.ID, p.ID, false); err != nil {
-		t.Fatalf("ResolveOptionalReplacement (second): %v", err)
-	}
-
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("%d prompts survived the batch", len(g.PendingChoices))
 	}
 	assertOnlyIn(t, first, p.Command, p.Graveyard, p.Hand)
 	assertOnlyIn(t, second, p.Graveyard, p.Command, p.Hand)
-	if thenRuns != 1 {
-		t.Errorf(`"then" ran %d times, want exactly 1 for the batch`, thenRuns)
-	}
 
-	// (h) one event per card, whichever way each one went — the
-	// "whenever you discard a card" family fires twice, not once and
-	// not three times.
+	// (h) one discard event per card, both into the graveyard — the
+	// "whenever you discard a card" family fires twice.
 	if len(w.discards) != 2 {
 		t.Fatalf("EventDiscardCard x %d, want 2 (one per card)", len(w.discards))
 	}
-	landed := map[uuid.UUID]ZoneKind{}
 	for _, ev := range w.discards {
-		if ev.Actor != p.ID || ev.OldZone != ZoneHand {
-			t.Errorf("EventDiscardCard actor/oldzone = %s/%s, want %s/hand", ev.Actor, ev.OldZone, p.ID)
+		if ev.Actor != p.ID || ev.OldZone != ZoneHand || ev.NewZone != ZoneGraveyard {
+			t.Errorf("EventDiscardCard actor/zones = %s/%s → %s, want %s/hand → graveyard", ev.Actor, ev.OldZone, ev.NewZone, p.ID)
 		}
-		landed[ev.CardID] = ev.NewZone
-	}
-	if landed[first] != ZoneCommand {
-		t.Errorf("first commander's discard event says %s, want command", landed[first])
-	}
-	if landed[second] != ZoneGraveyard {
-		t.Errorf("second commander's discard event says %s, want graveyard", landed[second])
 	}
 }
 
 // --- (d) the random discard ------------------------------------------
 
 // TestRandomDiscardOfACommanderOffersTheCommandZone — CR 701.9b picks
-// the card, CR 903.9 still asks about it. A one-card hand makes the
-// random pick the commander.
+// the card, and CR 903.9a asks about it once it is in the graveyard. A
+// one-card hand makes the random pick the commander.
 func TestRandomDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[1]
@@ -266,25 +233,20 @@ func TestRandomDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DiscardRandomForEffect: %v", err)
 	}
-	if !p.Hand.Contains(cmdID) {
-		t.Fatal("the commander left the hand before the prompt was answered")
-	}
-
-	prompt := expectCommanderPrompt(t, g, p)
-	if err := g.ResolveOptionalReplacement(prompt.ID, p.ID, true); err != nil {
-		t.Fatalf("ResolveOptionalReplacement: %v", err)
-	}
+	assertOnlyIn(t, cmdID, p.Graveyard, p.Hand)
+	answerCommanderReturn(t, g, p, cmdID, true)
 	assertOnlyIn(t, cmdID, p.Command, p.Graveyard, p.Hand)
-	assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneCommand)
+	assertOneDiscardEvent(t, w, p.ID, cmdID, ZoneGraveyard)
 }
 
 // --- (c) the cleanup discard -----------------------------------------
 
 // TestCleanupDiscardOfACommanderOffersTheCommandZone — the CR 514.1
-// hand-size discard is a turn-based action, not an effect, and it asks
-// too. What it additionally owes is its own bookkeeping: the pending
-// entry drains and the cursor walks on only once the whole batch has
-// landed, which is now on the far side of the prompt.
+// hand-size discard is a turn-based action, not an effect. The
+// commander is discarded with the rest and the debt is paid at once.
+// Then the cleanup step's CR 514.3a check asks the owner: a "yes" is a
+// state-based action performed, so the active player gets priority in
+// the cleanup step; a "no" performs nothing, and the turn ends.
 func TestCleanupDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 	for _, toCommandZone := range []bool{true, false} {
 		name := "declined"
@@ -319,16 +281,24 @@ func TestCleanupDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 			if err := g.DiscardSelection(active.ID, []uuid.UUID{cmdID, spare}); err != nil {
 				t.Fatalf("DiscardSelection: %v", err)
 			}
-			if !active.Hand.Contains(cmdID) {
-				t.Fatal("the commander left the hand before the prompt was answered")
+			assertOnlyIn(t, cmdID, active.Graveyard, active.Hand)
+			assertOnlyIn(t, spare, active.Graveyard, active.Hand)
+			if len(w.discards) != 2 {
+				t.Errorf("EventDiscardCard x %d, want 2", len(w.discards))
 			}
-			if g.DiscardPending[active.ID] != 2 {
-				t.Error("the hand-size debt was cleared before the discard landed")
+			if len(g.DiscardPending) != 0 {
+				t.Errorf("DiscardPending survived the cleanup discard: %+v", g.DiscardPending)
 			}
 
-			prompt := expectCommanderPrompt(t, g, active)
-			if err := g.ResolveOptionalReplacement(prompt.ID, active.ID, toCommandZone); err != nil {
-				t.Fatalf("ResolveOptionalReplacement: %v", err)
+			prompts := commanderReturnPrompts(g)
+			if len(prompts) != 1 || prompts[0].Source != cmdID || prompts[0].Chooser != active.ID {
+				t.Fatalf("cleanup asked %+v, want one CR 903.9a question about the commander", prompts)
+			}
+			if g.Turn.Step != StepCleanup || g.Turn.PriorityHolder != NoPriority {
+				t.Fatalf("step %v, priority %d while the question is open; want cleanup, nobody", g.Turn.Step, g.Turn.PriorityHolder)
+			}
+			if err := g.ResolveCommanderReturn(prompts[0].ID, active.ID, toCommandZone); err != nil {
+				t.Fatalf("ResolveCommanderReturn: %v", err)
 			}
 
 			want, other := active.Command, active.Graveyard
@@ -336,34 +306,30 @@ func TestCleanupDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 				want, other = active.Graveyard, active.Command
 			}
 			assertOnlyIn(t, cmdID, want, other, active.Hand)
-			assertOnlyIn(t, spare, active.Graveyard, active.Hand)
-			if len(w.discards) != 2 {
-				t.Errorf("EventDiscardCard x %d, want 2", len(w.discards))
-			}
-			// The cleanup finishes: the debt is paid and the cursor
-			// has walked on to the next seat.
-			if len(g.DiscardPending) != 0 {
-				t.Errorf("DiscardPending survived the cleanup discard: %+v", g.DiscardPending)
+			if toCommandZone {
+				if g.Turn.Step != StepCleanup || g.Turn.PriorityHolder != 0 {
+					t.Errorf("after yes: step %v, priority %d; want cleanup with priority to seat 0 (CR 514.3a)", g.Turn.Step, g.Turn.PriorityHolder)
+				}
+				return
 			}
 			if g.Turn.ActiveSeat == 0 {
-				t.Error("the cursor stayed on seat 0 after the cleanup discard resolved")
+				t.Error("after no: the cursor stayed on seat 0; the cleanup step should have ended the turn")
 			}
 		})
 	}
 }
 
-// --- (e) the cost discard, which asks FIRST ---------------------------
+// --- (e) the cost discard ---------------------------------------------
 
-// TestCostDiscardOfACommanderAsksBeforePaying — CR 601.2h pays a
-// spell's costs as one indivisible step, so the discard itself must not
-// pause. Until #1397 that meant the owner was never asked at all. Now
-// the question comes BEFORE the cast is paid for: the cast parks on a
-// CR 903.9 prompt with the commander still in hand, and the answer
-// casts it with the commander going where its owner said. The full
-// matrix — every cost component, both answers, undo — is
-// cost_commander_choice_test.go; this pins the discard event, which is
-// this file's subject.
-func TestCostDiscardOfACommanderAsksBeforePaying(t *testing.T) {
+// TestCostDiscardOfACommanderIsPaidThenOffered — CR 601.2h pays a
+// spell's costs as one indivisible step. Until #1397 a discarded
+// commander's owner was never asked at all; #1397 asked BEFORE the
+// cast was paid for. Since ADR 0115 the discard is paid like any other:
+// the commander goes to the graveyard with the spell already cast, and
+// CR 903.9a asks afterwards. The ask-first gate is left for costs that
+// put a card into a hand or a library (CR 903.9b,
+// cost_commander_choice_test.go).
+func TestCostDiscardOfACommanderIsPaidThenOffered(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	const oracle = "test-thrill"
@@ -380,39 +346,35 @@ func TestCostDiscardOfACommanderAsksBeforePaying(t *testing.T) {
 	if err := g.CastSpell(me.ID, spell, CastSpellParams{DiscardIDs: []uuid.UUID{cmdID}}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	prompt := expectCommanderPrompt(t, g, me)
-	if g.Stack.Contains(spell) || len(w.discards) != 0 {
-		t.Fatal("the cast was paid for before the owner answered")
+	if !g.Stack.Contains(spell) {
+		t.Fatal("the spell was not cast")
 	}
-	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, true); err != nil {
-		t.Fatalf("answer: %v", err)
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceOptionalReplacement {
+			t.Fatal("a discard cost asked the CR 903.9b replacement before paying")
+		}
 	}
-	if len(g.PendingChoices) != 0 {
-		t.Fatalf("the payment paused on %d prompt(s) after the answer — CR 601.2h pays costs as one step", len(g.PendingChoices))
-	}
+	assertOnlyIn(t, cmdID, me.Graveyard, me.Hand, me.Command)
+	assertOneDiscardEvent(t, w, me.ID, cmdID, ZoneGraveyard)
+
+	answerCommanderReturn(t, g, me, cmdID, true)
 	assertOnlyIn(t, cmdID, me.Command, me.Graveyard, me.Hand)
 	if !g.Stack.Contains(spell) {
-		t.Error("the spell was not cast")
+		t.Error("answering the commander's question took the spell off the stack")
 	}
-	// CR 701.9a: a commander put into the command zone instead was
-	// still discarded.
-	assertOneDiscardEvent(t, w, me.ID, cmdID, ZoneCommand)
 }
 
-// --- (g) undo across the open prompt ----------------------------------
+// --- (g) undo into the open question ---------------------------------
 
-// TestUndoAcrossADiscardPauseReplaysTheSameWay — the rest of a batch
-// is held on an unserialisable continuation, so the undo stack has to
-// be able to rewind a game sitting on one and have the replay come out
-// the same.
+// TestUndoIntoAnOpenCommanderReturnReplaysTheSameWay — ADR 0115 §8:
+// undo inside an open commander_return prompt rewinds to the board the
+// owner saw, with the commander and the other card in the graveyard
+// and the question open, and answering again comes out the same.
 //
-// Two rewinds, because they fail differently. Rewinding to BEFORE the
-// discard drops the prompt and the continuation together. Rewinding to
-// WHILE THE PROMPT IS OPEN keeps them, and answering a second time has
-// to discard the same two cards into the same two zones — which is why
-// the batch is the remaining slice carried forward rather than a
-// shared cursor the rewind could not put back.
-func TestUndoAcrossADiscardPauseReplaysTheSameWay(t *testing.T) {
+// This replaced #853's undo-across-the-discard-pause test: a discard no
+// longer pauses on the commander, so there is no held continuation left
+// to rewind across.
+func TestUndoIntoAnOpenCommanderReturnReplaysTheSameWay(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[1]
 	cmdID := emptyHandWithCommanders(t, g, p, 1)[0]
@@ -421,61 +383,42 @@ func TestUndoAcrossADiscardPauseReplaysTheSameWay(t *testing.T) {
 	g.WithWriteLock(func() { p.Hand.PushTop(spare) })
 
 	thenRuns := 0
-	pitch := func() {
-		t.Helper()
-		queueEffectDiscard(g, DiscardPrompt{
-			Player: p.ID,
-			N:      2,
-			Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
-		})
-		c := discardPromptFor(g, p.ID)
-		if c == nil {
-			t.Fatal("no discard prompt queued")
-		}
-		if err := g.ResolveChooseCards(c.ID, p.ID, []uuid.UUID{cmdID, spare.InstanceID}); err != nil {
-			t.Fatalf("ResolveChooseCards: %v", err)
-		}
+	queueEffectDiscard(g, DiscardPrompt{
+		Player: p.ID,
+		N:      2,
+		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
+	})
+	c := discardPromptFor(g, p.ID)
+	if c == nil {
+		t.Fatal("no discard prompt queued")
 	}
-
-	// --- rewind to before the discard ---
-	beforeDiscard := g.Clone()
-	pitch()
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("pending choices = %d, want the CR 903.9 prompt", len(g.PendingChoices))
+	if err := g.ResolveChooseCards(c.ID, p.ID, []uuid.UUID{cmdID, spare.InstanceID}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
 	}
-	g.WithWriteLock(func() { g.RestoreFrom(beforeDiscard) })
-	if len(g.PendingChoices) != 0 {
-		t.Fatalf("%d prompts survived the rewind to before the discard", len(g.PendingChoices))
-	}
-	if !g.Seats[1].Hand.Contains(cmdID) || !g.Seats[1].Hand.Contains(spare.InstanceID) {
-		t.Fatal("the rewind did not put both cards back in hand")
-	}
-
-	// --- rewind into the open prompt, then answer twice ---
-	thenRuns = 0
-	pitch()
-	promptOpen := g.Clone()
-	answerOnlyCommanderPrompt(t, g, g.Seats[1].ID, true)
 	if thenRuns != 1 {
-		t.Fatalf(`first run: "then" ran %d times, want 1`, thenRuns)
+		t.Fatalf(`"then" ran %d times, want 1`, thenRuns)
 	}
+	runChecks(g)
+	promptOpen := g.Clone()
+
+	answerCommanderReturn(t, g, g.Seats[1], cmdID, true)
 	assertOnlyIn(t, cmdID, g.Seats[1].Command, g.Seats[1].Graveyard, g.Seats[1].Hand)
 	assertOnlyIn(t, spare.InstanceID, g.Seats[1].Graveyard, g.Seats[1].Hand)
 
-	thenRuns = 0
 	g.WithWriteLock(func() { g.RestoreFrom(promptOpen) })
-	if !g.Seats[1].Hand.Contains(cmdID) || !g.Seats[1].Hand.Contains(spare.InstanceID) {
-		t.Fatal("the rewind into the open prompt did not put both cards back in hand")
+	if !g.Seats[1].Graveyard.Contains(cmdID) || !g.Seats[1].Graveyard.Contains(spare.InstanceID) {
+		t.Fatal("the rewind into the open question did not put both cards back in the graveyard")
 	}
-	answerOnlyCommanderPrompt(t, g, g.Seats[1].ID, true)
+	answerCommanderReturn(t, g, g.Seats[1], cmdID, true)
 	if thenRuns != 1 {
-		t.Errorf(`replay: "then" ran %d times, want 1 — the same answer must run the batch once`, thenRuns)
+		t.Errorf(`replay: "then" ran %d times in all, want 1 — it ran before the question`, thenRuns)
 	}
 	assertOnlyIn(t, cmdID, g.Seats[1].Command, g.Seats[1].Graveyard, g.Seats[1].Hand)
 	assertOnlyIn(t, spare.InstanceID, g.Seats[1].Graveyard, g.Seats[1].Hand)
 }
 
-// answerOnlyCommanderPrompt answers the single queued CR 903.9 prompt.
+// answerOnlyCommanderPrompt answers the single queued CR 903.9b
+// replacement prompt (a bounce or a tuck since ADR 0115).
 func answerOnlyCommanderPrompt(t *testing.T, g *Game, chooser uuid.UUID, apply bool) {
 	t.Helper()
 	if len(g.PendingChoices) != 1 {
