@@ -226,8 +226,7 @@ func TestDoorGateSwitchesTheDoorsAbilities(t *testing.T) {
 			Watches: []EventKind{EventDoorUnlocked}, Key: "right door trigger",
 			ActiveWhen: DoorUnlocked(DoorRight),
 		}},
-		NoMaxHandSize:     true,
-		NoMaxHandSizeWhen: DoorUnlocked(DoorRight),
+		HandSize: []HandSizeStatic{{Kind: HandSizeNoMaximum, When: DoorUnlocked(DoorRight)}},
 	})
 	id := castRoom(t, g, me, 0)
 

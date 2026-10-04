@@ -390,6 +390,12 @@ func corpusBoards() []corpusBoard {
 		// the creature it sacrificed, and that creature's last-known
 		// record beside it.
 		{"sacrifice_cost_objects", corpusSacrificeCostObjects},
+		// v7, added by ADR 0113 §3 (#2074) as a new file: a player's
+		// "no maximum hand size for the rest of the game" grant with its
+		// CR 613.7b timestamp (players[].maxHandSizeAt), and a Null
+		// Profusion that entered after it, whose "your maximum hand size
+		// is two" is catalog data and so adds nothing but the permanent.
+		{"max_hand_size_grant", corpusMaxHandSizeGrant},
 		// v7, added by ADR 0115 PR 2 (#2085) as new files: CR 903.9a as
 		// a state-based action — a commander in its owner's graveyard
 		// with the check still owed (card.commanderReturnDue), and the
@@ -474,6 +480,27 @@ func corpusSacrificeCostObjects(t *testing.T) *game.Game {
 	}
 	if item := g.StackMeta[id]; item == nil || len(item.Paid.SacrificedObjects) != 1 {
 		t.Fatal("setup: Fling's payment record names no sacrificed creature")
+	}
+	return g
+}
+
+// corpusMaxHandSizeGrant is ADR 0113 §3's one stored shape: a stamped
+// player grant (Finale of Revelation's), folded before a later Null
+// Profusion, so the player's maximum is two.
+func corpusMaxHandSizeGrant(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	g.WithWriteLock(func() {
+		if err := g.SetMaxHandSizeForEffect(me.ID, game.NoMaxHandSize); err != nil {
+			t.Fatalf("setup: grant: %v", err)
+		}
+	})
+	pushCatalogPermanent(g, me.ID, "Null Profusion", "Enchantment", mhNullProfusionOracle, false)
+	if me.MaxHandSizeAt == 0 {
+		t.Fatal("setup: the grant was not stamped")
+	}
+	if got := mhMax(g, me); got != 2 {
+		t.Fatalf("setup: maximum hand size = %d, want 2", got)
 	}
 	return g
 }
