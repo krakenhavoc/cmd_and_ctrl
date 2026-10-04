@@ -107,3 +107,4 @@ body redirection/that-much-to-the-sources-controller
 body berserk/destroy-if-attacked
 body ugins-binding/bounce-all
 body annihilator/sacrifice
+body foray-of-orcs/damage
