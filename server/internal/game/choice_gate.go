@@ -256,6 +256,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// entry is suspended on the answer.
 	PendingChoiceEntryDiscardFromHand: true,
 	PendingChoiceEntrySacrifice:       true,
+	// ADR 0115 decision 3, CR 704.3. The CR 903.9a question is a
+	// state-based action, and CR 704.3 performs every state-based
+	// action before any player gets priority, so the table waits.
+	PendingChoiceCommanderReturn: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this
@@ -308,6 +312,18 @@ func (g *Game) ChoicePromptBlocksTable(c *PendingChoice) bool {
 		return true
 	}
 	return g.choiceGuardsALiveStackItem(c) || g.choiceOwedBeforeTheStepEnds(c)
+}
+
+// KnownChoiceKind reports whether this binary knows a pending-choice
+// kind: whether the gate classifies it, which
+// TestEveryChoiceKindIsClassifiedAndEnumerated (internal/legal) holds
+// true of every kind declared in this package. A restore point naming
+// any other kind was written by a newer binary and is refused
+// (ErrUnknownEffectKey, ADR 0115 §8): a prompt nobody here can answer
+// would wedge the table.
+func KnownChoiceKind(kind PendingChoiceKind) bool {
+	_, ok := choiceGateDecisions[kind]
+	return ok
 }
 
 // ClassifiedChoiceKinds lists every kind the gate has an explicit

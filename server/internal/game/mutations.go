@@ -4024,6 +4024,15 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.State != StateActive {
 		return false, false
 	}
+	// ADR 0115 decision 1, CR 903.9a / CR 704.6d: a commander put into
+	// a graveyard or exile since the last check is offered the command
+	// zone. FIRST, so it collects its cards off the same board the rest
+	// of the pass reads (CR 704.3); a commander this pass kills is
+	// marked by that move and asked on the next pass. Not "fired": a
+	// question is not an action performed, and runStateChecksLocked
+	// holds the boundary while it is open. A no-op while
+	// commanderReturnSBA is off. See commander_return.go.
+	g.commanderReturnSBALocked()
 	// #1199 / CR 702.26, ADR 0084: the "phases out until ~ leaves the
 	// battlefield" family comes back the moment its source is gone —
 	// Oubliette destroyed, Out of Time's last time counter removed.
@@ -4414,6 +4423,13 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	const maxIter = 32
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
+		// ADR 0115 decision 3, CR 704.3: the CR 903.9a question is part
+		// of the state-based actions, so nothing goes on the stack and
+		// no further pass runs until every commander_return prompt is
+		// answered. ResolveCommanderReturn runs the checks again.
+		if g.holdForCommanderReturnLocked() {
+			return sbaFired
+		}
 		// #809 / CR 603.3d: a targeted trigger dispatched from inside a
 		// resolving spell's own events froze its legal set while that
 		// spell was still on the stack. This is the priority-grant
@@ -4450,6 +4466,16 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		// earlier one) already eliminated. See sweepEliminatedChoicesLocked.
 		g.sweepEliminatedChoicesLocked()
 		departuresPending = departuresPending || left
+		// ADR 0115 decision 3: the pass that asked a CR 903.9a question
+		// ends the boundary here. A departure this pass performed still
+		// owes its rotation, so it is deferred to the run the answer
+		// starts, through the flag a mid-resolution loss already uses.
+		if g.holdForCommanderReturnLocked() {
+			if departuresPending && g.State == StateActive {
+				g.ActiveSeatLeftPending = true
+			}
+			return sbaFired
+		}
 		if departuresPending && g.State == StateActive {
 			if fired {
 				// CR 704.3 repeats the checks before anything gets priority.

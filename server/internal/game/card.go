@@ -965,6 +965,15 @@ type Card struct {
 	// Commanders live in the command zone at game start.
 	IsCommander bool
 
+	// CommanderReturnDue is CR 903.9a's "put into that zone since the
+	// last time state-based actions were checked" for a commander in a
+	// graveyard or in exile (ADR 0115 decision 1). MoveCard sets it as a
+	// commander card lands in either zone and clears it on every other
+	// move; the check (commanderReturnSBALocked) clears it once it has
+	// asked the owner. Not a characteristic and not copiable. Only ever
+	// set while commanderReturnSBA is on.
+	CommanderReturnDue bool
+
 	// FaceDown is the visual face-down flag (CR 406.3a / CR 708) —
 	// "is there a back showing". Distinct from the KnownBy knowledge
 	// set: a face-down creature is face-down to everyone visually,
