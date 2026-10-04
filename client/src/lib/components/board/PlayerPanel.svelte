@@ -42,6 +42,7 @@
   } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
   import { takenFromByCard } from "../../takenFrom";
+  import { ringBearerNames } from "../../ringEmblem";
   import { cantAttackByCard } from "../../cantAttack";
   import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
@@ -331,6 +332,8 @@
   // ADR 0104 (owner decision 6): the owner of each permanent another
   // player controls, for Card's TAKEN FROM badge.
   const takenFrom = $derived(takenFromByCard(view.battlefield?.cards, view.seats));
+  // ADR 0114: "Alice's Ring-bearer", for the marker's title.
+  const ringBearers = $derived(ringBearerNames(view.battlefield?.cards, view.seats));
   // ADR 0106 §2 (owner decision 3): whom each creature can't attack,
   // read off the card view, for Card's CAN'T ATTACK chip.
   const cantAttack = $derived(cantAttackByCard(view.battlefield?.cards, view.seats));
@@ -615,6 +618,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {ringBearers}
       {cantAttack}
       cards={buckets.creature}
       {viewerID}
@@ -641,6 +645,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {ringBearers}
       {cantAttack}
       cards={buckets.land}
       compact
@@ -664,6 +669,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {ringBearers}
       {cantAttack}
       cards={buckets.right}
       compact

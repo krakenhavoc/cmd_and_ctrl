@@ -32,27 +32,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "Any target" is the full CR 115.4 slot: a player, a creature, a
 // planeswalker or a battle.
 //
-// DECLARED SIMPLIFICATION — NO PERSIST. The keyword is not
-// implemented anywhere in the engine (the `persist.go` file in this
-// package is the SPELL of that name, not the mechanic), and it needs
-// two things the catalog has no slot for: a dies-trigger that returns
-// the card to the battlefield with a counter already on it, and the
-// "if it had no -1/-1 counters on it" intervening-if read against the
-// permanent as it last existed.
+// Persist is PrintedKeywords: the engine derives the dies trigger from
+// the ability list (game/undying_persist.go, #2075, ADR 0113 §4), so a
+// Redcap that dies with no -1/-1 counter returns with one, and its
+// enters trigger pings again for its new power. With a +1/+1 counter
+// effect the two counters annihilate (CR 704.5q) and it persists again.
 //
-// This is the half the card is played for, so the caveat is the
-// larger part of the card: a player sleeving this gets a four-mana
-// 2/2 that pings for two on arrival and then stays dead. Weaker than
-// printed in the only direction we ship (#259); tracked under
-// `undying-persist`.
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "a498bc70-36e7-4454-bc44-906893df38b8",
-		Name:         "Murderous Redcap",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Persist is not implemented — the Redcap does not come back with a -1/-1 counter when it dies, which is the half of the card most decks play it for.",
-		},
+		OracleID:        "a498bc70-36e7-4454-bc44-906893df38b8",
+		Name:            "Murderous Redcap",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordPersist},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Murderous Redcap — damage equal to its power to any target", func(g *game.Game, item *game.StackItem) error {

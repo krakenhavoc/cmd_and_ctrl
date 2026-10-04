@@ -107,4 +107,7 @@ body redirection/that-much-to-the-sources-controller
 body berserk/destroy-if-attacked
 body ugins-binding/bounce-all
 body annihilator/sacrifice
+body persist/return
+body undying/return
 body foray-of-orcs/damage
+body the-ring/sacrifice-blocker-at-end-of-combat

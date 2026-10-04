@@ -22,6 +22,8 @@
   import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
+  import { isLevelledEmblem } from "../../ringEmblem";
+  import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -499,9 +501,15 @@
   {#if seat.emblems && seat.emblems.length > 0}
     <div class="emblems" aria-label="emblems">
       {#each seat.emblems as emblem (emblem.instance_id)}
-        <span class="emblem" title={`${emblem.label} — ${emblem.text}`}>
-          <Icon name="star" size={11} />{emblem.label}
-        </span>
+        {#if isLevelledEmblem(emblem)}
+          <!-- ADR 0114 owner decision 1: the Ring, with its level and
+               every line it has and has yet to gain. -->
+          <EmblemLevelChip {emblem} />
+        {:else}
+          <span class="emblem" title={`${emblem.label} — ${emblem.text}`}>
+            <Icon name="star" size={11} />{emblem.label}
+          </span>
+        {/if}
       {/each}
     </div>
   {/if}

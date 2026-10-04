@@ -1609,7 +1609,9 @@ The model tiers see the Ring in the board text: one `emblem:` line per
 emblem, the Ring with its count ("The Ring (tempted 3 times): …"), and
 a `Ring-bearer` tag on the creature. Legendary and the evasion reach the
 evaluator through the effective type line and the block refusals, with
-nothing new.
+nothing new. The Ring's other three lines (ADR 0114 PR 3) are ordinary
+triggers the seat controls: the loot's discard is the usual discard
+prompt, and the end-of-combat sacrifice and the life loss ask nothing.
 
 ## Never offered a banned cast (#760)
 

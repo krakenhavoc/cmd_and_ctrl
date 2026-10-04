@@ -401,6 +401,12 @@ func corpusBoards() []corpusBoard {
 		// Profusion that entered after it, whose "your maximum hand size
 		// is two" is catalog data and so adds nothing but the permanent.
 		{"max_hand_size_grant", corpusMaxHandSizeGrant},
+		// v7, added by ADR 0113 §4 (#2075) as a new file: a persist
+		// trigger — an engine dies trigger with no catalog row, keyed by
+		// its persist/return body — waiting on the stack, its source
+		// object the graveyard card (CR 400.7e) and its trigger context
+		// the departed permanent whose last-known counters it re-reads.
+		{"persist_trigger_pending", corpusPersistTriggerPending},
 		// v7, added by ADR 0115 PR 2 (#2085) as new files: CR 903.9a as
 		// a state-based action — a commander in its owner's graveyard
 		// with the check still owed (card.commanderReturnDue), and the
@@ -414,6 +420,12 @@ func corpusBoards() []corpusBoard {
 		// (Card.ringBearer), one chosen at the prompt and one the only
 		// creature. PR 3 adds the level 4 board.
 		{"the_ring", corpusTheRing},
+		// v7, added by ADR 0114 PR 3 (#2076) as a new file: the Ring at
+		// two levels — one player tempted four times, the other once —
+		// a Ring-bearer each, and the level 3 delayed sacrifice
+		// (the-ring/sacrifice-blocker-at-end-of-combat) waiting on the
+		// other player's creature.
+		{"the_ring_level_4", corpusTheRingLevel4},
 		// v7, added by ADR 0116 (#2078) as a new file: Thoughtseize's
 		// pick open over a revealed hand of a land and two spells —
 		// pendingChoices[].discardOptions naming the two spells and
@@ -562,6 +574,54 @@ func corpusTheRing(t *testing.T) *game.Game {
 			t.Fatal("setup: the Ring-bearers are not the ones chosen")
 		}
 	})
+	return g
+}
+
+// corpusTheRingLevel4 is the Ring at levels 4 and 1, a Ring-bearer
+// each, and line 3's delayed sacrifice scheduled against the second
+// player's Ring-bearer, as if it had blocked the first player's.
+func corpusTheRingLevel4(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Balduvian Bears", 2, 2))
+	var err error
+	g.WithWriteLock(func() {
+		for i := 0; i < 4 && err == nil; i++ {
+			err = g.RingTemptsForEffect(me.ID, uuid.Nil, nil)
+		}
+		if err == nil {
+			err = g.RingTemptsForEffect(opp.ID, uuid.Nil, nil)
+		}
+		if err != nil {
+			return
+		}
+		var emblem *game.Card
+		for i := range me.Emblems.Cards {
+			if me.Emblems.Cards[i].IsRingEmblem() {
+				emblem = &me.Emblems.Cards[i]
+			}
+		}
+		if emblem == nil {
+			t.Fatal("setup: no Ring emblem")
+		}
+		blocker, _ := g.LookupCardForEffect(theirs)
+		item := game.NewTriggeredItem(emblem, theRingSacrificeLabel)
+		item.Params.Object = game.ObjectRef{ID: theirs, Epoch: blocker.ObjectEpoch}
+		err = theRingScheduleBlockerSacrifice(g, item)
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	g.ReadSnapshot(func() {
+		if game.RingBearerOf(g, me.ID) != mine || game.RingBearerOf(g, opp.ID) != theirs ||
+			game.RingTemptCount(g, me.ID) != 4 || game.RingTemptCount(g, opp.ID) != 1 {
+			t.Fatal("setup: the Ring-bearers or the counts are not the ones arranged")
+		}
+	})
+	if len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: %d delayed triggers, want the one sacrifice", len(g.DelayedTriggers))
+	}
 	return g
 }
 
@@ -2248,6 +2308,19 @@ func corpusProwessOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
 	if it := corpusSettleTrigger(t, g, monk); it.Body != "prowess/pump" {
 		t.Fatalf("setup: the prowess trigger names body %q, want prowess/pump", it.Body)
+	}
+	return g
+}
+
+// corpusPersistTriggerPending is a persist trigger (#2075) waiting on
+// the stack after a vanilla persist creature died.
+func corpusPersistTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	elite := pushDiesKeywordCreature(g, me, "Safehold Elite", 2, 2, game.KeywordPersist)
+	b25Destroy(g, elite)
+	if it := corpusSettleTrigger(t, g, elite); it.Body != "persist/return" {
+		t.Fatalf("setup: the persist trigger names body %q, want persist/return", it.Body)
 	}
 	return g
 }

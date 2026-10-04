@@ -729,30 +729,41 @@ var items = []Item{
 		Printed: printedWords("amass"),
 	},
 	{
-		Slug: "the-ring-tempts-you", Name: "The Ring tempts you", Kind: KindMechanic, Status: StatusMissing,
-		Summary: "The Ring tempts you: you get the Ring emblem, choose a creature you control as your Ring-bearer, and the Ring gains a new ability each time it tempts you.",
-		Missing: "No card that tempts you is in the catalog yet. The Ring itself works up to its first ability: your Ring-bearer is legendary and can't be blocked by creatures with greater power.",
-		Rules:   []string{"701.54"},
-		Issue:   2076,
-		ADR:     "0114-the-ring-tempts-you.md",
-		Printed: printedWords("the Ring tempts you"),
+		Slug: "the-ring-tempts-you", Name: "The Ring tempts you", Kind: KindMechanic, Status: StatusPartial,
+		Summary:  "The Ring tempts you: you get the Ring emblem, choose a creature you control as your Ring-bearer, and the Ring gains a new ability each time it tempts you.",
+		Missing:  "The Ring and all four of its abilities work, but most of the cards that tempt you aren't in the catalog yet.",
+		Rules:    []string{"701.54"},
+		Issue:    2076,
+		ADR:      "0114-the-ring-tempts-you.md",
+		Printed:  printedWords("the Ring tempts you"),
+		Examples: []string{"Nazgûl", "Call of the Ring", "Sauron, the Dark Lord", "Ringsight"},
 		Waiting: []string{
 			"Aragorn, Company Leader", "Bilbo, Retired Burglar", "Birthday Escape", "Bombadil's Song",
-			"Boromir, Warden of the Tower", "Breaking of the Fellowship", "Call of the Ring", "Claim the Precious",
+			"Boromir, Warden of the Tower", "Breaking of the Fellowship", "Claim the Precious",
 			"Dreadful as the Storm", "Dúnedain Rangers", "Elrond, Lord of Rivendell", "Enraged Huorn",
 			"Faramir, Field Commander", "Fiery Inscription", "Frodo, Adventurous Hobbit", "Frodo Baggins",
 			"Frodo, Sauron's Bane", "Galadriel, Elven-Queen", "Galadriel of Lothlórien", "Gandalf, Friend of the Shire",
 			"Glorious Gale", "Gollum, Patient Plotter", "Gollum's Bite", "Horses of the Bruinen",
 			"Inherited Envelope", "In the Darkness Bind Them", "Lord of the Nazgûl", "Mirrormere Guardian",
-			"Nazgûl", "Now for Wrath, Now for Ruin!", "One Ring to Rule Them All", "Ranger's Firebrand",
-			"Rangers of Ithilien", "Relentless Rohirrim", "Ringsight", "Ringwraiths",
-			"Rohirrim Lancer", "Sam's Desperate Rescue", "Samwise the Stouthearted", "Sauron, Lord of the Rings",
-			"Sauron's Ransom", "Sauron, the Dark Lord", "Sauron, the Necromancer", "Scroll of Isildur",
+			"Now for Wrath, Now for Ruin!", "One Ring to Rule Them All", "Ranger's Firebrand",
+			"Rangers of Ithilien", "Relentless Rohirrim", "Ringwraiths",
+			"Rohirrim Lancer", "Sam's Desperate Rescue", "Samwise the Stouthearted",
+			"Sauron's Ransom", "Sauron, the Necromancer", "Scroll of Isildur",
 			"Shortcut to Mushrooms", "Slip On the Ring", "Sméagol, Helpful Guide", "Soothing of Sméagol",
 			"Stalwarts of Osgiliath", "The Black Breath", "There and Back Again", "The Ring Goes South",
 			"Took Reaper", "Uruk-hai Berserker", "War of the Last Alliance", "Witch-king of Angmar",
 		},
-		EngineNotes: "**The tempt and the Ring-bearer ship (ADR 0114 PR 2).** `Game.RingTemptsForEffect` (`game/ring.go`) is CR 701.54a and 701.54c in the reminder card's order: the Ring emblem if the player has none (a fixed key, `game.RingEmblemKey` = `emblem:the-ring`, filed by `effects.registerRulesEmblem` in `cards/effects/the_ring.go`), its count up by one (`Card.RingTemptations` on the emblem, read by the `DesignationRingTempted` gate, `game.RingTempted(n)`), then the choice — none, one chosen automatically and logged (owner decision 2), or the `ring_bearer` prompt (a card-set pick of its own, blocking, `dropDefault` on departure) — then `Card.RingBearer` (one write site; cleared by CR 400.7 and in `materialiseControlLocked`; kept through phasing; not copiable), `EventRingTempted` (CR 701.54d, with or without a creature) and the rest of the sentence. Readers: `game.RingBearerOf`, `game.RingTemptCount`, `game.IsRingBearerOf`. The emblem's first line ships: a layer-4 static making the Ring-bearer legendary, and an emblem block rule (`EmblemSpec.BlockRules`; `forEachBlockRuleLocked` now walks emblems after the battlefield) built from `YourRingBearer()` and `GreaterPowerThanAttacker()` with `CantBeBlockedByComparing`, which Locke, Treasure Hunter now uses too; a refusal names the emblem. Card side: `effects.TheRingTemptsYou{Then}`, `WheneverTheRingTemptsYou`, `WheneverYouChooseARingBearer`, `IfYouChoseAnotherRingBearer`. Wire: `CardView.ring_bearer`, `EmblemView.level` and `lines`, the `ring_tempted` log line. Bot: `legal.Options.OrderRingBearer` and the heuristic's hardest-hitter ordering. **Still open:** the emblem's lines at two, three and four temptations and the first cards (ADR 0114 PR 3: Call of the Ring, Nazgûl, Ringsight and both Saurons), the table's display (PR 4), and the rest of the cards (PR 5). Galadriel, Elven-Queen also needs voting.",
+		EngineNotes: "**The tempt and the Ring-bearer ship (ADR 0114 PR 2).** `Game.RingTemptsForEffect` (`game/ring.go`) is CR 701.54a and 701.54c in the reminder card's order: the Ring emblem if the player has none (a fixed key, `game.RingEmblemKey` = `emblem:the-ring`, filed by `effects.registerRulesEmblem` in `cards/effects/the_ring.go`), its count up by one (`Card.RingTemptations` on the emblem, read by the `DesignationRingTempted` gate, `game.RingTempted(n)`), then the choice — none, one chosen automatically and logged (owner decision 2), or the `ring_bearer` prompt (a card-set pick of its own, blocking, `dropDefault` on departure) — then `Card.RingBearer` (one write site; cleared by CR 400.7 and in `materialiseControlLocked`; kept through phasing; not copiable), `EventRingTempted` (CR 701.54d, with or without a creature) and the rest of the sentence. Readers: `game.RingBearerOf`, `game.RingTemptCount`, `game.IsRingBearerOf`. The emblem's first line ships: a layer-4 static making the Ring-bearer legendary, and an emblem block rule (`EmblemSpec.BlockRules`; `forEachBlockRuleLocked` now walks emblems after the battlefield) built from `YourRingBearer()` and `GreaterPowerThanAttacker()` with `CantBeBlockedByComparing`, which Locke, Treasure Hunter now uses too; a refusal names the emblem. Card side: `effects.TheRingTemptsYou{Then}`, `WheneverTheRingTemptsYou`, `WheneverYouChooseARingBearer`, `IfYouChoseAnotherRingBearer`. Wire: `CardView.ring_bearer`, `EmblemView.level` and `lines`, the `ring_tempted` log line. Bot: `legal.Options.OrderRingBearer` and the heuristic's hardest-hitter ordering. **The emblem's other three lines and the deck's five cards ship (ADR 0114 PR 3).** Lines 2 to 4 are emblem triggers in `the_ring.go`, each gated by `game.RingTempted(n)` and reading \"your Ring-bearer\" as the event is harvested: the loot on `EventAttack`, the end-of-combat sacrifice on `EventBlock` (one per blocker, CR 509.3d; a fill-in Build records the blocker's `ObjectEpoch`, and the registered delayed body `the-ring/sacrifice-blocker-at-end-of-combat` has its controller at resolution sacrifice it if it is still that object), and \"each opponent loses 3 life\" on combat `EventDealDamage` (harvested before state-based actions, so a Ring-bearer killed by the same damage still counts). Cards: Call of the Ring, Nazgûl, Ringsight and Sauron, the Dark Lord (Full), and Sauron, Lord of the Rings with a caveat on the `commanders-die` row (#2085). **Still open:** the table's display (PR 4) and the rest of the cards (PR 5). Galadriel, Elven-Queen also needs voting.",
+	},
+	{
+		Slug: "commanders-die", Name: "Commanders die", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "A commander that is destroyed or sacrificed goes to the graveyard first, so abilities that watch a creature die see it, and then its owner may move it to the command zone.",
+		Missing:     "A commander whose owner sends it to the command zone never reaches the graveyard, so abilities that watch a creature die, or a card going to a graveyard or exile, don't see it.",
+		Rules:       []string{"903.9a", "700.4"},
+		Issue:       2085,
+		ADR:         "0115-commanders-die.md",
+		Waiting:     []string{"Sauron, Lord of the Rings", "Rest in Peace", "Leyline of the Void"},
+		EngineNotes: "rule: CR 903.9a makes a commander's return from a graveyard or exile a state-based action after the move, but `commanderZoneReplacement` (`game/builtin_replacements.go`) still applies CR 903.9 to graveyard and exile moves as a replacement, so a commander whose owner takes the command zone never dies. ADR 0115 PRs 1 and 2 (commander tax and damage across a blink; the dormant `commander_return` plumbing) are on develop; PR 3 flips the switch and PR 4 lifts the caveats on the waiting cards: Sauron, Lord of the Rings (\"whenever a commander an opponent controls dies\", ADR 0114 owner decision 4), Rest in Peace and Leyline of the Void.",
 	},
 	{
 		Slug: "earthbend", Name: "Earthbend", Kind: KindMechanic, Status: StatusImplemented,
@@ -1244,6 +1255,37 @@ var items = []Item{
 		Mechanic: "unleash",
 		Printed:  printedKeyword("unleash"),
 		Examples: []string{"Exava, Rakdos Blood Witch", "Chaos Imps", "Hellhole Flailer"},
+	},
+	{
+		// #2075 (ADR 0113 §4): dies keywords whose triggers the engine
+		// derives from the departed permanent's LAST-KNOWN ability list
+		// (game/undying_persist.go), so a printed, token or granted
+		// instance works with no catalog entry, and a creature whose
+		// only text is undying and other canonical keywords (Young
+		// Wolf, Butcher Ghoul) needs no card file. The return finds only
+		// the graveyard object the card became (CR 400.7e).
+		Slug: "undying", Name: "Undying", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "When a creature with undying dies with no +1/+1 counters on it, it returns to the battlefield under its owner's control with a +1/+1 counter, once for each instance of undying it has.",
+		Rules:    []string{"702.93", "603.10a", "400.7e"},
+		Issue:    2075,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Keywords: []string{game.KeywordUndying},
+		Mechanic: "undying",
+		Printed:  printedKeyword("undying"),
+		Examples: []string{"Gleeful Arsonist"},
+	},
+	{
+		// #2075 (ADR 0113 §4): undying's twin with -1/-1 counters.
+		// Murderous Redcap's caveat went with it.
+		Slug: "persist", Name: "Persist", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "When a creature with persist dies with no -1/-1 counters on it, it returns to the battlefield under its owner's control with a -1/-1 counter, once for each instance of persist it has.",
+		Rules:    []string{"702.79", "603.10a", "400.7e"},
+		Issue:    2075,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Keywords: []string{game.KeywordPersist},
+		Mechanic: "persist",
+		Printed:  printedKeyword("persist"),
+		Examples: []string{"Murderous Redcap", "Persistent Constrictor"},
 	},
 	{
 		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusMissing,
