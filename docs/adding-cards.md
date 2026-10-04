@@ -6234,9 +6234,13 @@ Three things to know:
   and CR 400.7 clear it; phasing does not.
 - **Choosing a Ring-bearer is not targeting.** Hexproof and protection do
   not stop it, and nothing can respond to the choice.
-- **No card ships until the Ring has all four lines** (ADR 0114 PR 3).
-  Today the emblem has its first line only; a card that tempts would be
-  weaker than printed for anyone who reaches the second.
+- **The Ring's four lines are the emblem's, never the card's.** Lines 2
+  to 4 (the loot, the end-of-combat sacrifice, "each opponent loses 3
+  life") are emblem triggers behind `game.RingTempted(n)` and fire for
+  every card that tempts. A card writes only its own text: Nazgûl's
+  `WheneverTheRingTemptsYou`, Call of the Ring's
+  `WheneverYouChooseARingBearer`, Ringsight's search in `Then` (read the
+  board there, after the tempt: the new Ring-bearer is legendary).
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
