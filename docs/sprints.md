@@ -3315,15 +3315,20 @@ From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/199
 
 ## S59 — Automated table: clicks that act, payment that counts
 
-**Phase:** 7 · **Goal:** the table behaves like an automated game, not a sandbox. A left-click on a permanent does what the card does, mana split across colours is one dialog with a running count, and a spell's cost is paid rather than waived, per [ADR 0117](decisions/0117-click-to-act-and-a-per-colour-mana-stepper.md) and ADR 0118. Tracking issue [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189).
+**Phase:** 7 · **Goal:** the table behaves like an automated game, not a sandbox. A left-click on a permanent does what the card does, mana split across colours is one dialog with a running count, and a spell's cost is paid rather than waived, per [ADR 0117](decisions/0117-click-to-act-and-a-per-colour-mana-stepper.md) and [ADR 0118](decisions/0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md). Tracking issue [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189).
 
-Opened 2026-10-04 from the owner's direction: "previously we were building the game around it being a sandbox and now we are building it around being automated with almost 4k cards catalogged. That means the game should be smarter and more intuitive." The owner answered four questions the same day, recorded in ADR 0117. The members are ADR 0117's Delivery PRs and ADR 0118, which is written after it.
+Opened 2026-10-04 from the owner's direction: "previously we were building the game around it being a sandbox and now we are building it around being automated with almost 4k cards catalogged. That means the game should be smarter and more intuitive." The owner answered four questions the same day, recorded in ADR 0117. The members are ADR 0117's Delivery PRs, ADR 0118 and its Delivery PRs, and [#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163) (alternative costs for every spell you cast: Fist of Suns, Jodah, Archmage Eternal, Leyline of Mutation, Omniscience), which the owner pulled in from S58's deck requests on 2026-10-04 so that strict payment can price Jodah's {W}{U}{B}{R}{G}.
 
 - [x] ADR 0117: click to act, and a per-colour mana stepper ([#2187](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2187))
 - [ ] PR 2 — server: `adds_no_mana` also covers an ability that adds nothing right now (a power-0 Vivi Ornitier), so the click never spends it and the bot is not offered it
 - [ ] PR 3 — client, the click rule: one predicate for "usable" shared by the click, the popover and the picker; usable abilities open the popover, mana only taps for mana, nothing usable does nothing; the popover's Sandbox Tap / Untap row; the tapped-Vivi fix; the tutorial's step 7 hint
 - [ ] PR 4 — client, the stepper: one −/+ row per colour with "N of N" for any activation with two or more colour picks, at the card; the right-click popover's colour rows open it; the 12-answer cap removed
-- [ ] ADR 0118: strict mana payment with auto-tap by default ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188)), and its delivery PRs
+- [x] ADR 0118: strict payment by default, Cast anyway, and alternative costs for every spell ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188), [#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163))
+- [ ] ADR 0118 PR 2 — Cast anyway (don't pay): the right-click row on every castable card in the hand, the castable-from-other-zones strip and the command zone while strict is on, confirmed in the dock ("Cast <card> without paying its mana cost?", Cast / Cancel), then sending `force_cast`; the log line "<player> cast <card> without paying its mana cost" (#2188)
+- [ ] ADR 0118 PR 3 — server: the auto-tapper tops up a partly funded pool, and the enumerator agrees (#2188)
+- [ ] ADR 0118 PR 4 — client, the default flip: `strictMana` on by default and a clicked cast auto-taps; settings v16 moves everyone to strict once; the Settings help; the practice table forces strict on; the tutorial's step 1 copy (#2188)
+- [ ] ADR 0118 PR 5 — server: a permanent's static adds an alternative cost to each spell its controller casts, read by the cast path, the enumerator, the auto-tapper and the view (#2163)
+- [ ] ADR 0118 PR 6 — server: Fist of Suns, Jodah, Archmage Eternal, Leyline of Mutation and Omniscience; the `granted-alternative-costs` seam closed (#2163)
 
 ### Exit criteria
 
@@ -3337,7 +3342,7 @@ From the tracker, [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/218
 
 ### Status
 
-**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 is not written yet.
+**In progress.** ADR 0117 was accepted on 2026-10-04. ADR 0118 was accepted on 2026-10-04 with the owner's review answers.
 
 ---
 
