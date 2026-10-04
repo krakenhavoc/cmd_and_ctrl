@@ -98,3 +98,23 @@ func TargetRevealsYouChooseDiscardAbility(filter CardPredicate, label string) Ef
 		return body(item, NewContext(g, item))
 	}
 }
+
+// ModeTargetRevealsYouChooseDiscard is TargetRevealsYouChooseDiscard as
+// a modal bullet's body: the player is this mode occurrence's own
+// target, re-checked at resolution (CR 608.2b). Mardu Charm, Auntie's
+// Sentence, Poison the Waters and the pool's other charms (ADR 0116
+// pool B).
+func ModeTargetRevealsYouChooseDiscard(filter CardPredicate, label string) func(*game.StackItem, *Context, int) error {
+	return func(_ *game.StackItem, ctx *Context, occ int) error {
+		t, ok := ModeTarget(ctx, occ)
+		if !ok || t.Kind != game.TargetPlayer {
+			return nil
+		}
+		return ChooseFromRevealedHand{Player: t.ID, Filter: filter, Label: label}.Apply(ctx)
+	}
+}
+
+// NonlandPermanentCard is the pick's "nonland permanent card": an
+// artifact, creature, enchantment, planeswalker or battle card, read as
+// it is in the hand. Auntie's Sentence, Dai Li Indoctrination.
+func NonlandPermanentCard() CardPredicate { return And(Nonland(), Permanent()) }

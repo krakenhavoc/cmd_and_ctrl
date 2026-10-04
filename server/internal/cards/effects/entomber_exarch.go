@@ -27,7 +27,7 @@ func init() {
 			ReturnTheModesGraveyardTargetToHand),
 		ModeDoing("Target opponent reveals their hand. You choose a noncreature card from it. That player discards that card.",
 			TargetPlayer("target opponent", Opponent()),
-			entomberExarchPick),
+			ModeTargetRevealsYouChooseDiscard(Noncreature(), "noncreature card")),
 	)
 	Register(Spec{
 		OracleID:     "e820296a-81b0-401f-959c-7aed8abefce1",
@@ -35,14 +35,4 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{exarch},
 	})
-}
-
-// entomberExarchPick is the second bullet: the bullet's own target
-// reveals, and the trigger's controller chooses a noncreature card.
-func entomberExarchPick(_ *game.StackItem, ctx *Context, occ int) error {
-	t, ok := ModeTarget(ctx, occ)
-	if !ok || t.Kind != game.TargetPlayer {
-		return nil
-	}
-	return ChooseFromRevealedHand{Player: t.ID, Filter: Noncreature(), Label: "noncreature card"}.Apply(ctx)
 }

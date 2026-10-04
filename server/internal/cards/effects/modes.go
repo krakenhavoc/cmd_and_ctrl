@@ -311,10 +311,45 @@ func FightTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
 	return b10Fight(ctx, mine.ID, theirs.ID)
 }
 
+// BoostTheModesTarget is "target creature gets +P/+T until end of
+// turn" as a modal bullet's body, for a printed fixed amount —
+// Auntie's Sentence's "-2/-2" bullet (ADR 0116 pool B, #2078). The
+// pump lands on this occurrence's own target and only while it is
+// still legal (CR 608.2b).
+func BoostTheModesTarget(power, toughness int, label string) func(item *game.StackItem, ctx *Context, occ int) error {
+	return func(_ *game.StackItem, ctx *Context, occ int) error {
+		t, ok := ModeTarget(ctx, occ)
+		if !ok {
+			return nil
+		}
+		return BoostUntilEOT{Target: t.ID, Power: power, Toughness: toughness, Label: label}.Apply(ctx)
+	}
+}
+
+// TheModesTargetDiscards is "target player discards N cards" as a
+// modal bullet's body: that player chooses which (CR 701.9b), through
+// the ordinary discard prompt — Cerebral Confiscation's and Splitting
+// Headache's first bullets (ADR 0116 pool B, #2078).
+func TheModesTargetDiscards(n int) func(item *game.StackItem, ctx *Context, occ int) error {
+	return func(item *game.StackItem, ctx *Context, occ int) error {
+		t, ok := ModeTarget(ctx, occ)
+		if !ok || t.Kind != game.TargetPlayer {
+			return nil
+		}
+		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player: t.ID,
+			Source: item.SourceCardID,
+			N:      n,
+		})
+		return nil
+	}
+}
+
 // ReturnTheModesGraveyardTargetToHand is "return target <card> from
 // your graveyard to your hand" as a modal bullet's body — Kolaghan's
-// Command's first bullet and Entomber Exarch's. A card that left the graveyard in response is
-// no longer a legal target (CR 608.2b) and nothing moves.
+// Command's first bullet and Entomber Exarch's. A card that left the
+// graveyard in response is no longer a legal target (CR 608.2b) and
+// nothing moves.
 func ReturnTheModesGraveyardTargetToHand(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
