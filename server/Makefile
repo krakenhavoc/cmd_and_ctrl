@@ -70,12 +70,13 @@ fmt-check:
 	fi
 
 # Pinned golangci-lint, run via `go run` so no locally-installed
-# binary is needed and the version can't drift from the v1-format
-# config in .golangci.yml (v1.64.8 is the final v1.x release).
-# First invocation downloads + builds the tool; later runs hit the
-# Go build cache. Unlike the old target, this can never silently
-# skip linting.
-GOLANGCI_LINT := github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+# binary is needed and the version can't drift from the v2-format
+# config in .golangci.yml. v2.14.0 supports and runs on Go 1.27, the
+# version go.mod declares (ADR 0122 §1.1); keep it in step with
+# scripts/go-docker.sh's LINT_PKG. First invocation downloads + builds
+# the tool; later runs hit the Go build cache. Unlike the old target,
+# this can never silently skip linting.
+GOLANGCI_LINT := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 
 lint:
 	go run $(GOLANGCI_LINT) run $(PKGS)

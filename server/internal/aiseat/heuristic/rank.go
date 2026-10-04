@@ -34,11 +34,12 @@ type Candidate struct {
 // Rank prices every move in the window, best first.
 //
 // It returns nil for the windows the scalar scorer does not answer —
-// mulligans, and any window containing a combat declaration. Those
-// are planned in decideMulligan and combat.go rather than priced, so
-// a "ranking" of them would be a fiction, and a caller comparing the
-// top two of a fiction would escalate on noise. Combat has its own
-// escalation trigger and does not need this one.
+// mulligans, the opening roll, and any window containing a combat
+// declaration. Those are planned in decideMulligan, OpeningRollIndex
+// and combat.go rather than priced, so a "ranking" of them would be a
+// fiction, and a caller comparing the top two of a fiction would
+// escalate on noise. Combat has its own escalation trigger and does
+// not need this one.
 //
 // Rank respects ctx the same way decideGeneral does: it returns what
 // it has priced so far rather than blowing a deadline.
@@ -46,7 +47,7 @@ func (p *Policy) Rank(ctx context.Context, in aiseat.Input) []Candidate {
 	if len(in.Moves) == 0 {
 		return nil
 	}
-	if allKind(in.Moves, legal.KindMulligan) ||
+	if allKind(in.Moves, legal.KindMulligan) || allKind(in.Moves, legal.KindOpeningRoll) ||
 		anyKind(in.Moves, legal.KindBlock) || anyKind(in.Moves, legal.KindAttack) {
 		return nil
 	}

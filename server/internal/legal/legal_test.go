@@ -33,19 +33,21 @@ const (
 
 func TestWireTypesMatchActions(t *testing.T) {
 	pairs := map[string]actions.Type{
-		legal.TypePassPriority:        actions.TypePassPriority,
-		legal.TypeCastSpell:           actions.TypeCastSpell,
-		legal.TypeActivateAbility:     actions.TypeActivateAbility,
-		legal.TypeActivateManaAbility: actions.TypeActivateManaAbility,
-		legal.TypeDeclareAttacker:     actions.TypeDeclareAttacker,
-		legal.TypeDeclareBlocker:      actions.TypeDeclareBlocker,
-		legal.TypeDeclareBlockers:     actions.TypeDeclareBlockers,
-		legal.TypeFinishBlocks:        actions.TypeFinishBlocks,
-		legal.TypeResolveChoice:       actions.TypeResolveChoice,
-		legal.TypeKeepHand:            actions.TypeKeepHand,
-		legal.TypeMulligan:            actions.TypeMulligan,
-		legal.TypeDiscardSelection:    actions.TypeDiscardSelection,
-		legal.TypeSpecialAction:       actions.TypeSpecialAction,
+		legal.TypePassPriority:         actions.TypePassPriority,
+		legal.TypeCastSpell:            actions.TypeCastSpell,
+		legal.TypeActivateAbility:      actions.TypeActivateAbility,
+		legal.TypeActivateManaAbility:  actions.TypeActivateManaAbility,
+		legal.TypeDeclareAttacker:      actions.TypeDeclareAttacker,
+		legal.TypeDeclareBlocker:       actions.TypeDeclareBlocker,
+		legal.TypeDeclareBlockers:      actions.TypeDeclareBlockers,
+		legal.TypeFinishBlocks:         actions.TypeFinishBlocks,
+		legal.TypeResolveChoice:        actions.TypeResolveChoice,
+		legal.TypeKeepHand:             actions.TypeKeepHand,
+		legal.TypeMulligan:             actions.TypeMulligan,
+		legal.TypeDiscardSelection:     actions.TypeDiscardSelection,
+		legal.TypeSpecialAction:        actions.TypeSpecialAction,
+		legal.TypeRollOpening:          actions.TypeRollOpening,
+		legal.TypeChooseStartingPlayer: actions.TypeChooseStartingPlayer,
 	}
 	for got, want := range pairs {
 		if got != string(want) {

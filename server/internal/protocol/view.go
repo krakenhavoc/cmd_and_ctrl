@@ -1468,6 +1468,15 @@ type PlayerView struct {
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
 
+	// Agent seat (ADR 0122 §7). IsAgent marks a seat played by an AI
+	// agent through an MCP client, declared by that client when it
+	// joined; AgentClient is the client's declared name
+	// ("claude-code", "codex", "unknown"). Public and identical for
+	// every viewer, like IsBot: being an agent is a fact about the
+	// seat. Never cleared once set, and never true on a bot seat.
+	IsAgent     bool   `json:"is_agent,omitempty"`
+	AgentClient string `json:"agent_client,omitempty"`
+
 	// IsHost marks the table host (ADR 0075 §2.1) — the seat that may
 	// change table settings alongside the server admin. Public to
 	// every viewer. Not read from the engine: the room stamps it on
@@ -7374,6 +7383,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		IsBot:             p.IsBot,
 		BotTier:           p.BotTier,
 		BotDeck:           p.BotDeck,
+		IsAgent:           p.Agent,
+		AgentClient:       p.AgentClient,
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),

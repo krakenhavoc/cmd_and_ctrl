@@ -209,7 +209,7 @@ func closureRoutesFrom(root reflect.Type) []closureField {
 		switch t.Kind() {
 		case reflect.Func, reflect.Interface:
 			return true, nil
-		case reflect.Ptr, reflect.Slice, reflect.Array, reflect.Chan:
+		case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Chan:
 			return direct(t.Elem())
 		case reflect.Map:
 			k, ks := direct(t.Key())

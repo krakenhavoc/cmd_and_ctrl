@@ -246,8 +246,9 @@ type (
 
 // digestLegalMoves folds one seat's uncapped move list into its
 // LegalActionsView. Nil when the list gives the client nothing to
-// highlight — no moves at all, or only choice and mulligan answers,
-// whose surfaces read pending_choices — so a quiet frame costs 0 bytes.
+// highlight — no moves at all, or only choice, mulligan and opening-roll
+// answers, whose surfaces read pending_choices, the mulligan window and
+// opening_roll — so a quiet frame costs 0 bytes.
 func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 	var out *LegalActionsView
 	// #1918: cast moves per card, and how many of them are idle.
@@ -277,7 +278,7 @@ func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 		case legal.KindPass:
 			view().Pass = true
 			continue
-		case legal.KindChoice, legal.KindMulligan:
+		case legal.KindChoice, legal.KindMulligan, legal.KindOpeningRoll:
 			continue
 		}
 		if m.Source == uuid.Nil {

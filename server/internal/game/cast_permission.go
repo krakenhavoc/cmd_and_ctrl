@@ -268,9 +268,8 @@ type CastPermission struct {
 	// should grant less, never panic.
 	//
 	// Filter carries no `omitzero`: it is part of GameSnapshot's graph
-	// (GameSnapshot.CastPermissions[].Filter), and that option's
-	// effect depends on the building Go toolchain below 1.24 (#1492)
-	// — CI is pinned to 1.22.
+	// (GameSnapshot.CastPermissions[].Filter), which writes it at its
+	// zero value too; omitzero_tag_guard_test.go holds that (#1492).
 	Scope  PermissionScope     `json:"scope,omitempty"`
 	Cards  []PermissionCardRef `json:"cards,omitempty"`
 	Filter PermissionFilter    `json:"filter"`

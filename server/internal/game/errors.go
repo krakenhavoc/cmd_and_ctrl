@@ -22,6 +22,11 @@ var (
 	// active game is attempted in lobby or ended state.
 	ErrGameNotActive = errors.New("game: not in active state")
 
+	// ErrSeatKindTaken is returned when a seat that is already a bot
+	// is declared an agent, or the reverse (ADR 0122 §7: a seat is a
+	// bot, an agent or neither, never both).
+	ErrSeatKindTaken = errors.New("game: seat is already a bot or an agent")
+
 	// ErrGameFull is returned when AddPlayer would exceed MaxPlayers.
 	ErrGameFull = errors.New("game: full")
 

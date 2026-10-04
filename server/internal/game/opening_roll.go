@@ -263,6 +263,14 @@ func (g *Game) rollOpeningAutomaticallyLocked() {
 	}
 }
 
+// OwesOpeningDieLocked reports whether seat is in the current round of
+// the opening roll and has not rolled in it: the question RollOpening
+// asks before it rolls, for the legal enumerator (ADR 0121 §4). False
+// when no roll is open. Caller holds g.mu (read is enough).
+func (g *Game) OwesOpeningDieLocked(seat int) bool {
+	return g.owesOpeningDieLocked(seat)
+}
+
 // owesOpeningDieLocked reports whether seat is in the current round
 // and has not rolled in it.
 func (g *Game) owesOpeningDieLocked(seat int) bool {

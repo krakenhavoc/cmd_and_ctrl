@@ -215,7 +215,9 @@ func (l *Lobby) ReclaimByUser(gameID, userID uuid.UUID) (GameMeta, SeatInfo, err
 // It swaps as well as attaches: a seat already linked to one Discord
 // account can be moved to another. What it refuses:
 //
-//   - a bot seat (ErrSeatIsBot) and an archived table (ErrGameArchived);
+//   - a bot seat (ErrSeatIsBot), an agent seat (ErrSeatIsAgent, ADR
+//     0122 §7: it stays a guest) and an archived table
+//     (ErrGameArchived);
 //   - a user who already holds a different seat at this table
 //     (ErrAlreadySeated), for the one-seat-per-table rule JoinAs keeps.
 //
@@ -257,6 +259,9 @@ func (l *Lobby) LinkSeat(gameID, playerID uuid.UUID, identity DiscordIdentity, u
 	}
 	if entry.meta.Players[idx].IsBot {
 		return GameMeta{}, SeatInfo{}, ErrSeatIsBot
+	}
+	if entry.meta.Players[idx].IsAgent {
+		return GameMeta{}, SeatInfo{}, ErrSeatIsAgent
 	}
 	if other, ok := seatOfUser(entry.meta.Players, userID); ok && other.PlayerID != playerID {
 		return GameMeta{}, SeatInfo{}, ErrAlreadySeated

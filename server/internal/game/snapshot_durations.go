@@ -59,7 +59,7 @@ func reachesDuration(t reflect.Type) bool {
 }
 
 func derefType(t reflect.Type) reflect.Type {
-	for t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	return t
@@ -147,7 +147,7 @@ func jsonFields(t reflect.Type) []jsonField {
 			index := append(append([]int(nil), prefix...), i)
 			if f.Anonymous && name == "" {
 				ft := f.Type
-				for ft.Kind() == reflect.Ptr {
+				for ft.Kind() == reflect.Pointer {
 					ft = ft.Elem()
 				}
 				if ft.Kind() == reflect.Struct {
@@ -176,7 +176,7 @@ func durationRoutes() []string {
 	set := map[string]bool{}
 	var walk func(t reflect.Type, path string, stack []reflect.Type)
 	walk = func(t reflect.Type, path string, stack []reflect.Type) {
-		for t.Kind() == reflect.Ptr {
+		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		if t == durationType {
@@ -236,7 +236,7 @@ func unknownDurationFields(data []byte) ([]string, error) {
 // the decoded keys of every Duration object it meets. Only the branches
 // that can hold a Duration are decoded.
 func walkRawDurations(raw json.RawMessage, t reflect.Type, where string, visit func(string, map[string]json.RawMessage)) error {
-	for t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if len(raw) == 0 || string(raw) == "null" || !reachesDuration(t) {
@@ -304,7 +304,7 @@ func (s *GameSnapshot) unknownDurations() []string {
 }
 
 func walkDurationValues(v reflect.Value, where string, visit func(string, Duration)) {
-	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+	for v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface {
 		if v.IsNil() {
 			return
 		}

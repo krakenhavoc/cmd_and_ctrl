@@ -540,6 +540,8 @@ var playerFields = plan(
 	"IsBot", carried, "",
 	"BotTier", carried, "",
 	"BotDeck", carried, "",
+	"Agent", carried, "",
+	"AgentClient", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
@@ -1073,7 +1075,7 @@ func TestSnapshotMirrorsHaveNoFuncs(t *testing.T) {
 		switch rt.Kind() {
 		case reflect.Func, reflect.Chan, reflect.UnsafePointer:
 			t.Errorf("%s is a %s — GameSnapshot must be serialisable all the way down", path, rt.Kind())
-		case reflect.Ptr, reflect.Slice, reflect.Array:
+		case reflect.Pointer, reflect.Slice, reflect.Array:
 			walk(rt.Elem(), path+"[]", seen)
 		case reflect.Map:
 			walk(rt.Key(), path+"{key}", seen)
