@@ -210,6 +210,9 @@ func (g *Game) endGameLocked(o GameOutcome) {
 	// still see an active game.
 	g.revealForetoldAtGameEndLocked()
 	g.State = StateEnded
+	// ADR 0121 §1: a departure during the opening roll can end the
+	// game; the window ends with it.
+	g.OpeningRoll = nil
 	out := o
 	g.Outcome = &out
 	g.PendingChoices = nil
