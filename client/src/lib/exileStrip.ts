@@ -201,7 +201,7 @@ export { manaSymbols };
 // badge both draw ManaSymbol now (#1438), which is what keeps a price
 // tag looking the same wherever it appears.
 
-function priceText(p: CastPriceView): string {
+export function priceText(p: CastPriceView): string {
   const life = p.life ? ` + ${p.life} life` : "";
   return `${p.cost === "{0}" ? "free" : p.cost}${life}`;
 }

@@ -250,6 +250,30 @@ func castPriceCases() []castPriceCase {
 			want: "generic=5 x=0 colors=[G]",
 		},
 		{
+			// #2202: the price the command-zone strip tags a commander
+			// with. A Medallion-shaped reduction comes off the total
+			// CR 903.8 has already raised (CR 601.2f), so {1}{G} with
+			// two prior casts under it is {4}{G}, not {1}{G} + {4}.
+			name: "commander tax under a cost reduction",
+			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
+				const medallion = "test-2202-medallion"
+				g := newActiveGame(t)
+				me := g.Seats[0]
+				toMainPhase(t, g)
+				withCatalogCostModifiers(t, modifiersFor(medallion, CostModifier{
+					Kind: CostReduction, Label: "Green spells you cast cost {1} less to cast.", Amount: fixed(1),
+				}))
+				modifierSource(t, g, me, "Test Medallion", medallion)
+				c := NewCard("Test Commander", me.ID)
+				c.TypeLine = "Legendary Creature — Bear"
+				c.ManaCost = "{1}{G}"
+				me.Command.PushTop(c)
+				me.CommanderCasts[c.InstanceID] = 2
+				return g, me, c.InstanceID, CastSpellParams{FromZone: "command"}
+			},
+			want: "generic=4 x=0 colors=[G]",
+		},
+		{
 			// S28 / ADR 0048. The preview DID know about these, and
 			// the point of the case is that routing through the one
 			// pricer did not lose them.
