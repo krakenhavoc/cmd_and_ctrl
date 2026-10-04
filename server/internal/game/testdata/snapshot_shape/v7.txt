@@ -3702,6 +3702,7 @@ spellsCastThisTurn	map:array
 spellsCastThisTurn{}	object
 spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
+spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 splitSecondActive	bool
 stack	object

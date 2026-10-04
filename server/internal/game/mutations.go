@@ -1666,8 +1666,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {
 		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
-			if ch := SourceCharacteristics(sc); characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
+			ch := SourceCharacteristics(sc)
+			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
+			}
+			// Artificer Class's "first artifact spell you cast each turn".
+			if characteristicHasType(ch, "Artifact") {
+				tally.Artifact++
 			}
 			break
 		}
