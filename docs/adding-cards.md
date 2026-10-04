@@ -5762,6 +5762,16 @@ is gone. In its place:
   The `file.go:closure@line` locations are still printed in the
   failure report, where a human wants them.
 
+Three small shared pieces came with the Sauron deck (S58 PR 7).
+"Activate only if a creature died this turn" is
+`ACreatureDiedThisTurn()` (Barad-dûr). "Is dealt excess noncombat
+damage" (CR 120.10) is `excessNoncombatDamageToOpponentCreature` in
+`excess_damage.go`, which returns the excess as a number: Magmatic
+Galleon tests it for being above zero, and Fall of Cair Andros carries it
+on the trigger's `Params.Amount` through a `Build` that declares its
+`Effect`. A fixed "deals N damage to target X" ability is
+`DealDamageToTheTarget(n)`.
+
 ### Winning, losing, and "can't lose" (S40, ADR 0057)
 
 A card that says "you win the game" or "<player> loses the game" calls
