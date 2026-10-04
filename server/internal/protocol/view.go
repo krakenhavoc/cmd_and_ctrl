@@ -310,6 +310,16 @@ type PendingChoiceView struct {
 	Source     string     `json:"source,omitempty"`
 	Reason     string     `json:"reason,omitempty"`
 	Options    []CardView `json:"options,omitempty"`
+	// Eligible is, for a discard_from_hand, the instance IDs among
+	// Options the chooser may pick (ADR 0116 §7): "you choose a
+	// nonland card from it". Options stays the whole revealed hand.
+	// Filtered per viewer by the same rule as Options — an ID whose
+	// card this viewer did not get is not sent. Absent on a prompt
+	// queued before ADR 0116, which means every option.
+	Eligible []string `json:"eligible,omitempty"`
+	// EligibleLabel names what Eligible holds, the way the card
+	// prints it: "nonland card".
+	EligibleLabel string `json:"eligible_label,omitempty"`
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
@@ -6712,6 +6722,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					v.Options[i] = viewOfCard(card)
 				}
 			}
+			// ADR 0116 §7: which of those the card lets you choose.
+			if c.DiscardOptions != nil {
+				v.Eligible = cardIDStrings(c.DiscardOptions)
+				v.EligibleLabel = c.DiscardLabel
+			}
 		}
 		// PendingChoiceSacrifice — "each player sacrifices a
 		// creature". Inline the chooser's own candidate permanents as
@@ -7806,6 +7821,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if len(c.Options) > 0 {
 			out[i].Options = redactChoiceCards(c, c.Options, isKnower, viewerID)
 		}
+		// ADR 0116 §7: Eligible is a list of the same cards' IDs, so it
+		// follows Options — an ID whose card the redaction dropped for
+		// this viewer is dropped here too.
+		if len(c.Eligible) > 0 {
+			out[i].Eligible = keepOptionIDs(c.Eligible, out[i].Options)
+		}
 		// #568: an option's pile rides the SAME pass. A second card
 		// list on a prompt that the filter did not know about would
 		// be raw identity on every seat's wire, which is the leak PR
@@ -7817,6 +7838,23 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 				opts[j].Cards = redactChoiceCards(c, opt.Cards, isKnower, viewerID)
 			}
 			out[i].PickOptions = opts
+		}
+	}
+	return out
+}
+
+// keepOptionIDs is ids restricted to the instance IDs present in
+// options, in ids' order. Never nil when ids is non-empty, so a viewer
+// who kept no option gets an empty list rather than "every option".
+func keepOptionIDs(ids []string, options []CardView) []string {
+	present := make(map[string]bool, len(options))
+	for _, o := range options {
+		present[o.InstanceID] = true
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if present[id] {
+			out = append(out, id)
 		}
 	}
 	return out
@@ -7866,8 +7904,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 // definitionally: the kind means "pick from FromPlayer's hand", and
 // viewOfPendingChoices inlines exactly that zone. Thoughtseize is
 // unaffected for a second reason as well — QueueDiscardFromRevealedHand
-// marks the caster a knower of every card first, so nothing is a back
-// to begin with.
+// reveals the hand to every seat first (ADR 0116, CR 701.20a), so
+// nothing is a back to begin with, for the chooser or anyone else.
 func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(CardView) bool, viewerID string) []CardView {
 	if len(cards) == 0 {
 		return nil

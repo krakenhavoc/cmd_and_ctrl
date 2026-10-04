@@ -415,7 +415,40 @@ func corpusBoards() []corpusBoard {
 		// (the-ring/sacrifice-blocker-at-end-of-combat) waiting on the
 		// other player's creature.
 		{"the_ring_level_4", corpusTheRingLevel4},
+		// v7, added by ADR 0116 (#2078) as a new file: Thoughtseize's
+		// pick open over a revealed hand of a land and two spells —
+		// pendingChoices[].discardOptions naming the two spells and
+		// discardLabel, every card in the hand known to every seat.
+		{"revealed_hand_discard_filtered", corpusRevealedHandDiscard},
 	}
+}
+
+// corpusRevealedHandDiscard is ADR 0116 §9's board: seat 1 has
+// revealed a hand of a Forest and two spells, and seat 0's "choose a
+// nonland card" prompt is open over the two spells.
+func corpusRevealedHandDiscard(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	chooser, victim := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() {
+		victim.Hand.Cards = nil
+		for _, c := range []game.Card{
+			{Name: "Forest", TypeLine: "Basic Land — Forest"},
+			{Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", Colors: []string{"R"}},
+			{Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}", Colors: []string{"U"}},
+		} {
+			c.InstanceID, c.Owner, c.Controller = uuid.New(), victim.ID, victim.ID
+			victim.Hand.PushTop(c)
+		}
+		g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{
+			Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Thoughtseize",
+			Filter: func(c game.Card) bool { return !c.IsLand() },
+			Label:  "nonland card",
+		})
+	})
+	if len(g.PendingChoices) != 1 || len(g.PendingChoices[0].DiscardOptions) != 2 {
+		t.Fatal("setup: the revealed-hand pick is not open over the two spells")
+	}
+	return g
 }
 
 // corpusCommanderInGraveyard moves seat 1's commander from its command

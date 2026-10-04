@@ -107,7 +107,7 @@ func TestDiscardMovesNameARevealedHand(t *testing.T) {
 	g := newTable(t)
 	chooser, victim := g.Seats[0], g.Seats[1]
 	g.WithWriteLock(func() {
-		g.QueueDiscardFromRevealedHand(chooser.ID, victim.ID, uuid.Nil, 1, "Thoughtseize")
+		g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Thoughtseize"})
 	})
 
 	moves := legal.EnumerateFor(g, chooser.ID)
@@ -136,7 +136,7 @@ func TestDiscardMovesAreNotOfferedToNonChoosers(t *testing.T) {
 	g := newTable(t)
 	chooser, victim, other := g.Seats[0], g.Seats[1], g.Seats[2]
 	g.WithWriteLock(func() {
-		g.QueueDiscardFromRevealedHand(chooser.ID, victim.ID, uuid.Nil, 1, "Thoughtseize")
+		g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Thoughtseize"})
 	})
 
 	labels := labelsOf(legal.EnumerateFor(g, other.ID))

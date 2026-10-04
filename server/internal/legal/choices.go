@@ -3,6 +3,7 @@ package legal
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -112,8 +113,14 @@ func (e *enumerator) choiceMoves() bool {
 			if from == nil || from.Hand == nil {
 				continue
 			}
+			// ADR 0116 §8: only the cards the card lets you choose
+			// ("a nonland card"), still in the hand. A nil list is a
+			// restore point from before the filter: the whole hand.
 			var pool []uuid.UUID
 			for _, h := range from.Hand.Cards {
+				if c.DiscardOptions != nil && !slices.Contains(c.DiscardOptions, h.InstanceID) {
+					continue
+				}
 				pool = append(pool, h.InstanceID)
 			}
 			for _, set := range combinations(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource) {

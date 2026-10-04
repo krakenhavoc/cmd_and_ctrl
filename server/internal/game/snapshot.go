@@ -1265,8 +1265,11 @@ type pendingChoiceSnapshot struct {
 	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
 	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
-	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
-	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
+	// ADR 0116: the revealed-hand pick's legal cards and their label.
+	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
+	DiscardLabel   string      `json:"discardLabel,omitempty"`
+	CopyOptions    []uuid.UUID `json:"copyOptions,omitempty"`
+	ScryCards      []uuid.UUID `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -2206,6 +2209,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
+		DiscardOptions:       copyUUIDs(c.DiscardOptions),
+		DiscardLabel:         c.DiscardLabel,
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
@@ -2997,6 +3002,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
+		DiscardOptions:       copyUUIDs(c.DiscardOptions),
+		DiscardLabel:         c.DiscardLabel,
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
