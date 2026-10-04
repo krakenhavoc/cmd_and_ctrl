@@ -304,6 +304,17 @@ var items = []Item{
 		Examples: []string{"Karumonix, the Rat King"},
 	},
 	{
+		Slug: "annihilator", Name: "Annihilator", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature with annihilator attacks, the defending player sacrifices that many permanents of their choice, once for each instance of annihilator it has.",
+		Rules:    []string{"702.86", "508.3a", "508.5"},
+		Issue:    2073,
+		ADR:      "0113-small-seams-for-the-s58-deck-requests.md",
+		Keywords: []string{game.KeywordAnnihilator},
+		Mechanic: "annihilator",
+		Printed:  printedLine("Annihilator"),
+		Examples: []string{"Kozilek, Butcher of Truth", "Ulamog, the Infinite Gyre", "Ulamog, the Defiler"},
+	},
+	{
 		Slug: "prowess", Name: "Prowess", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Whenever you cast a noncreature spell, a creature with prowess gets +1/+1 until end of turn, once for each instance of prowess it has.",
 		Rules:    []string{"702.108"},
@@ -1450,7 +1461,7 @@ var items = []Item{
 		Rules:       []string{"601.2b", "601.2h", "118.3"},
 		Issue:       1948,
 		Tracked:     "#1948 (found landing ADR 0108 PR 1, #1886)",
-		Waiting:     []string{"Draconic Intervention"},
+		Waiting:     []string{"Draconic Intervention", "Relentless Skaabs"},
 		EngineNotes: "cost: `game.AdditionalCost` has no component that exiles a card from a graveyard (`ExileFromGraveyard` is on alternative costs and activated-ability costs only), and `ctx.Exiled()` is filled only by an activation. Draconic Intervention's X is the exiled card's mana value; its damage, ADR 0108 PR 1's \"if a creature dealt damage this way would die this turn, exile it instead\" and its self-exile are expressible.",
 	},
 	{
