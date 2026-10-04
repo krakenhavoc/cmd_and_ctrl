@@ -110,6 +110,14 @@ export const ICONS = {
   exile: [c(12, 12, 8), p("M6.5 6.5l11 11")],
   command: [p("M12 3l8 7-8 11-8-11z"), p("M4 10h16")],
   undo: [p("M4 10h10a5 5 0 0 1 0 10H9"), p("M4 10l4-4"), p("M4 10l4 4")],
+  // ADR 0121 §8: "Roll a die". A die showing three, and a coin.
+  die: [
+    { t: "rect", x: 4, y: 4, w: 16, h: 16, rx: 3.5 } as IconPrimitive,
+    c(8.5, 8.5, 1.3, true),
+    c(12, 12, 1.3, true),
+    c(15.5, 15.5, 1.3, true),
+  ],
+  coin: [c(12, 12, 8), c(12, 12, 4.5)],
   shuffle: [
     p("M3 6h3l10 12h5"),
     p("M21 18l-3-3"),

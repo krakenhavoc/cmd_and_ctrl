@@ -66,6 +66,11 @@ func (g *Game) cloneLocked() *Game {
 		rngTurn:           g.rngTurn,
 		sourceOrdinals:    cloneSourceOrdinals(g.sourceOrdinals),
 		sourceOrdinalNext: g.sourceOrdinalNext,
+		// ADR 0121 §5: copied so a clone is the whole game, but
+		// RestoreFrom never puts it back (see there). The ring of
+		// recent table rolls is not copied: only the live game
+		// re-emits from it.
+		tableRollNext: g.tableRollNext,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -1080,6 +1085,13 @@ func (g *Game) RestoreFrom(src *Game) {
 	// snapshot-time state and must not be served as-is.
 	g.lastResolvedVersion.Store(src.lastResolvedVersion.Load())
 	g.layerVersion.Store(src.layerVersion.Load() + 1)
+	// ADR 0121 §5: a table roll is not part of the game, so an undo
+	// takes none back. tableRollNext is NOT restored (carried forward,
+	// like Settings): a roll after the undo is a fresh one, not a replay
+	// of one the table watched. And the rolls whose lines the
+	// truncation above just cut off the log are emitted again, last of
+	// all, after the restored history.
+	g.reemitTableRollsLocked()
 }
 
 func cloneSourceOrdinals(in map[uuid.UUID]uint64) map[uuid.UUID]uint64 {

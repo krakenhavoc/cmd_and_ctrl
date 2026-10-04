@@ -43,6 +43,13 @@ export interface GameMenuOptions {
   // An open vote is the dock's request (ADR 0111 PR 5), so the launcher
   // stands down while one is open.
   voteOpen: boolean;
+  // ADR 0121 §5 and §8: "Roll a d6", "Roll a d20" and "Flip a coin", for
+  // a seat of the viewer's own still in an active game (the opening roll
+  // and the mulligan included); null or absent otherwise. `ready` is
+  // false for TABLE_ROLL_COOLDOWN_MS after the viewer's own table roll,
+  // matching the server's rate, and the items are disabled until then.
+  tableRoll?: { ready: boolean } | null;
+  onTableRoll?: (die: TableDie) => void;
   onDraw: () => void;
   onUntapAll: () => void;
   onShuffle: () => void;
@@ -55,6 +62,28 @@ export interface GameMenuOptions {
   // Called once the confirm is accepted. Concede is irreversible.
   onConcede: () => void;
   onStartVote: (topic: string, options: string[]) => void;
+}
+
+// ADR 0121 §5: what roll_table_die rolls.
+export type TableDie = "d6" | "d20" | "coin";
+
+// The server takes one table roll per seat per 2 s and refuses the next
+// with "wait for your last roll to land"; the menu waits the same 2 s.
+export const TABLE_ROLL_COOLDOWN_MS = 2000;
+
+// The ⋯ menu's table-roll items, in order. Their names are a contract
+// (ADR 0121 §8, AGENTS.md "Labels are a contract").
+export const TABLE_ROLL_ITEMS: readonly { die: TableDie; label: string }[] = [
+  { die: "d6", label: "Roll a d6" },
+  { die: "d20", label: "Roll a d20" },
+  { die: "coin", label: "Flip a coin" },
+];
+
+// A table-roll item's tooltip.
+export function tableRollTitle(ready: boolean): string {
+  return ready
+    ? "for fun, at the table — everyone sees it land, and nothing in the game can trigger on it"
+    : "wait for your last roll to land";
 }
 
 // The mulligan-to field's value, as the server takes it: a whole number

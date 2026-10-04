@@ -240,6 +240,11 @@ var gameFields = plan(
 	"rngTurn", carried, "rngSnapshot.Turn",
 	"sourceOrdinals", carried, "GameSnapshot.SourceOrdinals",
 	"sourceOrdinalNext", carried, "GameSnapshot.SourceOrdinalNext",
+	// ADR 0121 §5: the table stream's counter, outside the turn
+	// counters. Carried so a restored game does not repeat a table
+	// roll; RestoreFrom deliberately does not rewind it.
+	"tableRollNext", carried, "GameSnapshot.TableRollNext",
+	"tableRolls", dropped, "restores empty: the ring an undo re-emits table rolls from (ADR 0121 §5); after a restore there is no undo stack to cross, so an empty ring changes nothing",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 

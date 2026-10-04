@@ -136,12 +136,14 @@ describe("logTone", () => {
 });
 
 describe("logIcon", () => {
-  it("marks a trigger and an activation, and nothing else", () => {
+  it("marks a trigger, an activation and a table roll, and nothing else", () => {
     expect(logIcon("trigger")).toBe("spark");
     expect(logIcon("activate")).toBe("bolt");
     expect(logIcon("activate_across")).toBe("bolt");
+    expect(logIcon("table_roll")).toBe("die");
     for (const k of ALL_LOG_KINDS) {
-      if (k === "trigger" || k === "activate" || k === "activate_across") continue;
+      if (k === "trigger" || k === "activate" || k === "activate_across" || k === "table_roll")
+        continue;
       expect(logIcon(k), k).toBeNull();
     }
   });

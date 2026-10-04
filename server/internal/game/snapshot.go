@@ -512,6 +512,12 @@ type GameSnapshot struct {
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
 	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
+	// TableRollNext is the table-roll counter (ADR 0121 §5): how many
+	// table rolls the game has made, so a restored game does not repeat
+	// an earlier roll. Additive within v7: a binary from before it has
+	// no table rolls and ignores the key. The ring of recent rolls is
+	// not carried: after a restore there is no undo stack to cross.
+	TableRollNext uint64 `json:"tableRollNext,omitempty"`
 
 	LayerVersion        uint64 `json:"layerVersion"`
 	LastResolvedVersion uint64 `json:"lastResolvedVersion"`
@@ -1729,6 +1735,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.RNG = snapshotRNG(g)
 	s.SourceOrdinals = cloneSourceOrdinals(g.sourceOrdinals)
 	s.SourceOrdinalNext = g.sourceOrdinalNext
+	s.TableRollNext = g.tableRollNext
 	s.LayerVersion = g.layerVersion.Load()
 	s.LastResolvedVersion = g.lastResolvedVersion.Load()
 	return s
@@ -2595,6 +2602,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
 	g.sourceOrdinalNext = s.SourceOrdinalNext
+	g.tableRollNext = s.TableRollNext
 
 	// Layer-engine counters, handled exactly as RestoreFrom does
 	// after an undo and for the same reason: every restored Card
