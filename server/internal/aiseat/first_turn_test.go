@@ -88,6 +88,20 @@ func (o *firstTurnTally) Observe(ev aiseat.DecisionEvent) {
 	}
 }
 
+// waitForChoice waits until the bot's runner has REPORTED its choice.
+// The window closing is not enough: the runner commits the move and
+// only then tells its observer, on its own goroutine, so a read taken
+// the moment the window closes can come before the report (#634). The
+// count only climbs, so this is a monotone wait.
+func (o *firstTurnTally) waitForChoice(t *testing.T) {
+	t.Helper()
+	waitFor(t, "the bot's runner to report its choice", func() bool {
+		o.mu.Lock()
+		defer o.mu.Unlock()
+		return len(o.choices) >= 1
+	})
+}
+
 func (o *firstTurnTally) snapshot() (int, []aiseat.DecisionEvent, []string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -200,6 +214,7 @@ func TestPracticeBotHandsTheFirstTurnToThePlayer(t *testing.T) {
 		if starting != player {
 			t.Errorf("starting seat %d, want the player's, %d", starting, player)
 		}
+		tally.waitForChoice(t)
 		rolls, choices, rejected := tally.snapshot()
 		if len(rejected) != 0 {
 			t.Errorf("opening-roll moves rejected: %v", rejected)
@@ -267,6 +282,7 @@ func TestFirstTurnToUnsetLeavesTheChoiceToTheTier(t *testing.T) {
 	g := room.Game
 	_, tally := startPracticeBot(t, room, nil)
 	playOpeningRoll(t, room, g.Seats[0].ID)
+	tally.waitForChoice(t)
 	_, choices, _ := tally.snapshot()
 	if len(choices) != 1 {
 		t.Fatalf("the bot made %d choices, want 1", len(choices))
