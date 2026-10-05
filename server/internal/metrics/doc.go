@@ -13,7 +13,12 @@
 //   - cmdctrl_build_info{commit}, the binary's vcs.revision ("unknown"
 //     when the build has none);
 //   - the Go runtime and process collectors (go_*, process_*);
-//   - every event metric in eventMetrics (http.go's two today).
+//   - every event metric in eventMetrics.
+//
+// The state collectors are not in it: they read live objects, so
+// main.go registers them on Registry once it has built them. Today
+// that is tables.go's (the lobby and the hub), and, only when there is
+// a database, users.go's and db.go's (cmd/server/metrics_state.go).
 //
 // The server serves Registry on its own loopback-only listener
 // (CMDCTRL_METRICS_ADDR, listen.go), never on the public mux.
@@ -44,6 +49,9 @@
 // TestMetricLabelsAreClosedSets gathers the registry and fails on a
 // label name outside that table, a value outside its row's set, or a
 // metric or label name containing id, user, name, ip, remote or url.
+// A label name that two families use with different closed sets (an
+// outcome, a direction, a type) gets a row per family in
+// familyLabelSets instead, which the guard consults first.
 // A metric name the ADR fixes that trips the substring rule (ADR 0123
 // names cmdctrl_users, cmdctrl_users_played and
 // cmdctrl_users_created_total) goes in nameExemptions with its reason;

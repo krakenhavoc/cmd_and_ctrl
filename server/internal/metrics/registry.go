@@ -18,6 +18,17 @@ func eventMetrics() []prometheus.Collector {
 	return []prometheus.Collector{
 		httpRequests,
 		httpSeconds,
+		// games.go and ws.go.
+		gamesCreated,
+		gamesStarted,
+		gamesEnded,
+		gameDuration,
+		usersCreated,
+		wsConnects,
+		wsDisconnects,
+		wsRejections,
+		wsFrames,
+		wsBroadcast,
 	}
 }
 
