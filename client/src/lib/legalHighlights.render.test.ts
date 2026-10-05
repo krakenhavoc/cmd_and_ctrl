@@ -7,8 +7,8 @@
 //     without does not, and `.timing-disabled` is exactly what it was
 //     — the ring is decoration, the dim is a gate, and turning
 //     highlights off touches only the first;
-//   - the command zone's "cast" hint is greyed, and withholds the
-//     click, when the server offers no cast for the commander;
+//   - the commander in the strip beside the hand is greyed, and
+//     withholds the click, when the server offers no cast for it;
 //   - a pile says how many of its cards are ready.
 
 import { describe, it, expect, afterEach, vi } from "vitest";
@@ -16,7 +16,6 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 vi.mock("./sounds", () => ({ play: () => {} }));
 
 import Hand from "./components/board/Hand.svelte";
-import CommandZone from "./components/board/CommandZone.svelte";
 import PileButton from "./components/board/PileButton.svelte";
 import ExileStrip from "./components/board/ExileStrip.svelte";
 import ZoneBrowserModal from "./components/board/ZoneBrowserModal.svelte";
@@ -172,56 +171,48 @@ describe("hand: the ready ring", () => {
   });
 });
 
-describe("command zone: the cast hint", () => {
-  function mountZone(view: GameView | undefined, legal: LegalActions = NO_LEGAL_ACTIONS) {
-    const sent: Array<[string, unknown]> = [];
-    const zone = { kind: "command", count: 1, cards: [commander] } as unknown as ZoneView;
+// #2349: the command zone tile and its "cast" hint are gone; the
+// commander is cast from the strip beside the hand, which reads the
+// same gate (canCastFromHand) and the same ring.
+describe("command zone: the commander in the strip", () => {
+  function mountZone(view: GameView, legal: LegalActions = NO_LEGAL_ACTIONS) {
+    const cast: string[] = [];
     const r = render(
-      CommandZone as never,
+      ExileStrip as never,
       {
-        seat: { id: ME, name: "Me" },
-        zone,
-        isSelf: true,
-        sendAction: (type: string, params: unknown) => sent.push([type, params]),
         view,
         viewerID: ME,
         legal,
+        onCastCard: (c: CardView, zone: string) => cast.push(`${c.instance_id}@${zone}`),
       } as never,
     );
-    const hint = r.container.querySelector<HTMLButtonElement>(".cast-hint")!;
-    return { ...r, sent, hint };
+    const card = cardOf(r.container, "Kenrith, the Returned King")!;
+    const slot = card.closest<HTMLElement>(".strip-slot")!;
+    return { ...r, cast, card, slot };
   }
 
   it("is greyed, with a reason, when the server offers no cast for the commander", () => {
-    const { hint, sent, container } = mountZone(frame([passMove, castMove("bolt", "hand")]));
-    expect(hint.disabled).toBe(true);
-    expect(hint.title).not.toBe("cast commander");
-    click(hint);
-    click(cardOf(container, "Kenrith, the Returned King")!);
-    expect(sent).toEqual([]);
+    const { slot, card, cast } = mountZone(frame([passMove, castMove("bolt", "hand")]));
+    expect(slot.classList.contains("blocked")).toBe(true);
+    expect(slot.title).not.toBe("");
+    click(card);
+    expect(cast).toEqual([]);
   });
 
   it("is live, and ready, when the server offers one", () => {
     const view = frame([passMove, castMove("cmdr", "command")]);
-    const { hint, sent, container } = mountZone(view, legalActionsOf(view));
-    expect(hint.disabled).toBe(false);
-    expect(hint.classList.contains("ready")).toBe(true);
-    expect(cardOf(container, "Kenrith, the Returned King")?.classList.contains("ready")).toBe(true);
-    click(hint);
-    expect(sent).toEqual([["cast_spell", { instance_id: "cmdr", from_zone: "command" }]]);
+    const { slot, card, cast } = mountZone(view, legalActionsOf(view));
+    expect(slot.classList.contains("blocked")).toBe(false);
+    expect(card.classList.contains("ready")).toBe(true);
+    click(card);
+    expect(cast).toEqual(["cmdr@command"]);
   });
 
   it("highlights off: still live, no accent", () => {
     const view = frame([passMove, castMove("cmdr", "command")]);
-    const { hint, container } = mountZone(view, NO_LEGAL_ACTIONS);
-    expect(hint.disabled).toBe(false);
-    expect(hint.classList.contains("ready")).toBe(false);
+    const { slot, container } = mountZone(view, NO_LEGAL_ACTIONS);
+    expect(slot.classList.contains("blocked")).toBe(false);
     expect(container.querySelector(".card.ready")).toBeNull();
-  });
-
-  it("stays permissive with no frame at all, as it always was", () => {
-    const { hint } = mountZone(undefined);
-    expect(hint.disabled).toBe(false);
   });
 });
 
