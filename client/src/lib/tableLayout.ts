@@ -4,8 +4,8 @@
 // "quadrant" keeps the around-the-table seating: the next seat beside
 // you, the two across-table seats on top. "row" puts every opponent in
 // turn order across the top and gives your board the full width.
-// "focus" is the row arrangement with your board taking most of the
-// screen: every opponent is a summary in a short top row, and you
+// "focus" is the row arrangement split evenly: your board is the bottom
+// half, every opponent is a summary in the top half, and you
 // hover or click an avatar to see that player's whole board in the
 // expanded overlay (ADR 0120).
 

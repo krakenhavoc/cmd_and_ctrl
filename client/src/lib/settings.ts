@@ -88,9 +88,9 @@ export interface Settings {
     // viewer needs the whole bottom row there, and there is no third
     // arrangement worth having.
     //
-    // "focus" (#2336) is the row arrangement with your board taking
-    // most of the screen: every opponent is a summary in a short top
-    // row, whatever opponentDetail and expandActivePlayer say, and you
+    // "focus" (#2336) is the row arrangement split evenly: your board is
+    // the bottom half, and every opponent is a summary in the top half,
+    // whatever opponentDetail and expandActivePlayer say, and you
     // hover or click an avatar to see a whole board. See tableLayout.ts.
     tableLayout: TableLayout;
     // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default

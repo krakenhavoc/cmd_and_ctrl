@@ -3724,30 +3724,27 @@
       "self self   self";
   }
 
-  /* Focus layout (#2336): the row arrangement with your board taking
-     most of the screen. Every opponent is a summary
-     (expansionSettingsFor in expansion.ts), which needs far less height
-     than a board of cards, so the top row is short; you hover or click
-     an avatar to see a whole board in the expanded overlay. A summary
-     that expands for a target or a block keeps this height: its cards
-     shrink to the panel's floor until the prompt is answered. */
+  /* Focus layout (#2336): an even split. Your board is the bottom
+     half and the opponents share the top half, each a summary
+     (expansionSettingsFor in expansion.ts); you hover or click an
+     avatar to see a whole board in the expanded overlay. */
   :global(:root[data-table-layout="focus"]) .board[data-opp-count="1"] {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 0.5fr) minmax(0, 1.5fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "across"
       "self";
   }
   :global(:root[data-table-layout="focus"]) .board[data-opp-count="2"] {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: minmax(0, 0.5fr) minmax(0, 1.5fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "next across"
       "self self";
   }
   :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: minmax(0, 0.5fr) minmax(0, 1.5fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "next across across_next"
       "self self   self";

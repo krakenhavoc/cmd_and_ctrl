@@ -1127,7 +1127,7 @@
      art and the type line); opponents' face-down fans keep the
      tighter 55%. Hand.svelte's peek and lift use the same share. */
   .panel.self .hand-zone {
-    height: calc(var(--card-h, 168px) * 0.62);
+    height: calc(var(--card-h, 168px) * var(--hand-peek, 0.62));
   }
   .flipped .hand-zone {
     align-self: flex-start;
@@ -1156,6 +1156,58 @@
   .rail {
     overflow-y: auto;
     overflow-x: hidden;
+  }
+  /* Focus layout (#2336): your board is half the screen's height, so it
+     is sized by relevance, as in Arena. Creatures get the largest
+     cards. Lands and other permanents behind them are about half that
+     size. The hand shows its top 40% and lifts on hover. The piles
+     leave the rail for the empty corner left of the back row, four
+     across, and the rail keeps only your identity. The rail is
+     `display: contents`, so its children are this grid's items. Desktop
+     only: a phone keeps the docked layout above. */
+  @media (min-width: 600px) {
+    :global(:root[data-table-layout="focus"]) .panel.self.docked {
+      --card-h: clamp(120px, calc((52cqh - 40px) * var(--card-scale, 1)), var(--card-h-max));
+      --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+      --hand-peek: 0.4;
+      grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      grid-template-areas:
+        "creatures creatures rail"
+        "piles     middle    rail"
+        "bottom    bottom    bottom";
+    }
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail {
+      display: contents;
+    }
+    /* The bottom row is the hand's peek, not the dock's height: the
+       dock rises over the back row's right end instead, which the back
+       row keeps clear with padding. That height goes to the creatures. */
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .dock-spacer {
+      height: 0;
+    }
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .grid-middle {
+      padding-right: max(0px, calc(var(--dock-w, 0px) - var(--rail-w)));
+    }
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail-gap {
+      display: none;
+    }
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail > :global(.identity) {
+      grid-area: rail;
+      align-self: start;
+    }
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail > :global(.pile-bar) {
+      grid-area: piles;
+      grid-template-columns: repeat(4, 52px);
+      width: auto;
+      align-self: end;
+    }
+    /* As on the top-row panels: the tile's title and aria-label still
+       carry the pile's name, so the piles stay one short row. */
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail :global(.pile .label),
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail :global(.cmd-zone .label),
+    :global(:root[data-table-layout="focus"]) .panel.self.docked .rail :global(.cmd-zone .hints) {
+      display: none;
+    }
   }
   .flipped .rail :global(.pile .label),
   .flipped .rail :global(.cmd-zone .label),
