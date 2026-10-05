@@ -1240,3 +1240,32 @@ them stored on the pool itself:
 Not built: Omnath, Locus of Mana's "+1/+1 for each unspent green mana" (a layer
 7 read of a pool nothing recomputes layers for) and Leyline Tyrant's dies
 trigger.
+
+## Amendment 2026-10-05 — mana that can't pay generic costs (#2170)
+
+"This mana can't be spent to pay generic mana costs" (Jegantha, the Wellspring)
+limits which SYMBOL of a cost the mana pays, a question no earlier tag asks:
+the others describe the object or the purpose a payment is for.
+
+`game.ManaRestrictNoGeneric` (`"not:generic"`) is a symbol-level tag.
+`ManaSpendContext.allows` accepts it (it has no symbol to test); the solvers
+that pay the generic part of a cost refuse the token: `ManaPool.attemptSpend`,
+`MissingFor`, the distinct-colours pick, and the auto-tapper's pool credit
+(`poolShortfalls`), which credits it to coloured symbols only. The view's
+castability and `internal/legal`'s affordability probe already ask
+`CanPayFor` and the top-up, so the payment, the view and the bot agree
+without a fourth copy of the rule. `{N}`, `{X}`, cost increases and commander
+tax are generic; coloured, hybrid, Phyrexian and `{N/C}` symbols take the mana.
+
+Interactions. "Spend mana as though it were mana of any color" (#1600) changes
+the colour, not the symbol kind (CR 609.4b): a widened coloured symbol, and a
+coloured symbol a cast permission folded into `Generic`
+(`ParsedCost.FoldedColored`), may take the mana, and a genuine generic symbol
+may not. Kruphix's conversion copies the token and so keeps the tag; the
+converted colourless mana pays `{C}` but not generic. The tag is a string in
+the token's existing restriction list, so the snapshot shape is unchanged. It
+is a top-level tag only: `ManaRestrictAnyOf` panics if handed it, because an
+alternative inside an OR would stop restricting.
+
+A restricted mana ability is not planned by the auto-tapper (unchanged), so
+Jegantha is tapped by hand.
