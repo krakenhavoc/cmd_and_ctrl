@@ -118,7 +118,7 @@ jobs:
     steps:
       - name: Classify changed paths
         id: paths
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -149,7 +149,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # The cache is on for a GitHub-hosted runner only (#1433). A
       # hosted runner starts cold, so restoring the module and build
@@ -166,7 +166,7 @@ jobs:
       # path is inside the workspace, not $HOME.
       - &setup-go
         name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -237,7 +237,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - *setup-go
       - *free-disk
@@ -359,7 +359,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # npm cache on a hosted runner only, for the same reason as "Set
       # up Go" -- ~/.npm persists on a self-hosted runner and restoring
@@ -369,7 +369,7 @@ jobs:
       # the input is how you turn it off.
       - &setup-node
         name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           # 'npm' on a hosted runner, and the empty string -- which
@@ -412,7 +412,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - *setup-go
       - *free-disk
@@ -448,7 +448,7 @@ jobs:
       # up gigabytes of dead artifacts against the storage quota.
       - name: Upload server binary
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
@@ -456,7 +456,7 @@ jobs:
 
       - name: Upload bot binary
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-bot-bin
           path: server/bin/cmd_and_ctrl-bot
@@ -464,7 +464,7 @@ jobs:
 
       - name: Upload client dist
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-client-dist
           path: client/dist/
@@ -494,7 +494,7 @@ jobs:
       ALLOY_IMAGE: grafana/alloy:v1.20.1
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Rules — promtool check rules
         run: |
@@ -608,7 +608,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Full history: the non-fast-forward retry path below needs
           # to `git reset --hard` onto whatever origin/<branch> becomes
@@ -621,7 +621,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -883,7 +883,7 @@ jobs:
       # $GITHUB_ENV, so declaring either here would pin it.)
     steps: &cd-steps
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # The deploy target is resolved in shell rather than with a
       # `${{ cond && vars.A || vars.B }}` ternary, on purpose. That
@@ -950,19 +950,19 @@ jobs:
           echo "Env file:      ${ENV_FILE}"
 
       - name: Download server binary
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: cmdctrl-server-bin
           path: server/bin
 
       - name: Download bot binary
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: cmdctrl-bot-bin
           path: server/bin
 
       - name: Download client dist
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: cmdctrl-client-dist
           path: client/dist
@@ -1902,7 +1902,7 @@ jobs:
       # build artifacts once deployed. Skipped on failure so a re-run of
       # this job can still download them.
       - name: Delete this run's artifacts
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { data } = await github.rest.actions.listWorkflowRunArtifacts({
