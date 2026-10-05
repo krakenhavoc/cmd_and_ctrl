@@ -1800,6 +1800,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"shroud"` | Shroud (CR 702.18) — #353, targeting gate |
 | `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
 | `"changeling"` | Changeling (CR 702.73) — S26, every creature type (`game.KeywordChangeling`) |
+| `"devoid"` | Devoid (CR 702.114) — #2152, colourless in every zone (`game.KeywordDevoid`, `game/devoid.go`). A colour-defining ability like changeling's type one: the colour derivation reads it, so a card whose `Colors` is empty is colourless instead of the colour of its pips. Declare it on every devoid card file — `TestEveryCatalogDevoidCardIsColourless` fails a card that prints it and doesn't — and leave colour identity alone: CR 903.4 reads the mana symbols, which devoid keeps. A layer-5 colour effect still applies on top, and a copy "except it's black" is black (CR 707.9d), because a stamped colour list wins |
 | `"plainswalk"`, `"islandwalk"`, `"swampwalk"`, `"mountainwalk"`, `"forestwalk"` | Landwalk (CR 702.14) — #705, block legality |
 | `"nonbasic landwalk"` | Nonbasic landwalk (CR 702.14c) — #705, block legality |
 | `"fear"` | Fear (CR 702.36b) — artifact or black blockers |
@@ -1845,15 +1846,16 @@ on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
 
-Hexproof, shroud, indestructible and changeling are not combat
+Hexproof, shroud, indestructible, changeling and devoid are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same
 `HasKeyword` reader. Their
 consumers are `CanBeTargetedBy` (hexproof, shroud),
 `DestroyPermanentForEffect` + the damage-driven creature SBAs
 (indestructible — see `server/internal/game/indestructible.go` for
-what it deliberately does *not* stop) and `HasAllCreatureTypes` in
+what it deliberately does *not* stop), `HasAllCreatureTypes` in
 `creature_types.go` (changeling — see "Adding a creature-type card"
-below). The landwalk tokens are read by `Game.BlockPairRefusalLocked`
+below) and the printed-colour rule `printedColorsOf` (devoid — see
+`server/internal/game/devoid.go`). The landwalk tokens are read by `Game.BlockPairRefusalLocked`
 (`game/block_legality.go`, `game/landwalk.go`) against the defending
 player's lands, by effective characteristics on both sides; the rarer
 variants (snow swampwalk, legendary landwalk, desertwalk) join the

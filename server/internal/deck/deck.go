@@ -837,12 +837,23 @@ func printedFaces(c cards.Card) []game.Face {
 // face, because game.Card reads a nil Colors as "not stamped" and
 // falls back to the cost — which for a colourless face yields nil
 // again, so the two agree.
+//
+// A DEVOID face is the exception to the cost fallback (#2152, CR
+// 702.114a): Scryfall's empty `colors` is the truth there, and
+// deriving from the pips would stamp the very colours devoid removes —
+// Drowner of Truth's front face would come out green-blue, and a
+// stamped colour list wins over the keyword in the engine (game's
+// devoid.go says why). So a face that prints devoid gets nil, and the
+// engine's own rule makes it colourless.
 func faceColors(f cards.CardFace) []string {
 	if len(f.Colors) > 0 {
 		return append([]string(nil), f.Colors...)
 	}
 	if len(f.ColorIndicator) > 0 {
 		return append([]string(nil), f.ColorIndicator...)
+	}
+	if keywordLineCounts(f.OracleText)[game.KeywordDevoid] > 0 {
+		return nil
 	}
 	return game.ColorsInManaCost(f.ManaCost)
 }
