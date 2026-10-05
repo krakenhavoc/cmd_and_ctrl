@@ -1,0 +1,6 @@
+---
+title: "Counters put on a permanent together, by kind"
+date: 2026-10-05
+issues: [2150]
+---
+**Counters put on a permanent together, by kind** (#2150, CR 603.2c, CR 122.1) — "Whenever you put one or more counters on this" is one trigger for a whole placement, and "put one of each of those kinds" has to know every kind in it. The engine still emits one `EventCounterPlaced` per kind per permanent. The ability is declared `OncePerBatch`, so the first qualifying kind of an event batch triggers it and the rest of the batch is declined. The kinds are read back as the trigger resolves: `CountersYouPutInTheSameBatch` (`cards/effects/counter_batch.go`) collects every counter event of the triggering event's batch on the same permanent that the controller put there, in the order placed, one entry per kind, with removals and other players' placements left out. Attribution is the rule All Will Be One already uses (`b12CountersPlacedBy`), with its battlefield test made optional so the read still works after the permanent has left. Card side: `WheneverYouPutOneOrMoreCountersOnThis`. The engine's batch is one resolution, so two separate placements inside one resolution read as one occurrence: fewer triggers than printed, never more. Card: Aragorn, Company Leader.
