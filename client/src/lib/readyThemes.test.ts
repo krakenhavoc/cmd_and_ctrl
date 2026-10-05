@@ -37,7 +37,10 @@ function fakeRoot(): RootTarget & { props: Record<string, string> } {
   const props: Record<string, string> = {};
   return {
     props,
-    style: { setProperty: (n, v) => void (props[n] = v) },
+    style: {
+      setProperty: (n, v) => void (props[n] = v),
+      removeProperty: (n) => void delete props[n],
+    },
     dataset: {},
   };
 }
@@ -66,10 +69,25 @@ describe("rootSettings: what App.svelte writes on :root", () => {
     expect(root.dataset.alwaysShowFocus).toBe(s.accessibility.alwaysShowFocus ? "1" : "0");
   });
 
-  it("does not apply the theme, which is still inert (App.svelte)", () => {
+  it("writes the skin as data-theme", () => {
+    const s = defaultSettings();
     const root = fakeRoot();
-    applyRootSettings(root, defaultSettings());
-    expect(root.dataset.theme).toBeUndefined();
+    applyRootSettings(root, s);
+    expect(root.dataset.theme).toBe(s.display.theme);
+    applyRootSettings(root, { ...s, display: { ...s.display, theme: "high-contrast" } });
+    expect(root.dataset.theme).toBe("high-contrast");
+  });
+
+  it("sets a custom accent inline and removes it when cleared", () => {
+    const s = defaultSettings();
+    const root = fakeRoot();
+    applyRootSettings(root, { ...s, display: { ...s.display, accent: "#3ec9ff" } });
+    expect(root.props["--accent"]).toBe("#3ec9ff");
+    expect(root.props["--accent-fg"]).toBe("#111111");
+    expect(root.props["--accent-strong"]).toContain("#3ec9ff");
+    applyRootSettings(root, s);
+    expect(root.props["--accent"]).toBeUndefined();
+    expect(root.props["--accent-fg"]).toBeUndefined();
   });
 });
 

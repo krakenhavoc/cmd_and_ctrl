@@ -432,7 +432,7 @@ describe("settings", () => {
         );
         const { settings, SETTINGS_VERSION } = await freshModule();
         const s = get(settings);
-        expect(SETTINGS_VERSION).toBe(19);
+        expect(SETTINGS_VERSION).toBe(20);
         expect(s.__version).toBe(SETTINGS_VERSION);
         expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
         expect(s.gameplay.smartAutoPass).toBe(false);
@@ -451,6 +451,45 @@ describe("settings", () => {
     mod.updateSettings("gameplay", "confirmExit", false);
     const again = await freshModule();
     expect(get(again.settings).gameplay.strictMana).toBe(false);
+  });
+
+  // v19 → v20: display.theme names a skin. The old "dark" (the only
+  // value the disabled select ever stored) and anything unknown become
+  // the default skin; a real skin id is kept.
+  it("v20 maps the old dark theme and unknown values to the default skin", async () => {
+    for (const stored of ["dark", "neon", 7, undefined]) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 19, display: { theme: stored } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.theme, String(stored)).toBe("warroom");
+    }
+    for (const stored of ["classic", "light", "high-contrast", "prism"]) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 19, display: { theme: stored } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.theme).toBe(stored);
+    }
+  });
+
+  it("keeps a #rrggbb accent, lower-cased, and drops anything else", async () => {
+    for (const [stored, want] of [
+      ["#FF7A1A", "#ff7a1a"],
+      ["#abc", ""],
+      ["orange", ""],
+      [42, ""],
+      [undefined, ""],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 20, display: { accent: stored } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.accent, String(stored)).toBe(want);
+    }
   });
 
   it("moves a synced copy written before v19 to strict, and keeps a v19 copy's off", async () => {
