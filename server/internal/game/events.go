@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // events.go holds the per-game event log that the S14+ rules engine
@@ -1678,6 +1680,10 @@ func (g *Game) EmitEvent(ev Event) {
 	// so manual-test regressions have a visible breadcrumb. Keep
 	// until the client learns to render effect_error as a toast.
 	if ev.Kind == EventEffectError {
+		// ADR 0123 §3: every effect error the engine survives reaches
+		// this one line, so this is where cmdctrl_effect_errors_total
+		// counts them, after the clean-stop filter above.
+		metrics.EffectError()
 		slog.Warn("effect error",
 			"seq", ev.Seq,
 			"game", g.ID.String(),

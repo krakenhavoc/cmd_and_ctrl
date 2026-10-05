@@ -94,17 +94,19 @@ planned just-in-time from the S12 pain-point triage.
 | S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
 | S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
 | S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | **done**    |
-| S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | in progress |
-| S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | in progress |
+| S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | **done**    |
+| S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | **done**    |
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
 | S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | in progress |
 | S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | **done**    |
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
-| S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
+| S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | **done**    |
+| S58     | Deck requests, October batch                                         | 7     | [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077) | —          | in progress |
 | S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
-| S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | in progress |
-| S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | in progress |
-| S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | planned     |
+| S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | **done**    |
+| S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
+| S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
+| S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
 
 ### How to read the status column
 
@@ -3133,7 +3135,7 @@ The S50 tail finishes in S50. S52 and S53 hold the other seam groups.
 
 ### Status
 
-**In progress.** [ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md) is accepted. Delivery PRs 0 ([#1938](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1938)), 1 ([#1949](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1949)), 2 ([#1991](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1991)), 3 ([#1930](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1930)), 4 ([#1942](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1942)), 5 ([#1931](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1931)) and 6 ([#1996](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1996)) have merged into `develop`. PRs 7, 8 and 10 are being built; PR 9 follows PR 8.
+**Done** (2026-10-03). Every Delivery PR of [ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md) merged into `develop`, and the sprint reached `main` with the promotion [#2067](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2067) (merge commit 3d182ea2). Tracker [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) is closed; follow-ups [#2066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2066) and [#2046](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2046) stay open on their own.
 
 ---
 
@@ -3164,7 +3166,7 @@ S51 holds turn-scoped effects, object history and damage shields; S53 holds face
 
 ### Status
 
-**In progress.** [ADR 0109](decisions/0109-rule-gates-land-types-mana-and-cost-components.md) is accepted. Delivery PRs 1 ([#1993](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1993)), 2 ([#1999](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1999)), 3 ([#2009](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2009)), 4 ([#2011](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2011)), 5 ([#1988](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1988)), 7 ([#1998](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1998)) and 8 ([#2007](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2007)) have merged into `develop`; PRs 6, 9 and 10 are in review. Dread Wight waits for PR 2 to reach `main`.
+**Done** (2026-10-03). Every Delivery PR (1 to 10) of [ADR 0109](decisions/0109-rule-gates-land-types-mana-and-cost-components.md) merged into `develop`, and the sprint reached `main` with the promotion [#2067](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2067) (merge commit 3d182ea2). Tracker [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) is closed.
 
 ---
 
@@ -3311,7 +3313,19 @@ From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/199
 
 ### Status
 
-**In progress.** Every Delivery PR has merged into `develop` (2026-10-02/03), with one follow-up: the account button shows a marker while admin mode is on ([#2024](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2024), owner's choice). Exit criteria 2 and 3 are the owner's checks on cmd-dev; 5 waits on the next promotion, which now carries PRs 1 and 4 together.
+**Done** (2026-10-03). Every Delivery PR of [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) merged into `develop`, with the admin-mode marker ([#2024](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2024)) and no deck-request limits in admin mode ([#2053](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2053)), and the sprint reached `main` with the promotion [#2067](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2067) (merge commit 3d182ea2). Tracker [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) is closed.
+
+---
+
+## S58 — Deck requests, October batch
+
+**Phase:** 7 · **Goal:** land the cards from the seven deck requests filed on 2026-10-03, and the small seams they need. Tracking issue [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077), which holds the checklist: members, PR numbers and per-deck detail live there.
+
+Triage on `develop` at `f6444416` found 211 distinct cards requested, of which 208 were still missing: 145 expressible with what the engine has, 48 needing one small or medium engine change, and 15 needing large engine work. Each card PR adds every card it skips to its seam's `Waiting` list in `roadmap/registry.go`.
+
+### Status
+
+**In progress.** The tracker is open. Its class A card PRs, its four small seams ([ADR 0113](decisions/0113-small-seams-for-the-s58-deck-requests.md)), the Ring tempts you ([ADR 0114](decisions/0114-the-ring-tempts-you.md)), commanders die ([ADR 0115](decisions/0115-commanders-die.md); the switch [#2216](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2216) and the caveat lift [#2227](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2227) merged, [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085) closed) and the revealed-hand card filter ([ADR 0116](decisions/0116-a-card-filter-on-the-revealed-hand-pick.md)) have merged. Still open: the seven deck issues and the commander return prompt follow-up ([#2228](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2228), ADR 0115 PR 5). Alternative costs for every spell you cast ([#2163](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2163)) moved to S59.
 
 ---
 
@@ -3378,7 +3392,7 @@ From the tracker, [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/220
 
 ### Status
 
-**In progress.** ADR 0119 was accepted on 2026-10-04. No delivery PR has opened yet.
+**Done** (2026-10-04). Every Delivery PR of [ADR 0119](decisions/0119-a-stack-you-can-follow.md) merged into `develop` ([#2225](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2225), [#2241](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2241), [#2223](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2223), [#2240](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2240), [#2242](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2242), [#2226](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2226)), the nightly E2E on `develop` passed (run 37219288703), and the sprint reached `main` with the promotion [#2266](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2266). Tracker [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) is closed.
 
 ---
 
@@ -3407,7 +3421,7 @@ From [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229):
 
 ### Status
 
-**In progress.** ADR 0121 was accepted on 2026-10-04. No delivery PR has opened yet.
+**Done** (2026-10-04). Every Delivery PR of [ADR 0121](decisions/0121-animated-dice.md) merged into `develop`, ending with [#2259](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2259) (84d51efe); the nightly E2E on `develop` passed at that commit (run 37232813922), and the sprint reached `main` with the promotion [#2266](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2266). Tracker [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) is closed.
 
 ---
 
@@ -3438,7 +3452,49 @@ From the tracker, [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/223
 
 ### Status
 
-**Planned.** ADR 0122 was proposed on 2026-10-04 and amended the same day with three review answers. It waits on the owner's review of its remaining calls. The Go version is settled: 1.27.
+**Done** (2026-10-04). Every Delivery PR of [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) merged into `develop`; the owner played a game to its end with Claude Code in a seat on cmd-dev and its figures are recorded in the ADR ([#2265](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2265)); the sprint reached `main` with the promotion [#2266](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2266). Tracker [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) is closed; the `mcpseat-v0.1.0-rc.1` prerelease is published, and release distribution is tracked in [#2263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2263).
+
+---
+
+## S63 — Monitoring: metrics, logs, dashboards and alerts
+
+**Phase:** 7 · **Goal:** the owner can see at a glance how many games are active, how many players are connected now against how many there are, games and new users a day, and the health of the server, the engine, the bots and both hosts. Logs are searchable, Discord alerts fire when something breaks, and an off-node check notices when a whole site is down. Per [ADR 0123](decisions/0123-monitoring-metrics-logs-dashboards-and-alerts.md). Tracking issue [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281), which is also the change's issue.
+
+Opened 2026-10-04 from the owner's request for monitoring. The owner answered eight questions the same day, recorded on #2281 and in ADR 0123:
+- self-hosted in the HomeLab (Prometheus, Loki, Grafana);
+- metrics and logs both;
+- Discord alerts plus an uptime check;
+- every measurement area offered;
+- a GitHub Actions cron as the off-node watcher;
+- Grafana on the LAN only;
+- metrics kept 1 year and logs 30 days;
+- Claude writes the HomeLab PRs and the owner applies them.
+
+The members are ADR 0123's Delivery PRs.
+
+- [ ] ADR 0123: monitoring (PR 1, with this section)
+- [ ] PR 2: server foundation. `internal/metrics` on `client_golang` and its own registry; a loopback-only `CMDCTRL_METRICS_ADDR` listener, separate from the public mux; build info; Go and process collectors; HTTP metrics labelled by the matched route pattern; the closed-label-set guard test.
+- [ ] PR 3: games, players and WebSocket. Games by state; seats by kind; seats connected now by kind and account; spectators; registered accounts and accounts that played in 1d, 7d and 30d; the game, user and WebSocket counters; database gauges.
+- [ ] PR 4: engine and bots. Actions by type, seat kind and result; apply latency; effect errors; restore-point age; the boot restore outcome; bot decision, model-call and token totals.
+- [ ] PR 5: the agent. `deploy/alloy/config.alloy`, the CD step "Ensure monitoring agent", the off-site backup's age as a textfile metric, and bounded restarts on the bot unit (#598 item 2).
+- [ ] PR 6: rules and dashboards. `deploy/monitoring/`, the `monitoring-config` CI job (promtool rule tests, dashboard checks) and `docs/monitoring.md`.
+- [ ] PR 7: the uptime watcher. `.github/workflows/uptime.yml` every 10 minutes, with issue-as-state and Discord posts (#598 item 3).
+- [ ] HomeLab H1: the monitoring VM (Terraform, fixed address, firewall, cloud-init, a Compose project, push auth, and a config-sync timer pulling `deploy/monitoring/` from `main`).
+- [ ] HomeLab H2: bounded restarts on `cmd-and-ctrl.service` (#598 item 2, the server's half).
+
+### Exit criteria
+
+From the tracker, [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281):
+
+1. ADR 0123 is accepted, and every PR in its Delivery table has merged or been applied.
+2. The Overview dashboard shows cmd-dev's live table, with its seats connected and a bot seat.
+3. Stopping the dev server fires `ServerNotReporting` in Discord, which resolves after a restart.
+4. A dry run of `uptime.yml` reports both sites up.
+5. The evidence is posted on #2281, and the work lands on `main` with the next promotion.
+
+### Status
+
+**In progress** (2026-10-05). ADR 0123 is accepted (#2282). PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #2283); PR 6 (rules and dashboards) is in progress; HomeLab#119–#122 await the owner. The ADR's 2026-10-05 amendment records what changed in delivery.
 
 ---
 

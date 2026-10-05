@@ -241,7 +241,7 @@ type MoveCost struct {
 	Life int `json:"life,omitempty"`
 
 	// PhyrexianLife is the part of Life that pays Phyrexian symbols
-	// instead of mana (CR 107.4c, #1677) — 2 per symbol the move's
+	// instead of mana (CR 107.4f, #1677) — 2 per symbol the move's
 	// `phyrexian_life` names. It is already INCLUDED in Life; it is
 	// broken out because it buys nothing. A printed life cost is the
 	// only evidence of how much an ability does, so a policy may read

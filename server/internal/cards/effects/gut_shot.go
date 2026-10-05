@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Gitaxian Probe posture, and now with the same ending: #787 made
 // the engine pay the Phyrexian symbol with 2 life when the cast
-// announces it (CastSpellParams.PhyrexianLife, CR 107.4c), and #916
+// announces it (CastSpellParams.PhyrexianLife, CR 107.4f), and #916
 // gave the cast prompt the button that asks. The free ping is free of
 // mana.
 func init() {

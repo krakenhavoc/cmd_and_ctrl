@@ -469,8 +469,8 @@ type CastSpellParams struct {
 
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
 	// caster is paying with life instead of mana — 2 life each
-	// (CR 107.4c, and CR 107.4f for the ten hybrid Phyrexian symbols
-	// {W/U/P}…{G/U/P}). Zero is the ordinary answer: pay every symbol
+	// (CR 107.4f, which covers the ten hybrid Phyrexian symbols
+	// {W/U/P}…{G/U/P} too). Zero is the ordinary answer: pay every symbol
 	// with its coloured half.
 	//
 	// A COUNT rather than a list of symbols because the count is the

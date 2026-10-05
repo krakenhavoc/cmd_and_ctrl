@@ -10,7 +10,7 @@ import (
 // phyrexian_spend_grant_test.go — #1589, ADR 0066's 2026-09-28
 // amendment. Under "spend mana as though it were mana of any color"
 // (Breeches) or "mana of any type" (Hostage Taker, Gonti) a Phyrexian
-// symbol keeps its "or 2 life" half (CR 107.4c / 107.4f). The fold in
+// symbol keeps its "or 2 life" half (CR 107.4f). The fold in
 // spendAsThoughAny used to turn it into generic mana, so a stolen
 // Dismember cost three mana and a life claim was refused as an
 // over-claim. It now stays a Phyrexian requirement that any mana pays

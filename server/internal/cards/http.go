@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // Handler returns an http.Handler serving the card + image routes:
@@ -24,7 +26,7 @@ import (
 // returns 404 for everything (useful when the Scryfall dump has not
 // been downloaded yet).
 func Handler(idx *Index, cache *ImageCache) http.Handler {
-	mux := http.NewServeMux()
+	mux := metrics.NewServeMux()
 	mux.HandleFunc("GET /cards/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r)
 		if err != nil {

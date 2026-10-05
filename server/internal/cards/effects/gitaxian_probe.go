@@ -15,7 +15,7 @@ package effects
 //
 // The Phyrexian symbol's "or 2 life" half is the ENGINE's since #787
 // (a cast announcing CastSpellParams.PhyrexianLife: 1 pays 2 life
-// through the cost path and owes no mana, CR 107.4c) and the BOARD's
+// through the cost path and owes no mana, CR 107.4f) and the BOARD's
 // since #916 (the cast prompt offers "pay 1 with life"). So the free
 // draw is really free of mana, which is the whole card.
 func init() {

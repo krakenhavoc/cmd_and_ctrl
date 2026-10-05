@@ -16,7 +16,7 @@ package effects
 // a one-drop, as printed; the fetched creature enters untapped.
 //
 // Both Phyrexian symbols are payable with 2 life now. #787 put the
-// announce on the cast (CastSpellParams.PhyrexianLife, CR 107.4c) and
+// announce on the cast (CastSpellParams.PhyrexianLife, CR 107.4f) and
 // #917 gave the ACTIVATION the same one
 // (ActivateAbilityParams.PhyrexianLife, CR 602.2b) through the same
 // strike-and-pay helper, so "{1}{G/P}" really is {1} and two life for

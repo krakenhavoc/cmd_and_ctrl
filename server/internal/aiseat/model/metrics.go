@@ -4,6 +4,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // metrics.go is the sub-PR's "per-decision instrumentation: layer
@@ -215,7 +217,11 @@ func (s Stats) Triggers() []string {
 // uncontended in practice; it is here because Stats is read from a
 // test or an operator's goroutine while the seat plays.
 type recorder struct {
-	mu      sync.Mutex
+	mu sync.Mutex
+	// tier is the tier label of this policy's process-wide totals
+	// (ADR 0123 §3, the cmdctrl_bot_* families), which record and
+	// improv add to beside the per-seat counters.
+	tier    string
 	stats   Stats
 	ring    []DecisionRecord
 	keep    int
@@ -223,11 +229,12 @@ type recorder struct {
 	full    bool
 }
 
-func newRecorder(keep int) *recorder {
+func newRecorder(keep int, tier string) *recorder {
 	if keep <= 0 {
 		keep = 256
 	}
 	return &recorder{
+		tier: metrics.BotTierLabel(tier),
 		keep: keep,
 		ring: make([]DecisionRecord, keep),
 		stats: Stats{
@@ -249,6 +256,11 @@ func (r *recorder) improv(outcome string, latency time.Duration, u Usage) {
 	if latency == 0 && u == (Usage{}) {
 		return
 	}
+	// An improvisation's tokens are spend like a decision's (total
+	// spend is Usage plus ImprovUsage), so they count in the token
+	// total; the call is not a decision call and does not count in
+	// cmdctrl_bot_model_calls_total.
+	metrics.AddBotModelTokens(r.tier, promptTokens(u), u.OutputTokens)
 	r.stats.ImprovCalls++
 	r.stats.ImprovLatency += latency
 	r.stats.ImprovUsage.InputTokens += u.InputTokens
@@ -259,6 +271,7 @@ func (r *recorder) improv(outcome string, latency time.Duration, u Usage) {
 }
 
 func (r *recorder) record(rec DecisionRecord) {
+	r.recordTotals(rec)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.stats.Windows++
@@ -300,6 +313,46 @@ func (r *recorder) record(rec DecisionRecord) {
 	if r.nextIdx == 0 {
 		r.full = true
 	}
+}
+
+// recordTotals adds one decision record to the process-wide totals
+// (ADR 0123 §3): the funnel's fallback cause, the model call and how
+// it ended, and its tokens. The decision itself and its layer are the
+// runner's to count (aiseat.NoteLayer), so a funnel driven without a
+// runner adds nothing to cmdctrl_bot_decisions_total.
+func (r *recorder) recordTotals(rec DecisionRecord) {
+	if rec.Fallback != "" {
+		metrics.RecordModelFallback(r.tier, rec.Fallback)
+	}
+	if !rec.Attempted {
+		return
+	}
+	metrics.RecordBotModelCall(r.tier, modelCallResult(rec), rec.ModelLatency)
+	metrics.AddBotModelTokens(r.tier, promptTokens(rec.Usage), rec.Usage.OutputTokens)
+}
+
+// modelCallResult is the result label of an attempted call.
+func modelCallResult(rec DecisionRecord) string {
+	switch {
+	case rec.TimedOut:
+		return metrics.ModelResultTimeout
+	case rec.Fallback == FallbackError:
+		return metrics.ModelResultError
+	case rec.Fallback == FallbackMalformed:
+		return metrics.ModelResultMalformed
+	case rec.Fallback == FallbackOutOfRange:
+		return metrics.ModelResultOutOfRange
+	case rec.Fallback == "":
+		return metrics.ModelResultOK
+	}
+	return metrics.ModelResultError
+}
+
+// promptTokens is everything a call read: its input, plus Anthropic's
+// cache reads and writes, which input_tokens leaves out. A local
+// server's CachedPromptTokens is already inside its InputTokens.
+func promptTokens(u Usage) int {
+	return u.InputTokens + u.CacheReadTokens + u.CacheWriteTokens
 }
 
 func (r *recorder) snapshot() Stats {

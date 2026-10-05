@@ -2823,7 +2823,7 @@ puts X in two places.
 hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
 `ColorRequirement` each — a set of colour options plus `Phyrexian` —
 so there is no new symbol kind to declare and nothing for a card file
-to write. The "or 2 life" half (CR 107.4c/f) is announced on the
+to write. The "or 2 life" half (CR 107.4f) is announced on the
 CAST, as `CastSpellParams.PhyrexianLife`: the number of the cost's
 Phyrexian symbols being paid with 2 life each, validated against what
 the cost prints and against CR 119.4, paid through `PayLifeForEffect`.

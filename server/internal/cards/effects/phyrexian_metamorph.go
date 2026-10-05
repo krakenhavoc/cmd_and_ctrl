@@ -23,7 +23,7 @@ import (
 //
 // The Phyrexian mana symbol's "or 2 life" half is the cost engine's
 // business, not this card's: #787 landed the announce
-// (CastSpellParams.PhyrexianLife, CR 107.4c) and #916 gave the cast
+// (CastSpellParams.PhyrexianLife, CR 107.4f) and #916 gave the cast
 // prompt a stepper for it, so a cast from hand can pay {3} and two
 // life.
 func init() {

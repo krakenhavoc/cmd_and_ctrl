@@ -11,7 +11,7 @@ import (
 )
 
 // phyrexian_cast_life_test.go — #1677. A spell's Phyrexian symbols
-// can be paid with 2 life each (CR 107.4c), announced on the cast as
+// can be paid with 2 life each (CR 107.4f), announced on the cast as
 // `phyrexian_life` (CR 601.2b). The enumerator used to price the mana
 // path only, so a bot with one Swamp was never offered Dismember at any
 // life total. It now offers the mana payment when the seat has it, the

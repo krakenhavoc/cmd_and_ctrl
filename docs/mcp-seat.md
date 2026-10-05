@@ -265,6 +265,11 @@ gap.
 - The invite token is never stored. If your MCP client restarts the
   binary, `join` with the same invite reattaches (`resumed: true`)
   instead of claiming a second seat.
+- The file is named for the server and the game, not for the seat. So
+  **two seats on one machine at the same table need different
+  `--state-dir`s**. With a shared one, the second agent's `join` finds
+  the first agent's file, reattaches to that seat, and both agents play
+  it. See [Two agents at one table](#two-agents-at-one-table).
 - On the wire the token is only ever `Authorization: Bearer`, never
   `?token=`. It is stripped from every tool result (those go to the model
   provider) and every log line, which also passes `redact.Secrets`.
@@ -317,25 +322,65 @@ and stops at 50.
 
 ### Codex
 
+Verified with codex-cli 0.160.0 and the `mcpseat-v0.1.0-rc.1` binary
+on 2026-10-04:
+
 ```sh
 mkdir -p ~/.local/state/cmdctrl-mcpseat
 codex mcp add cmdctrl-seat -- \
-  /home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat \
+  "$HOME/.local/bin/mcpseat" \
+  --allow-origin https://cmd.labxp.io \
   --allow-origin https://cmd-dev.labxp.io \
-  --log-file "$HOME/.local/state/cmdctrl-mcpseat/seat.log"
+  --log-file "$HOME/.local/state/cmdctrl-mcpseat/codex-seat.log"
 ```
 
-or in `~/.codex/config.toml`:
+Then add two keys under the `[mcp_servers.cmdctrl-seat]` table that
+command wrote to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.cmdctrl-seat]
-command = "/home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat"
-args = ["--allow-origin", "https://cmd-dev.labxp.io", "--log-file", "/home/<you>/.local/state/cmdctrl-mcpseat/seat.log"]
+command = "/home/<you>/.local/bin/mcpseat"
+args = ["--allow-origin", "https://cmd.labxp.io", "--allow-origin", "https://cmd-dev.labxp.io", "--log-file", "/home/<you>/.local/state/cmdctrl-mcpseat/codex-seat.log"]
+tool_timeout_sec = 90
+default_tools_approval_mode = "approve"
 ```
 
-Play with `codex -s read-only` in an empty directory. Unverified: the
-table shape beyond what `codex mcp add` writes, and the per-server tool
-timeout key (`tool_timeout_sec` is believed to exist, default 60 s).
+- `tool_timeout_sec`: Codex's default is 60 s, and `wait_for_decision`
+  may block for up to 50 s. 90 leaves room.
+- `default_tools_approval_mode`: without it, every seat tool call
+  needs an approval. The values are `auto`, `prompt`, `writes` and
+  `approve`, and `approve` approves this server's tools and nothing
+  else. Under `-a never` an unapproved call is refused outright, and the
+  join fails with "MCP tool call requires approval, but approval policy
+  is never".
+- `codex mcp get cmdctrl-seat` prints both keys when Codex has read
+  them. A misspelt value fails with the list of valid ones.
+
+Play in an empty directory:
+`codex -C <empty dir> -s read-only -a never`. Shell commands then run
+read-only and are never prompted for, and the seat's tools run without
+a prompt.
+
+`--allow-origin` replaces the default list, so name every server you
+will join. A seat registered for cmd-dev alone refuses a cmd.labxp.io
+invite.
+
+### Two agents at one table
+
+Two MCP clients on one machine can play each other. Give each its own
+`--state-dir` and `--log-file`, for example `…/cmdctrl-mcpseat/claude`
+with `claude-seat.log`, and `…/cmdctrl-mcpseat/codex` with
+`codex-seat.log`. The binary creates the state directory `0700` itself.
+It does not create the log file's directory. See
+[the state file](#the-token-and-the-state-file) for why the state
+directories must differ.
+
+An agent never hosts, and the seat has no tool to start a game. So a
+table with only agents is started by an admin with no seat, from admin
+mode in the browser. Watch it through the spectator link rather than as
+a seat, so you see neither hand. Play on cmd.labxp.io when you can: it
+deploys only on a promotion, while cmd-dev redeploys on every merge into
+`develop`.
 
 ## Pace and cost
 
@@ -356,7 +401,10 @@ derivation.
 A long tool loop resends its whole context each step, so input tokens
 run in the millions per game (mostly cache reads) and the context
 nears 200k by the end: expect one compaction, or use a long-context
-model. No price is stated because none was measured. To keep it down,
+model. Two games have been priced so far (below): $0.72 for a
+five-turn game, and at most $15.94 for a sixteen-turn one. Cost grows
+much faster than the game's length, because every call resends the
+context and the context grows with every decision. To keep it down,
 use a fresh session per game, keep the compact view, and turn
 `pass_until` on when holding nothing at instant speed.
 
@@ -389,8 +437,126 @@ time. ADR 0122's amendment of the same date discusses them.
 | Time per decision (returned to `act`) | median 2.5 s, p90 5.7 s, max 23.3 s |
 | Table waiting on the agent | 9.6 min in total |
 | Time in `wait_for_decision` (opponent and table) | 15.4 min in total |
-| Client-reported tokens and cost | not captured |
+| Client-reported tokens and cost | at most $15.94. The Claude Code session that played it also wrote its lessons to memory and began a second game that was abandoned, so this is an upper bound for the game. Opus 5.5: 370.8k input, 47.9k output, 37.7M cache read, 747.1k cache write over 196 requests, including one cache miss after an idle past the 1h cache lifetime (364.5k tokens re-cached) and one compaction. |
 
 The estimates above were for a four-seat game. This one reached the
 model about 154 times in two seats, so plan on more decisions than the
 estimate, and on a much faster agent than 15 to 40 s.
+
+### Measured: a release-build game
+
+2026-10-04, cmd-dev, the published `mcpseat-v0.1.0-rc.1` archive
+(`--version`: `v0.1.0-rc.1`, commit `84d51efe`), default absorb rules,
+`--log-file` on, Claude Code on Opus 5.5, 1v1 Commander with one human.
+The human won the opening roll and chose who went first, so the agent
+was not asked. The human had a fast start and won on turn 5. The rows
+from windows seen to time per decision are the binary's own game-end
+report. The wall clock comes from the log's timestamps and Claude
+Code, and the cost from Claude Code's `/cost` for the session.
+
+| Quantity | Measured |
+|---|---|
+| Wall clock, seat start to `game_over` | 9.3 min (Claude Code session: 12.0 min wall, 1.2 min API) |
+| Windows seen | 142 |
+| Absorbed by Layer A | 129 (91%): `forced` 97, `mana-only` 31, `opening-roll` 1 |
+| Shown to the model | 13, one `act` each |
+| `act` rejections, automatic answers refused | 0, 0 |
+| Truncated windows, full-list requests | 0, 0 |
+| Largest move list shown | 11 moves, 1,240 bytes |
+| Tool-result bytes | 36,300 (about 9,100 tokens) |
+| Time per decision (opened to `act`) | median 2.5 s, mean 3.0 s, max 5.3 s |
+| Client-reported tokens and cost | $0.72: Opus 5.5 60 input, 5.6k output, 1.5M cache read, 39.4k cache write over 30 requests (97% of input from cache); Claude Code attributed 87% of the session's usage to the seat's tool results |
+
+The absorption rate matches the bot-table measurement in the estimates
+above. A five-turn game is the cheap end: the turn-16 game above
+reached the model more than ten times as often, and its session cost
+up to 22 times as much.
+
+### Measured: Codex against Claude
+
+2026-10-04, cmd.labxp.io (main at `b01386a9`, which carries `84d51efe`),
+both seats on `mcpseat-v0.1.0-rc.1` with the default absorb rules, each
+with its own state directory and log. Claude Code on Opus 5.5 played
+Codex (codex-cli 0.160.0, `gpt-6-sol` at medium reasoning effort). Both
+played `simic-ramp`, and no person had a seat. The owner started the
+table from admin mode. Claude won: an early Sol Ring, Arcane Signet and
+Lotus Cobra, finished by Craterhoof Behemoth. Nobody saw who won the
+opening roll. About four and a half minutes passed from the roll to
+`game_over`. Every row except the last is from the binaries' game-end
+reports.
+
+| Quantity | Claude Code | Codex |
+|---|---|---|
+| Windows seen | 174 | 154 |
+| Absorbed by Layer A | 124: `forced` 24, `mana-only` 99, `opening-roll` 1 | 130: `forced` 56, `mana-only` 72, `opening-roll` 2 (one a duplicate, below) |
+| Shown to the model | 50 | 26 |
+| `act` calls, rejections | 49, 0 | 23, 0 |
+| Automatic answers refused | 0 | 2 (#2271) |
+| Largest move list shown | 28 moves, 2,252 bytes | 25 moves, 2,184 bytes |
+| Tool-result bytes | 101,517 (about 25,400 tokens) | 54,929 (about 13,700 tokens) |
+| Time per decision (opened to `act`) | median 2.5 s, mean 2.8 s, max 5.4 s | median 5.2 s, mean 5.1 s, max 10 s |
+| Client-reported cost | $1.63: Opus 5.5 616 input, 11.2k output, 3.8M cache read, 81.0k cache write over 55 requests, no cache misses; 7.1 min wall, 2.6 min API | 0.7% of a Pro 100 plan's weekly limit. Codex shows no per-session tokens or price. |
+
+This is one game, a mirror match won on a fast start, so it is not a
+ranking. Claude was shown about twice as many decisions as Codex. That
+reflects which side had plays to make, not how either model played.
+
+The Codex seat's two refused automatic answers are the bug in #2271.
+When the other seat's action produced a snapshot before this seat's own
+action was acknowledged, the binary answered the new window again: a
+second opening roll, then later a second pass. The server refused both.
+The duplicate roll is counted in the `opening-roll` 2 above. A refused
+window can also be handed to the model, which is the likely reason
+Codex was shown 26 decisions and made 23 `act` calls.
+
+### Measured: the rematch
+
+The same day, the same setup, a new prod table: an `esper-control`
+mirror this time, so that judgement (what to counter, when to wipe the
+board) decided more of the game. Codex won the opening roll with a 14 and
+chose to go first. The roll's winner was asked, and a model made the
+choice. Codex won in round 8 (log turn 16), during Claude's draw step,
+about twelve minutes after the roll.
+
+| Quantity | Claude Code | Codex |
+|---|---|---|
+| Windows seen | 234 | 230 |
+| Absorbed by Layer A | 136: `forced` 61, `mana-only` 43, `pass_until` 30, `opening-roll` 2 (one a duplicate, #2271) | 125: `forced` 47, `mana-only` 46, `pass_until` 31, `opening-roll` 1 |
+| Shown to the model | 103 | 105 |
+| `act` calls, rejections | 98, 0 | 104, 0 |
+| Automatic answers refused | 5 (#2271) | 0 |
+| Full-list requests | 0 | 3 |
+| Largest move list shown | 27 moves, 2,243 bytes | 30 moves, 2,542 bytes |
+| Tool-result bytes | 250,998 (about 62,700 tokens) | 306,025 (about 76,500 tokens) |
+| Time per decision (opened to `act`) | median 2.6 s, mean 3.0 s, max 12.6 s | median 4.1 s, mean 3.8 s, max 18.5 s |
+| Client-reported cost | $4.19: Opus 5.5 724 input, 22.4k output, 11.8M cache read, 171.2k cache write over 109 requests, no cache misses; 12.3 min wall, 5.1 min API | no per-game figure. The session ended with 97.1k of 258k context used. The account's weekly limit read 82% left. |
+
+**The engine decided this game, not either model.** Codex cast Stroke
+of Genius (X=7) in Claude's draw step. Under Sheoldred, the seven draws
+were lethal. Claude held Counterspell and Mana Drain with the lands to
+cast them, but never received priority while the spell was on the
+stack. The prod replay shows it: the snapshot after Codex's cast has
+Codex holding priority over Stroke, and the next one has it resolved.
+The engine treats priority returning to the active seat as "everyone
+passed", so a non-active player's spell resolves without the active
+player's response (CR 117.4, #2275). It affects every table, not only
+agent seats.
+
+Both agents were asked what was hard. Their answers became issues:
+
+- **Which player is meant.** Both seats were named «Agent», so
+  "targeting «Agent»" was ambiguous, and so were log lines (#2273,
+  #2276, #2279).
+- **Picking targets from a capped pool of combinations** instead of
+  from the board (#2276).
+- **A capped Demonic Tutor search** with no usable id to expand it
+  (#2277).
+- **An automatic payment** that tapped two white/blue duals for a
+  generic {2} while a Plains stayed untapped, with counterspells in
+  hand (#2278).
+- **Wording:** a turn counter that counts rounds, and abilities read
+  as "cast by" (#2279).
+
+Both agents used `pass_until` without being told to. The Claude seat
+recognised four of its five #2271 duplicate windows as stale, and left
+them alone.

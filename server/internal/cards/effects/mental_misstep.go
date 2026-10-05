@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // targeted, and a {X} spell cast with X=1 is mana value 1 and can.
 //
 // The PHYREXIAN mana's 2-life half landed in the cost engine with
-// #787 (CastSpellParams.PhyrexianLife, CR 107.4c) and this card
+// #787 (CastSpellParams.PhyrexianLife, CR 107.4f) and this card
 // needed no change for it, exactly as predicted. #916 gave the cast
 // prompt the stepper that asks, so the free counterspell is castable
 // for 2 life from the board.

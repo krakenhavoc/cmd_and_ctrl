@@ -1,0 +1,52 @@
+name: cmd_and_ctrl uptime
+
+# Off-node dead-man check on the monitoring VM (ADR 0123 section 8, #2281). State lives in
+# one `outage` issue, so a long outage posts twice: once lost,
+# once recovered. Logic: scripts/uptime-watch.sh.
+
+permissions:
+  contents: read
+  issues: write
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub may run this late or skip a tick under load,
+    # and only runs schedules from the default branch.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Check the URLs and print what would happen; change nothing"
+        type: boolean
+        default: true
+  pull_request:
+    # A new workflow cannot be dispatched before it is on main, so a PR that
+    # touches it exercises it here, always as a dry run.
+    paths:
+      - ".github/workflows/uptime.yml"
+      - "scripts/uptime-watch.sh"
+
+concurrency:
+  # Runs never overlap. Cancelling a run mid-way could leave an outage issue
+  # opened without its Discord post.
+  group: cmdctrl-uptime
+  cancel-in-progress: false
+
+jobs:
+  uptime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check the monitoring heartbeat
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK: ${{ secrets.CMDCTRL_ALERT_DISCORD_WEBHOOK }}
+          HEARTBEAT: ${{ vars.CMDCTRL_MONITORING_HEARTBEAT }}
+          # A pull request is always a dry run, a dispatch follows its input,
+          # and a scheduled run is live. format() keeps a false input a
+          # non-empty string, which the && / || chain would otherwise drop.
+          DRY_RUN: ${{ github.event_name == 'pull_request' && 'true' || github.event_name == 'workflow_dispatch' && format('{0}', inputs.dry_run) || 'false' }}
+        run: scripts/uptime-watch.sh
