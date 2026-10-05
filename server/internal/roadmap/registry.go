@@ -2633,14 +2633,13 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2171). `game.AttackTargetRestriction.NotAlreadyAttackedThisTurn` refuses a player the attacker (same object epoch, CR 400.7) already attacked this turn, read off `TurnTally.Attacks` through `AttackedPlayersThisTurn`. It rides the same predicate as the owner clauses, `canAttackTargetWithLocked`, so both declaration verbs, the CR 508.1d search and the enumerator's per-attacker list (`AttackTargetsForAttackerForEffect`) all offer only the players left; planeswalkers and battles are never refused by it. The card helper is `effects.CantAttackAPlayerItAlreadyAttackedThisTurn()`, a layer-6 self static. Snapshot: the clause is an additive field.",
 	},
 	{
-		Slug: "cant-be-blocked-by-a-players-creatures", Name: "Can't be blocked by one player's creatures", Kind: KindSeam, Status: StatusMissing,
+		Slug: "cant-be-blocked-by-a-players-creatures", Name: "Can't be blocked by one player's creatures", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that stop one player's creatures from blocking a creature this turn, such as The Black Gate's \"Target creature can't be blocked by creatures that player controls this turn\".",
-		Missing:     "A creature can be made unblockable except by certain creatures, but not unblockable by one chosen player's creatures.",
 		Rules:       []string{"509.1b"},
 		Issue:       2172,
-		Tracked:     "#2172 (S58 tracker #2077)",
-		Waiting:     []string{"The Black Gate"},
-		EngineNotes: "block rule: the scoped block-rule kinds (`game/scoped_block_rules.go`: `ModCantBeBlockedExceptBy`, `ModLimitBlockersPerDefender`) describe the allowed blocker by keyword or subtype, or count blockers per defender, and none names a player whose creatures can't block the pinned attacker. Needs a kind that stores the chosen player, read by the block validator and the enumerator. The Black Gate's \"you may pay 3 life. If you don't, it enters tapped\" (`EntersTappedUnlessYouPayLife`) and its \"Choose a player with the most life or tied for most life\" work.",
+		Printed:     printedWords("can't be blocked by creatures that player controls"),
+		Examples:    []string{"The Black Gate"},
+		EngineNotes: "**Shipped** (#2172). `game.ModCantBeBlockedByPlayer` (`game/scoped_block_rules.go`) is a scoped block-rule kind that stores the chosen player in `Mod.Player` with its refusal clause in `Mod.Text`, pinned to the target at resolution (CR 611.2c) and swept at end of turn. The block-rule walk adapts it into a pair rule (`BlockReasonCantBeBlockedBy`), so the block validator and the enumerator both read it; the blocker's controller is compared live. The card helper is `effects.CantBeBlockedThisTurnByPlayer`. Snapshot: the kind is new vocabulary and the mod reuses existing fields.",
 	},
 	{
 		Slug: "cast-permission-follow-up", Name: "Something that happens because you cast the card you were allowed to", Kind: KindSeam, Status: StatusMissing,

@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 // scoped_block_rules.go is ADR 0041 phase 3's tier 3b for block-rule
@@ -14,13 +16,15 @@ import (
 // at cleanup. A table holding one was not a restore point
 // (ContinuationCensus.TurnScopedBlockRules).
 //
-// WHAT IT IS NOW. Two mod kinds whose reader is the block-rule walk
+// WHAT IT IS NOW. Three mod kinds whose reader is the block-rule walk
 // rather than the layer pass (modKindSpec.reader):
 //
 //   - cantBeBlockedExceptBy — Gingerbrute's activated ability, Departed
 //     Deckhand's granted evasion: the pinned attacker(s), reading
 //     Keywords and Subtypes (each an any-of) and Text, the printed
 //     allowed set;
+//   - cantBeBlockedByPlayer — The Black Gate: the pinned attacker, and
+//     the Player whose creatures may not block it (#2172);
 //   - limitBlockersPerDefender — Mirri, Weatherlight Duelist's attack
 //     trigger: ScopeOpponentsCreatures, reading Amount.
 //
@@ -54,6 +58,13 @@ func blockRuleModProblem(m Mod) string {
 		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 {
 			return "a cantBeBlockedExceptBy rule needs at least one keyword or subtype"
 		}
+	case ModCantBeBlockedByPlayer:
+		if m.Player == uuid.Nil {
+			return "a cantBeBlockedByPlayer rule needs the Player whose creatures can't block"
+		}
+		if m.Text == "" {
+			return "a cantBeBlockedByPlayer rule needs Text, the clause the refusal sentence reads"
+		}
 	case ModLimitBlockersPerDefender:
 		if m.Amount < 1 {
 			return fmt.Sprintf("a limitBlockersPerDefender rule needs an amount of at least 1, got %d", m.Amount)
@@ -81,6 +92,14 @@ func CantBeBlockedExceptByMod(keywords, subtypes []string, text string) Mod {
 // (ScopeOpponentsCreatures).
 func LimitBlockersPerDefenderMod(n int) Mod {
 	return Mod{Kind: ModLimitBlockersPerDefender, Amount: n}
+}
+
+// CantBeBlockedByPlayerMod is "<creature> can't be blocked by creatures
+// that player controls this turn" (The Black Gate, #2172). `text` is
+// the barred set as the refusal sentence reads it ("creatures Bob
+// controls").
+func CantBeBlockedByPlayerMod(player uuid.UUID, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedByPlayer, Player: player, Text: text}
 }
 
 // ---------------------------------------------------------------
@@ -122,6 +141,16 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return affected(attacker, g, nil) && !allowed(blocker)
+			},
+		}
+	case ModCantBeBlockedByPlayer:
+		affected := affectedPredicate(e.Affected)
+		barred := m.Player
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return blocker != nil && blocker.Controller == barred && affected(attacker, g, nil)
 			},
 		}
 	case ModLimitBlockersPerDefender:
