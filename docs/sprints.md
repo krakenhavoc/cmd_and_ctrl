@@ -106,7 +106,7 @@ planned just-in-time from the S12 pain-point triage.
 | S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | **done**    |
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
-| S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | planned     |
+| S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
 
 ### How to read the status column
 
@@ -3494,7 +3494,7 @@ From the tracker, [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/228
 
 ### Status
 
-**Planned** (2026-10-04). ADR 0123 is accepted (owner review on #2282); the Delivery PRs follow.
+**In progress** (2026-10-05). ADR 0123 is accepted (#2282). PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #2283); PR 6 (rules and dashboards) is in progress; HomeLab#119–#122 await the owner. The ADR's 2026-10-05 amendment records what changed in delivery.
 
 ---
 
