@@ -38,6 +38,7 @@
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openZoneBrowser } from "../../zoneBrowser";
   import PlayerIdentity from "./PlayerIdentity.svelte";
+  import { seatColor } from "../../colors";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -216,9 +217,11 @@
 </script>
 
 <div
-  class="summary"
+  class="summary seat-panel"
+  style:--seat-color={seatColor(seat.seat)}
   class:eliminated={summary.eliminated}
   class:active={isActive}
+  class:seat-turn={isActive}
   role="region"
   aria-label={`${seat.name} board`}
 >
@@ -377,13 +380,8 @@
     height: 100%;
     box-sizing: border-box;
     padding: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: 14px;
     overflow: hidden;
-  }
-  .summary.active {
-    border-color: color-mix(in srgb, var(--priority) 28%, transparent);
   }
   .summary.eliminated {
     opacity: 0.55;
