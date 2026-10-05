@@ -105,21 +105,69 @@ func (s stateStore) load(origin string, gameID uuid.UUID) (*savedSession, error)
 	return &ss, nil
 }
 
-// save writes the session 0600 through a temp file and a rename, in a
-// directory created 0700.
-func (s stateStore) save(ss *savedSession) error {
-	dir := s.dirFor(ss.Origin)
+// ensureDirs creates the state directories 0700 and refuses loose ones.
+func (s stateStore) ensureDirs(origin string) (string, error) {
+	dir := s.dirFor(origin)
 	for _, d := range []string{s.root, dir} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
-			return err
+			return "", err
 		}
 		fi, err := os.Stat(d)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if err := checkPrivate(d, fi); err != nil {
-			return err
+			return "", err
 		}
+	}
+	return dir, nil
+}
+
+// errTableHeld is the refusal when another live process already holds
+// this table's saved session (#2274).
+var errTableHeld = errors.New("another seat on this machine already holds this table through the same --state-dir")
+
+// stateLock is the claim a binary keeps on a table's saved session for as
+// long as it holds the seat. The operating system drops it when the
+// process dies, so a crash never blocks a resume.
+type stateLock struct {
+	release func()
+}
+
+// Release lets go of the lock. Safe on nil and to call twice.
+func (l *stateLock) Release() {
+	if l == nil || l.release == nil {
+		return
+	}
+	l.release()
+	l.release = nil
+}
+
+func (s stateStore) lockPath(origin string, gameID uuid.UUID) string {
+	return filepath.Join(s.dirFor(origin), gameID.String()+".lock")
+}
+
+// lock takes the exclusive claim on a table's saved session, or returns
+// errTableHeld when a live process (or another seat in this one) holds it.
+// Two seats sharing a state file would read each other's token and play one
+// seat between them (#2274).
+func (s stateStore) lock(origin string, gameID uuid.UUID) (*stateLock, error) {
+	if _, err := s.ensureDirs(origin); err != nil {
+		return nil, err
+	}
+	rel, err := lockFile(s.lockPath(origin, gameID))
+	if err != nil {
+		return nil, err
+	}
+	return &stateLock{release: rel}, nil
+}
+
+// save writes the session 0600 through a temp file and a rename, in a
+// directory created 0700.
+func (s stateStore) save(ss *savedSession) error {
+	dir, err := s.ensureDirs(ss.Origin)
+	if err != nil {
+		return err
 	}
 	raw, err := json.Marshal(ss)
 	if err != nil {
