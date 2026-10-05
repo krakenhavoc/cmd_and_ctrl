@@ -7,14 +7,15 @@ import (
 )
 
 // protection_mana_value_test.go — #2181 ("protection from mana value N
-// or less", Reaver Titan): a quality that is not a characteristic a
-// layer computes. It is asserted through all four DEBT checks (CR
-// 702.16b-f), because the value of the work is that every reader sees
-// the new source fact, not that the parser accepts a string.
+// or less", Reaver Titan) and #2145 ("protection from Ring-bearers",
+// Lord of the Nazgul): the two qualities that are not characteristics
+// a layer computes. Each is asserted through all four DEBT checks
+// (CR 702.16b-f), because the value of the work is that every reader
+// sees the new source facts, not that the parser accepts a string.
 
 const proMV3 = "protection from mana value 3 or less"
 
-func TestProtectionGrammarParsesManaValue(t *testing.T) {
+func TestProtectionGrammarParsesManaValueAndRingBearers(t *testing.T) {
 	q, ok := ParseProtectionQuality(proMV3)
 	if !ok || q.Kind != ProtectionQualityManaValueAtMost || q.Value != "3" || q.Printed != "mana value 3 or less" {
 		t.Fatalf("parse = (%+v, %v)", q, ok)
@@ -24,6 +25,10 @@ func TestProtectionGrammarParsesManaValue(t *testing.T) {
 	}
 	if q, ok := ParseProtectionQuality("Protection from Mana Value 0 or less"); !ok || q.Value != "0" {
 		t.Errorf("case-insensitive, zero bound: (%+v, %v)", q, ok)
+	}
+	rb, ok := ParseProtectionQuality("protection from Ring-bearers")
+	if !ok || rb.Kind != ProtectionQualityRingBearer || rb.Kind.String() != "ring_bearer" {
+		t.Fatalf("ring-bearers parse = (%+v, %v)", rb, ok)
 	}
 	toks, ok := ProtectionTokens("Protection from mana value 3 or less")
 	if !ok || len(toks) != 1 || toks[0] != proMV3 {
@@ -36,6 +41,7 @@ func TestProtectionGrammarParsesManaValue(t *testing.T) {
 		"protection from mana value or less",
 		"protection from mana value X or less",
 		"protection from mana value 3",
+		"protection from Ring-bearer's",
 	} {
 		if _, ok := ParseProtectionQuality(bad); ok {
 			t.Errorf("%q parsed; the grammar is closed", bad)
@@ -216,9 +222,88 @@ func TestManaValueProtectionDropsACheapAttachment(t *testing.T) {
 	}
 }
 
-func TestDepartedSourceKeepsItsManaValue(t *testing.T) {
-	ch := lastKnownSourceCharacteristics(PermanentInfo{ManaValue: 2, Controller: uuid.New()})
-	if !ch.SourceManaValueKnown || ch.SourceManaValue != 2 {
+func TestDepartedSourceKeepsItsManaValueAndRingBearer(t *testing.T) {
+	ch := lastKnownSourceCharacteristics(PermanentInfo{ManaValue: 2, RingBearer: true, Controller: uuid.New()})
+	if !ch.SourceManaValueKnown || ch.SourceManaValue != 2 || !ch.SourceRingBearer {
 		t.Errorf("departed source facts = %+v", ch)
+	}
+}
+
+// --- Ring-bearers (#2145) -------------------------------------------
+
+func TestRingBearerProtectionAcrossTheFourChecks(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	const oracle = "test-ring-bearer-targeting"
+	withCatalogTargetSpec(t, func(id string) *TargetSpec {
+		if id == oracle {
+			return anyCreatureSpec()
+		}
+		return nil
+	})
+
+	wraith := pushMVCreature(g, opp, "Wraith", "{1}", "protection from Ring-bearers")
+	ref := TargetRef{Kind: TargetCard, ID: wraith}
+	bearer := pushMVCreature(g, me, "Bearer", "{1}")
+	plain := pushMVCreature(g, me, "Plain", "{1}")
+	card := func(id uuid.UUID) *Card { return &g.Battlefield.Cards[findCardOnBattlefield(g, id)] }
+	g.WithWriteLock(func() { card(bearer).RingBearer = true })
+
+	// Block (CR 702.16f): the Wraith attacks, the bearer is refused.
+	var rBearer, rPlain BlockRefusal
+	g.ReadSnapshot(func() {
+		rBearer = g.BlockPairRefusalLocked(card(wraith), card(bearer))
+		rPlain = g.BlockPairRefusalLocked(card(wraith), card(plain))
+	})
+	if rBearer.Reason != BlockReasonProtection {
+		t.Errorf("a Ring-bearer blocking the Wraith: reason = %q, want protection", rBearer.Reason)
+	}
+	if !rPlain.Legal() {
+		t.Errorf("a non-bearer blocks fine: %q", rPlain.Reason)
+	}
+
+	// Targeting (CR 702.16b), by the bearer's ability.
+	var bearerOK, plainOK bool
+	g.ReadSnapshot(func() {
+		spec := anyCreatureSpec()
+		bearerOK = g.targetLegalLocked(SourceObject(me.ID, card(bearer)), spec, ref)
+		plainOK = g.targetLegalLocked(SourceObject(me.ID, card(plain)), spec, ref)
+	})
+	if bearerOK || !plainOK {
+		t.Errorf("targeting: bearer legal = %v (want false), plain legal = %v (want true)", bearerOK, plainOK)
+	}
+
+	// Damage (CR 702.16e).
+	g.WithWriteLock(func() {
+		if err := g.DealDamageToCreatureForEffect(bearer, wraith, 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := g.DealDamageToCreatureForEffect(plain, wraith, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if got := damageOn(g, wraith); got != 1 {
+		t.Errorf("Wraith has %d damage, want 1 (the Ring-bearer's prevented)", got)
+	}
+
+	// Attachment (CR 702.16c-d): an Equipment that is a Ring-bearer
+	// (any permanent can be) comes off; one that is not stays.
+	sword := pushAttachTestCard(g, me.ID, "Sword", "Artifact — Equipment")
+	g.WithWriteLock(func() {
+		card(sword).RingBearer = true
+		if err := g.AttachForEffect(sword, ref); err != nil {
+			t.Fatal(err)
+		}
+		g.runStateChecksLocked()
+	})
+	if c, ok := battlefieldCardByID(g, sword); !ok || c.IsAttached() {
+		t.Error("an Equipment that is a Ring-bearer must come off")
+	}
+
+	// The designation is the CONTROLLER's: a flag on a permanent its
+	// controller does not control matches nothing (CR 701.54e).
+	if IsRingBearerOf(*card(bearer), opp.ID) {
+		t.Error("IsRingBearerOf must read the controller")
 	}
 }

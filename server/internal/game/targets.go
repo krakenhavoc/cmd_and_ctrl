@@ -206,10 +206,11 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	if ch.Controller == uuid.Nil {
 		ch.Controller = rec.Controller
 	}
-	// The protection-source fact a departed permanent last had
-	// (#2181): its mana value, which a record keeps and the card does
-	// not once it is in another zone.
+	// The protection-source facts a departed permanent last had
+	// (#2181, #2145): its mana value and its Ring-bearer designation,
+	// neither of which survives the zone change on the card itself.
 	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
+	ch.SourceRingBearer = rec.RingBearer
 	return ch
 }
 

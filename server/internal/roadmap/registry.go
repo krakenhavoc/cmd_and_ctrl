@@ -2486,13 +2486,13 @@ var items = []Item{
 		EngineNotes: "layer 4: the `ScopedEffect` vocabulary has `AddSubtypesMod`, `AllCreatureTypesMod` and `SetBasicLandTypesMod`, but no mod that replaces a permanent's creature types. Frodo's granted lose-the-game trigger can ride on ADR 0093's duration grants. Sauron, Dino Devotee is held for the same reason (abilities-granted-to-other-permanents row). Found landing ADR 0114 PR 5. Polymorphist's Jest (S58 deck requests, #2077) makes each creature target player controls lose all abilities and become a blue Frog with base power and toughness 1/1 until end of turn: the abilities, the colour and the base power and toughness are scoped mods today (Sudden Spoiling's), and \"becomes a Frog\" is this row.",
 	},
 	{
-		Slug: "protection-from-ring-bearers", Name: "Protection from Ring-bearers", Kind: KindSeam, Status: StatusMissing,
+		Slug: "protection-from-ring-bearers", Name: "Protection from Ring-bearers", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Protection from a designation rather than a color or type, such as Lord of the Nazgûl's \"Wraiths you control have protection from Ring-bearers\".",
-		Missing:     "Protection can be from a color, a card type, a creature type, everything or a player, but not from Ring-bearers.",
 		Rules:       []string{"702.16a", "701.54"},
 		Issue:       2145,
-		Waiting:     []string{"Lord of the Nazgûl"},
-		EngineNotes: "protection: `game.ProtectionQualityKind` compares a source's colours, card types, subtypes, everything, or its controller. A Ring-bearer is a designation (`Card.RingBearer`), so this needs a new quality kind, its parser token, the comparison in every protection reader, the wire token and the bot's exchange maths, which is more than ADR 0114 PR 5's \"one predicate\". Found landing ADR 0114 PR 5.",
+		Printed:     `(?i)protection from ring-bearers`,
+		Examples:    []string{"Lord of the Nazgûl"},
+		EngineNotes: "**Shipped** (#2145): `game.ProtectionQualityRingBearer` (`game/protection.go`) matches a source that is its controller's Ring-bearer when the check is made (CR 701.54e). A Ring-bearer is a designation, not a characteristic, so the source snapshot carries it: `Characteristic.SourceRingBearer`, written by `SourceCharacteristics` and, for a source that has left, by `lastKnownSourceCharacteristics` from `PermanentInfo.RingBearer`. Every protection reader (targeting, attachment, damage, block) already goes through `ProtectionQuality.Matches`, so none changed. Wire: `ProtectionView.kind` `ring_bearer`; the bot reads `CardView.ring_bearer` in `heuristic.protectedFrom`.",
 	},
 	{
 		Slug: "target-relative-to-source", Name: "Targets described relative to the source", Kind: KindSeam, Status: StatusMissing,

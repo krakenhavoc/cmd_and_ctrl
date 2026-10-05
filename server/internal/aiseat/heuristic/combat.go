@@ -79,6 +79,11 @@ func protectedFrom(defender, source *protocol.CardView) bool {
 			if n, err := strconv.Atoi(p.Value); err == nil && manaValue(source.ManaCost, 0) <= n {
 				return true
 			}
+		case "ring_bearer":
+			// #2145: the designation the view already carries.
+			if source.RingBearer {
+				return true
+			}
 		case "card_type", "subtype":
 			// The view's type line is the EFFECTIVE one, rendered by
 			// the projection from the same characteristics the engine

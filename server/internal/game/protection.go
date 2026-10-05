@@ -115,6 +115,12 @@ const (
 	// cost and is 0, and a copy has the copiable cost's value (CR
 	// 707.2). #2181.
 	ProtectionQualityManaValueAtMost
+	// ProtectionQualityRingBearer is "protection from Ring-bearers"
+	// (Lord of the Nazgul): the source matches while it is its
+	// controller's Ring-bearer (CR 701.54e). A designation, not a
+	// characteristic, so it rides the source snapshot's
+	// SourceRingBearer rather than Types or Subtypes. #2145.
+	ProtectionQualityRingBearer
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -136,6 +142,8 @@ func (k ProtectionQualityKind) String() string {
 		return "player"
 	case ProtectionQualityManaValueAtMost:
 		return "mana_value_at_most"
+	case ProtectionQualityRingBearer:
+		return "ring_bearer"
 	}
 	return ""
 }
@@ -213,6 +221,10 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	if n, ok := parseManaValueAtMost(lower); ok {
 		return ProtectionQuality{Kind: ProtectionQualityManaValueAtMost, Value: strconv.Itoa(n), Printed: printed}, true
 	}
+	// A designation as a quality (CR 701.54b). Plural, as printed.
+	if lower == protectionRingBearers {
+		return ProtectionQuality{Kind: ProtectionQualityRingBearer, Printed: printed}, true
+	}
 	if col, ok := protectionColors[lower]; ok {
 		return ProtectionQuality{Kind: ProtectionQualityColor, Value: col, Printed: printed}, true
 	}
@@ -231,6 +243,10 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	}
 	return ProtectionQuality{}, false
 }
+
+// protectionRingBearers is the printed quality of "protection from
+// Ring-bearers", lowercased for the parser's comparison. #2145.
+const protectionRingBearers = "ring-bearers"
 
 // parseManaValueAtMost reads "mana value N or less" (lowercase, whole
 // quality) and returns N. "or greater" and "N or more" are other
@@ -475,6 +491,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		// source whose value the engine could not price is not "0".
 		n, err := strconv.Atoi(q.Value)
 		return err == nil && src.SourceManaValueKnown && src.SourceManaValue <= n
+	case ProtectionQualityRingBearer:
+		return src.SourceRingBearer
 	case ProtectionQualityColor:
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:
@@ -564,8 +582,9 @@ func SourceCharacteristicsX(c *Card, x int) *Characteristic {
 	return ch
 }
 
-// stampSourceFacts writes the fact about a protection SOURCE that is
-// not a characteristic a layer computes: its mana value (CR 202.3). x is
+// stampSourceFacts writes the two facts about a protection SOURCE that
+// are not characteristics a layer computes: its mana value (CR 202.3)
+// and whether it is its controller's Ring-bearer (CR 701.54e). x is
 // the announced X of a spell on the stack, zero everywhere else. A
 // face-down permanent has no mana cost (CR 708.2a), so it is 0.
 func stampSourceFacts(ch *Characteristic, c *Card, x int) {
@@ -576,4 +595,5 @@ func stampSourceFacts(ch *Characteristic, c *Card, x int) {
 	} else {
 		ch.SourceManaValue, ch.SourceManaValueKnown = 0, false
 	}
+	ch.SourceRingBearer = IsRingBearerOf(*c, ch.Controller)
 }
