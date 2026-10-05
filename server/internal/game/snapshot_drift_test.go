@@ -747,6 +747,9 @@ var delayedTriggerFields = plan(
 	"Until", carried, "",
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
+	"Repeats", carried, "", // #2169, CR 603.7b
+	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
+	"ManaAdds", carried, "",
 )
 
 var pendingChoiceFields = plan(
