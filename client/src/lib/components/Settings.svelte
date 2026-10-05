@@ -37,6 +37,7 @@
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
+  import { L } from "../labels";
 
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
@@ -351,7 +352,7 @@
       </header>
 
       <div class="body">
-        <nav aria-label="settings sections">
+        <nav aria-label={L.settingsSections}>
           <button class:active={activeTab === "audio"} onclick={() => (activeTab = "audio")}
             >Audio</button
           >

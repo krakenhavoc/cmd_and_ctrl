@@ -48,6 +48,8 @@
   import { DiceQueue, useDiceQueue } from "../../diceQueue.svelte";
   import { latestOpeningDice } from "../../openingRoll";
 
+  const LOG_SELECTOR = "aside.log-panel";
+
   interface Props {
     view: GameView;
     boardEl: HTMLElement | null;
@@ -202,6 +204,47 @@
     );
   }
 
+  // What the dice must stay off (#2260): the open game log drawer, which
+  // sits over the table, and the seats' text read-outs. Board pixels.
+  function avoidRects(board: HTMLElement, boardRect: DOMRect): Rect[] {
+    const doc = board.ownerDocument;
+    const out: Rect[] = [];
+    for (const el of doc.querySelectorAll(LOG_SELECTOR)) {
+      const r = relRect(boardRect, el);
+      if (r.width > 0 && r.height > 0) out.push(r);
+    }
+    for (const el of board.querySelectorAll("[data-dice-avoid]")) {
+      const r = relRect(boardRect, el);
+      if (r.width > 0 && r.height > 0) out.push(r);
+    }
+    return out;
+  }
+
+  // The drawer opens and closes without resizing the board, so watch for
+  // it. The callback only bumps `resized` when the drawer's rectangle
+  // actually changed.
+  $effect(() => {
+    const el = boardEl;
+    if (!el || typeof MutationObserver === "undefined") return;
+    const doc = el.ownerDocument;
+    const sig = () =>
+      [...doc.querySelectorAll(LOG_SELECTOR)]
+        .map((e) => {
+          const r = e.getBoundingClientRect();
+          return `${r.left},${r.top},${r.width},${r.height}`;
+        })
+        .join("|");
+    let last = sig();
+    const mo = new MutationObserver(() => {
+      const now = sig();
+      if (now === last) return;
+      last = now;
+      resized++;
+    });
+    mo.observe(doc.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  });
+
   function stripRect(board: HTMLElement, boardRect: DOMRect): Rect | null {
     const strip = attentionStrip(board);
     if (!strip) return null;
@@ -222,6 +265,7 @@
       }
       const boardRect = board.getBoundingClientRect();
       const size = { width: boardRect.width, height: boardRect.height };
+      const avoid = avoidRects(board, boardRect);
       const next = new Map<string, DicePlacement>();
       for (const p of drawn) {
         const seatID = view.seats[p.roll.seat]?.id;
@@ -230,7 +274,7 @@
         if (avatar && !onBoard(boardRect, avatar)) avatar = null;
         next.set(
           p.roll.key,
-          placeDice(size, avatar, diceGroupSize(p.roll), stripRect(board, boardRect)),
+          placeDice(size, avatar, diceGroupSize(p.roll), stripRect(board, boardRect), avoid),
         );
       }
       placements = next;

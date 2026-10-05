@@ -215,8 +215,13 @@ export function cancelAction(onPress: () => void, label: string = L.cancel): Doc
   return { id: "cancel", label, keyShortcuts: "Escape", cap: "Esc", onPress };
 }
 
-// The widest a sheet may ask to be (ADR 0111 §3).
+// The widest a sheet may ask to be (ADR 0111 §3): 720px, which every
+// picker keeps to.
 export const SHEET_MAX_WIDTH = 720;
+// The one exception (ADR 0111 amendment, 2026-10-05, #2200): the opening
+// hand asks for room for seven full-size cards in a row. The sheet is
+// still capped at the screen less 24px in CSS.
+export const SHEET_HAND_WIDTH = 1500;
 export const SHEET_DEFAULT_WIDTH = 560;
 
 // sheetKey is what a minimised sheet is remembered by.
@@ -225,10 +230,11 @@ export function sheetKey(request: DockRequest | null | undefined): string | null
   return request.sheet.key ?? request.label;
 }
 
-// sheetWidth is the width a sheet asks for, capped at the ADR's 720px.
+// sheetWidth is the width a sheet asks for, capped at the ADR's 720px
+// (SHEET_HAND_WIDTH for the opening hand, the one sheet that asks for it).
 export function sheetWidth(request: DockRequest | null | undefined): number {
   const w = request?.sheet?.width ?? SHEET_DEFAULT_WIDTH;
-  return Math.max(0, Math.min(SHEET_MAX_WIDTH, w));
+  return Math.max(0, Math.min(w === SHEET_HAND_WIDTH ? SHEET_HAND_WIDTH : SHEET_MAX_WIDTH, w));
 }
 
 // sheetMaxHeight is the tallest a sheet may be over a play area

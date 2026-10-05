@@ -182,6 +182,7 @@ var tokenTable = map[string]game.Card{
 	"3/2 red and white Spirit":                      {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 2, Colors: []string{"R", "W"}},
 	"1/1 colorless Shapeshifter with changeling":    {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 1, Toughness: 1, Keywords: []string{"changeling"}},
 	"3/3 green Centaur":                             {Name: "Centaur", TypeLine: "Token Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"4/4 green Rhino with trample":                  {Name: "Rhino", TypeLine: "Token Creature — Rhino", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"3/3 green Frog Lizard":                         {Name: "Frog Lizard", TypeLine: "Token Creature — Frog Lizard", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 colorless Golem artifact":                  {Name: "Golem", TypeLine: "Token Enchantment Artifact Creature — Golem", Power: 3, Toughness: 3},
 	"3/3 colorless Phyrexian Wurm artifact":         {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 3, Toughness: 3},
