@@ -129,7 +129,7 @@ jobs:
       AISEAT_GAME_TESTS: "1"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.TESTED_REF }}
 
@@ -140,7 +140,7 @@ jobs:
       # read-only module cache fails on every run (see ci-cd.yml's
       # `Set up Go` comment for the exact tar error this avoids).
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -194,7 +194,7 @@ jobs:
 
       - name: Upload bot replays
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: bot-replays
           path: bot-replays/
@@ -226,7 +226,7 @@ jobs:
       AISEAT_CATALOG_REPORT: ${{ github.workspace }}/catalog-report/per-card.json
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.TESTED_REF }}
 
@@ -234,7 +234,7 @@ jobs:
       # actions/cache untarring over Go's read-only module cache fails
       # (see ci-cd.yml's `Set up Go` comment for the exact error).
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: false
@@ -244,7 +244,7 @@ jobs:
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Scryfall bulk data
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: data/scryfall
           key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
@@ -271,7 +271,7 @@ jobs:
       # cards nothing reached, which is a list you want on a green run.
       - name: Upload catalog report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: catalog-report
           path: catalog-report/
@@ -352,7 +352,7 @@ jobs:
       SOAK_LOGS_2P: ${{ github.workspace }}/bot-soak-logs-2p
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.TESTED_REF }}
 
@@ -367,7 +367,7 @@ jobs:
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -541,7 +541,7 @@ jobs:
       # and `AISEAT_DECISION_LOG_MODE=escalated`.
       - name: Upload soak decision logs and stall dumps
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: bot-soak-logs
           path: bot-soak-logs/
@@ -553,7 +553,7 @@ jobs:
       # list — which is where the morning after a red night starts.
       - name: Upload two-seat soak decision logs and stall dumps
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: bot-soak-logs-2p
           path: bot-soak-logs-2p/
@@ -662,7 +662,7 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.TESTED_REF }}
 
@@ -677,7 +677,7 @@ jobs:
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: false
@@ -689,7 +689,7 @@ jobs:
       # hard error ("Caching for 'false' is not supported"). Omitting
       # the input is how you turn it off.
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -703,7 +703,7 @@ jobs:
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Scryfall bulk data
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: data/scryfall
           key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
@@ -779,7 +779,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: tests-e2e/playwright-report/
