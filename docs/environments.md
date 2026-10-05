@@ -457,6 +457,8 @@ Each host runs [Grafana Alloy](https://grafana.com/docs/alloy/), which
 pushes metrics and logs to the monitoring VM in HomeLab
 ([ADR 0123](decisions/0123-monitoring-metrics-logs-dashboards-and-alerts.md)
 §1, §4, §5, §10). Alloy pushes, so the hosts open no new inbound port.
+The dashboards, the alerts and what to do when each fires are in
+[monitoring.md](monitoring.md).
 
 | Piece | Where |
 |---|---|

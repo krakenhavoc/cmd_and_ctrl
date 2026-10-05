@@ -261,8 +261,6 @@ func main() {
 	// set but too short fails the boot. There is no default key.
 	authenticator := newAuthenticator(log, cfg)
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
-	// ADR 0123 §3: how far a deploy now would rewind the live tables.
-	metrics.Registry.MustRegister(metrics.NewRestorePointCollector(mgr))
 	// With a database, games / seats / invites are rows (ADR 0051
 	// decision 4, S34 sub-PR 3) and RestoreFromDisk imports any
 	// lobby/*.json the previous binary left. Without one, the lobby
@@ -339,9 +337,10 @@ func main() {
 	// by the same person's next one) closes its sockets through the
 	// hub, as an operator delete does (ADR 0076 §2.2).
 	l.SetEvictor(hub)
-	// The games, players and WebSocket gauges (ADR 0123 §3), read from
-	// the lobby, the hub and the database at scrape time.
-	registerGameMetrics(metrics.Registry, log, l, hub, database, userStore)
+	// The state gauges (ADR 0123 §3): restore points, games, players and
+	// WebSocket, read from the rooms, the lobby, the hub and the
+	// database at scrape time.
+	registerGameMetrics(metrics.Registry, log, mgr, l, hub, database, userStore)
 	// S31: bot seats. The manager starts a runner per bot seat when a
 	// game starts (and when one is restored below) and stops them
 	// when the game is deleted or the process exits; runners

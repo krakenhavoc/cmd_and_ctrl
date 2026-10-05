@@ -16,9 +16,11 @@
 //   - every event metric in eventMetrics.
 //
 // The state collectors are not in it: they read live objects, so
-// main.go registers them on Registry once it has built them. Today
-// that is tables.go's (the lobby and the hub), and, only when there is
-// a database, users.go's and db.go's (cmd/server/metrics_state.go).
+// main.go registers them on Registry once it has built them, all in
+// registerGameMetrics (cmd/server/metrics_state.go). Today that is
+// engine.go's restore-point collector (the rooms), tables.go's (the
+// lobby and the hub), and, only when there is a database, users.go's
+// and db.go's. Collectors lists everything else.
 //
 // The server serves Registry on its own loopback-only listener
 // (CMDCTRL_METRICS_ADDR, listen.go), never on the public mux.
@@ -38,6 +40,11 @@
 // state it reads, because this package may not import lobby or ws
 // (they import it). main.go constructs it with the live RoomManager,
 // Hub, Lobby or database and calls Registry.MustRegister.
+//
+// The dashboards and alert rules in deploy/monitoring/ query these
+// names. TestMonitoringConfigNamesRegisteredMetrics (cmd/server) fails
+// on a name they use that the server does not register, so a rename
+// here updates them in the same change (docs/monitoring.md).
 //
 // # Labels are closed sets
 //
