@@ -380,6 +380,14 @@ describe("helpers", () => {
       aliveAt: 1,
     };
     expect(m.parseRecord(JSON.stringify(good))).toEqual(good);
+    // #2336: a player in the focus layout gets it back after the tutorial.
+    const focus = { ...good, saved: { ...MY_SETTINGS, tableLayout: "focus" } };
+    expect(m.parseRecord(JSON.stringify(focus))).toEqual(focus);
+    expect(
+      m.parseRecord(
+        JSON.stringify({ ...good, saved: { ...MY_SETTINGS, tableLayout: "sideways" } }),
+      ),
+    ).toBeNull();
     expect(
       m.parseRecord(JSON.stringify({ ...good, saved: { ...MY_SETTINGS, cardSize: "huge" } })),
     ).toBeNull();
