@@ -1,6 +1,8 @@
 package lobby
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -14,6 +16,9 @@ import (
 type LiveTable struct {
 	ID   uuid.UUID
 	Name string
+	// CreatedAt is when the table was created: the only time a
+	// practice table, which has no row, can be sorted or shown by.
+	CreatedAt time.Time
 	// State is the lobby's cached lifecycle state, as MetricsTables
 	// reads it: "lobby", "active" or "ended".
 	State    string
@@ -55,12 +60,13 @@ func (l *Lobby) LiveTables() []LiveTable {
 	out := make([]LiveTable, 0, len(l.games))
 	for _, e := range l.games {
 		t := LiveTable{
-			ID:       e.meta.ID,
-			Name:     e.meta.Name,
-			State:    e.meta.State,
-			Archived: e.meta.Archived(),
-			Practice: e.practice,
-			Seats:    make([]LiveSeat, 0, len(e.meta.Players)),
+			ID:        e.meta.ID,
+			Name:      e.meta.Name,
+			CreatedAt: e.meta.CreatedAt,
+			State:     e.meta.State,
+			Archived:  e.meta.Archived(),
+			Practice:  e.practice,
+			Seats:     make([]LiveSeat, 0, len(e.meta.Players)),
 		}
 		for _, s := range e.meta.Players {
 			seat := LiveSeat{
