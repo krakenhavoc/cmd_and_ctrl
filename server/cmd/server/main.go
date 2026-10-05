@@ -160,6 +160,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -443,46 +444,6 @@ func main() {
 		log.Info("seeded demo game", "id", g.ID.String())
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
-	mux.HandleFunc("GET /ws", hub.ServeWS)
-	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
-	// The card catalog: a browsable list of every card the engine
-	// actually automates, with each entry's declared completeness.
-	//
-	// Behind auth.Middleware, like /cards/. It was built unauthenticated
-	// as a public showcase, and it is gated because AGENTS.md §1 and §8
-	// describe this project as private and personal-use: serving card
-	// art to anonymous visitors is a different posture from the one the
-	// repo states, and the page is no less useful to a signed-in
-	// player. Not behind requireDev — it ships in production, it is
-	// simply not public.
-	//
-	// catalog.Handler's own doc explains why its image route is scoped
-	// to registered cards rather than proxying all ~35k Scryfall UUIDs;
-	// that scoping still matters, since a session is cheap to obtain.
-	// Both patterns are more specific than "/", so the lobby catch-all
-	// below does not shadow them.
-	mux.Handle("GET /catalog", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
-	mux.Handle("/catalog/", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
-	// The engine roadmap: what the engine supports, keyword by keyword
-	// and seam by seam (ADR 0092).
-	//
-	// Deliberately NOT behind auth.Middleware, unlike /catalog above.
-	// ADR 0092 Decision 1: the roadmap carries card NAMES and caveat
-	// sentences this repo wrote, and never card art, an image URL, a
-	// Scryfall printing ID or oracle text, so it does not reopen the
-	// question the catalog's gate answers. roadmap's handler tests fail
-	// if any of those keys reaches the body. If you want to add one,
-	// it belongs on the catalog, not here.
-	//
-	// Mounted on the bare path (every method) so the handler's own
-	// "GET /roadmap" pattern answers a POST with 405 rather than the
-	// lobby catch-all below answering it.
-	mux.Handle("/roadmap", roadmap.Handler())
 	discordCfg := discord.ConfigFromEnv()
 	if discordCfg.Enabled() {
 		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)
@@ -582,7 +543,7 @@ func main() {
 		log.Info("bug report attachments disabled — needs CMDCTRL_DATA_DIR and CMDCTRL_PUBLIC_BASE_URL; text reports still work")
 	}
 
-	mux.Handle("/", lobby.Handler(lobby.Config{
+	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		Auth:        authenticator,
 		AdminToken:  cfg.AdminToken,
@@ -620,17 +581,19 @@ func main() {
 		// Mountains stand-in sub-PR 4 shipped while the real decks
 		// were still being built. See botdecks.go.
 		BotDecks: botDeckCatalog{},
-	}))
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           mux,
+		Handler:           newPublicHandler(hub, authenticator, cardIdx, imgCache, lobby.Handler(lobbyCfg)),
 		ReadHeaderTimeout: 5 * time.Second,
 		// Reap idle keep-alive connections so abandoned sockets don't
 		// pin fds indefinitely. NO WriteTimeout on purpose: it would
 		// sever long-lived WebSockets and replay streams mid-flight.
 		IdleTimeout: 120 * time.Second,
 	}
+
+	metricsSrv := startMetrics(log, cfg.MetricsAddr)
 
 	go func() {
 		log.Info("server listening", "addr", cfg.Addr, "data_dir", cfg.DataDir)
@@ -654,6 +617,11 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("http shutdown", "err", err)
 	}
+	if metricsSrv != nil {
+		if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
+			log.Error("metrics listener shutdown", "err", err)
+		}
+	}
 
 	// Log what this restart costs each live table, before the hub
 	// closes any of them (ADR 0044 decision 1, #524). This is a read
@@ -675,6 +643,97 @@ func main() {
 		}
 	}
 	log.Info("server stopped")
+}
+
+// startMetrics serves metrics.Registry on addr, its own loopback-only
+// listener (ADR 0123 §2), and returns the server to shut down. Empty
+// addr is off, and returns nil.
+//
+// loadConfig has already refused a non-loopback address. A bound
+// address that turns out not to be loopback (a "localhost" that
+// resolves elsewhere) is refused the same way: the boot fails. Any
+// other failure to bind (the port is taken) is logged and the game
+// serves without metrics, because the game must not depend on its
+// monitor; the monitor sees the gap as ServerNotReporting.
+func startMetrics(log *slog.Logger, addr string) *http.Server {
+	if addr == "" {
+		log.Info("metrics listener off; set " + metrics.AddrEnv + " to a loopback address to enable")
+		return nil
+	}
+	ln, err := metrics.Listen(addr)
+	if errors.Is(err, metrics.ErrNotLoopback) {
+		log.Error("metrics listener refused", "var", metrics.AddrEnv, "err", err)
+		os.Exit(1)
+	}
+	if err != nil {
+		log.Error("metrics listener could not bind; serving without metrics", "var", metrics.AddrEnv, "addr", addr, "err", err)
+		return nil
+	}
+	srv := metrics.NewServer(metrics.Registry, log)
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("metrics listener failed", "err", err)
+		}
+	}()
+	log.Info("metrics listening", "addr", ln.Addr().String(), "var", metrics.AddrEnv)
+	return srv
+}
+
+// wsRoute is the WebSocket's pattern: counted, but not timed, since its
+// duration is a session's length (ADR 0123 §3).
+const wsRoute = "GET /ws"
+
+// newPublicHandler is the public mux on :8080, wrapped in the HTTP
+// metrics (ADR 0123 §3): every route here and in the lobby, card,
+// catalog and roadmap muxes is labelled with its own pattern. /metrics
+// is NOT here and must never be: it is served on its own loopback-only
+// listener (metrics.NewServer), so no change to these routes or to
+// Caddy's @api matcher can expose it.
+func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *cards.Index, imgCache *cards.ImageCache, lobbyHandler http.Handler) http.Handler {
+	mux := metrics.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	mux.HandleFunc(wsRoute, hub.ServeWS)
+	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
+	// The card catalog: a browsable list of every card the engine
+	// actually automates, with each entry's declared completeness.
+	//
+	// Behind auth.Middleware, like /cards/. It was built unauthenticated
+	// as a public showcase, and it is gated because AGENTS.md §1 and §8
+	// describe this project as private and personal-use: serving card
+	// art to anonymous visitors is a different posture from the one the
+	// repo states, and the page is no less useful to a signed-in
+	// player. Not behind requireDev — it ships in production, it is
+	// simply not public.
+	//
+	// catalog.Handler's own doc explains why its image route is scoped
+	// to registered cards rather than proxying all ~35k Scryfall UUIDs;
+	// that scoping still matters, since a session is cheap to obtain.
+	// Both patterns are more specific than "/", so the lobby catch-all
+	// below does not shadow them.
+	mux.Handle("GET /catalog", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
+	mux.Handle("/catalog/", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
+	// The engine roadmap: what the engine supports, keyword by keyword
+	// and seam by seam (ADR 0092).
+	//
+	// Deliberately NOT behind auth.Middleware, unlike /catalog above.
+	// ADR 0092 Decision 1: the roadmap carries card NAMES and caveat
+	// sentences this repo wrote, and never card art, an image URL, a
+	// Scryfall printing ID or oracle text, so it does not reopen the
+	// question the catalog's gate answers. roadmap's handler tests fail
+	// if any of those keys reaches the body. If you want to add one,
+	// it belongs on the catalog, not here.
+	//
+	// Mounted on the bare path (every method) so the handler's own
+	// "GET /roadmap" pattern answers a POST with 405 rather than the
+	// lobby catch-all below answering it.
+	mux.Handle("/roadmap", roadmap.Handler())
+	// The lobby: everything not routed above. Its own mux records its
+	// own patterns, so a lobby route is labelled as itself, not "/".
+	mux.Handle("/", lobbyHandler)
+	return metrics.InstrumentHTTP(mux, wsRoute)
 }
 
 // config is the minimal set of env-derived values main() needs. Kept
@@ -743,6 +802,9 @@ type config struct {
 	// Features are the dev-only capabilities this deployment exposes,
 	// derived entirely from Env. Always zero in production.
 	Features appenv.Features
+	// MetricsAddr is where /metrics is served (CMDCTRL_METRICS_ADDR,
+	// ADR 0123 §2): its own listener, loopback only. Empty is off.
+	MetricsAddr string
 }
 
 // loadConfig pulls the server's env vars, applies defaults, and
@@ -834,6 +896,19 @@ func loadConfig(log *slog.Logger) config {
 		log.Warn("CMDCTRL_BOT_DECISION_LOG_MODE is not a mode this build knows, and is being ignored because CMDCTRL_BOT_DECISION_LOG is unset (the bot decision log is off)",
 			"value", rawMode, "err", merr)
 		c.BotDecisionLogMode = decisionlog.ModeEscalated
+	}
+
+	// CMDCTRL_METRICS_ADDR (ADR 0123 §2): a non-loopback address fails
+	// the boot. The only reader is the monitoring agent on this host,
+	// and a metrics page reachable from outside tells anyone how many
+	// tables and players there are.
+	if raw := strings.TrimSpace(os.Getenv(metrics.AddrEnv)); raw != "" {
+		if err := metrics.CheckAddr(raw); err != nil {
+			log.Error("metrics listener refused: "+metrics.AddrEnv+" must be a loopback address such as 127.0.0.1:9464",
+				"var", metrics.AddrEnv, "value", raw, "err", err)
+			os.Exit(1)
+		}
+		c.MetricsAddr = raw
 	}
 
 	if raw := os.Getenv("CMDCTRL_SESSION_TTL"); raw != "" {

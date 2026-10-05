@@ -28,6 +28,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -314,7 +315,7 @@ func Handler(c Config) http.Handler {
 	if c.IdentityTTL == 0 {
 		c.IdentityTTL = identityTTL
 	}
-	mux := http.NewServeMux()
+	mux := metrics.NewServeMux()
 
 	// Dev / e2e knob: with CMDCTRL_DEV_RELAX_RATE_LIMITS set (truthy),
 	// every limiter constructed here becomes effectively unlimited so
