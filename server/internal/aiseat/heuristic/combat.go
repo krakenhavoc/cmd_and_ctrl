@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
@@ -70,6 +71,12 @@ func protectedFrom(defender, source *protocol.CardView) bool {
 			return true
 		case "color":
 			if slices.Contains(source.Colors, p.Value) {
+				return true
+			}
+		case "mana_value_at_most":
+			// #2181: the bound against the source's printed cost. A
+			// minimal edit; the engine owns the rule (CR 202.3).
+			if n, err := strconv.Atoi(p.Value); err == nil && manaValue(source.ManaCost, 0) <= n {
 				return true
 			}
 		case "card_type", "subtype":

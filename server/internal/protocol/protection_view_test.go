@@ -61,6 +61,34 @@ func TestProtectionIsProjectedParsed(t *testing.T) {
 	}
 }
 
+// #2181: the mana value quality reaches the wire with its own kind
+// token, and the bound is the value.
+func TestManaValueProtectionIsProjected(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+
+	titan := game.NewCard("Reaver Titan", me.ID)
+	titan.TypeLine = "Artifact — Vehicle"
+	titan.Keywords = []string{"protection from mana value 3 or less"}
+	titan.KnownBy = map[uuid.UUID]bool{me.ID: true}
+	g.Battlefield.PushTop(titan)
+
+	view := ViewOfGameFor(g, me.ID.String())
+	for _, c := range view.Battlefield.Cards {
+		if c.InstanceID != titan.InstanceID.String() {
+			continue
+		}
+		if len(c.Protection) != 1 {
+			t.Fatalf("protection = %+v, want one", c.Protection)
+		}
+		if p := c.Protection[0]; p.Kind != "mana_value_at_most" || p.Value != "3" || p.Printed != "mana value 3 or less" {
+			t.Errorf("mana value quality = %+v", p)
+		}
+		return
+	}
+	t.Fatal("the card is not in the view")
+}
+
 // A quality the closed grammar refuses is projected as nothing, so
 // the badge never promises a rule the engine does not run (ADR 0037).
 func TestAnUnparseableProtectionIsNotProjected(t *testing.T) {

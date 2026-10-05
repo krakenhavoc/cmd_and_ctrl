@@ -1089,7 +1089,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// CR 702.16b: the source of a SPELL is the spell itself, so the
 	// quality protection is tested against is the card's own colour
 	// and type — not its caster's (#662).
-	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, &card), steps, params.Targets); err != nil {
+	// CR 202.3e: the X announced with the cast counts in the spell's mana
+	// value, which "protection from mana value N or less" reads (#2181).
+	castSrc := SourceObject(playerID, &card)
+	castSrc.X = params.XValue
+	if err := g.validateAnnouncedTargetsLocked(castSrc, steps, params.Targets); err != nil {
 		slog.Warn("cast_spell rejected: illegal target",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

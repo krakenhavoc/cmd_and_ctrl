@@ -137,6 +137,9 @@
   function protectionShort(p: ProtectionView): string {
     if (p.kind === "everything") return "ALL";
     if (p.kind === "player") return "PLR";
+    // "mana value 3 or less" would abbreviate to MAN; the bound is the
+    // information (#2181).
+    if (p.kind === "mana_value_at_most") return `MV≤${p.value ?? ""}`;
     return fallbackShort(p.printed);
   }
 </script>

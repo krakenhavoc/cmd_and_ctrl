@@ -493,7 +493,8 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 	if !ok {
 		return nil
 	}
-	return SourceCharacteristics(&c)
+	// CR 202.3e: a spell on the stack counts its announced X.
+	return SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
 }
 
 // damageTailFromFrame builds a combat damage tail from a queued

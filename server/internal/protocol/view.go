@@ -5398,7 +5398,8 @@ type ProtectionView struct {
 	Printed string `json:"printed"`
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
-	// "everything" or "player". Stable tokens; see
+	// "everything", "player" or "mana_value_at_most" (Value is the
+	// bound N, #2181). Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour

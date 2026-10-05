@@ -3376,8 +3376,8 @@ export interface ProtectionView {
   // "artifacts", "everything". Badge tooltip text.
   printed: string;
   // Which characteristic of a source the quality is compared
-  // against: "color", "card_type", "subtype", "everything" or
-  // "player".
+  // against: "color", "card_type", "subtype", "everything",
+  // "player" or "mana_value_at_most" (value = the bound N, #2181).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
