@@ -351,19 +351,32 @@ func chatLine(p protocol.ChatPayload) string {
 // never cut: a cut list would be a partial list again (§6). Only the
 // card header and one short line per alternative are written.
 func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
+	return renderMovesMatching(v, w, onlySource, "")
+}
+
+// renderMovesMatching is renderMoves limited to the moves whose label
+// holds match (case-insensitive; "" keeps every move). Numbers are the
+// window's own, so a filtered line is answered with the same index it
+// would have had in the whole list (#2277).
+func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match string) string {
 	nw := newNameWrapper(v)
+	match = strings.ToLower(strings.TrimSpace(match))
 	type group struct {
 		source string
 		idx    []int
 	}
 	var groups []*group
 	bySource := map[string]*group{}
+	shown := 0
 	for i, m := range w.moves {
 		src := ""
 		if m.Source != uuid.Nil {
 			src = m.Source.String()
 		}
 		if onlySource != "" && src != onlySource {
+			continue
+		}
+		if match != "" && !strings.Contains(strings.ToLower(m.Label), match) {
 			continue
 		}
 		g, ok := bySource[src]
@@ -373,11 +386,15 @@ func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 			groups = append(groups, g)
 		}
 		g.idx = append(g.idx, i)
+		shown++
 	}
 	var b strings.Builder
-	if onlySource == "" {
+	switch {
+	case match != "":
+		fmt.Fprintf(&b, "MOVES MATCHING %q (%d of %d) — answer with act(window: %q, move: <number>)\n", match, shown, len(w.moves), w.token)
+	case onlySource == "":
 		fmt.Fprintf(&b, "MOVES (%d) — answer with act(window: %q, move: <number>)\n", len(w.moves), w.token)
-	} else {
+	default:
 		fmt.Fprintf(&b, "MOVES FOR %s — answer with act(window: %q, move: <number>)\n", onlySource, w.token)
 	}
 	if w.partial {
@@ -390,20 +407,29 @@ func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 	for _, g := range groups {
 		b.WriteString(groupHeader(v, g.source, cuts[g.source]))
 		for _, i := range g.idx {
-			b.WriteString(moveLine(i, w.moves[i], nw))
+			b.WriteString(moveLine(i, w.moves[i], v, w.me, nw))
 		}
 	}
-	// Cuts for a card that has no move in the list at all, and for a
-	// prompt.
+	// A cut for a prompt is always named by its own id, whether or not a
+	// card raised it: a search's cut names Demonic Tutor as its source,
+	// and a hint that only said "expand the card" left the agent no id to
+	// ask for (#2277). A cut for a card with no move in the list at all
+	// is named by the card.
 	for _, c := range w.cuts {
-		if c.Source != "" && bySource[c.Source] == nil && (onlySource == "" || onlySource == c.Source) {
+		if onlySource != "" && c.Source != onlySource {
+			continue
+		}
+		switch {
+		case c.Choice != "" && match == "" && (c.Source == "" || bySource[c.Source] == nil):
+			fmt.Fprintf(&b, "choice %s: %s answers not listed (cap %s) — legal_moves(choice: %q) expands it\n",
+				c.Choice, omitted(c), c.Cap, c.Choice)
+		case c.Choice == "" && c.Source != "" && bySource[c.Source] == nil && match == "":
 			fmt.Fprintf(&b, "%s: %s moves not listed (cap %s) — legal_moves(card: %q) expands it\n",
 				cardRef(v, c.Source), omitted(c), c.Cap, c.Source)
 		}
-		if c.Source == "" && c.Choice != "" && onlySource == "" {
-			fmt.Fprintf(&b, "choice %s: %s answers not listed (cap %s) — legal_moves(choice: %q) expands it\n",
-				c.Choice, omitted(c), c.Cap, c.Choice)
-		}
+	}
+	if match != "" && shown == 0 {
+		b.WriteString("No move's label contains that text. The list may also be cut: see the \"not listed\" lines in the unfiltered list.\n")
 	}
 	return b.String()
 }
@@ -434,6 +460,10 @@ func groupHeader(v *protocol.GameView, source string, cuts []protocol.LegalCutVi
 	}
 	h := cardRef(v, source)
 	for _, c := range cuts {
+		if c.Choice != "" {
+			h += fmt.Sprintf(" [%s answers not listed, cap %s: legal_moves(choice: %q) expands it]", omitted(c), c.Cap, c.Choice)
+			continue
+		}
 		h += fmt.Sprintf(" [%s more not listed, cap %s: legal_moves(card: %q) expands it]", omitted(c), c.Cap, source)
 	}
 	return h + ":\n"
@@ -457,8 +487,11 @@ func cardRef(v *protocol.GameView, id string) string {
 
 // moveLine is one alternative: its number, its label, and what the label
 // does not say (an extra cost, an idle hint, an open value, always-legal).
-func moveLine(i int, m legal.Move, nw nameWrapper) string {
+func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapper) string {
 	var notes []string
+	if t := targetNote(v, me, m); t != "" {
+		notes = append(notes, t)
+	}
 	if m.Cost != nil {
 		if m.Cost.Life > 0 {
 			notes = append(notes, fmt.Sprintf("costs %d life", m.Cost.Life))

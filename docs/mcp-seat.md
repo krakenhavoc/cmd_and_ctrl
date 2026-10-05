@@ -189,9 +189,9 @@ good in the window it was shown in.
 | `set_deck` | `deck`, as above | Installs a deck before the game starts. An unknown id answers with the ids the server has. |
 | `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, or `my_turn_or_stack`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
 | `get_state` | `detail`: `compact` (default) or `full` | The board as the seat sees it. |
-| `legal_moves` | `card` (an instance id) or `choice` (a pending choice id, or `cleanup_discard`), both optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). A one-card request with no moves answers an empty list. |
+| `legal_moves` | `card` (an instance id) or `choice` (a pending choice id, or `cleanup_discard`), `match` (text), `targets_for` (a move number), all optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). A one-card request with no moves answers an empty list. `match` keeps only the moves whose label contains the text (case-insensitive), numbered as in the full list: `legal_moves(choice: "<id>", match: "Black Lotus")` finds one card in a search. `targets_for: N` lists move N's target clauses, see [Targets](#targets). |
 | `card` | `ref`: an instance id or a card name on the table | Name, type, cost, power/toughness and oracle text, with a note when the engine does not run the card's text. Cached per id. |
-| `act` | `window` (required), `move` (required), `value` (only for a move marked open) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
+| `act` | `window` (required), `move` (required), `value` (only for a move marked open), `targets` (only for a move that targets) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
 | `say` | `text` (1 to 500 characters) | One line of table chat. `sent` or `rate_limited` with when to retry. |
 | `concede` | `confirm: true` | Concedes. Has its own tool because the move list never offers it. |
 | `leave` | none | Disconnects and deletes the saved session. Refused while the game is live and the seat is still in it: concede first. |
@@ -212,6 +212,14 @@ What to know about how they behave:
   the full list before Layer A or the model sees anything. A card the
   enumerator still cut says so, with how many ("at least N" where the
   count is a floor).
+- **A capped search is fetched in full.** When the decision's list was
+  cut and the cut is a "search your library" prompt (Demonic Tutor), the
+  binary asks for that prompt's whole list itself, up to three searches
+  a window. Other capped prompts stay capped, and every cut names the
+  exact call that expands it, whether or not a card raised the prompt:
+  `choice <id>: N answers not listed … legal_moves(choice: "<id>")
+  expands it`. `legal_moves` with `choice` and `match` finds one card by
+  name in a search.
 - **A move is checked before it is sent.** A stale `window` is refused
   locally. After three rejections in one window, only the window's
   always-legal move is accepted, and the binary never picks it for the
@@ -238,6 +246,36 @@ What to know about how they behave:
 - **A server that predates the badge (#2249) refuses the join** with a
   400 about an unknown `agent` field. The binary says so and does not
   retry without the field.
+
+### Targets
+
+A move that targets says who or what, by id and never by display name
+(two seats can share one): `targets: you (seat 0)`, `targets: opponent
+«Bob» (seat 2)`, `targets: Llanowar Elves [<id>] (battlefield,
+controlled by opponent «Bob» (seat 2))`.
+
+The enumerator offers a multi-target spell as combinations, capped, so
+the set the agent wants may not be among them. Instead the agent picks
+per clause, from the board:
+
+1. `legal_moves(targets_for: N)` lists move N's target clauses: each
+   clause's wording, how many it takes ("up to 4", "any number", "X"),
+   and every candidate with its id, zone and controller. The candidates
+   are the server's own legal set for the card, ability, mode or prompt
+   as the seat's view states it. A move whose clause the view does not
+   state gets the targets seen across this window's moves instead, and
+   the listing says that list may be capped.
+2. `act(window, move: N, targets: [{slot: 0, ids: ["<id>", …]}])`. Move
+   N chooses the card and its costs; the picks replace its targets.
+   `slot` is the clause (default 0); `mode` is the occurrence for a
+   modal move that chose a mode twice.
+
+Picks are checked before sending against the listed candidates and the
+clause's bounds, with a reason, and then the server checks them as it
+checks any targeting (CR 601.2c). A move that divides an amount among
+its targets cannot be re-targeted: choose one of the listed moves. No
+wire change: the move's params already carry `targets`, and the view
+already carries each clause's legal set.
 
 ## The badge
 
