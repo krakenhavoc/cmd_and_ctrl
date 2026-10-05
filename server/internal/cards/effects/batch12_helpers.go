@@ -188,14 +188,28 @@ func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell u
 // on each of five creatures is five placements and five triggers,
 // which is the printed outcome.
 func b12CountersPlacedByYou(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
+	return b12CountersPlacedBy(ev, source.Controller, g, true)
+}
+
+// b12CountersPlacedBy is b12CountersPlacedByYou for a player named
+// directly, with the battlefield test optional: a trigger that reads
+// the placement back AS IT RESOLVES (#2150, Aragorn's "one of each of
+// those kinds") reads it after the permanent may have left, and the
+// placement is no less a fact for that. With requireBattlefield false,
+// a target that can no longer be found is attributed only by the
+// resolving-controller rule, never by the two rules that need its
+// controller: weaker, never stronger.
+func b12CountersPlacedBy(ev game.Event, me uuid.UUID, g *game.Game, requireBattlefield bool) (int, bool) {
 	if ev.Kind != game.EventCounterPlaced || ev.Target == uuid.Nil || ev.Label == "" {
 		return 0, false
 	}
-	if z := g.FindCardZoneForEffect(ev.Target); z == nil || z.Kind != game.ZoneBattlefield {
-		return 0, false
+	if requireBattlefield {
+		if z := g.FindCardZoneForEffect(ev.Target); z == nil || z.Kind != game.ZoneBattlefield {
+			return 0, false
+		}
 	}
-	target, ok := g.LookupCardForEffect(ev.Target)
-	if !ok {
+	target, found := g.LookupCardForEffect(ev.Target)
+	if requireBattlefield && !found {
 		return 0, false
 	}
 	before, arrivalLogged := b12CounterTotalBefore(ev, g)
@@ -203,11 +217,10 @@ func b12CountersPlacedByYou(ev game.Event, source *game.Card, g *game.Game) (int
 	if delta <= 0 {
 		return 0, false
 	}
-	me := source.Controller
 	resolving := b12ResolvingController(ev, g)
 	switch {
 	case !arrivalLogged, ev.Label == game.CounterLoyalty, ev.Label == game.CounterLore:
-		if target.Controller != me || (resolving != uuid.Nil && resolving != me) {
+		if !found || target.Controller != me || (resolving != uuid.Nil && resolving != me) {
 			return 0, false
 		}
 	default:
