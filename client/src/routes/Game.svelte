@@ -113,6 +113,7 @@
     setStackHoldStatus,
     stackHoldRemainingMs,
   } from "../lib/stackHold";
+  import { newTriggerOrderPrefState, triggerOrderPrefToSend } from "../lib/triggerOrderPref";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -778,6 +779,24 @@
   );
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
+
+  // #1530: keep the server's copy of "always ask me to order my
+  // triggers" in step with the setting. The effect reads the live
+  // snapshot, never a replay frame, and sends only when the viewer's own
+  // seat disagrees (toggle, reconnect, restart). See triggerOrderPref.ts.
+  const triggerOrderPrefState = newTriggerOrderPrefState();
+  $effect(() => {
+    if (replaying) return;
+    const want = triggerOrderPrefToSend(
+      triggerOrderPrefState,
+      $snapshot,
+      viewerID,
+      $settings.gameplay.alwaysAskTriggerOrder,
+    );
+    if (want !== null && viewerID) {
+      client.sendAction("set_trigger_order_preference", viewerID, { always_ask: want });
+    }
+  });
 
   // ADR 0105 (#1789): the frame's legal-action lookup, built once per
   // snapshot so every card reads it in O(1), and what the board is

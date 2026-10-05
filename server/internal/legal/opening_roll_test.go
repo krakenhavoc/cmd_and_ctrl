@@ -179,7 +179,7 @@ func TestNoTableRollMoveIsEverOffered(t *testing.T) {
 		t.Helper()
 		for _, p := range g.Seats {
 			for _, m := range legal.EnumerateFor(g, p.ID) {
-				if m.Type == "roll_table_die" {
+				if m.Type == "roll_table_die" || m.Type == "set_trigger_order_preference" {
 					t.Fatalf("%s: seat %d is offered a table roll: %+v", when, p.Seat, m)
 				}
 			}

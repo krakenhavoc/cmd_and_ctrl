@@ -5438,11 +5438,11 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	// APNAP placement below still sees all seats at once.
 	held := false
 	for seat, items := range bySeat {
-		if !seatNeedsTriggerOrder(items) {
+		p := g.Seats[seat]
+		if !seatNeedsTriggerOrder(items, p.TriggerOrderAlwaysAsk) {
 			continue
 		}
 		held = true
-		p := g.Seats[seat]
 		if g.hasTriggerOrderPromptLocked(p.ID) {
 			continue
 		}
@@ -5523,6 +5523,9 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 //     no targets and no modes; Commutes is engine-owned and no such
 //     item has either today, so that check is a belt, not the rule.
 //
+// A seat with Player.TriggerOrderAlwaysAsk set (#1530) gets the prompt
+// for any batch of two or more not yet Ordered, skips included.
+//
 // Anything else prompts, including a batch that is all commutative
 // items plus ONE other trigger: where that trigger sits among the
 // pumps is a real choice whenever it reads what they change. See
@@ -5531,8 +5534,18 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 // An auto-ordered batch keeps its queue order, which is harvest
 // order; the drain below places it exactly as it places an answered
 // prompt.
-func seatNeedsTriggerOrder(items []*StackItem) bool {
+func seatNeedsTriggerOrder(items []*StackItem, alwaysAsk bool) bool {
 	if len(items) < 2 {
+		return false
+	}
+	if alwaysAsk {
+		// #1530: the seat opted out of the skips. Only an already
+		// answered batch (every item Ordered) stays out of the prompt.
+		for _, t := range items {
+			if !t.Ordered {
+				return true
+			}
+		}
 		return false
 	}
 	allOrdered := true

@@ -532,6 +532,7 @@ var playerFields = plan(
 	"LastTurnAttacks", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
+	"TriggerOrderAlwaysAsk", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",
 	"UndosRemaining", carried, "",
