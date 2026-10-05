@@ -52,6 +52,14 @@ export interface GameMenuOptions {
   // matching the server's rate, and the items are disabled until then.
   tableRoll?: { ready: boolean } | null;
   onTableRoll?: (die: TableDie) => void;
+  // ADR 0125 §6: the Help group, after Table. "Tips for the table" and
+  // "Keyboard shortcuts" for everyone; "Replay the tutorial" only on
+  // this tab's practice table (`practice`). A real table offers no
+  // "Practice game": it would take the player out of their seat.
+  practice?: boolean;
+  onTableTips?: () => void;
+  onShortcuts?: () => void;
+  onReplayTutorial?: () => void;
   onDraw: () => void;
   onUntapAll: () => void;
   onShuffle: () => void;

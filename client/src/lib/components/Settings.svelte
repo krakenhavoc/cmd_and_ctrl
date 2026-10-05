@@ -16,6 +16,7 @@
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
   import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
   import type { StackStyle } from "../stackLane";
+  import type { TableLayout } from "../tableLayout";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
   import {
     SHORTCUTS,
@@ -37,7 +38,10 @@
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
+  import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
+  import { navigate } from "../router";
+  import { session } from "../session";
 
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
@@ -117,6 +121,11 @@
 
   // ---- Shortcuts tab ------------------------------------------------
   //
+  // #2336: the focus layout always draws opponents as summaries and
+  // never grows the active player's board (expansionSettingsFor), so
+  // those two controls are disabled while it is on.
+  const focusLayout = $derived($settings.display.tableLayout === "focus");
+
   // The rebinding UI. All of the thinking is in lib/shortcuts.ts —
   // this is capture, show, write.
   const mac = isMacLike();
@@ -316,11 +325,26 @@
     importText = "";
   }
 
+  // Tips and the tutorial (ADR 0125 §6). Show all tips again forgets
+  // every dismissed tip and switches tips back on; Replay the tutorial
+  // opens a practice table, which needs a session (signed out it goes
+  // to sign in first, as Help's "Practice game" does).
+  let tipsReset = $state(false);
+  function onShowAllTipsAgain(): void {
+    showAllTipsAgain();
+    tipsReset = true;
+  }
+  function onReplayTutorial(): void {
+    closeSettings();
+    navigate($session ? "#/practice" : "#/login");
+  }
+
   $effect(() => {
     if (!$settingsOpen) {
       importText = "";
       importStatus = null;
       copyStatus = "idle";
+      tipsReset = false;
     }
   });
 </script>
@@ -546,6 +570,7 @@
               <span>Opponent boards</span>
               <select
                 value={$settings.display.opponentDetail}
+                disabled={focusLayout}
                 onchange={(e) =>
                   change("display", "opponentDetail", e.currentTarget.value as "summary" | "full")}
               >
@@ -561,12 +586,14 @@
               blockers, or clicking their avatar to pin them open. Full boards draws every opponent
               as cards all the time, which is how the table used to work; at four players that means
               90px cards, which is where this started.
+              {#if focusLayout}The Focus table layout always uses summaries.{/if}
             </p>
 
             <label>
               <input
                 type="checkbox"
                 checked={$settings.display.expandActivePlayer}
+                disabled={focusLayout}
                 onchange={(e) => change("display", "expandActivePlayer", e.currentTarget.checked)}
               />
               Expand the active player's board on their turn
@@ -577,6 +604,7 @@
               from something you did — a targeting prompt, block or attack mode, or pinning a seat.
               It changes on a turn boundary either way, so it can't move the table under a click you
               have already started.
+              {#if focusLayout}Off in the Focus table layout: hover an avatar instead.{/if}
             </p>
 
             <label class="slider-row">
@@ -621,17 +649,20 @@
               <select
                 value={$settings.display.tableLayout}
                 onchange={(e) =>
-                  change("display", "tableLayout", e.currentTarget.value as "row" | "quadrant")}
+                  change("display", "tableLayout", e.currentTarget.value as TableLayout)}
               >
                 <option value="quadrant">Quadrant (default)</option>
                 <option value="row">Row</option>
+                <option value="focus">Focus</option>
               </select>
               {#if isFresh("display.tableLayout")}<span class="saved">✓</span>{/if}
             </label>
             <p class="help">
               Quadrant keeps the around-the-table seating. Row seats the opponents in turn order
-              across the top and gives your board the full width. At three players the two are the
-              same — you need the whole bottom row there either way.
+              across the top and gives your board the full width. At three players those two are the
+              same — you need the whole bottom row there either way. Focus gives your board the
+              bottom half and splits the top half between the opponents, each drawn as a summary;
+              hover their avatar to see their whole board, or click it to keep it open.
             </p>
 
             <label class="slider-row">
@@ -751,6 +782,23 @@
               actions available" once when the decision arrives. Nothing lights on a window
               auto-pass is about to skip. Turning this off removes the rings, pips and counts only:
               a card you cannot play is still greyed out.
+            </p>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.gameplay.alwaysAskTriggerOrder}
+                onchange={(e) =>
+                  change("gameplay", "alwaysAskTriggerOrder", e.currentTarget.checked)}
+              />
+              Always ask me to order my triggers
+              {#if isFresh("gameplay.alwaysAskTriggerOrder")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              When several of your triggers go on the stack together, the game orders them for you
+              if every order gives the same result (a board of prowess creatures, for example). Turn
+              this on to be asked every time, so you choose which resolves first while your
+              opponents can still respond between them.
             </p>
 
             <label>
@@ -1209,6 +1257,32 @@
             </label>
           {:else if activeTab === "advanced"}
             <h3>Advanced</h3>
+
+            <!-- ADR 0125 §6 (ADR 0076's "Replay lives in Settings →
+                 Advanced"): the first-use tips, and the tutorial. -->
+            <div class="adv-section">
+              <h4>Tips and the tutorial</h4>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!$settings.help.tipsOff}
+                  onchange={(e) => change("help", "tipsOff", !e.currentTarget.checked)}
+                />
+                {L.showTips}
+                {#if isFresh("help.tipsOff")}<span class="saved">✓ saved</span>{/if}
+              </label>
+              <p class="help">
+                A short tip shows the first time you meet a page or a part of the table. Help, in
+                the header and in the ⋯ menu at a table, shows a page's tips again.
+              </p>
+              <div class="adv-row">
+                <button onclick={onShowAllTipsAgain}>{L.showAllTipsAgain}</button>
+                <button onclick={onReplayTutorial}>
+                  {$session ? L.replayTutorial : `${L.replayTutorial} (sign in first)`}
+                </button>
+                {#if tipsReset}<span class="saved">✓ every tip will show again</span>{/if}
+              </div>
+            </div>
 
             <div class="adv-section">
               <h4>Export</h4>

@@ -168,6 +168,12 @@ const (
 	// is active, the opening roll and the mulligan included; mints no
 	// undo entry (MintsNoUndo). The hub allows one per seat per 2 s.
 	TypeRollTableDie Type = "roll_table_die"
+	// #1530 — "Always ask me to order my triggers": a seat's own
+	// preference, params `{always_ask: bool}`. A setting, not a play:
+	// legal while the game is active (the opening roll included) and
+	// mints no undo entry (MintsNoUndo); undo carries it forward. Never
+	// a bot move — the enumerator does not offer it.
+	TypeSetTriggerOrderPreference Type = "set_trigger_order_preference"
 )
 
 // openingRollActions are the only action types Dispatch accepts while
@@ -178,13 +184,14 @@ const (
 // ADR 0121 §5's roll_table_die is on it: a table roll is never a game
 // action, and decision 4 makes it legal at any time.
 var openingRollActions = map[Type]struct{}{
-	TypeRollOpening:          {},
-	TypeHostRollRemaining:    {},
-	TypeChooseStartingPlayer: {},
-	TypeRollTableDie:         {},
-	TypeConcede:              {},
-	TypeSetTableSettings:     {},
-	TypeSetUndoLimit:         {},
+	TypeRollOpening:               {},
+	TypeHostRollRemaining:         {},
+	TypeChooseStartingPlayer:      {},
+	TypeRollTableDie:              {},
+	TypeSetTriggerOrderPreference: {},
+	TypeConcede:                   {},
+	TypeSetTableSettings:          {},
+	TypeSetUndoLimit:              {},
 }
 
 // MintsNoUndo reports whether an action of type t is applied without an
@@ -206,7 +213,8 @@ var openingRollActions = map[Type]struct{}{
 func MintsNoUndo(g *game.Game, t Type) bool {
 	switch t {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
-		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit:
+		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit,
+		TypeSetTriggerOrderPreference:
 		return true
 	}
 	return g.OpeningRollOpen()
@@ -475,6 +483,8 @@ var playerScopedActions = map[Type]struct{}{
 	TypeChooseStartingPlayer: {},
 	// ADR 0121 §5: a seat rolls its own table die.
 	TypeRollTableDie: {},
+	// #1530: a seat sets only its own preference.
+	TypeSetTriggerOrderPreference: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
 	// initiative are NOT player-scoped — any seated player may flip
@@ -954,6 +964,21 @@ func dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("%w: %s seat", ErrMissingParams, a.Type)
 		}
 		return g.ChooseStartingPlayer(a.Player, *p.Seat)
+
+	case TypeSetTriggerOrderPreference:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			AlwaysAsk *bool `json:"always_ask"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.AlwaysAsk == nil {
+			return fmt.Errorf("%w: %s always_ask", ErrMissingParams, a.Type)
+		}
+		return g.SetTriggerOrderPreference(a.Player, *p.AlwaysAsk)
 
 	case TypeRollTableDie:
 		if a.Player == uuid.Nil {

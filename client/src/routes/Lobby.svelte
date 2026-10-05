@@ -49,6 +49,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import { noteMyGames } from "../lib/hints/endedGame";
 
   // Lobby is the signed-in home (ADR 0112 §1): every session lands
   // here, under the site header and its account menu. At the top, a
@@ -126,12 +127,16 @@
   let opening = $state<string | null>(null);
 
   async function loadMyGames(): Promise<void> {
-    if (!signedInUserID($session)) {
+    const userID = signedInUserID($session);
+    if (!userID) {
       rejoinPaths = new Map();
       return;
     }
     try {
       const mine = await fetchMyGames();
+      // The same read tells the tutorial offer whether this person has
+      // finished a game (ADR 0125 §3.7, LobbyPractice.hint.ts).
+      noteMyGames(userID, mine);
       const next = new Map<string, string>();
       for (const g of mine) if (g.rejoin) next.set(g.id, g.rejoin);
       rejoinPaths = next;
@@ -721,7 +726,7 @@
 <section class="lobby">
   <div class="head">
     <div>
-      <h1 class="title" aria-label="cmd_and_ctrl · lobby">Tables</h1>
+      <h1 class="title" aria-label={L.lobbyTitle}>Tables</h1>
       <p class="sub">{summary}</p>
     </div>
   </div>

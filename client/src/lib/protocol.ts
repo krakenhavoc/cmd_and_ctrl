@@ -215,6 +215,9 @@ export type ActionType =
   // at the table for fun. Never a game roll, never undoable, and the
   // server takes one per seat per 2 s.
   | "roll_table_die"
+  // #1530: `{always_ask: boolean}` — the seat's own "always ask me to
+  // order my triggers" preference. A setting, not a play: never undoable.
+  | "set_trigger_order_preference"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -1730,6 +1733,10 @@ export interface PlayerView {
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
   hand_kept?: boolean;
+  // #1530: this seat's "always ask me to order my triggers" preference.
+  // Present (true) only in the seat's OWN view; the server blanks it for
+  // everyone else. Omitempty: absent means off.
+  trigger_order_always_ask?: boolean;
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.

@@ -795,8 +795,10 @@
        the name, mana cost, art, and type line and hiding P/T +
        flavour / rules text. Hover lifts the whole fan up and over the
        board (see .hand:hover) to reveal full cards without pushing
-       layout. PlayerPanel's .hand-zone reserves the same 62%. */
-    max-height: calc(var(--card-h, 168px) * 0.62);
+       layout. PlayerPanel's .hand-zone reserves the same share, and
+       sets --hand-peek lower in the focus layout (#2336), where the
+       hand sits further below the edge as in Arena. */
+    max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.62));
     /* #956 — never wider than the zone that holds it. The fan's own
        width is bounded by --hand-overlap below; this is the backstop
        for the case where it is not. */
@@ -809,20 +811,20 @@
       transform 220ms var(--ease);
   }
   /* Self hand expands on hover: overflow goes visible, the whole strip
-     translates upward by the hidden 38% so full cards poke over the
+     translates upward by the hidden share so full cards poke over the
      battlefield and the fan's bottom edge stays on the panel edge,
      and z-index jumps so nothing on the board occludes the revealed
      cards. */
   .hand:not(.opponent):hover {
     max-height: none;
     overflow: visible;
-    transform: translateY(calc(var(--card-h, 168px) * -0.38));
+    transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
   }
   /* Opponent hands stay compact — they're face-down anyway and the
      peek/reveal interaction would feel wrong on someone else's hand. */
   .hand.opponent {
-    max-height: calc(var(--card-h, 168px) * 0.55);
+    max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.55));
     overflow: hidden;
   }
   /* #956 — the overlap is handOverlap()'s answer, published by the

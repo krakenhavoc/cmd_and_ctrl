@@ -508,14 +508,28 @@ func countKeywords(xs []string) map[string]int {
 // tokens and test fixtures never set it — so the cost fallback is
 // kept rather than replaced. That matches the posture
 // Card.EffectiveColors has taken since S20.
-func printedColors(c Card) []string { return printedColorsOf(c.Colors, c.ManaCost) }
+//
+// Devoid sits between the two (#2152, CR 702.114a, devoid.go): an
+// empty Colors on a card that prints devoid is colourless, not the
+// colour of its cost. Scryfall's own empty list for a devoid card was
+// indistinguishable from "not stamped", which is how every devoid card
+// came to be the colour of its pips.
+func printedColors(c Card) []string { return printedColorsOf(c.Colors, c.ManaCost, c.printsDevoid()) }
 
-// printedColorsOf is printedColors on the two fields it reads, which
-// is the shape the printed-characteristic builder (printedInputs) has
+// printedColorsOf is printedColors on the fields it reads, which is
+// the shape the printed-characteristic builder (printedInputs) has
 // them in. The result is always a fresh slice.
-func printedColorsOf(colors []string, manaCost string) []string {
+//
+// The order is the rule. A stamped colour list is an explicit value
+// and is returned as it is (devoid.go says why it beats devoid);
+// otherwise devoid (CR 702.114a, a characteristic-defining ability)
+// makes the card colourless; otherwise the colours are the cost's.
+func printedColorsOf(colors []string, manaCost string, devoid bool) []string {
 	if len(colors) > 0 {
 		return append([]string(nil), colors...)
+	}
+	if devoid {
+		return nil
 	}
 	return printedColorsFromCost(manaCost)
 }

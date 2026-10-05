@@ -7,6 +7,7 @@ import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
+import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
 import { normalizeSeen } from "./hints/seen";
 
 // Settings is the client-wide preferences schema. Every toggle the
@@ -84,11 +85,15 @@ export interface Settings {
     // across-table seats on top); "row" puts every opponent in turn
     // order across the top and gives your panel the full width.
     //
-    // #956 note: at THREE players the two are now identical — the
+    // #956 note: at THREE players those two are now identical — the
     // viewer needs the whole bottom row there, and there is no third
-    // arrangement worth having. This setting only distinguishes the
-    // 4-player table.
-    tableLayout: "row" | "quadrant";
+    // arrangement worth having.
+    //
+    // "focus" (#2336) is the row arrangement split evenly: your board is
+    // the bottom half, and every opponent is a summary in the top half,
+    // whatever opponentDetail and expandActivePlayer say, and you
+    // hover or click an avatar to see a whole board. See tableLayout.ts.
+    tableLayout: TableLayout;
     // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
     // since v17) is a pile of large, readable cards on the left of the
     // table; phones and short boards draw "compact" instead, without
@@ -177,6 +182,12 @@ export interface Settings {
     // tracking posture. A card the board can't pay for still offers
     // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
+    // #1530: always raise the CR 603.3b "order your triggers" prompt,
+    // even for a batch the server would order itself because every item
+    // commutes (an all-prowess batch, #1511). The decision is the
+    // server's, so the server holds the seat's copy and the client keeps
+    // it in step (triggerOrderPref.ts). Default off.
+    alwaysAskTriggerOrder: boolean;
     // S13.6: when a stopped step lands on the viewer but the
     // legality engine reports no legal response (no castable hand
     // cards, no battlefield activations, no commander cast),
@@ -424,6 +435,8 @@ export function defaultSettings(): Settings {
       // click taps the lands for it. Off (the S15 default) is the
       // sandbox / paper-tracking posture, still a supported choice.
       strictMana: true,
+      // #1530 default: off. The server orders a commuting batch itself.
+      alwaysAskTriggerOrder: false,
       // S13.6 default: on. The step-stops grid is the intent
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
@@ -560,6 +573,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     autoPassPriority: "synced",
     stepStops: "synced",
     strictMana: "synced",
+    alwaysAskTriggerOrder: "synced",
     smartAutoPass: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
@@ -911,6 +925,14 @@ function migrate(raw: unknown): Settings {
     merged.display.theme = DEFAULT_SKIN;
   }
   merged.display.accent = normalizeAccent(merged.display.accent);
+  // #2336: display.tableLayout gained "focus". A new value of an
+  // existing field needs no version bump, but the value is checked
+  // from here on: an unknown string (a hand edit, a layout that was
+  // tried and removed) falls back to the quadrant rather than to a
+  // board with no grid template.
+  if (!isTableLayout(merged.display.tableLayout)) {
+    merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),

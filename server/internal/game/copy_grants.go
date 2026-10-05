@@ -219,6 +219,11 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// abilities per bundle instead, so it can tell each row's
 		// origin (manaAbilityRows).
 		merged.ManaAbilities = concatMana(merged.ManaAbilities, g.ManaAbilities)
+		// A copy grant may carry a legend-rule exemption (Sakashima of a
+		// Thousand Faces: "except it has Sakashima's other abilities").
+		if len(g.LegendRuleExemptions) > 0 {
+			merged.LegendRuleExemptions = append(append([]LegendRuleExemption(nil), merged.LegendRuleExemptions...), g.LegendRuleExemptions...)
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

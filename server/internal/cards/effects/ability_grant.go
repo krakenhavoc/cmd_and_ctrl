@@ -75,6 +75,10 @@ type AbilityGrant struct {
 	Activated []ActivatedAbility
 	Mana      []ManaAbility
 
+	// LegendRuleExempt is a granted "the legend rule doesn't apply to
+	// permanents you control" (a copy of Sakashima of a Thousand Faces).
+	LegendRuleExempt []game.LegendRuleExemption
+
 	// Text is the bundle as the granting card prints it, quoted ability
 	// and all: "{T}: Add one mana of any color." Required. The recipient
 	// has no printing that says it has the ability, and a granted
@@ -94,6 +98,8 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 		Activated:     activatedShapes(gr.Activated),
 		ManaAbilities: manaShapes(gr.Mana),
 		GrantText:     gr.Text,
+
+		LegendRuleExemptions: gr.LegendRuleExempt,
 	}
 }
 
@@ -170,7 +176,7 @@ func checkGrants(name string, grants []AbilityGrant) {
 		if gr.Key == "" {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
-		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 {
+		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

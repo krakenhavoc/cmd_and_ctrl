@@ -12,7 +12,7 @@ const hint: Hint = {
   order: 70,
   anchor: { label: L.moreActions },
   title: "More actions",
-  body: "Dice and a coin, untap all, life history, table settings and a vote are in the ⋯ menu.",
+  body: "Dice and a coin, untap all, life history, table settings, a vote and Help are in the ⋯ menu.",
   when: atViewersSecondTurn,
 };
 

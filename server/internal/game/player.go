@@ -195,6 +195,16 @@ type Player struct {
 	// has KeptHand. Added in S08.
 	HandKept bool
 
+	// TriggerOrderAlwaysAsk is this seat's "always ask me to order my
+	// triggers" preference (#1530, ADR 0018's #1530 amendment). When
+	// set, seatNeedsTriggerOrder no longer skips the CR 603.3b prompt
+	// for a batch whose items commute (#1511's all-prowess batch) or
+	// are identical. Default false. Server-held so the skip decision,
+	// which only the server makes, can read it; the client re-sends its
+	// local setting whenever the seat's view disagrees. Survives undo
+	// (RestoreFrom carries it forward) and the snapshot.
+	TriggerOrderAlwaysAsk bool
+
 	// MulligansTaken is the count of Mulligan calls this player has
 	// made in the current opening-hand window. Reset at Start. Used
 	// by the UI to show "mulligans taken: N" and is the seed for a
