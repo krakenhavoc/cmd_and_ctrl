@@ -239,3 +239,28 @@ func TestCloneBaselineFileKeepsTheGatesKey(t *testing.T) {
 		t.Fatal("a hash no body could have is in the baseline, so a new group would pass the gate")
 	}
 }
+
+// #2160: the recorded length must not depend on which copy sorts
+// first. Two copies of one body, one with a comment that widens its
+// span, must report the same Lines whichever file name sorts first.
+func TestExactClonesLinesIsOrderIndependent(t *testing.T) {
+	plain := "package p\n\nfunc F() {\n\ta := 1\n\tb := 2\n\tc := 3\n\td := 4\n\te := 5\n\t_, _, _, _, _ = a, b, c, d, e\n}\n"
+	wide := "package p\n\nfunc F() {\n\ta := 1\n\t// a comment\n\tb := 2\n\tc := 3\n\td := 4\n\te := 5\n\t_, _, _, _, _ = a, b, c, d, e\n}\n"
+	// The printer drops the comment, so the bodies hash alike.
+	for _, names := range [][2]string{{"a.go", "b.go"}, {"b.go", "a.go"}} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, names[0]), []byte(plain), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, names[1]), []byte(wide), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		groups, err := ExactClones(dir, cloneMinLines)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(groups) != 1 || groups[0].Lines != 8 {
+			t.Fatalf("names %v: got %+v, want one group of 8 lines", names, groups)
+		}
+	}
+}
