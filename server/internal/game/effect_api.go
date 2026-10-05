@@ -1027,14 +1027,16 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 // on the next SBA pass, which is already the drawCardLocked
 // behaviour).
 func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
-	for i := 0; i < n; i++ {
-		if err := g.drawCardLocked(playerID); err != nil {
-			if err == ErrZoneEmpty {
-				// Flag set, stop drawing. SBA loop will handle the loss.
-				return nil
-			}
-			return err
+	// One loop in drawRunLocked, so a draw that pauses for a prompt (a
+	// dredge offer, Underrealm Lich's pick) holds the rest of the
+	// instruction behind it (CR 121.6b) instead of the later draws
+	// racing ahead of the question.
+	if err := g.drawRunLocked(playerID, n); err != nil {
+		if err == ErrZoneEmpty {
+			// Flag set, stop drawing. SBA loop will handle the loss.
+			return nil
 		}
+		return err
 	}
 	return nil
 }

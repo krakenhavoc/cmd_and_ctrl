@@ -593,8 +593,8 @@ func TestB35TheNecrobloomMakesAPlantOrAZombieOnLandfall(t *testing.T) {
 	if n := len(battlefieldIDsNamed(g, "Plant")); n != 2 {
 		t.Errorf("instead, not as well: %d Plants", n)
 	}
-	if spec, _ := Lookup(b35TheNecrobloomOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing dredge is a declared gap")
+	if spec, _ := Lookup(b35TheNecrobloomOracle); spec.Completeness != CompletenessFull {
+		t.Error("dredge landed in #2127, so the Necrobloom has no declared gap left")
 	}
 }
 

@@ -1287,8 +1287,18 @@ per-card payoff still fires per card — but they are ONE event, and the
 window is not re-opened for them. That is what makes two Thought
 Reflections draw FOUR rather than three, and it is why a cancel-style
 draw replacement sharing the window takes the whole doubled draw rather
-than one card of it (the declared simplification; no dredge card is
-catalogued).
+than one card of it (the declared simplification).
+
+**A draw replaced by an effect that asks something (#2168, #2127):**
+dredge (`Dredge(n)` in `cards/effects/dredge.go`, on `Spec.Replacements`
+of the card in the graveyard), Underrealm Lich's look-at-three,
+Forbidden Crypt's return-a-card. The `Replace` calls
+`ev.DrawsInstead(body)`, which cancels the draw and remembers a body;
+the body runs once the window has settled, may queue a prompt, and
+calls `done` when it finishes so the rest of a multi-card draw ("draw
+three") waits behind it (CR 121.6b). `FromGraveyard: true` makes a
+replacement apply from the drawing player's graveyard instead of the
+battlefield. See `game/draw_instead.go`.
 
 **"Except the first one you draw in each of your draw steps"** has no
 per-draw-step tally behind it. Both cards that print it — Notion Thief

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // The Necrobloom — Legendary Creature — Plant {1}{W}{B}{G}, 2/7
 // (EDHREC rank 3703):
@@ -21,23 +25,66 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in play (Field of the Dead's count, b04LandNamesControlled — two
 // copies of the same land count once, as printed).
 //
-// SANDBOX SIMPLIFICATION — dredge is NOT implemented. "Land cards
-// in your graveyard have dredge 2" is a draw replacement the
-// controller may choose, per land card, that also asks which land
-// card — and the engine gathers replacement effects from battlefield
-// permanents with no way for a replacement to open a pick among
-// graveyard cards, nor any dredge keyword for the cards to carry.
-// The Necrobloom's own draws are ordinary draws. Weaker than
-// printed, never stronger: the landfall half, which is the card, is
-// whole.
+// Dredge 2 for lands (#2127, dredge.go): a "may" replacement on the
+// Necrobloom itself. Say yes and the draw is replaced; then pick WHICH
+// land card in your graveyard to return, mill two cards and return it.
+// Offered only with a land card in the graveyard and two cards in the
+// library (CR 702.52b), once per draw, alongside any dredge card of
+// your own in the graveyard.
+//
+// The land is picked after the "yes", which gives the same options as
+// a dredge per land card: any one land, or none.
 func init() {
 	Register(Spec{
 		OracleID:     "b981af39-4ee6-4fbc-9a89-618dcad9dfbf",
 		Name:         "The Necrobloom",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Dredge isn't implemented — land cards in your graveyard can't be returned in place of a draw."},
+		Completeness: CompletenessFull,
+		Replacements: []game.ReplacementEffect{necrobloomDredge()},
 		Triggered: []game.TriggeredAbility{
 			Landfall("The Necrobloom — create a 0/1 green Plant, or a 2/2 black Zombie with seven differently-named lands", b35NecrobloomLandfall),
 		},
 	})
+}
+
+// necrobloomDredge is "land cards in your graveyard have dredge 2".
+func necrobloomDredge() game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches:  []game.EventKind{game.EventDrawCard},
+		Optional: true,
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventDraw || ev.DrawCount <= 0 || src == nil || ev.DrawPlayer != src.Controller {
+				return false
+			}
+			p := g.PlayerByIDForEffect(ev.DrawPlayer)
+			return p != nil && p.Library != nil && p.Library.Size() >= 2 &&
+				len(gyCardIDs(g, ev.DrawPlayer, isLandCard)) > 0
+		},
+		DrawInstead: game.RegisterDrawInstead("necrobloom-dredge-2", func(g *game.Game, drawer, source uuid.UUID, done func(*game.Game) error) error {
+			lands := gyCardIDs(g, drawer, isLandCard)
+			if len(lands) == 0 {
+				return done(g)
+			}
+			g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+				Chooser:  drawer,
+				Source:   source,
+				Question: "The Necrobloom — dredge 2: return which land card from your graveyard to your hand?",
+				Cards:    lands,
+				Min:      1,
+				Max:      1,
+				Zone:     game.ZoneGraveyard,
+				Then: func(g *game.Game, picked []uuid.UUID) error {
+					if len(picked) == 0 {
+						return done(g)
+					}
+					return dredgeBody(g, drawer, picked[0], 2, done)
+				},
+			})
+			return nil
+		}),
+		Controller: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
+			return ev.DrawPlayer
+		},
+		PromptQuestion: "The Necrobloom — dredge 2: mill two cards and return a land card from your graveyard to your hand instead of drawing?",
+		Label:          "The Necrobloom: land cards in your graveyard have dredge 2",
+	}
 }
