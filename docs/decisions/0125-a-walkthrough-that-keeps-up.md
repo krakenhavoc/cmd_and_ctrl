@@ -1,6 +1,6 @@
 # ADR 0125 — A walkthrough that keeps up: first-use hints and a refreshed tutorial
 
-**Status:** Proposed · 2026-10-05 · S65 — A walkthrough that keeps up: first-use hints and a refreshed tutorial. Awaiting the owner's review.
+**Status:** Accepted · 2026-10-05 · S65 — A walkthrough that keeps up: first-use hints and a refreshed tutorial. The owner accepted it unchanged in review on #2317 the same day, Calls made here included.
 **Issues:** [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) (this change, and S65's tracker); relates to [#1073](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1073) (ADR 0076's tracker, whose sub-PRs 5 and 6 this finishes).
 **Owner decisions:** the three answers of 2026-10-05, quoted under [Owner decisions](#owner-decisions-2026-10-05). They are binding. This ADR also makes calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before PR 2 lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-05. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote branch. The 37 remote heads are `origin/develop`, `origin/main` and 35 chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0124, on `origin/develop`. This ADR takes **0125**.
