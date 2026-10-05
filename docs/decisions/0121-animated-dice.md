@@ -332,3 +332,10 @@ This closes decision 7 and the "Out of scope" bullet above. No new ADR: it is on
 - **Leaving.** A seat that concedes is skipped, and the window is settled again at once: the next seat decides, a finished round starts the next, and a departure of the last seat holding the window closes it (it used to stay open). The server has no notion of a disconnected seat, so a connected-but-silent human holds the window as they do today, with no timer (decision 3).
 - **Wire.** `PlayerView.mulligan_turn` (omitempty bool) marks the deciding seat. The enumerator offers keep and mulligan to that seat only (#544: it asks the same question as the engine), so a bot, an agent seat and the model tiers see an empty list when it is not their turn and are woken by the commit that makes it theirs.
 - **Client.** The opening-hand sheet stays up for every seat so a waiting player can read their hand; Keep hand and Mulligan are disabled unless `mulligan_turn` is set on the viewer's seat, and the sheet says "Waiting for X to decide". The strip's roll call reads "deciding…" for the deciding seat and "waiting" for the others.
+
+## Amendment, 2026-10-05: the practice table rolls ([ADR 0125](0125-a-walkthrough-that-keeps-up.md) §5.2, [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313))
+
+- **The exception is gone.** The practice table no longer calls plain `Start(nil)` (Context, "Callers"). It opens the opening roll like every lobby table, so a first-time player sees the dice, the banner and the choice they will meet at their first real table.
+- **The practice bot hands the first turn to the player** (amending §4's random-tier choice for this one table type). `aiseat.SeatSpec.FirstTurnTo` names a seat. When it is set, the runner answers a window whose moves are all `choose_starting_player` with the move naming that seat. Every other window, rolling included, goes to the `random` tier unchanged. This is one window of one table type, not a tutorial tier.
+- **The tutorial waits for the roll.** Step 2 teaches it, and every other step is held while the roll is open (`heldByOpeningRoll`), with its hint and timeout timers starting only when the roll closes.
+
