@@ -12,6 +12,8 @@
 // GameMenu.svelte draws it; this file is what Game.svelte hands it and
 // the two small rules it applies.
 
+import { L } from "./labels";
+
 export interface GameMenuOptions {
   // A seat of the viewer's own at this table: the sandbox tools, the
   // vote launcher and Concede. False for a spectator or an unseated
@@ -74,9 +76,9 @@ export const TABLE_ROLL_COOLDOWN_MS = 2000;
 // The ⋯ menu's table-roll items, in order. Their names are a contract
 // (ADR 0121 §8, AGENTS.md "Labels are a contract").
 export const TABLE_ROLL_ITEMS: readonly { die: TableDie; label: string }[] = [
-  { die: "d6", label: "Roll a d6" },
-  { die: "d20", label: "Roll a d20" },
-  { die: "coin", label: "Flip a coin" },
+  { die: "d6", label: L.rollD6 },
+  { die: "d20", label: L.rollD20 },
+  { die: "coin", label: L.flipCoin },
 ];
 
 // A table-roll item's tooltip.

@@ -15,6 +15,7 @@ import {
   type TutorialStep,
 } from "./tutorial";
 import { HANDOFF, TUTORIAL_STEPS, WELCOME } from "./tutorialSteps";
+import { L } from "./labels";
 import type { GameView } from "./protocol";
 
 beforeEach(() => {
@@ -35,7 +36,7 @@ const action = (over: Partial<TutorialStep> = {}): TutorialStep => ({
   title: "Tap a land for mana",
   body: "Click one of the Forests.",
   hint: "A land already on the table.",
-  anchor: { label: "lands", within: "your board" },
+  anchor: { label: L.lands, within: L.yourBoard },
   ...over,
 });
 
@@ -314,11 +315,11 @@ describe("detours, cannot, hover and advance", () => {
 
   it("spotlights a detour's own anchor, else the step's", () => {
     const step = action();
-    expect(spotAnchors(step, null)).toEqual([{ label: "lands", within: "your board" }]);
-    expect(spotAnchors(step, { ...detour, anchor: { label: "actions" } })).toEqual([
-      { label: "actions" },
+    expect(spotAnchors(step, null)).toEqual([{ label: L.lands, within: L.yourBoard }]);
+    expect(spotAnchors(step, { ...detour, anchor: { label: L.actions } })).toEqual([
+      { label: L.actions },
     ]);
-    expect(spotAnchors(step, detour)).toEqual([{ label: "lands", within: "your board" }]);
+    expect(spotAnchors(step, detour)).toEqual([{ label: L.lands, within: L.yourBoard }]);
     expect(statusText(action(), { view: null, start: null, viewerID: null, event: null })).toBe(
       undefined,
     );

@@ -5,6 +5,7 @@
   // a button per card id that asks Game to select it for combat, which
   // is what a click on a creature does on the real board.
   import type { Snippet } from "svelte";
+  import { L } from "../labels";
 
   const {
     attention,
@@ -18,7 +19,7 @@
 </script>
 
 <div data-testid="board-stub">
-  <div class="strip" data-testid="strip" role="region" aria-label="attention">
+  <div class="strip" data-testid="strip" role="region" aria-label={L.attention}>
     {@render attention?.()}
   </div>
   {#each selectCards as id (id)}

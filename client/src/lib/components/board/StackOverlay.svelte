@@ -44,6 +44,7 @@
   import { settings } from "../../settings";
   import { buildStackLane, type StackLaneItem } from "../../stackLane";
   import { createStackHover } from "../../stackHover";
+  import { L } from "../../labels";
 
   interface Props {
     stack: ZoneView;
@@ -142,7 +143,7 @@
 {#if visible}
   <!-- data-stack-overlay: lib/stackPile.ts leaves this card out when it
        measures the strip's content (ADR 0119 §1). -->
-  <div class="overlay" data-stack-overlay aria-label={`stack: ${displayItems.length} on the stack`}>
+  <div class="overlay" data-stack-overlay aria-label={L.stackPile(displayItems.length)}>
     <header class="stack-head">
       <span class="label">stack <b class="count">{displayItems.length}</b></span>
       {#if splitSecondActive}

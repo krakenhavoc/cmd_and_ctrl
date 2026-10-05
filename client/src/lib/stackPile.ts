@@ -10,6 +10,8 @@
 // stackPile.test.ts. The two DOM readers at the bottom only collect
 // rects for them.
 
+import { L } from "./labels";
+
 /** A Scryfall `normal` image is 488×680. */
 export const CARD_RATIO = 680 / 488;
 
@@ -212,7 +214,7 @@ export const STACK_OVERLAY_ATTR = "data-stack-overlay";
 
 /** The attention strip, a direct child of the board. */
 export function attentionStrip(board: HTMLElement): HTMLElement | null {
-  return board.querySelector<HTMLElement>(':scope > [role="region"][aria-label="attention"]');
+  return board.querySelector<HTMLElement>(`:scope > [role="region"][aria-label="${L.attention}"]`);
 }
 
 /** The strip's content bottom in board pixels, the docked stack card left out. */

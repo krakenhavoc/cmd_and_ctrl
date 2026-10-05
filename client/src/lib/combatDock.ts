@@ -33,6 +33,7 @@ import {
   type BulkAttackRefusal,
 } from "./attackAll";
 import type { DockAction, DockRefusal, DockRequest } from "./dock";
+import { L } from "./labels";
 import type { GameView, PlayerView } from "./protocol";
 
 export interface AttackRowInput {
@@ -186,8 +187,8 @@ export function attackRowRequest(input: AttackRowInput): DockRequest {
   const { lead, row } = attackRow(input);
   return {
     rank: "step",
-    label: "declare attackers",
-    group: "declare attackers",
+    label: L.declareAttackers,
+    group: L.declareAttackers,
     tag: "attack",
     tone: "danger",
     question,
@@ -210,8 +211,8 @@ export function blockRequest(staged: number, onFinish: () => void): DockRequest 
   const done = staged > 0;
   return {
     rank: "blocks",
-    label: "declare blockers",
-    group: "declare blockers",
+    label: L.declareBlockers,
+    group: L.declareBlockers,
     tag: "block",
     tone: "plain",
     question:

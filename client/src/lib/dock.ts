@@ -40,6 +40,7 @@ import type { Snippet } from "svelte";
 
 import { guardedDerived, guardedWritable } from "./guardedStore";
 import type { IconName } from "./icons";
+import { L } from "./labels";
 
 export type DockRank = "choice" | "flow" | "blocks" | "gameOver" | "step";
 
@@ -210,7 +211,7 @@ export function confirmAction(
 // cancelAction is a flow's Cancel (a cost picker, the auto-tap
 // preview, the attack picker). It takes Escape. A pending choice has
 // none: the game is waiting on an answer, not on a way out.
-export function cancelAction(onPress: () => void, label = "Cancel"): DockAction {
+export function cancelAction(onPress: () => void, label: string = L.cancel): DockAction {
   return { id: "cancel", label, keyShortcuts: "Escape", cap: "Esc", onPress };
 }
 
