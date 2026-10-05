@@ -185,7 +185,7 @@ good in the window it was shown in.
 
 | Tool | Input | What it does |
 |---|---|---|
-| `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default `Agent`), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. |
+| `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default: the MCP client's name, see below), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. |
 | `set_deck` | `deck`, as above | Installs a deck before the game starts. An unknown id answers with the ids the server has. |
 | `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, or `my_turn_or_stack`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
 | `get_state` | `detail`: `compact` (default) or `full` | The board as the seat sees it. |
@@ -195,6 +195,12 @@ good in the window it was shown in.
 | `say` | `text` (1 to 500 characters) | One line of table chat. `sent` or `rate_limited` with when to retry. |
 | `concede` | `confirm: true` | Concedes. Has its own tool because the move list never offers it. |
 | `leave` | none | Disconnects and deletes the saved session. Refused while the game is live and the seat is still in it: concede first. |
+
+With no `display_name`, the seat sits under its MCP client's name, the one
+the table already shows in the AI badge: `claude-code` reads "Claude Code",
+a `codex` client reads "Codex", any other client its normalised name, and a
+client that sent no name keeps "Agent". A `display_name` always wins. Two
+seats from the same client share a name unless the prompts differ.
 
 What to know about how they behave:
 
@@ -265,11 +271,16 @@ gap.
 - The invite token is never stored. If your MCP client restarts the
   binary, `join` with the same invite reattaches (`resumed: true`)
   instead of claiming a second seat.
-- The file is named for the server and the game, not for the seat. So
-  **two seats on one machine at the same table need different
-  `--state-dir`s**. With a shared one, the second agent's `join` finds
-  the first agent's file, reattaches to that seat, and both agents play
-  it. See [Two agents at one table](#two-agents-at-one-table).
+- The file is named for the server and the game, not for the seat, so
+  the binary also takes an exclusive lock on `<game id>.lock` beside it
+  for as long as it holds the seat. A second binary on the same
+  `--state-dir` at the same table has its `join` **refused** with a
+  message naming the state directory, instead of reattaching and playing
+  the first agent's seat. The operating system drops the lock when the
+  process dies, so a crash never blocks a restart's `resumed: true`. The
+  lock is released on `leave`, at game end and on exit. Two seats on one
+  machine at one table still need different `--state-dir`s; see
+  [Two agents at one table](#two-agents-at-one-table).
 - On the wire the token is only ever `Authorization: Bearer`, never
   `?token=`. It is stripped from every tool result (those go to the model
   provider) and every log line, which also passes `redact.Secrets`.
@@ -373,7 +384,7 @@ with `claude-seat.log`, and `…/cmdctrl-mcpseat/codex` with
 `codex-seat.log`. The binary creates the state directory `0700` itself.
 It does not create the log file's directory. See
 [the state file](#the-token-and-the-state-file) for why the state
-directories must differ.
+directories must differ: with a shared one the second `join` is refused.
 
 An agent never hosts, and the seat has no tool to start a game. So a
 table with only agents is started by an admin with no seat, from admin
