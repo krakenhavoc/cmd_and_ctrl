@@ -316,6 +316,30 @@ func TestS58UnstoppableSlasherReturnsOnceWithStunCounters(t *testing.T) {
 	}
 }
 
+// CR 400.7 (#2156): the return only finds the object that died. A
+// Slasher exiled and put back into the graveyard in response is a new
+// object and stays there.
+func TestS58UnstoppableSlasherReturnsNothingOnceTheCardChangedZones(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	slasher := b27Push(g, me.ID, "Unstoppable Slasher", "Creature — Zombie Assassin", s58UnstoppableSlash, "{2}{B}", 2, 3, "B")
+	foe := b12Creature(g, opp.ID, "Foe", "Creature — Bear", 5, 5)
+	b27Damage(g, foe, slasher, 5)
+	g.RunStateChecksForTest()
+	yard := game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID}
+	exile := game.ZoneRef{Kind: game.ZoneExile}
+	if err := g.MoveCardByID(yard, exile, slasher); err != nil {
+		t.Fatalf("exile from graveyard: %v", err)
+	}
+	if err := g.MoveCardByID(exile, yard, slasher); err != nil {
+		t.Fatalf("put back: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(slasher) {
+		t.Error("a Slasher that left the graveyard and came back is a new object and must not return")
+	}
+}
+
 func TestS58UnstoppableSlasherWithACounterStaysDead(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

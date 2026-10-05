@@ -13,21 +13,14 @@ import (
 //	 II — Destroy all nonartifact creatures.
 //	 III — Exile all opponents' graveyards."
 //
-// SANDBOX SIMPLIFICATION, and it makes the card WEAKER than printed:
-// chapter I places the counter but does NOT grant the artifact type.
-// The grant is a continuous effect with no duration — it lasts for
-// as long as the creature is on the battlefield, outliving the Saga
-// that made it — and the engine's only floating-continuous-effect
-// registry (game.ScopedEffects, ADR 0035) expires at cleanup.
-// Registering it there would end the protection one turn later and
-// silently, which is worse than not having it; a permanent-duration
-// registry is its own piece of work.
-//
-// The consequence is exactly the one the card is played for: the
-// creature you meant to save from chapter II is not saved. Weaker,
-// never stronger — the #259 direction. Chapter II is unchanged and
-// still spares creatures that are artifacts for any OTHER reason,
-// because it reads the effective type line.
+// Chapter I's artifact grant has no stated duration (CR 611.2a), so
+// it is a ScopedEffectFor with IndefiniteDuration pinned to the creature
+// (the Sealock Monster shape): it outlives the Saga and ends only when
+// the creature leaves the battlefield and comes back a new object
+// (CR 400.7). Chapter II reads the effective type line, so the grant is
+// what spares the chosen creature. Until #2155 this was a declared gap
+// (the only registry then expired at cleanup); IndefiniteDuration
+// closed it.
 //
 // Chapter III exiles opponents' graveyards, not every graveyard —
 // yours survives, which is the whole reason the card sits in
@@ -36,18 +29,41 @@ func init() {
 	Register(Spec{
 		OracleID:     "11173ad3-c007-478f-bce0-d756eac07ccb",
 		Name:         "Phyrexian Scriptures",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Chapter I doesn't make the chosen creature an artifact, so chapter II doesn't spare it."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Phyrexian Scriptures — I: +1/+1 counter on up to one creature",
 				TargetCreature("up to one target creature").WithCount(0, 1),
-				putPlusOneCounterOnEachLegalTarget),
+				scripturesChapterOne),
 			ChapterTrigger(2, "Phyrexian Scriptures — II: destroy all nonartifact creatures",
 				scripturesWipeNonartifacts),
 			ChapterTrigger(3, "Phyrexian Scriptures — III: exile all opponents' graveyards",
 				scripturesExileOpponentGraveyards),
 		},
 	})
+}
+
+// scripturesChapterOne puts the +1/+1 counter on the chosen creature
+// and makes it an artifact in addition to its other types for as long
+// as it stays on the battlefield.
+func scripturesChapterOne(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+		if err := (ScopedEffectFor{
+			Target:   t.ID,
+			Mods:     []game.Mod{game.AddTypesMod("Artifact")},
+			Duration: g.PinnedTo(game.IndefiniteDuration(), t.ID),
+			Label:    "Phyrexian Scriptures — it becomes an artifact in addition to its other types",
+		}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func scripturesWipeNonartifacts(g *game.Game, item *game.StackItem) error {
