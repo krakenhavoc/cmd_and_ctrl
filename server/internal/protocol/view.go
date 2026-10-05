@@ -937,7 +937,9 @@ type OptionalCostView struct {
 	// Index is the cost's position in the card's OptionalCosts slice
 	// — the value the announcement names.
 	Index int `json:"index"`
-	// Key is "kicker", "multikicker" or "buyback".
+	// Key is "kicker", "multikicker" or "buyback". Not unique: a card
+	// with two kicker costs (CR 702.33b, #2153) has two "kicker" offers,
+	// told apart by Index and Label.
 	Key string `json:"key"`
 	// Label is the clause as printed ("Kicker {4}").
 	Label string `json:"label,omitempty"`

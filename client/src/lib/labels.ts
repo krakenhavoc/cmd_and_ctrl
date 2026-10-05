@@ -9,7 +9,7 @@
 //   1. each entry's owner files reference `L.<key>`;
 //   2. no other file under client/src carries a literal copy of a
 //      registered `aria` name;
-//   3. every tutorial anchor (and, from ADR 0125 PR 4, every hint's) is
+//   3. every tutorial anchor and every first-use hint's anchor is
 //      registered here;
 //   4. docs/labels.md, which is generated from this file, is current
 //      (`UPDATE_LABELS_DOC=1 npm test -- labels` rewrites it).
@@ -508,7 +508,58 @@ export const LABEL_SPECS = {
     doc: "the admin view's list of accounts",
   }),
 
+  // -- The site pages (ADR 0125 §3.7): the first-use hints' anchors --
+  createGame: label({
+    name: "create game",
+    kind: "aria",
+    role: "form",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Lobby's create-a-table form; the lobby.create hint points at it",
+  }),
+  deckLink: label({
+    name: "deck link",
+    kind: "aria",
+    role: "textbox",
+    owners: ["routes/Decks.svelte"],
+    doc: "the Decks page's deck-link field; the decks.check hint points at it",
+  }),
+  yourDecks: label({
+    name: "your decks",
+    kind: "aria",
+    role: "list",
+    owners: ["routes/Decks.svelte"],
+    doc: "a signed-in person's saved decks; the decks.library hint points at it",
+  }),
+  settingsSections: label({
+    name: "settings sections",
+    kind: "aria",
+    role: "navigation",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the Settings dialog's section tabs; the settings.display hint points at it",
+  }),
+  searchCatalogue: label({
+    name: "search the catalogue",
+    kind: "aria",
+    role: "textbox",
+    owners: ["routes/Catalog.svelte"],
+    doc: "the Catalogue's search field; the catalog.search hint points at it",
+  }),
+  searchRoadmap: label({
+    name: "search the roadmap",
+    kind: "aria",
+    role: "textbox",
+    owners: ["routes/Roadmap.svelte"],
+    doc: "the Roadmap's search field; the roadmap.search hint points at it",
+  }),
+
   // -- Everywhere --
+  tip: label({
+    name: "tip",
+    kind: "aria",
+    role: "complementary",
+    owners: ["lib/components/hints/HintCard.svelte"],
+    doc: "a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it",
+  }),
   keyboardShortcuts: label({
     name: "keyboard shortcuts",
     kind: "text",

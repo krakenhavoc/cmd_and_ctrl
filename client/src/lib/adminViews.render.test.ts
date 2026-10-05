@@ -8,6 +8,9 @@
 // stale admin that hears 403 sees the same message and asks /me again.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { anchorOf, emptyContext } from "./hints/hint";
+import { resolveAnchor } from "./tutorialAnchor";
+import HINT_ROW from "../routes/Admin.hint";
 import { tick } from "svelte";
 
 import Admin from "../routes/Admin.svelte";
@@ -287,6 +290,19 @@ describe("the tab strip", () => {
       "#/admin/accounts",
     ]);
     expect(links[1].getAttribute("aria-current")).toBe("page");
+  });
+});
+
+describe("the admin.views hint", () => {
+  it("anchors on the tab strip, which is on the page", async () => {
+    const c = await show({ view: "game", id: GAME });
+    const a = anchorOf(HINT_ROW, { ...emptyContext("admin"), adminMode: true });
+    expect(a).not.toBeNull();
+    expect(resolveAnchor(a!, c)).toBe(c.querySelector('nav[aria-label="admin views"]'));
+  });
+
+  it("names no anchor outside admin mode", () => {
+    expect(anchorOf(HINT_ROW, emptyContext("admin"))).toBeNull();
   });
 });
 

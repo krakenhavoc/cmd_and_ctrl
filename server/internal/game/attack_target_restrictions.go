@@ -131,6 +131,15 @@ type AttackTargetRestriction struct {
 	// controller does: "can't attack unless you control more creatures
 	// than defending player".
 	ControllerMustControlMore []PermanentQuery `json:",omitempty"`
+	// NotAlreadyAttackedThisTurn forbids attacking a player this object
+	// has already attacked this turn: "can't attack a player it has
+	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
+	// reads TurnTally.Attacks for the attacker's current object epoch, so
+	// a creature that left and came back is a new object (CR 400.7) with
+	// no history. Players only: a planeswalker or battle is not "a
+	// player", and an earlier attack on one is not an attack on its
+	// controller.
+	NotAlreadyAttackedThisTurn bool `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -142,7 +151,8 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderMustBePoisoned == o.DefenderMustBePoisoned &&
 		r.DefenderMustBeMonarch == o.DefenderMustBeMonarch &&
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
-		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore)
+		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
+		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn
 }
 
 // asksOfTheDefender reports whether r has any clause about the target's
@@ -224,6 +234,9 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 		}
 		return s + "."
 	}
+	if e.Restriction.NotAlreadyAttackedThisTurn && !e.Restriction.NotOwner && !e.Restriction.NotOwnersPlaneswalkers {
+		return e.AttackerName + " can't attack a player it has already attacked this turn."
+	}
 	what := "its owner"
 	switch {
 	case e.Restriction.NotOwner && e.Restriction.NotOwnersPlaneswalkers:
@@ -247,6 +260,9 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 	if r.ownerRefuses(g, attacker, target) {
 		return true, uuid.Nil, ""
 	}
+	if r.NotAlreadyAttackedThisTurn && g.alreadyAttackedPlayerLocked(attacker, target) {
+		return true, uuid.Nil, ""
+	}
 	if r.asksOfTheDefender() {
 		// CR 508.5: the player attacked, a planeswalker's controller,
 		// or a battle's protector.
@@ -259,6 +275,22 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 		}
 	}
 	return false, uuid.Nil, ""
+}
+
+// alreadyAttackedPlayerLocked reports whether `target` is a player this
+// object (same epoch) has been declared attacking earlier this turn.
+//
+// Caller must hold g.mu.
+func (g *Game) alreadyAttackedPlayerLocked(attacker *Card, target uuid.UUID) bool {
+	if g.classifyAttackTargetLocked(target) != AttackTargetPlayer {
+		return false
+	}
+	for _, p := range g.AttackedPlayersThisTurn(attacker.InstanceID) {
+		if p == target {
+			return true
+		}
+	}
+	return false
 }
 
 // ownerRefuses is the two owner clauses (ADR 0106 §2).
