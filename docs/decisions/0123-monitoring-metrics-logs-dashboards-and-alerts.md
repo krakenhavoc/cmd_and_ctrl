@@ -377,3 +377,11 @@ PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #22
 
 - **Cloudflare challenges GitHub-hosted runners** on both `/healthz` URLs (HTTP 403, `cf-mitigated: challenge`). The watcher treats a challenge on every try as *blocked*, not down. It opens no issue, warns in a dry run and fails a live run.
 - **The owner chose a WAF Skip rule for `/healthz`,** kept in HomeLab Terraform (HomeLab#120). Bot Fight Mode on the free plan cannot be skipped, so the owner checks the challenge's source before applying it. Until then the watcher cannot see either site.
+
+### Live (2026-10-05)
+
+- **The monitoring VM** was applied from HomeLab#122 (`546c1929`). It is at `192.168.200.11`, a DHCP reservation for its pinned MAC. All seven containers came up on first boot.
+- **Grafana** is at `https://grafana.labxp.io`, through the lab gateway (HomeLab#123), and on the lab portal. The name exists only on the home network's DNS servers. Direct access to `192.168.200.11:3000` still accepts a login, as the fallback.
+- **The heartbeat's first beat** reached `CMDCTRL_MONITORING_HEARTBEAT` at 10:54:41Z. The first run, at 10:49, had found Prometheus not yet started.
+- **The blackbox probes** see both sites up.
+- **The app hosts' Alloy** waited on the push-password secrets, which were first set in HomeLab rather than here. They are now set in this repo's `prod` and `dev` environments. Dev ships from the deploy after this change; prod ships with the next promotion.
