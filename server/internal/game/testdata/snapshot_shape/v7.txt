@@ -3738,6 +3738,8 @@ seats[].statics[].gameEnd.cantWin	bool
 seats[].statics[].gameEnd.causes	array
 seats[].statics[].gameEnd.causes[]	string
 seats[].statics[].gameEnd.scope	number:uint8
+seats[].statics[].keepManaColors	array
+seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
 seats[].statics[].label	string
 seats[].statics[].lifeTotalLocked	bool

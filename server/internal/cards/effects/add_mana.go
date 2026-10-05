@@ -52,6 +52,15 @@ type AddMana struct {
 	Riders []game.ManaSpendRider
 }
 
+// KeepManaUntilEndOfTurn is the mark for "until end of turn, you don't
+// lose this mana as steps and phases end" (Karn, Legacy Reforged; Savage
+// Ventmaw; #2166). Put it in AddMana.Riders (or a mana ability's
+// SpendRiders); the step-boundary sweep reads it (game/mana_keep.go) and
+// it expires when the cleanup step begins.
+func KeepManaUntilEndOfTurn() game.ManaSpendRider {
+	return game.ManaSpendRider{Kind: game.ManaRiderKeepUntilEndOfTurn}
+}
+
 func (a AddMana) Apply(ctx *Context) error {
 	if a.Produced == "" {
 		return nil
