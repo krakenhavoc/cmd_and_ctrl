@@ -1118,8 +1118,8 @@
           },
           "expr": "max(cmdctrl_db_size_bytes{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1183,8 +1183,8 @@
           },
           "expr": "time() - max(cmdctrl_db_backup_last_success_timestamp_seconds{env=\"$env\"} > 0)",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],

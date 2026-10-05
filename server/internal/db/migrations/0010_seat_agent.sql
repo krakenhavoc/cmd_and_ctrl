@@ -1,0 +1,21 @@
+-- Migration 0010: seats.agent_client (ADR 0124 §6, S64), amending
+-- ADR 0122 call 17.
+--
+--   seats.agent_client  the normalised MCP client name of a seat an
+--                       AI agent plays (lobby.NormalizeAgentClient),
+--                       or NULL for every other seat. Never empty for
+--                       an agent: an empty name is 'unknown'.
+--
+-- The agent badge rides the engine snapshot on game.Player, and the
+-- lobby still reads it back from there for a restored table. The
+-- column is what the admin views read for a table whose restore point
+-- is gone, which used to show its agent seat as a guest.
+--
+-- A plain ADD COLUMN with no default and no CHECK, like 0004 and 0007.
+-- No backfill: every row written before this migration reads NULL.
+--
+-- Rolling back: an older binary refuses this schema (ErrSchemaTooNew).
+-- The column is additive and can be dropped by hand; see
+-- docs/environments.md.
+
+ALTER TABLE seats ADD COLUMN agent_client TEXT;

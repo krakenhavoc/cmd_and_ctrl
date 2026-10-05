@@ -184,8 +184,10 @@ type SeatInfo struct {
 	// `agent`. AgentClient is the client's declared name, normalised
 	// by NormalizeAgentClient. Public: the lobby list and the invite
 	// preview carry them, exactly as the game view's PlayerView does.
-	// Read back from game.Player on restore (loadEntry), so they need
-	// no seats column. Never cleared once set.
+	// Read back from game.Player on restore (loadEntry). The seats row
+	// also carries AgentClient since migration 0010 (ADR 0124 §6), for
+	// the admin views of a table whose restore point is gone; the
+	// engine stays the authority. Never cleared once set.
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
 

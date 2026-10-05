@@ -82,6 +82,24 @@
         "includeAll": false,
         "multi": false,
         "skipUrlSync": false
+      },
+      {
+        "name": "site",
+        "type": "query",
+        "hide": 2,
+        "refresh": 2,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(probe_success{job=\"blackbox\", env=\"$env\"}, instance)",
+          "refId": "site"
+        },
+        "regex": "/^(https:\\/\\/[^\\/]+)/",
+        "includeAll": false,
+        "multi": false,
+        "skipUrlSync": true
       }
     ]
   },
@@ -116,8 +134,8 @@
           },
           "expr": "sum(cmdctrl_games{env=\"$env\", state=\"active\", archived=\"false\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -136,7 +154,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/games?state=active&archived=false",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -181,8 +206,8 @@
           },
           "expr": "sum(cmdctrl_games{env=\"$env\", state=\"lobby\", archived=\"false\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -201,7 +226,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/games?state=lobby&archived=false",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -246,8 +278,8 @@
           },
           "expr": "sum(cmdctrl_seats_connected{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -266,7 +298,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -311,8 +350,8 @@
           },
           "expr": "sum(cmdctrl_spectators_connected{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -331,7 +370,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -376,8 +422,8 @@
           },
           "expr": "sum(cmdctrl_seats{env=\"$env\", kind=\"bot\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -396,7 +442,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -441,8 +494,8 @@
           },
           "expr": "sum(cmdctrl_practice_games{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -461,7 +514,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/games?practice=only",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -555,7 +615,14 @@
             ]
           },
           "mappings": [],
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -658,9 +725,35 @@
             ]
           },
           "mappings": [],
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/games?state=${__field.labels.state}&archived=false",
+              "targetBlank": true
+            }
+          ]
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open in cmd_and_ctrl",
+                    "url": "${site:raw}/#/admin/games?practice=only",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -713,8 +806,8 @@
           },
           "expr": "max(cmdctrl_users{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -733,7 +826,14 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/accounts",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -776,10 +876,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(cmdctrl_users_played{env=\"$env\", window=\"1d\"})",
+          "expr": "max by (window) (cmdctrl_users_played{env=\"$env\", window=\"1d\"})",
           "legendFormat": "last day",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         },
         {
@@ -788,10 +888,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(cmdctrl_users_played{env=\"$env\", window=\"7d\"})",
+          "expr": "max by (window) (cmdctrl_users_played{env=\"$env\", window=\"7d\"})",
           "legendFormat": "last 7 days",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         },
         {
@@ -800,10 +900,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(cmdctrl_users_played{env=\"$env\", window=\"30d\"})",
+          "expr": "max by (window) (cmdctrl_users_played{env=\"$env\", window=\"30d\"})",
           "legendFormat": "last 30 days",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -823,7 +923,14 @@
             ]
           },
           "mappings": [],
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/accounts?played=${__field.labels.window}",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -925,7 +1032,14 @@
             ]
           },
           "mappings": [],
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -1056,7 +1170,14 @@
             ]
           },
           "mappings": [],
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/games",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -1240,7 +1361,14 @@
             ]
           },
           "mappings": [],
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/accounts?sort=first_seen",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
@@ -1556,8 +1684,8 @@
           },
           "expr": "time() - max(process_start_time_seconds{job=\"cmdctrl-server\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1621,8 +1749,8 @@
           },
           "expr": "max(up{job=\"cmdctrl-server\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1690,8 +1818,8 @@
           },
           "expr": "min(probe_success{job=\"blackbox\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],

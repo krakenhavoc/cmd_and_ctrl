@@ -739,6 +739,25 @@ Rolling forward again recreates the column at 0, so everyone starts in
 player mode. `TestMigration0009RollbackByHand` runs exactly this
 sequence and then rolls forward.
 
+Migration 0010 (ADR 0124, admin views) adds one nullable column,
+`seats.agent_client`, the MCP client of a seat an AI agent plays. An
+older binary refuses the v10 schema. Drop the column by hand (SQLite
+3.35 or newer):
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE seats DROP COLUMN agent_client; DELETE FROM schema_migrations WHERE version = 10;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the agent badge of a table whose restore point is gone:
+a restored table still takes its badge from the engine snapshot.
+Rolling forward again recreates the column empty, with no backfill.
+`TestMigration0010RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,

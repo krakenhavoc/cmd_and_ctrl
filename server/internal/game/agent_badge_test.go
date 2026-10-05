@@ -140,7 +140,19 @@ var agentBadgeWriters = map[string]int{
 	"internal/game/snapshot.go:restorePlayer":  2, // restore point read
 	"internal/protocol/view.go:viewOfPlayer":   2, // PlayerView projection
 	"internal/lobby/lobby.go:join":             2, // SeatInfo at join, from the same declaration
-	"internal/lobby/persist.go:loadEntry":      2, // SeatInfo on restore, read from game.Player
+	// SeatInfo on restore: read from game.Player, or, only when the
+	// engine has no such player, from seats.agent_client when it is
+	// set (ADR 0124 §6). Both onto a fresh SeatInfo, both true / a
+	// non-empty client.
+	"internal/lobby/persist.go:loadEntry": 4,
+	// seats.agent_client from SeatInfo, for an agent seat only; the
+	// normalised name is never empty (ADR 0124 §6).
+	"internal/lobby/persist.go:seatRecords": 1,
+	// seats.agent_client read into a fresh SeatRecord (ADR 0124 §6).
+	"internal/lobby/store_sql.go:LoadGame": 1,
+	// the admin views' copy, onto a fresh LiveSeat for an agent seat
+	// only (ADR 0124 §5).
+	"internal/lobby/live_tables.go:LiveTables": 1,
 }
 
 // TestAgentBadgeHasNoClearingWriter pins ADR 0122 §7's "the badge
