@@ -246,7 +246,7 @@ unused — they can be removed in a later cleanup PR.)
 
 ### Go without a local toolchain
 
-The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `scripts/go-docker.sh test ./internal/roadmap/...`, `vet`, `lint`, `go <args>`, `prune` (no arguments prints usage). It mounts the repo, uses `golang:1.27` for both tests and golangci-lint v2.14.0, passes the exit status through (never pipe it through `tail`), and cleans the build cache first when it passes `CMDCTRL_GOCACHE_MAX_GB` (default 15). `make -C server docker-test docker-lint` wrap it.
+The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `scripts/go-docker.sh test ./internal/roadmap/...`, `vet`, `lint`, `go <args>`, `prune` (no arguments prints usage). It mounts the repo, uses `golang:1.27` for both tests and golangci-lint v2.14.0, passes the exit status through (never pipe it through `tail`), and cleans the build cache first when it passes `CMDCTRL_GOCACHE_MAX_GB` (default 15). `make -C server docker-test docker-lint` wrap it. Env vars do not leak in: `CMDCTRL_SCRYFALL_DUMP=<path>` is bind-mounted read-only and rewritten to its in-container path, the `AISEAT_*` knobs are forwarded when set, and `GO_DOCKER_ENV="A B"` forwards any other names (see the script header; #2157).
 
 **Never create any other cache volume**, and never hand-write a `docker run` for Go. The only three are `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci`; per-PR volumes filled the Docker partition at 178 GB (#2035).
 
