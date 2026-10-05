@@ -112,7 +112,7 @@ var exitPayoutAllowlist = map[string]string{
 		"avoid asking the engine for a life change of nothing. The mana value is read before the " +
 		"move because that is the last moment the card is guaranteed findable (CR 608.2h), which " +
 		"is the ungated half of the line ADR 0013 §5t draws.",
-	"yuriko_the_tigers_shadow.go:81": "Dark Confidant's guard pointed at the opponents (#1278): " +
+	"yuriko_the_tigers_shadow.go:65": "Dark Confidant's guard pointed at the opponents (#1278): " +
 		"\"each opponent loses life equal to that card's mana value\" is an unconditional clause " +
 		"about PLAYERS, not gated on the card reaching a hand, and `if loss == 0` returns early " +
 		"only to avoid a life change of nothing.",
