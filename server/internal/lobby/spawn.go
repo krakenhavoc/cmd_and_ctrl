@@ -123,6 +123,7 @@ func (l *Lobby) Spawn(gameID uuid.UUID, opt SpawnOptions) ([]uuid.UUID, error) {
 	if opt.Managed {
 		broadcast, err = l.applyBundleLocked(gameID, entry, ws.Bundle{
 			Caller:   opt.Actor,
+			Actor:    opt.Actor,
 			FreeUndo: true,
 			Steps:    []func() error{mutate},
 		})

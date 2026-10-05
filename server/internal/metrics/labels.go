@@ -53,6 +53,12 @@ var labelSets = map[string]labelSet{
 	// WebSocket (ws.go, tables.go).
 	"role":   oneOf(roleLabels...),
 	"reason": oneOf(rejectLabels...),
+	// Engine and bots (engine.go, bots.go). type, result, outcome and
+	// direction are per family, in familyLabelSets.
+	"seat_kind": oneOf(actionSeatKindLabels...),
+	"tier":      oneOf(botTierLabels...),
+	"layer":     oneOf(botLayerLabels...),
+	"cause":     oneOf(botFallbackCauseLabels()...),
 }
 
 // familyLabelSets are rows for one metric family only, consulted
@@ -68,6 +74,22 @@ var familyLabelSets = map[string]map[string]labelSet{
 	"cmdctrl_ws_frames_total": {
 		"direction": oneOf(frameDirectionLabels...),
 		"type":      oneOf(frameTypeLabels...),
+	},
+	"cmdctrl_actions_total": {
+		"type":   actionTypeSet(),
+		"result": oneOf(actionResultLabels...),
+	},
+	"cmdctrl_action_apply_seconds": {
+		"result": oneOf(actionResultLabels...),
+	},
+	"cmdctrl_boot_restore_games": {
+		"outcome": oneOf(restoreOutcomeLabels...),
+	},
+	"cmdctrl_bot_model_calls_total": {
+		"result": oneOf(modelResultLabels...),
+	},
+	"cmdctrl_bot_model_tokens_total": {
+		"direction": oneOf(directionLabels...),
 	},
 }
 

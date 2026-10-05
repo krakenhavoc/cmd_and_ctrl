@@ -40,6 +40,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // restorePointPath is the on-disk location of a game's restore point.
@@ -402,11 +403,17 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 // ones that didn't — WHY, so a fleet of ordinary schema_too_new
 // rollback games doesn't read the same as a fleet of decode failures
 // that need attention (#524).
+//
+// It also sets the boot restore gauges (ADR 0123 §3,
+// cmdctrl_boot_restore_games and cmdctrl_boot_restore_degraded_cards)
+// from the same tally, zeros included when there was nothing to
+// restore. The boot calls it once, so they are set once.
 func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
+	var restored, ended, failed, degradedGames, degradedCards int
+	defer func() { metrics.SetBootRestore(restored, ended, failed, degradedCards) }()
 	if len(outcomes) == 0 {
 		return
 	}
-	var restored, ended, failed, degradedGames, degradedCards int
 	reasons := map[string]int{}
 	for _, o := range outcomes {
 		switch {

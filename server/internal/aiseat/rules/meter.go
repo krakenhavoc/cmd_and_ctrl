@@ -145,6 +145,7 @@ func (f *Filter) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	v := Resolve(in)
 	f.Meter.Observe(v)
 	if v.Absorbed() {
+		aiseat.NoteLayer(ctx, "A")
 		return aiseat.Decision{Index: v.Index, Reason: v.Reason}, nil
 	}
 	return f.Inner.Decide(ctx, in)
@@ -193,6 +194,7 @@ func (f *Filter) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 		// HeuristicIndex stays Decline: nobody asked Layer B, and
 		// recording 0 here would read as "the heuristic wanted the
 		// first move", which is a different and false claim.
+		aiseat.NoteLayer(ctx, "A")
 		return aiseat.Decision{Index: v.Index, Reason: v.Reason},
 			aiseat.Trace{Layer: "A", Rule: v.Rule, HeuristicIndex: aiseat.Decline}, nil
 	}

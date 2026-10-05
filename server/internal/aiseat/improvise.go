@@ -357,7 +357,10 @@ func (r *Runner) improvise(ctx context.Context, in Input, started time.Time, min
 
 	view, seq, err := r.room.ApplyBundle(ws.Bundle{
 		Caller: uuid.Nil,
-		Steps:  steps,
+		// The bot's own seat, for the metrics' seat_kind: the undo
+		// stamp above is nil on purpose, but the commit is the bot's.
+		Actor: r.seat,
+		Steps: steps,
 		// Undoing a bot's improvisation is maintenance on a catalog
 		// gap, not a take-back of your own play — see
 		// ws.undoEntry.freeUndo.

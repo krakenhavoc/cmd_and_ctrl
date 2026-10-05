@@ -1056,7 +1056,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		// a later undo would rewind the table to before the change.
 		// (Game.RestoreFrom already carries Settings forward for the
 		// same reason.)
-		view, seq, err := room.ApplyExternal(func() error {
+		view, seq, err := room.ApplyExternalAction(c.actionTag(action.Type), func() error {
 			return actions.Dispatch(room.Game, action)
 		})
 		if err != nil {
@@ -1097,12 +1097,13 @@ func (c *Client) handleAction(frame protocol.Frame) {
 
 	// ADR 0121 §3: the opening roll's verbs, a table roll, and anything
 	// sent while the roll is open, mint no undo entry.
+	tag := c.actionTag(action.Type)
 	apply := func(fn func() error) (protocol.GameView, uint64, error) {
-		return room.Apply(c.playerID, fn)
+		return room.ApplyAction(tag, fn)
 	}
 	if actions.MintsNoUndo(room.Game, action.Type) {
 		apply = func(fn func() error) (protocol.GameView, uint64, error) {
-			return room.ApplyExternal(fn)
+			return room.ApplyExternalAction(tag, fn)
 		}
 	}
 	view, seq, err := apply(func() error {
@@ -1170,6 +1171,13 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// ADR 0122 §6.4: after the snapshot, to this connection only.
 	c.sendAck(frame.ID, seq, generation)
 	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
+}
+
+// actionTag labels this connection's action for cmdctrl_actions_total:
+// its seat (which also stamps the undo entry, as Apply's caller did)
+// and whether it is an admin connection.
+func (c *Client) actionTag(t actions.Type) ActionTag {
+	return ActionTag{Type: t, Actor: c.playerID, Admin: c.admin}
 }
 
 // isTableSettingsAction reports whether an action type changes

@@ -408,7 +408,7 @@ func New(cfg Config) *Policy {
 	return &Policy{
 		cfg:       cfg,
 		static:    cfg.Deck.staticBlocks(),
-		rec:       newRecorder(cfg.RecordsKept),
+		rec:       newRecorder(cfg.RecordsKept, cfg.Tier),
 		improv:    newImprovTracker(),
 		deckIndex: idx,
 	}
@@ -518,7 +518,7 @@ func (p *Policy) ShouldConcede(in aiseat.Input) bool {
 // not JSON and a number that is not a move all take the same path and
 // all cost nothing but the latency already spent.
 func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, error) {
-	d, _, err := p.decideTraced(ctx, in)
+	d, _, err := p.DecideTraced(ctx, in)
 	return d, err
 }
 
@@ -534,7 +534,11 @@ var _ aiseat.Tracer = (*Policy)(nil)
 // wrapper around the same code — so a caller must use one or the
 // other and never both on a window: two calls are two model calls.
 func (p *Policy) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
-	return p.decideTraced(ctx, in)
+	d, tr, err := p.decideTraced(ctx, in)
+	// The layer that answered, for the runner's
+	// cmdctrl_bot_decisions_total (aiseat.NoteLayer).
+	aiseat.NoteLayer(ctx, tr.Layer)
+	return d, tr, err
 }
 
 func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {

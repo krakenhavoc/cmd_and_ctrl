@@ -29,6 +29,19 @@ func eventMetrics() []prometheus.Collector {
 		wsRejections,
 		wsFrames,
 		wsBroadcast,
+		// engine.go
+		actionsTotal,
+		actionApplySeconds,
+		effectErrors,
+		bootRestoreGames,
+		bootRestoreDegradedCards,
+		// bots.go
+		botDecisions,
+		botDecisionSeconds,
+		botFallbacks,
+		botModelCalls,
+		botModelCallSeconds,
+		botModelTokens,
 	}
 }
 
