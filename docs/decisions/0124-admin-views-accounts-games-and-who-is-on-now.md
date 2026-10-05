@@ -1,6 +1,6 @@
 # ADR 0124 — Admin views: accounts, games and who is on now
 
-**Status:** Proposed · 2026-10-05 · S64 — Admin views: accounts, games and who is on now.
+**Status:** Accepted · 2026-10-05 · S64 — Admin views: accounts, games and who is on now. The owner accepted it unchanged in review on #2297 the same day, Calls made here included.
 **Issues:** [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) (this change, and S64's tracker); relates to [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) (ADR 0123's dashboards, whose tiles link here).
 **Owner decisions:** the three answers of 2026-10-05, quoted under [Owner decisions](#owner-decisions-2026-10-05). They are binding. This ADR also makes calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before PR 2 lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-05. I ran `git fetch --all --prune` and listed every file any remote branch has had under `docs/decisions/` (`git log --remotes --name-only -- docs/decisions/`, a superset of the tips). The 37 remote heads are `origin/develop`, `origin/main` and 35 chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0123, on `origin/develop`. The one open PR (#2162) adds no ADR. This ADR takes **0124**.

@@ -107,7 +107,7 @@ planned just-in-time from the S12 pain-point triage.
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
-| S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | planned     |
+| S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
 
 ### How to read the status column
 
