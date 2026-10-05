@@ -536,6 +536,27 @@ describe("settings", () => {
   // ADR 0105 owner decision 4: the legal-action highlights start on
   // for everyone, existing players included, whatever the stored blob
   // says — and from v15 on the player's own choice is kept.
+  // #2336: tableLayout gained "focus" without a version bump, and from
+  // then on the value is checked: an unknown one is the quadrant.
+  it("keeps every table layout and resets an unknown one to the quadrant", async () => {
+    for (const [stored, want] of [
+      ["quadrant", "quadrant"],
+      ["row", "row"],
+      ["focus", "focus"],
+      ["sideways", "quadrant"],
+      [7, "quadrant"],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 20, display: { tableLayout: stored, cardSize: "large" } }),
+      );
+      const { settings } = await freshModule();
+      const s = get(settings);
+      expect(s.display.tableLayout, `stored ${String(stored)}`).toBe(want);
+      expect(s.display.cardSize).toBe("large");
+    }
+  });
+
   it("v14 → v15 writes highlightLegalActions true whatever was stored", async () => {
     for (const stored of [false, true, "no", undefined]) {
       localStorage.setItem(

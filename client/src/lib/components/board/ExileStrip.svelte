@@ -576,7 +576,7 @@
     align-items: flex-end;
     /* Same resting footprint as the self hand beside it (PlayerPanel's
        .hand-zone): 62% of a card, so the two rows line up. */
-    height: calc(var(--card-h, 168px) * 0.62);
+    height: calc(var(--card-h, 168px) * var(--hand-peek, 0.62));
   }
 
   /* ---- inline (wide panel) ------------------------------------ */
@@ -630,7 +630,7 @@
   .strip-cards:hover {
     max-height: none;
     overflow: visible;
-    transform: translateY(calc(var(--card-h, 168px) * -0.38));
+    transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
   }
   .strip-slot {
@@ -704,7 +704,7 @@
     position: absolute;
     left: 50%;
     /* Inside the visible 62% peek, so it reads at rest. */
-    top: calc(var(--card-h, 168px) * 0.62 - 28px);
+    top: calc(var(--card-h, 168px) * var(--hand-peek, 0.62) - 28px);
     transform: translateX(-50%);
     z-index: 5;
     padding: 2px 7px;

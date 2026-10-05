@@ -7,6 +7,7 @@ import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
+import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
 import { normalizeSeen } from "./hints/seen";
 
 // Settings is the client-wide preferences schema. Every toggle the
@@ -84,11 +85,15 @@ export interface Settings {
     // across-table seats on top); "row" puts every opponent in turn
     // order across the top and gives your panel the full width.
     //
-    // #956 note: at THREE players the two are now identical — the
+    // #956 note: at THREE players those two are now identical — the
     // viewer needs the whole bottom row there, and there is no third
-    // arrangement worth having. This setting only distinguishes the
-    // 4-player table.
-    tableLayout: "row" | "quadrant";
+    // arrangement worth having.
+    //
+    // "focus" (#2336) is the row arrangement split evenly: your board is
+    // the bottom half, and every opponent is a summary in the top half,
+    // whatever opponentDetail and expandActivePlayer say, and you
+    // hover or click an avatar to see a whole board. See tableLayout.ts.
+    tableLayout: TableLayout;
     // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
     // since v17) is a pile of large, readable cards on the left of the
     // table; phones and short boards draw "compact" instead, without
@@ -920,6 +925,14 @@ function migrate(raw: unknown): Settings {
     merged.display.theme = DEFAULT_SKIN;
   }
   merged.display.accent = normalizeAccent(merged.display.accent);
+  // #2336: display.tableLayout gained "focus". A new value of an
+  // existing field needs no version bump, but the value is checked
+  // from here on: an unknown string (a hand edit, a layout that was
+  // tried and removed) falls back to the quadrant rather than to a
+  // board with no grid template.
+  if (!isTableLayout(merged.display.tableLayout)) {
+    merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
