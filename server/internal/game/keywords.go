@@ -301,6 +301,9 @@ var canonicalKeywords = map[string]bool{
 // rather than by the combat engine.
 const KeywordChangeling = "changeling"
 
+// KeywordDevoid is the devoid keyword ability (CR 707.9d).
+const KeywordDevoid = "devoid"
+
 // CanBeTargetedBy reports whether the spell or ability `src`
 // describes may choose this card as a target, under the CR 702
 // protection-style keywords the engine honours:

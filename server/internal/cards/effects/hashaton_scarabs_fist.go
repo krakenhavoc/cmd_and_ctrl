@@ -93,4 +93,6 @@ func hashatonZombieException(t *game.Card) {
 	t.Colors = []string{"B"}
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
 	t.Tapped = true
+	// CR 707.9d: colour is provided, so devoid does not carry (#2322).
+	dropKeyword(t, game.KeywordDevoid)
 }

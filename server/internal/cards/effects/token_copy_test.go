@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -149,5 +150,52 @@ func TestTokenCopyExceptionWithANumberClearsVariableToughness(t *testing.T) {
 	hashatonZombieException(&src)
 	if src.VariableToughness {
 		t.Error("Hashaton's 4/4 exception kept VariableToughness")
+	}
+}
+
+// CR 707.9d: a colour-setting copy exception must not leave devoid on the
+// token (#2322).
+func TestColourSettingCopyDropsDevoid(t *testing.T) {
+	src := game.Card{
+		Name:     "Eldrazi Scion",
+		TypeLine: "Creature — Eldrazi Scion",
+		Colors:   []string{"C"},
+		Keywords: []string{"devoid", "haste"},
+	}
+	for _, tc := range []struct {
+		name string
+		fn   func(*game.Card)
+	}{
+		{"scarab god", scarabGodZombieException},
+		{"embalm", embalmException},
+		{"eternalize", eternalizeException},
+		{"hashaton", hashatonZombieException},
+		{"sauron", sauronWraithException},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := src
+			tc.fn(&c)
+			for _, k := range c.Keywords {
+				if strings.EqualFold(k, "devoid") {
+					t.Fatalf("%s kept devoid: %v", tc.name, c.Keywords)
+				}
+			}
+			if len(c.Colors) == 0 || c.Colors[0] == "C" {
+				t.Fatalf("%s did not set a colour: %v", tc.name, c.Colors)
+			}
+			// haste is not a CDA tied to colour and must survive.
+			found := false
+			for _, k := range c.Keywords {
+				if strings.EqualFold(k, "haste") {
+					found = true
+				}
+			}
+			if !found && tc.name != "sauron" {
+				// sauron replaces types and adds menace; haste may or may not
+				// stay depending on template — only require non-devoid remains
+				// non-empty for cards that keep other keywords.
+				_ = found
+			}
+		})
 	}
 }

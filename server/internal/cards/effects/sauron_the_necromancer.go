@@ -101,6 +101,8 @@ func sauronWraithException(t *game.Card) {
 	t.VariableToughness = false // a printed 3, not a `*` stand-in (#683)
 	t.Colors = []string{"B"}
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Wraith")
+	// CR 707.9d: colour is provided, so devoid does not carry (#2322).
+	dropKeyword(t, game.KeywordDevoid)
 	if !slices.Contains(t.Keywords, "menace") {
 		t.Keywords = append(t.Keywords, "menace")
 	}

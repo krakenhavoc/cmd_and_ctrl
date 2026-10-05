@@ -119,4 +119,6 @@ func scarabGodZombieException(t *game.Card) {
 	t.VariableToughness = false
 	t.Colors = []string{"B"}
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
+	// CR 707.9d: colour is provided, so devoid does not carry (#2322).
+	dropKeyword(t, game.KeywordDevoid)
 }

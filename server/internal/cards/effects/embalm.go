@@ -95,6 +95,8 @@ func embalmException(t *game.Card) {
 	t.Colors = []string{"W"}
 	t.ManaCost = ""
 	t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Zombie")
+	// CR 707.9d: colour is provided, so devoid does not carry (#2322).
+	dropKeyword(t, game.KeywordDevoid)
 }
 
 // eternalizeException is "except it's a 4/4 black Zombie in addition
@@ -109,6 +111,8 @@ func eternalizeException(t *game.Card) {
 	t.Colors = []string{"B"}
 	t.ManaCost = ""
 	t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Zombie")
+	// CR 707.9d: colour is provided, so devoid does not carry (#2322).
+	dropKeyword(t, game.KeywordDevoid)
 }
 
 // addedSubtypeTypeLine rebuilds a type line with `subtype` ADDED to
