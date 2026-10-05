@@ -23,6 +23,15 @@ import (
 // lockstep game is a pure function of its seed (#1503), so its move log
 // is the whole game: a different starting seat, a different hand or a
 // different library order changes it.
+//
+// One deliberate exception, re-pinned by hand rather than regenerated
+// (#2275, 2026-10-05): CR 117.4's passes in succession. In seed 1503 a
+// random seat taps a Mountain for mana while holding priority in
+// another player's upkeep, after three seats have passed. A mana
+// ability is an action (CR 117.3c), so those three seats pass again
+// before the step ends — three more "Pass priority" lines and nothing
+// else: the same opening, the same hands, every other move identical.
+// The other two seeds never act between passes and are unchanged.
 func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -41,7 +50,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 356, turns: 3, winner: -1, digest: "2478ceb8cbea76b596f61a3456004c30b9553fcd9f042ecbb8fbdb72112397be",
+			moves: 359, turns: 3, winner: -1, digest: "770121534519ffc62790e68a2b88b87afdc3040df1965a5e036b09a706d554ea",
 		},
 		{
 			name: "two seats, eight rounds",

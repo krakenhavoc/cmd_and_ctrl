@@ -319,7 +319,7 @@ func (g *Game) cleanupAfterCommanderReturnLocked(moved bool) {
 	if moved {
 		if as := g.Turn.ActiveSeat; as >= 0 && as < len(g.Seats) &&
 			g.Seats[as] != nil && !g.Seats[as].Eliminated {
-			g.Turn.PriorityHolder = as
+			g.grantPriorityLocked(as)
 		}
 		return
 	}

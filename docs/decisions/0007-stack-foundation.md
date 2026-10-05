@@ -4,6 +4,7 @@
 **Amended:** 2026-09-16 · Branch `fix/zero-toughness-683` — §7's placeholder-creature exemption ([#683](https://github.com/krakenhavoc/cmd_and_ctrl/issues/683))
 **Amended:** 2026-09-19 · Branch `fix/690-691-cda-toughness-sba-and-x-zero` — §7's exemption becomes one predicate, `Card.ToughnessIsKnown` ([#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690), [#691](https://github.com/krakenhavoc/cmd_and_ctrl/issues/691))
 **Amended:** 2026-09-24 · Branch `fix/1519-split-second-keyword` — split second is read from the card (Decisions 11–12, [#1519](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1519))
+**Amended:** 2026-10-05 · Branch `fix/2275-priority-passes-in-succession` — §3's wrap becomes passes in succession (Decisions 13–15, [#2275](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2275))
 
 ## Context
 
@@ -69,6 +70,11 @@ advanced the step. Post-S13.1, the wrap branch checks
 and priority returns to the active player at the same step (CR
 117.3b / 608.1); empty → step advance (existing behaviour).
 Eliminated-seat skip from S13 is preserved.
+
+*Amended 2026-10-05 (#2275):* "the wrap" was priority arriving back at
+the active seat, which is CR 117.4's "all players pass in succession"
+only when the round began there. It is now an explicit succession of
+passes — see Decisions 13–15 at the end of this ADR.
 
 ### 4. Target re-check at resolution (CR 608.2b), no announce-time validation
 
@@ -468,3 +474,98 @@ answers.
 Shock, Sudden Death, Sudden Edict and Sudden Spoiling join the catalog.
 Angel's Grace (#749, PR #1522, merged the same day) declares the
 keyword and drops its "Split second isn't enforced" caveat.
+
+## Amendment 2026-10-05 — passes in succession, not a wrap at the active seat (#2275)
+
+**Context.** Decision 3 resolved the top of the stack "on wrap", and the
+wrap was priority arriving back at the ACTIVE seat. CR 117.4 resolves the
+top object, or ends the step, when "all players pass in succession (that
+is, if all players pass without taking any actions in between passing)".
+The two agree only when the round of passes began with the active
+player. A non-active player who casts a spell keeps priority (CR 117.3c),
+so the round restarts with them — and under the wrap, their own pass
+reached the active seat and resolved the spell. Neither the active player
+nor any seat between them in turn order ever held priority over it. In
+prod game `497de7d2` (the Codex v Claude rematch, 2026-10-04) a Stroke of
+Genius for X=7 cast in its opponent's draw step resolved that way
+through a hand holding Counterspell and Mana Drain; at four seats the
+same shape skips every seat from the active player round to the caster.
+It was stronger than the rules allow, in the caster's favour, and it
+removed exactly the windows a control deck is built around. The MCP
+seat's first matches found it (#2230).
+
+**Decision 13. The succession is turn state: `Turn.PassedInSuccession`.**
+A set of seat indices (a bit set, `SeatSet`, so the turn cursor stays a
+plain comparable value and every copy of it — the undo clone, a drive's
+`start`, a test's `before` — is independent). `passPriorityLocked` adds
+the passer, and then:
+
+- while some seat still in the game has not passed, priority moves to
+  the next non-eliminated seat in turn order (CR 117.3d) — the active
+  seat included, which is the whole fix;
+- once every seat still in the game has, it runs Decision 3's two cases
+  unchanged: the combat lock-ins (#830, #859, #1279), then resolve the
+  top and give the active player priority (CR 117.3b), or, with an empty
+  stack, end the step (the CR 514.3a cleanup repeat included).
+
+A seat that has left the game is never waited for, so a departure cannot
+strand a round. `driveStepToEndLocked` (AdvanceStep's CR 117.4 drive,
+#914) needed no change: it passes through the same function until the
+step ends, and simply passes more often now.
+
+**Decision 14. What begins a new succession** — every writer lives in
+`game/priority_succession.go` or is one of the calls named here:
+
+| Event | Rule | Where |
+|---|---|---|
+| Priority granted at a boundary: a step begins, a resolution, the end of a combat declaration or the block declaration (#1501's unparking), the cleanup step's grant, a holder leaving the game | CR 117.3a, 117.3b, 514.3a | `grantPriorityLocked`, which every such `PriorityHolder` assignment now calls; a new `Turn` value starts empty |
+| Anything put on the stack — a cast, an activation, a trigger, a copy | CR 117.3c; and a new object on top | `nextStackSeqLocked`, which every stack push stamps its order through |
+| The priority holder takes an action that uses no stack: a land play, another special action, a mana ability, the sandbox's manual loyalty activation | CR 117.3c, 116.2a, 117.4 | `noteActionTakenLocked` in `CastSpell`, `PerformSpecialAction`, `ActivateManaAbility`, `ActivateLoyalty` |
+| The sandbox's `counter_spell` / `counter_ability` | stands in for a resolution | `CounterSpell`, `CounterAbility` |
+| A player leaves the game | CR 800.4a takes their objects off the stack | `leaveGameLocked` |
+
+Three readings are worth recording, because each was a choice:
+
+- **A trigger restarts the succession** although it is not an action a
+  player took. The object on top is new, and the seats that passed did
+  not pass over it. The conservative reading: no object ever resolves on
+  passes made before it existed.
+- **A mana ability restarts it only when its activator holds priority.**
+  CR 117.3c says "if a player has priority when they … activate an
+  ability". Mana tapped to answer a Rhystic Study tax (`pay_unless`, a
+  prompt the table plays on through) is not an action in the CR 117.4
+  sense and leaves the succession alone.
+- **Answering a prompt does not restart it.** A prompt is part of a
+  resolution or an announcement already under way, and whatever the
+  answer puts on the stack restarts the succession through the stack
+  push anyway.
+
+**Decision 15. Snapshot and undo.** `Turn.PassedInSuccession` rides the
+snapshot with the rest of the cursor (an additive shape change,
+`turn.PassedInSuccession number:uint64` in `snapshot_shape/v7.txt`; no
+version bump) and the undo clone copies it by value. A restore point
+written before the field reads it as empty — nobody has passed yet —
+which hands every seat one more chance to act, never one fewer. The wire
+is unchanged: nothing a client draws or decides reads the succession,
+and the bots' enumerator asks only who holds priority, which is now
+right.
+
+**What changes at a table.** More priority windows, exactly the ones the
+rules owe: the active player (and every seat round to the caster) now
+gets priority over a non-active player's spell or ability, and seats that
+passed before anyone acted pass again. Automatic passing (the client's
+autopass, the bot runner, the MCP seat's autopilot) answers the extra
+windows on its own. The arena's seed-1503 pin
+(`botarena/opening_roll_pin_test.go`) was re-pinned by hand for the
+three extra passes this adds to it; the change is documented there.
+
+**Tests.** `game/priority_succession_test.go` pins the issue's two-seat
+shape, every active seat × every caster at four seats, a response chain
+(CR 117.3b's new round after the top resolves), an empty-stack step end
+after a mana ability, mana tapped without priority, a land play, a
+suspend, a trigger between passes, a conceded seat (holding priority and
+not), the post-block window, undo across a partial succession and the
+snapshot round trip with and without the field.
+`legal/priority_succession_test.go` shows the bot's side: the active
+seat is offered Counterspell against an opponent's Bolt it never used
+to see.
