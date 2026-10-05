@@ -6046,22 +6046,30 @@ and then discard the change to `docs/engine-seams.md`.
   per permanent as well as a count and the payment sends
   `counter_kinds` beside `counter_source_ids` only when the kinds
   actually differ — [ADR 0020](decisions/0020-activated-abilities.md) addendum)
-  ([activated.go](../server/internal/game/activated.go)) and nothing else.
+  ([activated.go](../server/internal/game/activated.go)), plus the
+  card-moving components added since: discard (`DiscardSelf`,
+  `DiscardCards`, and `DiscardYourHand` for "discard your hand"), exile
+  from the hand or graveyard (`ExileCards`), exile the top of your
+  library, put a card from your hand on top of it (`library_cost.go`,
+  ADR 0109 §7), return a permanent to its owner's hand, tap other
+  permanents, and **waterbend** (`WaterbendCost("{X}")`, Katara,
+  Waterbending Master). The struct's field comments are the list of
+  record; check it before calling a cost shapeless.
   Equip needs no component of its own — `EquipAbility("{2}")` is a mana
   cost plus a target clause. **"Rather than pay" on an activated
   ability** is not an alternatives slot either: write it as a **second
   ability entry** with the same effect and its own real cost, which is
   what Heart of Kiran does ("Crew 3" and "Crew — remove a loyalty counter
   from a planeswalker you control"). The second entry must have a cost
-  that can actually go unpaid, or it is the #259 mistake below. Still
-  no shape: cycling and **convoke / waterbend on an ACTIVATED ability**
-  — don't invent one. (Two things that used to be on this list are not
+  that can actually go unpaid, or it is the #259 mistake below. Cycling is
+  not on this list either: `Cycling("{3}")` and its siblings are
+  constructors, see "Abilities from the hand". **Convoke** on an
+  ACTIVATED ability still has no shape — don't invent one. (Two things that used to be on this list are not
   any more: a counter removal **split across several permanents**
   shipped with #789 and #943's any-kind form, and a cost that **adds**
-  a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* do have one since
-  S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
-  activated-ability seam is separate and still open — Katara, Water
-  Tribe's Hope is the card waiting on it.) (**Delve** has a shape since
+  a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* have one since
+  S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`;
+  waterbend on an *activated* ability is the `WaterbendCost` above.) (**Delve** has a shape since
   ADR 0100 sub-PR 1: `Delve: true` on the Spec and nothing else. It is
   not an additional or alternative cost (CR 702.66b) but a way of
   paying the generic mana, priced next to convoke by the one pricer
@@ -6095,9 +6103,11 @@ and then discard the change to `docs/engine-seams.md`.
   **attack declarations** (`EventAttack`) and **"becomes the target of a
   spell or ability"** (`EventBecomesTarget`), both S22 — see the event
   picker above.
-- **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
-  touch the S15 cost engine rather than the S17 event pipeline. They
-  land with S28.
+- ~~**Cost-replacement effects** (Trinisphere, Thalia, Spellshift,
+  Kambal)~~ — no longer a blocker. They are `Spec.CostModifiers`
+  entries on the S15 cost engine (S28), not event-pipeline
+  replacements: `trinisphere.go`, `thalia_guardian_of_thraben.go` and
+  `kambal_consul_of_allocation.go` are the templates.
 - ~~**Cards that add a layer dependency, or that ability removal gets
   wrong**~~ — no longer a blocker, and the hold list is released
   (2026-09-18, [ADR 0067](decisions/0067-layer-dependency-ordering.md),
