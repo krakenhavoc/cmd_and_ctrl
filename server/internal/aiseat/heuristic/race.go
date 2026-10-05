@@ -71,6 +71,15 @@ import (
 // the full seed-1409 Wurm mirror has none left — and attrition.go is
 // what cashes those edges over more turns.
 //
+// The defender has a second answer, and the race has to beat it too
+// (#2310): block with everything whose block costs it nothing — a
+// creature that lives, or its commander, since CR 903.9a sends a dying
+// commander to the command zone and it is back before my next attack.
+// Damage that answer stops is not damage the race may bank. Counting
+// it ran a lone commander into the defender's commander for a dozen
+// turns: both were cast again every turn, and the same race came round
+// each time (raceNumbers).
+//
 // The swing it sends is the SMALLEST that wins: attackers are tried
 // evasive-first (fewest possible blockers, then biggest), and the plan
 // is the shortest prefix of that order that races. Everything outside
@@ -223,19 +232,86 @@ func (p *Policy) raceWith(st *state, def *SeatEval, committed, joinable []*proto
 // three numbers, the defender's blocks, and which of my attackers those
 // blocks kill.
 type raceEval struct {
+	// now and next are the pair from whichever of the defender's two
+	// answers leaves it more life after next turn (#2310); crack is the
+	// larger of the two answers' crack-backs.
 	now, next, crack int
-	d                defence
-	// mineDead is every attacker of mine counted dead: blocked, and
-	// not surviving the blocks (defence.survives).
+	// d and mineDead are blockToSurvive's answer: its blocks, and every
+	// attacker of mine it kills — blocked, and not surviving the blocks
+	// (defence.survives). The attrition search plays them forward.
+	d        defence
 	mineDead map[string]bool
+	// free is what the swing connects for past the defender's free
+	// blocks (freeAnswer).
+	free int
+}
+
+// answer is one way the defender can meet a swing, as the race counts
+// it: the damage that connects, every attacker of mine it blocks and
+// the ones it kills, the defender's creatures that die, and the dead
+// commanders it casts again (recast). A recast commander is back to
+// block my next attack, but it was cast on the defender's own turn and
+// is too new to attack on it (CR 302.6), so it counts for NEXT and not
+// for the crack-back.
+type answer struct {
+	through  int
+	blocked  map[string]bool
+	mineDead map[string]bool
+	dead     map[string]bool
+	recast   map[string]bool
 }
 
 // raceNumbers is the three-number estimate for one swing at def.
+//
+// The defender has two cheap answers, and the race has to win against
+// both (#2310). blockToSurvive's takes whatever damage it survives, and
+// blocks only to live or to kill for free. The free answer (freeAnswer)
+// takes as little as it can without losing anything for good: it
+// blocks with every creature whose block costs it nothing (freeBlock),
+// a blocker that lives, or its commander. Without the second answer
+// the full seed-1409 Wurm mirror looped for a dozen turns: a lone 3/3
+// commander raced for "3 now + 4 next", the defender blocked it with
+// its own commander, both were cast again, and the same race came
+// round. Against the free answer that swing is 0 now and 2 next, which
+// is no race.
+//
+// So NOW and NEXT are the pair from whichever answer leaves the
+// defender more life after next turn — under the free answer an
+// attacker of mine a free block kills is dead for NEXT, and the
+// commander is back to block — and CRACK-BACK is the larger of the
+// two: the free answer loses nothing that can attack, so whatever
+// blockToSurvive's chumps took out of the crack-back is back in it.
+// The free answer is only an answer when the defender survives it; if
+// it still dies to the swing it has to block the first way.
 func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protocol.CardView) raceEval {
 	d := p.blockToSurvive(st, def, swing, blockers)
-	now := d.through
-	mineDead := map[string]bool{}
+	took := answer{through: d.through, blocked: d.blockedMine, mineDead: map[string]bool{}, dead: d.deadDef}
+	for _, a := range swing {
+		// Counted dead unless no block the defender could make
+		// kills it (#1527): a Wurm chumped by the last Bear
+		// tramples over again next turn.
+		if d.blockedMine[a.InstanceID] && !d.survives(st, def.ID, a) {
+			took.mineDead[a.InstanceID] = true
+		}
+	}
+	e := raceEval{now: took.through, d: d, mineDead: took.mineDead}
+	e.next, e.crack = st.raceAfter(def, swing, took)
 
+	free := st.freeAnswer(def.ID, swing, blockers)
+	e.free = free.through
+	if free.through < def.Life {
+		next, crack := st.raceAfter(def, swing, free)
+		if free.through+next < e.now+e.next {
+			e.now, e.next = free.through, next
+		}
+		e.crack = max(e.crack, crack)
+	}
+	return e
+}
+
+// raceAfter is NEXT and CRACK-BACK after the defender meets swing with
+// ans.
+func (st *state) raceAfter(def *SeatEval, swing []*protocol.CardView, ans answer) (next, crack int) {
 	inSwing := make(map[string]bool, len(swing))
 	for _, c := range swing {
 		inSwing[c.InstanceID] = true
@@ -251,14 +327,9 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 		if c.Controller != st.me || !isCreature(c) {
 			continue
 		}
-		if d.blockedMine[c.InstanceID] {
-			// Counted dead unless no block the defender could make
-			// kills it (#1527): a Wurm chumped by the last Bear
-			// tramples over again next turn.
-			if d.survives(st, def.ID, c) {
+		if ans.blocked[c.InstanceID] {
+			if !ans.mineDead[c.InstanceID] {
 				second = append(second, c)
-			} else {
-				mineDead[c.InstanceID] = true
 			}
 			continue
 		}
@@ -278,10 +349,10 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 	}
 
 	// CRACK-BACK: every opponent swings everything at me — except a
-	// defender this swing already killed.
-	crack := 0
+	// defender this swing already killed, and the defender's creatures
+	// that died, a recast commander among them.
 	for _, o := range st.opps {
-		if o.ID == def.ID && now >= def.Life {
+		if o.ID == def.ID && ans.through >= def.Life {
 			continue
 		}
 		var theirs []*protocol.CardView
@@ -290,7 +361,7 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 			if c.Controller != o.ID || !isCreature(c) || hasKeyword(c, "defender") {
 				continue
 			}
-			if o.ID == def.ID && d.deadDef[c.InstanceID] {
+			if o.ID == def.ID && (ans.dead[c.InstanceID] || ans.recast[c.InstanceID]) {
 				continue
 			}
 			theirs = append(theirs, c)
@@ -298,19 +369,80 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 		crack += crackBackPower(st, theirs, home)
 	}
 
-	// NEXT: my survivors into everything the defender kept.
+	// NEXT: my survivors into everything the defender kept, a recast
+	// commander included.
+	if ans.through >= def.Life {
+		return 0, crack
+	}
 	var kept []*protocol.CardView
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
-		if c.Controller == def.ID && isCreature(c) && !d.deadDef[c.InstanceID] {
+		if c.Controller == def.ID && isCreature(c) && !ans.dead[c.InstanceID] {
 			kept = append(kept, c)
 		}
 	}
-	next := 0
-	if now < def.Life {
-		next = unblockedPower(st, def.ID, second, kept)
+	return unblockedPower(st, def.ID, second, kept), crack
+}
+
+// freeBlock reports whether blocking a with b costs the defender
+// nothing it keeps (#2310): b lives through it, or b is its commander.
+// CR 903.9a lets a dying commander go back to the command zone; the
+// defender casts it again on its own turn, and it is back in time to
+// block my next attack. It is the attrition horizon's definition of a
+// free block (#1548), now the race's too.
+//
+// It does not ask whether the defender can pay the commander tax (CR
+// 903.8) to cast it again. Measured on the heuristic gate, asking made
+// the games longer, not shorter: a commander the tax had priced out
+// let a smaller swing qualify, and the race and the attrition horizon
+// send the smallest swing that does. Assuming the commander always
+// comes back errs toward not racing, the race's usual direction.
+func freeBlock(st *state, defender string, a, b *protocol.CardView) bool {
+	return couldBlock(st, defender, a, b) && (b.IsCommander || !blockerDies(a, b))
+}
+
+// freeAnswer is the defender's free answer to a swing (#2310): block
+// with every creature whose block is free (freeBlock), and take the
+// rest. Its damage is unblockedPower's matching over the free blocks
+// alone, and a blocked attacker counts as held in full, trample or
+// not, which only ever lowers it — so it too errs toward not racing.
+// An attacker of mine it blocks dies when the blocker, joined by every
+// free blocker the matching left spare, kills it — the gang
+// blockToSurvive's answer assumes too (defence.survives). Nothing of
+// the defender's dies for good: a blocker that lives lives, and a
+// commander that dies is cast again.
+func (st *state) freeAnswer(defender string, swing, blockers []*protocol.CardView) answer {
+	free := func(a, b *protocol.CardView) bool { return freeBlock(st, defender, a, b) }
+	through, stoppedBy := matchBlocks(swing, blockers, free)
+	ans := answer{through: through, blocked: map[string]bool{}, mineDead: map[string]bool{}, recast: map[string]bool{}}
+	used := make([]bool, len(blockers))
+	for _, bi := range stoppedBy {
+		if bi >= 0 {
+			used[bi] = true
+		}
 	}
-	return raceEval{now: now, next: next, crack: crack, d: d, mineDead: mineDead}
+	for ai, bi := range stoppedBy {
+		if bi < 0 {
+			continue
+		}
+		a, b := swing[ai], blockers[bi]
+		ans.blocked[a.InstanceID] = true
+		if blockerDies(a, b) && !hasKeyword(b, "haste") {
+			// Cast again on the defender's turn, it cannot attack on
+			// it — unless it has haste (CR 702.10).
+			ans.recast[b.InstanceID] = true
+		}
+		gang := []*protocol.CardView{b}
+		for si, s := range blockers {
+			if !used[si] && free(a, s) {
+				gang = append(gang, s)
+			}
+		}
+		if gangKills(a, gang) {
+			ans.mineDead[a.InstanceID] = true
+		}
+	}
+	return ans
 }
 
 // defence is blockToSurvive's answer to one swing.

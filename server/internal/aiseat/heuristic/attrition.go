@@ -30,7 +30,8 @@ import (
 //   - it makes progress the defender cannot avoid for free: damage it
 //     can stop only by losing a creature, or a creature of theirs that
 //     dies and stays dead (a commander goes back to the command zone
-//     and is cast again, so neither its blocks nor its death count);
+//     and is cast again, so neither its blocks nor its death count —
+//     freeBlock in race.go);
 //   - it is even or favourable: no more of my creatures die than of
 //     theirs;
 //   - and the edge survives it: what I have left is still worth more
@@ -125,7 +126,7 @@ func (p *Policy) attritionLine(st *state, def *SeatEval, committed, joinable []*
 		swing = append(swing, committed...)
 		swing = append(swing, joinable[:k]...)
 		e := p.raceNumbers(st, def, swing, blockers)
-		x := st.exchangeOf(def, e, freeThrough(st, def.ID, swing, blockers))
+		x := st.exchangeOf(def, e)
 		if !x.acceptable(st) {
 			continue
 		}
@@ -145,12 +146,13 @@ func (p *Policy) attritionLine(st *state, def *SeatEval, committed, joinable []*
 // belongs to is several turns long and a wrong guess repeated every turn
 // is a game that never ends.
 type exchange struct {
-	// sure is the damage the defender cannot stop for free. The
-	// race's NOW assumes a defender that takes damage it survives,
-	// but one that can block it with a creature that lives, or with
-	// its commander, takes none and loses nothing, and the same swing
-	// comes round next turn. Damage it can only stop by losing a
-	// creature is progress either way.
+	// sure is the damage the defender cannot stop for free: the
+	// least of what it takes blocking to survive and what gets past
+	// its free blocks (raceEval.free, the race's free answer). A
+	// defender that can block with a creature that lives, or with its
+	// commander, takes none of that and loses nothing, and the same
+	// swing comes round next turn. Damage it can only stop by losing
+	// a creature is progress either way.
 	sure int
 	// mine and theirs are the creatures that die on each side. A
 	// commander of theirs is not counted: it goes back to the command
@@ -161,10 +163,9 @@ type exchange struct {
 	crack        int
 }
 
-// exchangeOf counts e as an exchange; free is what the swing connects
-// for past the defender's free blocks (freeThrough).
-func (st *state) exchangeOf(def *SeatEval, e raceEval, free int) exchange {
-	x := exchange{sure: min(e.now, free), mine: len(e.mineDead), crack: e.crack}
+// exchangeOf counts e as an exchange.
+func (st *state) exchangeOf(def *SeatEval, e raceEval) exchange {
+	x := exchange{sure: min(e.d.through, e.free), mine: len(e.mineDead), crack: e.crack}
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
 		if c.Controller == def.ID && e.d.deadDef[c.InstanceID] && !c.IsCommander {
@@ -213,20 +214,6 @@ func (p *Policy) racesFrom(st *state, def *SeatEval, depth int, budget *int) (in
 		return step.turns, true
 	}
 	return 0, false
-}
-
-// freeThrough is the damage swing still connects for when the defender
-// blocks with everything that costs it nothing: a blocker that lives,
-// or its commander, which goes back to the command zone and is cast
-// again (CR 903.9a). A blocked attacker counts as held in full,
-// trample or not, which only ever lowers it. It is how a lone commander
-// swinging into the defender's commander every turn, both of them
-// recast every turn, stops reading as progress.
-func freeThrough(st *state, defender string, swing, blockers []*protocol.CardView) int {
-	through, _ := matchBlocks(swing, blockers, func(a, b *protocol.CardView) bool {
-		return couldBlock(st, defender, a, b) && (b.IsCommander || !blockerDies(a, b))
-	})
-	return through
 }
 
 // hasEdge reports whether my creatures are worth more than def's.

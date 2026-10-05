@@ -198,7 +198,14 @@ func TestHeuristicMirrorResolvesInsideTheTurnBudget(t *testing.T) {
 //     joins the one chumping the spare Wurm and there is no two-turn
 //     kill on the board at all (26 turns, [6 6] again). The attrition
 //     horizon cashes it instead: one Wurm into theirs, an even trade
-//     that keeps the edge, and the board after it races.
+//     that keeps the edge, and the board after it races. That took 17
+//     turns with the edge on seat 0 and 16 on seat 1 (#2310): once the
+//     Ogres had traded off, the race sent a lone 3/3 commander for "3
+//     now + 4 next", the defender blocked it with its own commander,
+//     both were cast again, and the same race came round for a dozen
+//     turns. Raced against the defender's free answer too, that swing
+//     is no race; the commander goes with two Bears, and the games end
+//     on turns 7 and 6.
 func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
 	requireGameTests(t)
 	const (
