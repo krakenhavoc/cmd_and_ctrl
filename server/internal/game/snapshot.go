@@ -791,6 +791,9 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// Devoured is CR 702.82b's count of creatures this permanent
+	// devoured as it entered. Old snapshots have no key and read zero.
+	Devoured int `json:"devoured,omitempty"`
 	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
 	// duration. Carried for ChosenPlayer's reason: a player made the
 	// choices and nothing can re-derive them, so a restore that lost
@@ -1911,6 +1914,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
@@ -2728,6 +2732,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,

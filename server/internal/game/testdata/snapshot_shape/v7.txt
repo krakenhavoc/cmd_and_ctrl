@@ -65,6 +65,7 @@ battlefield.cards[].counterStampedAt{}	number:int64
 battlefield.cards[].counters	map:string
 battlefield.cards[].counters{}	number:int
 battlefield.cards[].damageMarked	number:int
+battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
 battlefield.cards[].durationCopyBase.ColorIdentity	array
@@ -481,6 +482,7 @@ exile.cards[].counterStampedAt{}	number:int64
 exile.cards[].counters	map:string
 exile.cards[].counters{}	number:int
 exile.cards[].damageMarked	number:int
+exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
 exile.cards[].durationCopyBase.ColorIdentity	array
@@ -941,6 +943,7 @@ lastKnownStack[].card.counterStampedAt{}	number:int64
 lastKnownStack[].card.counters	map:string
 lastKnownStack[].card.counters{}	number:int
 lastKnownStack[].card.damageMarked	number:int
+lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
 lastKnownStack[].card.durationCopyBase.ColorIdentity	array
@@ -1835,6 +1838,7 @@ phasedOut.cards[].counterStampedAt{}	number:int64
 phasedOut.cards[].counters	map:string
 phasedOut.cards[].counters{}	number:int
 phasedOut.cards[].damageMarked	number:int
+phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
 phasedOut.cards[].durationCopyBase.ColorIdentity	array
@@ -2327,6 +2331,7 @@ seats[].command.cards[].counterStampedAt{}	number:int64
 seats[].command.cards[].counters	map:string
 seats[].command.cards[].counters{}	number:int
 seats[].command.cards[].damageMarked	number:int
+seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
 seats[].command.cards[].durationCopyBase.ColorIdentity	array
@@ -2602,6 +2607,7 @@ seats[].emblems.cards[].counterStampedAt{}	number:int64
 seats[].emblems.cards[].counters	map:string
 seats[].emblems.cards[].counters{}	number:int
 seats[].emblems.cards[].damageMarked	number:int
+seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
 seats[].emblems.cards[].durationCopyBase.ColorIdentity	array
@@ -2867,6 +2873,7 @@ seats[].graveyard.cards[].counterStampedAt{}	number:int64
 seats[].graveyard.cards[].counters	map:string
 seats[].graveyard.cards[].counters{}	number:int
 seats[].graveyard.cards[].damageMarked	number:int
+seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
 seats[].graveyard.cards[].durationCopyBase.ColorIdentity	array
@@ -3131,6 +3138,7 @@ seats[].hand.cards[].counterStampedAt{}	number:int64
 seats[].hand.cards[].counters	map:string
 seats[].hand.cards[].counters{}	number:int
 seats[].hand.cards[].damageMarked	number:int
+seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
 seats[].hand.cards[].durationCopyBase.ColorIdentity	array
@@ -3406,6 +3414,7 @@ seats[].library.cards[].counterStampedAt{}	number:int64
 seats[].library.cards[].counters	map:string
 seats[].library.cards[].counters{}	number:int
 seats[].library.cards[].damageMarked	number:int
+seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
 seats[].library.cards[].durationCopyBase.ColorIdentity	array
@@ -3800,6 +3809,7 @@ stack.cards[].counterStampedAt{}	number:int64
 stack.cards[].counters	map:string
 stack.cards[].counters{}	number:int
 stack.cards[].damageMarked	number:int
+stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
 stack.cards[].durationCopyBase.ColorIdentity	array
