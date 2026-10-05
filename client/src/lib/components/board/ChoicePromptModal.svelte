@@ -63,7 +63,7 @@
     payCardsVerb,
     togglePayCard,
   } from "../../payCards";
-  import { damageSourceCaption } from "../../damageSource";
+  import { damageSourceCaption, permanentWhoseCaption } from "../../damageSource";
   import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
 
   interface Props {
@@ -2072,6 +2072,8 @@
             <Card card={c} />
             {#if isChooseSource}
               <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
+            {:else if isChooseCards || isUntapChoice}
+              <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
             {/if}
           </button>
         {/each}
