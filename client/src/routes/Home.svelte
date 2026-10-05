@@ -15,6 +15,7 @@
   import { signedInUserID } from "../lib/myGames";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import { L } from "../lib/labels";
 
   const isSignedIn = $derived($session !== null);
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
@@ -97,6 +98,14 @@
 
   const helpCards = $derived.by((): Card[] => {
     const cards: Card[] = [
+      {
+        // ADR 0125 §6: the tutorial's practice table, beside the bot
+        // guide. It needs a session, so signed out it goes to sign in.
+        title: L.practiceGame,
+        href: isSignedIn ? "#/practice" : "#/login",
+        description: "A five-minute game against a bot that shows you where everything is.",
+        needsSession: isSignedIn ? undefined : "Sign in first",
+      },
       {
         title: "Bot guide",
         href: "https://github.com/krakenhavoc/cmd_and_ctrl/blob/develop/docs/bot.md",
@@ -184,6 +193,9 @@
               <div class="tile-head">
                 <span class="tile-title">{c.title}</span>
                 {#if c.external}<Icon name="link" size={12} />{/if}
+                {#if c.needsSession}
+                  <span class="pill">{c.needsSession}</span>
+                {/if}
               </div>
               <p class="tile-desc">{c.description}</p>
             </a>

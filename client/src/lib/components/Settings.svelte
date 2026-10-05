@@ -37,7 +37,10 @@
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
+  import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
+  import { navigate } from "../router";
+  import { session } from "../session";
 
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
@@ -316,11 +319,26 @@
     importText = "";
   }
 
+  // Tips and the tutorial (ADR 0125 §6). Show all tips again forgets
+  // every dismissed tip and switches tips back on; Replay the tutorial
+  // opens a practice table, which needs a session (signed out it goes
+  // to sign in first, as Help's "Practice game" does).
+  let tipsReset = $state(false);
+  function onShowAllTipsAgain(): void {
+    showAllTipsAgain();
+    tipsReset = true;
+  }
+  function onReplayTutorial(): void {
+    closeSettings();
+    navigate($session ? "#/practice" : "#/login");
+  }
+
   $effect(() => {
     if (!$settingsOpen) {
       importText = "";
       importStatus = null;
       copyStatus = "idle";
+      tipsReset = false;
     }
   });
 </script>
@@ -1209,6 +1227,32 @@
             </label>
           {:else if activeTab === "advanced"}
             <h3>Advanced</h3>
+
+            <!-- ADR 0125 §6 (ADR 0076's "Replay lives in Settings →
+                 Advanced"): the first-use tips, and the tutorial. -->
+            <div class="adv-section">
+              <h4>Tips and the tutorial</h4>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!$settings.help.tipsOff}
+                  onchange={(e) => change("help", "tipsOff", !e.currentTarget.checked)}
+                />
+                {L.showTips}
+                {#if isFresh("help.tipsOff")}<span class="saved">✓ saved</span>{/if}
+              </label>
+              <p class="help">
+                A short tip shows the first time you meet a page or a part of the table. Help, in
+                the header and in the ⋯ menu at a table, shows a page's tips again.
+              </p>
+              <div class="adv-row">
+                <button onclick={onShowAllTipsAgain}>{L.showAllTipsAgain}</button>
+                <button onclick={onReplayTutorial}>
+                  {$session ? L.replayTutorial : `${L.replayTutorial} (sign in first)`}
+                </button>
+                {#if tipsReset}<span class="saved">✓ every tip will show again</span>{/if}
+              </div>
+            </div>
 
             <div class="adv-section">
               <h4>Export</h4>
