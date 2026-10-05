@@ -75,13 +75,33 @@ func untrusted(s string, max int) string {
 // instruction is always marked as a name.
 type nameWrapper struct {
 	r *strings.Replacer
+	// youShared is true when the viewer's name is also another seat's, so
+	// the text cannot say "you" for it (#2279); you is the viewer's seat.
+	youShared bool
+	you       int
 }
 
 func newNameWrapper(v *protocol.GameView) nameWrapper {
+	return newViewerNameWrapper(v, "")
+}
+
+// newViewerNameWrapper is newNameWrapper that also marks the viewer: a
+// name that belongs to the seat me (a player ID) alone reads "you (seat N)"
+// in the text, the same wording playerRef uses for targets (#2279). A name
+// another seat shares can't be told apart in prose, so it stays a wrapped
+// name and logLine marks the entry by its seat instead. me == "" marks
+// nobody.
+func newViewerNameWrapper(v *protocol.GameView, me string) nameWrapper {
 	var names []string
 	seen := map[string]bool{}
+	owners := map[string]int{}
+	you := map[string]int{}
 	for i := range v.Seats {
-		for _, n := range []string{v.Seats[i].Name, v.Seats[i].DisplayName} {
+		for _, n := range uniqueNames(v.Seats[i].Name, v.Seats[i].DisplayName) {
+			owners[n]++
+			if me != "" && v.Seats[i].ID == me {
+				you[n] = v.Seats[i].Seat
+			}
 			if len(n) >= 2 && !seen[n] {
 				seen[n] = true
 				names = append(names, n)
@@ -91,10 +111,30 @@ func newNameWrapper(v *protocol.GameView) nameWrapper {
 	// Longest first, so "Bob Smith" wins over "Bob".
 	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
 	pairs := make([]string, 0, 2*len(names))
+	nw := nameWrapper{}
 	for _, n := range names {
+		if seat, ok := you[n]; ok {
+			if owners[n] == 1 {
+				pairs = append(pairs, n, fmt.Sprintf("you (seat %d)", seat))
+				continue
+			}
+			nw.youShared, nw.you = true, seat
+		}
 		pairs = append(pairs, n, untrusted(n, maxNameLen))
 	}
-	return nameWrapper{r: strings.NewReplacer(pairs...)}
+	nw.r = strings.NewReplacer(pairs...)
+	return nw
+}
+
+// uniqueNames is a seat's Name and DisplayName without the repeat or blanks.
+func uniqueNames(name, display string) []string {
+	var out []string
+	for _, n := range []string{name, display} {
+		if n != "" && (len(out) == 0 || out[0] != n) {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 func (w nameWrapper) apply(s string) string {
@@ -284,7 +324,7 @@ func hardCut(s string, max int) string {
 // every revealed card, held to budgetFull.
 func fullBoard(v *protocol.GameView, me string) string {
 	sv := safeView(v)
-	nw := newNameWrapper(v)
+	nw := newViewerNameWrapper(v, me)
 	board := boardtext.Render(sv, me, boardOptions(1<<20))
 	var logLines []string
 	start := len(v.Log) - fullLogLines
@@ -326,7 +366,12 @@ func logLine(e protocol.LogEvent, nw nameWrapper) string {
 	if text == "" {
 		text = string(e.Kind)
 	}
-	return untrusted(nw.apply(text), maxLogLen)
+	line := untrusted(nw.apply(text), maxLogLen)
+	// A shared name can't say "you" in prose; the entry's seat still can.
+	if nw.youShared && e.Seat == nw.you {
+		line += fmt.Sprintf(" [seat %d is you]", nw.you)
+	}
+	return line
 }
 
 // chatLine is one chat message for the model.

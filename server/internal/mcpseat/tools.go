@@ -447,9 +447,11 @@ func (s *Seat) gameOverLocked() Result {
 	lines := []string{"status: game_over"}
 	if o := v.Outcome; o != nil {
 		switch {
+		case o.Winner != "" && o.Winner == s.sess.PlayerID.String():
+			lines = append(lines, fmt.Sprintf("outcome: you won (%s)", o.Cause))
 		case o.Winner != "":
 			name := boardtext.SeatLabelByID(safeView(v), o.Winner, s.sess.PlayerID.String())
-			lines = append(lines, fmt.Sprintf("outcome: %s wins (%s)", name, o.Cause))
+			lines = append(lines, fmt.Sprintf("outcome: you lost — %s wins (%s)", name, o.Cause))
 		case o.Kind != "":
 			lines = append(lines, fmt.Sprintf("outcome: %s (%s)", o.Kind, o.Cause))
 		}
@@ -466,7 +468,7 @@ func (s *Seat) gameOverLocked() Result {
 func (s *Seat) decisionTextLocked(w *window) Result {
 	v := s.view
 	me := s.sess.PlayerID.String()
-	nw := newNameWrapper(v)
+	nw := newViewerNameWrapper(v, me)
 	var logLines []string
 	var maxSeq uint64
 	for _, e := range v.Log {

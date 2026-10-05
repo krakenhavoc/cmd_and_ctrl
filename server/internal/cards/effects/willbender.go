@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Morph {1}{U}. When this creature is turned face up, change the
 //	 target of target spell or ability with a single target."
 //
-// The card morph was printed for, and half of it is here. The morph is
+// The card morph was printed for, and all of it works. The morph is
 // whole: cast face down for {3} it is a nameless 2/2 neither opponent
 // can price, and {1}{U} at any time they have to respond to — in
 // response to the removal spell pointed at it, which is the point —
@@ -16,32 +16,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ADR 0082 decision 7): a permanent turning over has to be observable
 // or this trigger has nothing to watch.
 //
-// DECLARED SIMPLIFICATION — the retarget is not modelled, and the
-// trigger is NOT declared. "Change the target of target spell or
-// ability with a single target" needs a primitive that rewrites a
-// StackItem's chosen target and re-checks it under CR 115.7b (the new
-// target must be legal, and the change simply does not happen if it is
-// not). Nothing in the engine rewrites a stack item's targets, and
-// building it here would be building a different seam inside this one;
-// it is somebody's open work.
-//
-// A trigger that went on the stack and changed nothing was the other
-// option and is the worse one: it would put a real response window in
-// front of the table for an effect that is not there, and a player
-// would hold up mana for it. Silence plus a caveat the catalog page
-// shows before the card is sleeved is the honest shape (#259). When
-// the retarget primitive lands, this file grows one
-// `WhenThisIsTurnedFaceUp` and drops its caveat.
+// The trigger is "change the target of target spell or ability with a
+// single target" — CR 115.7b over the same gate Bolt Bend and
+// Misdirection run (#1830). The clause is TargetSpellOrAbility with
+// ItemHasASingleTarget, so a two-target spell or ability is never
+// offered, and an ability item is reachable. The trigger targets when it
+// goes on the stack (CR 603.3d) and is dropped if nothing qualifies;
+// at resolution the controller picks the new target over the original
+// announce's legality check (hexproof, protection, the clause's own
+// restriction), and with no other legal target the target stays. It is
+// mandatory — Willbender prints no "may".
 func init() {
 	Register(Spec{
 		OracleID:     "0aae277e-e58e-4115-b5fd-0459451e17ec",
 		Name:         "Willbender",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Turning Willbender face up does not change the target of anything — retargeting a spell or ability is not implemented yet. The morph itself works.",
-		},
+		Completeness: CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{
 			Morph("{1}{U}"),
+		},
+		Triggered: []game.TriggeredAbility{
+			Targeting(WhenThisIsTurnedFaceUp("Willbender — change the target of target spell or ability with a single target",
+				changeTheTargetEffect("Willbender — change the target")),
+				TargetSpellOrAbility("target spell or ability with a single target", ItemHasASingleTarget())),
 		},
 	})
 }

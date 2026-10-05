@@ -77,13 +77,49 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 		return nil
 	}
 	counts := map[string]int{}
-	total := 0
+	// #2170: mana that can't pay generic costs is credited to a
+	// coloured symbol before anything else (it can pay nothing else),
+	// is never counted toward the generic demand in `total`, and is
+	// counted apart in ngCounts / ngTotal so the credit can say which
+	// kind it spent.
+	ngCounts := map[string]int{}
+	total, ngTotal := 0, 0
 	for _, tok := range pool {
 		if ctx.allows(tok.Restrictions) {
 			counts[tok.Color]++
+			if tok.noGeneric() {
+				ngCounts[tok.Color]++
+				ngTotal++
+			} else {
+				total++
+			}
+		}
+	}
+	// takeCredit / giveCredit move one token of colour c in and out of
+	// the books, no-generic first.
+	takeCredit := func(c string) (ng bool) {
+		counts[c]--
+		if ngCounts[c] > 0 {
+			ngCounts[c]--
+			ngTotal--
+			return true
+		}
+		total--
+		return false
+	}
+	giveCredit := func(c string, ng bool) {
+		counts[c]++
+		if ng {
+			ngCounts[c]++
+			ngTotal++
+		} else {
 			total++
 		}
 	}
+	// The coloured symbols a cast permission folded into Generic may
+	// take no-generic mana too; everything else of the generic demand
+	// may not.
+	foldedCap := min(cost.FoldedColored, cost.Generic)
 	unpaid := make([]bool, len(cost.Required))
 	var flexible []int
 	for i, req := range cost.Required {
@@ -92,8 +128,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			continue
 		}
 		if c := req.Options[0]; counts[c] > 0 {
-			counts[c]--
-			total--
+			takeCredit(c)
 			continue
 		}
 		unpaid[i] = true
@@ -107,7 +142,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			return
 		}
 		if k == len(flexible) {
-			out = append(out, shortfallCost(cost, unpaid, need-total))
+			out = append(out, shortfallCost(cost, unpaid, need-total-min(ngTotal, foldedCap)))
 			return
 		}
 		i := flexible[k]
@@ -115,11 +150,9 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			if counts[c] == 0 {
 				continue
 			}
-			counts[c]--
-			total--
+			ng := takeCredit(c)
 			credit(k + 1)
-			counts[c]++
-			total++
+			giveCredit(c, ng)
 		}
 		unpaid[i] = true
 		credit(k + 1)
