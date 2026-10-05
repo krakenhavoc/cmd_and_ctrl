@@ -240,3 +240,158 @@ func datasourceRefs(v any) []string {
 	sort.Strings(bad)
 	return bad
 }
+
+type overviewLink struct {
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	TargetBlank bool   `json:"targetBlank"`
+}
+
+// ADR 0124 §9: each Overview tile that counts something the admin
+// views list links to the page that lists it. The host is the hidden
+// site variable, taken from the blackbox probe's instance, so no host
+// is written in the dashboard. A tile that loses its link, or a link
+// that drifts from the page's route, is caught here.
+func TestOverviewTilesLinkToTheAdminViews(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join(monitoringDir, "dashboards", "overview.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var d struct {
+		Templating struct {
+			List []struct {
+				Name    string `json:"name"`
+				Type    string `json:"type"`
+				Hide    int    `json:"hide"`
+				Refresh int    `json:"refresh"`
+				Regex   string `json:"regex"`
+				Query   any    `json:"query"`
+			} `json:"list"`
+		} `json:"templating"`
+		Panels []struct {
+			ID      int    `json:"id"`
+			Title   string `json:"title"`
+			Targets []struct {
+				Expr string `json:"expr"`
+			} `json:"targets"`
+			FieldConfig struct {
+				Defaults struct {
+					Links []overviewLink `json:"links"`
+				} `json:"defaults"`
+				Overrides []struct {
+					Matcher struct {
+						ID      string `json:"id"`
+						Options string `json:"options"`
+					} `json:"matcher"`
+					Properties []struct {
+						ID    string         `json:"id"`
+						Value []overviewLink `json:"value"`
+					} `json:"properties"`
+				} `json:"overrides"`
+			} `json:"fieldConfig"`
+		} `json:"panels"`
+	}
+	if err := json.Unmarshal(raw, &d); err != nil {
+		t.Fatal(err)
+	}
+
+	foundSite := false
+	for _, v := range d.Templating.List {
+		if v.Name != "site" {
+			continue
+		}
+		foundSite = true
+		if v.Type != "query" || v.Hide != 2 || v.Refresh != 2 {
+			t.Errorf("site variable: type %q hide %d refresh %d, want query, 2, 2", v.Type, v.Hide, v.Refresh)
+		}
+		want := `label_values(probe_success{job="blackbox", env="$env"}, instance)`
+		if q, _ := v.Query.(map[string]any); q["query"] != want {
+			t.Errorf("site variable query = %v, want %q", v.Query, want)
+		}
+		// The regex must yield the origin alone from an instance with
+		// or without a path.
+		re, err := regexp.Compile(strings.Trim(v.Regex, "/"))
+		if err != nil {
+			t.Fatalf("site variable regex %q: %v", v.Regex, err)
+		}
+		for inst, origin := range map[string]string{
+			"https://cmd.labxp.io/healthz": "https://cmd.labxp.io",
+			"https://cmd-dev.labxp.io":     "https://cmd-dev.labxp.io",
+		} {
+			if m := re.FindStringSubmatch(inst); m == nil || m[1] != origin {
+				t.Errorf("site regex on %q gave %q, want %q", inst, m, origin)
+			}
+		}
+	}
+	if !foundSite {
+		t.Fatal("overview.json has no site template variable")
+	}
+
+	const s = "${site}/#/admin/"
+	const live = s + "live"
+	want := map[int]string{
+		2:  s + "games?state=active&archived=false",
+		3:  s + "games?state=lobby&archived=false",
+		4:  live,
+		5:  live,
+		6:  live,
+		7:  s + "games?practice=only",
+		8:  live,
+		9:  s + "games?state=${__field.labels.state}&archived=false",
+		11: s + "accounts",
+		12: s + "accounts?played=${__field.labels.window}",
+		13: live,
+		15: s + "games",
+		17: s + "accounts?sort=first_seen",
+	}
+	seen := map[int]bool{}
+	for _, p := range d.Panels {
+		url, ok := want[p.ID]
+		if !ok {
+			continue
+		}
+		seen[p.ID] = true
+		links := p.FieldConfig.Defaults.Links
+		if len(links) != 1 || links[0].URL != url {
+			t.Errorf("panel %d (%s): links = %+v, want one to %s", p.ID, p.Title, links, url)
+			continue
+		}
+		if links[0].Title != "Open in cmd_and_ctrl" || !links[0].TargetBlank {
+			t.Errorf("panel %d (%s): link %+v must be titled %q and open a new tab", p.ID, p.Title, links[0], "Open in cmd_and_ctrl")
+		}
+		switch p.ID {
+		case 9:
+			practice := false
+			for _, o := range p.FieldConfig.Overrides {
+				if o.Matcher.ID != "byFrameRefID" || o.Matcher.Options != "B" {
+					continue
+				}
+				for _, pr := range o.Properties {
+					if pr.ID == "links" && len(pr.Value) == 1 && pr.Value[0].URL == s+"games?practice=only" && pr.Value[0].TargetBlank {
+						practice = true
+					}
+				}
+			}
+			if !practice {
+				t.Error("panel 9: the practice query (refId B) has no override linking ?practice=only")
+			}
+			if len(p.Targets) < 2 || !strings.Contains(p.Targets[1].Expr, "cmdctrl_practice_games") {
+				t.Error("panel 9: refId B is no longer the practice series")
+			}
+		case 12:
+			if len(p.Targets) != 3 {
+				t.Errorf("panel 12: %d queries, want 3", len(p.Targets))
+			}
+			for _, tg := range p.Targets {
+				if !strings.HasPrefix(tg.Expr, "max by (window) (cmdctrl_users_played{") {
+					t.Errorf("panel 12: query %q must keep the window label (max by (window) (…))", tg.Expr)
+				}
+			}
+		}
+	}
+	for id := range want {
+		if !seen[id] {
+			t.Errorf("overview.json has no panel %d", id)
+		}
+	}
+}
