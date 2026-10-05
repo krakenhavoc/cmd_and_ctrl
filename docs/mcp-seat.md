@@ -265,6 +265,11 @@ gap.
 - The invite token is never stored. If your MCP client restarts the
   binary, `join` with the same invite reattaches (`resumed: true`)
   instead of claiming a second seat.
+- The file is named for the server and the game, not for the seat. So
+  **two seats on one machine at the same table need different
+  `--state-dir`s**. With a shared one, the second agent's `join` finds
+  the first agent's file, reattaches to that seat, and both agents play
+  it. See [Two agents at one table](#two-agents-at-one-table).
 - On the wire the token is only ever `Authorization: Bearer`, never
   `?token=`. It is stripped from every tool result (those go to the model
   provider) and every log line, which also passes `redact.Secrets`.
@@ -317,25 +322,65 @@ and stops at 50.
 
 ### Codex
 
+Verified with codex-cli 0.160.0 and the `mcpseat-v0.1.0-rc.1` binary
+on 2026-10-04:
+
 ```sh
 mkdir -p ~/.local/state/cmdctrl-mcpseat
 codex mcp add cmdctrl-seat -- \
-  /home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat \
+  "$HOME/.local/bin/mcpseat" \
+  --allow-origin https://cmd.labxp.io \
   --allow-origin https://cmd-dev.labxp.io \
-  --log-file "$HOME/.local/state/cmdctrl-mcpseat/seat.log"
+  --log-file "$HOME/.local/state/cmdctrl-mcpseat/codex-seat.log"
 ```
 
-or in `~/.codex/config.toml`:
+Then add two keys under the `[mcp_servers.cmdctrl-seat]` table that
+command wrote to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.cmdctrl-seat]
-command = "/home/luke/repos/cmd_and_ctrl/server/bin/cmd_and_ctrl-mcpseat"
-args = ["--allow-origin", "https://cmd-dev.labxp.io", "--log-file", "/home/<you>/.local/state/cmdctrl-mcpseat/seat.log"]
+command = "/home/<you>/.local/bin/mcpseat"
+args = ["--allow-origin", "https://cmd.labxp.io", "--allow-origin", "https://cmd-dev.labxp.io", "--log-file", "/home/<you>/.local/state/cmdctrl-mcpseat/codex-seat.log"]
+tool_timeout_sec = 90
+default_tools_approval_mode = "approve"
 ```
 
-Play with `codex -s read-only` in an empty directory. Unverified: the
-table shape beyond what `codex mcp add` writes, and the per-server tool
-timeout key (`tool_timeout_sec` is believed to exist, default 60 s).
+- `tool_timeout_sec`: Codex's default is 60 s, and `wait_for_decision`
+  may block for up to 50 s. 90 leaves room.
+- `default_tools_approval_mode`: without it, every seat tool call
+  needs an approval. The values are `auto`, `prompt`, `writes` and
+  `approve`, and `approve` approves this server's tools and nothing
+  else. Under `-a never` an unapproved call is refused outright, and the
+  join fails with "MCP tool call requires approval, but approval policy
+  is never".
+- `codex mcp get cmdctrl-seat` prints both keys when Codex has read
+  them. A misspelt value fails with the list of valid ones.
+
+Play in an empty directory:
+`codex -C <empty dir> -s read-only -a never`. Shell commands then run
+read-only and are never prompted for, and the seat's tools run without
+a prompt.
+
+`--allow-origin` replaces the default list, so name every server you
+will join. A seat registered for cmd-dev alone refuses a cmd.labxp.io
+invite.
+
+### Two agents at one table
+
+Two MCP clients on one machine can play each other. Give each its own
+`--state-dir` and `--log-file`, for example `…/cmdctrl-mcpseat/claude`
+with `claude-seat.log`, and `…/cmdctrl-mcpseat/codex` with
+`codex-seat.log`. The binary creates the state directory `0700` itself.
+It does not create the log file's directory. See
+[the state file](#the-token-and-the-state-file) for why the state
+directories must differ.
+
+An agent never hosts, and the seat has no tool to start a game. So a
+table with only agents is started by an admin with no seat, from admin
+mode in the browser. Watch it through the spectator link rather than as
+a seat, so you see neither hand. Play on cmd.labxp.io when you can: it
+deploys only on a promotion, while cmd-dev redeploys on every merge into
+`develop`.
 
 ## Pace and cost
 
@@ -426,3 +471,40 @@ The absorption rate matches the bot-table measurement in the estimates
 above. A five-turn game is the cheap end: the turn-16 game above
 reached the model more than ten times as often, and its session cost
 up to 22 times as much.
+
+### Measured: Codex against Claude
+
+2026-10-04, cmd.labxp.io (main at `b01386a9`, which carries `84d51efe`),
+both seats on `mcpseat-v0.1.0-rc.1` with the default absorb rules, each
+with its own state directory and log. Claude Code on Opus 5.5 played
+Codex (codex-cli 0.160.0, `gpt-6-sol` at medium reasoning effort). Both
+played `simic-ramp`, and no person had a seat. The owner started the
+table from admin mode. Claude won: an early Sol Ring, Arcane Signet and
+Lotus Cobra, finished by Craterhoof Behemoth. Nobody saw who won the
+opening roll. About four and a half minutes passed from the roll to
+`game_over`. Every row except the last is from the binaries' game-end
+reports.
+
+| Quantity | Claude Code | Codex |
+|---|---|---|
+| Windows seen | 174 | 154 |
+| Absorbed by Layer A | 124: `forced` 24, `mana-only` 99, `opening-roll` 1 | 130: `forced` 56, `mana-only` 72, `opening-roll` 2 (one a duplicate, below) |
+| Shown to the model | 50 | 26 |
+| `act` calls, rejections | 49, 0 | 23, 0 |
+| Automatic answers refused | 0 | 2 (#2271) |
+| Largest move list shown | 28 moves, 2,252 bytes | 25 moves, 2,184 bytes |
+| Tool-result bytes | 101,517 (about 25,400 tokens) | 54,929 (about 13,700 tokens) |
+| Time per decision (opened to `act`) | median 2.5 s, mean 2.8 s, max 5.4 s | median 5.2 s, mean 5.1 s, max 10 s |
+| Client-reported cost | $1.63: Opus 5.5 616 input, 11.2k output, 3.8M cache read, 81.0k cache write over 55 requests, no cache misses; 7.1 min wall, 2.6 min API | 0.7% of a Pro 100 plan's weekly limit. Codex shows no per-session tokens or price. |
+
+This is one game, a mirror match won on a fast start, so it is not a
+ranking. Claude was shown about twice as many decisions as Codex. That
+reflects which side had plays to make, not how either model played.
+
+The Codex seat's two refused automatic answers are the bug in #2271.
+When the other seat's action produced a snapshot before this seat's own
+action was acknowledged, the binary answered the new window again: a
+second opening roll, then later a second pass. The server refused both.
+The duplicate roll is counted in the `opening-roll` 2 above. A refused
+window can also be handed to the model, which is the likely reason
+Codex was shown 26 decisions and made 23 `act` calls.
