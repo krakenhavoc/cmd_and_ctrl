@@ -4222,6 +4222,7 @@ turn.Extra	bool
 turn.ExtraRef	number:int
 turn.Number	number:int
 turn.OrderSeat	number:int
+turn.PassedInSuccession	number:uint64
 turn.Phase	string
 turn.PhaseID	number:int
 turn.PhaseOrdinal	number:int

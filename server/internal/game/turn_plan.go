@@ -202,7 +202,7 @@ func (g *Game) popTurnPlanLocked() bool {
 	g.Turn.Step = head.Step
 	g.Turn.Phase = PhaseOf(head.Step)
 	g.Turn.PhaseID = head.PhaseID
-	g.Turn.PriorityHolder = initialPriorityHolder(head.Step, g.Turn.ActiveSeat)
+	g.grantPriorityLocked(initialPriorityHolder(head.Step, g.Turn.ActiveSeat))
 	g.planAt = g.planCursorLocked()
 	return true
 }
