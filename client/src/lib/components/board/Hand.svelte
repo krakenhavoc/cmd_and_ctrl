@@ -824,7 +824,7 @@
   /* Opponent hands stay compact — they're face-down anyway and the
      peek/reveal interaction would feel wrong on someone else's hand. */
   .hand.opponent {
-    max-height: calc(var(--card-h, 168px) * 0.55);
+    max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.55));
     overflow: hidden;
   }
   /* #956 — the overlap is handOverlap()'s answer, published by the
