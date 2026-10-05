@@ -725,3 +725,37 @@ func TestModesStampedForOwnerOnly(t *testing.T) {
 		}
 	}
 }
+
+// CR 103.5 (#2237): exactly one seat carries mulligan_turn while the
+// window is open, it follows the keeps, and it is public to every
+// viewer.
+func TestViewMarksTheSeatWhoseTurnItIsToDecide(t *testing.T) {
+	g := buildActiveGame(t)
+	turn := func(v GameView) []bool {
+		out := make([]bool, len(v.Seats))
+		for i, s := range v.Seats {
+			out[i] = s.MulliganTurn
+		}
+		return out
+	}
+	if got := turn(ViewOfGame(g)); !reflect.DeepEqual(got, []bool{true, false}) {
+		t.Fatalf("mulligan_turn at the start = %v, want seat 0 only", got)
+	}
+	// Another viewer sees the same thing.
+	other := FilterViewFor(ViewOfGame(g), g.Seats[1].ID.String())
+	if got := turn(other); !reflect.DeepEqual(got, []bool{true, false}) {
+		t.Fatalf("mulligan_turn for seat 1's view = %v, want seat 0 only", got)
+	}
+	if err := g.KeepHand(g.Seats[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := turn(ViewOfGame(g)); !reflect.DeepEqual(got, []bool{false, true}) {
+		t.Fatalf("mulligan_turn after seat 0 kept = %v, want seat 1 only", got)
+	}
+	if err := g.KeepHand(g.Seats[1].ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := turn(ViewOfGame(g)); !reflect.DeepEqual(got, []bool{false, false}) {
+		t.Fatalf("mulligan_turn after the window closed = %v, want none", got)
+	}
+}

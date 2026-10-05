@@ -164,6 +164,9 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
+	// #2183 life_batch.go: exist only while a resolution is paused on its own prompt.
+	"batchLifeLost", dropped, "restores empty: the life lost in the live batch; a restore opens a fresh batch (EventBatch restores as zero from older files), so the totals restart with it",
+	"stagedBatchTriggers", dropped, "restores empty: AtBatchEnd triggers waiting for their batch to settle, which happens at the next priority boundary; a restore inside that window loses the trigger (weaker than printed, never stronger)",
 	// ADR 0107 §6: owed CR 615.5 follow-ups, plain data.
 	"preventionFollowUps", carried, "",
 	// ADR 0108 PR 0: the damage instance (damage_instance.go).
@@ -533,6 +536,7 @@ var playerFields = plan(
 	"LastTurnAttacks", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
+	"MulliganDecided", carried, "",
 	"TriggerOrderAlwaysAsk", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",
@@ -743,6 +747,9 @@ var delayedTriggerFields = plan(
 	"Until", carried, "",
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
+	"Repeats", carried, "", // #2169, CR 603.7b
+	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
+	"ManaAdds", carried, "",
 )
 
 var pendingChoiceFields = plan(

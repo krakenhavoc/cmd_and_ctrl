@@ -133,6 +133,7 @@
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
+  import { mulliganWaitingText } from "../lib/mulliganTurn";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
@@ -853,6 +854,10 @@
   // no hand has been dealt, so the mulligan sheet and its roll call wait.
   const openingRollOpen = $derived(!!view?.opening_roll);
   const openingRoll = $derived(openingRollWinner(view));
+  // CR 103.5: only the seat whose turn it is may keep or mulligan; the
+  // others see the sheet and who they are waiting for.
+  const viewerMulliganTurn = $derived(viewerSeat?.mulligan_turn === true);
+  const mulliganWaiting = $derived(mulliganWaitingText(seats, viewerMulliganTurn));
   const viewerNeedsToDecide = $derived(
     mulligansOpen &&
       !openingRollOpen &&
@@ -1163,6 +1168,12 @@
   let sheetW = $state(0);
   function onDockSheet(w: number): void {
     if (w !== sheetW) sheetW = w;
+  }
+  // #2374: the opening hand's stage is up (and not folded away by View
+  // table). The log drawer, opened over it, draws above it.
+  let stageUp = $state(false);
+  function onDockStage(up: boolean): void {
+    if (up !== stageUp) stageUp = up;
   }
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
@@ -1901,7 +1912,12 @@
     transport layer.
   -->
   {#if showGameLog && view}
-    <GameLogPanel {view} {viewerID} onClose={() => (showGameLog = false)} />
+    <GameLogPanel
+      {view}
+      {viewerID}
+      overStage={dockShown && stageUp}
+      onClose={() => (showGameLog = false)}
+    />
   {/if}
 
   <ConnectionBanner
@@ -1994,8 +2010,10 @@
                       <span class="muted">eliminated</span>
                     {:else if seat.hand_kept}
                       kept <Icon name="check" size={11} />
-                    {:else}
+                    {:else if seat.mulligan_turn}
                       deciding…
+                    {:else}
+                      waiting
                     {/if}
                     {#if (seat.mulligans_taken ?? 0) > 0}
                       <span class="muted mull-count">×{seat.mulligans_taken}</span>
@@ -2178,6 +2196,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          onStage={onDockStage}
           menu={menuOptions}
         />
         {#if coachMounted}
@@ -2199,10 +2218,23 @@
           width={SHEET_HAND_WIDTH}
           stage
           sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
-          primary={confirmAction(L.keepHand, keepHand, { id: "keep" })}
-          secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
+          primary={confirmAction(L.keepHand, keepHand, {
+            id: "keep",
+            disabled: !viewerMulliganTurn,
+          })}
+          secondary={[
+            {
+              id: "mulligan",
+              label: "Mulligan",
+              onPress: mulliganDecide,
+              disabled: !viewerMulliganTurn,
+            },
+          ]}
         >
           <div class="mulligan-copy">
+            {#if mulliganWaiting}
+              <p class="first-turn" role="status">{mulliganWaiting}</p>
+            {/if}
             {#if openingRoll}
               <p class="first-turn">{firstTurnHeadline(openingRoll, viewerSeat?.seat)}</p>
               <p class="opening-roll-copy">

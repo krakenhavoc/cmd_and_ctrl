@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck, COMMANDER_NAME } from "./deck-fixture";
 import { joinAsPlayer } from "./players";
-import { openAdminClient, playerByID, findCardInZone, type SnapshotView } from "./s19-helpers";
+import { openAdminClient, playerByID, findCardInZone, type SnapshotView, keepAllHands } from "./s19-helpers";
 
 // #328 — "blockers stage did not happen with autopass".
 //
@@ -44,8 +44,7 @@ test.describe("#328 autopass skips the blocking window", () => {
     const admin = await openAdminClient(adminToken, game.id, alice.playerID, bob.playerID);
 
     try {
-      await admin.sendActionAsPlayer(alice.playerID, "keep_hand", {});
-      await admin.sendActionAsPlayer(bob.playerID, "keep_hand", {});
+      await keepAllHands(admin);
       await admin.waitFor((v) => v.state === "active", "game state active");
       await admin.waitFor(
         (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,

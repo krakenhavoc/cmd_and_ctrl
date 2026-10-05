@@ -139,9 +139,11 @@ test.describe("full game", () => {
     }
 
     // ---- 6. Both players keep their opening hand. ----
-    for (const p of [alice, bob]) {
-      await p.page.getByRole("button", { name: "Keep hand" }).click();
-    }
+    // Decisions go in turn order (CR 103.5), so each click waits for its
+    // button to enable; keep side by side.
+    await Promise.all(
+      [alice, bob].map((p) => p.page.getByRole("button", { name: "Keep hand" }).click()),
+    );
 
     // Once both have kept, the mulligan dialog tears down on every
     // page and the primary toolbar appears.

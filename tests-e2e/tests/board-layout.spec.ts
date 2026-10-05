@@ -33,15 +33,19 @@ test.describe("board layout", () => {
 
     // Both players keep their opening hand so the table view is the
     // primary UI on screen.
-    for (const p of [alice, bob]) {
-      await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toBeVisible({
-        timeout: 10_000,
-      });
-      await p.page.getByRole("button", { name: "Keep hand" }).click();
-      await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
-        timeout: 10_000,
-      });
-    }
+    // CR 103.5: they decide in turn order, so each click waits for its
+    // button to enable; run them side by side.
+    await Promise.all(
+      [alice, bob].map(async (p) => {
+        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toBeVisible({
+          timeout: 10_000,
+        });
+        await p.page.getByRole("button", { name: "Keep hand" }).click();
+        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
+          timeout: 10_000,
+        });
+      }),
+    );
 
     // Self panel: every wireframe zone is present. The aria-label on
     // each BattlefieldRow / Hand / PileBar / PlayerHeader is the
@@ -119,6 +123,12 @@ test.describe("board layout", () => {
     // entry); the toolbar's "draw" button works too but we want to
     // exercise the pile-button click path specifically.
     const handCardsBefore = await page.getByLabel("your hand").locator(".hand-slot").count();
+    // #2374: with the pointer on the hand, the hand lifts over the
+    // board. The library in the corner above the hand's left end must
+    // still take the click: the lifted strip's empty end used to cover
+    // it. (Keep hand, centred under the opening-hand stage, leaves the
+    // pointer over the hand, which is how the nightly found it.)
+    await page.getByLabel("your hand").locator(".hand-slot").last().hover();
     await selfBoard.getByRole("button", { name: /library: \d+/ }).click();
     await expect(page.getByLabel("your hand").locator(".hand-slot")).toHaveCount(
       handCardsBefore + 1,

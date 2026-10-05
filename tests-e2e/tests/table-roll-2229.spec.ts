@@ -82,12 +82,15 @@ test.describe("#2229 Roll a die", () => {
       await expect((await openLog(bob.page)).getByText(d20)).toHaveText(aliceLine!.trim());
 
       // It is not a game action: the mulligan is still waiting on both.
-      for (const p of [alice, bob]) {
-        await p.page.getByRole("button", { name: "Keep hand" }).click();
-        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
-          timeout: 10_000,
-        });
-      }
+      // They decide in turn order (CR 103.5), so keep side by side.
+      await Promise.all(
+        [alice, bob].map(async (p) => {
+          await p.page.getByRole("button", { name: "Keep hand" }).click();
+          await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
+            timeout: 10_000,
+          });
+        }),
+      );
 
       // --- during a turn: Bob flips a coin ------------------------------
       await expect(bob.page.getByRole("region", { name: "actions", exact: true })).toBeVisible();

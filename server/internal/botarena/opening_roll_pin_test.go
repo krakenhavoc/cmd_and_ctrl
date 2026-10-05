@@ -33,6 +33,18 @@ import (
 // else: the same opening, the same hands, every other move identical.
 // The other two seeds never act between passes and are unchanged.
 //
+// A second deliberate exception, re-pinned by hand (#2237, 2026-10-05):
+// CR 103.5 mulligans in turn order. Keep and mulligan are now answered
+// starting with the starting seat, so the SAME decisions appear in a
+// different order, and the log's seat labels (the order of first
+// appearance) are renumbered because the starting seat now acts first.
+// Checked against the pre-change engine on seed 1503: the same starting
+// seat, the same keeps and mulligans (a random seat mulligans to seven,
+// then six, then keeps; the heuristic seats keep on four and three
+// lands), the same 359 moves and the same turn count. Only the order of
+// the opening lines and the labels differ. The digests below are of the
+// new order.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -66,7 +78,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 359, turns: 3, winner: -1, digest: "770121534519ffc62790e68a2b88b87afdc3040df1965a5e036b09a706d554ea",
+			moves: 359, turns: 3, winner: -1, digest: "296da15d6f1c0f8953b18f7d41ecedecae065bbcf88b2d0858745a8f7d75dd27",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -74,7 +86,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 411, turns: 9, winner: -1, digest: "eb52ed98509e0dfeb2455bf2731114b98d9d119208188b3ce267b4c59005bf30",
+			moves: 411, turns: 9, winner: -1, digest: "cf06761b9b6c7d2c3c67ad4772ac7cc612ced4c30ad60473bfd00a545b128056",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -87,7 +99,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 440, digest: "6f0b3eeed94b4ec4b82ceb00ca03f86c2d17c08e86f35ceede5f69a4eb834c91",
+			opening: true, moves: 440, digest: "055cb3a9582a4431b6493a4a54c9bb81d222aa16d4acbc1bf8095bb5022a5a6c",
 		},
 	}
 	for _, c := range cases {

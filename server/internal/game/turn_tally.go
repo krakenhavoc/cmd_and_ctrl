@@ -77,6 +77,14 @@ type PlayerTurnTally struct {
 	// while it is still on the battlefield (EventSacrifice fires then),
 	// so an artifact creature counts once.
 	ArtifactsOrCreaturesSacrificed int `json:"artifactsOrCreaturesSacrificed,omitempty"`
+	// PermanentsLeft counts the permanents this player controlled that
+	// left the battlefield, by any route and to any zone (revolt,
+	// CR 702.136; #2148): a sacrifice, a bounce, an exile, a death, a
+	// token that ceased to exist, a permanent that left and came back.
+	// "As it left" is the controller the exit stamped on the event
+	// (CR 603.10a), not the card's field afterwards. Read through
+	// Game.PermanentLeftThisTurn.
+	PermanentsLeft int `json:"permanentsLeft,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -932,7 +940,13 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 		g.recordEnteredSubtypesLocked(controller, c)
 	case EventLTB:
-		if ev.NewZone != ZoneGraveyard || ev.CardID == uuid.Nil {
+		if ev.CardID == uuid.Nil {
+			return
+		}
+		// #2148: revolt. Every battlefield exit, whatever the
+		// destination, recorded under the controller it left from.
+		g.recordPermanentLeftLocked(ev)
+		if ev.NewZone != ZoneGraveyard {
 			return
 		}
 		c := g.findCardByIDLocked(ev.CardID)
@@ -1020,4 +1034,31 @@ func hasTypeFold(types []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// recordPermanentLeftLocked bumps PermanentsLeft for the controller the
+// leaving permanent had as it left (CR 603.10a), falling back to the
+// card's controller and then its owner for an unstamped event.
+func (g *Game) recordPermanentLeftLocked(ev Event) {
+	controller, known := ev.LeftUnderControlOf()
+	if !known {
+		if c := g.findCardByIDLocked(ev.CardID); c != nil {
+			controller = c.Controller
+			if controller == uuid.Nil {
+				controller = c.Owner
+			}
+		}
+	}
+	if controller == uuid.Nil {
+		controller = ev.Actor
+	}
+	g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsLeft++ })
+}
+
+// PermanentLeftThisTurn reports revolt (CR 702.136): whether a
+// permanent `playerID` controlled left the battlefield this turn.
+//
+// Caller must hold g.mu.
+func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).PermanentsLeft > 0
 }

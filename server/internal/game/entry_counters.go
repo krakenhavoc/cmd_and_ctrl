@@ -82,6 +82,14 @@ type CastCounts struct {
 	// them apart.
 	Kicked int
 
+	// KickersPaid is the mana cost of each kicker that was paid, as the
+	// card declares it ("{1}{G}", "{W}") — the record behind CR
+	// 702.33f's "if it was kicked with its [cost] kicker" (#2360).
+	// Read it through KickedWith. Empty for an unkicked spell and for
+	// every entry that was not a resolving spell, a CR 707.10 copy
+	// included, which paid nothing.
+	KickersPaid []string
+
 	// ColorsSpent is CR 702.44a's sunburst count: the number of
 	// DISTINCT colours of mana spent to cast the spell. Zero for a
 	// payment the engine did not take (PaidCost.OnPaper) — an
@@ -126,6 +134,18 @@ type CastCounts struct {
 	// Nil for a spell that delved nothing, and for a CR 707.10 copy,
 	// which paid nothing (PaidCost.Delved is not copied).
 	Delved []Card
+}
+
+// KickedWith is CR 702.33f's "if it was kicked with its [cost]
+// kicker": whether the kicker whose mana is `cost` was paid for this
+// spell. False for a cost the card does not declare.
+func (c CastCounts) KickedWith(cost string) bool {
+	for _, k := range c.KickersPaid {
+		if k == cost {
+			return true
+		}
+	}
+	return false
 }
 
 // EntryCountersFromCast is one printed "this permanent enters with N
@@ -178,6 +198,7 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 	return CastCounts{
 		X:           item.XValue,
 		Kicked:      KickedTimesPaid(card, item.Paid.OptionalCosts),
+		KickersPaid: kickersPaidFor(CatalogKey(card), item.Paid.OptionalCosts),
 		ColorsSpent: item.Paid.ColorsSpentCount(),
 		ManaSpent:   item.Paid.ManaSpentCount(),
 	}

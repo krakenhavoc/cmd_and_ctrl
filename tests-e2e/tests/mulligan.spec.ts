@@ -75,29 +75,61 @@ test.describe("opening hand", () => {
     await expect(rollCall).toBeVisible();
     await expect(rollCall).toContainText("Alice");
     await expect(rollCall).toContainText("Bob");
-    await expect(rollCall.getByText("deciding…")).toHaveCount(2);
+    // CR 103.5: decisions go in turn order, starting seat first, and the
+    // starting seat is rolled for, so either player may be first. Only
+    // the seat whose turn it is can press; the other sees who it waits
+    // for.
+    const keepOf = (d: typeof aliceDialog) =>
+      d.getByRole("button", { name: "Keep hand" });
+    await expect
+      .poll(
+        async () =>
+          (await keepOf(aliceDialog).isEnabled()) ||
+          (await keepOf(bobDialog).isEnabled()),
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+    const aliceFirst = await keepOf(aliceDialog).isEnabled();
+    const [firstName, secondName] = aliceFirst
+      ? ["Alice", "Bob"]
+      : ["Bob", "Alice"];
+    const [firstDialog, secondDialog] = aliceFirst
+      ? [aliceDialog, bobDialog]
+      : [bobDialog, aliceDialog];
+    await expect(keepOf(secondDialog)).toBeDisabled();
+    await expect(secondDialog).toContainText(
+      `Waiting for ${firstName} to decide`,
+    );
+    await expect(rollCall.getByText("deciding…")).toHaveCount(1);
+    await expect(rollCall.getByText("waiting")).toHaveCount(1);
 
-    // ---- Alice mulligans. Simplified London: redraw to 7, no
+    // ---- The first seat mulligans. Simplified London: redraw to 7, no
     //      bottom-N penalty yet, and the dialog stays open. ----
-    await aliceDialog.getByRole("button", { name: "Mulligan" }).click();
-    await expect(aliceDialog).toContainText("Mulligans taken: 1");
-    await expect(aliceDialog.getByRole("listitem")).toHaveCount(7);
-    // Still undecided — a mulligan is not a keep.
-    await expect(rollCall.getByText("deciding…")).toHaveCount(2);
+    await firstDialog.getByRole("button", { name: "Mulligan" }).click();
+    await expect(firstDialog).toContainText("Mulligans taken: 1");
+    await expect(firstDialog.getByRole("listitem")).toHaveCount(7);
+    // A mulligan is not a keep: the turn passes to the other seat, and
+    // the first seat waits for it.
+    await expect(keepOf(secondDialog)).toBeEnabled();
+    await expect(keepOf(firstDialog)).toBeDisabled();
+    await expect(firstDialog).toContainText(
+      `Waiting for ${secondName} to decide`,
+    );
 
-    // ---- Bob keeps. His dialog tears down; Alice's roll call sees
-    //      it over the wire without a reload. ----
-    await bobDialog.getByRole("button", { name: "Keep hand" }).click();
-    await expect(bobDialog).toHaveCount(0);
+    // ---- The second seat keeps. Its dialog tears down; the roll call
+    //      sees it over the wire without a reload. ----
+    await keepOf(secondDialog).click();
+    await expect(secondDialog).toHaveCount(0);
     await expect(rollCall.getByText("kept")).toHaveCount(1);
     await expect(rollCall.getByText("deciding…")).toHaveCount(1);
-    // Alice is still holding the table up, so her dialog stays.
-    await expect(aliceDialog).toBeVisible();
+    // Round two is the seat that mulliganed alone, and its dialog stays.
+    await expect(firstDialog).toBeVisible();
+    await expect(keepOf(firstDialog)).toBeEnabled();
 
-    // ---- Alice keeps. The window closes for the table and the
-    //      roll call goes away with it. ----
-    await aliceDialog.getByRole("button", { name: "Keep hand" }).click();
-    await expect(aliceDialog).toHaveCount(0);
+    // ---- The first seat keeps. The window closes for the table and
+    //      the roll call goes away with it. ----
+    await keepOf(firstDialog).click();
+    await expect(firstDialog).toHaveCount(0);
     await expect(alice.page.getByLabel("opening hand decisions")).toHaveCount(
       0,
     );

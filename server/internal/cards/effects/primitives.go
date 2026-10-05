@@ -1127,6 +1127,47 @@ func (c CounterUnlessPaid) Apply(ctx *Context) error {
 	})
 }
 
+// GuardedPayUnless is "<do something to> <StackID> unless its
+// controller pays <Cost>" for a consequence that is NOT a counter —
+// Divert's "change the target of target spell with a single target
+// unless that spell's controller pays {2}" (#2365).
+//
+// It is CounterUnlessPaid with the decline swapped out, and it keeps
+// everything that makes that primitive right: the payer's answer
+// comes before anything else resolves (the engine halts the table
+// while StackID is on the stack), an object that has already left
+// the stack raises no prompt, and OnDecline re-checks before it runs.
+// A plain PayUnless with the same decline lets the targeted spell
+// resolve while the question is open, so the "or else" lands on a
+// spell that has already done its work.
+//
+// OnDecline runs against a context bound to the same stack item, with
+// Controller() being the resolving spell's controller — Divert's
+// controller, who picks the new target.
+type GuardedPayUnless struct {
+	StackID  uuid.UUID
+	Cost     string
+	Question string
+
+	// Chooser overrides "its controller", as CounterUnlessPaid's does.
+	Chooser uuid.UUID
+
+	// OnDecline is the consequence. Required: with none this is a
+	// CounterUnlessPaid and should be written as one.
+	OnDecline func(ctx *Context) error
+}
+
+func (p GuardedPayUnless) Apply(ctx *Context) error {
+	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+		StackItem: p.StackID,
+		Chooser:   p.Chooser,
+		Source:    ctx.Source(),
+		Cost:      p.Cost,
+		Question:  p.Question,
+		OnDecline: declineAgainstTheSameItem(ctx.Item, p.OnDecline),
+	})
+}
+
 // EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
 // Marauder), "each other player sacrifices a creature" (Grave Pact) or
 // "each opponent sacrifices a creature" (Butcher of Malakir) — CR

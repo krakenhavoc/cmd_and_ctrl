@@ -1733,6 +1733,10 @@ export interface PlayerView {
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
   hand_kept?: boolean;
+  // CR 103.5 (#2237): true on the one seat whose turn it is to keep or
+  // mulligan. Mulligan decisions go in turn order, starting player
+  // first. Omitempty: absent on every other seat.
+  mulligan_turn?: boolean;
   // #1530: this seat's "always ask me to order my triggers" preference.
   // Present (true) only in the seat's OWN view; the server blanks it for
   // everyone else. Omitempty: absent means off.

@@ -58,14 +58,17 @@ test.describe("#266 state freeze", () => {
     await uploadDeckAs(request, adminToken, game.id, bob.playerID, deck);
     await startGameAs(request, adminToken, game.id);
 
-    for (const p of [alice, bob]) {
-      await expect(
-        p.page.getByRole("dialog", { name: /keep or mulligan/i }),
-      ).toBeVisible({
-        timeout: 10_000,
-      });
-      await p.page.getByRole("button", { name: "Keep hand" }).click();
-    }
+    // Decisions go in turn order (CR 103.5): keep side by side.
+    await Promise.all(
+      [alice, bob].map(async (p) => {
+        await expect(
+          p.page.getByRole("dialog", { name: /keep or mulligan/i }),
+        ).toBeVisible({
+          timeout: 10_000,
+        });
+        await p.page.getByRole("button", { name: "Keep hand" }).click();
+      }),
+    );
     for (const p of [alice, bob]) {
       await expect(
         p.page.getByRole("dialog", { name: /keep or mulligan/i }),

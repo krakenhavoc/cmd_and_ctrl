@@ -239,14 +239,14 @@ func (d decliner) Decide(_ context.Context, in aiseat.Input) (aiseat.Decision, e
 func TestRunnerObserverRecordsTheDeclineToPass(t *testing.T) {
 	t.Run("no pass on offer, so the decline stands", func(t *testing.T) {
 		// The mulligan window offers Keep and Mulligan and no pass.
-		// Two events: the seat's own first window, and the one it is
-		// woken for when the opponent keeps — guaranteed to arrive,
-		// because Start subscribed this seat before the opponent
-		// existed.
-		c, _ := runWithObserver(t, decliner{}, aiseat.Config{}, 2)
+		// One event: the seat's own window. Since #2237 (CR 103.5) this
+		// seat decides FIRST, so its opponent's keep cannot land until it
+		// answers and nothing wakes it a second time; a seat that never
+		// answers holds the table, as it would at a paper one.
+		c, _ := runWithObserver(t, decliner{}, aiseat.Config{}, 1)
 		evs := c.events()
-		if len(evs) < 2 {
-			t.Fatalf("got %d events, want the seat's own window and the one the opponent's keep woke it for", len(evs))
+		if len(evs) < 1 {
+			t.Fatalf("got %d events, want the seat's own window", len(evs))
 		}
 		for i, ev := range evs {
 			if ev.Index != aiseat.Decline {

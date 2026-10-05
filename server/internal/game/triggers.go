@@ -409,6 +409,25 @@ type TriggeredAbility struct {
 	// catalog uses.
 	BatchKey func(ev Event, source *Card, g *Game) string
 
+	// AtBatchEnd defers the ability until the event batch it triggered
+	// in has finished (#2183, life_batch.go). The ability still
+	// watches events and AppliesTo still runs per event, but only as a
+	// loose pre-filter ("an opponent lost life"): a match is staged,
+	// and when play moves on (the next priority grant, or the next
+	// batch opening) the condition is asked ONCE with the batch's
+	// final totals and the ability dispatches if it holds. That is
+	// what "exactly 1 life" needs: the total is not known until every
+	// simultaneous loss has landed.
+	//
+	// Plain data, not a func, so an ability carried in a prompt's
+	// resume frame adds nothing to the closure census. Needs a
+	// non-empty Key (the staged match is found again by it), and fires
+	// from a permanent only. Dispatch then runs the same suppression,
+	// OncePerBatch and doubling steps as any trigger, so set
+	// OncePerBatch as well for a "one or more" clause. Not persisted;
+	// catalog data.
+	AtBatchEnd *BatchEndCondition
+
 	// Chapter is the Saga chapter number this ability is printed
 	// against — 1 for "I —", 3 for "III —" (CR 714.2b). Zero for
 	// every ability that is not a chapter, which is every ability on
@@ -675,6 +694,14 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 // count: the doublers are not asked, the once-per-batch slot is not
 // spent, and no instance, prompt or target pick is made.
 func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, origin triggerOrigin) {
+	// #2183: the batch is still growing, so the question "how much did
+	// each player lose" is not answerable yet. Park the match; the
+	// settle pass asks again with the final totals and comes back here
+	// with pass.settled set.
+	if t.AtBatchEnd != nil && !pass.settled && origin == triggerOfPermanent && t.Key != "" {
+		g.stageBatchEndTriggerLocked(pass.ev, source.InstanceID, t.Key)
+		return
+	}
 	if g.triggerSuppressedLocked(pass, source, lki, &t, origin) {
 		return
 	}

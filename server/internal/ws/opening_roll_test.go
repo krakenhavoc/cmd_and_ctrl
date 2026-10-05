@@ -151,7 +151,14 @@ func TestOpeningRollOverTheWire(t *testing.T) {
 
 	// The first ordinary action after the deal mints the game's first
 	// undo entry.
-	sendActionAndWait(t, chooser, protocol.ActionPayload{Type: "keep_hand", Player: g.Seats[3].ID.String()})
+	// CR 103.5: seat 1 took the first turn, so it decides first; seat 3
+	// is refused until the seats ahead of it have answered.
+	ep = expectActionError(t, chooser, protocol.ActionPayload{Type: "keep_hand", Player: g.Seats[3].ID.String()})
+	if !strings.Contains(ep.Message, "your turn to decide") {
+		t.Fatalf("keep_hand out of turn: %+v", ep)
+	}
+	readNextFrame(t, other) // the broadcast of the choice
+	sendActionAndWait(t, other, protocol.ActionPayload{Type: "keep_hand", Player: g.Seats[1].ID.String()})
 	if n := undoDepth(room); n != 1 {
 		t.Fatalf("keep_hand after the deal: %d undo entries, want 1", n)
 	}
