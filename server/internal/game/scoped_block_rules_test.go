@@ -17,9 +17,11 @@ import (
 
 func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 	bad := []Mod{
-		{Kind: ModCantBeBlockedExceptBy, Keywords: []string{"haste"}},  // no Text
-		{Kind: ModCantBeBlockedExceptBy, Text: "creatures with haste"}, // no keyword or subtype
-		{Kind: ModLimitBlockersPerDefender, Amount: 0},                 // amount below 1
+		{Kind: ModCantBeBlockedExceptBy, Keywords: []string{"haste"}},    // no Text
+		{Kind: ModCantBeBlockedExceptBy, Text: "creatures with haste"},   // no keyword or subtype
+		{Kind: ModLimitBlockersPerDefender, Amount: 0},                   // amount below 1
+		{Kind: ModCantBeBlockedByPlayer, Text: "creatures Bob controls"}, // no player
+		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New()},             // no text
 	}
 	for _, m := range bad {
 		if blockRuleModProblem(m) == "" {
@@ -30,6 +32,7 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModCantBeBlockedExceptBy, Keywords: []string{"haste"}, Text: "creatures with haste"},
 		{Kind: ModCantBeBlockedExceptBy, Subtypes: []string{"Spirit"}, Text: "Spirits"},
 		{Kind: ModLimitBlockersPerDefender, Amount: 1},
+		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New(), Text: "creatures Bob controls"},
 	}
 	for _, m := range ok {
 		if p := blockRuleModProblem(m); p != "" {
