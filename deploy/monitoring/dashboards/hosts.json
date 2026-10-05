@@ -105,8 +105,8 @@
           },
           "expr": "min(probe_success{job=\"blackbox\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -174,8 +174,8 @@
           },
           "expr": "max(probe_duration_seconds{job=\"blackbox\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -239,8 +239,8 @@
           },
           "expr": "time() - max(cmdctrl_offsite_backup_last_success_timestamp_seconds{job=\"node\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -312,8 +312,8 @@
           },
           "expr": "max(cmdctrl_offsite_backup_last_exit_code{job=\"node\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -381,8 +381,8 @@
           },
           "expr": "time() - max(cmdctrl_monitoring_sync_last_success_timestamp_seconds{env=\"monitoring\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -454,8 +454,8 @@
           },
           "expr": "min(cmdctrl_monitoring_sync_last_run_success{env=\"monitoring\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
