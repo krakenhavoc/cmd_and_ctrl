@@ -693,9 +693,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceSearchLibrary: {},
 	PendingChoiceMayCast:       {},
 	PendingChoiceCopyTarget:    {},
-	PendingChoiceCreatureType:  {},
-	PendingChoiceCardName:      {},
-	PendingChoiceColor:         {},
+	// creature_type: the stored as-enters form has no frame and is just
+	// dropped; the resolution-time form (#2382) runs its continuation
+	// with "" so Patriarch's Bidding's later seats are still asked.
+	PendingChoiceCreatureType: {onDrop: dropDefault},
+	PendingChoiceCardName:     {},
+	PendingChoiceColor:        {},
 	// The attacker whose damage is being assigned was theirs, and it
 	// left with them.
 	PendingChoiceDamageAssignment: {},

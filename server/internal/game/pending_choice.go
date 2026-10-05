@@ -851,12 +851,12 @@ type PendingChoice struct {
 	// serialised. See option_pick.go.
 	optionPickResume *optionPickFrame
 
-	// chooseColorResume is the continuation for a resolution-time
+	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is
 	// written onto the source permanent instead. Not serialised. See
 	// color_choice.go.
-	chooseColorResume *chooseColorFrame
+	chooseValueResume *chooseValueFrame
 
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has

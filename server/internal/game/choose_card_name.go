@@ -104,7 +104,7 @@ func (g *Game) QueueCardNameChoiceThenForEffect(chooser, source uuid.UUID, reaso
 		// (closure_fields.txt), so this rides the colour prompt's
 		// frame: both are "hand the single string answer to a
 		// closure", and the census already counts it.
-		chooseColorResume: &chooseColorFrame{then: then},
+		chooseValueResume: &chooseValueFrame{then: then},
 	})
 }
 
@@ -153,7 +153,7 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 	}
 	g.dequeueChoiceLocked(idx)
 
-	if frame := choice.chooseColorResume; frame != nil {
+	if frame := choice.chooseValueResume; frame != nil {
 		g.EmitEvent(Event{
 			Kind:   EventCardNameChosen,
 			Actor:  chooserID,

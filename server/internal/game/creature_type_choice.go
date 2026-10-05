@@ -61,6 +61,49 @@ func (g *Game) QueueCreatureTypeChoiceForEffect(chooser, source uuid.UUID, reaso
 	})
 }
 
+// A resolution-time creature-type prompt carries its continuation in
+// the same chooseValueFrame a resolution-time colour prompt does
+// (color_choice.go): both are "a string answer, then the rest of the
+// card", and one frame keeps the ContinuationCensus and the closure
+// ratchet at one line per route rather than one more per prompt kind.
+
+// CreatureTypePrompt is the queue-side description of a
+// resolution-time "choose a creature type" (Distant Melody, Kindred
+// Dominance, Raise the Palisade): the same prompt, vocabulary and
+// answer shape as the CR 614.12 as-enters one, with the rest of the
+// card hanging off the answer instead of the answer being stored on a
+// permanent.
+type CreatureTypePrompt struct {
+	// Chooser answers the prompt. Required.
+	Chooser uuid.UUID
+	// Source is the card asking. Empty is legal (test harnesses).
+	Source uuid.UUID
+	// Question is the prompt's header.
+	Question string
+	// Then receives the canonical chosen type. Runs with g.mu held;
+	// may queue further choices. A prompt dropped because its chooser
+	// left the game calls it with "" (nobody chose), so a chain that
+	// asks several seats finishes (#1006's rule); an answer is never
+	// empty.
+	Then func(g *Game, creatureType string) error
+}
+
+// QueueCreatureTypeChoiceThenForEffect queues the AT-RESOLUTION form:
+// the answer is handed to p.Then and stored nowhere. Returns the
+// choice ID, or uuid.Nil when the chooser has left the game.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueCreatureTypeChoiceThenForEffect(p CreatureTypePrompt) uuid.UUID {
+	return g.QueueChoiceForEffect(PendingChoice{
+		Kind:              PendingChoiceCreatureType,
+		Chooser:           p.Chooser,
+		Count:             1,
+		Source:            p.Source,
+		Reason:            p.Question,
+		chooseValueResume: &chooseValueFrame{then: p.Then},
+	})
+}
+
 // ResolveCreatureTypeChoice processes a resolve_choice action for a
 // PendingChoiceCreatureType entry: the chooser names a creature type
 // and it is stamped onto the source permanent's NamedTribe.
@@ -105,7 +148,33 @@ func (g *Game) ResolveCreatureTypeChoice(choiceID, chooserID uuid.UUID, creature
 	if !ok {
 		return ErrInvalidParam
 	}
+	frame := choice.chooseValueResume
 	g.dequeueChoiceLocked(idx)
+
+	if frame != nil {
+		// The resolution-time form: the answer is handed to the
+		// continuation and stored nowhere. An error the continuation
+		// returns is logged and the prompt is gone either way, the
+		// #544 contract every continuation resolver keeps.
+		g.EmitEvent(Event{
+			Kind:   EventCreatureTypeChosen,
+			Actor:  chooserID,
+			CardID: choice.Source,
+			Label:  canonical,
+		})
+		if frame.then != nil {
+			if err := frame.then(g, canonical); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    chooserID,
+					Source:   choice.Source,
+					ErrorMsg: err.Error(),
+				})
+			}
+		}
+		g.runStateChecksLocked()
+		return nil
+	}
 
 	if i := findCardOnBattlefield(g, choice.Source); i >= 0 {
 		g.Battlefield.Cards[i].NamedTribe = canonical
@@ -126,6 +195,26 @@ func (g *Game) ResolveCreatureTypeChoice(choiceID, chooserID uuid.UUID, creature
 	})
 	g.runStateChecksLocked()
 	return nil
+}
+
+// SetNamedTribeForEffect stamps `tribe` onto the permanent `sourceID`
+// as its chosen creature type, for a continuation that has more to do
+// with the answer than store it (Banner of Kinship: "enters with a
+// fellowship counter for each creature you control of the chosen
+// type"). Reports false when the permanent has left, which is "nowhere
+// to land" rather than an error (CR 608.2).
+//
+// Caller must hold g.mu.
+func (g *Game) SetNamedTribeForEffect(sourceID uuid.UUID, tribe string) bool {
+	i := findCardOnBattlefield(g, sourceID)
+	if i < 0 {
+		return false
+	}
+	g.Battlefield.Cards[i].NamedTribe = tribe
+	// Same reason as ResolveCreatureTypeChoice: the layer cache reads
+	// NamedTribe through AppliesTo and nothing else invalidates it.
+	g.layerVersion.Add(1)
+	return true
 }
 
 // NamedTribeOf returns the creature type chosen for the permanent
