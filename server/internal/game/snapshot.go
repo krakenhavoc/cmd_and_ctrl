@@ -605,6 +605,10 @@ type playerSnapshot struct {
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
 	Eliminated      bool           `json:"eliminated"`
 	HandKept        bool           `json:"handKept"`
+	// MulliganDecided is Player.MulliganDecided (#2237). Additive: a
+	// file written before it restores with false for every seat, which
+	// reads as a fresh round of decisions.
+	MulliganDecided bool `json:"mulliganDecided,omitempty"`
 	// TriggerOrderAlwaysAsk is Player.TriggerOrderAlwaysAsk (#1530).
 	// Additive: a file written before it restores with false, the default.
 	TriggerOrderAlwaysAsk bool              `json:"triggerOrderAlwaysAsk,omitempty"`
@@ -1975,6 +1979,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
+		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
@@ -2826,6 +2831,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
+		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,

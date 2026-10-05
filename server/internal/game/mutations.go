@@ -8970,6 +8970,11 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 		g.leaveOpeningRollLocked(p)
 		return nil
 	}
+	if g.MulligansOpen {
+		// CR 103.5: a seat that leaves mid-decision is skipped; the
+		// next seat decides, and a round or the window may now be done.
+		defer g.settleMulliganLocked()
+	}
 	// #1529: whether the trigger queue is being held for a trigger
 	// that is still announcing (see drainPendingTriggersAPNAPLocked).
 	heldForAnnouncement := g.triggerAnnouncementOpenLocked()
@@ -9065,6 +9070,10 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	if g.MulligansOpen && g.MulliganDeciderLocked() != p.Seat {
+		// CR 103.5: decisions go in turn order.
+		return ErrNotYourMulligan
+	}
 	for _, c := range p.Hand.Cards {
 		p.Library.PushTop(c)
 	}
@@ -9086,6 +9095,12 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	}
 	p.MulligansTaken++
 	p.HandKept = false
+	// Answered for this round; the next decision of this seat comes in
+	// the next round, after everyone ahead of it has answered again.
+	if g.MulligansOpen {
+		p.MulliganDecided = true
+	}
+	g.settleMulliganLocked()
 	return nil
 }
 
@@ -9119,31 +9134,15 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	if p.HandKept {
 		return nil
 	}
+	if g.MulligansOpen && g.MulliganDeciderLocked() != p.Seat {
+		// CR 103.5: decisions go in turn order.
+		return ErrNotYourMulligan
+	}
 	p.HandKept = true
-	// Close the mulligan window once all non-eliminated seats have
-	// committed. Eliminated seats (improbable here — elimination
-	// during the mulligan window would be unusual but possible if
-	// the conceded flow is exercised mid-decision) don't gate the
-	// transition.
-	allKept := true
-	for _, seat := range g.Seats {
-		if seat.Eliminated {
-			continue
-		}
-		if !seat.HandKept {
-			allKept = false
-			break
-		}
-	}
-	if allKept {
-		g.MulligansOpen = false
-		// First-step entry happens here, not at Start: the cursor has
-		// been parked on Untap with NoPriority since Start, waiting
-		// for everyone to commit. Run the hook now so seat 0's auto-
-		// untap fires and the cursor advances to Upkeep, matching the
-		// shape of every subsequent step transition. (S13.)
-		g.runStepEntryHooksLocked()
-	}
+	p.MulliganDecided = true
+	// Close the window once every live seat has kept; otherwise move
+	// the turn to the next decider. Eliminated seats don't gate it.
+	g.settleMulliganLocked()
 	return nil
 }
 

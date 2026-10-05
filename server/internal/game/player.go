@@ -195,6 +195,12 @@ type Player struct {
 	// has KeptHand. Added in S08.
 	HandKept bool
 
+	// MulliganDecided is true once this seat has answered keep or
+	// mulligan in the current round of the opening-hand decisions
+	// (CR 103.5, #2237). Cleared for the seats that mulliganed when a
+	// round ends; see mulligan_order.go.
+	MulliganDecided bool
+
 	// TriggerOrderAlwaysAsk is this seat's "always ask me to order my
 	// triggers" preference (#1530, ADR 0018's #1530 amendment). When
 	// set, seatNeedsTriggerOrder no longer skips the CR 603.3b prompt

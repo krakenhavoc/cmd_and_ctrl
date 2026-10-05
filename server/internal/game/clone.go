@@ -593,6 +593,7 @@ func clonePlayer(p *Player) *Player {
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
+		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,

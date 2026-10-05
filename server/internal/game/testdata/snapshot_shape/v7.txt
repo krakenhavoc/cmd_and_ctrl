@@ -3678,6 +3678,7 @@ seats[].manaPool[].riders[].when	array
 seats[].manaPool[].riders[].when[]	string
 seats[].maxHandSize	number:int
 seats[].maxHandSizeAt	number:int64
+seats[].mulliganDecided	bool
 seats[].mulligansTaken	number:int
 seats[].name	string
 seats[].poison	number:int
