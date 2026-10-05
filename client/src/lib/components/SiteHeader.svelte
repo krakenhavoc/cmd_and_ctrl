@@ -22,6 +22,7 @@
   // bar and the login page's signed-in card are one menu, opened from
   // the button that shows the person's name.
   import { onMount } from "svelte";
+  import Wordmark from "./Wordmark.svelte";
   import { route, navigate } from "../router";
   import { canSignOutEverywhere, LobbyApiError, session } from "../session";
   import { signedInUserID } from "../myGames";
@@ -150,7 +151,7 @@
 <header class="site-header">
   <div class="row">
     <a class="wordmark" href={homeHref} aria-label="cmd_and_ctrl home" onclick={closeMenu}>
-      <i></i>CMD &amp; CTRL
+      <Wordmark size="header" />
     </a>
 
     <button
@@ -295,25 +296,11 @@
     padding: 6px 0;
   }
   .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 13px;
-    letter-spacing: 0.16em;
-    color: var(--fg);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     text-decoration: none;
     white-space: nowrap;
-  }
-  .wordmark i {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid var(--accent);
-    transform: rotate(45deg);
-    border-radius: 3px;
-    box-sizing: border-box;
+    border-radius: var(--radius);
   }
 
   .menu-toggle {

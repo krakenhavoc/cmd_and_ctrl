@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Wordmark from "../lib/components/Wordmark.svelte";
   import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
@@ -1639,7 +1640,7 @@
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
     >
     <span class="bar-sep" aria-hidden="true"></span>
-    <span class="wordmark" aria-hidden="true"><i></i>CMD &amp; CTRL</span>
+    <span class="wordmark" aria-hidden="true"><Wordmark size="bar" /></span>
     <h1 class="crumb"><b>/</b><span class="mono">{gameID.slice(0, 8)}</span></h1>
     <span class="bar-spacer"></span>
     {#if isSpectator}
@@ -2295,23 +2296,8 @@
     background: var(--border-strong);
   }
   .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 14px;
-    letter-spacing: 0.18em;
-    color: var(--fg);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-  }
-  .wordmark i {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--accent);
-    transform: rotate(45deg);
-    border-radius: 3px;
-    box-sizing: border-box;
   }
   .bar :global(h1.crumb) {
     margin: 0;
