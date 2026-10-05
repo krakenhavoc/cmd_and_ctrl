@@ -50,10 +50,18 @@ func TestBlockedAttackerSurvives(t *testing.T) {
 			[]*protocol.CardView{bear("b1"), named(body(1, 1, "deathtouch"), "dt")}, 6, false},
 		{"a spare double striker could block instead: it dies", wurm(),
 			[]*protocol.CardView{bear("b1"), named(body(4, 1, "double strike"), "ds")}, 6, false},
-		// A spare that could only kill it together with the chump is a
-		// gang block, which the model does not play (see survives).
-		{"a spare Ogre behind the chumping Ogre: it lives", wurm(),
-			[]*protocol.CardView{named(body(4, 4), "o1"), named(body(4, 4), "o2")}, 6, true},
+		// A spare that kills it only together with the chump joins the
+		// block (#1548): the Wurm's 7 kills one Ogre either way.
+		{"a spare Ogre joins the chumping Ogre: 8 ≥ 7, it dies", wurm(),
+			[]*protocol.CardView{named(body(4, 4), "o1"), named(body(4, 4), "o2")}, 6, false},
+		// Two spare Bears with the chumping Bear: 6 < 7, it lives.
+		{"two spare Bears join the chumping Bear: 6 < 7, it lives", wurm(),
+			[]*protocol.CardView{bear("b1"), bear("b2"), bear("b3")}, 6, true},
+		// A first striker kills the joiner it has to before the gang
+		// deals regular damage: 3 power kills one Bear, the other's 2
+		// do not finish a 3/3.
+		{"my first striker survives a chump and a spare Bear", body(3, 3, "first strike"),
+			[]*protocol.CardView{bear("b1"), bear("b2")}, 3, true},
 		// First strike and deathtouch, one blocker at a time.
 		{"a double striker blocks: 8 ≥ 7, it dies", wurm(), []*protocol.CardView{named(body(4, 4, "double strike"), "ds")}, 4, false},
 		{"a deathtouch chump: it dies", wurm(), []*protocol.CardView{named(body(1, 1, "deathtouch"), "dt")}, 7, false},
