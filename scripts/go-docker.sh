@@ -43,6 +43,24 @@ Commands:
 Environment:
   CMDCTRL_GOCACHE_MAX_GB   build cache cap in GB (default 15). Above it, the
                            cache is cleaned before the command runs.
+
+Passing variables into the container (#2157). Nothing leaks in by default;
+these are the only routes, and each passes a NAME, never a value on the
+command line:
+  CMDCTRL_SCRYFALL_DUMP    if set, the file is mounted read-only at
+                           /scryfall/<basename> and the variable is
+                           rewritten to that path inside the container. A
+                           relative path is resolved against your cwd. A
+                           missing file is an error.
+  AISEAT_*                 AISEAT_GAME_TESTS, AISEAT_HEURISTIC_GAMES,
+                           AISEAT_H2H_GAMES, AISEAT_FUNNEL_GAMES,
+                           AISEAT_SOAK_GAMES, AISEAT_SOAK_POLICY,
+                           AISEAT_SOAK_SEED, AISEAT_DEBUG, AISEAT_STALL and
+                           AISEAT_WALLCLOCK are forwarded when set.
+  GO_DOCKER_ENV            space-separated names of any other variables to
+                           forward when set, e.g.
+                           GO_DOCKER_ENV="CMDCTRL_DEV_SKIP_DECK_VALIDATION" \
+                             scripts/go-docker.sh test ./...
 USAGE
 }
 
@@ -70,6 +88,35 @@ enforce_cap() {
     docker run --rm -v "$VOL_BUILD:/root/.cache/go-build" "$GO_IMAGE" go clean -cache
   fi
 }
+
+# Environment pass-through (#2157). Only names are given to docker (-e NAME),
+# so values never appear in argv or the process list, and an unset name is
+# forwarded as unset rather than as empty.
+env_flags=()
+forward_env() {
+  local name
+  for name in "$@"; do
+    case "$name" in
+      '' | *[!A-Za-z0-9_]* | [0-9]*) die "GO_DOCKER_ENV: '$name' is not a variable name" ;;
+    esac
+    if [ -n "${!name+x}" ]; then env_flags+=(-e "$name"); fi
+  done
+}
+forward_env AISEAT_GAME_TESTS AISEAT_HEURISTIC_GAMES AISEAT_H2H_GAMES \
+  AISEAT_FUNNEL_GAMES AISEAT_SOAK_GAMES AISEAT_SOAK_POLICY AISEAT_SOAK_SEED \
+  AISEAT_DEBUG AISEAT_STALL AISEAT_WALLCLOCK
+# shellcheck disable=SC2086 # word-splitting the list is the point
+forward_env ${GO_DOCKER_ENV:-}
+
+# The dump is a ~630 MB file outside the repo mount: bind it read-only and
+# point the variable at the in-container path.
+if [ -n "${CMDCTRL_SCRYFALL_DUMP:-}" ]; then
+  dump_host="$CMDCTRL_SCRYFALL_DUMP"
+  [ -f "$dump_host" ] || die "CMDCTRL_SCRYFALL_DUMP '$dump_host' is not a file"
+  dump_host="$(cd "$(dirname "$dump_host")" && pwd)/$(basename "$dump_host")"
+  env_flags+=(-v "$dump_host:/scryfall/$(basename "$dump_host"):ro" \
+    -e "CMDCTRL_SCRYFALL_DUMP=/scryfall/$(basename "$dump_host")")
+fi
 
 cmd="${1:-}"
 if [ $# -gt 0 ]; then shift; fi
@@ -121,5 +168,5 @@ docker run --rm "${tty_flag[@]}" \
   -v "$VOL_MOD:/go/pkg/mod" \
   -v "$VOL_BUILD:/root/.cache/go-build" \
   -v "$VOL_LINT:/root/.cache/golangci-lint" \
-  "${flags[@]}" "$image" "${run_cmd[@]}" || rc=$?
+  "${env_flags[@]}" "${flags[@]}" "$image" "${run_cmd[@]}" || rc=$?
 exit "$rc"

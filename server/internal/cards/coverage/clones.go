@@ -161,8 +161,16 @@ func ExactClones(dir string, minLines int) ([]CloneGroup, error) {
 		if len(ms) < 2 {
 			continue
 		}
+		// Lines is the SMALLEST member's span. Members share a body
+		// but not necessarily its raw line span (a comment inside one
+		// copy widens it), and ms[0] is whichever file sorts first, so
+		// reading it made the recorded length depend on which cards
+		// exist: adding an earlier-sorted copy rewrote the line (#2160).
 		g := CloneGroup{Hash: h, Lines: ms[0].lines}
 		for _, m := range ms {
+			if m.lines < g.Lines {
+				g.Lines = m.lines
+			}
 			g.Members = append(g.Members, m.name)
 		}
 		sort.Strings(g.Members)

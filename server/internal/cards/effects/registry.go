@@ -264,7 +264,10 @@ func Register(spec Spec) {
 		if oc.ChoosesOpponent || oc.Key == game.GiftKey {
 			panic(fmt.Sprintf("effects.Register: %q declares a gift cost in OptionalCosts — declare Spec.Gift and let buildDef grow the cost (ADR 0089)", spec.Name))
 		}
-		if seenOptional[oc.Key] {
+		// #2153: kicker is the one key a card may declare twice — "Kicker
+		// {R} and/or {W}" is two kicker abilities (CR 702.33b) — and
+		// checkKickers below holds that to its printed shape.
+		if seenOptional[oc.Key] && oc.Key != game.KickerKey {
 			panic(fmt.Sprintf("effects.Register: %q declares two optional costs keyed %q", spec.Name, oc.Key))
 		}
 		seenOptional[oc.Key] = true
@@ -299,6 +302,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays X life — an optional cost cannot claim the shared X slot", spec.Name, oc.Key))
 		}
 	}
+	checkKickers(spec)
 	// S22: a tap-permanents cost with no pool of legal permanents can
 	// never be paid, and one whose extra cost doesn't parse would
 	// silently charge nothing — both are copy-paste mistakes in a

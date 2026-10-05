@@ -543,6 +543,26 @@ func (c *Context) KickedTimes() int {
 	return c.OptionalCostTimes(game.KickerKey) + c.OptionalCostTimes(game.MultikickerKey)
 }
 
+// KickedWith is CR 702.33f's "if this spell was kicked with its
+// [cost] kicker", on a spell with two kicker costs (CR 702.33b) —
+// Illuminate's "If this spell was kicked with its {2}{R} kicker". The
+// cost is spelled as the card declares it (#2153):
+//
+//	if ctx.KickedWith("{3}{U}") { … draw X cards … }
+//
+// A permanent's own trigger reads game.CardKickedWith(*source, cost)
+// instead, for the reason CardKickedTimes exists.
+func (c *Context) KickedWith(cost string) bool {
+	if c.Item == nil || len(c.Item.Paid.OptionalCosts) == 0 {
+		return false
+	}
+	card, ok := c.Game.LookupCardForEffect(c.Item.ID)
+	if !ok {
+		return false
+	}
+	return game.KickedWithPaid(card, c.Item.Paid.OptionalCosts, cost)
+}
+
 // CastProvenance is what the permanent this effect is running for
 // remembers about the SPELL it came from — CR 400.7d, "an ability of
 // a permanent can reference information about the spell that became

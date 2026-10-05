@@ -24,7 +24,7 @@ import (
 // JoinInput is `join`'s input.
 type JoinInput struct {
 	InviteURL   string     `json:"invite_url" jsonschema:"the table's invite link (…/#/games/<id>/join?t=…) or an admin's seat-reclaim link"`
-	DisplayName string     `json:"display_name,omitempty" jsonschema:"the seat's name at the table (default Agent)"`
+	DisplayName string     `json:"display_name,omitempty" jsonschema:"the seat's name at the table (default: the MCP client's name, else Agent)"`
 	Deck        *DeckInput `json:"deck,omitempty" jsonschema:"optional deck to install: {id} for a pre-built deck or {list} for a decklist"`
 }
 
@@ -106,14 +106,27 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 
 	name := strings.TrimSpace(in.DisplayName)
 	if name == "" {
-		name = defaultName
+		name = defaultDisplayName(agentClientName(client))
 	}
 	name = cut(name, maxNameLen)
 
+	// One seat per saved session (#2274): a second binary on the same
+	// --state-dir would read this one's token and play its seat.
+	lock, err := s.store.lock(inv.Origin, inv.GameID)
+	if errors.Is(err, errTableHeld) {
+		return errorResult("could not take the seat: %v (%s). Give each agent its own --state-dir.", err, s.cfg.StateDir), nil
+	}
+	if err != nil {
+		return errorResult("the saved session cannot be used: %v", err), nil
+	}
 	sess, resumed, err := s.claim(ctx, inv, name, agentClientName(client))
 	if err != nil {
+		lock.Release()
 		return errorResult("could not take the seat: %v", err), nil
 	}
+	s.mu.Lock()
+	s.lock = lock
+	s.mu.Unlock()
 	s.sec.add(sess.Token)
 	if !resumed {
 		if err := s.store.save(sess); err != nil {
