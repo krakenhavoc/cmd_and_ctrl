@@ -39,10 +39,12 @@ else
     --description "A site's /healthz stopped answering (uptime watcher)" 2>/dev/null || true
 fi
 
-# probe URL: sets PROBE_DETAIL, returns 0 when up.
+# probe URL: sets PROBE_DETAIL. Returns 0 up, 1 down, 2 blocked by a Cloudflare
+# challenge (the check could not see the site, which is not an outage).
 probe() {
   local url="$1" i code rc err hdr
   PROBE_DETAIL=""
+  local challenged=0
   for ((i = 1; i <= TRIES; i++)); do
     err=$(mktemp)
     hdr=$(mktemp)
@@ -57,9 +59,11 @@ probe() {
     echo "  $PROBE_DETAIL"
     # Who answered: a Cloudflare or proxy block shows up here, not in the code.
     grep -iE '^(server|cf-mitigated|cf-ray|via):' "$hdr" | tr -d '\r' | sed 's/^/    /'
+    if grep -qi '^cf-mitigated:' "$hdr"; then challenged=$((challenged + 1)); fi
     rm -f "$err" "$hdr"
     if [ "$i" -lt "$TRIES" ]; then sleep "$GAP"; fi
   done
+  if [ "$challenged" -eq "$TRIES" ]; then return 2; fi
   return 1
 }
 
@@ -85,7 +89,16 @@ for site in "${SITES[@]}"; do
   title="\`$env\` is down"
   echo "== $env: $url"
 
-  if probe "$url"; then up=true; else up=false; fi
+  probe "$url"
+  case $? in
+    0) up=true ;;
+    2)
+      msg="$env: Cloudflare challenged the GitHub runner on every try, so the check cannot see the site. Skip the challenge for this check (a WAF skip rule). No issue is opened or closed."
+      if dry; then echo "::warning::$msg"; else echo "::error::$msg"; rc=1; fi
+      continue
+      ;;
+    *) up=false ;;
+  esac
   echo "  result: $([ "$up" = true ] && echo UP || echo DOWN) ($PROBE_DETAIL)"
 
   # In a dry run the label may not exist yet; an empty list is the right answer.
