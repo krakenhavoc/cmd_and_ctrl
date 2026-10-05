@@ -18,6 +18,7 @@
   // render test), results show at once.
   import type { GameView } from "../../protocol";
   import { seatColor } from "../../colors";
+  import { L } from "../../labels";
   import {
     latestOpeningDice,
     openingChipText,
@@ -60,7 +61,7 @@
 </script>
 
 {#if model}
-  <div class="opening-roll-banner" role="group" aria-label="opening roll">
+  <div class="opening-roll-banner" role="group" aria-label={L.openingRoll}>
     <span class="label">Opening roll</span>
     {#each chips as chip (chip.seat)}
       <span

@@ -36,6 +36,7 @@
   } from "../shortcuts";
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
+  import HintSlot from "./hints/HintSlot.svelte";
 
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
@@ -1259,6 +1260,9 @@
           {/if}
         </section>
       </div>
+      <!-- ADR 0125 §3.6: a hint for this dialog is drawn here, inside its
+           focus trap. Renders nothing until a settings hint is up. -->
+      <HintSlot />
     </div>
   </div>
 {/if}

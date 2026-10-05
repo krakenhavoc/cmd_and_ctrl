@@ -8,6 +8,7 @@
   // you type. Loads once; Refresh asks again.
   import { onMount } from "svelte";
   import { fetchAdminAccounts } from "../../api";
+  import { L } from "../../labels";
   import {
     accountsHash,
     filterAccounts,
@@ -118,7 +119,7 @@
       <p class="empty">No accounts match.</p>
     {:else}
       <div class="scroll">
-        <table aria-label="accounts">
+        <table aria-label={L.accountsTable}>
           <thead>
             <tr>
               <th scope="col">Account</th>

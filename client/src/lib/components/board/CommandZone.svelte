@@ -37,6 +37,7 @@
   import { requestCastAnyway } from "../../castAnyway";
   import { settings } from "../../settings";
   import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
+  import { L } from "../../labels";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -222,7 +223,7 @@
   class:empty={commanders.length === 0}
   data-pile="command"
   data-pile-owner={seat.id}
-  aria-label={`${seat.name} command zone, ${zone.count} card${zone.count === 1 ? "" : "s"}`}
+  aria-label={L.commandZone(seat.name, zone.count)}
 >
   <div class="card-slot" bind:this={cardSlot}>
     {#if visibleCard}
