@@ -51,13 +51,21 @@ func eventMetrics() []prometheus.Collector {
 // counts must compare before and after rather than expect zero.
 func NewRegistry() *prometheus.Registry {
 	r := prometheus.NewRegistry()
-	r.MustRegister(
+	r.MustRegister(Collectors()...)
+	return r
+}
+
+// Collectors is everything NewRegistry registers: the Go and process
+// collectors, the build info and every event metric. The state
+// collectors main.go adds are not in it. A test that needs every name
+// the server can report (the dashboards' and rules' name check)
+// describes these and main's state collectors together.
+func Collectors() []prometheus.Collector {
+	return append([]prometheus.Collector{
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		newBuildInfo(),
-	)
-	r.MustRegister(eventMetrics()...)
-	return r
+	}, eventMetrics()...)
 }
 
 // buildCommit is the binary's vcs.revision, read once.

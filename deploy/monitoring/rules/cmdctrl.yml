@@ -1,0 +1,186 @@
+# Alert rules for cmd_and_ctrl (ADR 0123 §7). Runbook: docs/monitoring.md.
+#
+# The monitoring VM fetches deploy/monitoring/rules/*.yml from `main` every
+# 10 minutes, checks it with `promtool check rules` and reloads Prometheus.
+# tests/ is for CI only and is never synced. Every alert here has a unit test
+# under tests/: add one with any new rule.
+#
+# Alertmanager routes everything to one Discord channel, grouped by alertname
+# and env. So every rule carries `severity` (critical | warning) and a
+# summary that names the env and, where there is one, the host.
+#
+# Dev deploys restart the server often, so a dev alert is never critical and
+# waits longer where a restart could trip it.
+#
+# Jobs (deploy/alloy/config.alloy and the monitoring VM):
+#   cmdctrl-server  the game server's own metrics, from each app host's Alloy
+#   node            Alloy's node exporter: host, systemd units, textfiles
+#   blackbox        the monitoring VM's probes of each site's /healthz
+# Every app-host series has env (prod | dev) and host; the monitoring VM's
+# own series have env="monitoring".
+
+groups:
+  - name: cmdctrl-availability
+    rules:
+      # The site as a player sees it: the blackbox probe goes out through
+      # Cloudflare, so this also catches a dead tunnel or Caddy.
+      - alert: SiteDown
+        expr: probe_success{job="blackbox", env="prod"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }}: the site is down ({{ $labels.instance }})"
+          description: "The blackbox probe of {{ $labels.instance }} has failed for 3 minutes. Players cannot reach {{ $labels.env }}."
+
+      - alert: SiteDown
+        expr: probe_success{job="blackbox", env="dev"} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: the site is down ({{ $labels.instance }})"
+          description: "The blackbox probe of {{ $labels.instance }} has failed for 10 minutes."
+
+      # No samples from the server for 5 minutes. Two shapes: Alloy is alive
+      # and scraping a dead server (up stays 0), or nothing arrives at all
+      # (the host, Alloy or the push path is down, and `up` goes absent).
+      # Dev is 5 minutes too: a deploy restart takes seconds, and the ADR's
+      # exit check stops the dev server to see this fire.
+      - alert: ServerNotReporting
+        expr: >-
+          max_over_time(up{job="cmdctrl-server", env="prod"}[5m]) == 0
+          or absent_over_time(up{job="cmdctrl-server", env="prod"}[5m])
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }}: the game server has not reported for 5 minutes{{ with $labels.host }} on {{ . }}{{ end }}"
+          description: "No metrics from the {{ $labels.env }} game server for 5 minutes. Either the server is down while Alloy still scrapes it (up is 0), or nothing reaches the monitor from that host at all."
+
+      - alert: ServerNotReporting
+        expr: >-
+          max_over_time(up{job="cmdctrl-server", env="dev"}[5m]) == 0
+          or absent_over_time(up{job="cmdctrl-server", env="dev"}[5m])
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: the game server has not reported for 5 minutes{{ with $labels.host }} on {{ . }}{{ end }}"
+          description: "No metrics from the {{ $labels.env }} game server for 5 minutes. Either the server is down while Alloy still scrapes it (up is 0), or nothing reaches the monitor from that host at all."
+
+      # A deploy restarts the server once. Four starts in 15 minutes is a
+      # loop (#598 item 3: a month of one went unnoticed).
+      - alert: ServerCrashLoop
+        expr: changes(process_start_time_seconds{job="cmdctrl-server", env="prod"}[15m]) > 3
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }}: the game server on {{ $labels.host }} is crash-looping"
+          description: "The {{ $labels.env }} server on {{ $labels.host }} started {{ $value }} more times in the last 15 minutes."
+
+      - alert: ServerCrashLoop
+        expr: changes(process_start_time_seconds{job="cmdctrl-server", env="dev"}[15m]) > 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: the game server on {{ $labels.host }} is crash-looping"
+          description: "The {{ $labels.env }} server on {{ $labels.host }} started {{ $value }} more times in the last 15 minutes."
+
+      # The server and bot units stop restarting after 10 starts in 600 s
+      # and sit in `failed` (#598 item 2). The backup is a oneshot whose
+      # failure OffsiteBackupStale already reports, so it is left out here.
+      - alert: UnitFailed
+        expr: >-
+          node_systemd_unit_state{job="node", env="prod", name=~"cmd-and-ctrl.*",
+          name!="cmd-and-ctrl-backup.service", state="failed"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }}: {{ $labels.name }} has failed on {{ $labels.host }}"
+          description: "systemd gave up restarting {{ $labels.name }} on {{ $labels.host }} ({{ $labels.env }}). It will not start again by itself."
+
+      - alert: UnitFailed
+        expr: >-
+          node_systemd_unit_state{job="node", env="dev", name=~"cmd-and-ctrl.*",
+          name!="cmd-and-ctrl-backup.service", state="failed"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $labels.name }} has failed on {{ $labels.host }}"
+          description: "systemd gave up restarting {{ $labels.name }} on {{ $labels.host }} ({{ $labels.env }}). It will not start again by itself."
+
+  - name: cmdctrl-games
+    rules:
+      # The boot's restore pass could not bring a table back (ADR 0044).
+      # The gauge is set once at boot and stays, so the alert only looks
+      # within 15 minutes of a start and then resolves on its own.
+      - alert: RestoreAbandonedGames
+        expr: >-
+          cmdctrl_boot_restore_games{job="cmdctrl-server", outcome="abandoned"} > 0
+          and on (env, host, instance)
+          (time() - process_start_time_seconds{job="cmdctrl-server"}) < 900
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: the last restart on {{ $labels.host }} abandoned {{ $value }} game(s)"
+          description: "The {{ $labels.env }} server on {{ $labels.host }} could not restore {{ $value }} table(s) from their restore points at boot. Their players lost the game."
+
+      # A deploy now would rewind a live table by more than 10 minutes. A
+      # restart does not trip this, so dev shares the rule.
+      - alert: RestorePointLagging
+        expr: cmdctrl_restore_point_age_seconds{job="cmdctrl-server"} > 600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: restore points on {{ $labels.host }} are {{ $value | humanizeDuration }} behind"
+          description: "The oldest restore point among active tables on {{ $labels.host }} ({{ $labels.env }}) is {{ $value | humanizeDuration }} old. A deploy or crash now would rewind that table that far."
+
+  - name: cmdctrl-hosts
+    rules:
+      # scripts/backup-offsite.sh writes these to the textfile directory at
+      # the end of every run (docs/environments.md#backups).
+      # Two rules, told apart by `cause`: too long since the last success,
+      # or the last run failed.
+      - alert: OffsiteBackupStale
+        expr: time() - cmdctrl_offsite_backup_last_success_timestamp_seconds{job="node"} > 36 * 3600
+        labels:
+          severity: warning
+          cause: stale
+        annotations:
+          summary: "{{ $labels.env }}: no off-site backup from {{ $labels.host }} for {{ $value | humanizeDuration }}"
+          description: "The nightly off-site backup on {{ $labels.host }} ({{ $labels.env }}) last succeeded {{ $value | humanizeDuration }} ago."
+
+      - alert: OffsiteBackupStale
+        expr: cmdctrl_offsite_backup_last_exit_code{job="node"} != 0
+        labels:
+          severity: warning
+          cause: failed
+        annotations:
+          summary: "{{ $labels.env }}: the last off-site backup on {{ $labels.host }} failed (exit {{ $value }})"
+          description: "scripts/backup-offsite.sh on {{ $labels.host }} ({{ $labels.env }}) exited {{ $value }} on its last run. journalctl -u cmd-and-ctrl-backup says why."
+
+      # Every real filesystem on every host, the monitoring VM's included.
+      - alert: DiskFilling
+        expr: >-
+          node_filesystem_avail_bytes{job="node", fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs|nsfs|fuse.*"}
+          / node_filesystem_size_bytes{job="node", fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs|nsfs|fuse.*"}
+          < 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $labels.mountpoint }} on {{ $labels.host }} is {{ $value | humanizePercentage }} free"
+          description: "{{ $labels.mountpoint }} ({{ $labels.device }}) on {{ $labels.host }} ({{ $labels.env }}) has had under 15% free for 15 minutes."
+
+      # The monitoring VM's config sync (HomeLab) writes these when it runs.
+      # A sync that keeps failing leaves the last good rules and dashboards
+      # in place, so nothing else would show it.
+      - alert: MonitoringConfigSyncFailing
+        expr: time() - cmdctrl_monitoring_sync_last_success_timestamp_seconds{env="monitoring"} > 3600
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: the monitoring config sync on {{ $labels.host }} has not succeeded for {{ $value | humanizeDuration }}"
+          description: "The monitoring VM ({{ $labels.host }}) has not applied deploy/monitoring/ from main for {{ $value | humanizeDuration }}. Its rules and dashboards are the last good copy."

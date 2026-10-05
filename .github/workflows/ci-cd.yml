@@ -114,6 +114,7 @@ jobs:
     outputs:
       server: ${{ steps.paths.outputs.server }}
       client: ${{ steps.paths.outputs.client }}
+      monitoring: ${{ steps.paths.outputs.monitoring }}
     steps:
       - name: Classify changed paths
         id: paths
@@ -121,21 +122,26 @@ jobs:
         with:
           script: |
             const pr = context.payload.pull_request;
-            const set = (server, client) => {
-              core.info(`server: ${server}, client: ${client}`);
+            const set = (server, client, monitoring) => {
+              core.info(`server: ${server}, client: ${client}, monitoring: ${monitoring}`);
               core.setOutput('server', String(server));
               core.setOutput('client', String(client));
+              core.setOutput('monitoring', String(monitoring));
             };
-            if (!pr) return set(true, true);
+            if (!pr) return set(true, true, true);
             const files = await github.paginate(github.rest.pulls.listFiles, {
               ...context.repo, pull_number: pr.number, per_page: 100,
             });
             // The API stops listing at 3000 files; build everything past that.
-            if (files.length < pr.changed_files) return set(true, true);
+            if (files.length < pr.changed_files) return set(true, true, true);
             const names = files.flatMap((f) => [f.filename, f.previous_filename]).filter(Boolean);
             const frontend = (n) => n.startsWith('client/') || n.startsWith('tests-e2e/');
             const shared = (n) => n.startsWith('.github/') || !n.includes('/');
-            set(names.some((n) => !frontend(n)), names.some((n) => frontend(n) || shared(n)));
+            // The monitoring config, and this workflow (which holds its job).
+            const monitoring = (n) => n.startsWith('deploy/monitoring/') || n.startsWith('deploy/alloy/') ||
+              n === '.github/workflows/ci-cd.yml';
+            set(names.some((n) => !frontend(n)), names.some((n) => frontend(n) || shared(n)),
+              names.some(monitoring));
 
   server-check:
     needs: changes
@@ -464,12 +470,73 @@ jobs:
           path: client/dist/
           retention-days: 1
 
+  # The monitoring config (ADR 0123 §11): the alert rules and dashboards
+  # the monitoring VM syncs from main (deploy/monitoring/), and the Alloy
+  # config CD installs on both app hosts (deploy/alloy/). Each is checked
+  # with the pinned upstream tool that will read it, run from its image,
+  # so nothing is installed and no cache volume is made. The pins match
+  # the monitoring VM's Prometheus (HomeLab) and ALLOY_VERSION in
+  # scripts/ensure-monitoring-agent.sh: move them together.
+  #
+  # The dashboards' other checks are Go tests in server/cmd/server
+  # (monitoring_config_test.go), run by server-test, which runs for any
+  # change outside client/: every cmdctrl_ name a panel or rule uses is
+  # one the server registers, uids are unique, and datasources are the
+  # VM's three uids.
+  monitoring-config:
+    needs: changes
+    if: needs.changes.outputs.monitoring == 'true'
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    env:
+      PROMETHEUS_IMAGE: prom/prometheus:v3.15.0
+      ALLOY_IMAGE: grafana/alloy:v1.20.1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Rules — promtool check rules
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -w /repo --entrypoint promtool "$PROMETHEUS_IMAGE" \
+            check rules deploy/monitoring/rules/*.yml
+
+      # One test group per alert, at least one firing and one quiet case
+      # (deploy/monitoring/rules/tests/). The VM never reads this directory.
+      - name: Rules — promtool test rules
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -w /repo --entrypoint promtool "$PROMETHEUS_IMAGE" \
+            test rules deploy/monitoring/rules/tests/*.yml
+
+      - name: Dashboards — JSON parses
+        run: |
+          for f in deploy/monitoring/dashboards/*.json; do
+            python3 -m json.tool "$f" > /dev/null || { echo "::error file=$f::not valid JSON"; exit 1; }
+          done
+
+      - name: Alloy — fmt
+        run: |
+          if ! docker run --rm -v "$PWD/deploy/alloy:/alloy:ro" --entrypoint alloy "$ALLOY_IMAGE" \
+              fmt --test /alloy/config.alloy; then
+            echo "::error file=deploy/alloy/config.alloy::not alloy fmt clean; the formatted file differs by:"
+            docker run --rm -v "$PWD/deploy/alloy:/alloy:ro" --entrypoint alloy "$ALLOY_IMAGE" \
+              fmt /alloy/config.alloy | diff -u deploy/alloy/config.alloy - || true
+            exit 1
+          fi
+
+      # The same check "Ensure monitoring agent" runs on the host before
+      # it installs the file.
+      - name: Alloy — validate
+        run: |
+          docker run --rm -v "$PWD/deploy/alloy:/alloy:ro" --entrypoint alloy "$ALLOY_IMAGE" \
+            validate /alloy/config.alloy
+
   # The required status check on develop and main (both rulesets name
   # it), so it keeps the name the single CI job used to have. It passes
   # when every job above passed or was skipped as not needed for this
   # PR, and fails if `changes` did not run at all (a fork PR).
   cmdctrl-ci:
-    needs: [changes, server-check, server-test, client, build]
+    needs: [changes, server-check, server-test, client, build, monitoring-config]
     if: always()
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
@@ -480,10 +547,12 @@ jobs:
           SERVER_TEST: ${{ needs.server-test.result }}
           CLIENT: ${{ needs.client.result }}
           BUILD: ${{ needs.build.result }}
+          MONITORING_CONFIG: ${{ needs.monitoring-config.result }}
         run: |
           failed=0
           for pair in "changes=$CHANGES" "server-check=$SERVER_CHECK" \
-              "server-test=$SERVER_TEST" "client=$CLIENT" "build=$BUILD"; do
+              "server-test=$SERVER_TEST" "client=$CLIENT" "build=$BUILD" \
+              "monitoring-config=$MONITORING_CONFIG"; do
             job="${pair%%=*}"
             result="${pair#*=}"
             echo "$job: $result"

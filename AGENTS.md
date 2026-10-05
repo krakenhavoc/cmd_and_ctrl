@@ -96,6 +96,7 @@ cmd_and_ctrl/
 │   ├── eslint.config.js
 │   └── package.json
 ├── scripts/             # scryfall-refresh.sh (weekly cron), backup-offsite.sh (nightly R2 backup), set-server-env.sh and ensure-monitoring-agent.sh (CD) + one-off tools
+├── deploy/monitoring/   # alert rules (+ promtool tests in rules/tests/) and Grafana dashboards the monitoring VM syncs from main (ADR 0123) — see docs/monitoring.md
 ├── data/                # runtime state (gitignored): Scryfall cache, snapshots, images
 └── docs/
     ├── protocol.md      # v0 wire format spec

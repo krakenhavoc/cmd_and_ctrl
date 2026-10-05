@@ -2,11 +2,16 @@
 // family summed over the series whose labels match, so a test can
 // compare before and after an event. The event metrics are
 // package-level and shared by every test in a binary, so a test counts
-// a delta, never an absolute.
+// a delta, never an absolute. Names lists what a set of collectors
+// can report, for the check that the dashboards and alert rules name
+// only real metrics.
 package metricstest
 
 import (
+	"regexp"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
@@ -55,3 +60,36 @@ func Value(t testing.TB, name string, labels map[string]string) float64 {
 
 // L is shorthand for a label map.
 type L = map[string]string
+
+// fqName pulls the metric name out of a Desc's String(), which is the
+// only place client_golang exposes it: Desc{fqName: "name", help: …}.
+var fqName = regexp.MustCompile(`^Desc\{fqName: "([^"]+)"`)
+
+// Names returns every metric family name the collectors describe. It
+// reads Describe, not Gather, so a vector with no child yet (a counter
+// nothing has incremented) is still named. It fails the test on a
+// Desc that carries an error or whose name it cannot read.
+func Names(t testing.TB, cs ...prometheus.Collector) map[string]bool {
+	t.Helper()
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		for _, c := range cs {
+			c.Describe(ch)
+		}
+		close(ch)
+	}()
+	out := map[string]bool{}
+	for d := range ch {
+		if err := d.Err(); err != nil {
+			t.Errorf("collector describes an invalid metric: %v", err)
+			continue
+		}
+		m := fqName.FindStringSubmatch(d.String())
+		if m == nil {
+			t.Errorf("cannot read a metric name from %s", d)
+			continue
+		}
+		out[m[1]] = true
+	}
+	return out
+}

@@ -1,0 +1,408 @@
+# Unit tests for ../cmdctrl.yml: `promtool test rules` (CI job
+# monitoring-config). At least one firing and one quiet case per alert.
+# CI only: the monitoring VM's sync never reads this directory.
+#
+# Run locally:
+#   docker run --rm -v "$(pwd):/repo:ro" -w /repo --entrypoint promtool \
+#     prom/prometheus:v3.15.0 test rules deploy/monitoring/rules/tests/*.yml
+
+rule_files:
+  - ../cmdctrl.yml
+
+evaluation_interval: 1m
+
+tests:
+  # ------------------------------------------------------------ SiteDown
+  - name: SiteDown, prod after 3 minutes and dev after 10
+    interval: 1m
+    input_series:
+      # Up for two minutes, then down for good.
+      - series: 'probe_success{job="blackbox", env="prod", instance="https://cmd.labxp.io/healthz"}'
+        values: "1 1 0x20"
+      - series: 'probe_success{job="blackbox", env="dev", instance="https://cmd-dev.labxp.io/healthz"}'
+        values: "1 1 0x20"
+    alert_rule_test:
+      # Down for two minutes: pending, not firing.
+      - eval_time: 4m
+        alertname: SiteDown
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: SiteDown
+        exp_alerts:
+          - exp_labels:
+              alertname: SiteDown
+              severity: critical
+              job: blackbox
+              env: prod
+              instance: https://cmd.labxp.io/healthz
+            exp_annotations:
+              summary: "prod: the site is down (https://cmd.labxp.io/healthz)"
+              description: "The blackbox probe of https://cmd.labxp.io/healthz has failed for 3 minutes. Players cannot reach prod."
+      - eval_time: 13m
+        alertname: SiteDown
+        exp_alerts:
+          - exp_labels:
+              alertname: SiteDown
+              severity: critical
+              job: blackbox
+              env: prod
+              instance: https://cmd.labxp.io/healthz
+            exp_annotations:
+              summary: "prod: the site is down (https://cmd.labxp.io/healthz)"
+              description: "The blackbox probe of https://cmd.labxp.io/healthz has failed for 3 minutes. Players cannot reach prod."
+          - exp_labels:
+              alertname: SiteDown
+              severity: warning
+              job: blackbox
+              env: dev
+              instance: https://cmd-dev.labxp.io/healthz
+            exp_annotations:
+              summary: "dev: the site is down (https://cmd-dev.labxp.io/healthz)"
+              description: "The blackbox probe of https://cmd-dev.labxp.io/healthz has failed for 10 minutes."
+
+  - name: SiteDown, a short blip is quiet
+    interval: 1m
+    input_series:
+      - series: 'probe_success{job="blackbox", env="prod", instance="https://cmd.labxp.io/healthz"}'
+        values: "1 0 0 1x10"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SiteDown
+        exp_alerts: []
+
+  # -------------------------------------------------- ServerNotReporting
+  - name: ServerNotReporting, Alloy scrapes a dead server
+    interval: 1m
+    input_series:
+      - series: 'up{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "1 1 0x10"
+      - series: 'up{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "1x12"
+    alert_rule_test:
+      # Four minutes of 0: the window still holds a 1.
+      - eval_time: 5m
+        alertname: ServerNotReporting
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ServerNotReporting
+        exp_alerts:
+          - exp_labels:
+              alertname: ServerNotReporting
+              severity: critical
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: the game server has not reported for 5 minutes on cmd-and-ctrl"
+              description: "No metrics from the prod game server for 5 minutes. Either the server is down while Alloy still scrapes it (up is 0), or nothing reaches the monitor from that host at all."
+
+  - name: ServerNotReporting, nothing arrives from dev at all
+    interval: 1m
+    input_series:
+      - series: 'up{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "1x20"
+      # Two samples, then the host goes silent.
+      - series: 'up{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "1 1"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ServerNotReporting
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ServerNotReporting
+        exp_alerts:
+          - exp_labels:
+              alertname: ServerNotReporting
+              severity: warning
+              job: cmdctrl-server
+              env: dev
+            exp_annotations:
+              summary: "dev: the game server has not reported for 5 minutes"
+              description: "No metrics from the dev game server for 5 minutes. Either the server is down while Alloy still scrapes it (up is 0), or nothing reaches the monitor from that host at all."
+
+  # ----------------------------------------------------- ServerCrashLoop
+  - name: ServerCrashLoop, four restarts in 15 minutes
+    interval: 1m
+    input_series:
+      # Restarts at 2m, 4m, 6m and 8m.
+      - series: 'process_start_time_seconds{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "100 100 220 220 340 340 460 460 580 580 580"
+      # One deploy.
+      - series: 'process_start_time_seconds{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "100x5 400x5"
+    alert_rule_test:
+      # Three restarts so far.
+      - eval_time: 6m
+        alertname: ServerCrashLoop
+        exp_alerts: []
+      - eval_time: 9m
+        alertname: ServerCrashLoop
+        exp_alerts:
+          - exp_labels:
+              alertname: ServerCrashLoop
+              severity: critical
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: the game server on cmd-and-ctrl is crash-looping"
+              description: "The prod server on cmd-and-ctrl started 4 more times in the last 15 minutes."
+
+  - name: ServerCrashLoop, dev is a warning
+    interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "1 2 3 4 5 5"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ServerCrashLoop
+        exp_alerts:
+          - exp_labels:
+              alertname: ServerCrashLoop
+              severity: warning
+              job: cmdctrl-server
+              env: dev
+              host: cmd-and-ctrl-dev
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "dev: the game server on cmd-and-ctrl-dev is crash-looping"
+              description: "The dev server on cmd-and-ctrl-dev started 4 more times in the last 15 minutes."
+
+  # ------------------------------------------------------------ UnitFailed
+  - name: UnitFailed, the server unit gave up; the backup unit is left to OffsiteBackupStale
+    interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{job="node", env="prod", host="cmd-and-ctrl", name="cmd-and-ctrl.service", state="failed"}'
+        values: "0 0 1x10"
+      - series: 'node_systemd_unit_state{job="node", env="prod", host="cmd-and-ctrl", name="cmd-and-ctrl.service", state="active"}'
+        values: "1 1 0x10"
+      - series: 'node_systemd_unit_state{job="node", env="prod", host="cmd-and-ctrl", name="cmd-and-ctrl-backup.service", state="failed"}'
+        values: "1x12"
+      - series: 'node_systemd_unit_state{job="node", env="prod", host="cmd-and-ctrl", name="caddy.service", state="failed"}'
+        values: "1x12"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: UnitFailed
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: UnitFailed
+        exp_alerts:
+          - exp_labels:
+              alertname: UnitFailed
+              severity: critical
+              job: node
+              env: prod
+              host: cmd-and-ctrl
+              name: cmd-and-ctrl.service
+              state: failed
+            exp_annotations:
+              summary: "prod: cmd-and-ctrl.service has failed on cmd-and-ctrl"
+              description: "systemd gave up restarting cmd-and-ctrl.service on cmd-and-ctrl (prod). It will not start again by itself."
+
+  - name: UnitFailed, dev waits 5 minutes
+    interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{job="node", env="dev", host="cmd-and-ctrl-dev", name="cmd-and-ctrl.service", state="failed"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: UnitFailed
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: UnitFailed
+        exp_alerts:
+          - exp_labels:
+              alertname: UnitFailed
+              severity: warning
+              job: node
+              env: dev
+              host: cmd-and-ctrl-dev
+              name: cmd-and-ctrl.service
+              state: failed
+            exp_annotations:
+              summary: "dev: cmd-and-ctrl.service has failed on cmd-and-ctrl-dev"
+              description: "systemd gave up restarting cmd-and-ctrl.service on cmd-and-ctrl-dev (dev). It will not start again by itself."
+
+  # ------------------------------------------------- RestoreAbandonedGames
+  - name: RestoreAbandonedGames, only within 15 minutes of a start
+    interval: 1m
+    input_series:
+      # The process started at t=0 and abandoned two tables at boot.
+      - series: 'cmdctrl_boot_restore_games{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", outcome="abandoned"}'
+        values: "2x30"
+      - series: 'cmdctrl_boot_restore_games{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", outcome="restored"}'
+        values: "3x30"
+      - series: 'process_start_time_seconds{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: RestoreAbandonedGames
+        exp_alerts:
+          - exp_labels:
+              alertname: RestoreAbandonedGames
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+              outcome: abandoned
+            exp_annotations:
+              summary: "prod: the last restart on cmd-and-ctrl abandoned 2 game(s)"
+              description: "The prod server on cmd-and-ctrl could not restore 2 table(s) from their restore points at boot. Their players lost the game."
+      # Past 15 minutes it resolves, though the gauge still says 2.
+      - eval_time: 20m
+        alertname: RestoreAbandonedGames
+        exp_alerts: []
+
+  - name: RestoreAbandonedGames, a clean restore is quiet
+    interval: 1m
+    input_series:
+      - series: 'cmdctrl_boot_restore_games{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", outcome="abandoned"}'
+        values: "0x10"
+      - series: 'process_start_time_seconds{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: RestoreAbandonedGames
+        exp_alerts: []
+
+  # --------------------------------------------------- RestorePointLagging
+  - name: RestorePointLagging, a table 20 minutes behind for 10 minutes
+    interval: 1m
+    input_series:
+      - series: 'cmdctrl_restore_point_age_seconds{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "0 300 1200x15"
+    alert_rule_test:
+      # Over the line for 5 minutes: still pending.
+      - eval_time: 7m
+        alertname: RestorePointLagging
+        exp_alerts: []
+      - eval_time: 13m
+        alertname: RestorePointLagging
+        exp_alerts:
+          - exp_labels:
+              alertname: RestorePointLagging
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: restore points on cmd-and-ctrl are 20m 0s behind"
+              description: "The oldest restore point among active tables on cmd-and-ctrl (prod) is 20m 0s old. A deploy or crash now would rewind that table that far."
+
+  # ---------------------------------------------------- OffsiteBackupStale
+  - name: OffsiteBackupStale, no success for two days
+    interval: 1h
+    input_series:
+      # Last success at t=0; the clock runs on for 48 hours.
+      - series: 'cmdctrl_offsite_backup_last_success_timestamp_seconds{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x48"
+      - series: 'cmdctrl_offsite_backup_last_exit_code{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x48"
+    alert_rule_test:
+      - eval_time: 30h
+        alertname: OffsiteBackupStale
+        exp_alerts: []
+      - eval_time: 40h
+        alertname: OffsiteBackupStale
+        exp_alerts:
+          - exp_labels:
+              alertname: OffsiteBackupStale
+              severity: warning
+              cause: stale
+              job: node
+              env: prod
+              host: cmd-and-ctrl
+            exp_annotations:
+              summary: "prod: no off-site backup from cmd-and-ctrl for 1d 16h 0m 0s"
+              description: "The nightly off-site backup on cmd-and-ctrl (prod) last succeeded 1d 16h 0m 0s ago."
+
+  - name: OffsiteBackupStale, the last run failed
+    interval: 1h
+    input_series:
+      - series: 'cmdctrl_offsite_backup_last_success_timestamp_seconds{job="node", env="dev", host="cmd-and-ctrl-dev"}'
+        values: "0x4"
+      - series: 'cmdctrl_offsite_backup_last_exit_code{job="node", env="dev", host="cmd-and-ctrl-dev"}'
+        values: "0 0 3 3 3"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: OffsiteBackupStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: OffsiteBackupStale
+        exp_alerts:
+          - exp_labels:
+              alertname: OffsiteBackupStale
+              severity: warning
+              cause: failed
+              job: node
+              env: dev
+              host: cmd-and-ctrl-dev
+            exp_annotations:
+              summary: "dev: the last off-site backup on cmd-and-ctrl-dev failed (exit 3)"
+              description: "scripts/backup-offsite.sh on cmd-and-ctrl-dev (dev) exited 3 on its last run. journalctl -u cmd-and-ctrl-backup says why."
+
+  # ----------------------------------------------------------- DiskFilling
+  - name: DiskFilling, a real disk under 15% for 15 minutes; tmpfs ignored
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node", env="prod", host="cmd-and-ctrl", mountpoint="/", device="/dev/sda1", fstype="ext4"}'
+        values: "50 10x30"
+      - series: 'node_filesystem_size_bytes{job="node", env="prod", host="cmd-and-ctrl", mountpoint="/", device="/dev/sda1", fstype="ext4"}'
+        values: "100x30"
+      # A full tmpfs is not a disk.
+      - series: 'node_filesystem_avail_bytes{job="node", env="prod", host="cmd-and-ctrl", mountpoint="/run", device="tmpfs", fstype="tmpfs"}'
+        values: "0x30"
+      - series: 'node_filesystem_size_bytes{job="node", env="prod", host="cmd-and-ctrl", mountpoint="/run", device="tmpfs", fstype="tmpfs"}'
+        values: "100x30"
+      # A healthy data disk.
+      - series: 'node_filesystem_avail_bytes{job="node", env="monitoring", host="cmd-and-ctrl-monitoring", mountpoint="/data", device="/dev/sdb1", fstype="ext4"}'
+        values: "60x30"
+      - series: 'node_filesystem_size_bytes{job="node", env="monitoring", host="cmd-and-ctrl-monitoring", mountpoint="/data", device="/dev/sdb1", fstype="ext4"}'
+        values: "100x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DiskFilling
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: DiskFilling
+        exp_alerts:
+          - exp_labels:
+              alertname: DiskFilling
+              severity: warning
+              job: node
+              env: prod
+              host: cmd-and-ctrl
+              mountpoint: /
+              device: /dev/sda1
+              fstype: ext4
+            exp_annotations:
+              summary: "prod: / on cmd-and-ctrl is 10% free"
+              description: "/ (/dev/sda1) on cmd-and-ctrl (prod) has had under 15% free for 15 minutes."
+
+  # ------------------------------------------- MonitoringConfigSyncFailing
+  - name: MonitoringConfigSyncFailing, no good sync for over an hour
+    interval: 10m
+    input_series:
+      # Synced at t=0 and t=10m, then every run fails.
+      - series: 'cmdctrl_monitoring_sync_last_success_timestamp_seconds{job="node", env="monitoring", host="cmd-and-ctrl-monitoring"}'
+        values: "0 600x12"
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: MonitoringConfigSyncFailing
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: MonitoringConfigSyncFailing
+        exp_alerts:
+          - exp_labels:
+              alertname: MonitoringConfigSyncFailing
+              severity: warning
+              job: node
+              env: monitoring
+              host: cmd-and-ctrl-monitoring
+            exp_annotations:
+              summary: "monitoring: the monitoring config sync on cmd-and-ctrl-monitoring has not succeeded for 1h 20m 0s"
+              description: "The monitoring VM (cmd-and-ctrl-monitoring) has not applied deploy/monitoring/ from main for 1h 20m 0s. Its rules and dashboards are the last good copy."

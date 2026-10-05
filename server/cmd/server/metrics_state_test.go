@@ -38,7 +38,7 @@ func TestRegisterGameMetrics(t *testing.T) {
 	// No database.
 	mgr := ws.NewRoomManager(log, "")
 	reg := prometheus.NewRegistry()
-	registerGameMetrics(reg, log, lobby.NewLobby(mgr), ws.NewHub(log), nil, users.NoStore{})
+	registerGameMetrics(reg, log, mgr, lobby.NewLobby(mgr), ws.NewHub(log), nil, users.NoStore{})
 	names := familyNames(t, reg)
 	for _, want := range []string{"cmdctrl_games", "cmdctrl_seats", "cmdctrl_seats_connected", "cmdctrl_ws_connections"} {
 		if !names[want] {
@@ -60,7 +60,7 @@ func TestRegisterGameMetrics(t *testing.T) {
 	defer database.Close()
 	mgr = ws.NewRoomManager(log, dir)
 	reg = prometheus.NewRegistry()
-	registerGameMetrics(reg, log, lobby.NewLobbyWithStore(mgr, lobby.NewSQLStore(database)), ws.NewHub(log),
+	registerGameMetrics(reg, log, mgr, lobby.NewLobbyWithStore(mgr, lobby.NewSQLStore(database)), ws.NewHub(log),
 		database, users.NewSQLStore(database, nil))
 	names = familyNames(t, reg)
 	for _, want := range dbFamilies {
