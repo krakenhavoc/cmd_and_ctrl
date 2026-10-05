@@ -89,7 +89,7 @@ describe("openingRollWinner", () => {
     expect(openingRollText(winner!)).toBe("A goes first");
   });
 
-  it("still names the first player when a table never rolled (the practice table)", () => {
+  it("still names the first player when a table never rolled (a replay from before the roll)", () => {
     const winner = openingRollWinner({ starting_seat: 1, seats });
     expect(winner).toEqual({ seat: 1, name: "B" });
     expect(openingRollText(winner!)).toBe("B goes first");
