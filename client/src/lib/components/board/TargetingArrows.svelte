@@ -33,6 +33,7 @@
   import { findAnchor, findCardAnchor, findSeatAnchor, hasSize } from "../../boardAnchor";
   import { boardExpandLayout } from "../../boardExpand";
   import { curvePath, relativeTo, type Box, type Point } from "../../stackArrows";
+  import { L } from "../../labels";
   import {
     FOLLOW_ARROW_COLOR,
     FOLLOW_SNAP_COLOR,
@@ -100,7 +101,7 @@
   /** The dock's question line ("Select target for X"), or the dock itself. */
   function findDock(board: HTMLElement): HTMLElement | null {
     const doc = board.ownerDocument;
-    const dock = doc.querySelector<HTMLElement>('[aria-label="actions"]');
+    const dock = doc.querySelector<HTMLElement>(`[aria-label="${L.actions}"]`);
     if (!dock) return null;
     const q = dock.querySelector<HTMLElement>(".dock-question");
     if (q && hasSize(q)) return q;

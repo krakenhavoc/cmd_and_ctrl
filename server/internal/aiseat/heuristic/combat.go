@@ -163,54 +163,58 @@ func (st *state) blockMove(m legal.Move) (*protocol.CardView, []*protocol.CardVi
 	return atk, blockers
 }
 
-// killedBy reports whether these blockers together kill the attacker:
-// any one of them alone under the ordinary rule, or their combined
-// power once it reaches the attacker's toughness (CR 510.1c — a
-// blocked creature is dealt damage by every creature blocking it).
-func killedBy(blockers []*protocol.CardView, atk *protocol.CardView) bool {
-	total := 0
-	for _, blk := range blockers {
-		if kills(blk, atk) {
-			return true
-		}
-		if blk.Power > 0 {
-			total += blk.Power
-		}
-	}
-	if hasKeyword(atk, "indestructible") {
-		return false
-	}
-	return total >= effectiveToughness(atk)
-}
-
-// losses is the blockers the attacker's damage can kill, cheapest
-// first — the attacker's controller divides its damage as it likes
-// (CR 510.1a), so an estimate has to assume it spends that damage as
-// badly for the defender as it can. A deathtoucher needs one point
-// each, which is why lethal is asked of `kills` rather than of raw
-// power.
+// losses is the blockers the attacker's damage kills. The attacker's
+// controller divides its damage as it likes (CR 510.1a, 510.1c), so an
+// estimate has to assume it spends that damage as badly for the
+// defender as it can: the most combat value whose lethal damage adds up
+// to no more than what it has to assign. A deathtoucher needs one point
+// each (lethalFrom), a double striker divides its power twice, and an
+// attacker the blockers' first strike destroys before it deals damage
+// kills nothing (assignable, #1549).
+//
+// The most value, not the most bodies (#1548): a block is scored by
+// what it adds to the group's losses, and an attacker that killed the
+// cheapest first would let a defender "save" the Wurm blocking a Wurm
+// by throwing an Ogre in beside it. Nobody assigns damage that way. It
+// is a 0/1 knapsack over a few blockers and a few points of damage,
+// solved exactly. A tie between two sets of equal value kills the
+// earlier blockers, so a group with a new blocker added at the end
+// loses the ones it was already losing when nothing is worse off.
 func (st *state) losses(atk *protocol.CardView, blockers []*protocol.CardView) []*protocol.CardView {
-	order := make([]*protocol.CardView, len(blockers))
-	copy(order, blockers)
-	sort.SliceStable(order, func(i, j int) bool {
-		return st.w.CombatValue(order[i]) < st.w.CombatValue(order[j])
-	})
-	power := atk.Power
-	var out []*protocol.CardView
-	for _, blk := range order {
-		if !kills(atk, blk) {
-			continue
-		}
-		need := effectiveToughness(blk)
-		if hasKeyword(atk, "deathtouch") {
-			need = 1
-		}
-		if need > power {
-			break
-		}
-		power -= need
-		out = append(out, blk)
+	power := assignable(atk, blockers)
+	if power <= 0 || len(blockers) == 0 {
+		return nil
 	}
+	n := len(blockers)
+	cost := make([]int, n)
+	// best[i][c] is the most value killable among blockers[:i] with c
+	// damage to assign.
+	best := make([][]float64, n+1)
+	best[0] = make([]float64, power+1)
+	for i := 1; i <= n; i++ {
+		cost[i-1] = lethalFrom(atk, blockers[i-1])
+		best[i] = make([]float64, power+1)
+		v := st.w.CombatValue(blockers[i-1])
+		for c := 0; c <= power; c++ {
+			best[i][c] = best[i-1][c]
+			if k := cost[i-1]; k >= 0 && k <= c {
+				if with := best[i-1][c-k] + v; with > best[i][c] {
+					best[i][c] = with
+				}
+			}
+		}
+	}
+	// Walk back from the last blocker: one is killed only when it
+	// strictly adds value, so a tie keeps the earlier blockers.
+	var out []*protocol.CardView
+	c := power
+	for i := n; i >= 1; i-- {
+		if best[i][c] != best[i-1][c] {
+			out = append(out, blockers[i-1])
+			c -= cost[i-1]
+		}
+	}
+	slices.Reverse(out)
 	return out
 }
 
@@ -268,6 +272,12 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 	// its crack-back check counted on exactly that reserve (race.go).
 	if len(push) == 0 {
 		if plan := p.planRace(st, moves, focus); plan != nil {
+			return p.raceAttack(moves, plan)
+		}
+		// #1548: no race inside two turns, but maybe one after a few
+		// even trades that keep the edge (attrition.go). The plan is
+		// sent exactly as a race is, reserve and all.
+		if plan := p.planAttrition(st, moves, focus); plan != nil {
 			return p.raceAttack(moves, plan)
 		}
 	}
@@ -704,34 +714,29 @@ func landwalkBites(st *state, defender string, atk *protocol.CardView) bool {
 // decideBlock picks one block to declare, or reports that the bot is
 // done blocking.
 func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bool) {
-	// Everything currently pointed at this seat, and whether it has
-	// already been stopped.
-	blocked := map[string]bool{}
+	// Everything currently pointed at this seat, with whatever already
+	// blocks it (#1706: a creature blocking several attackers is in
+	// front of each).
 	incoming := map[string]*protocol.CardView{}
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
 		if c.AttackingTarget == st.me {
 			incoming[c.InstanceID] = c
 		}
-		if c.BlockingTarget != "" {
-			blocked[c.BlockingTarget] = true
-		}
-		// #1706: a creature blocking several attackers stops each.
-		for _, id := range c.BlockingTargets {
-			blocked[id] = true
-		}
 	}
-	unblocked := 0
+	// What still connects: every unblocked attacker's power, and every
+	// blocked trampler's overflow (#1548) — a chumped Wurm is still 5
+	// to the face, and a seat on 4 is as dead to it as to an unblocked
+	// one.
+	through := 0
 	for id, c := range incoming {
-		if !blocked[id] {
-			unblocked += c.Power
-		}
+		through += connects(c, blockersOn(st, id))
 	}
 	life := StartingLife
 	if st.myEval != nil {
 		life = st.myEval.Life
 	}
-	desperate := life-unblocked <= p.cfg.BlockChumpLife
+	desperate := life-through <= p.cfg.BlockChumpLife
 
 	best, bestVal, bestReason := -1, 0.0, ""
 	for i := range moves {
@@ -743,40 +748,48 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		// together, such as the two creatures a menace attacker
 		// takes. Both are scored as ONE block of one attacker by the
 		// creatures named, which is what they are.
-		atk, blockers := st.blockMove(moves[i])
-		if atk == nil || len(blockers) == 0 {
+		atk, adding := st.blockMove(moves[i])
+		if atk == nil || len(adding) == 0 {
 			continue
 		}
+		// #1548: the move adds to whatever already blocks the
+		// attacker, and is scored as the whole group against it, less
+		// what the group without it already did. A second Ogre on a
+		// Wurm one Ogre is chumping turns the chump into a kill, and
+		// the Wurm's damage still kills only one of them.
+		have := blockersOn(st, atk.InstanceID)
+		gang := append(append(make([]*protocol.CardView, 0, len(have)+len(adding)), have...), adding...)
 		v := 0.0
 		reason := "trade"
-		if len(blockers) > 1 {
+		if len(adding) > 1 {
 			reason = "menace block"
 		}
-		if !blocked[atk.InstanceID] {
-			saved := float64(atk.Power) * st.w.MarginalLife(life)
-			if desperate {
-				saved = float64(atk.Power) * p.cfg.DesperateDamage
-				reason = "chump to survive"
-			}
-			v += saved
-		} else {
-			// Ganging up only pays if it changes the outcome.
+		if len(have) > 0 {
+			// Ganging up only pays if it changes the outcome: a kill,
+			// fewer losses, or less trample damage over the top.
 			reason = "gang block"
 		}
-		if killedBy(blockers, atk) {
-			v += st.w.CombatValue(atk)
-		}
-		// The attacker assigns its damage among the blockers, so the
-		// group loses whichever of them that damage can kill. Cheapest
-		// first: a defender who must lose someone loses the least.
-		for _, blk := range st.losses(atk, blockers) {
-			v -= st.w.CombatValue(blk)
-			if hasKeyword(atk, "deathtouch") {
-				// A deathtoucher eats whatever blocks it; do not
-				// feed it the best creature on the board.
-				v -= st.w.CombatValue(blk) * 0.25
+		if saved := connects(atk, have) - connects(atk, gang); saved > 0 {
+			if desperate {
+				v += float64(saved) * p.cfg.DesperateDamage
+				if len(have) == 0 {
+					reason = "chump to survive"
+				}
+			} else {
+				v += float64(saved) * st.w.MarginalLife(life)
 			}
 		}
+		if gangKills(atk, gang) && !gangKills(atk, have) {
+			v += st.w.CombatValue(atk)
+			if len(have) > 0 {
+				reason = "gang block to kill"
+			}
+		}
+		// The attacker assigns its damage among the whole group, so
+		// the group loses whichever of them that damage can kill
+		// (losses), and this block costs what that adds to the loss
+		// the group without it was already taking.
+		v -= st.lossValue(atk, gang) - st.lossValue(atk, have)
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
 		}

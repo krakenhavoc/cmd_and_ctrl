@@ -77,6 +77,7 @@
   import { settings } from "../../settings";
   import { ariaKeyshortcuts, effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import { passHint } from "../../dockHint";
+  import { L } from "../../labels";
 
   interface Props {
     view: GameView;
@@ -406,7 +407,7 @@
 
 <svelte:window onkeydown={onWindowKey} />
 
-<section class="action-dock" aria-label="actions" bind:this={root}>
+<section class="action-dock" aria-label={L.actions} bind:this={root}>
   <div class="dock-head">
     <PhaseDisplay
       turn={view.turn}
@@ -458,7 +459,7 @@
     {/if}
   </div>
 
-  <div class="dock-toggles" role="group" aria-label="priority controls">
+  <div class="dock-toggles" role="group" aria-label={L.priorityControls}>
     <!-- #323: the escape hatch for "I DO want to respond to my own
          spell". It has to be clickable BEFORE the cast — once the spell
          is announced the client auto-passes on the following snapshot.
@@ -486,7 +487,7 @@
       class="action autopass"
       class:on={autopassEnabled && !autopassPaused}
       class:paused={autopassPaused}
-      aria-label="autopass"
+      aria-label={L.autopass}
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
       disabled={preGame}
@@ -723,7 +724,7 @@
             ? `skip the rest of your turn${keyHint(keys.passTurn)}`
             : `${activePlayerName} is the active player`}
       >
-        Pass turn
+        {L.passTurn}
       </button>
       <button
         type="button"
@@ -737,7 +738,7 @@
           ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
           : "you don't hold priority"}
       >
-        next{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
+        {L.next}{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
       </button>
     </div>
   {/if}

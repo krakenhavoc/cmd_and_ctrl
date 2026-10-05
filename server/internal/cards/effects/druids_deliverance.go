@@ -36,29 +36,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controller after this resolves still lands, and so does a Pestilence
 // activation.
 //
-// # Declared simplification (weaker than printed): no populate
+// # Populate
 //
-// Populate (CR 701.32) creates a token that is a copy of a creature
-// token its controller chooses. The engine can copy a permanent into
-// a token, but there is no populate keyword and no prompt that offers
-// "choose a creature token you control" as the thing being copied, so
-// the second sentence is not modelled. The card ships as the
-// protection half only, for two mana.
+// The second sentence is the Populate primitive (populate.go): choose
+// one of your creature tokens and copy it, nothing at all when you
+// control none (CR 701.36b). It runs after the shield is up, which is
+// the order the card prints; the shield only concerns damage dealt to
+// you, so the order cannot be told apart in play.
 //
-// That takes something away and adds nothing.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "fde7645a-5f02-4d5f-b38c-8390f325899e",
 		Name:         "Druid's Deliverance",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Populate isn't available, so no token copy is made — the spell is the damage prevention only.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return PreventAllCombatDamageThisTurn{
+			if err := (PreventAllCombatDamageThisTurn{
 				Player: item.Controller,
 				Label:  "Druid's Deliverance — prevent combat damage to you",
-			}.Apply(ctx)
+			}).Apply(ctx); err != nil {
+				return err
+			}
+			return Populate{}.Apply(ctx)
 		},
 	})
 }

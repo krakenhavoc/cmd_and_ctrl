@@ -476,6 +476,10 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 		CardID: cardID,
 		Label:  sa.Label,
 	})
+	// #2275 / CR 117.3c: the player keeps priority, and the passes
+	// made before the action no longer count — a special action is an
+	// action, though it uses no stack (CR 117.4).
+	g.noteActionTakenLocked(playerID)
 	g.runStateChecksLocked()
 	return nil
 }

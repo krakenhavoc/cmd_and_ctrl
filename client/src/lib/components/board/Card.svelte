@@ -34,6 +34,8 @@
   import { noUntapAppliesToController } from "../../noUntap";
   import { deathMarkBadge } from "../../deathMarks";
   import { landTypeBadge } from "../../landTypes";
+  import { damageBadge } from "../../damageBadge";
+  import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openCardMenu } from "../../contextMenu";
   import {
     acrossFor,
@@ -446,6 +448,9 @@
   // ADR 0109 §1: a resolved effect changed this land's land types
   // ("Island until end of turn — Tidal Warrior").
   const landTypeMark = $derived(landTypeBadge(card));
+  // #2257: the damage badge, and on an indestructible creature the
+  // shield that says why the damage doesn't destroy it.
+  const damage = $derived(damageBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
   // ADR 0117 §1: the pointer affordance follows what a click would do.
   const clickable = $derived(interactive && (!inert || targetable));
@@ -863,9 +868,20 @@
       protection={card.protection}
       riotHaste={card.riot_haste}
     />
-    {#if (card.damage_marked ?? 0) > 0}
-      <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
-        {card.damage_marked}
+    {#if damage}
+      <span
+        class="badge damage"
+        class:survives={damage.survives}
+        title={damage.title}
+        aria-label={damage.survives ? "damage, indestructible" : "damage"}
+      >
+        {damage.text}
+        {#if damage.survives}
+          <span class="survives-icon" aria-hidden="true">
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+            {@html KEYWORD_ICONS.indestructible}
+          </span>
+        {/if}
       </span>
     {/if}
     {#if (card.regeneration_shields ?? 0) > 0}
@@ -995,9 +1011,20 @@
       protection={card.protection}
       riotHaste={card.riot_haste}
     />
-    {#if (card.damage_marked ?? 0) > 0}
-      <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
-        {card.damage_marked}
+    {#if damage}
+      <span
+        class="badge damage"
+        class:survives={damage.survives}
+        title={damage.title}
+        aria-label={damage.survives ? "damage, indestructible" : "damage"}
+      >
+        {damage.text}
+        {#if damage.survives}
+          <span class="survives-icon" aria-hidden="true">
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+            {@html KEYWORD_ICONS.indestructible}
+          </span>
+        {/if}
       </span>
     {/if}
     {#if (card.regeneration_shields ?? 0) > 0}
@@ -1556,6 +1583,23 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.damage.survives {
+    /* #2257: damage an indestructible creature shrugs off. The shield
+       is the keyword badge's own icon, so the two read as one fact. */
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .badge.damage .survives-icon {
+    display: inline-flex;
+    width: 11px;
+    height: 11px;
+    color: #ffd07a;
+  }
+  .badge.damage .survives-icon :global(svg) {
+    width: 100%;
+    height: 100%;
   }
   .badge.death-mark {
     /* ADR 0108. Top-centre, one row under WON'T UNTAP: a fact about

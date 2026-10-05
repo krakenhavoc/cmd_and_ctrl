@@ -1,25 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="CMD &amp; CTRL">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="CMD &amp; CTRL">
   <title>CMD &amp; CTRL</title>
   <desc>
-    purpose=maskable: full bleed ink, and the mark (icon.svg's, at 0.7
-    instead of 0.75) stays inside the 40 percent radius safe circle: its
-    farthest corner is about 186px from the centre, against a 205px safe
-    radius, so no launcher mask can clip it.
+    purpose=maskable: full bleed ink, and the mark (icon.svg's, at 1.5
+    instead of 1.65) stays inside the 40 percent radius safe circle: its
+    farthest point, on a C's rounded outer corner, is about 182px from
+    the centre, against a 205px safe radius, so no launcher mask can
+    clip it.
   </desc>
   <defs>
     <radialGradient id="pool" cx="50%" cy="4%" r="78%">
       <stop offset="0%" stop-color="#ff7a1a" stop-opacity="0.16" />
       <stop offset="70%" stop-color="#ff7a1a" stop-opacity="0" />
     </radialGradient>
-    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-      <rect width="512" height="512" fill="white" />
-      <rect x="152" y="208" width="336" height="256" rx="64" fill="black" />
-    </mask>
+    <path id="c" d="M-10-40V-80L-30-100H-52A48 48 0 0 0-100-52V-30L-80-10H-40L-33-17L-48-32H-71A7 7 0 0 1-78-39V-52A26 26 0 0 1-52-78H-39A7 7 0 0 1-32-71V-48L-17-33Z" />
   </defs>
   <rect width="512" height="512" fill="#070d14" />
   <rect width="512" height="512" fill="url(#pool)" />
-  <g transform="translate(76.8 76.8) scale(0.7)">
-    <rect x="56" y="80" width="208" height="288" rx="40" fill="#e8eff7" mask="url(#cut)" />
-    <rect x="184" y="240" width="272" height="192" rx="40" fill="#ff7a1a" />
+  <g transform="translate(256 256) scale(1.5)" fill="#ff7a1a">
+    <use href="#c" xlink:href="#c" />
+    <use href="#c" xlink:href="#c" transform="scale(-1 1)" />
+    <use href="#c" xlink:href="#c" transform="scale(1 -1)" />
+    <use href="#c" xlink:href="#c" transform="scale(-1 -1)" />
+    <path d="M0-38L38 0L0 38L-38 0Z" fill="#e8eff7" />
   </g>
 </svg>

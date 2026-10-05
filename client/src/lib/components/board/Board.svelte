@@ -185,6 +185,7 @@
   import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { L } from "../../labels";
   import {
     phyrexianSymbolsForAbility,
     phyrexianSymbolsForCast,
@@ -2670,7 +2671,7 @@
     return seat.id === viewerID ? "your own board, expanded" : `${seat.name}'s board, expanded`;
   }
   function expandButtonName(seat: PlayerView): string {
-    return seat.id === viewerID ? "Expand your own board" : `Expand ${seat.name}'s board`;
+    return L.expandBoard(seat.id === viewerID ? null : seat.name);
   }
   function pinButtonName(seat: PlayerView): string {
     return seat.id === viewerID
@@ -2973,7 +2974,7 @@
        "attention"`, the tutorial's step-9 anchor (ADR 0076 §2.4) and an
        e2e contract. It keeps what asks nothing: the stack card, the bot
        feed, reveals, the roll-call and the toasts. -->
-  <div class="strip" role="region" aria-label="attention">
+  <div class="strip" role="region" aria-label={L.attention}>
     {#if !laneShowsStack}
       <StackOverlay
         stack={view.stack}

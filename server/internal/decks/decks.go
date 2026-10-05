@@ -81,9 +81,6 @@
 // The simplifications that were accepted are all either cosmetic or
 // weaker-than-printed on a clause the deck does not lean on:
 //
-//   - Solphim, Mayhem Dominus — activated ability not modelled. The
-//     noncombat-damage doubling, which is the reason it is in the aggro
-//     deck, works.
 //   - Farseek — fetches a basic that isn't a Forest rather than any
 //     land with those subtypes. The Simic deck runs Islands, so it
 //     still ramps.

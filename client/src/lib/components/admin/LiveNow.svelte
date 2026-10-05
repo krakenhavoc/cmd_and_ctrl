@@ -12,6 +12,7 @@
   // line on the server, which is why the pause exists.
   import { onMount } from "svelte";
   import { fetchAdminLive } from "../../api";
+  import { L } from "../../labels";
   import {
     gameHash,
     LivePoller,
@@ -75,7 +76,7 @@
 <svelte:window onpointerdown={input} onpointermove={input} onkeydown={input} onwheel={input} />
 <svelte:document onvisibilitychange={() => poller.visibilityChanged()} />
 
-<section class="live" aria-label="live now">
+<section class="live" aria-label={L.liveNow}>
   <div class="toolbar">
     <p class="status" aria-live="polite">
       {#if pollState === "paused"}

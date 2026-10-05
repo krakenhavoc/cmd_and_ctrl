@@ -586,7 +586,15 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return g.castSpellLocked(playerID, cardID, params)
+	if err := g.castSpellLocked(playerID, cardID, params); err != nil {
+		return err
+	}
+	// #2275 / CR 117.3c: casting (or playing a land, CR 116.2a, which
+	// this verb also carries) is an action, and the passes before it
+	// no longer count. A spell restarts the succession by landing on
+	// the stack anyway; a land play uses no stack and needs saying.
+	g.noteActionTakenLocked(playerID)
+	return nil
 }
 
 // castSpellLocked is CastSpell's body, split out so a parked cast
@@ -3025,7 +3033,14 @@ func (g *Game) SorcerySpeedOpenLocked(playerID uuid.UUID) bool {
 // (single digits in practice) and survives Clone / RestoreFrom /
 // snapshot decode without any extra bookkeeping. Caller must hold
 // g.mu.
+//
+// Every object put on the stack takes its Seq here — a cast, an
+// activation, a trigger, a copy — so this is also the one place that
+// sees every push, and the passes made before one no longer count
+// (#2275, CR 117.4): the object on top is new, and every seat passes
+// over it before it resolves. See priority_succession.go.
 func (g *Game) nextStackSeqLocked() uint64 {
+	g.restartPassSuccessionLocked()
 	var maxSeq uint64
 	for _, item := range g.StackMeta {
 		if item != nil && item.Seq > maxSeq {
@@ -3852,6 +3867,11 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 		// past the action.
 		_ = label
 	}
+	// #2275 / CR 117.3c: a loyalty ability is an activated ability,
+	// and activating one is an action — the passes before it no longer
+	// count. This sandbox shape puts nothing on the stack, so it says
+	// so itself.
+	g.noteActionTakenLocked(playerID)
 	return nil
 }
 
@@ -4223,14 +4243,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			}
 			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
 			// damage from a deathtouch source is destroyed at the
-			// next SBA regardless of toughness. The flag stays set
-			// until the cleanup step (CR 514.2) or until the creature
-			// LEAVES the battlefield, whichever comes first, so a
-			// subsequent SBA pass on the same event cycle doesn't
-			// "un-doom" the creature. The exit case is MoveCard's
-			// battlefield-exit cleanup, which clears the flag with the
-			// damage it belongs to (#816) — there is no "zone-move
-			// listener", which is what this comment used to claim.
+			// next SBA regardless of toughness. The flag is consumed by
+			// the pass that reads it (consumeDeathtouchMarksLocked, #2319):
+			// CR 704.5h only counts damage dealt since the last check, so a
+			// creature that was indestructible for that check is not
+			// destroyed by the mark at a later one.
 			if c.MarkedLethalByDeathtouch && !indestructible {
 				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
 			}
@@ -4291,6 +4308,10 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// of the board still sees every one of those deaths. See
 	// simultaneous.go.
 	g.sweepDoomedPermanentsLocked(doomed)
+	// CR 704.5h counts deathtouch damage dealt "since the last time
+	// state-based actions were checked", so this pass has consumed the
+	// mark (#2319). DamageMarked stays: CR 704.5g counts it to cleanup.
+	g.consumeDeathtouchMarksLocked()
 	if len(doomed) > 0 {
 		// "Did this pass do anything", which is what `fired` means — not
 		// "how many were destroyed", which is what destroyPermanentsLocked
@@ -4597,6 +4618,11 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	}
 	p.Eliminated = true
 	p.AttemptedEmptyDraw = false
+	// #2275: the departure takes their spells and abilities off the
+	// stack (CR 800.4a), so what the other seats passed over may not
+	// be what is on top now. The succession starts again from whoever
+	// holds priority; the departed seat is no longer waited for.
+	g.restartPassSuccessionLocked()
 	g.cleanupStackForEliminatedLocked(p.ID)
 	g.EmitEvent(Event{
 		Kind:   EventPlayerEliminated,
@@ -5702,7 +5728,15 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 	// #529: one body, shared with CounterTargetForEffect. This used
 	// to be a near-copy of counterSpellLocked that had drifted on
 	// flashback handling; see the note there.
-	return g.counterSpellLocked(spellID, dst)
+	if err := g.counterSpellLocked(spellID, dst); err != nil {
+		return err
+	}
+	// #2275: the sandbox's hand counter stands in for a resolution the
+	// table worked out itself, and it changes what is on the stack.
+	// Whatever the seats passed over is not there any more, so the
+	// succession starts again (CR 117.4).
+	g.restartPassSuccessionLocked()
+	return nil
 }
 
 // CounterAbility removes an activated / triggered ability from the
@@ -5722,7 +5756,12 @@ func (g *Game) CounterAbility(abilityID uuid.UUID) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	return g.counterAbilityLocked(abilityID)
+	if err := g.counterAbilityLocked(abilityID); err != nil {
+		return err
+	}
+	// #2275: as CounterSpell — the stack changed under the passes.
+	g.restartPassSuccessionLocked()
+	return nil
 }
 
 // recomputeSplitSecondLocked walks StackMeta and pending triggers
@@ -6147,7 +6186,17 @@ type ManaAbilityParams struct {
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, params)
+	if err := g.activateManaAbilityLocked(playerID, cardID, abilityIdx, params); err != nil {
+		return err
+	}
+	// #2275 / CR 117.3c: a mana ability is an ability, and the
+	// priority holder who activates one has taken an action — the
+	// passes before it no longer count. Mana tapped by a player who
+	// does NOT hold priority (to answer a "pay {1}" prompt) is not an
+	// action in that sense, and noteActionTakenLocked leaves the
+	// succession alone.
+	g.noteActionTakenLocked(playerID)
+	return nil
 }
 
 // activateManaAbilityLocked is ActivateManaAbility's body, split out
@@ -7590,25 +7639,27 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 	return -1
 }
 
-// PassPriority rotates priority to the next non-eliminated seat. When
-// priority would pass back to the active seat (every other live seat
-// has passed in succession with nothing on the stack), the step auto-
-// advances and PriorityHolder is reset to the new ActiveSeat —
-// mirroring real MTG rules where priority passing around in
-// succession ends the step.
+// PassPriority is the priority holder passing (CR 117.3d). The pass
+// joins Turn.PassedInSuccession; until every seat still in the game
+// has passed in succession, priority moves to the next non-eliminated
+// seat in turn order — the active seat included. Once every seat has
+// (CR 117.4, #2275), the top of the stack resolves and the active
+// player receives priority again (CR 117.3b), or, with an empty stack,
+// the step ends and PriorityHolder is reset to the new step's
+// ActiveSeat. Arriving back at the active seat is not the test: that
+// is the same thing only when the round began there. See
+// priority_succession.go for what restarts a succession.
 //
 // S13: returns ErrNoPriority during the Untap and Cleanup steps,
 // which don't grant priority (CR 502.4 / 514.3). Eliminated seats are
-// skipped during the rotation so a 4-player game with one dead seat
-// still terminates the priority loop on the survivors' wrap.
+// skipped during the rotation and are not waited for, so a 4-player
+// game with one dead seat still ends the round on the survivors'
+// passes.
 //
 // #661 / CR 514.3a is cleanup's exception, on both halves: the step
 // DOES grant priority when a state-based action fired or a trigger
-// was waiting there, and the wrap that ends that window begins
-// another cleanup step instead of the next turn.
-//
-// Stack-aware semantics (priority resets to active seat whenever a
-// spell resolves) are deferred to the S13+ rules graft.
+// was waiting there, and the round of passes that ends that window
+// begins another cleanup step instead of the next turn.
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -7699,23 +7750,32 @@ func (g *Game) passPriorityLocked() error {
 			}
 		}
 	}
-	// Walk forward to the next non-eliminated seat. Bounded by
-	// numSeats iterations so a fully-eliminated table can't infinite-
-	// loop (the surrounding game-end check in Concede flips State to
-	// StateEnded in that case; the early ErrGameNotActive guard above
-	// catches subsequent calls).
-	next := g.Turn.PriorityHolder
-	for i := 0; i < numSeats; i++ {
-		next = (next + 1) % numSeats
-		if next == g.Turn.ActiveSeat {
-			break
-		}
-		if !g.Seats[next].Eliminated {
-			g.Turn.PriorityHolder = next
-			return nil
+	// #2275 / CR 117.4: this pass joins the succession. Until every
+	// seat still in the game has passed without anyone acting in
+	// between, priority goes to the next player in turn order (CR
+	// 117.3d) — the ACTIVE seat included. Arriving back at the active
+	// seat used to be read as "everyone passed", which is only true
+	// when the round began there: a non-active caster keeps priority
+	// (CR 117.3c), so their spell resolved on their own pass without
+	// the active player ever holding priority over it. See
+	// priority_succession.go.
+	//
+	// The walk is bounded by numSeats iterations so a fully-eliminated
+	// table can't infinite-loop (the surrounding game-end check in
+	// Concede flips State to StateEnded in that case; the early
+	// ErrGameNotActive guard above catches subsequent calls).
+	g.notePassLocked(g.Turn.PriorityHolder)
+	if !g.allPassedInSuccessionLocked() {
+		next := g.Turn.PriorityHolder
+		for i := 0; i < numSeats; i++ {
+			next = (next + 1) % numSeats
+			if s := g.Seats[next]; s != nil && !s.Eliminated {
+				g.Turn.PriorityHolder = next
+				return nil
+			}
 		}
 	}
-	// Wrapped (or only the active seat is alive).
+	// Every seat still in the game has passed in succession.
 	//
 	// #830 and #859 first: priority has passed all the way around, so
 	// the combat declaration staged in this step is complete
@@ -7740,7 +7800,7 @@ func (g *Game) passPriorityLocked() error {
 		// the cursor past an unanswered prompt is the thing #730
 		// forbids.
 		if g.stackHasItemsLocked() || g.blockingChoiceLocked() != nil {
-			g.Turn.PriorityHolder = g.Turn.ActiveSeat
+			g.grantPriorityLocked(g.Turn.ActiveSeat)
 			return nil
 		}
 	}
@@ -7780,8 +7840,9 @@ func (g *Game) passPriorityLocked() error {
 		// we've crossed a priority-grant boundary (CR 603.3b).
 		g.runStateChecksLocked()
 		// Priority returns to the active player after a resolution
-		// (CR 117.3b). The step doesn't change.
-		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		// (CR 117.3b), and a new succession of passes begins with
+		// them (#2275). The step doesn't change.
+		g.grantPriorityLocked(g.Turn.ActiveSeat)
 		return nil
 	}
 	// CR 514.3a (#661): the pass that closes a priority window in the

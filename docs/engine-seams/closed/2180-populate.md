@@ -1,0 +1,6 @@
+---
+title: "Populate"
+date: 2026-10-05
+issues: [2180]
+---
+**Populate** (#2180, CR 701.36) — `Populate` (`effects/populate.go`) is the keyword action as one primitive: the controller's creature tokens are the candidates (not a target, so hexproof and shroud do not matter), none means nothing happens and no prompt is asked (CR 701.36b), one candidate or several with the same copiable values copy without asking, and otherwise one `choose_cards` prompt over the battlefield. The copy is made by `CreateTokenCopy`, so Parallel Lives and Doubling Season double it and "whenever a token enters" watchers see it. The rest of the card's sentence is the primitive's `Then`, handed the tokens the populate created, because the choice can be a prompt and a following statement would run before the answer; `Except` is the copy's "except it …" clause. A new `3/3 green Centaur` row joins the token table. **Cards:** Determined Iteration (haste and a delayed sacrifice on the new token), Rootborn Defenses, Wake the Reflections, Growing Ranks, Sundering Growth and Vitu-Ghazi Guildmage are Full, and Druid's Deliverance drops its caveat. No wire, view or bot change: the prompt is the existing `choose_cards`. **Still open:** none for this seam; the other populate cards need only a card file.

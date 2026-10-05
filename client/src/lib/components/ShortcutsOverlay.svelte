@@ -13,6 +13,7 @@
   // re-derives a rule.
   import { settings, openSettings } from "../settings";
   import { shortcutContext, shortcutsHelpOpen, closeShortcutsHelp } from "../shortcutRuntime";
+  import { L } from "../labels";
   import {
     SHORTCUTS,
     GROUP_ORDER,
@@ -96,7 +97,7 @@
   <div class="sc-backdrop" onclick={onBackdropClick}>
     <div class="sc-panel" role="dialog" aria-modal="true" aria-labelledby="sc-title" tabindex="-1">
       <header>
-        <h2 id="sc-title">keyboard shortcuts</h2>
+        <h2 id="sc-title">{L.keyboardShortcuts}</h2>
         <button class="sc-close" aria-label="close keyboard shortcuts" onclick={closeShortcutsHelp}
           >×</button
         >

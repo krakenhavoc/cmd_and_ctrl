@@ -1,14 +1,14 @@
 // tutorialAnchor.ts — resolving a tutorial step's anchor to the rect the
 // scrim's hole covers (ADR 0076 §2.4, #1079).
 //
-// An anchor is an aria-label the e2e suite already asserts on, a card's
-// instance id (Card.svelte's data-instance-id), or a seat's portrait
-// (PlayerIdentity's data-seat-id, which CombatArrows already reads; the
-// portrait's own label changes with the life total, so it cannot be the
-// anchor). That is deliberate: those
-// labels are a user-facing contract (AGENTS.md §5), so a refactor that
-// renames one breaks board-layout.spec.ts before it breaks a new
-// player's first session.
+// An anchor is a contract label from the registry (labels.ts, ADR 0125
+// §2), a card's instance id (Card.svelte's data-instance-id), or a seat's
+// portrait (PlayerIdentity's data-seat-id, which CombatArrows already
+// reads; the portrait's own label changes with the life total, so it
+// cannot be the anchor). A registered name is matched exactly; a dynamic
+// entry's stem by prefix, suffix or substring (`^=`, `$=`, `*=`). The
+// components render the same registry values, so a rename moves the
+// anchor with it, and labels.test.ts fails on a label nobody renders.
 //
 // A card or a seat is looked up through boardAnchor (ADR 0120 §3), so
 // while a seat's board is expanded over the table the spotlight goes
@@ -20,6 +20,7 @@
 
 import type { Anchor } from "./tutorial";
 import { findCardAnchor, findSeatAnchor } from "./boardAnchor";
+import { isStem, type LabelRef, type StemMatch } from "./labels";
 
 export interface AnchorRect {
   left: number;
@@ -34,6 +35,14 @@ function esc(s: string): string {
     : s.replace(/["\\]/g, "\\$&");
 }
 
+const OPERATOR: Record<StemMatch, string> = { prefix: "^=", suffix: "$=", contains: "*=" };
+
+/** labelSelector is the attribute selector a label anchor matches. */
+export function labelSelector(ref: LabelRef): string {
+  if (isStem(ref)) return `[aria-label${OPERATOR[ref.match]}"${esc(ref.stem)}"]`;
+  return `[aria-label="${esc(ref)}"]`;
+}
+
 /** resolveAnchor finds the element an anchor names, or null. */
 export function resolveAnchor(a: Anchor, root: ParentNode = document): Element | null {
   if ("cardID" in a) {
@@ -44,11 +53,11 @@ export function resolveAnchor(a: Anchor, root: ParentNode = document): Element |
   }
   let scope: ParentNode = root;
   if (a.within !== undefined) {
-    const within = root.querySelector(`[aria-label="${esc(a.within)}"]`);
+    const within = root.querySelector(labelSelector(a.within));
     if (!within) return null;
     scope = within;
   }
-  return scope.querySelector(`[aria-label="${esc(a.label)}"]`);
+  return scope.querySelector(labelSelector(a.label));
 }
 
 /**

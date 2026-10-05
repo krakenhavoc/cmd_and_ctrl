@@ -18,6 +18,9 @@
 //   - A step that waits on the bot rather than the player (step 9) can
 //     carry a timeout, and advances on its own when it runs out. An
 //     action step may carry one too.
+//   - While the opening roll is open nothing is dealt, so no step
+//     completes, gives up or advances itself (heldByOpeningRoll, ADR
+//     0125 §5.2).
 //
 // Sub-PR 4 (#1081) added what the nine middle steps need. All of it is
 // optional on a step, so steps 1 and 11 are unchanged:
@@ -37,6 +40,7 @@
 
 import type { Readable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import type { LabelRef } from "./labels";
 import type { GameView } from "./protocol";
 import type { TutorialEvent } from "./tutorialBus";
 
@@ -64,20 +68,26 @@ export const HINT_AFTER_MS = 20_000;
 export const TOUCH_HOVER_STEP_MS = 12_000;
 
 /**
- * What a spotlight points at. Anchors are the aria-labels the e2e suite
- * asserts on (ADR 0076 §2.4), so renaming one breaks a test before it
- * breaks the tutorial.
+ * What a spotlight points at. A label anchor names an entry in the
+ * contract-label registry (labels.ts, ADR 0125 §2.2): a registered aria
+ * name, matched exactly, or a dynamic entry's stem (`L.<key>.any`),
+ * matched by prefix, suffix or substring. `LabelRef` is branded, so an
+ * anchor cannot be spelled as a raw string, and labels.test.ts fails
+ * when a registered label's owner stops rendering it.
  *
  * `within` scopes the label to a labelled container. It is not optional
  * in practice for the battlefield rows: every opponent's panel carries
- * the same "lands" and "creatures" lists as the viewer's, so those
- * anchors are `{ label: "lands", within: "your board" }`.
+ * the same lands and creatures lists as the viewer's, so those anchors
+ * are `{ label: L.lands, within: L.yourBoard }`.
  *
  * `cardID` is a card's data-instance-id (Card.svelte), and `seatID` a
  * seat's portrait (PlayerIdentity's data-seat-id, which CombatArrows
  * already anchors to).
  */
-export type Anchor = { label: string; within?: string } | { cardID: string } | { seatID: string };
+export type Anchor =
+  | { label: LabelRef; within?: LabelRef }
+  | { cardID: string }
+  | { seatID: string };
 
 /**
  * The step kinds. `opening` and `done` are the two button steps (1 and
@@ -190,6 +200,21 @@ export interface TutorialSnapshot {
   visible: boolean;
   /** The step's detour while the board needs one, else null. */
   detour: Detour | null;
+  /** The opening roll is open, so no step may move (heldByOpeningRoll). */
+  held: boolean;
+}
+
+/**
+ * heldByOpeningRoll reports whether the opening roll is open (ADR 0121
+ * §1). The practice table opens with it (ADR 0125 §5.2), and nothing is
+ * dealt until the winner chooses, so no step can be judged yet: the hand
+ * is empty, so "Read your hand" would complete on an empty row and "Play
+ * a land" would give up for want of a land. While it holds, no step
+ * completes, gives up or advances itself; the opening card's Start and
+ * the player's own Skip step still work.
+ */
+export function heldByOpeningRoll(view: GameView | null): boolean {
+  return !!view?.opening_roll;
 }
 
 export interface TutorialRun extends Readable<TutorialSnapshot> {
@@ -289,7 +314,14 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   let stepTimer: ReturnType<typeof setTimeout> | null = null;
   let detour: Detour | null = null;
 
-  const snap = (): TutorialSnapshot => ({ index, step: steps[index], coach, visible, detour });
+  const snap = (): TutorialSnapshot => ({
+    index,
+    step: steps[index],
+    coach,
+    visible,
+    detour,
+    held: heldByOpeningRoll(latest),
+  });
   const store = guardedWritable<TutorialSnapshot>(snap(), "tutorial");
   const publish = () => store.set(snap());
   const ctxOf = (event: TutorialEvent | null): StepContext => ({
@@ -334,7 +366,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       const id = step.id;
       stepTimer = setTimeout(() => {
         stepTimer = null;
-        if (visible && steps[index].id === id) {
+        if (visible && steps[index].id === id && !heldByOpeningRoll(latest)) {
           log(`tutorial: step ${id} timed out waiting; advancing`);
           enter(index + 1);
         }
@@ -349,6 +381,8 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     if (!visible) return;
     const step = steps[index];
     if (step.kind !== "action" && step.kind !== "watch") return;
+    // Nothing is dealt yet: no step completes or gives up (ADR 0125 §5.2).
+    if (heldByOpeningRoll(latest)) return;
     const ctx = ctxOf(event);
     if (step.done?.(ctx)) {
       enter(index + 1);
@@ -378,6 +412,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   function advance(stepID: string, why: string): void {
     if (!visible || steps[index].id !== stepID) return;
     if (index >= steps.length - 1) return;
+    if (heldByOpeningRoll(latest)) return;
     log(`tutorial: step ${stepID} ${why}; advancing`);
     enter(index + 1);
   }
@@ -405,7 +440,14 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       check(null);
     },
     observe(view, event = null) {
+      const wasHeld = heldByOpeningRoll(latest);
       latest = view;
+      if (wasHeld !== heldByOpeningRoll(latest)) {
+        // The hold lifted (or began): a "+1" predicate measures from the
+        // dealt board, and the coach re-arms its touch timer off `held`.
+        if (wasHeld) start = latest;
+        publish();
+      }
       check(event);
     },
     anchorMissing(stepID) {
@@ -413,6 +455,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     },
     hovered(stepID) {
       if (!visible || steps[index].id !== stepID || !steps[index].hover) return;
+      if (heldByOpeningRoll(latest)) return;
       enter(index + 1);
     },
     advance,

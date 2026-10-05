@@ -15,6 +15,7 @@
 //     layer keeps them settled by their seats until the choice.
 
 import type { GameView, LogEvent, OpeningRollView, PlayerView } from "./protocol";
+import { L } from "./labels";
 
 /**
  * isOpeningDieLog reports whether a log entry is one opening d20. Each
@@ -222,14 +223,14 @@ export function startingChoices(seats: readonly SeatLike[], chooser: number): St
         seat: s.seat,
         name: s.name,
         self,
-        label: self ? "I go first" : `${s.name} goes first`,
+        label: self ? L.iGoFirst : L.goesFirst(s.name),
       };
     });
 }
 
 /** The confirm's question when the chooser gives the first turn away (owner decision 6). */
 export function giveAwayQuestion(name: string): string {
-  return `Let ${name} take the first turn?`;
+  return L.giveFirstTurn(name);
 }
 
 /** The chooser sheet's lead line. */
