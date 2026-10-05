@@ -356,7 +356,10 @@ derivation.
 A long tool loop resends its whole context each step, so input tokens
 run in the millions per game (mostly cache reads) and the context
 nears 200k by the end: expect one compaction, or use a long-context
-model. No price is stated because none was measured. To keep it down,
+model. Two games have been priced so far (below): $0.72 for a
+five-turn game, and at most $15.94 for a sixteen-turn one. Cost grows
+much faster than the game's length, because every call resends the
+context and the context grows with every decision. To keep it down,
 use a fresh session per game, keep the compact view, and turn
 `pass_until` on when holding nothing at instant speed.
 
@@ -389,8 +392,37 @@ time. ADR 0122's amendment of the same date discusses them.
 | Time per decision (returned to `act`) | median 2.5 s, p90 5.7 s, max 23.3 s |
 | Table waiting on the agent | 9.6 min in total |
 | Time in `wait_for_decision` (opponent and table) | 15.4 min in total |
-| Client-reported tokens and cost | not captured |
+| Client-reported tokens and cost | at most $15.94. The Claude Code session that played it also wrote its lessons to memory and began a second game that was abandoned, so this is an upper bound for the game. Opus 5.5: 370.8k input, 47.9k output, 37.7M cache read, 747.1k cache write over 196 requests, including one cache miss after an idle past the 1h cache lifetime (364.5k tokens re-cached) and one compaction. |
 
 The estimates above were for a four-seat game. This one reached the
 model about 154 times in two seats, so plan on more decisions than the
 estimate, and on a much faster agent than 15 to 40 s.
+
+### Measured: a release-build game
+
+2026-10-04, cmd-dev, the published `mcpseat-v0.1.0-rc.1` archive
+(`--version`: `v0.1.0-rc.1`, commit `84d51efe`), default absorb rules,
+`--log-file` on, Claude Code on Opus 5.5, 1v1 Commander with one human.
+The human won the opening roll and chose who went first, so the agent
+was not asked. The human had a fast start and won on turn 5. The rows
+from windows seen to time per decision are the binary's own game-end
+report. The wall clock comes from the log's timestamps and Claude
+Code, and the cost from Claude Code's `/cost` for the session.
+
+| Quantity | Measured |
+|---|---|
+| Wall clock, seat start to `game_over` | 9.3 min (Claude Code session: 12.0 min wall, 1.2 min API) |
+| Windows seen | 142 |
+| Absorbed by Layer A | 129 (91%): `forced` 97, `mana-only` 31, `opening-roll` 1 |
+| Shown to the model | 13, one `act` each |
+| `act` rejections, automatic answers refused | 0, 0 |
+| Truncated windows, full-list requests | 0, 0 |
+| Largest move list shown | 11 moves, 1,240 bytes |
+| Tool-result bytes | 36,300 (about 9,100 tokens) |
+| Time per decision (opened to `act`) | median 2.5 s, mean 3.0 s, max 5.3 s |
+| Client-reported tokens and cost | $0.72: Opus 5.5 60 input, 5.6k output, 1.5M cache read, 39.4k cache write over 30 requests (97% of input from cache); Claude Code attributed 87% of the session's usage to the seat's tool results |
+
+The absorption rate matches the bot-table measurement in the estimates
+above. A five-turn game is the cheap end: the turn-16 game above
+reached the model more than ten times as often, and its session cost
+up to 22 times as much.
