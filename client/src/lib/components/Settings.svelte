@@ -16,6 +16,7 @@
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
   import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
   import type { StackStyle } from "../stackLane";
+  import type { TableLayout } from "../tableLayout";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
   import {
     SHORTCUTS,
@@ -115,6 +116,11 @@
 
   // ---- Shortcuts tab ------------------------------------------------
   //
+  // #2336: the focus layout always draws opponents as summaries and
+  // never grows the active player's board (expansionSettingsFor), so
+  // those two controls are disabled while it is on.
+  const focusLayout = $derived($settings.display.tableLayout === "focus");
+
   // The rebinding UI. All of the thinking is in lib/shortcuts.ts —
   // this is capture, show, write.
   const mac = isMacLike();
@@ -544,6 +550,7 @@
               <span>Opponent boards</span>
               <select
                 value={$settings.display.opponentDetail}
+                disabled={focusLayout}
                 onchange={(e) =>
                   change("display", "opponentDetail", e.currentTarget.value as "summary" | "full")}
               >
@@ -559,12 +566,14 @@
               blockers, or clicking their avatar to pin them open. Full boards draws every opponent
               as cards all the time, which is how the table used to work; at four players that means
               90px cards, which is where this started.
+              {#if focusLayout}The Focus table layout always uses summaries.{/if}
             </p>
 
             <label>
               <input
                 type="checkbox"
                 checked={$settings.display.expandActivePlayer}
+                disabled={focusLayout}
                 onchange={(e) => change("display", "expandActivePlayer", e.currentTarget.checked)}
               />
               Expand the active player's board on their turn
@@ -575,6 +584,7 @@
               from something you did — a targeting prompt, block or attack mode, or pinning a seat.
               It changes on a turn boundary either way, so it can't move the table under a click you
               have already started.
+              {#if focusLayout}Off in the Focus table layout: hover an avatar instead.{/if}
             </p>
 
             <label class="slider-row">
@@ -619,17 +629,20 @@
               <select
                 value={$settings.display.tableLayout}
                 onchange={(e) =>
-                  change("display", "tableLayout", e.currentTarget.value as "row" | "quadrant")}
+                  change("display", "tableLayout", e.currentTarget.value as TableLayout)}
               >
                 <option value="quadrant">Quadrant (default)</option>
                 <option value="row">Row</option>
+                <option value="focus">Focus</option>
               </select>
               {#if isFresh("display.tableLayout")}<span class="saved">✓</span>{/if}
             </label>
             <p class="help">
               Quadrant keeps the around-the-table seating. Row seats the opponents in turn order
-              across the top and gives your board the full width. At three players the two are the
-              same — you need the whole bottom row there either way.
+              across the top and gives your board the full width. At three players those two are the
+              same — you need the whole bottom row there either way. Focus makes your board most of
+              the screen: every opponent is a summary in a short row across the top, and you hover
+              their avatar to see their whole board, or click it to keep it open.
             </p>
 
             <label class="slider-row">

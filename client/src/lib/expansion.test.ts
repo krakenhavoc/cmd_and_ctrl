@@ -3,6 +3,7 @@ import type { CardView, GameView } from "./protocol";
 import type { TargetingState } from "./targeting";
 import {
   decideSeatRendering,
+  expansionSettingsFor,
   legalDefenderIDs,
   seatControlsLegalTarget,
   seatHasAttackersOn,
@@ -136,6 +137,39 @@ describe("decideSeatRendering", () => {
     expect(decideSeatRendering(s, table(), shipped({ expandActivePlayer: false })).reason).toBe(
       "targeting",
     );
+  });
+});
+
+describe("expansionSettingsFor", () => {
+  const fullAndActive = { opponentDetail: "full", expandActivePlayer: true } as const;
+
+  it("passes the two settings through in the quadrant and row layouts", () => {
+    for (const tableLayout of ["quadrant", "row"] as const) {
+      expect(expansionSettingsFor({ ...fullAndActive, tableLayout })).toEqual(fullAndActive);
+    }
+  });
+
+  it("the focus layout keeps every opponent a summary, on their turn too", () => {
+    const focus = expansionSettingsFor({ ...fullAndActive, tableLayout: "focus" });
+    expect(focus).toEqual({ opponentDetail: "summary", expandActivePlayer: false });
+    expect(decideSeatRendering(seat(), table(), focus).rendering).toBe("summary");
+    expect(decideSeatRendering(seat({ isActiveSeat: true }), table(), focus).rendering).toBe(
+      "summary",
+    );
+  });
+
+  it("the focus layout still expands a seat a prompt needs you to click", () => {
+    const focus = expansionSettingsFor({ ...fullAndActive, tableLayout: "focus" });
+    expect(decideSeatRendering(seat({ controlsLegalTarget: true }), table(), focus).reason).toBe(
+      "targeting",
+    );
+    expect(
+      decideSeatRendering(
+        seat({ hasAttackersOnViewer: true }),
+        table({ combatMode: "block" }),
+        focus,
+      ).reason,
+    ).toBe("blocking");
   });
 });
 

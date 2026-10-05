@@ -39,12 +39,14 @@
   import SeatSummary from "./SeatSummary.svelte";
   import {
     decideSeatRendering,
+    expansionSettingsFor,
     legalDefenderIDs,
     seatControlsLegalTarget,
     seatHasAttackersOn,
     type SeatDecision,
   } from "../../expansion";
   import { settings } from "../../settings";
+  import { opponentsInARow } from "../../tableLayout";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   import Icon from "../Icon.svelte";
   // CommanderDamageTooltip was folded into HoverZoomOverlay — the
@@ -2462,10 +2464,7 @@
         isLegalDefender: defenderIDs.has(seat.id),
       },
       { spectator: isSpectator, combatMode },
-      {
-        opponentDetail: $settings.display.opponentDetail,
-        expandActivePlayer: $settings.display.expandActivePlayer,
-      },
+      expansionSettingsFor($settings.display),
     );
   }
 
@@ -2782,7 +2781,7 @@
     <PlayerPanel
       {seat}
       isSelf={pos === "self"}
-      flipped={$settings.display.tableLayout === "row" || opponentCount === 2
+      flipped={opponentsInARow($settings.display.tableLayout) || opponentCount === 2
         ? pos !== "self"
         : pos === "across" || pos === "across_next"}
       {expanded}
@@ -3651,7 +3650,8 @@
     flex: 0 1 auto;
     min-height: 0;
   }
-  :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip {
+  :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip,
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
     left: calc(33.333% + 6px);
     width: min(512px, calc(33.333% - 132px));
   }
@@ -3719,6 +3719,35 @@
   :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-areas:
+      "next across across_next"
+      "self self   self";
+  }
+
+  /* Focus layout (#2336): the row arrangement with your board taking
+     most of the screen. Every opponent is a summary
+     (expansionSettingsFor in expansion.ts), which needs far less height
+     than a board of cards, so the top row is short; you hover or click
+     an avatar to see a whole board in the expanded overlay. A summary
+     that expands for a target or a block keeps this height: its cards
+     shrink to the panel's floor until the prompt is answered. */
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="1"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 0.5fr) minmax(0, 1.5fr);
+    grid-template-areas:
+      "across"
+      "self";
+  }
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="2"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 0.5fr) minmax(0, 1.5fr);
+    grid-template-areas:
+      "next across"
+      "self self";
+  }
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: minmax(0, 0.5fr) minmax(0, 1.5fr);
     grid-template-areas:
       "next across across_next"
       "self self   self";

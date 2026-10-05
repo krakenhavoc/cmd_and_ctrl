@@ -37,6 +37,7 @@
 // not belong.
 
 import type { CardView, GameView } from "./protocol";
+import type { TableLayout } from "./tableLayout";
 import { isLegalCardTarget, isLegalPlayerTarget, type TargetingState } from "./targeting";
 
 export type SeatRendering = "summary" | "full";
@@ -83,6 +84,27 @@ export interface TableSignals {
 export interface ExpansionSettings {
   opponentDetail: "summary" | "full";
   expandActivePlayer: boolean;
+}
+
+/**
+ * expansionSettingsFor reads the two expansion settings through the
+ * table layout. The "focus" layout is opponents as summaries in a
+ * short top row, so it overrides both: every opponent is a summary
+ * whatever "Opponent boards" says, and the active player's board does
+ * not grow on their turn — you hover or click an avatar to see it
+ * (ADR 0120). The interaction triggers in decideSeatRendering still
+ * apply, because a prompt you cannot click is unanswerable.
+ */
+export function expansionSettingsFor(
+  display: ExpansionSettings & { tableLayout: TableLayout },
+): ExpansionSettings {
+  if (display.tableLayout === "focus") {
+    return { opponentDetail: "summary", expandActivePlayer: false };
+  }
+  return {
+    opponentDetail: display.opponentDetail,
+    expandActivePlayer: display.expandActivePlayer,
+  };
 }
 
 /**
