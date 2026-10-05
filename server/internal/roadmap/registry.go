@@ -2746,14 +2746,11 @@ var items = []Item{
 		EngineNotes: "resolution: `spellAllTargetsIllegalLocked` (`game/mutations.go`) removes any item whose targeted slots are all illegal, with no exemption, so Gilded Drake's \"If you don't or can't make an exchange, sacrifice this creature\" would never run when its target is gone, stronger than printed. Needs a flag on the ability that skips the CR 608.2b removal while the effect still treats the illegal target as unaffected. `ExchangeControlForEffect` already reports whether an exchange happened.",
 	},
 	{
-		Slug: "life-lost-at-once", Name: "How much life a player lost at once", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Abilities that trigger when a player loses an exact amount of life at once, such as Ob Nixilis, Captive Kingpin's \"Whenever one or more opponents each lose exactly 1 life\".",
-		Missing:     "Life lost to several sources at the same time counts as separate losses, so an ability that wants exactly 1 life lost at once would trigger too often.",
-		Rules:       []string{"603.2c", "120.3a"},
-		Issue:       2183,
-		Tracked:     "#2183 (S58 tracker #2077)",
-		Waiting:     []string{"Ob Nixilis, Captive Kingpin"},
-		EngineNotes: "batch total: `OncePerBatch` (`game/event_batch.go`) collapses a batch of events into one trigger, and nothing sums one player's life loss across the events of a batch, so two creatures dealing 1 combat damage each to the same opponent would read as two losses of exactly 1 and trigger, stronger than printed. Needs a per-player total of the life lost in the simultaneous event, read by the trigger's condition. Ob Nixilis's counter and its exile-and-play until your next end step work. `damage-life-loss-result` (#2105) asks a different question about the same loss.",
+		Slug: "life-lost-at-once", Name: "How much life a player lost at once", Kind: KindSeam, Status: StatusImplemented,
+		Summary:          "Abilities that trigger when a player loses an exact amount of life at once, such as Ob Nixilis, Captive Kingpin's \"Whenever one or more opponents each lose exactly 1 life\", counting everything lost in one simultaneous event.",
+		Rules:            []string{"603.2c", "120.3a"},
+		Issue:            2183,
+		NoCatalogExample: "Its one catalogued card, Ob Nixilis, Captive Kingpin, carries a caveat about the end-step edge of its play window, so none is listed as fully automated.",
 	},
 
 	// Seams that have fully closed. They stay so the page can say so;

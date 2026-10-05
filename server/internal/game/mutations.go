@@ -4445,6 +4445,10 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// before the state-based actions, so a combat damage step's damage
 	// has all been dealt (CR 510.2) and nothing has died of it yet.
 	g.flushPreventionFollowUpsLocked()
+	// #2183: the batch is over before a player receives priority, so
+	// the AtBatchEnd triggers staged in it are asked now, before the
+	// state-based actions can take their sources away.
+	g.settleBatchEndTriggersLocked()
 	// #1729, CR 610.3: an "until" return is created immediately after
 	// its event, so it is owed before the state-based actions — "nothing
 	// happens between the two events, including state-based actions"
