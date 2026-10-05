@@ -194,6 +194,11 @@ func TestHeuristicMirrorResolvesInsideTheTurnBudget(t *testing.T) {
 //     and no single creature they have spare can kill it — is what
 //     cashes the edge. Before
 //     #1527 both games stopped at the turn budget with lives [6 6].
+//     Since #1548 the defender gang-blocks to kill, so a second Ogre
+//     joins the one chumping the spare Wurm and there is no two-turn
+//     kill on the board at all (26 turns, [6 6] again). The attrition
+//     horizon cashes it instead: one Wurm into theirs, an even trade
+//     that keeps the edge, and the board after it races.
 func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
 	requireGameTests(t)
 	const (
@@ -209,17 +214,20 @@ func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
 		for _, edge := range []int{0, 1} {
 			t.Run(fmt.Sprintf("life=%d/board=%v/edge=seat%d", spec.life, spec.board, edge), func(t *testing.T) {
 				res := playGameWith(t, mirrorRoomWith(t, seed, edge, spec), seed, heuristicSeats(2), turnBudget, wall, true)
-				race, push := 0, 0
+				race, attrition, push := 0, 0, 0
 				for _, m := range res.moves {
 					if strings.Contains(m, "two-turn race") {
 						race++
+					}
+					if strings.Contains(m, "attack: attrition") {
+						attrition++
 					}
 					if strings.Contains(m, "all-in for the kill") {
 						push++
 					}
 				}
-				t.Logf("edge seat %d: state=%s turns=%d winner=%d lives=%v in %v; %d race and %d all-in attacks",
-					edge, res.state, res.turns, res.winner, res.lives, res.elapsed, race, push)
+				t.Logf("edge seat %d: state=%s turns=%d winner=%d lives=%v in %v; %d race, %d attrition and %d all-in attacks",
+					edge, res.state, res.turns, res.winner, res.lives, res.elapsed, race, attrition, push)
 				if res.state != game.StateEnded {
 					t.Fatalf("the Wurm edge was not cashed inside %d turns (state %s, lives %v); the board it stopped on:%s",
 						turnBudget, res.state, res.lives, res.board)

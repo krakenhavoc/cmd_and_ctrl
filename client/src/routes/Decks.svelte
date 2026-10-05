@@ -24,6 +24,7 @@
 
   import { onMount } from "svelte";
   import { route } from "../lib/router";
+  import { L } from "../lib/labels";
   import { LobbyApiError, session } from "../lib/session";
   import {
     deleteMyDeck,
@@ -498,7 +499,7 @@
           type="text"
           class="url-field"
           placeholder="https://archidekt.com/decks/123456"
-          aria-label="deck link"
+          aria-label={L.deckLink}
           bind:value={urlInput}
         />
       {:else}
@@ -775,7 +776,7 @@
             No saved decks yet. Decks you save here, or import at a table while signed in, are kept.
           </p>
         {:else}
-          <ul class="decks" aria-label="your decks">
+          <ul class="decks" aria-label={L.yourDecks}>
             {#each decks as d (d.id)}
               <li class="deck">
                 <div class="line">

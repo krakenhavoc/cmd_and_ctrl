@@ -84,3 +84,20 @@ func agentClientName(raw string) string {
 	}
 	return out
 }
+
+// defaultDisplayName is the seat's name when join gives none (#2273): the
+// MCP client's own name, which the table already shows in the badge, so it
+// reveals nothing new. A known client reads as people say it, any other
+// uses its normalised name, and a client that sent no clientInfo stays
+// "Agent". client is the agentClientName form.
+func defaultDisplayName(client string) string {
+	switch {
+	case client == "unknown":
+		return defaultName
+	case client == "claude-code":
+		return "Claude Code"
+	case client == "codex" || strings.HasPrefix(client, "codex-") || strings.HasPrefix(client, "codex_"):
+		return "Codex"
+	}
+	return client
+}

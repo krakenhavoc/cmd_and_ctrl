@@ -1000,7 +1000,8 @@ first turn (`choose_starting_player`, CR 103.1). Only then are libraries
 shuffled and hands dealt, and the mulligan proceeds. The rolls and the choice
 are public in the view and the game log, and use the game's persisted RNG so
 reconnects and replay agree. See [protocol.md](protocol.md) for the three
-actions. The practice table never rolls: seat 0 goes first.
+actions. The practice table rolls too, and its bot hands the first turn to the
+player when it wins ([`POST /games/practice`](#post-gamespractice-adr-0076-s54)).
 
 **The start captures a setup** (ADR 0110 §5 item 1). On the transition, the
 server writes one person's last setup: the game's creator's, or, for a table
@@ -1539,9 +1540,19 @@ human seat and one `random`-tier bot, each on its fixed tutorial deck
 *Practice Partner* for the bot). Any session may call it: a guest
 seated at another table, a Discord sign-in, the admin. No body.
 
-The table comes back **already started**, with the player at seat 0
-taking turn one (the tutorial's steps follow the player's first turn,
-so the usual opening roll is skipped). The response is a join's: a
+The table comes back **already started**, with the **opening roll**
+open ([ADR 0125](decisions/0125-a-walkthrough-that-keeps-up.md) §5.2,
+S65), exactly as at any table started with
+[`POST /games/{id}/start`](#post-gamesidstart): nothing is dealt yet,
+both seats roll a d20, ties roll again, and the winner chooses who
+takes the first turn (CR 103.1). The player is the host, so they may
+also `host_roll_remaining`. The tutorial's steps follow the player's
+own first turn, so **a practice bot that wins the roll hands the first
+turn to the player**: it sends the ordinary `choose_starting_player`
+naming the player's seat, which CR 103.1 allows (the winner chooses any
+player). A player who wins chooses for themselves, and may hand it to
+the bot. A bot at any other table chooses as
+[ADR 0121](decisions/0121-animated-dice.md) §4 has it. The response is a join's: a
 fresh player session for the seat (`token`, `expires_at`,
 `principal`), the `game` with `practice: true`, and `player_id`. The
 session cookie is set to it. The seat carries the caller's Discord

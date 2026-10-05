@@ -123,6 +123,7 @@ type Seat struct {
 	mu       sync.Mutex
 	client   string
 	sess     *savedSession
+	lock     *stateLock // the claim on the saved session (#2274)
 	conn     *wsConn
 	stopAuto chan struct{}
 	autoDone chan struct{}
@@ -241,7 +242,10 @@ func (s *Seat) Close() {
 	conn := s.conn
 	stop, done := s.stopAuto, s.autoDone
 	s.conn, s.stopAuto, s.autoDone = nil, nil, nil
+	held := s.lock
+	s.lock = nil
 	s.mu.Unlock()
+	defer held.Release()
 	if stop != nil {
 		close(stop)
 		<-done
@@ -450,6 +454,12 @@ func (s *Seat) onSnapshot(raw json.RawMessage) {
 			if err := s.store.remove(sess.Origin, sess.GameID); err != nil {
 				s.log.Warn("could not delete the saved session", "err", err)
 			}
+			// Nothing is left to protect: free the table's claim.
+			s.mu.Lock()
+			held := s.lock
+			s.lock = nil
+			s.mu.Unlock()
+			held.Release()
 		}
 	}
 	s.pokeAutopilot()
@@ -503,6 +513,16 @@ func (s *Seat) step(ctx context.Context) {
 	}
 	key := s.key
 	if s.win != nil && s.win.key == key {
+		s.mu.Unlock()
+		return
+	}
+	// An automatic answer is still out (#2271). A snapshot from another
+	// seat's action can arrive before this seat's own ack, and in that
+	// view the seat still seems to owe the same answer: stepping on it
+	// would send the answer twice. awaitAuto pokes the autopilot when the
+	// answer is acknowledged, refused or timed out, and the step then
+	// runs on the latest snapshot.
+	if s.win != nil && s.win.state == winAuto {
 		s.mu.Unlock()
 		return
 	}
@@ -563,8 +583,6 @@ func (s *Seat) step(ctx context.Context) {
 		return
 	}
 	w.state = winAuto
-	s.autoSince[ans.rule]++
-	s.stats.absorbed[ans.rule]++
 	s.mu.Unlock()
 
 	if err := s.actions.wait(ctx); err != nil {
@@ -580,7 +598,7 @@ func (s *Seat) step(ctx context.Context) {
 		s.log.Info("automatic answer not sent", "rule", ans.rule, "err", err)
 		return
 	}
-	go s.awaitAuto(w, ch)
+	go s.awaitAuto(w, ans.rule, ch)
 }
 
 // openDecisionLocked hands a window to the model.
@@ -592,28 +610,70 @@ func (s *Seat) openDecisionLocked(w *window) {
 	s.broadcastLocked()
 }
 
-// awaitAuto waits for the server's answer to an automatic move. A refusal
-// hands the window to the model, which the binary never answers for it.
-func (s *Seat) awaitAuto(w *window, ch chan reply) {
-	t := time.NewTimer(s.cfg.AckTimeout)
+// awaitAuto waits for the server's answer to an automatic move. The
+// answer counts as absorbed only once the server accepted it (#2271). A
+// refusal hands the window to the model, which the binary never answers
+// for it, but only while the board has not moved since: a refusal for a
+// superseded window has nothing left to hand on. However the wait ends,
+// the autopilot is poked, because step holds back while an answer is out.
+func (s *Seat) awaitAuto(w *window, rule string, ch chan reply) {
+	wait, legacy := s.ackWait()
+	t := time.NewTimer(wait)
 	defer t.Stop()
 	var r reply
+	timedOut := false
 	select {
 	case r = <-ch:
 	case <-t.C:
-		return
-	}
-	if r.kind != protocol.KindError {
-		return
+		timedOut = true
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	switch {
+	case timedOut && legacy:
+		// A server from before ADR 0122 PR 5 never acknowledges: the
+		// silence is its only yes, and resending would double the answer.
+		s.autoSince[rule]++
+		s.stats.absorbed[rule]++
+		if s.win == w && w.state == winAuto {
+			w.state = winActed
+		}
+		s.mu.Unlock()
+		s.pokeAutopilot()
+		return
+	case timedOut:
+		// No word either way: decide again on the state now.
+		if s.win == w && w.state == winAuto {
+			s.win = nil
+		}
+		s.mu.Unlock()
+		s.pokeAutopilot()
+		return
+	case r.kind == protocol.KindAck:
+		s.autoSince[rule]++
+		s.stats.absorbed[rule]++
+		if s.win == w && w.state == winAuto {
+			w.state = winActed
+		}
+		s.mu.Unlock()
+		s.pokeAutopilot()
+		return
+	case r.kind != protocol.KindError:
+		// The socket dropped; dropped() already cleared the window.
+		s.mu.Unlock()
+		return
+	}
 	s.stats.autoErrors++
 	if s.win == w && w.state == winAuto {
-		w.rejections++
-		s.openDecisionLocked(w)
+		if s.key == w.key {
+			w.rejections++
+			s.openDecisionLocked(w)
+		} else {
+			s.win = nil
+		}
 	}
+	s.mu.Unlock()
 	s.log.Info("automatic answer refused", "code", r.err.Code, "message", r.err.Message)
+	s.pokeAutopilot()
 }
 
 // sendAction sends a move as an action frame with a fresh id, and returns

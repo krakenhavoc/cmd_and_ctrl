@@ -66,8 +66,29 @@ for (const size of [
 
       await page.goto("/#/practice");
       await expect(page).toHaveURL(/#\/games\//, { timeout: 20_000 });
+      // The practice table opens the opening roll (ADR 0125 §5.2).
+      // Press Roll, again after a tie, and take the first turn if this
+      // page won; a bot that wins hands it to the player by itself.
       const keep = page.getByRole("button", { name: "Keep hand" });
-      await expect(keep).toBeVisible({ timeout: 15_000 });
+      const roll = page
+        .getByRole("dialog", { name: "roll for the first turn", exact: true })
+        .getByRole("button", { name: "Roll", exact: true });
+      const goFirst = page
+        .getByRole("dialog", {
+          name: "choose who takes the first turn",
+          exact: true,
+        })
+        .getByRole("button", { name: "I go first", exact: true });
+      await expect(roll).toBeVisible({ timeout: 15_000 });
+      const deadline = Date.now() + 30_000;
+      while (!(await keep.isVisible())) {
+        if (Date.now() > deadline)
+          throw new Error("the opening roll never reached the mulligan");
+        if (await goFirst.isVisible()) await goFirst.click();
+        else if ((await roll.isVisible()) && (await roll.isEnabled()))
+          await roll.click();
+        await page.waitForTimeout(200);
+      }
       await keep.click();
 
       const coach = page.getByRole("complementary", { name: "tutorial coach" });

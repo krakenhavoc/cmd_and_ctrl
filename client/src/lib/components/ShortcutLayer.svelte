@@ -27,6 +27,7 @@
     type ShortcutID,
   } from "../shortcuts";
   import ShortcutsOverlay from "./ShortcutsOverlay.svelte";
+  import { focusTip } from "../hints/runtime";
 
   const bindings = $derived(effectiveBindings($settings.shortcuts.bindings));
 
@@ -44,6 +45,8 @@
     toggleMute: () => {
       toggleMuted();
     },
+    // ADR 0125 §3.6: focus moves to the tip on screen; with none, nothing.
+    focusTip: () => focusTip(),
   };
 
   // Transient "that key did nothing, and here's why" line. Only for a

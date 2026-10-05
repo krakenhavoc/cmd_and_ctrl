@@ -27,6 +27,7 @@
     type SeatInfo,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
+  import { L } from "../lib/labels";
   import { session, LobbyApiError } from "../lib/session";
   import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
   import { signedInUserID } from "../lib/myGames";
@@ -765,7 +766,7 @@
         </form>
       {/if}
       {#if canCreate}
-        <form class="start-card create" onsubmit={onCreate}>
+        <form class="start-card create" aria-label={L.createGame} onsubmit={onCreate}>
           <h2 class="panel-h">create game</h2>
           <div class="create-row">
             <input

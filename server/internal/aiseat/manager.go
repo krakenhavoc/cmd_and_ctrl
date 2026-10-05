@@ -26,6 +26,12 @@ type SeatSpec struct {
 	// simply sees the board and the move list without its own
 	// decklist in front of it.
 	Deck string
+	// FirstTurnTo, when set, is the seat this bot hands the first turn
+	// to if it wins the opening roll (ADR 0125 §5.2). Only the practice
+	// route sets it, to the human's seat, so the tutorial follows the
+	// player's own first turn. Nil — every other table — leaves the
+	// choice to the tier, as ADR 0121 §4 has it. See first_turn.go.
+	FirstTurnTo *int
 }
 
 // Manager owns the runners for every bot seat on the server: one
@@ -287,6 +293,10 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 		rcfg := m.configFor(factory, tier)
 		if bg.dlog != nil {
 			rcfg.Observer = bg.dlog
+		}
+		if seat.FirstTurnTo != nil {
+			to := *seat.FirstTurnTo
+			rcfg.FirstTurnTo = &to
 		}
 		r := Start(ctx, room, seat.PlayerID, policy, rcfg, m.bc, m.log.With("game", gameID.String()))
 		bg.runners = append(bg.runners, r)
