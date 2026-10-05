@@ -58,7 +58,15 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	max := opts.maxZoneCards()
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "TURN %d — %s", v.Turn.Number, StepName(v.Turn.Step))
+	// Number is the ROUND (every seat has had a turn); Seq counts turns,
+	// the figure the game log's turn field carries. Print both, labelled,
+	// so a model never has to reconcile "Turn 8" here with a log that
+	// counts differently (#2279). The human client's "T4" is the round.
+	if v.Turn.Seq > 0 {
+		fmt.Fprintf(&b, "TURN %d (round %d) — %s", v.Turn.Seq, v.Turn.Number, StepName(v.Turn.Step))
+	} else {
+		fmt.Fprintf(&b, "ROUND %d — %s", v.Turn.Number, StepName(v.Turn.Step))
+	}
 	// ADR 0059 Decision 13: the round number repeats on an extra turn
 	// (CR 500.7), so say so, or a model reads "TURN 3" twice as a
 	// replay of the same turn.
@@ -358,15 +366,24 @@ func SeatLabelByID(v *protocol.GameView, id, me string) string {
 	return "someone"
 }
 
-// StackOwnership is who a stack item belongs to, as the prompt says it:
-// "cast by X" for an ordinary item, and "controlled by X (cast by Y)"
-// for a spell another player took on the stack (ADR 0104) — the model
-// has to know that the spell now acts for X, and that Y is who lost it.
+// StackOwnership is who a stack item belongs to, as the prompt says it.
+// A spell is "cast by X" (CR 601); an activated ability is "activated by
+// X" (CR 602) and a triggered one "triggered, controlled by X" (CR 603),
+// since nobody casts an ability (#2279). A spell another player took on
+// the stack (ADR 0104) is "controlled by X (cast by Y)" — the model has to
+// know that it now acts for X, and that Y is who lost it.
 func StackOwnership(it *protocol.StackItemView, v *protocol.GameView, me string) string {
-	if it.DefaultController == "" {
-		return "cast by " + SeatLabelByID(v, it.Controller, me)
+	ctl := SeatLabelByID(v, it.Controller, me)
+	switch it.Kind {
+	case "activated":
+		return "activated by " + ctl
+	case "triggered":
+		return "triggered, controlled by " + ctl
 	}
-	return "controlled by " + SeatLabelByID(v, it.Controller, me) +
+	if it.DefaultController == "" {
+		return "cast by " + ctl
+	}
+	return "controlled by " + ctl +
 		" (cast by " + SeatLabelByID(v, it.DefaultController, me) + ")"
 }
 
