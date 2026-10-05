@@ -441,6 +441,14 @@ type ReplacementEvent struct {
 	// permanent with no prepare spell (CR 722.3a).
 	EntersPrepared bool
 
+	// EntersDevoured is the number of creatures devoured as this
+	// permanent enters (CR 702.82a), stamped by a devour clause's
+	// EntryCardChoice.Devour and copied onto Card.Devoured by
+	// every battlefield landing. Rides the event for EntersTapped's
+	// reason: the permanent is not on the battlefield while the
+	// sacrifice is chosen.
+	EntersDevoured int
+
 	// EntersWithHaste is riot's "if you don't, it gains haste" (CR
 	// 702.136a, ADR 0109 §10): set by the haste answer to an entry_riot
 	// question and read by every battlefield landing, which gives the
