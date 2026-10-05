@@ -599,3 +599,79 @@ describe("a whole tutorial", () => {
     ]);
   });
 });
+
+// ADR 0125 §5.2: the practice table opens with the opening roll, and
+// nothing is dealt until its winner chooses. No step may complete, give
+// up or advance itself on that empty board (heldByOpeningRoll).
+describe("while the opening roll is open", () => {
+  const rolling = (): GameView =>
+    ({
+      ...board({ hand: [], step: "untap", seq: 0 }),
+      opening_roll: { rounds: [{ seats: [0, 1], rolls: [] }], chooser: -1 },
+      mulligans_open: true,
+    }) as unknown as GameView;
+
+  it("read-hand does not complete on the empty hand, by a rest or a phone's timer", () => {
+    const log = vi.fn();
+    const run = createTutorialRun([WELCOME, READ_HAND, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    run.start();
+    expect(run.current()).toMatchObject({ step: READ_HAND, held: true });
+    run.hovered(READ_HAND.id);
+    run.advance(READ_HAND.id, "cannot be hovered on this device");
+    run.anchorMissing(READ_HAND.id);
+    expect(run.current().step).toBe(READ_HAND);
+    expect(log).not.toHaveBeenCalled();
+
+    // The deal lifts the hold, and the step completes as it always has.
+    run.observe(board({ hand: [forest(), elves()], step: "upkeep" }));
+    expect(run.current().held).toBe(false);
+    run.hovered(READ_HAND.id);
+    expect(run.current().step).toBe(PLAY_LAND);
+  });
+
+  it("play-land does not give up for want of a land in an undealt hand", () => {
+    const log = vi.fn();
+    const run = createTutorialRun([WELCOME, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    run.start();
+    run.observe(rolling());
+    expect(run.current().step).toBe(PLAY_LAND);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing once the roll has closed: a land in hand keeps the step, none gives it up", () => {
+    const log = vi.fn();
+    const run = createTutorialRun([WELCOME, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    run.start();
+    run.observe(board({ hand: [forest()], step: "upkeep" }));
+    expect(run.current()).toMatchObject({ step: PLAY_LAND, held: false });
+    expect(run.current().detour?.id).toBe("to-main");
+    expect(log).not.toHaveBeenCalled();
+    // The "+1" is measured from the dealt board.
+    run.observe(board({ mine: [forest()], hand: [], landsPlayed: 1 }));
+    expect(run.current().step).toBe(HANDOFF);
+
+    const gaveUp = createTutorialRun([WELCOME, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    gaveUp.start();
+    gaveUp.observe(board({ hand: [elves()] }));
+    expect(gaveUp.current().step).toBe(HANDOFF);
+    expect(log).toHaveBeenCalledWith(
+      "tutorial: step play-land cannot happen (no land in hand); advancing",
+    );
+  });
+});
