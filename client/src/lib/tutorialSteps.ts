@@ -43,7 +43,8 @@
 //     table forces autoPassPriority off, so nothing moves until the
 //     player presses `next`. A land and a creature wait for a main phase,
 //     so steps 4 and 7 carry a detour that says so and points at the
-//     dock, or at the opening hand while it is still to be kept.
+//     dock. Steps 3, 4 and 7 point at the opening hand first while it
+//     is still to be kept: it is a stage over the whole table (#2346).
 //   - With autoPassPriority off, a spell the player casts waits on the
 //     stack until they press `next`: step 8 teaches the stack while it
 //     waits. The bot's turn waits on them at every step, so step 12
@@ -188,21 +189,29 @@ const PressNext = (k: CopyContext): string => {
 };
 
 /**
+ * keepHandFirst is the detour steps 3, 4 and 7 share while the viewer's
+ * opening hand waits on them. The opening hand is a stage over the whole
+ * table (#2346), so the hand on the board cannot be rested on, and the
+ * dock's `next` does nothing for the player until they keep.
+ */
+function keepHandFirst(c: StepContext): Detour | null {
+  const me = seatOf(c.view, c.viewerID);
+  if (!c.view?.mulligans_open || !me || me.hand_kept) return null;
+  return {
+    id: "keep-hand",
+    title: "First, keep your hand",
+    body: "Keep hand, under your opening hand, starts the game. A mulligan works too.",
+    anchor: { label: L.mulligan },
+  };
+}
+
+/**
  * The detour steps 4 and 7 share: a land or a creature waits for a main
- * phase, and before that for the opening hand to be kept. The dock's
- * `next` does nothing for the player while their opening hand waits on
- * them, so the hand comes first.
+ * phase, and before that for the opening hand to be kept.
  */
 function toMainPhase(c: StepContext, what: string): Detour | null {
-  const me = seatOf(c.view, c.viewerID);
-  if (c.view?.mulligans_open && me && !me.hand_kept) {
-    return {
-      id: "keep-hand",
-      title: "First, keep your hand",
-      body: "Keep hand, in the dock, starts the game. A mulligan works too.",
-      anchor: { label: L.mulligan },
-    };
-  }
+  const keep = keepHandFirst(c);
+  if (keep) return keep;
   if (sorcerySpeed(c)) return null;
   return {
     id: myTurn(c) ? "to-main" : "await-turn",
@@ -276,6 +285,7 @@ export const READ_HAND: TutorialStep = {
   hint: "Hold the pointer still over any card in your hand for a moment.",
   anchor: HAND,
   hover: { ms: 600, event: "hand-hovered" },
+  first: keepHandFirst,
 };
 
 export const PLAY_LAND: TutorialStep = {

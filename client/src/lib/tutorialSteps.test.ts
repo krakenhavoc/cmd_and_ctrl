@@ -271,6 +271,16 @@ describe("step 3: read your hand", () => {
     expect(READ_HAND.hover).toEqual({ ms: 600, event: "hand-hovered" });
     expect(READ_HAND.done).toBeUndefined();
   });
+
+  // #2346: the opening hand is a stage over the whole table, so the hand
+  // on the board cannot be rested on until it is kept.
+  it("detours to the opening hand while it is still to be kept", () => {
+    const d = READ_HAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: false } })))!;
+    expect(d.id).toBe("keep-hand");
+    expect(d.anchor).toEqual({ label: "keep or mulligan your hand" });
+    expect(READ_HAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: true } })))).toBeNull();
+    expect(READ_HAND.first!(ctx(board({ step: "upkeep" })))).toBeNull();
+  });
 });
 
 describe("step 4: play a land", () => {
@@ -311,7 +321,7 @@ describe("step 4: play a land", () => {
     expect(d.anchor).toEqual({ label: "keep or mulligan your hand" });
     expect(copyText(d.title, keys)).toBe("First, keep your hand");
     expect(copyText(d.body, keys)).toBe(
-      "Keep hand, in the dock, starts the game. A mulligan works too.",
+      "Keep hand, under your opening hand, starts the game. A mulligan works too.",
     );
     // Kept, with the bot still deciding: on to the main phase.
     expect(PLAY_LAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: true } })))?.id).toBe(
@@ -675,10 +685,12 @@ describe("a whole tutorial", () => {
     // The deal: the opening hand waits to be kept.
     move({ step: "upkeep", hand, mulligan: { kept: false } });
     expect(at()).toBe("read-hand");
-    run.hovered("read-hand");
-    expect(at()).toBe("play-land");
+    // The opening hand is a stage over the table: keep it first.
     expect(run.current().detour?.id).toBe("keep-hand");
     move({ step: "upkeep", hand });
+    expect(run.current().detour).toBeNull();
+    run.hovered("read-hand");
+    expect(at()).toBe("play-land");
     expect(run.current().detour?.id).toBe("to-main");
     move({ step: "draw", hand });
     move({ step: "precombat_main", hand });
