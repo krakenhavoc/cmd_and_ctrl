@@ -141,7 +141,7 @@ describe("syncedSubset and applySyncedCopy", () => {
     expect(next.audio.masterVolume).toBe(7);
     expect(next).not.toHaveProperty("bogus");
     // base is not mutated.
-    expect(base.display.theme).toBe("dark");
+    expect(base.display.theme).toBe("warroom");
   });
 
   it("a stack style migrate does not know falls back, as a stored one does", () => {

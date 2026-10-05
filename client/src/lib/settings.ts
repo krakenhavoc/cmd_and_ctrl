@@ -6,6 +6,7 @@ import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
+import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -65,9 +66,13 @@ export interface Settings {
   };
 
   display: {
-    // Dark is the current default. Light + high-contrast scaffold
-    // the CSS-variable plumbing; full theming ships in a follow-up.
-    theme: "dark" | "light" | "high-contrast";
+    // The skin: a block of colour tokens in app.css (lib/skins.ts).
+    // Stored under its pre-skins name, "theme", so the synced account
+    // copy keeps working.
+    theme: Skin;
+    // A custom accent colour (#rrggbb) over the skin's own, or "" for
+    // the skin's. The rest of the accent family is derived from it.
+    accent: string;
     // Battlefield card size. Applied as a CSS var so re-tuning a
     // preference re-renders without DOM rebuilds.
     cardSize: "small" | "medium" | "large";
@@ -296,7 +301,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 19;
+export const SETTINGS_VERSION = 20;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -362,7 +367,8 @@ export function defaultSettings(): Settings {
       dice: true,
     },
     display: {
-      theme: "dark",
+      theme: DEFAULT_SKIN,
+      accent: "",
       cardSize: "medium",
       handLayout: "fan",
       tableLayout: "quadrant",
@@ -513,6 +519,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
   },
   display: {
     theme: "synced",
+    accent: "synced",
     cardSize: "device",
     handLayout: "device",
     tableLayout: "device",
@@ -866,6 +873,16 @@ function migrate(raw: unknown): Settings {
   } else if (typeof merged.gameplay.strictMana !== "boolean") {
     merged.gameplay.strictMana = d.gameplay.strictMana;
   }
+  // v19 → v20 (player skins): display.theme now names a skin. Until
+  // v20 the Theme select was disabled, so a stored value is almost
+  // always the old default "dark", which is not a skin: it falls back
+  // to the default skin, as does any unknown value (a removed skin, a
+  // hand edit). A stored "light" or "high-contrast" is a skin and is
+  // kept. display.accent is new; anything but #rrggbb is "".
+  if (!isSkin(merged.display.theme)) {
+    merged.display.theme = DEFAULT_SKIN;
+  }
+  merged.display.accent = normalizeAccent(merged.display.accent);
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
