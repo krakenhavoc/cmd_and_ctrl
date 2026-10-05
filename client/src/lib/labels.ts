@@ -508,6 +508,50 @@ export const LABEL_SPECS = {
     doc: "the admin view's list of accounts",
   }),
 
+  // -- The site pages (ADR 0125 §3.7): the first-use hints' anchors --
+  createGame: label({
+    name: "create game",
+    kind: "aria",
+    role: "form",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Lobby's create-a-table form; the lobby.create hint points at it",
+  }),
+  deckLink: label({
+    name: "deck link",
+    kind: "aria",
+    role: "textbox",
+    owners: ["routes/Decks.svelte"],
+    doc: "the Decks page's deck-link field; the decks.check hint points at it",
+  }),
+  yourDecks: label({
+    name: "your decks",
+    kind: "aria",
+    role: "list",
+    owners: ["routes/Decks.svelte"],
+    doc: "a signed-in person's saved decks; the decks.library hint points at it",
+  }),
+  settingsSections: label({
+    name: "settings sections",
+    kind: "aria",
+    role: "navigation",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the Settings dialog's section tabs; the settings.display hint points at it",
+  }),
+  searchCatalogue: label({
+    name: "search the catalogue",
+    kind: "aria",
+    role: "textbox",
+    owners: ["routes/Catalog.svelte"],
+    doc: "the Catalogue's search field; the catalog.search hint points at it",
+  }),
+  searchRoadmap: label({
+    name: "search the roadmap",
+    kind: "aria",
+    role: "textbox",
+    owners: ["routes/Roadmap.svelte"],
+    doc: "the Roadmap's search field; the roadmap.search hint points at it",
+  }),
+
   // -- Everywhere --
   tip: label({
     name: "tip",
