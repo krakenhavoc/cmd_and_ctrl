@@ -1400,3 +1400,14 @@ func counterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
 	}
 	return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
 }
+
+// putChargeCounterOnThis is "put a charge counter on this permanent"
+// as a trigger body (Door of Destinies, Black Market). A source that
+// left and came back in response is a new object, so the counter goes
+// nowhere (#1432).
+func putChargeCounterOnThis(g *game.Game, item *game.StackItem) error {
+	if sourceIsNewObject(g, item) { // #1432
+		return nil
+	}
+	return g.AddCounterForEffect(item.SourceCardID, "charge", 1)
+}
