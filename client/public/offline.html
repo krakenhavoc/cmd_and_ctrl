@@ -91,15 +91,26 @@
   </head>
   <body>
     <main>
-      <svg width="72" height="72" viewBox="0 0 64 64" role="img" aria-label="CMD &amp; CTRL">
+      <svg
+        width="72"
+        height="72"
+        viewBox="-104 -104 208 208"
+        role="img"
+        aria-label="CMD &amp; CTRL"
+      >
         <defs>
-          <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
-            <rect width="64" height="64" fill="white" />
-            <rect x="19" y="26" width="42" height="32" rx="8" fill="black" />
-          </mask>
+          <path
+            id="c"
+            d="M-10-40V-80L-30-100H-52A48 48 0 0 0-100-52V-30L-80-10H-40L-33-17L-48-32H-71A7 7 0 0 1-78-39V-52A26 26 0 0 1-52-78H-39A7 7 0 0 1-32-71V-48L-17-33Z"
+          />
         </defs>
-        <rect x="7" y="10" width="26" height="36" rx="5" fill="#e8eff7" mask="url(#cut)" />
-        <rect x="23" y="30" width="34" height="24" rx="5" fill="#ff7a1a" />
+        <g fill="#ff7a1a">
+          <use href="#c" />
+          <use href="#c" transform="scale(-1 1)" />
+          <use href="#c" transform="scale(1 -1)" />
+          <use href="#c" transform="scale(-1 -1)" />
+          <path d="M0-38L38 0L0 38L-38 0Z" fill="#e8eff7" />
+        </g>
       </svg>
       <p class="mono">No connection</p>
       <h1>The table needs a connection</h1>
