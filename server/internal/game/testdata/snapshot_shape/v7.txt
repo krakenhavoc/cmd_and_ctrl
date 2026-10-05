@@ -3738,6 +3738,7 @@ seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
+seats[].triggerOrderAlwaysAsk	bool
 seats[].turnsBegun	number:int
 seats[].undosRemaining	number:int
 seats[].upkeepsBegun	number:int

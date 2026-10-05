@@ -182,6 +182,12 @@ export interface Settings {
     // tracking posture. A card the board can't pay for still offers
     // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
+    // #1530: always raise the CR 603.3b "order your triggers" prompt,
+    // even for a batch the server would order itself because every item
+    // commutes (an all-prowess batch, #1511). The decision is the
+    // server's, so the server holds the seat's copy and the client keeps
+    // it in step (triggerOrderPref.ts). Default off.
+    alwaysAskTriggerOrder: boolean;
     // S13.6: when a stopped step lands on the viewer but the
     // legality engine reports no legal response (no castable hand
     // cards, no battlefield activations, no commander cast),
@@ -429,6 +435,8 @@ export function defaultSettings(): Settings {
       // click taps the lands for it. Off (the S15 default) is the
       // sandbox / paper-tracking posture, still a supported choice.
       strictMana: true,
+      // #1530 default: off. The server orders a commuting batch itself.
+      alwaysAskTriggerOrder: false,
       // S13.6 default: on. The step-stops grid is the intent
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
@@ -565,6 +573,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     autoPassPriority: "synced",
     stepStops: "synced",
     strictMana: "synced",
+    alwaysAskTriggerOrder: "synced",
     smartAutoPass: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",

@@ -130,3 +130,21 @@ func (g *Game) reemitTableRollsLocked() {
 		g.emitTableRollLocked(ev)
 	}
 }
+
+// SetTriggerOrderPreference sets playerID's "always ask me to order my
+// triggers" preference (#1530). It is a seat setting, not a play: it
+// emits no event and mints no undo entry (actions.MintsNoUndo), and
+// RestoreFrom carries it across an undo. Takes the write lock.
+func (g *Game) SetTriggerOrderPreference(playerID uuid.UUID, alwaysAsk bool) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.TriggerOrderAlwaysAsk = alwaysAsk
+	return nil
+}
