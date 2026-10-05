@@ -431,8 +431,8 @@
   }
   .tg-badge.counter,
   .tg-badge.attachment {
-    border-color: rgba(217, 180, 92, 0.6);
-    color: var(--gold);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    color: var(--accent);
   }
   .tg-badge.damage,
   .tg-badge.reason {

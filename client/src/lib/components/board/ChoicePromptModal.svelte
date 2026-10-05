@@ -2192,8 +2192,8 @@
     transform: translateY(-2px);
   }
   .card-pick.selected {
-    border-color: var(--gold);
-    box-shadow: 0 0 16px rgba(217, 180, 92, 0.35);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
   }
   .card-pick:disabled {
     opacity: 0.4;
@@ -2253,14 +2253,14 @@
     padding: 6px 12px;
     border-radius: 999px;
     border: 1px solid var(--line, rgba(255, 255, 255, 0.18));
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
     color: inherit;
     font-size: 13px;
     cursor: pointer;
   }
   .type-pick:hover,
   .type-pick:focus-visible {
-    background: rgba(255, 255, 255, 0.16);
+    background: color-mix(in srgb, var(--overlay-ink) 16%, transparent);
   }
   .order-label {
     display: flex;
@@ -2296,7 +2296,7 @@
     border-radius: 10px;
   }
   .assign-row.trample {
-    border-color: rgba(255, 107, 107, 0.35);
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
   }
   .assign-order {
     display: inline-flex;

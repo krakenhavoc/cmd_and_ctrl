@@ -310,7 +310,7 @@
     display: inline-block;
     width: 12px;
     height: 12px;
-    border: 2px solid var(--gold);
+    border: 2px solid var(--accent);
     transform: rotate(45deg);
     border-radius: 3px;
     box-sizing: border-box;
@@ -347,7 +347,7 @@
     color: var(--fg);
   }
   .site-nav a.current {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     background: var(--accent-soft);
   }
 
@@ -477,7 +477,7 @@
     height: 28px;
     padding: 0 10px;
     border-radius: var(--radius);
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-size: 12px;
     font-weight: 600;
     text-decoration: none;

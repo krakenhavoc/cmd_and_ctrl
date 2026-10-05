@@ -373,15 +373,15 @@
     padding: 4px 7px;
     border-radius: 6px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: var(--fg);
     cursor: pointer;
     box-shadow: none;
   }
   .up .more-btn:hover,
   .up .more-btn.on {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: color-mix(in srgb, var(--border) 60%, white 40%);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
+    border-color: color-mix(in srgb, var(--border) 60%, var(--overlay-ink) 40%);
   }
   /* The command bar's icon button (Game.svelte's .ibtn). */
   .down .more-btn {
@@ -400,7 +400,7 @@
   .down .more-btn:hover,
   .down .more-btn.on {
     color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
     border-color: var(--border);
   }
   .more-btn:focus-visible {
@@ -483,7 +483,7 @@
   }
   .mi:hover:not(:disabled),
   .mi:focus-visible {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
     border-color: transparent;
     outline: none;
   }
@@ -551,8 +551,8 @@
   }
   .vote-form input:focus {
     outline: none;
-    border-color: #b08aff;
-    box-shadow: 0 0 0 2px rgba(176, 138, 255, 0.25);
+    border-color: var(--magenta);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--magenta) 25%, transparent);
   }
   .confirm {
     gap: 8px;
@@ -578,8 +578,8 @@
     margin-top: 4px;
   }
   .vote-form .go {
-    color: #b08aff;
-    border-color: rgba(176, 138, 255, 0.6);
+    color: var(--magenta);
+    border-color: color-mix(in srgb, var(--magenta) 60%, transparent);
   }
 
   @media (max-width: 599px) {

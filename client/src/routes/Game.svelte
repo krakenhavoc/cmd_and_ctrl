@@ -2308,7 +2308,7 @@
     display: inline-block;
     width: 14px;
     height: 14px;
-    border: 2px solid var(--gold);
+    border: 2px solid var(--accent);
     transform: rotate(45deg);
     border-radius: 3px;
     box-sizing: border-box;
@@ -2358,8 +2358,8 @@
   }
   .status-connecting .dot,
   .status-reconnecting .dot {
-    background: var(--gold);
-    box-shadow: 0 0 8px var(--gold);
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
   }
   .status-reconnecting .dot {
     animation: status-pulse 1.2s var(--ease) infinite;
@@ -2395,7 +2395,7 @@
   }
   .tag-spawn {
     background: rgba(255, 208, 122, 0.14);
-    color: var(--gold, #ffd07a);
+    color: var(--accent, #ffd07a);
     border: 1px solid rgba(255, 208, 122, 0.5);
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -2406,9 +2406,9 @@
     font-family: var(--font-mono);
   }
   .tag-spectator {
-    background: rgba(176, 138, 255, 0.15);
+    background: color-mix(in srgb, var(--magenta) 15%, transparent);
     color: var(--magenta);
-    border: 1px solid rgba(176, 138, 255, 0.5);
+    border: 1px solid color-mix(in srgb, var(--magenta) 50%, transparent);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     font-size: 0.7em;
@@ -2465,7 +2465,7 @@
   .ibtn:hover,
   .ibtn.on {
     color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
     border-color: var(--border);
   }
   /* The ⋯ menu and Concede's confirm are GameMenu.svelte's (ADR 0111
@@ -2629,7 +2629,7 @@
     white-space: nowrap;
   }
   .att-label.gold {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .att-label.danger {
     color: var(--danger);
@@ -2676,12 +2676,12 @@
   }
   .rewind-notice,
   .game-end {
-    border-color: rgba(217, 180, 92, 0.45);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
 
   .toast.error,
   .eliminated {
-    border-color: rgba(255, 107, 107, 0.4);
+    border-color: var(--danger-line);
   }
 
   /* Opening-hand roll-call: one pill per seat. */
@@ -2718,8 +2718,8 @@
     color: var(--mint);
   }
   .mull.waiting {
-    border-color: rgba(217, 180, 92, 0.5);
-    color: var(--gold-strong);
+    border-color: color-mix(in srgb, var(--priority) 50%, transparent);
+    color: var(--priority-strong);
   }
   .mull-count {
     font-family: var(--font-mono);
@@ -2743,7 +2743,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--gold-strong);
+    color: var(--priority-strong);
     font-weight: 600;
   }
   .mulligan-cards {
@@ -2806,14 +2806,14 @@
     flex-direction: column;
     box-shadow:
       0 12px 32px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      inset 0 1px 0 color-mix(in srgb, var(--overlay-ink) 5%, transparent);
   }
   .life-history-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--overlay);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-size: 0.75em;

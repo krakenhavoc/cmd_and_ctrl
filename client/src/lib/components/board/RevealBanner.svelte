@@ -218,7 +218,7 @@
     background: color-mix(in srgb, var(--surface) 94%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(217, 180, 92, 0.45);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     color: var(--fg-muted);
@@ -240,7 +240,7 @@
     white-space: nowrap;
   }
   .label.gold {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .text {
     flex: 1;
@@ -287,7 +287,7 @@
     height: 48px;
     border-radius: 3px;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, var(--overlay-ink) 5%, transparent);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   }
   .reveal-card img {
@@ -309,7 +309,7 @@
     font-variant-numeric: tabular-nums;
     padding: 2px 6px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
     color: var(--text-dim, #b9b3a7);
   }
   .sr-only {

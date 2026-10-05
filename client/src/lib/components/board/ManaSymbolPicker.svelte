@@ -124,9 +124,9 @@
     max-width: 140px;
     padding: 10px 8px 8px;
     box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: #e8ecf6;
-    border: 1px solid rgba(200, 168, 106, 0.35);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 10px;
     cursor: pointer;
     font: inherit;
@@ -137,8 +137,8 @@
   }
   .mana-option:hover:not(:disabled),
   .mana-option:focus-visible:not(:disabled) {
-    background: rgba(200, 168, 106, 0.16);
-    border-color: rgba(232, 200, 130, 0.9);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent-strong) 90%, transparent);
     transform: translateY(-2px);
     outline: none;
   }

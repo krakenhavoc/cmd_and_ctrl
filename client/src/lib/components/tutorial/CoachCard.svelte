@@ -145,9 +145,9 @@
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.1em;
-    color: var(--gold);
-    background: var(--gold-soft);
-    border: 1px solid rgba(217, 180, 92, 0.4);
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
     border-radius: 999px;
     padding: 2px 8px;
   }
@@ -211,8 +211,8 @@
     margin: 2px 0 0;
     padding: 8px 10px;
     border-radius: 8px;
-    background: var(--gold-soft);
-    border: 1px solid rgba(217, 180, 92, 0.3);
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     font-size: 12.5px;
     line-height: 1.45;
     color: var(--fg);
@@ -224,7 +224,7 @@
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--accent);
   }
   .coach-progress {
     display: flex;
@@ -234,13 +234,13 @@
     flex: 1 1 0;
     height: 3px;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-strong);
   }
   .seg.past {
-    background: var(--gold);
+    background: var(--accent);
   }
   .seg.now {
-    background: rgba(217, 180, 92, 0.45);
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   .coach-bar {
     display: flex;
@@ -268,13 +268,13 @@
     padding: 0 16px;
     border-radius: var(--radius);
     border: 0;
-    background: var(--gold);
+    background: var(--accent);
     color: var(--accent-fg);
     font: 600 13px var(--font-ui);
     cursor: pointer;
   }
   .coach-primary:hover {
-    background: var(--gold-strong);
+    background: var(--accent-strong);
   }
   .coach-status {
     display: inline-flex;
@@ -282,7 +282,7 @@
     gap: 7px;
     font-size: 12px;
     font-weight: 500;
-    color: var(--gold);
+    color: var(--accent);
   }
   .coach-status.watch {
     color: var(--magenta);

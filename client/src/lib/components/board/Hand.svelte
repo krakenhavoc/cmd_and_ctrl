@@ -954,7 +954,7 @@
   .drag-ghost.reordering {
     transform: scale(1.04);
     box-shadow:
-      0 0 0 2px rgba(255, 255, 255, 0.35),
+      0 0 0 2px color-mix(in srgb, var(--overlay-ink) 35%, transparent),
       0 14px 30px rgba(0, 0, 0, 0.55);
   }
   /* The ghost, the zone and the reason are portalled to <body>. Scoped
@@ -991,14 +991,14 @@
   }
   .drag-ghost.castable {
     box-shadow:
-      0 0 0 2px var(--gold),
-      0 0 26px rgba(255, 208, 122, 0.75),
+      0 0 0 2px var(--accent),
+      0 0 26px color-mix(in srgb, var(--pick) 75%, transparent),
       0 14px 30px rgba(0, 0, 0, 0.55);
   }
   .drag-ghost.blocked {
     box-shadow:
       0 0 0 2px var(--danger),
-      0 0 22px rgba(255, 107, 107, 0.6),
+      0 0 22px color-mix(in srgb, var(--danger) 60%, transparent),
       0 14px 30px rgba(0, 0, 0, 0.55);
   }
   .drag-ghost.blocked img {
@@ -1036,20 +1036,20 @@
     justify-content: center;
     padding-bottom: 14px;
     box-sizing: border-box;
-    border: 2px dashed rgba(217, 180, 92, 0.35);
+    border: 2px dashed color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 14px;
-    background: rgba(217, 180, 92, 0.05);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
   }
   .drag-cast-zone.blocked {
-    border-color: rgba(255, 107, 107, 0.35);
-    background: rgba(255, 107, 107, 0.05);
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    background: color-mix(in srgb, var(--danger) 5%, transparent);
   }
   .drag-cast-label {
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--gold-strong, #f1d38a);
+    color: var(--accent-strong);
   }
   .drag-cast-zone.blocked .drag-cast-label {
     color: #ffb3b3;

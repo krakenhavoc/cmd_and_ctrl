@@ -630,12 +630,12 @@
     0%,
     100% {
       box-shadow:
-        0 0 0 2px var(--gold),
+        0 0 0 2px var(--priority),
         0 0 12px rgba(255, 208, 122, 0.35);
     }
     50% {
       box-shadow:
-        0 0 0 3px var(--gold),
+        0 0 0 3px var(--priority),
         0 0 30px rgba(255, 208, 122, 0.8);
     }
   }
@@ -653,38 +653,38 @@
     box-shadow:
       0 0 0 1px var(--seat-color, #5fb0ff),
       0 0 22px color-mix(in srgb, var(--seat-color, #5fb0ff) 45%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      inset 0 1px 0 color-mix(in srgb, var(--overlay-ink) 8%, transparent);
   }
   .identity.priority .avatar-wrap {
-    border-color: var(--gold);
+    border-color: var(--priority);
     box-shadow:
-      0 0 0 2px var(--gold),
+      0 0 0 2px var(--priority),
       0 0 26px rgba(255, 208, 122, 0.65),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      inset 0 1px 0 color-mix(in srgb, var(--overlay-ink) 8%, transparent);
   }
   .identity.targetable .avatar-wrap {
     cursor: pointer;
     border-color: var(--danger);
     box-shadow:
       0 0 0 2px var(--danger),
-      0 0 22px rgba(255, 122, 122, 0.55);
+      0 0 22px color-mix(in srgb, var(--attack) 55%, transparent);
   }
   .identity.targetable .avatar-wrap:hover {
     box-shadow:
       0 0 0 3px var(--danger),
-      0 0 28px rgba(255, 122, 122, 0.75);
+      0 0 28px color-mix(in srgb, var(--attack) 75%, transparent);
   }
   .identity.cast-targetable .avatar-wrap {
     cursor: pointer;
-    border-color: var(--gold);
+    border-color: var(--accent);
     box-shadow:
-      0 0 0 2px var(--gold),
-      0 0 22px rgba(255, 208, 122, 0.55);
+      0 0 0 2px var(--accent),
+      0 0 22px color-mix(in srgb, var(--pick) 55%, transparent);
   }
   .identity.cast-targetable .avatar-wrap:hover {
     box-shadow:
-      0 0 0 3px var(--gold),
-      0 0 28px rgba(255, 208, 122, 0.75);
+      0 0 0 3px var(--accent),
+      0 0 28px color-mix(in srgb, var(--pick) 75%, transparent);
   }
   .identity.cast-picked .avatar-wrap {
     border-color: #ffe69a;
@@ -926,7 +926,7 @@
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.3);
     color: #c8c8c8;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid color-mix(in srgb, var(--overlay-ink) 5%, transparent);
     cursor: default;
     backdrop-filter: blur(4px);
   }
@@ -940,29 +940,29 @@
       background 120ms var(--ease);
   }
   button.marker:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: color-mix(in srgb, var(--overlay-ink) 20%, transparent);
     background: rgba(0, 0, 0, 0.55);
   }
   button.marker:active {
     transform: scale(0.95);
   }
   .marker.active.monarch {
-    color: var(--gold);
+    color: var(--priority);
     border-color: rgba(255, 208, 122, 0.7);
-    background: var(--gold-soft);
+    background: var(--priority-soft);
     box-shadow: 0 0 10px rgba(255, 208, 122, 0.35);
   }
   .marker.active.initiative {
-    color: #b08aff;
-    border-color: rgba(176, 138, 255, 0.7);
-    background: rgba(176, 138, 255, 0.18);
-    box-shadow: 0 0 10px rgba(176, 138, 255, 0.35);
+    color: var(--magenta);
+    border-color: color-mix(in srgb, var(--magenta) 70%, transparent);
+    background: color-mix(in srgb, var(--magenta) 18%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--magenta) 35%, transparent);
   }
   .marker.poison {
     color: var(--mint);
   }
   .marker.energy {
-    color: var(--gold);
+    color: var(--accent);
   }
   .marker.counter {
     color: #b8c8e8;
@@ -974,7 +974,7 @@
     padding: 2px 6px;
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--overlay);
   }
   .counter-icon {
     font-size: 11px;
@@ -992,7 +992,7 @@
     color: var(--mint);
   }
   .counter-inline.energy .counter-val {
-    color: var(--gold);
+    color: var(--accent);
   }
   .counter-btn {
     width: 14px;
@@ -1012,7 +1012,7 @@
       color 100ms var(--ease);
   }
   .counter-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
     color: var(--fg);
   }
 
@@ -1035,9 +1035,9 @@
     gap: 3px;
     padding: 3px 7px;
     border-radius: 999px;
-    background: var(--gold-soft, rgba(255, 208, 122, 0.14));
+    background: var(--accent-soft);
     border: 1px solid rgba(255, 208, 122, 0.45);
-    color: var(--gold);
+    color: var(--accent);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1052,7 +1052,7 @@
     padding: 2px 7px;
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--overlay);
     font-weight: 700;
     margin-top: 6px;
   }
@@ -1066,7 +1066,7 @@
     gap: 3px;
     margin-top: 0;
     margin-bottom: 2px;
-    color: var(--gold, #ffd07a);
+    color: var(--accent);
     border-color: rgba(255, 208, 122, 0.4);
     background: rgba(255, 208, 122, 0.12);
   }
@@ -1083,7 +1083,7 @@
   .tag.considering {
     margin-top: 0;
     margin-bottom: 2px;
-    color: var(--gold, #ffd07a);
+    color: var(--priority);
     border-color: rgba(255, 208, 122, 0.4);
     background: rgba(255, 208, 122, 0.12);
   }

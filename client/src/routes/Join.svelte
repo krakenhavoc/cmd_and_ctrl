@@ -405,8 +405,8 @@
     background: transparent;
   }
   .seat.open.yours {
-    border-color: rgba(217, 180, 92, 0.5);
-    background: var(--gold-soft);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
   }
   .sav {
     width: 32px;
@@ -437,7 +437,7 @@
     background: transparent;
   }
   .seat.open.yours .sav.open {
-    border-color: rgba(217, 180, 92, 0.6);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   }
   .sinfo {
     min-width: 0;
@@ -459,7 +459,7 @@
     font-weight: 500;
   }
   .seat.open.yours .sname.dim {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-weight: 700;
   }
   .sstat {
@@ -476,19 +476,19 @@
     color: var(--fg-dim);
   }
   .seat.open.yours .sstat.you {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .chip.live {
-    color: var(--gold-strong);
-    border-color: rgba(217, 180, 92, 0.5);
-    background: var(--gold-soft);
+    color: var(--accent-strong);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
   }
   .dot {
     display: inline-block;
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--gold);
+    background: var(--accent);
   }
   .help.dim {
     color: var(--fg-dim);
@@ -504,7 +504,7 @@
     font-size: 11px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-weight: 600;
   }
   .head h1 {
@@ -631,8 +631,8 @@
     font-size: 12.5px;
   }
   .notice.err {
-    background: rgba(255, 107, 107, 0.08);
-    border: 1px solid rgba(255, 107, 107, 0.35);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
     color: var(--fg);
   }
   .error {

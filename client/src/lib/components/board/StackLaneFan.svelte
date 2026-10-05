@@ -522,9 +522,9 @@
   .slot.top .tile {
     opacity: 1;
     padding: 10px;
-    border-color: var(--gold);
+    border-color: var(--accent);
     box-shadow:
-      0 0 0 3px var(--gold),
+      0 0 0 3px var(--accent),
       var(--shadow-glow);
   }
   .slot:hover .tile,
@@ -541,15 +541,15 @@
   }
   .slot.top .tile.targeted {
     box-shadow:
-      0 0 0 3px var(--gold),
+      0 0 0 3px var(--accent),
       0 0 0 6px var(--targeted-ring),
       var(--shadow-glow);
   }
   .tile.cast-targetable {
-    border-color: var(--gold);
+    border-color: var(--accent);
     box-shadow:
-      var(--ring-gold),
-      0 0 16px var(--gold-soft);
+      var(--ring),
+      0 0 16px var(--accent-soft);
     opacity: 1;
   }
   .slot.pending .tile {
@@ -563,7 +563,7 @@
     top: -22px;
     padding: 2px 8px;
     border-radius: 999px;
-    background: var(--gold);
+    background: var(--accent);
     color: var(--accent-fg);
     font-family: var(--font-mono);
     font-size: 10px;
@@ -671,8 +671,8 @@
     padding: 0 5px;
   }
   .chip.flag {
-    color: var(--gold-strong);
-    border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+    color: var(--accent-strong);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   .chip.manual {
     border-style: dashed;
@@ -687,7 +687,7 @@
     cursor: pointer;
   }
   .target-btn:focus-visible {
-    outline: 2px solid var(--gold);
+    outline: 2px solid var(--accent);
     outline-offset: 3px;
   }
   .caption {

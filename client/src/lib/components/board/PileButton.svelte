@@ -121,7 +121,7 @@
     opacity: 0.55;
   }
   .pile:not(:disabled):hover {
-    border-color: rgba(217, 180, 92, 0.45);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
     background: var(--surface-hover);
     transform: none;
   }

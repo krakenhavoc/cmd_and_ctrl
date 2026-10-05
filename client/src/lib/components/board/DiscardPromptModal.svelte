@@ -146,8 +146,8 @@
     transform: translateY(-2px);
   }
   .card-pick.selected {
-    border-color: var(--gold);
-    box-shadow: 0 0 16px rgba(217, 180, 92, 0.35);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
   }
   .card-pick:disabled {
     opacity: 0.4;

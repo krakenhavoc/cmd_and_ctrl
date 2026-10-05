@@ -1237,7 +1237,7 @@
   .settings-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(11, 10, 9, 0.72);
+    background: var(--scrim);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     display: flex;
@@ -1286,7 +1286,7 @@
   }
   .close:hover {
     color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
     border-color: var(--border);
   }
   .body {
@@ -1318,7 +1318,7 @@
     justify-content: flex-start;
   }
   nav button:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: var(--fg);
   }
   nav button.active {
@@ -1426,8 +1426,8 @@
       background 140ms var(--ease);
   }
   input[type="checkbox"]:checked {
-    background: var(--gold);
-    border-color: var(--gold-strong);
+    background: var(--accent);
+    border-color: var(--accent-strong);
   }
   input[type="checkbox"]:checked::after {
     left: 18px;
@@ -1439,7 +1439,7 @@
   }
   input[type="range"] {
     flex: 0 0 180px;
-    accent-color: var(--gold);
+    accent-color: var(--accent);
     margin: 0;
   }
   select {
@@ -1475,17 +1475,17 @@
      cost the player a turn can't be mistaken for a routine
      preference. */
   label.danger {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .danger-help {
     color: var(--fg-muted);
-    border-left: 2px solid var(--gold);
+    border-left: 2px solid var(--accent);
     padding: 6px 10px;
-    background: var(--gold-soft);
+    background: var(--accent-soft);
     border-radius: 0 8px 8px 0;
   }
   .danger-help strong {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     letter-spacing: 0.03em;
   }
   /* An option that exists only to be compared against another one.
@@ -1495,9 +1495,9 @@
     margin-left: 6px;
     padding: 1px 5px;
     border-radius: 4px;
-    border: 1px solid var(--gold);
-    background: var(--gold-soft);
-    color: var(--gold-strong);
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
     font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 0.08em;
@@ -1522,15 +1522,15 @@
     color: var(--fg-muted);
   }
   .danger {
-    background: rgba(255, 107, 107, 0.1);
-    border: 1px solid rgba(255, 107, 107, 0.4);
+    background: var(--danger-soft);
+    border: 1px solid var(--danger-line);
     color: var(--danger);
     padding: 0.5rem 0.9rem;
     border-radius: var(--radius);
     cursor: pointer;
   }
   .danger:hover {
-    background: rgba(255, 107, 107, 0.18);
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
   }
   .adv-section {
     margin: 0 0 18px;
@@ -1546,12 +1546,12 @@
     font-size: 12.5px;
   }
   .adv-section button.danger {
-    background: rgba(255, 107, 107, 0.1);
-    border-color: rgba(255, 107, 107, 0.4);
+    background: var(--danger-soft);
+    border-color: var(--danger-line);
     color: var(--danger);
   }
   .adv-section button.danger:hover:not(:disabled) {
-    background: rgba(255, 107, 107, 0.18);
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
   }
   .adv-section textarea {
     width: 100%;
@@ -1642,8 +1642,8 @@
   .sc-note {
     margin: 0 0 10px;
     padding: 7px 10px;
-    border-left: 2px solid var(--gold);
-    background: var(--gold-soft);
+    border-left: 2px solid var(--accent);
+    background: var(--accent-soft);
     border-radius: 0 8px 8px 0;
     color: var(--fg-muted);
     font-size: 11.5px;
@@ -1715,9 +1715,9 @@
     background: var(--surface-hover);
   }
   .sc-capture.listening {
-    border-color: var(--gold);
-    background: var(--gold-soft);
-    color: var(--gold-strong);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
   }
   .sc-row.conflict .sc-capture {
     border-color: var(--danger);

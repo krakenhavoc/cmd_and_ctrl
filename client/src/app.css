@@ -38,9 +38,44 @@
   --accent-strong: #f1d38a;
   --accent-soft: rgba(217, 180, 92, 0.16);
   --accent-fg: #1c1503;
-  --gold: #d9b45c;
-  --gold-strong: #f1d38a;
-  --gold-soft: rgba(217, 180, 92, 0.16);
+  /* Derived from --accent, so a skin (or a player's custom accent)
+     sets one colour and every border, wash and glow follows. Use
+     color-mix(in srgb, var(--accent) N%, transparent) inline for an
+     alpha these three don't cover. */
+  --accent-line: color-mix(in srgb, var(--accent) 50%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 7%, transparent);
+  /* --gold is the pre-skin name for the accent. New code uses
+     --accent for chrome and --priority for the turn signal below. */
+  --gold: var(--accent);
+  --gold-strong: var(--accent-strong);
+  --gold-soft: var(--accent-soft);
+
+  /* Overlay ink: what translucent washes, hairlines and hover fills
+     are mixed from. White on a dark skin, black on a light one, so
+     color-mix(in srgb, var(--overlay-ink) 6%, transparent) is a
+     hover wash on either. */
+  --overlay-ink: #fff;
+  --overlay-faint: color-mix(in srgb, var(--overlay-ink) 4%, transparent);
+  --overlay: color-mix(in srgb, var(--overlay-ink) 6%, transparent);
+  --overlay-strong: color-mix(in srgb, var(--overlay-ink) 10%, transparent);
+  /* Behind full-screen dialogs. */
+  --scrim: color-mix(in srgb, var(--bg) 72%, transparent);
+  /* Drop shadows stay black in every dark skin. */
+  --shadow-ink: #000;
+
+  /* Game signals: what a ring or glow MEANS on the board. They keep
+     their meaning in every skin; a skin only retunes one if its
+     accent would otherwise collide. --priority is the "you have
+     priority / whose turn" gold, separate from the chrome accent. */
+  --priority: #d9b45c;
+  --priority-strong: #f1d38a;
+  --priority-soft: rgba(217, 180, 92, 0.16);
+  --pick: #ffd07a;
+  --target: #6fe3a4;
+  --attack: #ff7a7a;
+  --block: #91c3ff;
+  --danger-soft: color-mix(in srgb, var(--danger) 10%, transparent);
+  --danger-line: color-mix(in srgb, var(--danger) 40%, transparent);
   --magenta: #b08aff;
   /* ADR 0122 §7: the AI-agent chip. Violet, never the bot chip's seat tint. */
   --agent: #c3a6ff;
@@ -114,6 +149,8 @@
   --agent: #5b36b8;
   --agent-soft: rgba(91, 54, 184, 0.1);
   --agent-border: rgba(91, 54, 184, 0.5);
+  --overlay-ink: #000;
+  --shadow-ink: rgba(60, 40, 10, 0.55);
 }
 
 /* High contrast: strong fg-on-bg, brighter accent, thicker
@@ -215,7 +252,7 @@ body {
   /* Flat ink with one warm pool of light at the top — no vignettes
      or bevels; the cards are the colour. */
   background:
-    radial-gradient(900px 520px at 50% -10%, rgba(217, 180, 92, 0.07), transparent 70%), var(--bg);
+    radial-gradient(900px 520px at 50% -10%, var(--accent-glow), transparent 70%), var(--bg);
   background-attachment: fixed;
   color: var(--fg);
 }
@@ -287,17 +324,17 @@ a:hover {
 
 .tag-connected {
   color: var(--mint);
-  border-color: rgba(95, 212, 164, 0.4);
+  border-color: color-mix(in srgb, var(--mint) 40%, transparent);
 }
 
 .tag-disconnected {
   color: var(--danger);
-  border-color: rgba(255, 107, 107, 0.4);
+  border-color: var(--danger-line);
 }
 
 .tag-connecting {
-  color: var(--gold-strong);
-  border-color: rgba(217, 180, 92, 0.45);
+  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 /* Buttons — the default is the SECONDARY style (raised ink, hairline).
@@ -328,7 +365,7 @@ button {
 
 button:hover {
   background: var(--surface-hover);
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: color-mix(in srgb, var(--overlay-ink) 22%, transparent);
 }
 
 button:active {
@@ -357,13 +394,13 @@ button.primary:hover:not(:disabled) {
 }
 
 button.danger {
-  background: rgba(255, 107, 107, 0.1);
-  border-color: rgba(255, 107, 107, 0.4);
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
   color: var(--danger);
 }
 
 button.danger:hover:not(:disabled) {
-  background: rgba(255, 107, 107, 0.18);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
 }
 
 /* Ghost: navigation and tertiary actions — no fill until hover. */
@@ -374,7 +411,7 @@ button.ghost {
 }
 
 button.ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--overlay);
   color: var(--fg);
 }
 
@@ -479,7 +516,7 @@ textarea::placeholder {
 .prompt-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(11, 10, 9, 0.72);
+  background: var(--scrim);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -558,7 +595,7 @@ textarea::placeholder {
   font-weight: 600;
 }
 .prompt-hint.warn {
-  color: var(--gold-strong);
+  color: var(--accent-strong);
 }
 .prompt-hint.error {
   color: var(--danger);
@@ -613,8 +650,8 @@ textarea::placeholder {
 .prompt-opt.on,
 .prompt-opt[aria-pressed="true"],
 .prompt-opt[aria-checked="true"] {
-  border-color: rgba(217, 180, 92, 0.6);
-  background: var(--gold-soft);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: var(--accent-soft);
 }
 .prompt-opt:disabled {
   opacity: 0.45;
@@ -637,7 +674,7 @@ textarea::placeholder {
 .prompt-opt.on .prompt-radio,
 .prompt-opt[aria-pressed="true"] .prompt-radio,
 .prompt-opt[aria-checked="true"] .prompt-radio {
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .prompt-opt.on .prompt-radio::after,
 .prompt-opt[aria-pressed="true"] .prompt-radio::after,
@@ -646,7 +683,7 @@ textarea::placeholder {
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--accent);
 }
 .prompt-num {
   width: 22px;
@@ -664,7 +701,7 @@ textarea::placeholder {
 }
 .prompt-opt.on .prompt-num,
 .prompt-opt[aria-pressed="true"] .prompt-num {
-  background: var(--gold);
+  background: var(--accent);
   color: var(--accent-fg);
 }
 .kbd {
@@ -745,20 +782,20 @@ textarea::placeholder {
 /* Thin, subtle scrollbars everywhere dark. Webkit + Firefox syntax. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: color-mix(in srgb, var(--overlay-ink) 16%, transparent) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--overlay-ink) 14%, transparent);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, var(--overlay-ink) 22%, transparent);
   background-clip: content-box;
 }
 *::-webkit-scrollbar-track {

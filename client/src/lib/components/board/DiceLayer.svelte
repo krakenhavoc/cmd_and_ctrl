@@ -559,9 +559,9 @@
   .coin-face.heads {
     background: radial-gradient(
       circle at 35% 30%,
-      color-mix(in srgb, var(--gold-strong) 55%, white),
-      var(--gold-strong) 60%,
-      color-mix(in srgb, var(--gold-strong) 60%, black)
+      color-mix(in srgb, #f1d38a 55%, white),
+      #f1d38a 60%,
+      color-mix(in srgb, #f1d38a 60%, black)
     );
   }
   .coin-face.tails {

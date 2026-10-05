@@ -402,7 +402,7 @@
   .divider {
     height: 1px;
     margin: 4px 2px;
-    background: rgba(200, 168, 106, 0.35);
+    background: color-mix(in srgb, var(--accent) 35%, transparent);
   }
 
   .sandbox {
@@ -424,8 +424,8 @@
     gap: 2px;
     padding: 4px;
     background: rgba(12, 16, 30, 0.96);
-    color: var(--gold);
-    border: 1px solid rgba(200, 168, 106, 0.55);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     border-radius: 6px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
     min-width: 180px;
@@ -449,8 +449,8 @@
   }
   .menu-item:hover:not(:disabled),
   .menu-item:focus-visible:not(:disabled) {
-    background: rgba(200, 168, 106, 0.15);
-    border-color: rgba(200, 168, 106, 0.4);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
     outline: none;
   }
   .menu-item:disabled {

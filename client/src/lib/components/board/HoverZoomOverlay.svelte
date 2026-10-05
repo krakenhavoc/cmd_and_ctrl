@@ -509,11 +509,11 @@
   }
   .state-attack {
     color: var(--danger);
-    border-color: rgba(255, 107, 107, 0.5);
+    border-color: color-mix(in srgb, var(--danger) 50%, transparent);
   }
   .state-cmd {
-    color: var(--gold-strong);
-    border-color: rgba(217, 180, 92, 0.5);
+    color: var(--accent-strong);
+    border-color: var(--accent-line);
   }
   /* #781: brighter than the ambient state chips beside it. This one
      is not a passing condition — it is part of reading the card. */

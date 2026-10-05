@@ -187,13 +187,13 @@
   }
   .live {
     margin-left: auto;
-    border-color: var(--gold, #ffd07a);
-    color: var(--gold, #ffd07a);
+    border-color: var(--accent, #ffd07a);
+    color: var(--accent, #ffd07a);
   }
   input[type="range"] {
     flex: 1;
     min-width: 8rem;
-    accent-color: var(--gold, #ffd07a);
+    accent-color: var(--accent, #ffd07a);
   }
   .pos {
     min-width: 4.5em;

@@ -383,7 +383,7 @@
     overflow: hidden;
   }
   .summary.active {
-    border-color: rgba(217, 180, 92, 0.28);
+    border-color: color-mix(in srgb, var(--priority) 28%, transparent);
   }
   .summary.eliminated {
     opacity: 0.55;
@@ -425,7 +425,7 @@
     font-size: 11px;
     font-weight: 600;
     line-height: 1.3;
-    background: rgba(255, 255, 255, 0.03);
+    background: color-mix(in srgb, var(--overlay-ink) 3%, transparent);
     color: var(--fg);
   }
   .mana-pip {

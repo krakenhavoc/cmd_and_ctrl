@@ -325,18 +325,18 @@
   /* The source's glow (ADR 0119 §4): gold, so it never reads as the
      green "legal target" ring. */
   :global([data-targeting-source]) {
-    filter: drop-shadow(0 0 5px rgba(255, 208, 122, 0.95))
-      drop-shadow(0 0 14px rgba(255, 208, 122, 0.6));
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pick) 95%, transparent))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--pick) 60%, transparent));
     animation: -global-targeting-source-pulse 1.4s ease-in-out infinite alternate;
   }
   @keyframes -global-targeting-source-pulse {
     from {
-      filter: drop-shadow(0 0 3px rgba(255, 208, 122, 0.8))
-        drop-shadow(0 0 8px rgba(255, 208, 122, 0.4));
+      filter: drop-shadow(0 0 3px color-mix(in srgb, var(--pick) 80%, transparent))
+        drop-shadow(0 0 8px color-mix(in srgb, var(--pick) 40%, transparent));
     }
     to {
-      filter: drop-shadow(0 0 6px rgba(255, 208, 122, 1))
-        drop-shadow(0 0 16px rgba(255, 208, 122, 0.7));
+      filter: drop-shadow(0 0 6px var(--pick))
+        drop-shadow(0 0 16px color-mix(in srgb, var(--pick) 70%, transparent));
     }
   }
   @media (prefers-reduced-motion: reduce) {

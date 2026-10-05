@@ -287,7 +287,7 @@
   }
 
   .tone-combat {
-    color: var(--gold);
+    color: var(--accent);
   }
 
   .tone-bad {
