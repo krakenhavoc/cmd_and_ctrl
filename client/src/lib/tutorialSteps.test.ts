@@ -134,7 +134,7 @@ describe("the script", () => {
     expect(anchorsOf(CAST_CREATURE, ctx(v))).toEqual([{ label: "your hand" }]);
     expect(anchorsOf(ON_THE_STACK, ctx(v))).toEqual([{ label: L.stackPile.any }]);
     expect(anchorsOf(COMMANDER, ctx(v))).toEqual([
-      { label: "castable from other zones", within: "your board" },
+      { label: L.commandZone.any, within: "your board" },
     ]);
     expect(anchorsOf(MOVE_ALONG, ctx(v))).toEqual([{ label: "actions" }]);
     expect(anchorsOf(WATCH_BOT, ctx(v))).toEqual([{ label: "autopass", within: "actions" }]);
@@ -476,7 +476,7 @@ describe("step 10: your commander", () => {
     expect(COMMANDER.hover?.event).toBeUndefined();
     expect(COMMANDER.done).toBeUndefined();
     expect(copyText(COMMANDER.body, keys)).toBe(
-      "Your commander waits in the command zone, and here, beside your hand. Once your lands can pay for it, click it to cast it.",
+      "Your commander waits here, in the command zone beside your hand. Once your lands can pay for it, click it to cast it.",
     );
   });
 

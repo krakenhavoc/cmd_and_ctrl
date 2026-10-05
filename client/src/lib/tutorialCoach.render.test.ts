@@ -670,7 +670,7 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     vi.useFakeTimers();
     document.body.insertAdjacentHTML(
       "beforeend",
-      '<section aria-label="your board"><div aria-label="castable from other zones" id="cz"></div></section>',
+      '<section aria-label="your board"><div role="group" aria-label="Player command zone, 1 card" id="cz"></div></section>',
     );
     place(document.getElementById("cz")!, 40, 500, 120, 170);
     let over = false;
@@ -692,7 +692,7 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     vi.useFakeTimers();
     document.body.insertAdjacentHTML(
       "beforeend",
-      '<section aria-label="your board"><div aria-label="castable from other zones" id="cz"></div></section>',
+      '<section aria-label="your board"><div role="group" aria-label="Player command zone, 1 card" id="cz"></div></section>',
     );
     place(document.getElementById("cz")!, 40, 500, 120, 170);
     const m = mount([WELCOME, COMMANDER, HANDOFF], {

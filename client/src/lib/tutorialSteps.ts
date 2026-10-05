@@ -25,8 +25,8 @@
 //                                  chooser's detour, L.chooseFirstTurn
 //                                  and its confirm, L.giveFirstTurn.any
 //   step 8, the stack pile         { label: L.stackPile.any }
-//   step 10, the commander         { label: L.castFromOtherZones, within: L.yourBoard }
-//                                  (the strip beside the hand that holds it)
+//   step 10, the commander         { label: L.commandZone.any, within: L.yourBoard }
+//                                  (the command zone beside the hand, #2349)
 //   step 12, the autopass toggle   { label: L.autopass, within: L.actions }
 //   step 13's detour, the bot      { label: L.seatBoard(name) }
 //   step 9, one card               { cardID }  (Card's data-instance-id)
@@ -77,9 +77,9 @@ const AUTOPASS: Anchor = { label: L.autopass, within: L.actions };
 const ROLL_REQUEST: Anchor = { label: L.rollForFirstTurn };
 const ROLL_BANNER: Anchor = { label: L.openingRoll };
 const STACK_PILE: Anchor = { label: L.stackPile.any };
-// The commander beside the hand (#2202), not the command zone panel on
-// the rail: on the practice table the dock covers most of that panel.
-const COMMANDER_STRIP: Anchor = { label: L.castFromOtherZones, within: L.yourBoard };
+// The viewer's command zone, beside the hand (#2349); the table.commander
+// hint anchors to the same element.
+const COMMAND_ZONE: Anchor = { label: L.commandZone.any, within: L.yourBoard };
 
 const MAIN_STEPS = new Set(["precombat_main", "postcombat_main"]);
 const EARLY_STEPS = new Set(["untap", "upkeep", "draw", "precombat_main"]);
@@ -422,23 +422,22 @@ export const RIGHT_CLICK: TutorialStep = {
 };
 
 /**
- * Step 10 shows the commander (ADR 0125 §5.1). It points at the
- * commander in the strip beside the hand (#2202), which is where the
- * player sees it and casts it from: the command zone panel sits on the
- * rail, and on the practice table the dock covers most of it. A hover
- * step with no bus event: on a device with no hover it moves on after a
- * read, because a tap on the card would cast the commander. The practice decks'
- * commanders cost three, which two turns of lands cannot pay, so the
- * step teaches where it is and how it is cast, not the cast.
+ * Step 10 shows the commander (ADR 0125 §5.1): the viewer's command
+ * zone, which sits beside the hand (#2349), the element the
+ * table.commander hint points at too. A hover step with no bus event:
+ * on a device with no hover it moves on after a read, because a tap on
+ * the card would cast the commander. The practice decks' commanders
+ * cost three, which two turns of lands cannot pay, so the step teaches
+ * where it is and how it is cast, not the cast.
  */
 export const COMMANDER: TutorialStep = {
   id: "commander",
   n: 10,
   kind: "action",
   title: "Your commander",
-  body: "Your commander waits in the command zone, and here, beside your hand. Once your lands can pay for it, click it to cast it.",
+  body: "Your commander waits here, in the command zone beside your hand. Once your lands can pay for it, click it to cast it.",
   hint: "Rest the pointer on your commander, beside your hand, for a moment.",
-  anchor: COMMANDER_STRIP,
+  anchor: COMMAND_ZONE,
   hover: { ms: 600 },
   cannot: (c) =>
     c.view && (seatOf(c.view, c.viewerID)?.command?.count ?? 0) === 0

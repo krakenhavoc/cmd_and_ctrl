@@ -277,11 +277,20 @@ func TestPrintedColorsPrefersStampedColors(t *testing.T) {
 	if got := back.Effective().Colors; len(got) != 1 || got[0] != "U" {
 		t.Errorf("colour-indicator face colours = %v, want [U]", got)
 	}
-	// Devoid: coloured pips in the cost, colourless card.
-	devoid := Card{Name: "Eldrazi Skyspawner", TypeLine: "Creature — Eldrazi Drone",
+	// Coloured pips, no stamped colours, no devoid: the cost fallback.
+	unstamped := Card{Name: "Eldrazi Skyspawner", TypeLine: "Creature — Eldrazi Drone",
 		ManaCost: "{3}{U}", Colors: nil}
-	if got := devoid.Effective().Colors; len(got) != 1 || got[0] != "U" {
+	if got := unstamped.Effective().Colors; len(got) != 1 || got[0] != "U" {
 		t.Errorf("unstamped card falls back to the cost: got %v, want [U]", got)
+	}
+	// Devoid: coloured pips in the cost, colourless card. Scryfall's
+	// empty list alone cannot say so (it reads as "not stamped"); the
+	// keyword does (#2152, CR 702.114a).
+	devoid := unstamped
+	devoid.Colors = []string{}
+	devoid.Keywords = []string{KeywordDevoid}
+	if got := devoid.Effective().Colors; len(got) != 0 {
+		t.Errorf("devoid card colours = %v, want none", got)
 	}
 	// Unstamped and costless is still colourless — the fallback
 	// agrees with the stamp rather than contradicting it.

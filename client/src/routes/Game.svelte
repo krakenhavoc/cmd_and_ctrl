@@ -131,7 +131,7 @@
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
-  import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
+  import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
@@ -2166,41 +2166,44 @@
         {/if}
       {/if}
       {#if viewerNeedsToDecide && dockShown}
-        <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet that
-             grows up out of the dock, with Keep hand (Enter) and
-             Mulligan in its action bar. The dialog keeps its name, "keep
-             or mulligan your hand", and the hand its list. No scrim: the
-             table and the roll call stay readable. -->
+        <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet of the
+             dock, with Keep hand (Enter) and Mulligan in its action bar.
+             The dialog keeps its name, "keep or mulligan your hand", and
+             the hand its list. #2346: it is drawn as a stage, as Arena
+             does: a dimmed table, who goes first as the headline, the
+             hand as a large fan, and the dock centred under it. "View
+             table" folds it away; the roll call is in the strip. -->
         <DockSheet
           rank="choice"
           label={L.mulligan}
           title="Your opening hand"
           width={SHEET_HAND_WIDTH}
+          stage
           sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
           primary={confirmAction(L.keepHand, keepHand, { id: "keep" })}
           secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
         >
           <div class="mulligan-copy">
             {#if openingRoll}
+              <p class="first-turn">{firstTurnHeadline(openingRoll, viewerSeat?.seat)}</p>
               <p class="opening-roll-copy">
                 <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
                 {openingRollText(openingRoll)}.
               </p>
             {/if}
-            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
-              <p class="muted">
-                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
-                London — no bottom-N penalty yet).
-              </p>
-            {:else}
-              <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
-            {/if}
           </div>
           {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
-            <div class="mulligan-cards" role="list" aria-label="your opening hand">
-              {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
+            {@const n = viewerSeat?.hand.cards.length ?? 0}
+            <div class="mulligan-cards" role="list" aria-label="your opening hand" style:--n={n}>
+              {#each viewerSeat?.hand.cards ?? [] as card, i (card.instance_id)}
                 {@const art = cardImageURL(card, "normal")}
-                <div class="mulligan-card" role="listitem" title={card.name}>
+                <div
+                  class="mulligan-card"
+                  role="listitem"
+                  title={card.name}
+                  style:--i={i}
+                  style:--off={i - (n - 1) / 2}
+                >
                   {#if art}
                     <img src={art} alt={card.name} loading="lazy" use:cardArt={art} />
                   {:else}
@@ -2210,6 +2213,21 @@
               {/each}
             </div>
           {/if}
+          <!-- What each button does, under the fan, as Arena writes the
+               mulligan's cost under its button. -->
+          <div class="mulligan-copy mulligan-cost">
+            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
+              <p class="muted">
+                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
+                London — no bottom-N penalty yet).
+              </p>
+            {:else}
+              <p class="muted">
+                Hand size: {viewerSeat?.hand.count ?? 0}. A mulligan shuffles this hand away and
+                deals you a new 7.
+              </p>
+            {/if}
+          </div>
         </DockSheet>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
@@ -2796,18 +2814,30 @@
   }
 
   /* ADR 0111 PR 6: the opening hand is a dock sheet (DockSheet), so
-     only its body is styled here: the roll line, the count, and the
-     seven cards in one row of a wide sheet (SHEET_HAND_WIDTH, capped at
-     the screen), full size again (#2200); three per row on a phone,
-     scrolling inside the sheet. */
+     only its body is styled here. #2346: the sheet is a stage over the
+     whole table, as Arena draws it: who goes first as the headline, the
+     hand as a large arc of cards, and what a mulligan does under it,
+     above the dock's centred buttons. It still asks for
+     SHEET_HAND_WIDTH (#2200), which a phone, where there is no stage,
+     uses for its bottom sheet. */
   .mulligan-copy {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
   }
   .mulligan-copy p {
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
+  }
+  .mulligan-copy .first-turn {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4.2vw, 56px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--fg);
   }
   .mulligan-copy .opening-roll-copy {
     display: inline-flex;
@@ -2816,25 +2846,51 @@
     color: var(--priority-strong);
     font-weight: 600;
   }
+  /* The arc. Each card is --fan-w wide, overlapping its neighbour by
+     12%, turned by its offset from the middle (--off) and dropped by
+     its square, so the row bows like a held hand. --fan-w is the
+     widest that fits the arc, turned, across the screen, and 40% of its
+     height. */
   .mulligan-cards {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-auto-rows: max-content;
-    gap: 8px;
+    --fan-w: min(calc((100vw - 160px) / (var(--n, 7) * 0.95)), 220px, calc(40vh * 5 / 7));
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     min-height: 0;
-    padding: 2px;
+    padding: 28px 0 48px;
   }
   .mulligan-card {
     /* positioned for the failed-art pip (#33) */
     position: relative;
-    min-width: 0;
+    flex: none;
+    width: var(--fan-w);
+    margin-left: calc(var(--fan-w) * -0.12);
     aspect-ratio: 5 / 7;
-    border-radius: 10px;
+    border-radius: calc(var(--fan-w) * 0.05);
     box-sizing: border-box;
     overflow: hidden;
     background: var(--surface-sunken);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(0, 0, 0, 0.4);
+    transform-origin: 50% 130%;
+    transform: rotate(calc(var(--off, 0) * 3.5deg))
+      translateY(calc(var(--off, 0) * var(--off, 0) * 5px));
+    transition: transform 160ms var(--ease);
+  }
+  .mulligan-card:first-child {
+    margin-left: 0;
+  }
+  /* Hovering a card lifts it out of the arc to be read, as Arena does. */
+  .mulligan-card:hover {
+    z-index: 2;
+    transform: translateY(-22px) scale(1.12);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mulligan-card {
+      transition: none;
+    }
   }
   .mulligan-card img {
     display: block;
@@ -2854,9 +2910,19 @@
     color: var(--fg-muted);
     box-sizing: border-box;
   }
+  /* A phone has no room for an arc: the cards wrap, flat, three or
+     four to a row. */
   @media (max-width: 599px) {
     .mulligan-cards {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      --fan-w: calc((100vw - 64px) / 3.4);
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0 16px;
+    }
+    .mulligan-card,
+    .mulligan-card:first-child {
+      margin-left: 0;
+      transform: none;
     }
   }
 

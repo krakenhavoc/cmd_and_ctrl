@@ -55,6 +55,7 @@ import { guardedWritable } from "./guardedStore";
 import { navigate, route, type Route } from "./router";
 import { currentSession, savedIdentity, setSession, type Session } from "./session";
 import { settings, type Settings } from "./settings";
+import { isTableLayout } from "./tableLayout";
 
 /** The four settings the tutorial forces, as the player had them. */
 export interface SavedSettings {
@@ -138,7 +139,7 @@ export function parseRecord(raw: string | null): PracticeRecord | null {
       !s ||
       typeof s.strictMana !== "boolean" ||
       typeof s.autoPassPriority !== "boolean" ||
-      (s.tableLayout !== "row" && s.tableLayout !== "quadrant") ||
+      !isTableLayout(s.tableLayout) ||
       (s.cardSize !== "small" && s.cardSize !== "medium" && s.cardSize !== "large")
     ) {
       return null;

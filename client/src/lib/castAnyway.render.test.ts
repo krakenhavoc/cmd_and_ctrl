@@ -4,8 +4,8 @@
 // With strict payment on, every card the viewer could cast offers
 // "Cast anyway (don't pay)" in its right-click popover's Sandbox
 // section: a hand card (even a plain spell, which had no menu before),
-// an exile entry and a commander in the castable-from-other-zones strip,
-// and the command-zone panel's commander. Choosing the row sends
+// and an exile entry and a commander in the castable-from-other-zones
+// strip (since #2349 the commander's only surface). Choosing the row sends
 // nothing: it opens the dock's "Cast <card> without paying its mana
 // cost?" with Cast and Cancel. Cancel and Escape send nothing; Cast runs
 // the ordinary cast chain and sends `strict: true, force_cast: true`.
@@ -155,9 +155,7 @@ function mountBoard(o: Parameters<typeof gameView>[0]) {
     r.container.querySelector<HTMLElement>(`.hand .card[aria-label='${name}']`);
   const stripCard = (name: string) =>
     r.container.querySelector<HTMLElement>(`.exile-strip .card[aria-label='${name}']`);
-  const panelCard = (name: string) =>
-    r.container.querySelector<HTMLElement>(`.cmd-zone .card[aria-label='${name}']`);
-  return { ...r, sent, handCard, stripCard, panelCard };
+  return { ...r, sent, handCard, stripCard };
 }
 
 function rightClick(el: HTMLElement): void {
@@ -275,26 +273,23 @@ describe("the row on the other surfaces", () => {
     ]);
   });
 
-  it("on a strip commander and on the command-zone panel, cast out of the command zone", () => {
-    for (const surface of ["strip", "panel"] as const) {
-      const b = mountBoard({ command: [kenrith()] });
-      const el = surface === "strip" ? b.stripCard("Kenrith") : b.panelCard("Kenrith");
-      expect(el, surface).toBeTruthy();
-      rightClick(el!);
-      click(castAnywayRow(b.container)!);
-      flushSync();
-      expect(get(activeDockRequest)?.label).toBe("Cast Kenrith without paying its mana cost?");
-      get(activeDockRequest)!.primary!.onPress();
-      flushSync();
-      expect(b.sent, surface).toEqual([
-        {
-          type: "cast_spell",
-          params: { instance_id: "kenrith", from_zone: "command", strict: true, force_cast: true },
-        },
-      ]);
-      cleanup();
-      resetDock();
-    }
+  // #2349: the strip beside the hand is the command zone's only surface.
+  it("on a strip commander, cast out of the command zone", () => {
+    const b = mountBoard({ command: [kenrith()] });
+    const el = b.stripCard("Kenrith");
+    expect(el).toBeTruthy();
+    rightClick(el!);
+    click(castAnywayRow(b.container)!);
+    flushSync();
+    expect(get(activeDockRequest)?.label).toBe("Cast Kenrith without paying its mana cost?");
+    get(activeDockRequest)!.primary!.onPress();
+    flushSync();
+    expect(b.sent).toEqual([
+      {
+        type: "cast_spell",
+        params: { instance_id: "kenrith", from_zone: "command", strict: true, force_cast: true },
+      },
+    ]);
   });
 });
 

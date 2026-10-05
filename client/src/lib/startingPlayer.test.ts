@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { openingRollText, openingRollWinner } from "./startingPlayer";
+import { firstTurnHeadline, openingRollText, openingRollWinner } from "./startingPlayer";
 import type { LogEvent } from "./protocol";
 
 const seats = [
@@ -93,5 +93,20 @@ describe("openingRollWinner", () => {
     const winner = openingRollWinner({ starting_seat: 1, seats });
     expect(winner).toEqual({ seat: 1, name: "B" });
     expect(openingRollText(winner!)).toBe("B goes first");
+  });
+});
+
+describe("firstTurnHeadline", () => {
+  it("names the seat that goes first, and says You for the viewer", () => {
+    expect(firstTurnHeadline({ seat: 1, name: "Bob", result: 18 }, 0)).toBe("Bob goes first");
+    expect(firstTurnHeadline({ seat: 1, name: "Bob", result: 18 }, 1)).toBe("You go first");
+    expect(firstTurnHeadline({ seat: 1, name: "Bob" })).toBe("Bob goes first");
+  });
+
+  it("reads the chosen seat when the winner gave the first turn away", () => {
+    const gave = { seat: 1, name: "Bob", result: 18, chosen: { seat: 2, name: "Carol" } };
+    expect(firstTurnHeadline(gave, 0)).toBe("Carol goes first");
+    expect(firstTurnHeadline(gave, 2)).toBe("You go first");
+    expect(firstTurnHeadline(gave, 1)).toBe("Carol goes first");
   });
 });
