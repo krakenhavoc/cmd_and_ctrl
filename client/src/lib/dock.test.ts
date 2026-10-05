@@ -12,6 +12,9 @@ import {
   DOCK_RANKS,
   dockRequests,
   pushDockRequest,
+  SHEET_HAND_WIDTH,
+  SHEET_MAX_WIDTH,
+  sheetWidth,
   takesBar,
   type DockRank,
   type DockRequest,
@@ -87,5 +90,21 @@ describe("the dock request store", () => {
     for (const r of ["choice", "flow", "blocks", "gameOver"] as const) {
       expect(takesBar(req(r, r))).toBe(true);
     }
+  });
+});
+
+describe("sheetWidth", () => {
+  const sheet = (width?: number): DockRequest => ({
+    rank: "flow",
+    label: "x",
+    sheet: { title: "x", width },
+  });
+  it("caps an ordinary picker at 720px", () => {
+    expect(sheetWidth(sheet(2000))).toBe(SHEET_MAX_WIDTH);
+    expect(sheetWidth(sheet(400))).toBe(400);
+    expect(sheetWidth(sheet())).toBe(560);
+  });
+  it("lets the opening hand ask for the wide sheet (#2200)", () => {
+    expect(sheetWidth(sheet(SHEET_HAND_WIDTH))).toBe(SHEET_HAND_WIDTH);
   });
 });
