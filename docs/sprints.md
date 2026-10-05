@@ -106,6 +106,7 @@ planned just-in-time from the S12 pain-point triage.
 | S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | **done**    |
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
+| S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | planned     |
 
 ### How to read the status column
 
@@ -3452,6 +3453,48 @@ From the tracker, [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/223
 ### Status
 
 **Done** (2026-10-04). Every Delivery PR of [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) merged into `develop`; the owner played a game to its end with Claude Code in a seat on cmd-dev and its figures are recorded in the ADR ([#2265](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2265)); the sprint reached `main` with the promotion [#2266](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2266). Tracker [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) is closed; the `mcpseat-v0.1.0-rc.1` prerelease is published, and release distribution is tracked in [#2263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2263).
+
+---
+
+## S63 — Monitoring: metrics, logs, dashboards and alerts
+
+**Phase:** 7 · **Goal:** the owner can see at a glance how many games are active, how many players are connected now against how many there are, games and new users a day, and the health of the server, the engine, the bots and both hosts. Logs are searchable, Discord alerts fire when something breaks, and an off-node check notices when a whole site is down. Per [ADR 0123](decisions/0123-monitoring-metrics-logs-dashboards-and-alerts.md). Tracking issue [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281), which is also the change's issue.
+
+Opened 2026-10-04 from the owner's request for monitoring. The owner answered eight questions the same day, recorded on #2281 and in ADR 0123:
+- self-hosted in the HomeLab (Prometheus, Loki, Grafana);
+- metrics and logs both;
+- Discord alerts plus an uptime check;
+- every measurement area offered;
+- a GitHub Actions cron as the off-node watcher;
+- Grafana on the LAN only;
+- metrics kept 1 year and logs 30 days;
+- Claude writes the HomeLab PRs and the owner applies them.
+
+The members are ADR 0123's Delivery PRs.
+
+- [ ] ADR 0123: monitoring (PR 1, with this section)
+- [ ] PR 2: server foundation. `internal/metrics` on `client_golang` and its own registry; a loopback-only `CMDCTRL_METRICS_ADDR` listener, separate from the public mux; build info; Go and process collectors; HTTP metrics labelled by the matched route pattern; the closed-label-set guard test.
+- [ ] PR 3: games, players and WebSocket. Games by state; seats by kind; seats connected now by kind and account; spectators; registered accounts and accounts that played in 1d, 7d and 30d; the game, user and WebSocket counters; database gauges.
+- [ ] PR 4: engine and bots. Actions by type, seat kind and result; apply latency; effect errors; restore-point age; the boot restore outcome; bot decision, model-call and token totals.
+- [ ] PR 5: the agent. `deploy/alloy/config.alloy`, the CD step "Ensure monitoring agent", the off-site backup's age as a textfile metric, and bounded restarts on the bot unit (#598 item 2).
+- [ ] PR 6: rules and dashboards. `deploy/monitoring/`, the `monitoring-config` CI job (promtool rule tests, dashboard checks) and `docs/monitoring.md`.
+- [ ] PR 7: the uptime watcher. `.github/workflows/uptime.yml` every 10 minutes, with issue-as-state and Discord posts (#598 item 3).
+- [ ] HomeLab H1: the monitoring VM (Terraform, fixed address, firewall, cloud-init, a Compose project, push auth, and a config-sync timer pulling `deploy/monitoring/` from `main`).
+- [ ] HomeLab H2: bounded restarts on `cmd-and-ctrl.service` (#598 item 2, the server's half).
+
+### Exit criteria
+
+From the tracker, [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281):
+
+1. ADR 0123 is accepted, and every PR in its Delivery table has merged or been applied.
+2. The Overview dashboard shows cmd-dev's live table, with its seats connected and a bot seat.
+3. Stopping the dev server fires `ServerNotReporting` in Discord, which resolves after a restart.
+4. A dry run of `uptime.yml` reports both sites up.
+5. The evidence is posted on #2281, and the work lands on `main` with the next promotion.
+
+### Status
+
+**Planned** (2026-10-04). ADR 0123 is accepted (owner review on #2282); the Delivery PRs follow.
 
 ---
 
