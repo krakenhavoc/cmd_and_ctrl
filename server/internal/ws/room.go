@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -257,17 +258,31 @@ func NewRoom(g *game.Game, log *slog.Logger, dumpDir string) *Room {
 // The room mutex is held for the whole mutate → seq → capture → dump
 // sequence, so two concurrent clients cannot interleave state and
 // cannot observe non-monotonic (seq, state) pairs.
+//
+// Apply counts the commit in cmdctrl_actions_total with type "other";
+// a caller that knows the action's type uses ApplyAction.
 func (r *Room) Apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint64, error) {
-	view, seq, err := r.apply(caller, fn)
+	return r.ApplyAction(ActionTag{Actor: caller}, fn)
+}
+
+// ApplyAction is Apply for a caller that says what the commit is, for
+// cmdctrl_actions_total (ADR 0123 §3): tag.Type is the action's type
+// and tag.Actor the seat that acted, which also stamps the undo entry
+// exactly as Apply's caller does (uuid.Nil is the admin).
+func (r *Room) ApplyAction(tag ActionTag, fn func() error) (protocol.GameView, uint64, error) {
+	st := r.startCommit(tag)
+	view, seq, err := r.apply(tag.Actor, fn, &st)
+	st.record()
 	if err == nil {
 		r.notify()
 	}
 	return view, seq, err
 }
 
-func (r *Room) apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint64, error) {
+func (r *Room) apply(caller uuid.UUID, fn func() error, st *commitStat) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	defer st.hold()()
 
 	// Stash a pre-mutation clone for the undo stack BEFORE running
 	// fn. Done eagerly so a failing fn doesn't grow history with a
@@ -276,6 +291,7 @@ func (r *Room) apply(caller uuid.UUID, fn func() error) (protocol.GameView, uint
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
+	st.applied = true
 	r.undoStack = append(r.undoStack, undoEntry{pre: pre, caller: caller})
 	if len(r.undoStack) > undoStackCap {
 		// Drop the oldest entry. Trim by reslicing forward — the
@@ -309,6 +325,12 @@ type Bundle struct {
 	// Annotation tags the replay line this commit produces. Nil
 	// leaves the line untagged.
 	Annotation *protocol.ReplayAnnotation
+
+	// Actor is the seat whose commit this is, for the seat_kind of
+	// cmdctrl_actions_total (a bot's improvisation names the bot's
+	// seat); uuid.Nil is the admin. It is not the undo stamp, which is
+	// Caller: an improvisation is nil-stamped so anyone may undo it.
+	Actor uuid.UUID
 }
 
 // ErrEmptyBundle is returned by ApplyBundle with no steps. A bundle
@@ -328,21 +350,27 @@ var ErrEmptyBundle = errSentinel("ws: bundle has no steps")
 // table never sees a half-applied effect.
 //
 // On success the whole bundle reverts as a single Undo.
+//
+// The bundle counts once in cmdctrl_actions_total, as type "bundle",
+// with b.Actor's seat kind.
 func (r *Room) ApplyBundle(b Bundle) (protocol.GameView, uint64, error) {
-	view, seq, err := r.applyBundle(b)
+	st := r.startCommit(ActionTag{Actor: b.Actor, fixedType: metrics.ActionTypeBundle})
+	view, seq, err := r.applyBundle(b, &st)
+	st.record()
 	if err == nil {
 		r.notify()
 	}
 	return view, seq, err
 }
 
-func (r *Room) applyBundle(b Bundle) (protocol.GameView, uint64, error) {
+func (r *Room) applyBundle(b Bundle, st *commitStat) (protocol.GameView, uint64, error) {
 	if len(b.Steps) == 0 {
 		return protocol.GameView{}, 0, ErrEmptyBundle
 	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	defer st.hold()()
 
 	pre := r.Game.Clone()
 	for i, step := range b.Steps {
@@ -359,6 +387,7 @@ func (r *Room) applyBundle(b Bundle) (protocol.GameView, uint64, error) {
 		}
 	}
 
+	st.applied = true
 	r.undoStack = append(r.undoStack, undoEntry{pre: pre, caller: b.Caller, freeUndo: b.FreeUndo})
 	if len(r.undoStack) > undoStackCap {
 		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
@@ -384,21 +413,36 @@ func (r *Room) rollbackLocked(pre *game.Game) {
 // view + seq must still reach connected clients — see
 // Hub.BroadcastState; a lobby mutation that skips this path is
 // invisible to anyone already sitting on the game page.
+//
+// ApplyExternal counts the commit in cmdctrl_actions_total as a lobby
+// setup step: type "lobby", seat_kind "human". A caller dispatching an
+// action that mints no undo entry uses ApplyExternalAction.
 func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error) {
-	view, seq, err := r.applyExternal(fn)
+	return r.ApplyExternalAction(ActionTag{fixedType: metrics.ActionTypeLobby, seatKind: metrics.SeatKindHuman}, fn)
+}
+
+// ApplyExternalAction is ApplyExternal for an action that mints no undo
+// entry (actions.MintsNoUndo, the table settings), tagged as
+// ApplyAction tags one.
+func (r *Room) ApplyExternalAction(tag ActionTag, fn func() error) (protocol.GameView, uint64, error) {
+	st := r.startCommit(tag)
+	view, seq, err := r.applyExternal(fn, &st)
+	st.record()
 	if err == nil {
 		r.notify()
 	}
 	return view, seq, err
 }
 
-func (r *Room) applyExternal(fn func() error) (protocol.GameView, uint64, error) {
+func (r *Room) applyExternal(fn func() error, st *commitStat) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	defer st.hold()()
 
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
+	st.applied = true
 	return r.captureLocked(true)
 }
 

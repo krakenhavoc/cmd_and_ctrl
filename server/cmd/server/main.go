@@ -261,6 +261,8 @@ func main() {
 	// set but too short fails the boot. There is no default key.
 	authenticator := newAuthenticator(log, cfg)
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
+	// ADR 0123 §3: how far a deploy now would rewind the live tables.
+	metrics.Registry.MustRegister(metrics.NewRestorePointCollector(mgr))
 	// With a database, games / seats / invites are rows (ADR 0051
 	// decision 4, S34 sub-PR 3) and RestoreFromDisk imports any
 	// lobby/*.json the previous binary left. Without one, the lobby

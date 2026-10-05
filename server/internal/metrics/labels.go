@@ -43,6 +43,37 @@ var labelSets = map[string]labelSet{
 		values: "this binary's commit",
 		allows: func(v string) bool { return v == buildCommit },
 	},
+	// Engine and bots (engine.go, bots.go). type, result, outcome and
+	// direction are per family, in familyLabelSets.
+	"seat_kind": oneOf(actionSeatKindLabels...),
+	"tier":      oneOf(botTierLabels...),
+	"layer":     oneOf(botLayerLabels...),
+	"cause":     oneOf(botFallbackCauseLabels()...),
+}
+
+// familyLabelSets are rows for one metric family only, consulted
+// before labelSets. They are for a label name that two families use
+// with different closed sets (direction is in|out on the frames and
+// prompt|completion on the model tokens; outcome is a game's result
+// here and a restore's elsewhere), so neither family's set has to be
+// widened into the other's.
+var familyLabelSets = map[string]map[string]labelSet{
+	"cmdctrl_actions_total": {
+		"type":   actionTypeSet(),
+		"result": oneOf(actionResultLabels...),
+	},
+	"cmdctrl_action_apply_seconds": {
+		"result": oneOf(actionResultLabels...),
+	},
+	"cmdctrl_boot_restore_games": {
+		"outcome": oneOf(restoreOutcomeLabels...),
+	},
+	"cmdctrl_bot_model_calls_total": {
+		"result": oneOf(modelResultLabels...),
+	},
+	"cmdctrl_bot_model_tokens_total": {
+		"direction": oneOf(directionLabels...),
+	},
 }
 
 // standardLabelSets is the same table for the upstream Go and process
@@ -126,7 +157,10 @@ func CheckClosedLabels(g prometheus.Gatherer) error {
 					errs = append(errs, fmt.Errorf("%s: label name %q contains %q", name, ln, s))
 					continue
 				}
-				set, ok := sets[ln]
+				set, ok := familyLabelSets[name][ln]
+				if !ok {
+					set, ok = sets[ln]
+				}
 				if !ok {
 					errs = append(errs, fmt.Errorf("%s: label %q is not in the label table (labels.go)", name, ln))
 					continue

@@ -18,6 +18,19 @@ func eventMetrics() []prometheus.Collector {
 	return []prometheus.Collector{
 		httpRequests,
 		httpSeconds,
+		// engine.go
+		actionsTotal,
+		actionApplySeconds,
+		effectErrors,
+		bootRestoreGames,
+		bootRestoreDegradedCards,
+		// bots.go
+		botDecisions,
+		botDecisionSeconds,
+		botFallbacks,
+		botModelCalls,
+		botModelCallSeconds,
+		botModelTokens,
 	}
 }
 

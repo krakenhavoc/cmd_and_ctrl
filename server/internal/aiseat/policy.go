@@ -167,10 +167,11 @@ func (p *RandomPolicy) Name() string { return "random" }
 // projection for it. See viewBlind.
 func (p *RandomPolicy) decidesWithoutView() {}
 
-func (p *RandomPolicy) Decide(_ context.Context, in Input) (Decision, error) {
+func (p *RandomPolicy) Decide(ctx context.Context, in Input) (Decision, error) {
 	if len(in.Moves) == 0 {
 		return Decision{}, ErrNoMoves
 	}
+	NoteLayer(ctx, TraceLayerRandom)
 	var i int
 	if p.rng != nil {
 		i = p.rng.IntN(len(in.Moves))

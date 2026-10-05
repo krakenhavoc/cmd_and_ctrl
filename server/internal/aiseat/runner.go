@@ -14,6 +14,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -745,6 +746,7 @@ type outcome struct {
 func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) outcome {
 	dctx, cancel := context.WithTimeout(ctx, maxThink)
 	defer cancel()
+	dctx, noted := WithLayerNote(dctx)
 
 	started := time.Now()
 	var (
@@ -769,6 +771,20 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 	}
 	out := outcome{decision: d, err: err, traced: traced, trace: tr, latency: time.Since(started)}
 	r.observeLatency(out.latency)
+	// ADR 0123 §3: the bot totals, counted here beside this runner's
+	// own counters. One decision when r.decisions moves, one fallback
+	// when the window ends with a runner fallback cause.
+	tier := metrics.BotTierLabel(r.policy.Name())
+	metrics.ObserveBotDecision(tier, out.latency)
+	defer func() {
+		if out.fallback != "" {
+			metrics.RecordRunnerFallback(tier, out.fallback)
+		}
+	}()
+	countDecision := func() {
+		r.decisions.Add(1)
+		metrics.RecordBotDecision(tier, decisionLayer(noted(), out))
+	}
 
 	switch {
 	case err != nil:
@@ -784,7 +800,7 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 	case d.Index == Decline:
 		// A decline from a seat that holds priority would stall the
 		// table, so it becomes the pass it was standing in for.
-		r.decisions.Add(1)
+		countDecision()
 		if pi := PassIndex(in.Moves); pi >= 0 {
 			out.index, out.reason, out.fallback = pi, "decline → pass", FallbackDeclinePass
 			return out
@@ -809,7 +825,7 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 		r.log.Warn("policy returned an out-of-range move; falling back", "index", d.Index, "moves", len(in.Moves))
 		out.fallback = FallbackOutOfRange
 	default:
-		r.decisions.Add(1)
+		countDecision()
 		out.index, out.reason = d.Index, d.Reason
 		return out
 	}
@@ -820,6 +836,20 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 	}
 	out.index, out.reason = 0, "fallback: first legal move"
 	return out
+}
+
+// decisionLayer is the layer label of one decision: what a policy
+// noted (NoteLayer), else what its trace says, else B. The model funnel
+// and the rules filter note theirs and the random policy notes
+// "random"; the heuristic notes nothing and is Layer B.
+func decisionLayer(noted string, out outcome) string {
+	if metrics.IsBotLayer(noted) {
+		return noted
+	}
+	if out.traced && metrics.IsBotLayer(out.trace.Layer) {
+		return out.trace.Layer
+	}
+	return metrics.BotLayerB
 }
 
 // forcedAnswer is what the runner takes when the policy's choices
@@ -1069,8 +1099,9 @@ func (r *Runner) shouldHoldForBlockers(view protocol.GameView) bool {
 // routes a person's.
 func (r *Runner) apply(a actions.Action) (protocol.GameView, uint64, error) {
 	fn := func() error { return actions.Dispatch(r.room.Game, a) }
+	tag := ws.ActionTag{Type: a.Type, Actor: r.seat}
 	if actions.MintsNoUndo(r.room.Game, a.Type) {
-		return r.room.ApplyExternal(fn)
+		return r.room.ApplyExternalAction(tag, fn)
 	}
-	return r.room.Apply(r.seat, fn)
+	return r.room.ApplyAction(tag, fn)
 }
