@@ -2612,14 +2612,12 @@ var items = []Item{
 		EngineNotes: "replacement: the `RepEventDraw` replacements (`effects/draw_replacements.go`, `drawCardLocked` in `game/mutations.go`) rewrite the count or the drawing player, or cancel the draw, inside a `Replace` that can't pause for a card prompt, and a draw inside a sequence (\"draw two cards\") must finish its replacement before the next draw begins (CR 121.6b). Forbidden Crypt returns a card of your choice from your graveyard to your hand instead, and you lose if you can't; Underrealm Lich looks at three and keeps one. Dredge (#2127) needs the same pause. Forbidden Crypt's second ability is the static shape of `ModExileInsteadOfYourGraveyard` and works.",
 	},
 	{
-		Slug: "delayed-triggers-for-the-turn", Name: "Triggers that last for the rest of the turn", Kind: KindSeam, Status: StatusMissing,
+		Slug: "delayed-triggers-for-the-turn", Name: "Triggers that last for the rest of the turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities a spell sets up that trigger every time something happens for the rest of the turn, such as Great Train Heist's \"Whenever a creature you control deals combat damage to that player this turn, create a tapped Treasure token\".",
-		Missing:     "A spell can set up an ability that triggers the next time something happens, but not one that keeps triggering for the rest of the turn.",
 		Rules:       []string{"603.7a", "603.7b", "605.1b"},
 		Issue:       2169,
-		Tracked:     "#2169 (S58 tracker #2077)",
-		Waiting:     []string{"Great Train Heist", "Bubbling Muck"},
-		EngineNotes: "delayed trigger: an event-conditioned `DelayedTrigger` fires on its first match and is removed (`fireEventDelayedTriggersLocked`, `game/delayed.go`; only a step-conditioned one repeats, `repeatsAtStep`), so CR 603.7b's \"unless it has a stated duration, such as 'this turn'\" has no shape. Dalkovan Encampment carries its \"this turn\" trigger on the land for that reason, and Vizkopa Guildmage ships without its. Bubbling Muck's is a triggered mana ability (CR 605.1b), and `fireManaTriggersLocked` (`game/mana_trigger.go`) reads mana triggers only from permanents on the battlefield. Needs a repeating delayed trigger pinned to an ADR 0063 end-of-turn duration, harvested like any other, and a twin the mana path reads. Great Train Heist's other two modes work.",
+		Examples:    []string{"Great Train Heist", "Bubbling Muck", "High Tide", "Glimpse of Nature", "Benefactor's Draught"},
+		EngineNotes: "`DelayedTrigger.Repeats` (`game/delayed.go`, #2169): an event-conditioned delayed trigger stays queued after it fires and is removed by the end-of-turn duration sweep, so it triggers on every matching event this turn (CR 603.7b). It is not tied to its source, a suppressed match neither fires nor ends it, and trigger doublers are asked for it like any other trigger. `effects.DelayedOnEvent{Repeats: true}` builds one. The triggered-mana twin (CR 605.1b) is `DelayedTrigger.ManaTapSubtype` / `ManaAdds`, built by `effects.TurnManaTrigger` and read by `fireManaTriggersLocked` beside the permanents' own mana triggers, with no stack item. Dalkovan Encampment still carries its own trigger on the land, and Vizkopa Guildmage ships without its second ability.",
 	},
 	{
 		Slug: "mana-cant-pay-generic", Name: "Mana that can't pay generic costs", Kind: KindSeam, Status: StatusImplemented,

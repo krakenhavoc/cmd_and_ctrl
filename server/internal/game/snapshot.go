@@ -1230,6 +1230,14 @@ type delayedTriggerSnapshot struct {
 	Until       bool       `json:"until,omitempty"`
 	UntilLeaves *ObjectRef `json:"untilLeaves,omitempty"`
 	Due         bool       `json:"due,omitempty"`
+
+	// #2169, CR 603.7b / 605.1b: a trigger that keeps triggering for its
+	// duration, and its triggered-mana twin. Additive: an older binary
+	// drops the keys and fires a repeating trigger once (weaker, never
+	// stronger) and reads a mana record as a no-op.
+	Repeats        bool   `json:"repeats,omitempty"`
+	ManaTapSubtype string `json:"manaTapSubtype,omitempty"`
+	ManaAdds       string `json:"manaAdds,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -2176,6 +2184,9 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Until:              d.Until,
 		UntilLeaves:        d.UntilLeaves.stamped(),
 		Due:                d.Due,
+		Repeats:            d.Repeats,
+		ManaTapSubtype:     d.ManaTapSubtype,
+		ManaAdds:           d.ManaAdds,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -2192,7 +2203,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 	// with no Body, and no other path builds one. The only way to meet
 	// one here is a hand-built test fixture, and it is still counted,
 	// because a trigger with nothing to do cannot be restored exactly.
-	if d.Body.key == "" {
+	if d.Body.key == "" && d.ManaAdds == "" {
 		cen.DelayedTriggerEffects++
 		cen.note("delayed trigger without a body: %s", labelOr(d.Label, d.ID.String()))
 	}
@@ -2989,6 +3000,9 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Until:            d.Until,
 		UntilLeaves:      d.UntilLeaves.value(),
 		Due:              d.Due,
+		Repeats:          d.Repeats,
+		ManaTapSubtype:   d.ManaTapSubtype,
+		ManaAdds:         d.ManaAdds,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

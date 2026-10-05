@@ -73,6 +73,11 @@ type DelayedOnEvent struct {
 
 	// Params is the body's plain data.
 	Params game.EffectParams
+
+	// Repeats is CR 603.7b's "whenever … this turn": the trigger fires on
+	// every matching event until the turn ends instead of on the first
+	// one only (Great Train Heist). Leave false for "when you next …".
+	Repeats bool
 }
 
 func (d DelayedOnEvent) Apply(ctx *Context) error {
@@ -91,6 +96,7 @@ func (d DelayedOnEvent) Apply(ctx *Context) error {
 		Cards:            d.Cards,
 		Body:             d.Body,
 		Params:           d.Params,
+		Repeats:          d.Repeats,
 	})
 	return nil
 }
@@ -189,4 +195,28 @@ func copyTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 		ChooseNewTargets: true,
 		FromLastKnown:    true,
 	}.Apply(ctx)
+}
+
+// TurnManaTrigger is "until end of turn, whenever a player taps a <land
+// subtype> for mana, that player adds an additional <mana>" (Bubbling
+// Muck): a triggered mana ability (CR 605.1b) a spell sets up for the
+// turn. It never uses the stack (CR 605.4a), reads the producing
+// permanent as it was when it was tapped, and is not tied to the spell
+// that made it. See DelayedTrigger.ManaTapSubtype.
+type TurnManaTrigger struct {
+	Label   string
+	Subtype string
+	Adds    string
+}
+
+func (t TurnManaTrigger) Apply(ctx *Context) error {
+	ctx.Game.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+		Controller:     ctx.Controller(),
+		SourceCardID:   ctx.Source(),
+		Label:          t.Label,
+		ManaTapSubtype: t.Subtype,
+		ManaAdds:       t.Adds,
+		Repeats:        true,
+	})
+	return nil
 }

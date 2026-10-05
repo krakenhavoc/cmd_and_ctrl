@@ -214,9 +214,6 @@ func manaTriggersOf(c *Card) []ManaTrigger {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequirement) {
-	if CatalogManaTriggers == nil || g.Battlefield == nil {
-		return
-	}
 	if len(prod.Colors) == 0 || prod.Controller == uuid.Nil {
 		return
 	}
@@ -226,7 +223,16 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 		produced string
 	}
 	var fired []firing
-	for i := range g.Battlefield.Cards {
+	// CR 605.1b / 603.7b: triggered mana abilities a spell set up for
+	// the turn (Bubbling Muck). Not tied to a permanent, so they are
+	// read from the delayed queue, in scheduling order.
+	for _, dt := range g.DelayedTriggers {
+		if dt == nil || !dt.isManaTrigger() || !prod.Source.HasSubtype(dt.ManaTapSubtype) {
+			continue
+		}
+		fired = append(fired, firing{source: dt.SourceCardID, label: dt.Label, produced: dt.ManaAdds})
+	}
+	for i := 0; g.Battlefield != nil && CatalogManaTriggers != nil && i < len(g.Battlefield.Cards); i++ {
 		source := &g.Battlefield.Cards[i]
 		triggers := manaTriggersOf(source)
 		if len(triggers) == 0 {

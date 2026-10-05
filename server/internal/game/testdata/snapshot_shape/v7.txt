@@ -350,6 +350,8 @@ delayedTriggers[].duration.SourceEnteredAt	number:int64
 delayedTriggers[].hasEffect	bool
 delayedTriggers[].id	custom(uuid.UUID)
 delayedTriggers[].label	string
+delayedTriggers[].manaAdds	string
+delayedTriggers[].manaTapSubtype	string
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
 delayedTriggers[].on[]	string
@@ -370,6 +372,7 @@ delayedTriggers[].params.object	object
 delayedTriggers[].params.object.epoch	number:int
 delayedTriggers[].params.object.id	custom(uuid.UUID)
 delayedTriggers[].params.player	custom(uuid.UUID)
+delayedTriggers[].repeats	bool
 delayedTriggers[].sourceCardId	custom(uuid.UUID)
 delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
