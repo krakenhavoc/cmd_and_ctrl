@@ -47,3 +47,20 @@ export function damageSourceCaption(
   const where = damageSourceWhere(snap, card.instance_id);
   return [whose, where].filter(Boolean).join(" · ");
 }
+
+// permanentWhoseCaption is the short "whose is this?" line under a
+// battlefield candidate in a card-set pick that spans several seats —
+// Peregrine Drake's "untap up to five lands" lists every tapped land at
+// the table, and a grid of identical Forests does not say which are the
+// viewer's (#1960). Empty for a card that is not on the battlefield, so
+// a hand or graveyard pick keeps its plain face.
+export function permanentWhoseCaption(
+  snap: GameView,
+  card: CardView,
+  viewerID: string | null,
+): string {
+  if (!inZone(snap.battlefield?.cards, card.instance_id) || !card.controller) return "";
+  if (viewerID && card.controller === viewerID) return "Yours";
+  const seat = (snap.seats ?? []).find((s) => s.id === card.controller);
+  return seat ? `${seat.name}'s` : "";
+}
