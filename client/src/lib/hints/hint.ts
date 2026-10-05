@@ -80,6 +80,13 @@ export interface Hint {
   when?: (c: HintContext) => boolean;
   /** One link button. With one, "Got it" reads "Not now". */
   action?: { label: string; href: string };
+  /**
+   * The anchor is always mounted but has no area until its feature has
+   * something to show (the attention strip while it is empty). The hint
+   * waits for it to show and, unlike a hint whose anchor is gone, its
+   * absence is not logged as "has no anchor".
+   */
+  waitsForAnchor?: boolean;
 }
 
 /** anchorOf is the hint's anchor in this context, or null when it names none. */

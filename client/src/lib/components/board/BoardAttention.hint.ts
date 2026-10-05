@@ -17,6 +17,8 @@ const hint: Hint = {
   title: "News, top left",
   body: "What the bots are doing, cards revealed to you and the roll call show up here. None of it waits on you.",
   when: stackIsEmpty,
+  // Empty, the strip has no area: wait for something in it, unlogged.
+  waitsForAnchor: true,
 };
 
 export default hint;

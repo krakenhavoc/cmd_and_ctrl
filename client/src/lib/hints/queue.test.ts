@@ -325,6 +325,19 @@ describe("the engine at the table", () => {
     expect(d.logs).toEqual([missingAnchorMessage("table.a")]);
   });
 
+  it("passes over a hint that waits for its anchor without logging it, and shows it once it is there", () => {
+    const waiting: Hint = { ...TABLE_A, waitsForAnchor: true };
+    const d = tableDriver([waiting, TABLE_B]);
+    d.st.anchors.delete("table.a");
+    expect(d.tick()).toBe("table.b");
+    d.tick();
+    expect(d.logs).toEqual([]);
+    d.dismiss();
+    d.st.now += TABLE_GAP_MS;
+    d.st.anchors.add("table.a");
+    expect(d.tick()).toBe("table.a");
+  });
+
   it("a table replay shows its hints at the next quiet moments, with tips off", () => {
     const d = tableDriver();
     d.st.tipsOff = true;
