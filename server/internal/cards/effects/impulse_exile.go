@@ -82,6 +82,21 @@ func ExileTopNUntilYourNextTurn(ctx *Context, n int) error {
 	return err
 }
 
+// ExileTopNUntilYourNextEndStep is "exile the top N cards of your
+// library. Until your next end step, you may play them" (#2373) — Ob
+// Nixilis, Captive Kingpin, Haste Magic, Wiccan, Opera Love Song. The
+// window closes as that end step BEGINS (game.UntilYourNextEndStep),
+// so it is shorter than "until end of turn" when cast on your own
+// turn and ends at the end step of your next turn when made on an
+// opponent's turn or in your own end step.
+func ExileTopNUntilYourNextEndStep(ctx *Context, n int) error {
+	controller := ctx.Controller()
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(controller, controller, n, game.CastPermission{
+		Duration: ctx.Game.UntilYourNextEndStepDuration(controller),
+	})
+	return err
+}
+
 // damagedOpponent returns the opponent a combat-damage event hit,
 // or uuid.Nil — the trigger condition shared by Ragavan ("deals
 // combat damage to a player") and the Pirate batch triggers

@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Ob Nixilis, Captive Kingpin — Legendary Creature — Demon {2}{B}{R},
 // 4/3:
@@ -21,19 +17,14 @@ import (
 // trigger, and two separate resolutions (two Blood Artist triggers)
 // are two. A damage doubler changes the total; life paid counts.
 //
-// Window simplification: the engine has no "until your next end step"
-// duration. On your own turn before its end step the play window ends
-// at that turn's cleanup (the same boundary "until end of turn"
-// names), and from the end step on, or on an opponent's turn, at the
-// end of your next turn. Both are the printed window plus the end step
-// itself: the card can still be played in the end step it should
-// have stopped at (an instant, or a flash creature) and nowhere else.
+// The play window is game.UntilYourNextEndStep (#2373): from your own
+// turn before its end step it closes as this turn's end step begins,
+// otherwise as your next turn's does.
 func init() {
 	Register(Spec{
 		OracleID:        "55b6434b-1542-40fd-b12a-697d40976582",
 		Name:            "Ob Nixilis, Captive Kingpin",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The exiled card can still be played during the end step that should have closed the window, one step longer than printed."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "trample"},
 		Triggered: []game.TriggeredAbility{
 			WheneverOneOrMoreOpponentsEachLoseExactly(1,
@@ -50,23 +41,5 @@ func obNixilisKingpinEffect(g *game.Game, item *game.StackItem) error {
 	if err := (AddCounter{Target: ctx.Source(), Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	me := ctx.Controller()
-	_, err := g.ExileTopWithPermissionForEffect(me, me, 1, game.CastPermission{
-		Duration: untilYourNextEndStepApprox(g, me),
-	})
-	return err
-}
-
-// untilYourNextEndStepApprox is the nearest window the duration kinds
-// can name to "until your next end step" (see the card comment): the
-// end of this turn when it is `player`'s turn and its end step has not
-// begun, otherwise the end of their next turn. Caller holds the game
-// lock, as an effect does.
-func untilYourNextEndStepApprox(g *game.Game, player uuid.UUID) game.Duration {
-	ownTurn := g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) &&
-		g.Seats[g.Turn.ActiveSeat] != nil && g.Seats[g.Turn.ActiveSeat].ID == player
-	if ownTurn && g.Turn.Step != game.StepEnd && g.Turn.Step != game.StepCleanup {
-		return g.UntilEndOfTurnDuration()
-	}
-	return g.UntilEndOfYourNextTurnDuration(player)
+	return ExileTopNUntilYourNextEndStep(ctx, 1)
 }
