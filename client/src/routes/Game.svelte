@@ -57,7 +57,7 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
-  import { confirmAction, dockRequests } from "../lib/dock";
+  import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
   import { modalOpen } from "../lib/modalLayers";
   import {
     publishTableMoment,
@@ -120,7 +120,13 @@
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
-  import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
+  import {
+    openShortcutsHelp,
+    registerShortcutHandlers,
+    setShortcutContext,
+  } from "../lib/shortcutRuntime";
+  import { HINTS } from "../lib/hints";
+  import { replayTips } from "../lib/hints/runtime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
@@ -1657,6 +1663,12 @@
         ? { ready: !tableRollCooling }
         : null,
     onTableRoll: rollAtTable,
+    // ADR 0125 §6: the Help group. The tutorial is replayed on this
+    // tab's practice table only, as the coach's Replay does.
+    practice: $practiceTable?.gameID === gameID,
+    onTableTips: () => replayTips("table", HINTS),
+    onShortcuts: openShortcutsHelp,
+    onReplayTutorial: () => navigate("#/practice"),
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,
@@ -2165,7 +2177,7 @@
           rank="choice"
           label={L.mulligan}
           title="Your opening hand"
-          width={720}
+          width={SHEET_HAND_WIDTH}
           stage
           sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
           primary={confirmAction(L.keepHand, keepHand, { id: "keep" })}
@@ -2568,7 +2580,8 @@
      longer needs to stop above the dock. */
   section.has-dock.sheet-open {
     --dock-zoom-clear: 0px;
-    --zoom-right: calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px);
+    /* A wide sheet (the opening hand) must not push the zoom off screen. */
+    --zoom-right: min(calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px), calc(100vw - 360px));
   }
   /* §8: on a phone the dock is a full-width bar on the bottom of the
      play area, and the board ends above it rather than under it. */
@@ -2804,7 +2817,9 @@
      only its body is styled here. #2346: the sheet is a stage over the
      whole table, as Arena draws it: who goes first as the headline, the
      hand as a large arc of cards, and what a mulligan does under it,
-     above the dock's centred buttons. */
+     above the dock's centred buttons. It still asks for
+     SHEET_HAND_WIDTH (#2200), which a phone, where there is no stage,
+     uses for its bottom sheet. */
   .mulligan-copy {
     display: flex;
     flex-direction: column;

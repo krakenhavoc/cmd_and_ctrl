@@ -46,6 +46,20 @@ export const ICONS = {
   gear,
   // Site-nav hamburger toggle (PR #1386, the shared header).
   menu: [p("M4 7h16"), p("M4 12h16"), p("M4 17h16")],
+  // A question mark in a ring: the site header's Help menu (ADR 0125 §6).
+  help: [
+    c(12, 12, 9),
+    p("M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.7"),
+    c(12, 16.9, 0.9, true),
+  ],
+  // A keyboard: Help's "Keyboard shortcuts" (ADR 0125 §6).
+  keys: [
+    { t: "rect", x: 3, y: 6, w: 18, h: 12, rx: 2 } as IconPrimitive,
+    p("M7 10h1"),
+    p("M11 10h2"),
+    p("M16 10h1"),
+    p("M8 14h8"),
+  ],
   // A house glyph for the site portal's "Home" link — distinct from
   // the diamond brand `mark` so the two never read as duplicates.
   home: [p("M4 11.5 12 4l8 7.5"), p("M6 10v10h12V10")],

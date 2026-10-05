@@ -13,6 +13,7 @@
   import { LobbyApiError, session } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import { noteMyGames } from "../lib/hints/endedGame";
 
   // "My games" (ADR 0051 decision 4, S34 sub-PR 4): every table the
   // signed-in person has sat at, from any device, without an invite
@@ -36,11 +37,15 @@
   });
 
   async function load(): Promise<void> {
-    if (!signedInUserID($session)) return;
+    const id = signedInUserID($session);
+    if (!id) return;
     loading = true;
     error = "";
     try {
-      games = sortMyGames(await fetchMyGames());
+      const mine = await fetchMyGames();
+      // The tutorial offer reads this too (ADR 0125 §3.7).
+      noteMyGames(id, mine);
+      games = sortMyGames(mine);
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "couldn't load your games";
     } finally {

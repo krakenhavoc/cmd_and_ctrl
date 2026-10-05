@@ -18,6 +18,7 @@
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
   import { rowEntries } from "../../tokenGroups";
+  import { fitRow } from "../../rowFit";
   import {
     NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
@@ -267,7 +268,7 @@
     <span class="row-name">{label}</span>
     {#if cards.length > 0}<span class="row-count">{cards.length}</span>{/if}
   </span>
-  <div class="row-cards" role="list" aria-label={label}>
+  <div class="row-cards" role="list" aria-label={label} use:fitRow>
     {#each piles as p (p.key)}
       <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -483,6 +484,21 @@
     align-content: flex-start;
     align-items: flex-start;
     height: 100%;
+  }
+  /* #2336: a row stays on one line. Cards that do not fit overlap, each
+     by --fit-overlap (lib/rowFit.ts, measured by the fitRow action),
+     instead of wrapping onto a line the panel has no room for. A
+     hovered card comes to the front. Past the overlap cap a huge board
+     scrolls sideways, and `safe` keeps its first card reachable. */
+  .row:not(.strip) .row-cards {
+    flex-wrap: nowrap;
+    justify-content: safe center;
+  }
+  .row:not(.strip) .pile + .pile {
+    margin-left: calc(-1 * var(--fit-overlap, 0px));
+  }
+  .row:not(.strip) .pile:hover {
+    z-index: 6;
   }
   /* Outside the strip a pile is one card and nothing more; the
      wrapper exists so the markup has one shape. */

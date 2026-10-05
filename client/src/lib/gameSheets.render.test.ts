@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { PROTOCOL_VERSION, type CardView, type GameView, type PlayerView } from "./protocol";
 import { session, type Session } from "./session";
-import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetDock, SHEET_HAND_WIDTH } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
 import { targeting, setConfirmHandler } from "./targeting";
 import { defaultSettings, settings } from "./settings";
@@ -286,6 +286,21 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     click(buttonNamed(dlg, "restore: Your opening hand")!);
     expect(sheet.hidden).toBe(false);
     expect(dockOf(c).classList.contains("staged")).toBe(true);
+  });
+
+  it("asks for a wide sheet, so the seven cards are full size (#2200)", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    const sheet = dlg.querySelector<HTMLElement>(".dock-sheet")!;
+    // jsdom has no layout: the contract is the width the sheet asks for
+    // (CSS caps it at the screen less 24px). 720px gave ~95px cards.
+    expect(sheet.style.getPropertyValue("--sheet-want")).toBe(`${SHEET_HAND_WIDTH}px`);
+    expect(SHEET_HAND_WIDTH).toBeGreaterThan(7 * 200);
+    // The hand is still in the sheet, and the buttons are still in the bar.
+    expect(sheet.querySelectorAll(".mulligan-card")).toHaveLength(7);
+    expect(buttonNamed(dlg, "Keep hand")).not.toBeNull();
+    expect(buttonNamed(dlg, "Mulligan")).not.toBeNull();
+    expect(sheet.contains(buttonNamed(dlg, "Keep hand"))).toBe(false);
   });
 
   it("puts Keep hand in the corner and Mulligan on the left of the bar, and sends each", async () => {

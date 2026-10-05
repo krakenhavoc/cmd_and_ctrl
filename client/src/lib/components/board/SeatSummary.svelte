@@ -264,7 +264,7 @@
          It is a FLOOR, not a total — see manaAvailable's contract.
          The dashed "?" pip is what says so visually; manaLabel names
          the source count so the spoken form carries the same caveat. -->
-    <div class="row mana" role="group" aria-label={manaLabel(summary.mana)}>
+    <div class="row mana" data-dice-avoid role="group" aria-label={manaLabel(summary.mana)}>
       {#each manaPips as pip (pip.color)}
         <span class="pip mana-pip" style:--pip-fill={pip.meta.fill} title={pip.meta.label}>
           {pip.count}
@@ -282,7 +282,7 @@
 
     <!-- Combat math: what can block, and how hard it hits. Untapped is
          the number you read on someone else's turn. -->
-    <div class="row counts">
+    <div class="row counts" data-dice-avoid>
       <span class="stat">
         <strong>{summary.creatures.untapped}</strong> untapped
       </span>
