@@ -1,6 +1,6 @@
 // tutorialBus: the tutorial's client event bus (ADR 0076 §2.5, #1077).
 //
-// Only six of the tutorial's eleven steps can read their completion out of the
+// Most of the tutorial's fourteen steps read their completion out of the
 // game snapshot. A hover, and a card-local menu opening, never reach the wire,
 // so the three components that see them say so here.
 //

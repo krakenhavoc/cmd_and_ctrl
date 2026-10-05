@@ -31,8 +31,9 @@ registered, or when this file is stale.
 | `lands` | `lands` | list | aria | `lib/components/board/PlayerPanel.svelte` | a board's land row; every board has one, so anchor it within your board |
 | `creatures` | `creatures` | list | aria | `lib/components/board/PlayerPanel.svelte` | a board's creature row; every board has one, so anchor it within your board |
 | `commandZone` | `<name> command zone, <N> card(s)` (contains ` command zone, `) | generic | aria | `lib/components/board/CommandZone.svelte` | a seat's command zone panel |
+| `castFromOtherZones` | `castable from other zones` | generic | aria | `lib/components/board/ExileStrip.svelte` | the strip beside the viewer's hand while it holds a commander (#2202); the tutorial's commander step anchors here |
 | `expandBoard` | `Expand <name>'s board, or Expand your own board` (starts with `Expand `) | button | aria | `lib/components/board/Board.svelte` | a board's expand button (ADR 0120); null names the viewer's own |
-| `stackPile` | `stack: <N> on the stack` (starts with `stack: `) | region | aria | `lib/components/board/StackLaneHost.svelte`<br>`lib/components/board/StackOverlay.svelte` | the stack pile (ADR 0119), and the floating stack overlay |
+| `stackPile` | `stack: <N> on the stack` (starts with `stack: `) | region | aria | `lib/components/board/StackLaneHost.svelte`<br>`lib/components/board/StackOverlay.svelte` | the stack pile (ADR 0119), and the floating stack overlay; the tutorial's stack step anchors here |
 | `attention` | `attention` | region | aria | `lib/components/board/Board.svelte` | the attention strip, top left: bot chatter, reveals, the roll call |
 | `turnPhase` | `turn and phase indicator` | generic | aria | `lib/components/board/PhaseDisplay.svelte` | the turn number, the active player and the step |
 | `actions` | `actions` | region | aria | `lib/components/board/ActionDock.svelte` | the action dock; the tutorial's move-along step and its detours anchor here |
@@ -42,7 +43,7 @@ registered, or when this file is stale.
 | `passTurn` | `Pass turn` | button | text | `lib/components/board/ActionDock.svelte` | the dock's secondary: skip the rest of the turn |
 | `declareAttackers` | `declare attackers` | dialog, group | aria | `lib/combatDock.ts` | the attack request's dialog and its row group |
 | `declareBlockers` | `declare blockers` | dialog, group | aria | `lib/combatDock.ts` | the block request's dialog and its row group |
-| `mulligan` | `keep or mulligan your hand` | dialog | aria | `routes/Game.svelte` | the opening hand sheet |
+| `mulligan` | `keep or mulligan your hand` | dialog | aria | `routes/Game.svelte` | the opening hand sheet; the tutorial's play-land and cast-creature steps detour here while it waits |
 | `keepHand` | `Keep hand` | button | text | `routes/Game.svelte` | the opening hand sheet's primary |
 | `openingHandDecisions` | `opening hand decisions` | generic | aria | `routes/Game.svelte` | the strip's roll call while hands are kept or mulliganed |
 | `discard` | `Discard <N> card(s)` (starts with `Discard `) | dialog | aria | `lib/components/board/DiscardPromptModal.svelte` | the discard request (cleanup or an effect) |
@@ -51,15 +52,15 @@ registered, or when this file is stale.
 | `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it unpaid |
 | `cancel` | `Cancel` | button | text | `lib/targetingDock.ts`<br>`lib/dock.ts` | Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included |
 | `castAnyway` | `Cast anyway (don't pay)` | menuitem | text | `lib/castAnyway.ts` | the card menu's row that casts without paying (ADR 0118 §2) |
-| `rollForFirstTurn` | `roll for the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the opening roll's request |
+| `rollForFirstTurn` | `roll for the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the opening roll's request; the tutorial's roll step anchors here while the viewer owes a die |
 | `roll` | `Roll` | button | text | `lib/components/board/OpeningRollDock.svelte` | the opening roll's primary |
 | `rollForEveryone` | `Roll for everyone left` | button | text | `lib/components/board/OpeningRollDock.svelte` | the host's secondary on the opening roll |
-| `chooseFirstTurn` | `choose who takes the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the roll winner's sheet |
+| `chooseFirstTurn` | `choose who takes the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the roll winner's sheet; the tutorial's roll step detours here |
 | `goesFirst` | `<name> goes first` (ends with ` goes first`) | button | text | `lib/openingRoll.ts` | the chooser's button for another seat |
 | `iGoFirst` | `I go first` | button | text | `lib/openingRoll.ts` | the chooser's button for their own seat |
-| `giveFirstTurn` | `Let <name> take the first turn?` (ends with ` take the first turn?`) | dialog | aria | `lib/openingRoll.ts` | the confirm when the chooser gives the first turn away, with Confirm and Cancel |
+| `giveFirstTurn` | `Let <name> take the first turn?` (ends with ` take the first turn?`) | dialog | aria | `lib/openingRoll.ts` | the confirm when the chooser gives the first turn away, with Confirm and Cancel; in the tutorial's roll detour |
 | `confirm` | `Confirm` | button | text | `lib/components/board/OpeningRollDock.svelte` | the first-turn confirm's primary |
-| `openingRoll` | `opening roll` | group | aria | `lib/components/board/OpeningRollBanner.svelte` | the strip's banner during the roll; stands in for opening hand decisions until the winner chooses |
+| `openingRoll` | `opening roll` | group | aria | `lib/components/board/OpeningRollBanner.svelte` | the strip's banner during the roll; stands in for opening hand decisions until the winner chooses; the tutorial's roll step anchors here while the table waits on the bot |
 | `moreActions` | `more actions` | button | aria | `lib/components/board/GameMenu.svelte` | the ⋯ button that opens the game menu |
 | `gameActions` | `game actions` | menu | aria | `lib/components/board/GameMenu.svelte` | the ⋯ menu itself |
 | `dice` | `Dice` | none | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's heading over the table rolls; plain text, not a group, with no name of its own |

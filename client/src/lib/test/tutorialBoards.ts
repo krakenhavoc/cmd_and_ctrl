@@ -33,6 +33,18 @@ export const elves = (extra: Partial<CardView> = {}) =>
   });
 export const walker = (extra: Partial<CardView> = {}) =>
   card("Phyrexian Walker", "Artifact Creature — Phyrexian Construct", extra);
+export const marwyn = (extra: Partial<CardView> = {}) =>
+  card("Marwyn, the Nurturer", "Legendary Creature — Elf Druid", extra);
+
+/**
+ * An open opening roll (ADR 0121 §3): the dice rolled so far in one
+ * round of both seats, as [seat, result], and the chooser once there is
+ * one.
+ */
+export interface Roll {
+  rolls?: Array<[number, number]>;
+  chooser?: number;
+}
 
 export interface Board {
   step?: string;
@@ -45,11 +57,17 @@ export interface Board {
   pool?: string[];
   landsPlayed?: number;
   stack?: CardView[];
+  /** The viewer's command zone; empty by default. */
+  command?: CardView[];
+  /** The opening roll, open; absent by default. */
+  roll?: Roll;
+  /** The opening hands are open; `kept` is the viewer's. */
+  mulligan?: { kept: boolean };
 }
 
 export function board(b: Board = {}): GameView {
   const zone = (kind: string, cards: CardView[] = []) => ({ kind, count: cards.length, cards });
-  const seat = (id: string, i: number, hand: CardView[] = []) => ({
+  const seat = (id: string, i: number, hand: CardView[] = [], command: CardView[] = []) => ({
     id,
     name: id === ME ? "Player" : "Practice Bot",
     seat: i,
@@ -57,14 +75,15 @@ export function board(b: Board = {}): GameView {
     library: zone("library"),
     hand: zone("hand", hand),
     graveyard: zone("graveyard"),
-    command: zone("command"),
+    command: zone("command", command),
+    hand_kept: id === ME && b.mulligan ? b.mulligan.kept : undefined,
     mana_pool: id === ME ? (b.pool ?? []) : [],
     lands_played_this_turn: id === ME ? (b.landsPlayed ?? 0) : 0,
   });
   return {
     id: "g",
     state: "active",
-    seats: [seat(ME, 0, b.hand ?? [forest(), elves()]), seat(BOT, 1)],
+    seats: [seat(ME, 0, b.hand ?? [forest(), elves()], b.command ?? []), seat(BOT, 1)],
     battlefield: zone("battlefield", [
       ...(b.mine ?? []),
       ...(b.theirs ?? []).map((c) => ({ ...c, owner: BOT, controller: BOT })),
@@ -80,7 +99,20 @@ export function board(b: Board = {}): GameView {
       phase: "",
       step: b.step ?? "precombat_main",
     },
-    mulligans_open: false,
+    mulligans_open: !!b.mulligan,
+    ...(b.roll
+      ? {
+          opening_roll: {
+            rounds: [
+              {
+                seats: [0, 1],
+                rolls: (b.roll.rolls ?? []).map(([seat, result]) => ({ seat, result })),
+              },
+            ],
+            ...(b.roll.chooser === undefined ? {} : { chooser: b.roll.chooser }),
+          },
+        }
+      : {}),
   } as unknown as GameView;
 }
 

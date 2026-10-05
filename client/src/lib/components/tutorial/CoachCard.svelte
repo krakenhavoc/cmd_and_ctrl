@@ -9,7 +9,7 @@
   //   watch      the bot's turn. No spotlight and no ask.
   //   recovered  the predicate saw the common wrong action; the step
   //              stays live and the card says what happened.
-  //   done       step 11: Replay / Finish.
+  //   done       step 14: Replay / Finish.
   //
   // Presentational only: TutorialCoach.svelte owns the step machine and
   // the placement. Every state has a way out (Skip step, Skip tutorial
@@ -24,7 +24,7 @@
 
   interface Props {
     state: CoachState;
-    /** This step's number and the tutorial's length, for "5 / 11". */
+    /** This step's number and the tutorial's length, for "5 / 14". */
     n: number;
     total: number;
     title: string;

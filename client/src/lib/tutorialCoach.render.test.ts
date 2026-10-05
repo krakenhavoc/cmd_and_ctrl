@@ -2,7 +2,7 @@
 //
 // tutorialCoach.render.test.ts — the tutorial's walking skeleton (ADR 0076
 // §2.3, §2.4; #1079): the coach card's six states, the scrim, the anchor
-// resolver and the missing-anchor self-advance, and steps 1 and 11 end to
+// resolver and the missing-anchor self-advance, and steps 1 and 14 end to
 // end.
 
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
@@ -12,8 +12,16 @@ import { join } from "node:path";
 import Board from "./components/board/Board.svelte";
 import CoachCard from "./components/tutorial/CoachCard.svelte";
 import TutorialCoach from "./components/tutorial/TutorialCoach.svelte";
+import { get } from "svelte/store";
 import { ANCHOR_GRACE_MS, POLL_MS, type CoachState, type TutorialStep } from "./tutorial";
-import { HANDOFF, WELCOME } from "./tutorialSteps";
+import {
+  COMMANDER,
+  HANDOFF,
+  ON_THE_STACK,
+  OPENING_ROLL,
+  TUTORIAL_STEPS,
+  WELCOME,
+} from "./tutorialSteps";
 import { anchorRect, resolveAnchor } from "./tutorialAnchor";
 import { L } from "./labels";
 import { emit } from "./tutorialBus";
@@ -71,7 +79,7 @@ describe("CoachCard: the six states", () => {
       {
         state,
         n: 5,
-        total: 11,
+        total: 14,
         title: "Tap a land for mana",
         body: "Click one of the Forests.",
         hint: "A land already on the table.",
@@ -81,7 +89,7 @@ describe("CoachCard: the six states", () => {
 
   it("opening: Skip tutorial and Start, no status", () => {
     const c = card("opening", { n: 1 });
-    expect(c.textContent).toContain("1 / 11");
+    expect(c.textContent).toContain("1 / 14");
     expect(buttons(c)).toEqual(["Skip tutorial", "Start"]);
     expect(c.querySelector(".coach-status")).toBeNull();
   });
@@ -114,14 +122,14 @@ describe("CoachCard: the six states", () => {
   });
 
   it("done: Replay and Finish", () => {
-    const c = card("done", { n: 11 });
-    expect(c.textContent).toContain("11 / 11");
+    const c = card("done", { n: 14 });
+    expect(c.textContent).toContain("14 / 14");
     expect(buttons(c)).toEqual(["Replay", "Finish"]);
   });
 
   it("marks progress: past steps full, this one half", () => {
     const c = card("action");
-    expect(c.querySelectorAll(".seg")).toHaveLength(11);
+    expect(c.querySelectorAll(".seg")).toHaveLength(14);
     expect(c.querySelectorAll(".seg.past")).toHaveLength(4);
     expect(c.querySelectorAll(".seg.now")).toHaveLength(1);
   });
@@ -254,7 +262,7 @@ describe("TutorialCoach", () => {
     return { ...r, sizes, replays, log };
   }
 
-  it("walks steps 1 and 11: Start, then Finish hides the card and frees its cell", () => {
+  it("walks steps 1 and 14: Start, then Finish hides the card and frees its cell", () => {
     const m = mount([WELCOME, HANDOFF]);
     const c = m.container;
     expect(c.querySelector('[aria-label="tutorial coach"]')).not.toBeNull();
@@ -365,7 +373,7 @@ describe("TutorialCoach", () => {
   });
 });
 
-// Sub-PR 4 (#1081): what the coach does for the nine middle steps.
+// Sub-PR 4 (#1081): what the coach does for the middle steps.
 describe("TutorialCoach: the middle steps", () => {
   const rest: TutorialStep = {
     id: "read-hand",
@@ -575,6 +583,168 @@ describe("TutorialCoach: the middle steps", () => {
     expect(m.container.querySelector(".coach-status")?.textContent).toContain("Waiting for you");
     m.setProps({ autopass: true });
     expect(m.container.querySelector(".coach-status")?.textContent).toContain("Autopass is on");
+  });
+});
+
+// ADR 0125 §5: the roll, the commander's eventless hover, what a
+// completed step teaches, and the count out of fourteen.
+describe("TutorialCoach: the refreshed tutorial", () => {
+  const view = {
+    id: "g",
+    seats: [
+      { id: "me", name: "Player", seat: 0 },
+      { id: "bot", name: "Practice Bot", seat: 1 },
+    ],
+    turn: { seq: 1 },
+  } as unknown as GameView;
+  const rolling = (rolls: Array<{ seat: number; result: number }>, chooser?: number) =>
+    ({
+      ...view,
+      opening_roll: {
+        rounds: [{ seats: [0, 1], rolls }],
+        ...(chooser === undefined ? {} : { chooser }),
+      },
+    }) as unknown as GameView;
+
+  function mount(steps: TutorialStep[], extra: Record<string, unknown> = {}) {
+    const log = vi.fn();
+    const r = render(
+      TutorialCoach as never,
+      { view, viewerID: "me", steps, log, onSize: () => {}, ...extra } as never,
+    ) as unknown as Rendered<Record<string, unknown>>;
+    return { ...r, log };
+  }
+  const add = (html: string, id: string, l: number) => {
+    document.body.insertAdjacentHTML("beforeend", html);
+    place(document.getElementById(id)!, l, 100, 200, 100);
+  };
+  const seen = () => get(settings).help.seen;
+
+  it("counts out of fourteen on the real script", () => {
+    const m = mount(TUTORIAL_STEPS);
+    expect(m.container.textContent).toContain("1 / 14");
+    expect(m.container.querySelectorAll(".seg")).toHaveLength(14);
+  });
+
+  it("walks the roll during the roll: Roll, then the banner, then the chooser's sheet", () => {
+    vi.useFakeTimers();
+    add('<div aria-label="roll for the first turn" id="roll"></div>', "roll", 900);
+    add('<div aria-label="opening roll" id="banner"></div>', "banner", 20);
+    add('<div aria-label="choose who takes the first turn" id="sheet"></div>', "sheet", 700);
+    const m = mount([WELCOME, OPENING_ROLL, HANDOFF], { view: rolling([]) });
+    click(button(m.container, "Start")!);
+    flushSync();
+    expect(m.container.textContent).toContain("Roll for the first turn");
+    expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("894px");
+    // Rolled; the bot has not: the banner, and who the table waits for.
+    m.setProps({ view: rolling([{ seat: 0, result: 15 }]) });
+    vi.advanceTimersByTime(POLL_MS);
+    flushSync();
+    expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("14px");
+    expect(m.container.querySelector(".coach-status")?.textContent).toContain(
+      "Waiting for Practice Bot to roll",
+    );
+    // Won: the detour onto the sheet.
+    m.setProps({
+      view: rolling(
+        [
+          { seat: 0, result: 15 },
+          { seat: 1, result: 2 },
+        ],
+        0,
+      ),
+    });
+    vi.advanceTimersByTime(POLL_MS);
+    flushSync();
+    expect(m.container.textContent).toContain("You won the roll");
+    expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("694px");
+    // The choice closes the roll: the step is complete, and taught its hint.
+    m.setProps({ view: { ...view, turn: { seq: 1, step: "upkeep" } } });
+    flushSync();
+    expect(m.container.textContent).toContain("That is the whole interface");
+    expect(seen()["table.opening-roll"]).toBe(1);
+    expect(m.log).not.toHaveBeenCalled();
+  });
+
+  it("completes the commander's hover with a mouse, and marks its hint seen", () => {
+    vi.useFakeTimers();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<section aria-label="your board"><div aria-label="castable from other zones" id="cz"></div></section>',
+    );
+    place(document.getElementById("cz")!, 40, 500, 120, 170);
+    let over = false;
+    const m = mount([WELCOME, COMMANDER, HANDOFF], {
+      view: { ...view, seats: [{ id: "me", name: "Player", seat: 0, command: { count: 1 } }] },
+      canHover: true,
+      isHovering: () => over,
+    });
+    click(button(m.container, "Start")!);
+    expect(m.container.textContent).toContain("Your commander");
+    over = true;
+    vi.advanceTimersByTime(800);
+    flushSync();
+    expect(m.container.textContent).toContain("That is the whole interface");
+    expect(seen()["table.commander"]).toBe(1);
+  });
+
+  it("moves the commander's step on after a read on a touch screen, and teaches nothing", () => {
+    vi.useFakeTimers();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<section aria-label="your board"><div aria-label="castable from other zones" id="cz"></div></section>',
+    );
+    place(document.getElementById("cz")!, 40, 500, 120, 170);
+    const m = mount([WELCOME, COMMANDER, HANDOFF], {
+      view: { ...view, seats: [{ id: "me", name: "Player", seat: 0, command: { count: 1 } }] },
+      canHover: false,
+      touchHoverStepMs: 5_000,
+    });
+    click(button(m.container, "Start")!);
+    // No bus event stands for this step: none of the three completes it.
+    emit("hand-hovered");
+    emit("pile-hovered");
+    emit("ability-menu-opened");
+    flushSync();
+    expect(m.container.textContent).toContain("Your commander");
+    vi.advanceTimersByTime(5_100);
+    flushSync();
+    expect(m.container.textContent).toContain("That is the whole interface");
+    expect(m.log).toHaveBeenCalledWith(
+      "tutorial: step commander cannot be hovered on this device; advancing",
+    );
+    expect(seen()["table.commander"]).toBeUndefined();
+  });
+
+  it("marks the hand-off's hints on Finish, and nothing on Skip tutorial", () => {
+    const m = mount([WELCOME, HANDOFF]);
+    click(button(m.container, "Skip tutorial")!);
+    expect(seen()).toEqual({});
+    cleanup();
+    const n = mount([WELCOME, HANDOFF]);
+    click(button(n.container, "Start")!);
+    click(button(n.container, "Finish")!);
+    expect(seen()).toEqual({ "table.more": 1, "table.shortcuts": 1 });
+  });
+
+  it("hands a completed step's teaches to onTaught, and a skipped one's to nobody", () => {
+    const taught: string[][] = [];
+    const step: TutorialStep = {
+      ...ON_THE_STACK,
+      anchor: undefined,
+      done: (c) => c.event === "ability-menu-opened",
+      cannot: undefined,
+    };
+    const m = mount([WELCOME, step, { ...step, id: "again" }, HANDOFF], {
+      onTaught: (ids: readonly string[]) => taught.push([...ids]),
+    });
+    click(button(m.container, "Start")!);
+    click(button(m.container, "Skip step")!);
+    expect(taught).toEqual([]);
+    emit("ability-menu-opened");
+    flushSync();
+    expect(taught).toEqual([["table.stack"]]);
+    expect(seen()).toEqual({});
   });
 });
 

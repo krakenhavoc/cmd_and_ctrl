@@ -11,7 +11,7 @@ import type { Readable } from "svelte/store";
 import { guardedWritable } from "../guardedStore";
 import { L } from "../labels";
 import { settings } from "../settings";
-import type { Hint, HintPlace } from "./hint";
+import type { Hint, HintID, HintPlace } from "./hint";
 import type { Placement, Rect } from "./place";
 import { createHintEngine, type EngineOptions, type HintEngine } from "./queue";
 import { withSeen, withoutSeen } from "./seen";
@@ -56,6 +56,19 @@ export function markHintSeen(h: Pick<Hint, "id" | "version">): void {
     const seen = withSeen(prev.help.seen, h.id, h.version);
     return seen === prev.help.seen ? prev : { ...prev, help: { ...prev.help, seen } };
   });
+}
+
+/**
+ * markHintsTaught marks hints seen by id, each at its current version:
+ * a tutorial step that completes has taught them (ADR 0125 §5.3). An id
+ * no live hint has is skipped; tutorialSteps.test.ts keeps the script's
+ * ids live.
+ */
+export function markHintsTaught(ids: readonly HintID[], hints: readonly Hint[]): void {
+  for (const id of ids) {
+    const h = hints.find((x) => x.id === id);
+    if (h) markHintSeen(h);
+  }
 }
 
 // ---- focus ----

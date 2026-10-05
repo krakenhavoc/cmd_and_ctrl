@@ -79,6 +79,7 @@
   import type { CastSourceZone } from "../../targeting";
   import type { Legality } from "../../timing";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { L } from "../../labels";
 
   interface Props {
     view: GameView;
@@ -132,9 +133,7 @@
   }
   // The strip's own name and the chip's word: unchanged while it holds
   // only exile cards.
-  const stripLabel = $derived(
-    commanderCount === 0 ? "castable from exile" : "castable from other zones",
-  );
+  const stripLabel = $derived(commanderCount === 0 ? "castable from exile" : L.castFromOtherZones);
   const chipWord = $derived(commanderCount === 0 ? "exile" : exileCount === 0 ? "cmd" : "cast");
   const tagText = $derived(
     commanderCount === 0 ? "from exile" : exileCount === 0 ? "commander" : "other zones",

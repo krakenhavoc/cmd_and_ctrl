@@ -3,8 +3,8 @@
 //
 // Pure state, no DOM: TutorialCoach.svelte feeds it the game view, the
 // tutorialBus events and "the anchor is missing", and draws what it says.
-// The step list is data (tutorialSteps.ts), so sub-PR 4 (#1081) adds the
-// nine middle steps without touching this file.
+// The step list is data (tutorialSteps.ts): sub-PR 4 (#1081) added the
+// middle steps, and ADR 0125 §5.1 three more, without reshaping it.
 //
 // The rules it holds:
 //
@@ -15,15 +15,22 @@
 //     (§2.4). It never waits on a predicate that cannot fire.
 //   - The hint is the second thing a player gets, never the first: it
 //     appears after HINT_AFTER_MS on a step that asks for an action.
-//   - A step that waits on the bot rather than the player (step 9) can
+//   - A step that waits on the bot rather than the player (step 12) can
 //     carry a timeout, and advances on its own when it runs out. An
 //     action step may carry one too.
 //   - While the opening roll is open nothing is dealt, so no step
 //     completes, gives up or advances itself (heldByOpeningRoll, ADR
-//     0125 §5.2).
+//     0125 §5.2), except the one that teaches the roll (step 2,
+//     `duringOpeningRoll`). A held step's timers wait for the deal: its
+//     hint and its timeout start when the hold lifts, not before.
+//   - A step that completes (its predicate fires, a hover rests, or a
+//     button step's button is pressed) reports itself through
+//     `onComplete`, which marks the hints it `teaches` as seen (ADR 0125
+//     §5.3). A step that is skipped, gives up or advances itself does
+//     not, so its hints are still offered at a real table.
 //
-// Sub-PR 4 (#1081) added what the nine middle steps need. All of it is
-// optional on a step, so steps 1 and 11 are unchanged:
+// Sub-PR 4 (#1081) added what the middle steps need. All of it is
+// optional on a step, so the two button steps are unchanged:
 //
 //   - `first`, a detour: what the player has to do before the step can
 //     happen at all. A land waits for your main phase, and a creature
@@ -32,20 +39,21 @@
 //   - `cannot`: the board can no longer produce the step's action, for
 //     instance no land left in hand to play. The step advances itself
 //     and logs, like a missing anchor (§2.4).
-//   - `hover`: steps 2 and 4 complete once the pointer has rested on the
-//     anchor for `ms` (§2.1, "hover ≥ 600ms"). The coach measures the
+//   - `hover`: steps 3, 5 and 10 complete once the pointer has rested on
+//     the anchor for `ms` (§2.1, "hover ≥ 600ms"). The coach measures the
 //     rest and reports it through `hovered()`.
-//   - An anchor can be read off the board (step 7's card, step 10's
-//     opponent), and so can a status line.
+//   - An anchor can be read off the board (step 2's dialog or banner,
+//     step 9's card, step 13's opponent), and so can a status line.
 
 import type { Readable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import type { HintID } from "./hints/hint";
 import type { LabelRef } from "./labels";
 import type { GameView } from "./protocol";
 import type { TutorialEvent } from "./tutorialBus";
 
-/** How many steps the tutorial has (ADR 0076 §2.1), for "N / 11". */
-export const TUTORIAL_STEP_COUNT = 11;
+/** How many steps the tutorial has (ADR 0125 §5.1), for "N / 14". */
+export const TUTORIAL_STEP_COUNT = 14;
 
 /** How often a spotlit anchor is measured (TutorialCoach.svelte). */
 export const POLL_MS = 100;
@@ -61,9 +69,11 @@ export const ANCHOR_GRACE_MS = 1_500;
 export const HINT_AFTER_MS = 20_000;
 
 /**
- * How long a hover step (2 and 4) stays up on a device with no hover
- * before it moves on by itself. A touch on the hand or a pile completes
- * it sooner; this is for the board that has no pile to touch yet.
+ * How long a hover step (3, 5 and 10) stays up on a device with no
+ * hover before it moves on by itself. A touch on the hand or a pile
+ * completes it sooner; this is for the board that has no pile to touch
+ * yet, and for the command zone, which has no touch of its own to wait
+ * for (a tap there casts the commander).
  */
 export const TOUCH_HOVER_STEP_MS = 12_000;
 
@@ -91,7 +101,7 @@ export type Anchor =
 
 /**
  * The step kinds. `opening` and `done` are the two button steps (1 and
- * 11); `action` waits on the player; `watch` waits on the bot.
+ * 14); `action` waits on the player; `watch` waits on the bot.
  */
 export type StepKind = "opening" | "action" | "watch" | "done";
 
@@ -114,7 +124,7 @@ export interface StepContext {
 /**
  * Client-side state a step can read, because it never reaches the wire.
  * Only the dock's autopass toggle (Game.svelte's session state), which
- * step 9 teaches. Like the bus (§2.5), it is not a place for more.
+ * step 12 teaches. Like the bus (§2.5), it is not a place for more.
  */
 export interface ClientState {
   autopass: boolean;
@@ -152,7 +162,7 @@ export interface Detour {
 export interface TutorialStep {
   /** Stable id, for logs and tests. */
   id: string;
-  /** Its number in ADR 0076 §2.1's table (1–11). */
+  /** Its number in ADR 0125 §5.1's table (1–14). */
   n: number;
   kind: StepKind;
   title: Copy;
@@ -186,9 +196,24 @@ export interface TutorialStep {
   /**
    * Hover steps: done once the pointer has rested on the anchor for
    * `ms`. `event` is the bus event that stands for the whole gesture on
-   * a device with no hover, where a touch is all there is.
+   * a device with no hover, where a touch is all there is. A step with
+   * no event (the command zone, ADR 0125 §5.1, whose touch casts the
+   * commander) moves on after TOUCH_HOVER_STEP_MS on such a device: the
+   * bus keeps its three events (ADR 0076 §2.5).
    */
-  hover?: { ms: number; event: TutorialEvent };
+  hover?: { ms: number; event?: TutorialEvent };
+  /**
+   * The first-use hints this step teaches (ADR 0125 §5.3). When the
+   * step completes they are marked seen at their current version, so
+   * the player is not told again at their first real table.
+   */
+  teaches?: readonly HintID[];
+  /**
+   * The step teaches the opening roll itself (step 2), so the hold that
+   * keeps every other step still while the roll is open does not apply
+   * to it (heldByOpeningRoll).
+   */
+  duringOpeningRoll?: boolean;
 }
 
 export interface TutorialSnapshot {
@@ -200,7 +225,10 @@ export interface TutorialSnapshot {
   visible: boolean;
   /** The step's detour while the board needs one, else null. */
   detour: Detour | null;
-  /** The opening roll is open, so no step may move (heldByOpeningRoll). */
+  /**
+   * The opening roll is open and this step waits for the deal, so it may
+   * not move and its timers have not started (heldFor).
+   */
   held: boolean;
 }
 
@@ -210,11 +238,20 @@ export interface TutorialSnapshot {
  * dealt until the winner chooses, so no step can be judged yet: the hand
  * is empty, so "Read your hand" would complete on an empty row and "Play
  * a land" would give up for want of a land. While it holds, no step
- * completes, gives up or advances itself; the opening card's Start and
- * the player's own Skip step still work.
+ * completes, gives up or advances itself, and a step's hint and timeout
+ * wait for the deal; the opening card's Start and the player's own Skip
+ * step still work. The step that teaches the roll is exempt (heldFor).
  */
 export function heldByOpeningRoll(view: GameView | null): boolean {
   return !!view?.opening_roll;
+}
+
+/**
+ * heldFor is the hold as it applies to one step: every step but the one
+ * that teaches the roll waits for the deal.
+ */
+export function heldFor(step: TutorialStep, view: GameView | null): boolean {
+  return !step.duringOpeningRoll && heldByOpeningRoll(view);
 }
 
 export interface TutorialRun extends Readable<TutorialSnapshot> {
@@ -222,7 +259,10 @@ export interface TutorialRun extends Readable<TutorialSnapshot> {
   start(): void;
   /** Skip step: silently on to the next one. */
   skipStep(): void;
-  /** Skip tutorial (step 1) and Finish (step 11): hide the coach. */
+  /**
+   * Skip tutorial (step 1), and Finish and Replay (step 14): hide the
+   * coach. On the last step that completes it.
+   */
   close(): void;
   /** The game moved, or the bus spoke: check the current step. */
   observe(view: GameView | null, event?: TutorialEvent | null): void;
@@ -249,6 +289,13 @@ export interface RunOptions {
   log?: (msg: string) => void;
   hintAfterMs?: number;
   client?: ClientState;
+  /**
+   * A step completed: its predicate fired, a hover rested, or its button
+   * was pressed. Not called for a step that was skipped, gave up, timed
+   * out or had no anchor (ADR 0125 §5.3). The coach marks the step's
+   * `teaches` seen here.
+   */
+  onComplete?: (step: TutorialStep) => void;
 }
 
 /** coachStateFor is the card's state for a step, before hint and recovery. */
@@ -314,13 +361,16 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   let stepTimer: ReturnType<typeof setTimeout> | null = null;
   let detour: Detour | null = null;
 
+  /** Is the current step waiting for the deal? */
+  const held = (): boolean => heldFor(steps[index], latest);
+
   const snap = (): TutorialSnapshot => ({
     index,
     step: steps[index],
     coach,
     visible,
     detour,
-    held: heldByOpeningRoll(latest),
+    held: held(),
   });
   const store = guardedWritable<TutorialSnapshot>(snap(), "tutorial");
   const publish = () => store.set(snap());
@@ -354,6 +404,48 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     }, hintAfter);
   }
 
+  function armStepTimer(): void {
+    if (stepTimer !== null) clearTimeout(stepTimer);
+    stepTimer = null;
+    const step = steps[index];
+    if ((step.kind !== "action" && step.kind !== "watch") || step.timeoutMs === undefined) return;
+    const id = step.id;
+    stepTimer = setTimeout(() => {
+      stepTimer = null;
+      if (visible && steps[index].id === id && !held()) {
+        log(`tutorial: step ${id} timed out waiting; advancing`);
+        enter(index + 1);
+      }
+    }, step.timeoutMs);
+  }
+
+  /**
+   * armTimers starts the current step's hint and timeout from now. A
+   * held step starts neither: both begin when the hold lifts, so a step
+   * entered during the opening roll gets its whole timeout on the dealt
+   * board, not whatever the roll left of it.
+   */
+  function armTimers(): void {
+    clearTimers();
+    if (!visible || held()) return;
+    armHint();
+    armStepTimer();
+  }
+
+  /** The current step completed: report it, then move on. */
+  function complete(): void {
+    report(steps[index]);
+    enter(index + 1);
+  }
+
+  function report(step: TutorialStep): void {
+    try {
+      opts.onComplete?.(step);
+    } catch (err) {
+      log(`tutorial: step ${step.id} completion failed (${String(err)})`);
+    }
+  }
+
   function enter(i: number): void {
     clearTimers();
     index = Math.min(i, steps.length - 1);
@@ -361,17 +453,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     coach = coachStateFor(step.kind);
     start = latest;
     detour = null;
-    armHint();
-    if ((step.kind === "action" || step.kind === "watch") && step.timeoutMs !== undefined) {
-      const id = step.id;
-      stepTimer = setTimeout(() => {
-        stepTimer = null;
-        if (visible && steps[index].id === id && !heldByOpeningRoll(latest)) {
-          log(`tutorial: step ${id} timed out waiting; advancing`);
-          enter(index + 1);
-        }
-      }, step.timeoutMs);
-    }
+    armTimers();
     publish();
     // A step can already be satisfied the moment it begins.
     check(null);
@@ -382,10 +464,10 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     const step = steps[index];
     if (step.kind !== "action" && step.kind !== "watch") return;
     // Nothing is dealt yet: no step completes or gives up (ADR 0125 §5.2).
-    if (heldByOpeningRoll(latest)) return;
+    if (held()) return;
     const ctx = ctxOf(event);
     if (step.done?.(ctx)) {
-      enter(index + 1);
+      complete();
       return;
     }
     const why = step.cannot?.(ctx) ?? null;
@@ -412,7 +494,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   function advance(stepID: string, why: string): void {
     if (!visible || steps[index].id !== stepID) return;
     if (index >= steps.length - 1) return;
-    if (heldByOpeningRoll(latest)) return;
+    if (held()) return;
     log(`tutorial: step ${stepID} ${why}; advancing`);
     enter(index + 1);
   }
@@ -422,7 +504,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     current: snap,
     start() {
       if (!visible || steps[index].kind !== "opening") return;
-      enter(index + 1);
+      complete();
     },
     skipStep() {
       if (!visible) return;
@@ -430,8 +512,11 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       enter(index + 1);
     },
     close() {
+      if (!visible) return;
       clearTimers();
       visible = false;
+      // Finish or Replay on the last step: the player read it to the end.
+      if (steps[index].kind === "done") report(steps[index]);
       publish();
     },
     observeClient(c) {
@@ -440,12 +525,15 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       check(null);
     },
     observe(view, event = null) {
-      const wasHeld = heldByOpeningRoll(latest);
+      const wasHeld = held();
       latest = view;
-      if (wasHeld !== heldByOpeningRoll(latest)) {
-        // The hold lifted (or began): a "+1" predicate measures from the
-        // dealt board, and the coach re-arms its touch timer off `held`.
+      if (wasHeld !== held()) {
+        // The hold lifted (or began). A "+1" predicate measures from the
+        // dealt board; the hint and the timeout start now, for their
+        // full length (or stop until the deal); and the coach re-arms
+        // its touch timer off `held`.
         if (wasHeld) start = latest;
+        armTimers();
         publish();
       }
       check(event);
@@ -455,8 +543,8 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     },
     hovered(stepID) {
       if (!visible || steps[index].id !== stepID || !steps[index].hover) return;
-      if (heldByOpeningRoll(latest)) return;
-      enter(index + 1);
+      if (held()) return;
+      complete();
     },
     advance,
     context: () => ctxOf(null),

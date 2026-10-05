@@ -34,7 +34,7 @@ import {
 } from "./labels";
 import { anchorsOf, type Anchor, type StepContext } from "./tutorial";
 import { TUTORIAL_STEPS } from "./tutorialSteps";
-import { auto, board, ctx, elves, forest } from "./test/tutorialBoards";
+import { auto, board, ctx, elves, forest, type Roll } from "./test/tutorialBoards";
 import { HINTS } from "./hints";
 import type { Hint } from "./hints/hint";
 import { FIXTURE_HINTS, hintContexts } from "./test/hintContexts";
@@ -79,6 +79,28 @@ function contexts(): StepContext[] {
       }
     }
   }
+  // The opening roll (step 2): owed, rolled and waiting, won, lost.
+  const rolls: Roll[] = [
+    {},
+    { rolls: [[0, 12]] },
+    {
+      rolls: [
+        [0, 19],
+        [1, 4],
+      ],
+      chooser: 0,
+    },
+    {
+      rolls: [
+        [0, 3],
+        [1, 20],
+      ],
+      chooser: 1,
+    },
+  ];
+  for (const roll of rolls) out.push(ctx(board({ hand: [], step: "untap", roll })));
+  // The opening hand still to keep, and kept (steps 4 and 7).
+  for (const kept of [false, true]) out.push(ctx(board({ step: "upkeep", mulligan: { kept } })));
   return out;
 }
 
