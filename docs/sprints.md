@@ -107,6 +107,7 @@ planned just-in-time from the S12 pain-point triage.
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
+| S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | planned     |
 
 ### How to read the status column
 
@@ -3495,6 +3496,41 @@ From the tracker, [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/228
 ### Status
 
 **In progress** (2026-10-05). ADR 0123 is accepted (#2282). PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #2283); PR 6 (rules and dashboards) is in progress; HomeLab#119–#122 await the owner. The ADR's 2026-10-05 amendment records what changed in delivery.
+
+---
+
+## S64 — Admin views: accounts, games and who is on now
+
+**Phase:** 7 · **Goal:** every number on the Grafana Overview has a drill-down. An admin in admin mode can see every account, one account's games, decks, deck requests and sign-in state, every table with its seats and outcome, and who is connected right now, from pages in the app that read the live database. Per [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md). Tracking issue [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296), which is also the change's issue.
+
+Opened 2026-10-05, when the owner, looking at ADR 0123's Overview, asked to click a tile and see the accounts or tables behind it. The owner decided three things the same day, recorded on #2296 and in ADR 0124:
+- admin pages in the app reading the live database, behind admin mode, with Grafana's tiles linking to them (not a database copy in Grafana, not an admin API read by a Grafana plugin);
+- four views: accounts, one account's detail, games, and live now;
+- read-only first, with the existing archive and revoke actions linked from the right rows.
+
+The members are ADR 0124's Delivery PRs.
+
+- [ ] ADR 0124: admin views (PR 1, with this section)
+- [ ] PR 2: the lobby's half. Migration `0010_seat_agent.sql` adds `seats.agent_client`, so an agent seat keeps its badge after its restore point is gone, and `Lobby.LiveTables` copies the tables for the views.
+- [ ] PR 3: server, accounts and games. `internal/adminview` (SELECT-only store, response types, merge functions) and `GET /admin/users`, `/admin/users/{id}`, `/admin/games`, `/admin/games/{id}`, each behind `requireAdmin` and in ADR 0112's answer table; the field allowlist test.
+- [ ] PR 4: server, live now. `Hub.LiveSockets` with connection times, `metrics.Tally` shared with the tables collector, and `GET /admin/live`, whose totals equal the Overview's tiles.
+- [ ] PR 5: client. `#/admin/live`, `#/admin/games`, `#/admin/games/<id>`, `#/admin/accounts`, `#/admin/accounts/<id>`; the header's Admin link; the player-mode message; the sign-in return route; the linked archive, replay and revoke actions; Live now's polling; one nightly e2e spec.
+- [ ] PR 6: docs and the exit check. `docs/monitoring.md` on going from a tile to its rows, and the evidence on #2296.
+- [ ] PR 7: Grafana links. A hidden `site` variable from the blackbox probe, so links follow `env`, and a data link on each Overview tile, checked by `TestOverviewTilesLinkToTheAdminViews`.
+
+### Exit criteria
+
+From the tracker, [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296):
+
+1. ADR 0124 is accepted, and every PR in its Delivery table has merged into `develop`.
+2. On cmd-dev, an allowlisted person in admin mode opens all four views, and in player mode sees the message and no data. Signed out, a link to `#/admin/games` returns to that page after sign-in.
+3. With one table running on cmd-dev (a human seat connected, a bot and a spectator), Live now's totals match the Overview's tiles for `env=dev`, and the Players connected tile's link opens Live now on cmd-dev.
+4. Registered accounts and Accounts that played (7d) match the rows on `#/admin/accounts` and `#/admin/accounts?played=7d`.
+5. The evidence is posted on #2296, and the work reaches `main` with the next promotion, which is when the Grafana links go live.
+
+### Status
+
+**Planned** (2026-10-05). ADR 0124 is proposed and awaits the owner's review.
 
 ---
 
