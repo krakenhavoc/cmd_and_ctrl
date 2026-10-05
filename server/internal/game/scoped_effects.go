@@ -290,6 +290,13 @@ const (
 	// rule is about players, not a characteristic, so CR 611.2c does
 	// not lock it).
 	ModLimitBlockersPerDefender ModKind = "limitBlockersPerDefender"
+	// ModCantBeBlockedByPlayer is "<creature> can't be blocked by
+	// creatures that player controls this turn" (The Black Gate, #2172,
+	// CR 509.1b). Reads Player, the chosen seat, and Text, the clause as
+	// the refusal sentence reads it. The pinned attacker(s). Pure data:
+	// the blocker's controller is compared to Player live, so a creature
+	// that changes hands joins or leaves the barred set.
+	ModCantBeBlockedByPlayer ModKind = "cantBeBlockedByPlayer"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -766,6 +773,7 @@ var modKinds = map[ModKind]modKindSpec{
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
+	ModCantBeBlockedByPlayer:    {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},

@@ -1790,6 +1790,11 @@ readable by every client that ignores them.
   taken right now (a Constant Mists with no land), exactly as it does
   for a mandatory cost.
 
+  `key` is not unique on a card. "Kicker {R} and/or {W}" (CR 702.33b,
+  #2153) is two offers that both carry `key: "kicker"`, each with
+  `max_times` 1 and its own `label` and `mana_cost`; claim either, both
+  (`[0, 1]`) or neither by `index`. No field was added for it.
+
   Unlike `alternative_costs` these COMPOSE with the radio list: an
   alternative cost replaces the mana cost and an optional one adds to
   whichever cost is being paid, so the client renders them as toggles

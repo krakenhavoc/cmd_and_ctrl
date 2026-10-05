@@ -17,6 +17,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { session } from "../lib/session";
+  import { L } from "../lib/labels";
   import { toggle } from "../lib/catalog";
   import {
     fetchRoadmap,
@@ -214,7 +215,7 @@
           type="text"
           class="search"
           placeholder="search a mechanic, keyword or card name"
-          aria-label="search the roadmap"
+          aria-label={L.searchRoadmap}
           bind:value={query}
         />
         <div class="facets">

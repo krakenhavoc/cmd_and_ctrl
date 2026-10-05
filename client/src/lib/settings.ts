@@ -8,6 +8,7 @@ import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
+import { normalizeSeen } from "./hints/seen";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -304,9 +305,25 @@ export interface Settings {
     // suppression on buttons + inputs.
     alwaysShowFocus: boolean;
   };
+
+  // ADR 0125 §4: the first-use hints. Both fields are per person, so a
+  // signed-in person's seen hints follow them to every browser, and a
+  // guest's stay in this one.
+  help: {
+    // Hint id → the version the person last dismissed (lib/hints/). A
+    // hint is unseen when its id is missing or its stored version is
+    // lower than its own, so bumping a hint's version offers it again.
+    // Ids this client does not know are KEPT: an older tab must not
+    // drop a newer client's hints. Only retired ids (hints/retired.ts)
+    // are dropped. Merged by union at sign-in and on a 412, never
+    // field-wins (settingsSync.ts).
+    seen: Record<string, number>;
+    // "Hide tips": no hint is offered until it is switched back on.
+    tipsOff: boolean;
+  };
 }
 
-export const SETTINGS_VERSION = 20;
+export const SETTINGS_VERSION = 21;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -470,6 +487,10 @@ export function defaultSettings(): Settings {
       colorblindPalette: false,
       alwaysShowFocus: false,
     },
+    help: {
+      seen: {},
+      tipsOff: false,
+    },
   };
 }
 
@@ -573,6 +594,11 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     colorblindPalette: "synced",
     alwaysShowFocus: "synced",
   },
+  // ADR 0125 §4: both per person.
+  help: {
+    seen: "synced",
+    tipsOff: "synced",
+  },
 });
 
 /** SyncedSettings is the account's copy: group → synced field → value. */
@@ -636,6 +662,7 @@ export function applySyncedCopy(base: Settings, copy: unknown, version: number):
     gameplay: { ...base.gameplay },
     shortcuts: { ...base.shortcuts },
     accessibility: { ...base.accessibility },
+    help: { ...base.help },
   };
   for (const [group, key] of syncedPaths()) {
     (next[group] as Record<string, unknown>)[key] = (migrated[group] as Record<string, unknown>)[
@@ -664,6 +691,7 @@ function migrate(raw: unknown): Settings {
     gameplay: { ...d.gameplay, ...(s.gameplay ?? {}) },
     shortcuts: { ...d.shortcuts, ...(s.shortcuts ?? {}) },
     accessibility: { ...d.accessibility, ...(s.accessibility ?? {}) },
+    help: { ...d.help, ...(s.help ?? {}) },
   };
   // v1 → v2 (S13): the gameplay.stepStops map was scaffolded as `{}`
   // pre-S13. Seed defaults for any user whose stored map is empty so
@@ -899,6 +927,17 @@ function migrate(raw: unknown): Settings {
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
+  };
+  // v20 → v21 (ADR 0125 §4): the `help` group. The shallow merge fills
+  // it from defaults (nothing seen, tips on) for any v20 blob, so every
+  // existing player is offered each hint once. The map is checked, not
+  // trusted: a hand-edited or hostile blob keeps only string ids with a
+  // positive integer version, and retired ids are dropped. Unknown ids
+  // are kept, because adding a hint does not bump SETTINGS_VERSION and
+  // an older tab must not drop a newer client's hints on its next write.
+  merged.help = {
+    seen: normalizeSeen(merged.help?.seen),
+    tipsOff: merged.help?.tipsOff === true,
   };
   return absorbLegacy(merged);
 }

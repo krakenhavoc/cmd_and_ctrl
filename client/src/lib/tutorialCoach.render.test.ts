@@ -448,6 +448,33 @@ describe("TutorialCoach: the middle steps", () => {
     );
   });
 
+  it("starts a phone's read only once the opening roll has dealt the hand (ADR 0125 §5.2)", () => {
+    vi.useFakeTimers();
+    handEl();
+    const rolling = {
+      ...view,
+      opening_roll: { rounds: [{ seats: [0, 1], rolls: [] }], chooser: -1 },
+    } as unknown as GameView;
+    const m = mount([WELCOME, rest, HANDOFF], {
+      view: rolling,
+      canHover: false,
+      touchHoverStepMs: 5_000,
+    });
+    // Neither the phone's timer nor a touch on the empty hand moves it.
+    vi.advanceTimersByTime(6_000);
+    emit("hand-hovered");
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    // The deal: the read starts now, and runs its full length.
+    m.setProps({ view: { ...view, turn: { seq: 1, step: "upkeep" } } });
+    vi.advanceTimersByTime(4_900);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    vi.advanceTimersByTime(200);
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+  });
+
   it("shows a detour's copy and spotlights what it names, then the step's own", () => {
     vi.useFakeTimers();
     handEl();

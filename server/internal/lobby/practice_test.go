@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
@@ -108,14 +109,56 @@ func TestCreatePracticeSeatsThePlayerFirstAndStartsTheBot(t *testing.T) {
 		t.Errorf("bot runners started: %v", got)
 	}
 
-	// The human takes turn one: the tutorial's steps are ordered by
-	// the player's first turn.
-	g, err := l.LookupGame(meta.ID)
+}
+
+// ADR 0125 §5.2: the practice table opens the opening roll, as every
+// table does, with no turn begun and nothing dealt; and its bot is told
+// to hand the first turn to the human if it wins (aiseat.SeatSpec.
+// FirstTurnTo). Whoever wins, the human taking turn one is played out
+// with real runners in aiseat (TestPracticeTableRollsAndThePlayerTakes-
+// TurnOne).
+func TestPracticeTableOpensTheOpeningRoll(t *testing.T) {
+	l, host, _ := newPracticeLobby(t)
+	human, bot := practiceSeats("user:a")
+	meta, playerID, err := l.CreatePractice(human, bot)
 	if err != nil {
-		t.Fatalf("LookupGame: %v", err)
+		t.Fatalf("CreatePractice: %v", err)
 	}
-	if g.StartingSeat != 0 || g.Turn.ActiveSeat != 0 {
-		t.Errorf("starting seat %d, active seat %d; the player goes first", g.StartingSeat, g.Turn.ActiveSeat)
+	g := l.RoomOf(meta.ID).Game
+	var (
+		roll  *game.OpeningRoll
+		seq   int
+		cards int
+	)
+	g.ReadSnapshot(func() {
+		if g.OpeningRoll != nil {
+			r := *g.OpeningRoll
+			roll = &r
+		}
+		seq = g.Turn.Seq
+		for _, p := range g.Seats {
+			cards += len(p.Hand.Cards)
+		}
+	})
+	if roll == nil {
+		t.Fatal("the practice table did not open the opening roll")
+	}
+	if roll.Chooser != -1 || len(roll.Rounds) != 1 || len(roll.Rounds[0].Seats) != 2 {
+		t.Errorf("opening roll %+v, want one round of both seats and no chooser yet", roll)
+	}
+	if seq != 0 || cards != 0 {
+		t.Errorf("turn %d with %d cards in hands, want no turn begun and nothing dealt", seq, cards)
+	}
+	// The human holds a die to roll, as at any table.
+	if err := g.RollOpening(playerID); err != nil {
+		t.Errorf("the player's roll: %v", err)
+	}
+
+	host.mu.Lock()
+	seats := append([]aiseat.SeatSpec(nil), host.started[meta.ID]...)
+	host.mu.Unlock()
+	if len(seats) != 1 || seats[0].FirstTurnTo == nil || *seats[0].FirstTurnTo != meta.Players[0].Seat {
+		t.Fatalf("bot seats %+v, want the bot handing the first turn to the player's seat %d", seats, meta.Players[0].Seat)
 	}
 }
 
