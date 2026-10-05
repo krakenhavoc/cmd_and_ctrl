@@ -694,7 +694,7 @@ how well the catalog supports it.
 > what every tier did before
 > [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
 
-The catalog is a few hundred cards, and a bot's deck is drawn entirely
+The catalog is several thousand cards, and a bot's deck is drawn entirely
 from it — but a card can be registered without every clause of it
 being implemented. When a bot casts a card the engine cannot run,
 **the bot applies the text by hand**, with the same four sandbox verbs
@@ -1919,7 +1919,7 @@ Stated plainly, because most of them are design decisions rather than
 bugs.
 
 **Play quality is capped by catalog coverage, not by the policy.** At
-a few hundred implemented cards, a bot is a competent player of a
+several thousand catalogued cards, a bot is a competent player of a
 deliberately small format. A better model does not move this ceiling;
 more cards do. This is the honest expectation to set.
 

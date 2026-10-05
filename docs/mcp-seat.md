@@ -606,6 +606,12 @@ Both agents were asked what was hard. Their answers became issues:
 - **Wording:** a turn counter that counts rounds, and abilities read
   as "cast by" (#2279).
 
+*Fixed since, 2026-10-05:* the CR 117.4 priority bug (#2275, #2312),
+the duplicate automatic answers and the shared «Agent» name (#2271,
+#2273, #2331), the capped combination pool and the capped search
+(#2276, #2277, #2355), and the wording (#2279, #2364). The automatic
+payment that tapped duals first (#2278) is still open.
+
 Both agents used `pass_until` without being told to. The Claude seat
 recognised four of its five #2271 duplicate windows as stale, and left
 them alone.
