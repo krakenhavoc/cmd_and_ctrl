@@ -120,7 +120,13 @@
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
-  import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
+  import {
+    openShortcutsHelp,
+    registerShortcutHandlers,
+    setShortcutContext,
+  } from "../lib/shortcutRuntime";
+  import { HINTS } from "../lib/hints";
+  import { replayTips } from "../lib/hints/runtime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
@@ -1657,6 +1663,12 @@
         ? { ready: !tableRollCooling }
         : null,
     onTableRoll: rollAtTable,
+    // ADR 0125 §6: the Help group. The tutorial is replayed on this
+    // tab's practice table only, as the coach's Replay does.
+    practice: $practiceTable?.gameID === gameID,
+    onTableTips: () => replayTips("table", HINTS),
+    onShortcuts: openShortcutsHelp,
+    onReplayTutorial: () => navigate("#/practice"),
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,

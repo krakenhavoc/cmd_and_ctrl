@@ -9,7 +9,8 @@
   // which the dialog's HintSlot draws inside its focus trap.
   //
   // What it reads, and nothing else: the route and the session (the
-  // place and the context), the settings (`help.seen`, `help.tipsOff`,
+  // place and the context, with whether the person has a finished game:
+  // lib/hints/endedGame.ts), the settings (`help.seen`, `help.tipsOff`,
   // the key bindings for copy, reduced motion), whether Settings is
   // open, and at the table the moment Game.svelte publishes.
   //
@@ -29,6 +30,7 @@
   import { HINTS } from "../../hints";
   import { anchorOf, placeOfRoute, type Hint, type HintContext } from "../../hints/hint";
   import { tableState } from "../../hints/tableMoment";
+  import { hasEndedGameFor } from "../../hints/endedGame";
   import { CARD_WIDTH, isPhone, placeCard, type Rect } from "../../hints/place";
   import {
     activeTip,
@@ -167,7 +169,7 @@
       signedIn: signedInUserID(s) !== null,
       adminMode: adminModeOn(s),
       adminToken: s?.principal.role === "admin",
-      hasEndedGame: null,
+      hasEndedGame: hasEndedGameFor(s),
       moment: table?.moment ?? null,
       view: table?.view ?? null,
       viewerID: table?.viewerID ?? null,

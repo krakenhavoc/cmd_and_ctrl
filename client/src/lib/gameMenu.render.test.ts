@@ -24,6 +24,7 @@ import { PROTOCOL_VERSION, type GameView, type PlayerView } from "./protocol";
 import { session, type Session } from "./session";
 import { _resetForTests as resetDock } from "./dock";
 import { _resetForTests as resetModals, modalOpen } from "./modalLayers";
+import { shortcutsHelpOpen } from "./shortcutRuntime";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
 import { get } from "svelte/store";
 
@@ -207,6 +208,8 @@ describe("GameMenu", () => {
       "Link Discord",
       "My games",
       "Back to lobby",
+      "Tips for the table",
+      "Keyboard shortcuts",
       "Concede…",
     ]);
     // Mulligan to N keeps its field and its Go.
@@ -375,8 +378,54 @@ describe("GameMenu", () => {
       "Table settings… view",
       "My games",
       "Back to lobby",
+      "Tips for the table",
+      "Keyboard shortcuts",
     ]);
     expect(m.container.querySelector('input[aria-label="mulligan hand size"]')).toBeNull();
+  });
+
+  // ADR 0125 §6: the Help group, after Table, for everyone.
+  it("has a Help group after Table: tips for the table and the keyboard shortcuts", async () => {
+    const onTableTips = vi.fn();
+    const onShortcuts = vi.fn();
+    const m = mountMenu({ onTableTips, onShortcuts });
+    await open(m.trigger);
+    const names = itemNames(m.container);
+    const at = names.indexOf("Tips for the table");
+    expect(at).toBeGreaterThan(names.indexOf("Back to lobby"));
+    expect(names.slice(at, at + 2)).toEqual(["Tips for the table", "Keyboard shortcuts"]);
+    // Concede stays last.
+    expect(names.at(-1)).toBe("Concede…");
+    const headings = [...m.container.querySelectorAll(".menu-h")].map((h) => h.textContent);
+    expect(headings).toContain("Help");
+    // A real table offers no practice game and no tutorial.
+    expect(names.some((n) => /practice|tutorial/i.test(n))).toBe(false);
+
+    click(item(m.container, "Tips for the table")!);
+    flushSync();
+    expect(onTableTips).toHaveBeenCalledTimes(1);
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+
+    await open(m.trigger);
+    click(item(m.container, "Keyboard shortcuts")!);
+    flushSync();
+    expect(onShortcuts).toHaveBeenCalledTimes(1);
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("offers Replay the tutorial on the practice table only", async () => {
+    const onReplayTutorial = vi.fn();
+    const m = mountMenu({ practice: true, onReplayTutorial });
+    await open(m.trigger);
+    const names = itemNames(m.container);
+    expect(names.slice(names.indexOf("Tips for the table"), -1)).toEqual([
+      "Tips for the table",
+      "Keyboard shortcuts",
+      "Replay the tutorial",
+    ]);
+    click(item(m.container, "Replay the tutorial")!);
+    flushSync();
+    expect(onReplayTutorial).toHaveBeenCalledTimes(1);
   });
 
   // ADR 0121 §5 and §8: the Dice section and its three names.
@@ -548,6 +597,17 @@ describe("the ⋯ menu at the table", () => {
     expect(dockOf(c)!.contains(dlg)).toBe(true);
     click([...dlg.querySelectorAll("button")].find((b) => accessibleName(b) === "Concede")!);
     expect(FakeSocket.last!.actions()).toContain("concede");
+  });
+
+  it("opens the keyboard shortcuts from Help, and offers no tutorial at a real table", async () => {
+    const c = await mountGame("player");
+    const more = moreButtons(c)[0]!;
+    await open(more);
+    expect(item(c, "Replay the tutorial")).toBeUndefined();
+    click(item(c, "Keyboard shortcuts")!);
+    flushSync();
+    expect(get(shortcutsHelpOpen)).toBe(true);
+    shortcutsHelpOpen.set(false);
   });
 
   it("rolls a d20 at the table, then waits 2 s before the next roll", async () => {
