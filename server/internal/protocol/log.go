@@ -431,6 +431,14 @@ const (
 	// structure, and a player about to pass priority out of a main phase
 	// has to know another combat is coming.
 	LogExtraPhase LogKind = "extra_phase"
+	// LogTurnEnded — an effect ended the turn (CR 724.1, #2165):
+	// Sundial of the Infinite, Time Stop. `seat` is the active player,
+	// whose turn it was, and `card_id` the card whose effect ended it.
+	// Narrated for LogExtraTurn's reason, and more urgently: everything
+	// on the stack is about to be exiled and the turn bar jumps straight
+	// to cleanup, and without this line the exile lines and the jump
+	// arrive unexplained. A turn that ends normally has no such line.
+	LogTurnEnded LogKind = "turn_ended"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -1585,6 +1593,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventTurnEnded:
+		base.Kind = LogTurnEnded
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventPhasesAdded:
 		base.Kind = LogExtraPhase
 		base.CardID = uuidStringOrEmpty(ev.Source)
@@ -2225,6 +2238,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s will take an extra turn", actor)
 		}
 		return fmt.Sprintf("%s will take an extra turn (%s)", actor, card)
+	case LogTurnEnded:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s's turn ends", actor)
+		}
+		return fmt.Sprintf("%s's turn ends (%s)", actor, card)
 	case LogExtraPhase:
 		what := describeAddedPhases(e.Label)
 		if e.CardID == "" {

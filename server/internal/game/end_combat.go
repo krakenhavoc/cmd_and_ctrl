@@ -36,7 +36,9 @@ import "github.com/google/uuid"
 //
 // # How each step maps
 //
-//   - 724.2a: PendingTriggers is emptied. That queue IS "triggered but
+//   - 724.2a: PendingTriggers is emptied, with the prompts still
+//     putting a trigger on the stack (dropUnstackedTriggersLocked,
+//     end_turn.go). That queue IS "triggered but
 //     not yet put onto the stack"; a trigger that fires during the
 //     steps below lands on it afresh and is drained in the postcombat
 //     main phase, which is 724.2f.
@@ -90,8 +92,10 @@ func (g *Game) EndCombatPhaseForEffect() {
 	if PhaseOf(g.Turn.Step) != PhaseCombat {
 		return
 	}
-	// 724.2a.
-	g.PendingTriggers = nil
+	// 724.2a. With the trigger-announcing prompts too (#2165,
+	// end_turn.go): a trigger still choosing its order, "you may",
+	// mode or target is not on the stack either.
+	g.dropUnstackedTriggersLocked()
 	// 724.2b.
 	g.exileEntireStackLocked()
 	// 724.2d: remove everything from combat, then skip to the next

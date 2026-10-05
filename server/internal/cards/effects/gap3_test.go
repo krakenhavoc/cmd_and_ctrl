@@ -262,8 +262,8 @@ func TestGap3LifeFromTheLoamReturnsUpToThreeLands(t *testing.T) {
 	if !me.Graveyard.Contains(d) || !me.Graveyard.Contains(bear) {
 		t.Error("an untargeted card left the graveyard")
 	}
-	if spec := g3Spec(t, g3LifeFromLoamOracle); spec.Completeness != CompletenessCaveats {
-		t.Errorf("Dredge is missing, so the card is %v, want caveats", spec.Completeness)
+	if spec := g3Spec(t, g3LifeFromLoamOracle); spec.Completeness != CompletenessFull {
+		t.Errorf("dredge landed in #2127, so the card is %v, want full", spec.Completeness)
 	}
 }
 

@@ -950,6 +950,11 @@ export type LogKind =
   // added: phase kinds in order, comma-separated ("combat,main"), or
   // "step:<step>" for one step ("step:end").
   | "extra_phase"
+  // #2165, CR 724.1: an effect ended the turn (Sundial of the Infinite,
+  // Time Stop). `seat` is the active player, whose turn it was, and
+  // `card_id` the card whose effect ended it. The stack's exile lines
+  // and a `step` line for the cleanup step follow it.
+  | "turn_ended"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber

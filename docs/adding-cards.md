@@ -1287,8 +1287,18 @@ per-card payoff still fires per card — but they are ONE event, and the
 window is not re-opened for them. That is what makes two Thought
 Reflections draw FOUR rather than three, and it is why a cancel-style
 draw replacement sharing the window takes the whole doubled draw rather
-than one card of it (the declared simplification; no dredge card is
-catalogued).
+than one card of it (the declared simplification).
+
+**A draw replaced by an effect that asks something (#2168, #2127):**
+dredge (`Dredge(n)` in `cards/effects/dredge.go`, on `Spec.Replacements`
+of the card in the graveyard), Underrealm Lich's look-at-three,
+Forbidden Crypt's return-a-card. The `Replace` calls
+`ev.DrawsInstead(body)`, which cancels the draw and remembers a body;
+the body runs once the window has settled, may queue a prompt, and
+calls `done` when it finishes so the rest of a multi-card draw ("draw
+three") waits behind it (CR 121.6b). `FromGraveyard: true` makes a
+replacement apply from the drawing player's graveyard instead of the
+battlefield. See `game/draw_instead.go`.
 
 **"Except the first one you draw in each of your draw steps"** has no
 per-draw-step tally behind it. Both cards that print it — Notion Thief
@@ -5673,6 +5683,34 @@ direction, so never write one. A mana ability whose restriction
 names the chosen type uses `RestrictionsFunc`, not `Restrictions`
 (see `ChosenTypeManaRestrictions`).
 
+**A type chosen as a spell resolves** ("Choose a creature type. Destroy
+all creatures that aren't of the chosen type") is
+`ChooseCreatureTypeThen`, not a stored answer (#2382):
+
+```go
+OnResolve: func(item *game.StackItem, ctx *Context) error {
+    ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
+        func(g *game.Game, t string) error {
+            if t == "" { // the chooser left the game: nobody chose
+                return nil
+            }
+            return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(NewContext(g, item))
+        })
+    return nil
+},
+```
+
+Same prompt, vocabulary and answer as the as-enters form, so the client
+and the bot's enumerator need nothing new. Everything the card prints
+after the choice goes INSIDE the continuation, which receives the
+canonical type (and `""` when the chooser left); the line after the call
+runs before anybody has answered. "Each player chooses" is a chain: ask
+`seatsFromController`, one prompt per seat, from inside the previous
+continuation, carrying the answers by value (Patriarch's Bidding). A
+permanent whose counters depend on the answer (Banner of Kinship) queues
+the same prompt from `AsEnters` and uses `Game.SetNamedTribeForEffect`
+in the continuation.
+
 **Changeling** (CR 702.73a) is an enforced keyword since S26, so a
 **vanilla changeling needs no catalog entry at all** — the deck
 importer stamps it from Scryfall like any other printed keyword, and
@@ -6013,6 +6051,46 @@ Not built yet: "after the second main phase this turn" (World at War)
 and a trigger bound to one added combat, "at the beginning of that
 combat" (Moraug). Both ship with the first card that uses them (ADR 0059
 Decisions 4 and 8).
+
+### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
+
+"End the turn." is one primitive from
+[end_the_turn.go](../server/internal/cards/effects/end_the_turn.go), and
+it is the LAST instruction the card runs:
+
+```go
+OnResolve: endTheTurnOnResolve,                                 // Time Stop
+Effect:    endTheTurnEffect,                                    // Sundial of the Infinite's ability
+return EndTheTurn{}.Apply(ctx)                                  // after anything printed before it (Ultima's wipe)
+return ActivePlayerMayEndTheTurn{}.Apply(ctx)                   // Obeka: "the player whose turn it is may end the turn"
+```
+
+The engine does the whole of CR 724.1 (`game/end_turn.go`): triggers not
+yet on the stack cease to exist, the stack is exiled (this spell
+included; nothing is countered), state-based actions are checked with
+nobody getting priority, every creature leaves combat, and the turn goes
+straight to its cleanup step — where the active player discards to hand
+size, damage wears off and "until end of turn" effects end, and any
+trigger the process caused goes on the stack before another cleanup step
+(CR 514.3a). Three things a card author needs to know:
+
+- **It must be last.** It exiles the resolving spell. An instruction
+  printed AFTER "End the turn." that is a delayed trigger ("At the
+  beginning of your next end step, you lose the game", Glorious End) is
+  scheduled first; nothing about ending the turn reads the delayed
+  trigger queue, so the order is unobservable.
+- **Triggers from the same resolution are gone.** Ultima's "Destroy all
+  artifacts and creatures. End the turn." kills Blood Artist, and Blood
+  Artist's triggers cease to exist (CR 724.1a). That is the card, not a
+  bug to work around.
+- **The end step never begins.** "At the beginning of the end step"
+  triggers do not fire, and an unbound "next end step" delayed trigger
+  waits for next turn's. Final Fortune's loss, bound to its extra turn,
+  is swept: Sundial of the Infinite during that turn saves the player.
+
+Not built yet: Day's Undoing's "if it's your turn" is buildable on the
+same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
+cost reduction with no shape, so it stays out.
 
 ### When NOT to add a catalog entry
 

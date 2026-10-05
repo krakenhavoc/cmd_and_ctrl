@@ -323,6 +323,13 @@ type GameSnapshot struct {
 	// departure of an active player who lost by an effect
 	// mid-resolution, consumed by the next SBA loss pass.
 	ActiveSeatLeftPending bool `json:"activeSeatLeftPending,omitempty"`
+	// TurnEndPending is CR 724.1's deferred half (#2165): an effect
+	// ended the turn, the stack is exiled, and the skip to the cleanup
+	// step has not happened yet. omitempty, so no schema bump; an older
+	// binary that drops it leaves the cursor where the effect found it
+	// with nobody on priority until the next AdvanceStep, which is
+	// weaker than the card and never stronger.
+	TurnEndPending bool `json:"turnEndPending,omitempty"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -1618,6 +1625,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		EventBatch:            g.eventBatch,
 		ResolutionOpen:        g.resolutionOpen,
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		TurnEndPending:        g.TurnEndPending,
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
@@ -2313,7 +2321,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		"optionPickResume":  c.optionPickResume != nil,
-		"chooseColorResume": c.chooseColorResume != nil,
+		"chooseValueResume": c.chooseValueResume != nil,
 		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
 		// #1019's / #1027's prompted run — a sacrifice's or a
@@ -2448,6 +2456,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SplitSecondActive = s.SplitSecondActive
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
+	g.TurnEndPending = s.TurnEndPending
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen

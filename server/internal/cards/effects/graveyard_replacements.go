@@ -48,6 +48,12 @@ type GraveyardBecomesExile struct {
 	// owner of its own.
 	OpponentsOnly bool
 
+	// YoursOnly restricts the effect to the source's controller's own
+	// graveyard — Forbidden Crypt's "if a card would be put into YOUR
+	// graveyard from anywhere, exile that card instead". The graveyard
+	// is the card's owner's, as OpponentsOnly reads it.
+	YoursOnly bool
+
 	// NotControlledByYou restricts the effect to cards the source's
 	// controller does NOT control — Valgavoth, Terror Eater's "if a
 	// card YOU DIDN'T CONTROL would be put into an opponent's
@@ -109,6 +115,9 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 				return false
 			}
 			if r.SelfOnly && (src == nil || ev.CardID != src.InstanceID) {
+				return false
+			}
+			if r.YoursOnly && (ev.NewZoneOwner == uuid.Nil || ev.NewZoneOwner != src.Controller) {
 				return false
 			}
 			if r.OpponentsOnly && (ev.NewZoneOwner == uuid.Nil || ev.NewZoneOwner == src.Controller) {

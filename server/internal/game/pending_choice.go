@@ -851,12 +851,12 @@ type PendingChoice struct {
 	// serialised. See option_pick.go.
 	optionPickResume *optionPickFrame
 
-	// chooseColorResume is the continuation for a resolution-time
+	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is
 	// written onto the source permanent instead. Not serialised. See
 	// color_choice.go.
-	chooseColorResume *chooseColorFrame
+	chooseValueResume *chooseValueFrame
 
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has
@@ -1699,9 +1699,10 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 			applicable: []activeReplacement{chosen},
 		},
 	}
-	if chosen.effect.entryKeyword != "" && chosen.source != nil {
+	if (chosen.effect.entryKeyword != "" || chosen.effect.FromGraveyard) && chosen.source != nil {
 		// Unleash (#1556): the question is about the entering card, so
-		// the prompt names it, as entry_riot's does.
+		// the prompt names it, as entry_riot's does. A dredge offer is
+		// about the card in the graveyard (#2127).
 		choice.Source = chosen.source.InstanceID
 	}
 	g.QueueChoiceForEffect(choice)
@@ -2223,7 +2224,10 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// #1222: with the count the window settled on. CR 121.2 makes
 		// those N one individual card draw each, so a paused draw and
 		// an unpaused one cannot drift apart.
-		return g.actuallyDrawCardsLocked(ev.DrawPlayer, ev.DrawCount)
+		//
+		// Then the rest of the instruction (CR 121.6b): a "draw three"
+		// paused on its first card still owes two (draw_instead.go).
+		return g.settleResumedDrawLocked(ev, false)
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
 		// oversight. A production sets mustSettleNow (CR 605.3b — a
@@ -2575,16 +2579,18 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// rest of the effect behind it ("amass, then the Army deals
 		// damage equal to its power") still runs, told zero.
 		return g.runCounterTailLocked(ev, 0)
-	case RepEventDraw, RepEventProduceMana:
-		// Nothing is sequenced behind either: a cancelled draw and a
-		// production replaced away simply do not happen, and no entry
-		// point carries a continuation, so there is nobody to tell. A
-		// draw tail, if one is ever added, belongs here.
-		//
-		// #1222: a production additionally cannot even reach this
-		// function — it sets mustSettleNow, so it never pauses and
-		// nothing resumes it. The arm is the written answer #982 asks
-		// for rather than a fall-through, and it is right either way.
+	case RepEventDraw:
+		// #2168: a cancelled draw owes its REPLACEMENT's body (dredge,
+		// Underrealm Lich, Forbidden Crypt) and the rest of its
+		// instruction ("draw three" has two more to go), which the
+		// body pays through `done`. draw_instead.go.
+		return g.settleResumedDrawLocked(ev, true)
+	case RepEventProduceMana:
+		// #1222: a production cannot even reach this function — it
+		// sets mustSettleNow, so it never pauses and nothing resumes
+		// it, and a production replaced away simply does not happen.
+		// The arm is the written answer #982 asks for rather than a
+		// fall-through, and it is right either way.
 		return nil
 	}
 	return nil
