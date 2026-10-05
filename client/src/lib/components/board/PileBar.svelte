@@ -1,27 +1,19 @@
 <script lang="ts">
-  // PileBar renders the four pile controls as a 2×2 grid in the
-  // player rail: LIBRARY / GRAVEYARD on top, EXILE / CMD ZONE below.
+  // PileBar renders the three pile controls in the player rail:
+  // LIBRARY / GRAVEYARD on top, EXILE below. LIBRARY shows a card back
+  // and is the only one wired to an action at v1 (draw_card on the
+  // viewer's own seat).
   //
-  // The CMD slot is no longer a face-down PileButton; it's the
-  // first-class CommandZone component (face-up commander, tax badge,
-  // cast affordance). The other three stay as PileButtons; LIBRARY
-  // shows a card back and is the only one wired to an action at v1
-  // (draw_card on the viewer's own seat).
+  // #2349: the command zone tile that was the fourth is gone. Every
+  // seat's commander sits beside its hand instead: yours in the
+  // castable strip (ExileStrip), everyone else's in CommandStrip.
   //
   // Exile is conceptually a shared zone in the wire protocol
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
-  import type {
-    ActionPayload,
-    ActionType,
-    CardView,
-    GameView,
-    PlayerView,
-    ZoneView,
-  } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, PlayerView, ZoneView } from "../../protocol";
   import PileButton from "./PileButton.svelte";
-  import CommandZone from "./CommandZone.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
   import {
     libraryTopActionLabel,
@@ -48,21 +40,10 @@
     // pile for the seat that holds the permission, and `castable_here`
     // is already that viewer's own answer (#1055).
     onPlayCard?: (card: CardView, fromZone?: CastSourceZone, face?: number) => void;
-    // #1278: activated abilities that function from the command zone
-    // (commander ninjutsu), and the sorcery-speed reason their popover
-    // greys with. Passed straight through to CommandZone.
-    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
-    sorcerySpeedBlocked?: string;
-    // ADR 0105 (#1789): the frame and viewer for the command zone's
-    // cast gate, and the legal-action lookup ("nothing" while
-    // highlights are off) for the piles' "N ready" counts, the
-    // library-top pill's accent and the commander's ready ring.
-    view?: GameView | null;
-    viewerID?: string | null;
+    // ADR 0105 (#1789): the legal-action lookup ("nothing" while
+    // highlights are off) for the piles' "N ready" counts and the
+    // library-top pill's accent.
     legal?: LegalActions;
-    // ADR 0105 sub-PR 3: the frame's full lookup, passed through to the
-    // commander's ability popover for its sorcery-speed gate.
-    legalGate?: LegalActions;
   }
 
   const {
@@ -72,12 +53,7 @@
     sendAction,
     onDrawCard,
     onPlayCard,
-    onActivateAbility,
-    sorcerySpeedBlocked = "",
-    view = null,
-    viewerID = null,
     legal = NO_LEGAL_ACTIONS,
-    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // "N ready" per pile. The exile pile is this seat's own slice, so it
@@ -203,24 +179,10 @@
     onClick={openExile}
     readyCount={exileReady}
   />
-  <CommandZone
-    seat={{ id: seat.id, name: seat.name }}
-    zone={seat.command}
-    {isSelf}
-    {sendAction}
-    commanderCasts={seat.commander_casts}
-    onCastCard={isSelf && onPlayCard ? (c, zone) => onPlayCard(c, zone) : undefined}
-    onActivateAbility={isSelf ? onActivateAbility : undefined}
-    {sorcerySpeedBlocked}
-    {view}
-    {viewerID}
-    {legal}
-    {legalGate}
-  />
 </div>
 
 <style>
-  /* 2×2 in the player rail: library / grave on top, exile / command
+  /* Two across in the player rail: library / grave on top, exile
      below. Tiles size to the rail; the thumb inside sizes from
      --thumb-w / --thumb-h set by PlayerPanel. */
   .pile-bar {

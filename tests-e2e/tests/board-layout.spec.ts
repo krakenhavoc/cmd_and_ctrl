@@ -90,10 +90,13 @@ test.describe("board layout", () => {
     const viewport = page.viewportSize()!;
     expect(viewport.width - (box.x + box.width)).toBeLessThan(40);
     expect(viewport.height - (box.y + box.height)).toBeLessThan(40);
-    // The rail is the scroll container the piles live in; on a short
-    // panel the piles scroll inside it rather than slide under the dock.
-    const rail = (await selfBoard.locator(".rail").boundingBox())!;
-    expect(rail.y + rail.height).toBeLessThanOrEqual(box.y + 1);
+    // The piles never slide under the dock. Since #2336 the self
+    // panel's piles sit in the corner left of the back row, not in the
+    // rail, so this checks the piles' own box: wholly above the dock,
+    // or wholly left of it.
+    const piles = (await page.getByLabel("Alice piles").boundingBox())!;
+    const clear = piles.y + piles.height <= box.y + 1 || piles.x + piles.width <= box.x + 1;
+    expect(clear, "the self piles overlap the action dock").toBe(true);
 
     // ADR 0111 §5: the bluff split button is always on the table, even
     // on a default install where neither bluff setting is on.

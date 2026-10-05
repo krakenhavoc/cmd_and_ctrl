@@ -288,6 +288,16 @@ var canonicalKeywords = map[string]bool{
 	// CUMULATIVE (CR 113.2c).
 	KeywordUndying: true,
 	KeywordPersist: true,
+	// devoid (CR 702.114a) joins with #2152, in the same change that
+	// teaches the engine to honour it. Like changeling it is a
+	// CHARACTERISTIC-DEFINING ability rather than a combat or timing
+	// rule, so its consumer is the colour derivation (printedColorsOf,
+	// via Card.printsDevoid in devoid.go): an unstamped devoid card is
+	// colourless in every zone instead of the colour of its mana cost.
+	// Stamped by the deck importer like every other canonical token, so
+	// the ~130 devoid cards are colourless with no catalog entry. See
+	// devoid.go for why a stamped colour list still wins (CR 707.9d).
+	KeywordDevoid: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -498,7 +508,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
-// "split second", rebound, sunburst, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// "split second", rebound, sunburst, devoid, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts.
 //

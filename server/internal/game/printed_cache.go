@@ -95,7 +95,7 @@ type printedInputs struct {
 	power     int
 	toughness int
 
-	colors          []string // Card.Colors (empty: derive from the cost)
+	colors          []string // Card.Colors (empty: derive — none if devoid, else the cost's)
 	keywords        []string // Card.Keywords, the import's keywords
 	catalogKeywords []string // CatalogPrintedKeywords(CatalogKey(c))
 }
@@ -165,9 +165,13 @@ func (in *printedInputs) characteristicFrom(supertypes, types, subtypes []string
 		Types:      types,
 		Subtypes:   subtypes,
 		Supertypes: supertypes,
-		Colors:     printedColorsOf(in.colors, in.manaCost),
-		Name:       in.name,
-		Abilities:  abilities,
+		// CR 702.114a (#2152): devoid is read off the same merged
+		// list as changeling below, so the import's keyword and the
+		// catalog's both count, and the entry's key (keywords,
+		// catalogKeywords) already records the input it depends on.
+		Colors:    printedColorsOf(in.colors, in.manaCost, containsKeyword(abilities, KeywordDevoid)),
+		Name:      in.name,
+		Abilities: abilities,
 		// CR 702.73a is a characteristic-defining ability, and
 		// CR 613.2 applies CDAs before every other effect in their
 		// layer — so the keyword→layer-4 projection belongs in the

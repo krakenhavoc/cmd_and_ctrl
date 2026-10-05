@@ -72,6 +72,7 @@
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
   import ExileStrip from "./ExileStrip.svelte";
+  import CommandStrip from "./CommandStrip.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import { seatColor } from "../../colors";
@@ -831,9 +832,15 @@
         onCastCard={onPlayCard}
         onDragCast={(c, zone, face) => onPlayCard(c, zone, face, true)}
         {legal}
+        {onActivateAbility}
+        {sorcerySpeedBlocked}
+        legalGate={rowGate}
       />
     {/if}
     {#if !isSelf}
+      <!-- #2349: this seat's commander, beside its hand, where yours
+           is beside yours. -->
+      <CommandStrip {seat} />
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
     {#if docked}
@@ -870,12 +877,7 @@
       {sendAction}
       onDrawCard={isSelf ? onDrawCard : undefined}
       {onPlayCard}
-      onActivateAbility={isSelf ? onActivateAbility : undefined}
-      {sorcerySpeedBlocked}
-      {view}
-      {viewerID}
       {legal}
-      legalGate={rowGate}
     />
   </div>
   <TokenGroupModal
@@ -1003,8 +1005,14 @@
        (vs. self's 240px) is deliberate: an opponent panel shares the
        screen with the viewer's own and shouldn't rival it. */
     --card-h-max: 200px;
-    --card-h: clamp(123px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), var(--card-h-max));
-    --card-h-sm: clamp(90px, calc(var(--card-h) * 0.74), 148px);
+    /* #2336: sized by relevance, like your own board. The face-down
+       hand shows only a count, so it peeks 30%; lands and other
+       permanents are half a creature. The creature card is what is
+       left: H = 1.92h + ~64px (the commander beside the hand, CommandStrip, is 0.42h), so h ≈ 52cqh - 33px. The floor is low so
+       a short panel shrinks its cards rather than scrolling them. */
+    --hand-peek: 0.3;
+    --card-h: clamp(90px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
+    --card-h-sm: clamp(56px, calc(var(--card-h) * 0.5), 110px);
     --thumb-w: calc(36px * var(--card-scale-opponent, 1));
     --thumb-h: calc(50px * var(--card-scale-opponent, 1));
     --avatar-size-base: 72px;
@@ -1031,8 +1039,8 @@
        short one), rows reversed so the hand hugs the top edge and
        creatures face the centre of the table. */
     --card-h-max: 168px;
-    --card-h: clamp(90px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), var(--card-h-max));
-    --card-h-sm: clamp(67px, calc(var(--card-h) * 0.74), 124px);
+    --card-h: clamp(70px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
+    --card-h-sm: clamp(48px, calc(var(--card-h) * 0.5), 90px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
     --avatar-size-base: 60px;
@@ -1119,7 +1127,7 @@
        it explicit means the Hand's hover lift (max-height: none plus a
        translateY transform) doesn't grow this wrapper and push the
        row taller — the lift stays purely visual. */
-    height: calc(var(--card-h, 168px) * 0.55);
+    height: calc(var(--card-h, 168px) * var(--hand-peek, 0.55));
     overflow: visible;
     position: relative;
   }
@@ -1127,7 +1135,7 @@
      art and the type line); opponents' face-down fans keep the
      tighter 55%. Hand.svelte's peek and lift use the same share. */
   .panel.self .hand-zone {
-    height: calc(var(--card-h, 168px) * 0.62);
+    height: calc(var(--card-h, 168px) * var(--hand-peek, 0.62));
   }
   .flipped .hand-zone {
     align-self: flex-start;
@@ -1152,14 +1160,95 @@
   /* Short panels (the top row at 900px tall) must never clip the
      piles: the rail scrolls before it hides anything, and the
      across-table rails drop the pile labels (the tile's title and
-     aria-label still carry them) and the command-zone hints. */
+     aria-label still carry them). */
   .rail {
     overflow-y: auto;
     overflow-x: hidden;
   }
-  .flipped .rail :global(.pile .label),
-  .flipped .rail :global(.cmd-zone .label),
-  .flipped .rail :global(.cmd-zone .hints) {
+  /* #2336: your board is sized by relevance, as in Arena, in every
+     layout. Creatures get the largest cards. Lands and other permanents
+     behind them are about half that size. The hand shows its top 40%
+     and lifts on hover. The piles leave the rail for the empty corner
+     left of the back row, four across, and the rail keeps only your
+     identity. The rail is `display: contents`, so its children are this
+     grid's items.
+
+     The creature card's height is what the panel has left once the
+     rest is placed, so the row fits instead of scrolling: with the back
+     row at half a card and the hand at 0.4 of one, H = 1.9h + ~64px of
+     padding, gaps and labels, so h ≈ 52cqh - 34px. Desktop only: a
+     phone keeps the docked layout above. */
+  @media (min-width: 600px) {
+    .panel.self.docked {
+      --card-h: clamp(120px, calc((52cqh - 40px) * var(--card-scale, 1)), var(--card-h-max));
+      --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+      --hand-peek: 0.4;
+      grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      grid-template-areas:
+        "creatures creatures rail"
+        "piles     middle    rail"
+        "bottom    bottom    bottom";
+    }
+    .panel.self.docked .rail {
+      display: contents;
+    }
+    /* The bottom row is the hand's peek, not the dock's height: the
+       dock rises over the back row's right end instead, which the back
+       row keeps clear with padding. That height goes to the creatures. */
+    .panel.self.docked .dock-spacer {
+      height: 0;
+    }
+    .panel.self.docked .grid-middle {
+      padding-right: max(0px, calc(var(--dock-w, 0px) - var(--rail-w)));
+    }
+    .panel.self.docked .rail-gap {
+      display: none;
+    }
+    .panel.self.docked .rail > :global(.identity) {
+      grid-area: rail;
+      align-self: start;
+    }
+    .panel.self.docked .rail > :global(.pile-bar) {
+      grid-area: piles;
+      grid-template-columns: repeat(3, 52px);
+      width: auto;
+      align-self: end;
+    }
+    /* As on the top-row panels: the tile's title and aria-label still
+       carry the pile's name, so the piles stay one short row. */
+    .panel.self.docked .rail :global(.pile .label) {
+      display: none;
+    }
+  }
+  /* A narrow self panel (the quadrant's bottom right): the dock is
+     wider than the room right of the back row, so the back row keeps
+     its full width and the bottom row keeps the dock's height, as
+     before. The creature card is then what is left above the dock:
+     H = 1.5h + dock + ~64px. The panel is a size container, so these
+     rules on its children read its width; the sizes are redeclared
+     on them because a custom property's var() is fixed where it is
+     declared. */
+  @media (min-width: 600px) {
+    @container (max-width: 1099px) {
+      .panel.self.docked .dock-spacer {
+        height: var(--dock-h, 0px);
+      }
+      .panel.self.docked .grid-middle {
+        padding-right: 0;
+      }
+      .panel.self.docked :is(.grid-creatures, .grid-middle, .grid-bottom) {
+        --card-h: clamp(
+          100px,
+          calc((100cqh - var(--dock-h, 170px) - 64px) / 1.5 * var(--card-scale, 1)),
+          var(--card-h-max)
+        );
+        --card-w: calc(var(--card-h) * 5 / 7);
+        --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+        --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
+      }
+    }
+  }
+  .flipped .rail :global(.pile .label) {
     display: none;
   }
 </style>

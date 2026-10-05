@@ -170,9 +170,9 @@ export const LABEL_SPECS = {
     make: (seat: string, n: number) => `${seat} command zone, ${plural(n, "card")}`,
     example: ["Player", 1],
     kind: "aria",
-    role: "generic",
-    owners: [`${BOARD}CommandZone.svelte`],
-    doc: "a seat's command zone panel",
+    role: "group",
+    owners: [`${BOARD}ExileStrip.svelte`, `${BOARD}CommandStrip.svelte`],
+    doc: "a seat's command zone beside its hand (#2349): yours in the castable strip, others' in their command strip",
   }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
@@ -550,6 +550,79 @@ export const LABEL_SPECS = {
     role: "textbox",
     owners: ["routes/Roadmap.svelte"],
     doc: "the Roadmap's search field; the roadmap.search hint points at it",
+  }),
+
+  lobbyTitle: label({
+    name: "cmd_and_ctrl · lobby",
+    kind: "aria",
+    role: "heading",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here",
+  }),
+
+  // -- Help (ADR 0125 §6) --
+  help: label({
+    name: "help",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/components/HelpMenu.svelte"],
+    doc: "the site header's Help button; the menu it opens is named by it (aria-labelledby), and the site.help hint anchors here",
+  }),
+  tipsForThisPage: label({
+    name: "Tips for this page",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/components/HelpMenu.svelte"],
+    doc: "Help: shows this page's tips again, one after another, even with tips off",
+  }),
+  tipsForTheTable: label({
+    name: "Tips for the table",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's Help group: shows the table's tips again at the next quiet moments",
+  }),
+  showAllTipsAgain: label({
+    name: "Show all tips again",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/components/HelpMenu.svelte", "lib/components/Settings.svelte"],
+    doc: "Help, and Settings → Advanced: forgets every dismissed tip and turns tips back on",
+  }),
+  practiceGame: label({
+    name: "Practice game",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/components/HelpMenu.svelte", "routes/Home.svelte"],
+    doc: "Help, and Home's Help tile: opens a practice table; signed out it reads Practice game (sign in first) and goes to sign in",
+  }),
+  keyboardShortcutsItem: label({
+    name: "Keyboard shortcuts",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/components/HelpMenu.svelte", `${BOARD}GameMenu.svelte`],
+    doc: "Help, and the ⋯ menu's Help group: opens the keymap overlay",
+  }),
+  replayTutorial: label({
+    name: "Replay the tutorial",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`, "lib/components/Settings.svelte"],
+    doc: "Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table",
+  }),
+  showTips: label({
+    name: "Show tips",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Advanced: on unless Hide tips was pressed on a tip",
+  }),
+  startPractice: label({
+    name: "Start practice",
+    kind: "text",
+    role: "link",
+    owners: ["routes/LobbyPractice.hint.ts"],
+    doc: "the lobby.practice tip's action, to #/practice; the tip's Got it reads Not now beside it",
   }),
 
   // -- Everywhere --

@@ -22,7 +22,9 @@ vi.mock("./api", async (orig) => {
 });
 
 import ExileStrip from "./components/board/ExileStrip.svelte";
-import CommandZone from "./components/board/CommandZone.svelte";
+import CommandStrip from "./components/board/CommandStrip.svelte";
+import { zoneBrowser } from "./zoneBrowser";
+import { get } from "svelte/store";
 import type { CardView, GameView, LegalMoveView } from "./protocol";
 import { applyCastChoices, castChoicesBase, type CastSourceZone } from "./targeting";
 import { legalActionsOf, type LegalActions } from "./legalActions";
@@ -163,34 +165,25 @@ describe("the commander in the strip — #2202", () => {
     expect(container.querySelector("[aria-label='castable from other zones']")).not.toBeNull();
   });
 
-  it("a click starts the same cast as the command zone panel's click", () => {
+  // #2349: the strip is the seat's command zone on the board now, so its
+  // commanders' group carries the tile's name.
+  it("groups the commanders under the command zone's name", () => {
+    const { container } = mountStrip(
+      snap({ mine: [kenrith], exile: [exiled], moves: [castMove("kenrith")] }),
+    );
+    const group = container.querySelector("[role='group'][aria-label='Me command zone, 1 card']");
+    expect(group).not.toBeNull();
+    expect(group?.querySelector(".card[aria-label='Kenrith']")).not.toBeNull();
+    expect(group?.querySelector(".card[aria-label='Impulse Bolt']")).toBeNull();
+  });
+
+  it("a click starts the cast chain from the command zone", () => {
     const view = snap({ mine: [kenrith], moves: [castMove("kenrith")] });
     const strip = mountStrip(view);
     click(cardEl(strip.container, "Kenrith")!);
     expect(strip.clicked).toHaveLength(1);
-
-    const panel: { card: CardView; zone: CastSourceZone }[] = [];
-    const sent: unknown[] = [];
-    const cz = render(
-      CommandZone as never,
-      {
-        seat: { id: ME, name: "Me" },
-        zone: view.seats[0].command,
-        isSelf: true,
-        sendAction: (...a: unknown[]) => sent.push(a),
-        view,
-        viewerID: ME,
-        onCastCard: (card: CardView, zone: CastSourceZone) => panel.push({ card, zone }),
-      } as never,
-    );
-    click(cz.container.querySelector<HTMLElement>("[aria-label^='cast commander']")!);
-    expect(sent).toEqual([]);
-    expect(panel).toHaveLength(1);
-
-    // Same card, same zone, no face: the chain gets one call either way.
-    expect(strip.clicked[0].card.instance_id).toBe(panel[0].card.instance_id);
+    expect(strip.clicked[0].card.instance_id).toBe("kenrith");
     expect(strip.clicked[0].zone).toBe("command");
-    expect(panel[0].zone).toBe("command");
     expect(strip.clicked[0].face).toBeUndefined();
 
     // …and for a plain commander the chain's payload is the bare one the
@@ -269,5 +262,44 @@ describe("the commander in the strip — #2202", () => {
     expect(container.querySelector(".strip-toggle")?.getAttribute("aria-label")).toBe(
       "1 commander you may cast, 1 ready",
     );
+  });
+});
+
+// #2349: another seat's commander, beside that seat's hand, where the command
+// zone tile in the rail used to be the only place it was face up.
+describe("another seat's command strip — #2349", () => {
+  const seat = (casts?: Record<string, number>) => ({
+    id: THEM,
+    name: "Them",
+    command: { kind: "command", count: 1, cards: [theirCommander] },
+    commander_casts: casts,
+  });
+
+  it("shows their commander face up, under the command zone's name", () => {
+    const { container } = render(CommandStrip as never, { seat: seat() } as never);
+    const group = container.querySelector("[role='group'][aria-label='Them command zone, 1 card']");
+    expect(group?.querySelector(".card[aria-label='Their Commander']")).not.toBeNull();
+    expect(container.querySelector(".tax-badge")).toBeNull();
+  });
+
+  it("wears the commander tax, read off commander_casts", () => {
+    const { container } = render(CommandStrip as never, { seat: seat({ theirs: 2 }) } as never);
+    expect(container.querySelector(".tax-badge")?.textContent).toBe("+4");
+  });
+
+  it("a click opens their command zone in the browser, and casts nothing", () => {
+    const { container } = render(CommandStrip as never, { seat: seat() } as never);
+    click(cardEl(container, "Their Commander")!);
+    expect(get(zoneBrowser)).toMatchObject({
+      zoneKind: "command",
+      ownerID: THEM,
+      ownerName: "Them",
+    });
+  });
+
+  it("renders nothing for an empty command zone", () => {
+    const empty = { id: THEM, name: "Them", command: { kind: "command", count: 0, cards: [] } };
+    const { container } = render(CommandStrip as never, { seat: empty } as never);
+    expect(container.querySelector(".command-strip")).toBeNull();
   });
 });

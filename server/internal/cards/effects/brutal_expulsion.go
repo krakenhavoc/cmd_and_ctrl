@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Brutal Expulsion — Instant {2}{U}{R}, devoid:
 //
 //	"Devoid (This card has no color.)
@@ -9,7 +11,9 @@ package effects
 //	   planeswalker. If that creature or planeswalker would die this
 //	   turn, exile it instead."
 //
-// Devoid is colour data (the dump's colour list is empty). The first
+// Devoid is declared in PrintedKeywords, and the engine reads it as CR
+// 702.114a's colour-defining ability (#2152), so the card is colourless
+// in every zone. The first
 // bullet is Venser's clause narrowed to creatures on the battlefield: a
 // spell is returned without being countered, a creature is bounced. The
 // second marks its target whether or not the damage is dealt (ADR 0108
@@ -21,9 +25,10 @@ package effects
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "71d178b3-e5ca-4576-83f7-8dce74758acd",
-		Name:         "Brutal Expulsion",
-		Completeness: CompletenessFull,
+		OracleID:        "71d178b3-e5ca-4576-83f7-8dce74758acd",
+		Name:            "Brutal Expulsion",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordDevoid},
 		Modes: ChooseN("Choose one or both", 1, 2,
 			ModeDoing("Return target spell or creature to its owner's hand.",
 				TargetSpellOrPermanent("target spell or creature", nil, Creature()), returnModesSpellOrPermanentToHand),

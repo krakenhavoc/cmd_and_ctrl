@@ -163,6 +163,14 @@ var items = []Item{
 		Printed:  printedKeyword("changeling"),
 	},
 	{
+		Slug: "devoid", Name: "Devoid", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A card with devoid is colorless wherever it is, whatever its mana cost says. Its color identity still comes from its mana symbols.",
+		Rules:    []string{"702.114"},
+		Keywords: []string{game.KeywordDevoid},
+		Probe:    hasKeyword(game.KeywordDevoid),
+		Printed:  printedKeyword("devoid"),
+	},
+	{
 		Slug: "landwalk", Name: "Landwalk", Kind: KindKeyword, Status: StatusImplemented,
 		Summary: "A creature with landwalk (islandwalk, forestwalk and the rest) can't be blocked while the defending player controls a land of that kind.",
 		Rules:   []string{"702.14"},

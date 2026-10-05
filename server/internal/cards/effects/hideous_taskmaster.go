@@ -15,8 +15,10 @@ import (
 //	 end of turn.
 //	 Trample, haste, annihilator 1"
 //
-// Devoid is printed data: the card is colourless, which Scryfall's
-// colours already say. The cast trigger is Molten Primordial's shape
+// Devoid is declared in PrintedKeywords beside the other three, and the
+// engine reads it as CR 702.114a's colour-defining ability (#2152), so
+// the card is colourless in every zone. The cast trigger is Molten
+// Primordial's shape
 // on a spell: one "up to one target creature that player controls"
 // clause per opponent of the caster, in seat order, each pick bound to
 // its player and re-checked at resolution (CR 608.2b). It resolves
@@ -37,7 +39,7 @@ func init() {
 		OracleID:        "8f48c43e-fa70-4c4f-bb88-be0526303453",
 		Name:            "Hideous Taskmaster",
 		Completeness:    CompletenessFull,
-		PrintedKeywords: []string{"trample", "haste", "annihilator 1"},
+		PrintedKeywords: []string{game.KeywordDevoid, "trample", "haste", "annihilator 1"},
 		Triggered:       []game.TriggeredAbility{cast},
 	})
 }
