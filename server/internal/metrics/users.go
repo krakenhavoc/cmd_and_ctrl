@@ -48,6 +48,19 @@ var usersPlayedWindows = []struct {
 
 var windowLabels = []string{"1d", "7d", "30d"}
 
+// UsersPlayedWindow is the span of cmdctrl_users_played{window=label},
+// and false for a label the gauge does not have. The admin views'
+// played filter (ADR 0124 §3.1) reads its windows here, so the page and
+// the tile count over the same span.
+func UsersPlayedWindow(label string) (time.Duration, bool) {
+	for _, w := range usersPlayedWindows {
+		if w.label == label {
+			return w.span, true
+		}
+	}
+	return 0, false
+}
+
 // UserSource is the database half of the users collector.
 type UserSource interface {
 	// CountUsers is the number of users rows.

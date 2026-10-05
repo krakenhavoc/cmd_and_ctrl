@@ -153,6 +153,15 @@ var agentBadgeWriters = map[string]int{
 	// the admin views' copy, onto a fresh LiveSeat for an agent seat
 	// only (ADR 0124 §5).
 	"internal/lobby/live_tables.go:LiveTables": 1,
+	// The admin views' copies (ADR 0124 §3.3), each a read of a badge
+	// that exists onto a fresh value: LiveSeat into adminview's overlay,
+	// seats.agent_client into a fresh SeatRow, and a row's or memory's
+	// client onto a fresh served Seat, only when it is set.
+	"internal/lobby/admin_views.go:adminLiveTables": 1,
+	"internal/adminview/store_sql.go:attachSeats":   1,
+	"internal/adminview/merge.go:rowSeat":           1,
+	"internal/adminview/merge.go:overlaySeat":       1,
+	"internal/adminview/merge.go:liveSeat":          1,
 	// GET /admin/live's seat, copied from the LiveSeat above onto a
 	// fresh response row (ADR 0124 §3.4).
 	"internal/lobby/admin_live.go:buildLiveNow": 1,
