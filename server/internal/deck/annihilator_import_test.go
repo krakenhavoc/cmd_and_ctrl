@@ -65,7 +65,8 @@ func TestAnnihilatorImport(t *testing.T) {
 	}
 	want := map[string][]string{
 		"Pathrazer of Ulamog": {"annihilator 3"},
-		"Hideous Taskmaster":  {"haste", "trample", "annihilator 1"},
+		// Devoid is a canonical token since #2152 (CR 702.114a).
+		"Hideous Taskmaster":  {"devoid", "haste", "trample", "annihilator 1"},
 		"Flayer of Loyalties": {"trample", "annihilator 2"},
 		"Ulamog, the Defiler": nil,
 		"Malformed Eldrazi":   {"flying"},

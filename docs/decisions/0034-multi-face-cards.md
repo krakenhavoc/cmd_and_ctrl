@@ -1004,3 +1004,83 @@ same missing shape). Petty Theft and Swift End need nothing further
 from this ADR.
 
 **Still outstanding after this:** split fusing, and Omens.
+
+---
+
+## Amendment (2026-10-05, #2152): devoid, the half of the colour fix that did not land
+
+§2 above said preferring `Card.Colors` over the cost "also fixes Devoid
+and colour indicators generally". It fixed colour indicators. It did
+not fix devoid, and could not: Scryfall gives a devoid card `colors:
+[]`, the importer stamps that empty list, and an empty `Card.Colors`
+still means "not stamped" — the posture this ADR kept on purpose,
+because tokens and fixtures never set it. So `printedColors` fell
+through to the cost, and every devoid card was the colour of its pips.
+Ugin's Binding shipped with that as a caveat; the other devoid cards
+were wrong without saying so.
+
+### Decision: devoid is a canonical keyword, read by the colour derivation
+
+CR 702.114a makes devoid a characteristic-defining ability, "This
+object is colorless", that works everywhere. It is printed as a
+keyword and Scryfall lists it in `keywords`, so it rides the two roads
+printed keywords already have — the importer's `Card.Keywords` and the
+catalog's `Spec.PrintedKeywords` — exactly as changeling (the other
+CDA keyword, CR 702.73a) does. `game.KeywordDevoid` joins the closed
+canonical table, and the rule moves into the derivation:
+
+```go
+func printedColorsOf(colors []string, manaCost string, devoid bool) []string {
+	if len(colors) > 0 { return colors }   // an explicit value
+	if devoid { return nil }               // CR 702.114a
+	return printedColorsFromCost(manaCost) // not stamped
+}
+```
+
+The baseline builder (`printedInputs.characteristicFrom`) asks
+`containsKeyword(abilities, KeywordDevoid)` over the merged printed
+list, and `Card.EffectiveColors`'s off-battlefield branch asks the same
+question through `Card.printsDevoid`. The printed-characteristic cache
+(#1498) needed no new input: both keyword lists are already in its key,
+and `TestPrintedCacheAgreesAcrossEveryPrintedMutation` now walks a
+devoid keyword on and off a card with derived colours.
+
+**Rejected: "empty means empty."** Threading a nil-versus-empty
+distinction through import, snapshot (`colors,omitempty` already drops
+the empty list) and clone would fix imported cards only, would leave
+every fixture and catalog-only card coloured, and would make a card's
+colour depend on a JSON detail nobody can see in a diff.
+
+### Why a stamped colour list still wins
+
+A non-empty `Colors` is an explicit value that already accounts for
+the card's colour-defining abilities: Scryfall's computed colours
+(never non-empty for a devoid card), a colour indicator, or a copy
+effect that PROVIDES a colour. CR 707.9d says such a copy does not copy
+the colour-defining ability, so The Scarab God's "except it's a 4/4
+black Zombie" on a devoid creature is black. Reading devoid over the
+stamp would make it colourless.
+
+That makes one importer change necessary. `deck.faceColors` derived a
+face's colours from its cost when Scryfall's per-face list was empty —
+right for adventure and split faces, which carry none, and wrong for
+Drowner of Truth // Drowned Jungle, the one devoid double-faced card,
+whose front face would have been STAMPED green-blue. A face whose text
+prints devoid is now left unstamped, and the keyword decides.
+
+### What this does not change
+
+Colour identity (CR 903.4) is the mana symbols, and devoid keeps them:
+an imported card carries Scryfall's `color_identity`, and an unstamped
+one falls back to its cost in `printedIdentityOf` once its colours come
+up empty. A layer-5 colour effect applies on top (CR 613.3: the CDA
+first), and losing devoid in layer 6 does not recolour the card (the
+Battle for Zendikar release notes). No wire or snapshot field changes:
+`CardView.colors` is absent for a devoid card and `abilities` carries
+`"devoid"`.
+
+**Known limit.** A restore point written before this change stamped no
+devoid keyword (the importer dropped it as unenforced), so an
+uncatalogued devoid card in such a game stays coloured until the game
+ends. The ten catalogued devoid cards are covered anyway, because the
+catalog answer is read live.

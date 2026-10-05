@@ -15,12 +15,13 @@ import (
 //	 you may exile this card from your graveyard. When you do, return
 //	 each nonland permanent you don't control to its owner's hand."
 //
-// SANDBOX GAP, DECLARED. Devoid is colour data (the dump's colour list
-// is empty), but an empty list also means "not stamped" to the engine,
-// which then reads the colours off the mana cost (game.printedColors,
-// the gap ADR 0034 names for every devoid card). So this card is blue
-// in play, not colourless. Its own clause is unaffected: the spells it
-// watches for are other cards, read by their own colours.
+// Devoid is declared in PrintedKeywords, and the engine reads it as CR
+// 702.114a's colour-defining ability (#2152, game/devoid.go), so the
+// card is colourless in every zone: a "nonblue" clause may target it on
+// the stack, and a "colorless spell" payoff sees it cast. Until #2152 an
+// empty colour list meant "not stamped" and the card was blue. Its own
+// clause was never affected: the spells it watches for are other cards,
+// read by their own colours.
 //
 // The graveyard half is three printed pieces, each its own mechanism:
 //
@@ -44,11 +45,11 @@ func init() {
 	graveyardTrigger.Zones = []game.ZoneKind{game.ZoneGraveyard}
 
 	Register(Spec{
-		OracleID:     "ed622e71-f348-4e46-8fb9-05aae430983a",
-		Name:         "Ugin's Binding",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Devoid isn't applied: the game still treats this card as blue."},
-		Targets:      TargetPermanent("target nonland permanent you don't control", Nonland(), OpponentControls()),
+		OracleID:        "ed622e71-f348-4e46-8fb9-05aae430983a",
+		Name:            "Ugin's Binding",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordDevoid},
+		Targets:         TargetPermanent("target nonland permanent you don't control", Nonland(), OpponentControls()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind == game.TargetCard {
