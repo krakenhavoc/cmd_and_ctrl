@@ -440,6 +440,20 @@ func TestSayIsRateLimitedAndLeaveRefusesALiveSeat(t *testing.T) {
 	}
 }
 
+// #2279: the game-over answer says plainly who won, from the seat's side.
+func TestGameOverSaysYouWon(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	v := f.baseView("ended")
+	v.Outcome = &protocol.OutcomeView{Kind: "win", Winner: f.playerID.String(), Cause: "last_standing"}
+	f.setState(v, nil, false)
+	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 5})
+	if !strings.Contains(r.Text, "outcome: you won") {
+		t.Fatalf("game over:\n%s", r.Text)
+	}
+}
+
 func TestGameOverReportsAndDeletesTheSession(t *testing.T) {
 	f := newFakeServer(t)
 	s := newTestSeat(t, nil)
@@ -448,7 +462,7 @@ func TestGameOverReportsAndDeletesTheSession(t *testing.T) {
 	v.Outcome = &protocol.OutcomeView{Kind: "win", Winner: f.oppID.String(), Cause: "last_standing"}
 	f.setState(v, nil, false)
 	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 5})
-	if !strings.Contains(r.Text, "status: game_over") || !strings.Contains(r.Text, "«Bob» wins") || !strings.Contains(r.Text, "SEAT REPORT") {
+	if !strings.Contains(r.Text, "status: game_over") || !strings.Contains(r.Text, "you lost — «Bob» wins") || !strings.Contains(r.Text, "SEAT REPORT") {
 		t.Fatalf("game over:\n%s", r.Text)
 	}
 	waitFor(t, "the session file to go", func() bool {
