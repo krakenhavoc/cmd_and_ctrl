@@ -573,28 +573,74 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+function overlap(a: Rect, b: Rect): number {
+  const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left);
+  const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
 /**
  * placeDice puts a group of `size` beside `avatar` (board pixels), on
  * the side of the avatar toward the board's centre, so it reads as the
  * roller's and four seats never overlap. With no avatar on screen it
  * goes under the attention strip's content (`strip`) instead. Always
  * clamped inside the board.
+ *
+ * `avoid` is every rectangle the dice must not cover (board pixels): the
+ * open game log drawer, and the seats' text read-outs (#2260). An avatar
+ * that is mostly under one of them counts as not on screen, so the dice
+ * fall back to the strip. Otherwise the preferred side is kept unless it
+ * lands on an avoid rect, in which case the other sides are tried, and
+ * the one covering the least wins.
  */
 export function placeDice(
   board: Size,
   avatar: Rect | null,
   size: Size,
   strip: Rect | null,
+  avoid: readonly Rect[] = [],
 ): DicePlacement {
   const maxLeft = Math.max(DICE_EDGE, board.width - size.width - DICE_EDGE);
   const maxTop = Math.max(DICE_EDGE, board.height - size.height - DICE_EDGE);
+  const at = (left: number, top: number, side: DiceSide | "strip"): DicePlacement => ({
+    left: clamp(left, DICE_EDGE, maxLeft),
+    top: clamp(top, DICE_EDGE, maxTop),
+    side,
+  });
+  const cost = (c: DicePlacement): number => {
+    const box = { left: c.left, top: c.top, ...size };
+    return avoid.reduce((sum, r) => sum + overlap(box, r), 0);
+  };
+  const best = (cands: DicePlacement[]): DicePlacement => {
+    let win = cands[0];
+    let low = cost(win);
+    for (const c of cands.slice(1)) {
+      if (low === 0) break;
+      const k = cost(c);
+      if (k < low) {
+        win = c;
+        low = k;
+      }
+    }
+    return win;
+  };
+
+  const av = avatar;
+  if (av && av.width * av.height > 0) {
+    const covered = avoid.some((r) => overlap(av, r) > (av.width * av.height) / 2);
+    if (covered) avatar = null;
+  }
+
   if (!avatar) {
     const s = strip ?? { left: DICE_EDGE, top: DICE_EDGE, width: size.width, height: 0 };
-    return {
-      left: clamp(s.left, DICE_EDGE, maxLeft),
-      top: clamp(s.top + s.height + DICE_GAP, DICE_EDGE, maxTop),
-      side: "strip",
-    };
+    const top = s.top + s.height + DICE_GAP;
+    const cands = [at(s.left, top, "strip")];
+    for (const r of avoid) {
+      // Beside the thing in the way, then under it.
+      cands.push(at(r.left - DICE_GAP - size.width, top, "strip"));
+      cands.push(at(s.left, r.top + r.height + DICE_GAP, "strip"));
+    }
+    return best(cands);
   }
   const cx = avatar.left + avatar.width / 2;
   const cy = avatar.top + avatar.height / 2;
@@ -604,23 +650,31 @@ export function placeDice(
   // the horizontal side.
   const horizontal =
     Math.abs(dx) / Math.max(1, board.width) >= Math.abs(dy) / Math.max(1, board.height);
-  let left: number;
-  let top: number;
-  let side: DiceSide;
-  if (horizontal) {
-    side = dx >= 0 ? "right" : "left";
-    left =
-      side === "right"
-        ? avatar.left + avatar.width + DICE_GAP
-        : avatar.left - DICE_GAP - size.width;
-    top = cy - size.height / 2;
-  } else {
-    side = dy >= 0 ? "below" : "above";
-    left = cx - size.width / 2;
-    top =
-      side === "below"
-        ? avatar.top + avatar.height + DICE_GAP
-        : avatar.top - DICE_GAP - size.height;
+  const sideBox = (side: DiceSide): DicePlacement => {
+    switch (side) {
+      case "right":
+        return at(avatar.left + avatar.width + DICE_GAP, cy - size.height / 2, side);
+      case "left":
+        return at(avatar.left - DICE_GAP - size.width, cy - size.height / 2, side);
+      case "below":
+        return at(cx - size.width / 2, avatar.top + avatar.height + DICE_GAP, side);
+      default:
+        return at(cx - size.width / 2, avatar.top - DICE_GAP - size.height, side);
+    }
+  };
+  const first: DiceSide = horizontal ? (dx >= 0 ? "right" : "left") : dy >= 0 ? "below" : "above";
+  const others: DiceSide[] = horizontal
+    ? [dy >= 0 ? "below" : "above", dy >= 0 ? "above" : "below", dx >= 0 ? "left" : "right"]
+    : [dx >= 0 ? "right" : "left", dx >= 0 ? "left" : "right", dy >= 0 ? "above" : "below"];
+  const sides = [first, ...others].map(sideBox);
+  // Last resort when every side lands on something: slide the die along
+  // its own row to just outside the thing in the way.
+  const slid: DicePlacement[] = [];
+  for (const c of sides) {
+    for (const r of avoid) {
+      slid.push(at(r.left - DICE_GAP - size.width, c.top, c.side));
+      slid.push(at(r.left + r.width + DICE_GAP, c.top, c.side));
+    }
   }
-  return { left: clamp(left, DICE_EDGE, maxLeft), top: clamp(top, DICE_EDGE, maxTop), side };
+  return best([...sides, ...slid]);
 }
