@@ -40,7 +40,6 @@
   import type { MenuAction } from "../../contextMenu.logic";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
-  import { L } from "../../labels";
   import {
     HAND_SORTS,
     applyHandOrder,
