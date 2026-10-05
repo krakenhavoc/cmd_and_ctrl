@@ -4243,14 +4243,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			}
 			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
 			// damage from a deathtouch source is destroyed at the
-			// next SBA regardless of toughness. The flag stays set
-			// until the cleanup step (CR 514.2) or until the creature
-			// LEAVES the battlefield, whichever comes first, so a
-			// subsequent SBA pass on the same event cycle doesn't
-			// "un-doom" the creature. The exit case is MoveCard's
-			// battlefield-exit cleanup, which clears the flag with the
-			// damage it belongs to (#816) — there is no "zone-move
-			// listener", which is what this comment used to claim.
+			// next SBA regardless of toughness. The flag is consumed by
+			// the pass that reads it (consumeDeathtouchMarksLocked, #2319):
+			// CR 704.5h only counts damage dealt since the last check, so a
+			// creature that was indestructible for that check is not
+			// destroyed by the mark at a later one.
 			if c.MarkedLethalByDeathtouch && !indestructible {
 				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
 			}
@@ -4311,6 +4308,10 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// of the board still sees every one of those deaths. See
 	// simultaneous.go.
 	g.sweepDoomedPermanentsLocked(doomed)
+	// CR 704.5h counts deathtouch damage dealt "since the last time
+	// state-based actions were checked", so this pass has consumed the
+	// mark (#2319). DamageMarked stays: CR 704.5g counts it to cleanup.
+	g.consumeDeathtouchMarksLocked()
 	if len(doomed) > 0 {
 		// "Did this pass do anything", which is what `fired` means — not
 		// "how many were destroyed", which is what destroyPermanentsLocked

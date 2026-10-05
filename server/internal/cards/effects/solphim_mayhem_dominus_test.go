@@ -107,7 +107,7 @@ func TestSolphimDiesWhenBlockedForLethal(t *testing.T) {
 
 // The reported board: an indestructible counter on Solphim, a
 // four-power deathtouch blocker. Solphim takes the four damage and the
-// deathtouch, keeps both marked, and is not destroyed (CR 702.12b) —
+// deathtouch, keeps the damage marked, and is not destroyed (CR 702.12b) —
 // and every viewer's snapshot carries the three facts that explain
 // it: the damage, the counter and the keyword it grants.
 func TestSolphimWithAnIndestructibleCounterSurvivesTheDeathtouchBlock(t *testing.T) {
@@ -126,8 +126,8 @@ func TestSolphimWithAnIndestructibleCounterSurvivesTheDeathtouchBlock(t *testing
 	if c.DamageMarked != 4 {
 		t.Errorf("Solphim has %d damage marked, want 4 — indestructible does not remove damage", c.DamageMarked)
 	}
-	if !c.MarkedLethalByDeathtouch {
-		t.Error("the deathtouch damage should still be marked on Solphim")
+	if c.MarkedLethalByDeathtouch {
+		t.Error("the deathtouch mark should be consumed by the SBA check that Solphim survived (CR 704.5h, #2319)")
 	}
 	if _, ok := battlefieldCard(g, blocker); ok {
 		t.Error("the blocker took five damage and should have died")
