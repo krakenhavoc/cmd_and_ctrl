@@ -36,6 +36,7 @@
     exileIfCreaturesDieLine,
   } from "../../turnRules";
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
+  import { L } from "../../labels";
 
   interface Props {
     turn: TurnView;
@@ -190,7 +191,7 @@
 <div
   class="phase-display"
   class:track-open={trackOpen}
-  aria-label="turn and phase indicator"
+  aria-label={L.turnPhase}
   style:--active-player-color={activeColor}
 >
   <div class="row summary">

@@ -32,6 +32,7 @@
     type AdminView,
   } from "../lib/adminViews";
   import { session } from "../lib/session";
+  import { L } from "../lib/labels";
 
   interface Props {
     view: AdminView;
@@ -67,9 +68,9 @@
   );
 
   const TABS = [
-    { id: "live", label: "Live now", href: LIVE_HASH },
-    { id: "games", label: "Games", href: gamesHash() },
-    { id: "accounts", label: "Accounts", href: accountsHash() },
+    { id: "live", label: L.adminLiveNowTab, href: LIVE_HASH },
+    { id: "games", label: L.adminGamesTab, href: gamesHash() },
+    { id: "accounts", label: L.adminAccountsTab, href: accountsHash() },
   ] as const;
 </script>
 
@@ -83,7 +84,7 @@
 
   {#if $session}
     {#if showData}
-      <nav class="tabs" aria-label="admin views">
+      <nav class="tabs" aria-label={L.adminViews}>
         {#each TABS as t (t.id)}
           <a
             href={t.href}

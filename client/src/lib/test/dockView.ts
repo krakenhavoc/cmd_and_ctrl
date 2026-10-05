@@ -5,6 +5,7 @@
 
 import { flushSync } from "svelte";
 
+import { L } from "../labels";
 import type { GameView } from "../protocol";
 
 // dockTestView is the smallest GameView the dock's header renders.
@@ -48,7 +49,7 @@ export function dockTestView(over: Partial<GameView> = {}): GameView {
 
 // The dock region ("actions").
 export function dockRegion(root: ParentNode = document): HTMLElement | null {
-  return root.querySelector<HTMLElement>('section.action-dock[aria-label="actions"]');
+  return root.querySelector<HTMLElement>(`section.action-dock[aria-label="${L.actions}"]`);
 }
 
 // The open request's dialog in the dock.

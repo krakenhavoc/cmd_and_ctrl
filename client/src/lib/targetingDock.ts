@@ -23,6 +23,7 @@
 // the buttons keep "Done", "Cancel", "Auto-tap & cast", "Cast anyway".
 
 import type { DockAction, DockRequest } from "./dock";
+import { L } from "./labels";
 import type { GameView } from "./protocol";
 import {
   canConfirm,
@@ -180,7 +181,7 @@ export function targetingRequest(
       ];
   return {
     rank: state.choiceID ? "choice" : "flow",
-    label: `Select target for ${state.card.name}`,
+    label: L.selectTarget(state.card.name),
     tag: "target",
     tone: "gold",
     live: true,
@@ -268,7 +269,7 @@ export interface CastAnywayConfirmHandlers {
 // A label contract (AGENTS.md §5, ADR 0111 §10): cast-anyway-2188.spec.ts
 // selects the dialog by it.
 export function castAnywayConfirmLabel(cardName: string): string {
-  return `Cast ${cardName} without paying its mana cost?`;
+  return L.castWithoutPaying(cardName);
 }
 
 // castAnywayConfirmRequest: the "Cast anyway (don't pay)" row was chosen
@@ -298,14 +299,14 @@ export function castAnywayConfirmRequest(
     focus: "dialog",
     primary: {
       id: "cast",
-      label: "Cast",
+      label: L.cast,
       title: "cast it without paying its mana cost; the game log says so",
       onPress: h.onCast,
     },
     secondary: [
       {
         id: "cancel",
-        label: "Cancel",
+        label: L.cancel,
         title: "don't cast it",
         keyShortcuts: "Escape",
         cap: "Esc",

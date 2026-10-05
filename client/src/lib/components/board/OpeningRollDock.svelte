@@ -33,6 +33,7 @@
     type StartingChoice,
   } from "../../openingRoll";
   import { seatColor } from "../../colors";
+  import { L } from "../../labels";
   import DockRequest from "./DockRequest.svelte";
   import DockSheet from "./DockSheet.svelte";
 
@@ -73,7 +74,7 @@
         ? [
             {
               id: "roll-everyone",
-              label: "Roll for everyone left",
+              label: L.rollForEveryone,
               title: "roll a d20 for every seat that has not rolled yet",
               disabled: waiting,
               onPress: press(onRollForEveryone),
@@ -82,7 +83,7 @@
         : [];
     return {
       rank: "choice",
-      label: "roll for the first turn",
+      label: L.rollForFirstTurn,
       tag: "d20",
       tone: "gold",
       question: ask.question,
@@ -90,7 +91,7 @@
         ask.kind === "roll"
           ? {
               id: "roll",
-              label: "Roll",
+              label: L.roll,
               title: "roll your d20",
               disabled: waiting,
               keyShortcuts: "Enter",
@@ -134,7 +135,7 @@
       focus: "dialog",
       primary: {
         id: "confirm",
-        label: "Confirm",
+        label: L.confirm,
         disabled: waiting,
         onPress: press(() => {
           confirming = null;
@@ -154,7 +155,7 @@
   {:else}
     <DockSheet
       rank="choice"
-      label="choose who takes the first turn"
+      label={L.chooseFirstTurn}
       title="Choose who goes first"
       width={440}
       sheetKey="opening-roll-choice"
