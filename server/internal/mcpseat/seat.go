@@ -91,6 +91,8 @@ type window struct {
 	rejections int
 	openedAt   time.Time
 	kind       string
+	// me is the seat's own player id, so a move line can say "you".
+	me string
 }
 
 // reply is a frame answering one of the seat's own frames, by id, or the
@@ -526,7 +528,7 @@ func (s *Seat) step(ctx context.Context) {
 		s.mu.Unlock()
 		return
 	}
-	w := &window{key: key, token: key.token(), moves: append([]legal.Move(nil), s.moves...), state: winPending}
+	w := &window{key: key, token: key.token(), moves: append([]legal.Move(nil), s.moves...), state: winPending, me: s.sess.PlayerID.String()}
 	s.win = w
 	if key != s.lastCounted {
 		s.lastCounted = key
@@ -562,6 +564,13 @@ func (s *Seat) step(ctx context.Context) {
 				return
 			case err == nil:
 				w.moves, w.cuts = rep.Moves, rep.Truncated
+				s.mu.Unlock()
+				s.expandSearches(ctx, w)
+				s.mu.Lock()
+				if s.win != w {
+					s.mu.Unlock()
+					return
+				}
 			default:
 				w.partial = true
 				s.log.Info("full move list unavailable; using the cut list", "err", err)
@@ -599,6 +608,51 @@ func (s *Seat) step(ctx context.Context) {
 		return
 	}
 	go s.awaitAuto(w, ans.rule, ch)
+}
+
+// kindSearchLibrary is game.PendingChoiceSearchLibrary's wire value; this
+// package may not import internal/game (imports_test.go).
+const kindSearchLibrary = "search_library"
+
+// maxSearchExpansions bounds how many capped searches one window fetches
+// in full on its own.
+const maxSearchExpansions = 3
+
+// expandSearches fetches, in full, every capped "search your library"
+// prompt in the window before the model sees it (#2277). A search is the
+// one prompt whose list is the point of it, and a model that has to learn
+// a choice id to ask for the rest picks from the visible few instead. Other
+// capped prompts stay capped, with the hint to expand them: a three-card
+// pick over a big pool is the 512-move ceiling's worth of lines. A failed
+// request leaves the cut in place and the hint says how to retry.
+func (s *Seat) expandSearches(ctx context.Context, w *window) {
+	s.mu.Lock()
+	var ids []string
+	for _, c := range w.cuts {
+		if c.Choice == "" || len(ids) >= maxSearchExpansions {
+			continue
+		}
+		for i := range s.view.PendingChoices {
+			if pc := &s.view.PendingChoices[i]; pc.ID == c.Choice && pc.Kind == kindSearchLibrary {
+				ids = append(ids, c.Choice)
+			}
+		}
+	}
+	s.mu.Unlock()
+	for _, id := range ids {
+		req := moveRequest{Choice: id}
+		rep, err := s.requestMoves(ctx, req)
+		s.mu.Lock()
+		if err != nil || s.win != w || rep.Generation != w.key.gen || rep.Seq != w.key.seq {
+			s.mu.Unlock()
+			if err != nil {
+				s.log.Info("search not expanded", "choice", id, "err", err)
+			}
+			return
+		}
+		mergeMoves(w, rep, req)
+		s.mu.Unlock()
+	}
 }
 
 // openDecisionLocked hands a window to the model.
