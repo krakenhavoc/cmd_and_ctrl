@@ -21,6 +21,6 @@
     <use href="#c" xlink:href="#c" transform="scale(-1 1)" />
     <use href="#c" xlink:href="#c" transform="scale(1 -1)" />
     <use href="#c" xlink:href="#c" transform="scale(-1 -1)" />
-    <path d="M0-38L38 0L0 38L-38 0Z" />
+    <path d="M0-38L38 0L0 38L-38 0Z" fill="#e8eff7" />
   </g>
 </svg>

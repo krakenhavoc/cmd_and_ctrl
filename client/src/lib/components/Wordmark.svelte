@@ -1,8 +1,9 @@
 <script lang="ts">
   // The brand: the mark (four Cs, four players, around a diamond, the
   // commander at the centre of the table) and the wordmark (the name as
-  // two keycaps, cmd & ctrl). The mark is drawn in --accent, so it
-  // follows the skin and a custom accent.
+  // two keycaps, cmd & ctrl). The Cs are --accent and the diamond --fg,
+  // so the mark follows the skin and a custom accent, and the commander
+  // stands out against the Cs in every skin.
   //
   // `size` sets the type size; everything else is in em. "hero" stacks
   // the mark over the keys (the login page); "bar" and "header" sit
@@ -25,7 +26,7 @@
     {#each MIRRORS as t (t)}
       <path d={C} transform={t} />
     {/each}
-    <path d="M0-38L38 0L0 38L-38 0Z" />
+    <path class="commander" d="M0-38L38 0L0 38L-38 0Z" />
   </svg>
   <span class="keys" aria-hidden="true">
     <span class="key">cmd</span><span class="amp">&amp;</span><span class="key">ctrl</span>
@@ -67,6 +68,9 @@
   }
   .mark path {
     fill: var(--accent);
+  }
+  .mark .commander {
+    fill: var(--fg);
   }
   .keys {
     display: inline-flex;
