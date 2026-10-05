@@ -8,9 +8,12 @@ How each app host ships its data is in
 [environments.md, Monitoring agent](environments.md#monitoring-agent).
 This page is about what you look at and what wakes you up.
 
-Grafana is on the monitoring VM's LAN address, port 3000. There is no
-public hostname (ADR 0123 decision 6). The dashboards are in the
-`cmd_and_ctrl` folder.
+Grafana is at <https://grafana.labxp.io>, through the lab gateway (HomeLab's
+`gateway/`), and on the lab portal. That name is a record on the home network's
+own DNS servers, not in public DNS, so it works only on the LAN or the VPN:
+there is still no public hostname (ADR 0123 decision 6). The VM's own address,
+port 3000, also answers from the LAN, for when the gateway is down. The
+dashboards are in the `cmd_and_ctrl` folder.
 
 | What | Where in this repo | Read by |
 |---|---|---|
