@@ -267,6 +267,27 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     expect(dockOf(c).querySelector('[aria-label="opening hand decisions"]')).toBeNull();
   });
 
+  // #2346: drawn as Arena draws it, a stage over the table with the dock
+  // centred under it; "View table" folds it to the restore chip, and the
+  // dock goes back to its corner.
+  it("draws the opening hand as a stage, and View table folds it away", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    const sheet = dlg.querySelector<HTMLElement>(".dock-sheet")!;
+    expect(sheet.classList.contains("stage")).toBe(true);
+    expect(dockOf(c).classList.contains("staged")).toBe(true);
+    expect(dlg.textContent).toContain("A mulligan shuffles this hand away");
+    const viewTable = buttonNamed(dlg, "View table")!;
+    expect(viewTable).not.toBeNull();
+    click(viewTable);
+    expect(sheet.hidden).toBe(true);
+    expect(dockOf(c).classList.contains("staged")).toBe(false);
+    expect(buttonNamed(dlg, "Keep hand")).not.toBeNull();
+    click(buttonNamed(dlg, "restore: Your opening hand")!);
+    expect(sheet.hidden).toBe(false);
+    expect(dockOf(c).classList.contains("staged")).toBe(true);
+  });
+
   it("puts Keep hand in the corner and Mulligan on the left of the bar, and sends each", async () => {
     const c = await mountGame(mulliganTable());
     const dlg = expectSheet(c, "keep or mulligan your hand");
