@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Muddle the Mixture — Instant {U}{U}:
 //
 //	"Counter target instant or sorcery spell.
@@ -21,11 +19,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      instantOrSorcerySpell("target instant or sorcery spell"),
 		Activated:    []ActivatedAbility{Transmute("{1}{U}{U}")},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
-		},
+		OnResolve:    counterTheTargetSpell,
 	})
 }
