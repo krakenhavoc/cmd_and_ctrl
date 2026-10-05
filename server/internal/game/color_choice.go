@@ -186,13 +186,30 @@ func normaliseColorOptions(options []string) []string {
 // repeating it per prompt would bury the rest of the log.
 var emptyColorOptionsOnce sync.Once
 
-// chooseColorFrame is the continuation behind a resolution-time
-// PendingChoiceColor. `then` receives the chosen colour and runs with
-// g.mu held, so it may queue a further prompt (Selective
-// Obliteration's next player). Counted in ContinuationCensus like
-// every other frame.
-type chooseColorFrame struct {
-	then func(g *Game, color string) error
+// chooseValueFrame is the continuation behind a resolution-time
+// PendingChoiceColor or PendingChoiceCreatureType (#2382, which is why
+// it is not named for colours: both are a string answer followed by the
+// rest of the card). `then` receives the chosen colour or canonical
+// creature type and runs with g.mu held, so it may queue a further
+// prompt (Selective Obliteration's next player, Patriarch's Bidding's
+// next seat). Counted in ContinuationCensus like every other frame,
+// which is what makes a snapshot taken while the prompt is open report
+// itself unrestorable rather than silently dropping the rest of the
+// card.
+type chooseValueFrame struct {
+	then func(g *Game, value string) error
+}
+
+// runWithNoChoice runs the continuation as though nobody chose: the
+// empty string, which no answer can be (a colour is validated against
+// the options and a type against the vocabulary). Nil-safe, for the
+// stored forms that have no frame. Reached only through a kind that
+// declares dropDefault (creature_type).
+func (f *chooseValueFrame) runWithNoChoice(g *Game) error {
+	if f == nil || f.then == nil {
+		return nil
+	}
+	return f.then(g, "")
 }
 
 // QueueColorChoiceForEffect queues the STORED form: "as this permanent
@@ -247,7 +264,7 @@ func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
 		Reason:            p.Question,
 		ColorOptions:      normaliseColorOptions(p.Options),
 		ColorPurpose:      p.Purpose,
-		chooseColorResume: &chooseColorFrame{then: p.Then},
+		chooseValueResume: &chooseValueFrame{then: p.Then},
 	})
 }
 
@@ -297,7 +314,7 @@ func (g *Game) ResolveColorChoice(choiceID, chooserID uuid.UUID, color string) e
 	if !legal {
 		return ErrInvalidParam
 	}
-	frame := choice.chooseColorResume
+	frame := choice.chooseValueResume
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
 

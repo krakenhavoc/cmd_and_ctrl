@@ -2321,7 +2321,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		"optionPickResume":  c.optionPickResume != nil,
-		"chooseColorResume": c.chooseColorResume != nil,
+		"chooseValueResume": c.chooseValueResume != nil,
 		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
 		// #1019's / #1027's prompted run — a sacrifice's or a

@@ -333,6 +333,13 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
 	case c.chooseCardsResume != nil:
 		err = c.chooseCardsResume.runWithNoChoice(g)
+	case c.chooseValueResume != nil:
+		// A resolution-time "choose a creature type" whose chooser left
+		// (Patriarch's Bidding asks every seat in turn). "" is the
+		// absence of a choice, spelled in the currency the frame
+		// speaks; an ANSWER can never be empty (CanonicalCreatureType
+		// refuses it), so it cannot be mistaken for one.
+		err = c.chooseValueResume.runWithNoChoice(g)
 	default:
 		err = c.optionPickResume.runWithNoChoice(g)
 	}

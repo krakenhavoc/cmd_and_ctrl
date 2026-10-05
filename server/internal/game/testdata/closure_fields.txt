@@ -108,7 +108,7 @@ ModeOption.Effect                            census:ChoiceResumeFrames          
 ModeOption.Targets                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Targets
 ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
 PendingChoice.chooseCardsResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume
-PendingChoice.chooseColorResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseColorResume
+PendingChoice.chooseValueResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseValueResume
 PendingChoice.coinFlipResume                 census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume
 PendingChoice.confirmResume                  census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
@@ -175,7 +175,7 @@ activeReplacement.effect                     census:ChoiceResumeFrames          
 activeReplacement.source                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.source
 chooseCardsFrame.then                        census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume.then
 chooseCardsFrame.validate                    census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume.validate
-chooseColorFrame.then                        census:ChoiceResumeFrames          # Game.PendingChoices.chooseColorResume.then
+chooseValueFrame.then                        census:ChoiceResumeFrames          # Game.PendingChoices.chooseValueResume.then
 coinFlipFrame.spec                           census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume.spec
 confirmFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onAccept
 confirmFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onDecline

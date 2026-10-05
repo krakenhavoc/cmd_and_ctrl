@@ -901,7 +901,7 @@ var pendingChoiceFields = plan(
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"midResolution", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",

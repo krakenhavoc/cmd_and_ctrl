@@ -5653,6 +5653,34 @@ direction, so never write one. A mana ability whose restriction
 names the chosen type uses `RestrictionsFunc`, not `Restrictions`
 (see `ChosenTypeManaRestrictions`).
 
+**A type chosen as a spell resolves** ("Choose a creature type. Destroy
+all creatures that aren't of the chosen type") is
+`ChooseCreatureTypeThen`, not a stored answer (#2382):
+
+```go
+OnResolve: func(item *game.StackItem, ctx *Context) error {
+    ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
+        func(g *game.Game, t string) error {
+            if t == "" { // the chooser left the game: nobody chose
+                return nil
+            }
+            return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(NewContext(g, item))
+        })
+    return nil
+},
+```
+
+Same prompt, vocabulary and answer as the as-enters form, so the client
+and the bot's enumerator need nothing new. Everything the card prints
+after the choice goes INSIDE the continuation, which receives the
+canonical type (and `""` when the chooser left); the line after the call
+runs before anybody has answered. "Each player chooses" is a chain: ask
+`seatsFromController`, one prompt per seat, from inside the previous
+continuation, carrying the answers by value (Patriarch's Bidding). A
+permanent whose counters depend on the answer (Banner of Kinship) queues
+the same prompt from `AsEnters` and uses `Game.SetNamedTribeForEffect`
+in the continuation.
+
 **Changeling** (CR 702.73a) is an enforced keyword since S26, so a
 **vanilla changeling needs no catalog entry at all** — the deck
 importer stamps it from Scryfall like any other printed keyword, and

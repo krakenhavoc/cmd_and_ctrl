@@ -147,7 +147,7 @@ func TestColorChoiceResolutionFormRunsThenAndStoresNothing(t *testing.T) {
 	// While open it holds a continuation, so the game is not a
 	// restore point.
 	if snap := g.CaptureSnapshot(); snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 1 {
-		t.Errorf("census = %+v, want the chooseColorResume frame counted", snap.Continuations)
+		t.Errorf("census = %+v, want the chooseValueResume frame counted", snap.Continuations)
 	}
 	if err := g.ResolveColorChoice(id, seat, "B"); err != nil {
 		t.Fatalf("ResolveColorChoice: %v", err)
