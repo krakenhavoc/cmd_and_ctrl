@@ -99,6 +99,13 @@ type Config struct {
 	// "normal" preset the moment BotPace defaulted to
 	// game.BotPaceNormal, silently undoing the override.
 	FollowTablePace bool
+	// FirstTurnTo, when set, is the seat this bot hands the first turn
+	// to if it wins the opening roll (ADR 0125 §5.2): the runner answers
+	// a window whose moves are all choose_starting_player with the move
+	// naming that seat, and asks the policy about every other window.
+	// Nil (the zero value, and every table but the practice table)
+	// changes nothing. See first_turn.go.
+	FirstTurnTo *int
 }
 
 const (
@@ -755,11 +762,24 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 		err error
 	)
 	traced := false
+	firstTurn := -1
+	if r.cfg.FirstTurnTo != nil {
+		firstTurn = FirstTurnIndex(in.Moves, *r.cfg.FirstTurnTo)
+	}
 	// A Tracer answers the window AND shows its working. Nothing else
 	// changes: DecideTraced returns what Decide would have, so this
 	// is the same decision with the prompt, the reply and the
 	// heuristic's ranking attached.
-	if t, ok := Capability[Tracer](r.policy); ok && r.cfg.Observer != nil {
+	if firstTurn >= 0 {
+		// ADR 0125 §5.2: the practice bot that won the opening roll
+		// hands the first turn to the player. The window is answered
+		// here, ahead of the policy, and goes on through the ordinary
+		// path below: the same pacing, the same dispatch, the same
+		// observer.
+		NoteLayer(dctx, metrics.BotLayerA)
+		d = Decision{Index: firstTurn, Reason: "hand the first turn to the player"}
+		tr = Trace{Layer: metrics.BotLayerA, Rule: RuleFirstTurnTo, HeuristicIndex: Decline}
+	} else if t, ok := Capability[Tracer](r.policy); ok && r.cfg.Observer != nil {
 		d, tr, err = t.DecideTraced(dctx, in)
 		traced = true
 	} else {

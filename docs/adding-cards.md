@@ -3056,7 +3056,19 @@ OptionalCosts: []game.AdditionalCost{Multikicker("{G}", 20)},                   
 OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                           // Capsize
 OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", Land())},       // Constant Mists
 OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())},
+OptionalCosts: Kickers("{R}", "{W}"),                                            // Thornscape Battlemage
 ```
+
+**"Kicker {R} and/or {W}"** (CR 702.33b) is `Kickers(first, second)`: two
+`Kicker` entries in printed order, both keyed kicker, each its own once-only
+toggle — either, both or neither (#2153, ADR 0073 Decision 16). Never a
+`Multikicker(…, 1)` relabelled as a kicker, which is what Urborg Lhurgoyf used
+to be. Every "was it kicked" read counts both, so both paid is "kicked twice"
+(Archangel of Wrath). "If it was kicked with its {R} kicker" (CR 702.33f) is
+`ctx.KickedWith("{R}")` on a spell and `ThisKickedWith("{R}")` as a
+permanent's enters-trigger condition, with the cost spelled exactly as the
+`Kickers` call spells it. `Register` refuses a third kicker and two kickers
+whose mana is the same, since that question could then not be answered.
 
 Use the keyword constructor, never a hand-rolled
 `game.AdditionalCost{Optional: true}` — for the reason `Flashback` has
@@ -3064,7 +3076,7 @@ one. The constructor carries the `Key` the ENGINE reads, and a
 hand-rolled one compiles and then never returns a bought-back card to
 hand. `Register` refuses the mistakes that would otherwise ship
 quietly: an `Optional` cost in the mandatory slot, a missing or
-duplicated `Key`, a repeatable cost that also demands cards or
+duplicated `Key` (kicker's pair aside), a repeatable cost that also demands cards or
 permanents (every printed multikicker is mana), and an optional
 `PayLifeX` (it would fight the mandatory cost for the shared `XValue`
 slot).
@@ -3080,7 +3092,9 @@ if ctx.WasKicked() { amount = 4 }        // Burst Lightning
 
 Read it from a PERMANENT's own trigger with
 `game.CardKickedTimes(*source)` — Gatekeeper of Malakir's "when this
-enters, **if it was kicked**", Wolfbriar Elemental's count. Not the
+enters, **if it was kicked**", Wolfbriar Elemental's count — or, as
+the trigger's condition, `AllOf(Self, ThisKickedAtLeast(n))` /
+`AllOf(Self, ThisKickedWith("{R}"))`. Not the
 stack item: it is out of `StackMeta` before the ETB event is emitted,
 so the resolution path carries the record onto the permanent as
 `Card.PaidOptionalCosts` (CR 400.7d) and that is what these read. It

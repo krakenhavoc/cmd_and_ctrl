@@ -1341,12 +1341,14 @@ the policy for choosing the sets is what keeps that product finite
 ([ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md)
 §9):
 
-- **Decline everything, or pay exactly ONE of the offered costs.**
-  Paying two different optional costs at once (Thornscape Battlemage's
-  "Kicker {R} and/or {W}") is a power-set search whose every member
-  needs its own affordability probe, and no card in the catalog offers
-  two. A bot does not take that line yet; it is never offered one it
-  cannot pay for.
+- **Decline everything, or pay exactly ONE of the offered costs — or,
+  on a card with two kicker costs, both.** "Kicker {R} and/or {W}"
+  (Thornscape Battlemage, Archangel of Wrath, CR 702.33b) prints lines
+  that need both paid, so the pair is one extra announcement (#2153).
+  Any other pair of different optional costs (a kicker beside a
+  buyback) is a power-set search whose every member needs its own
+  affordability probe, and a bot does not take that line; it is never
+  offered one it cannot pay for.
 - **A repeatable cost is offered up to THREE times.** Multikicker is
   unbounded in paper, but an announcement has to be finite and a
   decision loop has to terminate. Three is a policy number, not a
@@ -1809,11 +1811,64 @@ decision's reason says so in those numbers: `attack: two-turn race — 3
 now + 3 next turn ≥ their 6 life; crack-back 0 < my 6`.
 
 It is deliberately pessimistic wherever the estimate could make the bot
-suicidal: every blocked attacker of its own counts as dead, the
+suicidal: no blocked attacker of its own is home for the crack-back, the
 defender counts as both attacking with everything and keeping
 everything home, a trampler is held only by a blocker that absorbs all
-of it, and menace counts as unblockable. A perfect mirror has no race —
-nothing is left over for next turn — and the bot does not invent one.
+of it, and menace counts as unblockable. A blocked attacker counts
+toward next turn only when nothing the defender could put in front of
+it kills it (#1527), spare blockers ganging up on it included (#1548,
+below). A perfect mirror has no race — nothing is left over for next
+turn — and the bot does not invent one.
+
+### Gang blocks (#1548)
+
+A block move names one pair, so two Ogres on a Wurm are declared one at
+a time. The block planner scores each one as the whole group in front of
+the attacker, less what the group without it already did:
+
+- **the kill**: does the group kill the attacker now, when it did not
+  before? Combat damage is played in its two steps: a first striker
+  picks off the blockers it can before they deal regular damage, and
+  spends that damage on the ones that would finish it; a deathtoucher
+  needs one point per blocker; a double striker hits twice.
+- **the losses**: the attacker divides its damage as badly for the
+  defender as it can, so the group loses the most value whose lethal
+  damage adds up to the attacker's power. A second Ogre on a chumped
+  Wurm costs nothing, since the Wurm's 7 kills one Ogre either way.
+- **the damage saved**: a trampler puts over what its blockers do not
+  absorb, so a second chump on a Wurm saves its toughness. The same
+  overflow counts toward whether the bot is desperate enough to chump.
+
+The race predicts the same defender. Once the defender would survive,
+the model adds spare blockers to any block that does not kill its
+attacker when the kill is worth what they cost, and the joiners soak up
+a trampler's overflow as they go. A blocked attacker of the bot's lives
+into next turn only when its blockers plus every spare blocker that
+could join them cannot kill it.
+
+### The attrition horizon (#1548)
+
+Gang blocks take away a lot of two-turn kills. The full seed-1409
+Wurm-edge mirror (two Wurms, six Ogres, five Bears and a 3/3 commander
+against one Wurm and the rest the same, both players on 6) has none
+left: whatever the bot sends, a gang-blocking defender holds the two
+turns to 2 damage. When no race exists, `heuristic/attrition.go` plays
+the race's own model forward. An exchange is acceptable when the
+crack-back on the turn in between is less than the bot's life, it makes
+progress the defender cannot trade away (damage that connects however
+it blocks, or a creature of theirs that stays dead; a commander goes
+back to the command zone, so trading into one is not progress), no
+more of the bot's creatures die than the defender's, and the bot's
+creatures are still worth more than the defender's afterwards. After
+an acceptable exchange the board is rebuilt, with both sides untapped
+and the defender's creatures home to block, and asked again: a lethal
+all-in or a two-turn race ends the line, otherwise one more exchange,
+up to three. The bot sends the first exchange of the first line that
+ends in a race, and keeps everything else home, exactly as a race does:
+`attack: attrition — 1 of mine for 1 of theirs and 0 sure now, a race
+within 1 exchange(s); crack-back 0 < my 6`. In the Wurm mirror that is
+one Wurm into theirs. Nothing is remembered between decisions, and the
+search stops after 100 swings evaluated per decision.
 
 ### Trample overflow on the attacking side (#1504)
 

@@ -16,6 +16,10 @@
 // stays here too.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { anchorOf, emptyContext } from "./hints/hint";
+import { resolveAnchor } from "./tutorialAnchor";
+import CHECK_HINT from "../routes/Decks.hint";
+import LIBRARY_HINT from "../routes/DecksLibrary.hint";
 
 import Decks from "../routes/Decks.svelte";
 import YourDecksPicker from "./components/YourDecksPicker.svelte";
@@ -387,6 +391,26 @@ describe("#/decks: who sees what (§3 item 3)", () => {
     expect(text).not.toContain("Sign in with Discord");
     expect(text).not.toContain("Your decks");
     expect(calls.some((c) => c.url === "/me/decks")).toBe(false);
+  });
+});
+
+describe("#/decks: the first-use hints' anchors", () => {
+  it("decks.check points at the deck-link field", async () => {
+    const { container } = render(Decks as never, {} as never);
+    await settle();
+    const a = anchorOf(CHECK_HINT, emptyContext("decks"));
+    expect(resolveAnchor(a!, container)).toBe(
+      container.querySelector('input[aria-label="deck link"]'),
+    );
+  });
+
+  it("decks.library points at the saved-deck list", async () => {
+    const { container } = render(Decks as never, {} as never);
+    await settle();
+    const a = anchorOf(LIBRARY_HINT, emptyContext("decks"));
+    expect(resolveAnchor(a!, container)).toBe(
+      container.querySelector('ul[aria-label="your decks"]'),
+    );
   });
 });
 

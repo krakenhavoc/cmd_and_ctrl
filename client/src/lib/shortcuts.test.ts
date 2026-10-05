@@ -519,6 +519,16 @@ describe("dispatchShortcut", () => {
       "unavailable",
     );
   });
+
+  // ADR 0125 §3.6: Go to the tip is a global `i`, an unmodified letter
+  // no other action uses (ADR 0047), and it stands down while typing.
+  it("sends i to Go to the tip, everywhere, and to nothing else", () => {
+    const defaults = defaultBindings();
+    expect(defaults.focusTip).toBe("i");
+    expect(SHORTCUT_IDS.filter((id) => defaults[id] === "i")).toEqual(["focusTip"]);
+    expect(dispatchShortcut(input({ chord: "i", ctx: idleContext() })).action).toBe("focusTip");
+    expect(dispatchShortcut(input({ chord: "i", typing: true })).skipped).toBe("typing");
+  });
 });
 
 describe("DOM predicates", () => {

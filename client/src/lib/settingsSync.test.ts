@@ -521,3 +521,121 @@ describe("the practice table's forced settings never reach the account", () => {
     expect(m.put).not.toHaveBeenCalled();
   });
 });
+
+// ADR 0125 §4: help.seen is the one field that merges by union, at
+// sign-in and on a 412, and a difference in it alone never raises the
+// "keep this browser's" toast.
+describe("the hints a person has seen merge by union", () => {
+  async function signInWith(account: Record<string, unknown>, revision = 4) {
+    const m = await load({ install: false });
+    const { syncedSubset } = await import("./settings");
+    m.fetch.mockResolvedValue({
+      version: m.SETTINGS_VERSION,
+      revision,
+      // The account matches this browser except where `account` says.
+      settings: { ...syncedSubset(get(m.settings)), ...account },
+    });
+    m.setSession(SIGNED_IN);
+    uninstall = m.installSettingsSync();
+    await settle();
+    return m;
+  }
+
+  it("at sign-in, keeps the hints dismissed in this browser and adds the account's", async () => {
+    storeBrowserSettings({ help: { seen: { "lobby.create": 1, "table.stack": 2 } } });
+    const m = await signInWith({
+      help: { seen: { "table.stack": 1, "decks.check": 1 }, tipsOff: false },
+    });
+    expect(get(m.settings).help.seen).toEqual({
+      "lobby.create": 1,
+      "table.stack": 2,
+      "decks.check": 1,
+    });
+    // A union cannot lose anything: no toast.
+    expect(get(m.settingsSyncToast)).toBeNull();
+    // The account lacked some of them, so the union goes up.
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(m.put).toHaveBeenCalledOnce();
+    const sent = lastPut(m.put);
+    expect(sent.revision).toBe(4);
+    expect(sent.body.help.seen).toEqual({
+      "lobby.create": 1,
+      "table.stack": 2,
+      "decks.check": 1,
+    });
+  });
+
+  it("uploads nothing when the account already has every hint this browser saw", async () => {
+    storeBrowserSettings({ help: { seen: { "table.stack": 1 } } });
+    const m = await signInWith({
+      help: { seen: { "table.stack": 1, "decks.check": 1 }, tipsOff: false },
+    });
+    expect(get(m.settings).help.seen).toEqual({ "table.stack": 1, "decks.check": 1 });
+    expect(get(m.settingsSyncToast)).toBeNull();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(m.put).not.toHaveBeenCalled();
+  });
+
+  it("tipsOff is an ordinary field: the account's wins, and it raises the toast", async () => {
+    storeBrowserSettings({ help: { seen: {}, tipsOff: true } });
+    const m = await signInWith({ help: { seen: {}, tipsOff: false } });
+    expect(get(m.settings).help.tipsOff).toBe(false);
+    expect(get(m.settingsSyncToast)).not.toBeNull();
+  });
+
+  it("keep this browser's puts every other field back and keeps the union", async () => {
+    storeBrowserSettings({
+      display: { theme: "light" },
+      help: { seen: { "lobby.create": 1 } },
+    });
+    const m = await signInWith({
+      display: { theme: "classic" },
+      help: { seen: { "decks.check": 1 }, tipsOff: false },
+    });
+    expect(get(m.settings).display.theme).toBe("classic");
+    expect(get(m.settingsSyncToast)).not.toBeNull();
+    m.keepBrowserSettings();
+    await settle();
+    expect(get(m.settings).display.theme).toBe("light");
+    expect(get(m.settings).help.seen).toEqual({ "lobby.create": 1, "decks.check": 1 });
+    expect(lastPut(m.put).body.help.seen).toEqual({ "lobby.create": 1, "decks.check": 1 });
+  });
+
+  it("a 412 takes the union of the two copies, not either side's", async () => {
+    const m = await signInWith({ help: { seen: { "lobby.create": 1 }, tipsOff: false } }, 1);
+    m.put.mockClear();
+    const { syncedSubset } = await import("./settings");
+    m.put.mockRejectedValueOnce(
+      new m.LobbyApiError(412, "changed somewhere else", undefined, undefined, {
+        version: m.SETTINGS_VERSION,
+        revision: 5,
+        settings: {
+          ...syncedSubset(get(m.settings)),
+          help: { seen: { "lobby.create": 1, "decks.check": 1 }, tipsOff: false },
+        },
+      }),
+    );
+    // This browser dismisses a hint while another device dismissed another.
+    m.settings.update((s) => ({
+      ...s,
+      help: { ...s.help, seen: { ...s.help.seen, "table.stack": 1 } },
+    }));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(m.put).toHaveBeenCalledTimes(1);
+    expect(get(m.settings).help.seen).toEqual({
+      "lobby.create": 1,
+      "decks.check": 1,
+      "table.stack": 1,
+    });
+    expect(get(m.settingsSyncToast)).toBeNull();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(m.put).toHaveBeenCalledTimes(2);
+    const sent = lastPut(m.put);
+    expect(sent.revision).toBe(5);
+    expect(sent.body.help.seen).toEqual({
+      "lobby.create": 1,
+      "decks.check": 1,
+      "table.stack": 1,
+    });
+  });
+});

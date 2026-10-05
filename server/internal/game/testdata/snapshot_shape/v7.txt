@@ -760,6 +760,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Supertyp
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Supertypes[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwner	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].Source	custom(uuid.UUID)
@@ -847,6 +848,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustCo
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Supertypes[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwner	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].Source	custom(uuid.UUID)
@@ -1466,6 +1468,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderM
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Supertypes[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)

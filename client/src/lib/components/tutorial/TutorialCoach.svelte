@@ -124,9 +124,12 @@
   // not restart the timer.
   const currentStep = $derived(snap.step);
   const shown = $derived(snap.visible);
+  // While the opening roll is open nothing is dealt, so the read starts
+  // once the hand is (ADR 0125 §5.2, heldByOpeningRoll).
+  const held = $derived(snap.held);
   $effect(() => {
     const step = currentStep;
-    if (canHover || !step.hover || !shown) return;
+    if (canHover || !step.hover || !shown || held) return;
     const t = setTimeout(
       () => run.advance(step.id, "cannot be hovered on this device"),
       touchHoverStepMs,
