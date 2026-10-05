@@ -370,7 +370,7 @@
       </header>
 
       <div class="body">
-        <nav aria-label="settings sections">
+        <nav aria-label={L.settingsSections}>
           <button class:active={activeTab === "audio"} onclick={() => (activeTab = "audio")}
             >Audio</button
           >

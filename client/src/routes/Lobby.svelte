@@ -27,6 +27,7 @@
     type SeatInfo,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
+  import { L } from "../lib/labels";
   import { session, LobbyApiError } from "../lib/session";
   import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
   import { signedInUserID } from "../lib/myGames";
@@ -49,7 +50,6 @@
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
-  import { L } from "../lib/labels";
 
   // Lobby is the signed-in home (ADR 0112 §1): every session lands
   // here, under the site header and its account menu. At the top, a
@@ -771,7 +771,7 @@
         </form>
       {/if}
       {#if canCreate}
-        <form class="start-card create" onsubmit={onCreate}>
+        <form class="start-card create" aria-label={L.createGame} onsubmit={onCreate}>
           <h2 class="panel-h">create game</h2>
           <div class="create-row">
             <input

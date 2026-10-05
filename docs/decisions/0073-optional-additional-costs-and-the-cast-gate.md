@@ -1373,3 +1373,77 @@ otherwise unchanged. The #1213 guard ("a cost that can be paid with nothing is
 free") still holds for abilities; on a cast, "sacrifice any number of" prints
 zero as a legal count. Neither variable shape may sit in an optional cost:
 no printed kicker or buyback has one.
+
+## Amendment (2026-10-05, [#2153](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2153)): two kicker costs on one card
+
+**Sprint:** S58 — Deck requests, October batch. Found landing Urborg Lhurgoyf
+([#2100](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2100)).
+
+> **702.33b** The phrase "Kicker [cost 1] and/or [cost 2]" means the same thing
+> as "Kicker [cost 1]" and "Kicker [cost 2]."
+>
+> **702.33d** … If a spell has two kicker costs or has multikicker, it may be
+> kicked multiple times.
+>
+> **702.33f** Objects with more than one kicker cost may also have abilities
+> that each correspond to a specific kicker cost. They contain the phrases "if
+> it was kicked with its [A] kicker" and "if it was kicked with its [B]
+> kicker," where A and B are the first and second kicker costs listed on the
+> card, respectively.
+
+§1 made `Key` unique per card, so "Kicker {U} and/or {B}" could not be declared
+as printed. Urborg Lhurgoyf worked around it with a `Multikicker("{B}", 1)`
+relabelled "Kicker {B}" — right in behaviour, wrong in what it claimed to be,
+and the roadmap's multikicker probe counted it.
+
+### Decision 16 — the two kickers share `KickerKey`; the mana tells them apart
+
+A card with two kicker costs declares **two entries keyed `KickerKey`**, in
+printed order: `effects.Kickers("{U}", "{B}")` is exactly `Kicker("{U}"),
+Kicker("{B}")`, which is CR 702.33b read literally. `Register` allows
+`KickerKey` — and only `KickerKey` — to appear twice, and refuses a third
+kicker or two kickers that do not each carry a different mana cost.
+
+Nothing about payment changes, because nothing about payment ever read the
+key: the announcement names indices (§2), each entry is a once-only cost, so
+either, both or neither may be claimed, and the plan (§4), the price (§3), the
+view, the client's toggles and the paid record all work per index already.
+What the key is FOR is the readers, and sharing it gives them the right answers
+for free: `KickedTimesPaid`, `ctx.KickedTimes`, `ctx.WasKicked`,
+`ModeCountQuery.Kicked` and `CountersPerKick` all count indices whose key is
+kicker, so both paid is "kicked twice" (CR 702.33d, Archangel of Wrath) with
+no reader learning anything new.
+
+The one new question is CR 702.33f's. `game.KickedWithPaid(card, paid, cost)`
+finds the kicker whose `ManaCost` is `cost` and asks whether its index was
+paid; `game.CardKickedWith` asks it of a permanent's carried record (CR
+400.7d), `ctx.KickedWith` of a resolving spell, and `effects.ThisKickedWith`
+is the intervening-if condition (CR 603.4) for a permanent's own enters
+trigger. It is keyed by the printed cost because the oracle text names it that
+way, and `Register`'s distinct-mana rule is what makes the cost always name one
+kicker.
+
+**Rejected: distinct keys per kicker** ("kicker", "kicker:{B}"). Every
+existing reader compares `Key == KickerKey`; each would have had to learn the
+family, and any one that did not would silently count a doubly kicked card as
+kicked once — the stronger-than-printed failure turned into a weaker one, in a
+place no test was looking. The wire `key` would also have grown new values.
+
+**Rejected: a `Spec.KickerCosts` list.** A second slot for something
+`OptionalCosts` already holds, with its own expansion into the index space the
+announcement names. Two places to look for one card's kicker is exactly what §1
+avoided by putting `Optional` on the existing component.
+
+**Bots.** §9's "pay exactly ONE optional cost" gains one exception: on a card
+with two kicker costs the enumerator also offers both together, one extra
+announcement, priced and affordability-checked like any other. Other pairs of
+different optional costs are still not enumerated.
+
+**Wire.** None. `optional_costs` already carried one offer per index; two of
+them now share `key: "kicker"`, which no client read for anything but a label
+fallback.
+
+**Copies.** Unchanged and now pinned: a CR 707.10 copy keeps the paid indices,
+so a copy of a spell kicked with its second kicker reads "kicked with its [B]
+kicker" and not [A], and a Double Major token of a permanent spell carries the
+same record onto the battlefield.

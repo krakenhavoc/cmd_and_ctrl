@@ -1341,12 +1341,14 @@ the policy for choosing the sets is what keeps that product finite
 ([ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md)
 §9):
 
-- **Decline everything, or pay exactly ONE of the offered costs.**
-  Paying two different optional costs at once (Thornscape Battlemage's
-  "Kicker {R} and/or {W}") is a power-set search whose every member
-  needs its own affordability probe, and no card in the catalog offers
-  two. A bot does not take that line yet; it is never offered one it
-  cannot pay for.
+- **Decline everything, or pay exactly ONE of the offered costs — or,
+  on a card with two kicker costs, both.** "Kicker {R} and/or {W}"
+  (Thornscape Battlemage, Archangel of Wrath, CR 702.33b) prints lines
+  that need both paid, so the pair is one extra announcement (#2153).
+  Any other pair of different optional costs (a kicker beside a
+  buyback) is a power-set search whose every member needs its own
+  affordability probe, and a bot does not take that line; it is never
+  offered one it cannot pay for.
 - **A repeatable cost is offered up to THREE times.** Multikicker is
   unbounded in paper, but an announcement has to be finite and a
   decision loop has to terminate. Three is a policy number, not a

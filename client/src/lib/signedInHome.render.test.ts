@@ -8,6 +8,9 @@
 // wordmark; the login page with no token card; and Home's join card.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { anchorOf, emptyContext } from "./hints/hint";
+import { resolveAnchor } from "./tutorialAnchor";
+import CREATE_HINT from "../routes/Lobby.hint";
 
 import App from "../App.svelte";
 import Lobby from "../routes/Lobby.svelte";
@@ -266,6 +269,19 @@ describe("the router (§1 items 1 and 2)", () => {
       expect(container.textContent).toMatch(/welcome back/i);
     });
   }
+});
+
+describe("the lobby.create hint", () => {
+  it("anchors on the create form a signed-in person sees", async () => {
+    setSession(sess("player", USER));
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+    const a = anchorOf(CREATE_HINT, { ...emptyContext("lobby"), signedIn: true });
+    expect(resolveAnchor(a!, container)).toBe(
+      container.querySelector('form[aria-label="create game"]'),
+    );
+  });
 });
 
 describe("the Lobby's Join a table card (§1 item 3)", () => {

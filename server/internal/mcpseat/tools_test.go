@@ -77,7 +77,8 @@ func TestJoinDeclaresAnAgentGuestOverBearerAndSavesTheSessionPrivately(t *testin
 		if fi.Mode().Perm() != want {
 			t.Errorf("%s is %#o, want %#o", p, fi.Mode().Perm(), want)
 		}
-		if !fi.IsDir() {
+		// The .lock beside the session is the #2274 claim: empty, 0600.
+		if !fi.IsDir() && !strings.HasSuffix(p, ".lock") {
 			files = append(files, p)
 		}
 		return nil
