@@ -996,7 +996,7 @@
     font-size: 10.5px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   h1 {
     margin: 0;
@@ -1055,8 +1055,8 @@
   }
   .tab.on {
     background: var(--accent-soft);
-    border-color: var(--gold);
-    color: var(--gold-strong);
+    border-color: var(--accent);
+    color: var(--accent-strong);
   }
   .url-field {
     width: 100%;
@@ -1163,7 +1163,7 @@
     overflow-wrap: anywhere;
   }
   .source-link:hover {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .as-printed {
     margin: 0;
@@ -1195,7 +1195,7 @@
   }
   .seg.caveats,
   .dot.caveats {
-    background: var(--gold);
+    background: var(--accent);
   }
   .seg.automated,
   .dot.automated {
@@ -1291,13 +1291,13 @@
     font-size: 12.5px;
   }
   .outcome.warn {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .outcome a {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     text-decoration: none;
     font-family: var(--font-mono);
   }
@@ -1313,7 +1313,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     text-decoration: none;
     font-size: 13px;
     font-weight: 600;
@@ -1379,11 +1379,11 @@
   }
   a.cname {
     text-decoration: underline;
-    text-decoration-color: color-mix(in srgb, var(--gold) 50%, transparent);
+    text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
     text-underline-offset: 2px;
   }
   a.cname:hover {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .count {
     font-family: var(--font-mono);
@@ -1402,7 +1402,7 @@
     font-size: 11.5px;
     line-height: 1.45;
     color: var(--fg-muted);
-    border-left: 2px solid color-mix(in srgb, var(--gold) 50%, transparent);
+    border-left: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
     padding-left: 8px;
   }
   .unknown-list {
@@ -1466,7 +1466,7 @@
     color: var(--mint);
   }
   .cov.tone-caveats {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .cov.tone-gap {
     color: var(--danger);

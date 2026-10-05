@@ -22,6 +22,7 @@
   // bar and the login page's signed-in card are one menu, opened from
   // the button that shows the person's name.
   import { onMount } from "svelte";
+  import Wordmark from "./Wordmark.svelte";
   import { route, navigate } from "../router";
   import { canSignOutEverywhere, LobbyApiError, session } from "../session";
   import { signedInUserID } from "../myGames";
@@ -150,7 +151,7 @@
 <header class="site-header">
   <div class="row">
     <a class="wordmark" href={homeHref} aria-label="cmd_and_ctrl home" onclick={closeMenu}>
-      <i></i>CMD &amp; CTRL
+      <Wordmark size="header" />
     </a>
 
     <button
@@ -212,6 +213,17 @@
         aria-current={current("home") ? "page" : undefined}
         onclick={closeMenu}>Home</a
       >
+      <!-- The admin views (ADR 0124 §7): last, for an admin only (the
+           token, or admin mode on). It goes when admin mode lapses,
+           through the same session store. Home gets no admin card. -->
+      {#if adminOn}
+        <a
+          href="#/admin/live"
+          class:current={current("adminViews")}
+          aria-current={current("adminViews") ? "page" : undefined}
+          onclick={closeMenu}>Admin</a
+        >
+      {/if}
     </nav>
 
     <div class="account" bind:this={accountEl}>
@@ -295,25 +307,11 @@
     padding: 6px 0;
   }
   .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 13px;
-    letter-spacing: 0.16em;
-    color: var(--fg);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     text-decoration: none;
     white-space: nowrap;
-  }
-  .wordmark i {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid var(--gold);
-    transform: rotate(45deg);
-    border-radius: 3px;
-    box-sizing: border-box;
+    border-radius: var(--radius);
   }
 
   .menu-toggle {
@@ -347,7 +345,7 @@
     color: var(--fg);
   }
   .site-nav a.current {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     background: var(--accent-soft);
   }
 
@@ -477,7 +475,7 @@
     height: 28px;
     padding: 0 10px;
     border-radius: var(--radius);
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-size: 12px;
     font-weight: 600;
     text-decoration: none;

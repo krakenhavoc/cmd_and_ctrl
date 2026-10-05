@@ -277,6 +277,50 @@ func (s *SQLStore) RefreshToken(ctx context.Context, subject string) (token stri
 	return string(pt), true, nil
 }
 
+// Names implements Store: one SELECT over every id, however many.
+// Duplicate and nil ids are dropped; no ids is no query.
+func (s *SQLStore) Names(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]User, error) {
+	out := map[uuid.UUID]User{}
+	seen := map[uuid.UUID]bool{}
+	args := make([]any, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil || seen[id] {
+			continue
+		}
+		seen[id] = true
+		args = append(args, id.String())
+	}
+	if len(args) == 0 {
+		return out, nil
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, display_name, avatar_url FROM users WHERE id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(args)), ",")+`)`,
+		args...)
+	if err != nil {
+		return nil, fmt.Errorf("users: names: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var (
+			u      User
+			idStr  string
+			avatar sql.NullString
+		)
+		if err := rows.Scan(&idStr, &u.DisplayName, &avatar); err != nil {
+			return nil, fmt.Errorf("users: names: %w", err)
+		}
+		if u.ID, err = uuid.Parse(idStr); err != nil {
+			return nil, fmt.Errorf("users: stored id %q: %w", idStr, err)
+		}
+		u.AvatarURL = avatar.String
+		out[u.ID] = u
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("users: names: %w", err)
+	}
+	return out, nil
+}
+
 type queryRower interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }

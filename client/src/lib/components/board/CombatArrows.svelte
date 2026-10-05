@@ -611,10 +611,10 @@
     filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.55));
   }
   path.attack {
-    stroke: #ff7a7a;
+    stroke: var(--attack);
   }
   path.block {
-    stroke: #9ec7ff;
+    stroke: var(--block);
   }
   /* S14: stack-target arrows use the same gold palette as the
      AUTO badge + targeting banner — reads as "a catalog spell is
@@ -622,7 +622,7 @@
      solid red/blue when both are drawn simultaneously. */
   path.stack-target-player,
   path.stack-target-card {
-    stroke: #ffd07a;
+    stroke: var(--pick);
     stroke-dasharray: 6 4;
   }
   /* ADR 0053 beat effects. Opacity is driven by the tween. */
@@ -662,14 +662,14 @@
     background: color-mix(in srgb, var(--surface) 92%, transparent);
     box-shadow: var(--shadow-lg);
     color: var(--fg);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid color-mix(in srgb, var(--overlay-ink) 18%, transparent);
   }
   .beat-line.first_strike {
-    border-color: rgba(217, 180, 92, 0.7);
-    color: var(--gold-strong);
+    border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+    color: var(--accent-strong);
   }
   .beat-line.regular {
-    border-color: rgba(255, 122, 122, 0.6);
+    border-color: color-mix(in srgb, var(--attack) 60%, transparent);
   }
   .sr-only {
     position: absolute;

@@ -140,7 +140,31 @@ var agentBadgeWriters = map[string]int{
 	"internal/game/snapshot.go:restorePlayer":  2, // restore point read
 	"internal/protocol/view.go:viewOfPlayer":   2, // PlayerView projection
 	"internal/lobby/lobby.go:join":             2, // SeatInfo at join, from the same declaration
-	"internal/lobby/persist.go:loadEntry":      2, // SeatInfo on restore, read from game.Player
+	// SeatInfo on restore: read from game.Player, or, only when the
+	// engine has no such player, from seats.agent_client when it is
+	// set (ADR 0124 §6). Both onto a fresh SeatInfo, both true / a
+	// non-empty client.
+	"internal/lobby/persist.go:loadEntry": 4,
+	// seats.agent_client from SeatInfo, for an agent seat only; the
+	// normalised name is never empty (ADR 0124 §6).
+	"internal/lobby/persist.go:seatRecords": 1,
+	// seats.agent_client read into a fresh SeatRecord (ADR 0124 §6).
+	"internal/lobby/store_sql.go:LoadGame": 1,
+	// the admin views' copy, onto a fresh LiveSeat for an agent seat
+	// only (ADR 0124 §5).
+	"internal/lobby/live_tables.go:LiveTables": 1,
+	// The admin views' copies (ADR 0124 §3.3), each a read of a badge
+	// that exists onto a fresh value: LiveSeat into adminview's overlay,
+	// seats.agent_client into a fresh SeatRow, and a row's or memory's
+	// client onto a fresh served Seat, only when it is set.
+	"internal/lobby/admin_views.go:adminLiveTables": 1,
+	"internal/adminview/store_sql.go:attachSeats":   1,
+	"internal/adminview/merge.go:rowSeat":           1,
+	"internal/adminview/merge.go:overlaySeat":       1,
+	"internal/adminview/merge.go:liveSeat":          1,
+	// GET /admin/live's seat, copied from the LiveSeat above onto a
+	// fresh response row (ADR 0124 §3.4).
+	"internal/lobby/admin_live.go:buildLiveNow": 1,
 }
 
 // TestAgentBadgeHasNoClearingWriter pins ADR 0122 §7's "the badge

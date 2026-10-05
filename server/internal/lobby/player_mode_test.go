@@ -902,6 +902,9 @@ func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, se
 		c.FetchDeck = func(context.Context, string) (string, []deck.Entry, error) {
 			return "", nil, fmt.Errorf("%w: moxfield", deck.ErrDeckNotFound)
 		}
+		// The admin views (ADR 0124): a store with no rows, so admin
+		// mode reaches each handler's answer.
+		c.AdminViews = emptyAdminViews{}
 	}, listedDiscordID)
 	fx := &probeFixture{s: s, user: user}
 	var err error
@@ -1035,6 +1038,16 @@ func sameAnswerProbes() []sameAnswerProbe {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},
 		{"GET /games/{id}/bot/stats", []string{"BotStatsHandler"}, true, httpProbe("GET", "/games/{id}/bot/stats", nil)},
+		// The admin views (ADR 0124 §8).
+		{"GET /admin/users", []string{"route:GET /admin/users"}, true, httpProbe("GET", "/admin/users?played=7d", nil)},
+		{"GET /admin/users/{id}", []string{"route:GET /admin/users/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "GET", "/admin/users/"+fx.user.String(), nil)
+		}},
+		{"GET /admin/games", []string{"route:GET /admin/games"}, true, httpProbe("GET", "/admin/games?practice=include", nil)},
+		{"GET /admin/games/{id}", []string{"route:GET /admin/games/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "GET", "/admin/games/"+fx.table.ID.String(), nil)
+		}},
+		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
 
 		// Handler checks through c.isAdmin.
 		{"POST /games/{id}/spawn", []string{"requireTableManager"}, true, httpProbe("POST", "/games/{id}/spawn", func(*probeFixture) any {

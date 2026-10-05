@@ -115,6 +115,12 @@ type SeatRecord struct {
 	// "Migration"). Never set alongside UserID: the next sign-in with
 	// this snowflake moves it into UserID (LinkPendingSeats).
 	PendingDiscordID string
+	// AgentClient is the normalised MCP client name of a seat an AI
+	// agent plays (seats.agent_client, migration 0010, ADR 0124 §6),
+	// "unknown" for an agent that declared none, and "" (NULL) for
+	// every other seat. The engine snapshot stays the authority for a
+	// restored table; see loadEntry.
+	AgentClient string
 }
 
 // InviteRecord is one invites row.

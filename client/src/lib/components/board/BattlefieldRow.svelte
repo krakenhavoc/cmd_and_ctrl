@@ -264,7 +264,7 @@
 
 <div class="row" class:compact class:strip data-zone={label}>
   <span class="row-label" aria-hidden="true">
-    {label}
+    <span class="row-name">{label}</span>
     {#if cards.length > 0}<span class="row-count">{cards.length}</span>{/if}
   </span>
   <div class="row-cards" role="list" aria-label={label}>
@@ -404,18 +404,31 @@
     display: inline-flex;
     align-items: baseline;
     gap: 6px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    letter-spacing: 0.01em;
     color: var(--fg-dim);
     pointer-events: none;
     font-weight: 600;
     white-space: nowrap;
   }
+  /* Sentence case from the lower-case zone names ("creatures",
+     "enchant / artifact"), which stay the rows' accessible names. */
+  .row-name {
+    display: inline-block;
+  }
+  .row-name::first-letter {
+    text-transform: uppercase;
+  }
   .row-count {
-    letter-spacing: 0;
-    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--fg-muted);
+    background: var(--overlay);
+    border-radius: 999px;
+    padding: 0 6px;
+    line-height: 16px;
   }
   /* A host and everything attached to it. The attachments are laid
      out first and overlapped leftwards behind the host, which is
@@ -570,9 +583,9 @@
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
-    color: var(--gold);
+    color: var(--accent);
     background: var(--surface, #0b0a09);
-    border: 1px solid rgba(217, 180, 92, 0.6);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     pointer-events: none;
   }
   /* #2209: the count badge overhangs the top-left corner, where an art
@@ -596,9 +609,9 @@
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 600;
-    color: var(--gold);
+    color: var(--accent);
     background: var(--surface, #0b0a09);
-    border: 1px solid rgba(217, 180, 92, 0.6);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     pointer-events: none;
   }
 </style>

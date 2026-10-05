@@ -9,11 +9,11 @@
     <title>CMD &amp; CTRL</title>
     <meta name="description" content="The Commander table, over the wire." />
 
-    <!-- PWA (ADR 0031). theme_color matches --bg in app.css; the app owns
-         its own light/dark switch via settings, so this stays the dark ink
-         rather than following prefers-color-scheme. -->
+    <!-- PWA (ADR 0031). theme_color matches the default skin's --bg; App.svelte
+         updates it to the chosen skin's --bg once settings load, so this is
+         the first-paint value, not prefers-color-scheme. -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0b0a09" />
+    <meta name="theme-color" content="#070d14" />
     <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <!-- iOS ignores the manifest: display mode, status bar and app name all

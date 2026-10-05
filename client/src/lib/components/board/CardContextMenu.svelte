@@ -330,8 +330,8 @@
     max-height: min(70vh, 620px);
     overflow-y: auto;
     background: rgba(12, 16, 30, 0.98);
-    color: var(--gold);
-    border: 1px solid rgba(200, 168, 106, 0.55);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     border-radius: 6px;
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.7);
     font-size: 11px;
@@ -342,12 +342,12 @@
     justify-content: space-between;
     gap: 8px;
     padding: 4px 6px 6px;
-    border-bottom: 1px solid rgba(200, 168, 106, 0.3);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     margin-bottom: 2px;
   }
   .ctx-name {
     font-weight: 700;
-    color: var(--gold-strong, #ffd07a);
+    color: var(--accent-strong);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -386,8 +386,8 @@
   }
   .ctx-item:hover:not(:disabled),
   .ctx-item:focus-visible:not(:disabled) {
-    background: rgba(200, 168, 106, 0.15);
-    border-color: rgba(200, 168, 106, 0.4);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
     outline: none;
   }
   .ctx-item:disabled {
@@ -458,7 +458,7 @@
     padding: 4px 6px;
     background: rgba(0, 0, 0, 0.35);
     color: inherit;
-    border: 1px solid rgba(200, 168, 106, 0.35);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 4px;
     font-size: 11px;
   }
@@ -468,7 +468,7 @@
   }
   .ctx-item.apply {
     justify-content: center;
-    border-color: rgba(200, 168, 106, 0.45);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
      "available". Spoken, not drawn: the accent already draws it. */

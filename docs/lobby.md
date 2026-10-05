@@ -2743,6 +2743,317 @@ are unaffected, including the caller's.
 
 ---
 
+## Admin views (ADR 0124)
+
+Read-only views of accounts and tables for an admin: the shared token,
+or an allowlisted person in admin mode. They are what the Grafana
+Overview's tiles link to, through the client's `#/admin/…` pages
+([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md)).
+
+- **Who may call them:** `requireAdmin`, like every admin route. No
+  session is a 401. Any other session is a 403 `{"error":"admin only"}`,
+  and an allowlisted person in player mode gets that same 403.
+- **No database:** each of the four answers 503 `admin views need the
+  user database, and this server has none`.
+- **Times** are Unix milliseconds, absent when unknown. Every answer has
+  `generated_at`.
+- **Filters:** a missing or empty parameter means "any". An unknown value
+  is a 400 whose error names the parameter.
+- **What is never served:** Discord snowflakes as a field (an
+  `avatar_url` path contains one, as it does everywhere the site shows an
+  avatar), refresh tokens, scopes, invite tokens and hashes, reclaim
+  tickets, deck lists, deck-request requesters, synced settings, table
+  setups, admin mode and allowlist membership.
+  `TestAdminViewsServeOnlyTheirFields` pins each route's fields.
+- **The database is the record and memory the overlay.** History comes
+  from SQL. A table's room in memory (`loaded`) gives its fresher state,
+  its seats' kinds, agent clients and host, and practice tables, which
+  have no row.
+- **Logging:** each request is one `admin action` line with the method
+  and path, never the query string, so a filter is never logged.
+- **No rate limit** of their own: only admins reach them, and every query
+  is bounded.
+
+### `GET /admin/users`
+
+Every account, one row each, at most 1,000; past that `truncated` is
+`true`. Sorted playing now first, then by the latest play, then by the
+latest sign-in, newest first.
+
+| Parameter | Values |
+|---|---|
+| `played` | `1d`, `7d` or `30d`: an account seated at a started table whose end (`ended_at`, else `archived_at`) is in the window, or seated at a running table now. Exactly the accounts `cmdctrl_users_played{window}` counts. |
+
+```json
+{
+  "generated_at": 1791206364278,
+  "truncated": false,
+  "accounts": [
+    {
+      "id": "<user uuid>",
+      "name": "Ann",
+      "avatar_url": "/avatars/<snowflake>/<hash>.png",
+      "first_seen_at": 1791000000000,
+      "last_sign_in_at": 1791200000000,
+      "games_played": 12,
+      "last_played_at": 1791100000000,
+      "playing_now": false
+    }
+  ]
+}
+```
+
+`first_seen_at` is the first Discord sign-in and `last_sign_in_at` the
+latest. `games_played` counts distinct tables the account holds a seat at
+that have started, in any state, and `last_played_at` is the latest end
+of those. `playing_now` is a seat at a running, non-archived, non-practice
+table in memory.
+
+### `GET /admin/users/{id}`
+
+One account: its row as above, its sign-in state, its tables (at most
+500, newest first, then `games_truncated`), its saved decks, and its deck
+requests (at most 100, newest first, then `deck_requests_truncated`).
+
+```json
+{
+  "generated_at": 1791206364278,
+  "account": { "id": "<uuid>", "name": "Ann", "games_played": 12, "playing_now": false },
+  "sign_in": {
+    "last_sign_in_at": 1791200000000,
+    "discord_linked_at": 1790000000000,
+    "sessions_invalid_before": 1791150000000,
+    "revoke_path": "/admin/users/<uuid>/revoke-sessions"
+  },
+  "games": [ { "id": "<game uuid>", "their_seat": 0, "…": "a table row, below" } ],
+  "games_truncated": false,
+  "decks": [
+    {
+      "id": "<deck uuid>",
+      "name": "Atraxa superfriends",
+      "format": "moxfield",
+      "source_url": "https://moxfield.com/decks/…",
+      "commanders": ["Atraxa, Praetors' Voice"],
+      "card_count": 100,
+      "created_at": 1790500000000,
+      "updated_at": 1790600000000
+    }
+  ],
+  "deck_requests": [
+    { "deck_key": "moxfield:abc", "asked_at": 1791000000000, "issue_number": 1234, "issue_url": "https://github.com/…/issues/1234" }
+  ],
+  "deck_requests_truncated": false
+}
+```
+
+Sessions are HMAC tokens with no row ([ADR 0044](decisions/0044-surviving-a-deploy.md)
+decision 3), so there is no list of them. `sessions_invalid_before`,
+absent while unset, is the only per-person session state: a session
+issued at or before it is refused. `revoke_path` is
+[`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only).
+A deck has no list and no coverage report. A deck request is matched to
+the account through its Discord identity in SQL.
+
+| Status | Reason |
+|---|---|
+| 400 | `{id}` is not a uuid |
+| 404 | no such account |
+
+### `GET /admin/games`
+
+Tables, newest first, keyset-paginated.
+
+| Parameter | Values |
+|---|---|
+| `state` | `lobby`, `active` or `ended` |
+| `archived` | `true` or `false` |
+| `practice` | `exclude` (the default), `include` or `only`. Practice tables have no row and come from memory: `include` puts them first on the first page, `only` lists just them, unpaginated. |
+| `user` | an account id: the tables it holds a seat at |
+| `limit` | 1 to 200, default 50; larger is capped at 200 |
+| `cursor` | a `next_cursor` from the page before |
+
+```json
+{
+  "generated_at": 1791206364278,
+  "games": [
+    {
+      "id": "<game uuid>",
+      "name": "Friday Night Commander",
+      "state": "ended",
+      "created_at": 1791200000000,
+      "started_at": 1791200100000,
+      "ended_at": 1791203000000,
+      "archived_at": 1791204000000,
+      "outcome": "win",
+      "winner_seat": 2,
+      "creator": { "id": "<user uuid>", "name": "Ann" },
+      "practice": false,
+      "loaded": false,
+      "seats": [
+        { "seat": 0, "kind": "human", "account": { "id": "<uuid>", "name": "Ann", "avatar_url": "/avatars/…" }, "deck_name": "Atraxa", "host": true },
+        { "seat": 1, "kind": "human", "guest_name": "Gus", "host": false },
+        { "seat": 2, "kind": "human", "guest_name": "Dee", "discord_pending": true, "host": false },
+        { "seat": 3, "kind": "bot", "guest_name": "Bot 1", "bot_tier": "heuristic", "host": false },
+        { "seat": 4, "kind": "agent", "guest_name": "Claude", "agent_client": "claude-code", "host": false }
+      ]
+    }
+  ],
+  "next_cursor": "<opaque>"
+}
+```
+
+A table row:
+
+- `state` is the lobby's cached state for a loaded table, which is
+  fresher than the row.
+- `outcome` is `win` or `draw` as recorded; `closed` for a table that
+  ended, or was archived after it started, with none recorded (as
+  `cmdctrl_games_ended_total{outcome="closed"}` counts it); absent for a
+  table that has not ended.
+- `creator` is absent for a table the token created.
+- `loaded` is whether the table's room is in memory now. A row in state
+  `lobby` or `active` that is not loaded did not come back after a
+  restart.
+- Each seat's `kind` is `human`, `bot` or `agent`, as `cmdctrl_seats`
+  counts them. `account` is set for a signed-in seat, `guest_name`
+  otherwise. `discord_pending` marks a Discord seat whose person has not
+  signed in again; the snowflake is not served. `agent_client` comes from
+  memory for a loaded table, else from `seats.agent_client` (migration
+  0010), and a row written before that migration has none.
+- `spectators_connected` and each seat's `connected` are the live sockets
+  at a loaded table, counted as [`GET /admin/live`](#get-adminlive-admin-only)
+  counts them: every socket bound to a seat is that seat's, an admin's
+  included, and a spectator is a read-only socket that is not an admin's.
+  They are absent for a table that is not loaded, and on a server with no
+  WebSocket hub; absent never means zero.
+
+### `GET /admin/games/{id}`
+
+One table: the row above, flattened beside `generated_at`, plus its live
+`connections`, earliest first. A practice table is served from memory.
+
+```json
+{
+  "generated_at": 1791206364278,
+  "id": "<game uuid>",
+  "…": "the table row",
+  "connections": [
+    { "kind": "seat", "seat": 0, "account": { "id": "<uuid>", "name": "Ann", "avatar_url": "/avatars/…" }, "since": 1791206300000 },
+    { "kind": "spectator", "since": 1791206310000 },
+    { "kind": "admin", "since": 1791206320000 }
+  ]
+}
+```
+
+Each connection's `kind` is `seat`, `spectator` or `admin`; an admin
+bound to a seat is an `admin` with that `seat`. `account` is absent for a
+guest and for the shared token. `since` is when the hub admitted the
+socket. A table that is not loaded has `connections: []`; the field is
+absent only on a server with no WebSocket hub.
+
+| Status | Reason |
+|---|---|
+| 400 | `{id}` is not a uuid |
+| 404 | no such table in the database or in memory |
+
+---
+
+## Live now (ADR 0124 §3.4)
+
+### `GET /admin/live` *(admin only)*
+
+Who is connected now, to which table, as a seat, a spectator or an
+admin, plus the bot and agent seats of every running table: the
+drill-down behind the Overview's Players connected, Spectators and Bot
+seats tiles ([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md)).
+Read-only. It reads memory: the hub's sockets, then the lobby's tables,
+one lock at a time and never a room's, and then, for names, one query of
+the `users` table. With no database it still answers, with the names the
+seats carry.
+
+**Response 200**
+
+```json
+{
+  "generated_at": 1759665600000,
+  "tables": [
+    {
+      "id": "<uuid>",
+      "name": "Friday night",
+      "state": "active",
+      "practice": false,
+      "archived": false,
+      "seats": [
+        { "seat": 0, "kind": "human", "guest_name": "Alice", "deck_name": "Mono Red",
+          "host": true, "connected": 2, "since": 1759665000000 },
+        { "seat": 1, "kind": "human",
+          "account": { "id": "<uuid>", "name": "Bobby", "avatar_url": "/avatars/<snowflake>/<hash>.png" },
+          "host": false, "connected": 1, "since": 1759665100000 },
+        { "seat": 2, "kind": "human", "guest_name": "Dave", "discord_pending": true,
+          "host": false, "connected": 0 },
+        { "seat": 3, "kind": "bot", "guest_name": "Bot 1", "bot_tier": "heuristic", "host": false, "connected": 0 }
+      ],
+      "spectators": [
+        { "account": { "id": "<uuid>", "name": "Carol" }, "since": 1759665200000 },
+        { "since": 1759665300000 }
+      ],
+      "admins": [
+        { "as_seat": 0, "since": 1759665400000 }
+      ]
+    }
+  ],
+  "unbound_sockets": 0,
+  "totals": {
+    "players_connected": 2,
+    "spectators": 2,
+    "bot_seats": 1,
+    "practice_tables": 0,
+    "admin_views": 1
+  }
+}
+```
+
+- **`tables`** lists every table with a live socket, and every running
+  table that is not archived (a bots-only table has none). Running tables
+  come first, then waiting ones, then ended ones, each by name. Practice
+  tables are listed, with `practice: true`.
+- **A seat** is as in the games view (ADR 0124 §3.3): `kind` is `human`,
+  `bot` or `agent`; `account` when a signed-in person holds it, else
+  `guest_name`; `discord_pending` for a Discord seat whose person has not
+  signed in again (the snowflake is never served); `bot_tier`,
+  `agent_client` and `deck_name` when set; `host`. `connected` is the
+  number of live sockets bound to the seat, an admin's included, and
+  `since` the earliest of their connection times, absent when there is
+  none. A seat's account takes its name from the seat and its avatar from
+  the database.
+- **`spectators`**: one entry per read-only socket. `account` is absent
+  for a guest spectator; a signed-in one is named from the database.
+- **`admins`**: one entry per admin socket. `account` is absent for the
+  shared token; `as_seat` is the seat number an admin is bound to.
+- **`unbound_sockets`** counts the sockets whose game the lobby does not
+  hold. It should be 0.
+- **`totals`**: `players_connected`, `spectators`, `bot_seats` and
+  `practice_tables` are computed by the function the Overview's tiles are
+  reported from (`metrics.Tally`), over the same copies, so they match
+  `cmdctrl_seats_connected` (summed), `cmdctrl_spectators_connected`,
+  `cmdctrl_seats{kind="bot"}` and `cmdctrl_practice_games` up to the time
+  between a scrape and a load. Players connected counts running,
+  unarchived, non-practice tables only, as the tile does; the people
+  waiting at a lobby table are listed but not counted. `admin_views` is
+  the number of `admins` entries listed.
+- Times are Unix milliseconds. Nothing else is served: no snowflake
+  except inside an `avatar_url`, no player ID, no token, no address.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session |
+| 403 | caller is not an admin, including an allowlisted person in player mode |
+| 503 | the server wired no WebSocket hub (not a production configuration) |
+
+---
+
 ## Discord sign-in (S12.5, ADR 0004 / 0050 / 0051)
 
 `GET /auth/discord/start` and `GET /auth/discord/callback` are the

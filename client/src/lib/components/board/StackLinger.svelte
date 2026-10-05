@@ -472,7 +472,7 @@
     top: 0;
     bottom: 0;
     width: 4px;
-    background: var(--seat-color, var(--gold));
+    background: var(--seat-color, var(--accent));
   }
   .as-row {
     display: flex;

@@ -94,6 +94,11 @@ type Store interface {
 	// LastDeck that fails Validate (ErrInvalidLastDeck), and returns
 	// ErrNotFound for an unknown user.
 	SetLastDeck(ctx context.Context, id uuid.UUID, d LastDeck) error
+	// Names reads the display name and avatar of each listed user in
+	// one query, for the admin views' Live now (ADR 0124 §5). Only
+	// ID, DisplayName and AvatarURL are set on the Users it returns.
+	// An unknown id is absent from the map, not an error.
+	Names(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]User, error)
 }
 
 // LastDeck kinds. A pre-built deck is not a decks row, so users.last_deck
@@ -175,6 +180,11 @@ func (NoStore) LastDeck(context.Context, uuid.UUID) (LastDeck, error) {
 // SetLastDeck always reports ErrNotFound, like Get.
 func (NoStore) SetLastDeck(context.Context, uuid.UUID, LastDeck) error {
 	return ErrNotFound
+}
+
+// Names implements Store: there are no users, so it knows no names.
+func (NoStore) Names(context.Context, []uuid.UUID) (map[uuid.UUID]User, error) {
+	return map[uuid.UUID]User{}, nil
 }
 
 // AvatarPath is the same-origin path the client loads a Discord

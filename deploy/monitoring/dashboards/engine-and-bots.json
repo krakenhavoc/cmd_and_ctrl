@@ -898,8 +898,8 @@
           },
           "expr": "sum(cmdctrl_boot_restore_games{env=\"$env\", outcome=\"restored\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -963,8 +963,8 @@
           },
           "expr": "sum(cmdctrl_boot_restore_games{env=\"$env\", outcome=\"ended\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1028,8 +1028,8 @@
           },
           "expr": "sum(cmdctrl_boot_restore_games{env=\"$env\", outcome=\"abandoned\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1097,8 +1097,8 @@
           },
           "expr": "sum(cmdctrl_boot_restore_degraded_cards{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],

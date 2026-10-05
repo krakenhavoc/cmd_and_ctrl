@@ -236,8 +236,8 @@
     margin: 10px 0 0;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(255, 107, 107, 0.08);
-    border: 1px solid rgba(255, 107, 107, 0.3);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
     color: var(--fg);
     font-family: var(--font-ui);
     font-size: 12.5px;
@@ -256,8 +256,8 @@
     gap: 10px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(255, 107, 107, 0.08);
-    border: 1px solid rgba(255, 107, 107, 0.3);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
     font-size: 12.5px;
     color: var(--fg);
   }
@@ -270,11 +270,11 @@
     flex: 0 0 auto;
   }
   .vi.warn {
-    background: var(--gold-soft);
-    border-color: rgba(217, 180, 92, 0.4);
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .vi.warn .code {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   /* Muted on purpose. Red is for a deck that was rejected and gold
      for one that lost something; this deck is fine, and the note is

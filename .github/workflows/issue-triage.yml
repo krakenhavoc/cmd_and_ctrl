@@ -45,6 +45,10 @@ on:
 
 jobs:
   triage-label:
+    # GitHub also sends `milestoned` for a pull request given a milestone,
+    # and this token cannot write a PR's labels (HTTP 403, #2290). The
+    # label tracks issues, not PRs, so pull requests are skipped.
+    if: ${{ !github.event.issue.pull_request }}
     # Anyone can open an issue on a public repo, so this stays off the
     # self-hosted runners.
     runs-on: ubuntu-latest

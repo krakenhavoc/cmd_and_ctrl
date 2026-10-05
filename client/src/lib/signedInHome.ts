@@ -1,6 +1,7 @@
-import { isAdminAllowed } from "./admin";
+import { isAdmin, isAdminAllowed } from "./admin";
+import { LIVE_HASH } from "./adminViews";
 import type { GameMeta } from "./api";
-import { isDecksReturn } from "./decksPage";
+import { isReturnRoute } from "./decksPage";
 import { canJoinByCode } from "./myGames";
 import type { Route } from "./router";
 import type { Session } from "./session";
@@ -40,6 +41,14 @@ export function isPublicRoute(r: Route): boolean {
   return PUBLIC_ROUTES.has(r.name);
 }
 
+// returnRouteFor is the hash to store before the router sends a
+// signed-out visitor on r to #/login, so the sign-in brings them back:
+// the admin views only (ADR 0124 §7). Everything else is null.
+export function returnRouteFor(r: Route, s: Session | null, hash: string): string | null {
+  if (s || r.name !== "adminViews") return null;
+  return hash.startsWith("#/admin/") ? hash : null;
+}
+
 // routeRedirect is the router's auth gate: where to send a visitor on
 // route r holding session s, or null to stay.
 //
@@ -49,12 +58,19 @@ export function isPublicRoute(r: Route): boolean {
 //     and the join box now, so nobody is stranded one step short of a
 //     table. An expired session is cleared before this runs, so that
 //     visitor stays on #/login and sees the expiry notice.
-//   - #/admin is the shared token's page (§2 item 8). The token's own
-//     session has no use for it and goes to the Lobby, and so does an
-//     allowlisted person, in either mode, once /me has said so
+//   - #/admin is the shared token's page (§2 item 8, as ADR 0124 §7
+//     amends it). A session that is an admin now (the token's own, or
+//     an allowlisted person in admin mode) has no use for the form and
+//     goes to the admin views' Live now. An allowlisted person in
+//     player mode goes to the Lobby, once /me has said so
 //     (`admin_allowed`): their switch is the Admin chip in the header.
 //     Every other session sees the token form, which says it replaces
 //     this browser's session.
+//
+// The admin views themselves are gated like any other page: signed
+// out goes to #/login (App.svelte stores the view to come back to,
+// rememberReturnRoute), and a session that is not an admin stays and
+// sees the page's message, never data.
 //
 // Invite, spectator and reclaim links and both shapes of the Discord
 // round trip are public and never redirected, whatever the browser
@@ -62,8 +78,9 @@ export function isPublicRoute(r: Route): boolean {
 export function routeRedirect(r: Route, s: Session | null): string | null {
   if (!s) return isPublicRoute(r) ? null : "#/login";
   if (r.name === "login") return "#/lobby";
-  if (r.name === "adminLogin" && (s.principal.role === "admin" || isAdminAllowed(s))) {
-    return "#/lobby";
+  if (r.name === "adminLogin") {
+    if (isAdmin(s)) return LIVE_HASH;
+    if (isAdminAllowed(s)) return "#/lobby";
   }
   return null;
 }
@@ -72,12 +89,13 @@ export function routeRedirect(r: Route, s: Session | null): string | null {
 // callback goes: the invite flow (a claimed seat) to its table, and the
 // login-page flow (an identity-only session) to the Lobby, the
 // signed-in home, or back to the decks page when that is where the
-// sign-in started (ADR 0112 §3 item 7). `afterSignIn` is the route the
-// decks page stored (decksPage.takeAfterSignIn), and it is followed
-// only if it parses as the decks page.
+// sign-in started (ADR 0112 §3 item 7), or back to the admin view a
+// signed-out visitor opened (ADR 0124 §7). `afterSignIn` is the stored
+// route (decksPage.takeAfterSignIn), and it is followed only if it
+// parses as the decks page or an admin view (isReturnRoute).
 export function oauthCompleteTarget(s: Session, afterSignIn?: string | null): string {
   if (s.principal.role === "player" && s.gameID) return `#/games/${s.gameID}`;
-  if (isDecksReturn(afterSignIn)) return afterSignIn;
+  if (isReturnRoute(afterSignIn)) return afterSignIn;
   return "#/lobby";
 }
 

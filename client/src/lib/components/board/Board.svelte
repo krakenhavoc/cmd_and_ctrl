@@ -3467,7 +3467,11 @@
        spotlight anchors the eye at the stack/centre area without
        drawing attention from the panels themselves. */
     background:
-      radial-gradient(60% 55% at 50% 50%, rgba(217, 180, 92, 0.05) 0%, rgba(0, 0, 0, 0) 60%),
+      radial-gradient(
+        60% 55% at 50% 50%,
+        color-mix(in srgb, var(--accent) 5%, transparent) 0%,
+        rgba(0, 0, 0, 0) 60%
+      ),
       radial-gradient(120% 100% at 50% 100%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 80%),
       var(--bg-1);
   }

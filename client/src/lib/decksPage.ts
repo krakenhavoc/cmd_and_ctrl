@@ -133,6 +133,36 @@ export function isDecksReturn(hash: string | null | undefined): hash is string {
   return parseHash(hash).name === "decks";
 }
 
+// isAdminViewReturn accepts a stored return route only if it parses as
+// one of the admin views (ADR 0124 §7): a Grafana link opened in a
+// signed-out browser comes back to the page it named after sign-in.
+export function isAdminViewReturn(hash: string | null | undefined): hash is string {
+  if (!hash || !hash.startsWith("#/")) return false;
+  return parseHash(hash).name === "adminViews";
+}
+
+// isReturnRoute is every route a sign-in may return to: the decks page
+// (ADR 0112 §3 item 7) and the admin views (ADR 0124 §7, amending that
+// item), and nothing else.
+export function isReturnRoute(hash: string | null | undefined): hash is string {
+  return isDecksReturn(hash) || isAdminViewReturn(hash);
+}
+
+// rememberReturnRoute stores an admin view as the route the next sign-in
+// returns to, just before the router sends a signed-out visitor from it
+// to #/login. Any other hash is ignored.
+export function rememberReturnRoute(hash: string): void {
+  if (!isAdminViewReturn(hash)) return;
+  const st = storage();
+  if (!st) return;
+  try {
+    st.setItem(AFTER_SIGN_IN_KEY, hash);
+    st.removeItem(AFTER_SIGN_IN_TEXT_KEY);
+  } catch {
+    // Storage full or blocked: the sign-in lands on the Lobby instead.
+  }
+}
+
 // returnHashFor is the route that shows the same deck again: a checked
 // link comes back as #/decks?url=<link>, which runs the check on load;
 // a pasted list comes back as #/decks, with the list stored beside it.
@@ -172,7 +202,8 @@ export function rememberAfterSignIn(checked: DeckCheckRequest | null): void {
 let pendingText = "";
 
 // takeAfterSignIn reads and clears both keys, and returns the stored
-// route if it is the decks page. Called once by the Discord round
+// route if it is a return route (isReturnRoute: the decks page or an
+// admin view). Called once by the Discord round
 // trip's login-page branch (App.svelte, oauthCompleteTarget).
 export function takeAfterSignIn(): string | null {
   const st = storage();
@@ -187,11 +218,12 @@ export function takeAfterSignIn(): string | null {
   } catch {
     return null;
   }
-  if (!isDecksReturn(hash)) {
+  if (!isReturnRoute(hash)) {
     pendingText = "";
     return null;
   }
-  pendingText = text ?? "";
+  // Only the decks page carries a pasted list across.
+  pendingText = isDecksReturn(hash) ? (text ?? "") : "";
   return hash;
 }
 

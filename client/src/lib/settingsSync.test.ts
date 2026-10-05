@@ -222,14 +222,14 @@ describe("signing in", () => {
     m.fetch.mockResolvedValue({
       version: m.SETTINGS_VERSION,
       revision: 2,
-      settings: { display: { theme: "dark" } },
+      settings: { display: { theme: "classic" } },
     });
     m.setSession(SIGNED_IN);
     uninstall = m.installSettingsSync();
     await settle();
     m.dismissSettingsSyncToast();
     expect(get(m.settingsSyncToast)).toBeNull();
-    expect(get(m.settings).display.theme).toBe("dark");
+    expect(get(m.settings).display.theme).toBe("classic");
     await vi.advanceTimersByTimeAsync(5_000);
     expect(m.put).not.toHaveBeenCalled();
   });
@@ -256,14 +256,14 @@ describe("signing in", () => {
     m.fetch.mockResolvedValue({
       version: m.SETTINGS_VERSION,
       revision: 2,
-      settings: { display: { theme: "dark" } },
+      settings: { display: { theme: "classic" } },
     });
     m.setSession(SIGNED_IN);
     uninstall = m.installSettingsSync();
     await settle();
     m.setSession(null);
     expect(get(m.settingsSyncToast)).toBeNull();
-    expect(get(m.settings).display.theme).toBe("dark");
+    expect(get(m.settings).display.theme).toBe("classic");
   });
 
   it("a copy from a newer client is applied, and this tab stops writing", async () => {
@@ -278,7 +278,7 @@ describe("signing in", () => {
     await settle();
     expect(get(m.settings).display.theme).toBe("light");
     expect(get(m.settingsSyncToast)).toBeNull();
-    m.updateSettings("display", "theme", "dark");
+    m.updateSettings("display", "theme", "classic");
     await vi.advanceTimersByTimeAsync(5_000);
     expect(m.put).not.toHaveBeenCalled();
   });
@@ -310,7 +310,7 @@ describe("uploading a change", () => {
     expect(sent.body.display.hoverDelayMs).toBe(600);
 
     // The next change rides the new revision.
-    m.updateSettings("display", "theme", "dark");
+    m.updateSettings("display", "theme", "classic");
     await vi.advanceTimersByTimeAsync(1_000);
     expect(lastPut(m.put).revision).toBe(2);
   });
@@ -399,7 +399,7 @@ describe("uploading a change", () => {
     m.updateSettings("display", "theme", "light");
     await vi.advanceTimersByTimeAsync(1_000);
     expect(get(m.settings).display.theme).toBe("high-contrast");
-    m.updateSettings("display", "theme", "dark");
+    m.updateSettings("display", "theme", "classic");
     await vi.advanceTimersByTimeAsync(10_000);
     expect(m.put).toHaveBeenCalledTimes(1);
   });

@@ -1,10 +1,12 @@
 <script lang="ts">
+  import Wordmark from "../lib/components/Wordmark.svelte";
   import { onMount } from "svelte";
   import { adminLogin, discordAuthEnabled, discordLoginHref, joinByCode } from "../lib/api";
   import { navigate } from "../lib/router";
   import { expiryNotice, LobbyApiError, session } from "../lib/session";
   import { signedInUserID } from "../lib/myGames";
   import { inviteHash } from "../lib/signedInHome";
+  import { isAdminViewReturn, takeAfterSignIn } from "../lib/decksPage";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import Icon from "../lib/components/Icon.svelte";
 
@@ -64,7 +66,10 @@
     busy = true;
     try {
       await adminLogin(token);
-      navigate("#/lobby");
+      // An admin view opened signed out (a Grafana link, ADR 0124 §7)
+      // comes back after the token's sign-in too; otherwise the Lobby.
+      const back = takeAfterSignIn();
+      navigate(isAdminViewReturn(back) ? back : "#/lobby");
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "login failed";
     } finally {
@@ -108,8 +113,7 @@
   </div>
   <div class="stack">
     <div class="brand">
-      <span class="mark" aria-hidden="true"><i></i></span>
-      <h1 class="wm">CMD &amp; CTRL</h1>
+      <h1 class="wm"><Wordmark size="hero" /></h1>
       <p class="tagline">The Commander table, over the wire.</p>
     </div>
 
@@ -256,9 +260,9 @@
     width: 210px;
     height: 294px;
     border-radius: 12px;
-    border: 1px solid rgba(217, 180, 92, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
     background:
-      radial-gradient(60% 50% at 50% 40%, rgba(217, 180, 92, 0.16), transparent 70%), var(--bg-2);
+      radial-gradient(60% 50% at 50% 40%, var(--accent-soft), transparent 70%), var(--bg-2);
     transform-origin: 50% 120%;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   }
@@ -292,31 +296,8 @@
     gap: 12px;
     text-align: center;
   }
-  .mark {
-    width: 56px;
-    height: 56px;
-    border: 3px solid var(--gold);
-    transform: rotate(45deg);
-    border-radius: 8px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 40px rgba(217, 180, 92, 0.25);
-  }
-  .mark i {
-    width: 14px;
-    height: 14px;
-    background: var(--gold);
-    border-radius: 2px;
-  }
   h1.wm {
-    margin: 8px 0 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 34px;
-    letter-spacing: 0.22em;
-    color: var(--fg);
+    margin: 0;
   }
   .tagline {
     margin: 0;
@@ -416,9 +397,9 @@
     gap: 10px;
     padding: 10px 14px;
     border-radius: 10px;
-    background: var(--gold-soft);
-    border: 1px solid rgba(217, 180, 92, 0.4);
-    color: var(--gold-strong);
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--accent-strong);
     font-size: 12.5px;
   }
   .replaces {
@@ -451,6 +432,6 @@
   }
   .ghost-link:hover {
     color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
   }
 </style>

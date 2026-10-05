@@ -6,10 +6,11 @@
 // :root[data-…] rules) without mounting the whole app.
 
 import type { Settings } from "./settings";
+import { ACCENT_VARS, accentVars } from "./skins";
 
 /** The part of an element applyRootSettings writes to. */
 export interface RootTarget {
-  style: { setProperty(name: string, value: string): void };
+  style: { setProperty(name: string, value: string): void; removeProperty(name: string): void };
   dataset: Record<string, string | undefined>;
 }
 
@@ -17,9 +18,10 @@ export interface RootTarget {
  * applyRootSettings writes the stylesheet-driving settings onto `root`
  * (document.documentElement in the app).
  *
- * `display.theme` is deliberately NOT applied: see App.svelte. The
- * high-contrast ready ring (ADR 0105 §7) is written against
- * `:root[data-theme="high-contrast"]` and stays dormant until it is.
+ * `display.theme` is the skin: `data-theme` picks its token block in
+ * app.css (lib/skins.ts). `display.accent`, when set, overrides the
+ * skin's accent family inline; cleared, the inline values go and the
+ * skin's own accent shows again.
  *
  * `data-colorblind` (ADR 0105 §7, sub-PR 6) is the first consumer of
  * `accessibility.colorblindPalette`: app.css swaps the `--ready` tokens
@@ -33,4 +35,12 @@ export function applyRootSettings(root: RootTarget, s: Settings): void {
   root.dataset.reduceMotion = s.accessibility.reduceMotion ? "1" : "0";
   root.dataset.alwaysShowFocus = s.accessibility.alwaysShowFocus ? "1" : "0";
   root.dataset.colorblind = s.accessibility.colorblindPalette ? "1" : "0";
+  root.dataset.theme = s.display.theme;
+  if (s.display.accent) {
+    for (const [name, value] of Object.entries(accentVars(s.display.accent))) {
+      root.style.setProperty(name, value);
+    }
+  } else {
+    for (const name of ACCENT_VARS) root.style.removeProperty(name);
+  }
 }

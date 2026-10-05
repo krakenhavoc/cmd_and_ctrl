@@ -266,9 +266,9 @@
   .limit-reason {
     margin: 0;
     padding: 8px 10px;
-    border: 1px solid rgba(217, 180, 92, 0.45);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     border-radius: 10px;
-    background: var(--gold-soft);
+    background: var(--accent-soft);
     color: var(--fg);
     font-size: 13px;
     line-height: 1.4;
@@ -288,7 +288,7 @@
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--accent);
     font-weight: 700;
   }
   .src-row {

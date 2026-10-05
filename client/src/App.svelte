@@ -18,6 +18,7 @@
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import Practice from "./routes/Practice.svelte";
+  import Admin from "./routes/Admin.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -27,8 +28,8 @@
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
   import { armAdminLapse, loadAdminStatus, needsAdminCheck, onVisibleAgain } from "./lib/admin";
-  import { oauthCompleteTarget, routeRedirect } from "./lib/signedInHome";
-  import { takeAfterSignIn } from "./lib/decksPage";
+  import { oauthCompleteTarget, returnRouteFor, routeRedirect } from "./lib/signedInHome";
+  import { rememberReturnRoute, takeAfterSignIn } from "./lib/decksPage";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
@@ -53,9 +54,17 @@
   // route goes to #/login, and every session on #/login goes to the
   // Lobby, the signed-in home. Invite, spectator and reclaim links and
   // the Discord round trip are public and never redirected.
+  //
+  // A signed-out visitor on an admin view (a Grafana link, ADR 0124 §7)
+  // has that view stored first, so the sign-in comes back to it.
   $effect(() => {
-    const to = routeRedirect($route, $session);
-    if (to) navigate(to);
+    const r = $route;
+    const s = $session;
+    const to = routeRedirect(r, s);
+    if (!to) return;
+    const back = returnRouteFor(r, s, location.hash);
+    if (back) rememberReturnRoute(back);
+    navigate(to);
   });
 
   // Ask GET /me whether a newly installed signed-in session is an admin
@@ -107,20 +116,12 @@
   // consumed by the modules that care about them via the shared
   // store; the ones below need a single apply-to-document seam
   // because they drive stylesheet values.
-  //
-  // Note on theme: the schema carries display.theme but we
-  // deliberately do NOT push it to root.dataset.theme yet.
-  // PR #119 landed the :root[data-theme=...] palette scaffold,
-  // but most components in the table chrome (PlayerPanel, Card,
-  // Game.svelte styles) still hardcode hex colours rather than
-  // reading var(--bg) / var(--fg). Toggling light or high-
-  // contrast right now would change the page bg without flipping
-  // any of those panels, producing a broken-looking mix. Until
-  // the per-component var() migration ships, the theme setting
-  // persists but is inert — the Settings panel disables the
-  // select with a "coming soon" note so users know.
+  // That includes the skin (display.theme → data-theme) and a custom
+  // accent; the browser chrome colour follows the skin's --bg.
   $effect(() => {
     applyRootSettings(document.documentElement, $settings);
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
   });
 </script>
 
@@ -128,6 +129,8 @@
   <Login />
 {:else if $route.name === "adminLogin"}
   <Login admin />
+{:else if $route.name === "adminViews"}
+  <Admin view={$route.view} />
 {:else if $route.name === "home"}
   <Home />
 {:else if $route.name === "roadmap"}

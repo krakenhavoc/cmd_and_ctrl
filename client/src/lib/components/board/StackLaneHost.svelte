@@ -422,10 +422,10 @@
     background: color-mix(in srgb, var(--surface) 94%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: var(--radius-xl);
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
       var(--shadow-lg);
     color: var(--fg);
     font-size: 12px;
@@ -482,7 +482,7 @@
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--accent);
     border-radius: var(--radius-lg);
   }
   .head {
@@ -496,7 +496,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: var(--gold);
+    color: var(--accent);
     font-weight: 700;
     flex: 0 0 auto;
     display: inline-flex;

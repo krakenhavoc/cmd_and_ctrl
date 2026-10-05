@@ -239,7 +239,7 @@
     outline: none;
   }
   .row.active {
-    background: rgba(200, 168, 106, 0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
   }
   .color {
     display: inline-flex;
@@ -263,9 +263,9 @@
   .step {
     width: 44px;
     height: 40px;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: #e8ecf6;
-    border: 1px solid rgba(200, 168, 106, 0.35);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 8px;
     font: inherit;
     font-size: 18px;
@@ -274,8 +274,8 @@
   }
   .step:hover:not(:disabled),
   .step:focus-visible:not(:disabled) {
-    background: rgba(200, 168, 106, 0.16);
-    border-color: rgba(232, 200, 130, 0.9);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent-strong) 90%, transparent);
     outline: none;
   }
   .step:disabled {
@@ -304,9 +304,9 @@
   .confirm {
     min-height: 40px;
     padding: 0 14px;
-    background: rgba(200, 168, 106, 0.22);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
     color: #f4e6c4;
-    border: 1px solid rgba(232, 200, 130, 0.9);
+    border: 1px solid color-mix(in srgb, var(--accent-strong) 90%, transparent);
     border-radius: 8px;
     font: inherit;
     font-size: 13px;
@@ -315,7 +315,7 @@
   }
   .confirm:hover:not(:disabled),
   .confirm:focus-visible:not(:disabled) {
-    background: rgba(200, 168, 106, 0.36);
+    background: color-mix(in srgb, var(--accent) 36%, transparent);
     outline: none;
   }
   .confirm:disabled {

@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
@@ -78,6 +79,9 @@ type Config struct {
 	// of admin mode made wrong (ADR 0112 §2 item 5); *ws.Hub. Nil leaves
 	// them as they are until they next reconnect.
 	AdminSockets AdminModeRebinder
+	// LiveSockets is the hub's copy of every live connection, for GET
+	// /admin/live (ADR 0124 §5); *ws.Hub. Nil: that route answers 503.
+	LiveSockets LiveSocketSource
 	// Env is the deployment identity (prod / dev). The zero value is
 	// the empty string, which IsDev() reports false for — so a Config
 	// built without thinking about it (every existing test) gets
@@ -177,6 +181,11 @@ type Config struct {
 	// open. Nil leaves them up until they next reconnect, when the
 	// upgrade is refused.
 	SessionEvictor UserSessionEvictor
+
+	// AdminViews is the admin views' read-only store (ADR 0124 §5),
+	// behind GET /admin/users, /admin/users/{id}, /admin/games and
+	// /admin/games/{id}. Nil (no database): those four answer 503.
+	AdminViews adminview.Store
 
 	// DeckLibrary is a signed-in player's saved decks (ADR 0051
 	// decision 7, S34 sub-PR 5). POST /games/{id}/decks saves or
@@ -305,6 +314,10 @@ type GameEvictor interface {
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
+//	GET  /admin/users       — admin: every account (ADR 0124 §3.1)
+//	GET  /admin/users/{id}  — admin: one account, its games, decks and deck requests
+//	GET  /admin/games       — admin: tables, newest first, filtered and paginated
+//	GET  /admin/games/{id}  — admin: one table
 //
 // Routes that mutate state accept JSON bodies; read-only routes use
 // query params / path params. All responses are JSON.
@@ -684,6 +697,19 @@ func Handler(c Config) http.Handler {
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
 	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
+	// The admin views (ADR 0124 §2, admin_views.go): read-only, behind
+	// requireAdmin like every admin route, so the same-answer census
+	// finds each pattern. No rate limit of their own: only admins reach
+	// the handlers and every query is bounded. requireAdmin's audit
+	// line carries the path, never the query string, so a filter is
+	// never logged.
+	mux.Handle("GET /admin/users", requireAdmin(c, handlerFunc(c, adminViewAccounts)))
+	mux.Handle("GET /admin/users/{id}", requireAdmin(c, handlerFunc(c, adminViewAccount)))
+	mux.Handle("GET /admin/games", requireAdmin(c, handlerFunc(c, adminViewGames)))
+	mux.Handle("GET /admin/games/{id}", requireAdmin(c, handlerFunc(c, adminViewGame)))
+	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
+	// from memory, with names from the database when there is one.
+	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))
 
 	return mux
 }

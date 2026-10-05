@@ -41,7 +41,7 @@ func metricsStack(t *testing.T) (*httptest.Server, *Lobby, *ws.Hub, *prometheus.
 	l.SetStateBroadcaster(hub)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", Handler(Config{Lobby: l, Auth: a, AdminToken: "shared-admin-token"}))
+	mux.Handle("/", Handler(Config{Lobby: l, Auth: a, AdminToken: "shared-admin-token", LiveSockets: hub}))
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -465,7 +465,9 @@ func TestWSCountersMoveByOne(t *testing.T) {
 	}
 }
 
-// ADR 0123 §2's locking rule under -race: scrapes run while tables are
+// ADR 0123 §2's locking rule under -race, and ADR 0124 §5's for
+// Lobby.LiveTables, Hub.LiveSockets and GET /admin/live: scrapes and
+// Live now loads run while tables are
 // created, joined, started, played, watched, archived and deleted and
 // sockets come and go. A lock-order inversion between the collector
 // and the hub, a room or the lobby would hang here; a data race fails
@@ -473,8 +475,9 @@ func TestWSCountersMoveByOne(t *testing.T) {
 func TestScrapeDuringTableTraffic(t *testing.T) {
 	// Six tables' joins and spectates in a burst, from one address.
 	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1")
-	srv, l, _, reg := metricsStack(t)
+	srv, l, hub, reg := metricsStack(t)
 	reg.MustRegister(metrics.NewUsersCollector(staticUsers{}, l, nil))
+	admin := adminToken(t, srv)
 
 	stop := make(chan struct{})
 	var scrapes sync.WaitGroup
@@ -494,6 +497,28 @@ func TestScrapeDuringTableTraffic(t *testing.T) {
 				}
 				if _, err := metrics.Registry.Gather(); err != nil {
 					t.Errorf("gather: %v", err)
+					return
+				}
+				// The admin views' copies keep the same rule (ADR 0124
+				// §5): l.mu only, the hub's read lock only, no room or
+				// game lock, and Live now takes them one at a time.
+				_ = l.LiveTables()
+				_ = hub.LiveSockets()
+				req, err := http.NewRequest(http.MethodGet, srv.URL+"/admin/live", nil)
+				if err != nil {
+					t.Errorf("admin live: %v", err)
+					return
+				}
+				req.Header.Set("Authorization", "Bearer "+admin)
+				resp, err := srv.Client().Do(req)
+				if err != nil {
+					t.Errorf("admin live: %v", err)
+					return
+				}
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("admin live during traffic: %d", resp.StatusCode)
 					return
 				}
 			}

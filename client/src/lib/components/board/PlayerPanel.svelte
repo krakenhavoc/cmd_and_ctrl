@@ -74,6 +74,7 @@
   import ExileStrip from "./ExileStrip.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
+  import { seatColor } from "../../colors";
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
@@ -697,13 +698,16 @@
 </script>
 
 <div
-  class="panel"
+  class="panel seat-panel"
   class:self={isSelf}
+  class:seat-self={isSelf}
   class:opponent={!isSelf}
   class:flipped
   class:spectator
   class:docked
   class:expanded
+  class:seat-turn={isActive}
+  style:--seat-color={seatColor(seat.seat)}
   role={expanded ? "group" : "region"}
   aria-label={expanded ? undefined : isSelf ? "your board" : `${seat.name} board`}
 >
@@ -943,8 +947,6 @@
     height: 100%;
     box-sizing: border-box;
     padding: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: 14px;
     overflow: hidden;
     position: relative;
@@ -992,12 +994,6 @@
     .coach-spacer {
       display: none;
     }
-  }
-  /* Self panel carries a gold hairline so the row that's yours reads
-     without drawing attention from the cards. */
-  .panel.self {
-    border-color: rgba(217, 180, 92, 0.28);
-    box-shadow: inset 0 0 0 1px rgba(217, 180, 92, 0.08);
   }
   .panel.opponent {
     /* Upright opponent (the "next" seat) gets the medium scale — it

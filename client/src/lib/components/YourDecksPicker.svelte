@@ -232,8 +232,8 @@
     margin: 10px 0 0;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(255, 107, 107, 0.08);
-    border: 1px solid rgba(255, 107, 107, 0.3);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
     color: var(--fg);
     font-family: var(--font-ui);
     font-size: 12.5px;
@@ -252,8 +252,8 @@
     gap: 10px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(255, 107, 107, 0.08);
-    border: 1px solid rgba(255, 107, 107, 0.3);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
     font-size: 12.5px;
     color: var(--fg);
   }

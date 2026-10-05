@@ -46,7 +46,7 @@
   }
   .ico {
     display: inline-flex;
-    color: var(--gold);
+    color: var(--accent);
   }
   .copy {
     display: flex;
