@@ -76,3 +76,12 @@ export function openingRollText(winner: OpeningRollWinner): string {
   if (winner.chosen) return `${won} chose ${winner.chosen.name} to go first`;
   return `${won} goes first`;
 }
+
+// firstTurnHeadline is the opening hand's headline, as Arena puts it
+// over the mulligan: who takes the first turn. The seat that goes first
+// is the one chosen, else the winner, and the viewer's own seat reads
+// "You go first". openingRollText says how it was decided, under it.
+export function firstTurnHeadline(winner: OpeningRollWinner, viewerSeat?: number): string {
+  const first = winner.chosen ?? winner;
+  return first.seat === viewerSeat ? "You go first" : `${first.name} goes first`;
+}

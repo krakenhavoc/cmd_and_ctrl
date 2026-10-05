@@ -171,6 +171,13 @@ export interface DockSheetSpec {
   // A new key is a new question: a sheet minimised for the last one
   // comes back up. Defaults to the label.
   key?: string;
+  // Draws the sheet as a stage over the whole table instead of a panel
+  // over the dock: a dimmed screen, the body centred, and the dock
+  // itself moved to the bottom centre under it, as Arena draws its
+  // opening hand (#2346). It is still this request's dialog, with the
+  // same name, keys, focus and minimise ("View table"). Only the
+  // opening hand uses it.
+  stage?: boolean;
   // Moves the sheet's body (rendered in the picker's own component
   // tree, by DockSheet) into `host`, the dock's sheet panel, and returns
   // the undo. The dock calls it while this request is the one it draws.

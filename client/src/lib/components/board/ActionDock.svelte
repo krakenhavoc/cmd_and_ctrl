@@ -226,6 +226,10 @@
     sheetOpen && minimisedKey !== null && minimisedKey === currentSheetKey,
   );
   const sheetTitle = $derived(req?.sheet?.title ?? req?.label ?? "");
+  // #2346: a stage sheet (the opening hand) covers the table, and the
+  // dock moves to the bottom centre under it while it is up. Minimised,
+  // both go back to normal: the sheet is the restore chip in the corner.
+  const staged = $derived(sheetOpen && !minimised && !!req?.sheet?.stage);
   let sheetEl: HTMLElement | null = $state(null);
   let restoreEl: HTMLButtonElement | null = $state(null);
 
@@ -407,7 +411,7 @@
 
 <svelte:window onkeydown={onWindowKey} />
 
-<section class="action-dock" aria-label={L.actions} bind:this={root}>
+<section class="action-dock" class:staged aria-label={L.actions} bind:this={root}>
   <div class="dock-head">
     <PhaseDisplay
       turn={view.turn}
@@ -574,11 +578,12 @@
         <div
           class="dock-sheet"
           class:minimised
+          class:stage={!!req.sheet?.stage}
           hidden={minimised}
           tabindex="-1"
           bind:this={sheetEl}
           style:--sheet-want="{sheetWidth(req)}px"
-          style:max-height={sheetMaxH > 0 ? `${sheetMaxH}px` : undefined}
+          style:max-height={sheetMaxH > 0 && !req.sheet?.stage ? `${sheetMaxH}px` : undefined}
         >
           <header class="sheet-head">
             <h2 class="sheet-title">
@@ -586,14 +591,26 @@
                   >{req.sheet.src}</span
                 >{/if}
             </h2>
-            <button
-              type="button"
-              class="sheet-min"
-              aria-label="minimise"
-              aria-expanded="true"
-              title="minimise — fold this down to look at the board; it stays open"
-              onclick={minimise}><Icon name="chevron-down" size={14} /></button
-            >
+            {#if req.sheet?.stage}
+              <!-- A stage covers the table, so its minimise says what it
+                   is for, as Arena's "View Battlefield" does. -->
+              <button
+                type="button"
+                class="sheet-min view-table"
+                aria-expanded="true"
+                title="fold this away to look at the table; it stays open"
+                onclick={minimise}><Icon name="chevron-down" size={14} />View table</button
+              >
+            {:else}
+              <button
+                type="button"
+                class="sheet-min"
+                aria-label="minimise"
+                aria-expanded="true"
+                title="minimise — fold this down to look at the board; it stays open"
+                onclick={minimise}><Icon name="chevron-down" size={14} /></button
+              >
+            {/if}
           </header>
           {#if req.sheet?.attach}
             <div class="sheet-body" use:hostSheet={req.sheet.attach}></div>
@@ -1200,6 +1217,88 @@
   .dock-sheet:focus-visible {
     outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     outline-offset: 2px;
+  }
+  /* #2346: the stage, as Arena draws its opening hand. The sheet fills
+     the screen and dims the table under it; the body is centred, and
+     the dock (moved to the bottom centre, .staged below) is the stage's
+     button row. z-index -1 inside the dock's own stacking context puts
+     it under the dock's box and over the table. No backdrop-filter: it
+     would make the stage a containing block for the fixed hover zoom. */
+  .dock-sheet.stage {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    width: auto;
+    min-width: 0;
+    max-height: none;
+    padding: 6vh 24px 220px;
+    align-items: center;
+    border: none;
+    border-radius: 0;
+    background: radial-gradient(
+      ellipse at 50% 42%,
+      color-mix(in srgb, var(--bg) 74%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 95%, transparent) 75%
+    );
+    box-shadow: none;
+    animation: stage-in 240ms var(--ease);
+  }
+  .dock-sheet.stage:focus-visible {
+    outline-offset: -4px;
+  }
+  .dock-sheet.stage .sheet-head {
+    width: 100%;
+    justify-content: center;
+    padding: 0;
+  }
+  .dock-sheet.stage .sheet-title {
+    flex: 0 1 auto;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg-muted);
+  }
+  .dock-sheet.stage .sheet-min.view-table {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    width: auto;
+    height: 34px;
+    gap: 6px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border-color: var(--border-strong);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    color: var(--fg);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .dock-sheet.stage .sheet-body {
+    flex: 1 1 auto;
+    width: 100%;
+    overflow: visible;
+    padding: 0;
+    justify-content: center;
+  }
+  /* The dock under the stage: centred, its buttons as large as the
+     stage's other type. */
+  @media (min-width: 600px) {
+    .action-dock.staged {
+      right: auto;
+      left: calc(50% - clamp(300px, 26vw, 380px) / 2);
+    }
+  }
+  .action-dock.staged .dock-btn {
+    min-height: 46px;
+    font-size: 16px;
+  }
+  @keyframes stage-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   @keyframes sheet-up {
     from {
