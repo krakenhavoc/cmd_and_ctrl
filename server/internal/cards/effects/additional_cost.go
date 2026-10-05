@@ -359,6 +359,66 @@ func Kicker(mana string) game.AdditionalCost {
 	}
 }
 
+// Kickers is CR 702.33b's "Kicker [cost 1] and/or [cost 2]", which
+// "means the same thing as 'Kicker [cost 1]' and 'Kicker [cost 2]'" —
+// so it is exactly two Kicker entries, in printed order, both keyed
+// game.KickerKey. Each is a separate once-only toggle: either, both or
+// neither may be paid (#2153).
+//
+//	OptionalCosts: Kickers("{R}", "{W}"),   // Thornscape Battlemage
+//
+// Every "was it kicked" read counts both (ctx.WasKicked,
+// ctx.KickedTimes, game.CardKickedTimes — "kicked twice" is 2), and
+// CR 702.33f's "if it was kicked with its {R} kicker" is
+// ctx.KickedWith("{R}") on a spell and ThisKickedWith("{R}") on a
+// permanent's own trigger. Register refuses a third kicker and two
+// with the same mana, which would leave that question unanswerable.
+func Kickers(first, second string) []game.AdditionalCost {
+	return []game.AdditionalCost{Kicker(first), Kicker(second)}
+}
+
+// ThisKickedAtLeast is the intervening if (CR 603.4) "if it was
+// kicked" (n = 1) or "if it was kicked twice" (n = 2, Archangel of
+// Wrath) on a permanent's own trigger, read off the record the
+// resolution carried onto it (CR 400.7d). A permanent that was not
+// cast — reanimated, flickered — was not kicked.
+func ThisKickedAtLeast(n int) When {
+	return func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return game.CardKickedTimes(*source) >= n
+	}
+}
+
+// ThisKickedWith is CR 702.33f's "if it was kicked with its [cost]
+// kicker" on a permanent's own trigger — Thornscape Battlemage's two
+// enters abilities, each linked to one of its kicker costs (#2153).
+// The cost is spelled as the card's Kickers declaration spells it.
+func ThisKickedWith(cost string) When {
+	return func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return game.CardKickedWith(*source, cost)
+	}
+}
+
+// checkKickers holds a card's kicker costs to the shapes CR 702.33
+// prints (#2153): one kicker, or "Kicker [A] and/or [B]" (CR 702.33b)
+// — never three. Two kickers must each carry mana and differ in it,
+// because CR 702.33f's "kicked with its [A] kicker" is answered by
+// the mana (game.KickedWithPaid), and two that matched would make
+// one of a card's linked abilities unreachable. No printed card has
+// a non-mana kicker beside a second kicker.
+func checkKickers(spec Spec) {
+	kickers := game.KickerIndices(spec.OptionalCosts)
+	switch {
+	case len(kickers) <= 1:
+		return
+	case len(kickers) > 2:
+		panic(fmt.Sprintf("effects.Register: %q declares %d kicker costs — CR 702.33b prints at most two (\"Kicker [A] and/or [B]\")", spec.Name, len(kickers)))
+	}
+	a, b := spec.OptionalCosts[kickers[0]], spec.OptionalCosts[kickers[1]]
+	if a.ManaCost == "" || b.ManaCost == "" || a.ManaCost == b.ManaCost {
+		panic(fmt.Sprintf("effects.Register: %q declares two kicker costs %q and %q — each must be a different mana cost, which is how \"kicked with its [cost] kicker\" names it (CR 702.33f)", spec.Name, a.Label, b.Label))
+	}
+}
+
 // KickerSacrifice is a NON-MANA kicker — "Kicker—Sacrifice a
 // creature" (Gatekeeper of Malakir). The same Sacrifice component
 // every mandatory sacrifice cost uses, so it is validated by the same
