@@ -1038,3 +1038,37 @@ func ThisDealtDamageToAPlayer(ev game.Event, source *game.Card, _ game.Character
 	}
 	return g.PlayerByIDForEffect(ev.Target) != nil
 }
+
+// WheneverOneOrMoreOpponentsEachLoseExactly is "Whenever one or more
+// opponents each lose exactly N life" (Ob Nixilis, Captive Kingpin;
+// #2183, CR 603.2c, CR 120.3a). It reads the TOTAL each opponent lost
+// in one simultaneous event batch, not the amount of any one event:
+// two creatures dealing 1 combat damage each to one opponent are a
+// loss of 2 and do not trigger, while one drain of 1 to each of two
+// opponents is one trigger. Damage, life loss and life paid all count
+// (they are all CR 119.4 losses), after every replacement: a damage
+// doubler turns 1 into 2. The ability fires at most once per batch,
+// at the point play moves on, so two separate resolutions are two
+// occurrences. See game/life_batch.go.
+//
+// The per-event condition is only a pre-filter ("an opponent lost
+// life"); the exact-N test is the engine's AtBatchEnd condition on the totals.
+func WheneverOneOrMoreOpponentsEachLoseExactly(n int, label string, effect Effect) game.TriggeredAbility {
+	t := OnAny([]game.EventKind{game.EventChangeLife, game.EventDealDamage},
+		func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			if ev.Target == uuid.Nil || ev.Target == source.Controller {
+				return false
+			}
+			if ev.Kind == game.EventChangeLife && ev.Amount >= 0 {
+				return false
+			}
+			if ev.Kind == game.EventDealDamage && ev.Amount <= 0 {
+				return false
+			}
+			p := g.PlayerByIDForEffect(ev.Target)
+			return p != nil && !p.Eliminated
+		}, label, effect)
+	t.OncePerBatch = true
+	t.AtBatchEnd = &game.BatchEndCondition{OpponentLostExactly: n}
+	return t
+}

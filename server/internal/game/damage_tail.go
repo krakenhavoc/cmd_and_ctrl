@@ -806,6 +806,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	if t.combat {
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
+			g.noteLifeLostLocked(p.ID, lifeLoss)
 			g.invalidateLayersForLifeChangeLocked()
 		}
 		// CR 903.10a: combat damage from a commander accrues toward
@@ -818,6 +819,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 		g.emitDealDamageLocked(ev, t)
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
+			g.noteLifeLostLocked(p.ID, lifeLoss)
 			g.invalidateLayersForLifeChangeLocked()
 		}
 	}

@@ -320,6 +320,9 @@ func (g *Game) cloneLocked() *Game {
 	// swallow the re-done one.
 	out.eventBatch = g.eventBatch
 	out.oncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	// #2183: the batch life totals rewind with the batch they name.
+	out.batchLifeLost = cloneBatchLifeLossTotals(g.batchLifeLost)
+	out.stagedBatchTriggers = g.stagedBatchTriggers
 	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
 	// to. Copy on write everywhere, so the slice is shared.
 	out.preventionFollowUps = g.preventionFollowUps
@@ -1046,6 +1049,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	// cloneLocked.
 	g.eventBatch = src.eventBatch
 	g.oncePerBatchFired = src.oncePerBatchFired
+	g.batchLifeLost = cloneBatchLifeLossTotals(src.batchLifeLost)
+	g.stagedBatchTriggers = src.stagedBatchTriggers
 	g.preventionFollowUps = src.preventionFollowUps
 	g.damageInstanceSeq = src.damageInstanceSeq
 	g.openDamageInstance = src.openDamageInstance
