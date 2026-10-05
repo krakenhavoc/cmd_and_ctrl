@@ -356,9 +356,10 @@ derivation.
 A long tool loop resends its whole context each step, so input tokens
 run in the millions per game (mostly cache reads) and the context
 nears 200k by the end: expect one compaction, or use a long-context
-model. One price has been measured so far: $0.72 for a short game
-([below](#measured-a-release-build-game)), and a longer game costs
-more. To keep it down,
+model. Two games have been priced so far (below): $0.72 for a
+five-turn game, and at most $15.94 for a sixteen-turn one. Cost grows
+much faster than the game's length, because every call resends the
+context and the context grows with every decision. To keep it down,
 use a fresh session per game, keep the compact view, and turn
 `pass_until` on when holding nothing at instant speed.
 
@@ -391,7 +392,7 @@ time. ADR 0122's amendment of the same date discusses them.
 | Time per decision (returned to `act`) | median 2.5 s, p90 5.7 s, max 23.3 s |
 | Table waiting on the agent | 9.6 min in total |
 | Time in `wait_for_decision` (opponent and table) | 15.4 min in total |
-| Client-reported tokens and cost | not captured |
+| Client-reported tokens and cost | at most $15.94. The Claude Code session that played it also wrote its lessons to memory and began a second game that was abandoned, so this is an upper bound for the game. Opus 5.5: 370.8k input, 47.9k output, 37.7M cache read, 747.1k cache write over 196 requests, including one cache miss after an idle past the 1h cache lifetime (364.5k tokens re-cached) and one compaction. |
 
 The estimates above were for a four-seat game. This one reached the
 model about 154 times in two seats, so plan on more decisions than the
@@ -423,4 +424,5 @@ Code, and the cost from Claude Code's `/cost` for the session.
 
 The absorption rate matches the bot-table measurement in the estimates
 above. A five-turn game is the cheap end: the turn-16 game above
-reached the model more than ten times as often.
+reached the model more than ten times as often, and its session cost
+up to 22 times as much.
