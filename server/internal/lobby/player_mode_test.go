@@ -1035,6 +1035,7 @@ func sameAnswerProbes() []sameAnswerProbe {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},
 		{"GET /games/{id}/bot/stats", []string{"BotStatsHandler"}, true, httpProbe("GET", "/games/{id}/bot/stats", nil)},
+		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
 
 		// Handler checks through c.isAdmin.
 		{"POST /games/{id}/spawn", []string{"requireTableManager"}, true, httpProbe("POST", "/games/{id}/spawn", func(*probeFixture) any {

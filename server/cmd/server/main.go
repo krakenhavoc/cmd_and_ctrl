@@ -571,6 +571,7 @@ func main() {
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
 		AdminSockets:      hub,
+		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
 		TableSetups:       newTableSetupStore(database),

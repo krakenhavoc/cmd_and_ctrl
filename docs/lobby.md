@@ -2743,6 +2743,102 @@ are unaffected, including the caller's.
 
 ---
 
+## Live now (ADR 0124 §3.4)
+
+### `GET /admin/live` *(admin only)*
+
+Who is connected now, to which table, as a seat, a spectator or an
+admin, plus the bot and agent seats of every running table: the
+drill-down behind the Overview's Players connected, Spectators and Bot
+seats tiles ([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md)).
+Read-only. It reads memory: the hub's sockets, then the lobby's tables,
+one lock at a time and never a room's, and then, for names, one query of
+the `users` table. With no database it still answers, with the names the
+seats carry.
+
+**Response 200**
+
+```json
+{
+  "generated_at": 1759665600000,
+  "tables": [
+    {
+      "id": "<uuid>",
+      "name": "Friday night",
+      "state": "active",
+      "practice": false,
+      "archived": false,
+      "seats": [
+        { "seat": 0, "kind": "human", "guest_name": "Alice", "deck_name": "Mono Red",
+          "host": true, "connected": 2, "since": 1759665000000 },
+        { "seat": 1, "kind": "human",
+          "account": { "id": "<uuid>", "name": "Bobby", "avatar_url": "/avatars/<snowflake>/<hash>.png" },
+          "host": false, "connected": 1, "since": 1759665100000 },
+        { "seat": 2, "kind": "human", "guest_name": "Dave", "discord_pending": true,
+          "host": false, "connected": 0 },
+        { "seat": 3, "kind": "bot", "guest_name": "Bot 1", "bot_tier": "heuristic", "host": false, "connected": 0 }
+      ],
+      "spectators": [
+        { "account": { "id": "<uuid>", "name": "Carol" }, "since": 1759665200000 },
+        { "since": 1759665300000 }
+      ],
+      "admins": [
+        { "as_seat": 0, "since": 1759665400000 }
+      ]
+    }
+  ],
+  "unbound_sockets": 0,
+  "totals": {
+    "players_connected": 2,
+    "spectators": 2,
+    "bot_seats": 1,
+    "practice_tables": 0,
+    "admin_views": 1
+  }
+}
+```
+
+- **`tables`** lists every table with a live socket, and every running
+  table that is not archived (a bots-only table has none). Running tables
+  come first, then waiting ones, then ended ones, each by name. Practice
+  tables are listed, with `practice: true`.
+- **A seat** is as in the games view (ADR 0124 §3.3): `kind` is `human`,
+  `bot` or `agent`; `account` when a signed-in person holds it, else
+  `guest_name`; `discord_pending` for a Discord seat whose person has not
+  signed in again (the snowflake is never served); `bot_tier`,
+  `agent_client` and `deck_name` when set; `host`. `connected` is the
+  number of live sockets bound to the seat, an admin's included, and
+  `since` the earliest of their connection times, absent when there is
+  none. A seat's account takes its name from the seat and its avatar from
+  the database.
+- **`spectators`**: one entry per read-only socket. `account` is absent
+  for a guest spectator; a signed-in one is named from the database.
+- **`admins`**: one entry per admin socket. `account` is absent for the
+  shared token; `as_seat` is the seat number an admin is bound to.
+- **`unbound_sockets`** counts the sockets whose game the lobby does not
+  hold. It should be 0.
+- **`totals`**: `players_connected`, `spectators`, `bot_seats` and
+  `practice_tables` are computed by the function the Overview's tiles are
+  reported from (`metrics.Tally`), over the same copies, so they match
+  `cmdctrl_seats_connected` (summed), `cmdctrl_spectators_connected`,
+  `cmdctrl_seats{kind="bot"}` and `cmdctrl_practice_games` up to the time
+  between a scrape and a load. Players connected counts running,
+  unarchived, non-practice tables only, as the tile does; the people
+  waiting at a lobby table are listed but not counted. `admin_views` is
+  the number of `admins` entries listed.
+- Times are Unix milliseconds. Nothing else is served: no snowflake
+  except inside an `avatar_url`, no player ID, no token, no address.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session |
+| 403 | caller is not an admin, including an allowlisted person in player mode |
+| 503 | the server wired no WebSocket hub (not a production configuration) |
+
+---
+
 ## Discord sign-in (S12.5, ADR 0004 / 0050 / 0051)
 
 `GET /auth/discord/start` and `GET /auth/discord/callback` are the

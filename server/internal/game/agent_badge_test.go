@@ -153,6 +153,9 @@ var agentBadgeWriters = map[string]int{
 	// the admin views' copy, onto a fresh LiveSeat for an agent seat
 	// only (ADR 0124 §5).
 	"internal/lobby/live_tables.go:LiveTables": 1,
+	// GET /admin/live's seat, copied from the LiveSeat above onto a
+	// fresh response row (ADR 0124 §3.4).
+	"internal/lobby/admin_live.go:buildLiveNow": 1,
 }
 
 // TestAgentBadgeHasNoClearingWriter pins ADR 0122 §7's "the badge

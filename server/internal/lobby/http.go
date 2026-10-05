@@ -78,6 +78,9 @@ type Config struct {
 	// of admin mode made wrong (ADR 0112 §2 item 5); *ws.Hub. Nil leaves
 	// them as they are until they next reconnect.
 	AdminSockets AdminModeRebinder
+	// LiveSockets is the hub's copy of every live connection, for GET
+	// /admin/live (ADR 0124 §5); *ws.Hub. Nil: that route answers 503.
+	LiveSockets LiveSocketSource
 	// Env is the deployment identity (prod / dev). The zero value is
 	// the empty string, which IsDev() reports false for — so a Config
 	// built without thinking about it (every existing test) gets
@@ -684,6 +687,9 @@ func Handler(c Config) http.Handler {
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
 	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
+	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
+	// from memory, with names from the database when there is one.
+	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))
 
 	return mux
 }
