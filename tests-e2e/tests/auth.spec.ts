@@ -43,7 +43,9 @@ test.describe("admin login", () => {
     await expect(page.getByRole("heading", { name: "create game" })).toBeVisible();
   });
 
-  test("a session on #/login or #/admin goes to the lobby", async ({ page }) => {
+  // ADR 0124 §7: the token's session on #/admin goes to the admin views'
+  // Live now; on #/login it still goes to the Lobby.
+  test("a session on #/login goes to the lobby, and on #/admin to Live now", async ({ page }) => {
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);
@@ -51,7 +53,7 @@ test.describe("admin login", () => {
     await page.goto("/#/login");
     await expect(page).toHaveURL(/#\/lobby$/);
     await page.goto("/#/admin");
-    await expect(page).toHaveURL(/#\/lobby$/);
+    await expect(page).toHaveURL(/#\/admin\/live$/);
   });
 
   test("the wordmark goes to the lobby for a session", async ({ page }) => {

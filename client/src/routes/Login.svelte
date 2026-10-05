@@ -6,6 +6,7 @@
   import { expiryNotice, LobbyApiError, session } from "../lib/session";
   import { signedInUserID } from "../lib/myGames";
   import { inviteHash } from "../lib/signedInHome";
+  import { isAdminViewReturn, takeAfterSignIn } from "../lib/decksPage";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import Icon from "../lib/components/Icon.svelte";
 
@@ -65,7 +66,10 @@
     busy = true;
     try {
       await adminLogin(token);
-      navigate("#/lobby");
+      // An admin view opened signed out (a Grafana link, ADR 0124 §7)
+      // comes back after the token's sign-in too; otherwise the Lobby.
+      const back = takeAfterSignIn();
+      navigate(isAdminViewReturn(back) ? back : "#/lobby");
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "login failed";
     } finally {

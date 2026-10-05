@@ -213,6 +213,17 @@
         aria-current={current("home") ? "page" : undefined}
         onclick={closeMenu}>Home</a
       >
+      <!-- The admin views (ADR 0124 §7): last, for an admin only (the
+           token, or admin mode on). It goes when admin mode lapses,
+           through the same session store. Home gets no admin card. -->
+      {#if adminOn}
+        <a
+          href="#/admin/live"
+          class:current={current("adminViews")}
+          aria-current={current("adminViews") ? "page" : undefined}
+          onclick={closeMenu}>Admin</a
+        >
+      {/if}
     </nav>
 
     <div class="account" bind:this={accountEl}>

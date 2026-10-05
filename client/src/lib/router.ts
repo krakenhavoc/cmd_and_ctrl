@@ -1,5 +1,6 @@
 import { type Readable } from "svelte/store";
 
+import { parseAdminView, type AdminView } from "./adminViews";
 import { guardedWritable } from "./guardedStore";
 
 // Route is the discriminated union of client-side views. The router
@@ -13,6 +14,12 @@ import { guardedWritable } from "./guardedStore";
 export type Route =
   | { name: "login" }
   | { name: "adminLogin" }
+  // The admin views (ADR 0124 §7): Live now, Games, one table, Accounts
+  // and one account, under #/admin/<view>. #/admin alone stays the
+  // shared token's form (adminLogin). `view` carries the filters the
+  // hash names; a value the server does not know is dropped here, so
+  // it is never sent (lib/adminViews.ts).
+  | { name: "adminViews"; view: AdminView }
   // The site portal (#1386, ADR 0092): a public sitemap of link cards
   // to everywhere else on the site, grouped by what you're trying to
   // do. Exists alongside SiteHeader as a second entry point — the
@@ -100,8 +107,12 @@ export function parseHash(hash: string): Route {
   switch (parts[0]) {
     case "login":
       return { name: "login" };
-    case "admin":
-      return { name: "adminLogin" };
+    case "admin": {
+      // #/admin alone, or a path under it that names no view, is the
+      // token's form, as every #/admin/… was before ADR 0124.
+      const view = parseAdminView(parts.slice(1), params);
+      return view ? { name: "adminViews", view } : { name: "adminLogin" };
+    }
     case "home":
       return { name: "home" };
     case "roadmap":

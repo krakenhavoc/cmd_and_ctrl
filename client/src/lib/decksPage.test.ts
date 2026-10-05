@@ -13,9 +13,12 @@ import {
   AFTER_SIGN_IN_TEXT_KEY,
   decksAccess,
   defaultSaveName,
+  isAdminViewReturn,
   isDecksReturn,
+  isReturnRoute,
   libraryDeckRequestable,
   rememberAfterSignIn,
+  rememberReturnRoute,
   reportAsPrinted,
   reportDeckSize,
   reportNotFound,
@@ -244,5 +247,61 @@ describe("the sign-in return route (§3 item 7)", () => {
     expect(sessionStorage.getItem(AFTER_SIGN_IN_KEY)).toBeNull();
     expect(sessionStorage.getItem(AFTER_SIGN_IN_TEXT_KEY)).toBeNull();
     expect(takePendingDeckText()).toBe("");
+  });
+});
+
+// ADR 0124 §7 widens the return route (ADR 0112 §3 item 7) to the admin
+// views: a Grafana link opened signed out comes back after sign-in.
+describe("isReturnRoute: the decks page and the admin views, nothing else", () => {
+  beforeEach(() => sessionStorage.clear());
+  afterEach(() => sessionStorage.clear());
+
+  it("accepts the decks page and every admin view", () => {
+    for (const ok of [
+      "#/decks",
+      "#/deck-check?url=x",
+      "#/admin/live",
+      "#/admin/games?state=active&archived=false",
+      "#/admin/games/g1",
+      "#/admin/accounts?played=7d",
+      "#/admin/accounts/u1",
+    ]) {
+      expect(isReturnRoute(ok)).toBe(true);
+    }
+    expect(isAdminViewReturn("#/decks")).toBe(false);
+    expect(isAdminViewReturn("#/admin/live")).toBe(true);
+  });
+
+  it("refuses the token form, other routes and anything not a hash", () => {
+    for (const bad of [
+      "#/admin",
+      "#/admin/nowhere",
+      "#/lobby",
+      "#/games/g1",
+      "https://evil.example/#/admin/live",
+      "//evil.example/#/admin/live",
+      "javascript:alert(1)",
+      "",
+      null,
+      undefined,
+    ]) {
+      expect(isReturnRoute(bad)).toBe(false);
+    }
+  });
+
+  it("stores an admin view, hands it back once, and carries no list", () => {
+    sessionStorage.setItem(AFTER_SIGN_IN_TEXT_KEY, "1 Sol Ring");
+    rememberReturnRoute("#/admin/games?state=active");
+    expect(sessionStorage.getItem(AFTER_SIGN_IN_KEY)).toBe("#/admin/games?state=active");
+    expect(sessionStorage.getItem(AFTER_SIGN_IN_TEXT_KEY)).toBeNull();
+    expect(takeAfterSignIn()).toBe("#/admin/games?state=active");
+    expect(takePendingDeckText()).toBe("");
+    expect(takeAfterSignIn()).toBeNull();
+  });
+
+  it("stores nothing for a hash that is not an admin view", () => {
+    rememberReturnRoute("#/lobby");
+    rememberReturnRoute("#/admin");
+    expect(sessionStorage.getItem(AFTER_SIGN_IN_KEY)).toBeNull();
   });
 });
