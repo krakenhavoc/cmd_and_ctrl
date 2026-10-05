@@ -40,6 +40,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -169,6 +170,7 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 	entry.meta.State = string(live)
 	if (live == game.StateActive || live == game.StateEnded) && entry.startedAt == nil && entry.startedKnown {
 		entry.startedAt = &now
+		l.recordStartLocked(entry)
 	}
 	if live == game.StateEnded && entry.endedAt == nil {
 		entry.endedAt = &now
@@ -176,6 +178,7 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 			entry.winnerSeat = &seat
 		}
 		entry.outcome = entry.room.Game.OutcomeKind()
+		l.recordEndLocked(entry, metrics.EndOutcome(entry.outcome), now)
 	}
 	l.persistGameLocked(entry)
 }
@@ -440,5 +443,8 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// running when this binary first booted, has no start time on
 		// record. Stamping "now" on it would be a made-up date.
 		startedKnown: rec.State == string(game.StateLobby),
+		// The previous process counted an end it recorded, or an
+		// archive (metrics.go).
+		endCounted: rec.EndedAt != nil || rec.ArchivedAt != nil,
 	}, nil
 }

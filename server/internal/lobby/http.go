@@ -952,6 +952,7 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 		if err != nil {
 			return err
 		}
+		metrics.GameCreated()
 		if server {
 			logAdminAction(c.Log, "POST /games", p, "game_id", meta.ID.String())
 		} else if c.Log != nil {

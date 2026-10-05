@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" database/sql driver
 )
@@ -45,6 +46,10 @@ type DB struct {
 	*sql.DB
 	dir  string // <dataDir>/db
 	path string // <dataDir>/db/cmdctrl.sqlite
+
+	// lastBackup is the Unix milliseconds of Backup's last success in
+	// this process, 0 for none (LastBackup).
+	lastBackup atomic.Int64
 }
 
 // Path returns the live database file's path, for logging.

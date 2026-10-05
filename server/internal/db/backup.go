@@ -70,7 +70,29 @@ func (d *DB) Backup(ctx context.Context) error {
 		return fmt.Errorf("db: backup: %w", err)
 	}
 	cleanup = false
+	d.lastBackup.Store(time.Now().UnixMilli())
 	return nil
+}
+
+// LastBackup is when Backup last succeeded in this process, or the
+// zero time if it has not. It is
+// cmdctrl_db_backup_last_success_timestamp_seconds (ADR 0123 §3).
+func (d *DB) LastBackup() time.Time {
+	ms := d.lastBackup.Load()
+	if ms == 0 {
+		return time.Time{}
+	}
+	return time.UnixMilli(ms)
+}
+
+// SizeBytes is the live database file's size, cmdctrl_db_size_bytes
+// (ADR 0123 §3). The WAL and the backup copy are not counted.
+func (d *DB) SizeBytes() (int64, error) {
+	fi, err := os.Stat(d.path)
+	if err != nil {
+		return 0, fmt.Errorf("db: size: %w", err)
+	}
+	return fi.Size(), nil
 }
 
 // backupTimeout bounds one Backup call. It is deliberately not the
