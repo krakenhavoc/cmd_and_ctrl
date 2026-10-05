@@ -68,8 +68,12 @@ jobs:
         # cheap (~1s) and recovers from the "card index not loaded"
         # state players will hit if the server started before the
         # first refresh ever ran.
+        #
+        # reset-failed first, as in ci-cd.yml's "Restart game server
+        # service": a unit that hit its StartLimitBurst refuses a restart
+        # until the interval has passed (#598 item 2).
         run: |
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl restart cmd-and-ctrl'
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} 'sudo systemctl reset-failed cmd-and-ctrl 2>/dev/null || true; sudo systemctl restart cmd-and-ctrl'
 
       - name: Confirm service came back up
         run: |

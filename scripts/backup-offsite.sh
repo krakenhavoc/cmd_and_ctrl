@@ -33,6 +33,19 @@
 # restic's exit 3 (snapshot written but some files unreadable) counts as
 # a failure too. Ends with one summary line: snapshot ID, bytes added.
 #
+# Whatever the outcome, the run then records it for the monitoring agent
+# (ADR 0123 §4) in /var/lib/cmdctrl-metrics/backup.prom, which Alloy's
+# textfile collector reads:
+#   cmdctrl_offsite_backup_last_exit_code                  this run's exit code
+#   cmdctrl_offsite_backup_last_success_timestamp_seconds  when a run last
+#                                                          exited 0; a failed
+#                                                          run carries the
+#                                                          previous value over
+# The file is replaced by write-then-rename, so a scrape never reads half
+# of it. A missing directory (a host without the agent) or a failed write
+# is logged and skipped; it never changes the run's exit code. A usage
+# error (an unknown argument) records nothing.
+#
 # Usage: backup-offsite.sh [--check]
 #
 # Environment (backup.env, via the unit's EnvironmentFile=):
@@ -49,6 +62,11 @@
 # Environment (set by the unit):
 #   CMDCTRL_DATA_DIR      default /var/lib/cmd_and_ctrl/data
 #   RESTIC_CACHE_DIR      the unit's CacheDirectory=
+# Environment (optional):
+#   CMDCTRL_METRICS_TEXTFILE_DIR  where backup.prom goes; default
+#                                 /var/lib/cmdctrl-metrics (root:cmdctrl
+#                                 0775, created by CD's "Ensure monitoring
+#                                 agent"; the unit's ReadWritePaths=)
 #
 # Dependencies: restic (apt; installed by CD if missing).
 
@@ -67,6 +85,56 @@ for arg in "$@"; do
 done
 
 DATA_DIR="${CMDCTRL_DATA_DIR:-/var/lib/cmd_and_ctrl/data}"
+
+# The run's outcome, for the monitoring agent (see the header). Called
+# from the EXIT trap below, always as `write_metrics "$rc" || true`, so
+# nothing in here can change the exit code: `set -e` does not apply
+# inside a function called on the left of `||`, and every failure is
+# handled by hand.
+METRICS_DIR="${CMDCTRL_METRICS_TEXTFILE_DIR:-/var/lib/cmdctrl-metrics}"
+METRICS_FILE="${METRICS_DIR}/backup.prom"
+write_metrics() {
+  local rc="$1" last_success="" tmp
+  if [[ ! -d "$METRICS_DIR" ]]; then
+    echo "backup-offsite: ${METRICS_DIR} does not exist; not recording this run for the monitoring agent"
+    return 0
+  fi
+  if ((rc == 0)); then
+    last_success="$(date +%s)"
+  elif [[ -r "$METRICS_FILE" ]]; then
+    last_success="$(sed -n 's/^cmdctrl_offsite_backup_last_success_timestamp_seconds \([0-9][0-9]*\)$/\1/p' "$METRICS_FILE" | tail -n 1)"
+  fi
+  # Same directory, so the rename is atomic; no .prom suffix, so the
+  # collector never reads the temp file.
+  if ! tmp="$(mktemp "${METRICS_FILE}.XXXXXX")"; then
+    echo "backup-offsite: cannot create a file in ${METRICS_DIR}; not recording this run for the monitoring agent" >&2
+    return 0
+  fi
+  if {
+    if [[ -n "$last_success" ]]; then
+      echo "# HELP cmdctrl_offsite_backup_last_success_timestamp_seconds Unix time the off-site backup (scripts/backup-offsite.sh) last exited 0."
+      echo "# TYPE cmdctrl_offsite_backup_last_success_timestamp_seconds gauge"
+      echo "cmdctrl_offsite_backup_last_success_timestamp_seconds ${last_success}"
+    fi
+    echo "# HELP cmdctrl_offsite_backup_last_exit_code Exit code of the off-site backup's most recent run (0 success; 3 a snapshot with unreadable files)."
+    echo "# TYPE cmdctrl_offsite_backup_last_exit_code gauge"
+    echo "cmdctrl_offsite_backup_last_exit_code ${rc}"
+  } >"$tmp" && chmod 0644 "$tmp" && mv -f "$tmp" "$METRICS_FILE"; then
+    # 0644 by hand: the unit's UMask=0077 would leave it unreadable to
+    # the alloy user.
+    echo "backup-offsite: recorded exit=${rc} in ${METRICS_FILE}"
+  else
+    rm -f "$tmp"
+    echo "backup-offsite: could not write ${METRICS_FILE}; not recording this run for the monitoring agent" >&2
+  fi
+  return 0
+}
+on_exit() {
+  local rc=$?
+  write_metrics "$rc" || true
+  exit "$rc"
+}
+trap on_exit EXIT
 
 missing=()
 for var in RESTIC_REPOSITORY RESTIC_PASSWORD CMDCTRL_BACKUP_ENV; do

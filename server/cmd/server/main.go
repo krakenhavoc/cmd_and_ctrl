@@ -339,6 +339,9 @@ func main() {
 	// by the same person's next one) closes its sockets through the
 	// hub, as an operator delete does (ADR 0076 §2.2).
 	l.SetEvictor(hub)
+	// The games, players and WebSocket gauges (ADR 0123 §3), read from
+	// the lobby, the hub and the database at scrape time.
+	registerGameMetrics(metrics.Registry, log, l, hub, database, userStore)
 	// S31: bot seats. The manager starts a runner per bot seat when a
 	// game starts (and when one is restored below) and stops them
 	// when the game is deleted or the process exits; runners

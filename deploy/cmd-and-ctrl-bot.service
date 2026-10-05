@@ -27,15 +27,22 @@ Wants=network-online.target
 # StartLimit*, a crash on every start (e.g. 203/EXEC from a bad
 # binary path) restarts forever with nothing to alarm on — the
 # cmd-and-ctrl.service incident this issue is named for ran ~540k
-# times over a month before anyone noticed. 5 starts within 5
-# minutes — one every RestartSec=5 with no gap — flips the unit to
-# `failed` and stops it there, which IS a state something can watch
-# for (systemctl is-failed, an external prober). StartLimitIntervalSec
+# times over a month before anyone noticed. 10 starts within 10
+# minutes flips the unit to `failed` and stops it there, which IS a
+# state something can watch for (systemctl is-failed, the monitoring
+# agent's systemd collector and its UnitFailed alert, ADR 0123 §7). At
+# RestartSec=5 a crash loop gets there in under a minute, while a
+# deploy's single restart, or a few by hand, stays far below it. The
+# same numbers as cmd-and-ctrl.service (HomeLab#119). StartLimitIntervalSec
 # / StartLimitBurst belong on [Unit], not [Service]: they bound the
 # unit's start attempts as such, independent of which Restart= policy
 # triggered them (systemd.unit(5)).
-StartLimitIntervalSec=300
-StartLimitBurst=5
+#
+# A unit that hit the limit refuses even a manual start until the
+# interval has passed, so CD runs `systemctl reset-failed` right before
+# its restart: a fix deployed minutes after a crash loop still starts.
+StartLimitIntervalSec=600
+StartLimitBurst=10
 
 [Service]
 Type=simple

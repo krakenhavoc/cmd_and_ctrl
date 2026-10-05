@@ -13,6 +13,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // SQLStore is the users / identities tables from migration 0003.
@@ -99,12 +100,16 @@ func (s *SQLStore) upsertDiscord(ctx context.Context, profile discord.User, refr
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var userID string
+	var (
+		userID  string
+		created bool
+	)
 	err = tx.QueryRowContext(ctx,
 		`SELECT user_id FROM identities WHERE provider = ? AND subject = ?`,
 		ProviderDiscord, profile.ID).Scan(&userID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
+		created = true
 		userID = uuid.New().String()
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO users (id, display_name, avatar_url, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)`,
@@ -144,6 +149,11 @@ func (s *SQLStore) upsertDiscord(ctx context.Context, profile discord.User, refr
 	}
 	if err := tx.Commit(); err != nil {
 		return User{}, err
+	}
+	// Counted after the commit, so a retried race counts the one row
+	// that exists (ADR 0123 §3).
+	if created {
+		metrics.UserCreated()
 	}
 	return u, nil
 }

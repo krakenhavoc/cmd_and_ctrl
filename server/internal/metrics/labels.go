@@ -43,6 +43,16 @@ var labelSets = map[string]labelSet{
 		values: "this binary's commit",
 		allows: func(v string) bool { return v == buildCommit },
 	},
+	// Games and players (games.go, tables.go, users.go).
+	"state":    oneOf(tableStateLabels...),
+	"archived": oneOf(archivedLabels...),
+	"kind":     oneOf(seatKindLabels...),
+	"account":  oneOf(accountLabels...),
+	"seats":    oneOf(seatsLabels...),
+	"window":   oneOf(windowLabels...),
+	// WebSocket (ws.go, tables.go).
+	"role":   oneOf(roleLabels...),
+	"reason": oneOf(rejectLabels...),
 	// Engine and bots (engine.go, bots.go). type, result, outcome and
 	// direction are per family, in familyLabelSets.
 	"seat_kind": oneOf(actionSeatKindLabels...),
@@ -58,6 +68,13 @@ var labelSets = map[string]labelSet{
 // here and a restore's elsewhere), so neither family's set has to be
 // widened into the other's.
 var familyLabelSets = map[string]map[string]labelSet{
+	"cmdctrl_games_ended_total": {
+		"outcome": oneOf(outcomeLabels...),
+	},
+	"cmdctrl_ws_frames_total": {
+		"direction": oneOf(frameDirectionLabels...),
+		"type":      oneOf(frameTypeLabels...),
+	},
 	"cmdctrl_actions_total": {
 		"type":   actionTypeSet(),
 		"result": oneOf(actionResultLabels...),
@@ -101,7 +118,12 @@ var standardPrefixes = []string{"go_", "process_"}
 // by client_golang, cannot carry data, and one of them trips the rule
 // on an ordinary word (go_memstats_heap_idle_bytes, "id" in "idle").
 // Their LABELS are still checked. A label name is never exempt.
-var nameExemptions = map[string]string{}
+var nameExemptions = map[string]string{
+	// ADR 0123 §3 names these. Each counts accounts; none carries one.
+	"cmdctrl_users":               "a count of users rows (ADR 0123 §3)",
+	"cmdctrl_users_played":        "a count of accounts that played in a window (ADR 0123 §3)",
+	"cmdctrl_users_created_total": "a count of new users rows (ADR 0123 §3)",
+}
 
 func isStandard(family string) bool {
 	for _, p := range standardPrefixes {

@@ -25,6 +25,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -289,6 +290,38 @@ func (h *Hub) unregister(c *Client) {
 	}
 }
 
+// MetricsSockets lists every live connection for the metrics tables
+// collector (ADR 0123 §3): its game, its seat (zero for none) and its
+// role. It copies under the hub's read lock and takes no other lock,
+// so a scrape never holds the hub and a room or the lobby at once.
+func (h *Hub) MetricsSockets() []metrics.Socket {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	out := make([]metrics.Socket, 0, len(h.clients))
+	for c := range h.clients {
+		out = append(out, metrics.Socket{
+			Game:   metrics.Key(c.gameID),
+			Player: metrics.Key(c.playerID),
+			Role:   c.role(),
+		})
+	}
+	return out
+}
+
+// rejectReasonFor maps the status an authorizer refused an upgrade
+// with onto cmdctrl_ws_upgrade_rejections_total's reason.
+func rejectReasonFor(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return metrics.RejectBadRequest
+	case http.StatusUnauthorized:
+		return metrics.RejectUnauthorized
+	case http.StatusForbidden:
+		return metrics.RejectForbidden
+	}
+	return metrics.RejectRejected
+}
+
 // Count returns the current number of connected clients.
 func (h *Hub) Count() int {
 	h.mu.RLock()
@@ -316,6 +349,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	closed := h.closed
 	h.mu.RUnlock()
 	if closed {
+		metrics.WSUpgradeRejected(metrics.RejectShuttingDown)
 		http.Error(w, "server shutting down", http.StatusServiceUnavailable)
 		return
 	}
@@ -325,7 +359,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		// resolveBinding logs nothing — we log here so that auth
 		// failures are visible at exactly one level.
 		h.log.Warn("ws upgrade rejected", "err", err, "remote", r.RemoteAddr)
-		http.Error(w, err.Error(), statusFor(err))
+		status := statusFor(err)
+		metrics.WSUpgradeRejected(rejectReasonFor(status))
+		http.Error(w, err.Error(), status)
 		return
 	}
 	gameID, playerID := binding.GameID, binding.PlayerID
@@ -339,11 +375,13 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if gameID != uuid.Nil {
 		mgr := h.loadManager()
 		if mgr == nil {
+			metrics.WSUpgradeRejected(metrics.RejectNoManager)
 			http.Error(w, "server has no room manager", http.StatusServiceUnavailable)
 			return
 		}
 		room = mgr.Get(gameID)
 		if room == nil {
+			metrics.WSUpgradeRejected(metrics.RejectGameNotFound)
 			http.Error(w, "game not found", http.StatusNotFound)
 			return
 		}
@@ -353,6 +391,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		// bind to a non-existent viewer and silently receive
 		// spectator views.
 		if playerID != uuid.Nil && room.Game.PlayerByID(playerID) == nil {
+			metrics.WSUpgradeRejected(metrics.RejectPlayerNotInGame)
 			http.Error(w, "player not in game", http.StatusForbidden)
 			return
 		}
@@ -360,6 +399,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		metrics.WSUpgradeRejected(metrics.RejectUpgradeFailed)
 		h.log.Error("ws upgrade failed", "err", err, "remote", r.RemoteAddr)
 		return
 	}
@@ -405,7 +445,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			client.log.Error("marshal "+label+" snapshot failed", "err", marshalErr)
 			return 0, false
 		}
-		client.sendRaw(raw)
+		client.sendRaw(protocol.KindSnapshot, raw)
 		client.log.Debug("staged "+label+" snapshot", "seq", seq)
 		return seq, true
 	}
@@ -424,6 +464,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		// A Shutdown raced us between the fast-path check and admit.
 		// Close the freshly-upgraded socket and bail. No pumps have
 		// been spawned, so no wg.Done is owed.
+		metrics.WSUpgradeRejected(metrics.RejectShuttingDown)
 		_ = conn.WriteControl(
 			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
@@ -447,6 +488,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if preStaged && room.Seq() > preStagedSeq {
 		stageSnapshot("post-admit catch-up")
 	}
+	metrics.WSConnected(client.role())
 	client.log.Info("ws client connected", "total", h.Count())
 
 	go func() {
@@ -639,6 +681,8 @@ func (h *Hub) BroadcastChat(gameID uuid.UUID, msg protocol.ChatPayload) {
 // that, lift the marshalling outside this method and cache the bytes
 // by player ID.
 func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, view protocol.GameView) {
+	start := time.Now()
+	defer func() { metrics.WSBroadcast(time.Since(start)) }()
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for c := range h.clients {
@@ -650,7 +694,7 @@ func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, v
 			c.log.Error("marshal broadcast snapshot failed", "err", err)
 			continue
 		}
-		c.sendRaw(raw)
+		c.sendRaw(protocol.KindSnapshot, raw)
 	}
 }
 
@@ -666,7 +710,7 @@ func (h *Hub) broadcastChat(gameID uuid.UUID, frame []byte) {
 		if c.gameID != gameID {
 			continue
 		}
-		c.sendRaw(frame)
+		c.sendRaw(protocol.KindChat, frame)
 	}
 }
 
@@ -738,6 +782,12 @@ type Client struct {
 	legalMoves legalMovesLimiter
 }
 
+// role is the connection's role label (ADR 0123 §3): seat, spectator
+// or admin.
+func (c *Client) role() string {
+	return metrics.WSRole(c.playerID != uuid.Nil, c.readOnly)
+}
+
 // binding reconstructs the Binding this connection was upgraded with,
 // for the gates that ask Room a question about the whole connection
 // rather than about one field of it (Room.CanManageTable). Keeping the
@@ -759,6 +809,7 @@ func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister(c)
 		_ = c.conn.Close()
+		metrics.WSDisconnected(c.role())
 		c.log.Info("ws client disconnected", "total", c.hub.Count())
 	}()
 
@@ -783,9 +834,13 @@ func (c *Client) readPump() {
 func (c *Client) handleFrame(raw []byte) {
 	var frame protocol.Frame
 	if err := json.Unmarshal(raw, &frame); err != nil {
+		metrics.WSFrame(metrics.FrameIn, metrics.FrameOther)
 		c.sendError("", protocol.CodeBadJSON, "frame is not valid JSON")
 		return
 	}
+	// An unknown kind is client-chosen text, which WSFrame counts as
+	// other rather than as a label value.
+	metrics.WSFrame(metrics.FrameIn, string(frame.Kind))
 	if frame.V != protocol.Version {
 		c.sendError(frame.ID, protocol.CodeBadVersion,
 			"unsupported protocol version")
@@ -1422,16 +1477,18 @@ func (c *Client) sendFrame(f protocol.Frame) {
 		c.log.Error("ws marshal frame", "err", err)
 		return
 	}
-	c.sendRaw(raw)
+	c.sendRaw(f.Kind, raw)
 }
 
-// sendRaw enqueues a pre-marshalled frame on the client's send
-// channel. A full buffer disconnects the client rather than dropping
-// the frame silently — letting the pong for a ping, or the snapshot
-// for an action, be quietly dropped would mask real bugs.
-func (c *Client) sendRaw(raw []byte) {
+// sendRaw enqueues a pre-marshalled frame of protocol kind kind on the
+// client's send channel. A full buffer disconnects the client rather
+// than dropping the frame silently — letting the pong for a ping, or
+// the snapshot for an action, be quietly dropped would mask real bugs.
+// kind is what cmdctrl_ws_frames_total counts a queued frame under.
+func (c *Client) sendRaw(kind protocol.Kind, raw []byte) {
 	select {
 	case c.send <- raw:
+		metrics.WSFrame(metrics.FrameOut, string(kind))
 	default:
 		c.log.Warn("ws send buffer full, disconnecting client")
 		_ = c.conn.Close()

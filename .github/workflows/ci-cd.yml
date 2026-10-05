@@ -1298,6 +1298,27 @@ jobs:
             "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_DISCORD_ADMIN_USER_IDS ${ENV_FILE}"
           echo "set CMDCTRL_DISCORD_ADMIN_USER_IDS (${count} id(s))"
 
+      # ADR 0123 §2 and §10: the server's /metrics listener, which the
+      # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server
+      # refuses to boot on any other address, so a typo here fails the
+      # deploy at "Verify service is active" rather than exposing the page.
+      # Must match the scrape target in deploy/alloy/config.alloy.
+      #
+      # BOTH hosts, ALWAYS, even while the agent's values are unset and
+      # "Ensure monitoring agent" stands Alloy down: a loopback listener
+      # nobody scrapes costs nothing, and the agent finds its target the
+      # moment it is configured. It is its own step, here, rather than part
+      # of "Ensure monitoring agent", because it has to land before the
+      # restart below; that step runs last, like the off-site backup, so an
+      # apt failure there cannot stop a deploy half-way.
+      - name: Sync server env (metrics listener)
+        env:
+          METRICS_ADDR: 127.0.0.1:9464
+        run: |
+          printf '%s' "${METRICS_ADDR}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_METRICS_ADDR ${ENV_FILE}"
+          echo "set CMDCTRL_METRICS_ADDR=${METRICS_ADDR}"
+
       # Production only -- see "Deploy bot binary". Provisions the bot's env
       # file the way the server's is provisioned: Actions is the source of
       # truth, so rotating the bot token is "update the secret, redeploy".
@@ -1456,9 +1477,15 @@ jobs:
             echo "::notice::${missing} of 4 required bot values unset -- the bot will refuse to start (bot config invalid) until they are."
           fi
 
+      # reset-failed first (#598 item 2): with StartLimitBurst on the unit
+      # (HomeLab#119), a crash loop leaves it `failed`, and a unit that hit
+      # its start limit refuses even this restart until the interval has
+      # passed. A fix deployed minutes after a crash loop must still start.
+      # Tolerant: a unit that is not failed, or not loaded, is fine.
       - name: Restart game server service
         run: |
-          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "sudo systemctl restart ${SERVICE}"
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo systemctl reset-failed ${SERVICE} 2>/dev/null || true; sudo systemctl restart ${SERVICE}"
 
       - name: Restart cmd-and-ctrl-bot service (if enabled)
         # Production only — see "Deploy bot binary" above.
@@ -1481,12 +1508,17 @@ jobs:
         # fails after that is not caught here; the real check is
         # journalctl ("discord session ready") and NRestarts -- see
         # deploy/README.md.
+        #
+        # reset-failed before the restart, for the reason on "Restart game
+        # server service": the unit's StartLimitBurst would otherwise refuse
+        # a fix deployed minutes after a crash loop.
         run: |
           state=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
             if ! systemctl is-enabled cmd-and-ctrl-bot >/dev/null 2>&1; then
               echo not-enabled
               exit 0
             fi
+            sudo systemctl reset-failed cmd-and-ctrl-bot 2>/dev/null || true
             if ! sudo systemctl restart cmd-and-ctrl-bot >&2; then
               echo restart-failed
               exit 0
@@ -1709,6 +1741,92 @@ jobs:
             success|'') echo "${BACKUP_UNIT}.timer enabled; last run: ${last:-never}." ;;
             *) echo "::warning title=Off-site backup failing::The last ${BACKUP_UNIT} run on ${CMDCTRL_HOST} ended with '${last}'. Check journalctl -u ${BACKUP_UNIT} on that host (docs/environments.md#backups)." ;;
           esac
+
+      # The monitoring agent, Grafana Alloy (ADR 0123 §4, §5, §10). Runs on
+      # BOTH hosts and pushes the server's metrics, host metrics and the
+      # units' journal to the monitoring VM in HomeLab. Runbook:
+      # docs/environments.md#monitoring-agent. The server half,
+      # CMDCTRL_METRICS_ADDR, is "Sync server env (metrics listener)" above.
+      #
+      # Last, after the off-site backup and for the same reason: the game is
+      # deployed and verified by now, so nothing here can leave it half
+      # deployed. A real failure (ssh, apt, a Grafana key whose fingerprint
+      # is not the pinned one, a config `alloy validate` refuses) fails the
+      # run, because an agent that silently stopped being installed is how
+      # monitoring rots. A MISSING value does not fail it -- the game must
+      # not depend on its monitor: each one is named in a ::warning::, and
+      # Alloy is stopped and disabled, so an unconfigured host deploys green.
+      #
+      # Inputs: the variable CMDCTRL_MONITORING_URL (the monitoring VM's
+      # fixed address, scheme and host only, e.g. http://192.168.200.40;
+      # repo-level, or per environment) and the secret
+      # CMDCTRL_MONITORING_PUSH_PASSWORD, set in each GitHub environment
+      # (`prod`, `dev`) to that host's push credential. The basic-auth
+      # username is the environment's name, APP_ENV. A value still holding
+      # REPLACE_ME counts as unset.
+      #
+      # The work on the host is scripts/ensure-monitoring-agent.sh (landed by
+      # "Deploy scripts"), which pins the Alloy version and Grafana's apt key
+      # fingerprint, and restarts Alloy only when the package, the config,
+      # the env file or the unit drop-in changed. /etc/alloy/env carries the
+      # password, so it travels on ssh STDIN, built with printf (a builtin,
+      # so no argv on the runner either), exactly as in "Ensure off-site
+      # backup".
+      - name: Ensure monitoring agent
+        env:
+          MONITORING_URL: ${{ vars.CMDCTRL_MONITORING_URL }}
+          MONITORING_PUSH_PASSWORD: ${{ secrets.CMDCTRL_MONITORING_PUSH_PASSWORD }}
+        run: |
+          where="GitHub environment '${APP_ENV}'"
+
+          # 1. Configured? Name every missing or placeholder value, then
+          # stand Alloy down. The script still creates the textfile
+          # directory, which the backup writes to either way.
+          missing=()
+          unset_or_placeholder() {
+            [ -z "$1" ] || case "$1" in *REPLACE_ME*) true ;; *) false ;; esac
+          }
+          unset_or_placeholder "${MONITORING_URL}" && missing+=("variable CMDCTRL_MONITORING_URL")
+          unset_or_placeholder "${MONITORING_PUSH_PASSWORD}" && missing+=("secret CMDCTRL_MONITORING_PUSH_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            for m in "${missing[@]}"; do
+              echo "::warning title=Monitoring agent not configured::${m} in ${where} (or, for the variable, the repo) is unset or still a REPLACE_ME placeholder, so ${CMDCTRL_HOST} (${APP_ENV}) ships no metrics or logs to the monitoring VM. See docs/environments.md#monitoring-agent."
+            done
+            ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/ensure-monitoring-agent.sh off"
+            echo "Alloy stopped and disabled until both values are set."
+            exit 0
+          fi
+
+          # 2. Well formed? Alloy appends :9091/... and :3101/... to the URL,
+          # and /etc/alloy/env single-quotes every value.
+          url="${MONITORING_URL%/}"
+          if ! [[ "${url}" =~ ^https?://[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::CMDCTRL_MONITORING_URL must be a scheme and a host with no port, path or trailing slash, e.g. http://192.168.200.40 (got '${MONITORING_URL}'). Fix the variable and rerun."
+            exit 1
+          fi
+          case "${MONITORING_PUSH_PASSWORD}" in
+            *"'"*|*$'\n'*)
+              echo "::error::CMDCTRL_MONITORING_PUSH_PASSWORD for ${APP_ENV} contains a single quote or a newline, which /etc/alloy/env cannot carry. Generate one without (and set its hash in HomeLab to match)."
+              exit 1
+              ;;
+          esac
+
+          # 3. The config and the unit drop-in, from deploy/alloy/.
+          rsync -a --delete -e "ssh ${SSH_OPTS}" deploy/alloy/ \
+            krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/alloy/
+
+          # 4. Install, configure, restart if anything changed. The script
+          # prints its own ::warning:: if Alloy is not ready afterwards or
+          # the server does not answer on its metrics address.
+          {
+            printf '# Written by CD ("Ensure monitoring agent") on every deploy. Do not edit.\n'
+            printf "CMDCTRL_MONITORING_URL='%s'\n" "${url}"
+            printf "CMDCTRL_MONITORING_PUSH_PASSWORD='%s'\n" "${MONITORING_PUSH_PASSWORD}"
+            printf "CMDCTRL_MONITORING_ENV='%s'\n" "${APP_ENV}"
+            printf "CUSTOM_ARGS='--server.http.listen-addr=127.0.0.1:12345 --disable-reporting'\n"
+          } | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/ensure-monitoring-agent.sh on ${DEPLOY_ROOT}/alloy"
 
       # Private repos get ~500 MB of artifact storage and develop pushes
       # ~30 times a day, so even 1-day retention overflows it. Drop the

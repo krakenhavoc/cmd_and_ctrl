@@ -352,6 +352,9 @@ type gameEntry struct {
 	// it came into this lobby with no start time on record (imported
 	// from lobby/*.json). syncStateLocked will not invent one.
 	startedKnown bool
+	// endCounted is set once cmdctrl_games_ended_total has counted this
+	// table's end (metrics.go), so no second path counts it again.
+	endCounted bool
 
 	// watching is set once watchEnd runs for this entry; stop is
 	// closed when the entry leaves l.games, which ends the watcher.
@@ -1424,6 +1427,8 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 	}
 	switch {
 	case archived && !entry.meta.Archived():
+		// Archiving a running table closes it (ADR 0123 §3).
+		l.recordClosedLocked(entry)
 		now := time.Now().UTC()
 		entry.meta.ArchivedAt = &now
 		// A link minted moments before the archive must not outlive
@@ -1466,6 +1471,9 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	if !ok {
 		return ErrGameNotFound
 	}
+	// Deleting a running table closes it (ADR 0123 §3). One already
+	// archived was counted then, and a practice table never is.
+	l.recordClosedLocked(entry)
 	l.dropEntryLocked(id)
 	l.mgr.Delete(id)
 	// Any reclaim link minted for this table dies with it.
