@@ -150,3 +150,78 @@ func changeATargetToThisCreature(reason string, optional bool) func(g *game.Game
 		return nil
 	}
 }
+
+// retargetTheTargetedItem is the resolution body every "change the
+// target of target spell or ability" card shares: the stack item the
+// card's own clause targeted, if it is still a legal target (CR
+// 608.2b — a spell countered in response, or already resolved, is
+// gone and nothing happens), offered to ChangeTargets under `policy`.
+//
+// Deflection, Swerve, Shunt, Redirect, Reroute, Willbender and Goblin
+// Flectomancer differ only in the clause, the policy and the prompt
+// header; the body is this. It reads the LEGAL targets rather than
+// item.Targets so a trigger or ability whose target has left is skipped
+// the same way the engine would skip it.
+func retargetTheTargetedItem(ctx *Context, reason string, policy game.RetargetPolicy, optional bool) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return ChangeTargets{
+			StackID:  t.ID,
+			Policy:   policy,
+			Optional: optional,
+			Reason:   reason,
+		}.Apply(ctx)
+	}
+	return nil
+}
+
+// changeTheTargetEffect is retargetTheTargetedItem as the mandatory
+// "change the target of …" body of a trigger or ability.
+func changeTheTargetEffect(reason string) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		return retargetTheTargetedItem(NewContext(g, item), reason, game.RetargetChangeOne, false)
+	}
+}
+
+// changeTheTarget is the same as an `OnResolve` body, for the spells.
+func changeTheTarget(reason string) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		return changeTheTargetEffect(reason)(ctx.Game, item)
+	}
+}
+
+// chooseNewTargets is the "you may choose new targets for / change the
+// targets of …" family (Redirect, Goblin Flectomancer): every slot may
+// move, and declining is allowed.
+func chooseNewTargets(reason string) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		return retargetTheTargetedItem(NewContext(g, item), reason, game.RetargetChooseNew, true)
+	}
+}
+
+// AnActivatedAbilityItem passes for an activated ability on the stack —
+// Reroute's "target activated ability". Triggered abilities and spells
+// fail it; a mana ability never reaches the stack, which is the printed
+// "(Mana abilities can't be targeted.)".
+func AnActivatedAbilityItem() StackItemPredicate {
+	return func(_ *game.Game, _ uuid.UUID, item *game.StackItem) bool {
+		return item.Kind == game.StackItemActivated
+	}
+}
+
+// TargetsOnlyACreature is "target spell that targets only a single
+// creature" (Muck Drubb): one slot, and what it names is a creature on
+// the battlefield. A player, a spell or a creature card elsewhere does
+// not qualify.
+func TargetsOnlyACreature() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		item := g.StackItemForEffect(c.InstanceID)
+		if item == nil || len(item.Targets) != 1 || item.Targets[0].Kind != game.TargetCard {
+			return false
+		}
+		t, ok := g.LookupCardForEffect(item.Targets[0].ID)
+		return ok && t.IsCreature() && g.Battlefield.Contains(t.InstanceID)
+	}
+}

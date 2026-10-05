@@ -172,7 +172,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "group",
     owners: [`${BOARD}ExileStrip.svelte`, `${BOARD}CommandStrip.svelte`],
-    doc: "a seat's command zone beside its hand (#2349): yours in the castable strip, others' in their command strip",
+    doc: "a seat's command zone beside its hand (#2349): yours in the castable strip, others' in their command strip; the tutorial's commander step and the table.commander hint anchor to yours, within your board",
   }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
@@ -195,7 +195,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "region",
     owners: [`${BOARD}StackLaneHost.svelte`, `${BOARD}StackOverlay.svelte`],
-    doc: "the stack pile (ADR 0119), and the floating stack overlay",
+    doc: "the stack pile (ADR 0119), and the floating stack overlay; the tutorial's stack step anchors here",
   }),
   attention: label({
     name: "attention",
@@ -269,7 +269,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "dialog",
     owners: ["routes/Game.svelte"],
-    doc: "the opening hand sheet",
+    doc: "the opening hand sheet; the tutorial's play-land and cast-creature steps detour here while it waits",
   }),
   keepHand: label({
     name: "Keep hand",
@@ -346,7 +346,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "dialog",
     owners: [`${BOARD}OpeningRollDock.svelte`],
-    doc: "the opening roll's request",
+    doc: "the opening roll's request; the tutorial's roll step anchors here while the viewer owes a die",
   }),
   roll: label({
     name: "Roll",
@@ -367,7 +367,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "dialog",
     owners: [`${BOARD}OpeningRollDock.svelte`],
-    doc: "the roll winner's sheet",
+    doc: "the roll winner's sheet; the tutorial's roll step detours here",
   }),
   goesFirst: dynamicLabel({
     stem: " goes first",
@@ -396,7 +396,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "dialog",
     owners: ["lib/openingRoll.ts"],
-    doc: "the confirm when the chooser gives the first turn away, with Confirm and Cancel",
+    doc: "the confirm when the chooser gives the first turn away, with Confirm and Cancel; in the tutorial's roll detour",
   }),
   confirm: label({
     name: "Confirm",
@@ -410,7 +410,7 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "group",
     owners: [`${BOARD}OpeningRollBanner.svelte`],
-    doc: "the strip's banner during the roll; stands in for opening hand decisions until the winner chooses",
+    doc: "the strip's banner during the roll; stands in for opening hand decisions until the winner chooses; the tutorial's roll step anchors here while the table waits on the bot",
   }),
 
   // -- The ⋯ menu --

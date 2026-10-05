@@ -346,6 +346,22 @@ func lootOne(g *game.Game, item *game.StackItem, n int) error {
 	return nil
 }
 
+// drawTwoThenDiscardOne is "draw two cards, then discard a card" as a
+// modal bullet's body — Three Steps Ahead's and Sultai Charm's. The draw
+// is the statement above the queue because the discard prompt is built
+// from the post-draw hand.
+func drawTwoThenDiscardOne(item *game.StackItem, ctx *Context, _ int) error {
+	if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
+		return err
+	}
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      1,
+	})
+	return nil
+}
+
 // --- S21 sub-PR 3: aristocrats helpers ---------------------------
 
 // diedCreature resolves the creature that just died from a dies
@@ -1399,4 +1415,15 @@ func counterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
+}
+
+// putChargeCounterOnThis is "put a charge counter on this permanent"
+// as a trigger body (Door of Destinies, Black Market). A source that
+// left and came back in response is a new object, so the counter goes
+// nowhere (#1432).
+func putChargeCounterOnThis(g *game.Game, item *game.StackItem) error {
+	if sourceIsNewObject(g, item) { // #1432
+		return nil
+	}
+	return g.AddCounterForEffect(item.SourceCardID, "charge", 1)
 }

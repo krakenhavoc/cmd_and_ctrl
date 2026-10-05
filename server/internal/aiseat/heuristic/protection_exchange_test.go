@@ -31,6 +31,8 @@ func TestKillsRespectsProtection(t *testing.T) {
 	proRed := protocol.ProtectionView{Printed: "red", Kind: "color", Value: "R"}
 	proDemons := protocol.ProtectionView{Printed: "Demons", Kind: "subtype", Value: "Demon"}
 	proEverything := protocol.ProtectionView{Printed: "everything", Kind: "everything"}
+	proMV3 := protocol.ProtectionView{Printed: "mana value 3 or less", Kind: "mana_value_at_most", Value: "3"}
+	proRingBearers := protocol.ProtectionView{Printed: "Ring-bearers", Kind: "ring_bearer"}
 
 	for _, tc := range []struct {
 		name string
@@ -60,6 +62,31 @@ func TestKillsRespectsProtection(t *testing.T) {
 			name: "a Demonlord is not a Demon",
 			a:    creature([]string{"B"}, "Creature — Demonlord", 6, 6),
 			b:    creature([]string{"W"}, "Creature — Angel", 5, 5, proDemons),
+			want: true,
+		},
+		{
+			// #2181: the cost the wire already carries, read as a mana value.
+			name: "a mana value 3 creature does not kill a creature with protection from mana value 3 or less",
+			a:    &protocol.CardView{TypeLine: "Creature — Bear", ManaCost: "{1}{G}{G}", Power: 8, Toughness: 8},
+			b:    creature([]string{"W"}, "Artifact Creature — Vehicle", 10, 10, proMV3),
+			want: false,
+		},
+		{
+			name: "a mana value 4 creature kills it",
+			a:    &protocol.CardView{TypeLine: "Creature — Bear", ManaCost: "{2}{G}{G}", Power: 10, Toughness: 8},
+			b:    creature([]string{"W"}, "Artifact Creature — Vehicle", 10, 10, proMV3),
+			want: true,
+		},
+		{
+			name: "a Ring-bearer does not kill a creature with protection from Ring-bearers",
+			a:    &protocol.CardView{TypeLine: "Creature — Hobbit", RingBearer: true, Power: 6, Toughness: 6},
+			b:    creature([]string{"B"}, "Creature — Wraith", 4, 3, proRingBearers),
+			want: false,
+		},
+		{
+			name: "a creature that is not a Ring-bearer does",
+			a:    &protocol.CardView{TypeLine: "Creature — Hobbit", Power: 6, Toughness: 6},
+			b:    creature([]string{"B"}, "Creature — Wraith", 4, 3, proRingBearers),
 			want: true,
 		},
 		{

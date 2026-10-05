@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"{T}: Add {A}."
 //	"{T}: Add {B}. Activate only if you control a <X> or a <Y>."
 //
-// Six of the ten, the six played across the decks that reach this
+// Seven of the ten, the seven played across the decks that reach this
 // file.
 //
 // A verge is two separate mana abilities, the second carrying a CR
@@ -41,6 +41,7 @@ func init() {
 		{"977c2f33-b622-4172-9efb-7f523becd32b", "Blazemire Verge", "B", "R", "Swamp", "Mountain", "a Swamp or a Mountain"},
 		{"510a6ac5-f098-4145-ac07-771b1b6f7cdf", "Riverpyre Verge", "R", "U", "Island", "Mountain", "an Island or a Mountain"},
 		{"cce328b9-6100-417e-9ddf-808bbe3e3bc5", "Hushwood Verge", "G", "W", "Forest", "Plains", "a Forest or a Plains"},
+		{"e861bc08-4f0b-4d22-9b85-9d20227fd5b4", "Thornspire Verge", "R", "G", "Mountain", "Forest", "a Mountain or a Forest"},
 	} {
 		x, y := MatchLandSubtype(t.x), MatchLandSubtype(t.y)
 		Register(Spec{

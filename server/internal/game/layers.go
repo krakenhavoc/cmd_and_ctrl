@@ -307,6 +307,14 @@ type StaticAbility struct {
 	// tables with no such card in play. See layerVersionBump.OnEvent.
 	DependsOnExile bool
 
+	// DependsOnManaPool is DependsOnHandSize for a player's mana pool —
+	// Omnath, Locus of Mana's "gets +1/+1 for each unspent green mana
+	// you have" (#2363). The pool changes with every land tap and every
+	// spell, so the bump is gated on a permanent declaring this being
+	// in play; see layerVersionBump.OnEvent's mana arm and
+	// manaPoolStaticIsLiveLocked.
+	DependsOnManaPool bool
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more

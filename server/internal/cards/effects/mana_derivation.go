@@ -66,6 +66,9 @@ const (
 	// ManaRestrictMulticolored — spend only on an object of two or more
 	// colours (Pillar of the Paruns, Obsidian Obelisk; #1600).
 	ManaRestrictMulticolored = game.ManaRestrictMulticolored
+	// ManaRestrictNoGeneric — "can't be spent to pay generic mana
+	// costs" (Jegantha, the Wellspring; #2170).
+	ManaRestrictNoGeneric = game.ManaRestrictNoGeneric
 )
 
 // ManaRestrictType restricts a token to objects with the named card

@@ -227,6 +227,9 @@ type CardDef struct {
 	// folded in. Read from the battlefield through CatalogHandSize, keyed
 	// by CatalogAbilityKey; see max_hand_size.go.
 	HandSize []HandSizeStatic
+	// ManaPool are this permanent's printed statics over a pool (Upwelling,
+	// Omnath, Kruphix; #2166), read through CatalogManaPool, mana_keep.go.
+	ManaPool []ManaPoolStatic
 	// PlayerKeywords are the abilities this permanent's printed
 	// static gives its CONTROLLER — "You have hexproof" (Leyline of
 	// Sanctity, Aegis of the Gods). Engine ability tokens, in the
@@ -698,6 +701,12 @@ func init() {
 	CatalogCounterShields = func(key string) []CounterShieldStatic {
 		if d := catalogDef(key); d != nil {
 			return d.SpellsCantBeCountered
+		}
+		return nil
+	}
+	CatalogManaPool = func(key string) []ManaPoolStatic {
+		if d := catalogDef(key); d != nil {
+			return d.ManaPool
 		}
 		return nil
 	}

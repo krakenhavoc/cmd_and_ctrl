@@ -94,7 +94,7 @@ func view() protocol.GameView {
 				Library: protocol.ZoneView{Kind: "library", Count: 55},
 			},
 		},
-		Turn: protocol.TurnView{Number: 7, ActiveSeat: 0, PriorityHolder: 0, Step: "precombat_main"},
+		Turn: protocol.TurnView{Seq: 7, Number: 7, ActiveSeat: 0, PriorityHolder: 0, Step: "precombat_main"},
 	}
 }
 

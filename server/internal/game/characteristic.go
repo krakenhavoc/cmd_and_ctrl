@@ -73,6 +73,18 @@ type Characteristic struct {
 	// client's badge; nothing but the projection reads it.
 	AllCreatureTypes bool
 
+	// SourceManaValue, SourceManaValueKnown and SourceRingBearer are
+	// facts about a protection SOURCE (CR 702.16a), not characteristics
+	// a layer computes: the source's mana value (CR 202.3) and whether
+	// it is its controller's Ring-bearer (CR 701.54e). They are written
+	// only by the source-snapshot builders (SourceCharacteristics,
+	// lastKnownSourceCharacteristics) and read only by
+	// ProtectionQuality.Matches; the layer pass never sets them and
+	// sameCharacteristic ignores them. #2181, #2145.
+	SourceManaValue      int
+	SourceManaValueKnown bool
+	SourceRingBearer     bool
+
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless
 	// Forest land") applied to this object in layer 6.
