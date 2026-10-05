@@ -9,7 +9,7 @@
 //   1. each entry's owner files reference `L.<key>`;
 //   2. no other file under client/src carries a literal copy of a
 //      registered `aria` name;
-//   3. every tutorial anchor (and, from ADR 0125 PR 4, every hint's) is
+//   3. every tutorial anchor and every first-use hint's anchor is
 //      registered here;
 //   4. docs/labels.md, which is generated from this file, is current
 //      (`UPDATE_LABELS_DOC=1 npm test -- labels` rewrites it).
@@ -509,6 +509,13 @@ export const LABEL_SPECS = {
   }),
 
   // -- Everywhere --
+  tip: label({
+    name: "tip",
+    kind: "aria",
+    role: "complementary",
+    owners: ["lib/components/hints/HintCard.svelte"],
+    doc: "a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it",
+  }),
   keyboardShortcuts: label({
     name: "keyboard shortcuts",
     kind: "text",

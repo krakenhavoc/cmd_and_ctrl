@@ -24,9 +24,9 @@
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { stampManaEnforcement } from "../lib/manaEnforcement";
   import { isStaleAbilityRefError } from "../lib/abilityRef";
-  import { closeCardMenu } from "../lib/contextMenu";
-  import { closeManaSourcePicker } from "../lib/manaSourcePicker";
-  import { closeAbilityPopover } from "../lib/abilityPopover";
+  import { cardMenu, closeCardMenu } from "../lib/contextMenu";
+  import { closeManaSourcePicker, manaSourcePicker } from "../lib/manaSourcePicker";
+  import { abilityPopover, closeAbilityPopover } from "../lib/abilityPopover";
   import {
     canManageTable,
     canSpawn,
@@ -57,7 +57,13 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
-  import { confirmAction } from "../lib/dock";
+  import { confirmAction, dockRequests } from "../lib/dock";
+  import { modalOpen } from "../lib/modalLayers";
+  import {
+    publishTableMoment,
+    stackTopController,
+    type TableState,
+  } from "../lib/hints/tableMoment";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import OpeningRollBanner from "../lib/components/board/OpeningRollBanner.svelte";
   import OpeningRollDock from "../lib/components/board/OpeningRollDock.svelte";
@@ -1064,6 +1070,69 @@
     if (w !== coachSize.w || h !== coachSize.h) coachSize = { w, h };
   }
   const coachShown = $derived(coachMounted && coachSize.w > 0);
+
+  // ---- First-use hints: the table's quiet moment (ADR 0125 §3.5) ----
+  // The hint layer is mounted at the app shell, so the table tells it
+  // what it needs to know: is a decision open (a dock request or a
+  // dialog), is the viewer mid-gesture (targeting, a held pointer for a
+  // drag, an open card menu or popover), does an opponent's item sit on
+  // top of the stack while the viewer holds priority, and is the coach
+  // up. lib/hints/tableMoment.ts decides; nothing here gates a hint.
+  // Only a seated viewer's table publishes one: no table hint is for a
+  // spectator.
+  const tableOnScreenSince = Date.now();
+  let pointerHeld = $state(false);
+  $effect(() => {
+    const down = () => (pointerHeld = true);
+    const up = () => (pointerHeld = false);
+    window.addEventListener("pointerdown", down, true);
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", up, true);
+    window.addEventListener("blur", up);
+    return () => {
+      window.removeEventListener("pointerdown", down, true);
+      window.removeEventListener("pointerup", up, true);
+      window.removeEventListener("pointercancel", up, true);
+      window.removeEventListener("blur", up);
+    };
+  });
+  const hintTable = $derived<TableState | null>(
+    dockShown && view
+      ? {
+          moment: {
+            since: tableOnScreenSince,
+            dockRequest: $dockRequests.length > 0,
+            dialog: $modalOpen,
+            gesture:
+              !!$targeting ||
+              pointerHeld ||
+              !!$cardMenu ||
+              !!$abilityPopover ||
+              !!$manaSourcePicker ||
+              combatSelection !== null,
+            viewerHasPriority,
+            stackTopController: stackTopController(view),
+            viewerID,
+            coachVisible: coachShown,
+          },
+          view,
+          viewerID,
+        }
+      : null,
+  );
+  let hintPublisher: ReturnType<typeof publishTableMoment> | null = null;
+  $effect(() => {
+    const t = hintTable;
+    if (!t) {
+      hintPublisher?.close();
+      hintPublisher = null;
+    } else if (!hintPublisher) {
+      hintPublisher = publishTableMoment(t);
+    } else {
+      hintPublisher.update(t);
+    }
+  });
+  onDestroy(() => hintPublisher?.close());
   // PR 6: an open sheet's width (0 when none), published as --sheet-w
   // with `.sheet-open`, so the hover zoom moves left of the sheet (§4).
   let sheetW = $state(0);
