@@ -37,6 +37,7 @@
 
 import type { Readable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import type { LabelRef } from "./labels";
 import type { GameView } from "./protocol";
 import type { TutorialEvent } from "./tutorialBus";
 
@@ -64,20 +65,26 @@ export const HINT_AFTER_MS = 20_000;
 export const TOUCH_HOVER_STEP_MS = 12_000;
 
 /**
- * What a spotlight points at. Anchors are the aria-labels the e2e suite
- * asserts on (ADR 0076 §2.4), so renaming one breaks a test before it
- * breaks the tutorial.
+ * What a spotlight points at. A label anchor names an entry in the
+ * contract-label registry (labels.ts, ADR 0125 §2.2): a registered aria
+ * name, matched exactly, or a dynamic entry's stem (`L.<key>.any`),
+ * matched by prefix, suffix or substring. `LabelRef` is branded, so an
+ * anchor cannot be spelled as a raw string, and labels.test.ts fails
+ * when a registered label's owner stops rendering it.
  *
  * `within` scopes the label to a labelled container. It is not optional
  * in practice for the battlefield rows: every opponent's panel carries
- * the same "lands" and "creatures" lists as the viewer's, so those
- * anchors are `{ label: "lands", within: "your board" }`.
+ * the same lands and creatures lists as the viewer's, so those anchors
+ * are `{ label: L.lands, within: L.yourBoard }`.
  *
  * `cardID` is a card's data-instance-id (Card.svelte), and `seatID` a
  * seat's portrait (PlayerIdentity's data-seat-id, which CombatArrows
  * already anchors to).
  */
-export type Anchor = { label: string; within?: string } | { cardID: string } | { seatID: string };
+export type Anchor =
+  | { label: LabelRef; within?: LabelRef }
+  | { cardID: string }
+  | { seatID: string };
 
 /**
  * The step kinds. `opening` and `done` are the two button steps (1 and

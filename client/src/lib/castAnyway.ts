@@ -21,11 +21,12 @@ import { type Writable } from "svelte/store";
 
 import { guardedWritable } from "./guardedStore";
 import type { CardView } from "./protocol";
+import { L } from "./labels";
 import type { CastAnywayZone } from "./timing";
 
 // The row's text and accessible name: a label contract (AGENTS.md §5).
 // cast-anyway-2188.spec.ts selects the menu item by it.
-export const CAST_ANYWAY_LABEL = "Cast anyway (don't pay)";
+export const CAST_ANYWAY_LABEL = L.castAnyway;
 // The row's title on a live row.
 export const CAST_ANYWAY_TITLE =
   "Cast it without paying its mana cost. The game log shows the table.";

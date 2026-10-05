@@ -39,6 +39,7 @@
   import { openZoneBrowser } from "../../zoneBrowser";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import { seatColor } from "../../colors";
+  import { L } from "../../labels";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -223,7 +224,7 @@
   class:active={isActive}
   class:seat-turn={isActive}
   role="region"
-  aria-label={`${seat.name} board`}
+  aria-label={L.seatBoard(seat.name)}
 >
   <div class="top">
     <PlayerIdentity

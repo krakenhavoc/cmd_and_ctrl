@@ -122,6 +122,7 @@
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
+  import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
 
   interface Props {
@@ -1872,7 +1873,7 @@
                    dealt. Everyone sees it, spectators included. -->
               <OpeningRollBanner {view} />
             {:else if mulligansOpen && !gameEnded}
-              <div class="att mulligan-banner" aria-label="opening hand decisions">
+              <div class="att mulligan-banner" aria-label={L.openingHandDecisions}>
                 <span class="att-label">Opening hands</span>
                 {#if openingRoll}
                   <span class="opening-roll" style="--seat-color: {seatColor(openingRoll.seat)}">
@@ -2091,11 +2092,11 @@
              table and the roll call stay readable. -->
         <DockSheet
           rank="choice"
-          label="keep or mulligan your hand"
+          label={L.mulligan}
           title="Your opening hand"
           width={720}
           sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
-          primary={confirmAction("Keep hand", keepHand, { id: "keep" })}
+          primary={confirmAction(L.keepHand, keepHand, { id: "keep" })}
           secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
         >
           <div class="mulligan-copy">

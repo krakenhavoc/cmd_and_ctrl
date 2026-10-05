@@ -10,7 +10,6 @@ import {
   createTutorialRun,
   statusText,
   type CopyContext,
-  type StepContext,
   type TutorialStep,
 } from "./tutorial";
 import {
@@ -29,7 +28,19 @@ import {
   WELCOME,
   abilityCardID,
 } from "./tutorialSteps";
-import type { CardView, GameView } from "./protocol";
+import type { GameView } from "./protocol";
+import {
+  BOT,
+  ME,
+  auto,
+  board,
+  card,
+  ctx,
+  elves,
+  forest,
+  walker,
+  type Board,
+} from "./test/tutorialBoards";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -38,99 +49,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const ME = "me";
-const BOT = "bot";
 const keys: CopyContext = { helpKey: "?", settingsKey: ",", nextKey: "Space" };
 const noKeys: CopyContext = { helpKey: "", settingsKey: "", nextKey: "" };
-
-let n = 0;
-function card(name: string, type: string, extra: Partial<CardView> = {}): CardView {
-  n += 1;
-  return {
-    instance_id: `${name.toLowerCase().replace(/\W+/g, "-")}-${n}`,
-    name,
-    owner: ME,
-    controller: ME,
-    type_line: type,
-    ...extra,
-  } as CardView;
-}
-const forest = (extra: Partial<CardView> = {}) =>
-  card("Forest", "Basic Land — Forest", {
-    mana_abilities: [{ index: 0, label: "Add {G}" }] as unknown as CardView["mana_abilities"],
-    ...extra,
-  });
-const elves = (extra: Partial<CardView> = {}) =>
-  card("Llanowar Elves", "Creature — Elf Druid", {
-    mana_abilities: [{ index: 0, label: "Add {G}" }] as unknown as CardView["mana_abilities"],
-    ...extra,
-  });
-const walker = (extra: Partial<CardView> = {}) =>
-  card("Phyrexian Walker", "Artifact Creature — Phyrexian Construct", extra);
-
-interface Board {
-  step?: string;
-  active?: number;
-  priority?: number;
-  seq?: number;
-  mine?: CardView[];
-  theirs?: CardView[];
-  hand?: CardView[];
-  pool?: string[];
-  landsPlayed?: number;
-  stack?: CardView[];
-}
-
-function board(b: Board = {}): GameView {
-  const zone = (kind: string, cards: CardView[] = []) => ({ kind, count: cards.length, cards });
-  const seat = (id: string, i: number, hand: CardView[] = []) => ({
-    id,
-    name: id === ME ? "Player" : "Practice Bot",
-    seat: i,
-    life: 40,
-    library: zone("library"),
-    hand: zone("hand", hand),
-    graveyard: zone("graveyard"),
-    command: zone("command"),
-    mana_pool: id === ME ? (b.pool ?? []) : [],
-    lands_played_this_turn: id === ME ? (b.landsPlayed ?? 0) : 0,
-  });
-  return {
-    id: "g",
-    state: "active",
-    seats: [seat(ME, 0, b.hand ?? [forest(), elves()]), seat(BOT, 1)],
-    battlefield: zone("battlefield", [
-      ...(b.mine ?? []),
-      ...(b.theirs ?? []).map((c) => ({ ...c, owner: BOT, controller: BOT })),
-    ]),
-    stack: zone("stack", b.stack ?? []),
-    exile: zone("exile"),
-    stack_items: [],
-    turn: {
-      seq: b.seq ?? 1,
-      number: 1,
-      active_seat: b.active ?? 0,
-      priority_holder: b.priority ?? b.active ?? 0,
-      phase: "",
-      step: b.step ?? "precombat_main",
-    },
-    mulligans_open: false,
-  } as unknown as GameView;
-}
-
-const ctx = (
-  view: GameView | null,
-  start: GameView | null = view,
-  event = null,
-  autopass = false,
-): StepContext => ({
-  view,
-  start,
-  viewerID: ME,
-  event,
-  client: { autopass },
-});
-const auto = (view: GameView | null, start: GameView | null = view) => ctx(view, start, null, true);
 
 describe("the script", () => {
   it("is eleven steps in ADR 0076 §2.1's order, ids and kinds", () => {

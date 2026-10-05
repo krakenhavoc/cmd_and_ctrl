@@ -36,6 +36,7 @@
     type GameMenuOptions,
   } from "../../gameMenu";
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
+  import { L } from "../../labels";
 
   type Props = GameMenuOptions & {
     // "up": the dock's chip. "down": the command bar's icon.
@@ -158,7 +159,7 @@
     bind:this={trigger}
     aria-haspopup="menu"
     aria-expanded={mode !== "closed"}
-    aria-label="more actions"
+    aria-label={L.moreActions}
     title={props.seated ? "sandbox actions and more" : "life history, the table and more"}
     onclick={toggle}><Icon name="more" size={placement === "up" ? 15 : 17} /></button
   >
@@ -168,7 +169,13 @@
   {/if}
 
   {#if mode === "menu"}
-    <div class="pop menu" role="menu" aria-label="game actions" tabindex="-1" onkeydown={onMenuKey}>
+    <div
+      class="pop menu"
+      role="menu"
+      aria-label={L.gameActions}
+      tabindex="-1"
+      onkeydown={onMenuKey}
+    >
       {#if props.seated}
         <div class="menu-h">Sandbox</div>
         <button class="mi" role="menuitem" onclick={via(props.onDraw)} title={props.drawTitle}>
@@ -205,7 +212,7 @@
              game roll and never undone. Disabled for 2 s after the
              viewer's own roll, matching the server's rate. -->
         {@const ready = props.tableRoll.ready}
-        <div class="menu-h">Dice</div>
+        <div class="menu-h">{L.dice}</div>
         {#each TABLE_ROLL_ITEMS as item (item.die)}
           <button
             class="mi"
