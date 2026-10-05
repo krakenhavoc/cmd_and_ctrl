@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // Handler serves the roadmap:
@@ -29,7 +31,7 @@ import (
 // bytes are written to every request. Any method other than GET or
 // HEAD is answered 405 by the method-aware mux.
 func Handler() http.Handler {
-	mux := http.NewServeMux()
+	mux := metrics.NewServeMux()
 	mux.HandleFunc("GET /roadmap", func(w http.ResponseWriter, _ *http.Request) {
 		body, err := encoded()
 		if err != nil {

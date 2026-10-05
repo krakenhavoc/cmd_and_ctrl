@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // Handler returns the catalog routes:
@@ -54,7 +55,7 @@ import (
 // answer on a deployment whose dump has not been downloaded yet. A
 // nil cache disables images alone.
 func Handler(idx *cards.Index, cache *cards.ImageCache) http.Handler {
-	mux := http.NewServeMux()
+	mux := metrics.NewServeMux()
 
 	mux.HandleFunc("GET /catalog", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
