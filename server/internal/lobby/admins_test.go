@@ -90,6 +90,7 @@ func newAdminStackIn(t *testing.T, dumpDir string, idx *cards.Index, configure f
 		AdminToken:   "shared-admin-token",
 		Admins:       admins,
 		AdminSockets: hub,
+		LiveSockets:  hub,
 		Log:          log,
 		Cards:        idx,
 	}
@@ -474,6 +475,7 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 		{"GET", "/bugreport/abc/gamelog", nil},
 		{"POST", "/admin/users/" + uuid.New().String() + "/revoke-sessions", nil},
 		{"GET", "/games/" + meta.ID.String() + "/bot/stats", nil},
+		{"GET", "/admin/live", nil},
 		// Last: it deletes the table the others use.
 		{"DELETE", "/games/" + meta.ID.String(), nil},
 	}

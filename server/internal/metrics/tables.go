@@ -139,42 +139,83 @@ func (c *tablesCollector) Describe(ch chan<- *prometheus.Desc) {
 
 type seatKey struct{ game, player Key }
 
-type connectedKey struct{ kind, account string }
+// GamesKey is one cmdctrl_games series: a table state and whether the
+// table is archived.
+type GamesKey struct {
+	State    string
+	Archived bool
+}
 
-func (c *tablesCollector) Collect(ch chan<- prometheus.Metric) {
-	// The hub first, then the lobby, each through its own accessor:
-	// never two locks at once (see Locking above).
-	sockets := c.sockets.MetricsSockets()
-	tables := c.tables.MetricsTables()
+// ConnectedKey is one cmdctrl_seats_connected series: a seat kind and
+// whether a signed-in person holds the seat (AccountSignedIn or
+// AccountGuest).
+type ConnectedKey struct {
+	Kind    string
+	Account string
+}
 
-	roles := map[string]int{}
+// Counts is what the tables collector reports, before it is turned
+// into series. Every map is keyed by a label value; a key that is not
+// there counts zero.
+type Counts struct {
+	// Games counts the non-practice tables by state and archived
+	// (cmdctrl_games).
+	Games map[GamesKey]int
+	// Practice counts the practice tables (cmdctrl_practice_games).
+	Practice int
+	// Seats counts the seats at active tables by kind (cmdctrl_seats).
+	Seats map[string]int
+	// Connected counts the seats at active tables with a live seat
+	// socket, by kind and account (cmdctrl_seats_connected). Bot seats
+	// are never in it.
+	Connected map[ConnectedKey]int
+	// Roles counts the live sockets by role (cmdctrl_ws_connections);
+	// Roles[RoleSpectator] is cmdctrl_spectators_connected.
+	Roles map[string]int
+}
+
+// PlayersConnected is the Overview's "Players connected" tile: every
+// seat at an active table with a live socket, human or agent, signed
+// in or guest (the sum of cmdctrl_seats_connected).
+func (c Counts) PlayersConnected() int {
+	n := 0
+	for _, v := range c.Connected {
+		n += v
+	}
+	return n
+}
+
+// Tally counts tables and sockets the way the tables collector
+// reports them. It is the one definition of those numbers: the
+// collector emits its gauges from it, and the admin views' Live now
+// (ADR 0124 §5) computes its totals with it, so the page and the
+// Grafana tiles cannot count differently. It is pure: it reads only
+// its arguments and takes no lock.
+func Tally(tables []Table, sockets []Socket) Counts {
+	out := Counts{
+		Games:     map[GamesKey]int{},
+		Seats:     map[string]int{},
+		Connected: map[ConnectedKey]int{},
+		Roles:     map[string]int{},
+	}
 	live := map[seatKey]bool{}
 	for _, s := range sockets {
-		roles[s.Role]++
+		out.Roles[s.Role]++
 		if s.Role == RoleSeat {
 			live[seatKey{s.Game, s.Player}] = true
 		}
 	}
-
-	type gameKey struct {
-		state    string
-		archived bool
-	}
-	games := map[gameKey]int{}
-	practice := 0
-	seats := map[string]int{}
-	connected := map[connectedKey]int{}
 	for _, t := range tables {
 		if t.Practice {
-			practice++
+			out.Practice++
 			continue
 		}
-		games[gameKey{t.State, t.Archived}]++
+		out.Games[GamesKey{t.State, t.Archived}]++
 		if t.State != "active" || t.Archived {
 			continue
 		}
 		for _, s := range t.Seats {
-			seats[s.Kind]++
+			out.Seats[s.Kind]++
 			if s.Kind == SeatBot || !live[seatKey{t.Game, s.Player}] {
 				continue
 			}
@@ -182,31 +223,40 @@ func (c *tablesCollector) Collect(ch chan<- prometheus.Metric) {
 			if s.SignedIn {
 				account = AccountSignedIn
 			}
-			connected[connectedKey{s.Kind, account}]++
+			out.Connected[ConnectedKey{s.Kind, account}]++
 		}
 	}
+	return out
+}
+
+func (c *tablesCollector) Collect(ch chan<- prometheus.Metric) {
+	// The hub first, then the lobby, each through its own accessor:
+	// never two locks at once (see Locking above).
+	sockets := c.sockets.MetricsSockets()
+	tables := c.tables.MetricsTables()
+	n := Tally(tables, sockets)
 
 	// Every series in each closed set is reported, zeros included, and
 	// nothing outside it: a state or kind the sets do not name is not
 	// a series.
 	for _, st := range tableStateLabels {
 		for _, a := range archivedLabels {
-			n := games[gameKey{st, a == "true"}]
-			ch <- prometheus.MustNewConstMetric(gamesDesc, prometheus.GaugeValue, float64(n), st, a)
+			v := n.Games[GamesKey{st, a == "true"}]
+			ch <- prometheus.MustNewConstMetric(gamesDesc, prometheus.GaugeValue, float64(v), st, a)
 		}
 	}
-	ch <- prometheus.MustNewConstMetric(practiceGamesDesc, prometheus.GaugeValue, float64(practice))
+	ch <- prometheus.MustNewConstMetric(practiceGamesDesc, prometheus.GaugeValue, float64(n.Practice))
 	for _, k := range seatKindLabels {
-		ch <- prometheus.MustNewConstMetric(seatsDesc, prometheus.GaugeValue, float64(seats[k]), k)
+		ch <- prometheus.MustNewConstMetric(seatsDesc, prometheus.GaugeValue, float64(n.Seats[k]), k)
 	}
 	for _, k := range connectedKindLabels {
 		for _, a := range accountLabels {
 			ch <- prometheus.MustNewConstMetric(seatsConnectedDesc, prometheus.GaugeValue,
-				float64(connected[connectedKey{k, a}]), k, a)
+				float64(n.Connected[ConnectedKey{k, a}]), k, a)
 		}
 	}
-	ch <- prometheus.MustNewConstMetric(spectatorsConnectedDesc, prometheus.GaugeValue, float64(roles[RoleSpectator]))
+	ch <- prometheus.MustNewConstMetric(spectatorsConnectedDesc, prometheus.GaugeValue, float64(n.Roles[RoleSpectator]))
 	for _, r := range roleLabels {
-		ch <- prometheus.MustNewConstMetric(wsConnectionsDesc, prometheus.GaugeValue, float64(roles[r]), r)
+		ch <- prometheus.MustNewConstMetric(wsConnectionsDesc, prometheus.GaugeValue, float64(n.Roles[r]), r)
 	}
 }
