@@ -2624,14 +2624,13 @@ var items = []Item{
 		EngineNotes: "mana restriction: the `ManaRestrict*` tags (`game/mana_restriction.go`) describe the object or the purpose a token may pay for, and no payment asks which symbol a token is spent on, so a cost's generic part (CR 107.4b) takes any token those tags allow. Needs a negative tag read per symbol, so the token is offered only to coloured and hybrid requirements, the same way in the auto-tapper, the payment solver and `internal/legal`'s probe. Jegantha's companion clause is about deck building (`deck/validate.go` doesn't support companions) and would ship as a caveat.",
 	},
 	{
-		Slug: "cant-attack-a-player-it-already-attacked", Name: "A creature that can't attack the same player twice in a turn", Kind: KindSeam, Status: StatusMissing,
+		Slug: "cant-attack-a-player-it-already-attacked", Name: "A creature that can't attack the same player twice in a turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Creatures that can't attack a player they have already attacked this turn, such as Bloodthirster, which untaps for an extra combat each time it connects.",
-		Missing:     "A creature can be stopped from attacking its owner, or a player who is missing something, but not a player it already attacked this turn.",
 		Rules:       []string{"508.1c"},
 		Issue:       2171,
-		Tracked:     "#2171 (S58 tracker #2077)",
-		Waiting:     []string{"Bloodthirster"},
-		EngineNotes: "attack restriction: `game.AttackTargetRestriction` (`game/attack_target_restrictions.go`) refuses a target by its owner or by the defending player's state, and no clause reads the turn's attacks. `TurnTally.Attacks` (`game/turn_tally.go`) already records each `AttackRecord`'s attacker, object epoch and defender, so the new clause is a lookup; the attack validator, the enumerator and the bot's attack picker have to offer only the players left. Bloodthirster's untap and \"After this phase, there is an additional combat phase\" (`ExtraCombatAfterThisPhase`) work.",
+		Printed:     printedWords("can't attack a player it has already attacked this turn"),
+		Examples:    []string{"Bloodthirster"},
+		EngineNotes: "**Shipped** (#2171). `game.AttackTargetRestriction.NotAlreadyAttackedThisTurn` refuses a player the attacker (same object epoch, CR 400.7) already attacked this turn, read off `TurnTally.Attacks` through `AttackedPlayersThisTurn`. It rides the same predicate as the owner clauses, `canAttackTargetWithLocked`, so both declaration verbs, the CR 508.1d search and the enumerator's per-attacker list (`AttackTargetsForAttackerForEffect`) all offer only the players left; planeswalkers and battles are never refused by it. The card helper is `effects.CantAttackAPlayerItAlreadyAttackedThisTurn()`, a layer-6 self static. Snapshot: the clause is an additive field.",
 	},
 	{
 		Slug: "cant-be-blocked-by-a-players-creatures", Name: "Can't be blocked by one player's creatures", Kind: KindSeam, Status: StatusMissing,
