@@ -426,30 +426,44 @@ then needs re-authorizing once. The install URL is in
 ## Uptime watcher
 
 `.github/workflows/uptime.yml` (logic in `scripts/uptime-watch.sh`) is the
-off-node check: every 10 minutes a GitHub-hosted runner curls
-`https://cmd.labxp.io/healthz` and `https://cmd-dev.labxp.io/healthz`, three
-tries 20 s apart, and one 2xx is up. It exists because the August outage was
-the box serving nothing at all, which nothing on the box could report
+off-node check, and it watches the monitoring VM, not the sites. Cloudflare's
+Bot Fight Mode challenges GitHub runners with a 403 and no WAF rule can skip
+it, so a runner cannot curl `/healthz`. Instead the VM sends a **heartbeat**:
+the HomeLab monitoring VM writes the repo Actions variable
+`CMDCTRL_MONITORING_HEARTBEAT` (Unix epoch seconds) every 5 minutes, but only
+while its Prometheus and Alertmanager are ready. Every 10 minutes a
+GitHub-hosted runner reads it. This is the check for the failure nothing on
+the VM can report: the Proxmox node, the house's internet or the monitoring
+stack is down
 ([ADR 0123](decisions/0123-monitoring-metrics-logs-dashboards-and-alerts.md) §8,
-#598 item 3).
+#598 item 3). While the VM is up, its own alerts (`SiteDown`,
+`ServerNotReporting`) cover the sites.
 
-- **The state is an issue.** The first down run for an environment opens an
-  issue titled `` `prod` is down `` (or `` `dev` ``) with the label `outage`
-  and posts once to Discord. While it stays open, nothing more is posted. The
-  first up run comments the downtime, closes the issue and posts the
-  recovery. The workflow creates the `outage` label itself if it is missing.
+- **Stale** means older than 1200 s (20 minutes).
+- **The state is one issue**, titled `` `monitoring` heartbeat lost `` with
+  the label `outage`. The first stale run opens it and posts once to
+  Discord. While it stays open, nothing more is posted. The first fresh run
+  comments the gap, closes the issue and posts the recovery. The workflow
+  creates the `outage` label itself if it is missing.
+- **Not configured is not an outage.** A variable that is unset, empty or not
+  a number logs `::warning::heartbeat not configured` and does nothing else.
+  A heartbeat more than 5 minutes in the future (the VM's clock is ahead)
+  warns and counts as fresh.
 - **The secret** is the Actions secret `CMDCTRL_ALERT_DISCORD_WEBHOOK`, a
   Discord webhook URL (it can be the channel Alertmanager uses). Unset, the
-  run logs a warning and still opens and closes the issues.
+  run logs a warning and still opens and closes the issue.
+- **The writer's token lives on the HomeLab side.** The owner creates a
+  fine-grained personal access token on this repo with the permission
+  "Variables: Read and write" and stores it in HomeLab's Bitwarden. Nothing in
+  this repo holds it.
 - **Schedules run only from `main`**, so the watcher starts with the
   promotion that carries it, and GitHub may run a tick several minutes late
   or skip it under load. Fine for an outage measured in hours.
 - **Dry run.** A pull request that touches the workflow runs it as a dry
   run, and once it is on `main`, `gh workflow run uptime.yml -f dry_run=true`
-  does the same: it checks both URLs and prints whether it would open or
-  close an issue and what it would post, changing nothing. A dispatch with
+  does the same: it reads the heartbeat and prints whether it would open or
+  close the issue and what it would post, changing nothing. A dispatch with
   `dry_run=false` is live.
-- It cannot see the monitoring VM, which is LAN-only.
 
 ## Monitoring agent
 
