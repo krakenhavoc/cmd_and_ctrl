@@ -777,6 +777,49 @@ textarea::placeholder {
   line-height: 1.4;
 }
 
+/* ---- A seat's patch of table ----
+   Shared by the full board (PlayerPanel) and the summary read-out
+   (SeatSummary), so every seat sits on the same kind of surface. The
+   element sets --seat-color (lib/colors.ts). A faint wash of the seat
+   colour comes from the top-right corner, where the player's avatar
+   sits, over a surface lit slightly from above, and the edge carries
+   the seat colour too, so whose board is whose reads before any name
+   does. .seat-self is your own seat; .seat-turn is whoever's turn it
+   is, edged in the priority gold. It changes on a turn boundary and is
+   static, so reduced motion has nothing to stop. */
+.seat-panel {
+  background:
+    radial-gradient(
+      90% 70% at 100% 0%,
+      color-mix(in srgb, var(--seat-color, var(--fg-dim)) 9%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-raised) 55%, var(--surface)),
+      var(--surface) 45%,
+      color-mix(in srgb, var(--surface) 70%, var(--bg))
+    );
+  border: 1px solid color-mix(in srgb, var(--seat-color, var(--fg-dim)) 24%, var(--border));
+  box-shadow:
+    inset 0 1px 0 var(--overlay),
+    0 10px 28px color-mix(in srgb, var(--shadow-ink) 35%, transparent);
+  transition:
+    border-color 240ms var(--ease),
+    box-shadow 240ms var(--ease);
+}
+.seat-panel.seat-self {
+  border-color: color-mix(in srgb, var(--seat-color, var(--accent)) 40%, var(--border));
+}
+.seat-panel.seat-turn {
+  border-color: color-mix(in srgb, var(--priority) 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--overlay),
+    inset 0 0 0 1px color-mix(in srgb, var(--priority) 18%, transparent),
+    inset 0 0 36px color-mix(in srgb, var(--priority) 7%, transparent),
+    0 10px 28px color-mix(in srgb, var(--shadow-ink) 35%, transparent);
+}
+
 /* ---- Card-art failure marker (#33) ----
    Created by the `use:cardArt` action (lib/cardArt.ts) as the next
    sibling of a card-art <img> once its automatic retry has also

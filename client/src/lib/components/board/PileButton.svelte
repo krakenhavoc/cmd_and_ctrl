@@ -152,13 +152,17 @@
     line-height: 1.2;
     gap: 2px;
   }
+  /* Sentence case from the lower-case pile names, which stay in the
+     button's accessible name. */
   .label {
-    font-family: var(--font-mono);
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    display: inline-block;
+    font-family: var(--font-ui);
+    font-size: 10px;
     color: var(--fg-dim);
     font-weight: 600;
+  }
+  .label::first-letter {
+    text-transform: uppercase;
   }
   /* ADR 0105: "N ready" in the one ready colour. A count, not a ring:
      the thumb shows one card and the ready ones may be under it. */
