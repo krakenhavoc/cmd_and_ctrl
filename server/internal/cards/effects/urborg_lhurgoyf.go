@@ -11,22 +11,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 in your graveyard and its toughness is equal to that number
 //	 plus 1."
 //
-// Two kicker costs (CR 702.33b). The registry keys each optional cost
-// once and "kicker" is taken by {U}, so {B} is declared as a multikicker
-// capped at one payment, relabelled "Kicker {B}": the same optional
-// additional cost paid at most once, and KickedTimesPaid counts the
-// two together, which is exactly "each time it was kicked".
+// Two kicker costs (CR 702.33b), declared as printed with Kickers
+// (#2153): each is its own once-only toggle, and CardKickedTimes counts
+// the two together, which is exactly "each time it was kicked" — 3, 3
+// or 6 cards.
 //
 // The mill is an "as enters" clause (CR 614.12), so it runs from
 // AsEnters, off the stack, as the permanent arrives.
 func init() {
-	kickB := Multikicker("{B}", 1)
-	kickB.Label = "Kicker {B}"
 	Register(Spec{
 		OracleID:      "f84d8217-51a4-49ba-9df6-d080ed38f37d",
 		Name:          "Urborg Lhurgoyf",
 		Completeness:  CompletenessFull,
-		OptionalCosts: []game.AdditionalCost{Kicker("{U}"), kickB},
+		OptionalCosts: Kickers("{U}", "{B}"),
 		AsEnters: func(self *game.Card, ctx *Context) error {
 			return MillCards{Player: self.Controller, N: 3 * game.CardKickedTimes(*self)}.Apply(ctx)
 		},

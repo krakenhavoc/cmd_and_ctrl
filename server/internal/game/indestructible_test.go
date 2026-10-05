@@ -111,9 +111,8 @@ func TestIndestructibleSurvivesLethalDamageAndKeepsIt(t *testing.T) {
 // own gate — filtering only on `DamageMarked >= toughness` would let
 // a 1-damage deathtouch hit kill an indestructible creature.
 //
-// The flag is deliberately still SET on the card: it records a fact
-// about the damage event, not about the creature, for the same
-// reason the damage itself stays marked above.
+// The mark is consumed by the pass (CR 704.5h, #2319): see
+// deathtouch_sba_test.go for what that buys.
 func TestIndestructibleSurvivesDeathtouch(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -127,8 +126,8 @@ func TestIndestructibleSurvivesDeathtouch(t *testing.T) {
 	if !g.Battlefield.Contains(id) {
 		t.Fatal("indestructible creature died to a deathtouch mark")
 	}
-	if !findBattlefieldCard(g, id).MarkedLethalByDeathtouch {
-		t.Error("MarkedLethalByDeathtouch was cleared — the flag records the damage event, not the creature's state")
+	if findBattlefieldCard(g, id).MarkedLethalByDeathtouch {
+		t.Error("MarkedLethalByDeathtouch survived the SBA pass that already counted it")
 	}
 }
 

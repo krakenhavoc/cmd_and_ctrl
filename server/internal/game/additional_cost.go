@@ -101,7 +101,10 @@ type AdditionalCost struct {
 	// never has to know its own declaration order.
 	//
 	// Required and unique per card on an optional cost, meaningless
-	// on a mandatory one. Register enforces both.
+	// on a mandatory one. Register enforces both, with one exception:
+	// KickerKey may appear twice, because "Kicker {R} and/or {W}" IS
+	// two kicker abilities (CR 702.33b) and every "was it kicked" read
+	// counts them together. CardKickedWith tells the two apart (#2153).
 	Key string
 
 	// ManaCost is the mana half of the clause — kicker {4}, buyback
@@ -333,7 +336,9 @@ func OptionalCostsFor(oracleID string) []AdditionalCost {
 // kicker and multikicker because CR 702.33 counts them together, and
 // buyback because CR 702.27a changes where the spell goes.
 const (
-	// KickerKey is CR 702.33's kicker, paid at most once.
+	// KickerKey is CR 702.33's kicker, paid at most once. A card with
+	// two kicker costs (CR 702.33b) declares it on both, each paid at
+	// most once and either, both or neither (#2153).
 	KickerKey = "kicker"
 	// MultikickerKey is CR 702.33d's multikicker, paid any number of
 	// times. Counted with KickerKey by KickedTimesPaid, because "the
@@ -383,7 +388,10 @@ func optionalCostTimesFor(oracleID string, paid []int, key string) int {
 
 // KickedTimesPaid is CR 702.33's "the number of times it was kicked":
 // kicker and multikicker together, because no rules text tells them
-// apart and no card prints both.
+// apart and no card prints both. Both of a card's two kicker costs
+// share KickerKey, so "Kicker {B} and/or {R}" paid twice counts 2 —
+// CR 702.33d's "if a spell has two kicker costs … it may be kicked
+// multiple times", and Archangel of Wrath's "kicked twice".
 func KickedTimesPaid(card Card, paid []int) int {
 	return OptionalCostTimesPaid(card, paid, KickerKey) +
 		OptionalCostTimesPaid(card, paid, MultikickerKey)
@@ -396,6 +404,64 @@ func KickedTimesPaid(card Card, paid []int) int {
 // graveyard, whose record was cleared on the way out.
 func CardKickedTimes(c Card) int {
 	return KickedTimesPaid(c, c.Provenance.OptionalCosts)
+}
+
+// KickerIndices are the positions of a card's kicker costs in its
+// optional-cost list, in printed order: none, one, or — for "Kicker
+// {R} and/or {W}" (CR 702.33b) — two. Multikicker is not among them;
+// it is one cost paid many times, not a second kicker.
+func KickerIndices(costs []AdditionalCost) []int {
+	var out []int
+	for i := range costs {
+		if costs[i].Key == KickerKey {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// KickedWithPaid is CR 702.33f's "if it was kicked with its [cost]
+// kicker", on a card with two kicker costs: whether the kicker whose
+// mana is `cost` — "{R}", "{1}{G}", spelled exactly as the card file
+// declares it — is among the paid indices (#2153).
+//
+// Keyed by the printed cost because that is how the card names it:
+// CR 702.33f's A and B are "the first and second kicker costs listed
+// on the card", and the oracle text writes them out. Register refuses
+// two kicker costs with the same mana, so the cost always names one
+// of them. False for a cost the card does not declare, which is the
+// weaker-than-printed answer.
+func KickedWithPaid(card Card, paid []int, cost string) bool {
+	return kickedWithFor(CatalogKey(card), paid, cost)
+}
+
+// kickedWithFor is KickedWithPaid by catalog key.
+func kickedWithFor(oracleID string, paid []int, cost string) bool {
+	if len(paid) == 0 || cost == "" {
+		return false
+	}
+	costs := OptionalCostsFor(oracleID)
+	for _, i := range KickerIndices(costs) {
+		if costs[i].ManaCost != cost {
+			continue
+		}
+		for _, p := range paid {
+			if p == i {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+// CardKickedWith is KickedWithPaid for a permanent that has already
+// entered, reading the record carried onto it (CR 400.7d) — Thornscape
+// Battlemage's "When this creature enters, if it was kicked with its
+// {R} kicker". A token copy of the spell (CR 707.10b) carries the same
+// record, so it answers the same.
+func CardKickedWith(c Card, cost string) bool {
+	return KickedWithPaid(c, c.Provenance.OptionalCosts, cost)
 }
 
 // costPayment is one component of a cast's CR 601.2f cost: the card's

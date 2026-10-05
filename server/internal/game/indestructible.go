@@ -200,3 +200,23 @@ func (g *Game) DestructibleForEffect(ids []uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// consumeDeathtouchMarksLocked clears Card.MarkedLethalByDeathtouch on
+// every permanent once a state-based-action pass has had its chance at
+// CR 704.5h (#2319). The rule destroys a creature dealt deathtouch
+// damage "since the last time state-based actions were checked", so an
+// indestructible creature that survives the pass must not be destroyed
+// by a later pass after it loses indestructible. DamageMarked is left
+// alone — CR 704.5g still counts the damage until cleanup. A permanent
+// whose exit is paused on a prompt keeps its mark (the move is already
+// in flight).
+//
+// Caller must hold g.mu.
+func (g *Game) consumeDeathtouchMarksLocked() {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.MarkedLethalByDeathtouch && !g.zoneChangePausedLocked(c.InstanceID) {
+			c.MarkedLethalByDeathtouch = false
+		}
+	}
+}
