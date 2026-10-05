@@ -361,14 +361,17 @@
     position: relative;
   }
 
-  /* The other printed face, tucked into the bottom-right corner of
-     the scan as a small inset — present enough to read, small
-     enough not to compete with the face that is actually up. */
+  /* The other printed face, tucked into the TOP-right corner of the
+     scan as a small inset — present enough to read, small enough not
+     to compete with the face that is actually up. Top, not bottom
+     (#1965): the bottom of a card is its rules-text box, which is the
+     thing the panel is opened to read, whereas the top corner only
+     covers a title bar and mana cost the info panel repeats below. */
   .other-face {
     position: absolute;
     right: 6px;
-    bottom: 6px;
-    width: 38%;
+    top: 6px;
+    width: 30%;
     aspect-ratio: 63 / 88;
     border-radius: 6px;
     overflow: hidden;
