@@ -101,6 +101,26 @@ describe("the protection badge", () => {
     expect(container.innerHTML).not.toContain("3f1c9a52");
   });
 
+  // #2181 and #2145: the two qualities that are not characteristics.
+  // "mana value 3 or less" would abbreviate to MAN, which says nothing.
+  it("renders protection from mana value N or less as MV and the bound", () => {
+    const { container } = mount({
+      abilities: ["protection from mana value 3 or less"],
+      protection: [{ printed: "mana value 3 or less", kind: "mana_value_at_most", value: "3" }],
+    });
+    expect(badges(container)).toEqual([
+      { text: "MV\u22643", title: "Protection from mana value 3 or less" },
+    ]);
+  });
+
+  it("renders protection from Ring-bearers as RNG", () => {
+    const { container } = mount({
+      abilities: ["protection from Ring-bearers"],
+      protection: [{ printed: "Ring-bearers", kind: "ring_bearer" }],
+    });
+    expect(badges(container)).toEqual([{ text: "RNG", title: "Protection from Ring-bearers" }]);
+  });
+
   it("does not badge the raw token twice", () => {
     const { container } = mount({
       abilities: ["protection from red"],

@@ -57,6 +57,7 @@ var allTypes = []Type{
 	TypeHostRollRemaining,
 	TypeChooseStartingPlayer,
 	TypeRollTableDie,
+	TypeSetTriggerOrderPreference,
 }
 
 // Types returns every action type, in declaration order. The slice is

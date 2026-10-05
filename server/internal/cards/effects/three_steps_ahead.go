@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Three Steps Ahead — Instant {U}:
 //
 //	"Spree (Choose one or more additional costs.)
@@ -40,18 +38,7 @@ func init() {
 			SpreeModeDoing("Create a token that's a copy of target artifact or creature you control.", "{3}",
 				TargetPermanent("target artifact or creature you control", And(Or(Artifact(), Creature()), YouControl())),
 				TokenCopyTheModesTarget),
-			SpreeModeDoing("Draw two cards, then discard a card.", "{2}", nil,
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-						Player: item.Controller,
-						Source: item.SourceCardID,
-						N:      1,
-					})
-					return nil
-				}),
+			SpreeModeDoing("Draw two cards, then discard a card.", "{2}", nil, drawTwoThenDiscardOne),
 		),
 	})
 }

@@ -670,6 +670,14 @@ type Card struct {
 	// #1572; see ADR 0071's amendment of 2026-09-27.
 	ChosenOption string
 
+	// Devoured is how many creatures this permanent devoured as it
+	// entered (CR 702.82a), the number CR 702.82b's "each creature it
+	// devoured" counts. Stamped at entry from ReplacementEvent.
+	// EntersDevoured; zero for everything else. Per instance, carried by
+	// the snapshot, cleared when the permanent leaves the battlefield
+	// (CR 400.7). Not a copiable value (CR 707.2). Read with DevouredBy.
+	Devoured int
+
 	// ModesChosen is "choose one that hasn't been chosen" with no
 	// duration (ADR 0097, #1749 — Silent Hallcreeper, Demonic Pact):
 	// the option indexes each modal ability of THIS OBJECT has chosen,

@@ -273,6 +273,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.
 		c.ChosenOption = ""
+		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage

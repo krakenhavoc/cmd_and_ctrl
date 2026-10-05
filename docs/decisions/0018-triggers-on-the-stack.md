@@ -3416,3 +3416,37 @@ joins the coverage table's mechanic probes beside trigger doubling.
 - The doubler's `OncePerBatch` first-event limitation (Decision 4) is
   unchanged. A suppressor cannot make it worse: a suppressed first
   member no longer spends the slot.
+
+## Amendment 2026-10-05 — "always ask me to order my triggers" · Accepted · S48
+
+Issue [#1530](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1530),
+item 2. #1511's skip leaves the board identical in any order, but it
+takes away one small choice: which creature is pumped first while
+opponents can respond between resolutions. A seat that wants that
+choice back sets a preference.
+
+- **A per-seat flag on the server.** `Player.TriggerOrderAlwaysAsk`,
+  default false, set by the `set_trigger_order_preference` action
+  (`{always_ask}`, player-scoped: a seat sets only its own, the admin any
+  seat). The skip decision is the server's, so the server must hold the
+  value; the client's Settings store cannot reach it.
+- **`seatNeedsTriggerOrder(items, alwaysAsk)`.** With the flag set, a
+  batch of two or more with any item not yet `Ordered` prompts, the
+  commuting and identical skips included. An answered batch is not asked
+  twice. Every other seat's batch is decided as before.
+- **Persistence: server-side, reconciled by the client.** The flag is
+  cloned, snapshotted (additive `triggerOrderAlwaysAsk`, shape file
+  updated, no schema bump: absent restores as false) and exposed in the
+  seat's own `PlayerView` only. The client does not fire on connect;
+  when its own seat's view disagrees with the local setting it sends the
+  action once. One rule covers a toggle, a reconnect, a second device and
+  a server restored from an older snapshot, without a join-time hook.
+  Re-sending on join alone would have left the server copy stale after a
+  restart and sent a redundant action on every join.
+- **A setting, not a play.** It mints no undo entry (`MintsNoUndo`), and
+  `RestoreFrom` carries the live value across an undo of an earlier
+  action, as it does `Settings`. It is allowed during the opening roll.
+  The legal-move enumerator never offers it, so no bot sets it.
+
+Item 1 of #1530 (commutativity for token triggers) is unchanged and
+stays open.

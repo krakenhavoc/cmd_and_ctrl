@@ -1436,6 +1436,11 @@ type PlayerView struct {
 	// "kept ✓" / "deciding…" indicator during the mulligan window.
 	// Added in S08.
 	HandKept bool `json:"hand_kept,omitempty"`
+	// TriggerOrderAlwaysAsk reflects Player.TriggerOrderAlwaysAsk
+	// (#1530). Private to its seat: FilterViewFor clears it for every
+	// other viewer. The client compares it with its local setting and
+	// re-sends set_trigger_order_preference when they differ.
+	TriggerOrderAlwaysAsk bool `json:"trigger_order_always_ask,omitempty"`
 	// MulligansTaken reflects Player.MulligansTaken. Surfaced so the
 	// UI can show "mulligans taken: N". Added in S08.
 	MulligansTaken int `json:"mulligans_taken,omitempty"`
@@ -5400,7 +5405,8 @@ type ProtectionView struct {
 	Printed string `json:"printed"`
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
-	// "everything" or "player". Stable tokens; see
+	// "everything", "player", "mana_value_at_most" (Value is the
+	// bound N, #2181) or "ring_bearer" (#2145). Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour
@@ -7362,34 +7368,35 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		emblems = append(emblems, ev)
 	}
 	return PlayerView{
-		ID:                p.ID.String(),
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           viewOfZone(p.Library),
-		Hand:              viewOfZone(p.Hand),
-		Graveyard:         viewOfZone(p.Graveyard),
-		Command:           viewOfZone(p.Command),
-		CommanderDamage:   cmdrDamage,
-		LifeHistory:       history,
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		IsAgent:           p.Agent,
-		AgentClient:       p.AgentClient,
-		CommanderCasts:    cmdrCasts,
-		Counters:          cloneStringIntMap(p.Counters),
-		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
+		ID:                    p.ID.String(),
+		Name:                  p.Name,
+		Seat:                  p.Seat,
+		Life:                  p.Life,
+		Poison:                p.Poison,
+		Energy:                p.Energy,
+		Library:               viewOfZone(p.Library),
+		Hand:                  viewOfZone(p.Hand),
+		Graveyard:             viewOfZone(p.Graveyard),
+		Command:               viewOfZone(p.Command),
+		CommanderDamage:       cmdrDamage,
+		LifeHistory:           history,
+		Eliminated:            p.Eliminated,
+		HandKept:              p.HandKept,
+		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		MulligansTaken:        p.MulligansTaken,
+		DeckImported:          p.DeckImported,
+		UndosRemaining:        p.UndosRemaining,
+		DiscordID:             p.DiscordID,
+		DiscordAvatarHash:     p.DiscordAvatarHash,
+		DisplayName:           p.DisplayName,
+		IsBot:                 p.IsBot,
+		BotTier:               p.BotTier,
+		BotDeck:               p.BotDeck,
+		IsAgent:               p.Agent,
+		AgentClient:           p.AgentClient,
+		CommanderCasts:        cmdrCasts,
+		Counters:              cloneStringIntMap(p.Counters),
+		MaxHandSize:           g.EffectiveMaxHandSizeLocked(p),
 		// Locked variants: this builder already runs under the
 		// game's read lock (see legal.EnumerateFor's note), and the
 		// public accessors would take it a second time.
@@ -7674,6 +7681,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
 		out := p
+		// #1530: the trigger-ordering preference is the seat's own.
+		if p.ID != viewerID {
+			out.TriggerOrderAlwaysAsk = false
+		}
 		// S13.5: redact every visible card based on KnownBy.
 		// Hand + library still get their wholesale-hide (S04
 		// zone-default heuristic) for opponents, but the per-card

@@ -602,24 +602,27 @@ type playerSnapshot struct {
 	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
 	// written before it restores with none, which reads as "nothing
 	// attacked last turn" until the player's next turn ends.
-	LastTurnAttacks    []AttackRecord    `json:"lastTurnAttacks,omitempty"`
-	Eliminated         bool              `json:"eliminated"`
-	HandKept           bool              `json:"handKept"`
-	MulligansTaken     int               `json:"mulligansTaken"`
-	DeckImported       bool              `json:"deckImported"`
-	UndosRemaining     int               `json:"undosRemaining"`
-	DiscordID          string            `json:"discordId,omitempty"`
-	DiscordAvatarHash  string            `json:"discordAvatarHash,omitempty"`
-	DisplayName        string            `json:"displayName,omitempty"`
-	IsBot              bool              `json:"isBot,omitempty"`
-	BotTier            string            `json:"botTier,omitempty"`
-	BotDeck            string            `json:"botDeck,omitempty"`
-	Agent              bool              `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
-	AgentClient        string            `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
-	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
-	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
-	Counters           map[string]int    `json:"counters,omitempty"`
-	MaxHandSize        int               `json:"maxHandSize"`
+	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
+	Eliminated      bool           `json:"eliminated"`
+	HandKept        bool           `json:"handKept"`
+	// TriggerOrderAlwaysAsk is Player.TriggerOrderAlwaysAsk (#1530).
+	// Additive: a file written before it restores with false, the default.
+	TriggerOrderAlwaysAsk bool              `json:"triggerOrderAlwaysAsk,omitempty"`
+	MulligansTaken        int               `json:"mulligansTaken"`
+	DeckImported          bool              `json:"deckImported"`
+	UndosRemaining        int               `json:"undosRemaining"`
+	DiscordID             string            `json:"discordId,omitempty"`
+	DiscordAvatarHash     string            `json:"discordAvatarHash,omitempty"`
+	DisplayName           string            `json:"displayName,omitempty"`
+	IsBot                 bool              `json:"isBot,omitempty"`
+	BotTier               string            `json:"botTier,omitempty"`
+	BotDeck               string            `json:"botDeck,omitempty"`
+	Agent                 bool              `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
+	AgentClient           string            `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
+	AttemptedEmptyDraw    bool              `json:"losesAtNextSba"`
+	CommanderCasts        map[uuid.UUID]int `json:"commanderCasts,omitempty"`
+	Counters              map[string]int    `json:"counters,omitempty"`
+	MaxHandSize           int               `json:"maxHandSize"`
 	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
@@ -791,6 +794,9 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// Devoured is CR 702.82b's count of creatures this permanent
+	// devoured as it entered. Old snapshots have no key and read zero.
+	Devoured int `json:"devoured,omitempty"`
 	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
 	// duration. Carried for ChosenPlayer's reason: a player made the
 	// choices and nothing can re-derive them, so a restore that lost
@@ -1911,6 +1917,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
@@ -1951,40 +1958,41 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 
 func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	out := playerSnapshot{
-		ID:                 p.ID,
-		Name:               p.Name,
-		Seat:               p.Seat,
-		Life:               p.Life,
-		Poison:             p.Poison,
-		Energy:             p.Energy,
-		Library:            snapshotZone(p.Library, cen),
-		Hand:               snapshotZone(p.Hand, cen),
-		Graveyard:          snapshotZone(p.Graveyard, cen),
-		Command:            snapshotZone(p.Command, cen),
-		Emblems:            snapshotZone(p.Emblems, cen),
-		CommanderDamage:    copyIntMap(p.CommanderDamage),
-		TurnsBegun:         p.TurnsBegun,
-		UpkeepsBegun:       p.UpkeepsBegun,
-		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:         p.Eliminated,
-		HandKept:           p.HandKept,
-		MulligansTaken:     p.MulligansTaken,
-		DeckImported:       p.DeckImported,
-		UndosRemaining:     p.UndosRemaining,
-		DiscordID:          p.DiscordID,
-		DiscordAvatarHash:  p.DiscordAvatarHash,
-		DisplayName:        p.DisplayName,
-		IsBot:              p.IsBot,
-		BotTier:            p.BotTier,
-		BotDeck:            p.BotDeck,
-		Agent:              p.Agent,
-		AgentClient:        p.AgentClient,
-		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
-		CommanderCasts:     copyIntMap(p.CommanderCasts),
-		Counters:           copyStringIntMap(p.Counters),
-		MaxHandSize:        p.MaxHandSize,
-		MaxHandSizeAt:      p.MaxHandSizeAt,
-		LandDropsPerTurn:   p.LandDropsPerTurn,
+		ID:                    p.ID,
+		Name:                  p.Name,
+		Seat:                  p.Seat,
+		Life:                  p.Life,
+		Poison:                p.Poison,
+		Energy:                p.Energy,
+		Library:               snapshotZone(p.Library, cen),
+		Hand:                  snapshotZone(p.Hand, cen),
+		Graveyard:             snapshotZone(p.Graveyard, cen),
+		Command:               snapshotZone(p.Command, cen),
+		Emblems:               snapshotZone(p.Emblems, cen),
+		CommanderDamage:       copyIntMap(p.CommanderDamage),
+		TurnsBegun:            p.TurnsBegun,
+		UpkeepsBegun:          p.UpkeepsBegun,
+		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:            p.Eliminated,
+		HandKept:              p.HandKept,
+		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		MulligansTaken:        p.MulligansTaken,
+		DeckImported:          p.DeckImported,
+		UndosRemaining:        p.UndosRemaining,
+		DiscordID:             p.DiscordID,
+		DiscordAvatarHash:     p.DiscordAvatarHash,
+		DisplayName:           p.DisplayName,
+		IsBot:                 p.IsBot,
+		BotTier:               p.BotTier,
+		BotDeck:               p.BotDeck,
+		Agent:                 p.Agent,
+		AgentClient:           p.AgentClient,
+		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
+		CommanderCasts:        copyIntMap(p.CommanderCasts),
+		Counters:              copyStringIntMap(p.Counters),
+		MaxHandSize:           p.MaxHandSize,
+		MaxHandSizeAt:         p.MaxHandSizeAt,
+		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
@@ -2728,6 +2736,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
@@ -2801,38 +2810,39 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                 p.ID,
-		Name:               p.Name,
-		Seat:               p.Seat,
-		Life:               p.Life,
-		Poison:             p.Poison,
-		Energy:             p.Energy,
-		Library:            restoreZone(p.Library, ZoneLibrary),
-		Hand:               restoreZone(p.Hand, ZoneHand),
-		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:            restoreZone(p.Command, ZoneCommand),
-		Emblems:            restoreZone(p.Emblems, ZoneCommand),
-		TurnsBegun:         p.TurnsBegun,
-		UpkeepsBegun:       p.UpkeepsBegun,
-		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:         p.Eliminated,
-		HandKept:           p.HandKept,
-		MulligansTaken:     p.MulligansTaken,
-		DeckImported:       p.DeckImported,
-		UndosRemaining:     p.UndosRemaining,
-		DiscordID:          p.DiscordID,
-		DiscordAvatarHash:  p.DiscordAvatarHash,
-		DisplayName:        p.DisplayName,
-		IsBot:              p.IsBot,
-		BotTier:            p.BotTier,
-		BotDeck:            p.BotDeck,
-		Agent:              p.Agent,
-		AgentClient:        p.AgentClient,
-		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
-		Counters:           copyStringIntMap(p.Counters),
-		MaxHandSize:        p.MaxHandSize,
-		MaxHandSizeAt:      p.MaxHandSizeAt,
-		LandDropsPerTurn:   p.LandDropsPerTurn,
+		ID:                    p.ID,
+		Name:                  p.Name,
+		Seat:                  p.Seat,
+		Life:                  p.Life,
+		Poison:                p.Poison,
+		Energy:                p.Energy,
+		Library:               restoreZone(p.Library, ZoneLibrary),
+		Hand:                  restoreZone(p.Hand, ZoneHand),
+		Graveyard:             restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:               restoreZone(p.Command, ZoneCommand),
+		Emblems:               restoreZone(p.Emblems, ZoneCommand),
+		TurnsBegun:            p.TurnsBegun,
+		UpkeepsBegun:          p.UpkeepsBegun,
+		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:            p.Eliminated,
+		HandKept:              p.HandKept,
+		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		MulligansTaken:        p.MulligansTaken,
+		DeckImported:          p.DeckImported,
+		UndosRemaining:        p.UndosRemaining,
+		DiscordID:             p.DiscordID,
+		DiscordAvatarHash:     p.DiscordAvatarHash,
+		DisplayName:           p.DisplayName,
+		IsBot:                 p.IsBot,
+		BotTier:               p.BotTier,
+		BotDeck:               p.BotDeck,
+		Agent:                 p.Agent,
+		AgentClient:           p.AgentClient,
+		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
+		Counters:              copyStringIntMap(p.Counters),
+		MaxHandSize:           p.MaxHandSize,
+		MaxHandSizeAt:         p.MaxHandSizeAt,
+		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never

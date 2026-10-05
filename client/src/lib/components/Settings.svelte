@@ -787,6 +787,23 @@
             <label>
               <input
                 type="checkbox"
+                checked={$settings.gameplay.alwaysAskTriggerOrder}
+                onchange={(e) =>
+                  change("gameplay", "alwaysAskTriggerOrder", e.currentTarget.checked)}
+              />
+              Always ask me to order my triggers
+              {#if isFresh("gameplay.alwaysAskTriggerOrder")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              When several of your triggers go on the stack together, the game orders them for you
+              if every order gives the same result (a board of prowess creatures, for example). Turn
+              this on to be asked every time, so you choose which resolves first while your
+              opponents can still respond between them.
+            </p>
+
+            <label>
+              <input
+                type="checkbox"
                 checked={$settings.gameplay.autoPassPriority}
                 onchange={(e) => change("gameplay", "autoPassPriority", e.currentTarget.checked)}
               />

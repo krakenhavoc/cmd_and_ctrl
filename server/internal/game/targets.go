@@ -59,6 +59,11 @@ type TargetSource struct {
 	// Object is the live source, when the caller holds one.
 	Object *Card
 
+	// X is the announced X of a spell source (CR 202.3e), so its mana
+	// value counts {X} for "protection from mana value N or less".
+	// Zero for everything that is not a spell with an X (#2181).
+	X int
+
 	// Snapshot is a value copy of the source's characteristics, for
 	// a caller whose source may have left by the time the check runs.
 	Snapshot *Characteristic
@@ -85,6 +90,9 @@ func SourceChooser(controller uuid.UUID) TargetSource {
 // snapshot: a caller that has both kept the snapshot as a fallback.
 func (s TargetSource) Characteristics() *Characteristic {
 	if s.Object != nil {
+		if s.X > 0 {
+			return SourceCharacteristicsX(s.Object, s.X)
+		}
 		return SourceCharacteristics(s.Object)
 	}
 	return s.Snapshot
@@ -134,6 +142,11 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 			}
 		}
 		if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
+			if item.Kind == StackItemSpell && item.XValue > 0 {
+				// CR 202.3e: a spell's {X} counts as the value it was cast
+				// with, which "protection from mana value N or less" reads.
+				return TargetSource{Controller: item.Controller, Object: &c, X: item.XValue}
+			}
 			return SourceObject(item.Controller, &c)
 		}
 	}
@@ -193,6 +206,11 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	if ch.Controller == uuid.Nil {
 		ch.Controller = rec.Controller
 	}
+	// The protection-source facts a departed permanent last had
+	// (#2181, #2145): its mana value and its Ring-bearer designation,
+	// neither of which survives the zone change on the card itself.
+	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
+	ch.SourceRingBearer = rec.RingBearer
 	return ch
 }
 
