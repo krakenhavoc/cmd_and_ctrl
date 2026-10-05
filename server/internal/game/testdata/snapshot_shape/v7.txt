@@ -4303,6 +4303,7 @@ turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
+turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.resolved	map:string
