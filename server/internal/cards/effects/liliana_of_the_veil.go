@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -21,27 +23,31 @@ import (
 //     controller included. It is symmetric on purpose — that is the
 //     whole reason Liliana is a hard card to build around — and a
 //     player with an empty hand discards nothing rather than erroring.
+//
 //   - The −2 is an edict, so it is not targeted at a creature and
 //     hexproof does not save one. The victim picks from their own
 //     creatures through the sacrifice prompt (CR 701.21); a player
 //     with no creature sacrifices nothing, and the loyalty is still
 //     paid, exactly as in paper.
 //
-// THE −6 IS NOT REGISTERED. "Separate all permanents into two piles"
-// is a two-stage choice by two different players — Liliana's
-// controller divides, then the victim picks a pile — and the engine
-// has no pile-division prompt of any kind. The alternatives are all
-// worse than the omission: dividing the piles automatically makes
-// the most important decision on the card for the player who should
-// be making it, and a −6 that sacrificed some fixed fraction would
-// be a different card. The loyalty still accrues past 6; the day a
-// division prompt exists, this file gains one entry.
+//   - The −6 is the PileSplit machinery Do or Die uses, over every
+//     permanent the target player controls: Liliana's controller
+//     separates them into two piles (either may be empty), then the
+//     target player chooses which pile they sacrifice. That is the
+//     printed order of decisions — you divide, they choose. The
+//     sacrifice is one simultaneous event (CR 701.21), it does not
+//     target a permanent, and a permanent that left before the choice
+//     was answered is not sacrificed. A target who controls nothing
+//     resolves nothing and asks nothing. Until #2154 this ability was
+//     omitted because no pile prompt existed; Do or Die (#2084) shipped
+//     the first one over permanents.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "0ba134d8-ee7d-48ec-8dc6-57942b8e9261",
 		Name:         "Liliana of the Veil",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The -6 isn't offered — splitting a player's permanents into two piles has no prompt yet."},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -81,6 +87,47 @@ func init() {
 					return nil
 				},
 			},
+			{
+				Label:   "−6: Separate all permanents target player controls into two piles. That player sacrifices all permanents in the pile of their choice.",
+				Cost:    LoyaltyCost(-6),
+				Targets: TargetPlayer("target player"),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					for _, t := range ctx.LegalTargets() {
+						if t.Kind != game.TargetPlayer {
+							continue
+						}
+						return PileSplit{
+							Splitter:      ctx.Controller(),
+							Chooser:       t.ID,
+							Owner:         t.ID,
+							SplitQuestion: "Liliana of the Veil — separate these permanents into two piles",
+							PickQuestion:  "Liliana of the Veil — choose a pile; you sacrifice every permanent in it",
+							Cards:         permanentsControlledByPlayer(g, t.ID),
+							Then: func(ctx *Context, sacrificed, _ []uuid.UUID) error {
+								ctx.Game.SacrificeAllForEffect(ctx.Source(), sacrificed)
+								return nil
+							},
+						}.Apply(ctx)
+					}
+					return nil
+				},
+			},
 		},
 	})
+}
+
+// permanentsControlledByPlayer is every permanent on the battlefield
+// the player controls, in battlefield order.
+func permanentsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+	if playerID == uuid.Nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == playerID {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
 }
