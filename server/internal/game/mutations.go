@@ -109,42 +109,14 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 //
 // Caller must hold g.mu.
 func (g *Game) drawCardLocked(playerID uuid.UUID) error {
-	// S17 sub-PR 2: route through the replacement pipeline so
+	// S17 sub-PR 2: the draw goes through the replacement pipeline so
 	// draw-replacement effects ("if you would draw, mill instead",
-	// "if you would draw, opponent draws instead", etc.) fire
-	// pre-event. Sub-PR 2 registers zero catalog draw-replacements,
-	// so applyReplacementsLocked short-circuits with no gathered
-	// effects and behavior is byte-for-byte identical to pre-S17.
-	ev := &ReplacementEvent{
-		Kind:       RepEventDraw,
-		Actor:      playerID,
-		DrawPlayer: playerID,
-		// #1222: the amount. Always ONE here — CR 121.2 makes "draw
-		// three cards" three individual card draws, and DrawNForEffect
-		// loops through this function — so a draw-amount replacement
-		// (Thought Reflection, Alhammarret's Archive) doubles EACH of
-		// them rather than the instruction.
-		DrawCount: 1,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// CR 616 prompt queued; client will submit an order. The
-		// resume path in ResolveReplacementOrder re-enters the
-		// pipeline and runs the underlying draw. Return nil so the
-		// caller (public DrawCard or step-draw auto-action) sees
-		// the draw as "in flight" — no ErrZoneEmpty propagation.
-		return nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		// Draw canceled by replacement.
-		return nil
-	}
-	return g.actuallyDrawCardsLocked(out.DrawPlayer, out.DrawCount)
+	// "if you would draw, opponent draws instead", dredge) fire
+	// pre-event. A prompt queued by the window pauses the draw: the
+	// resume path re-enters the pipeline and finishes it, and returning
+	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
+	// draw_instead.go.
+	return g.drawRunLocked(playerID, 1)
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
