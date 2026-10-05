@@ -660,7 +660,7 @@
   class:stacked={layout === "stacked"}
   class:reordering
   style:--hand-overlap={overlap}
-  aria-label={isSelf ? L.yourHand : "opponent hand"}
+  aria-label={isSelf ? undefined : "opponent hand"}
   onpointerenter={isSelf ? () => tutorialEmit("hand-hovered") : undefined}
 >
   <!-- ADR 0105 §2 (sub-PR 4): a hand card's pips (a star for
