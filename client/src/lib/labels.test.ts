@@ -8,8 +8,9 @@
 //   2. no other file under client/src carries a literal copy of a
 //      registered static `aria` name, so a component cannot keep
 //      rendering a contract name the registry does not see;
-//   3. every tutorial anchor, detours included, is a registered `aria`
-//      label (hints join the walk with ADR 0125 PR 4);
+//   3. every tutorial anchor, detours included, and every first-use
+//      hint's anchor (the shipped hints and the test fixtures) is a
+//      registered `aria` label;
 //   4. docs/labels.md is what the registry generates. To rewrite it:
 //      `UPDATE_LABELS_DOC=1 npm test -- labels`.
 //
@@ -34,6 +35,9 @@ import {
 import { anchorsOf, type Anchor, type StepContext } from "./tutorial";
 import { TUTORIAL_STEPS } from "./tutorialSteps";
 import { auto, board, ctx, elves, forest } from "./test/tutorialBoards";
+import { HINTS } from "./hints";
+import type { Hint } from "./hints/hint";
+import { FIXTURE_HINTS, hintContexts } from "./test/hintContexts";
 
 const SRC = fileURLToPath(new URL("../", import.meta.url));
 const DOC = fileURLToPath(new URL("../../../docs/labels.md", import.meta.url));
@@ -101,7 +105,24 @@ function tutorialAnchors(): { found: Found[]; detoursBySteps: Map<string, Set<st
   return { found, detoursBySteps };
 }
 
+// ---- Rule 3's walk, for hints: every hint's anchor over its contexts ----
+
+/** Every hint the guard walks: the shipped ones and the test fixtures. */
+const ALL_HINTS: readonly Hint[] = [...HINTS, ...FIXTURE_HINTS];
+
+function hintAnchors(): Found[] {
+  const found: Found[] = [];
+  for (const h of ALL_HINTS) {
+    for (const c of hintContexts(h)) {
+      const a = typeof h.anchor === "function" ? h.anchor(c) : h.anchor;
+      if (a) found.push({ where: `hint ${h.id}`, anchor: a });
+    }
+  }
+  return found;
+}
+
 const WALK = tutorialAnchors();
+const HINT_WALK = hintAnchors();
 
 /** Which entries each place anchors to, for rule 1's message. */
 function anchoredBy(): Map<LabelKey, Set<string>> {
@@ -112,7 +133,7 @@ function anchoredBy(): Map<LabelKey, Set<string>> {
     if (!by.has(key)) by.set(key, new Set());
     by.get(key)!.add(where);
   };
-  for (const { where, anchor } of WALK.found) {
+  for (const { where, anchor } of [...WALK.found, ...HINT_WALK]) {
     if (!("label" in anchor)) continue;
     note(anchor.label, where);
     if (anchor.within !== undefined) note(anchor.within, `${where} (as its container)`);
@@ -175,8 +196,8 @@ function renderLabelsDoc(): string {
     "Each lives once, in `client/src/lib/labels.ts`, and its owner files render it as `L.<key>`",
     "(or `L.<key>(…)`), never as a literal. `labels.test.ts` fails when an owner stops rendering",
     "its entry, when a registered `aria` name is copied as a literal anywhere else under",
-    "`client/src`, when a tutorial step anchors to a name that is not registered, or when this",
-    "file is stale.",
+    "`client/src`, when a tutorial step or a first-use hint anchors to a name that is not",
+    "registered, or when this file is stale.",
     "",
     "- **Kind** `aria` is an `aria-label`, or a dialog's or group's name passed through a prop",
     "  that becomes one; only these can be anchors. `text` is a name a button, link or menu item",
@@ -240,7 +261,7 @@ describe("the label registry", () => {
           `labels.ts: ${key} ("${show(spec)}") names ${owner} as an owner, ${why}. ` +
             (users.length > 0
               ? `Anchored to by: ${users.join("; ")}.`
-              : "No tutorial step anchors to it.") +
+              : "No tutorial step or hint anchors to it.") +
             " Render it there as L." +
             key +
             ", or fix the entry's owners.",
@@ -300,6 +321,27 @@ describe("the label registry", () => {
       }
     }
     expect([...new Set(problems)], [...new Set(problems)].join("\n")).toEqual([]);
+  });
+
+  it("rule 3: every hint's anchor is a registered aria label", () => {
+    // The fixtures are walked too, so the walk is proven to reach a hint.
+    expect(HINT_WALK.length).toBeGreaterThan(0);
+    const problems: string[] = [];
+    for (const { where, anchor } of HINT_WALK) {
+      if (!("label" in anchor)) continue;
+      for (const [part, ref] of [
+        ["label", anchor.label],
+        ["within", anchor.within],
+      ] as const) {
+        if (ref === undefined) continue;
+        if (registeredAria(ref) === null) {
+          const s = typeof ref === "string" ? `"${ref}"` : `stem "${ref.stem}"`;
+          problems.push(`${where}: its ${part} ${s} is not a registered aria label in labels.ts`);
+        }
+      }
+    }
+    const unique = [...new Set(problems)];
+    expect(unique, unique.join("\n")).toEqual([]);
   });
 
   it("rule 4: docs/labels.md is generated from the registry", () => {

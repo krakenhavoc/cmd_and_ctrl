@@ -32,6 +32,17 @@
 // account's. So on a field both changed, the account wins again. The
 // merged result is then uploaded over the new revision.
 //
+// # `help.seen`, the one field that merges by union (ADR 0125 §4)
+//
+// The hints a person has dismissed are a set that only grows, so losing
+// either side's entries is the only way a merge can go wrong. At
+// sign-in, `help.seen` is the UNION of this browser's map and the
+// account's (the higher version for an id in both); on a 412 it is the
+// union of the two copies instead of field-wins. A difference in
+// `help.seen` alone never raises the "keep this browser's" toast: a
+// union cannot lose anything either side had. Every other field,
+// `help.tipsOff` included, follows the rules above.
+//
 // A copy written by a NEWER client (a version above SETTINGS_VERSION,
 // or a 409) is applied through migrate, and then this tab stops writing
 // until the page reloads: a stale tab must not stamp an older schema
@@ -58,6 +69,7 @@ import { guardedWritable } from "./guardedStore";
 import { signedInUserID } from "./myGames";
 import { captureSettings, practiceSaved, updatePracticeSaved, withSettings } from "./practiceTable";
 import { LobbyApiError, session, type Session } from "./session";
+import { normalizeSeen, unionSeen, type SeenMap } from "./hints/seen";
 import {
   applySyncedCopy,
   canonicalJSON,
@@ -185,11 +197,32 @@ function copyOf(err: LobbyApiError): AccountSettings | null {
   return b as AccountSettings;
 }
 
-/** agreeWith records that this browser and the account hold `copy`. */
-function agreeWith(copy: AccountSettings): void {
-  state.revision = copy.revision;
-  state.base = syncedSubset(uploadable());
-  if ((copy.version ?? 0) > SETTINGS_VERSION) state.blocked = true;
+// --- help.seen, merged by union (ADR 0125 §4) ---------------------------
+
+/** seenOf is a synced subset's `help.seen`, checked. */
+function seenOf(sub: SyncedSettings | null | undefined): SeenMap {
+  return normalizeSeen(sub?.help?.seen);
+}
+
+/** withSeenMap is `sub` with its `help.seen` replaced. */
+function withSeenMap(sub: SyncedSettings, seen: SeenMap): SyncedSettings {
+  return { ...sub, help: { ...(sub.help ?? {}), seen } };
+}
+
+/** sansSeen is `sub` without `help.seen`, for deciding whether to raise the toast. */
+function sansSeen(sub: SyncedSettings | null | undefined): SyncedSettings {
+  const out: SyncedSettings = { ...(sub ?? {}) };
+  if (out.help) {
+    const help = { ...out.help };
+    delete help.seen;
+    out.help = help;
+  }
+  return out;
+}
+
+/** differsBeyondSeen reports whether two copies differ in anything but `help.seen`. */
+function differsBeyondSeen(a: SyncedSettings | null, b: SyncedSettings | null): boolean {
+  return canonicalJSON(sansSeen(a)) !== canonicalJSON(sansSeen(b));
 }
 
 // --- download -----------------------------------------------------------
@@ -214,7 +247,10 @@ async function download(gen: number): Promise<void> {
   atSignIn(copy);
 }
 
-/** atSignIn is owner answer 6: the account's copy wins. */
+/**
+ * atSignIn is owner answer 6: the account's copy wins, except for
+ * `help.seen`, which takes the union of both (ADR 0125 §4).
+ */
 function atSignIn(copy: AccountSettings): void {
   if (copy.revision === 0 || !copy.settings) {
     // No account copy: this browser's values become the first one.
@@ -224,11 +260,19 @@ function atSignIn(copy: AccountSettings): void {
     return;
   }
   const browser = syncedSubset(uploadable());
-  applyCopy(copy.settings, copy.version ?? SETTINGS_VERSION);
-  agreeWith(copy);
-  if (!state.blocked && canonicalJSON(browser) !== canonicalJSON(state.base)) {
+  const version = copy.version ?? SETTINGS_VERSION;
+  // The account's copy in this client's shape: what both sides agree on.
+  const account = syncedSubset(applySyncedCopy(uploadable(), copy.settings, version));
+  const seen = unionSeen(seenOf(browser), seenOf(account));
+  applyCopy(withSeenMap(account, seen), SETTINGS_VERSION);
+  state.revision = copy.revision;
+  state.base = account;
+  if (version > SETTINGS_VERSION) state.blocked = true;
+  if (!state.blocked && differsBeyondSeen(browser, account)) {
     toastStore.set({ browser });
   }
+  // Hints dismissed in this browser and not yet on the account go up.
+  schedule();
 }
 
 // --- upload -------------------------------------------------------------
@@ -297,6 +341,11 @@ function merge(copy: AccountSettings): void {
   const remote = syncedSubset(applySyncedCopy(uploadable(), copy.settings ?? {}, version));
   const merged: SyncedSettings = {};
   for (const [group, key] of syncedPaths()) {
+    if (group === "help" && key === "seen") {
+      // ADR 0125 §4: a union, not field-wins.
+      (merged[group] ??= {})[key] = unionSeen(seenOf(local), seenOf(remote));
+      continue;
+    }
     const l = local[group]?.[key];
     const r = remote[group]?.[key];
     const b = base?.[group]?.[key];
@@ -309,11 +358,7 @@ function merge(copy: AccountSettings): void {
   // With no agreed copy (this browser's first upload lost a race with
   // another device's) this is a sign-in after all: the account wins
   // outright, and the toast offers this browser's values back.
-  if (
-    base === null &&
-    version <= SETTINGS_VERSION &&
-    canonicalJSON(local) !== canonicalJSON(remote)
-  ) {
+  if (base === null && version <= SETTINGS_VERSION && differsBeyondSeen(local, remote)) {
     toastStore.set({ browser: local });
   }
   applyCopy(merged, SETTINGS_VERSION);
@@ -333,7 +378,10 @@ export function keepBrowserSettings(): void {
   const t = get(toastStore);
   if (t === null) return;
   toastStore.set(null);
-  applyCopy(t.browser, SETTINGS_VERSION);
+  // Every other field goes back to this browser's; the seen hints keep
+  // the union, so nothing dismissed on either side is offered again.
+  const seen = unionSeen(seenOf(t.browser), normalizeSeen(get(settings).help.seen));
+  applyCopy(withSeenMap(t.browser, seen), SETTINGS_VERSION);
   if (debounce !== null) clearTimeout(debounce);
   debounce = null;
   void upload();

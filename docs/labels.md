@@ -9,8 +9,8 @@ The accessible names the tutorial, the first-use hints and the e2e suite rely on
 Each lives once, in `client/src/lib/labels.ts`, and its owner files render it as `L.<key>`
 (or `L.<key>(…)`), never as a literal. `labels.test.ts` fails when an owner stops rendering
 its entry, when a registered `aria` name is copied as a literal anywhere else under
-`client/src`, when a tutorial step anchors to a name that is not registered, or when this
-file is stale.
+`client/src`, when a tutorial step or a first-use hint anchors to a name that is not
+registered, or when this file is stale.
 
 - **Kind** `aria` is an `aria-label`, or a dialog's or group's name passed through a prop
   that becomes one; only these can be anchors. `text` is a name a button, link or menu item
@@ -73,4 +73,5 @@ file is stale.
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |
+| `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
