@@ -116,8 +116,8 @@
           },
           "expr": "sum(cmdctrl_games{env=\"$env\", state=\"active\", archived=\"false\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -181,8 +181,8 @@
           },
           "expr": "sum(cmdctrl_games{env=\"$env\", state=\"lobby\", archived=\"false\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -246,8 +246,8 @@
           },
           "expr": "sum(cmdctrl_seats_connected{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -311,8 +311,8 @@
           },
           "expr": "sum(cmdctrl_spectators_connected{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -376,8 +376,8 @@
           },
           "expr": "sum(cmdctrl_seats{env=\"$env\", kind=\"bot\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -441,8 +441,8 @@
           },
           "expr": "sum(cmdctrl_practice_games{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -713,8 +713,8 @@
           },
           "expr": "max(cmdctrl_users{env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -778,8 +778,8 @@
           },
           "expr": "max(cmdctrl_users_played{env=\"$env\", window=\"1d\"})",
           "legendFormat": "last day",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         },
         {
@@ -790,8 +790,8 @@
           },
           "expr": "max(cmdctrl_users_played{env=\"$env\", window=\"7d\"})",
           "legendFormat": "last 7 days",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         },
         {
@@ -802,8 +802,8 @@
           },
           "expr": "max(cmdctrl_users_played{env=\"$env\", window=\"30d\"})",
           "legendFormat": "last 30 days",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1556,8 +1556,8 @@
           },
           "expr": "time() - max(process_start_time_seconds{job=\"cmdctrl-server\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1621,8 +1621,8 @@
           },
           "expr": "max(up{job=\"cmdctrl-server\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
@@ -1690,8 +1690,8 @@
           },
           "expr": "min(probe_success{job=\"blackbox\", env=\"$env\"})",
           "legendFormat": "__auto",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "editorMode": "code"
         }
       ],
