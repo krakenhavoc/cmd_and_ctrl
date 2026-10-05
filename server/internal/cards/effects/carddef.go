@@ -175,6 +175,7 @@ func buildDef(spec Spec) *game.CardDef {
 		SpellDamageCantBePrevented: spec.SpellDamageCantBePrevented,
 		SpellsCantBeCountered:      spec.SpellsCantBeCountered,
 		HandSize:                   handSizeStatics(spec),
+		ManaPool:                   spec.ManaPool,
 		PlayerKeywords:             spec.PlayerKeywords,
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
 		DamageCantBePrevented:      spec.DamageCantBePrevented,

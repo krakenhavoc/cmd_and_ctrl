@@ -898,6 +898,14 @@ type Spec struct {
 	// Register refuses a Set below zero and a Modify by zero.
 	HandSize []game.HandSizeStatic
 
+	// ManaPool declares the printed statics over a pool that decide what
+	// is lost as steps and phases end (#2166): "players don't lose unspent
+	// mana" (Upwelling), "you don't lose unspent green mana" (Omnath), and
+	// "if you would lose unspent mana, that mana becomes colorless instead"
+	// (Kruphix). Derived from the battlefield by the step-boundary sweep
+	// (game/mana_keep.go), never stored.
+	ManaPool []game.ManaPoolStatic
+
 	// room marks a Spec built by Room (ADR 0103), so Register holds it
 	// to the door-gate rules (checkRoomSpec). Unexported: a card file
 	// gets it only by building its Spec with Room.

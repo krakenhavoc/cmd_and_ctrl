@@ -123,6 +123,15 @@ const (
 	// spell hands the record to the permanent it becomes (CR 400.7a),
 	// duration and all. Meaningful on a spell only.
 	ManaRiderSpellGains ManaRiderKind = "spell_gains"
+
+	// ManaRiderKeepUntilEndOfTurn — "until end of turn, you don't lose
+	// this mana as steps and phases end" (Karn, Legacy Reforged;
+	// Savage Ventmaw). A MARK, not a spend instruction: it never fires
+	// and is read by the step-boundary sweep (mana_keep.go, #2166). It
+	// rides the rider slot because every route mana takes into a pool —
+	// a mana ability, an effect's AddMana, a colour pick, the snapshot —
+	// already carries riders, so the mark needs no second set of plumbing.
+	ManaRiderKeepUntilEndOfTurn ManaRiderKind = "keep_until_eot"
 )
 
 // KnownManaRiderKind reports whether this binary reads a rider of
@@ -133,7 +142,7 @@ const (
 func KnownManaRiderKind(kind ManaRiderKind) bool {
 	switch kind {
 	case ManaRiderCantBeCountered, ManaRiderHaste, ManaRiderEntersWithCounters,
-		ManaRiderTrigger, ManaRiderSpellGains:
+		ManaRiderTrigger, ManaRiderSpellGains, ManaRiderKeepUntilEndOfTurn:
 		return true
 	}
 	return false

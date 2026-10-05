@@ -219,6 +219,15 @@ type PlayerStatic struct {
 	// No `omitzero`, for Timing's reason above (#1492).
 	CantBeCountered CounterShieldGrant `json:"cantBeCountered"`
 
+	// KeepManaColors is a granted "you don't lose unspent <colour>
+	// mana as steps and phases end" for a duration (The Last Agni Kai's
+	// "until end of turn, you don't lose unspent red mana"). #2166,
+	// mana_keep.go. The SEVENTH payload, told apart by its payload: a
+	// non-empty list is the presence bit, and like the others it
+	// carries no Keyword. Its READER is manaKeepColorsLocked, the
+	// step-boundary sweep. Colours are "W"/"U"/"B"/"R"/"G"/"C".
+	KeepManaColors []string `json:"keepManaColors,omitempty"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored
