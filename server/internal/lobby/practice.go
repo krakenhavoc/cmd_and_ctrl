@@ -6,10 +6,17 @@ package lobby
 //
 // # What makes it different from a table made with POST /games
 //
-//   - It is created already STARTED, with the human at seat 0 taking
-//     turn one. The eleven tutorial steps are ordered by the player's
-//     first turn (§2.1), so the opening roll every other table makes
-//     would put the bot first half the time and the steps out of order.
+//   - It is created already STARTED, with the opening roll open (ADR
+//     0125 §5.2): both seats roll, ties roll again, and the winner
+//     chooses who goes first, exactly as at any table (ADR 0121, CR
+//     103.1), so the player meets the roll they will meet at their
+//     first real table. The tutorial's steps are ordered by the
+//     player's first turn (ADR 0076 §2.1), so a bot that wins the roll
+//     hands the first turn to the human (aiseat.SeatSpec.FirstTurnTo,
+//     set in botStartLocked for this table only). CR 103.1 lets the
+//     winner choose any player, so that is a legal choice, made through
+//     the ordinary choose_starting_player move, not a rigged roll. A
+//     human who wins chooses for themselves.
 //   - It has no invite, so nobody else can join or watch it, and it is
 //     not in GET /games, to the admin included.
 //   - It is never written to the store and its room writes nothing to
@@ -125,9 +132,10 @@ type PracticeBot struct {
 }
 
 // CreatePractice opens a practice table: it seats the human at seat 0
-// and the bot at seat 1, starts the game with the human taking turn
-// one, and launches the bot's runner. It returns the table and the
-// human's player ID.
+// and the bot at seat 1, starts the game with the opening roll open,
+// and launches the bot's runner, which hands the first turn to the
+// human if the bot wins the roll. It returns the table and the human's
+// player ID.
 //
 // Any practice table the same Owner already has is abandoned first —
 // there is no resume, so a second one replaces the first rather than
@@ -203,9 +211,10 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 			return err
 		}
 		room.SetHost(humanP.ID)
-		// Start, not StartWithFirstPlayerRoll: seat 0 — the human —
-		// takes turn one. See the file comment.
-		return g.Start(nil)
+		// The opening roll, as at every table (ADR 0125 §5.2). Nothing
+		// is shuffled or dealt until the winner chooses. See the file
+		// comment.
+		return g.StartWithOpeningRoll(nil)
 	})
 	if err != nil {
 		l.mgr.Delete(g.ID)
