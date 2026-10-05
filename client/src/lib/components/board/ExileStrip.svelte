@@ -592,7 +592,7 @@
     /* A gold hairline to the left: this is a second hand, and it
        should read as one — the same cards, set apart. */
     padding: 0 6px 0 12px;
-    border-left: 1px dashed rgba(217, 180, 92, 0.45);
+    border-left: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
   }
   .strip-tag {
     position: absolute;
@@ -605,7 +605,7 @@
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--accent);
     opacity: 0.75;
     pointer-events: none;
   }
@@ -685,7 +685,7 @@
     /* The table's one accent (app.css): the tag is the thing on the
        card to read, and gold is how this board says so. */
     background: #1c1503;
-    border: 1.5px solid var(--gold-strong);
+    border: 1.5px solid var(--accent-strong);
     box-shadow:
       0 2px 8px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(0, 0, 0, 0.4);
@@ -721,9 +721,9 @@
     pointer-events: none;
   }
   .hint.verb {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     background: rgba(40, 30, 6, 0.92);
-    border-color: rgba(217, 180, 92, 0.6);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   }
 
   /* ---- collapsed (narrow panel) -------------------------------
@@ -748,9 +748,9 @@
       height: 30px;
       padding: 0 8px 0 10px;
       border-radius: 999px;
-      border: 1px solid rgba(217, 180, 92, 0.55);
+      border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
       background: var(--surface-raised);
-      color: var(--gold-strong);
+      color: var(--accent-strong);
       font-family: var(--font-mono);
       font-size: 10px;
       font-weight: 700;
@@ -863,14 +863,14 @@
   }
   .drag-ghost.castable {
     box-shadow:
-      0 0 0 2px var(--gold),
-      0 0 26px rgba(255, 208, 122, 0.75),
+      0 0 0 2px var(--accent),
+      0 0 26px color-mix(in srgb, var(--pick) 75%, transparent),
       0 14px 30px rgba(0, 0, 0, 0.55);
   }
   .drag-ghost.blocked {
     box-shadow:
       0 0 0 2px var(--danger),
-      0 0 22px rgba(255, 107, 107, 0.6),
+      0 0 22px color-mix(in srgb, var(--danger) 60%, transparent),
       0 14px 30px rgba(0, 0, 0, 0.55);
   }
   .drag-ghost.blocked img {
@@ -908,20 +908,20 @@
     justify-content: center;
     padding-bottom: 14px;
     box-sizing: border-box;
-    border: 2px dashed rgba(217, 180, 92, 0.35);
+    border: 2px dashed color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 14px;
-    background: rgba(217, 180, 92, 0.05);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
   }
   .drag-cast-zone.blocked {
-    border-color: rgba(255, 107, 107, 0.35);
-    background: rgba(255, 107, 107, 0.05);
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    background: color-mix(in srgb, var(--danger) 5%, transparent);
   }
   .drag-cast-label {
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--gold-strong, #f1d38a);
+    color: var(--accent-strong);
   }
   .drag-cast-zone.blocked .drag-cast-label {
     color: #ffb3b3;

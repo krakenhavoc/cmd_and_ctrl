@@ -91,10 +91,10 @@
      composes with a card's own selection or target ring instead of
      replacing it. */
   :global([data-stack-lane-target]) {
-    outline: 2px solid var(--stack-lane-ring, var(--gold));
+    outline: 2px solid var(--stack-lane-ring, var(--accent));
     outline-offset: 3px;
     filter: drop-shadow(
-      0 0 8px color-mix(in srgb, var(--stack-lane-ring, var(--gold)) 55%, transparent)
+      0 0 8px color-mix(in srgb, var(--stack-lane-ring, var(--accent)) 55%, transparent)
     );
   }
 </style>

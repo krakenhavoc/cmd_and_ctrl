@@ -271,7 +271,7 @@
     font-size: 10.5px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   h1 {
     margin: 0;
@@ -372,9 +372,9 @@
     background: color-mix(in srgb, var(--mint) 12%, transparent);
   }
   .badge.caveats {
-    color: var(--gold-strong);
-    border-color: color-mix(in srgb, var(--gold) 45%, transparent);
-    background: var(--gold-soft);
+    color: var(--accent-strong);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: var(--accent-soft);
   }
   .badge.unreviewed {
     color: var(--fg-dim);
@@ -434,8 +434,8 @@
   }
   .fchip.on {
     background: var(--accent-soft);
-    border-color: var(--gold);
-    color: var(--gold-strong);
+    border-color: var(--accent);
+    color: var(--accent-strong);
   }
   /* Colour pips. Same geometry and typography as every other chip —
      only the tint differs, so this stays inside the existing visual
@@ -582,7 +582,7 @@
     font-size: 11.5px;
     line-height: 1.45;
     color: var(--fg-muted);
-    border-left: 2px solid color-mix(in srgb, var(--gold) 50%, transparent);
+    border-left: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
     padding-left: 8px;
   }
 

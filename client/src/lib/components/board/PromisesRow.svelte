@@ -82,7 +82,7 @@
     padding: 2px 8px;
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid color-mix(in srgb, var(--overlay-ink) 5%, transparent);
   }
   .label {
     font-size: 11px;
@@ -100,7 +100,7 @@
     width: 14px;
     height: 14px;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--overlay-strong);
     border-radius: 50%;
     background: transparent;
     color: var(--fg-dim);
@@ -116,7 +116,7 @@
   }
   .seg.owe button:hover {
     background: rgba(255, 208, 122, 0.12);
-    color: var(--gold);
-    border-color: var(--gold);
+    color: var(--accent);
+    border-color: var(--accent);
   }
 </style>

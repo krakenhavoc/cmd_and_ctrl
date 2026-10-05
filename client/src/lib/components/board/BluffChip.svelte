@@ -158,7 +158,7 @@
     white-space: nowrap;
     padding: 4px 8px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: var(--fg);
     font-size: 0.85em;
     font-weight: 600;
@@ -175,7 +175,7 @@
     border-radius: 0 6px 6px 0;
   }
   .action:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
   }
   .action:disabled {
     opacity: 0.45;

@@ -996,8 +996,8 @@
   /* Self panel carries a gold hairline so the row that's yours reads
      without drawing attention from the cards. */
   .panel.self {
-    border-color: rgba(217, 180, 92, 0.28);
-    box-shadow: inset 0 0 0 1px rgba(217, 180, 92, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
   }
   .panel.opponent {
     /* Upright opponent (the "next" seat) gets the medium scale — it

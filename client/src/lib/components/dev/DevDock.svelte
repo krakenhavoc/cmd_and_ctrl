@@ -165,8 +165,8 @@
     color: var(--fg, #e6ecff);
   }
   .tabs button.active {
-    border-color: var(--gold, #ffd07a);
-    color: var(--gold, #ffd07a);
+    border-color: var(--accent, #ffd07a);
+    color: var(--accent, #ffd07a);
   }
   .count {
     padding: 0 0.4em;

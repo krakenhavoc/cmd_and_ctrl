@@ -1566,8 +1566,8 @@
     gap: 16px;
   }
   .tcard.mine {
-    border-color: rgba(217, 180, 92, 0.3);
-    box-shadow: inset 0 0 0 1px rgba(217, 180, 92, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
   }
   .trow {
     display: flex;
@@ -1609,9 +1609,9 @@
     font-weight: 600;
   }
   .chip.live {
-    color: var(--gold-strong);
-    border-color: rgba(217, 180, 92, 0.5);
-    background: var(--gold-soft);
+    color: var(--accent-strong);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
   }
   .chip.ended {
     color: var(--fg-dim);
@@ -1622,7 +1622,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--gold);
+    background: var(--accent);
     flex: 0 0 auto;
   }
   .dot.ok {
@@ -1656,7 +1656,7 @@
   }
   .arow button.on {
     color: var(--mint);
-    border-color: rgba(95, 212, 164, 0.4);
+    border-color: color-mix(in srgb, var(--mint) 40%, transparent);
   }
   .btn-link {
     display: inline-flex;
@@ -1704,7 +1704,7 @@
     min-width: 0;
   }
   .seat.you {
-    border-color: rgba(217, 180, 92, 0.4);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .seat.open {
     border: 1px dashed var(--border-strong);
@@ -1756,7 +1756,7 @@
     font-size: 9px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-weight: 700;
     margin-left: 5px;
   }
@@ -1777,7 +1777,7 @@
     gap: 5px;
   }
   .sstat.pend {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
 
   /* --- bot seats (S31) ------------------------------------------- */
@@ -1829,7 +1829,7 @@
   .seat-add:hover:not(:disabled),
   .seat-link:hover:not(:disabled) {
     color: var(--fg);
-    border-color: var(--gold);
+    border-color: var(--accent);
   }
   .seat-x:disabled,
   .seat-add:disabled,
@@ -1927,9 +1927,9 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 14px;
-    border: 1px solid rgba(217, 180, 92, 0.35);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 10px;
-    background: var(--gold-soft);
+    background: var(--accent-soft);
   }
   .rhead {
     display: flex;
@@ -1966,7 +1966,7 @@
   }
   .ractions button.on {
     color: var(--mint);
-    border-color: rgba(95, 212, 164, 0.4);
+    border-color: color-mix(in srgb, var(--mint) 40%, transparent);
   }
   .rttl {
     font-family: var(--font-mono);

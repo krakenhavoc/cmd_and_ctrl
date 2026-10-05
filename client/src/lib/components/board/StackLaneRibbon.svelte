@@ -161,17 +161,17 @@
       box-shadow 120ms var(--ease);
   }
   .r-item.top {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 2px var(--gold);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
     animation: ribbon-pulse 2.2s ease-in-out infinite;
   }
   @keyframes ribbon-pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 2px var(--gold);
+      box-shadow: 0 0 0 2px var(--accent);
     }
     50% {
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 55%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -195,8 +195,8 @@
   }
   .r-item.cast-targetable {
     cursor: pointer;
-    box-shadow: var(--ring-gold);
-    border-color: var(--gold);
+    box-shadow: var(--ring);
+    border-color: var(--accent);
   }
   .r-thumb {
     position: relative;
@@ -233,7 +233,7 @@
     color: var(--fg-dim);
   }
   .r-item.top .r-badge {
-    color: var(--gold);
+    color: var(--accent);
     font-weight: 700;
   }
   .r-name {

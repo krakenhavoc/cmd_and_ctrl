@@ -117,9 +117,9 @@
   }
   .mode-chip.token {
     cursor: default;
-    border-color: var(--gold);
-    color: var(--gold-strong);
-    background: var(--gold-soft);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    background: var(--accent-soft);
   }
   .mode-error {
     margin: 2px 10px 6px;

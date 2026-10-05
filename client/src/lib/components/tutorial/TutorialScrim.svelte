@@ -42,7 +42,7 @@
     pointer-events: none;
     border-radius: 12px;
     box-shadow: 0 0 0 9999px rgba(7, 6, 5, 0.62);
-    outline: 1px solid rgba(217, 180, 92, 0.4);
+    outline: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
     outline-offset: 3px;
     transition:
       left 140ms var(--ease),

@@ -570,9 +570,9 @@
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
-    color: var(--gold);
+    color: var(--accent);
     background: var(--surface, #0b0a09);
-    border: 1px solid rgba(217, 180, 92, 0.6);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     pointer-events: none;
   }
   /* #2209: the count badge overhangs the top-left corner, where an art
@@ -596,9 +596,9 @@
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 600;
-    color: var(--gold);
+    color: var(--accent);
     background: var(--surface, #0b0a09);
-    border: 1px solid rgba(217, 180, 92, 0.6);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     pointer-events: none;
   }
 </style>

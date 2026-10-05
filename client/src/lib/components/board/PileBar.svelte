@@ -251,9 +251,9 @@
     height: 15px;
     padding: 0 6px;
     border-radius: 999px;
-    border: 1px solid rgba(217, 180, 92, 0.6);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     background: var(--surface-raised);
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-family: var(--font-mono);
     font-size: 8.5px;
     font-weight: 700;

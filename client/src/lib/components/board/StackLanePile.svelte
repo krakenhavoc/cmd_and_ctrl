@@ -524,8 +524,8 @@
   }
   .peek.cast-targetable {
     box-shadow:
-      inset 0 0 0 2px var(--gold),
-      0 0 12px var(--gold-soft);
+      inset 0 0 0 2px var(--accent),
+      0 0 12px var(--accent-soft);
   }
   .peek-img {
     position: absolute;
@@ -590,7 +590,7 @@
     overflow: hidden;
     background: var(--surface-sunken);
     box-shadow:
-      0 0 0 2px var(--gold),
+      0 0 0 2px var(--accent),
       0 8px 24px rgba(0, 0, 0, 0.55);
     --art-error-top: 8px;
     --art-error-right: 8px;
@@ -600,14 +600,14 @@
   }
   .top-card.targeted {
     box-shadow:
-      0 0 0 2px var(--gold),
+      0 0 0 2px var(--accent),
       0 0 0 5px var(--targeted-ring),
       0 8px 24px rgba(0, 0, 0, 0.55);
   }
   .top-card.cast-targetable {
     box-shadow:
-      var(--ring-gold),
-      0 0 18px var(--gold-soft);
+      var(--ring),
+      0 0 18px var(--accent-soft);
   }
   .card-img {
     width: 100%;
@@ -637,8 +637,8 @@
     flex-direction: column;
     gap: 4px;
     background: color-mix(in srgb, var(--surface) 92%, transparent);
-    border-top: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     overflow: hidden;
   }
   .kind-tag {
@@ -678,7 +678,7 @@
     cursor: pointer;
   }
   .target-btn:focus-visible {
-    outline: 2px solid var(--gold);
+    outline: 2px solid var(--accent);
     outline-offset: -3px;
   }
 
@@ -745,8 +745,8 @@
     padding: 0 6px;
   }
   .chip.flag {
-    color: var(--gold-strong);
-    border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+    color: var(--accent-strong);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   .chip.manual {
     border-style: dashed;
@@ -788,8 +788,8 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     background: var(--surface);
-    border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
-    color: var(--gold);
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    color: var(--accent);
   }
   .all-items {
     position: absolute;
@@ -816,7 +816,7 @@
     min-width: 0;
   }
   .row.top {
-    border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   }
   .row-pos {
     flex: 0 0 auto;

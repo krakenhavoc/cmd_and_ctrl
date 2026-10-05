@@ -531,7 +531,7 @@
     font-weight: 400;
   }
   .zone {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-family: var(--font-mono);
@@ -585,7 +585,7 @@
   .tab.on {
     background: var(--surface-raised);
     border-color: var(--border-strong);
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .search {
     flex: 1 1 160px;
@@ -628,8 +628,8 @@
     position: relative;
   }
   .act.impulse {
-    border-color: rgba(217, 180, 92, 0.6);
-    color: var(--gold-strong);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    color: var(--accent-strong);
   }
   /* #1406: a shut timing window (end step, wrong phase, a cant_cast
      clause) greys the button instead of hiding it, so the reason is
@@ -659,7 +659,7 @@
     padding: 2px 3px;
     border-radius: 999px;
     background: #1c1503;
-    border: 1.5px solid var(--gold-strong);
+    border: 1.5px solid var(--accent-strong);
     box-shadow:
       0 2px 8px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(0, 0, 0, 0.4);
@@ -713,7 +713,7 @@
     font-weight: 600;
   }
   .act:hover:not(:disabled) {
-    color: var(--gold-strong);
-    border-color: rgba(217, 180, 92, 0.5);
+    color: var(--accent-strong);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   }
 </style>

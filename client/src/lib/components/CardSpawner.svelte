@@ -350,8 +350,8 @@
     cursor: pointer;
   }
   .tabs button.sel {
-    border-color: var(--gold, #ffd07a);
-    color: var(--gold, #ffd07a);
+    border-color: var(--accent, #ffd07a);
+    color: var(--accent, #ffd07a);
   }
 
   .results {
@@ -390,7 +390,7 @@
     white-space: nowrap;
   }
   .cost {
-    color: var(--gold, #ffd07a);
+    color: var(--accent, #ffd07a);
   }
   .type,
   .set {
@@ -439,10 +439,10 @@
   .go {
     margin-top: 0.2rem;
     padding: 0.35rem;
-    border: 1px solid var(--gold, #ffd07a);
+    border: 1px solid var(--accent, #ffd07a);
     border-radius: var(--radius-sm, 4px);
-    background: var(--gold-soft, rgba(255, 208, 122, 0.18));
-    color: var(--gold, #ffd07a);
+    background: var(--accent-soft, rgba(255, 208, 122, 0.18));
+    color: var(--accent, #ffd07a);
     font: inherit;
     font-weight: 700;
     letter-spacing: 0.08em;

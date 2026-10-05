@@ -232,13 +232,13 @@
     color: var(--fg-muted);
   }
   .chip.live {
-    color: var(--gold);
-    border-color: var(--gold);
+    color: var(--accent);
+    border-color: var(--accent);
   }
   .chip.won {
     color: var(--fg);
-    border-color: var(--gold);
-    background: rgba(217, 180, 92, 0.14);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
   .chip.archived {
     opacity: 0.7;

@@ -1367,7 +1367,7 @@
     top: calc(3px + var(--face-top, 0px));
     left: 3px;
     background: rgba(10, 14, 26, 0.88);
-    color: var(--gold);
+    color: var(--accent);
     font-size: 8px;
     font-weight: 800;
     padding: 2px 5px;
@@ -1540,7 +1540,7 @@
     top: auto;
     bottom: 3px;
     left: 3px;
-    color: var(--gold);
+    color: var(--accent);
     background: rgba(60, 44, 0, 0.85);
     border: 1px solid rgba(200, 168, 106, 0.7);
   }
@@ -1864,15 +1864,15 @@
   }
   .card.selected {
     box-shadow:
-      0 0 0 2px var(--gold),
-      0 0 22px rgba(255, 208, 122, 0.6),
+      0 0 0 2px var(--accent),
+      0 0 22px color-mix(in srgb, var(--pick) 60%, transparent),
       0 10px 22px rgba(0, 0, 0, 0.5),
       inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
   .card.targetable {
     box-shadow:
-      0 0 0 2px #6fe3a4,
-      0 0 18px rgba(111, 227, 164, 0.6),
+      0 0 0 2px var(--target),
+      0 0 18px color-mix(in srgb, var(--target) 60%, transparent),
       0 6px 16px rgba(0, 0, 0, 0.5);
     cursor: crosshair;
   }
@@ -1880,7 +1880,7 @@
      dragged out of the hand. A light dashed ring, deliberately quieter
      than a target or a selection — it is a preview, not a prompt. */
   .card.autotap-planned {
-    outline: 2px dashed rgba(241, 211, 138, 0.85);
+    outline: 2px dashed color-mix(in srgb, var(--accent-strong) 85%, transparent);
     outline-offset: 2px;
   }
   .card.picked {
@@ -1892,7 +1892,7 @@
   .card.attacking {
     box-shadow:
       0 0 0 2px var(--danger),
-      0 0 18px rgba(255, 122, 122, 0.55),
+      0 0 18px color-mix(in srgb, var(--attack) 55%, transparent),
       0 6px 16px rgba(0, 0, 0, 0.5);
   }
   .card.blocking {

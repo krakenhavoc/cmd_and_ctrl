@@ -98,12 +98,12 @@
     background: linear-gradient(180deg, rgba(19, 26, 44, 0.92) 0%, rgba(8, 12, 24, 0.92) 100%);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(176, 138, 255, 0.6);
+    border: 1px solid color-mix(in srgb, var(--magenta) 60%, transparent);
     border-radius: var(--radius-lg);
     box-shadow:
       0 14px 36px rgba(0, 0, 0, 0.65),
-      0 0 20px rgba(176, 138, 255, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 0 20px color-mix(in srgb, var(--magenta) 20%, transparent),
+      inset 0 1px 0 var(--overlay);
     padding: 14px 18px;
     min-width: 280px;
     max-width: 420px;
@@ -154,7 +154,7 @@
     gap: 12px;
     width: 100%;
     background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--overlay);
     border-radius: var(--radius);
     padding: 8px 12px;
     color: inherit;
@@ -167,14 +167,14 @@
       border-color 140ms var(--ease);
   }
   .option:hover {
-    background: rgba(176, 138, 255, 0.1);
-    border-color: rgba(176, 138, 255, 0.6);
+    background: color-mix(in srgb, var(--magenta) 10%, transparent);
+    border-color: color-mix(in srgb, var(--magenta) 60%, transparent);
   }
   .option.mine {
-    background: rgba(176, 138, 255, 0.22);
-    border-color: #b08aff;
+    background: color-mix(in srgb, var(--magenta) 22%, transparent);
+    border-color: var(--magenta);
     color: #e1d3ff;
-    box-shadow: 0 0 14px rgba(176, 138, 255, 0.25);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--magenta) 25%, transparent);
   }
   .option-text {
     flex: 1;
@@ -182,7 +182,7 @@
   .option-tally {
     font-weight: 800;
     font-variant-numeric: tabular-nums;
-    color: #b08aff;
+    color: var(--magenta);
     min-width: 18px;
     text-align: right;
   }
@@ -193,7 +193,7 @@
   }
   .end {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--overlay-strong);
     color: var(--fg-muted);
     padding: 5px 14px;
     border-radius: 999px;

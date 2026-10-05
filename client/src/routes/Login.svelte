@@ -256,9 +256,9 @@
     width: 210px;
     height: 294px;
     border-radius: 12px;
-    border: 1px solid rgba(217, 180, 92, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
     background:
-      radial-gradient(60% 50% at 50% 40%, rgba(217, 180, 92, 0.16), transparent 70%), var(--bg-2);
+      radial-gradient(60% 50% at 50% 40%, var(--accent-soft), transparent 70%), var(--bg-2);
     transform-origin: 50% 120%;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   }
@@ -295,19 +295,19 @@
   .mark {
     width: 56px;
     height: 56px;
-    border: 3px solid var(--gold);
+    border: 3px solid var(--accent);
     transform: rotate(45deg);
     border-radius: 8px;
     box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 40px rgba(217, 180, 92, 0.25);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 25%, transparent);
   }
   .mark i {
     width: 14px;
     height: 14px;
-    background: var(--gold);
+    background: var(--accent);
     border-radius: 2px;
   }
   h1.wm {
@@ -416,9 +416,9 @@
     gap: 10px;
     padding: 10px 14px;
     border-radius: 10px;
-    background: var(--gold-soft);
-    border: 1px solid rgba(217, 180, 92, 0.4);
-    color: var(--gold-strong);
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--accent-strong);
     font-size: 12.5px;
   }
   .replaces {
@@ -451,6 +451,6 @@
   }
   .ghost-link:hover {
     color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
   }
 </style>

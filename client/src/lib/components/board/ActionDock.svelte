@@ -763,7 +763,7 @@
     gap: 5px;
     padding: 8px 12px;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
+      linear-gradient(180deg, var(--overlay-faint) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
@@ -814,9 +814,9 @@
     align-items: flex-start;
     gap: 6px;
     padding: 6px 8px;
-    border: 1px solid rgba(255, 107, 107, 0.45);
+    border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
     border-radius: 6px;
-    background: rgba(255, 107, 107, 0.1);
+    background: var(--danger-soft);
     line-height: 1.35;
   }
   .loop-label {
@@ -848,7 +848,7 @@
     padding: 4px 8px;
     border-radius: 6px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: var(--fg);
     font-size: 0.85em;
     font-weight: 600;
@@ -860,8 +860,8 @@
       opacity 140ms var(--ease);
   }
   .action:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: color-mix(in srgb, var(--border) 60%, white 40%);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
+    border-color: color-mix(in srgb, var(--border) 60%, var(--overlay-ink) 40%);
   }
   .action:disabled {
     opacity: 0.45;
@@ -884,17 +884,17 @@
     background: var(--accent-soft);
     color: var(--accent-strong);
     font-weight: 700;
-    border-color: rgba(217, 180, 92, 0.55);
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   }
   .action.autopass.on:hover:not(:disabled) {
-    background: rgba(217, 180, 92, 0.24);
+    background: color-mix(in srgb, var(--accent) 24%, transparent);
     border-color: var(--accent);
   }
   /* #628: suspended, not switched off — a distinct look from both
      `on` (gold) and `off` (flat). */
   .action.autopass.paused {
-    background: rgba(255, 107, 107, 0.14);
-    border-color: rgba(255, 107, 107, 0.5);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    border-color: color-mix(in srgb, var(--danger) 50%, transparent);
     color: var(--danger);
     font-weight: 700;
   }
@@ -913,7 +913,7 @@
     padding: 0 12px;
     border-radius: 7px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: var(--fg);
     font-size: 0.9em;
     font-weight: 600;
@@ -943,7 +943,7 @@
     text-align: center;
   }
   .dock-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
   }
   .dock-btn:disabled {
     opacity: 0.45;
@@ -1060,7 +1060,7 @@
     background: var(--accent-soft);
   }
   .dock-btn.emphasis:hover:not(:disabled) {
-    background: rgba(217, 180, 92, 0.24);
+    background: color-mix(in srgb, var(--accent) 24%, transparent);
   }
   .note {
     color: var(--fg-dim);
@@ -1116,9 +1116,9 @@
     align-items: baseline;
     gap: 6px;
     padding: 6px 8px;
-    border: 1px solid rgba(217, 180, 92, 0.45);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     border-radius: 6px;
-    background: rgba(217, 180, 92, 0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
     font-size: 0.78rem;
     line-height: 1.35;
     color: var(--fg);
@@ -1143,7 +1143,7 @@
     cursor: pointer;
   }
   .refusal-close:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
   }
   .refusal-close:focus-visible {
     outline: 2px solid var(--accent);
@@ -1249,7 +1249,7 @@
     box-shadow: none;
   }
   .sheet-min:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
     color: var(--fg);
   }
   .sheet-body {

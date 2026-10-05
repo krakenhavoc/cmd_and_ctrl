@@ -193,7 +193,7 @@
     color: var(--mint, #7aff9a);
   }
   .dir.out {
-    color: var(--gold, #ffd07a);
+    color: var(--accent, #ffd07a);
   }
   .seq,
   .bytes,
