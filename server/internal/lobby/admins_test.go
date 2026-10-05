@@ -475,6 +475,12 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 		{"GET", "/bugreport/abc/gamelog", nil},
 		{"POST", "/admin/users/" + uuid.New().String() + "/revoke-sessions", nil},
 		{"GET", "/games/" + meta.ID.String() + "/bot/stats", nil},
+		// The admin views (ADR 0124 §8). This stack has no database, so
+		// an admin gets their 503.
+		{"GET", "/admin/users", nil},
+		{"GET", "/admin/users/" + uuid.New().String(), nil},
+		{"GET", "/admin/games?state=active", nil},
+		{"GET", "/admin/games/" + meta.ID.String(), nil},
 		{"GET", "/admin/live", nil},
 		// Last: it deletes the table the others use.
 		{"DELETE", "/games/" + meta.ID.String(), nil},

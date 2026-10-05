@@ -102,6 +102,9 @@ func TestLiveTablesCopiesEveryTableAndSeat(t *testing.T) {
 	if w.Name != "Waiting" || w.State != string(game.StateLobby) || w.Archived || w.Practice {
 		t.Errorf("waiting table = %+v", w)
 	}
+	if !w.CreatedAt.Equal(waiting.CreatedAt) || w.CreatedAt.IsZero() {
+		t.Errorf("waiting table created %v, want %v", w.CreatedAt, waiting.CreatedAt)
+	}
 	want := map[uuid.UUID]LiveSeat{
 		alice: {Seat: 0, PlayerID: alice, Kind: metrics.SeatHuman, Name: "Alice", Host: true},
 		bob:   {Seat: 1, PlayerID: bob, Kind: metrics.SeatHuman, UserID: bobUser.String(), Name: "Bob", DisplayName: "Bobby"},

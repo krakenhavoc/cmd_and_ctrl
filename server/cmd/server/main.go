@@ -132,6 +132,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/deckprofile"
@@ -579,6 +580,7 @@ func main() {
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
+		AdminViews:        newAdminViewStore(database),
 		Log:               log,
 		Bots:              bots,
 		// The four curated archetype decks from S31 sub-PR 5. This
@@ -1112,6 +1114,16 @@ func newDeckRequestStore(database *db.DB) deckrequests.Store {
 		return nil
 	}
 	return deckrequests.NewSQLStore(database)
+}
+
+// newAdminViewStore builds the admin views' read-only store (ADR 0124
+// §5). No database returns nil, which the lobby reads as "the admin
+// views of accounts and games are off" (503).
+func newAdminViewStore(database *db.DB) adminview.Store {
+	if database == nil {
+		return nil
+	}
+	return adminview.NewSQLStore(database)
 }
 
 func envOr(key, dflt string) string {
