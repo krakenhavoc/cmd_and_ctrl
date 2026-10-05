@@ -181,6 +181,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CantGainLife:               spec.CantGainLife,
 		DamageAsThough:             spec.DamageAsThough,
 		AnyColorSpend:              spec.AnyColorSpend,
+		LegendRuleExemptions:       spec.LegendRuleExemptions,
 		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		WantsManaFrom:              spec.WantsManaFrom,
