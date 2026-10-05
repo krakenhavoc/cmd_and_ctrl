@@ -184,6 +184,8 @@ export function createHintEngine(opts: EngineOptions = {}): HintEngine {
   }
 
   function logOnce(v: Visit, h: Hint): void {
+    // An anchor that is empty by design is not missing (Hint.waitsForAnchor).
+    if (h.waitsForAnchor) return;
     if (v.logged.has(h.id)) return;
     v.logged.add(h.id);
     log(missingAnchorMessage(h.id));
