@@ -1,8 +1,8 @@
 <script lang="ts">
-  // The brand: the mark (a card and a second card turned sideways,
-  // i.e. tapped) and the wordmark (the name as two keycaps, cmd & ctrl).
-  // Drawn in the skin's colours: the upright card is --fg and the tapped
-  // one --accent, so it follows the skin and a custom accent.
+  // The brand: the mark (four Cs, four players, around a diamond, the
+  // commander at the centre of the table) and the wordmark (the name as
+  // two keycaps, cmd & ctrl). The mark is drawn in --accent, so it
+  // follows the skin and a custom accent.
   //
   // `size` sets the type size; everything else is in em. "hero" stacks
   // the mark over the keys (the login page); "bar" and "header" sit
@@ -12,22 +12,20 @@
   // The icons in public/icons draw the same mark; keep the geometry in
   // step (tools/gen-icons.sh rasterises them).
   let { size = "header" }: { size?: "bar" | "header" | "hero" } = $props();
-  const uid = $props.id();
-  const cut = `wm-cut-${uid}`;
+
+  // One C, the top-left one, on a grid centred on the diamond; the
+  // other three are its mirror images.
+  const C =
+    "M-10-40V-80L-30-100H-52A48 48 0 0 0-100-52V-30L-80-10H-40L-33-17L-48-32H-71A7 7 0 0 1-78-39V-52A26 26 0 0 1-52-78H-39A7 7 0 0 1-32-71V-48L-17-33Z";
+  const MIRRORS = ["", "scale(-1 1)", "scale(1 -1)", "scale(-1 -1)"];
 </script>
 
 <span class="wordmark-art {size}">
-  <svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-    <defs>
-      <!-- The tapped card is cut out of the upright one with a 4px
-           gap, so the mark sits on any background without a halo. -->
-      <mask id={cut}>
-        <rect width="64" height="64" fill="white" />
-        <rect x="19" y="26" width="42" height="32" rx="8" fill="black" />
-      </mask>
-    </defs>
-    <rect x="7" y="10" width="26" height="36" rx="5" class="up" mask="url(#{cut})" />
-    <rect x="23" y="30" width="34" height="24" rx="5" class="tapped" />
+  <svg class="mark" viewBox="-104 -104 208 208" aria-hidden="true" focusable="false">
+    {#each MIRRORS as t (t)}
+      <path d={C} transform={t} />
+    {/each}
+    <path d="M0-38L38 0L0 38L-38 0Z" />
   </svg>
   <span class="keys" aria-hidden="true">
     <span class="key">cmd</span><span class="amp">&amp;</span><span class="key">ctrl</span>
@@ -67,10 +65,7 @@
     height: 76px;
     filter: drop-shadow(0 10px 26px color-mix(in srgb, var(--accent) 30%, transparent));
   }
-  .up {
-    fill: var(--fg);
-  }
-  .tapped {
+  .mark path {
     fill: var(--accent);
   }
   .keys {
