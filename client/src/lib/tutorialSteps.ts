@@ -7,13 +7,15 @@
 // it explains the client, never a rule. "Tap this Forest for mana",
 // never "lands make mana".
 //
-// Anchors, checked against the DOM after ADR 0111:
-//   your hand                      { label: "your hand" }
-//   lands / creatures              { label: "lands", within: "your board" }
+// Anchors come from the contract-label registry (labels.ts, ADR 0125
+// §2.2), so a renamed label moves them too:
+//   your hand                      { label: L.yourHand }
+//   lands / creatures              { label: L.lands, within: L.yourBoard }
 //                                  (every opponent's panel has the same lists)
-//   the action dock                { label: "actions" }
-//   step 9, the autopass toggle    { label: "autopass", within: "actions" }
-//   step 7, one card               { cardID }  (Card's data-instance-id)
+//   the action dock                { label: L.actions }
+//   step 9, the autopass toggle    { label: L.autopass, within: L.actions }
+//   step 10's detour, the bot      { label: L.seatBoard(name) }
+//   step 7, one card              { cardID }  (Card's data-instance-id)
 //   step 10, the bot's portrait    { seatID }  (PlayerIdentity's data-seat-id)
 //
 // What the practice table does that the ADR's table did not foresee, and
@@ -40,15 +42,16 @@
 //     creature in hand is castable.
 
 import type { Anchor, CopyContext, Detour, StepContext, TutorialStep } from "./tutorial";
+import { L } from "./labels";
 import type { CardView, GameView, PlayerView } from "./protocol";
 
 // ---- What the predicates read off the board ----
 
-const HAND: Anchor = { label: "your hand" };
-const LANDS: Anchor = { label: "lands", within: "your board" };
-const CREATURES: Anchor = { label: "creatures", within: "your board" };
-const DOCK: Anchor = { label: "actions" };
-const AUTOPASS: Anchor = { label: "autopass", within: "actions" };
+const HAND: Anchor = { label: L.yourHand };
+const LANDS: Anchor = { label: L.lands, within: L.yourBoard };
+const CREATURES: Anchor = { label: L.creatures, within: L.yourBoard };
+const DOCK: Anchor = { label: L.actions };
+const AUTOPASS: Anchor = { label: L.autopass, within: L.actions };
 
 const MAIN_STEPS = new Set(["precombat_main", "postcombat_main"]);
 const EARLY_STEPS = new Set(["untap", "upkeep", "draw", "precombat_main"]);
@@ -388,7 +391,7 @@ export const ATTACK: TutorialStep = {
         id: "watch-bot",
         title: "Watch the bot play",
         body: "Autopass is passing for you while the bot takes its turn. It hands back at your main phase.",
-        anchor: opp ? { label: `${opp.name} board` } : DOCK,
+        anchor: opp ? { label: L.seatBoard(opp.name) } : DOCK,
       };
     }
     if (!myTurn(c)) {

@@ -78,6 +78,7 @@
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
+  import { L } from "../../labels";
   import { canOverride, type MenuAction } from "../../contextMenu.logic";
   import {
     NO_COMBAT_RINGS,
@@ -709,11 +710,11 @@
   class:seat-turn={isActive}
   style:--seat-color={seatColor(seat.seat)}
   role={expanded ? "group" : "region"}
-  aria-label={expanded ? undefined : isSelf ? "your board" : `${seat.name} board`}
+  aria-label={expanded ? undefined : isSelf ? L.yourBoard : L.seatBoard(seat.name)}
 >
   <div class="grid-creatures">
     <BattlefieldRow
-      label="creatures"
+      label={L.creatures}
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
@@ -742,7 +743,7 @@
        out from the middle like the creature row above it. -->
   <div class="grid-middle">
     <BattlefieldRow
-      label="lands"
+      label={L.lands}
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}

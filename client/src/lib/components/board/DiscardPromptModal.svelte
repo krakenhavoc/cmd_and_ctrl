@@ -21,6 +21,7 @@
   import type { ActionType, GameView } from "../../protocol";
   import Card from "./Card.svelte";
   import { confirmAction } from "../../dock";
+  import { L } from "../../labels";
   import DockSheet from "./DockSheet.svelte";
 
   interface Props {
@@ -87,7 +88,7 @@
 {#if open}
   <DockSheet
     rank="choice"
-    label={`Discard ${owedCount} card${owedCount === 1 ? "" : "s"}`}
+    label={L.discard(owedCount)}
     src={isCleanupContext ? "cleanup" : "effect"}
     width={720}
     count={`${selected.size} / ${owedCount} selected`}

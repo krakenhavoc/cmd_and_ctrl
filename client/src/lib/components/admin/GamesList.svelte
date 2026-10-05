@@ -8,6 +8,7 @@
   // what the tiles count. Loads once; Refresh asks again.
   import { onMount } from "svelte";
   import { fetchAdminGames } from "../../api";
+  import { L } from "../../labels";
   import {
     accountHash,
     gameHash,
@@ -122,7 +123,7 @@
       <p class="empty">No tables match.</p>
     {:else}
       <div class="scroll">
-        <table aria-label="games">
+        <table aria-label={L.gamesTable}>
           <thead>
             <tr>
               <th scope="col">Table</th>

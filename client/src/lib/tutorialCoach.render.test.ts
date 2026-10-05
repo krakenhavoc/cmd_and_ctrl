@@ -15,6 +15,7 @@ import TutorialCoach from "./components/tutorial/TutorialCoach.svelte";
 import { ANCHOR_GRACE_MS, POLL_MS, type CoachState, type TutorialStep } from "./tutorial";
 import { HANDOFF, WELCOME } from "./tutorialSteps";
 import { anchorRect, resolveAnchor } from "./tutorialAnchor";
+import { L } from "./labels";
 import { emit } from "./tutorialBus";
 import { defaultSettings, settings } from "./settings";
 import { render, click, cleanup, flushSync, type Rendered } from "./test/render.svelte";
@@ -149,9 +150,24 @@ describe("the anchor resolver", () => {
   it("finds a label, scoped to its container", () => {
     table();
     // Unscoped, "lands" would be the first opponent's row.
-    expect(resolveAnchor({ label: "lands" })?.id).toBe("opp-lands");
-    expect(resolveAnchor({ label: "lands", within: "your board" })?.id).toBe("my-lands");
-    expect(resolveAnchor({ label: "your hand" })?.id).toBe("hand");
+    expect(resolveAnchor({ label: L.lands })?.id).toBe("opp-lands");
+    expect(resolveAnchor({ label: L.lands, within: L.yourBoard })?.id).toBe("my-lands");
+    expect(resolveAnchor({ label: L.yourHand })?.id).toBe("hand");
+  });
+
+  it("matches a dynamic label by its full name, or by its stem (ADR 0125 §2.2)", () => {
+    document.body.innerHTML = `
+      <section aria-label="Practice Bot board" id="bot-board">
+        <div aria-label="Practice Bot command zone, 1 card" id="bot-cz"></div></section>
+      <section aria-label="your board">
+        <div aria-label="Player command zone, 1 card" id="my-cz"></div>
+        <section aria-label="stack: 2 on the stack" id="pile"></section></section>`;
+    expect(resolveAnchor({ label: L.seatBoard("Practice Bot") })?.id).toBe("bot-board");
+    // Unscoped, the stem finds the first command zone; scoped, the viewer's.
+    expect(resolveAnchor({ label: L.commandZone.any })?.id).toBe("bot-cz");
+    expect(resolveAnchor({ label: L.commandZone.any, within: L.yourBoard })?.id).toBe("my-cz");
+    expect(resolveAnchor({ label: L.stackPile.any })?.id).toBe("pile");
+    expect(resolveAnchor({ label: L.discard.any })).toBeNull();
   });
 
   it("finds a card by instance id", () => {
@@ -161,8 +177,8 @@ describe("the anchor resolver", () => {
 
   it("is null when the label, its container or the card is not there", () => {
     table();
-    expect(resolveAnchor({ label: "attention" })).toBeNull();
-    expect(resolveAnchor({ label: "lands", within: "no such board" })).toBeNull();
+    expect(resolveAnchor({ label: L.attention })).toBeNull();
+    expect(resolveAnchor({ label: L.lands, within: L.seatBoard("No such") })).toBeNull();
     expect(resolveAnchor({ cardID: "gone" })).toBeNull();
   });
 
@@ -171,14 +187,14 @@ describe("the anchor resolver", () => {
     place(document.getElementById("hand")!, 100, 600, 400, 120);
     place(document.getElementById("elves")!, 200, 300, 80, 110);
     place(document.getElementById("my-lands")!, 0, 0, 160, 0);
-    expect(anchorRect([{ label: "your hand" }, { cardID: "c-1" }])).toEqual({
+    expect(anchorRect([{ label: L.yourHand }, { cardID: "c-1" }])).toEqual({
       left: 100,
       top: 300,
       width: 400,
       height: 420,
     });
-    expect(anchorRect([{ label: "lands", within: "your board" }])).toBeNull();
-    expect(anchorRect([{ label: "nowhere" }, { cardID: "c-1" }])).toEqual({
+    expect(anchorRect([{ label: L.lands, within: L.yourBoard }])).toBeNull();
+    expect(anchorRect([{ label: L.gameActions }, { cardID: "c-1" }])).toEqual({
       left: 200,
       top: 300,
       width: 80,
@@ -215,7 +231,7 @@ describe("TutorialCoach", () => {
     kind: "action",
     title: "Read your hand",
     body: "Hover the fan to lift it.",
-    anchor: { label: "your hand" },
+    anchor: { label: L.yourHand },
     done: (c) => c.event === "hand-hovered",
   };
 
@@ -357,7 +373,7 @@ describe("TutorialCoach: the middle steps", () => {
     kind: "action",
     title: "Read your hand",
     body: "Rest the pointer on a card.",
-    anchor: { label: "your hand" },
+    anchor: { label: L.yourHand },
     hover: { ms: 600, event: "hand-hovered" },
   };
   const view = { id: "g", seats: [], turn: { seq: 1 } } as unknown as GameView;
@@ -448,7 +464,7 @@ describe("TutorialCoach: the middle steps", () => {
       title: "Play a land",
       body: "Click a Forest in your hand.",
       hint: "A land waits for your main phase.",
-      anchor: { label: "your hand" },
+      anchor: { label: L.yourHand },
       done: (c) => c.event === "ability-menu-opened",
       first: () =>
         upkeep
@@ -456,7 +472,7 @@ describe("TutorialCoach: the middle steps", () => {
               id: "to-main",
               title: "First, your main phase",
               body: (k) => `Press next (${k.nextKey}) until it reads Main.`,
-              anchor: { label: "actions" },
+              anchor: { label: L.actions },
             }
           : null,
     };
