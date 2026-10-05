@@ -150,6 +150,13 @@ type PermanentInfo struct {
 	// it), and a face-down permanent, which has no mana cost, is zero.
 	// A token that is no copy has no mana cost either, and is zero.
 	ManaValue int `json:"manaValue,omitempty"`
+
+	// RingBearer is whether it was its controller's Ring-bearer (CR
+	// 701.54e) as it last existed on the battlefield. Read by
+	// "protection from Ring-bearers" when the source has since left
+	// (#2145); the designation is cleared on leaving (CR 400.7), so
+	// only this record remembers it.
+	RingBearer bool `json:"ringBearer,omitempty"`
 }
 
 // permanentManaValue is PermanentInfo.ManaValue's reading of a
@@ -177,6 +184,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		ChosenColor:    c.ChosenColor,
 		NamedTribe:     c.NamedTribe,
 		ManaValue:      permanentManaValue(c),
+		RingBearer:     IsRingBearerOf(*c, c.Controller),
 	}
 }
 

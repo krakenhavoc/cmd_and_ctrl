@@ -164,6 +164,24 @@ type EntryCardChoice struct {
 	//
 	// Runs with g.mu held.
 	Then func(g *Game, picked []uuid.UUID) error
+
+	// AnyNumber makes this a sacrifice of "any number of" matching
+	// permanents, zero included (CR 702.82a, devour): the floor is Min
+	// (normally 0), the ceiling is however many candidates exist, and
+	// "if you do" does not apply — whatever really left is what counts.
+	// An empty answer, or no candidates, declines without running
+	// Replace beyond whatever the declaration set (devour sets none).
+	// Only meaningful for EntryCardSacrifice.
+	AnyNumber bool
+
+	// Devour is CR 702.82a's N: when positive, every creature really
+	// sacrificed adds N +1/+1 counters to the ENTRY (ev.AddCounterAtETB,
+	// so Doubling Season and Hardened Scales see them) and one to
+	// ReplacementEvent.EntersDevoured, which the landing copies onto
+	// Card.Devoured for CR 702.82b. It is data, not a hook, so the
+	// declaration carries no closure a restore point would have to
+	// rebuild. Only meaningful with AnyNumber.
+	Devour int
 }
 
 // zone is where the choice's candidates live.
@@ -194,6 +212,9 @@ func (s *EntryCardChoice) bounds(candidates int) (lo, hi int) {
 	lo = s.Min
 	if lo < 0 {
 		lo = 0
+	}
+	if s.Action == EntryCardSacrifice && s.AnyNumber {
+		return lo, candidates
 	}
 	if s.Action == EntryCardSacrifice {
 		// Not a "may": the count is fixed, and a shortfall is decided
@@ -459,10 +480,8 @@ func (g *Game) ResolveEntryCardChoice(choiceID, chooserID uuid.UUID, picks []uui
 			Reason: reason,
 			Cards:  picks,
 		})
-		if spec != nil && spec.Then != nil {
-			if err := spec.Then(g, append([]uuid.UUID(nil), picks...)); err != nil {
-				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-			}
+		if spec != nil {
+			g.runEntryThenLocked(spec, ev, picks)
 		}
 	}
 	return g.continueEntryAfterChoiceLocked(ev)
@@ -515,12 +534,16 @@ func (g *Game) thawEntryChoiceLocked(frozen *replacementResumeFrame) (*Replaceme
 // Caller must hold g.mu.
 func (g *Game) resumeEntryAfterActionLocked(frozen *replacementResumeFrame, done bool, moved []uuid.UUID) error {
 	ev, chosen := g.thawEntryChoiceLocked(frozen)
+	spec := chosen.effect.EntryCardChoice
+	if spec != nil && spec.AnyNumber {
+		// "Any number of": nothing to fail at, and no "if you don't"
+		// branch. What really left is the count.
+		done = true
+	}
 	if !done {
 		g.runEntryChoiceDeclineLocked(ev, chosen)
-	} else if spec := chosen.effect.EntryCardChoice; spec != nil && spec.Then != nil {
-		if err := spec.Then(g, append([]uuid.UUID(nil), moved...)); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-		}
+	} else if spec != nil {
+		g.runEntryThenLocked(spec, ev, moved)
 	}
 	return g.continueEntryAfterChoiceLocked(ev)
 }
@@ -545,4 +568,48 @@ func (g *Game) continueEntryAfterChoiceLocked(ev *ReplacementEvent) error {
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	return g.finishSettledReplacementLocked(ev, out)
+}
+
+// applyEntersDevouredLocked is the battlefield landing's half of
+// ReplacementEvent.EntersDevoured (CR 702.82a): the permanent that has
+// just arrived records how many creatures it devoured, for CR 702.82b.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) applyEntersDevouredLocked(cardID uuid.UUID, n int) {
+	if n <= 0 {
+		return
+	}
+	if c := findBattlefieldCard(g, cardID); c != nil {
+		c.Devoured = n
+	}
+}
+
+// DevouredBy returns how many creatures the permanent devoured as it
+// entered (CR 702.82b): zero for a permanent that is not on the
+// battlefield or devoured nothing.
+//
+// Caller must hold either lock.
+func (g *Game) DevouredBy(sourceID uuid.UUID) int {
+	if c := findBattlefieldCard(g, sourceID); c != nil {
+		return c.Devoured
+	}
+	return 0
+}
+
+// runEntryThenLocked runs a choice's Then and applies its devour with
+// the cards that really moved. Errors are logged, not returned, like every
+// other inline hook of the apply-loop. Devour is skipped when
+// nothing moved.
+//
+// Caller must hold g.mu.
+func (g *Game) runEntryThenLocked(spec *EntryCardChoice, ev *ReplacementEvent, moved []uuid.UUID) {
+	if spec.Then != nil {
+		if err := spec.Then(g, append([]uuid.UUID(nil), moved...)); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+		}
+	}
+	if spec.Devour > 0 && len(moved) > 0 {
+		ev.EntersDevoured += len(moved)
+		ev.AddCounterAtETB(CounterPlusOne, spec.Devour*len(moved))
+	}
 }

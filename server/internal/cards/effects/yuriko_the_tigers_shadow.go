@@ -53,27 +53,11 @@ func init() {
 // into their hand and drains each opponent for its mana value.
 func yurikoFlip(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	var revealed []uuid.UUID
-	if err := (RevealTopOfLibrary{
-		Player:   item.Controller,
-		N:        1,
-		Reason:   "Yuriko, the Tiger's Shadow — reveal the top card of your library",
-		Revealed: &revealed,
-	}).Apply(ctx); err != nil {
-		return err
-	}
-	if len(revealed) == 0 {
+	flipped, loss, err := revealTopReadingManaValue(ctx, "Yuriko, the Tiger's Shadow — reveal the top card of your library")
+	if err != nil || flipped == uuid.Nil {
 		// An empty library reveals nothing: nothing to put into hand
 		// and no mana value to lose.
-		return nil
-	}
-	flipped := revealed[0]
-	// Read before the move, for Dark Confidant's reason: the last
-	// moment the card is certainly findable where the effect found it.
-	// CR 202.3e makes the number the same in either zone.
-	loss := 0
-	if c, ok := g.LookupCardForEffect(flipped); ok {
-		loss = c.ManaValue()
+		return err
 	}
 	if err := (BounceToHand{Target: flipped}).Apply(ctx); err != nil {
 		return err

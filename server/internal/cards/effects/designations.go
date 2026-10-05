@@ -274,5 +274,8 @@ func specDesignations(spec Spec) []game.Designation {
 	for _, h := range spec.HandSize {
 		out = append(out, h.When)
 	}
+	for _, m := range spec.ManaPool {
+		out = append(out, m.When)
+	}
 	return out
 }

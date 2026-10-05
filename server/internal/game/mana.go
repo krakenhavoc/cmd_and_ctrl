@@ -632,11 +632,15 @@ func manaSpentEvent(actor, source uuid.UUID, spent []ManaToken) Event {
 // emptyAllManaPoolsLocked clears every seated player's mana pool
 // and emits one EventManaPoolEmptied per affected player. Called
 // from runStepEntryHooksLocked at every step boundary (CR 106.4).
+// What a player is allowed to keep is mana_keep.go's (#2166).
 // No-op for players whose pool is already empty so step-cycle
 // chatter stays quiet. Caller must hold g.mu.
 func (g *Game) emptyAllManaPoolsLocked() {
 	for _, p := range g.Seats {
-		n := p.ManaPool.EmptyPool()
+		if len(p.ManaPool) == 0 {
+			continue
+		}
+		n := g.sweepManaPoolLocked(p)
 		if n == 0 {
 			continue
 		}
