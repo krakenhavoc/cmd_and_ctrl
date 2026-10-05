@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Wordmark from "../lib/components/Wordmark.svelte";
   import { onMount } from "svelte";
   import { adminLogin, discordAuthEnabled, discordLoginHref, joinByCode } from "../lib/api";
   import { navigate } from "../lib/router";
@@ -108,8 +109,7 @@
   </div>
   <div class="stack">
     <div class="brand">
-      <span class="mark" aria-hidden="true"><i></i></span>
-      <h1 class="wm">CMD &amp; CTRL</h1>
+      <h1 class="wm"><Wordmark size="hero" /></h1>
       <p class="tagline">The Commander table, over the wire.</p>
     </div>
 
@@ -292,31 +292,8 @@
     gap: 12px;
     text-align: center;
   }
-  .mark {
-    width: 56px;
-    height: 56px;
-    border: 3px solid var(--accent);
-    transform: rotate(45deg);
-    border-radius: 8px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 25%, transparent);
-  }
-  .mark i {
-    width: 14px;
-    height: 14px;
-    background: var(--accent);
-    border-radius: 2px;
-  }
   h1.wm {
-    margin: 8px 0 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 34px;
-    letter-spacing: 0.22em;
-    color: var(--fg);
+    margin: 0;
   }
   .tagline {
     margin: 0;

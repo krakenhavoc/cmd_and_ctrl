@@ -1,20 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="CMD &amp; CTRL">
   <title>CMD &amp; CTRL</title>
   <desc>
-    purpose=maskable: full bleed ink, and the mark stays inside the 40 percent
-    radius safe circle (half diagonal 181px plus 7px stroke = 188px, against a
-    205px safe radius) so no launcher mask can clip it.
+    purpose=maskable: full bleed ink, and the mark (icon.svg's, at 0.7
+    instead of 0.75) stays inside the 40 percent radius safe circle: its
+    farthest corner is about 186px from the centre, against a 205px safe
+    radius, so no launcher mask can clip it.
   </desc>
   <defs>
     <radialGradient id="pool" cx="50%" cy="4%" r="78%">
-      <stop offset="0%" stop-color="#d9b45c" stop-opacity="0.16" />
-      <stop offset="70%" stop-color="#d9b45c" stop-opacity="0" />
+      <stop offset="0%" stop-color="#ff7a1a" stop-opacity="0.16" />
+      <stop offset="70%" stop-color="#ff7a1a" stop-opacity="0" />
     </radialGradient>
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="white" />
+      <rect x="152" y="208" width="336" height="256" rx="64" fill="black" />
+    </mask>
   </defs>
-  <rect width="512" height="512" fill="#0b0a09" />
+  <rect width="512" height="512" fill="#070d14" />
   <rect width="512" height="512" fill="url(#pool)" />
-  <g transform="rotate(45 256 256)">
-    <rect x="128" y="128" width="256" height="256" rx="36" fill="none" stroke="#d9b45c" stroke-width="14" />
-    <rect x="224" y="224" width="64" height="64" rx="9" fill="#d9b45c" />
+  <g transform="translate(76.8 76.8) scale(0.7)">
+    <rect x="56" y="80" width="208" height="288" rx="40" fill="#e8eff7" mask="url(#cut)" />
+    <rect x="184" y="240" width="272" height="192" rx="40" fill="#ff7a1a" />
   </g>
 </svg>

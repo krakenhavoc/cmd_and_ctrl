@@ -1,9 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="CMD &amp; CTRL">
-  <!-- Tab-sized variant: heavier stroke and a larger pip so the mark
-       still reads at 16px, where the 512px icon's hairline vanishes. -->
-  <rect width="64" height="64" rx="12" fill="#0b0a09" />
-  <g transform="rotate(45 32 32)">
-    <rect x="13" y="13" width="38" height="38" rx="6" fill="none" stroke="#d9b45c" stroke-width="5" />
-    <rect x="26" y="26" width="12" height="12" rx="2" fill="#d9b45c" />
+  <!-- Tab-sized variant of icon.svg: the mark fills more of the tile so
+       both cards still read at 16px. -->
+  <defs>
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="white" />
+      <rect x="19" y="26" width="42" height="32" rx="8" fill="black" />
+    </mask>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#070d14" />
+  <g transform="translate(3.2 3.2) scale(0.9)">
+    <rect x="7" y="10" width="26" height="36" rx="5" fill="#e8eff7" mask="url(#cut)" />
+    <rect x="23" y="30" width="34" height="24" rx="5" fill="#ff7a1a" />
   </g>
 </svg>
