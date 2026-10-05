@@ -34,8 +34,9 @@ export function openingRollWinner(view: StartingView | null): OpeningRollWinner 
     if (entry.kind === "starting_player") choice = entry;
   }
   if (!choice) {
-    // A table that never rolled (the practice table, ADR 0076) or a
-    // replay from before the opening roll: name who went first.
+    // A table that never rolled (a replay or a restored game from
+    // before the opening roll, ADR 0121; the practice table rolls too
+    // since ADR 0125 §5.2): name who went first.
     if (view.starting_seat === undefined) return null;
     const name = nameOf(view.starting_seat);
     return name === undefined ? null : { seat: view.starting_seat, name };

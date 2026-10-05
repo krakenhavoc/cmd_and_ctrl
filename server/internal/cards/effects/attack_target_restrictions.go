@@ -96,6 +96,15 @@ func CantAttackUnlessYouControlMoreThanDefendingPlayer(queries ...game.Permanent
 	return selfAttackTargetRestriction(game.AttackTargetRestriction{ControllerMustControlMore: queries})
 }
 
+// CantAttackAPlayerItAlreadyAttackedThisTurn is "This creature can't
+// attack a player it has already attacked this turn" (Bloodthirster,
+// #2171, CR 508.1c). The engine reads the turn's attack record for this
+// object, so a creature that left and returned is a new object (CR
+// 400.7) with a clean slate.
+func CantAttackAPlayerItAlreadyAttackedThisTurn() game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{NotAlreadyAttackedThisTurn: true})
+}
+
 // QuerySubtype is "a permanent with this subtype": an Island, a Mountain.
 func QuerySubtype(subtype string) game.PermanentQuery {
 	return game.PermanentQuery{Subtypes: []string{subtype}}

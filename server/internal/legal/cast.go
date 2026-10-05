@@ -503,14 +503,18 @@ const maxEnumeratedRepeats = 3
 // optionalCostSets is the bot's announcement policy for optional
 // additional costs (ADR 0073 §9): decline everything, or pay exactly
 // ONE of the offered costs — once, or up to maxEnumeratedRepeats
-// times for a repeatable one.
+// times for a repeatable one — or, on a card with two kicker costs,
+// both of them.
 //
-// NOT enumerated, deliberately and for the reason escape's card
-// component is not: paying TWO different optional costs at once
-// (Thornscape Battlemage's "Kicker {R} and/or {W}") is a power-set
-// search whose every member also needs its own affordability probe,
-// and no card in the catalog offers two. A bot simply does not take
-// that line yet; it is never offered one it cannot pay for.
+// The kicker pair is the one combination enumerated (#2153): "Kicker
+// {R} and/or {W}" (CR 702.33b) prints lines that need both paid —
+// Archangel of Wrath's "if it was kicked twice", Thornscape
+// Battlemage's two linked enters abilities — and it is one extra
+// announcement, not a power set. Any OTHER pair of different optional
+// costs (a kicker beside a buyback) is still NOT enumerated, for the
+// reason escape's card component is not: a power-set search whose
+// every member also needs its own affordability probe. A bot simply
+// does not take that line; it is never offered one it cannot pay for.
 //
 // ADR 0122 §6.2: both caps file their cuts — the repeats a multikicker
 // was not offered, and the announcements the budget stopped.
@@ -537,6 +541,13 @@ func (e *enumerator) optionalCostSets(costs []game.AdditionalCost) [][]int {
 			}
 			out = append(out, set)
 		}
+	}
+	if kickers := game.KickerIndices(costs); len(kickers) == 2 {
+		if budget > 0 && len(out) >= budget {
+			e.budgetSpent()
+			return out
+		}
+		out = append(out, kickers)
 	}
 	return out
 }

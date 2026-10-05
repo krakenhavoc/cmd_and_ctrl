@@ -19,6 +19,7 @@
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { cardArt } from "../lib/cardArt";
   import { route } from "../lib/router";
+  import { L } from "../lib/labels";
   import {
     fetchCatalog,
     filterCatalog,
@@ -131,7 +132,7 @@
           type="text"
           class="search"
           placeholder="search name, type or rules text"
-          aria-label="search the catalogue"
+          aria-label={L.searchCatalogue}
           bind:value={query}
         />
 

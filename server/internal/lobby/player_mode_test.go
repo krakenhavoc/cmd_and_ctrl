@@ -348,6 +348,13 @@ func TestAdminModeSwitchRebindsTheSockets(t *testing.T) {
 	if ce := readClose(t, own); ce.Code != ws.AdminModeChangedCode || ce.Text != ws.AdminModeChangedReason {
 		t.Errorf("own seat after switching on: close %d %q, want 4001", ce.Code, ce.Text)
 	}
+	// The close frame reaches the client before the hub's read pump has
+	// unregistered the dead socket, so the count still includes it. Wait
+	// for it to leave (only the token's socket remains); otherwise the
+	// waitForCount(3) below can be satisfied by the dying socket plus
+	// the first redial, the switch-off then runs before the second
+	// redial registers, and that socket is never closed (#2159).
+	waitForCount(t, s.hub, 1)
 	b, err := s.wsAuth.AuthorizeUpgrade(upgradeRequest(seatTok, "game="+mine.ID.String()))
 	if err != nil || !b.Admin || b.PlayerID != seat {
 		t.Errorf("reconnect in admin mode: %+v %v; want their seat with Binding.Admin", b, err)

@@ -13,6 +13,7 @@ import (
 var scopedBlockRuleKinds = map[game.ModKind]bool{
 	game.ModCantBeBlockedExceptBy:    true,
 	game.ModLimitBlockersPerDefender: true,
+	game.ModCantBeBlockedByPlayer:    true,
 }
 
 // scopedBlockRuleCount is how many live records hold a block-rule
