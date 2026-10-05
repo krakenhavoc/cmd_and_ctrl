@@ -1132,6 +1132,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// an either/or cost (settled above), so the validator and the payer
 	// below never learn that the card had a choice at all.
 	costPlan := castCostPayments(addCost, optionalCosts, params.OptionalCosts)
+	// CR 702.120a: escalate's non-mana payments, one per mode beyond the
+	// first, join the same plan so the one validator and the one payer
+	// see them (#2126).
+	costPlan = append(costPlan, escalatePayments(modeSpec, params.Modes)...)
 	if err := g.validateAdditionalCostLocked(playerID, cardID, costPlan, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,

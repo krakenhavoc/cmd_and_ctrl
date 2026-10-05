@@ -1959,6 +1959,25 @@ export interface ModeSpecView {
   // turn]" on an activated ability. Each option this object's ability
   // has already chosen carries `used: true`.
   not_chosen?: ModeNotChosen;
+  // #2126, CR 702.120a: "Escalate [cost]" — what each mode beyond the
+  // first costs. Present only on an escalate spell. `max` above is
+  // already clamped to 1 + `max_extra`, so the picker never offers a
+  // count whose cards or creatures the viewer lacks.
+  escalate?: EscalateView;
+}
+
+// EscalateView is ModeSpecView.escalate. Discards ride cast_spell's
+// `discard_ids` and taps ride `teamwork_ids`, (modes - 1) times the
+// per-mode count each.
+export interface EscalateView {
+  label: string;
+  mana_cost?: string;
+  discard_cards?: number;
+  tap_creatures?: number;
+  // The viewer's untapped creatures that could pay the taps.
+  tap_options?: string[];
+  // Per viewer: the most extra modes the non-mana half can be paid for.
+  max_extra: number;
 }
 
 // AdditionalCostView is the "As an additional cost to cast this

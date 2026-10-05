@@ -842,13 +842,11 @@ var items = []Item{
 		EngineNotes: "prompt: `RevealedHandDiscard` (ADR 0116) always discards, always takes exactly `Count`, and carries no continuation, which is what keeps it a restore point. Missing: a destination (exile instead of discard, so no CR 701.9 discard), an optional floor with a continuation told whether a card was chosen (\"if you do / if you don't\"; Extract the Truth's \"You may choose\" too), a continuation that reads the chosen card (Talara's Bane's toughness), a colour chosen first (Addle), a count read from another payment (Last Rites), a discard at random from the same hand after the pick (Tourach's Canticle, which must wait for the answer) and one pick of two cards under two different filters (Distended Mindbender's \"a nonland card with mana value 3 or less and a card with mana value 4 or greater\"). The likely shape is a keyed continuation receiving the chosen cards, so the prompt stays restorable (ADR 0041 phase 3).",
 	},
 	{
-		Slug: "escalate", Name: "Escalate", Kind: KindMechanic, Status: StatusMissing,
-		Summary:     "Modal spells that let you choose more modes by paying an extra cost for each one beyond the first, such as Collective Brutality.",
-		Missing:     "A spell can't yet charge an extra cost for each additional mode you choose, so escalate spells can't be added.",
-		Rules:       []string{"702.120a"},
-		Issue:       2126,
-		Waiting:     []string{"Collective Brutality"},
-		EngineNotes: "cost: ADR 0073's optional additional costs are announced as an index list (`CastSpellParams.OptionalCosts`) and nothing ties the number of payments to the number of modes chosen, which is why `docs/adding-cards.md` lists escalate and entwine as still out. The likely shape is a per-extra-mode additional cost on the mode declaration, totalled at CR 601.2f from the announced mode count and paid through the same ordered plan as kicker's card-shaped costs. Collective Brutality's first mode is ADR 0116's revealed-hand pick and already works; found landing ADR 0116 pool B (#2078).",
+		Slug: "escalate", Name: "Escalate", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "Choose more modes by paying an extra cost, mana, a discard or tapping a creature, for each mode beyond the first.",
+		Rules:   []string{"702.120"},
+		Probe:   func(s effects.Spec) bool { return s.Modes != nil && s.Modes.Escalate != nil },
+		Printed: printedLine("escalate"),
 	},
 	{
 		Slug: "dredge", Name: "Dredge", Kind: KindMechanic, Status: StatusMissing,

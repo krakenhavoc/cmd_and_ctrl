@@ -234,6 +234,32 @@ func castPriceCases() []castPriceCase {
 			want: "generic=4 x=0 colors=[U U]",
 		},
 		{
+			// CR 702.120a, #2126: escalate's mana is owed once per mode
+			// BEYOND THE FIRST — three modes at {1}{G} is {U}{1}{G}{G}.
+			name: "escalate: three modes pay the cost twice",
+			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
+				g, me, id := escalateSpell(t)
+				return g, me, id, CastSpellParams{Modes: []int{0, 1, 2}}
+			},
+			want: "generic=0 x=0 colors=[G G U]",
+		},
+		{
+			name: "escalate: two modes pay it once",
+			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
+				g, me, id := escalateSpell(t)
+				return g, me, id, CastSpellParams{Modes: []int{0, 2}}
+			},
+			want: "generic=0 x=0 colors=[G U]",
+		},
+		{
+			name: "escalate: one mode pays nothing extra",
+			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
+				g, me, id := escalateSpell(t)
+				return g, me, id, CastSpellParams{Modes: []int{1}}
+			},
+			want: "generic=0 x=0 colors=[U]",
+		},
+		{
 			// CR 903.8, layered on the cost being PAID.
 			name: "commander tax on a third cast",
 			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
