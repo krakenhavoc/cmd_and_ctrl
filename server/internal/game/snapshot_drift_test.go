@@ -85,6 +85,10 @@ var gameFields = plan(
 	// waiting on the next SBA loss pass. Carried: a restore between
 	// the effect loss and that pass must still move the turn on.
 	"ActiveSeatLeftPending", carried, "",
+	// #2165, CR 724.1: an effect ended the turn and the rest of the
+	// process (724.1c onwards) has not run. Carried: a restore between
+	// the effect and its boundary must still skip to the cleanup step.
+	"TurnEndPending", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
