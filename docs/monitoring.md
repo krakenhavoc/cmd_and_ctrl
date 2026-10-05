@@ -43,9 +43,47 @@ same env and time range. Every panel has a description: hover its title.
 | **Hosts** (`cmdctrl-hosts`) | Whether the site's `/healthz` answers from outside. The off-site backup's age and last exit code. The config sync's age and last result. CPU, memory, load, disk free, disk I/O and network per host. The state of every watched systemd unit, and how often systemd restarted them. Pick `monitoring` in the env picker for the monitoring VM itself. |
 | **Logs** (`cmdctrl-logs`) | Error and warning lines per minute by unit, and the lines themselves. WebSocket connects and disconnects per minute (a burst of disconnects with no deploy is a problem). What systemd said about our units. The shutdown census and the boot's restore pass. At the bottom, every line from one unit, filtered by any text, such as a `game_id`. |
 
-Metrics carry no IDs, by design (ADR 0123 §3). To follow one game or one
-person, use the Logs dashboard's stream with the ID as the search text,
-or Grafana's Explore with `{env="prod", unit="cmd-and-ctrl.service"} | json | game_id="…"`.
+Metrics carry no IDs, by design (ADR 0123 §3). To see the accounts or
+tables behind a number, click its tile (next section). To follow one game
+or one person through the logs, use the Logs dashboard's stream with the
+ID as the search text, or Grafana's Explore with
+`{env="prod", unit="cmd-and-ctrl.service"} | json | game_id="…"`.
+
+### From a tile to the rows behind it
+
+Most Overview tiles have an **Open in cmd_and_ctrl** link: click the tile
+or bar and pick it. It opens the site's admin views
+([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md))
+in a new tab, on the site for the env picked at the top: `cmd.labxp.io`
+for `prod`, `cmd-dev.labxp.io` for `dev`. The host comes from the hidden
+`site` variable, which reads it from the blackbox probe's target, so no
+host is written in the dashboard.
+
+| Tile | Opens |
+|---|---|
+| Active games, Waiting in the lobby, Games by state | `#/admin/games`, filtered to that state, unarchived (Games by state's practice series opens the practice tables) |
+| Practice tables | `#/admin/games?practice=only` |
+| Players connected, Spectators, Bot seats, Players connected by kind and account, Seats at active tables | `#/admin/live`: who is connected now, to which table, as a seat, a spectator or an admin |
+| Registered accounts | `#/admin/accounts` |
+| New accounts per day | `#/admin/accounts?sort=first_seen` |
+| Accounts that played | `#/admin/accounts?played=1d`, `7d` or `30d`, one per bar |
+| Games created, started and ended per day | `#/admin/games` |
+
+The pages read the live database and the server's memory, not
+Prometheus, so they can be a scrape (30 s) ahead of the tile. Live now's
+totals and the accounts filter use the same code as the tiles, so a
+difference is only that gap.
+
+**You still sign in to the site.** Grafana passes no credential. The pages
+answer only an admin: the admin token, or an allowlisted person with
+admin mode on (`PUT /me/admin-mode`, ADR 0112 §2). In player mode you get
+a message and no data; switch admin mode on and the page loads. Signed
+out, you sign in and come back to the page. Once admin mode is on, the
+site header has an **Admin** link to the same pages.
+
+The pages are read-only. Archive, unarchive, replay and revoke-sessions
+are the existing actions, linked from the table and account pages.
+Server routes: [lobby.md, Admin views](lobby.md#admin-views-adr-0124).
 
 Effect errors and the model timeout rate are panels, not alerts: each is
 a reason to look, not to be paged.
