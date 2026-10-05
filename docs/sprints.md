@@ -108,6 +108,7 @@ planned just-in-time from the S12 pain-point triage.
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
+| S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | planned     |
 
 ### How to read the status column
 
@@ -3531,6 +3532,45 @@ From the tracker, [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/229
 ### Status
 
 **Planned** (2026-10-05). ADR 0124 is proposed and awaits the owner's review.
+
+---
+
+## S65 — A walkthrough that keeps up: first-use hints and a refreshed tutorial
+
+**Phase:** 7 · **Goal:** a new player meets each page and each table feature with one short hint, once, and can replay any of them or the practice tutorial from Help. A UI change touches only its own hint, and a PR that breaks a hint's or a tutorial step's anchor fails CI. Per [ADR 0125](decisions/0125-a-walkthrough-that-keeps-up.md). Tracking issue [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313), which is also the change's issue.
+
+Opened 2026-10-05, after a survey found the practice tutorial was the only walkthrough, covered only the table, needed amending within days of landing, and was guarded only by a nightly spec. ADR 0076's first-visit offer, Settings replay and e2e walk (its sub-PRs 5 and 6) were never built. The owner decided three things the same day, recorded on #2313 and in ADR 0125:
+- first-use hints per page or feature, each owned by its feature, plus a refreshed practice tutorial (the stack, the commander zone, the opening roll);
+- each offered once, remembered on the account (synced settings) or in the browser for guests, and all of it replayable from a Help menu or Settings;
+- a fast unit test on every PR that fails when a hint or a tutorial step anchors to a label nothing renders, and one nightly e2e walk of the tour.
+
+The members are ADR 0125's Delivery PRs.
+
+- [ ] ADR 0125: first-use hints and a refreshed tutorial (PR 1, with this section)
+- [ ] PR 2: the label registry and its guard. `client/src/lib/labels.ts`, components render contract labels as `L.<key>`, anchors are typed to the registry, `labels.test.ts` runs in the `client` job, `docs/labels.md` is generated, and AGENTS.md §5's labels paragraph points at it.
+- [ ] PR 3: the practice table rolls. `StartWithOpeningRoll` on the practice table, and a practice bot that wins the roll hands the first turn to the player (`aiseat.SeatSpec.FirstTurnTo`).
+- [ ] PR 4: the hint engine. `lib/hints/` (collection, queue, placement, the table's quiet moment), the hint card and layer, the synced `help` settings group (settings v21) with its union merge, and the Go to the tip shortcut.
+- [ ] PR 5: Help and the way in. The header's Help menu, the ⋯ menu's Help group, Settings → Advanced's tips section, Home's Practice game tile, and the `site.help` and `lobby.practice` hints (ADR 0076 sub-PR 5).
+- [ ] PR 6: site hints. The Lobby, Decks, Settings, Catalog, Roadmap and admin views.
+- [ ] PR 7: table hints. The dock, the opening roll, the stack, right-click, the commander, the attention strip, the ⋯ menu, the expanded board and the keymap.
+- [ ] PR 8: the tutorial refresh. Fourteen steps: the roll, the stack and the commander are new, and completed steps mark the hints they teach as seen.
+- [ ] PR 9: the nightly walks. `tutorial-walk.spec.ts` and `hints.spec.ts`, both failing on any "has no anchor" log line (ADR 0076 sub-PR 6).
+- [ ] PR 10: the exit check, its evidence on #2313, and the amendment notes in ADR 0076 and ADR 0121.
+
+### Exit criteria
+
+From the tracker, [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313):
+
+1. ADR 0125 is accepted, and every PR in its Delivery table has merged into `develop`.
+2. The nightly E2E on `develop` is green, including the tutorial walk and the hints spec, with no "has no anchor" line in either.
+3. A scratch PR that removes a registered label from its owner fails the `client` job.
+4. On cmd-dev, each site page's hint shows once, one at a time, and not again after a reload or on a second signed-in browser; Help replays them.
+5. On cmd-dev, Help → Practice game rolls for the first turn and walks all fourteen steps; at a real table afterwards, the taught hints stay away and the others appear only in quiet moments.
+6. The evidence is posted on #2313, and the work reaches `main` with the next promotion.
+
+### Status
+
+**Planned** (2026-10-05). ADR 0125 is proposed and awaits the owner's review.
 
 ---
 
