@@ -1841,6 +1841,13 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The
 		// end step grants priority, so no auto-advance.
+		//
+		// #2373: "until your next end step" ends as that step BEGINS,
+		// so the duration sweeps run before the event — a scoped
+		// effect cannot still apply to the triggers this step puts on
+		// the stack.
+		g.ClearExpiredScopedStaticsLocked()
+		g.sweepCastPermissionsLocked(false)
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
 			g.EmitEvent(Event{
 				Kind:  EventBeginEndStep,
