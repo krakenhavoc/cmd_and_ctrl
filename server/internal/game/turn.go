@@ -148,6 +148,55 @@ type Turn struct {
 	// and one walked through (#717's absent first-strike step) are not
 	// counted.
 	StepOrdinal int
+
+	// PassedInSuccession is the set of seats that have passed priority
+	// in succession (CR 117.4, #2275). The top of the stack resolves,
+	// or the step ends, only once every seat still in the game is in
+	// it — not when priority comes back round to the active seat,
+	// which is only the same thing when the round began there.
+	//
+	// It is emptied whenever priority is granted at a boundary (a step
+	// begins, a resolution, the end of a turn-based action — CR
+	// 117.3a / 117.3b), whenever anything is put on the stack, and
+	// whenever the priority holder takes an action (CR 117.3c): a
+	// cast, an activation, a mana ability, a land play or another
+	// special action. See priority_succession.go.
+	//
+	// A bit set rather than a slice so the cursor stays a plain value:
+	// every copy of it (the undo clone, a drive's `start`, a test's
+	// `before`) is independent and comparable. A restore point written
+	// before the field reads it as empty, which hands every seat one
+	// more chance to act, never one fewer.
+	PassedInSuccession SeatSet `json:",omitempty"`
+}
+
+// SeatSet is a set of seat indices, bit i standing for seat i. A
+// table seats at most MaxPlayers, far inside the 64 a word holds; a
+// seat index outside 0..63 is never a member.
+type SeatSet uint64
+
+// Has reports whether seat is in the set.
+func (s SeatSet) Has(seat int) bool {
+	return seat >= 0 && seat < 64 && s&(1<<uint(seat)) != 0
+}
+
+// With returns the set with seat added.
+func (s SeatSet) With(seat int) SeatSet {
+	if seat < 0 || seat >= 64 {
+		return s
+	}
+	return s | 1<<uint(seat)
+}
+
+// Seats lists the members in seat order.
+func (s SeatSet) Seats() []int {
+	var out []int
+	for i := 0; i < 64; i++ {
+		if s.Has(i) {
+			out = append(out, i)
+		}
+	}
+	return out
 }
 
 // TurnStep names ONE step of ONE turn — the cursor's Turn.Seq and

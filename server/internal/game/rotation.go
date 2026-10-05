@@ -401,7 +401,7 @@ func (g *Game) advancePastEliminatedLocked() {
 	if active < 0 || active >= numSeats || !g.Seats[active].Eliminated {
 		ph := g.Turn.PriorityHolder
 		if ph >= 0 && ph < numSeats && g.Seats[ph].Eliminated {
-			g.Turn.PriorityHolder = active
+			g.grantPriorityLocked(active)
 		}
 		return
 	}
