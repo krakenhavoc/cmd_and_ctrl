@@ -189,6 +189,16 @@ type AdditionalCost struct {
 	// component. Added by ADR 0100 §2 for the either/or branches.
 	PayLife int
 
+	// TapCreatures is "Tap an untapped creature you control" paid as a
+	// cost (Collective Effort's escalate, CR 702.120a): N distinct
+	// untapped creatures the caster controls, any power. Named on the
+	// same CastSpellParams.TeamworkIDs list teamwork uses — both are "tap
+	// creatures you control as a cost" and neither is the {T} symbol, so
+	// summoning sickness is not asked (CR 302.6). Unlike teamwork the
+	// number is a COUNT, not a power floor. effects.Register allows it
+	// only on a ModeSpec.Escalate cost.
+	TapCreatures int
+
 	// Either is an either/or additional cost (ADR 0100 §2): "As an
 	// additional cost to cast this spell, sacrifice an artifact or
 	// discard a card" (Demand Answers). Each entry is one BRANCH, an
@@ -282,7 +292,7 @@ func (c *AdditionalCost) MaxPayments() int {
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
-		c.Teamwork == 0 && c.Blight == 0 && c.PayLife == 0 && len(c.Either) == 0)
+		c.Teamwork == 0 && c.Blight == 0 && c.PayLife == 0 && c.TapCreatures == 0 && len(c.Either) == 0)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -294,7 +304,7 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 ||
-		c.PayLife > 0 || len(c.Either) > 0)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package

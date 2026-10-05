@@ -60,6 +60,7 @@ func Register(spec Spec) {
 			checkModeCost(spec.Name, "mode", i, o.Cost, true)
 		}
 	}
+	checkEscalate(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)

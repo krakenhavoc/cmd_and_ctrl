@@ -3127,8 +3127,38 @@ RESOLUTION, so a bought-back spell countered by game rules still goes
 to the graveyard. A card that also returned itself in `OnResolve`
 would be moving a card that is still on the stack.
 
-**Still out:** escalate and entwine (their cost is per extra MODE,
-which the index-list announcement cannot express), and "enters with a
+**Escalate (CR 702.120a, #2126):** "Escalate [cost]" is a per-mode
+cost, not an optional one, so it lives on the spell's `ModeSpec` rather
+than in `Spec.OptionalCosts`:
+
+```go
+Modes: Escalating(ChooseOneOrMore(…), EscalateMana("{G}")),        // Collective Resistance
+Modes: Escalating(ChooseOneOrMore(…), EscalateDiscard(1)),         // Collective Brutality
+Modes: Escalating(ChooseOneOrMore(…), EscalateTapCreature()),      // Collective Effort
+Modes: Escalating(ChooseN("Choose one or both", 1, 2, …), EscalateMana("{2}")), // Borrowed Malevolence
+```
+
+The cost is owed `len(modes) - 1` times, as extra entries in the cast's
+one CR 601.2f payment plan: its mana joins the total in
+`game.AddModeCostMana` (so Thalia taxes the sum once), its discards ride
+`discard_ids` and are paid with the spell on the stack (a discard payoff
+triggers above it), and its creature taps ride `teamwork_ids` as a COUNT,
+not a power floor. Nothing is paid for one mode, and the validator
+refuses a payment list of the wrong length. The view stamps
+`modes.escalate` and clamps `modes.max` to the count the viewer can pay
+the non-mana half for (`Game.EscalatePayableExtraForEffect`); the bot
+enumerator expands one announcement per mode count and demands the
+payments for it; the picker prompts for the cards or creatures after the
+modes are chosen. Mana is not asked at announce (CR 601.2g), as for every
+other additional cost. The cost is a `game.EscalateCost` (mana, discards,
+creature taps and a label), not an `AdditionalCost`: a `ModeSpec` is
+reachable from a stack item, and the wider struct would add closure routes
+to the restore-point census (`closure_fields.txt`). `Register` refuses an
+empty or unlabelled cost, a spell that can choose only one mode, and
+`TapCreatures` anywhere but `ModeSpec.Escalate`.
+
+**Still out:** entwine (one extra cost for choosing ALL modes, which
+the per-mode escalate cost does not express), and "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
 Warcaller) — that count is read during the CR 614 entry pipeline,
 before the record reaches the permanent.

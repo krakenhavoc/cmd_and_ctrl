@@ -1,0 +1,6 @@
+---
+title: "Escalate: an additional cost for each mode beyond the first"
+date: 2026-10-05
+issues: [2126]
+---
+**Escalate: an additional cost for each mode beyond the first** (#2126, CR 702.120a) — `ModeSpec.Escalate` is an `AdditionalCost` owed once per mode chosen beyond the first. It joins the cast's one CR 601.2f payment plan as `len(modes) - 1` entries, so mana is priced by `AddModeCostMana` (one pricer for the cast path, the auto-tap preview and the bot), discards ride `discard_ids` and are paid with the spell on the stack, and the new `AdditionalCost.TapCreatures` component ("tap an untapped creature you control", not the {T} symbol, no summoning-sickness check) rides `teamwork_ids` as a count. The view stamps `modes.escalate` and clamps `modes.max` to `Game.EscalatePayableExtraForEffect`; the enumerator expands one announcement per mode count and offers none it cannot pay; `Register` refuses an escalate cost the plan has no shape for. The picker asks for the cards or creatures once the modes are chosen. **Cards:** Collective Brutality, Collective Resistance, Collective Defiance, Collective Effort, Borrowed Malevolence, Borrowed Hostility, Borrowed Grace, Savage Alliance and Blessed Alliance (Full). Entwine is the sibling this does not cover.

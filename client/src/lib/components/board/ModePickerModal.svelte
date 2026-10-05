@@ -70,6 +70,12 @@
     chosen.map((i) => spec?.options[i]?.cost).filter((c): c is string => !!c),
   );
 
+  // Escalate (CR 702.120a, #2126): the cost owed for each mode beyond
+  // the first, for the summary beside Confirm. The server prices it.
+  const escalateNote = $derived(
+    spec?.escalate && count > 1 ? `${spec.escalate.label} ×${count - 1}` : "",
+  );
+
   function targetedCount(indexes: number[]): number {
     if (!spec) return 0;
     return indexes.filter((i) => spec.options[i]?.legal_targets !== undefined).length;
@@ -181,6 +187,13 @@
         </li>
       {/each}
     </ul>
+    {#if escalateNote}
+      <p class="mode-summary">
+        <span class="cost extra-cost" title="escalate: paid for each mode beyond the first"
+          >{escalateNote}</span
+        >
+      </p>
+    {/if}
     {#if extraCosts.length > 0}
       <!-- Spree (CR 702.172a): the chosen bullets' own costs, in the
            order chosen. -->

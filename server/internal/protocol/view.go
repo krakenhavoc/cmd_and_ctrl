@@ -801,11 +801,42 @@ type ModeSpecView struct {
 	// ability has used are marked `used` on each ModeOptionView.
 	NotChosen string `json:"not_chosen,omitempty"`
 
+	// Escalate is CR 702.120a's cost for each mode beyond the first
+	// (#2126). Present only on an escalate spell. The label, mana and
+	// per-mode counts are the printed clause and public; `max_extra`
+	// and `tap_options` are the asking seat's answer and ride only its
+	// own frame (publicModeSpec drops them).
+	Escalate *EscalateView `json:"escalate,omitempty"`
+
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
 	// seat's answer and a bystander's copy shows what the card prints.
 	// Server-only.
 	printedMin, printedMax int
+}
+
+// EscalateView is the wire shape of game.ModeSpec.Escalate (CR
+// 702.120a): what each mode beyond the first costs, and how many the
+// viewer could pay for right now.
+type EscalateView struct {
+	// Label is the clause as printed ("Escalate {G}").
+	Label string `json:"label"`
+	// ManaCost is the mana owed per extra mode, brace notation.
+	ManaCost string `json:"mana_cost,omitempty"`
+	// DiscardCards is the cards discarded per extra mode. The picked
+	// ids ride cast_spell's discard_ids, (modes - 1) times this many.
+	DiscardCards int `json:"discard_cards,omitempty"`
+	// TapCreatures is the untapped creatures tapped per extra mode. The
+	// picked ids ride cast_spell's teamwork_ids.
+	TapCreatures int `json:"tap_creatures,omitempty"`
+	// TapOptions lists the viewer's untapped creatures that could pay
+	// the taps. Per viewer.
+	TapOptions []string `json:"tap_options,omitempty"`
+	// MaxExtra is the most extra modes the viewer can pay the non-mana
+	// half for (EscalatePayableExtraForEffect); the view's `max` is
+	// already clamped to 1 + this, so the picker never offers a count
+	// the server refuses. Per viewer.
+	MaxExtra int `json:"max_extra"`
 }
 
 // ModeBoundsView is a mode count's bounds under one announcement
@@ -4569,6 +4600,12 @@ func publicModeSpec(ms *ModeSpecView) *ModeSpecView {
 	// and `min`, which a forced count raises too.
 	out.Min, out.Max = ms.printedMin, ms.printedMax
 	out.IfOptionalPaid = nil
+	if ms.Escalate != nil {
+		pub := *ms.Escalate
+		pub.TapOptions = nil
+		pub.MaxExtra = 0
+		out.Escalate = &pub
+	}
 	out.Options = make([]ModeOptionView, len(ms.Options))
 	for i, o := range ms.Options {
 		o.LegalTargets = nil
@@ -5021,6 +5058,8 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	out.TargetMode = game.TargetModeFor(key)
 	if ms := game.ModeSpecFor(key); ms != nil {
 		out.Modes = viewOfCastModeSpec(g, caster, key, src, ms)
+		castID, _ := uuid.Parse(c.InstanceID)
+		stampEscalate(g, caster, castID, out.Modes, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
 		out.AdditionalCost = viewOfAdditionalCost(g, caster, ac)
@@ -5897,6 +5936,32 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		out = append(out, v)
 	}
 	return out
+}
+
+// stampEscalate fills ModeSpecView.Escalate for an escalate spell and
+// clamps the viewer's `max` to the mode count they can pay the
+// non-mana half for (CR 702.120a, #2126) — the same arithmetic the
+// bot enumerator and CastSpell apply, so no count is offered that is
+// refused. Caller must hold g.mu.
+func stampEscalate(g *game.Game, caster, castID uuid.UUID, out *ModeSpecView, ms *game.ModeSpec) {
+	if out == nil || ms.Escalate == nil {
+		return
+	}
+	e := ms.Escalate
+	v := &EscalateView{
+		Label:        e.Label,
+		ManaCost:     e.ManaCost,
+		DiscardCards: e.DiscardCards,
+		TapCreatures: e.TapCreatures,
+		MaxExtra:     g.EscalatePayableExtraForEffect(caster, castID, ms),
+	}
+	if e.TapCreatures > 0 {
+		v.TapOptions = cardIDStrings(g.TapCreaturesOptionsForEffect(caster))
+	}
+	out.Escalate = v
+	if out.Max > 1+v.MaxExtra {
+		out.Max = 1 + v.MaxExtra
+	}
 }
 
 // viewOfCastModeSpec is viewOfModeSpec for a card the caster could
