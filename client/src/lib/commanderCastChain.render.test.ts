@@ -9,7 +9,8 @@
 //
 //   - an X-cost commander cast from the command zone opens the chain's
 //     X picker before anything is sent;
-//   - a plain commander sends the same payload from either surface.
+//   - a plain commander sends the bare cast from the command zone. Since
+//     #2349 the strip is the only surface: the tile is gone.
 
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { get } from "svelte/store";
@@ -116,40 +117,32 @@ function mountBoard(command: CardView[]) {
       onDeclareBlock: () => {},
     } as never,
   );
-  const castHint = () =>
-    r.container.querySelector<HTMLElement>(".cmd-zone [aria-label^='cast commander']")!;
   const stripCard = (name: string) =>
     r.container.querySelector<HTMLElement>(`.exile-strip .card[aria-label='${name}']`)!;
-  return { ...r, sent, castHint, stripCard };
+  return { ...r, sent, stripCard };
 }
 
+// #2349: the strip beside the hand is the only place a commander is cast
+// from now; the command zone tile and its cast button are gone.
 describe("the command zone's cast walks the Board's cast chain — #2202", () => {
-  it("an X-cost commander cast from the command zone opens the X picker first", () => {
-    const b = mountBoard([commander("verazol", "Verazol", "{X}{G}{U}")]);
-    click(b.castHint());
-    expect(b.sent).toEqual([]);
-    expect(get(activeDockRequest)?.label).toBe("Choose X for Verazol");
-  });
-
-  it("an X-cost commander clicked in the strip opens the same X picker", () => {
+  it("an X-cost commander clicked in the strip opens the X picker first", () => {
     const b = mountBoard([commander("verazol", "Verazol", "{X}{G}{U}")]);
     click(b.stripCard("Verazol"));
     expect(b.sent).toEqual([]);
     expect(get(activeDockRequest)?.label).toBe("Choose X for Verazol");
   });
 
-  it("a plain commander sends the same cast from the command zone and from the strip", () => {
-    const a = mountBoard([commander("kenrith", "Kenrith", "{4}{W}")]);
-    click(a.castHint());
-    const fromPanel = a.sent;
-    cleanup();
-    resetDock();
-
+  it("a plain commander sends a cast from the command zone", () => {
     const b = mountBoard([commander("kenrith", "Kenrith", "{4}{W}")]);
     click(b.stripCard("Kenrith"));
-    expect(fromPanel).toEqual([
+    expect(b.sent).toEqual([
       { type: "cast_spell", params: { instance_id: "kenrith", from_zone: "command" } },
     ]);
-    expect(b.sent).toEqual(fromPanel);
+  });
+
+  it("the board has no command zone tile left to cast from", () => {
+    const b = mountBoard([commander("kenrith", "Kenrith", "{4}{W}")]);
+    expect(b.container.querySelector(".cmd-zone")).toBeNull();
+    expect(b.container.querySelector("[aria-label='Me command zone, 1 card']")).not.toBeNull();
   });
 });

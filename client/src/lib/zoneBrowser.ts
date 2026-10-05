@@ -1,5 +1,5 @@
 // zoneBrowser — tiny module-scope store for the S18.5 zone-browser
-// modal. Pile chips in PileBar / CommandZone call openZoneBrowser()
+// modal. Pile chips in PileBar / CommandStrip call openZoneBrowser()
 // with the zone kind + owner; Board.svelte renders ZoneBrowserModal
 // bound to the store. Lifting the open/close state to module scope
 // (rather than prop-drilling a handler through every PlayerPanel)

@@ -5,7 +5,7 @@
 //
 // Same shape (and same reasoning) as zoneBrowser.ts: lifting the
 // open/closed state to module scope keeps every Card render site —
-// BattlefieldRow, Hand, CommandZone, ZoneBrowserModal — free of new
+// BattlefieldRow, Hand, CommandStrip, ZoneBrowserModal — free of new
 // props, which matters because the menu has to be reachable from
 // every zone a card can sit in. The menu itself resolves the card's
 // zone from the snapshot (see locateCard in contextMenu.logic.ts),

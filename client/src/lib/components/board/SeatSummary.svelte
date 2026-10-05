@@ -38,6 +38,7 @@
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openZoneBrowser } from "../../zoneBrowser";
   import PlayerIdentity from "./PlayerIdentity.svelte";
+  import CommandStrip from "./CommandStrip.svelte";
   import { seatColor } from "../../colors";
   import { L } from "../../labels";
 
@@ -241,6 +242,9 @@
       {onTargetPlayer}
       {considering}
     />
+    <!-- #2349: the seat's commander, face up with its tax, as it sits
+         beside the hand on a full board. -->
+    <CommandStrip {seat} compact />
     <button
       class="expand"
       type="button"
