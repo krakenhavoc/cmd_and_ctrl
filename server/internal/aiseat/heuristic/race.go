@@ -57,10 +57,19 @@ import (
 // used to count every one of them dead, so the Wurm a Bear chumped this
 // turn was gone by the next, and a trampler's edge was cashed only when
 // this turn's overflow closed the gap alone. A blocked attacker now
-// lives into NEXT when neither the blockers the defender's model put in
-// front of it nor any one blocker it left spare can kill it (survives)
-// — the defender is assumed to block to kill whenever it can. It is
-// still never home: the crack-back check does not change.
+// lives into NEXT when the blockers the defender's model put in front
+// of it, joined by every blocker it left spare, cannot kill it
+// (survives). It is still never home: the crack-back check does not
+// change.
+//
+// The defender gang-blocks to kill (#1548), as decideBlock does: a
+// second Ogre on a Wurm one Ogre is chumping kills it for nothing. So
+// the model adds spare blockers to a block that does not kill when the
+// kill is worth what they cost (blockToSurvive), they soak up a
+// trampler's overflow as they go, and survives counts the rest of the
+// spare pool as joining too. That takes away a lot of two-turn kills —
+// the full seed-1409 Wurm mirror has none left — and attrition.go is
+// what cashes those edges over more turns.
 //
 // The swing it sends is the SMALLEST that wins: attackers are tried
 // evasive-first (fewest possible blockers, then biggest), and the plan
@@ -72,7 +81,8 @@ import (
 // is left over for NEXT — and that is correct: the race converts an
 // edge, it does not invent one.
 
-// racePlan is a committed two-turn race against one defender.
+// racePlan is a committed two-turn race against one defender — or an
+// attrition plan (attrition.go), whose swing is sent the same way.
 type racePlan struct {
 	target string
 	// swing is every attacker the plan sends at target, in the order
@@ -82,6 +92,9 @@ type racePlan struct {
 	// on, kept for the decision's Reason.
 	now, next, crack int
 	life, myLife     int
+	// reason, when set, is the decision's Reason in place of the
+	// two-turn race's.
+	reason string
 }
 
 // planRace looks for a two-turn race against any opponent, focus first.
@@ -90,30 +103,39 @@ func (p *Policy) planRace(st *state, moves []legal.Move, focus string) *racePlan
 	if st.myEval == nil || st.myEval.Life <= 0 {
 		return nil
 	}
-	order := make([]*SeatEval, 0, len(st.opps))
-	for _, o := range st.opps {
-		if o.ID == focus {
-			order = append([]*SeatEval{o}, order...)
-			continue
-		}
-		order = append(order, o)
-	}
-	for _, def := range order {
+	for _, def := range focusFirst(st.opps, focus) {
 		if def.Life <= 0 {
 			continue
 		}
-		if plan := p.raceAgainst(st, moves, def); plan != nil {
+		committed, joinable := raceSwing(st, moves, def)
+		if len(joinable) == 0 {
+			continue
+		}
+		if plan := p.raceWith(st, def, committed, joinable, nil); plan != nil {
 			return plan
 		}
 	}
 	return nil
 }
 
-// raceAgainst tries the prefixes of the evasion-sorted attack order
-// against one defender and returns the first that races.
-func (p *Policy) raceAgainst(st *state, moves []legal.Move, def *SeatEval) *racePlan {
-	// Already committed to this defender: part of every swing.
-	var committed []*protocol.CardView
+// focusFirst is the opponents in threat order with focus moved to the
+// front.
+func focusFirst(opps []*SeatEval, focus string) []*SeatEval {
+	order := make([]*SeatEval, 0, len(opps))
+	for _, o := range opps {
+		if o.ID == focus {
+			order = append([]*SeatEval{o}, order...)
+			continue
+		}
+		order = append(order, o)
+	}
+	return order
+}
+
+// raceSwing is what a swing at def is made of: the creatures already
+// committed to it, part of every swing, and the ones still able to
+// join, in the order the race tries them.
+func raceSwing(st *state, moves []legal.Move, def *SeatEval) (committed, joinable []*protocol.CardView) {
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
 		if c.Controller == st.me && isCreature(c) && c.AttackingTarget == def.ID {
@@ -123,7 +145,6 @@ func (p *Policy) raceAgainst(st *state, moves []legal.Move, def *SeatEval) *race
 	// Still able to join, read off the move list so every restriction
 	// and every unpayable attack tax the enumerator applied is honoured.
 	seen := map[string]bool{}
-	var joinable []*protocol.CardView
 	for i := range moves {
 		if moves[i].Kind != legal.KindAttack {
 			continue
@@ -137,28 +158,38 @@ func (p *Policy) raceAgainst(st *state, moves []legal.Move, def *SeatEval) *race
 			joinable = append(joinable, c)
 		}
 	}
-	if len(joinable) == 0 {
-		return nil
-	}
+	evasiveFirst(st, def, joinable)
+	return committed, joinable
+}
+
+// evasiveFirst sorts would-be attackers in the order the race tries
+// them: fewest possible blockers first, then biggest. Stable, so board
+// order breaks ties and the plan never depends on a sort's whim.
+func evasiveFirst(st *state, def *SeatEval, joinable []*protocol.CardView) {
 	blockers := defenderBlockers(st, def.ID)
-	answers := func(a *protocol.CardView) int {
-		n := 0
+	answers := make(map[string]int, len(joinable))
+	for _, a := range joinable {
 		for _, b := range blockers {
 			if couldBlock(st, def.ID, a, b) {
-				n++
+				answers[a.InstanceID]++
 			}
 		}
-		return n
 	}
-	// Evasive first, then biggest; stable, so board order breaks ties
-	// and the plan never depends on a sort's whim.
 	sort.SliceStable(joinable, func(i, j int) bool {
-		ai, aj := answers(joinable[i]), answers(joinable[j])
+		ai, aj := answers[joinable[i].InstanceID], answers[joinable[j].InstanceID]
 		if ai != aj {
 			return ai < aj
 		}
 		return joinable[i].Power > joinable[j].Power
 	})
+}
+
+// raceWith tries the prefixes of the evasion-sorted attack order
+// against one defender and returns the first that races. budget, when
+// not nil, is the attrition search's (attrition.go): every swing tried
+// spends one, and an empty budget finds nothing.
+func (p *Policy) raceWith(st *state, def *SeatEval, committed, joinable []*protocol.CardView, budget *int) *racePlan {
+	blockers := defenderBlockers(st, def.ID)
 	// The empty prefix is tried when something is already declared: a
 	// swing that already races needs nobody else, and adding to it only
 	// spends the reserve.
@@ -167,14 +198,20 @@ func (p *Policy) raceAgainst(st *state, moves []legal.Move, def *SeatEval) *race
 		first = 0
 	}
 	for k := first; k <= len(joinable); k++ {
+		if budget != nil {
+			if *budget <= 0 {
+				return nil
+			}
+			*budget--
+		}
 		swing := make([]*protocol.CardView, 0, len(committed)+k)
 		swing = append(swing, committed...)
 		swing = append(swing, joinable[:k]...)
-		now, next, crack := p.raceNumbers(st, def, swing, blockers)
-		if now+next >= def.Life && crack < st.myEval.Life {
+		e := p.raceNumbers(st, def, swing, blockers)
+		if e.now+e.next >= def.Life && e.crack < st.myEval.Life {
 			return &racePlan{
 				target: def.ID, swing: swing,
-				now: now, next: next, crack: crack,
+				now: e.now, next: e.next, crack: e.crack,
 				life: def.Life, myLife: st.myEval.Life,
 			}
 		}
@@ -182,10 +219,22 @@ func (p *Policy) raceAgainst(st *state, moves []legal.Move, def *SeatEval) *race
 	return nil
 }
 
+// raceEval is the race's estimate for one swing at one defender: its
+// three numbers, the defender's blocks, and which of my attackers those
+// blocks kill.
+type raceEval struct {
+	now, next, crack int
+	d                defence
+	// mineDead is every attacker of mine counted dead: blocked, and
+	// not surviving the blocks (defence.survives).
+	mineDead map[string]bool
+}
+
 // raceNumbers is the three-number estimate for one swing at def.
-func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protocol.CardView) (now, next, crack int) {
+func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protocol.CardView) raceEval {
 	d := p.blockToSurvive(st, def, swing, blockers)
-	now = d.through
+	now := d.through
+	mineDead := map[string]bool{}
 
 	inSwing := make(map[string]bool, len(swing))
 	for _, c := range swing {
@@ -208,6 +257,8 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 			// tramples over again next turn.
 			if d.survives(st, def.ID, c) {
 				second = append(second, c)
+			} else {
+				mineDead[c.InstanceID] = true
 			}
 			continue
 		}
@@ -228,6 +279,7 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 
 	// CRACK-BACK: every opponent swings everything at me — except a
 	// defender this swing already killed.
+	crack := 0
 	for _, o := range st.opps {
 		if o.ID == def.ID && now >= def.Life {
 			continue
@@ -254,10 +306,11 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 			kept = append(kept, c)
 		}
 	}
+	next := 0
 	if now < def.Life {
 		next = unblockedPower(st, def.ID, second, kept)
 	}
-	return now, next, crack
+	return raceEval{now: now, next: next, crack: crack, d: d, mineDead: mineDead}
 }
 
 // defence is blockToSurvive's answer to one swing.
@@ -284,86 +337,32 @@ type defence struct {
 // traded with a Wurm, and a trampler's edge was cashed only when this
 // turn's overflow alone closed the gap.
 //
-// It says yes only when neither of these kills it:
+// It says yes only when the blockers the model put in front of it,
+// joined by every blocker the model left spare that could block it
+// too, do not kill it (gangKills). The defender gang-blocks to kill
+// (#1548): decideBlock values a second Ogre on a chumped Wurm as the
+// kill it is, so the model assumes the defender makes it. A spare that
+// kills alone is the same question — a group with it in kills whenever
+// it does — so "blocks to kill when it can" needs no separate swap.
 //
-//   - the blockers the model put in front of it (blockersKill), and
-//   - any one blocker the model left spare that could block it instead.
-//     The model picks the cheapest chump, and a defender that has a
-//     creature able to kill the attacker in that spot is assumed to
-//     use it: it blocks to kill when it can.
+// Each attacker is asked against the whole spare pool, as if nothing
+// else needed those blockers, so two chumped Wurms can both be counted
+// dead to the same spare Ogres. That only ever says "dead" about an
+// attacker that lives, which costs a race and never a suicidal swing:
+// survivors are counted into NEXT, never into crack-back.
 //
 // Where the model only guessed at the blocks, nothing survives.
-//
-// What it does not ask is whether the defender could add spare
-// blockers to a block it is already making, ganging up until their
-// damage adds up to the attacker's toughness. The rest of the model
-// blocks one-for-one too (matchBlocks, blockToSurvive's greedy), and
-// so does the heuristic's own decideBlock, which credits a gang block
-// with a kill only when the blocker it adds kills alone. Counting gang
-// blocks here would put every blocked attacker in front of a wide
-// board back in the grave — the full seed-1409 mirror's spare Wurm,
-// chumped by one Ogre with five more behind it, is exactly that board.
 func (d *defence) survives(st *state, defender string, a *protocol.CardView) bool {
 	if d.guessed {
 		return false
 	}
-	if blockersKill(d.blockedBy[a.InstanceID], a) {
-		return false
-	}
+	gang := append([]*protocol.CardView(nil), d.blockedBy[a.InstanceID]...)
 	for _, b := range d.spare {
-		if couldBlock(st, defender, a, b) && blockerKills(b, a) {
-			return false
+		if couldBlock(st, defender, a, b) {
+			gang = append(gang, b)
 		}
 	}
-	return true
-}
-
-// blockersKill reports whether these blockers, together, kill attacker
-// a. One blocker is asked exactly (blockerKills). Several are asked
-// pessimistically: any deathtouch among them kills, and so does their
-// combined damage reaching a's toughness, a double striker's power
-// counted twice — ignoring what a's own first strike would kill before
-// they deal damage and what a's protection would prevent, both of
-// which only ever make it say "dead" about an attacker that lives.
-func blockersKill(blockers []*protocol.CardView, a *protocol.CardView) bool {
-	if len(blockers) == 1 {
-		return blockerKills(blockers[0], a)
-	}
-	if hasKeyword(a, "indestructible") {
-		return false
-	}
-	total := 0
-	for _, b := range blockers {
-		if b.Power <= 0 {
-			continue
-		}
-		if hasKeyword(b, "deathtouch") {
-			return true
-		}
-		total += combatDamage(b)
-	}
-	return total >= effectiveToughness(a)
-}
-
-// blockerKills reports whether blocker b, blocking a alone, kills it.
-// It is kills with the two timing rules kills does not read:
-//
-//   - a double striker deals its power twice (CR 702.4b), so a 2/2
-//     double striker kills a 4/4;
-//   - an attacker with first strike that kills a blocker without it
-//     does so in the first combat damage step, and the blocker, gone,
-//     deals no damage in the second (CR 510.4).
-func blockerKills(b, a *protocol.CardView) bool {
-	if hasKeyword(a, "indestructible") || b.Power <= 0 || protectedFrom(a, b) {
-		return false
-	}
-	if firstStrikes(a) && !firstStrikes(b) && kills(a, b) {
-		return false
-	}
-	if hasKeyword(b, "deathtouch") {
-		return true
-	}
-	return combatDamage(b) >= effectiveToughness(a)
+	return !gangKills(a, gang)
 }
 
 // blockerDies reports whether blocker b, blocking a alone, is killed
@@ -406,10 +405,14 @@ func combatDamage(c *protocol.CardView) int {
 // every attacker of mine that was blocked at all and who blocked it,
 // and the blockers it left spare. A blocked trampler connects for what
 // its blockers do not absorb (#1504), so a chump in front of one saves
-// only the chump's toughness.
+// only the chump's toughness. Last, it gang-blocks to kill (#1548):
+// spare blockers join a block that does not kill its attacker when
+// that turns it into one cheaply enough (gangJoin), soaking up a
+// trampler's overflow as they do.
 //
 // It is an estimate of a player trying to lose as little as possible,
-// not a proof: where the greedy second step cannot get the defender
+// and to kill what it can for free, not a proof: where the greedy
+// second step cannot get the defender
 // below lethal but unblockedPower — exact without trample, a lower
 // bound with it — says it might live, the answer falls back to the
 // pessimistic one: the defender loses nothing and every attacker is
@@ -454,7 +457,57 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 		}
 		d.through += left[ai]
 	}
+	order := byPower(swing)
+	// The defender gang-blocks to kill (#1548). The minimal-losses
+	// blocks stop the moment the defender would live, but a block that
+	// does not kill its attacker can often be made one by adding spare
+	// blockers to it for next to nothing — a second Ogre on a chumped
+	// Wurm costs nothing, since the Wurm's 7 kills one Ogre either way.
+	// decideBlock makes that block, so the model does too: biggest
+	// attacker first, the cheapest join that kills it, whenever the
+	// kill is worth what the join costs (gangJoin). The joiners also
+	// soak up a trampler's overflow, so NOW falls by what they absorb.
+	//
+	// The defender's dead are recounted the way this bot's damage is
+	// assigned: down the blockers in the order they were declared,
+	// lethal to each while it lasts (orderedKills) — the chump first,
+	// then the joiners. A second Ogre on a chumped Wurm leaves the
+	// first Ogre dead and the second alive.
+	gangUp := func() {
+		for _, ai := range order {
+			a := swing[ai]
+			if !d.blockedMine[a.InstanceID] {
+				continue
+			}
+			var cands []*protocol.CardView
+			var at []int
+			for bi, b := range blockers {
+				if !used[bi] && couldBlock(st, def.ID, a, b) {
+					cands = append(cands, b)
+					at = append(at, bi)
+				}
+			}
+			join, ok := st.gangJoin(a, d.blockedBy[a.InstanceID], cands)
+			if !ok {
+				continue
+			}
+			for _, j := range join {
+				block(a, at[j])
+			}
+			gang := d.blockedBy[a.InstanceID]
+			for _, b := range gang {
+				delete(d.deadDef, b.InstanceID)
+			}
+			for _, b := range orderedKills(a, gang) {
+				d.deadDef[b.InstanceID] = true
+			}
+			over := connects(a, gang)
+			d.through -= left[ai] - over
+			left[ai] = over
+		}
+	}
 	if d.through < def.Life {
+		gangUp()
 		return done()
 	}
 	// Chump or trade until the defender would live: each time the one
@@ -462,7 +515,6 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 	// the least the defender can spare. An attacker without trample
 	// takes one blocker and stops; a trampler can take a second and a
 	// third while its overflow is still what kills.
-	order := byPower(swing)
 	for d.through >= def.Life {
 		bestA, bestB, bestSave := -1, -1, 0
 		for _, ai := range order {
@@ -519,6 +571,7 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 			return g
 		}
 	}
+	gangUp()
 	return done()
 }
 
@@ -577,9 +630,10 @@ func (p *Policy) raceAttack(moves []legal.Move, plan *racePlan) (aiseat.Decision
 	if best < 0 {
 		return aiseat.Decision{}, false
 	}
-	return aiseat.Decision{
-		Index: best,
-		Reason: fmt.Sprintf("attack: two-turn race — %d now + %d next turn ≥ their %d life; crack-back %d < my %d",
-			plan.now, plan.next, plan.life, plan.crack, plan.myLife),
-	}, true
+	reason := plan.reason
+	if reason == "" {
+		reason = fmt.Sprintf("attack: two-turn race — %d now + %d next turn ≥ their %d life; crack-back %d < my %d",
+			plan.now, plan.next, plan.life, plan.crack, plan.myLife)
+	}
+	return aiseat.Decision{Index: best, Reason: reason}, true
 }
