@@ -288,6 +288,26 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     expect(dockOf(c).classList.contains("staged")).toBe(true);
   });
 
+  // #2374: the game log opened from the top bar while the stage is up
+  // draws over the stage, and back under the dock once View table folds
+  // the stage away. (The stage starts under the bar, so the bar's
+  // buttons are not covered; that is CSS, which jsdom does not lay out.)
+  it("lifts the game log over the stage, and only while the stage is up", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    const openLog = c.querySelector<HTMLButtonElement>('button[aria-label="open game log"]')!;
+    expect(openLog).not.toBeNull();
+    expect(dockOf(c).contains(openLog)).toBe(false);
+    click(openLog);
+    const log = () => c.querySelector<HTMLElement>('aside[aria-label="game log"]');
+    expect(log()).not.toBeNull();
+    expect(log()!.classList.contains("over-stage")).toBe(true);
+    click(buttonNamed(dlg, "View table")!);
+    expect(log()!.classList.contains("over-stage")).toBe(false);
+    click(buttonNamed(dlg, "restore: Your opening hand")!);
+    expect(log()!.classList.contains("over-stage")).toBe(true);
+  });
+
   it("asks for a wide sheet, so the seven cards are full size (#2200)", async () => {
     const c = await mountGame(mulliganTable());
     const dlg = expectSheet(c, "keep or mulligan your hand");

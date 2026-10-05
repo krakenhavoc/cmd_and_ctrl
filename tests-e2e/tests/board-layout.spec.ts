@@ -119,6 +119,12 @@ test.describe("board layout", () => {
     // entry); the toolbar's "draw" button works too but we want to
     // exercise the pile-button click path specifically.
     const handCardsBefore = await page.getByLabel("your hand").locator(".hand-slot").count();
+    // #2374: with the pointer on the hand, the hand lifts over the
+    // board. The library in the corner above the hand's left end must
+    // still take the click: the lifted strip's empty end used to cover
+    // it. (Keep hand, centred under the opening-hand stage, leaves the
+    // pointer over the hand, which is how the nightly found it.)
+    await page.getByLabel("your hand").locator(".hand-slot").last().hover();
     await selfBoard.getByRole("button", { name: /library: \d+/ }).click();
     await expect(page.getByLabel("your hand").locator(".hand-slot")).toHaveCount(
       handCardsBefore + 1,

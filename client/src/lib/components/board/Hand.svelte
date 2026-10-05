@@ -821,6 +821,22 @@
     transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
   }
+  /* #2374: only the cards take the pointer, not the strip. The strip
+     is as wide as the whole bottom row, and lifted it is a card tall,
+     so its empty ends covered whatever sits beside the fan: since
+     #2336 the library, graveyard and exile in the corner above the
+     hand's left end. A pointer left over the fan (Keep hand, centred
+     under the opening-hand stage, is right above it) kept the strip
+     lifted, and a click on the library landed on the strip. Now the
+     hand lifts only while a card is under the pointer (:hover still
+     applies to the strip through its slot), and its empty ends never
+     take a click. */
+  .hand:not(.opponent) {
+    pointer-events: none;
+  }
+  .hand:not(.opponent) > .hand-slot {
+    pointer-events: auto;
+  }
   /* Opponent hands stay compact — they're face-down anyway and the
      peek/reveal interaction would feel wrong on someone else's hand. */
   .hand.opponent {
