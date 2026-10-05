@@ -22,6 +22,13 @@ import (
 // (a caveat that quotes the cost, or a loyalty caveat that says "the
 // −7", excuses itself and needs no row).
 var knownOracleMismatches = map[string]string{
+	// The Volvers print "Pay 3 life: Regenerate this creature." only
+	// inside a quoted granted ability ("it enters with ... \"Pay 3 life:
+	// ...\""), which the line parser deliberately does not read as a
+	// cost line. The ability is real and gated on the linked kicker.
+	"Anavolver | cost not printed | pay 3 life":  "granted ability printed inside quotes in an enters-with clause",
+	"Degavolver | cost not printed | pay 3 life": "granted ability printed inside quotes in an enters-with clause",
+
 	// Heart of Kiran prints the alternative crew as prose — "You may
 	// remove a loyalty counter from a planeswalker you control rather
 	// than pay this Vehicle's crew cost" — not as a cost line, so

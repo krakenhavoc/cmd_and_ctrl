@@ -3071,6 +3071,12 @@ to be. Every "was it kicked" read counts both, so both paid is "kicked twice"
 permanent's enters-trigger condition, with the cost spelled exactly as the
 `Kickers` call spells it. `Register` refuses a third kicker and two kickers
 whose mana is the same, since that question could then not be answered.
+"If it was kicked with its {A} kicker, it enters with two +1/+1 counters"
+is `EntersWithCountersFromCast: CountersIfKickedWith(kind, "{A}", 2)`, one
+entry per kicker (`CastCounts.KickedWith`, #2360). The matching "and with
+<ability>" is a grant keyed on `game.CardKickedWith` — `KeywordGrant` for a
+keyword, a trigger whose `AppliesTo` checks it, an `Activated` entry whose
+`Condition` checks it. See `volvers.go`.
 
 Use the keyword constructor, never a hand-rolled
 `game.AdditionalCost{Optional: true}` — for the reason `Flashback` has

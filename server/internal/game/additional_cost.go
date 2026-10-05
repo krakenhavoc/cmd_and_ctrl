@@ -455,6 +455,22 @@ func kickedWithFor(oracleID string, paid []int, cost string) bool {
 	return false
 }
 
+// kickersPaidFor lists the mana cost of each kicker among the paid
+// indices, in printed order. Nil when none was paid.
+func kickersPaidFor(oracleID string, paid []int) []string {
+	if len(paid) == 0 {
+		return nil
+	}
+	costs := OptionalCostsFor(oracleID)
+	var out []string
+	for _, i := range KickerIndices(costs) {
+		if costs[i].ManaCost != "" && kickedWithFor(oracleID, paid, costs[i].ManaCost) {
+			out = append(out, costs[i].ManaCost)
+		}
+	}
+	return out
+}
+
 // CardKickedWith is KickedWithPaid for a permanent that has already
 // entered, reading the record carried onto it (CR 400.7d) — Thornscape
 // Battlemage's "When this creature enters, if it was kicked with its

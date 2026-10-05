@@ -60,6 +60,23 @@ func CountersPerKick(kind string, per int) game.EntryCountersFromCast {
 	}
 }
 
+// CountersIfKickedWith is "if this creature was kicked with its
+// <cost> kicker, it enters with <n> <kind> counters on it" (CR
+// 702.33f, #2360) — the Volvers. `cost` is spelled as the card's
+// Kickers declaration spells it. A clause per kicker, so a Volver
+// kicked with both gets both.
+func CountersIfKickedWith(kind, cost string, n int) game.EntryCountersFromCast {
+	return game.EntryCountersFromCast{
+		Kind: kind,
+		Count: func(cast game.CastCounts) int {
+			if cast.KickedWith(cost) {
+				return n
+			}
+			return 0
+		},
+	}
+}
+
 // CountersPerDelved is "this permanent enters with a <kind> counter on
 // it for each <kind of> card exiled with it", where "exiled with it"
 // is CR 607.2q's link to the cards delve exiled to pay for the spell
