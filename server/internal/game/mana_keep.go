@@ -212,5 +212,8 @@ func (g *Game) sweepManaPoolLocked(p *Player) int {
 		}
 	}
 	p.ManaPool = kept
+	// A sweep that only kept or converted emits no emptied event, but
+	// a conversion changes the colour counts a pool-reading static sees.
+	invalidateLayersForManaPoolLocked(g)
 	return lost
 }
