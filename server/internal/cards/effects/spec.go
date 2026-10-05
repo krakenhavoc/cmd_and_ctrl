@@ -1031,6 +1031,19 @@ type Spec struct {
 	// game.CatalogLegendRuleExemptions, keyed by CatalogAbilityKey.
 	LegendRuleExemptions []game.LegendRuleExemption
 
+	// OpponentEffectProtections declares a printed "spells and abilities
+	// your opponents control can't cause you to discard cards / sacrifice
+	// permanents" static (#2178):
+	//
+	//	OpponentEffectProtections: CantBeMadeToSacrifice(),          // Sigarda
+	//	OpponentEffectProtections: CantBeMadeToDiscardOrSacrifice(), // Tamiyo
+	//
+	// Read from the battlefield whenever an effect asks its controller to
+	// discard or sacrifice, through game.CatalogOpponentEffectProtections.
+	// Costs and rule-driven moves (cleanup discard, state-based actions)
+	// never ask it.
+	OpponentEffectProtections []game.OpponentEffectProtection
+
 	// GameEndGates declares a printed static "you can't lose the
 	// game" / "your opponents can't win the game" (CR 104.3 —
 	// Platinum Angel, Herald of Eternal Dawn, Abyssal Persecutor).

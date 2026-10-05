@@ -2647,6 +2647,10 @@ func (g *Game) QueueDiscardFromRevealedHand(d RevealedHandDiscard) uuid.UUID {
 	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
 		return uuid.Nil
 	}
+	if g.effectDiscardBlockedLocked(d.FromPlayer) {
+		// #2178: an opponent's effect can't make them discard.
+		return uuid.Nil
+	}
 	hand := make([]uuid.UUID, 0, p.Hand.Size())
 	options := make([]uuid.UUID, 0, p.Hand.Size())
 	for _, c := range p.Hand.Cards {
