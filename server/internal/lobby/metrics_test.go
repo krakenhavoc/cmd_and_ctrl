@@ -465,7 +465,8 @@ func TestWSCountersMoveByOne(t *testing.T) {
 	}
 }
 
-// ADR 0123 §2's locking rule under -race: scrapes run while tables are
+// ADR 0123 §2's locking rule under -race, and ADR 0124 §5's for
+// Lobby.LiveTables: scrapes run while tables are
 // created, joined, started, played, watched, archived and deleted and
 // sockets come and go. A lock-order inversion between the collector
 // and the hub, a room or the lobby would hang here; a data race fails
@@ -496,6 +497,9 @@ func TestScrapeDuringTableTraffic(t *testing.T) {
 					t.Errorf("gather: %v", err)
 					return
 				}
+				// The admin views' copy keeps the same rule (ADR 0124
+				// §5): l.mu only, no room or game lock.
+				_ = l.LiveTables()
 			}
 		}()
 	}

@@ -90,6 +90,13 @@ func seatRecords(seats []SeatInfo) []SeatRecord {
 		if s.IsBot {
 			rec.BotTier = s.BotTier
 		}
+		// ADR 0124 §6: the agent badge gets a column, so a table whose
+		// restore point is gone still shows its agent seat as one.
+		// NormalizeAgentClient is idempotent, and turns an empty name
+		// into "unknown": an agent's column is never empty.
+		if s.IsAgent {
+			rec.AgentClient = NormalizeAgentClient(s.AgentClient)
+		}
 		out = append(out, rec)
 	}
 	return out
@@ -371,6 +378,11 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 // display name, the curated bot deck, the agent badge (ADR 0122 §7) —
 // rides the engine snapshot on game.Player already, so it is read
 // back from there rather than duplicated into seats.
+//
+// The agent badge also has a column since migration 0010 (ADR 0124
+// §6), for the admin views of a table whose restore point is gone.
+// The engine stays the authority here: the column is read only for a
+// seat whose engine player is missing, which cannot happen today.
 func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 	ctx, cancel := storeCtx()
 	defer cancel()
@@ -427,6 +439,9 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 				info.IsAgent = true
 				info.AgentClient = p.AgentClient
 			}
+		} else if s.AgentClient != "" {
+			info.IsAgent = true
+			info.AgentClient = s.AgentClient
 		}
 		meta.Players = append(meta.Players, info)
 	}
