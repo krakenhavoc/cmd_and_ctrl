@@ -334,3 +334,46 @@ The owner's answers did not settle these. Each is decided above, and each can be
 11. **Issue-as-state for the uptime cron** (§8), so a long outage posts twice: once down, once recovered.
 12. **The monitoring VM is not backed up** (§6, Consequences).
 13. **Bounded restarts on both units in this sprint** (#598 item 2), because `UnitFailed` needs a unit that can reach `failed`.
+
+## Amendment (2026-10-05): as delivered
+
+PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #2283). The HomeLab PRs are open for the owner (krakenhavoc/HomeLab#119–#122). Delivery departed from the text above in the ways below. Where they differ, the code and these notes are the record.
+
+### The HomeLab half (§6)
+
+- **Paths.** The cmd_and_ctrl VMs moved out of `terraform/deployments/lab/` in HomeLab#93. They now live in `terraform/deployments/cmd-and-ctrl/`, with `env/dev` and `env/prd` workspaces and secrets from Bitwarden. The monitoring VM gets its own root, `terraform/deployments/cmd-and-ctrl-monitoring/`, and its own TFC workspace (HomeLab#121, a prerequisite of #122).
+- **The Compose project is synced from HomeLab** (a top-level `cmd-and-ctrl-monitoring/` directory, through a `monitoring-sync` timer) rather than written by cloud-init. The VM ignores `initialization` changes, so a stack written by cloud-init could not be updated without a rebuild that loses the stored data. Cloud-init only bootstraps.
+- **The config sync uses a sparse, blob-less git clone** of `deploy/monitoring/` from `main`, not the codeload tarball. It still needs no credentials. It also writes two extra gauges, `cmdctrl_monitoring_sync_last_run_timestamp_seconds` and `cmdctrl_monitoring_sync_last_run_success`.
+- **Pinned images:** Prometheus v3.15.0, Alertmanager v0.34.1 (with native `discord_configs` and `webhook_url_file`), Loki 3.7.8, Grafana 13.2.3, blackbox_exporter v0.28.0, Caddy 2.11.6 and Alloy v1.20.1, each pinned by digest. Grafana also provisions an `alertmanager` datasource, and the dashboard folder's uid is `cmd-and-ctrl`.
+- **Firewall:** an nftables table that filters the published ports in a prerouting chain, because Docker's DNAT bypasses the input chain.
+- **Cold-start hazard (HomeLab#119).** Changing the cmd_and_ctrl cloud-init snippet changes the user-data, so on the next cold start each VM re-runs cloud-init as a new instance. That is the 2026-09-27/28 outage. Before that PR merges, each host gets `manual_cache_clean: true` and the start-limit drop-in by hand.
+
+### The agent (§4, §10)
+
+- **Two CD steps, not one:**
+  - "Sync server env (metrics listener)" sets `CMDCTRL_METRICS_ADDR` always, before the server restart.
+  - "Ensure monitoring agent" runs last and installs Alloy `1.20.1-1` (apt, held, key fingerprint pinned) through `scripts/ensure-monitoring-agent.sh`.
+
+  A missing value is a warning, and Alloy stays stopped. A malformed value, an apt failure or a config that fails validation fails the step.
+- **Every CD restart runs `systemctl reset-failed` first** (also in `scryfall-refresh.yml`). With a start limit on the unit, a fix deployed minutes after a crash loop would otherwise be refused.
+- **The bot unit's start limit is 10 in 600 s**, the same as the server unit's in HomeLab#119. It was 5 in 300 s from #1090.
+- **The backup unit gains `ReadWritePaths=-/var/lib/cmdctrl-metrics`,** because `ProtectSystem=strict` made the textfile directory read-only to it.
+- **Alloy also ships what systemd logs about the units** (for example "start request repeated too quickly"), labelled with the unit's name.
+
+### The metrics (§3)
+
+- **The route label.** Every server mux is a `metrics.ServeMux` that knows its own patterns. The route is the innermost match, and a pattern no mux registered is `unmatched`.
+- **Label sets can be per metric family** (`familyLabelSets`). `outcome`, `direction`, `type` and `result` mean different closed sets on different families.
+- **Values beyond the ADR's tables:**
+  - `layer` also has `random`.
+  - Bot fallback `cause` keeps the runner's names, and the model funnel's causes carry a `model-` prefix.
+  - `tier` has `other`.
+  - `cmdctrl_actions_total{type}` has `bundle`, `lobby` (lobby setup through `ApplyExternal`) and `other`.
+  - Upgrade rejection `reason` is `shutting_down|bad_request|unauthorized|forbidden|rejected|no_manager|game_not_found|player_not_in_game|upgrade_failed`.
+- **Restore-point lag** counts only active, persisted rooms past their last restore point. A table idling at an old restore point does not count.
+- **`cmdctrl_users_played`** also counts accounts seated at a table that is live now.
+
+### The uptime watcher (§8)
+
+- **Cloudflare challenges GitHub-hosted runners** on both `/healthz` URLs (HTTP 403, `cf-mitigated: challenge`). The watcher treats a challenge on every try as *blocked*, not down. It opens no issue, warns in a dry run and fails a live run.
+- **The owner chose a WAF Skip rule for `/healthz`,** kept in HomeLab Terraform (HomeLab#120). Bot Fight Mode on the free plan cannot be skipped, so the owner checks the challenge's source before applying it. Until then the watcher cannot see either site.
