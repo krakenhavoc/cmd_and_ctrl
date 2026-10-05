@@ -508,3 +508,55 @@ second opening roll, then later a second pass. The server refused both.
 The duplicate roll is counted in the `opening-roll` 2 above. A refused
 window can also be handed to the model, which is the likely reason
 Codex was shown 26 decisions and made 23 `act` calls.
+
+### Measured: the rematch
+
+The same day, the same setup, a new prod table: an `esper-control`
+mirror this time, so that judgement (what to counter, when to wipe the
+board) decided more of the game. Codex won the opening roll with a 14 and
+chose to go first. The roll's winner was asked, and a model made the
+choice. Codex won in round 8 (log turn 16), during Claude's draw step,
+about twelve minutes after the roll.
+
+| Quantity | Claude Code | Codex |
+|---|---|---|
+| Windows seen | 234 | 230 |
+| Absorbed by Layer A | 136: `forced` 61, `mana-only` 43, `pass_until` 30, `opening-roll` 2 (one a duplicate, #2271) | 125: `forced` 47, `mana-only` 46, `pass_until` 31, `opening-roll` 1 |
+| Shown to the model | 103 | 105 |
+| `act` calls, rejections | 98, 0 | 104, 0 |
+| Automatic answers refused | 5 (#2271) | 0 |
+| Full-list requests | 0 | 3 |
+| Largest move list shown | 27 moves, 2,243 bytes | 30 moves, 2,542 bytes |
+| Tool-result bytes | 250,998 (about 62,700 tokens) | 306,025 (about 76,500 tokens) |
+| Time per decision (opened to `act`) | median 2.6 s, mean 3.0 s, max 12.6 s | median 4.1 s, mean 3.8 s, max 18.5 s |
+| Client-reported cost | $4.19: Opus 5.5 724 input, 22.4k output, 11.8M cache read, 171.2k cache write over 109 requests, no cache misses; 12.3 min wall, 5.1 min API | no per-game figure. The session ended with 97.1k of 258k context used. The account's weekly limit read 82% left. |
+
+**The engine decided this game, not either model.** Codex cast Stroke
+of Genius (X=7) in Claude's draw step. Under Sheoldred, the seven draws
+were lethal. Claude held Counterspell and Mana Drain with the lands to
+cast them, but never received priority while the spell was on the
+stack. The prod replay shows it: the snapshot after Codex's cast has
+Codex holding priority over Stroke, and the next one has it resolved.
+The engine treats priority returning to the active seat as "everyone
+passed", so a non-active player's spell resolves without the active
+player's response (CR 117.4, #2275). It affects every table, not only
+agent seats.
+
+Both agents were asked what was hard. Their answers became issues:
+
+- **Which player is meant.** Both seats were named «Agent», so
+  "targeting «Agent»" was ambiguous, and so were log lines (#2273,
+  #2276, #2279).
+- **Picking targets from a capped pool of combinations** instead of
+  from the board (#2276).
+- **A capped Demonic Tutor search** with no usable id to expand it
+  (#2277).
+- **An automatic payment** that tapped two white/blue duals for a
+  generic {2} while a Plains stayed untapped, with counterspells in
+  hand (#2278).
+- **Wording:** a turn counter that counts rounds, and abilities read
+  as "cast by" (#2279).
+
+Both agents used `pass_until` without being told to. The Claude seat
+recognised four of its five #2271 duplicate windows as stale, and left
+them alone.
