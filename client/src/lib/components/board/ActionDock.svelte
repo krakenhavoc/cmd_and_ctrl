@@ -106,6 +106,9 @@
     // PR 6: the open sheet's width (0 when none is open, or it is
     // minimised), so the hover zoom can move left of it (§4).
     onSheet?: (width: number) => void;
+    // #2374: whether a stage sheet (the opening hand) is up and not
+    // folded away, so the log drawer, opened over it, draws above it.
+    onStage?: (up: boolean) => void;
     // PR 7 (owner decision 3): the ⋯ menu, last on the toggles row.
     // Game.svelte builds it; omitted, the row has no ⋯.
     menu?: GameMenuOptions;
@@ -127,6 +130,7 @@
     onUndo = () => {},
     onSize,
     onSheet,
+    onStage,
     menu,
   }: Props = $props();
 
@@ -230,6 +234,14 @@
   // dock moves to the bottom centre under it while it is up. Minimised,
   // both go back to normal: the sheet is the restore chip in the corner.
   const staged = $derived(sheetOpen && !minimised && !!req?.sheet?.stage);
+  $effect(() => {
+    if (!onStage) return;
+    const up = staged;
+    onStage(up);
+    return () => {
+      if (up) onStage(false);
+    };
+  });
   let sheetEl: HTMLElement | null = $state(null);
   let restoreEl: HTMLButtonElement | null = $state(null);
 
@@ -1224,14 +1236,20 @@
      button row. z-index -1 inside the dock's own stacking context puts
      it under the dock's box and over the table. No backdrop-filter: it
      would make the stage a containing block for the fixed hover zoom. */
+  /* #2374: the stage dims the table, not the game's top bar. It starts
+     under the bar (44px and its 1px border, as the log drawer does), so
+     Lobby, the game log, sound and settings stay usable while the hand
+     is up; covering them hid the log a d20 rolled in the mulligan is
+     written to. The top padding gives back the bar's height, so the fan
+     sits where it did. */
   .dock-sheet.stage {
     position: fixed;
-    inset: 0;
+    inset: 45px 0 0;
     z-index: -1;
     width: auto;
     min-width: 0;
     max-height: none;
-    padding: 6vh 24px 220px;
+    padding: max(12px, calc(6vh - 45px)) 24px 220px;
     align-items: center;
     border: none;
     border-radius: 0;

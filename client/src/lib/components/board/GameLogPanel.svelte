@@ -22,10 +22,13 @@
   interface Props {
     view: GameView;
     viewerID: string | null;
+    // #2374: the opening hand's stage is up. The drawer draws above it
+    // (it still ends above the dock, so it never covers Keep hand).
+    overStage?: boolean;
     onClose: () => void;
   }
 
-  const { view, viewerID, onClose }: Props = $props();
+  const { view, viewerID, overStage = false, onClose }: Props = $props();
 
   const viewerSeat = $derived(view.seats.findIndex((s) => s.id === viewerID));
   let mineOnly = $state(false);
@@ -52,7 +55,7 @@
   });
 </script>
 
-<aside class="log-panel" aria-label="game log">
+<aside class="log-panel" class:over-stage={overStage} aria-label="game log">
   <header class="log-head">
     <span class="log-title"><Icon name="scroll" size={14} /> game log</span>
     <span class="muted log-count">{total} entries</span>
@@ -131,6 +134,13 @@
     background: var(--bg-1);
     border-left: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
+  }
+  /* #2374: over the opening hand's stage, which is part of the action
+     dock (z-index 55) and dims everything under it. Opened there, the
+     drawer would be drawn under the dim. It still stops above the dock
+     (--dock-log-clear), so lifting it covers none of the dock. */
+  .log-panel.over-stage {
+    z-index: 56;
   }
 
   .log-head {

@@ -1169,6 +1169,12 @@
   function onDockSheet(w: number): void {
     if (w !== sheetW) sheetW = w;
   }
+  // #2374: the opening hand's stage is up (and not folded away by View
+  // table). The log drawer, opened over it, draws above it.
+  let stageUp = $state(false);
+  function onDockStage(up: boolean): void {
+    if (up !== stageUp) stageUp = up;
+  }
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
@@ -1906,7 +1912,12 @@
     transport layer.
   -->
   {#if showGameLog && view}
-    <GameLogPanel {view} {viewerID} onClose={() => (showGameLog = false)} />
+    <GameLogPanel
+      {view}
+      {viewerID}
+      overStage={dockShown && stageUp}
+      onClose={() => (showGameLog = false)}
+    />
   {/if}
 
   <ConnectionBanner
@@ -2185,6 +2196,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          onStage={onDockStage}
           menu={menuOptions}
         />
         {#if coachMounted}
