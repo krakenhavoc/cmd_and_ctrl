@@ -204,6 +204,16 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// stands in for — the crown changes hands with the board
 		// untouched. A handful of times a game, so no gate.
 		g.layerVersion.Add(1)
+	case EventManaAdded, EventManaSpent, EventManaPoolEmptied:
+		// #2363: a pool that is a layer input (Omnath, Locus of Mana's
+		// +1/+1 per unspent green). Every route that changes a pool
+		// emits one of these AFTER the write: produceManaLocked adds,
+		// every payment path spends and emits manaSpentEvent, and the
+		// step sweep emits the emptied event (or, when it only keeps or
+		// converts, calls invalidateLayersForManaPoolLocked itself).
+		// Gated, because a pool changes with every land tap at every
+		// table; see manaPoolStaticIsLiveLocked.
+		invalidateLayersForManaPoolLocked(g)
 	case EventCounterPlaced:
 		g.layerVersion.Add(1)
 	case EventPlayerCounterPlaced:
@@ -444,6 +454,22 @@ func lifeTotalStaticIsLiveLocked(g *Game) bool {
 // leaving exile (ADR 0100 sub-PR 2). Soulflayer is the card.
 func exileStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnExile })
+}
+
+// manaPoolStaticIsLiveLocked is handSizeStaticIsLiveLocked for a mana
+// pool (#2363). Omnath, Locus of Mana is the card. Same walk, same
+// cost bounded by the board, same reason it is not a maintained
+// counter.
+func manaPoolStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnManaPool })
+}
+
+// invalidateLayersForManaPoolLocked drops the cached layer resolution
+// when a pool changed while something reads it. Caller must hold g.mu.
+func invalidateLayersForManaPoolLocked(g *Game) {
+	if manaPoolStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
 }
 
 // attackingStatusStaticIsLiveLocked is handSizeStaticIsLiveLocked for
