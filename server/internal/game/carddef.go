@@ -260,6 +260,11 @@ type CardDef struct {
 	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
 	// battlefield through CatalogAnyColorSpend; see spend_any_color.go.
 	AnyColorSpend []AnyColorSpendStatic
+	// LegendRuleExemptions are this permanent's printed "the legend rule
+	// doesn't apply" statics (CR 704.5j) — Mirror Box, Mirror Gallery,
+	// Sakashima of a Thousand Faces. Read from the battlefield through
+	// CatalogLegendRuleExemptions; see legend_rule_exemption.go.
+	LegendRuleExemptions []LegendRuleExemption
 	// GameEndGates are this permanent's printed "you can't lose the
 	// game" / "your opponents can't win the game" statics (CR 104.3),
 	// scoped relative to its CONTROLLER. Read from the battlefield
@@ -733,6 +738,12 @@ func init() {
 	CatalogAnyColorSpend = func(key string) []AnyColorSpendStatic {
 		if d := catalogDef(key); d != nil {
 			return d.AnyColorSpend
+		}
+		return nil
+	}
+	CatalogLegendRuleExemptions = func(key string) []LegendRuleExemption {
+		if d := catalogDef(key); d != nil {
+			return d.LegendRuleExemptions
 		}
 		return nil
 	}

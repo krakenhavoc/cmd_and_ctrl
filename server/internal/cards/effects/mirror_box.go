@@ -18,21 +18,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // name it has now, and applied to nontoken creatures only, as
 // printed. Two Mirror Boxes double both bonuses, as printed.
 //
-// Sandbox simplification: the first line is NOT modelled. The legend
-// rule is a state-based action the engine runs from the SBA loop
-// (legend_rule.go) with no per-controller exemption hook, and the
-// only way a card file could switch it off — stripping "Legendary"
-// in layer 4 — would also switch off this card's own second line
-// and every other legendary-matters effect at the table, which is a
-// different card. So a second copy of a legend still prompts the
-// legend rule. Weaker than printed, never stronger; the two anthems
-// are complete.
+// The first line is the CR 704.5j exemption: a player-scoped static
+// (LegendRuleExemptions) the legend-rule state-based action reads off
+// the battlefield each time it runs (game/legend_rule_exemption.go,
+// #2177). Only the controller's permanents are exempt, so an opponent's
+// duplicate legends still go. When the Box leaves, the next check
+// applies the rule normally and the controller chooses which to keep.
 func init() {
 	Register(Spec{
-		OracleID:     "3bed1944-58dc-4679-9aee-7be4d94fb55c",
-		Name:         "Mirror Box",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The legend rule still applies to your permanents; only the two +1/+1 bonuses are in effect."},
+		OracleID:             "3bed1944-58dc-4679-9aee-7be4d94fb55c",
+		Name:                 "Mirror Box",
+		Completeness:         CompletenessFull,
+		LegendRuleExemptions: LegendRuleDoesntApplyToYours(),
 		Static: []game.StaticAbility{
 			{
 				Layer:    game.Layer7PT,

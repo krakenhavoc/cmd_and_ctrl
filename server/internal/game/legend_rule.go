@@ -74,8 +74,12 @@ func (g *Game) legendRuleChoicesLocked() map[uuid.UUID][]uuid.UUID {
 		name       string
 	}
 	groups := map[key][]uuid.UUID{}
+	exempt := g.legendRuleExemptControllersLocked()
 	for _, c := range g.Battlefield.Cards {
 		if !c.IsLegendary() {
+			continue
+		}
+		if exempt.covers(c.Controller) {
 			continue
 		}
 		name := c.Effective().Name

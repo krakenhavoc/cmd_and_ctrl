@@ -2690,14 +2690,12 @@ var items = []Item{
 		EngineNotes: "adventure: `grantAdventureCastFromExileLocked` (`game/adventure.go`) grants face 0 with `CastOnly: true`, and its comment reads CR 715.3d as \"cast\". The pinned text says \"For as long as that card remains exiled, that player may play it\", so for a land main half the grant has to be a play permission (a land play that spends the turn's land drop). Casting the Adventure half from the hand is untested for a card whose main face is a land. Final Fantasy's Town lands have this shape.",
 	},
 	{
-		Slug: "legend-rule-exemption", Name: "The legend rule not applying to your permanents", Kind: KindSeam, Status: StatusMissing,
+		Slug: "legend-rule-exemption", Name: "The legend rule not applying to your permanents", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that switch off the legend rule for your permanents, such as Sakashima of a Thousand Faces' \"The legend rule doesn't apply to permanents you control\".",
-		Missing:     "The legend rule always applies, so a card that switches it off for you can't be added yet.",
 		Rules:       []string{"704.5j"},
 		Issue:       2177,
-		Tracked:     "#2177 (S58 tracker #2077)",
-		Waiting:     []string{"Sakashima of a Thousand Faces"},
-		EngineNotes: "state-based action: `legendRuleChoicesLocked` (`game/legend_rule.go`) groups each player's legendary permanents by name with no exemption, and Mirror Box ships with a caveat for its copy of this clause. Needs a player-scoped static the legend-rule check asks before it groups. Sakashima's copy entry, \"except it has Sakashima's other abilities\", is Sakashima the Impostor's shape; partner is a deck-building clause the deck checker doesn't support yet.",
+		Examples:    []string{"Mirror Box", "Mirror Gallery"},
+		EngineNotes: "**Ships (#2177).** `Spec.LegendRuleExemptions` (`game.LegendRuleExemption`, `game/legend_rule_exemption.go`) is read off the battlefield by `legendRuleChoicesLocked` on every state-based action check, keyed by `CatalogAbilityKey` and never stored: `LegendRuleDoesntApplyToYours()` covers the controller's permanents (Mirror Box, Sakashima of a Thousand Faces), `LegendRuleDoesntApply()` covers every player's (Mirror Gallery). When the last exempting permanent leaves, the next check applies the rule and the controller chooses which to keep. Sakashima's \"except it has Sakashima's other abilities\" is a copy grant (`AbilityGrant.LegendRuleExempt`, merged by `mergeCatalogParts`), so a copy keeps the exemption; its Partner clause is deck construction and does nothing, as for every partner card.",
 	},
 	{
 		Slug: "cant-make-you-discard-or-sacrifice", Name: "Opponents can't make you discard or sacrifice", Kind: KindSeam, Status: StatusMissing,

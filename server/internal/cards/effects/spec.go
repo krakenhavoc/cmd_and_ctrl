@@ -1013,6 +1013,16 @@ type Spec struct {
 	// impulse exile) is CastPermission.AnyColor, not this.
 	AnyColorSpend []game.AnyColorSpendStatic
 
+	// LegendRuleExemptions declares a printed "the legend rule doesn't
+	// apply" static (CR 704.5j):
+	//
+	//	LegendRuleExemptions: LegendRuleDoesntApplyToYours(), // Mirror Box
+	//	LegendRuleExemptions: LegendRuleDoesntApply(),        // Mirror Gallery
+	//
+	// Read from the battlefield at every legend-rule check through
+	// game.CatalogLegendRuleExemptions, keyed by CatalogAbilityKey.
+	LegendRuleExemptions []game.LegendRuleExemption
+
 	// GameEndGates declares a printed static "you can't lose the
 	// game" / "your opponents can't win the game" (CR 104.3 —
 	// Platinum Angel, Herald of Eternal Dawn, Abyssal Persecutor).
