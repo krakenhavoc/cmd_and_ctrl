@@ -41,20 +41,23 @@ fi
 
 # probe URL: sets PROBE_DETAIL, returns 0 when up.
 probe() {
-  local url="$1" i code rc err
+  local url="$1" i code rc err hdr
   PROBE_DETAIL=""
   for ((i = 1; i <= TRIES; i++)); do
     err=$(mktemp)
-    code=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$url" 2>"$err")
+    hdr=$(mktemp)
+    code=$(curl -sS -o /dev/null -D "$hdr" -w '%{http_code}' --connect-timeout 5 --max-time 10 -A 'cmd-and-ctrl-uptime/1 (+https://github.com/krakenhavoc/cmd_and_ctrl)' "$url" 2>"$err")
     rc=$?
     if [ "$rc" -eq 0 ] && [[ "$code" =~ ^2[0-9][0-9]$ ]]; then
-      rm -f "$err"
+      rm -f "$err" "$hdr"
       PROBE_DETAIL="HTTP $code on try $i"
       return 0
     fi
     PROBE_DETAIL="try $i: HTTP ${code:-000}, curl exit $rc: $(tr '\n' ' ' <"$err")"
-    rm -f "$err"
     echo "  $PROBE_DETAIL"
+    # Who answered: a Cloudflare or proxy block shows up here, not in the code.
+    grep -iE '^(server|cf-mitigated|cf-ray|via):' "$hdr" | tr -d '\r' | sed 's/^/    /'
+    rm -f "$err" "$hdr"
     if [ "$i" -lt "$TRIES" ]; then sleep "$GAP"; fi
   done
   return 1
