@@ -5,13 +5,14 @@
 | `Caddyfile` | both hosts | CD, every deploy of `main` and `develop` ("Deploy Caddy config") |
 | `cmd-and-ctrl-bot.service` | production only | CD, every deploy of `main` ("Install bot systemd unit"); **enabling** it is an operator step, repeated after every rebuild, below |
 | `cmd-and-ctrl-backup.service`, `cmd-and-ctrl-backup.timer` | both hosts | CD, every deploy of `main` and `develop` ("Ensure off-site backup"), which also enables the timer, or disables it and warns when a backup secret or variable is unset. Nightly restic backup to R2; runbook in [docs/environments.md](../docs/environments.md#backups) |
+| `alloy/config.alloy`, `alloy/cmdctrl.conf` | both hosts | CD, every deploy of `main` and `develop` ("Ensure monitoring agent", through `scripts/ensure-monitoring-agent.sh`), as `/etc/alloy/config.alloy` and the `alloy.service` drop-in. Grafana Alloy, pinned; it stops, with a warning, when a monitoring value is unset. Runbook in [docs/environments.md](../docs/environments.md#monitoring-agent) |
 
 ## The game server's unit is not here
 
 Both hosts get `cmd-and-ctrl.service`, a first-boot placeholder
 Caddyfile and `/etc/cmd_and_ctrl/env` from the cloud-init template in
 [krakenhavoc/HomeLab](https://github.com/krakenhavoc/HomeLab):
-`terraform/deployments/lab/templates/setup-cmd_and_ctrl.yaml.tftpl`.
+`terraform/deployments/cmd-and-ctrl/templates/setup-cmd_and_ctrl.yaml.tftpl`.
 CD then replaces the Caddyfile with the one in this directory and keeps
 the env file's CD-managed keys in sync.
 

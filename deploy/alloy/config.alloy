@@ -1,0 +1,194 @@
+// Grafana Alloy on the app hosts (cmd-and-ctrl and cmd-and-ctrl-dev).
+// ADR 0123 §1, §4, §5 and §10. Runbook: docs/environments.md#monitoring-agent.
+//
+// Installed as /etc/alloy/config.alloy by the CD step "Ensure monitoring
+// agent" in .github/workflows/ci-cd.yml, on both hosts, on every deploy.
+// Edit it here, never on the host: the next deploy overwrites it.
+//
+// Alloy PUSHES everything to the monitoring VM, so the app hosts open no
+// inbound port. Its own UI and API stay on 127.0.0.1:12345 (the
+// --server.http.listen-addr flag CD writes into /etc/alloy/env).
+//
+// Read from the environment (/etc/alloy/env, root:alloy 0640, written by
+// CD from the Actions values of the same names):
+//   CMDCTRL_MONITORING_URL            scheme and host of the monitoring VM,
+//                                     no port, no trailing slash
+//                                     (e.g. http://192.168.200.40)
+//   CMDCTRL_MONITORING_PUSH_PASSWORD  this environment's push credential
+//   CMDCTRL_MONITORING_ENV            prod or dev: the `env` label, and the
+//                                     basic-auth username on both endpoints
+//
+// Labels are closed sets, as on the server's own metrics (ADR 0123 §3):
+// every series and stream carries `env` and `host`, and log streams add
+// only `unit` and `level`. Never promote a game, user or player ID, a
+// name, or a remote address to a label. They stay in the log line.
+
+// ---------------------------------------------------------------- metrics
+
+// The game server's metrics listener (CMDCTRL_METRICS_ADDR, which CD sets
+// to this address on both hosts). Loopback only: the server refuses to
+// boot on anything else.
+prometheus.scrape "cmdctrl_server" {
+	targets         = [{"__address__" = "127.0.0.1:9464"}]
+	job_name        = "cmdctrl-server"
+	scrape_interval = "30s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.remote_write.monitoring.receiver]
+}
+
+// Host health (ADR 0123 §4): the built-in node exporter, limited to the
+// collectors the Hosts dashboard and the DiskFilling / UnitFailed /
+// OffsiteBackupStale alerts read.
+prometheus.exporter.unix "host" {
+	set_collectors = [
+		"cpu",
+		"diskstats",
+		"filesystem",
+		"loadavg",
+		"meminfo",
+		"netdev",
+		"stat",
+		"systemd",
+		"textfile",
+	]
+
+	// Our units and the two that put the site on the internet. Timers too,
+	// so a disabled backup timer is visible next to its service.
+	systemd {
+		unit_include    = "(cmd-and-ctrl.*|caddy|cloudflared|alloy)\\.(service|timer)"
+		enable_restarts = true
+	}
+
+	// Files other jobs write for Alloy to read. scripts/backup-offsite.sh
+	// writes backup.prom here (the off-site backup's last success and last
+	// exit code). root:cmdctrl 0775, created by CD.
+	textfile {
+		directory = "/var/lib/cmdctrl-metrics"
+	}
+}
+
+// The exporter's targets name their own job; relabel it to `node`, the
+// name the rules and dashboards use.
+discovery.relabel "node" {
+	targets = prometheus.exporter.unix.host.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "node"
+	}
+}
+
+prometheus.scrape "node" {
+	targets         = discovery.relabel.node.output
+	job_name        = "node"
+	scrape_interval = "30s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.remote_write.monitoring.receiver]
+}
+
+prometheus.remote_write "monitoring" {
+	endpoint {
+		url = sys.env("CMDCTRL_MONITORING_URL") + ":9091/api/v1/write"
+
+		basic_auth {
+			username = sys.env("CMDCTRL_MONITORING_ENV")
+			password = sys.env("CMDCTRL_MONITORING_PUSH_PASSWORD")
+		}
+	}
+
+	external_labels = {
+		env  = sys.env("CMDCTRL_MONITORING_ENV"),
+		host = constants.hostname,
+	}
+}
+
+// ------------------------------------------------------------------- logs
+
+// What each unit writes (ADR 0123 §5). Matches on the same journal field
+// are ORed, so this is "any of these units".
+loki.source.journal "units" {
+	matches       = "_SYSTEMD_UNIT=cmd-and-ctrl.service _SYSTEMD_UNIT=cmd-and-ctrl-bot.service _SYSTEMD_UNIT=cmd-and-ctrl-backup.service _SYSTEMD_UNIT=caddy.service _SYSTEMD_UNIT=cloudflared.service"
+	relabel_rules = loki.relabel.units.rules
+	forward_to    = [loki.process.levels.receiver]
+}
+
+loki.relabel "units" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__journal__systemd_unit"]
+		target_label  = "unit"
+	}
+}
+
+// What systemd itself says ABOUT those units: "Main process exited",
+// "Start request repeated too quickly", "Failed with result". These lines
+// come from PID 1 (_SYSTEMD_UNIT=init.scope) and name the unit in UNIT=.
+// Different fields are ANDed, so this is "from PID 1, about one of ours".
+// They carry the same `unit` label as the unit's own lines, so a crash
+// loop reads as one stream.
+loki.source.journal "systemd" {
+	matches       = "_SYSTEMD_UNIT=init.scope UNIT=cmd-and-ctrl.service UNIT=cmd-and-ctrl-bot.service UNIT=cmd-and-ctrl-backup.service UNIT=caddy.service UNIT=cloudflared.service"
+	relabel_rules = loki.relabel.systemd.rules
+	forward_to    = [loki.process.levels.receiver]
+}
+
+loki.relabel "systemd" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__journal_unit"]
+		target_label  = "unit"
+	}
+}
+
+// `level` from a JSON line's own `level` field (the server and the bot log
+// JSON through slog; Caddy logs JSON too). A line that is not JSON, or has
+// no `level`, gets no level label. Lower-cased, and dropped unless it is a
+// known level, so the label stays a closed set.
+loki.process "levels" {
+	stage.json {
+		expressions = {level = "level"}
+	}
+
+	stage.template {
+		source   = "level"
+		template = "{{ ToLower .Value }}"
+	}
+
+	stage.labels {
+		values = {level = ""}
+	}
+
+	stage.match {
+		selector = "{level!~\"debug|info|warn|warning|error|fatal|panic|dpanic\"}"
+
+		stage.label_drop {
+			values = ["level"]
+		}
+	}
+
+	// Belt and braces: whatever a source added, only these two leave this
+	// host as stream labels (env and host are added by loki.write).
+	stage.label_keep {
+		values = ["unit", "level"]
+	}
+
+	forward_to = [loki.write.monitoring.receiver]
+}
+
+loki.write "monitoring" {
+	endpoint {
+		url = sys.env("CMDCTRL_MONITORING_URL") + ":3101/loki/api/v1/push"
+
+		basic_auth {
+			username = sys.env("CMDCTRL_MONITORING_ENV")
+			password = sys.env("CMDCTRL_MONITORING_PUSH_PASSWORD")
+		}
+	}
+
+	external_labels = {
+		env  = sys.env("CMDCTRL_MONITORING_ENV"),
+		host = constants.hostname,
+	}
+}

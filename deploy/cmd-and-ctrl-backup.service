@@ -53,6 +53,10 @@ StandardError=journal
 # and outbound HTTPS to R2. Everything else is locked down.
 ProtectSystem=strict
 ReadOnlyPaths=/var/lib/cmd_and_ctrl/data
+# The one place it writes outside its cache: backup.prom, the run's
+# outcome for the monitoring agent (ADR 0123 §4). `-` because a host
+# without the agent has no such directory, and the script then skips it.
+ReadWritePaths=-/var/lib/cmdctrl-metrics
 # cmdctrl can read the server's env file (root:cmdctrl 0640) and has no
 # business doing so here.
 InaccessiblePaths=-/etc/cmd_and_ctrl/env -/etc/cmd_and_ctrl/bot.env
