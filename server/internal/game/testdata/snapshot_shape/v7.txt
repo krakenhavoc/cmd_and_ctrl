@@ -4260,6 +4260,7 @@ turn.PriorityHolder	number:int
 turn.Seq	number:int
 turn.Step	string
 turn.StepOrdinal	number:int
+turnEndPending	bool
 turnPlan	array
 turnPlan[]	object
 turnPlan[].phaseId	number:int

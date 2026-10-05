@@ -142,6 +142,10 @@ const LOG_TONE: Record<LogKind, string> = {
   // Added phases change the turn's structure too — another combat is
   // coming — so they are toned like the step spine as well.
   extra_phase: "tone-step",
+  // #2165. An effect ending the turn is the turn structure changing
+  // under the table — the cursor jumps to cleanup — so it reads as
+  // part of the step spine too.
+  turn_ended: "tone-step",
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",

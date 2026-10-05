@@ -4443,6 +4443,25 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	if g.holdForOpenResolutionLocked() {
 		return false
 	}
+	// #2165, CR 724.1: an effect ended the turn during the resolution
+	// this boundary follows. The rest of the process — the 724.1c
+	// check, the skip to the cleanup step and that step itself — is
+	// owed now, and it IS this boundary. See end_turn.go.
+	if g.TurnEndPending {
+		return g.finishEndingTheTurnLocked()
+	}
+	return g.stateChecksLocked(true)
+}
+
+// stateChecksLocked is runStateChecksLocked's loop, past the
+// resolution hold. `drain` false is CR 724.1c's check (end_turn.go):
+// state-based actions are performed until none fires, and the
+// triggered abilities they cause wait on PendingTriggers instead of
+// going on the stack, because nobody is about to receive priority.
+// Every caller but that one passes true.
+//
+// Caller must hold g.mu.
+func (g *Game) stateChecksLocked(drain bool) (sbaFired bool) {
 	// ADR 0107 §6, CR 615.5: the instance of damage is over before a
 	// player receives priority, so the next-damage shields' "the damage
 	// prevented this way" runs now, once per shield with the total —
@@ -4539,6 +4558,13 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 			departuresPending = false
 			// Cleanup and the next turn's entry hooks can change the board.
 			// Check it before draining the waiting triggers into that turn.
+			continue
+		}
+		if !drain {
+			// CR 724.1c: repeat until quiet; put nothing on the stack.
+			if !fired {
+				return sbaFired
+			}
 			continue
 		}
 		hasPending := len(g.PendingTriggers) > 0
@@ -7841,6 +7867,7 @@ func (g *Game) passPriorityLocked() error {
 	// combat-clear all fire regardless of whether the step changed
 	// via a priority-wrap or an explicit advance_step click.
 	if g.stackHasItemsLocked() {
+		before := g.Turn
 		// #489: a resolution that FAILED is still a resolution that
 		// happened. The old `return err` here skipped both of the
 		// lines below, so one bad resolution left the game half
@@ -7860,6 +7887,14 @@ func (g *Game) passPriorityLocked() error {
 		// Drain any pending APNAP triggers onto the stack now that
 		// we've crossed a priority-grant boundary (CR 603.3b).
 		g.runStateChecksLocked()
+		// #2165: unless the resolution moved the cursor itself — it
+		// ended the combat phase (CR 724.2) or the turn (CR 724.1) —
+		// in which case the step it moved to has already decided who
+		// holds priority, and a cleanup step waiting on a discard has
+		// decided nobody does. See end_turn.go.
+		if g.cursorMovedSince(before) {
+			return nil
+		}
 		// Priority returns to the active player after a resolution
 		// (CR 117.3b), and a new succession of passes begins with
 		// them (#2275). The step doesn't change.

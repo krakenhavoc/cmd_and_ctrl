@@ -5984,6 +5984,46 @@ and a trigger bound to one added combat, "at the beginning of that
 combat" (Moraug). Both ship with the first card that uses them (ADR 0059
 Decisions 4 and 8).
 
+### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
+
+"End the turn." is one primitive from
+[end_the_turn.go](../server/internal/cards/effects/end_the_turn.go), and
+it is the LAST instruction the card runs:
+
+```go
+OnResolve: endTheTurnOnResolve,                                 // Time Stop
+Effect:    endTheTurnEffect,                                    // Sundial of the Infinite's ability
+return EndTheTurn{}.Apply(ctx)                                  // after anything printed before it (Ultima's wipe)
+return ActivePlayerMayEndTheTurn{}.Apply(ctx)                   // Obeka: "the player whose turn it is may end the turn"
+```
+
+The engine does the whole of CR 724.1 (`game/end_turn.go`): triggers not
+yet on the stack cease to exist, the stack is exiled (this spell
+included; nothing is countered), state-based actions are checked with
+nobody getting priority, every creature leaves combat, and the turn goes
+straight to its cleanup step — where the active player discards to hand
+size, damage wears off and "until end of turn" effects end, and any
+trigger the process caused goes on the stack before another cleanup step
+(CR 514.3a). Three things a card author needs to know:
+
+- **It must be last.** It exiles the resolving spell. An instruction
+  printed AFTER "End the turn." that is a delayed trigger ("At the
+  beginning of your next end step, you lose the game", Glorious End) is
+  scheduled first; nothing about ending the turn reads the delayed
+  trigger queue, so the order is unobservable.
+- **Triggers from the same resolution are gone.** Ultima's "Destroy all
+  artifacts and creatures. End the turn." kills Blood Artist, and Blood
+  Artist's triggers cease to exist (CR 724.1a). That is the card, not a
+  bug to work around.
+- **The end step never begins.** "At the beginning of the end step"
+  triggers do not fire, and an unbound "next end step" delayed trigger
+  waits for next turn's. Final Fortune's loss, bound to its extra turn,
+  is swept: Sundial of the Infinite during that turn saves the player.
+
+Not built yet: Day's Undoing's "if it's your turn" is buildable on the
+same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
+cost reduction with no shape, so it stays out.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on

@@ -65,6 +65,17 @@ type Game struct {
 	// Clone and the snapshot.
 	ActiveSeatLeftPending bool
 
+	// TurnEndPending is set when an effect ended the turn (CR 724.1,
+	// #2165, end_turn.go). The effect has done the parts of the process
+	// that may run inside a resolution — the waiting triggers are gone,
+	// the stack is exiled and nobody holds priority — and the rest (the
+	// CR 724.1c check, the end of combat and the skip to the cleanup
+	// step, then that step itself, which can end the turn) waits for the
+	// resolution's CR 704.3 boundary, which consumes the flag: a turn
+	// must never end inside a resolving callback (ADR 0059 Decision 6).
+	// Plain data, carried by Clone and the snapshot.
+	TurnEndPending bool
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
