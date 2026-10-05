@@ -68,7 +68,7 @@
     border: 1px solid var(--border, #273049);
     border-radius: var(--radius-sm, 4px);
     background: var(--surface, #111a2e);
-    color: var(--gold, #ffd07a);
+    color: var(--accent, #ffd07a);
     font: inherit;
     cursor: pointer;
   }

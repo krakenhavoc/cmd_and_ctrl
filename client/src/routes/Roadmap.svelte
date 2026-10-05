@@ -368,7 +368,7 @@
     font-size: 10.5px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   h1 {
     margin: 0;
@@ -390,7 +390,7 @@
     color: var(--mint);
   }
   .t-partial {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .t-missing {
     color: var(--rose);
@@ -442,7 +442,7 @@
     --tone: color-mix(in srgb, var(--mint) 60%, transparent);
   }
   .lg-item.partial {
-    --tone: color-mix(in srgb, var(--gold) 60%, transparent);
+    --tone: color-mix(in srgb, var(--accent) 60%, transparent);
   }
   .lg-item.missing {
     --tone: color-mix(in srgb, var(--rose) 60%, transparent);
@@ -477,7 +477,7 @@
     color: var(--mint);
   }
   .cardline strong.t-partial {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .cl-label {
     font-family: var(--font-mono);
@@ -513,9 +513,9 @@
     background: color-mix(in srgb, var(--mint) 12%, transparent);
   }
   .badge.partial {
-    color: var(--gold-strong);
-    border-color: color-mix(in srgb, var(--gold) 45%, transparent);
-    background: var(--gold-soft);
+    color: var(--accent-strong);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: var(--accent-soft);
   }
   .badge.missing {
     color: var(--rose);
@@ -574,7 +574,7 @@
     background: var(--mint);
   }
   .dot.partial {
-    background: var(--gold);
+    background: var(--accent);
   }
   .dot.missing {
     background: var(--rose);
@@ -590,7 +590,7 @@
     gap: 12px;
   }
   .next-card {
-    --tone: var(--gold);
+    --tone: var(--accent);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -664,7 +664,7 @@
     gap: 4px;
     font-family: var(--font-mono);
     font-size: 11.5px;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     text-decoration: none;
     white-space: nowrap;
   }
@@ -729,8 +729,8 @@
   }
   .fchip.on {
     background: var(--accent-soft);
-    border-color: var(--gold);
-    color: var(--gold-strong);
+    border-color: var(--accent);
+    color: var(--accent-strong);
   }
   .fchip.implemented.on {
     color: var(--mint);
@@ -776,7 +776,7 @@
     gap: 10px;
   }
   .item {
-    --tone: var(--gold);
+    --tone: var(--accent);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -859,12 +859,12 @@
   a.cname {
     color: var(--fg);
     text-decoration: underline;
-    text-decoration-color: color-mix(in srgb, var(--gold) 50%, transparent);
+    text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
     text-underline-offset: 2px;
   }
   a.cname:hover {
-    color: var(--gold-strong);
-    text-decoration-color: var(--gold);
+    color: var(--accent-strong);
+    text-decoration-color: var(--accent);
   }
   /* A comma-separated list without whitespace fights in the markup:
      the separator is the stylesheet's, so a card name never wraps away
@@ -886,7 +886,7 @@
     font-size: 11.5px;
     line-height: 1.45;
     color: var(--fg-muted);
-    border-left: 2px solid color-mix(in srgb, var(--gold) 50%, transparent);
+    border-left: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
     padding-left: 8px;
     overflow-wrap: anywhere;
   }
@@ -929,7 +929,7 @@
     font-size: 11px;
   }
   .links a {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     text-decoration: none;
   }
   .links a:hover {

@@ -200,9 +200,9 @@
     gap: 4px;
     padding: 2px 3px 2px 7px;
     border-radius: 999px;
-    background: var(--gold-soft, rgba(255, 208, 122, 0.14));
+    background: var(--accent-soft);
     border: 1px solid rgba(255, 208, 122, 0.45);
-    color: var(--gold);
+    color: var(--accent);
     max-width: 100%;
     min-width: 0;
     white-space: nowrap;
@@ -213,7 +213,7 @@
   }
   .emblem:hover,
   .emblem[aria-expanded="true"] {
-    background: color-mix(in srgb, var(--gold) 24%, transparent);
+    background: color-mix(in srgb, var(--accent) 24%, transparent);
   }
   .emblem:focus-visible {
     outline: 2px solid var(--accent);
@@ -237,7 +237,7 @@
     padding: 0 3px;
     box-sizing: border-box;
     border-radius: 999px;
-    background: var(--gold);
+    background: var(--accent);
     color: var(--accent-fg, #1c1503);
     font-family: var(--font-mono);
     font-size: 10px;
@@ -286,7 +286,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--gold);
+    color: var(--accent);
     margin-bottom: 6px;
   }
   :global(:root[data-theme="light"]) .head {
@@ -332,7 +332,7 @@
     font-weight: 800;
   }
   .gained .mark {
-    background: var(--gold);
+    background: var(--accent);
     color: var(--accent-fg, #1c1503);
   }
   :global(:root[data-theme="light"]) .gained .mark {

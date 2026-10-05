@@ -46,6 +46,13 @@ type LiveSeat struct {
 	BotTier     string // a bot's tier, "" otherwise
 	AgentClient string // an agent's normalised client name, "" otherwise
 	Host        bool
+	// DeckName is the seat's deck (SeatInfo.DeckName), "" before one
+	// is uploaded.
+	DeckName string
+	// DiscordPending is a Discord seat whose person has no users row
+	// yet (seats.pending_discord_id, seatRecords' rule). The snowflake
+	// itself is not copied.
+	DiscordPending bool
 }
 
 // LiveTables copies every table the lobby holds, practice tables
@@ -77,6 +84,9 @@ func (l *Lobby) LiveTables() []LiveTable {
 				Name:        s.Name,
 				DisplayName: s.DisplayName,
 				Host:        s.IsHost,
+				DeckName:    s.DeckName,
+				// The same rule seatRecords writes the column by.
+				DiscordPending: s.UserID == "" && s.DiscordID != "",
 			}
 			if s.IsBot {
 				seat.BotTier = s.BotTier

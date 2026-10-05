@@ -162,6 +162,9 @@ var agentBadgeWriters = map[string]int{
 	"internal/adminview/merge.go:rowSeat":           1,
 	"internal/adminview/merge.go:overlaySeat":       1,
 	"internal/adminview/merge.go:liveSeat":          1,
+	// GET /admin/live's seat, copied from the LiveSeat above onto a
+	// fresh response row (ADR 0124 §3.4).
+	"internal/lobby/admin_live.go:buildLiveNow": 1,
 }
 
 // TestAgentBadgeHasNoClearingWriter pins ADR 0122 §7's "the badge

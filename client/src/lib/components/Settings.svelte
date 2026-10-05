@@ -16,6 +16,7 @@
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
   import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
   import type { StackStyle } from "../stackLane";
+  import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
   import {
     SHORTCUTS,
     GROUP_ORDER,
@@ -490,6 +491,52 @@
           {:else if activeTab === "display"}
             <h3>Display</h3>
 
+            <fieldset class="skins">
+              <legend>
+                Skin
+                {#if isFresh("display.theme")}<span class="saved">✓ saved</span>{/if}
+              </legend>
+              <div class="skin-grid">
+                {#each PICKER_SKINS as skin (skin.id)}
+                  <label class="skin" class:on={$settings.display.theme === skin.id}>
+                    <input
+                      type="radio"
+                      name="skin"
+                      value={skin.id}
+                      checked={$settings.display.theme === skin.id}
+                      onchange={() => change("display", "theme", skin.id as Skin)}
+                    />
+                    <span class="skin-swatch" aria-hidden="true">
+                      {#each skin.swatches as c, i (i)}<span style:background={c}></span>{/each}
+                    </span>
+                    <span class="skin-name">{skin.name}</span>
+                    <span class="skin-blurb">{skin.blurb}</span>
+                  </label>
+                {/each}
+              </div>
+            </fieldset>
+
+            <div class="accent-row">
+              <label for="accent-colour">Accent colour</label>
+              <input
+                id="accent-colour"
+                type="color"
+                value={$settings.display.accent ||
+                  SKINS.find((k) => k.id === $settings.display.theme)?.swatches[3]}
+                oninput={(e) => change("display", "accent", normalizeAccent(e.currentTarget.value))}
+              />
+              {#if $settings.display.accent}
+                <button type="button" class="ghost" onclick={() => change("display", "accent", "")}
+                  >Use the skin's accent</button
+                >
+              {/if}
+              {#if isFresh("display.accent")}<span class="saved">✓</span>{/if}
+            </div>
+            <p class="help">
+              Buttons, selections and highlights take this colour. The gold priority ring and the
+              combat colours stay the same in every skin, so they always mean the same thing.
+            </p>
+
             <!-- #956 / ADR 0077. First row in the tab on purpose: this
                  is the one a player goes looking for after an upgrade
                  changed what their opponents look like. -->
@@ -547,18 +594,6 @@
               shrinks the others; Overlay floats it on top. Both ship so they can be compared in a
               real game — <strong>one of them will be removed</strong>, along with this setting,
               once it is clear which feels better. Worth flipping mid-game to see the difference.
-            </p>
-
-            <label class="slider-row disabled">
-              <span>Theme</span>
-              <select disabled value="dark">
-                <option value="dark">Dark (default)</option>
-              </select>
-            </label>
-            <p class="help">
-              Light and high-contrast themes are scaffolded in CSS but most table panels still
-              hardcode dark colours. Switching themes right now produces a broken-looking mix, so
-              the toggle stays disabled until per-component <code>var()</code> migration ships.
             </p>
 
             <label class="slider-row">
@@ -1237,7 +1272,7 @@
   .settings-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(11, 10, 9, 0.72);
+    background: var(--scrim);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     display: flex;
@@ -1286,7 +1321,7 @@
   }
   .close:hover {
     color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--overlay);
     border-color: var(--border);
   }
   .body {
@@ -1318,7 +1353,7 @@
     justify-content: flex-start;
   }
   nav button:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--overlay-faint);
     color: var(--fg);
   }
   nav button.active {
@@ -1426,8 +1461,8 @@
       background 140ms var(--ease);
   }
   input[type="checkbox"]:checked {
-    background: var(--gold);
-    border-color: var(--gold-strong);
+    background: var(--accent);
+    border-color: var(--accent-strong);
   }
   input[type="checkbox"]:checked::after {
     left: 18px;
@@ -1439,7 +1474,7 @@
   }
   input[type="range"] {
     flex: 0 0 180px;
-    accent-color: var(--gold);
+    accent-color: var(--accent);
     margin: 0;
   }
   select {
@@ -1465,6 +1500,98 @@
     font-weight: 600;
     padding: 0 6px;
   }
+  .skins {
+    border: 0;
+    padding: 0;
+    margin: 0 0 12px;
+    background: none;
+  }
+  .skins legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--fg);
+  }
+  .skin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .skin {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-sunken);
+    cursor: pointer;
+  }
+  .skin:hover {
+    border-color: var(--accent-line);
+  }
+  .skin.on {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .skin input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .skin:has(input:focus-visible) {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+  .skin-swatch {
+    display: flex;
+    height: 22px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .skin-swatch span {
+    flex: 1;
+  }
+  .skin-swatch span:last-child {
+    flex: 1.6;
+  }
+  .skin-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .skin-blurb {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    line-height: 1.35;
+  }
+  .accent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .accent-row label {
+    padding: 0;
+    border-bottom: 0;
+    margin-right: auto;
+  }
+  .accent-row input[type="color"] {
+    width: 44px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    cursor: pointer;
+  }
   .help {
     color: var(--fg-dim);
     font-size: 11.5px;
@@ -1475,17 +1602,17 @@
      cost the player a turn can't be mistaken for a routine
      preference. */
   label.danger {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .danger-help {
     color: var(--fg-muted);
-    border-left: 2px solid var(--gold);
+    border-left: 2px solid var(--accent);
     padding: 6px 10px;
-    background: var(--gold-soft);
+    background: var(--accent-soft);
     border-radius: 0 8px 8px 0;
   }
   .danger-help strong {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     letter-spacing: 0.03em;
   }
   /* An option that exists only to be compared against another one.
@@ -1495,9 +1622,9 @@
     margin-left: 6px;
     padding: 1px 5px;
     border-radius: 4px;
-    border: 1px solid var(--gold);
-    background: var(--gold-soft);
-    color: var(--gold-strong);
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
     font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 0.08em;
@@ -1522,15 +1649,15 @@
     color: var(--fg-muted);
   }
   .danger {
-    background: rgba(255, 107, 107, 0.1);
-    border: 1px solid rgba(255, 107, 107, 0.4);
+    background: var(--danger-soft);
+    border: 1px solid var(--danger-line);
     color: var(--danger);
     padding: 0.5rem 0.9rem;
     border-radius: var(--radius);
     cursor: pointer;
   }
   .danger:hover {
-    background: rgba(255, 107, 107, 0.18);
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
   }
   .adv-section {
     margin: 0 0 18px;
@@ -1546,12 +1673,12 @@
     font-size: 12.5px;
   }
   .adv-section button.danger {
-    background: rgba(255, 107, 107, 0.1);
-    border-color: rgba(255, 107, 107, 0.4);
+    background: var(--danger-soft);
+    border-color: var(--danger-line);
     color: var(--danger);
   }
   .adv-section button.danger:hover:not(:disabled) {
-    background: rgba(255, 107, 107, 0.18);
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
   }
   .adv-section textarea {
     width: 100%;
@@ -1642,8 +1769,8 @@
   .sc-note {
     margin: 0 0 10px;
     padding: 7px 10px;
-    border-left: 2px solid var(--gold);
-    background: var(--gold-soft);
+    border-left: 2px solid var(--accent);
+    background: var(--accent-soft);
     border-radius: 0 8px 8px 0;
     color: var(--fg-muted);
     font-size: 11.5px;
@@ -1715,9 +1842,9 @@
     background: var(--surface-hover);
   }
   .sc-capture.listening {
-    border-color: var(--gold);
-    background: var(--gold-soft);
-    color: var(--gold-strong);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
   }
   .sc-row.conflict .sc-capture {
     border-color: var(--danger);

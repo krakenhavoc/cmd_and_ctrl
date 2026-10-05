@@ -236,7 +236,7 @@
     font-size: 10.5px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   h1 {
     margin: 0;
@@ -291,7 +291,7 @@
       transform 120ms var(--ease);
   }
   .tile:hover {
-    border-color: var(--gold);
+    border-color: var(--accent);
     background: var(--surface-hover);
     transform: translateY(-1px);
   }
@@ -334,7 +334,7 @@
     padding: 0 8px;
     border-radius: 999px;
     background: var(--accent-soft);
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-family: var(--font-mono);
     font-size: 9.5px;
     letter-spacing: 0.06em;

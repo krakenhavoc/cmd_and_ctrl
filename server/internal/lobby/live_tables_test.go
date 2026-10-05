@@ -109,7 +109,7 @@ func TestLiveTablesCopiesEveryTableAndSeat(t *testing.T) {
 		alice: {Seat: 0, PlayerID: alice, Kind: metrics.SeatHuman, Name: "Alice", Host: true},
 		bob:   {Seat: 1, PlayerID: bob, Kind: metrics.SeatHuman, UserID: bobUser.String(), Name: "Bob", DisplayName: "Bobby"},
 		agent: {Seat: 2, PlayerID: agent, Kind: metrics.SeatAgent, Name: "Claude", AgentClient: "claude-code"},
-		bot:   {Seat: 3, PlayerID: bot, Kind: metrics.SeatBot, Name: "Bot 1", BotTier: "random"},
+		bot:   {Seat: 3, PlayerID: bot, Kind: metrics.SeatBot, Name: "Bot 1", BotTier: "random", DeckName: "Mono Red"},
 	}
 	if len(w.Seats) != len(want) {
 		t.Fatalf("waiting table has %d seats, want %d", len(w.Seats), len(want))
@@ -184,5 +184,44 @@ func TestLiveTablesTakesNoRoomLockAndWritesNothing(t *testing.T) {
 	}
 	if n := store.writes.Load() - before; n != 0 {
 		t.Errorf("LiveTables made %d store writes, want none", n)
+	}
+}
+
+// A Discord seat with no users row is copied as pending, by the rule
+// seatRecords writes seats.pending_discord_id with; a linked one is
+// not. The snowflake is not copied.
+func TestLiveTablesMarksAPendingDiscordSeat(t *testing.T) {
+	l := NewLobby(ws.NewRoomManager(quietLogger(), ""))
+	meta, err := l.Create("Discord")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, pending, err := l.JoinAs(meta.ID, meta.InviteToken, "Carol",
+		DiscordIdentity{ID: "d-carol", Username: "carol"}, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, linked, err := l.JoinAs(meta.ID, meta.InviteToken, "Dave",
+		DiscordIdentity{ID: "d-dave", Username: "dave"}, uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	for _, s := range liveTableByID(t, l.LiveTables(), meta.ID).Seats {
+		switch s.PlayerID {
+		case pending:
+			seen++
+			if !s.DiscordPending || s.UserID != "" {
+				t.Errorf("Carol = %+v, want pending with no user", s)
+			}
+		case linked:
+			seen++
+			if s.DiscordPending || s.UserID == "" {
+				t.Errorf("Dave = %+v, want linked, not pending", s)
+			}
+		}
+	}
+	if seen != 2 {
+		t.Errorf("found %d of the two seats", seen)
 	}
 }

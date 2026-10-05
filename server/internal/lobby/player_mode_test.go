@@ -1047,6 +1047,7 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"GET /admin/games/{id}", []string{"route:GET /admin/games/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "GET", "/admin/games/"+fx.table.ID.String(), nil)
 		}},
+		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
 
 		// Handler checks through c.isAdmin.
 		{"POST /games/{id}/spawn", []string{"requireTableManager"}, true, httpProbe("POST", "/games/{id}/spawn", func(*probeFixture) any {

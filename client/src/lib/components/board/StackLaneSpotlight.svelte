@@ -230,7 +230,7 @@
     justify-content: center;
     color: var(--seat-color);
     box-shadow:
-      0 0 0 3px var(--gold),
+      0 0 0 3px var(--accent),
       var(--shadow-lg);
     transition:
       box-shadow 120ms var(--ease),
@@ -248,8 +248,8 @@
   .art.cast-targetable {
     cursor: pointer;
     box-shadow:
-      0 0 0 3px var(--gold),
-      var(--ring-gold),
+      0 0 0 3px var(--accent),
+      var(--ring),
       var(--shadow-lg);
   }
   .art.cast-targetable:hover {
@@ -270,7 +270,7 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--accent-fg);
-    background: var(--gold);
+    background: var(--accent);
     border-radius: 999px;
     padding: 3px 10px;
     animation: spotlight-pulse 2.2s ease-in-out infinite;
@@ -338,7 +338,7 @@
     border: 1px solid color-mix(in srgb, var(--rose) 45%, transparent);
   }
   .queue-num {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-family: var(--font-mono);
     font-size: 11px;
   }
@@ -414,8 +414,8 @@
   }
   .q-item.cast-targetable {
     cursor: pointer;
-    box-shadow: var(--ring-gold);
-    border-color: var(--gold);
+    box-shadow: var(--ring);
+    border-color: var(--accent);
   }
   .q-pos {
     width: 16px;

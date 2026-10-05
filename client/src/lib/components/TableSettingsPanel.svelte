@@ -323,7 +323,7 @@
   .tsp-control input[type="checkbox"] {
     width: 1.05rem;
     height: 1.05rem;
-    accent-color: var(--gold, #ffd07a);
+    accent-color: var(--accent, #ffd07a);
   }
   .tsp-seg,
   .tsp-chip {
@@ -338,9 +338,9 @@
   }
   .tsp-seg.on,
   .tsp-chip.on {
-    border-color: var(--gold, #ffd07a);
-    background: var(--gold-soft, rgba(255, 208, 122, 0.18));
-    color: var(--gold, #ffd07a);
+    border-color: var(--accent, #ffd07a);
+    background: var(--accent-soft, rgba(255, 208, 122, 0.18));
+    color: var(--accent, #ffd07a);
   }
   .tsp-seg:disabled,
   .tsp-chip:disabled,
@@ -357,7 +357,7 @@
   }
   .tsp-warn {
     margin: 0.25rem 0 0;
-    color: var(--gold, #ffd07a);
+    color: var(--accent, #ffd07a);
     font-size: 0.78em;
   }
   .tsp-error {

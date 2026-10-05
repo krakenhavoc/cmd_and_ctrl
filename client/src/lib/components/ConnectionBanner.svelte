@@ -124,7 +124,7 @@
   }
 
   .tone-retrying {
-    --tone-color: var(--gold, #ffd07a);
+    --tone-color: var(--accent, #ffd07a);
   }
 
   .tone-lost {

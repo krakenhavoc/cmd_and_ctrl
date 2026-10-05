@@ -134,6 +134,60 @@ func TestConnectedCountsWhenTheSocketsAreKnown(t *testing.T) {
 	}
 }
 
+func TestConnectionsAreEarliestFirstAndNamed(t *testing.T) {
+	id, p0 := uuid.New(), uuid.New()
+	base := at(time.Hour)
+	ov := Overlay{
+		Tables: []LiveTable{{ID: id, Seats: []LiveSeat{{Seat: 3, PlayerID: p0, UserID: "u1", Name: "ann", DisplayName: "Ann"}}}},
+		Sockets: []Socket{
+			{GameID: id, Admin: true, ConnectedAt: base.Add(3 * time.Second)},
+			{GameID: id, PlayerID: p0, UserID: "u1", Admin: true, ConnectedAt: base.Add(2 * time.Second)},
+			{GameID: id, ReadOnly: true, UserID: "u2", ConnectedAt: base.Add(time.Second)},
+			{GameID: id, PlayerID: p0, UserID: "u1", ConnectedAt: base},
+			{GameID: uuid.New(), ReadOnly: true, ConnectedAt: base},
+		},
+		SocketsKnown: true,
+		Accounts:     map[string]AccountRef{"u2": {ID: "u2", Name: "Bea", AvatarURL: "/avatars/2/b.png"}},
+	}
+	if got := ov.SocketUserIDs(id); !slices.Equal(got, []string{"u1", "u2", "u1"}) {
+		t.Errorf("socket users = %v", got)
+	}
+	got := Connections(id, ov)
+	if len(got) != 4 {
+		t.Fatalf("%d connections, want the table's 4", len(got))
+	}
+	kinds := []string{got[0].Kind, got[1].Kind, got[2].Kind, got[3].Kind}
+	if !slices.Equal(kinds, []string{ConnSeat, ConnSpectator, ConnAdmin, ConnAdmin}) {
+		t.Errorf("kinds = %v, want earliest first: seat, spectator, an admin at a seat, the token", kinds)
+	}
+	if got[0].Seat == nil || *got[0].Seat != 3 || got[0].Account.Name != "Ann" || got[0].Since != base.UnixMilli() {
+		t.Errorf("Ann's seat socket = %+v (%+v)", got[0], got[0].Account)
+	}
+	if got[1].Account == nil || got[1].Account.Name != "Bea" || got[1].Seat != nil {
+		t.Errorf("Bea watching = %+v", got[1])
+	}
+	if got[2].Seat == nil || *got[2].Seat != 3 || got[3].Account != nil || got[3].Seat != nil {
+		t.Errorf("admins = %+v, %+v", got[2], got[3])
+	}
+	if Connections(id, Overlay{Tables: ov.Tables, Sockets: ov.Sockets}) != nil {
+		t.Error("connections served without knowing the sockets")
+	}
+	resp := NewGameResponse(Game{ID: uuid.NewString()}, ov, base)
+	if resp.Connections == nil || len(*resp.Connections) != 0 {
+		t.Errorf("a table with no sockets: %v, want []", resp.Connections)
+	}
+	if resp := NewGameResponse(Game{ID: id.String()}, Overlay{}, base); resp.Connections != nil {
+		t.Error("connections served with no hub")
+	}
+}
+
+func TestLiveSeatKeepsThePendingBit(t *testing.T) {
+	g := LiveGame(LiveTable{ID: uuid.New(), Seats: []LiveSeat{{Seat: 0, Kind: KindHuman, Name: "Dee", DiscordPending: true, DeckName: "Deck"}}}, Overlay{})
+	if s := g.Seats[0]; !s.DiscordPending || s.GuestName != "Dee" || s.DeckName != "Deck" {
+		t.Errorf("seat = %+v", s)
+	}
+}
+
 func TestLiveGameNamesItsAccounts(t *testing.T) {
 	id, p := uuid.New(), uuid.New()
 	live := LiveTable{ID: id, Name: "Practice", State: "active", Practice: true, CreatedAt: t0, Seats: []LiveSeat{

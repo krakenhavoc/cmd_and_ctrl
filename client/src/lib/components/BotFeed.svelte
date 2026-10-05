@@ -123,7 +123,7 @@
     box-sizing: border-box;
   }
   .bot-line.improvised {
-    border-color: rgba(217, 180, 92, 0.45);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   .label {
     font-family: var(--font-mono);
@@ -139,7 +139,7 @@
     white-space: nowrap;
   }
   .label.gold {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .text {
     flex: 1;

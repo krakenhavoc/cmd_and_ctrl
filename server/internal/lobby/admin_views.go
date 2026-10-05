@@ -6,16 +6,14 @@ package lobby
 // (http.go), so an allowlisted person in player mode gets exactly the
 // 403 a non-admin gets.
 //
-// Each handler copies the overlay from memory first (the lobby's
-// tables, or the accounts playing now), releasing each lock before the
-// next, then runs the read-only store (internal/adminview, which holds
-// every SQL statement), then merges the two with adminview's pure
-// functions. It never holds a lobby lock while it reads the database.
-//
-// The live connections of a table (§3.3's `connections` and the
-// `connected` counts) need the hub's sockets, which ADR 0124's PR 4
-// brings (Hub.LiveSockets). Until then adminOverlay leaves the sockets
-// unknown and the counts are absent, never zero.
+// Each handler copies the overlay from memory first, the hub's sockets
+// (Config.LiveSockets) and then the lobby's tables, as admin_live.go
+// does, releasing each lock before the next. Then it runs the read-only
+// store (internal/adminview, which holds every SQL statement) and
+// merges the two with adminview's pure functions. It never holds two
+// of the server's locks at once, nor any while it reads the database.
+// With no hub the sockets are unknown, and the connected counts and a
+// table's connections are absent, never zero.
 
 import (
 	"errors"
@@ -46,9 +44,28 @@ func adminViewFailed(c Config, what string, err error) error {
 	return httpError(http.StatusInternalServerError, "could not load the admin view; try again")
 }
 
-// adminOverlay copies the lobby's tables for the merge.
+// adminOverlay copies the hub's sockets, then the lobby's tables, for
+// the merge: one lock at a time, in the metrics collector's order.
 func adminOverlay(c Config) adminview.Overlay {
-	return adminview.Overlay{Tables: adminLiveTables(c.Lobby.LiveTables())}
+	var ov adminview.Overlay
+	if c.LiveSockets != nil {
+		ov.SocketsKnown = true
+		for _, s := range c.LiveSockets.LiveSockets() {
+			sock := adminview.Socket{
+				GameID:      s.GameID,
+				PlayerID:    s.PlayerID,
+				ReadOnly:    s.ReadOnly,
+				Admin:       s.Admin,
+				ConnectedAt: s.ConnectedAt,
+			}
+			if s.UserID != uuid.Nil {
+				sock.UserID = s.UserID.String()
+			}
+			ov.Sockets = append(ov.Sockets, sock)
+		}
+	}
+	ov.Tables = adminLiveTables(c.Lobby.LiveTables())
+	return ov
 }
 
 // adminLiveTables converts the lobby's copies to the plain values the
@@ -75,10 +92,10 @@ func adminLiveTables(in []LiveTable) []adminview.LiveTable {
 				DisplayName: s.DisplayName,
 				BotTier:     s.BotTier,
 				AgentClient: s.AgentClient,
+				DeckName:    s.DeckName,
 				Host:        s.Host,
-				// DeckName and DiscordPending are copied once
-				// lobby.LiveSeat carries them (ADR 0124's Live now PR);
-				// until then a memory-only seat shows neither.
+				// The bit only: LiveSeat never carries the snowflake.
+				DiscordPending: s.DiscordPending,
 			})
 		}
 		out = append(out, lt)
@@ -123,8 +140,8 @@ func adminViewAccount(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil || id == uuid.Nil {
 		return httpError(http.StatusBadRequest, "invalid user id")
 	}
-	live := c.Lobby.MetricsLiveUsers()
 	ov := adminOverlay(c)
+	live := c.Lobby.MetricsLiveUsers()
 	rows, err := store.Account(r.Context(), id)
 	if errors.Is(err, adminview.ErrNotFound) {
 		return httpError(http.StatusNotFound, "account not found")
@@ -135,9 +152,9 @@ func adminViewAccount(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, adminview.MergeAccount(rows, live, ov, c.now()))
 }
 
-// adminViewGames is GET /admin/games (§3.3): tables newest first, filtered
-// in SQL and keyset-paginated, with memory's practice tables when the
-// practice filter asks for them.
+// adminViewGames is GET /admin/games (§3.3): tables newest first,
+// filtered in SQL and keyset-paginated, with memory's practice tables
+// when the practice filter asks for them.
 func adminViewGames(c Config, w http.ResponseWriter, r *http.Request) error {
 	store, err := adminViewsStore(c)
 	if err != nil {
@@ -181,9 +198,9 @@ func adminViewGames(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, adminview.MergeGames(res, ov, f, after == nil, c.now()))
 }
 
-// adminViewGame is GET /admin/games/{id} (§3.3): one table's row. A table
-// memory holds with no row (a practice table) is served from memory; an
-// ID in neither is a 404.
+// adminViewGame is GET /admin/games/{id} (§3.3): one table's row and
+// its live connections. A table memory holds with no row (a practice
+// table) is served from memory; an ID in neither is a 404.
 func adminViewGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	store, err := adminViewsStore(c)
 	if err != nil {
@@ -195,28 +212,41 @@ func adminViewGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	ov := adminOverlay(c)
 	row, err := store.Game(r.Context(), id)
-	switch {
-	case err == nil:
-		return writeJSON(w, http.StatusOK, adminview.GameResponse{GeneratedAt: c.now().UnixMilli(), Game: adminview.MergeGame(row, ov)})
-	case !errors.Is(err, adminview.ErrNotFound):
+	hasRow := err == nil
+	if err != nil && !errors.Is(err, adminview.ErrNotFound) {
 		return adminViewFailed(c, "game", err)
 	}
-	for _, t := range ov.Tables {
-		if t.ID != id {
-			continue
+	var live *adminview.LiveTable
+	for i := range ov.Tables {
+		if ov.Tables[i].ID == id {
+			live = &ov.Tables[i]
+			break
 		}
-		var ids []string
-		for _, s := range t.Seats {
+	}
+	if !hasRow && live == nil {
+		return httpError(http.StatusNotFound, "game not found")
+	}
+
+	// One lookup names the accounts only memory points at: everyone
+	// connected to the table, and the seats of a table with no row.
+	ids := ov.SocketUserIDs(id)
+	if !hasRow {
+		for _, s := range live.Seats {
 			if s.UserID != "" {
 				ids = append(ids, s.UserID)
 			}
 		}
-		if len(ids) > 0 {
-			if ov.Accounts, err = store.AccountRefs(r.Context(), ids); err != nil {
-				return adminViewFailed(c, "game", err)
-			}
-		}
-		return writeJSON(w, http.StatusOK, adminview.GameResponse{GeneratedAt: c.now().UnixMilli(), Game: adminview.LiveGame(t, ov)})
 	}
-	return httpError(http.StatusNotFound, "game not found")
+	if len(ids) > 0 {
+		if ov.Accounts, err = store.AccountRefs(r.Context(), ids); err != nil {
+			return adminViewFailed(c, "game", err)
+		}
+	}
+	var g adminview.Game
+	if hasRow {
+		g = adminview.MergeGame(row, ov)
+	} else {
+		g = adminview.LiveGame(*live, ov)
+	}
+	return writeJSON(w, http.StatusOK, adminview.NewGameResponse(g, ov, c.now()))
 }

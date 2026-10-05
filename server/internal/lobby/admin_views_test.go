@@ -48,6 +48,11 @@ func (emptyAdminViews) AccountRefs(context.Context, []string) (map[string]adminv
 	return map[string]adminview.AccountRef{}, nil
 }
 
+// fixedLiveSockets is a hub with these connections.
+type fixedLiveSockets []ws.LiveSocket
+
+func (f fixedLiveSockets) LiveSockets() []ws.LiveSocket { return f }
+
 // --- the seeded server -------------------------------------------------
 
 const (
@@ -106,7 +111,8 @@ func newAdminViewsWorld(t *testing.T) *adminViewsWorld {
 	if w.live, err = l.CreateBy("Live table", w.ann); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err = l.JoinAs(w.live.ID, w.live.InviteToken, "Ann", DiscordIdentity{ID: annSnowflake, Username: "ann", GlobalName: "Ann", AvatarHash: "abcdef"}, w.ann); err != nil {
+	_, annSeat, err := l.JoinAs(w.live.ID, w.live.InviteToken, "Ann", DiscordIdentity{ID: annSnowflake, Username: "ann", GlobalName: "Ann", AvatarHash: "abcdef"}, w.ann)
+	if err != nil {
 		t.Fatal(err)
 	}
 	_, gus, err := l.Join(w.live.ID, w.live.InviteToken, "Gus")
@@ -141,9 +147,21 @@ func newAdminViewsWorld(t *testing.T) *adminViewsWorld {
 		t.Fatal(err)
 	}
 
+	// Connected at the live table: Ann at her seat, a guest spectator,
+	// Ann watching from a second tab, and the shared token. Plus one
+	// socket at the practice table.
+	connected := time.Now().Add(-time.Minute)
+	sockets := fixedLiveSockets{
+		{GameID: w.live.ID, PlayerID: annSeat, UserID: w.ann, ConnectedAt: connected},
+		{GameID: w.live.ID, ReadOnly: true, ConnectedAt: connected.Add(time.Second)},
+		{GameID: w.live.ID, UserID: w.ann, ReadOnly: true, ConnectedAt: connected.Add(2 * time.Second)},
+		{GameID: w.live.ID, Admin: true, ConnectedAt: connected.Add(3 * time.Second)},
+		{GameID: w.practice.ID, ReadOnly: true, ConnectedAt: connected},
+	}
 	w.s = newAdminStackIn(t, "", nil, func(c *Config) {
 		c.Lobby = l
 		c.AdminViews = adminview.NewSQLStore(d)
+		c.LiveSockets = sockets
 	})
 	w.token = w.s.adminToken(t)
 	w.secrets = []string{
@@ -226,12 +244,6 @@ func jsonLeaves(v any, prefix, key string, paths map[string]bool, strs map[strin
 	}
 }
 
-// forbiddenKeyParts may be no part of any key a view serves (§8).
-var forbiddenKeyParts = []string{
-	"token", "secret", "refresh", "password", "ip", "remote", "addr", "invite",
-	"subject", "snowflake", "discord_id", "scope", "email", "requester",
-}
-
 // TestAdminViewsServeOnlyTheirFields is ADR 0124 §8's field allowlist:
 // each route, asked by an admin over a database seeded with everything
 // §4 says is never shown, serves exactly its pinned fields, no key that
@@ -239,7 +251,9 @@ var forbiddenKeyParts = []string{
 // none of the seeded secrets at all.
 func TestAdminViewsServeOnlyTheirFields(t *testing.T) {
 	w := newAdminViewsWorld(t)
-	gameDetail := fieldSet([]string{"generated_at"}, gameRowFields(""))
+	gameDetail := fieldSet([]string{"generated_at", "connections", "connections[].kind", "connections[].seat",
+		"connections[].account.id", "connections[].account.name", "connections[].account.avatar_url", "connections[].since"},
+		gameRowFields(""))
 	routes := []struct {
 		path    string
 		allowed map[string]bool
@@ -262,7 +276,8 @@ func TestAdminViewsServeOnlyTheirFields(t *testing.T) {
 		{"/admin/games?practice=include", fieldSet([]string{"generated_at", "next_cursor", "games"}, gameRowFields("games[].")),
 			[]string{"games[].practice", "games[].seats[].agent_client", "games[].seats[].bot_tier", "games[].seats[].account.avatar_url",
 				"games[].outcome", "games[].winner_seat"}},
-		{"/admin/games/" + w.live.ID.String(), gameDetail, []string{"seats[].discord_pending", "seats[].agent_client", "creator.id", "loaded"}},
+		{"/admin/games/" + w.live.ID.String(), gameDetail, []string{"seats[].discord_pending", "seats[].agent_client", "creator.id", "loaded",
+			"seats[].connected", "spectators_connected", "connections[].kind", "connections[].seat", "connections[].account.avatar_url", "connections[].since"}},
 		{"/admin/games/" + w.ended.String(), gameDetail, []string{"seats[].agent_client", "outcome", "ended_at"}},
 		{"/admin/games/" + w.practice.ID.String(), gameDetail, []string{"practice", "seats[].account.name", "seats[].bot_tier"}},
 	}
@@ -387,6 +402,62 @@ func TestAdminViewsAnswerTheirRows(t *testing.T) {
 	if len(account.Games) != 2 || len(account.Decks) != 1 || len(account.DeckRequests) != 1 || account.DeckRequests[0].IssueNumber != 12 ||
 		account.SignIn.RevokePath != "/admin/users/"+w.ann.String()+"/revoke-sessions" || account.SignIn.SessionsInvalidBefore == 0 {
 		t.Errorf("Ann's account = %s", raw)
+	}
+}
+
+// The table detail lists the table's live connections, earliest first,
+// and every row of a loaded table counts them by GET /admin/live's
+// rules: a seat's sockets, and read-only sockets that are not admins'.
+func TestAdminViewsCountTheLiveConnections(t *testing.T) {
+	w := newAdminViewsWorld(t)
+	var detail adminview.GameResponse
+	code, raw := w.get(t, "/admin/games/"+w.live.ID.String())
+	if code != http.StatusOK || json.Unmarshal(raw, &detail) != nil || detail.Connections == nil {
+		t.Fatalf("GET the live table: %d %s", code, raw)
+	}
+	conns := *detail.Connections
+	type want struct {
+		kind    string
+		seated  bool
+		account bool
+	}
+	wants := []want{{adminview.ConnSeat, true, true}, {adminview.ConnSpectator, false, false}, {adminview.ConnSpectator, false, true}, {adminview.ConnAdmin, false, false}}
+	if len(conns) != len(wants) {
+		t.Fatalf("connections = %s, want %d", raw, len(wants))
+	}
+	for i, wnt := range wants {
+		c := conns[i]
+		if c.Kind != wnt.kind || (c.Seat != nil) != wnt.seated || (c.Account != nil) != wnt.account || c.Since == 0 {
+			t.Errorf("connection %d = %+v (seat %v, account %+v), want %+v", i, c, c.Seat, c.Account, wnt)
+		}
+		if c.Account != nil && (c.Account.ID != w.ann.String() || c.Account.Name != "Ann" || c.Account.AvatarURL == "") {
+			t.Errorf("connection %d's account = %+v, want Ann's row", i, c.Account)
+		}
+	}
+	if detail.SpectatorsConnected == nil || *detail.SpectatorsConnected != 2 {
+		t.Errorf("spectators_connected = %v, want 2", detail.SpectatorsConnected)
+	}
+	for _, s := range detail.Seats {
+		want := 0
+		if s.Account != nil && s.Account.ID == w.ann.String() {
+			want = 1
+		}
+		if s.Connected == nil || *s.Connected != want {
+			t.Errorf("seat %d connected = %v, want %d", s.Seat, s.Connected, want)
+		}
+	}
+
+	// A table only the database holds has no connections, and says so.
+	code, raw = w.get(t, "/admin/games/"+w.ended.String())
+	detail = adminview.GameResponse{}
+	if code != http.StatusOK || json.Unmarshal(raw, &detail) != nil || detail.Connections == nil || len(*detail.Connections) != 0 || detail.SpectatorsConnected != nil {
+		t.Errorf("the ended table: %d %s; want connections [] and no counts", code, raw)
+	}
+	// The practice table, from memory: its one spectator.
+	code, raw = w.get(t, "/admin/games/"+w.practice.ID.String())
+	detail = adminview.GameResponse{}
+	if code != http.StatusOK || json.Unmarshal(raw, &detail) != nil || detail.SpectatorsConnected == nil || *detail.SpectatorsConnected != 1 {
+		t.Errorf("the practice table: %d %s", code, raw)
 	}
 }
 

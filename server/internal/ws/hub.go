@@ -276,6 +276,9 @@ func (h *Hub) admit(c *Client) bool {
 	if h.closed {
 		return false
 	}
+	// Stamped here, under the write lock that makes the client
+	// visible, so LiveSockets (read lock) never sees it unset.
+	c.connectedAt = h.now()
 	h.clients[c] = struct{}{}
 	h.wg.Add(2)
 	return true
@@ -303,6 +306,56 @@ func (h *Hub) MetricsSockets() []metrics.Socket {
 			Game:   metrics.Key(c.gameID),
 			Player: metrics.Key(c.playerID),
 			Role:   c.role(),
+		})
+	}
+	return out
+}
+
+// LiveSocket is one live connection as the admin views read it (ADR
+// 0124 §5): MetricsSockets' sibling, with the session's user and the
+// connection time. It carries a user ID, so it never reaches the
+// metrics package (ADR 0123's rule); Metrics strips it to the
+// metrics type.
+type LiveSocket struct {
+	GameID   uuid.UUID
+	PlayerID uuid.UUID // uuid.Nil for a connection with no seat
+	// UserID is the signed-in person behind the session, uuid.Nil for
+	// a guest, a guest spectator or the shared admin token.
+	UserID   uuid.UUID
+	ReadOnly bool
+	Admin    bool
+	// ConnectedAt is when the hub admitted the connection.
+	ConnectedAt time.Time
+}
+
+// Role is the connection's role label (metrics.WSRole): seat,
+// spectator or admin, exactly as MetricsSockets reports it.
+func (s LiveSocket) Role() string {
+	return metrics.WSRole(s.PlayerID != uuid.Nil, s.ReadOnly)
+}
+
+// Metrics is the socket as MetricsSockets would have copied it: game,
+// seat and role, no user and no time.
+func (s LiveSocket) Metrics() metrics.Socket {
+	return metrics.Socket{Game: metrics.Key(s.GameID), Player: metrics.Key(s.PlayerID), Role: s.Role()}
+}
+
+// LiveSockets lists every live connection for the admin views' Live
+// now (ADR 0124 §5). Like MetricsSockets it copies under the hub's
+// read lock and takes no other lock, so a caller never holds the hub
+// and a room or the lobby at once.
+func (h *Hub) LiveSockets() []LiveSocket {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	out := make([]LiveSocket, 0, len(h.clients))
+	for c := range h.clients {
+		out = append(out, LiveSocket{
+			GameID:      c.gameID,
+			PlayerID:    c.playerID,
+			UserID:      c.userID,
+			ReadOnly:    c.readOnly,
+			Admin:       c.admin,
+			ConnectedAt: c.connectedAt,
 		})
 	}
 	return out
@@ -776,6 +829,11 @@ type Client struct {
 	// hub makes no other decision on them.
 	userID   uuid.UUID
 	issuedAt time.Time
+
+	// connectedAt is when the hub admitted the connection (admit,
+	// under h.mu), for the admin views' Live now (ADR 0124 §5). Read
+	// only by LiveSockets, under the hub's read lock.
+	connectedAt time.Time
 
 	// legalMoves rate-limits legal_moves_request frames (ADR 0122
 	// §6.1, legal_moves.go). Read goroutine only.

@@ -432,7 +432,7 @@
     box-shadow:
       0 30px 80px rgba(0, 0, 0, 0.7),
       0 0 0 1px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      inset 0 1px 0 color-mix(in srgb, var(--overlay-ink) 5%, transparent);
     animation: modal-in 220ms var(--ease);
   }
   @keyframes modal-in {
@@ -449,7 +449,7 @@
     margin: 0 0 6px;
     font-size: 18px;
     letter-spacing: -0.01em;
-    color: var(--gold);
+    color: var(--accent);
     text-transform: none;
     font-weight: 700;
   }
@@ -504,7 +504,7 @@
     color: var(--fg);
   }
   .kind.picked {
-    border-color: var(--gold);
+    border-color: var(--accent);
     color: var(--fg);
     background: rgba(255, 213, 128, 0.14);
     font-weight: 700;
@@ -588,7 +588,7 @@
     align-items: center;
     margin-top: 16px;
     padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--overlay);
     gap: 12px;
   }
   .cancel {
@@ -596,12 +596,12 @@
     border-radius: 999px;
     background: transparent;
     color: var(--fg-muted);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: 1px solid var(--border-strong);
     cursor: pointer;
   }
   .cancel:hover:not(:disabled) {
     color: var(--fg);
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: color-mix(in srgb, var(--overlay-ink) 30%, transparent);
   }
   .submit {
     padding: 8px 22px;
@@ -664,7 +664,7 @@
     border-radius: 999px;
     background: rgba(12, 16, 26, 0.95);
     color: var(--fg);
-    border: 1px solid rgba(255, 255, 255, 0.28);
+    border: 1px solid color-mix(in srgb, var(--overlay-ink) 28%, transparent);
     cursor: pointer;
     font-size: 13px;
     padding: 0;

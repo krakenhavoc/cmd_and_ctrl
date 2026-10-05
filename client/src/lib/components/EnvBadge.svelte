@@ -31,10 +31,10 @@
     gap: 0.4em;
     padding: 0.28rem 0.7rem 0.28rem 0.6rem;
     border-top-left-radius: var(--radius, 8px);
-    border-top: 1px solid var(--gold, #ffd07a);
-    border-left: 1px solid var(--gold, #ffd07a);
+    border-top: 1px solid var(--accent, #ffd07a);
+    border-left: 1px solid var(--accent, #ffd07a);
     background: var(--bg-1, #0b1220);
-    color: var(--gold, #ffd07a);
+    color: var(--accent, #ffd07a);
     font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
     font-size: 0.68rem;
     font-weight: 700;
@@ -50,7 +50,7 @@
     width: 0.42em;
     height: 0.42em;
     border-radius: 50%;
-    background: var(--gold, #ffd07a);
+    background: var(--accent, #ffd07a);
   }
 
   /* The badge is an always-on indicator, so it must not animate. */

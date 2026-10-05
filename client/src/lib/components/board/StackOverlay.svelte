@@ -355,13 +355,13 @@
       box-shadow 120ms var(--ease);
   }
   .item.top {
-    border-color: rgba(217, 180, 92, 0.5);
-    box-shadow: 0 0 0 1px rgba(217, 180, 92, 0.15);
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent);
   }
   .item.cast-targetable {
     cursor: pointer;
-    box-shadow: var(--ring-gold);
-    border-color: var(--gold);
+    box-shadow: var(--ring);
+    border-color: var(--accent);
   }
   .item.cast-targetable:hover {
     background: var(--surface-hover);
@@ -458,8 +458,8 @@
     flex: 0 0 auto;
   }
   .chip.flag {
-    color: var(--gold-strong);
-    border-color: rgba(217, 180, 92, 0.45);
+    color: var(--accent-strong);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   /* Dashed rather than coloured. The gold `flag` chips mark things
      the engine is doing; this one marks the absence of one, and an
@@ -485,7 +485,7 @@
   }
   .counter-btn:hover:not(:disabled) {
     color: var(--danger);
-    border-color: rgba(255, 107, 107, 0.5);
+    border-color: color-mix(in srgb, var(--danger) 50%, transparent);
   }
   .pending-section {
     padding: 8px 12px 10px 14px;

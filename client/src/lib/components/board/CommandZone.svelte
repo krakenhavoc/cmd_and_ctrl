@@ -313,13 +313,13 @@
     gap: 4px;
     padding: 5px 3px 4px;
     background: var(--surface-raised);
-    border: 1px solid rgba(217, 180, 92, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
     border-radius: var(--radius);
     box-sizing: border-box;
     width: 100%;
   }
   .cmd-zone.self {
-    border-color: rgba(217, 180, 92, 0.5);
+    border-color: var(--accent-line);
   }
   .cmd-zone.empty {
     border-style: dashed;
@@ -359,13 +359,13 @@
     top: 3px;
     right: 3px;
     background: rgba(8, 7, 6, 0.9);
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-family: var(--font-mono);
     font-size: 9px;
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 999px;
-    border: 1px solid rgba(217, 180, 92, 0.5);
+    border: 1px solid var(--accent-line);
     pointer-events: none;
   }
   .meta {
@@ -386,7 +386,7 @@
     font-size: 8px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     font-weight: 600;
   }
   .count {
@@ -401,8 +401,8 @@
   .ability-hint,
   .browse-hint {
     background: transparent;
-    color: var(--gold-strong);
-    border: 1px solid rgba(217, 180, 92, 0.35);
+    color: var(--accent-strong);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 999px;
     font-family: var(--font-mono);
     font-size: 8px;
@@ -428,8 +428,8 @@
   .cast-hint:hover,
   .ability-hint:hover {
     background: var(--accent-soft);
-    color: var(--gold-strong);
-    border-color: var(--gold);
+    color: var(--accent-strong);
+    border-color: var(--accent);
   }
   /* ADR 0105: the hint is a gate. With no cast move it greys and
      withholds the click, like an uncastable hand card; with one, and
@@ -458,7 +458,7 @@
   .cast-hint:focus-visible,
   .ability-hint:focus-visible,
   .cycle:focus-visible {
-    outline: 1px solid var(--gold);
+    outline: 1px solid var(--accent);
     outline-offset: 1px;
   }
   .browse-hint:focus-visible {

@@ -1,6 +1,7 @@
 package adminview
 
 import (
+	"cmp"
 	"sort"
 	"time"
 
@@ -42,10 +43,22 @@ type LiveSeat struct {
 // Socket is one live WebSocket, as far as the table rows need it.
 type Socket struct {
 	GameID   uuid.UUID
-	PlayerID uuid.UUID
-	ReadOnly bool
-	Admin    bool
+	PlayerID uuid.UUID // uuid.Nil for a connection with no seat
+	// UserID is the signed-in person behind the session, "" for a
+	// guest, a guest spectator or the shared admin token.
+	UserID      string
+	ReadOnly    bool
+	Admin       bool
+	ConnectedAt time.Time
 }
+
+// spectator is GET /admin/live's rule: a read-only socket that is not
+// an admin's.
+func (s Socket) spectator() bool { return s.ReadOnly && !s.Admin }
+
+// admin is GET /admin/live's rule: an admin-bound socket, or one with
+// no seat that is not read-only (metrics.WSRole's admin).
+func (s Socket) admin() bool { return s.Admin || (s.PlayerID == uuid.Nil && !s.ReadOnly) }
 
 // Overlay is what memory knows, copied before the database is read.
 type Overlay struct {
@@ -207,10 +220,108 @@ type GamesResponse struct {
 	NextCursor  string `json:"next_cursor,omitempty"`
 }
 
-// GameResponse is GET /admin/games/{id}: the table's row, flattened.
+// GameResponse is GET /admin/games/{id}: the table's row, flattened,
+// and its live connections.
 type GameResponse struct {
 	GeneratedAt int64 `json:"generated_at"`
 	Game
+	// Connections is every live socket at the table, earliest first: []
+	// for a table with none, absent only when the server does not know
+	// its sockets (no hub).
+	Connections *[]Connection `json:"connections,omitempty"`
+}
+
+// NewGameResponse is GET /admin/games/{id}'s answer: g, with the
+// table's connections when the overlay knows its sockets.
+func NewGameResponse(g Game, ov Overlay, now time.Time) GameResponse {
+	out := GameResponse{GeneratedAt: now.UnixMilli(), Game: g}
+	if id, err := uuid.Parse(g.ID); err == nil {
+		if conns := Connections(id, ov); conns != nil {
+			out.Connections = &conns
+		}
+	}
+	return out
+}
+
+// Connection is one live socket at a table (§3.3).
+type Connection struct {
+	// Kind is seat, spectator or admin. An admin bound to a seat is an
+	// admin, with that seat.
+	Kind string `json:"kind"`
+	// Seat is the seat the socket is bound to, if any.
+	Seat *int `json:"seat,omitempty"`
+	// Account is absent for a guest and for the shared token.
+	Account *AccountRef `json:"account,omitempty"`
+	// Since is when the hub admitted the connection.
+	Since int64 `json:"since,omitempty"`
+}
+
+// The connection kinds, as GET /admin/live and cmdctrl_ws_connections
+// {role} name them.
+const (
+	ConnSeat      = "seat"
+	ConnSpectator = "spectator"
+	ConnAdmin     = "admin"
+)
+
+// SocketUserIDs is the accounts behind the overlay's sockets at a
+// table: the IDs a caller passes to Store.AccountRefs before
+// Connections names them.
+func (o Overlay) SocketUserIDs(gameID uuid.UUID) []string {
+	var out []string
+	for _, s := range o.Sockets {
+		if s.GameID == gameID && s.UserID != "" {
+			out = append(out, s.UserID)
+		}
+	}
+	return out
+}
+
+// Connections is the table's live sockets, earliest first, for GET
+// /admin/games/{id}; nil when the overlay does not know its sockets. An
+// account's name and avatar come from o.Accounts, and a seated socket
+// whose account has no row there takes the seat's name.
+func Connections(gameID uuid.UUID, ov Overlay) []Connection {
+	if !ov.SocketsKnown {
+		return nil
+	}
+	t, _ := ov.table(gameID)
+	seats := map[uuid.UUID]LiveSeat{}
+	for _, s := range t.Seats {
+		seats[s.PlayerID] = s
+	}
+	var sockets []Socket
+	for _, s := range ov.Sockets {
+		if s.GameID == gameID {
+			sockets = append(sockets, s)
+		}
+	}
+	sort.SliceStable(sockets, func(i, j int) bool { return sockets[i].ConnectedAt.Before(sockets[j].ConnectedAt) })
+	out := make([]Connection, 0, len(sockets))
+	for _, s := range sockets {
+		c := Connection{Kind: ConnSpectator, Since: ms(s.ConnectedAt)}
+		seat, seated := seats[s.PlayerID]
+		if seated && s.PlayerID != uuid.Nil {
+			n := seat.Seat
+			c.Seat = &n
+			c.Kind = ConnSeat
+		}
+		if s.admin() {
+			c.Kind = ConnAdmin
+		}
+		if s.UserID != "" {
+			ref := AccountRef{ID: s.UserID}
+			if seated && seat.UserID == s.UserID {
+				ref.Name = cmp.Or(seat.DisplayName, seat.Name)
+			}
+			if known, ok := ov.Accounts[s.UserID]; ok {
+				ref = known
+			}
+			c.Account = &ref
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 // The seat kinds, as cmdctrl_seats{kind} names them.
@@ -505,8 +616,9 @@ func liveSeat(ls LiveSeat, accounts map[string]AccountRef) Seat {
 }
 
 // connected fills the connected counts of a loaded table when the
-// overlay knows its sockets. Admin-bound sockets are not spectators,
-// and an admin socket bound to a seat counts as that seat's.
+// overlay knows its sockets, by GET /admin/live's rules: every socket
+// bound to a seat counts as that seat's, an admin's included, and a
+// spectator is a read-only socket that is not an admin's.
 func connected(g *Game, t LiveTable, loaded bool, ov Overlay) {
 	if !loaded || !ov.SocketsKnown {
 		return
@@ -517,10 +629,10 @@ func connected(g *Game, t LiveTable, loaded bool, ov Overlay) {
 		if s.GameID != t.ID {
 			continue
 		}
-		switch {
-		case s.PlayerID != uuid.Nil:
+		if s.PlayerID != uuid.Nil {
 			perSeat[s.PlayerID]++
-		case s.ReadOnly && !s.Admin:
+		}
+		if s.spectator() {
 			spectators++
 		}
 	}

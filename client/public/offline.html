@@ -3,23 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b0a09" />
+    <meta name="theme-color" content="#070d14" />
     <meta name="color-scheme" content="dark" />
     <title>CMD &amp; CTRL — offline</title>
     <style>
       /* Self-contained on purpose: the service worker serves this page
          when the network is gone, so it can reference nothing but
          itself -- no stylesheet, no webfont, no script. The palette is
-         copied from src/app.css for the same reason. */
+         the default skin's (War room), copied from src/app.css for the
+         same reason; it cannot know which skin the player picked. */
       :root {
         color-scheme: dark;
-        --bg: #0b0a09;
-        --fg: #f1ece2;
-        --fg-muted: #a9a195;
-        --fg-dim: #6f685d;
-        --gold: #d9b45c;
-        --surface: #1a1816;
-        --border: rgba(255, 255, 255, 0.14);
+        --bg: #070d14;
+        --fg: #e8eff7;
+        --fg-muted: #8fa3ba;
+        --fg-dim: #5d7187;
+        --accent: #ff7a1a;
+        --surface: #121e2c;
+        --border: rgba(140, 180, 225, 0.2);
       }
       html,
       body {
@@ -76,8 +77,8 @@
         cursor: pointer;
       }
       button:hover {
-        border-color: var(--gold);
-        color: var(--gold);
+        border-color: var(--accent);
+        color: var(--accent);
       }
       .mono {
         font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -91,19 +92,14 @@
   <body>
     <main>
       <svg width="72" height="72" viewBox="0 0 64 64" role="img" aria-label="CMD &amp; CTRL">
-        <g transform="rotate(45 32 32)">
-          <rect
-            x="13"
-            y="13"
-            width="38"
-            height="38"
-            rx="6"
-            fill="none"
-            stroke="#d9b45c"
-            stroke-width="4"
-          />
-          <rect x="26" y="26" width="12" height="12" rx="2" fill="#d9b45c" />
-        </g>
+        <defs>
+          <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+            <rect width="64" height="64" fill="white" />
+            <rect x="19" y="26" width="42" height="32" rx="8" fill="black" />
+          </mask>
+        </defs>
+        <rect x="7" y="10" width="26" height="36" rx="5" fill="#e8eff7" mask="url(#cut)" />
+        <rect x="23" y="30" width="34" height="24" rx="5" fill="#ff7a1a" />
       </svg>
       <p class="mono">No connection</p>
       <h1>The table needs a connection</h1>

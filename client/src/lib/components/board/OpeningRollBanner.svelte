@@ -110,7 +110,7 @@
     letter-spacing: 0.14em;
     text-transform: uppercase;
     font-weight: 700;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
     white-space: nowrap;
   }
   .chip {
@@ -146,7 +146,7 @@
     font-size: 13px;
   }
   .chip.rolling .result {
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
   .chip.out {
     opacity: 0.55;
@@ -170,6 +170,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-weight: 700;
-    color: var(--gold-strong);
+    color: var(--accent-strong);
   }
 </style>

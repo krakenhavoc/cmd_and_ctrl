@@ -237,8 +237,8 @@
     max-width: calc(100vw - 32px);
     padding: 8px 10px 10px;
     background: rgba(12, 16, 30, 0.97);
-    color: var(--gold, #e0c890);
-    border: 1px solid rgba(200, 168, 106, 0.6);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     border-radius: 12px;
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.65);
   }
@@ -270,7 +270,7 @@
   }
   .close:hover,
   .close:focus-visible {
-    background: rgba(200, 168, 106, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     outline: none;
   }
 </style>
