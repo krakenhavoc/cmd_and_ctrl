@@ -327,7 +327,7 @@ func TestOverviewTilesLinkToTheAdminViews(t *testing.T) {
 		t.Fatal("overview.json has no site template variable")
 	}
 
-	const s = "${site}/#/admin/"
+	const s = "${site:raw}/#/admin/"
 	const live = s + "live"
 	want := map[int]string{
 		2:  s + "games?state=active&archived=false",
