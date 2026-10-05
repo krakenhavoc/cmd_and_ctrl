@@ -8,8 +8,7 @@ import {
   playerByID,
   seedHandWithCard,
   type AdminClient,
-  type SnapshotCard,
-} from "./s19-helpers";
+  type SnapshotCard, keepAllHands } from "./s19-helpers";
 
 // #1789 / ADR 0105 §9: the ready highlights, end to end.
 //
@@ -83,8 +82,7 @@ test.describe("#1789 ready highlights", () => {
       await startGameAs(request, adminToken, game.id);
 
       admin = await openAdminClient(adminToken, game.id, first.playerID, second.playerID);
-      await admin.sendActionAsPlayer(first.playerID, "keep_hand", {});
-      await admin.sendActionAsPlayer(second.playerID, "keep_hand", {});
+      await keepAllHands(admin);
       await admin.waitFor((v) => v.state === "active", "game state active");
       await admin.waitFor(
         (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,

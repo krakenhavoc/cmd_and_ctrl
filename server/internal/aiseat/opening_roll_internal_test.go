@@ -55,7 +55,7 @@ func TestRunnerAppliesTheOpeningRollWithoutAnUndoEntry(t *testing.T) {
 		t.Fatalf("undo after the choice: %v, want ErrNothingToUndo", err)
 	}
 	// An ordinary action after the deal is undoable again.
-	if _, _, err := bot(1).apply(actions.Action{Type: actions.TypeKeepHand, Player: g.Seats[1].ID, Caller: g.Seats[1].ID}); err != nil {
+	if _, _, err := bot(1).apply(actions.Action{Type: actions.TypeKeepHand, Player: g.Seats[0].ID, Caller: g.Seats[0].ID}); err != nil {
 		t.Fatalf("keep_hand: %v", err)
 	}
 	if _, _, err := room.Undo(uuid.Nil); err != nil {

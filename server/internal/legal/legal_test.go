@@ -212,8 +212,15 @@ func countKind(moves []legal.Move, k legal.Kind) int {
 
 func TestMulliganWindow(t *testing.T) {
 	g := newTableMulligans(t)
+	// CR 103.5: only the deciding seat has moves; the others wait.
 	for _, p := range g.Seats {
 		moves := legal.EnumerateFor(g, p.ID)
+		if p.Seat != g.MulliganDecider() {
+			if len(moves) != 0 {
+				t.Fatalf("%s is not deciding but is offered %v", p.Name, labels(moves))
+			}
+			continue
+		}
 		if countKind(moves, legal.KindMulligan) != 2 {
 			t.Fatalf("%s: want keep + mulligan, got %v", p.Name, labels(moves))
 		}
@@ -222,10 +229,19 @@ func TestMulliganWindow(t *testing.T) {
 		}
 		dispatchAll(t, g, p.ID, moves)
 	}
-	// After one mulligan the next offer is a card fewer.
+	// After one mulligan the next offer is a card fewer, and it comes
+	// round again only after every seat ahead of it has answered.
 	p := g.Seats[0]
 	if err := g.Mulligan(p.ID, 7); err != nil {
 		t.Fatal(err)
+	}
+	for i := 1; i < len(g.Seats); i++ {
+		if got := legal.EnumerateFor(g, p.ID); len(got) != 0 {
+			t.Fatalf("seat 0 answered this round but is offered %v", labels(got))
+		}
+		if err := g.KeepHand(g.Seats[i].ID); err != nil {
+			t.Fatal(err)
+		}
 	}
 	moves := legal.EnumerateFor(g, p.ID)
 	if !hasLabel(moves, "Mulligan to 6") {
@@ -235,8 +251,45 @@ func TestMulliganWindow(t *testing.T) {
 	if err := g.KeepHand(p.ID); err != nil {
 		t.Fatal(err)
 	}
-	if moves := legal.EnumerateFor(g, p.ID); len(moves) != 0 {
-		t.Errorf("kept seat should have no moves while mulligans open: %v", labels(moves))
+	// Seat 0 was the last to keep, so the window is shut and the turn
+	// machinery has the table.
+	if g.MulligansOpen || g.MulliganDecider() != -1 {
+		t.Errorf("window should be closed once every seat has kept")
+	}
+}
+
+// The enumerator and the engine answer the same question (#544): every
+// seat the engine would refuse is offered nothing, whoever started.
+func TestMulliganEnumeratorAgreesWithEngineForEveryStartingSeat(t *testing.T) {
+	n := len(newTableMulligans(t).Seats)
+	for start := 0; start < n; start++ {
+		g := newTableMulligans(t)
+		g.StartingSeat = start
+		for step := 0; step < n; step++ {
+			decider := g.MulliganDecider()
+			if decider != (start+step)%n {
+				t.Fatalf("start %d step %d: decider %d, want %d", start, step, decider, (start+step)%n)
+			}
+			for _, p := range g.Seats {
+				moves := legal.EnumerateFor(g, p.ID)
+				if p.Seat != decider {
+					if len(moves) != 0 {
+						t.Fatalf("start %d: seat %d offered %v out of turn", start, p.Seat, labels(moves))
+					}
+					if err := g.Clone().KeepHand(p.ID); err == nil && !p.HandKept {
+						t.Fatalf("start %d: engine accepted seat %d out of turn", start, p.Seat)
+					}
+					continue
+				}
+				dispatchAll(t, g, p.ID, moves)
+			}
+			if err := g.KeepHand(g.Seats[decider].ID); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if g.MulligansOpen || g.MulliganDecider() != -1 {
+			t.Fatalf("start %d: window still open after every seat's keep", start)
+		}
 	}
 }
 

@@ -33,15 +33,19 @@ test.describe("board layout", () => {
 
     // Both players keep their opening hand so the table view is the
     // primary UI on screen.
-    for (const p of [alice, bob]) {
-      await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toBeVisible({
-        timeout: 10_000,
-      });
-      await p.page.getByRole("button", { name: "Keep hand" }).click();
-      await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
-        timeout: 10_000,
-      });
-    }
+    // CR 103.5: they decide in turn order, so each click waits for its
+    // button to enable; run them side by side.
+    await Promise.all(
+      [alice, bob].map(async (p) => {
+        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toBeVisible({
+          timeout: 10_000,
+        });
+        await p.page.getByRole("button", { name: "Keep hand" }).click();
+        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
+          timeout: 10_000,
+        });
+      }),
+    );
 
     // Self panel: every wireframe zone is present. The aria-label on
     // each BattlefieldRow / Hand / PileBar / PlayerHeader is the

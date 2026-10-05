@@ -1436,6 +1436,10 @@ type PlayerView struct {
 	// "kept ✓" / "deciding…" indicator during the mulligan window.
 	// Added in S08.
 	HandKept bool `json:"hand_kept,omitempty"`
+	// MulliganTurn is true on the one seat whose turn it is to keep or
+	// mulligan (CR 103.5, #2237). At most one seat has it; none does
+	// outside the mulligan window or while the opening roll is open.
+	MulliganTurn bool `json:"mulligan_turn,omitempty"`
 	// TriggerOrderAlwaysAsk reflects Player.TriggerOrderAlwaysAsk
 	// (#1530). Private to its seat: FilterViewFor clears it for every
 	// other viewer. The client compares it with its local setting and
@@ -7382,6 +7386,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LifeHistory:           history,
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
+		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,

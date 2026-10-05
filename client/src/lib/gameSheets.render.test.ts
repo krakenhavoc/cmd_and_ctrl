@@ -131,12 +131,21 @@ function table(over: Partial<GameView> = {}, me: Partial<PlayerView> = {}): Game
 }
 
 // The mulligan window, the viewer's seven cards undecided.
-const mulliganTable = (taken = 0) =>
-  table({ mulligans_open: true, turn: { ...table().turn, number: 1, step: "untap" } }, {
+// CR 103.5: it is the viewer's turn to decide unless `myTurn` is false,
+// in which case the opponent's seat is the one deciding.
+const mulliganTable = (taken = 0, myTurn = true) => {
+  const t = table({ mulligans_open: true, turn: { ...table().turn, number: 1, step: "untap" } }, {
     hand: zone("hand", ME, HAND),
     hand_kept: false,
     mulligans_taken: taken,
+    mulligan_turn: myTurn,
   } as never);
+  if (!myTurn) {
+    t.seats[1].mulligan_turn = true;
+    t.seats[1].hand_kept = false;
+  }
+  return t;
+};
 
 // Cleanup with a hand of eight and one card owed.
 const discardTable = () =>
@@ -334,6 +343,28 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     expect(FakeSocket.last!.actions("keep_hand")).toHaveLength(0);
     keydown("Enter");
     expect(FakeSocket.last!.actions("keep_hand")).toHaveLength(1);
+  });
+
+  it("waits for the seat whose turn it is: names it and presses nothing (CR 103.5)", async () => {
+    const c = await mountGame(mulliganTable(0, false));
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    expect(dlg.textContent).toContain("Waiting for Opp to decide");
+    const keepBtn = buttonNamed(dlg, "Keep hand")!;
+    const mullBtn = buttonNamed(dlg, "Mulligan")!;
+    expect(keepBtn.disabled).toBe(true);
+    expect(mullBtn.disabled).toBe(true);
+    blur();
+    keydown("Enter");
+    expect(FakeSocket.last!.actions("keep_hand")).toHaveLength(0);
+    expect(FakeSocket.last!.actions("mulligan")).toHaveLength(0);
+  });
+
+  it("enables Keep and Mulligan for the deciding seat, with no waiting line", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    expect(dlg.textContent).not.toContain("Waiting for");
+    expect(buttonNamed(dlg, "Keep hand")!.disabled).toBe(false);
+    expect(buttonNamed(dlg, "Mulligan")!.disabled).toBe(false);
   });
 
   it("takes focus into the sheet when it opens", async () => {
