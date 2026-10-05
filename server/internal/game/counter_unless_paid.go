@@ -43,7 +43,9 @@ import (
 // goes back to being background and the table moves on without
 // anybody having to answer it.
 //
-// SCOPE. This is "counter that spell unless…" and nothing else. A
+// SCOPE. This is "<consequence for that spell> unless its controller
+// pays…": the consequence is a counter by default and a caller's
+// effect since #2365 (Divert's retarget). A
 // pay-unless whose decline is a draw (Rhystic Study), a Treasure
 // (Smothering Tithe) or a token (Kazuul) guards nothing, keeps ADR
 // 0018 §6's latitude, and plays exactly as it did.
@@ -78,6 +80,20 @@ type CounterUnlessPaidPrompt struct {
 	// warded permanent, or the counterspell doing the asking.
 	Source uuid.UUID
 
+	// OnDecline is the consequence of a decline (or an unaffordable
+	// "pay"). Nil is the printed "counter that spell", which is every
+	// counter-unless-pays card. A non-nil effect makes this the
+	// GUARDED PAY-UNLESS (#2365): the same halt, the same live
+	// re-check, a different "or else" — Divert's "change the target
+	// of target spell … unless that spell's controller pays {2}".
+	//
+	// It runs only while StackItem is still on the stack, for the
+	// reason the counter does: an object that has left has nothing
+	// left for the "unless" to protect. It receives the *Game the
+	// answer arrives at, which after an undo is not the one that
+	// asked, so it must capture no game state.
+	OnDecline func(g *Game) error
+
 	// Cost is the printed payment ("{1}", "{2}"), parsed by
 	// ParseCost and auto-tapped for like any other pay-unless.
 	Cost string
@@ -109,7 +125,8 @@ type CounterUnlessPaidPrompt struct {
 // a time before reaching for the prompt.
 //
 // A decline — or a "pay" the chooser cannot fund — counters the
-// object if it is still there, and does nothing if it is not.
+// object if it is still there, and does nothing if it is not. With
+// p.OnDecline set it runs that instead, under the same guard.
 //
 // Caller must hold g.mu. Added in #951.
 func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error {
@@ -122,8 +139,18 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 		chooser = guarded.Controller
 	}
 	stackID := p.StackItem
+	decline := func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) }
+	if p.OnDecline != nil {
+		custom := p.OnDecline
+		decline = func(g *Game) error {
+			if g.StackItemForEffect(stackID) == nil {
+				return nil
+			}
+			return custom(g)
+		}
+	}
 	return g.queuePayUnlessLocked(chooser, p.Source, p.Cost, p.Question,
-		func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) },
+		decline,
 		TurnStep{}, stackID, p.Waterbend)
 }
 

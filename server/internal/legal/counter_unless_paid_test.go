@@ -104,3 +104,39 @@ func TestARhysticTaxStillLeavesTheOtherSeatsPlaying(t *testing.T) {
 		t.Error("an ordinary pay_unless stopped the active seat — ADR 0018 §6 says it must not")
 	}
 }
+
+// #2365: a guarded pay-unless with a custom decline stops the table
+// and is answerable exactly like a counter-unless-pays — the
+// enumerator reads the same live predicate, whatever the decline is.
+func TestAGuardedPayUnlessWithACustomDeclineStopsTheTableAndIsAnswerable(t *testing.T) {
+	g := newTable(t)
+	active, payer := g.Seats[0], g.Seats[1]
+	spell := uuid.New()
+	g.WithWriteLock(func() {
+		g.Stack.PushTop(game.Card{
+			InstanceID: spell, Name: "Lightning Bolt", TypeLine: "Instant",
+			Owner: payer.ID, Controller: payer.ID,
+		})
+		if g.StackMeta == nil {
+			g.StackMeta = make(map[uuid.UUID]*game.StackItem)
+		}
+		g.StackMeta[spell] = &game.StackItem{
+			ID: spell, Kind: game.StackItemSpell,
+			Controller: payer.ID, Owner: payer.ID, SourceCardID: spell,
+		}
+		if err := g.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+			StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Divert",
+			OnDecline: func(*game.Game) error { return nil },
+		}); err != nil {
+			t.Fatalf("QueueCounterUnlessPaidForEffect: %v", err)
+		}
+	})
+	mine := legal.EnumerateFor(g, payer.ID)
+	if len(mine) == 0 {
+		t.Fatal("the payer was offered nothing")
+	}
+	if moves := legal.EnumerateFor(g, active.ID); len(moves) != 0 {
+		t.Errorf("the active seat was offered %v while the guarded prompt is open", labels(moves))
+	}
+	dispatchAll(t, g, payer.ID, mine)
+}
