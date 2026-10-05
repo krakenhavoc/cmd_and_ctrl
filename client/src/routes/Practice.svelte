@@ -5,6 +5,8 @@
   import { LobbyApiError } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import { markHintSeen } from "../lib/hints/runtime";
+  import practiceOffer from "./LobbyPractice.hint";
 
   // Practice is the door into the tutorial's practice table (ADR 0076
   // §2.2): #/practice opens a fresh practice game for this session and
@@ -25,6 +27,9 @@
   });
 
   async function open(): Promise<void> {
+    // Opening a practice table from anywhere answers the tutorial offer
+    // (ADR 0125 §5.3), so the Lobby does not make it again.
+    markHintSeen(practiceOffer);
     try {
       const id = await startPractice();
       navigate(`#/games/${id}`);

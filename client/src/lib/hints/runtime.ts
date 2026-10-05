@@ -13,7 +13,7 @@ import { L } from "../labels";
 import { settings } from "../settings";
 import type { Hint, HintPlace } from "./hint";
 import type { Placement, Rect } from "./place";
-import { createHintEngine, type EngineOptions, type HintEngine } from "./queue";
+import { createHintEngine, placesFor, type EngineOptions, type HintEngine } from "./queue";
 import { withSeen, withoutSeen } from "./seen";
 
 /** The tip on screen, as the card draws it. */
@@ -107,12 +107,24 @@ export function dismissTip(how: "got-it" | "hide", now: number = Date.now()): vo
 }
 
 /**
+ * replayableTips is what a replay of `place` shows: the place's own
+ * hints and, on a site page, the "site" hints after them, as a visit
+ * offers them (queue.ts placesFor). Empty for a place with none.
+ */
+export function replayableTips(place: HintPlace, hints: readonly Hint[]): Hint[] {
+  const places = placesFor(place);
+  return hints.filter((h) => places.includes(h.place));
+}
+
+/**
  * replayTips shows a place's hints again, one after another, even with
  * tips off: the Help menu's "Tips for this page" and the ⋯ menu's "Tips
- * for the table" (ADR 0125 §6). It forgets them first.
+ * for the table" (ADR 0125 §6). It forgets them first. On a site page
+ * that includes the "site" hints, so Home, which has none of its own,
+ * still shows the one about Help.
  */
 export function replayTips(place: HintPlace, hints: readonly Hint[]): void {
-  const ids = hints.filter((h) => h.place === place).map((h) => h.id);
+  const ids = replayableTips(place, hints).map((h) => h.id);
   settings.update((prev) => ({
     ...prev,
     help: { ...prev.help, seen: withoutSeen(prev.help.seen, ids) },
