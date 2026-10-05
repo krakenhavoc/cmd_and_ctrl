@@ -38,10 +38,15 @@
   // when castable, greyed when not, with a price tag once the commander
   // tax (or a cost modifier) moves the price off the printed cost. A
   // click or a drag hands the commander to the same cast chain with
-  // the command zone as its zone, exactly as the command zone panel's
-  // own click does. castStrip.ts decides which cards and what tag; the
-  // command zone panel keeps showing the commander, since it lives
-  // there.
+  // the command zone as its zone. castStrip.ts decides which cards and
+  // what tag.
+  //
+  // #2349: the command zone tile in the pile rail is gone, so this is
+  // where your commander lives on the board. Its group carries the
+  // tile's name (`<name> command zone, N card(s)`), and a commander with
+  // an ability that works from the command zone (commander ninjutsu)
+  // offers it in its popover. Other seats' commanders sit beside their
+  // hands in CommandStrip.svelte.
 
   import type { CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
@@ -79,6 +84,7 @@
   import type { CastSourceZone } from "../../targeting";
   import type { Legality } from "../../timing";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { L } from "../../labels";
 
   interface Props {
     view: GameView;
@@ -94,13 +100,48 @@
     // the ready ring and the chip's ready count; the click gate
     // (legalityFor) never reads it.
     legal?: LegalActions;
+    // #2349: the command zone tile is gone, so what it did for your own
+    // commander happens here. #1278: a commander can print an ability
+    // that works FROM the command zone (commander ninjutsu, CR 702.49c);
+    // the server ships it on `zone_abilities`, owner-only, and the Card's
+    // own popover offers it, with the hand's greying, through Board's
+    // announce chain. Undefined suppresses it.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // Why the CR 307.1 sorcery-speed window is shut, or "" when open —
+    // passed through to the popover as the hand passes it.
+    sorcerySpeedBlocked?: string;
+    // ADR 0105 sub-PR 3: the frame's full lookup, for the popover's
+    // sorcery-speed gate. The highlight setting never touches it.
+    legalGate?: LegalActions;
   }
 
-  const { view, viewerID, onCastCard, onDragCast, legal = NO_LEGAL_ACTIONS }: Props = $props();
+  const {
+    view,
+    viewerID,
+    onCastCard,
+    onDragCast,
+    legal = NO_LEGAL_ACTIONS,
+    onActivateAbility,
+    sorcerySpeedBlocked = "",
+    legalGate = NO_LEGAL_ACTIONS,
+  }: Props = $props();
 
   const entries = $derived(castStripEntries(view, viewerID));
-  const commanderCount = $derived(entries.filter((e) => e.zone === "command").length);
+  const commandEntries = $derived(entries.filter((e) => e.zone === "command"));
+  const exileEntries = $derived(entries.filter((e) => e.zone !== "command"));
+  const commanderCount = $derived(commandEntries.length);
   const exileCount = $derived(entries.length - commanderCount);
+  // #2349: the commanders are this seat's command zone on the board now,
+  // so their group carries the tile's name, `<name> command zone, N
+  // card(s)` (labels.ts commandZone).
+  const viewerSeat = $derived(view.seats.find((s) => s.id === viewerID));
+  // A commander's abilities that work from the command zone, wired to
+  // Board's announce chain, or undefined when it has none.
+  function activateFor(e: CastStripEntry): ((abilityIndex: number) => void) | undefined {
+    if (e.zone !== "command" || !onActivateAbility) return undefined;
+    if ((e.card.zone_abilities ?? []).length === 0) return undefined;
+    return (abilityIndex: number) => onActivateAbility(e.card, abilityIndex);
+  }
   // ADR 0105: what the server's move list says the viewer can cast
   // from exile this instant, mana included. The chip's cyan count, and
   // (sub-PR 6, §7) the count its accessible name says. It used to say
@@ -461,59 +502,79 @@
     <div class="strip-body" style:--strip-overlap={overlap}>
       <span class="strip-tag" aria-hidden="true">{tagText}</span>
       <div class="strip-cards">
-        {#each entries as e (e.card.instance_id)}
-          {@const leg = legalityFor(e)}
-          {@const badge = castStripBadge(e)}
-          <!-- #1622: the pointer handler is the drag-to-cast gesture, a
-               pointer-only enhancement. The Card inside is the button;
-               click and Enter cast exactly as before. -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
+        {#if commandEntries.length > 0}
+          <!-- #2349: this seat's command zone, named as the tile was. -->
           <div
-            class="strip-slot"
-            class:draggable={dragEnabled}
-            class:drag-source={dragging && dragCardID === e.card.instance_id}
-            onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, e) : undefined}
-            onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
-            class:blocked={!leg.legal}
-            class:later={e.state === "later"}
-            class:castable={leg.legal}
-            title={leg.legal ? undefined : leg.reason}
+            class="cmd-group"
+            role="group"
+            aria-label={L.commandZone(
+              viewerSeat?.name ?? "your",
+              viewerSeat?.command?.count ?? commandEntries.length,
+            )}
           >
-            <div class="deal-wrap" in:dealIn out:dealOut>
-              <Card
-                card={e.card}
-                showManaCost={badge === null}
-                ready={legal.castableFrom(e.card.instance_id, e.zone)}
-                readyZone={e.zone}
-                {legal}
-                onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
-                onCastAnyway={castAnywayHere(e) ? () => castAnyway(e) : undefined}
-                castAnywayBlocked={castAnywayHere(e)
-                  ? castStripCastAnywayBlocked(e, view, viewerID)
-                  : ""}
-              />
-              {#if badge}
-                <span class="cost-tag" title={badge.title} aria-label={badge.label}>
-                  {#each pipRun(badge.symbols) as p, i (i)}
-                    <ManaSymbol symbol={p.symbol} size={15} />
-                  {/each}
-                  {#if badge.life}
-                    <span class="life">+{badge.life}♥</span>
-                  {/if}
-                </span>
-              {/if}
-              {#if e.hint}
-                <span class="hint">{e.hint}</span>
-              {:else if e.verb === "play" && leg.legal}
-                <span class="hint verb">play</span>
-              {/if}
-            </div>
+            {#each commandEntries as e (e.card.instance_id)}
+              {@render slot(e)}
+            {/each}
           </div>
+        {/if}
+        {#each exileEntries as e (e.card.instance_id)}
+          {@render slot(e)}
         {/each}
       </div>
     </div>
   </div>
 {/if}
+
+{#snippet slot(e: CastStripEntry)}
+  {@const leg = legalityFor(e)}
+  {@const badge = castStripBadge(e)}
+  <!-- #1622: the pointer handler is the drag-to-cast gesture, a
+               pointer-only enhancement. The Card inside is the button;
+               click and Enter cast exactly as before. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="strip-slot"
+    class:draggable={dragEnabled}
+    class:drag-source={dragging && dragCardID === e.card.instance_id}
+    onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, e) : undefined}
+    onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
+    class:blocked={!leg.legal}
+    class:later={e.state === "later"}
+    class:castable={leg.legal}
+    title={leg.legal ? undefined : leg.reason}
+  >
+    <div class="deal-wrap" in:dealIn out:dealOut>
+      <Card
+        card={e.card}
+        showManaCost={badge === null}
+        ready={legal.castableFrom(e.card.instance_id, e.zone)}
+        readyZone={e.zone}
+        {legal}
+        onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
+        onCastAnyway={castAnywayHere(e) ? () => castAnyway(e) : undefined}
+        castAnywayBlocked={castAnywayHere(e) ? castStripCastAnywayBlocked(e, view, viewerID) : ""}
+        onActivateAbility={activateFor(e)}
+        {sorcerySpeedBlocked}
+        {legalGate}
+      />
+      {#if badge}
+        <span class="cost-tag" title={badge.title} aria-label={badge.label}>
+          {#each pipRun(badge.symbols) as p, i (i)}
+            <ManaSymbol symbol={p.symbol} size={15} />
+          {/each}
+          {#if badge.life}
+            <span class="life">+{badge.life}♥</span>
+          {/if}
+        </span>
+      {/if}
+      {#if e.hint}
+        <span class="hint">{e.hint}</span>
+      {:else if e.verb === "play" && leg.legal}
+        <span class="hint verb">play</span>
+      {/if}
+    </div>
+  </div>
+{/snippet}
 
 {#if dragging && drag.mode === "cast"}
   <!-- #1622: the faint "release to cast" zone over the table. -->
@@ -632,6 +693,13 @@
     overflow: visible;
     transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
+  }
+  /* #2349: the command zone's cards, a row inside the row. The slot
+     after it overlaps it as any next slot does. */
+  .cmd-group {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
   }
   .strip-slot {
     position: relative;

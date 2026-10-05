@@ -72,6 +72,7 @@
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
   import ExileStrip from "./ExileStrip.svelte";
+  import CommandStrip from "./CommandStrip.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import { seatColor } from "../../colors";
@@ -831,9 +832,15 @@
         onCastCard={onPlayCard}
         onDragCast={(c, zone, face) => onPlayCard(c, zone, face, true)}
         {legal}
+        {onActivateAbility}
+        {sorcerySpeedBlocked}
+        legalGate={rowGate}
       />
     {/if}
     {#if !isSelf}
+      <!-- #2349: this seat's commander, beside its hand, where yours
+           is beside yours. -->
+      <CommandStrip {seat} />
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
     {#if docked}
@@ -870,12 +877,7 @@
       {sendAction}
       onDrawCard={isSelf ? onDrawCard : undefined}
       {onPlayCard}
-      onActivateAbility={isSelf ? onActivateAbility : undefined}
-      {sorcerySpeedBlocked}
-      {view}
-      {viewerID}
       {legal}
-      legalGate={rowGate}
     />
   </div>
   <TokenGroupModal
@@ -1006,10 +1008,10 @@
     /* #2336: sized by relevance, like your own board. The face-down
        hand shows only a count, so it peeks 30%; lands and other
        permanents are half a creature. The creature card is what is
-       left: H = 1.8h + ~64px, so h ≈ 55cqh - 36px. The floor is low so
+       left: H = 1.92h + ~64px (the commander beside the hand, CommandStrip, is 0.42h), so h ≈ 52cqh - 33px. The floor is low so
        a short panel shrinks its cards rather than scrolling them. */
     --hand-peek: 0.3;
-    --card-h: clamp(90px, calc((55cqh - 36px) * var(--card-scale-opponent, 1)), var(--card-h-max));
+    --card-h: clamp(90px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
     --card-h-sm: clamp(56px, calc(var(--card-h) * 0.5), 110px);
     --thumb-w: calc(36px * var(--card-scale-opponent, 1));
     --thumb-h: calc(50px * var(--card-scale-opponent, 1));
@@ -1037,7 +1039,7 @@
        short one), rows reversed so the hand hugs the top edge and
        creatures face the centre of the table. */
     --card-h-max: 168px;
-    --card-h: clamp(70px, calc((55cqh - 36px) * var(--card-scale-opponent, 1)), var(--card-h-max));
+    --card-h: clamp(70px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
     --card-h-sm: clamp(48px, calc(var(--card-h) * 0.5), 90px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
@@ -1158,7 +1160,7 @@
   /* Short panels (the top row at 900px tall) must never clip the
      piles: the rail scrolls before it hides anything, and the
      across-table rails drop the pile labels (the tile's title and
-     aria-label still carry them) and the command-zone hints. */
+     aria-label still carry them). */
   .rail {
     overflow-y: auto;
     overflow-x: hidden;
@@ -1208,15 +1210,13 @@
     }
     .panel.self.docked .rail > :global(.pile-bar) {
       grid-area: piles;
-      grid-template-columns: repeat(4, 52px);
+      grid-template-columns: repeat(3, 52px);
       width: auto;
       align-self: end;
     }
     /* As on the top-row panels: the tile's title and aria-label still
        carry the pile's name, so the piles stay one short row. */
-    .panel.self.docked .rail :global(.pile .label),
-    .panel.self.docked .rail :global(.cmd-zone .label),
-    .panel.self.docked .rail :global(.cmd-zone .hints) {
+    .panel.self.docked .rail :global(.pile .label) {
       display: none;
     }
   }
@@ -1248,9 +1248,7 @@
       }
     }
   }
-  .flipped .rail :global(.pile .label),
-  .flipped .rail :global(.cmd-zone .label),
-  .flipped .rail :global(.cmd-zone .hints) {
+  .flipped .rail :global(.pile .label) {
     display: none;
   }
 </style>

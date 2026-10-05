@@ -133,25 +133,25 @@ describe("the .panel --card-h-max ceiling", () => {
 
   it("leaves the opponent formula's floor and slope untouched", () => {
     // Only the ceiling moves for a spectator. #2336 changed the
-    // opponent formula itself (90px floor, "55cqh - 36px": the creature
+    // opponent formula itself (90px floor, "52cqh - 33px": the creature
     // card is what the panel has left once the back row and the hand
     // are placed); a spectator's panel still uses it as it is.
     const formula = resolve(["panel", "opponent", "spectator"], "--card-h");
     expect(formula).toBe(resolve(["panel", "opponent"], "--card-h"));
     expect(formula).toContain("clamp(90px,");
-    expect(formula).toContain("55cqh - 36px");
+    expect(formula).toContain("52cqh - 33px");
   });
 });
 
 describe("the spectator card height at representative panel heights", () => {
-  // #1071's story, on #2336's slope (55cqh - 36px): the two panels
+  // #1071's story, on #2336's slope (52cqh - 33px): the two panels
   // agree until the raw slope value passes the opponent's 200px
-  // ceiling, at ~429px of content height, and a spectator's keeps
+  // ceiling, at ~448px of content height, and a spectator's keeps
   // growing to 240px after it.
   it("is unaffected below the opponent's 200px ceiling (400px content height)", () => {
     const before = clampCardH(["panel", "opponent"], 400);
     const after = clampCardH(["panel", "opponent", "spectator"], 400);
-    expect(before).toBeCloseTo(184, 1);
+    expect(before).toBeCloseTo(175, 1);
     expect(after).toBeCloseTo(before, 6);
   });
 
@@ -159,7 +159,7 @@ describe("the spectator card height at representative panel heights", () => {
     const before = clampCardH(["panel", "opponent"], 483);
     const after = clampCardH(["panel", "opponent", "spectator"], 483);
     expect(before).toBe(200); // clamped at the opponent ceiling
-    expect(after).toBeCloseTo(229.65, 1); // the raw slope value, under the spectator ceiling
+    expect(after).toBeCloseTo(218.16, 1); // the raw slope value, under the spectator ceiling
     expect(after).toBeGreaterThan(before);
   });
 
@@ -170,11 +170,11 @@ describe("the spectator card height at representative panel heights", () => {
     expect(after).toBe(240);
   });
 
-  it("the two ramps cross at ~429px content height, not before", () => {
-    // 55% * 428 - 36 ≈ 199.4px — just under the opponent ceiling, so
+  it("the two ramps cross at ~448px content height, not before", () => {
+    // 52% * 447 - 33 ≈ 199.4px — just under the opponent ceiling, so
     // before and after still agree one pixel below the crossover.
-    const before = clampCardH(["panel", "opponent"], 428);
-    const after = clampCardH(["panel", "opponent", "spectator"], 428);
+    const before = clampCardH(["panel", "opponent"], 447);
+    const after = clampCardH(["panel", "opponent", "spectator"], 447);
     expect(after).toBeCloseTo(before, 6);
   });
 });

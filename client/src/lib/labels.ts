@@ -170,9 +170,9 @@ export const LABEL_SPECS = {
     make: (seat: string, n: number) => `${seat} command zone, ${plural(n, "card")}`,
     example: ["Player", 1],
     kind: "aria",
-    role: "generic",
-    owners: [`${BOARD}CommandZone.svelte`],
-    doc: "a seat's command zone panel",
+    role: "group",
+    owners: [`${BOARD}ExileStrip.svelte`, `${BOARD}CommandStrip.svelte`],
+    doc: "a seat's command zone beside its hand (#2349): yours in the castable strip, others' in their command strip",
   }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
