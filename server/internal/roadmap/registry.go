@@ -2693,14 +2693,12 @@ var items = []Item{
 		EngineNotes: "**Ships (#2177).** `Spec.LegendRuleExemptions` (`game.LegendRuleExemption`, `game/legend_rule_exemption.go`) is read off the battlefield by `legendRuleChoicesLocked` on every state-based action check, keyed by `CatalogAbilityKey` and never stored: `LegendRuleDoesntApplyToYours()` covers the controller's permanents (Mirror Box, Sakashima of a Thousand Faces), `LegendRuleDoesntApply()` covers every player's (Mirror Gallery). When the last exempting permanent leaves, the next check applies the rule and the controller chooses which to keep. Sakashima's \"except it has Sakashima's other abilities\" is a copy grant (`AbilityGrant.LegendRuleExempt`, merged by `mergeCatalogParts`), so a copy keeps the exemption; its Partner clause is deck construction and does nothing, as for every partner card.",
 	},
 	{
-		Slug: "cant-make-you-discard-or-sacrifice", Name: "Opponents can't make you discard or sacrifice", Kind: KindSeam, Status: StatusMissing,
+		Slug: "cant-make-you-discard-or-sacrifice", Name: "Opponents can't make you discard or sacrifice", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that stop your opponents' spells and abilities from making you discard cards or sacrifice permanents, such as Tamiyo, Collector of Tales'.",
-		Missing:     "Nothing can stop an opponent's spell or ability from making you discard or sacrifice yet.",
 		Rules:       []string{"701.9a", "701.21a"},
 		Issue:       2178,
-		Tracked:     "#2178 (S58 tracker #2077)",
-		Waiting:     []string{"Tamiyo, Collector of Tales"},
-		EngineNotes: "rules gate: the sacrifice path (`game/sacrifice.go`) and the discard path (`discardCardsLocked`) take a player and the cards and never ask who controls the instruction; Sigarda, Host of Herons ships without its sacrifice clause for this reason. Needs a gate keyed on the controller of the spell or ability that instructs, asked by every effect-driven discard and sacrifice and never by a cost the player chose to pay. Tamiyo's +1 (name a card, reveal four) and −3 work.",
+		Examples:    []string{"Tamiyo, Collector of Tales", "Sigarda, Host of Herons", "Tajuru Preserver"},
+		EngineNotes: "**Ships (#2178).** `Spec.OpponentEffectProtections` (`game.OpponentEffectProtection`, `game/cant_cause_discard_sacrifice.go`) is read off the battlefield every time an EFFECT asks a player to discard or sacrifice, keyed by `CatalogAbilityKey` and never stored: `CantBeMadeToSacrifice()` (Sigarda, Tajuru Preserver) and `CantBeMadeToDiscardOrSacrifice()` (Tamiyo). The cause is the controller of the resolving stack item, so an opponent's edict, annihilator trigger, sacrifice-all or \"each player discards\" skips the protected player, while their own spells and abilities, every cost (`DiscardCauseCost`, `sacrificeAnsweredLocked`), the cleanup discard and state-based sacrifices never ask. Gated at the entry points an effect uses: `queueSacrificePromptLocked`, `SacrificeAll*ForEffect`, `SacrificePermanentForEffect`, `annihilatorSacrificeLocked`, `queueDiscardPromptLocked`, `discardBatchLocked` (the effect cause), `DiscardRandomThenForEffect` and `QueueDiscardFromRevealedHand`. Tamiyo's +1 needed a resolution-time \"choose a card name\" with a continuation (`QueueCardNameChoiceThenForEffect`, riding the colour prompt's resume frame because the closure ceiling only falls).",
 	},
 	{
 		Slug: "play-exiled-cards-you-dont-own-with-a-counter", Name: "Playing exiled cards you don't own that carry a counter", Kind: KindSeam, Status: StatusMissing,

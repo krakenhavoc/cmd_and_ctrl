@@ -263,6 +263,10 @@ func (g *Game) annihilatorSacrificeLocked(item *StackItem, recorded uuid.UUID, n
 		// CR 800.4a: a player who has left the game controls nothing.
 		return nil
 	}
+	if g.effectSacrificeBlockedLocked(defender) {
+		// #2178: an opponent's trigger can't make this player sacrifice.
+		return nil
+	}
 	source := item.SourceCardID
 	_, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
 		Chooser:    defender,

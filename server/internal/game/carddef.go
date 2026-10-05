@@ -268,6 +268,11 @@ type CardDef struct {
 	// Sakashima of a Thousand Faces. Read from the battlefield through
 	// CatalogLegendRuleExemptions; see legend_rule_exemption.go.
 	LegendRuleExemptions []LegendRuleExemption
+	// OpponentEffectProtections are this permanent's printed "spells and
+	// abilities your opponents control can't cause you to discard /
+	// sacrifice" statics (#2178). Read from the battlefield through
+	// CatalogOpponentEffectProtections; see cant_cause_discard_sacrifice.go.
+	OpponentEffectProtections []OpponentEffectProtection
 	// GameEndGates are this permanent's printed "you can't lose the
 	// game" / "your opponents can't win the game" statics (CR 104.3),
 	// scoped relative to its CONTROLLER. Read from the battlefield
@@ -753,6 +758,12 @@ func init() {
 	CatalogLegendRuleExemptions = func(key string) []LegendRuleExemption {
 		if d := catalogDef(key); d != nil {
 			return d.LegendRuleExemptions
+		}
+		return nil
+	}
+	CatalogOpponentEffectProtections = func(key string) []OpponentEffectProtection {
+		if d := catalogDef(key); d != nil {
+			return d.OpponentEffectProtections
 		}
 		return nil
 	}

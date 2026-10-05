@@ -223,6 +223,13 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 	p := g.playerByIDLocked(playerID)
 	for len(cards) > 0 {
 		next, rest := cards[0], cards[1:]
+		// #2178: an opponent's spell or ability can't make this
+		// player discard. Never a cost (DiscardCauseCost) or the
+		// cleanup step (DiscardCauseCleanup).
+		if (opts.cause == DiscardCauseEffect || opts.cause == "") && g.effectDiscardBlockedLocked(playerID) {
+			cards = nil
+			break
+		}
 		if p == nil || !p.Hand.Contains(next) {
 			cards = rest
 			continue

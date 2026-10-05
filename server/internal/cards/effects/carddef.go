@@ -183,6 +183,7 @@ func buildDef(spec Spec) *game.CardDef {
 		DamageAsThough:             spec.DamageAsThough,
 		AnyColorSpend:              spec.AnyColorSpend,
 		LegendRuleExemptions:       spec.LegendRuleExemptions,
+		OpponentEffectProtections:  spec.OpponentEffectProtections,
 		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		WantsManaFrom:              spec.WantsManaFrom,
