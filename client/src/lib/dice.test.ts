@@ -412,6 +412,64 @@ describe("placeDice", () => {
   });
 });
 
+describe("placeDice avoiding overlays (#2260)", () => {
+  const board = { width: 1200, height: 700 };
+  const size = { width: 80, height: 90 };
+  // The drawer: 380px wide down the right edge.
+  const log = { left: 820, top: 0, width: 380, height: 700 };
+  const hits = (p: { left: number; top: number }, r: typeof log) =>
+    p.left < r.left + r.width &&
+    p.left + size.width > r.left &&
+    p.top < r.top + r.height &&
+    p.top + size.height > r.top;
+
+  it("is unchanged with nothing to avoid", () => {
+    const a = { left: 1000, top: 300, width: 40, height: 40 };
+    expect(placeDice(board, a, size, null, [])).toEqual(placeDice(board, a, size, null));
+  });
+
+  it("falls back to the strip when the avatar is under the open log", () => {
+    const strip = { left: 12, top: 120, width: 400, height: 0 };
+    const under = { left: 1000, top: 300, width: 40, height: 40 };
+    const open = placeDice(board, under, size, strip, [log]);
+    expect(open.side).toBe("strip");
+    expect(hits(open, log)).toBe(false);
+    // With the log closed the same avatar keeps its die.
+    expect(placeDice(board, under, size, strip, []).side).not.toBe("strip");
+  });
+
+  it("keeps the strip fallback clear of the log", () => {
+    const strip = { left: 700, top: 20, width: 400, height: 0 };
+    const p = placeDice(board, null, size, strip, [log]);
+    expect(hits(p, log)).toBe(false);
+  });
+
+  it("moves to another side when the preferred side is covered, for every avatar position", () => {
+    const spots = [
+      { left: 700, top: 10, width: 40, height: 40 },
+      { left: 770, top: 300, width: 40, height: 40 },
+      { left: 400, top: 640, width: 40, height: 40 },
+      { left: 10, top: 300, width: 40, height: 40 },
+    ];
+    for (const a of spots) {
+      const p = placeDice(board, a, size, null, [log]);
+      expect(hits(p, log), JSON.stringify(a)).toBe(false);
+    }
+  });
+
+  it("keeps the die off a seat's text read-out", () => {
+    // Opponent at the top, centre: its counts line sits just below the
+    // avatar, which is where "toward the centre" would put the die.
+    const a = { left: 560, top: 10, width: 60, height: 60 };
+    const counts = { left: 480, top: 74, width: 240, height: 20 };
+    const plain = placeDice(board, a, size, null, []);
+    expect(plain.side).toBe("below");
+    expect(hits(plain, counts)).toBe(true);
+    const p = placeDice(board, a, size, null, [counts]);
+    expect(hits(p, counts)).toBe(false);
+  });
+});
+
 // ADR 0121 §5: a die or a coin rolled at the table. Keyed on its
 // roll_id, because an undo of an earlier action writes the same line
 // again under a new seq.

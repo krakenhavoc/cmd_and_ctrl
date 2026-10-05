@@ -57,7 +57,7 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
-  import { confirmAction, dockRequests } from "../lib/dock";
+  import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
   import { modalOpen } from "../lib/modalLayers";
   import {
     publishTableMoment,
@@ -120,7 +120,13 @@
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
-  import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
+  import {
+    openShortcutsHelp,
+    registerShortcutHandlers,
+    setShortcutContext,
+  } from "../lib/shortcutRuntime";
+  import { HINTS } from "../lib/hints";
+  import { replayTips } from "../lib/hints/runtime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
@@ -1657,6 +1663,12 @@
         ? { ready: !tableRollCooling }
         : null,
     onTableRoll: rollAtTable,
+    // ADR 0125 §6: the Help group. The tutorial is replayed on this
+    // tab's practice table only, as the coach's Replay does.
+    practice: $practiceTable?.gameID === gameID,
+    onTableTips: () => replayTips("table", HINTS),
+    onShortcuts: openShortcutsHelp,
+    onReplayTutorial: () => navigate("#/practice"),
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,
@@ -2163,7 +2175,7 @@
           rank="choice"
           label={L.mulligan}
           title="Your opening hand"
-          width={720}
+          width={SHEET_HAND_WIDTH}
           sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
           primary={confirmAction(L.keepHand, keepHand, { id: "keep" })}
           secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
@@ -2550,7 +2562,8 @@
      longer needs to stop above the dock. */
   section.has-dock.sheet-open {
     --dock-zoom-clear: 0px;
-    --zoom-right: calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px);
+    /* A wide sheet (the opening hand) must not push the zoom off screen. */
+    --zoom-right: min(calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px), calc(100vw - 360px));
   }
   /* §8: on a phone the dock is a full-width bar on the bottom of the
      play area, and the board ends above it rather than under it. */
@@ -2784,8 +2797,9 @@
 
   /* ADR 0111 PR 6: the opening hand is a dock sheet (DockSheet), so
      only its body is styled here: the roll line, the count, and the
-     seven cards in one row of a 720px sheet (fewer per row on a phone,
-     scrolling inside the sheet). */
+     seven cards in one row of a wide sheet (SHEET_HAND_WIDTH, capped at
+     the screen), full size again (#2200); three per row on a phone,
+     scrolling inside the sheet. */
   .mulligan-copy {
     display: flex;
     flex-direction: column;
