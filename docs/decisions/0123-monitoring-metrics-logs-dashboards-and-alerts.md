@@ -1,6 +1,6 @@
 # ADR 0123 — Monitoring: metrics, logs, dashboards and alerts
 
-**Status:** Proposed · 2026-10-04 · S63 — Monitoring: metrics, logs, dashboards and alerts.
+**Status:** Accepted · 2026-10-04 · S63 — Monitoring: metrics, logs, dashboards and alerts. The owner accepted it unchanged in review on #2282 the same day, Calls made here included.
 **Issues:** [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) (this change, and S63's tracker); relates to [#598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/598) items 2 and 3.
 **Owner decisions:** the eight answers of 2026-10-04, quoted under [Owner decisions](#owner-decisions-2026-10-04). They are binding. This ADR also makes calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before PR 2 lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-04 (`git fetch --all --prune`, then `docs/decisions/` listed on every remote head). The highest number on any branch was 0122, on `origin/develop`. This ADR takes **0123**.

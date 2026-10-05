@@ -3494,7 +3494,7 @@ From the tracker, [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/228
 
 ### Status
 
-**Planned** (2026-10-04). ADR 0123 is proposed and awaits the owner's review.
+**Planned** (2026-10-04). ADR 0123 is accepted (owner review on #2282); the Delivery PRs follow.
 
 ---
 
