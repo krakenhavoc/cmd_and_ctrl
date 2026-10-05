@@ -1,7 +1,7 @@
 name: cmd_and_ctrl uptime
 
-# Off-node watcher for both sites (ADR 0123 section 8, #2281). State lives in
-# an `outage` issue per environment, so a long outage posts twice: once down,
+# Off-node dead-man check on the monitoring VM (ADR 0123 section 8, #2281). State lives in
+# one `outage` issue, so a long outage posts twice: once lost,
 # once recovered. Logic: scripts/uptime-watch.sh.
 
 permissions:
@@ -40,10 +40,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Check both sites
+      - name: Check the monitoring heartbeat
         env:
           GH_TOKEN: ${{ github.token }}
           DISCORD_WEBHOOK: ${{ secrets.CMDCTRL_ALERT_DISCORD_WEBHOOK }}
+          HEARTBEAT: ${{ vars.CMDCTRL_MONITORING_HEARTBEAT }}
           # A pull request is always a dry run, a dispatch follows its input,
           # and a scheduled run is live. format() keeps a false input a
           # non-empty string, which the && / || chain would otherwise drop.

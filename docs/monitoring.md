@@ -69,7 +69,10 @@ On `dev` nothing is critical, and alerts a deploy could trip wait longer.
 `SiteDown` and `ServerNotReporting` both depend on the monitoring VM.
 If the whole Proxmox node is down, neither can fire, and the
 [uptime watcher](environments.md#uptime-watcher), a GitHub Actions cron,
-is what reports it.
+is what reports it. It does not curl the sites (Cloudflare challenges
+GitHub runners). It watches a heartbeat the monitoring VM writes every 5
+minutes, and opens a `` `monitoring` heartbeat lost `` issue and posts to
+Discord when it is more than 20 minutes old.
 
 ## Changing a dashboard
 
