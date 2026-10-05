@@ -10,6 +10,7 @@ import {
   joinBoxFor,
   myTables,
   oauthCompleteTarget,
+  returnRouteFor,
   routeRedirect,
 } from "./signedInHome";
 
@@ -144,20 +145,23 @@ describe("routeRedirect: the ways in that do not go through Login (§1 item 2)",
   }
 });
 
-describe("routeRedirect: #/admin (§2 item 8, the sessions told apart without /me)", () => {
+describe("routeRedirect: #/admin (§2 item 8 as ADR 0124 §7 amends it)", () => {
   const admin = parseHash("#/admin");
 
   it("shows the token form signed out", () => {
     expect(routeRedirect(admin, null)).toBeNull();
   });
 
-  it("sends the token session itself to the Lobby", () => {
-    expect(routeRedirect(admin, sess("admin"))).toBe("#/lobby");
+  it("sends the token session itself to the admin views' Live now", () => {
+    expect(routeRedirect(admin, sess("admin"))).toBe("#/admin/live");
   });
 
-  it("sends an allowlisted person to the Lobby, where the chip is, in either mode", () => {
+  it("sends an allowlisted person in admin mode to Live now, and in player mode to the Lobby", () => {
     const inAdminMode = sess("player", USER, { admin: true });
-    expect(routeRedirect(admin, inAdminMode)).toBe("#/lobby");
+    expect(routeRedirect(admin, inAdminMode)).toBe("#/admin/live");
+    // A lapsed mode is player mode.
+    const lapsed = { ...inAdminMode, admin_mode_ends_at: Date.now() - 1000 };
+    expect(routeRedirect(admin, lapsed)).toBe("#/lobby");
     const inPlayerMode = {
       ...sess("identified", USER),
       admin: false,
@@ -200,7 +204,7 @@ describe("oauthCompleteTarget (§1 item 2)", () => {
     expect(oauthCompleteTarget(sess("identified", USER), null)).toBe("#/lobby");
   });
 
-  it("never follows a return route that is not the decks page", () => {
+  it("never follows a return route that is not the decks page or an admin view", () => {
     for (const bad of ["#/lobby", "#/games/g1", "https://evil.example/", "#/nowhere", ""]) {
       expect(oauthCompleteTarget(sess("identified", USER), bad)).toBe("#/lobby");
     }
@@ -209,6 +213,60 @@ describe("oauthCompleteTarget (§1 item 2)", () => {
   it("the invite flow goes to its table even with a return route saved", () => {
     const s = sess("player", USER, { gameID: "g2" });
     expect(oauthCompleteTarget(s, "#/decks")).toBe("#/games/g2");
+  });
+
+  // ADR 0124 §7: a Grafana link opened signed out comes back after sign-in.
+  it("takes the login-page flow back to the admin view it was saved from", () => {
+    const s = sess("identified", USER);
+    for (const hash of [
+      "#/admin/live",
+      "#/admin/games?state=active&archived=false",
+      "#/admin/games/9c2f0e4c-1d1e-4c3b-9d7e-2f8a1b2c3d4e",
+      "#/admin/accounts?played=7d",
+      "#/admin/accounts/9c2f0e4c-1d1e-4c3b-9d7e-2f8a1b2c3d4e",
+    ]) {
+      expect(oauthCompleteTarget(s, hash)).toBe(hash);
+    }
+    // #/admin alone is the token's form, not a view, and not followed.
+    expect(oauthCompleteTarget(s, "#/admin")).toBe("#/lobby");
+    expect(oauthCompleteTarget(s, "#/admin/nowhere")).toBe("#/lobby");
+  });
+});
+
+describe("the admin views' gate (ADR 0124 §7)", () => {
+  const VIEWS = [
+    "#/admin/live",
+    "#/admin/games",
+    "#/admin/games?practice=only",
+    "#/admin/games/g1",
+    "#/admin/accounts?sort=first_seen",
+    "#/admin/accounts/u1",
+  ];
+
+  it("sends a signed-out visitor to #/login and stores the view to come back to", () => {
+    for (const hash of VIEWS) {
+      const r = parseHash(hash);
+      expect(r.name).toBe("adminViews");
+      expect(isPublicRoute(r)).toBe(false);
+      expect(routeRedirect(r, null)).toBe("#/login");
+      expect(returnRouteFor(r, null, hash)).toBe(hash);
+    }
+  });
+
+  it("leaves every session on the page, which shows a message to a non-admin", () => {
+    for (const hash of VIEWS) {
+      for (const [, s] of SESSIONS) {
+        if (s === null) continue;
+        expect(routeRedirect(parseHash(hash), s)).toBeNull();
+        expect(returnRouteFor(parseHash(hash), s, hash)).toBeNull();
+      }
+    }
+  });
+
+  it("stores nothing for any other gated route", () => {
+    for (const hash of ["#/lobby", "#/catalog", "#/my-games", "#/games/g1"]) {
+      expect(returnRouteFor(parseHash(hash), null, hash)).toBeNull();
+    }
   });
 });
 

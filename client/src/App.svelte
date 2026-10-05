@@ -18,6 +18,7 @@
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import Practice from "./routes/Practice.svelte";
+  import Admin from "./routes/Admin.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -27,8 +28,8 @@
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
   import { armAdminLapse, loadAdminStatus, needsAdminCheck, onVisibleAgain } from "./lib/admin";
-  import { oauthCompleteTarget, routeRedirect } from "./lib/signedInHome";
-  import { takeAfterSignIn } from "./lib/decksPage";
+  import { oauthCompleteTarget, returnRouteFor, routeRedirect } from "./lib/signedInHome";
+  import { rememberReturnRoute, takeAfterSignIn } from "./lib/decksPage";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
@@ -53,9 +54,17 @@
   // route goes to #/login, and every session on #/login goes to the
   // Lobby, the signed-in home. Invite, spectator and reclaim links and
   // the Discord round trip are public and never redirected.
+  //
+  // A signed-out visitor on an admin view (a Grafana link, ADR 0124 §7)
+  // has that view stored first, so the sign-in comes back to it.
   $effect(() => {
-    const to = routeRedirect($route, $session);
-    if (to) navigate(to);
+    const r = $route;
+    const s = $session;
+    const to = routeRedirect(r, s);
+    if (!to) return;
+    const back = returnRouteFor(r, s, location.hash);
+    if (back) rememberReturnRoute(back);
+    navigate(to);
   });
 
   // Ask GET /me whether a newly installed signed-in session is an admin
@@ -120,6 +129,8 @@
   <Login />
 {:else if $route.name === "adminLogin"}
   <Login admin />
+{:else if $route.name === "adminViews"}
+  <Admin view={$route.view} />
 {:else if $route.name === "home"}
   <Home />
 {:else if $route.name === "roadmap"}

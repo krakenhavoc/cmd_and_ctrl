@@ -26,6 +26,17 @@ import type { LastDeck } from "./lastDeck";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
 import type { TableSettingsView, TargetRefView } from "./protocol";
+import {
+  accountsQuery,
+  gamesQuery,
+  type AccountsFilter,
+  type AdminAccountResponse,
+  type AdminAccountsResponse,
+  type AdminGameResponse,
+  type AdminGamesResponse,
+  type GamesFilter,
+  type LiveNowResponse,
+} from "./adminViews";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -1396,4 +1407,55 @@ export async function fetchSpawnTokens(gameID: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+// --- the admin views (ADR 0124) ---------------------------------------
+//
+// Five read-only routes, all behind requireAdmin: 401 without a session
+// (authFetch clears it), 403 `admin only` for anyone else, an
+// allowlisted person in player mode included. The pages ask only when
+// isAdmin(session) holds, and treat a 403 as a stale answer (§7). The
+// URLs are built by lib/adminViews.ts, which drops any filter value the
+// server does not know, so none is ever sent.
+
+export async function fetchAdminLive(): Promise<LiveNowResponse> {
+  const res = await authFetch("/admin/live", { method: "GET" });
+  return (await res.json()) as LiveNowResponse;
+}
+
+export async function fetchAdminGames(f: GamesFilter): Promise<AdminGamesResponse> {
+  const res = await authFetch(gamesQuery(f), { method: "GET" });
+  return (await res.json()) as AdminGamesResponse;
+}
+
+export async function fetchAdminGame(id: string): Promise<AdminGameResponse> {
+  const res = await authFetch(`/admin/games/${encodeURIComponent(id)}`, { method: "GET" });
+  return (await res.json()) as AdminGameResponse;
+}
+
+export async function fetchAdminAccounts(f: AccountsFilter): Promise<AdminAccountsResponse> {
+  const res = await authFetch(accountsQuery(f), { method: "GET" });
+  return (await res.json()) as AdminAccountsResponse;
+}
+
+export async function fetchAdminAccount(id: string): Promise<AdminAccountResponse> {
+  const res = await authFetch(`/admin/users/${encodeURIComponent(id)}`, { method: "GET" });
+  return (await res.json()) as AdminAccountResponse;
+}
+
+/** RevokeSessionsResponse is POST /admin/users/{id}/revoke-sessions's answer. */
+export interface RevokeSessionsResponse {
+  user_id: string;
+  sessions_invalid_before: string;
+  sockets_closed: number;
+}
+
+// revokeUserSessions is ADR 0051's "admin remove-user", the existing
+// route the account view links (ADR 0124 §7): the same revocation as
+// "Sign out everywhere", for that person. Every row stays.
+export async function revokeUserSessions(id: string): Promise<RevokeSessionsResponse> {
+  const res = await authFetch(`/admin/users/${encodeURIComponent(id)}/revoke-sessions`, {
+    method: "POST",
+  });
+  return (await res.json()) as RevokeSessionsResponse;
 }
