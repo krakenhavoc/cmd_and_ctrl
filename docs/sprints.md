@@ -3607,7 +3607,7 @@ From [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) and ADR 01
 
 ### Status
 
-**Planned** (2026-10-06). ADR 0126 is proposed and awaits the owner's review.
+**Planned** (2026-10-06). ADR 0126 is accepted. The owner answered its eight open questions on 2026-10-06, all as recommended, and they are recorded in the ADR. PR 2 (measurement) is next.
 
 ---
 

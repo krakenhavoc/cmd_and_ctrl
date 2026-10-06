@@ -1,6 +1,6 @@
 # ADR 0126 — Bots that play their decks: the heuristic prices what a card does
 
-**Status:** Proposed · 2026-10-06 · S66 — Bots that play their decks. Awaiting the owner's review. No weight changes until it is accepted.
+**Status:** Accepted · 2026-10-06 · S66 — Bots that play their decks. The owner accepted it on 2026-10-06 and answered its eight open questions, all as recommended. The answers are recorded under [Owner decisions](#owner-decisions-2026-10-06).
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
@@ -149,7 +149,7 @@ The rows are a signal of utility, not of its size. A row that is a drawback (Sul
 
 Because this is in `permanentValue`, the evaluation changes too. An opponent's Rhystic Study is now worth removing, and a Blood Artist is worth more than a vanilla 1/1 when the bot chooses what to sacrifice or block with. That consistency is deliberate (ADR 0033's amendment for #1013: one function prices a card both ways). It is also the main regression risk, and §8's suite run is what checks it.
 
-`CombatValue`, which the combat planner uses to compare an attacker with a blocker, is not changed in this ADR (open question 3).
+`CombatValue`, which the combat planner uses to compare an attacker with a blocker, is not changed in this ADR (owner decision 3).
 
 Worked:
 
@@ -317,8 +317,8 @@ Nothing here touches Layer A (`aiseat/rules`), which never chooses a cast. The m
 ## Out of scope
 
 - **The deck rebalance** (#2436) and **a fifth deck** (#2437). Both are measured with this pricing once it lands.
-- **The combat planner.** `CombatValue` stays body-only (open question 3). How the bot attacks and blocks is not changed here.
-- **The flat `ActivateBase` for a non-tap activated ability.** Konrad's mill is the visible case. It stays at 0.50 (open question 6). §6's purpose would let a later change price these rows.
+- **The combat planner.** `CombatValue` stays body-only (owner decision 3). How the bot attacks and blocks is not changed here.
+- **The flat `ActivateBase` for a non-tap activated ability.** Konrad's mill is the visible case. It stays at 0.50 (owner decision 6). §6's purpose would let a later change price these rows.
 - **Rituals and one-shot mana** (Dark Ritual, Lotus Petal, Treasures spent for a specific cast). These need a plan for the turn ("this mana lets me cast that"), which is lookahead, and ADR 0033 §3 rules out cloning a game.
 - **Vehicles' bodies, Equipment's best host, Aura targets.** Priced as ordinary permanents here. The existing equip and attach pricing stays.
 - **Holding up counterspells and instant-speed removal.** `InstantThreshold`'s "hold it" behaviour is unchanged outside §5's two windows, and §5 only covers moves that spend nothing but mana and taps.
@@ -335,11 +335,11 @@ One lever per PR, as ADR 0052 asks. Each is separately measurable against run 1,
 | # | PR | Depends on |
 |---|---|---|
 | 1 | This ADR and the S66 sprint section | — |
-| 2 | **Measurement.** The arena's per-contestant Play table and Cards section, `heuristic-baseline` and `BaselineConfig()` (with no new terms yet, so baseline and default are equal), and the baseline runs recorded in Measurements. No price changes. | 1 accepted |
+| 2 | **Measurement.** The arena's per-contestant Play table and Cards section, `heuristic-baseline` and `BaselineConfig()` (with no new terms yet, so baseline and default are equal), and the baseline runs recorded in Measurements. No price changes. | 1 |
 | 3 | **Mana sources** (§2): the `ManaPerExtra` value on the battlefield and the ramp premium at cast time. Positions: the rock and elf positions. | 2 |
 | 4 | **Permanents by what they do** (§3): the mana-value floor and `rowUtility`, in `permanentValue` and `creatureValue`. Positions: Rhystic Study, Viscera Seer, equip. | 2 |
 | 5 | **The two windows** (§5): own second main and the end step before the bot's turn, `SpellFloor`, and the tapped-blocker price by timing. Positions: loot, tutor, cantrip. | 2 |
-| 6 | **The purpose signal** (§6): `PurposeView`, `Spec.Purpose` and its row forms, the projection and redaction, `docs/protocol.md`, declarations for the curated decks and every catalog wipe, `TestCuratedDeckPurposes`, and the manual dump audit. No price changes. Touches `effects`, `game`, `protocol` and `decks`, and nothing under `aiseat/`. | 1 accepted |
+| 6 | **The purpose signal** (§6): `PurposeView`, `Spec.Purpose` and its row forms, the projection and redaction, `docs/protocol.md`, declarations for the curated decks and every catalog wipe, `TestCuratedDeckPurposes`, and the manual dump audit. No price changes. Touches `effects`, `game`, `protocol` and `decks`, and nothing under `aiseat/`. | 1 |
 | 7 | **Wipes, ramp spells and discard costs** (§4, §6's prices, §7's discard half). Positions: the two wipe positions and the two Windfall positions. | 3, 6 |
 | 8 | **Sacrifice outlets** (§7's second half): dying anyway and death payoffs. Positions: the two sacrifice positions. | 4, 6 |
 | 9 | **Exit.** The final run 1 and run 2 against A1 to A8, the Measurements rows, a "How the heuristic prices a card" section in `docs/bot.md` (replacing the pricing claims in its Known limitations), and the evidence on #2435. | 3–8 |
@@ -348,38 +348,18 @@ PRs 3, 4, 5 and 6 are independent of each other once PR 2 is in, so they can be 
 
 ---
 
-## Open questions for the owner
+## Owner decisions (2026-10-06)
 
-Each lists the recommendation first.
+The owner answered the eight open questions on 2026-10-06. Questions 1, 2, 4 and 8 were answered directly. Questions 3, 5, 6 and 7 were taken as recommended; the owner was told and did not object. Every answer is the recommendation the draft gave, so no section above changed. These answers are binding on the Delivery PRs.
 
-1. **How does the bot learn what a spell does?**
-   - **Recommended:** a `Purpose` declared on the catalog `Spec` and its rows, projected onto the view (§6), with a manual audit over the Scryfall dump to find undeclared cards. This is faithful: the catalog is already where the engine's truth about a card lives, and ADR 0106 set the precedent of the bot reading declared data there.
-   - Derive it on the server from the oracle text with a closed set of patterns. Every card is covered at once, but an English parser is a second, weaker reading of the card next to the catalog's, and it will disagree with the engine on exactly the odd cards.
-   - No new signal: generic floors only. Board wipes then stay uncastable or always castable, never board-aware.
-2. **Which cards get a purpose in S66?**
-   - **Recommended:** the curated decks' cards in the priced classes, plus every catalog board wipe. A wipe without one is the only case where the bot harms itself.
-   - The curated decks only.
-   - Every catalog card in the classes. Several hundred cards, and better done as a catalog sweep later.
-3. **Should a creature's ability rows count in combat (`CombatValue`) too?**
-   - **Recommended:** not in S66. Count them in the board value only, measure, and open a follow-up issue if the logs show the bot trading a Blood Artist for a vanilla 2/2. Combat is the best-tuned part of the heuristic and has the most suite positions.
-   - Yes, in PR 4, so that the board and combat agree.
-4. **How strict is the strength bar?**
-   - **Recommended:** A5 as written. At exit the new heuristic must beat the baseline outright (interval above the null over 96 games), and each step in between must not be detectably worse.
-   - Only "not worse" at exit. Easier to meet, but it would let a change that makes the bot cast everything and play no better count as done.
-5. **What happens to `heuristic-baseline` after S66?**
-   - **Recommended:** keep it as the frozen reference until the next ADR that changes the heuristic's prices. That ADR then replaces it with a new frozen config. It costs one config function and one arena name.
-   - Delete it at S66 exit.
-6. **Konrad's flat-priced mill, and every non-tap activated ability at +0.50.**
-   - **Recommended:** leave it in S66, and let A6 show whether black's lead survives once the other decks cast their cards. Price these rows by purpose in a later change if it does.
-   - Lower `ActivateBase` now. That changes every activated ability in the catalog in the same PR as everything else, and the measurement would no longer say which change did what.
-7. **Measure on today's decks or the rebalanced ones?**
-   - **Recommended:** today's four decks, as the bar says. The pricing is then judged on the decks whose evidence motivated it, and #2436 is measured afterwards with the fixed heuristic, as the owner ordered.
-   - On #2436's lists. That would mix the two changes' effects.
-8. **The end-step window: cheap instants and tap abilities at the end of the seat before the bot (§5).**
-   - **Recommended:** both §5 windows, the bot's own second main and the end step before its turn. That is when a human spends an instant they did not need, and it is the only window in which a tap loot costs nothing.
-   - The second main only. Simpler, but the bot then casts every instant at sorcery speed and loots only on its own turn, giving up its blocker.
-
----
+1. **How the bot learns what a spell does: a declared purpose.** The catalog declares `PurposeView` on the `Spec` and its modes, alternative costs and rows (§6), plus the manual audit over the Scryfall dump. Rejected: deriving it from oracle text on the server, and having no signal.
+2. **Which cards get a purpose in S66: the curated decks' cards in the priced classes, plus every catalog board wipe.** Rejected: the curated decks only, and every card in the classes.
+3. **Row utility in combat: not in S66.** `CombatValue` stays body-only, and ability rows count in the board value only (§3). If the decision logs show the bot making bad trades because of it, open a follow-up issue.
+4. **The strength bar: A5 as written.** At exit the new heuristic must beat `heuristic-baseline` outright (its Wilson interval above the 25% null over 96 games). Each sub-PR before that must not be detectably worse (§8).
+5. **`heuristic-baseline` after S66: kept.** It stays as the frozen reference until the next ADR that changes the heuristic's prices, which replaces it with a new frozen config (§9).
+6. **Konrad's mill and the flat `ActivateBase`: left alone in S66.** Non-tap activated abilities stay at +0.50. Acceptance bar A6 decides whether black's lead needs a later change.
+7. **Which decks are measured: today's four.** The acceptance bar is measured on the current curated decks. #2436 is measured afterwards with the fixed heuristic.
+8. **The windows: both.** §5 applies in the bot's own second main phase and in the end step of the seat immediately before the bot's turn.
 
 ## Consequences
 
