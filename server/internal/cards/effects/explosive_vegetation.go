@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a0abd957-01a0-4aa9-8fc8-0e6840d21606",
 		Name:         "Explosive Vegetation",
+		Purpose:      game.Purpose{Lands: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{

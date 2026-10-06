@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID: "96ce2403-4607-440a-92ae-80aceb458c5d",
 		Name:     "Shatterstorm",
+		Purpose:  game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifacts, How: game.SweepDestroy}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: Artifact(), CantBeRegenerated: true}.Apply(ctx)
 		},

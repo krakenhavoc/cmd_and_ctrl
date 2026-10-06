@@ -30,8 +30,10 @@ import (
 // simultaneous event like any other mass effect.
 func init() {
 	Register(Spec{
-		OracleID:     "7c779721-cd1b-4696-9ae9-68ccc284ed2a",
-		Name:         "Aetherize",
+		OracleID: "7c779721-cd1b-4696-9ae9-68ccc284ed2a",
+		Name:     "Aetherize",
+		// ADR 0126 §6: only the attacking creatures.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, OpponentsOnly: true, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			var attackers []uuid.UUID

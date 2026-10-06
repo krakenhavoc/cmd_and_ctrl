@@ -75,7 +75,9 @@ func init() {
 			},
 			{
 				Label: "−4: For each player, choose a creature that player controls. Each player sacrifices all creatures they control not chosen this way.",
-				Cost:  LoyaltyCost(-4),
+				// ADR 0126 §6: each player keeps one creature.
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepSacrifice, Partial: true}},
+				Cost:    LoyaltyCost(-4),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return ChoosePermanents{
 						Question:   "The Eternal Wanderer — choose the creature that player keeps",

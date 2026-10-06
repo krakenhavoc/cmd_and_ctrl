@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e4bcd4ea-e7cd-4471-8f3b-18bb51d3d70c",
 		Name:         "Pyroclasm",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, Creature(), 2)

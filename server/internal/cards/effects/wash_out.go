@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "54748cb1-d92a-4212-ad76-417ee79b5ef1",
-		Name:         "Wash Out",
+		OracleID: "54748cb1-d92a-4212-ad76-417ee79b5ef1",
+		Name:     "Wash Out",
+		// ADR 0126 §6: only permanents of the chosen color.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepAllPermanents, How: game.SweepBounce, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ChooseColorThen(game.ColorForHarm, ctx.Game, item.Controller, item.SourceCardID, "Wash Out — choose a color",

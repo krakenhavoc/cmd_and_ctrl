@@ -36,6 +36,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "51f9a6cc-8eb2-44ed-a2d9-913ac514ad67",
 		Name:         "Bane of Progress",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifactsAndEnchantments, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "a5cbd257-c836-493e-bb1a-76242619dea2",
 		Name:           "Big Score",
+		Purpose:        game.Purpose{Draws: 2, Tokens: 2},
 		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

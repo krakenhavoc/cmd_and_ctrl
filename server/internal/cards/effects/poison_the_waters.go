@@ -22,10 +22,10 @@ func init() {
 		Name:         "Poison the Waters",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("All creatures get -1/-1 until end of turn.", nil,
+			ModeWithPurpose(ModeDoing("All creatures get -1/-1 until end of turn.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return BoostUntilEOT{Match: Creature(), Power: -1, Toughness: -1, Label: "Poison the Waters"}.Apply(ctx)
-				}),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1}}),
 			ModeDoing("Target player reveals their hand. You choose an artifact or creature card from it. That player discards that card.",
 				TargetPlayer("target player"),
 				ModeTargetRevealsYouChooseDiscard(Or(Artifact(), Creature()), "artifact or creature card")),

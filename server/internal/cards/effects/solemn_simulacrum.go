@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "00c0543c-2a1f-4425-8283-4062d74a1637",
 		Name:         "Solemn Simulacrum",
+		Purpose:      game.Purpose{Lands: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Optional(WhenThisEnters("Solemn Simulacrum — search for a basic land", func(g *game.Game, item *game.StackItem) error {

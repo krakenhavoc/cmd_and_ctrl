@@ -28,8 +28,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "2a2ea189-b663-4f4a-bb23-ff7a4af25f71",
-		Name:         "Settle the Wreckage",
+		OracleID: "2a2ea189-b663-4f4a-bb23-ff7a4af25f71",
+		Name:     "Settle the Wreckage",
+		// ADR 0126 §6: only the attacking creatures of the player it targets.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepExile, OpponentsOnly: true, Partial: true}},
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

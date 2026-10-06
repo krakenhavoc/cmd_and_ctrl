@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "84de4fec-2f38-4293-93d3-b3882c5aac14",
 		Name:         "Ambition's Cost",
+		Purpose:      game.Purpose{Draws: 3},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()

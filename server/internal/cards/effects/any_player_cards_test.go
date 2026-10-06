@@ -86,7 +86,10 @@ func apaActivate(t *testing.T, g *game.Game, p *game.Player, source uuid.UUID, i
 }
 
 // Every card of the batch registers only any-player rows, and only the
-// two plain card draws declare a purpose for the bot (owner decision 2).
+// two plain card draws declare what the row buys another player, the
+// half of the purpose the bot reads across the table (owner decision
+// 2). The three damage sweepers declare their sweep (ADR 0126 §6),
+// which buys an activator nothing the bot prices.
 func TestAnyPlayerBatchRowsAndPurposes(t *testing.T) {
 	cases := []struct {
 		oracle string
@@ -111,8 +114,16 @@ func TestAnyPlayerBatchRowsAndPurposes(t *testing.T) {
 			if !r.AnyPlayer {
 				t.Errorf("%s row %d is not an any-player row", tc.oracle, i)
 			}
-			if want := (game.ActivationPurpose{Draws: tc.draws}); r.Purpose != want {
+			across := game.Purpose{Draws: r.Purpose.Draws, ControllerLosesLife: r.Purpose.ControllerLosesLife}
+			if want := (game.Purpose{Draws: tc.draws}); across != want {
 				t.Errorf("%s row %d purpose = %+v, want %+v", tc.oracle, i, r.Purpose, want)
+			}
+			sweeper := tc.oracle == apaSquallmonger || tc.oracle == apaWarmonger || tc.oracle == apaIfhBiffEfreet
+			if r.Purpose.Sweep.IsZero() == sweeper {
+				t.Errorf("%s row %d sweep = %+v, want one exactly on the three damage sweepers", tc.oracle, i, r.Purpose.Sweep)
+			}
+			if rest := r.Purpose; rest.Discards+rest.Lands+rest.Tutors+rest.SelfMillTutor+rest.Tokens != 0 || rest.DeathPayoff {
+				t.Errorf("%s row %d declares %+v, more than its draws and its sweep", tc.oracle, i, r.Purpose)
 			}
 		}
 	}

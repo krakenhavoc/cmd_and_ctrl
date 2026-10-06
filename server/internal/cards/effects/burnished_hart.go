@@ -25,7 +25,8 @@ func init() {
 		Name:         "Burnished Hart",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{3}, Sacrifice Burnished Hart: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+			Label:   "{3}, Sacrifice Burnished Hart: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Lands: 2},
 			Cost: game.AbilityCost{
 				SacrificeSelf: true,
 				Mana:          "{3}",

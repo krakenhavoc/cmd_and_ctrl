@@ -28,11 +28,11 @@ func init() {
 			// the source's own death counts, and diedCreature has
 			// already resolved the card post-move so its
 			// controller is still readable.
-			WheneverACreatureYouControlDies("Butcher of Malakir — each opponent sacrifices a creature", Do(EachPlayerSacrifices{
+			TriggerWithPurpose(WheneverACreatureYouControlDies("Butcher of Malakir — each opponent sacrifices a creature", Do(EachPlayerSacrifices{
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-			})),
+			})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

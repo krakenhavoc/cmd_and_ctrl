@@ -33,6 +33,8 @@ func fusedCatalogDef(base string) *CardDef {
 	nLeft := left.Targets.ClauseCount()
 	def := &CardDef{
 		Targets: chainTargetSpecs(left.Targets, right.Targets),
+		// ADR 0126 §6: a fused spell does what both halves do.
+		Purpose: left.Purpose.plus(right.Purpose),
 	}
 	if def.Targets != nil {
 		def.TargetMode = def.Targets.Mode

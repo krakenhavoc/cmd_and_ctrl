@@ -31,10 +31,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Plague Boiler — put a plague counter", putACounterOnThis(plague)),
-			WhenThisHasAtLeast(plague, 3, "Plague Boiler — sacrifice it and destroy all nonland permanents",
+			TriggerWithPurpose(WhenThisHasAtLeast(plague, 3, "Plague Boiler — sacrifice it and destroy all nonland permanents",
 				SacrificeThisThen(func(ctx *Context) error {
 					return DestroyAllMatching{Match: Nonland()}.Apply(ctx)
-				})),
+				})), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}}),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{B}{G}: Put a plague counter on this artifact or remove a plague counter from it.",

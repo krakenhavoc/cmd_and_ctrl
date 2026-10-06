@@ -24,11 +24,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
-			WheneverACreatureYouControlDies("Dictate of Erebos — each opponent sacrifices a creature", Do(EachPlayerSacrifices{
+			TriggerWithPurpose(WheneverACreatureYouControlDies("Dictate of Erebos — each opponent sacrifices a creature", Do(EachPlayerSacrifices{
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-			})),
+			})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

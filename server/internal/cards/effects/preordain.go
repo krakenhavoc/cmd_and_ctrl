@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ac641490-ca14-48d7-8cc4-b69ce984befa",
 		Name:         "Preordain",
+		Purpose:      game.Purpose{Draws: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()

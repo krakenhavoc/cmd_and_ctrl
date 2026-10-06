@@ -19,7 +19,8 @@ func init() {
 		OracleID: "31f15274-301b-47c5-ba19-0ced04520878",
 		Name:     "Wayfarer's Bauble",
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}, Sacrifice Wayfarer's Bauble: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+			Label:   "{2}, {T}, Sacrifice Wayfarer's Bauble: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Lands: 1},
 			Cost: game.AbilityCost{
 				Tap:           true,
 				SacrificeSelf: true,

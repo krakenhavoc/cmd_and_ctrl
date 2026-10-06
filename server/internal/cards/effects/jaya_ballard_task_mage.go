@@ -39,8 +39,9 @@ func init() {
 				Effect:  abilityBody(damageAnyTargetNoRegenIfDealt(fixedAmount(3))),
 			},
 			{
-				Label: "{5}{R}{R}, {T}, Discard a card: Jaya Ballard deals 6 damage to each creature and each player.",
-				Cost:  Plus(ManaCost("{5}{R}{R}"), TapCost(), DiscardACard()),
+				Label:   "{5}{R}{R}, {T}, Discard a card: Jaya Ballard deals 6 damage to each creature and each player.",
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 6}},
+				Cost:    Plus(ManaCost("{5}{R}{R}"), TapCost(), DiscardACard()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b23DamageEachCreatureAndEachPlayer(NewContext(g, item), 6)
 				},

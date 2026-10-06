@@ -34,6 +34,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b5516bc9-ec8d-4323-8748-96c49d7d0622",
 		Name:         "Deadly Tempest",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{

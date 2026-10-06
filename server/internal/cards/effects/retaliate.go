@@ -14,8 +14,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // does not say otherwise.
 func init() {
 	Register(Spec{
-		OracleID:     "37f5d022-2989-4b44-9bca-dc6b606afe10",
-		Name:         "Retaliate",
+		OracleID: "37f5d022-2989-4b44-9bca-dc6b606afe10",
+		Name:     "Retaliate",
+		// ADR 0126 §6: only the creatures that dealt damage to you this turn.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Creature(), dealtDamageToPlayerThisTurn(item.Controller))}.Apply(ctx)

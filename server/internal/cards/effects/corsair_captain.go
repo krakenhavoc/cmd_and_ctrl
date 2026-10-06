@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a7ec13c6-7ade-433a-b5a2-047854eef486",
 		Name:         "Corsair Captain",
+		Purpose:      game.Purpose{Tokens: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Corsair Captain — create a Treasure", Do(CreateToken{

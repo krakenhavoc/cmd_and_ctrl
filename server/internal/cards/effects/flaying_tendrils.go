@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "cc2d016a-af44-427b-a25a-593274369449",
 		Name:            "Flaying Tendrils",
+		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2}},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
 		OnResolve:       allCreaturesShrinkThenExileIfTheyDie(-2, false),

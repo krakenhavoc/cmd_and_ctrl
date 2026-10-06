@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "4245ee98-2d4c-49d1-8d07-80760cae2bf9",
 		Name:             "Devastation Tide",
+		Purpose:          game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce}},
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Miracle("{1}{U}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

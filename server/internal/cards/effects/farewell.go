@@ -30,9 +30,9 @@ func init() {
 		Name:         "Farewell",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose one or more", 1, 4,
-			Mode("Exile all artifacts."),
-			Mode("Exile all creatures."),
-			Mode("Exile all enchantments."),
+			ModeWithPurpose(Mode("Exile all artifacts."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifacts, How: game.SweepExile}}),
+			ModeWithPurpose(Mode("Exile all creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepExile}}),
+			ModeWithPurpose(Mode("Exile all enchantments."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepEnchantments, How: game.SweepExile}}),
 			Mode("Exile all graveyards."),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

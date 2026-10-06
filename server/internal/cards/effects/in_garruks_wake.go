@@ -32,8 +32,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (a Layer-4 effect) should be destroyed once.
 func init() {
 	Register(Spec{
-		OracleID:     "a6899b94-427d-4851-a474-4087e0a0918a",
-		Name:         "In Garruk's Wake",
+		OracleID: "a6899b94-427d-4851-a474-4087e0a0918a",
+		Name:     "In Garruk's Wake",
+		// ADR 0126 §6: planeswalkers are not a sweep class, so only the creature half is declared.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{

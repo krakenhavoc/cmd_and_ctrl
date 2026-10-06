@@ -26,6 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "079ac521-9414-46c1-acd9-2ff2ff047d22",
 		Name:         "Cosmotronic Wave",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
 		OnResolve:    pingThenOpponentsCantBlock("Cosmotronic Wave"),
 	})

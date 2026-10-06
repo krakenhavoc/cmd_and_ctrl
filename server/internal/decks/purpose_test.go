@@ -1,0 +1,277 @@
+package decks
+
+import (
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// purpose_test.go — ADR 0126 §6: the curated decks' cards declare what
+// they do.
+//
+// The heuristic bot reads the view and nothing else (ADR 0033 §3), and
+// the view cannot tell Wrath of God from Divination: both are
+// untargeted sorceries with a mana value. A card's declared Purpose is
+// what tells them apart, so a curated instant or sorcery that declares
+// none is priced as a blank. TestCuratedDeckPurposes holds every one of
+// them to a declaration, or to a named reason it has none.
+//
+// The decks package has no type lines offline (the dump is not in the
+// repo), so the instants and sorceries are listed by hand below, and
+// realdump_purpose_manual_test.go checks the list against Scryfall.
+
+// curatedInstantsAndSorceries is every instant and sorcery in the four
+// curated decks, by name. A card that is in two decks is listed once.
+var curatedInstantsAndSorceries = []string{
+	// esper-control
+	"Counterspell", "Negate", "Swan Song", "An Offer You Can't Refuse", "Arcane Denial",
+	"Mana Drain", "Mental Misstep", "Wash Away", "Swords to Plowshares", "Path to Exile",
+	"Doom Blade", "Go for the Throat", "Infernal Grasp", "Feed the Swarm", "Withering Torment",
+	"Anguished Unmaking", "Mortify", "Despark", "Generous Gift", "Stroke of Midnight",
+	"Wrath of God", "Damnation", "Day of Judgment", "Damn", "Austere Command", "Farewell",
+	"Cyclonic Rift", "Night's Whisper", "Sign in Blood", "Ambition's Cost", "Divination",
+	"Preordain", "Pull from Tomorrow", "Stroke of Genius", "Demonic Tutor", "Vampiric Tutor",
+	"Diabolic Tutor",
+	// izzet-aggro
+	"Lightning Bolt", "Shock", "Abrade", "Arc Trail", "Blaze", "Izzet Charm", "Pyroblast",
+	"Frantic Search", "Faithless Looting", "Thrill of Possibility", "Big Score",
+	"Unexpected Windfall", "Windfall", "Wheel of Fortune", "Vandalblast",
+	"Rapid Hybridization", "Pongify",
+	// mono-black-aristocrats
+	"Reanimate", "Victimize", "Zombify", "Living Death", "Rise of the Dark Realms", "Entomb",
+	"Buried Alive", "Village Rites", "Altar's Reap", "Deadly Dispute", "Exsanguinate",
+	"Ashes to Ashes", "Thoughtseize", "Mind Rot", "Dark Ritual",
+	// simic-ramp
+	"Rampant Growth", "Nature's Lore", "Three Visits", "Farseek", "Cultivate", "Kodama's Reach",
+	"Skyshroud Claim", "Explosive Vegetation", "Harrow", "Overrun", "Return of the Wildspeaker",
+	"Shamanic Revelation", "Beast Within", "Krosan Grip",
+}
+
+// valueIsTheirTarget is ADR 0126 §6's short, named list of curated
+// spells whose value is what they target: removal, counterspells,
+// targeted discard and reanimation. The heuristic prices a target
+// already (targetsValue), so a purpose would say nothing it does not
+// know. Keyed by name; the value is the class.
+var valueIsTheirTarget = map[string]string{
+	"Counterspell":              "counterspell",
+	"Negate":                    "counterspell",
+	"Swan Song":                 "counterspell",
+	"An Offer You Can't Refuse": "counterspell",
+	"Arcane Denial":             "counterspell",
+	"Mana Drain":                "counterspell",
+	"Mental Misstep":            "counterspell",
+	"Wash Away":                 "counterspell",
+	"Pyroblast":                 "counterspell or removal, by mode",
+	"Swords to Plowshares":      "removal",
+	"Path to Exile":             "removal",
+	"Doom Blade":                "removal",
+	"Go for the Throat":         "removal",
+	"Infernal Grasp":            "removal",
+	"Feed the Swarm":            "removal",
+	"Withering Torment":         "removal",
+	"Anguished Unmaking":        "removal",
+	"Mortify":                   "removal",
+	"Despark":                   "removal",
+	"Generous Gift":             "removal",
+	"Stroke of Midnight":        "removal",
+	"Lightning Bolt":            "removal or burn",
+	"Shock":                     "removal or burn",
+	"Abrade":                    "removal, by mode",
+	"Arc Trail":                 "removal or burn",
+	"Blaze":                     "removal or burn",
+	"Rapid Hybridization":       "removal",
+	"Pongify":                   "removal",
+	"Beast Within":              "removal",
+	"Krosan Grip":               "removal",
+	"Ashes to Ashes":            "removal",
+	"Thoughtseize":              "targeted discard",
+	"Mind Rot":                  "targeted discard",
+	"Sign in Blood":             "its target decides whether it draws or drains",
+	"Stroke of Genius":          "its target decides who draws, and the amount is X",
+	"Reanimate":                 "reanimation of the target",
+	"Victimize":                 "reanimation of the targets",
+	"Zombify":                   "reanimation of the target",
+}
+
+// noPrintedAmount is the curated spells that do something in a priced
+// class, or near it, but print no fixed amount a Purpose could hold:
+// the amount is X or counted at resolution, the effect is symmetric, or
+// it is a class ADR 0126 leaves out (rituals, pumps). Each is priced by
+// the generic floors.
+var noPrintedAmount = map[string]string{
+	"Pull from Tomorrow":        "draws X",
+	"Windfall":                  "each player discards a hand and draws as many as the largest; no fixed amount",
+	"Wheel of Fortune":          "each player discards a hand and draws seven; its value is the hands, which no amount says",
+	"Exsanguinate":              "drains X",
+	"Living Death":              "a symmetric mass reanimation: a sweep purpose would price the sacrifice and miss the return",
+	"Rise of the Dark Realms":   "mass reanimation from every graveyard",
+	"Dark Ritual":               "a ritual: its value is the spell it pays for (ADR 0126 Out of scope)",
+	"Overrun":                   "a combat pump: its value is the attack (ADR 0126 Out of scope)",
+	"Return of the Wildspeaker": "draws as many as the greatest power, or a pump",
+	"Shamanic Revelation":       "draws one per creature, counted at resolution",
+}
+
+// curatedPermanentPurposes is every curated permanent in a class ADR
+// 0126 prices (ramp, draw, loot, tutor, wipe, death payoff) that
+// declares a purpose, with the slot it declares it in. Mana rocks and
+// dorks are not here: their mana abilities already say what they make.
+var curatedPermanentPurposes = map[string]string{
+	// enters effects, on the card
+	"Baleful Strix":          "card",
+	"Mulldrifter":            "card",
+	"Wood Elves":             "card",
+	"Solemn Simulacrum":      "card",
+	"Corsair Captain":        "card",
+	"Thraben Inspector":      "card",
+	"Bastion of Remembrance": "card",
+	// activated rows
+	"Mary Read and Anne Bonny": "activated",
+	"Loran of the Third Path":  "activated",
+	"Glint-Horn Buccaneer":     "activated",
+	"Geier Reach Sanitarium":   "activated",
+	"Vampiric Rites":           "activated",
+	"Warren Soultrader":        "activated",
+	"Sakura-Tribe Elder":       "activated",
+	"Burnished Hart":           "activated",
+	"Wayfarer's Bauble":        "activated",
+	// death payoffs, on the triggered row
+	"Blood Artist":         "death payoff",
+	"Zulaport Cutthroat":   "death payoff",
+	"Midnight Reaper":      "death payoff",
+	"Pitiless Plunderer":   "death payoff",
+	"Grave Pact":           "death payoff",
+	"Dictate of Erebos":    "death payoff",
+	"Butcher of Malakir":   "death payoff",
+	"Syr Konrad, the Grim": "death payoff",
+	"Mirkwood Bats":        "death payoff",
+}
+
+// specDeclaresPurpose reports whether a spell declares what it does on
+// the card, on a mode or on an alternative cost.
+func specDeclaresPurpose(s effects.Spec) bool {
+	if !s.Purpose.IsZero() {
+		return true
+	}
+	if s.Modes != nil {
+		for _, o := range s.Modes.Options {
+			if !o.Purpose.IsZero() {
+				return true
+			}
+		}
+	}
+	for _, a := range s.AlternativeCosts {
+		if !a.Purpose.IsZero() {
+			return true
+		}
+	}
+	return false
+}
+
+// declaresIn reports whether the spec declares a purpose in `slot`.
+func declaresIn(s effects.Spec, slot string) bool {
+	switch slot {
+	case "card":
+		return !s.Purpose.IsZero()
+	case "activated":
+		for _, a := range s.Activated {
+			if !a.Purpose.IsZero() {
+				return true
+			}
+		}
+	case "death payoff":
+		for _, t := range s.Triggered {
+			if t.Purpose.DeathPayoff {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestCuratedDeckPurposes(t *testing.T) {
+	spells := map[string]bool{}
+	for _, n := range curatedInstantsAndSorceries {
+		if spells[n] {
+			t.Errorf("%s is listed twice in curatedInstantsAndSorceries", n)
+		}
+		spells[n] = true
+	}
+	for n := range valueIsTheirTarget {
+		if _, dup := noPrintedAmount[n]; dup {
+			t.Errorf("%s is on both exemption lists", n)
+		}
+	}
+
+	inDeck := map[string]bool{}
+	var missing []string
+	for _, d := range All() {
+		for _, c := range d.Cards() {
+			if c.Basic {
+				continue
+			}
+			inDeck[c.Name] = true
+			spec, ok := effects.Lookup(c.OracleID)
+			if !ok {
+				continue // TestEveryCardResolvesToARegisteredSpec's failure, not this one's
+			}
+			if spells[c.Name] {
+				declared := specDeclaresPurpose(spec)
+				_, target := valueIsTheirTarget[c.Name]
+				_, noAmount := noPrintedAmount[c.Name]
+				switch {
+				case declared && (target || noAmount):
+					t.Errorf("%s (%s) declares a purpose and is also on an exemption list: take it off the list", c.Name, d.ID)
+				case !declared && !target && !noAmount:
+					missing = append(missing, c.Name+" ("+d.ID+")")
+				}
+			}
+			if slot, ok := curatedPermanentPurposes[c.Name]; ok && !declaresIn(spec, slot) {
+				t.Errorf("%s (%s) declares no purpose on its %s", c.Name, d.ID, slot)
+			}
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		t.Errorf("%d curated instant(s) or sorcery(ies) declare no Purpose (ADR 0126 §6): declare one on the "+
+			"Spec, its modes or its alternative costs, or name why not in valueIsTheirTarget or noPrintedAmount:\n\t%s",
+			len(missing), strings.Join(missing, "\n\t"))
+	}
+
+	// No stale entries: every listed card is in a curated deck.
+	for _, list := range []struct {
+		name  string
+		names []string
+	}{
+		{"curatedInstantsAndSorceries", curatedInstantsAndSorceries},
+		{"valueIsTheirTarget", sortedKeys(valueIsTheirTarget)},
+		{"noPrintedAmount", sortedKeys(noPrintedAmount)},
+		{"curatedPermanentPurposes", sortedKeys(curatedPermanentPurposes)},
+	} {
+		for _, n := range list.names {
+			if !inDeck[n] {
+				t.Errorf("%s lists %q, which is in no curated deck", list.name, n)
+			}
+		}
+	}
+	for n := range valueIsTheirTarget {
+		if !spells[n] {
+			t.Errorf("valueIsTheirTarget lists %q, which is not in curatedInstantsAndSorceries", n)
+		}
+	}
+	for n := range noPrintedAmount {
+		if !spells[n] {
+			t.Errorf("noPrintedAmount lists %q, which is not in curatedInstantsAndSorceries", n)
+		}
+	}
+}
+
+func sortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}

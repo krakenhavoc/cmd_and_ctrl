@@ -456,6 +456,13 @@ type TriggeredAbility struct {
 	// about a Saga rather than a condition. See designations.go and
 	// ADR 0071.
 	ActiveWhen Designation
+
+	// Purpose is what the row does, as printed amounts (ADR 0126 §6):
+	// DeathPayoff on Blood Artist's "whenever a creature dies", a
+	// Sweep on a saga chapter that destroys all creatures. Catalog data
+	// projected onto the row's `ability_rows` entry; the engine never
+	// reads it.
+	Purpose Purpose
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask

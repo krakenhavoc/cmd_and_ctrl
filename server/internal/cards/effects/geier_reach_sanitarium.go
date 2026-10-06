@@ -30,7 +30,9 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, {T}: Each player draws a card, then discards a card.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			// ADR 0126 §6: every other player loots too, which no field says.
+			Purpose: game.Purpose{Draws: 1, Discards: 1},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, p := range tablePlayers(ctx) {

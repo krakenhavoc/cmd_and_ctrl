@@ -27,12 +27,12 @@ func init() {
 		Name:         "Pitiless Plunderer",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return anotherCreatureYouControlDied(ev, source, g)
 			}, "Pitiless Plunderer — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,
-			})),
+			})), game.Purpose{Tokens: 1, DeathPayoff: true}),
 		},
 	})
 }

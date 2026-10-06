@@ -33,6 +33,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b17ea905-0696-4e58-b564-557e87236e27",
 		Name:         "Fumigate",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve:    destroyAllCreaturesGainLifeForEach,
 	})

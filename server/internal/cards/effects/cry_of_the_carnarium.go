@@ -26,6 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1b9a5170-39c0-4cbf-a041-f3c15f1359ae",
 		Name:         "Cry of the Carnarium",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (BoostUntilEOT{Match: Creature(), Power: -2, Toughness: -2}).Apply(ctx); err != nil {
