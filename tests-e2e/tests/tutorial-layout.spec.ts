@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ADMIN_TOKEN } from "./env";
+import { handCardCount, unreachableHandCards } from "./hand-reach";
 
 // tutorial-layout: the tutorial's coach card must not cost the board
 // any height (ADR 0076 §2.3, #1081 follow-up).
@@ -10,7 +11,12 @@ import { ADMIN_TOKEN } from "./env";
 // at 1280×800 the creature row lost 40 of its 128px. Now the cell takes
 // width from the hand row only, so the battlefield rows are the same
 // height with the coach up as with it gone. This measures that on a real
-// practice table at two desktop sizes.
+// practice table at three desktop sizes.
+//
+// The width it takes is the hand's: the fan fits what is left of the
+// row, so every card in the hand can still be reached by the pointer,
+// with the coach up and with it gone (#2395: at 1440×900 the fan ran
+// under the coach card and its leftmost card could not be clicked).
 
 type Box = {
   top: number;
@@ -46,6 +52,7 @@ async function boxes(page: Page) {
 
 for (const size of [
   { width: 1280, height: 800 },
+  { width: 1440, height: 900 },
   { width: 1920, height: 1080 },
 ]) {
   test(`the coach card takes no height from the board at ${size.width}×${size.height}`, async ({
@@ -97,12 +104,25 @@ for (const size of [
       await expect(page.locator(".coach-spacer")).toHaveCount(1);
       await page.waitForTimeout(500);
       const up = await boxes(page);
+      // #2395: every card of the opening hand shows, beside the coach.
+      // The pointer is parked off the board, so the hand is at rest.
+      await page.mouse.move(size.width / 2, 4);
+      expect(await handCardCount(page)).toBeGreaterThan(0);
+      expect(
+        await unreachableHandCards(page),
+        "hand cards the pointer cannot reach with the coach up",
+      ).toEqual([]);
 
       await coach.getByRole("button", { name: "Skip tutorial" }).click();
       await expect(coach).toHaveCount(0);
       await expect(page.locator(".coach-spacer")).toHaveCount(0);
+      await page.mouse.move(size.width / 2, 4);
       await page.waitForTimeout(500);
       const gone = await boxes(page);
+      expect(
+        await unreachableHandCards(page),
+        "hand cards the pointer cannot reach with the coach gone",
+      ).toEqual([]);
 
       // The battlefield rows and the bottom row are exactly as tall with
       // the coach as without it.

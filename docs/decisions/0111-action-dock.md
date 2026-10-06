@@ -234,6 +234,8 @@ A sheet is a panel that grows upward out of the dock, right-aligned with it, as 
 
 *Amendment (2026-10-05, #2374):* the stage dims the table, not the game's top bar. It starts under the bar, so Lobby, the game log, sound and settings stay usable while the hand is up, and the log drawer opened over the stage draws above it (it still stops above the dock). A d20 rolled from the ⋯ menu in the mulligan is written to that log.
 
+*Amendment (2026-10-05, #2403):* over the stage, the log drawer starts below the stage's **View table** button instead of at the bar, so the stage can still be folded away with the log open. It keeps its right edge and its bottom above the dock, so Keep hand stays uncovered too.
+
 The sheet bodies are today's modal bodies, moved. The shared `.prompt-modal` shell becomes a `.dock-sheet` shell in `app.css`. Each picker keeps its own body and validation and stops rendering its own footer. Its confirm and cancel become a dock request. Each picker's Enter / Escape `$effect` is deleted, because the dock's handler does it once. The z-index ladder gets one new rung: the dock and its sheets sit at 55. That is above the log drawer (30), the strip and the command bar (40) and the vote panel (50). It is below the card-local menus (`ManaAbilityMenu` 60, `ManaSourcePicker` 70, `CardContextMenu` 3000), the full-screen modals that remain (200: settings, table settings, the bug form, deck import, spawn, the zone browser) and the hover zoom (300).
 
 ### 4. Placement, and what it must not cover
