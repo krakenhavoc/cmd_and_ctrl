@@ -613,7 +613,10 @@
       blightPromptOptionIDs = bl.options;
       blightPrompt = {
         card,
-        label: `a creature you control for ${bl.offer.label ?? `Blight ${bl.n}`} (it gets ${bl.n} -1/-1 counter${bl.n === 1 ? "" : "s"})`,
+        label:
+          bl.n === 0
+            ? `a creature you control for ${bl.offer.label ?? "Blight X"} (it gets X -1/-1 counters)`
+            : `a creature you control for ${bl.offer.label ?? `Blight ${bl.n}`} (it gets ${bl.n} -1/-1 counter${bl.n === 1 ? "" : "s"})`,
         choices,
       };
       return;
@@ -3370,7 +3373,9 @@
   <XCostModal
     gameID={view.id}
     card={xPromptCard}
-    suggestedMax={suggestedX}
+    suggestedMax={xPromptCard?.additional_cost?.blight_x
+      ? Math.min(suggestedX, xPromptCard.additional_cost.blight_x_max ?? 0)
+      : suggestedX}
     costLabel={xPromptCard
       ? alternativeCostByKey(xPromptCard, xPromptChoices.altCost)?.mana_cost
       : undefined}

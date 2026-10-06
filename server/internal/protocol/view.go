@@ -949,6 +949,15 @@ type AdditionalCostView struct {
 	// cast_spell as `blight_ids`.
 	Blight        int               `json:"blight,omitempty"`
 	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
+	// BlightX marks "blight X" (CR 701.68a, Soul Immolation, #2174): the
+	// announced X (`demands_x` is set too, so the X prompt opens) is the
+	// number of -1/-1 counters, put on the ONE creature named in
+	// `blight_ids` out of `blight_options`. BlightXMax is the printed
+	// ceiling — the greatest toughness among the viewer's creatures —
+	// and is absent at 0 (no creature, so X = 0 is the only
+	// announcement). The server refuses a larger X.
+	BlightX    bool `json:"blight_x,omitempty"`
+	BlightXMax int  `json:"blight_x_max,omitempty"`
 	// Payable marks a branch the viewer could pay right now:
 	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
 	// the bot enumerator ask. Absent means the branch cannot be taken
@@ -5871,7 +5880,7 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
 	out := &AdditionalCostView{
 		DiscardCards: ac.DiscardCards,
-		DemandsX:     ac.PayLifeX,
+		DemandsX:     ac.PayLifeX || ac.BlightX,
 		Label:        ac.Label,
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
@@ -5882,6 +5891,13 @@ func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCos
 		// shroud gate must not narrow the list the client offers. The
 		// same list, count and order the abilities ship (#747).
 		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+	}
+	if ac.BlightX {
+		// #2174: the same creature walk, and the ceiling the validator
+		// and the bot enumerator read (BlightXCeilingForEffect).
+		out.BlightX = true
+		out.BlightXMax = g.BlightXCeilingForEffect(caster)
+		out.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
 	}
 	if ac.Blight > 0 {
 		// The engine's own walk (#1703), as for an optional blight.

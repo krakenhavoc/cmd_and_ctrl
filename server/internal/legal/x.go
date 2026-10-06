@@ -95,6 +95,18 @@ func xCeilingFromCost(addCost *game.AdditionalCost, life int) int {
 	return life - 1
 }
 
+// blightXCeiling is the same question for "blight X" (#2174): the
+// largest X the seat may announce is the engine's own
+// BlightXCeilingForEffect — the greatest toughness among its creatures
+// — so the move the enumerator offers is never one CastSpell refuses
+// (#544). noXCeiling for every other cost.
+func (e *enumerator) blightXCeiling(addCost *game.AdditionalCost) int {
+	if addCost == nil || !addCost.BlightX {
+		return noXCeiling
+	}
+	return e.g.BlightXCeilingForEffect(e.seat)
+}
+
 // announcedX is the one number a cast announces for X: the largest
 // value EVERY cost component that prices X can pay for, at or above
 // the floor, capped by Options.MaxX like any other X search. Reports

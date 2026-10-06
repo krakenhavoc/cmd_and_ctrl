@@ -1144,7 +1144,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
-	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad blight payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1628,7 +1628,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// window and for the same reason. A creature the blight kills
 	// dies at the closing state-based check, with the cost paid.
 	g.payTeamworkLocked(playerID, params.TeamworkIDs)
-	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Error("cast_spell: blight cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

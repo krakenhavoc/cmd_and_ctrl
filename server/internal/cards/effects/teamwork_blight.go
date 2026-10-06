@@ -105,8 +105,24 @@ func checkTeamworkBlight(spec Spec) {
 	if ac := spec.AdditionalCost; ac != nil && (ac.Teamwork != 0 || ac.Blight != 0) {
 		panic(fmt.Sprintf("effects.Register: %q puts teamwork or blight in the mandatory AdditionalCost slot — declare Teamwork(n) / OptionalBlight(n) in OptionalCosts (#1703)", spec.Name))
 	}
+	// #2174: "blight X" is the mandatory slot's own component. It
+	// shares ONE announced X with pay-X-life, and ONE blight_ids list
+	// with an optional blight, so neither pairing can be paid as printed.
+	if ac := spec.AdditionalCost; ac != nil && ac.BlightX {
+		if ac.PayLifeX {
+			panic(fmt.Sprintf("effects.Register: %q blights X and pays X life — one announced X cannot pay both (#2174)", spec.Name))
+		}
+		for _, oc := range spec.OptionalCosts {
+			if oc.Blight != 0 {
+				panic(fmt.Sprintf("effects.Register: %q pairs blight X with optional blight %q — both would name the one creature on blight_ids (#2174)", spec.Name, oc.Key))
+			}
+		}
+	}
 	teamwork, blight := 0, 0
 	for _, oc := range spec.OptionalCosts {
+		if oc.BlightX {
+			panic(fmt.Sprintf("effects.Register: %q declares blight X as an optional cost %q — it is a mandatory additional cost (#2174)", spec.Name, oc.Key))
+		}
 		if oc.Teamwork == 0 && oc.Blight == 0 {
 			continue
 		}

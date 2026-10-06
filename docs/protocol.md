@@ -1921,6 +1921,15 @@ the card unpaid.
   `teamwork_ids` and `blight_ids` on its query string, with the meaning above:
   the creatures they name are not planned for mana.
 
+- **Blight X** (#2174, CR 701.68a / 107.3a): "As an additional cost to cast
+  this spell, blight X" (Soul Immolation) ships as `additional_cost:
+  { blight_x: true, blight_x_max, blight_options, demands_x: true, label }`.
+  The announced `x_value` is the number of -1/-1 counters, put on the ONE
+  creature named in `blight_ids` (at X = 0 the creature may be omitted).
+  `blight_x_max` is the greatest toughness among the viewer's creatures —
+  absent at 0 — and an `x_value` above it is refused. Additive within
+  schema v7.
+
 ## One list of cast prices, and the printed cost's place in it (#1012, #1015)
 
 One additive field on `CardView`, and a sharper meaning for two that
