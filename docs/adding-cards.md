@@ -4110,8 +4110,12 @@ non-empty and unique per card; `Register` panics otherwise. Only
 overload / evoke / cleave / flashback / warp / escape / disturb exist, plus the
 non-mana prices below (pitch, pay life, return, and since #1727 a
 sacrifice) —
-spree has no shape yet, and a card carrying it ships without it (say
-so in the card comment). Preparation cards are a layout, not a cost —
+spree is not on this list because it is not an alternative cost: it is a
+modal spell whose bullets each carry an additional cost (CR 702.172a),
+declared as `Modes: Spree(SpreeMode(label, cost, targets...), ...)` (or
+`SpreeModeDoing` for a bullet with its own closure) in
+[modes.go](../server/internal/cards/effects/modes.go) — see Caught in the
+Crossfire and Great Train Heist. Preparation cards are a layout, not a cost —
 see "Adding a preparation card" below. Foretell,
 suspend and plot are not alternative costs at all: they are CR 116.2
 special actions, declared in `Spec.SpecialActions` with
