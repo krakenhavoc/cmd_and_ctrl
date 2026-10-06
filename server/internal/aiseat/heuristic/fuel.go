@@ -153,6 +153,15 @@ func castableFromHere(c *protocol.CardView) bool {
 // price agree about what a card is worth by construction. `x` is the
 // announced X, which is zero for a card nobody is casting yet.
 func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
+	return p.resolvedValueOf(st, c, x, false)
+}
+
+// resolvedValueOf is resolvedValue for a cast that names targets
+// (`targeted`) or does not. A targeted cast gets no SpellFloor: what it
+// is worth is what it points at, which valueOfCast adds, and a floor
+// under it would fire removal at smaller creatures outside ADR 0126
+// §5's windows, which the ADR leaves alone.
+func (p *Policy) resolvedValueOf(st *state, c *protocol.CardView, x int, targeted bool) float64 {
 	if c == nil {
 		return 0
 	}
@@ -175,6 +184,11 @@ func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
 		// not, because a card being pitched is not being pointed at
 		// anything.)
 		v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+		// ADR 0126 §5: an untargeted spell the engine runs is worth at
+		// least a card that replaces itself and does a little more.
+		if v < p.cfg.SpellFloor && !targeted && !c.Unimplemented && untargetedSpell(c) {
+			v = p.cfg.SpellFloor
+		}
 	}
 	if c.IsCommander {
 		v += p.cfg.CommanderBonus

@@ -133,14 +133,3 @@ func TestBaselineConfigRanksTheSuiteAsBefore(t *testing.T) {
 		t.Logf("recorded %d new position(s) in %s", added, baselineRecord)
 	}
 }
-
-// TestBaselineConfigIsTheDefaultBeforeAnyS66Term pins the measurement
-// PR's own claim: it adds no pricing term, so the baseline and the
-// shipped tuning are one config. The first PR that adds a term
-// deletes this test, in the same change that zeroes the term in
-// BaselineConfig.
-func TestBaselineConfigIsTheDefaultBeforeAnyS66Term(t *testing.T) {
-	if heuristic.BaselineConfig() != heuristic.DefaultConfig() {
-		t.Fatalf("BaselineConfig differs from DefaultConfig before any ADR 0126 term has landed")
-	}
-}

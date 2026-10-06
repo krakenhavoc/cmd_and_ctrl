@@ -64,6 +64,42 @@ type Config struct {
 	// the classic rule-based-AI tell.
 	InstantThreshold float64
 
+	// LeftoverWindows turns on ADR 0126 §5's two windows: the bot's
+	// own last main phase and the end step of the seat whose turn
+	// comes just before the bot's, each with an empty stack. Mana
+	// empties between steps and a tapped permanent untaps in its
+	// controller's untap step, so in those windows a move that costs
+	// only mana and taps spends nothing the bot would otherwise keep,
+	// and it needs to clear only LeftoverThreshold. Off (the zero
+	// value) is the pre-S66 heuristic.
+	LeftoverWindows bool
+	// LeftoverThreshold is the bar a mana-and-taps move clears in one
+	// of the two windows (ADR 0126 §5), in place of PassThreshold or
+	// InstantThreshold. A move that also costs life, a sacrifice, a
+	// discard, another card or a counter keeps the normal bar. Read
+	// only while LeftoverWindows is on, and only when it is LOWER than
+	// the normal bar.
+	LeftoverThreshold float64
+	// SpellFloor is the least an untargeted instant or sorcery is worth
+	// once it resolves (ADR 0126 §5): a spell whose effect the wire does
+	// not carry is priced as a card that replaces itself and does a
+	// little more. Just above Weights.Hand, so the cast clears
+	// LeftoverThreshold and stays below PassThreshold: cheap spells fill
+	// the leftover windows and never crowd out development in the first
+	// main phase. A targeted spell is priced by its targets instead
+	// (InstantThreshold's "hold it" is unchanged outside the windows,
+	// ADR 0126 Out of scope), and an unimplemented card gets no floor.
+	// Zero is off, the pre-S66 heuristic.
+	SpellFloor float64
+	// TapByTiming prices tapping one of the bot's untapped creatures by
+	// when it happens (ADR 0126 §5): nothing in the end step just before
+	// the bot's turn, because the creature untaps before any opponent
+	// attacks; the blocker plus the attack it gives up in the bot's own
+	// first main phase, for a creature that could attack, priced as
+	// station already prices it; and the flat blocker price elsewhere.
+	// Off (the zero value) is the pre-S66 flat price everywhere.
+	TapByTiming bool
+
 	// LandValue prices the once-a-turn land drop. Above every
 	// ordinary cast on purpose — land first, then spend.
 	LandValue float64
@@ -250,6 +286,11 @@ func DefaultConfig() Config {
 		PassThreshold:    0.25,
 		InstantThreshold: 1.50,
 
+		LeftoverWindows:   true,
+		LeftoverThreshold: 0.00,
+		SpellFloor:        1.30,
+		TapByTiming:       true,
+
 		LandValue:      8.00,
 		SpellPerMana:   0.60,
 		CommanderBonus: 1.50,
@@ -310,13 +351,18 @@ func DefaultConfig() Config {
 // with every one of them zeroed, so a run of `heuristic` against
 // `heuristic-baseline` measures exactly what those terms changed.
 // Each PR that adds a term zeroes it here in the same change.
-//
-// No term exists yet (ADR 0126's measurement PR adds none), so today
-// this is DefaultConfig unchanged. TestBaselineConfigRanksTheSuiteAsBefore
-// (aiseat/suite) holds it to the rankings the policy gave every suite
-// position before S66, whatever DefaultConfig becomes.
+// TestBaselineConfigRanksTheSuiteAsBefore (aiseat/suite) holds it to
+// the rankings the policy gave every suite position before S66,
+// whatever DefaultConfig becomes.
 func BaselineConfig() Config {
-	return DefaultConfig()
+	c := DefaultConfig()
+	// ADR 0126 §5: the two windows, the spell floor and the tap price
+	// by timing.
+	c.LeftoverWindows = false
+	c.LeftoverThreshold = 0
+	c.SpellFloor = 0
+	c.TapByTiming = false
+	return c
 }
 
 // Policy is the heuristic aiseat.Policy. Construct one per bot seat:
@@ -408,6 +454,14 @@ type state struct {
 	step         string
 	myTurn       bool
 	sorcerySpeed bool
+	// beforeMyUntap is the end step of a turn after which the bot's
+	// own turn comes next (ADR 0126 §5): the last window before every
+	// permanent the bot controls untaps. Stack or no stack.
+	beforeMyUntap bool
+	// leftover is ADR 0126 §5's window: the bot's own last main phase
+	// or beforeMyUntap, with an empty stack. Computed whatever the
+	// Config says; Config.LeftoverWindows decides whether it is read.
+	leftover bool
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {
@@ -482,7 +536,46 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	// in stack_items (#1352).
 	st.sorcerySpeed = st.myTurn && len(v.Stack.Cards) == 0 && len(v.StackItems) == 0 &&
 		(st.step == "precombat_main" || st.step == "postcombat_main")
+	stackEmpty := len(v.Stack.Cards) == 0 && len(v.StackItems) == 0
+	st.beforeMyUntap = st.step == "end" && nextTurnSeat(v) >= 0 && v.Seats[nextTurnSeat(v)].ID == st.me
+	st.leftover = stackEmpty &&
+		(st.beforeMyUntap || (st.myTurn && st.step == "postcombat_main" && !mainPhaseUpcoming(v)))
 	return st
+}
+
+// nextTurnSeat is the index into v.Seats of the player whose turn comes
+// after this one: the first queued extra turn (CR 500.7), or else the
+// next seat in turn order that is still in the game. -1 when the view
+// cannot say.
+func nextTurnSeat(v *protocol.GameView) int {
+	if len(v.Turn.ExtraTurns) > 0 {
+		if i := v.Turn.ExtraTurns[0]; i >= 0 && i < len(v.Seats) {
+			return i
+		}
+		return -1
+	}
+	n, as := len(v.Seats), v.Turn.ActiveSeat
+	if as < 0 || as >= n {
+		return -1
+	}
+	for k := 1; k <= n; k++ {
+		if i := (as + k) % n; !v.Seats[i].Eliminated {
+			return i
+		}
+	}
+	return -1
+}
+
+// mainPhaseUpcoming reports whether this turn's plan still holds a main
+// phase — an extra combat's postcombat main (CR 505.1a) — so the current
+// one is not the turn's last sorcery-speed window.
+func mainPhaseUpcoming(v *protocol.GameView) bool {
+	for _, u := range v.Turn.Upcoming {
+		if u.Step == "precombat_main" || u.Step == "postcombat_main" {
+			return true
+		}
+	}
+	return false
 }
 
 // permanentValue is boardValue against this decision's battlefield:
@@ -545,7 +638,17 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 // lands rather than blowing through it (ADR 0033 §10 — the table
 // never waits on a bot).
 func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Move) aiseat.Decision {
+	threshold := p.cfg.PassThreshold
+	if !st.sorcerySpeed {
+		threshold = p.cfg.InstantThreshold
+	}
+	leftover := p.cfg.LeftoverWindows && st.leftover && p.cfg.LeftoverThreshold < threshold
+	// best is the highest-priced move, the fallback when no pass is on
+	// offer. take is the highest-priced move that clears its OWN bar:
+	// with every bar equal (no leftover window) the two are one move
+	// whenever take exists, which is the pre-S66 rule exactly.
 	best, bestVal, bestReason := -1, 0.0, ""
+	take, takeVal, takeReason := -1, 0.0, ""
 	for i := range moves {
 		if i%16 == 0 && ctx.Err() != nil {
 			break
@@ -557,10 +660,14 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
 		}
-	}
-	threshold := p.cfg.PassThreshold
-	if !st.sorcerySpeed {
-		threshold = p.cfg.InstantThreshold
+		bar := threshold
+		if leftover && v <= threshold && p.costsOnlyManaAndTaps(st, moves[i]) {
+			bar = p.cfg.LeftoverThreshold
+			reason += ", leftover mana"
+		}
+		if v > bar && (take < 0 || v > takeVal) {
+			take, takeVal, takeReason = i, v, reason
+		}
 	}
 	passIdx := indexOfKind(moves, legal.KindPass)
 	if passIdx < 0 {
@@ -569,8 +676,8 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		// the pass it stands in for.
 		passIdx = indexOfKind(moves, legal.KindFinishBlocks)
 	}
-	if best >= 0 && bestVal > threshold {
-		return aiseat.Decision{Index: best, Reason: fmt.Sprintf("%s (+%.2f)", bestReason, bestVal)}
+	if take >= 0 {
+		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}
 	}
 	if passIdx >= 0 {
 		return aiseat.Decision{Index: passIdx, Reason: "nothing worth doing"}
