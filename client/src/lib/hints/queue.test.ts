@@ -308,6 +308,30 @@ describe("the engine at the table", () => {
     expect(d.tick()).toBe("table.b");
   });
 
+  it("dismisses the card on screen even after it stepped aside, so it does not come straight back (#2422)", () => {
+    const d = tableDriver();
+    expect(d.tick()).toBe("table.a");
+    // A press anywhere is a gesture: the visit lets go of the hint
+    // while its card may still be under the pointer.
+    d.set({ gesture: true });
+    expect(d.tick()).toBeNull();
+    expect(d.engine.dismiss(d.st.now, TABLE_A)?.id).toBe("table.a");
+    d.st.seen = { ...d.st.seen, [TABLE_A.id]: TABLE_A.version };
+    d.set({});
+    d.st.now += 1_000;
+    expect(d.tick()).toBeNull();
+    d.st.now += TABLE_GAP_MS;
+    expect(d.tick()).toBe("table.b");
+  });
+
+  it("dismisses nothing with no card on screen and no hint held", () => {
+    const d = tableDriver();
+    expect(d.tick()).toBe("table.a");
+    d.set({ gesture: true });
+    expect(d.tick()).toBeNull();
+    expect(d.engine.dismiss(d.st.now)).toBeNull();
+  });
+
   it("offers several over a game, one at a time, in order", () => {
     const d = tableDriver();
     expect(d.tick()).toBe("table.a");

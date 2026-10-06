@@ -127,7 +127,7 @@
     setShortcutContext,
   } from "../lib/shortcutRuntime";
   import { HINTS } from "../lib/hints";
-  import { replayTips } from "../lib/hints/runtime";
+  import { isInsideTip, replayTips } from "../lib/hints/runtime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
@@ -1113,7 +1113,12 @@
   const tableOnScreenSince = Date.now();
   let pointerHeld = $state(false);
   $effect(() => {
-    const down = () => (pointerHeld = true);
+    // A press on the tip card is not a gesture. Counting it made the
+    // card step aside before its own button's click landed, and come
+    // straight back on release (#2422, #2372).
+    const down = (e: PointerEvent) => {
+      if (!isInsideTip(e.target)) pointerHeld = true;
+    };
     const up = () => (pointerHeld = false);
     window.addEventListener("pointerdown", down, true);
     window.addEventListener("pointerup", up, true);

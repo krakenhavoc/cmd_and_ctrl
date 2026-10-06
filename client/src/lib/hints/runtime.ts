@@ -7,7 +7,7 @@
 // calls `focusTip` for `i`, and the Help menu (ADR 0125 PR 5) calls
 // `replayTips` and `showAllTipsAgain`.
 
-import type { Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
 import { guardedWritable } from "../guardedStore";
 import { L } from "../labels";
 import { settings } from "../settings";
@@ -86,6 +86,19 @@ function tipElement(): HTMLElement | null {
 }
 
 /**
+ * isInsideTip reports whether an event's target is the tip card or
+ * something in it. The table counts a held pointer as a gesture, and a
+ * gesture makes a table hint step aside (tableMoment.ts rule 2). A
+ * press on the card's own buttons must not count: the card would be
+ * gone before the button's click landed, and back on release (#2422,
+ * #2372).
+ */
+export function isInsideTip(target: EventTarget | null): boolean {
+  if (typeof Element === "undefined" || !(target instanceof Element)) return false;
+  return target.closest(`[aria-label="${L.tip}"]`) !== null;
+}
+
+/**
  * focusTip is Go to the tip (`i`, ADR 0125 §3.6): focus moves to the
  * card, and Escape there puts it back. With no tip showing it does
  * nothing and says nothing.
@@ -107,7 +120,10 @@ export function dismissTip(how: "got-it" | "hide", now: number = Date.now()): vo
   const card = tipElement();
   const hadFocus =
     !!card && typeof document !== "undefined" && card.contains(document.activeElement);
-  const h = engine.dismiss(now);
+  // The card on screen is the one dismissed, even if the engine has let
+  // go of it since it was drawn: a card someone closed is marked seen,
+  // and the next one waits the table's gap (#2422).
+  const h = engine.dismiss(now, get(tipStore)?.hint ?? null);
   tipStore.set(null);
   if (h) markHintSeen(h);
   if (how === "hide") {
