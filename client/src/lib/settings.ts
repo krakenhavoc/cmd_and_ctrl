@@ -399,22 +399,25 @@ export function defaultSettings(): Settings {
       accent: "",
       cardSize: "medium",
       handLayout: "fan",
-      tableLayout: "quadrant",
+      // Row from #2433 (owner decision): opponents in one row along the
+      // top, the viewer's board under them.
+      tableLayout: DEFAULT_TABLE_LAYOUT,
       // v17 default: the pile (ADR 0119 §1, owner answer 1). It was
       // compact from v14, until the owner picked the pile.
       stackStyle: DEFAULT_STACK_STYLE,
-      // v11 default: summary. The full-card rendering clips at small
-      // panel sizes and has no headroom left to shrink into (#956),
-      // so the dense read-out is the one that works at every table
-      // size. "full" is the escape hatch, not the baseline.
-      opponentDetail: "summary",
+      // Full from #2433 (owner decision). It was summary from v11,
+      // because the full boards clipped at small panel sizes (#956);
+      // #2336 sized boards by relevance and fitted every row to its
+      // panel, so a full opponent board no longer clips or scrolls.
+      opponentDetail: "full",
       // v11 default: on. Expanding the active player is the one
       // automatic expansion that cannot surprise you mid-click,
       // because it happens on a turn boundary.
       expandActivePlayer: true,
-      // v11 default: reflow — it keeps combat arrows in one plane.
-      // Temporary; see the field comment.
-      expandStyle: "reflow",
+      // Overlay from #2433 (owner decision). It was reflow from v11,
+      // which keeps combat arrows in one plane. Temporary; see the
+      // field comment.
+      expandStyle: "overlay",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
       // v16 defaults (#2209): art tiles on the battlefield, full cards
@@ -928,7 +931,7 @@ function migrate(raw: unknown): Settings {
   // #2336: display.tableLayout gained "focus". A new value of an
   // existing field needs no version bump, but the value is checked
   // from here on: an unknown string (a hand edit, a layout that was
-  // tried and removed) falls back to the quadrant rather than to a
+  // tried and removed) falls back to the default (the row, #2433) rather than to a
   // board with no grid template.
   if (!isTableLayout(merged.display.tableLayout)) {
     merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
