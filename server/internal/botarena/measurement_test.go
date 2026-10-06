@@ -68,48 +68,6 @@ func TestValidateRefusesAVariantOfTheWrongTier(t *testing.T) {
 	}
 }
 
-// Until an ADR 0126 pricing term lands, heuristic-baseline IS the
-// heuristic: the same seed under lockstep plays the same game move for
-// move whichever of the two fills the chairs. This is the arena half
-// of the measurement PR's "no price changes"; the suite half is
-// aiseat/suite's TestBaselineConfigRanksTheSuiteAsBefore. The first PR
-// that adds a term deletes this test with
-// TestBaselineConfigIsTheDefaultBeforeAnyS66Term.
-func TestBaselinePlaysTheHeuristicsGameBeforeAnyS66Term(t *testing.T) {
-	base := botarena.Config{Games: 1, Seed: 2435, TurnBudget: 3, Wall: 2 * time.Minute, Lockstep: true}
-	h := base
-	h.Seats = []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}}
-	b := base
-	b.Seats = []botarena.SeatSpec{
-		{Tier: tiers.Heuristic, Variant: botarena.VariantBaseline},
-		{Tier: tiers.Heuristic, Variant: botarena.VariantBaseline},
-	}
-	resH, logH := playLogged(t, h)
-	resB, logB := playLogged(t, b)
-	// A seat's player name is its label and a chair number, and a move
-	// label that targets a player names it.
-	for i := range logB {
-		logB[i] = strings.ReplaceAll(logB[i], botarena.BaselineContestant, string(tiers.Heuristic))
-	}
-	if len(logH) < 20 {
-		t.Fatalf("the heuristic game logged %d moves; too few to compare", len(logH))
-	}
-	for i := 0; i < len(logH) && i < len(logB); i++ {
-		if logH[i] != logB[i] {
-			t.Fatalf("heuristic-baseline diverged from the heuristic at move %d:\n  heuristic: %s\n  baseline:  %s", i, logH[i], logB[i])
-		}
-	}
-	if len(logH) != len(logB) || resH.Turns != resB.Turns || resH.Winner != resB.Winner {
-		t.Fatalf("different games: %d/%d moves, turns %d/%d, winner %d/%d",
-			len(logH), len(logB), resH.Turns, resB.Turns, resH.Winner, resB.Winner)
-	}
-	for _, s := range resB.Seats {
-		if s.Spec.Label() != botarena.BaselineContestant {
-			t.Errorf("a baseline seat is tallied as %q", s.Spec.Label())
-		}
-	}
-}
-
 // A short real run fills the per-contestant Play table and the Cards
 // section, in the Summary and in the Markdown.
 func TestRunReportsContestantsAndCards(t *testing.T) {
