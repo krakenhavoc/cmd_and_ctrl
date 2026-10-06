@@ -49,6 +49,21 @@ import (
 //
 // # Declared simplification, weaker than printed
 //
+// # "Draw, then …" (#2391, CR 608.2c)
+//
+// A clause printed after a draw ("draw two cards, then discard two")
+// must not act before the draw has resolved, and a draw that paused on
+// a prompt has not. DrawNThenForEffect carries the rest of the card as
+// DATA — a registered body's key plus a player, a source card and a
+// count (DrawThen) — through the same resume frame drawTail already
+// rides, and runs it once the last draw of the instruction is
+// finished: inline when nothing paused, from the answer's resume when
+// something did. It runs even when a draw found the library empty, as
+// the continuation of any other effect does: the loss is a state-based
+// action, not a reason to skip the sentence after "then".
+//
+// # Declared simplification, weaker than printed
+//
 // Dredge is offered on each individual draw as it begins, not on the
 // extra draws a doubler (Thought Reflection) adds to it: those are
 // drawn ordinarily once the dredge has replaced the first.
@@ -84,6 +99,68 @@ func RegisterDrawInstead(key string, body DrawInsteadFunc) DrawInsteadRef {
 	drawInsteadBodies[key] = body
 	drawInsteadMu.Unlock()
 	return DrawInsteadRef{key: key}
+}
+
+// DrawThenFunc is the body of a "draw …, then X" continuation. It runs
+// with g.mu held once every draw of the instruction has finished.
+type DrawThenFunc func(g *Game, d DrawThen) error
+
+// DrawThenRef names a registered DrawThenFunc; like DrawInsteadRef the
+// key is unexported so a func never reaches an event.
+type DrawThenRef struct{ key string }
+
+// DrawThen is the "then" of a draw: which registered body, and the
+// scalars it needs. Plain data, copied by value into a resume frame.
+type DrawThen struct {
+	Ref    DrawThenRef
+	Player uuid.UUID
+	Source uuid.UUID
+	N      int
+}
+
+var (
+	drawThenMu     sync.RWMutex
+	drawThenBodies = map[string]DrawThenFunc{}
+)
+
+// RegisterDrawThen registers a continuation body under key. Idempotent
+// for one key. The body must capture nothing that lives in the game.
+func RegisterDrawThen(key string, body DrawThenFunc) DrawThenRef {
+	if key == "" || body == nil {
+		panic("game.RegisterDrawThen: a key and a body are required")
+	}
+	drawThenMu.Lock()
+	drawThenBodies[key] = body
+	drawThenMu.Unlock()
+	return DrawThenRef{key: key}
+}
+
+// runDrawThenLocked runs a recorded continuation, if any.
+//
+// Caller must hold g.mu.
+func (g *Game) runDrawThenLocked(d DrawThen) error {
+	if d.Ref.key == "" {
+		return nil
+	}
+	drawThenMu.RLock()
+	body := drawThenBodies[d.Ref.key]
+	drawThenMu.RUnlock()
+	if body == nil {
+		return nil
+	}
+	return body(g, d)
+}
+
+// DrawNThenForEffect draws n cards for playerID and then runs `then`:
+// "draw two cards, then discard two cards". The then waits for any
+// prompt a draw pauses on (a dredge offer, a draw-instead pick, a CR
+// 616 ordering prompt) instead of running as the call returns.
+func (g *Game) DrawNThenForEffect(playerID uuid.UUID, n int, then DrawThen) error {
+	err := g.drawRunLocked(playerID, n, then)
+	if errors.Is(err, ErrZoneEmpty) {
+		return nil
+	}
+	return err
 }
 
 // drawInsteadRun is a recorded, not yet run, substituted draw: which
@@ -125,14 +202,23 @@ func (g *Game) recordDrawInsteadLocked(ev *ReplacementEvent, a activeReplacement
 // loss flag already set, exactly as one draw does.
 //
 // Caller must hold g.mu.
-func (g *Game) drawRunLocked(playerID uuid.UUID, n int) error {
+func (g *Game) drawRunLocked(playerID uuid.UUID, n int, then DrawThen) error {
 	for i := 0; i < n; i++ {
-		paused, err := g.drawOneLocked(playerID, n-i-1)
-		if err != nil || paused {
+		paused, err := g.drawOneLocked(playerID, n-i-1, then)
+		if paused {
+			return err
+		}
+		if err != nil {
+			if errors.Is(err, ErrZoneEmpty) {
+				// The sentence after "then" still happens.
+				if terr := g.runDrawThenLocked(then); terr != nil {
+					return terr
+				}
+			}
 			return err
 		}
 	}
-	return nil
+	return g.runDrawThenLocked(then)
 }
 
 // drawOneLocked opens the window on one draw. `tail` is how many draws
@@ -140,7 +226,7 @@ func (g *Game) drawRunLocked(playerID uuid.UUID, n int) error {
 // else now owns those: a queued prompt, or a body that will call done.
 //
 // Caller must hold g.mu.
-func (g *Game) drawOneLocked(playerID uuid.UUID, tail int) (paused bool, err error) {
+func (g *Game) drawOneLocked(playerID uuid.UUID, tail int, then DrawThen) (paused bool, err error) {
 	ev := &ReplacementEvent{
 		Kind:       RepEventDraw,
 		Actor:      playerID,
@@ -151,6 +237,7 @@ func (g *Game) drawOneLocked(playerID uuid.UUID, tail int) (paused bool, err err
 		// doubles EACH of them rather than the instruction.
 		DrawCount: 1,
 		drawTail:  tail,
+		drawThen:  then,
 	}
 	out, aerr := g.applyReplacementsLocked(ev)
 	if errors.Is(aerr, errReplacementPending) {
@@ -184,14 +271,14 @@ func (g *Game) drawOneLocked(playerID uuid.UUID, tail int) (paused bool, err err
 //
 // Caller must hold g.mu.
 func (g *Game) runDrawInsteadLocked(ev *ReplacementEvent) error {
-	drawer, player, tail := ev.Actor, ev.DrawPlayer, ev.drawTail
+	drawer, player, tail, then := ev.Actor, ev.DrawPlayer, ev.drawTail, ev.drawThen
 	total := max(ev.DrawCount, 1)
 	run := ev.drawInstead
 	ev.drawInstead = drawInsteadRun{}
 	body := run.body()
 
 	finish := func(g *Game) error {
-		err := g.drawRunLocked(drawer, tail)
+		err := g.drawRunLocked(drawer, tail, then)
 		if errors.Is(err, ErrZoneEmpty) {
 			// Flag set; the SBA pass handles the loss, as it does for
 			// DrawNForEffect.
@@ -229,7 +316,7 @@ func (g *Game) runDrawInsteadLocked(ev *ReplacementEvent) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishDrawTailLocked(ev *ReplacementEvent) error {
-	err := g.drawRunLocked(ev.Actor, ev.drawTail)
+	err := g.drawRunLocked(ev.Actor, ev.drawTail, ev.drawThen)
 	if errors.Is(err, ErrZoneEmpty) {
 		return nil
 	}

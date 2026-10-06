@@ -52,3 +52,79 @@ export function handOverlap(n: number, base: number): number {
   if (n <= LOOSE_UP_TO) return base;
   return Math.min(CAP, base + (n - LOOSE_UP_TO) * PER_CARD);
 }
+
+// #2395 — how far the outermost card of a fan reaches past its own
+// upright box, sideways, in px. A slot turns about its bottom centre,
+// so its top corner swings out by h·sin θ and comes in by
+// (w/2)(1 − cos θ); `tilt` scales every card's angle (fitFan below).
+// The hand is clipped to its row at rest, but it lifts over the board
+// on hover with nothing clipping it, and then this is how far the end
+// cards stick out past the fan's upright width.
+export function fanOverhang(n: number, cardW: number, cardH: number, tilt = 1): number {
+  const rad = (Math.abs(fanAngle(0, n)) * tilt * Math.PI) / 180;
+  return Math.max(0, cardH * Math.sin(rad) - (cardW / 2) * (1 - Math.cos(rad)));
+}
+
+// The overlap fitFan settles for before it gives up the fan's tilt
+// altogether: at 0.7 every card shows 30% of its width, its name and
+// some art. A row with room keeps the resting overlap and the full
+// tilt; a narrower one tightens and flattens towards this.
+export const FAN_SNUG = 0.7;
+// The narrowest sliver of a card the fan will show before it scrolls
+// instead, as a share of the card's width: 12% is 20px of a 168px
+// card, still a target the pointer can rest on.
+export const FAN_MIN_SLIVER = 0.12;
+
+export interface FanFit {
+  // The overlap to publish as --hand-overlap.
+  overlap: number;
+  // The share of fanAngle and fanLift to apply, 0 (flat) to 1.
+  tilt: number;
+  // True when even a flat fan at FAN_MIN_SLIVER is wider than the row:
+  // the hand scrolls sideways instead of running under what is beside it.
+  scroll: boolean;
+}
+
+// #2395 — fit a hand fan to the row it sits in. handOverlap sizes the
+// fan by its card count alone, so a row narrower than that fan (the
+// self hand beside the tutorial's coach card at 1440×900: seven
+// 168px cards in 460px) let the end cards run out of the row, where
+// the coach card, the piles above the hand's left end and the
+// commander beside its right end cover them, and the pointer could not
+// reach them.
+//
+// fitFan keeps the resting look wherever it fits. Where it does not, it
+// tightens the overlap and, past FAN_SNUG, eases off the tilt a quarter
+// at a time (a tilted fan is wider than an upright one by twice
+// fanOverhang), then goes flat and tightens to FAN_MIN_SLIVER. Past
+// that it asks for a scroll. The fan, end cards' corners included,
+// then never reaches past `room`.
+//
+// `room` is the row's inner width in px; `cardW` and `cardH` one card's
+// box. A zero room or card (not laid out yet, or jsdom) keeps the
+// resting fan. `rotates` is false for the stacked layout, which has no
+// tilt to give up.
+export function fitFan(
+  n: number,
+  base: number,
+  room: number,
+  cardW: number,
+  cardH: number,
+  rotates = true,
+): FanFit {
+  const loose = handOverlap(n, base);
+  if (n <= 1 || room <= 0 || cardW <= 0) return { overlap: loose, tilt: 1, scroll: false };
+  const need = (tilt: number): number =>
+    1 - (room - 2 * fanOverhang(n, cardW, cardH, tilt) - cardW) / ((n - 1) * cardW);
+  const snug = Math.max(loose, FAN_SNUG);
+  if (rotates) {
+    for (const tilt of [1, 0.75, 0.5, 0.25]) {
+      const overlap = Math.max(loose, need(tilt));
+      if (overlap <= snug) return { overlap, tilt, scroll: false };
+    }
+  }
+  const flat = Math.max(loose, need(0));
+  const tightest = 1 - FAN_MIN_SLIVER;
+  if (flat <= tightest) return { overlap: flat, tilt: 0, scroll: false };
+  return { overlap: Math.max(loose, tightest), tilt: 0, scroll: true };
+}

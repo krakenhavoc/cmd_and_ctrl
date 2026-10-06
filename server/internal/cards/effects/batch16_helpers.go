@@ -312,16 +312,7 @@ func b16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match fun
 // drawn card is a legal discard, and the discard is the player's
 // choice, queued as a prompt.
 func b16DrawThenDiscard(g *game.Game, item *game.StackItem, draw, discard int) error {
-	ctx := NewContext(g, item)
-	if err := (DrawCards{Player: item.Controller, N: draw}).Apply(ctx); err != nil {
-		return err
-	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: item.Controller,
-		Source: item.SourceCardID,
-		N:      discard,
-	})
-	return nil
+	return drawThenDiscard(g, item.Controller, item.SourceCardID, draw, discard, "")
 }
 
 // b16FirstLegalTargetCard returns the first announce-time target

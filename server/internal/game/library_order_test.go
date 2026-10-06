@@ -260,7 +260,7 @@ func TestPutInLibraryKnowersFollowCR4014(t *testing.T) {
 	}
 }
 
-// A commander leg pauses on CR 903.9 and the pile waits for it: the
+// A commander leg pauses on CR 903.9b and the pile waits for it: the
 // card after it is placed from its continuation, so the order holds
 // whichever way the owner answers.
 func TestPutInLibraryCommanderLegKeepsThePileOrder(t *testing.T) {

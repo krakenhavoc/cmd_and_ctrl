@@ -12,13 +12,13 @@ import (
 //
 // QueueDiscardChoiceForEffect queues a question over the player's own
 // hand and returns the prompt's ID. Nothing has left the hand when it
-// returns, and a discarded commander's CR 903.9 prompt can hold the
+// returns, and a discarded card's "may" replacement prompt can hold the
 // batch for another action after that — so every clause a card wrote
 // on the next line ran too early. Archon of Cruelty ran its last three
 // clauses with two prompts still open.
 //
 // What a run has to survive, one test each below: several seats
-// answering in any order, a leg the CR 903.9 window has PAUSED, a
+// answering in any order, a leg a "may" replacement has PAUSED, a
 // madness card that went to exile instead of a graveyard, a seat with
 // an empty hand, a seat that leaves mid-prompt, and an undo across a
 // half-answered fan-out.
@@ -137,10 +137,10 @@ func TestAPromptedDiscardRunWaitsForEveryAskedSeat(t *testing.T) {
 	}
 }
 
-// TestAPromptedDiscardRunWaitsForAPausedLeg is the CR 903.9
-// half, and the reason the leg settles from inside the discard batch
-// rather than on the line after the answer: a discarded commander is
-// STILL IN THE HAND while its owner is asked about the command zone.
+// TestAPromptedDiscardRunWaitsForAPausedLeg is the paused-leg half,
+// and the reason the leg settles from inside the discard batch rather
+// than on the line after the answer: a discarded card is STILL IN THE
+// HAND while its owner answers a test "may" replacement (may_detour_test.go).
 func TestAPromptedDiscardRunWaitsForAPausedLeg(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]

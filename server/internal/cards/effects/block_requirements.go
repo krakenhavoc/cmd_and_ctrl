@@ -86,7 +86,9 @@ func BlocksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, sourc
 // so" (Prized Unicorn). For "… enchanted creature …" (Lure) pass
 // AttachedToSource to BlockRequirementWhere instead.
 func AllAbleToBlockDoSo() game.StaticAbility {
-	return BlockRequirementWhere(game.BlockRequirementLure, selfOnly)
+	s := BlockRequirementWhere(game.BlockRequirementLure, selfOnly)
+	s.Label = "All creatures able to block it do so." // #2219: the tile's label
+	return s
 }
 
 // FilteredLure is "All <filter> able to block this creature do so"
@@ -104,7 +106,9 @@ func FilteredLure(filter string) game.StaticAbility {
 // MustBeBlocked is "This creature must be blocked if able" (Gaea's
 // Protector).
 func MustBeBlocked() game.StaticAbility {
-	return BlockRequirementWhere(game.BlockRequirementMustBeBlocked, selfOnly)
+	s := BlockRequirementWhere(game.BlockRequirementMustBeBlocked, selfOnly)
+	s.Label = "Must be blocked if able." // #2219: the tile's label
+	return s
 }
 
 // BlockRequirementUntilEOT is a RESOLVING effect's block requirement on

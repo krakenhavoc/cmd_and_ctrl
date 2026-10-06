@@ -26,8 +26,8 @@ func commanderOnBattlefield(g *Game, owner, controller uuid.UUID) uuid.UUID {
 }
 
 // commanderIntoGraveyard moves a battlefield commander straight into
-// its owner's graveyard, the way the destroy path ends, without the
-// CR 903.9 replacement in between.
+// its owner's graveyard, the way the destroy path ends; CR 903.9a asks
+// afterwards.
 func commanderIntoGraveyard(t *testing.T, g *Game, id uuid.UUID) {
 	t.Helper()
 	c := findBattlefieldCard(g, id)

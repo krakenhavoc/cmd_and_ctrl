@@ -89,6 +89,9 @@ func ThresholdKeywords(n int, keywords ...string) game.StaticAbility {
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			appendKeywordsTo(c, kws)
 		},
+		// #2219: the printed keywords themselves, shown as keyword
+		// chips once the threshold is met.
+		Keywords: kws,
 	}
 }
 

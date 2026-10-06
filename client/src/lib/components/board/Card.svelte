@@ -859,6 +859,8 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
+    <!-- #2219: an art tile has no rules text, so it adds the ⚡ / ◆ / ↻
+         ability chips after the keywords. A full card prints its own. -->
     <KeywordBadgeRow
       abilities={card.abilities}
       chosenColor={card.chosen_color}
@@ -867,6 +869,7 @@
       chosenName={card.chosen_name}
       protection={card.protection}
       riotHaste={card.riot_haste}
+      abilityRows={artTile ? card.ability_rows : null}
     />
     {#if damage}
       <span

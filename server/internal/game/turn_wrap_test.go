@@ -217,10 +217,11 @@ func TestEliminationDropsThePlayersPendingChoices(t *testing.T) {
 	}
 }
 
-// TestEliminatedOwnersCommanderNeedsNoPrompt: the CR 903.9 "send it
+// TestEliminatedOwnersCommanderNeedsNoPrompt: the CR 903.9a "send it
 // to the command zone?" prompt is addressed to the commander's owner;
-// when that owner has left the game the engine answers "no" inline
-// rather than queueing a prompt nobody can answer.
+// when that owner has left the game the engine queues none (the
+// commander stays in the graveyard) rather than a prompt nobody can
+// answer.
 //
 // The seat is flipped by hand rather than through Concede: since
 // CR 800.4a (#769) a real concede takes the commander out of the game

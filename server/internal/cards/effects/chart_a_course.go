@@ -22,18 +22,9 @@ func init() {
 		Name:         "Chart a Course",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			if b18AttackedThisTurn(ctx.Game, item.Controller) {
-				return nil
-			}
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: item.Controller,
-				Source: item.SourceCardID,
-				N:      1,
+			return ctx.Game.DrawNThenForEffect(item.Controller, 2, game.DrawThen{
+				Ref: drawThenDiscardUnlessAttacked, Player: item.Controller, Source: item.SourceCardID, N: 1,
 			})
-			return nil
 		},
 	})
 }

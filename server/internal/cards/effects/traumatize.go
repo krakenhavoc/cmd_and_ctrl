@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Traumatize — Sorcery {3}{U}{U} (EDHREC rank 2745):
 //
 //	"Target player mills half their library, rounded down."
@@ -18,13 +16,6 @@ func init() {
 		Name:         "Traumatize",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetPlayer {
-					return b22MillHalf(ctx, t.ID)
-				}
-			}
-			return nil
-		},
+		OnResolve:    millHalfOfTargetPlayer,
 	})
 }

@@ -210,6 +210,17 @@ and **not listed in the lobby**.
   > - `tests-e2e/tests/tutorial-layout.spec.ts` measures it on a practice
   >   table at both sizes. Every row is the same height with the coach up as
   >   with it gone, and the hand starts right of the card.
+
+  > **Amended 2026-10-05 (#2395):** "the fan still fits beside it" stopped
+  > being true once #2336 sized the hand's cards by the panel. At 1440×900
+  > the row beside the card is 460px and seven cards at rest were about
+  > 630px, so the fan ran out of its row, under the coach card on the left
+  > and the commander on the right, and its end cards could not be clicked.
+  > The fan now fits the row it has (`fitFan` in `client/src/lib/handFan.ts`):
+  > it tightens, then eases off its tilt, then goes flat, and scrolls only
+  > past a 12% sliver per card. A row with room keeps the resting fan.
+  > `tutorial-layout.spec.ts` checks every hand card is reachable at
+  > 1280×800, 1440×900 and 1920×1080, with the coach up and with it gone.
 - The scrim is **one element**: a transparent rect with a 9999px spread shadow,
   so the hole is the rect and everything else darkens.
 - The scrim is **`pointer-events: none`**. Dimming is a suggestion, never a

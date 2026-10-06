@@ -237,7 +237,7 @@ func TestB36SanctumOfEternityReturnsOnlyACommanderYouOwn(t *testing.T) {
 	if !b16Tapped(t, g, sanctum) {
 		t.Error("the Sanctum taps to activate")
 	}
-	// CR 903.9 (#539): a commander headed to hand is offered the
+	// CR 903.9b (#539): a commander headed to hand is offered the
 	// command zone. Declined, it is in hand, as the card says.
 	b21DeclineCommandZone(t, g, me.ID)
 	passPriorityAroundTable(t, g)
@@ -256,7 +256,7 @@ func TestB36SanctumOfEternityReturnsOnlyACommanderYouOwn(t *testing.T) {
 	}
 }
 
-// b36AcceptCommandZone answers the CR 903.9 "put it into the command
+// b36AcceptCommandZone answers the CR 903.9b "put it into the command
 // zone instead?" prompt with "yes".
 func b36AcceptCommandZone(t *testing.T, g *game.Game, owner uuid.UUID) {
 	t.Helper()

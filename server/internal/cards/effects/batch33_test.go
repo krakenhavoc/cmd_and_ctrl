@@ -481,7 +481,7 @@ func TestB33StoneOfErechExilesOpposingDeathsAndEatsAGraveyard(t *testing.T) {
 // other of their creatures and its owner separately decides. Since
 // ADR 0115 that is literally the engine's order: no CR 616 ordering
 // prompt, the Stone's replacement exiles it, then CR 903.9a asks.
-func TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *testing.T) {
+func TestB33StoneOfErechExilesAnOpponentsDyingCommanderThenAsksItsOwner(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)
 		me, opp := g.Seats[0], g.Seats[1]

@@ -535,6 +535,7 @@ var playerFields = plan(
 	// ADR 0108 §5: the upkeep counter Card.ControlledSinceUpkeep is
 	// compared against. Carried, for TurnsBegun's reason.
 	"UpkeepsBegun", carried, "",
+	"EndStepTurn", carried, "",
 	// What the player's creatures attacked during their last turn
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",

@@ -74,14 +74,5 @@ func depthDefilerDrawThenDiscard(item *game.StackItem, ctx *Context, occ int) er
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil
 	}
-	if err := (DrawCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player:   t.ID,
-		Source:   item.SourceCardID,
-		N:        1,
-		Question: "Depth Defiler — discard a card",
-	})
-	return nil
+	return drawThenDiscard(ctx.Game, t.ID, item.SourceCardID, 2, 1, "Depth Defiler — discard a card")
 }

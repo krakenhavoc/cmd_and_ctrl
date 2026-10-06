@@ -640,6 +640,31 @@ describe("the layout around the dock", () => {
     expect(vars).toContain("--dock-log-clear:");
   });
 
+  // #2403: the log drawer opened over the opening hand's stage starts
+  // below the stage's View table, so the stage can still be folded
+  // away with the log open. Both are fixed: the stage starts under the
+  // bar (45px), the button 16px into it and 34px tall.
+  it("starts the log drawer below View table while it is over the stage", () => {
+    const px = (decl: string, block: string): number => {
+      const m = new RegExp(`\\n\\s*${decl}: ([^;]+);`).exec(block);
+      if (!m) throw new Error(`no ${decl} in ${block}`);
+      return [...m[1].matchAll(/(\d+)px/g)].reduce((sum, x) => sum + Number(x[1]), 0);
+    };
+    const dock = src("src/lib/components/board/ActionDock.svelte");
+    const stageTop = px("inset", rule(dock, "  .dock-sheet.stage"));
+    const button = rule(dock, "  .dock-sheet.stage .sheet-min.view-table");
+    const buttonBottom = stageTop + px("top", button) + px("height", button);
+    const log = rule(
+      src("src/lib/components/board/GameLogPanel.svelte"),
+      "  .log-panel.over-stage",
+    );
+    expect(log).toContain("z-index: 56");
+    expect(px("top", log)).toBeGreaterThan(buttonBottom);
+    // Still clear of the dock (Keep hand) at the bottom: the base rule's
+    // bottom is not overridden over the stage.
+    expect(log).not.toContain("bottom:");
+  });
+
   it("sits in the corner at z 55, and becomes a full-width bar on a phone", () => {
     const css = src("src/lib/components/board/ActionDock.svelte");
     const dock = rule(css, "  .action-dock");

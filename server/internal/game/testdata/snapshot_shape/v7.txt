@@ -2874,6 +2874,7 @@ seats[].emblems.cards[].unlocked	number:uint8
 seats[].emblems.cards[].variableToughness	bool
 seats[].emblems.kind	string
 seats[].emblems.owner	custom(uuid.UUID)
+seats[].endStepTurn	number:int
 seats[].energy	number:int
 seats[].graveyard	object
 seats[].graveyard.cards	array

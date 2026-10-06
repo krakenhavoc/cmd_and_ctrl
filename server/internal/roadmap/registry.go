@@ -2685,14 +2685,12 @@ var items = []Item{
 		Examples: []string{"Ravenous Tyrannosaurus"},
 	},
 	{
-		Slug: "land-adventures", Name: "Adventures on a land", Kind: KindSeam, Status: StatusMissing,
+		Slug: "land-adventures", Name: "Adventures on a land", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Adventurer cards whose main half is a land, such as Jidoor, Aristocratic Capital, which you may play from exile after casting its Adventure.",
-		Missing:     "After an Adventure resolves, the card can only be cast from exile, so a land on its main half can't be played from there yet.",
 		Rules:       []string{"715.3d"},
 		Issue:       2176,
-		Tracked:     "#2176 (S58 tracker #2077)",
-		Waiting:     []string{"Jidoor, Aristocratic Capital // Overture"},
-		EngineNotes: "adventure: `grantAdventureCastFromExileLocked` (`game/adventure.go`) grants face 0 with `CastOnly: true`, and its comment reads CR 715.3d as \"cast\". The pinned text says \"For as long as that card remains exiled, that player may play it\", so for a land main half the grant has to be a play permission (a land play that spends the turn's land drop). Casting the Adventure half from the hand is untested for a card whose main face is a land. Final Fantasy's Town lands have this shape.",
+		Examples:    []string{"Jidoor, Aristocratic Capital", "Zanarkand, Ancient Metropolis", "Value Town", "Ishgard, the Holy See"},
+		EngineNotes: "**Ships (#2176).** `grantAdventureCastFromExileLocked` (`game/adventure.go`) writes CR 715.3d's permission as a play permission when the card's main half is a land (`adventureMainHalfIsLand`), and stays cast-only for a creature. The existing land branch of `CastSpell`, the view's `castableNow` and the bot enumerator already refuse a land play without a land drop (CR 305.2) or off sorcery timing, so playing the land from exile needed no new path. A countered or fizzled Adventure still goes to the graveyard and grants nothing.",
 	},
 	{
 		Slug: "legend-rule-exemption", Name: "The legend rule not applying to your permanents", Kind: KindSeam, Status: StatusImplemented,

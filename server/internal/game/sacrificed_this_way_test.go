@@ -17,7 +17,7 @@ import (
 // Sacrifice itself is not replaceable (CR 701.17a — it is not a
 // destruction, so nothing that replaces destruction touches it), but
 // the MOVE it makes is an ordinary zone change: the CR 614 window
-// opens over it, a commander's CR 903.9 prompt can pause a leg, and a
+// opens over it, an optional replacement's prompt can pause a leg, and a
 // "graveyard becomes exile" replacement can rewrite where the card
 // goes. What "sacrificed this way" counts is therefore the permanent
 // that LEFT THE BATTLEFIELD, wherever it landed — which is where this

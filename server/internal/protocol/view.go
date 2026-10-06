@@ -2435,6 +2435,24 @@ type CardView struct {
 	// is nearly always — means nothing granted this permanent anything.
 	GrantedAbilities []GrantedAbilityView `json:"granted_abilities,omitempty"`
 
+	// AbilityRows are the card's non-keyword triggered, static and
+	// activated abilities right now, triggered first, each with a short
+	// label (#2219, game.AbilityRowsOf). The art tile draws one chip per
+	// kind with a count and lists the labels on hover or focus; the
+	// client never reads oracle text for them.
+	//
+	// Current, not printed: a "loses all abilities" effect empties it,
+	// a granted ability is in it (beside granted_abilities' text), a
+	// designation gate decides a gated row, and a face-down permanent
+	// has none (CR 708.2). Keyword abilities (the keyword chips) and
+	// mana abilities (ADR 0105's drop pip) are left out.
+	//
+	// Battlefield and hand only, the zones a tile is drawn in. Public on
+	// a card the viewer can see, like the ability rows, and cleared
+	// with them for a viewer who cannot. Absent for an uncatalogued
+	// card, which keeps its `unimplemented` mark instead.
+	AbilityRows []AbilityRowView `json:"ability_rows,omitempty"`
+
 	// Abilities is the card's effective keyword list — strings like
 	// "flying", "first strike", "trample". Layered effects (Lord of
 	// Atlantis grants flying to other Merfolk) populate this in
@@ -7669,6 +7687,11 @@ func viewOfZone(z *game.Zone) ZoneView {
 			x, y := c.BattleX, c.BattleY
 			cards[i].BattleX, cards[i].BattleY = &x, &y
 		}
+		// #2219: the art tile's ability chips, on the two zones a tile
+		// is drawn in.
+		if onBattlefield || z.Kind == game.ZoneHand {
+			cards[i].AbilityRows = viewOfAbilityRows(c)
+		}
 	}
 	owner := ""
 	if !z.IsShared() {
@@ -8392,6 +8415,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// the card underneath, and "rarely" is not the bar this function
 	// holds a field to.
 	out.GrantedAbilities = nil
+	// #2219: the tile's ability rows are read off the card's catalog
+	// entry exactly as the ability lists above are, and "Draw a card"
+	// under a face-down card says which card it is.
+	out.AbilityRows = nil
 	// #660: a hand ability quotes the card's text as loudly as its
 	// mana cost — "Cycling {3}" on an opponent's face-down hand card
 	// would name the Triome. It is also the only ability list on the

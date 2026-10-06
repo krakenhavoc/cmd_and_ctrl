@@ -12,8 +12,8 @@ import (
 // them, then shuffle" — Ugin, Eye of the Storms — on its first line
 // and took the shuffle down with it). The take is routed through
 // searchRoute -> routeCardToZoneLocked exactly like every other
-// search destination, so CR 614 and CR 903.9 apply unchanged; this
-// file is the CR 903.9 half, mirroring the exile / bounce / tuck /
+// search destination, so CR 614 and CR 903.9a/b apply unchanged; this
+// file is the commander half, mirroring the exile / bounce / tuck /
 // mill coverage in commander_zone_routes_test.go for the SEARCH path
 // specifically. seatCommander, expectCommanderReturn and assertOnlyIn
 // are declared there.

@@ -220,7 +220,7 @@ func TestADroppedPromptInASingleCardRouteStillRunsThen(t *testing.T) {
 // --- (b) PRUNED: the card leaves by another route --------------------
 
 // TestAPrunedWipePromptStillFinishesTheSweep is the prune half. A
-// commander caught in a wipe stops to answer CR 903.9; while the
+// commander caught in a wipe stops on a test "may" prompt; while the
 // question is open the card leaves the battlefield by another route
 // (flickered out from under the wipe), which makes the prompt
 // unanswerable — the move it asks about can never happen — and #605
@@ -260,7 +260,7 @@ func TestAPrunedWipePromptStillFinishesTheSweep(t *testing.T) {
 }
 
 // flickerToExile moves a card out from under an open prompt by another
-// route. MustSettleNow keeps this exit from asking its own CR 903.9
+// route. MustSettleNow keeps this exit from asking its own "may"
 // question (CR 601.2h's cost escape), so the only prompt in play stays
 // the one under test.
 func flickerToExile(t *testing.T, g *Game, cardID uuid.UUID) {

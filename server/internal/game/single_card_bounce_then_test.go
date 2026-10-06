@@ -7,7 +7,7 @@ import "testing"
 // BounceToHandThenForEffect is the fourth single-card wrapper over the
 // batch, beside ExileCardThenForEffect (#870), SacrificeThenForEffect
 // (#910) and TuckToLibraryThenForEffect (#783). It exists because a
-// hand is a CR 903.9 destination, so EVERY bounce can pause, and the
+// hand is a CR 903.9b destination, so EVERY bounce can pause, and the
 // catalog had no way to say "return it, THEN …" for one card.
 //
 // These are exiled_this_way_test.go's single-card cases with the

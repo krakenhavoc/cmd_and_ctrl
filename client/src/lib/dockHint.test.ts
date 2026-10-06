@@ -120,3 +120,28 @@ describe("passHint", () => {
     expect(passHint(view("some_future_step"), true)).toBe("");
   });
 });
+
+describe("passHint while a commander is being decided (ADR 0115 PR 5)", () => {
+  const prompt = (chooser: string) =>
+    ({ id: "c1", kind: "commander_return", chooser, count: 1, options: [] }) as never;
+  const two = [
+    { id: "a", name: "Alice", seat: 0 },
+    { id: "b", name: "Bob", seat: 1 },
+  ] as never;
+
+  it("names the seat deciding, with or without priority", () => {
+    const v = view("precombat_main", { seats: two, pending_choices: [prompt("b")] });
+    expect(passHint(v, false)).toBe("Bob is deciding about their commander");
+    expect(passHint(v, true)).toBe("Bob is deciding about their commander");
+  });
+
+  it("names every owner when several are deciding", () => {
+    const v = view("precombat_main", { seats: two, pending_choices: [prompt("a"), prompt("b")] });
+    expect(passHint(v, false)).toBe("Alice and Bob are deciding about their commanders");
+  });
+
+  it("goes away with the question", () => {
+    const v = view("precombat_main", { seats: two, pending_choices: [] });
+    expect(passHint(v, true)).toBe("passing moves to Begin Combat");
+  });
+});

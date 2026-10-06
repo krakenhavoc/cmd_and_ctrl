@@ -211,6 +211,18 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PhaseDisplay.svelte`],
     doc: "the turn number, the active player and the step",
   }),
+  abilityChip: dynamicLabel({
+    stem: " abilit",
+    match: "contains",
+    shape: "<N> <kind> ability, or <N> <kind> abilities (kind: triggered, static or activated)",
+    make: (n: number, kind: "triggered" | "static" | "activated") =>
+      `${n} ${kind} ${n === 1 ? "ability" : "abilities"}`,
+    example: [2, "triggered"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}AbilityKindChips.svelte`],
+    doc: "an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's",
+  }),
 
   // -- The action dock (ADR 0111) --
   actions: label({

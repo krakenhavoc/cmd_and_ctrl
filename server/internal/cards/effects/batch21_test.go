@@ -99,9 +99,10 @@ func b21SettleStack(t *testing.T, g *game.Game) {
 	t.Fatal("stack did not empty after 64 priority passes")
 }
 
-// b21DeclineCommandZone answers the CR 903.9 "put it into the
-// command zone instead?" prompt for a dying commander with "no", so
-// the card goes to the graveyard.
+// b21DeclineCommandZone answers the CR 903.9b "put it into the
+// command zone instead?" optional_replacement prompt for a commander
+// headed for hand or library with "no", so the card goes there. A
+// graveyard or exile move is not asked first (answerCommanderReturn).
 func b21DeclineCommandZone(t *testing.T, g *game.Game, owner uuid.UUID) {
 	t.Helper()
 	for _, c := range g.PendingChoices {

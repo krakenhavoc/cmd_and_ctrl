@@ -1355,3 +1355,17 @@ plan. What it settled:
    724.1a), all full. Day's Undoing, Discontinuity ("costs {2}{U}{U}
    less": a coloured reduction has no shape) and Hurkyl's Final
    Meditation are not built here.
+
+## Amendment (2026-10-05, #2385) — "until your next end step" and an ended turn
+
+An ended turn (CR 724.1) skips its end step, which then never begins
+(CR 724.1d), so a window that "ends as your next end step begins"
+(CR 611.2b) must not count it. `Player.EndStepTurn` records the seat-turn
+count at which the player's most recent end step really began
+(`noteStepBegunLocked`, so a skipped step is never counted), and
+`UntilYourNextEndStep` is expired exactly when `EndStepTurn` has
+reached the stamped turn. A window stamped for a turn that ended early
+therefore lasts to the player's next real end step. The field is
+additive in the snapshot (`seats[].endStepTurn`): a restore point
+written before it reads 0, which keeps a window open until its player's
+next end step begins.

@@ -68,7 +68,24 @@ func RestrictSelf(r game.Restriction) game.StaticAbility {
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= r
 		},
+		Label: selfRestrictionLabel(r),
 	}
+}
+
+// selfRestrictionLabel is RestrictSelf's tile label (#2219): the
+// printed clause for the three single restrictions a permanent prints
+// on itself, and nothing for any other set, which the tile then
+// describes by its layer.
+func selfRestrictionLabel(r game.Restriction) string {
+	switch r {
+	case game.CantAttack:
+		return "Can't attack."
+	case game.CantBlock:
+		return "Can't block."
+	case game.CantBeBlocked:
+		return "Can't be blocked."
+	}
+	return ""
 }
 
 // RestrictUntilEOT is "target creature can't be blocked this turn"
