@@ -69,6 +69,33 @@ func TestGoblinSharpshooterUntapsOnlyAfterACreatureDies(t *testing.T) {
 	}
 }
 
+// The S66 catalog soak (seed 2026100601): Goblin Sharpshooter died
+// while another creature died, and its "untap this creature" trigger
+// resolved with it in the graveyard. Untapping a permanent that is gone
+// does nothing; it is not an effect error.
+func TestGoblinSharpshooterUntapAfterItDiedDoesNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	shooter := pushCatalogPermanent(g, me.ID, "Goblin Sharpshooter", "Creature — Goblin", sharpshooterOracle, false)
+	bear := pushPermanentForTest(g, opp.ID, "Dead Bear", "", "Creature — Bear")
+	before := len(g.Events)
+	g.WithWriteLock(func() {
+		if err := g.SacrificePermanentForEffect(bear); err != nil {
+			t.Fatalf("sacrifice the bear: %v", err)
+		}
+		if err := g.SacrificePermanentForEffect(shooter); err != nil {
+			t.Fatalf("sacrifice the shooter: %v", err)
+		}
+	})
+	if !hasTriggerFor(g, shooter) {
+		t.Fatal("no untap trigger was queued")
+	}
+	passPriorityAroundTable(t, g)
+	if n := countCatalogEvents(g, game.EventEffectError, before); n != 0 {
+		t.Errorf("EventEffectError count = %d, want 0: untapping a dead Sharpshooter does nothing", n)
+	}
+}
+
 func TestTraxosEntersTappedAndUntapsForHistoricCastOnly(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

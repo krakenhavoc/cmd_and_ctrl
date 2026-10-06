@@ -668,16 +668,28 @@ func (t TapTarget) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(t.Target) { // #1432
 		return nil
 	}
+	if !onBattlefield(ctx.Game, t.Target) {
+		// Gone by resolution: a target that left (CR 608.2b), or the
+		// source of a "tap this creature" ability that has died. There
+		// is nothing to tap, so the instruction does nothing.
+		return nil
+	}
 	return ctx.Game.TapTargetForEffect(t.Target)
 }
 
-// UntapTarget untaps a battlefield card.
+// UntapTarget untaps a battlefield card. No effect if the card is not
+// on the battlefield.
 type UntapTarget struct {
 	Target uuid.UUID
 }
 
 func (u UntapTarget) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(u.Target) { // #1432
+		return nil
+	}
+	if !onBattlefield(ctx.Game, u.Target) {
+		// As for TapTarget: Goblin Sharpshooter's "whenever a creature
+		// dies, untap this creature", when it died too, untaps nothing.
 		return nil
 	}
 	return ctx.Game.UntapTargetForEffect(u.Target)
