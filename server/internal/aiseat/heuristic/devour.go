@@ -20,6 +20,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 //	                                       scale permanentValue uses
 //	      + draw * drawValue               Skullmulcher's cards
 //	      + life * Life                    Marrow Chomper's life
+//	      + DeathPayoff * payoff rows      Blood Artist and friends
+//	                                       (ADR 0126 §7)
 //	cost  = fuelValue(creature)            what it is worth on the board
 //	      + DevourPermanent                nontoken: a card, not a body
 //	      + DevourCommander                the bot's own commander
@@ -37,6 +39,11 @@ func (p *Policy) devourValue(st *state, ch *protocol.PendingChoiceView, ids []st
 	if ch.DevourDraw > 0 {
 		// A walk over the seat's cards, so only when a card is paid.
 		perCreature += float64(ch.DevourDraw) * p.drawValue(st)
+	}
+	// ADR 0126 §7: a devoured creature is sacrificed, so each
+	// death_payoff row the bot controls pays out for it too.
+	if p.cfg.DeathPayoff != 0 {
+		perCreature += p.cfg.DeathPayoff * float64(st.deathPayoffRows(ids))
 	}
 	var v float64
 	for _, id := range ids {
