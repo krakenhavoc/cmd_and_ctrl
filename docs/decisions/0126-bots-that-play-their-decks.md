@@ -482,3 +482,24 @@ A6: mono-black's interval (41.1%–64.8%) does not lie entirely above 50%, and i
 Not detectably worse: the `heuristic` interval's upper bound, 33.2%, is above 25%. Turns p50 is per half.
 
 **Suite:** `boteval suite run --policy heuristic`: 24 of 24 agree, every tag at 100% (attack 4, block 4, cast 9, choice 1, combat 8, land 3, mulligan 6, removal 1). The 22 earlier positions answer as before. Two positions are new and gated: `cast-rhystic-study` and `cast-viscera-seer`, harvested from a four-game logged arena run on this branch (seed 101). `BaselineConfig()` misses both: it casts Pull from Tomorrow for one card in the first and passes in the second. The ADR's `equip-before-attacking` is a unit test instead (`TestEquipBeforeAttacking`), because none of the four curated decks holds an Equipment, so no arena window can be harvested for it.
+
+**Re-measured on `develop` with PR 3.** PR 3 merged while this PR was open, so runs 1 and 2 were repeated on the merge of `develop` `62bc4ddec` into this branch. Same commands and seeds.
+
+Run 1: 64 games, **1 stall**, 2 rejected moves, turns p50 12. The table compares with PR 3's own run 1.
+
+| Deck | Wins | Win rate of decided | Wilson 95% interval | `never` | PR 3 `never` |
+|---|---:|---:|---|---:|---:|
+| esper-control | 2 | 3.2% | 0.9%–10.9% | 6 | 11 |
+| izzet-aggro | 2 | 3.2% | 0.9%–10.9% | 9 | 15 |
+| mono-black-aristocrats | 41 | 65.1% | 52.8%–75.7% | 15 | 24 |
+| simic-ramp | 18 | 28.6% | 18.9%–40.7% | 7 | 16 |
+
+Canaries: Rhystic Study 10 of 14 (71%) and 11 of 15 (73%). Viscera Seer 21 of 21. Sol Ring is at 100% in every deck (PR 3).
+
+The stalled game is the Sanguine Bond and Exquisite Blood drain loop, which the bot now casts. The aristocrats seat was at 82 life and the others at 7, 2 and 5. The CR 732 loop breaker (ADR 0055) suspended automatic passing, and a bot table has nobody to step it on. Filed as #2450. It needs an ADR 0055 decision, not a price change.
+
+A6: mono-black at 65.1% (52.8%–75.7%) is PR 3's number (65.6%, 53.4%–76.1%) unchanged. Its interval does lie entirely above 50%, both there and here. That is for the exit PR and #2436.
+
+Run 2: `heuristic` 52 of 192, 27.1% (21.3%–33.8%). `heuristic-baseline` 44 of 192, 22.9% (17.5%–29.4%). 0 stalls, 3 and 3 rejected moves. Not detectably worse.
+
+Suite on the merged tree: 28 of 28, every tag at 100% (attack 4, block 4, cast 13, choice 1, combat 8, land 4, mulligan 6, removal 1).
