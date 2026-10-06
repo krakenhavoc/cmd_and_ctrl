@@ -512,6 +512,35 @@ Run 2: `heuristic` 52 of 192, 27.1% (21.3%–33.8%). `heuristic-baseline` 44 of 
 
 Suite on the merged tree: 28 of 28, every tag at 100% (attack 4, block 4, cast 13, choice 1, combat 8, land 4, mulligan 6, removal 1).
 
+**Re-measured on `develop` with PRs 3, 5 and 6.** PR 5 (#2446) and PR 6 (#2448) merged next, so runs 1 and 2 were repeated on the merge of `develop` `816613cd` into this branch, with the same commands and seeds. PR 5 had also fixed the Goblin Sharpshooter untap. This branch's broader guard (`TapTarget` and `UntapTarget` do nothing for any permanent no longer on the battlefield) keeps PR 5's regression test, which covers the same case.
+
+Run 1: 64 games, 1 stall, 4 rejected moves, turns p50 12.
+
+| Deck | Wins | Win rate of decided | Wilson 95% interval | `never` |
+|---|---:|---:|---|---:|
+| esper-control | 1 | 1.6% | 0.3%–8.5% | 2 |
+| izzet-aggro | 2 | 3.2% | 0.9%–10.9% | 7 |
+| mono-black-aristocrats | 44 | 69.8% | 57.6%–79.8% | 11 |
+| simic-ramp | 16 | 25.4% | 16.3%–37.3% | 2 |
+
+Canaries, games used out of games offered:
+
+| Canary | Deck | Used | Rate |
+|---|---|---:|---:|
+| Sol Ring | each of the four | 20 of 21, 16 of 16, 15 of 15, 20 of 21 | 95% to 100% |
+| Rhystic Study | esper | 10 of 16 | 62% |
+| Rhystic Study | simic | 20 of 24 | 83% |
+| Mary Read and Anne Bonny's loot | izzet | 30 of 62 | 48% |
+| Entomb | black | 11 of 15 | 73% |
+| Harrow | simic | 0 of 29 | 0% |
+| Viscera Seer | black | 21 of 22 | 95% |
+
+The remaining `never` cards are mostly black's sacrifice outlets and their activations (PR 8), Harrow and the discard-cost spells (PR 7). The stall is again the aristocrats drain loop at the CR 732 loop breaker (#2450). The black seat was at 75 life. A6 still fails: black's interval lies entirely above 50%.
+
+Run 2: `heuristic` won 55 of 192, 28.6% (22.7%–35.4%). `heuristic-baseline` won 41 of 192, 21.4% (16.1%–27.7%). 0 stalls; 1 and 0 rejected moves. Not detectably worse.
+
+Suite: 31 of 31 agree, every tag at 100% (activate 1, attack 4, block 4, cast 15, choice 1, combat 8, land 4, leftover 3, mulligan 6, removal 1). Every position PRs 3, 4 and 5 added is gated for `heuristic`.
+
 ### PR 6: the purpose signal (2026-10-06)
 
 `develop` at `717d7ce51` against PR 6's branch, and again at `62bc4ddec` (PR 3 merged) against the branch with `develop` merged in. No price changes: `BaselineConfig()` and `DefaultConfig()` are untouched, and the heuristic reads no new field (an any-player row's `Draws` and `ControllerLosesLife` are still the only purpose it reads, and they did not change on any card).
