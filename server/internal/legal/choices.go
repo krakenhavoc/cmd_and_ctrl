@@ -767,11 +767,23 @@ func (e *enumerator) choiceMoves() bool {
 				a := apply
 				p := base()
 				p.Apply = &a
-				verb := "enter tapped"
-				if apply {
-					verb = "pay " + c.PayCost
+				if !apply {
+					e.addChoice(c, reason+": enter tapped", p)
+					continue
 				}
-				e.addChoice(c, reason+": "+verb, p)
+				// #2390: the pay branch carries its life as #547's
+				// MoveCost, as a confirm's accept branch does, so a
+				// policy prices the 2 life instead of paying it blind —
+				// at 2 life, paying is the game.
+				e.add(Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  reason + ": pay " + c.PayCost,
+					Source: c.Source,
+					Params: mustJSON(p),
+					Cost:   moveCost(c.LifeCost, 0),
+				})
 			}
 
 		case game.PendingChoiceEntryRiot:

@@ -129,6 +129,7 @@ func (g *Game) queueEntryPayLifePromptLocked(
 		Source:               source,
 		Reason:               reason,
 		PayCost:              lifeCostString(cost),
+		LifeCost:             cost,
 		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
 		replacementResume: &replacementResumeFrame{
 			ev:         ev,

@@ -1482,8 +1482,14 @@ export interface PendingChoiceView {
   // ADR 0115 decision 2: populated for kind "commander_return" — the
   // owner could cast or play the commander from the graveyard or exile
   // it is in now (escape, flashback, an adventure), ignoring timing and
-  // mana. Computed by the server on every view.
+  // mana. Computed by the server on every view. #2390: also set on the
+  // "optional_replacement" that is CR 903.9b's commander question when
+  // the commander is headed for its owner's hand.
   playable_from_zone?: boolean;
+  // #2390: populated for an "optional_replacement" that offers a dredge
+  // (CR 702.52a) — N, the number of cards the yes mills. The card it
+  // returns rides `source`. Computed by the server on every view.
+  dredge?: number;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything

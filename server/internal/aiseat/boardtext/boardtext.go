@@ -156,6 +156,11 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Kind == "commander_return" && ch.PlayableFromZone {
 			b.WriteString(" (you could cast it from where it is now)")
 		}
+		// #2390: CR 903.9b's question about a commander headed for a
+		// hand, which the Reason does not name.
+		if ch.Kind == "optional_replacement" && ch.PlayableFromZone {
+			b.WriteString(" (if you say no it goes to your hand, where you can cast it without the commander tax)")
+		}
 		if ch.Count > 0 {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}

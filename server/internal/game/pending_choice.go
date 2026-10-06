@@ -777,7 +777,9 @@ type PendingChoice struct {
 
 	// LifeCost is the life a PendingChoiceConfirm's ACCEPT branch
 	// charges — Sylvan Library's 4. Zero means the accept branch
-	// costs no life, which is most of them.
+	// costs no life, which is most of them. A PendingChoiceEntryPayLife
+	// carries its payment here too (a shockland's 2, #2390), beside the
+	// PayCost text the client shows.
 	//
 	// It is on the choice, and on the wire, for the reason #547 put
 	// legal.MoveCost.Life there: a policy holding only the wire

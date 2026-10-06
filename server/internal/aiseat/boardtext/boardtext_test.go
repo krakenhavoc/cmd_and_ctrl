@@ -75,3 +75,20 @@ func TestRenderLabelsTheRoundAndTheTurn(t *testing.T) {
 		t.Errorf("no sequence: %q", strings.SplitN(got, "\n", 2)[0])
 	}
 }
+
+// #2390: CR 903.9b's commander question says when the commander is
+// headed for a hand, which its Reason does not.
+func TestRenderSaysWhereABouncedCommanderGoes(t *testing.T) {
+	const note = "(if you say no it goes to your hand, where you can cast it without the commander tax)"
+	for _, hand := range []bool{true, false} {
+		v := view()
+		v.PendingChoices = []protocol.PendingChoiceView{{
+			ID: "c", Kind: "optional_replacement", Chooser: "a", Count: 1,
+			Reason: "Send commander to command zone instead?", PlayableFromZone: hand,
+		}}
+		got := boardtext.Render(v, "a", boardtext.Options{})
+		if strings.Contains(got, note) != hand {
+			t.Errorf("headed for a hand %v: the note's presence is wrong in\n%s", hand, got)
+		}
+	}
+}

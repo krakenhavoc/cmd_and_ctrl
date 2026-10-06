@@ -435,11 +435,20 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		return 0, "coin: other call"
 
-	case choiceTriggerPrompt, choiceOptionalReplacement, choiceEntryPayLife, choicePayUnless:
-		// ADR 0109 §10: unleash's "may" has its own rule (riot.go).
-		if kind == choiceOptionalReplacement && ch != nil && ch.EntryKeyword == "unleash" {
-			return st.unleashValue(ch, cp.Apply)
-		}
+	case choiceOptionalReplacement:
+		// #2390: every "may" replacement, audited in replacement.go —
+		// dredge, unleash and CR 903.9b have rules of their own.
+		return p.optionalReplacementValue(st, ch, cp.Apply)
+
+	case choiceEntryPayLife:
+		// #2390: a shockland pays only for mana it will spend.
+		return p.entryPayLifeValue(st, m, cp.Apply)
+
+	case choiceCopyTarget:
+		// #2390: "enter as a copy of" — the best permanent on offer.
+		return st.copyTargetValue(cp.CardIDs, lookup)
+
+	case choiceTriggerPrompt, choicePayUnless:
 		// ADR 0104 (owner decision 8): a "yes" that TRADES the source
 		// for a spell — Perplexing Chimera — is taken only when the
 		// spell is worth the creature: mana value 5 or more, or a
