@@ -150,6 +150,41 @@ func TestEnduringInnocenceDrawsOnceWhenALowPowerCreatureEntersAndOnceEachTurn(t 
 	}
 }
 
+// TestEnduringInnocenceCountsTheCountersACreatureEntersWith: a printed
+// 1/1 that enters with two +1/+1 counters has power 3 (CR 122.1a) and
+// is not "power 2 or less". #2401's class of bug: Effective().Power
+// stops before the counters.
+func TestEnduringInnocenceCountsTheCountersACreatureEntersWith(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Enduring Innocence", TypeLine: "Enchantment Creature — Sheep Glimmer",
+		OracleID: enduringInnocenceOra, Power: 2, Toughness: 1, Owner: me.ID, Controller: me.ID,
+	})
+	enter := func(name string, counters map[string]int) {
+		id := uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: id, Name: name, TypeLine: "Creature — Bear",
+			Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
+			Counters: counters,
+		})
+		g.WithWriteLock(func() {
+			g.EmitEvent(game.Event{Kind: game.EventETB, CardID: id, Actor: me.ID})
+		})
+		passPriorityAroundTable(t, g)
+	}
+	before := me.Hand.Size()
+	enter("Grown Bear", map[string]int{game.CounterPlusOne: 2})
+	if got := me.Hand.Size(); got != before {
+		t.Fatalf("hand size = %d, want %d: a 1/1 with two +1/+1 counters has power 3", got, before)
+	}
+	// The control: the same 1/1 with no counters does draw.
+	enter("Small Bear", nil)
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand size = %d, want %d: a 1/1 with no counters is power 2 or less", got, before+1)
+	}
+}
+
 // --- Peregrin Took ------------------------------------------------------
 
 func TestPeregrinTookAddsAFoodWhenATokenIsCreated(t *testing.T) {

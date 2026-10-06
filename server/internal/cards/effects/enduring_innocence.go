@@ -44,10 +44,12 @@ const enduringInnocenceDrawLabel = "Enduring Innocence — draw a card"
 
 // enduringInnocenceLowPowerCreatureEntered is "one or more OTHER
 // creatures you control with power 2 or less enter", gated to once
-// each turn.
+// each turn. The power is the whole power, +1/+1 counters it entered
+// with included (CR 122.1a), and a negative power compares as itself
+// (CR 107.1b) — #2401: Effective().Power stops before the counters.
 func enduringInnocenceLowPowerCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	if !ok || !c.IsCreature() || c.Effective().Power > 2 {
+	if !ok || !c.IsCreature() || c.PowerForComparison() > 2 {
 		return false
 	}
 	return !b11TriggeredThisTurn(g, source.InstanceID, enduringInnocenceDrawLabel)
