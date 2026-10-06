@@ -172,8 +172,12 @@ func TestTappingAnAttackerBeforeCombatCostsTheAttack(t *testing.T) {
 	if vPost <= 0 {
 		t.Errorf("loot after combat priced %+.2f, want above passing (0.50 less the blocker)", vPost)
 	}
-	if got := chose(t, post, decide(t, heuristic.New(), post)); got != "Loot" {
-		t.Errorf("second main phase: chose %q, want the loot", got)
+	// Above passing, but tapping the looter after combat spends a
+	// blocker for every opponent's turn: the second main phase is a
+	// leftover window for mana, not for that tap. The loot waits for the
+	// end step before the bot's turn.
+	if got := chose(t, post, decide(t, heuristic.New(), post)); got != "Pass priority" {
+		t.Errorf("second main phase: chose %q, want the pass", got)
 	}
 }
 

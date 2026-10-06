@@ -88,9 +88,23 @@ var nonManaActivateKeys = []string{
 // discard, another card or a counter keeps the normal threshold, and so
 // does anything that is not a cast or an activation.
 //
+// Tapping a creature is free only in the end step before the bot's
+// turn, because only there does the creature untap before anyone can
+// attack the bot. In its own second main phase the creature stays
+// tapped through every opponent's turn, so a move that taps one there
+// keeps the normal threshold too: the bot loots with Mary Read and Anne
+// Bonny at the end of the turn before its own, as a player does, rather
+// than giving up a blocker after combat. (§5's worked example prices
+// exactly that end-step loot; this is the reading of "costs only mana
+// and taps" that keeps the window's premise, "costs nothing the bot
+// would otherwise keep", true in both windows.)
+//
 // Read off the move's declared cost, its params and the ability row,
 // all of it on the wire (ADR 0033 §3).
 func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
+	if !st.beforeMyUntap && p.tapsACreature(st, m) {
+		return false
+	}
 	if c := m.Cost; c != nil {
 		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 {
 			return false
@@ -112,6 +126,29 @@ func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 		}
 		row := activatedRow(src, ap.AbilityIndex)
 		return row != nil && rowCostsOnlyManaAndTaps(row)
+	}
+	return false
+}
+
+// tapsACreature reports whether paying m's cost taps one of the bot's
+// untapped creatures: the source of a {T} ability, or a creature named
+// to crew, to waterbend or to station.
+func (p *Policy) tapsACreature(st *state, m legal.Move) bool {
+	if m.Kind != legal.KindActivate {
+		return false
+	}
+	ap := decode[activateParams](m.Params)
+	if src := st.bf[ap.SourceCardID]; src != nil && isCreature(src) && !src.Tapped {
+		if row := activatedRow(src, ap.AbilityIndex); row != nil && row.TapCost {
+			return true
+		}
+	}
+	for _, ids := range [][]string{ap.CrewIDs, ap.WaterbendIDs, ap.TapIDs} {
+		for _, id := range ids {
+			if c := st.bf[id]; c != nil && isCreature(c) && !c.Tapped {
+				return true
+			}
+		}
 	}
 	return false
 }
