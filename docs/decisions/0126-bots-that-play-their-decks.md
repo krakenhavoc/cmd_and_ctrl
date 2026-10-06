@@ -742,3 +742,38 @@ Not detectably worse: the `heuristic` interval's upper bound is 34.3%, above 25%
 - **`do-not-windfall-away-the-last-land` is relabelled.** Accepted: Unexpected Windfall discarding Marauding Mako ("if going to pay 2 to cycle mako might as well unexpected windfall the mako instead"), and Pass. Rejected: discarding Myriad Landscape. It is stamped reviewed. The heuristic passes, which stays accepted. Cycling-aware discard pricing and a draw-step window go to a follow-up issue.
 - **`cantrip-with-leftover-mana` (PR 5) keeps its label and is stamped reviewed.** The owner would rather cast Night's Whisper first. Since PR 4 the heuristic casts Exquisite Blood there, which the label accepts. Choosing the draw spell needs lookahead over the turn's mana, which goes to a follow-up issue.
 - **`windfall-discarding-a-spare-land` keeps its label and has no `reviewed_at` yet.** Mary Read and Anne Bonny is on the battlefield there, so discarding the Island makes a Treasure, and the owner wants Island first. A follow-up PR adds a `discard_payoff` purpose as an amendment to this ADR, flips the label and stamps it.
+
+
+### Amendment: discard payoffs (2026-10-06)
+
+`develop` at `427d3f702` (PRs 2 to 7) plus this PR's `76e22fc5e`. `DefaultConfig()` against `BaselineConfig()`: `PriceDiscardPayoffs` true (baseline false). No weight is new: a payoff is priced with PR 7's `TokenWeight` (0.50), `Weights.Power + Weights.Toughness` (1.45) per +1/+1 counter, and `DamageToOpponent` (0.30) per point to each live opponent. Arena runs use the concurrent schedule, turn budget 60.
+
+**Suite:** `windfall-discarding-a-spare-land` is relabelled as the owner asked. The Island is the one accepted move. The Mountain is unlabelled. Breeches, Negate and Bident of Thassa stay rejected. Breeches is a Pirate and would make the same Treasure, but it is a castable four-mana creature against a spare land, and a 0.50 Treasure does not close that gap. The position is stamped `reviewer: krakenhavoc`, `reviewed_at: 2026-10-06`. Six positions hold a card that now declares a payoff: this one, `do-not-windfall-away-the-last-land`, `loot-at-the-end-step-before-yours`, `cantrip-with-leftover-mana`, `hold-the-signet-late` and `wrath-a-losing-board`. Each frozen view had the `discard_payoff` the server now projects stamped onto that row, and nothing else changed. `boteval suite run --policy heuristic` gives 35 of 35, every tag at 100% (activate 1, attack 4, block 4, cast 19, choice 1, combat 8, discard 2, land 4, leftover 3, mulligan 6, removal 1, wipe 2). The heuristic now picks the Island. `BaselineConfig()` ranks every position as recorded in `baseline_rankings.json`.
+
+**Run 1:** the same command and seed as PR 2's, with `--decision-log`. 64 games, 0 stalls, 14 rejected moves (10 stale `declare_attacker`, 3 passes over an unanswered Rhystic Study prompt, 1 cast), turns p50 14.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 7) |
+|---|---:|---:|---|---:|
+| esper-control | 5 | 7.8% | 3.4%–17.0% | 1 (1) |
+| izzet-aggro | 4 | 6.2% | 2.5%–15.0% | 3 (3) |
+| mono-black-aristocrats | 40 | 62.5% | 50.3%–73.3% | 10 (10) |
+| simic-ramp | 15 | 23.4% | 14.7%–35.1% | 2 (2) |
+
+The `never` lists are PR 7's, card for card. A6 fails as it does on `develop`: black's interval lies entirely above 50%.
+
+**This amendment's class:**
+
+- Mary Read and Anne Bonny's loot (A3): 48 of 62 games, 77% (PR 7: 41 of 62, 66%). With an Island in hand, the loot is now also priced by the Treasure it makes.
+- Discards made with Mary Read on the bot's own battlefield, from the run 1 decision log: a matching card (Island, Pirate or Vehicle) was offered in 72 discard windows and discarded in 22, 31%. On PR 7's run 1 log it was 8 of 44, 18%. Most of the windows where none was discarded offered only Pirate creatures, which the bot keeps. In the rest the bot was short of lands and kept the Island over a cheap rock or spell, which a land worth 1.50 in hand outweighs.
+- The other payoff cards are cast as before: Marauding Mako 18 of 21 games, Scrounging Skyray 15 of 16, Glint-Horn Buccaneer 16 of 17, Magmakin Artillerist 11 of 13.
+
+Other canaries: Sol Ring 90–100%, Rhystic Study 11 of 17 (esper) and 18 of 21 (simic), Entomb 13 of 18, Viscera Seer (cast) 22 of 22, Harrow 8 of 25.
+
+**Run 2:** the same shape and seeds as PR 2's. 96 games, 0 stalls, turns p50 14 and 12 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
+|---|---:|---:|---:|---|---:|
+| heuristic | 192 | 52 | 27.1% | 21.3%–33.8% | 2 |
+| heuristic-baseline | 192 | 44 | 22.9% | 17.5%–29.4% | 0 |
+
+Not detectably worse: the `heuristic` interval's upper bound is 33.8%, above 25%. PR 7 measured 53 of 192. By half, `heuristic` won 10 of 96 seat-games on esper and izzet against the baseline's black and simic, and 42 of 96 on black and simic against the baseline's esper and izzet.
