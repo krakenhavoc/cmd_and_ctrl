@@ -41,8 +41,10 @@ import (
 //     and red sources would deal", Prismatic Strands), or neither ("all
 //     damage that would be dealt to X this turn");
 //   - the protected player (Player, with Types for "you and/or permanents
-//     you control"), a pinned permanent (the record's Affected set), or
-//     nothing ("would deal this turn");
+//     you control"), a pinned permanent (the record's Affected set), a
+//     set read as the damage would be dealt (RecipientFilter, #2045:
+//     "to creatures you control", "to players"), or nothing ("would deal
+//     this turn");
 //   - CombatOnly, for "all combat damage" (Maze of Ith);
 //   - Amount: 0 is "all damage this turn" and the shield is never spent;
 //     N is CR 615.7's charge, replaced copy-on-write as it is spent, as
@@ -73,7 +75,8 @@ import (
 // deal [to <protected>] this turn" (Amount 0), or "prevent the next N
 // damage <source> would deal [to <protected>] this turn" (Amount N,
 // CR 615.7). Reads Objects, SourceZone, Queries, Player, Types,
-// CombatOnly, Amount, Then and SourceFilter (#2026). Scope ScopeGame
+// CombatOnly, Amount, Then, SourceFilter (#2026) and RecipientFilter
+// (#2045). Scope ScopeGame
 // for a protected player or none; pinned (ScopeNone) to a protected
 // permanent.
 const ModPreventFromSource ModKind = "preventFromSource"
@@ -114,6 +117,14 @@ type DamageShield struct {
 	// set is fixed as the shield is made (CR 611.2c), and each member is
 	// pinned as the object it is now (CR 400.7).
 	ProtectPermanents []uuid.UUID
+
+	// Recipients is the protected set when it is none of the above
+	// (#2045): "to creatures", "to creatures you control", "to players",
+	// "to Dogs you control", "to artifact creatures" — read as the damage
+	// would be dealt (CR 611.2c). The zero value names no set. Refused
+	// beside a protected player or permanent, with AndDealtBy, and with a
+	// charge.
+	Recipients DamageRecipientFilter
 
 	// AndDealtBy is "dealt to and dealt by": the protected permanents are
 	// also the sources whose damage the shield prevents (Maze of Ith). It
@@ -166,6 +177,11 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 	if filtered && (s.Source.ID != uuid.Nil || s.AndDealtBy || sourceFilterProblem(s.Filter) != "") {
 		return false
 	}
+	recipients := !s.Recipients.IsZero()
+	if recipients && (s.ProtectPlayer != uuid.Nil || len(s.ProtectTypes) != 0 || s.ProtectPermanent != uuid.Nil ||
+		len(s.ProtectPermanents) != 0 || s.AndDealtBy || s.Amount != 0 || recipientFilterProblem(s.Recipients) != "") {
+		return false
+	}
 	protected := s.ProtectPermanents
 	if s.ProtectPermanent != uuid.Nil {
 		protected = append([]uuid.UUID{s.ProtectPermanent}, s.ProtectPermanents...)
@@ -187,6 +203,9 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 	}
 	if filtered {
 		m.SourceFilter = []DamageSourceFilter{s.Filter.clone()}
+	}
+	if recipients {
+		m.RecipientFilter = []DamageRecipientFilter{s.Recipients.clone()}
 	}
 	if s.ThenPerSource {
 		if s.Then.key == "" {

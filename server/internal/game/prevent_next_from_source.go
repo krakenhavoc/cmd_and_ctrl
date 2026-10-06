@@ -226,6 +226,11 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 // nextFromSourceModProblem is registration's (and restore's) check on the
 // kind's parameters.
 func nextFromSourceModProblem(m Mod) string {
+	// #2045: a recipient set's own check, on every kind (it refuses the
+	// filter on any kind but preventFromSource).
+	if problem := recipientFilterModProblem(m); problem != "" {
+		return problem
+	}
 	if m.Kind == ModPreventFromSource {
 		// ADR 0108 §7: the not-one-use shield reads the same source
 		// fields (prevent_from_source.go).
@@ -358,13 +363,18 @@ func (g *Game) damageFromChosenSourceLocked(m Mod, id uuid.UUID) bool {
 
 // nextFromSourceProtectsLocked reports whether damage to `target` is
 // damage the shield protects: the protected player, a permanent of a
-// named type that player controls, the pinned permanent, or anything at
-// all when nothing is named.
+// named type that player controls, the pinned permanent, the set a
+// recipient filter names (#2045), or anything at all when nothing is
+// named.
 //
 // Caller must hold g.mu.
 func (g *Game) nextFromSourceProtectsLocked(e ScopedEffect, m Mod, target uuid.UUID) bool {
 	if e.Scope != ScopeGame {
 		return scopedAffectsLiveObjectLocked(g, e, target)
+	}
+	if len(m.RecipientFilter) == 1 {
+		// #2045: a set read as the damage would be dealt (CR 611.2c).
+		return g.recipientFilterMatchesLocked(e, m.RecipientFilter[0], target)
 	}
 	if m.Player == uuid.Nil {
 		return true

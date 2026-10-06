@@ -519,3 +519,20 @@ func ControlsA(subtype string) func(g *game.Game, controller uuid.UUID) bool {
 		return false
 	}
 }
+
+// AnOpponentControlsAAndYouControlA builds the Nemesis free-spell
+// cycle's condition: "If an opponent controls a <theirs> and you
+// control a <yours>" (Sivvi's Ruse's Mountain and Plains). An
+// OPPONENT, not any player, so your own <theirs> does not count; both
+// halves read effective subtypes.
+func AnOpponentControlsAAndYouControlA(theirs, yours string) func(g *game.Game, controller uuid.UUID) bool {
+	return func(g *game.Game, controller uuid.UUID) bool {
+		opponents, you := false, false
+		for _, c := range g.BattlefieldCardsForEffect() {
+			mine := c.Controller == controller
+			you = you || (mine && hasSubtype(c, yours))
+			opponents = opponents || (!mine && c.Controller != uuid.Nil && hasSubtype(c, theirs))
+		}
+		return opponents && you
+	}
+}
