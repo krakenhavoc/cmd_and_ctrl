@@ -407,6 +407,87 @@ describe("the yes/no family, inline in the dock", () => {
   });
 });
 
+describe("commander_return and a commander's replacement, ADR 0115 PR 5", () => {
+  const commander = (zoneName: "graveyard" | "battlefield", owner = ME) => ({
+    instance_id: "cmdr",
+    name: "Kenrith, the Returned King",
+    owner,
+    controller: owner,
+    is_commander: true,
+    type_line: "Legendary Creature — Human Noble",
+    zone: zoneName,
+  });
+  const withCommanderInGraveyard = (c: Partial<PendingChoiceView>): GameView => {
+    const t = table({ pending_choices: [choice({ kind: "commander_return", ...c })] });
+    t.seats[0].graveyard = zone("graveyard", ME, [commander("graveyard")]) as never;
+    return t;
+  };
+
+  it("shows the commander card in the owner's prompt", async () => {
+    const c = await mountGame(
+      withCommanderInGraveyard({
+        source: "cmdr",
+        reason: "Kenrith, the Returned King — put it into the command zone?",
+      }),
+    );
+    const dlg = expectInDock(c, "Kenrith, the Returned King — put it into the command zone?");
+    const shown = dlg.querySelector(".dock-commander");
+    expect(shown, "the commander card in the prompt").not.toBeNull();
+    expect(shown!.textContent).toContain("Kenrith, the Returned King");
+  });
+
+  it("shows no card when the prompt names none the viewer can see", async () => {
+    const c = await mountGame(
+      withCommanderInGraveyard({
+        source: "gone",
+        reason: "Your commander — put it into the command zone?",
+      }),
+    );
+    const dlg = expectInDock(c, "Your commander — put it into the command zone?");
+    expect(dlg.querySelector(".dock-commander")).toBeNull();
+  });
+
+  it("shows the commander in a CR 903.9b replacement for a battlefield exit", async () => {
+    const t = withChoice({
+      kind: "optional_replacement",
+      reason: "Send commander to command zone instead?",
+      source: "cmdr",
+    });
+    t.battlefield.cards.push(commander("battlefield") as never);
+    const c = await mountGame(t);
+    const dlg = expectInDock(c, "Send commander to command zone instead?");
+    expect(dlg.querySelector(".dock-commander")?.textContent).toContain(
+      "Kenrith, the Returned King",
+    );
+  });
+
+  it("does not show a card for an optional replacement about a non-commander", async () => {
+    const c = await mountGame(
+      withChoice({ kind: "optional_replacement", reason: "Unleash?", source: "sage" }),
+    );
+    expect(dockOf(c).querySelector(".dock-commander")).toBeNull();
+  });
+
+  it("tells the other seats who is deciding while the question is open", async () => {
+    const t = withChoice({ kind: "commander_return", chooser: OPP, source: "cmdr" });
+    const c = await mountGame(t);
+    expect(dockOf(c).querySelector('[role="dialog"]')).toBeNull();
+    expect(dockOf(c).querySelector(".pass-hint")?.textContent).toBe(
+      "Opp is deciding about their commander",
+    );
+    // It closes with the question.
+    snapshot(table());
+    expect(dockOf(c).textContent).not.toContain("is deciding");
+  });
+
+  it("says nothing of it to the deciding seat beyond the prompt", async () => {
+    const c = await mountGame(
+      withCommanderInGraveyard({ source: "cmdr", reason: "Kenrith — keep it?" }),
+    );
+    expect(dockOf(c).querySelector(".pass-hint")).toBeNull();
+  });
+});
+
 describe("keys for the yes/no family (ADR 0111 §1)", () => {
   const REASON = "Reclamation Sage — destroy target artifact or enchantment?";
 

@@ -17,7 +17,7 @@
   import type { CardView, GameView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
-  import { fanAngle, fanLift, handOverlap } from "../../handFan";
+  import { fanAngle, fanLift, fitFan, handOverlap } from "../../handFan";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { emit as tutorialEmit } from "../../tutorialBus";
@@ -199,7 +199,49 @@
   // three resting values are the ones the CSS used to hard-code per
   // layout; handOverlap only ever tightens them.
   const overlapBase = $derived(layout === "stacked" ? 0.85 : isSelf ? 0.5 : 0.62);
-  const overlap = $derived(handOverlap(cards.length, overlapBase));
+
+  // #2395 — and fitted to the row the viewer's own hand sits in. The
+  // row is narrower than the resting fan wherever something shares it
+  // (the tutorial's coach card at its left, the commander strip at its
+  // right), and the fan's end cards ran out of it, under those, where
+  // the pointer could not reach them. fitFan tightens and flattens the
+  // fan until it fits, or asks for a scroll (handFan.ts). Measured from
+  // the strip and one card; until then, and for opponents' face-down
+  // fans, the resting overlap stands.
+  let handEl = $state<HTMLElement | null>(null);
+  let room = $state({ w: 0, cardW: 0, cardH: 0 });
+  function measureRoom(): void {
+    const el = handEl;
+    if (!el) return;
+    const cs = getComputedStyle(el);
+    const w =
+      el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const slot = el.querySelector<HTMLElement>(".hand-slot");
+    const cardW = slot?.offsetWidth ?? 0;
+    const cardH = slot?.offsetHeight ?? 0;
+    if (w !== room.w || cardW !== room.cardW || cardH !== room.cardH) room = { w, cardW, cardH };
+  }
+  $effect(() => {
+    const el = handEl;
+    if (!el || !isSelf || typeof ResizeObserver === "undefined") return;
+    // The strip's own box changes with the row's width and, through its
+    // peek height, with the card size; a card coming or going does not
+    // resize it, so the count is read below as well.
+    const ro = new ResizeObserver(() => measureRoom());
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  $effect(() => {
+    void cards.length;
+    void layout;
+    if (isSelf) measureRoom();
+  });
+  const fit = $derived(
+    isSelf
+      ? fitFan(cards.length, overlapBase, room.w, room.cardW, room.cardH, layout !== "stacked")
+      : { overlap: handOverlap(cards.length, overlapBase), tilt: 1, scroll: false },
+  );
+  const overlap = $derived(fit.overlap);
 
   // Once an order is saved, keep it in step with the hand: a card that
   // left drops out and a new one is recorded at the right end, so a
@@ -655,10 +697,12 @@
 <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  bind:this={handEl}
   class="hand"
   class:opponent={!isSelf}
   class:stacked={layout === "stacked"}
   class:reordering
+  class:scroll={fit.scroll}
   style:--hand-overlap={overlap}
   aria-label={isSelf ? L.yourHand : "opponent hand"}
   onpointerenter={isSelf ? () => tutorialEmit("hand-hovered") : undefined}
@@ -690,7 +734,7 @@
       onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
       style:transform={layout === "stacked"
         ? gapX || "none"
-        : `${gapX}rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
+        : `${gapX}rotate(${fanAngle(i, cards.length) * fit.tilt}deg) translateY(${fanLift(i, cards.length) * fit.tilt}px)`}
     >
       <!-- Inner wrapper carries the deal-in / deal-out transforms so
            they don't fight the .hand-slot's fan-layout transform. -->
@@ -835,6 +879,20 @@
     pointer-events: none;
   }
   .hand:not(.opponent) > .hand-slot {
+    pointer-events: auto;
+  }
+  /* #2395: a hand too long for its row even flat, at fitFan's thinnest
+     sliver, scrolls sideways rather than run under what is beside it.
+     It scrolls lifted too: the lift's max-height: none still shows the
+     whole card, since a flat fan has no corner reaching past it. The
+     fan fills the row, so the strip has no empty ends to keep clear,
+     and it takes the pointer for its scrollbar. */
+  .hand.scroll,
+  .hand.scroll:hover {
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
     pointer-events: auto;
   }
   /* Opponent hands stay compact — they're face-down anyway and the

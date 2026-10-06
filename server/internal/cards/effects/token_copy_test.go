@@ -89,8 +89,8 @@ func TestTokenCopyOfAStarCreatureSurvivesLosingItsLastCounter(t *testing.T) {
 // by field rather than copying the source wholesale, so this pins
 // that IsCommander is one of the fields deliberately left out — a
 // token copy of a commander is just a token, never a commander, and
-// so never queues the CR 903.9 "send to command zone" prompt on the
-// way to the graveyard, never gets a commander tax (tokens are never
+// so never queues the CR 903.9a "send to command zone" prompt once it
+// reaches the graveyard, never gets a commander tax (tokens are never
 // cast), and never attributes commander damage (RecordCommanderDamage
 // only fires for a battlefield source with IsCommander set).
 func TestTokenCopyOfACommanderIsNotACommander(t *testing.T) {

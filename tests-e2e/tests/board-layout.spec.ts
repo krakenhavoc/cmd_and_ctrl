@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
 import { joinAsPlayer } from "./players";
+import { handCardCount, unreachableHandCards } from "./hand-reach";
 
 // board-layout: smoke-tests the new HTML/CSS player panel that replaces
 // the PixiJS canvas board. Asserts the wireframe is wired up — each
@@ -61,6 +62,16 @@ test.describe("board layout", () => {
     await expect(selfBoard.getByRole("list", { name: "enchant / artifact" })).toBeAttached();
     await expect(page.getByLabel("your hand")).toBeVisible();
     await expect(page.getByLabel("Alice piles")).toBeVisible();
+    // #2395: the fan fits its row, between the piles' corner and the
+    // commander strip, so the pointer reaches every card of the hand
+    // at rest. Parked off the board, the pointer leaves it at rest.
+    await page.mouse.move(page.viewportSize()!.width / 2, 4);
+    await expect.poll(() => handCardCount(page)).toBeGreaterThan(0);
+    await expect
+      .poll(() => unreachableHandCards(page), {
+        message: "hand cards the pointer cannot reach",
+      })
+      .toEqual([]);
 
     // Pile zones: EXILE / GRAVE / LIBRARY as PileButtons, plus the
     // command zone (its own affordance since the CMD pile button was

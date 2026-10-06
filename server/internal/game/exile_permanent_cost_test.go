@@ -12,7 +12,7 @@ import (
 // CR 602 ability (The Soul Stone's harness, Altar of Bhaal) and a
 // CR 605 mana ability (Food Chain). The catalog half is
 // cards/effects/exile_permanent_cost_cards_test.go, which also pins the
-// trigger behaviour with real cards; the CR 903.9 rows are in
+// trigger behaviour with real cards; the CR 903.9a and 903.9b rows are in
 // cost_commander_choice_test.go's table.
 //
 // What is pinned here is the ENGINE contract: paid at announce and in

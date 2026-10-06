@@ -42,7 +42,7 @@ import (
 // replacement that applies), and the owner is then offered the
 // command zone. Both printed outcomes are reachable and nothing else
 // is, pinned by
-// TestB19LiesaExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines.
+// TestB19LiesaExilesAnOpponentsDyingCommanderThenAsksItsOwner.
 func init() {
 	Register(Spec{
 		OracleID:        "efcaadbe-24e3-4dfc-b08c-a910f003d427",

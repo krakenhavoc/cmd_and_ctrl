@@ -56,7 +56,7 @@ import (
 // and its owner is then offered the command zone: now, or stay
 // exiled and come back at the end step. Both printed outcomes are
 // reachable and nothing else, pinned by
-// TestCosmicInterventionSavesACommanderWhoseOwnerDeclines.
+// TestCosmicInterventionExilesACommanderThenAsksItsOwner.
 //
 // No simplification.
 func init() {

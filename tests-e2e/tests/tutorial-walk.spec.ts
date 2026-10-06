@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { L } from "../../client/src/lib/labels";
 import { ADMIN_TOKEN } from "./env";
+import { unreachableHandCards } from "./hand-reach";
 
 // tutorial-walk: the practice tutorial, walked end to end (ADR 0125 §8,
 // ADR 0076 sub-PR 6, #1085).
@@ -185,6 +186,12 @@ function visiblePoint(
   return null;
 }
 
+/**
+ * A hand card the pointer cannot reach (#2395). Not a race with the
+ * game for the walk to retry: it fails the walk where it happens.
+ */
+class HiddenCard extends Error {}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -252,20 +259,33 @@ class Walk {
 
   /**
    * Play a ready card from the hand: the first of `names`, in order of
-   * preference, that the page shows. The hand is a fan that overlaps
-   * itself and peeks above the bottom edge, so a card's centre is often
-   * not on the card: click a point of it that is.
+   * preference. The hand is a fan that overlaps itself and peeks above
+   * the bottom edge, so a card's centre is often not on the card: click
+   * a point of it that is.
    *
-   * The fan is also wider than its row, and with the coach up its
-   * outer cards can sit wholly under the coach card. When every ready
-   * card is hidden like that, the walk does what a keyboard player
-   * does, Tab to the card and press Enter, and says so in the report.
+   * Every card of the hand must show such a point, coach card up or not
+   * (#2395: the fan fits its row, so none runs under the coach card, the
+   * piles or the commander). One that shows none fails the walk outright,
+   * naming it; there is no keyboard fallback to hide it behind.
    */
   private async clickInHand(names: RegExp[]): Promise<void> {
     await this.park();
     const any = this.hand.getByRole("button", { name: names[0] });
     // A card is a button only while this page may play it: wait for one.
     await expect(any.first()).toBeVisible({ timeout: 10_000 });
+    // A card dealt a moment ago may still be sliding in: give the fan a
+    // moment to settle before calling a card hidden.
+    let hidden: string[] = [];
+    await expect
+      .poll(async () => (hidden = await unreachableHandCards(this.page)), {
+        timeout: 5_000,
+      })
+      .toEqual([])
+      .catch(() => {
+        throw new HiddenCard(
+          `hand cards the pointer cannot reach (#2395): ${hidden.join("; ")}`,
+        );
+      });
     for (const name of names) {
       const cards = this.hand.getByRole("button", { name });
       for (let i = 0; i < (await cards.count()); i++) {
@@ -277,13 +297,9 @@ class Walk {
         }
       }
     }
-    const card = any.first();
-    test.info().annotations.push({
-      type: "hidden card",
-      description: `${await card.getAttribute("aria-label")}: under the coach or the piles; played with Enter`,
-    });
-    await card.focus();
-    await this.page.keyboard.press("Enter");
+    throw new HiddenCard(
+      `no ready card in the hand shows a point to click (#2395): ${names.join(", ")}`,
+    );
   }
 
   /**
@@ -379,6 +395,7 @@ class Walk {
       try {
         await this.act(c);
       } catch (err) {
+        if (err instanceof HiddenCard) throw err;
         lastError = String(err).split("\n")[0];
         if (process.env.WALK_DEBUG) await this.debugRetry(err);
       }

@@ -205,7 +205,7 @@ func TestASpellCopyMovingItselfWhileResolvingCeasesToExist(t *testing.T) {
 // Since #1363, createSpellCopyLocked no longer carries IsCommander
 // onto the copy at all (CR 903.3 — the designation is not a copiable
 // value), so an ordinary copy of a commander spell no longer even
-// LOOKS like a commander to the CR 903.9 built-in. That would make
+// LOOKS like a commander to the CR 903.9 checks. That would make
 // this test pass for the wrong reason — commanderZoneReplacement's own
 // AppliesTo would already say no — so the flag is set BY HAND on the
 // copy after it is made, standing in for whatever future path might

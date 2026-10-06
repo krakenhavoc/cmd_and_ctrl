@@ -9,7 +9,8 @@ import (
 )
 
 // paused_exile_continuations_test.go — #894. Two single-card exile
-// loops that ran on past a leg the CR 903.9 prompt had PAUSED.
+// loops that ran on past a leg a commander's command-zone prompt had
+// PAUSED (before ADR 0115 made exile and graveyard moves unpaused).
 //
 // Living Death is the one that lost a card: its exile / sacrifice /
 // reanimate swap moved on while a commander card's owner was being

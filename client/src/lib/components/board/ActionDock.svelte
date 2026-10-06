@@ -1276,6 +1276,9 @@
     font-weight: 600;
     color: var(--fg-muted);
   }
+  /* #2403: the game log drawer, opened over the stage, starts below
+     this button (GameLogPanel's .over-stage reads its top and height),
+     so a move here moves that too. */
   .dock-sheet.stage .sheet-min.view-table {
     position: absolute;
     top: 16px;
