@@ -158,7 +158,7 @@ func castableFromHere(c *protocol.CardView) bool {
 // than nothing (purposeValue's clampSweep). A cast prices the purpose
 // of the slot it names through resolvedValueFor.
 func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
-	return p.resolvedValueFor(st, c, x, cardPurpose(c), true)
+	return p.resolvedValueFor(st, c, x, cardPurpose(c), true, false)
 }
 
 // resolvedValueFor is resolvedValue with the purpose to price passed in
@@ -166,7 +166,12 @@ func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
 // cost's or the chosen modes' for a cast. A declared purpose the Config
 // prices replaces an instant's or a sorcery's mana-value proxy, and is
 // added to a permanent's body as its enters effect.
-func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps purposeSet, spent bool) float64 {
+//
+// `targeted` is a cast that names targets. A targeted cast gets no
+// SpellFloor: what it is worth is what it points at, which valueOfCast
+// adds, and a floor under it would fire removal at smaller creatures
+// outside ADR 0126 §5's windows, which the ADR leaves alone.
+func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps purposeSet, spent, targeted bool) float64 {
 	if c == nil {
 		return 0
 	}
@@ -199,6 +204,15 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 			v = p.purposeValue(st, ps, x, c, spent)
 		} else {
 			v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+		}
+		// ADR 0126 §5: an untargeted spell the engine runs is worth at
+		// least a card that replaces itself and does a little more. The
+		// floor stays under a declared purpose (a tutor, Entomb), and is
+		// not put under a priced sweep: §4 exists to price a bad wipe
+		// below zero.
+		sweep := p.cfg.PriceSweeps && len(ps.sweeps) > 0
+		if v < p.cfg.SpellFloor && !sweep && !targeted && !c.Unimplemented && untargetedSpell(c) {
+			v = p.cfg.SpellFloor
 		}
 	}
 	if c.IsCommander {

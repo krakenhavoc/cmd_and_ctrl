@@ -680,6 +680,17 @@ func (u UntapTarget) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(u.Target) { // #1432
 		return nil
 	}
+	// "Untap this" after this permanent has left the battlefield: the
+	// card in its new zone is a new object (CR 400.7) and nothing can
+	// be untapped, so the instruction does nothing. Goblin
+	// Sharpshooter's own death fires its "whenever a creature dies,
+	// untap this creature" (the trigger looks back, CR 603.10a), and
+	// the untap resolved into an effect error (ADR 0126 PR 5's catalog
+	// soak). A chosen target that left is already illegal (CR 608.2b)
+	// and never gets here.
+	if ctx != nil && ctx.Item != nil && u.Target == ctx.Item.SourceCardID && !onBattlefield(ctx.Game, u.Target) {
+		return nil
+	}
 	return ctx.Game.UntapTargetForEffect(u.Target)
 }
 

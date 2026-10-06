@@ -460,6 +460,7 @@ Why the one-mana sources stop short: across the run, a (game, seat, card) offer 
 Not detectably worse: the `heuristic` interval's upper bound is 35.4%, above 25%. Per half: `heuristic` won 10 of 96 seat-games on esper and izzet against the baseline's black and simic, and 45 of 96 on black and simic against the baseline's esper and izzet.
 
 **Suite:** four positions added and gated for `heuristic`: `cast-sol-ring-turn-one`, `cast-the-signet-when-short`, `cast-the-elf-turn-one` and `hold-the-signet-late`. Each comes from a run 1 decision log. `boteval suite run --policy heuristic` gives 26 of 26, every tag at 100% (attack 4, block 4, cast 11, choice 1, combat 8, land 4, mulligan 6, removal 1). `BaselineConfig()` passes priority in the first three positions instead of casting, which is the change they measure, and its rankings are recorded in `baseline_rankings.json`.
+
 ### PR 6: the purpose signal (2026-10-06)
 
 `develop` at `717d7ce51` against PR 6's branch, and again at `62bc4ddec` (PR 3 merged) against the branch with `develop` merged in. No price changes: `BaselineConfig()` and `DefaultConfig()` are untouched, and the heuristic reads no new field (an any-player row's `Draws` and `ControllerLosesLife` are still the only purpose it reads, and they did not change on any card).
@@ -470,46 +471,90 @@ Not detectably worse: the `heuristic` interval's upper bound is 35.4%, above 25%
 
 **Snapshot:** `TestSnapshotShapeIsRecorded` passes with `testdata/snapshot_shape/` unchanged; `SnapshotSchemaVersion` does not move.
 
-### PR 7: wipes, ramp spells and discard costs (2026-10-06)
+### PR 5: the two windows (2026-10-06)
 
-`develop` at `277743d08` (PRs 2, 3 and 6) plus PR 7. `DefaultConfig()` against `BaselineConfig()`: `PricePurposes` true (baseline false), `TutorWeight` 1.00 (0), `SelfMillWeight` 0.50 (0), `DiscardWeight` 0.60 (0), `TokenWeight` 0.50 (0), `PriceSweeps` true (false), `DiscardCostByCard` true (false), `LastLandDiscard` 1.00 (0). The §9 starting values, unchanged by tuning. Arena runs use the concurrent schedule, turn budget 60.
+`DefaultConfig()` against `BaselineConfig()`: `LeftoverWindows` true (baseline false), `LeftoverThreshold` 0.00 (0), `SpellFloor` 1.30 (0), `TapByTiming` true (false). These are the starting values in §9, not changed by tuning. Measured twice:
 
-Readings of the ADR, each the closest to its intent:
+- on `717d7ce51` (PR 2) plus PR 5 alone;
+- on `277743d08` (PRs 3 and 6 merged) plus PR 5, the `develop` it merges into.
 
-- **A sweep is priced against PR 6's shape as built.** `opponents_only` spares the bot's own permanents. `amount_is_x` reads the X the move announces. `sacrifice` removes everything it matches, indestructible or not. `destroy` spares an indestructible permanent. `damage` and `minus` spare a creature whose toughness is above the amount, and `damage` also spares an indestructible one. A `partial` sweep takes half of each matched permanent, because the view does not say which ones it spares. A `bounce` sweep takes half, but all of a token. An Aura goes with the permanent it enchants. Several chosen modes remove the union of what each removes.
-- **The purpose replaces the proxy and leaves PR 5's `SpellFloor` to PR 5.** A non-sweep spell with a purpose is priced by it. Once PR 5 merges, the floor stays a floor under those spells, so a tutor or Entomb still clears the leftover bar. A sweep gets no floor, because §4 exists to price a bad wipe below zero.
-- **A permanent's purpose is its enters effect, added to its body** (§6, as built in PR 6): Wood Elves' land, Mulldrifter's two cards.
-- **The bot's own activated row with a purpose is priced by that purpose instead of `ActivateBase`.** A row without one keeps `ActivateBase` (owner decision 6). A row that sacrifices its own source pays for the source. A row that taps a creature that could attack pays for the attack in the bot's first main phase, as station already does. PR 5's `TapByTiming` takes this over when it merges. Without the attack price, the first run 1 looted with Mary Read and Anne Bonny in the first main phase 414 times instead of attacking with her.
-- **The last land in hand costs more to discard.** §7's worked example says an early Windfall that discards the only land in hand is not positive, but its weights price it at +0.70. `LastLandDiscard` (1.00) charges the land drop it risks on top of `cardValue`, while the bot has fewer than `LandsWanted` sources. That is what `do-not-windfall-away-the-last-land` measures.
+Arena runs use the concurrent schedule, turn budget 60.
 
-**Run 1:** the same command and seed as PR 2's, with `--decision-log`. 64 games, 0 stalls, turns p50 14. 17 rejected moves, all `declare_attacker` refused with "action not legal in current step". These are stale attacks in the concurrent schedule, slowed by the decision log. The first run 1, before the attack price, had 17 as well: 16 stale attacks and one cast of Hellrider refused for "insufficient mana". PR 3's run had 10.
+Two readings of §5, both recorded in the PR:
 
-| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 3) |
+- **The second main phase is a sorcery-speed window.** There the leftover bar is for sorcery-speed moves that tap no creature. An instant, a flash spell, an instant-speed ability, or any move that taps a creature waits for the end step before the bot's turn. The mana and the creature are both still untapped then. The first arena run without this rule did three things after combat: cast Entomb, cast Vampiric Tutor, and looted with Mary Read and Anne Bonny, giving up a blocker for a whole round.
+- **`SpellFloor` is for untargeted spells only:** a spell with no target on the card, on any mode, or on the move. A targeted spell is priced by its targets, as before. A floor under it would fire removal at smaller creatures outside the windows. Out of scope says that must not change.
+
+**Run 1:** the same command and seed as PR 2's.
+
+On `277743d08` + PR 5: 64 games, 0 stalls, 1 rejected move, turns p50 12.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 3; PR 2) |
 |---|---:|---:|---|---:|
-| esper-control | 3 | 4.7% | 1.6%–12.9% | 11 (11) |
-| izzet-aggro | 4 | 6.2% | 2.5%–15.0% | 12 (15) |
-| mono-black-aristocrats | 35 | 54.7% | 42.6%–66.3% | 20 (24) |
-| simic-ramp | 22 | 34.4% | 23.9%–46.6% | 10 (16) |
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 6 (11; 19) |
+| izzet-aggro | 4 | 6.2% | 2.5%–15.0% | 10 (15; 22) |
+| mono-black-aristocrats | 44 | 68.8% | 56.6%–78.8% | 16 (24; 29) |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 8 (16; 24) |
 
-A6 holds in this run: no deck's interval lies entirely above 50%.
+On `717d7ce51` + PR 5 alone: 64 games, 0 stalls, 1 rejected move, turns p50 13.
 
-**This PR's classes**, games used out of games offered:
+| Deck | Wins | Win rate | Wilson 95% interval | `never` |
+|---|---:|---:|---|---:|
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 14 |
+| izzet-aggro | 5 | 7.8% | 3.4%–17.0% | 18 |
+| mono-black-aristocrats | 43 | 67.2% | 55.0%–77.4% | 23 |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 13 |
 
-- **Wipes:** of 95 creature wipes cast, 1 was cast while the bot held the biggest creature board, by power plus toughness. On PR 3's run 1 decision log it was 13 of 88.
-- **Ramp spells**, all `never` at PR 3 except Cultivate and Kodama's Reach: Harrow 7 of 27 (26%), Farseek 11 of 24, Rampant Growth 4 of 24, Nature's Lore 4 of 24, Three Visits 3 of 21, Cultivate 15 of 16, Kodama's Reach 19 of 21. The cheap ones are mostly offered once the deficit has closed. There a land on the battlefield is worth `ManaSource` (1.00) against the card's 1.20, so they wait, like the late rocks in PR 3's row.
-- **Discard costs:** Unexpected Windfall 10 of 11, Big Score 14 of 15.
+This PR moves A6 the wrong way. Mono-black's interval now lies entirely above 50%. Three things in the black deck clear the leftover bar: its cheap creatures, its tutors, and Syr Konrad's untargeted mill in the end step before its turn. In four harvest games, 13 of 21 Konrad activations came from that window. Its opponents' engines still do not clear the bar; that is PR 4.
 
-Canaries (A3): Mary Read and Anne Bonny's loot 43 of 63 (68%), now after combat only; it was 0 of 62. Harrow 7 of 27 (26%), was 0 of 28. Entomb 0 of 16, and the tutors stay `never`. Priced by purpose, Entomb is 0.60 − 1.20 and a tutor 1.20 − 1.20, so neither clears a bar until PR 5's floor does. Sol Ring holds at 92–100%. Rhystic Study and Viscera Seer are unchanged at 0 (PRs 4 and 8).
+Canaries (A3), games used out of games offered, on `277743d08` + PR 5 (PR 5 alone in brackets; PR 2 was 0% for each):
 
-A2, measured as the owner decided on #2435, over the games in which each rock or dork was offered while the bot's mana deficit was open: 240 of 322 such games (75%). At or above 80%: Sol Ring 39 of 39, Hedron Archive, Worn Powerstone, Thought Vessel, Palladium Myr, Birds of Paradise, Ornithopter of Paradise, Delighted Halfling, Elvish Mystic and Fyndhorn Elves. Below 80%: Arcane Signet 27 of 41, Mind Stone 18 of 33, Commander's Sphere 14 of 28, the Signets 44–73%, the Talismans 60–78%, and Llanowar Elves 12 of 16. A2 is judged at PR 9.
+| Canary | Games used | Meets A3 |
+|---|---|:--:|
+| Mary Read and Anne Bonny's loot | 32 of 62, 52% (27 of 61) | yes |
+| Entomb | 13 of 19, 68% (16 of 18) | yes |
+| Viscera Seer (cast) | 17 of 20, 85% (18 of 21) | yes |
+| Sol Ring | 93–100% in every deck, from PR 3 | yes |
+| Harrow | 0 of 27 | no |
+| Rhystic Study | 0% | no |
 
-**Run 2:** the same shape and seeds as PR 2's. 96 games, 0 stalls, turns p50 14 and 13 by half.
+- Viscera Seer's sacrifice ability is still never used (PR 8).
+- Harrow does not move. Its additional cost sacrifices a land, so §5 keeps the normal bar for it, and it waits for §6's `purpose.lands` (PR 7).
+- Rhystic Study is PR 4.
 
-| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
-|---|---:|---:|---:|---|---:|
-| heuristic | 192 | 47 | 24.5% | 18.9%–31.0% | 3 |
-| heuristic-baseline | 192 | 49 | 25.5% | 19.9%–32.1% | 0 |
+Mana rocks and dorks (A2), on `277743d08` + PR 5:
 
-Not detectably worse: the `heuristic` interval's upper bound is 31.0%, above 25%. By half, `heuristic` won 5 of 96 seat-games on esper and izzet against the baseline's black and simic, and 42 of 96 on black and simic against the baseline's esper and izzet. Two of its three rejected moves are stale attacks. The third is a Counterspell refused for "insufficient mana" in the concurrent schedule. None is a card this PR prices.
+- Llanowar Elves 24 of 27, Fyndhorn Elves 23 of 24 and Elvish Mystic 16 of 18 now meet 80%. They were 14 of 28, 7 of 18 and 5 of 16 at PR 3. A cheap dork is cast with leftover mana in the second main phase.
+- Worn Powerstone (13 of 16) meets 80%.
+- The other one-mana and two-mana rocks are still below 80%, at 0–67%: a late rock is still priced below 0.00 (PR 3's note).
 
-**Suite:** four positions added and gated for `heuristic`, from run 1 decision logs: `do-not-wrath-your-winning-board`, `wrath-a-losing-board`, `windfall-discarding-a-spare-land` and `do-not-windfall-away-the-last-land`. `boteval suite run --policy heuristic` gives 30 of 30, every tag at 100% (attack 4, block 4, cast 15, choice 1, combat 8, discard 2, land 4, mulligan 6, removal 1, wipe 2). A4 holds: both wipe positions pass and are gated. `BaselineConfig()` passes priority in `windfall-discarding-a-spare-land` instead of casting, which is the change it measures, and its rankings for all four are recorded in `baseline_rankings.json`.
+**Run 2:** the same shape and seeds as PR 2's. 96 games each, 0 stalls.
+
+| Tree | Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves | Turns p50 |
+|---|---|---:|---:|---:|---|---:|---:|
+| `277743d08` + PR 5 | heuristic | 192 | 49 | 25.5% | 19.9%–32.1% | 2 | 13 |
+| | heuristic-baseline | 192 | 47 | 24.5% | 18.9%–31.0% | 1 | 13 |
+| `717d7ce51` + PR 5 | heuristic | 192 | 51 | 26.6% | 20.8%–33.2% | 2 | 15 / 14 |
+| | heuristic-baseline | 192 | 45 | 23.4% | 18.0%–29.9% | 4 | 15 / 14 |
+
+The result is not detectably worse in either tree: the `heuristic` interval's upper bound is 32.1% and 33.2%, both above 25%. PR 3 alone measured 28.6% (22.7%–35.4%). All three intervals overlap widely.
+
+**Suite:** `boteval suite run --policy heuristic` on `277743d08` + PR 5 gives 29 of 29, every tag at 100%:
+
+| Tag | Positions |
+|---|---:|
+| activate | 1 |
+| attack | 4 |
+| block | 4 |
+| cast | 13 |
+| choice | 1 |
+| combat | 8 |
+| land | 4 |
+| leftover | 3 |
+| mulligan | 6 |
+| removal | 1 |
+
+- Three new positions are gated for `heuristic`: `loot-at-the-end-step-before-yours`, `tutor-at-the-end-step-before-yours` and `cantrip-with-leftover-mana`. `BaselineConfig()` passes on all three, and its rankings are recorded.
+- `do-not-cantrip-before-the-three-drop` is not added, because the harvest found no window where it was the unambiguous answer. `TestTheCantripDoesNotBeatTheThreeDrop` pins that behaviour in `heuristic` instead.
+
+**Engine bug found:** the catalog soak on this branch failed on nightly seed 2026100601. Goblin Sharpshooter's own death triggers its untap. The untap then resolved against the card in exile and raised an effect error. The PR fixes it in `UntapTarget` (CR 400.7), with a regression test.

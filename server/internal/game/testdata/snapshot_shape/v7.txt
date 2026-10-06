@@ -2339,7 +2339,9 @@ seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
+seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
+seats[].castPermissions[].filter.withCounter	string
 seats[].castPermissions[].followUp	string
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].label	string
@@ -3759,7 +3761,9 @@ seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
+seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
+seats[].statics[].cantBeCountered.filter.withCounter	string
 seats[].statics[].cantBeCountered.nextOnly	bool
 seats[].statics[].cantBeCountered.text	string
 seats[].statics[].cantBeCountered.whose	number:uint8
@@ -3774,7 +3778,9 @@ seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.nonLandOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
+seats[].statics[].castBan.filter.notOwnedByHolder	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
+seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
 seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].duration	object
@@ -3816,7 +3822,9 @@ seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.nonLandOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
+seats[].statics[].timing.filter.notOwnedByHolder	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
+seats[].statics[].timing.filter.withCounter	string
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string

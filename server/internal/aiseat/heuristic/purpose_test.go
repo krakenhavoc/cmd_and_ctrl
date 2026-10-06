@@ -189,21 +189,23 @@ func TestASpellIsPricedByItsDeclaredPurpose(t *testing.T) {
 	}
 	id := cardID(1)
 	lands := manaLands(3, 0, 100)
+	// PR 5's SpellFloor stays a floor under a declared purpose.
+	floored := func(v float64) float64 { return max(v, cfg.SpellFloor) }
 
 	whisper := sorcery(id, 0, "Night's Whisper", "{1}{B}", &protocol.PurposeView{Draws: 2})
 	if got, want := price(whisper, lands), 2*1.2-1.2; !nearly(got, want) {
 		t.Errorf("Night's Whisper priced %.3f, want %.3f", got, want)
 	}
 	tutor := sorcery(id, 0, "Demonic Tutor", "{1}{B}", &protocol.PurposeView{Tutors: 1})
-	if got, want := price(tutor, lands), 1.2*cfg.TutorWeight-1.2; !nearly(got, want) {
+	if got, want := price(tutor, lands), floored(1.2*cfg.TutorWeight)-1.2; !nearly(got, want) {
 		t.Errorf("Demonic Tutor priced %.3f, want %.3f", got, want)
 	}
 	entomb := sorcery(id, 0, "Entomb", "{B}", &protocol.PurposeView{SelfMillTutor: 1})
-	if got, want := price(entomb, lands), 1.2*cfg.SelfMillWeight-1.2; !nearly(got, want) {
+	if got, want := price(entomb, lands), floored(1.2*cfg.SelfMillWeight)-1.2; !nearly(got, want) {
 		t.Errorf("Entomb priced %.3f, want %.3f", got, want)
 	}
 	looting := sorcery(id, 0, "Faithless Looting", "{R}", &protocol.PurposeView{Draws: 2, Discards: 2})
-	if got, want := price(looting, lands), 2*1.2-2*cfg.DiscardWeight-1.2; !nearly(got, want) {
+	if got, want := price(looting, lands), floored(2*1.2-2*cfg.DiscardWeight)-1.2; !nearly(got, want) {
 		t.Errorf("Faithless Looting priced %.3f, want %.3f", got, want)
 	}
 
@@ -214,7 +216,7 @@ func TestASpellIsPricedByItsDeclaredPurpose(t *testing.T) {
 	if got, want := price(growth, manaLands(2, 0, 100), five), 1.0+1.0-1.2; !nearly(got, want) {
 		t.Errorf("Rampant Growth short of a five-drop priced %.3f, want %.3f", got, want)
 	}
-	if got, want := price(growth, manaLands(6, 0, 100), five), 1.0-1.2; !nearly(got, want) {
+	if got, want := price(growth, manaLands(6, 0, 100), five), floored(1.0)-1.2; !nearly(got, want) {
 		t.Errorf("Rampant Growth with the five-drop covered priced %.3f, want %.3f", got, want)
 	}
 

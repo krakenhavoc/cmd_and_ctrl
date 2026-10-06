@@ -119,24 +119,18 @@ func castPurpose(c *protocol.CardView, cp castParams) purposeSet {
 // when it declares none. Looked up by the row's own index, which is
 // what the activate move names.
 func rowPurpose(src *protocol.CardView, index int) *protocol.PurposeView {
-	if row := activatedRowAt(src, index); row != nil {
+	if row := rowAt(src, index); row != nil {
 		return row.Purpose
 	}
 	return nil
 }
 
-// activatedRowAt is the activated row of `src` with this index, nil
-// when there is none.
-func activatedRowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
+// rowAt is activatedRow (windows.go) for a source that may be nil.
+func rowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
 	if src == nil {
 		return nil
 	}
-	for i := range src.ActivatedAbilities {
-		if src.ActivatedAbilities[i].Index == index {
-			return &src.ActivatedAbilities[i]
-		}
-	}
-	return nil
+	return activatedRow(src, index)
 }
 
 // purposePriced reports whether this Config prices the purpose at all:
