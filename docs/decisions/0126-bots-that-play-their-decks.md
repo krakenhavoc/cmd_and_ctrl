@@ -411,3 +411,33 @@ This is the sanity row: the two policies are one config, so each takes exactly t
 **Suite:** `boteval suite run --policy heuristic`: 22 of 22 agree, every tag at 100% (attack 4, block 4, cast 7, choice 1, combat 8, land 3, mulligan 6, removal 1). The answers are identical to `develop`'s, position by position.
 
 **No price change:** a fixed-seed lockstep run (`--games 8 --rotate --seed 1 --lockstep` on the four decks) gives the same games before and after this PR: the same winner, turns, life totals and runner counters in every game.
+
+### PR 4: permanents by what they do (2026-10-06)
+
+`develop` at `717d7ce51` plus PR 4's `b9cd11c3c`. `DefaultConfig()` against `BaselineConfig()`: `Weights.PermanentPerMana` 0.50, `RowTriggered` 0.60, `RowStatic` 0.50, `RowActivated` 0.40 and `RowCap` 3, all zero in the baseline. These are §9's starting values, unchanged. Arena runs use the concurrent schedule, turn budget 60.
+
+**Run 1:** the same command and seed as PR 2's. 64 games, 0 stalls, 2 rejected moves (PR 2: 2), turns p50 13 (PR 2: 14).
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` | PR 2 `never` | Non-land cards offered |
+|---|---:|---:|---|---:|---:|---:|
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 13 | 19 | 65 |
+| izzet-aggro | 7 | 10.9% | 5.4%–20.9% | 17 | 22 | 73 |
+| mono-black-aristocrats | 34 | 53.1% | 41.1%–64.8% | 23 | 29 | 71 |
+| simic-ramp | 20 | 31.2% | 21.2%–43.4% | 15 | 24 | 65 |
+
+The `never` count falls by 5 to 9 per deck, 26 in all. 31 cards left the lists, all of them the enchantment and artifact engines and the small utility creatures this PR prices: Esper Sentinel, Kismet, Land Tax, Phyrexian Arena, Rhystic Study and Smothering Tithe (esper); Bident of Thassa, Coastal Piracy, Impact Tremors, Impulsive Pilferer, Marauding Mako and Sulfuric Vortex (izzet); Bastion of Remembrance, Carrion Feeder, Dictate of Erebos, Exquisite Blood, Grave Pact, Phyrexian Arena, Sanguine Bond, Vampiric Rites, Viscera Seer and Zulaport Cutthroat (black); Beastmaster Ascension, Elemental Bond, Garruk's Uprising, Guardian Project, Rhystic Study, Sakura-Tribe Elder (cast and activate), Wayfarer's Bauble and Wood Elves (simic). Five joined: the activated abilities of creatures now cast for the first time, so now offered at all (Marauding Mako; Burnished Hart, Carrion Feeder, Vampiric Rites and Warren Soultrader's sacrifices). Those are §7's sacrifice outlets and PR 8's to price. What is left is §2's rocks and dorks, §5 and §6's cheap spells, loots and tutors, and the sacrifice outlets' activations.
+
+Canaries (A3), games used out of games offered: Rhystic Study 12 of 16 (esper, 75%) and 17 of 20 (simic, 85%), from 0 of 15 and 0 of 13. Viscera Seer (cast) 22 of 23 (96%), from 0 of 20. Sol Ring, Mary Read and Anne Bonny's loot, Entomb and Harrow stay at 0, as expected: they are PRs 3, 5 and 7's classes. A2 is unchanged: every rock and the three Elves are still 0%.
+
+A6: mono-black's interval (41.1%–64.8%) does not lie entirely above 50%, and its point estimate fell from 59.4% to 53.1%.
+
+**Run 2:** the same shape as PR 2's. 96 games, 0 stalls.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves | Turns p50 |
+|---|---:|---:|---:|---|---:|---:|
+| heuristic | 192 | 51 | 26.6% | 20.8%–33.2% | 2 | 14 / 13 |
+| heuristic-baseline | 192 | 45 | 23.4% | 18.0%–29.9% | 4 | 14 / 13 |
+
+Not detectably worse: the `heuristic` interval's upper bound, 33.2%, is above 25%. Turns p50 is per half.
+
+**Suite:** `boteval suite run --policy heuristic`: 24 of 24 agree, every tag at 100% (attack 4, block 4, cast 9, choice 1, combat 8, land 3, mulligan 6, removal 1). The 22 earlier positions answer as before. Two positions are new and gated: `cast-rhystic-study` and `cast-viscera-seer`, harvested from a four-game logged arena run on this branch (seed 101). `BaselineConfig()` misses both: it casts Pull from Tomorrow for one card in the first and passes in the second. The ADR's `equip-before-attacking` is a unit test instead (`TestEquipBeforeAttacking`), because none of the four curated decks holds an Equipment, so no arena window can be harvested for it.
