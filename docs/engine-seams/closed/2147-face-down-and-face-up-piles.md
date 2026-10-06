@@ -1,0 +1,6 @@
+---
+title: "Face-down and face-up piles"
+date: 2026-10-06
+issues: [2147]
+---
+**Face-down and face-up piles** (#2147, CR 701.20a) — "look at the top four cards of your library and separate them into a face-down pile and a face-up pile". The cards are looked at, not revealed: `LookAtTopOfPlayersLibraryForEffect` makes the separator the only knower, so the split prompt reaches them alone. `PileSplit{FaceDown: true}` treats their picked cards as the face-down pile, reveals the rest to every seat when they answer, and offers the pick face-up pile first. The face-down pile is never revealed, so the wire's one redaction pass (`redactChoiceCards`) drops it from every seat that is not a knower: a caster who owns the cards gets backs they can answer, an opponent chooser and bystanders get nothing, and each option's label carries the pile's size. No wire change and no new prompt kind; the bot answers both steps through the existing reveal-pick and option-pick moves. **Cards:** Sauron's Ransom, Fortune's Favor and Atris, Oracle of Half-Truths (an opponent separates), and Riddles in the Dark and Curator of Destinies (you separate, an opponent chooses), all `Full`. A split whose separator has left the game gives the whole set to the chooser, as Fact or Fiction does (CR 800.4a).
