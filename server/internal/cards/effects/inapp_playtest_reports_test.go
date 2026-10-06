@@ -24,7 +24,7 @@ import (
 
 // TestIssue1156CuriosityFallsOffACommanderTakingTheCommandZone is the
 // reporter's board: Curiosity on a commander creature, the commander
-// leaves, and its owner takes CR 903.9's offer.
+// leaves, and its owner takes CR 903.9b's offer.
 //
 // Every other way that host can leave was already covered (#1046's
 // theme deck kills it with the toughness SBA), and the difference is

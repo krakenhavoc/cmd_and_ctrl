@@ -9,10 +9,10 @@ import (
 )
 
 // paused_tuck_continuations_test.go — #783. Three catalog cards that
-// kept going while a tuck was PAUSED on the CR 903.9 command-zone
+// kept going while a tuck was PAUSED on the CR 903.9b command-zone
 // prompt, plus the God-Eternals' positioned landing.
 //
-// A library is a CR 903.9 destination, so every tuck can stop to ask
+// A library is a CR 903.9b destination, so every tuck can stop to ask
 // its owner a question, and `TuckToLibraryForEffect` returns nil
 // whichever happened. Card code that wrote the next instruction on the
 // next line therefore ran it with the permanent still on the
@@ -245,7 +245,7 @@ func TestGodEternalCommanderReturnsThirdFromTopWithoutErroring(t *testing.T) {
 // TestGodEternalCommanderTakingTheCommandZoneStaysThere — the other
 // answer, and the one that has to stay consistent: the God-Eternal's
 // "put it into its owner's library third from the top" is a move to a
-// CR 903.9 destination, so its owner may take the command zone instead
+// CR 903.9b destination, so its owner may take the command zone instead
 // and the card must not also be in a library.
 func TestGodEternalCommanderTakingTheCommandZoneStaysThere(t *testing.T) {
 	g := newCatalogGame(t)

@@ -11,7 +11,7 @@ import (
 // blink that gives it a new object ID (CR 400.7) keeps both.
 
 // blinkCommander exiles the battlefield commander `id` the way a
-// Cloudshift does today, declining the CR 903.9 offer, and returns it
+// Cloudshift does today, declining the CR 903.9a offer, and returns it
 // as a new object. It returns the new instance ID.
 func blinkCommander(t *testing.T, g *Game, id uuid.UUID) uuid.UUID {
 	t.Helper()

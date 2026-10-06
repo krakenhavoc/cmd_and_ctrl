@@ -39,6 +39,7 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import { findCardView } from "../../commanderReturn";
   import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
   import DockRequest from "./DockRequest.svelte";
@@ -511,6 +512,18 @@
   // from its graveyard or exile to the command zone. Same {apply}
   // payload; answered in the dock (choiceDock.ts).
   const isCommanderReturn = $derived(active?.kind === "commander_return");
+  // ADR 0115 PR 5: the commander the question is about, shown in the
+  // prompt so the owner sees which card they are deciding on. For the
+  // CR 903.9a question it is always shown; for a CR 903.9b replacement
+  // (`optional_replacement`, whose Source the server now sets for the
+  // battlefield exit) only when the card is a commander, since the same
+  // kind also asks about unleash and dredge.
+  const commanderCard = $derived.by((): CardView | null => {
+    if (!active || !(isCommanderReturn || isOptionalReplacement)) return null;
+    const card = findCardView(snap, active.source);
+    if (!card || !card.name) return null;
+    return isCommanderReturn || card.is_commander === true ? card : null;
+  });
 
   // S19 sub-PR 2 trigger-prompt branch — CR 603.5 "you may" prompt
   // for an optional triggered ability. Same {choice_id, apply}
@@ -1018,7 +1031,9 @@
                 ? colorBody
                 : isLoopShortcut
                   ? loopBody
-                  : undefined,
+                  : commanderCard
+                    ? commanderBody
+                    : undefined,
             rejection: rejection?.message ?? null,
           },
           {
@@ -1484,6 +1499,14 @@
       label="colors"
     />
   </div>
+{/snippet}
+{#snippet commanderBody()}
+  {#if commanderCard}
+    <!-- ADR 0115 PR 5: the commander this question is about. -->
+    <div class="dock-commander">
+      <Card card={commanderCard} size="normal" />
+    </div>
+  {/if}
 {/snippet}
 {#snippet loopBody()}
   <label class="loop-iterations">
@@ -2087,6 +2110,12 @@
 <style>
   /* ADR 0111 PR 5: the mana symbols in the dock's prompt area. Five
      colours fit one row of the 300-380px dock; a sixth wraps. */
+  .dock-commander {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+    --card-w: 120px;
+  }
   .dock-mana :global(.mana-picker) {
     gap: 5px;
   }

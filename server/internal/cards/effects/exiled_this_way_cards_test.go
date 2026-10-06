@@ -13,15 +13,15 @@ import (
 // #866 taught the exile BATCH to count what landed; this is the same
 // rule on the cards that were still exiling one at a time and reading
 // the answer off "the call returned no error". It is not the same
-// answer: the single-card exile returns nil when the leg PAUSED on the
-// CR 903.9 prompt, so Winds of Abandon fetched its victim a basic land
-// for a creature that was still on the battlefield, and fetched a
-// second one if they then sent their commander to the command zone.
+// answer: the single-card exile used to return nil when a commander's
+// leg PAUSED on a command-zone prompt, so Winds of Abandon fetched its
+// victim a basic land for a creature that was still on the battlefield,
+// and fetched a second one if they then sent their commander to the
+// command zone.
 //
 // The rule is CR 400.7, the batch's: "exiled this way" is the object
-// that ARRIVED in exile. A commander that takes CR 903.9's offer left,
-// but not to exile. A leg the CR 614 window cancelled never left at
-// all.
+// that ARRIVED in exile. A leg the CR 614 window cancelled never left
+// at all.
 //
 // Every one of these cards is now a caller of the SAME batch — there
 // is no per-card exile path to keep in step — so what each test pins

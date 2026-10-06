@@ -393,7 +393,7 @@ func TestCosmicInterventionExilesInsteadThenReturns(t *testing.T) {
 // and the state-based action asks afterwards. "No" leaves the commander
 // in exile and it walks back at the end step; "yes" sends it home and
 // nothing comes back.
-func TestCosmicInterventionSavesACommanderWhoseOwnerDeclines(t *testing.T) {
+func TestCosmicInterventionExilesACommanderThenAsksItsOwner(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
 		takeCommandZone bool

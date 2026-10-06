@@ -405,7 +405,7 @@ func costCommanderCases() []costCommanderCase {
 	}
 }
 
-// parkedCostPrompt asserts the table holds exactly one CR 903.9
+// parkedCostPrompt asserts the table holds exactly one CR 903.9b
 // prompt about `card`, addressed to `owner`, parked on an announcement,
 // and returns it.
 func parkedCostPrompt(t *testing.T, g *Game, owner, card uuid.UUID) *PendingChoice {

@@ -14,7 +14,7 @@ import (
 // exiled this way" means the cards that reached EXILE. A leg the
 // CR 614 window cancelled never moved; a leg a replacement sent
 // somewhere else moved, but not this way; a leg that has merely PAUSED
-// on the CR 903.9 prompt has not happened yet. All three used to be
+// on a "may" replacement prompt has not happened yet. All three used to be
 // counted, which is why Settle the Wreckage handed its victim a basic
 // land for every creature whose owner had been ASKED about the command
 // zone.
@@ -88,7 +88,7 @@ func TestExiledThisWayCountsOnlyWhatLanded(t *testing.T) {
 }
 
 // TestAPausedExileLegIsCountedOnlyWhenItLandsInExile — the
-// CR 903.9 half, and the row that separates this rule from destroy's.
+// paused-leg half, and the row that separates this rule from destroy's.
 // The count cannot be taken while the prompt is open, so the whole
 // sweep waits for it; when the answer arrives the commander counts only
 // if it actually went to exile.
@@ -139,7 +139,7 @@ func TestAPausedExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
 }
 
 // TestReturnedThisWayCountsOnlyWhatLanded — the bounce half, on the
-// same body. A commander that takes CR 903.9's offer was not returned
+// same body. A commander that takes CR 903.9b's offer was not returned
 // to its owner's hand.
 func TestReturnedThisWayCountsOnlyWhatLanded(t *testing.T) {
 	g := newActiveGame(t)
@@ -183,7 +183,7 @@ func TestReturnedThisWayCountsOnlyWhatLanded(t *testing.T) {
 
 // TestUndoAcrossAPausedExileLegReplays is the undo contract for the new
 // continuation, the same one the destroy sweep signs: rewinding into
-// the open CR 903.9 prompt and answering it again has to exile the same
+// the open "may" prompt and answering it again has to exile the same
 // cards and report the same list. The landed list is carried forward by
 // value, so a replayed answer cannot see the first run's entry.
 func TestUndoAcrossAPausedExileLegReplays(t *testing.T) {
@@ -255,7 +255,7 @@ func TestFireAndForgetExileAndBounceCountWhatLanded(t *testing.T) {
 
 // TestSingleCardExileThenReportsWhatLanded — #870's engine half. The
 // one-card form is a WRAPPER over the batch rather than a second exile
-// path, so it inherits the batch's answer: it waits for the CR 903.9
+// path, so it inherits the batch's answer: it waits for the "may"
 // prompt and reports what ARRIVED, where the fire-and-forget
 // ExileCardForEffect can only report that the call returned no error.
 func TestSingleCardExileThenReportsWhatLanded(t *testing.T) {

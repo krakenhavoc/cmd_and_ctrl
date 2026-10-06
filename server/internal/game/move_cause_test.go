@@ -152,10 +152,10 @@ func TestForetellIsASpecialAction(t *testing.T) {
 	}
 }
 
-// TestPausedExileKeepsItsCause: a commander exiled by an effect pauses
-// on CR 903.9. By the time its owner answers, the resolving slot may
-// say anything; the cause was captured onto the route when the move
-// was asked for.
+// TestPausedExileKeepsItsCause: a card exiled by an effect pauses on a
+// test "may" replacement. By the time its owner answers, the resolving
+// slot may say anything; the cause was captured onto the route when the
+// move was asked for.
 func TestPausedExileKeepsItsCause(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

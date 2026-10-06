@@ -62,7 +62,7 @@ func pushStackSpell(t *testing.T, g *Game, c Card) {
 	}
 }
 
-// expectCommanderPrompt asserts exactly one CR 903.9 optional
+// expectCommanderPrompt asserts exactly one CR 903.9b optional
 // replacement prompt is queued for `owner` and returns it.
 func expectCommanderPrompt(t *testing.T, g *Game, owner *Player) *PendingChoice {
 	t.Helper()
@@ -276,6 +276,26 @@ func TestCommanderBouncedOffersCommandZone(t *testing.T) {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
 	assertOnlyIn(t, cmdID, owner.Command, owner.Hand, g.Battlefield)
+}
+
+// TestCommanderBounceReplacementPromptNamesTheCommander — ADR 0115
+// decision 2: the CR 903.9b prompt for a battlefield exit carries the
+// moving commander as its Source, so the client can show the card.
+func TestCommanderBounceReplacementPromptNamesTheCommander(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cmdID := seatCommander(t, g.Battlefield, owner)
+
+	g.mu.Lock()
+	err := g.BounceToHandForEffect(cmdID)
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("BounceToHandForEffect: %v", err)
+	}
+	prompt := expectCommanderPrompt(t, g, owner)
+	if prompt.Source != cmdID {
+		t.Fatalf("prompt Source = %s, want the commander %s", prompt.Source, cmdID)
+	}
 }
 
 // TestCommanderBouncedDeclineGoesToHand — and declining still bounces.

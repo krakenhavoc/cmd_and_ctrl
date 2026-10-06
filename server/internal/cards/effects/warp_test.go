@@ -217,19 +217,18 @@ func TestWarpedCreatureIsRecastableFromExileLater(t *testing.T) {
 	}
 }
 
-// #1336: warping a COMMANDER. Exiling it at the next end step opens
-// the CR 903.9 window, so its owner is asked about the command zone
-// before the delayed trigger's Effect (scheduleWarpExileLocked) can
-// grant the recast permission. The old ExileCardWithPermissionForEffect
-// stamped the grant on the line after a fire-and-forget exile call,
-// found nothing in exile because the move was still paused on the
-// prompt, and a "no" answer stranded the commander in exile with no
-// way to cast it back — the same root cause #1332 fixed for airbend
-// (TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines). A "yes"
-// sends it home, where there is nothing to grant.
+// #1336: warping a COMMANDER. Exiling it at the next end step used to
+// pause on the command-zone prompt before the delayed trigger's Effect
+// (scheduleWarpExileLocked) could grant the recast permission. The old
+// ExileCardWithPermissionForEffect stamped the grant on the line after
+// a fire-and-forget exile call, found nothing in exile because the move
+// was still paused, and a "no" answer stranded the commander in exile
+// with no way to cast it back — the same root cause #1332 fixed for
+// airbend (TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines).
 //
 // ADR 0115: the exile no longer pauses. The commander is exiled with
-// its recast grant, and CR 903.9a asks its owner afterwards.
+// its recast grant, and CR 903.9a asks its owner afterwards. A "yes"
+// sends it home, where there is nothing to grant.
 func TestWarpedCommanderKeepsTheRecastWhenItsOwnerDeclines(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)

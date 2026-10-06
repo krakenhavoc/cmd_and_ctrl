@@ -301,7 +301,7 @@ func TestTeferiHeroMinusThreeTucksThirdFromTheTop(t *testing.T) {
 }
 
 // TestTeferiHeroTucksACommanderThroughTheCommandZonePrompt is the
-// CR 903.9 interaction #529 / #539 opened up: a library is a 903.9
+// CR 903.9b interaction #529 / #539 opened up: a library is a 903.9b
 // destination, so a tucked commander's OWNER is asked whether to
 // send it to the command zone instead. The prompt is the assertion —
 // nothing has moved while it is open.

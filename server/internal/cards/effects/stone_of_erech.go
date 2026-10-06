@@ -28,7 +28,7 @@ import (
 // arrives, so this replacement exiles the commander like any other
 // of the opponent's creatures and the owner is then offered the
 // command zone. Pinned by
-// TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines.
+// TestB33StoneOfErechExilesAnOpponentsDyingCommanderThenAsksItsOwner.
 func init() {
 	Register(Spec{
 		OracleID:     "73dad679-1edb-41c9-9d43-56dc93c3e9fe",

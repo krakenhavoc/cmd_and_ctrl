@@ -1797,7 +1797,7 @@ func TestCommandBeaconPutsTheCommanderInHand(t *testing.T) {
 		t.Fatalf("ActivateCatalogAbility: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	// A commander headed for a hand gets the CR 903.9 offer, from the
+	// A commander headed for a hand gets the CR 903.9b offer, from the
 	// command zone like anywhere else. Declining is what the card is
 	// for.
 	if offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement); offer != nil {
