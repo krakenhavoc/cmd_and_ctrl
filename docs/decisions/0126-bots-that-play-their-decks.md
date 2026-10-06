@@ -219,6 +219,7 @@ The signal follows the precedent of ADR 0106 §1 decision 8: catalog data the bo
 | `tokens` | Treasure or other tokens it makes for its controller | Big Score 2 |
 | `sweep` | `{matches, how, amount}` (§4) | Wrath of God `{creatures, destroy}` |
 | `death_payoff` | on a triggered row: the row pays out whenever a creature of its controller's dies | Blood Artist, Zulaport Cutthroat |
+| `discard_payoff` | on a triggered row: which discarded cards it pays on, and what it pays for each ([amendment of 2026-10-06](#amendment-2026-10-06-discard-payoffs)) | Mary Read and Anne Bonny, Marauding Mako |
 
 **Where it is carried.** On `CardView` (the spell, or a permanent's enters-the-battlefield effect), on each `ModeOptionView`, on each `AlternativeCostView`, on `ActivatedAbilityView` (the existing field, now also for the controller's own rows), and on `AbilityRowView` (for `death_payoff`). It is projected in the same zones as `ability_rows`, hand and battlefield, and cleared for a viewer who may not see the card, like them. An opponent's hand card never has one. The stack's top card has one, so §7 can see a wipe coming.
 
@@ -368,6 +369,43 @@ The owner answered the eight open questions on 2026-10-06. Questions 1, 2, 4 and
 6. **Konrad's mill and the flat `ActivateBase`: left alone in S66.** Non-tap activated abilities stay at +0.50. Acceptance bar A6 decides whether black's lead needs a later change.
 7. **Which decks are measured: today's four.** The acceptance bar is measured on the current curated decks. #2436 is measured afterwards with the fixed heuristic.
 8. **The windows: both.** §5 applies in the bot's own second main phase and in the end step of the seat immediately before the bot's turn.
+
+## Amendment (2026-10-06): discard payoffs
+
+The owner approved this on #2435, after reviewing PR 7's position `windfall-discarding-a-spare-land`. The bot plays izzet-aggro there, with its commander Mary Read and Anne Bonny on the battlefield: "Whenever you discard an Island, Pirate, or Vehicle card, create a tapped Treasure token." The owner's answer is to discard the Island. The bot could not see why. §6 gave a triggered row `death_payoff` and nothing for a discard, and §7 priced a discarded card by `cardValue` alone, so the Island and the Mountain cost the same.
+
+**The signal.** `PurposeView` gains `discard_payoff`, on a triggered row only, like `death_payoff`. It says which discarded cards the row pays on, and what it pays for each one, as printed amounts:
+
+| Field | Meaning | Example |
+|---|---|---|
+| `any` | every card its controller discards | Marauding Mako |
+| `types` | otherwise, the card types and subtypes it pays on, lowercase; a card with any one of them on its type line matches | Mary Read `["island", "pirate", "vehicle"]` |
+| `tokens` | tokens it creates for its controller per card | Mary Read 1 |
+| `counters` | +1/+1 counters it puts on its source per card | Marauding Mako 1 |
+| `damage_each_opponent` | damage its source deals to each opponent per card | Glint-Horn Buccaneer 1 |
+
+**How it is declared.** `game.Purpose.DiscardPayoff` on the card file's triggered row, with `TriggerWithPurpose`, by hand like every purpose. The registration guard refuses one anywhere but a triggered row, one with neither `any` nor `types` or with both, a type that is not one lowercase word, a negative amount, and one that pays nothing. It is projected on `ability_rows` with the row and cleared with it, so a hidden hand card and a face-down permanent never carry one. No snapshot change.
+
+**How a discard is priced against it.** When the bot discards one of its own cards, every `discard_payoff` on a permanent it controls that matches the card pays:
+
+```
+payoff = TokenWeight × tokens
+       + (Weights.Power + Weights.Toughness) × counters
+       + DamageToOpponent × damage_each_opponent × live opponents
+```
+
+These are the units the policy already uses: a Treasure as a purpose's token, a +1/+1 counter as `counterRemovalValue` charges for losing one, a point of damage as an attack prices it. The discard costs `cardValue − payoff`. That applies wherever the policy prices a discard of its own card: §7's discard cost, the card it names on resolution (a loot, a rummage, "discard a card") and at cleanup, and the discards a purpose declares (a loot's `discards: 1`). For the last, the payoff is the payoff of the cards the bot would name, read from the hand it holds. `PriceDiscardPayoffs` switches it on in `DefaultConfig()` and is off in `BaselineConfig()`.
+
+Worked, in the owner's position: late in the game a land in hand has a `cardValue` of 0.30. The Island makes a Treasure (0.50), so discarding it costs −0.20, against the Mountain's 0.30. Breeches, Brazen Plunderer is a Pirate and makes the same Treasure. It is a castable four-mana creature, though, and its `cardValue` is several points, so a 0.50 Treasure does not close the gap. It stays rejected.
+
+**Which cards declare it.** Every curated card with a discard payoff:
+
+- Mary Read and Anne Bonny: `types` Island, Pirate, Vehicle, `tokens: 1`.
+- Marauding Mako and Scrounging Skyray: `any`, `counters: 1`.
+- Magmakin Artillerist and Glint-Horn Buccaneer: `any`, `damage_each_opponent: 1`.
+- Hashaton, Scarab's Fist: `types` creature, `tokens: 1`. The `{2}{U}` it asks for is not declared. A token is priced well under a 4/4, which leaves room for the mana.
+
+`TestCuratedDeckPurposes` holds each to its declaration.
 
 ## Consequences
 

@@ -514,6 +514,13 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	} else {
 		v -= st.w.Hand * float64(len(cp.DiscardIDs))
 	}
+	// ADR 0126's amendment of 2026-10-06: a discard the bot's own
+	// permanents pay for (Mary Read's Treasure for an Island) costs
+	// that much less, so the enumerator's cheapest payment is the one
+	// that triggers them.
+	for _, id := range cp.DiscardIDs {
+		v += st.discardPayoff(p.cfg, st.mine[id])
+	}
 	for _, id := range cp.SacrificeIDs {
 		if c := st.bf[id]; c != nil {
 			v -= st.permanentValue(c)

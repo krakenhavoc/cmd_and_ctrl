@@ -3,6 +3,7 @@ package effects
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -29,6 +30,9 @@ import (
 //   - ControllerLosesLife anywhere but an any-player activated row,
 //     where the activator and the controller differ (ADR 0106);
 //   - DeathPayoff anywhere but a triggered row;
+//   - a DiscardPayoff anywhere but a triggered row, or one that names
+//     no cards, names them two ways, or pays nothing (ADR 0126's
+//     amendment of 2026-10-06);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one.
 
@@ -63,7 +67,37 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.DeathPayoff && slot != purposeOnTriggered {
 		fail("sets DeathPayoff off a triggered row")
 	}
+	if p.DiscardPayoff != nil && slot != purposeOnTriggered {
+		fail("sets DiscardPayoff off a triggered row")
+	}
+	checkDiscardPayoff(p.DiscardPayoff, fail)
 	checkSweep(p.Sweep, fail)
+}
+
+// checkDiscardPayoff is checkPurpose's half for a declared
+// DiscardPayoff: it names the cards it pays on one way (Any, or a
+// non-empty list of lowercase types), and it pays something.
+func checkDiscardPayoff(d *game.DiscardPayoff, fail func(string)) {
+	if d == nil {
+		return
+	}
+	switch {
+	case d.Any && len(d.Types) > 0:
+		fail("pays on discards both as Any and by Types — pick one")
+	case !d.Any && len(d.Types) == 0:
+		fail("pays on no discarded card — set Any, or name the Types")
+	}
+	for _, t := range d.Types {
+		if t == "" || t != strings.ToLower(t) || strings.ContainsAny(t, " \t—") {
+			fail(fmt.Sprintf("names a discard payoff type %q that is not one lowercase word", t))
+		}
+	}
+	if d.Tokens < 0 || d.Counters < 0 || d.DamageEachOpponent < 0 {
+		fail("has a negative amount")
+	}
+	if d.Tokens == 0 && d.Counters == 0 && d.DamageEachOpponent == 0 {
+		fail("is a discard payoff that pays nothing — set Tokens, Counters or DamageEachOpponent")
+	}
 }
 
 // checkSweep is checkPurpose's half for a declared Sweep.
@@ -162,6 +196,11 @@ func CostWithPurpose(ac game.AlternativeCost, p game.Purpose) game.AlternativeCo
 //
 //	WheneverACreatureYouControlDies(...) becomes
 //	TriggerWithPurpose(WheneverACreatureYouControlDies(...), game.Purpose{DeathPayoff: true})
+//
+// A discard payoff is declared the same way:
+//
+//	TriggerWithPurpose(On(game.EventDiscardCard, ...), game.Purpose{
+//		DiscardPayoff: &game.DiscardPayoff{Any: true, Counters: 1}})
 func TriggerWithPurpose(t game.TriggeredAbility, p game.Purpose) game.TriggeredAbility {
 	t.Purpose = p
 	return t

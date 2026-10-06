@@ -2652,7 +2652,9 @@ row that declares nothing has no `purpose` key at all.
   "tutors": 1, "self_mill_tutor": 1, "tokens": 2,
   "sweep": {"matches": "creatures", "how": "destroy", "amount": 3,
             "amount_is_x": true, "opponents_only": true, "partial": true},
-  "death_payoff": true
+  "death_payoff": true,
+  "discard_payoff": {"types": ["island", "pirate", "vehicle"],
+                     "tokens": 1, "counters": 1, "damage_each_opponent": 1}
 }
 ```
 
@@ -2669,6 +2671,7 @@ Every field is omitted when zero.
 | `tokens` | tokens it creates for its controller | Big Score 2 |
 | `sweep` | present on a board wipe; see below | Wrath of God |
 | `death_payoff` | on a triggered row: it pays out whenever a creature its controller controls dies | Blood Artist |
+| `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
 
 An amount is the printed number. A card whose amount is X, or is
 counted at resolution ("draw a card for each creature you control"),
@@ -2689,6 +2692,24 @@ does not declare it.
   `matches` does not name (nonwhite, without flying, power 4 or
   greater), so `matches` is an upper bound.
 
+`discard_payoff` (ADR 0126's amendment of 2026-10-06) says which
+discarded cards a triggered row pays on, and what it pays for each one:
+
+- `any`: every card its controller discards ("a card", "one or more
+  cards"). Otherwise `types` lists the card types and subtypes it pays
+  on, lowercase as printed (`["island", "pirate", "vehicle"]`); a card
+  with any one of them on its type line matches. A payoff has one of the
+  two, never both.
+- `tokens`: tokens it creates for its controller per card (Mary Read's
+  tapped Treasure).
+- `counters`: +1/+1 counters it puts on its source per card (Marauding
+  Mako).
+- `damage_each_opponent`: damage its source deals to each opponent per
+  card (Glint-Horn Buccaneer).
+
+It rides on `ability_rows[i].purpose` with the rest of the row, so a
+hidden hand card and a face-down permanent never carry one.
+
 Where it rides:
 
 - **`CardView.purpose`**: the spell's resolution, or a permanent's
@@ -2705,7 +2726,8 @@ Where it rides:
 - **`activated_abilities[i].purpose`**: an activated row's own (a loot,
   Nevinyrral's Disk). It is no longer only on `any_player` rows.
 - **`ability_rows[i].purpose`**: a triggered or activated row's, on the
-  tile's row list (`death_payoff` on Blood Artist's trigger).
+  tile's row list (`death_payoff` on Blood Artist's trigger,
+  `discard_payoff` on Mary Read and Anne Bonny's).
 
 The modes and the offers are public with their labels, which say the
 same thing in words, and hidden exactly when those are.

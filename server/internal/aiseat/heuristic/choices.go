@@ -93,7 +93,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	if m.Type == legal.TypeDiscardSelection {
 		var v float64
 		for _, id := range decode[discardSelectionParams](m.Params).CardIDs {
-			v -= st.cardValue(p.cfg, st.mine[id])
+			c := st.mine[id]
+			v -= st.cardValue(p.cfg, c) - st.discardPayoff(p.cfg, c)
 		}
 		return v, "discard to hand size"
 	}
@@ -213,7 +214,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		var v float64
 		for _, id := range cp.CardIDs {
-			v += sign * st.cardValue(p.cfg, lookup(id))
+			c := lookup(id)
+			v += sign * st.cardValue(p.cfg, c)
+			if sign < 0 {
+				// A discard the bot's own payoffs pay for
+				// (discard_payoff.go).
+				v += st.discardPayoff(p.cfg, c)
+			}
 		}
 		return v, reason
 
@@ -584,6 +591,9 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 			return 0, false
 		}
 		if slices.Contains(named, id) {
+			// Named is discarded: what the bot's own discard payoffs
+			// pay for it (discard_payoff.go) is kept too.
+			kept += st.discardPayoff(cfg, c)
 			continue
 		}
 		kept += st.cardValue(cfg, c)

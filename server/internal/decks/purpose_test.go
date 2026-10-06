@@ -114,7 +114,8 @@ var noPrintedAmount = map[string]string{
 }
 
 // curatedPermanentPurposes is every curated permanent in a class ADR
-// 0126 prices (ramp, draw, loot, tutor, wipe, death payoff) that
+// 0126 prices (ramp, draw, loot, tutor, wipe, death payoff, discard
+// payoff) that
 // declares a purpose, with the slot it declares it in. Mana rocks and
 // dorks are not here: their mana abilities already say what they make.
 var curatedPermanentPurposes = map[string]string{
@@ -127,9 +128,9 @@ var curatedPermanentPurposes = map[string]string{
 	"Thraben Inspector":      "card",
 	"Bastion of Remembrance": "card",
 	// activated rows
-	"Mary Read and Anne Bonny": "activated",
+	"Mary Read and Anne Bonny": "activated, discard payoff",
 	"Loran of the Third Path":  "activated",
-	"Glint-Horn Buccaneer":     "activated",
+	"Glint-Horn Buccaneer":     "activated, discard payoff",
 	"Geier Reach Sanitarium":   "activated",
 	"Vampiric Rites":           "activated",
 	"Warren Soultrader":        "activated",
@@ -146,6 +147,12 @@ var curatedPermanentPurposes = map[string]string{
 	"Butcher of Malakir":   "death payoff",
 	"Syr Konrad, the Grim": "death payoff",
 	"Mirkwood Bats":        "death payoff",
+	// discard payoffs, on the triggered row (ADR 0126's amendment of
+	// 2026-10-06)
+	"Hashaton, Scarab's Fist": "discard payoff",
+	"Marauding Mako":          "discard payoff",
+	"Scrounging Skyray":       "discard payoff",
+	"Magmakin Artillerist":    "discard payoff",
 }
 
 // specDeclaresPurpose reports whether a spell declares what it does on
@@ -169,8 +176,17 @@ func specDeclaresPurpose(s effects.Spec) bool {
 	return false
 }
 
-// declaresIn reports whether the spec declares a purpose in `slot`.
+// declaresIn reports whether the spec declares a purpose in `slot`. A
+// comma-separated list of slots asks for every one of them.
 func declaresIn(s effects.Spec, slot string) bool {
+	if many := strings.Split(slot, ", "); len(many) > 1 {
+		for _, one := range many {
+			if !declaresIn(s, one) {
+				return false
+			}
+		}
+		return true
+	}
 	switch slot {
 	case "card":
 		return !s.Purpose.IsZero()
@@ -183,6 +199,12 @@ func declaresIn(s effects.Spec, slot string) bool {
 	case "death payoff":
 		for _, t := range s.Triggered {
 			if t.Purpose.DeathPayoff {
+				return true
+			}
+		}
+	case "discard payoff":
+		for _, t := range s.Triggered {
+			if t.Purpose.DiscardPayoff != nil {
 				return true
 			}
 		}

@@ -22,6 +22,7 @@ const (
 	pvBloodArtist   = "310f141c-7f37-4729-aed6-dd9c09db448d"
 	pvMaryRead      = "5182de2d-aceb-450e-bd20-8bc7db124334"
 	pvWrathOfGod    = "34515b16-c9a4-4f98-8c77-416a7a523407"
+	pvMako          = "e349be42-5f14-44a9-9608-281985c10e2d"
 )
 
 func seatZones(v GameView, seat string) (hand ZoneView) {
@@ -44,8 +45,9 @@ func TestPurposeRidesTheViewInEverySlot(t *testing.T) {
 	mary := rowsFixtureCard("Mary Read and Anne Bonny", "Legendary Creature — Human Assassin Pirate", pvMaryRead, me.ID)
 	hidden := rowsFixtureCard("Mulldrifter", "Creature — Elemental", pvMulldrifter, me.ID)
 	wrath := rowsFixtureCard("Wrath of God", "Sorcery", pvWrathOfGod, opp.ID)
+	mako := rowsFixtureCard("Marauding Mako", "Creature — Shark Pirate", pvMako, me.ID)
 	g.WithWriteLock(func() {
-		for _, c := range []game.Card{whisper, farewell, rift} {
+		for _, c := range []game.Card{whisper, farewell, rift, mako} {
 			c.KnownBy = map[uuid.UUID]bool{me.ID: true}
 			me.Hand.PushTop(c)
 		}
@@ -107,6 +109,23 @@ func TestPurposeRidesTheViewInEverySlot(t *testing.T) {
 			if c.Purpose != nil {
 				t.Errorf("a hidden hand card carries purpose %+v to an opponent", c.Purpose)
 			}
+			for _, r := range c.AbilityRows {
+				if r.Purpose != nil {
+					t.Errorf("a hidden hand card's row carries purpose %+v to an opponent", r.Purpose)
+				}
+			}
+		}
+	})
+
+	t.Run("the owner sees a discard payoff on a hand card's row", func(t *testing.T) {
+		hand := seatZones(FilterViewFor(v, me.ID.String()), me.ID.String())
+		c := findCardView(t, hand, mako.InstanceID)
+		if c == nil || len(c.AbilityRows) == 0 || c.AbilityRows[0].Purpose == nil {
+			t.Fatalf("Marauding Mako in hand = %+v, want its discard payoff row", c)
+		}
+		d := c.AbilityRows[0].Purpose.DiscardPayoff
+		if d == nil || !d.Any || len(d.Types) != 0 || d.Counters != 1 || d.Tokens != 0 {
+			t.Errorf("Marauding Mako's discard payoff = %+v, want any card, one counter", d)
 		}
 	})
 
@@ -126,6 +145,15 @@ func TestPurposeRidesTheViewInEverySlot(t *testing.T) {
 			if c == nil || len(c.ActivatedAbilities) == 0 || c.ActivatedAbilities[0].Purpose == nil ||
 				*c.ActivatedAbilities[0].Purpose != (PurposeView{Draws: 1, Discards: 1}) {
 				t.Errorf("Mary Read's loot row = %+v, want draws 1 and discards 1", c)
+			}
+			var payoff *DiscardPayoffView
+			for _, r := range c.AbilityRows {
+				if r.Kind == "triggered" && r.Purpose != nil {
+					payoff = r.Purpose.DiscardPayoff
+				}
+			}
+			if payoff == nil || payoff.Any || strings.Join(payoff.Types, ",") != "island,pirate,vehicle" || payoff.Tokens != 1 {
+				t.Errorf("Mary Read's discard trigger payoff = %+v, want an Island, Pirate or Vehicle card for one token", payoff)
 			}
 			if c := findCardView(t, fv.Battlefield, hidden.InstanceID); c == nil || c.Purpose != nil {
 				t.Errorf("a face-down permanent carries purpose %+v (CR 708.2a: it has no text)", c)
@@ -147,6 +175,8 @@ func TestPurposeRidesTheViewInEverySlot(t *testing.T) {
 			`"purpose":{"sweep":{"matches":"creatures","how":"destroy"}}`,
 			`"purpose":{"death_payoff":true}`,
 			`"purpose":{"draws":1,"discards":1}`,
+			`"purpose":{"discard_payoff":{"types":["island","pirate","vehicle"],"tokens":1}}`,
+			`"purpose":{"discard_payoff":{"any":true,"counters":1}}`,
 		} {
 			if !strings.Contains(string(raw), want) {
 				t.Errorf("the frame lacks %s", want)
