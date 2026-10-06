@@ -112,6 +112,22 @@ type Config struct {
 	// ActivateBase is the flat value of using an activated ability.
 	ActivateBase float64
 
+	// SacrificeDyingAnyway prices a permanent sacrificed to pay a cost
+	// by the chance the bot would have kept it (ADR 0126 §7,
+	// sacrifice.go): a target of an opponent's spell or ability on the
+	// stack is kept with 1 − RemovalConfidence, one a declared sweep on
+	// the stack would remove is not kept, and so is a creature losing
+	// its combat once blockers are declared. A move whose only non-mana
+	// cost is such a sacrifice clears LeftoverThreshold, because it
+	// spends nothing the bot would otherwise keep. Off (the zero value)
+	// charges the whole board value, the pre-S66 price.
+	SacrificeDyingAnyway bool
+	// DeathPayoff is what each `death_payoff` row on a permanent the bot
+	// controls (Blood Artist, Zulaport Cutthroat, Bastion of
+	// Remembrance) adds to every creature it sacrifices (ADR 0126 §7).
+	// Zero is the pre-S66 price.
+	DeathPayoff float64
+
 	// RampPerMana is the cast-time premium per mana a new repeatable
 	// mana source closes of the bot's mana deficit (ADR 0126 §2,
 	// rampPremium): large while the bot cannot cast what it holds, and
@@ -331,6 +347,9 @@ func DefaultConfig() Config {
 		DevourCommander:    10.0,
 		DevourPermanent:    0.25,
 
+		SacrificeDyingAnyway: true,
+		DeathPayoff:          0.60,
+
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
 		FocusBonus:       1.00,
@@ -386,6 +405,9 @@ func BaselineConfig() Config {
 	c.LeftoverThreshold = 0
 	c.SpellFloor = 0
 	c.TapByTiming = false
+	// §7, sacrifice outlets (PR 8).
+	c.SacrificeDyingAnyway = false
+	c.DeathPayoff = 0
 	return c
 }
 
@@ -486,6 +508,9 @@ type state struct {
 	// or beforeMyUntap, with an empty stack. Computed whatever the
 	// Config says; Config.LeftoverWindows decides whether it is read.
 	leftover bool
+	// dying caches dyingAnyway per permanent for this decision (ADR
+	// 0126 §7, sacrifice.go).
+	dying map[string]float64
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {
@@ -688,6 +713,11 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		if leftover && v <= threshold && p.leftoverEligible(st, moves[i]) {
 			bar = p.cfg.LeftoverThreshold
 			reason += ", leftover mana"
+		} else if p.cfg.LeftoverThreshold < threshold && v <= threshold && p.dyingAnywayEligible(st, moves[i]) {
+			// ADR 0126 §7: a sacrifice of what the bot is about to lose
+			// spends nothing it would keep, §5's premise, in any window.
+			bar = p.cfg.LeftoverThreshold
+			reason += ", dying anyway"
 		}
 		if v > bar && (take < 0 || v > takeVal) {
 			take, takeVal, takeReason = i, v, reason
