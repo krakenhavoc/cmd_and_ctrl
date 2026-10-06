@@ -51,6 +51,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/deckprofile"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/rules"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
@@ -73,14 +74,48 @@ type SeatSpec struct {
 	// "assisted vs heuristic" run wants; set it to compare two
 	// configurations of the SAME tier in one run.
 	Name string `json:"name,omitempty"`
+	// Variant is an arena-only configuration of Tier. The one there is
+	// is VariantBaseline. Empty is the tier as the lobby seats it.
+	Variant string `json:"variant,omitempty"`
 }
 
-// Label is the tally key: Name, or the tier.
+// VariantBaseline is the heuristic frozen as it priced cards before
+// S66: heuristic.BaselineConfig, seated as the contestant
+// `heuristic-baseline` (ADR 0126 §1 item 3). It is an arena name only,
+// never a tier: the lobby and GET /bot/options do not know it.
+const VariantBaseline = "baseline"
+
+// BaselineContestant is VariantBaseline's contestant name.
+const BaselineContestant = string(tiers.Heuristic) + "-" + VariantBaseline
+
+// ParseContestant reads one `--seats` entry: a tier, or
+// `heuristic-baseline`.
+func ParseContestant(s string) (SeatSpec, error) {
+	if s == BaselineContestant {
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantBaseline}, nil
+	}
+	t, err := tiers.Parse(s)
+	if err != nil {
+		return SeatSpec{}, fmt.Errorf("%w, or %q", err, BaselineContestant)
+	}
+	return SeatSpec{Tier: t}, nil
+}
+
+// Contestant is the name the seat is asked for by: its tier, or
+// `heuristic-baseline`.
+func (s SeatSpec) Contestant() string {
+	if s.Variant != "" {
+		return string(s.Tier) + "-" + s.Variant
+	}
+	return string(s.Tier)
+}
+
+// Label is the tally key: Name, or the contestant.
 func (s SeatSpec) Label() string {
 	if strings.TrimSpace(s.Name) != "" {
 		return s.Name
 	}
-	return string(s.Tier)
+	return s.Contestant()
 }
 
 // Config is one arena run.
@@ -226,6 +261,9 @@ func (c Config) Validate() error {
 		if _, err := tiers.Parse(string(s.Tier)); err != nil {
 			return fmt.Errorf("botarena: seat %d: %w", i, err)
 		}
+		if s.Variant != "" && (s.Variant != VariantBaseline || s.Tier != tiers.Heuristic) {
+			return fmt.Errorf("botarena: seat %d: %q is not a contestant (the one arena variant is %q)", i, s.Contestant(), BaselineContestant)
+		}
 		// A model tier with no client is the one misconfiguration
 		// that would silently corrupt the measurement rather than
 		// break it: tiers.New happily builds an `assisted` seat with
@@ -342,6 +380,10 @@ type SeatResult struct {
 	// PromptBytesP50 is the median rendered prompt size, zero when
 	// this seat assembled no prompts.
 	PromptBytesP50 int `json:"prompt_bytes_p50,omitempty"`
+	// Cards is this seat's Cards-section tally for this game (ADR 0126
+	// §1 item 2): every non-land card of its own it was offered, in how
+	// many windows, and how often it took it.
+	Cards []CardUse `json:"cards,omitempty"`
 
 	// raw carries the samples the two distributions above were
 	// computed from, so that Run can take a run-wide percentile
@@ -507,6 +549,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	runners := make([]*aiseat.Runner, 0, n)
 	seats := make([]SeatResult, 0, n)
 	metersAndFunnels := make([]seatInstruments, 0, n)
+	tallies := make([]*cardTally, 0, n)
 	for pos, p := range g.Seats {
 		spec := cfg.Seats[order[pos]]
 		pol, inst, err := newSeat(cfg, spec, seed, pos)
@@ -517,6 +560,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 			return GameResult{}, err
 		}
 		raw := &samples{}
+		tally := newCardTally()
 		rc := cfg.Runner
 		if rc.MaxThink <= 0 {
 			rc.MaxThink = spec.Tier.RunnerConfigWith(cfg.MaxThink).MaxThink
@@ -525,7 +569,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		// *decisionlog.GameLog in an interface slot is a non-nil
 		// interface holding a nil pointer, and calling Observe on it
 		// panics on the runner's own goroutine.
-		obs := fanOut{raw}
+		obs := fanOut{raw, tally}
 		if gameLog != nil {
 			obs = append(obs, gameLog)
 		}
@@ -544,6 +588,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 			runners = append(runners, aiseat.Start(ctx, room, p.ID, pol, rc, nil, cfg.Log))
 		}
 		seats = append(seats, SeatResult{Spec: spec, Position: pos, Policy: pol.Name(), raw: raw})
+		tallies = append(tallies, tally)
 		metersAndFunnels = append(metersAndFunnels, inst)
 	}
 
@@ -600,6 +645,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		seats[i].ModelCall = aiseat.PercentilesOf(raw.modelCall)
 		seats[i].PromptBytesP50 = medianInt(raw.promptBytes)
 		raw.mu.Unlock()
+		seats[i].Cards = tallies[i].list()
 	}
 	res.Seats = seats
 	return res, nil
@@ -653,6 +699,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		// reproducible and two random seats at one table are not
 		// playing the same moves.
 		Rand: rand.NewPCG(seed, uint64(pos)+1),
+	}
+	if spec.Variant == VariantBaseline {
+		h := heuristic.BaselineConfig()
+		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
 		// The static, prompt-cached half of a model seat's prompt is
@@ -879,7 +929,7 @@ func Run(ctx context.Context, cfg Config, sink func(GameResult)) (Summary, error
 		return Summary{}, err
 	}
 	sum := Summary{Config: describeConfig(cfg), Started: time.Now(), PerPolicy: map[string]*PolicyTotals{}}
-	acc := newAccumulator(len(cfg.Seats))
+	acc := newRunAcc(len(cfg.Seats))
 	started := time.Now()
 	for i := 0; i < cfg.Games; i++ {
 		if err := ctx.Err(); err != nil {
@@ -927,9 +977,9 @@ func Run(ctx context.Context, cfg Config, sink func(GameResult)) (Summary, error
 // completed. Config.Games remains the requested run length, while Chairs and
 // ChairWarning describe the evidence present in this summary. That distinction
 // matters when cancellation or a later game-start error returns a partial run.
-func finishSummary(sum *Summary, acc *accumulator, cfg Config, started time.Time) {
+func finishSummary(sum *Summary, acc *runAcc, cfg Config, started time.Time) {
 	sum.Elapsed = time.Since(started)
-	sum.PerPolicy = acc.totals(len(cfg.Seats))
+	acc.fill(sum, len(cfg.Seats))
 	played := len(sum.Games)
 	sum.Config.Chairs = ChairCounts(len(cfg.Seats), played, cfg.Rotate)
 	sum.Config.ChairWarning = ChairBalanceWarning(len(cfg.Seats), played, cfg.Rotate)

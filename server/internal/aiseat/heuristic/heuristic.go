@@ -301,6 +301,24 @@ func DefaultConfig() Config {
 	}
 }
 
+// BaselineConfig is the heuristic as it priced cards before S66: the
+// frozen reference the arena's `heuristic-baseline` contestant plays
+// (ADR 0126 §1 and §9).
+//
+// ADR 0126 adds its new pricing terms as Config and Weights fields
+// whose zero value is the old behaviour. This returns DefaultConfig
+// with every one of them zeroed, so a run of `heuristic` against
+// `heuristic-baseline` measures exactly what those terms changed.
+// Each PR that adds a term zeroes it here in the same change.
+//
+// No term exists yet (ADR 0126's measurement PR adds none), so today
+// this is DefaultConfig unchanged. TestBaselineConfigRanksTheSuiteAsBefore
+// (aiseat/suite) holds it to the rankings the policy gave every suite
+// position before S66, whatever DefaultConfig becomes.
+func BaselineConfig() Config {
+	return DefaultConfig()
+}
+
 // Policy is the heuristic aiseat.Policy. Construct one per bot seat:
 // it carries the aggression rotation and the concede counter, which
 // are per-seat, per-game state. Decide is safe to call from one

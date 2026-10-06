@@ -127,7 +127,10 @@ func medianInt(v []int) int {
 // Wins+Losses+Draws == Games.
 type PolicyTotals struct {
 	Policy string `json:"policy"`
-	Games  int    `json:"games"`
+	// Deck is the contestant's deck in Summary.PerContestant, and empty
+	// in Summary.PerPolicy, which folds every deck a policy played.
+	Deck  string `json:"deck,omitempty"`
+	Games int    `json:"games"`
 	// Decided is the seat-games that produced a single survivor:
 	// Wins+Losses, which is Games minus Draws. It is the win rate's
 	// denominator — see WinRate.
@@ -327,6 +330,15 @@ type Summary struct {
 	Elapsed   time.Duration            `json:"elapsed_ns"`
 	Games     []GameDigest             `json:"games"`
 	PerPolicy map[string]*PolicyTotals `json:"per_policy"`
+	// PerContestant is the Play table again, one row per policy AND
+	// deck (ADR 0126 §1 item 1): four heuristic seats on four decks are
+	// one PerPolicy row and four rows here. Sorted by policy, then deck.
+	PerContestant []*PolicyTotals `json:"per_contestant"`
+	// Cards is the Cards section (ADR 0126 §1 item 2), one entry per
+	// contestant, and Canaries is ADR 0126's acceptance-bar cards read
+	// off it (A2's mana rocks and dorks, A3's six named canaries).
+	Cards    []ContestantCards `json:"cards"`
+	Canaries []CanaryResult    `json:"canaries"`
 	// DecisionLog is the writer's tally, zero when no log was on.
 	DecisionLog DecisionLogTotals `json:"decision_log"`
 }
@@ -371,11 +383,52 @@ func (s Summary) WallPerGame() time.Duration {
 	return total / time.Duration(len(s.Games))
 }
 
+// runAcc is everything Run folds a game into: the Play table by
+// policy and by contestant, and the Cards section.
+type runAcc struct {
+	policy     *accumulator
+	contestant *accumulator
+	cards      *cardsAcc
+}
+
+func newRunAcc(seats int) *runAcc {
+	byDeck := newAccumulator(seats)
+	byDeck.byDeck = true
+	return &runAcc{policy: newAccumulator(seats), contestant: byDeck, cards: newCardsAcc()}
+}
+
+func (a *runAcc) add(r GameResult) {
+	a.policy.add(r)
+	a.contestant.add(r)
+	a.cards.add(r)
+}
+
+// fill writes the run's tables into sum.
+func (a *runAcc) fill(sum *Summary, seats int) {
+	sum.PerPolicy = a.policy.totals(seats)
+	sum.PerContestant = make([]*PolicyTotals, 0, len(a.contestant.per))
+	for _, t := range a.contestant.totals(seats) {
+		sum.PerContestant = append(sum.PerContestant, t)
+	}
+	sort.Slice(sum.PerContestant, func(i, j int) bool {
+		x, y := sum.PerContestant[i], sum.PerContestant[j]
+		if x.Policy != y.Policy {
+			return x.Policy < y.Policy
+		}
+		return x.Deck < y.Deck
+	})
+	sum.Cards = a.cards.totals()
+	sum.Canaries = canaries(sum.Cards)
+}
+
 // accumulator folds GameResults into PolicyTotals.
 type accumulator struct {
 	seats  int
 	per    map[string]*policyAcc
 	stalls map[string]int
+	// byDeck keys the tally by policy AND deck: the per-contestant
+	// table rather than the per-policy one.
+	byDeck bool
 }
 
 type policyAcc struct {
@@ -393,10 +446,16 @@ func newAccumulator(seats int) *accumulator {
 func (a *accumulator) add(r GameResult) {
 	for _, s := range r.Seats {
 		key := s.Spec.Label()
+		if a.byDeck {
+			key += "\x00" + s.Spec.Deck
+		}
 		p := a.per[key]
 		if p == nil {
 			p = &policyAcc{}
-			p.totals.Policy = key
+			p.totals.Policy = s.Spec.Label()
+			if a.byDeck {
+				p.totals.Deck = s.Spec.Deck
+			}
 			a.per[key] = p
 		}
 		t := &p.totals
@@ -578,6 +637,20 @@ func (s Summary) Markdown() string {
 			t.Draws, t.Stalled, t.Turns.P50, yesNo(t.Beats()))
 	}
 	b.WriteString(playFootnote)
+
+	if len(s.PerContestant) > 0 {
+		b.WriteString("\n### Play by contestant\n\n")
+		b.WriteString("| policy | deck | seat-games | decided | wins | win% of decided | 95% CI of decided | null | draws | stalled seat-games | turns p50 | beats null |\n")
+		b.WriteString("|---|---|---:|---:|---:|---:|---|---:|---:|---:|---:|:--:|\n")
+		for _, t := range s.PerContestant {
+			fmt.Fprintf(&b, "| %s | %s | %d | %d | %d | %s | %s–%s | %s | %d | %d | %d | %s |\n",
+				t.Policy, orDash(t.Deck), t.Games, t.Decided, t.Wins, pct(t.WinRate), pct(t.CILow), pct(t.CIHigh), pct(t.Null),
+				t.Draws, t.Stalled, t.Turns.P50, yesNo(t.Beats()))
+		}
+		b.WriteString("\n*A contestant is a policy on a deck. Same columns and the same footnote as the Play table; `—` is the synthetic battle deck.*\n")
+	}
+
+	writeCards(&b, s)
 
 	b.WriteString("\n### Funnel\n\n")
 	b.WriteString("| policy | windows | A | B | C | escalated | calls | timeouts | fallbacks | picks | in tok | out tok | prompt B p50 |\n")

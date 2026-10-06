@@ -1,0 +1,280 @@
+{
+  "attack-an-empty-board": {
+    "decision": 1
+  },
+  "attack-an-empty-board-turn-five": {
+    "decision": 2
+  },
+  "attack-for-lethal-undefended": {
+    "decision": 1
+  },
+  "block-or-die": {
+    "decision": 4
+  },
+  "block-the-biggest-attacker": {
+    "decision": 3
+  },
+  "cast-the-commander": {
+    "decision": 1,
+    "ranking": [
+      {
+        "index": 1,
+        "value": 3.714999999999999
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 2,
+        "value": -0.5
+      },
+      {
+        "index": 3,
+        "value": -0.5
+      },
+      {
+        "index": 4,
+        "value": -0.5
+      }
+    ]
+  },
+  "commander-to-the-command-zone": {
+    "decision": 0,
+    "ranking": [
+      {
+        "index": 0,
+        "value": 1
+      },
+      {
+        "index": 1,
+        "value": 0.5
+      }
+    ]
+  },
+  "develop-on-turn-two": {
+    "decision": 1,
+    "ranking": [
+      {
+        "index": 1,
+        "value": 1.41
+      },
+      {
+        "index": 2,
+        "value": 1.41
+      },
+      {
+        "index": 3,
+        "value": 1.41
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 4,
+        "value": -0.5
+      },
+      {
+        "index": 5,
+        "value": -0.5
+      }
+    ]
+  },
+  "do-not-attack-into-the-wurm": {
+    "decision": 0
+  },
+  "do-not-chump-at-forty": {
+    "decision": 0
+  },
+  "do-not-chump-at-thirty-seven": {
+    "decision": 0
+  },
+  "keep-four-lands-and-removal": {
+    "decision": 0
+  },
+  "keep-three-lands-and-a-curve": {
+    "decision": 0
+  },
+  "keep-three-lands-top-heavy": {
+    "decision": 0
+  },
+  "land-drop-before-the-two-drop": {
+    "decision": 2,
+    "ranking": [
+      {
+        "index": 2,
+        "value": 8
+      },
+      {
+        "index": 3,
+        "value": 8
+      },
+      {
+        "index": 4,
+        "value": 8
+      },
+      {
+        "index": 1,
+        "value": 1.41
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 5,
+        "value": -0.5
+      },
+      {
+        "index": 6,
+        "value": -0.5
+      }
+    ]
+  },
+  "land-drop-toward-the-wurms": {
+    "decision": 1,
+    "ranking": [
+      {
+        "index": 1,
+        "value": 8
+      },
+      {
+        "index": 2,
+        "value": 8
+      },
+      {
+        "index": 3,
+        "value": 8
+      },
+      {
+        "index": 4,
+        "value": 1.41
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 5,
+        "value": -0.5
+      },
+      {
+        "index": 6,
+        "value": -0.5
+      },
+      {
+        "index": 7,
+        "value": -0.5
+      }
+    ]
+  },
+  "land-drop-turn-two": {
+    "decision": 1,
+    "ranking": [
+      {
+        "index": 1,
+        "value": 8
+      },
+      {
+        "index": 3,
+        "value": 1.1999999999999997
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 4,
+        "value": -0.5
+      },
+      {
+        "index": 2,
+        "value": -2.1
+      }
+    ]
+  },
+  "mulligan-a-hand-full-of-spells": {
+    "decision": 1
+  },
+  "mulligan-one-land-four-two-drops": {
+    "decision": 1
+  },
+  "mulligan-one-land-two-bolts": {
+    "decision": 1
+  },
+  "never-bolt-yourself": {
+    "decision": 2,
+    "ranking": [
+      {
+        "index": 2,
+        "value": 1.1999999999999997
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 3,
+        "value": -0.5
+      },
+      {
+        "index": 1,
+        "value": -2.1
+      }
+    ]
+  },
+  "six-mana-take-the-wurm": {
+    "decision": 1,
+    "ranking": [
+      {
+        "index": 1,
+        "value": 8.835
+      },
+      {
+        "index": 4,
+        "value": 8.835
+      },
+      {
+        "index": 5,
+        "value": 8.835
+      },
+      {
+        "index": 2,
+        "value": 1.41
+      },
+      {
+        "index": 3,
+        "value": 1.41
+      },
+      {
+        "index": 0,
+        "value": 0
+      },
+      {
+        "index": 6,
+        "value": -0.5
+      },
+      {
+        "index": 7,
+        "value": -0.5
+      },
+      {
+        "index": 8,
+        "value": -0.5
+      },
+      {
+        "index": 9,
+        "value": -0.5
+      },
+      {
+        "index": 10,
+        "value": -0.5
+      },
+      {
+        "index": 11,
+        "value": -0.5
+      }
+    ]
+  }
+}

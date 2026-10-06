@@ -13,6 +13,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/botarena"
 )
 
 // arena_test.go covers the resolution rules — what the flags, the
@@ -30,7 +31,7 @@ func TestParseArenaFlagsDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if len(a.seats) != 2 || a.seats[0] != tiers.Heuristic {
+	if len(a.seats) != 2 || a.seats[0].Tier != tiers.Heuristic || a.seats[0].Variant != "" {
 		t.Errorf("seats = %v", a.seats)
 	}
 	if len(a.decks) != 2 || a.decks[0] != "" {
@@ -53,6 +54,27 @@ func TestParseArenaFlagsDefaults(t *testing.T) {
 func TestParseArenaFlagsSeatsRequired(t *testing.T) {
 	if _, err := parseArenaFlags(nil, io.Discard); err == nil {
 		t.Fatal("a run with no seats was accepted")
+	}
+}
+
+// ADR 0126 §1: heuristic-baseline is an arena contestant, the
+// heuristic tier on its frozen pre-S66 config, tallied under its own
+// name.
+func TestParseArenaFlagsTakesHeuristicBaseline(t *testing.T) {
+	a, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic-baseline", "--decks", "izzet-aggro,simic-ramp"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	cfg := a.config(nil, nil, nil, "", nil)
+	if got := cfg.Seats[1]; got.Tier != tiers.Heuristic || got.Variant != botarena.VariantBaseline ||
+		got.Deck != "simic-ramp" || got.Label() != "heuristic-baseline" {
+		t.Errorf("seat 1 = %+v (label %q)", got, got.Label())
+	}
+	if got := cfg.Seats[0]; got.Variant != "" || got.Label() != "heuristic" {
+		t.Errorf("seat 0 = %+v", got)
+	}
+	if a.needsModel {
+		t.Error("heuristic-baseline needs no model")
 	}
 }
 
