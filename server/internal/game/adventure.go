@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // adventure.go — CR 715, and ADR 0034 step 6.
 //
@@ -92,6 +96,20 @@ func castAsAdventure(c Card) bool {
 	return c.Layout == LayoutAdventure && c.ActiveFace == adventureSpellFace
 }
 
+// adventureMainHalfIsLand reports whether the card's main half (face
+// 0) is a land, which is the Final Fantasy Town-land shape.
+func adventureMainHalfIsLand(c Card) bool {
+	if len(c.Faces) <= adventureCreatureFace {
+		return false
+	}
+	for _, f := range strings.Fields(strings.ToLower(strings.ReplaceAll(c.Faces[adventureCreatureFace].TypeLine, "—", " "))) {
+		if f == "land" {
+			return true
+		}
+	}
+	return false
+}
+
 // grantAdventureCastFromExileLocked writes CR 715.3d's permission onto
 // the card that just landed in exile: `player` — the Adventure spell's
 // CONTROLLER as it resolved — may cast it, as the creature (face 0),
@@ -135,10 +153,17 @@ func (g *Game) grantAdventureCastFromExileLocked(cardID, player uuid.UUID) {
 			// CR 715.3d: the creature, and only the creature. The
 			// Adventure half was cast once and is spent.
 			Faces: []int{adventureCreatureFace},
-			// CR 715.3d says CAST. An adventure card's face 0 is
-			// always a creature card (CR 715.2a), so nothing is
-			// stranded by this; it says what the rule says.
-			CastOnly: true,
+			// CR 715.3d says PLAY, not cast: "that player may play
+			// it". A creature main half (CR 715.2a's usual case) is
+			// only ever cast, so the grant stays cast-only and says
+			// what the rule reaches in practice. A LAND main half
+			// (Jidoor, #2176) must be playable: a land play is a
+			// special action that spends the turn's land drop
+			// (CR 305.2), which the land branch of CastSpell and the
+			// view's castableNow already enforce for a non-CastOnly
+			// grant. Faces still names face 0, so the spent
+			// Adventure half cannot be recast.
+			CastOnly: !adventureMainHalfIsLand(exiled),
 			Label:    "Adventure — cast " + exiled.Name + " from exile",
 		}, []Card{exiled})
 		return
