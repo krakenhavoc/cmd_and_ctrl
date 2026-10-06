@@ -415,8 +415,26 @@ test.describe("first-use hints", () => {
       await second.page.keyboard.press("Escape");
       await expect(tip).toHaveCount(0);
 
-      // The first seat's goes with Got it.
-      await dismiss(first.page);
+      // The first seat's goes with Got it, pressed the way a person
+      // presses it: held for longer than the layer's poll (#2422, #2372).
+      // A held pointer is a gesture at the table, and a gesture makes a
+      // tip step aside; a press on the tip itself must not, or the card
+      // is gone before the click lands and back on release.
+      const firstTip = tipOf(first.page);
+      await firstTip
+        .getByRole("button", { name: "Got it", exact: true })
+        .hover();
+      await first.page.mouse.down();
+      await first.page.clock.runFor(400);
+      await expect(firstTip, "the tip stays up under the press").toBeVisible();
+      await first.page.mouse.up();
+      await expect(firstTip).toHaveCount(0);
+      // And it does not come back, past the table's gap between tips.
+      await first.page.clock.runFor(25_000);
+      await expect(
+        tipOf(first.page).filter({ hasText: "Your controls" }),
+        "a dismissed tip came back",
+      ).toHaveCount(0);
 
       noAnchor.forEach((lines, i) =>
         expect(lines, `a hint pointed at nothing (${players[i].name})`).toEqual(
