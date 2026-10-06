@@ -82,29 +82,60 @@ var nonManaActivateKeys = []string{
 	"exile_permanent_ids", "phyrexian_life",
 }
 
-// costsOnlyManaAndTaps reports whether m costs only mana and tapping,
-// plus the card itself for a cast (ADR 0126 §5). Only those moves get
-// LeftoverThreshold. A move that also costs life, a sacrifice, a
-// discard, another card or a counter keeps the normal threshold, and so
-// does anything that is not a cast or an activation.
+// leftoverEligible reports whether m gets LeftoverThreshold in the
+// window the bot is in (ADR 0126 §5).
 //
-// Tapping a creature is free only in the end step before the bot's
-// turn, because only there does the creature untap before anyone can
-// attack the bot. In its own second main phase the creature stays
-// tapped through every opponent's turn, so a move that taps one there
-// keeps the normal threshold too: the bot loots with Mary Read and Anne
-// Bonny at the end of the turn before its own, as a player does, rather
-// than giving up a blocker after combat. (§5's worked example prices
-// exactly that end-step loot; this is the reading of "costs only mana
-// and taps" that keeps the window's premise, "costs nothing the bot
-// would otherwise keep", true in both windows.)
+// In the end step before the bot's turn that is every move that costs
+// only mana and taps (costsOnlyManaAndTaps).
+//
+// The bot's own second main phase is "the last sorcery-speed window of
+// the turn" (§5), and there the window is for sorcery-speed moves only.
+// Mana the bot leaves untapped after combat stays untapped through every
+// opponent's turn and is still there in the end step before its own, so
+// an instant, a flash spell or an instant-speed ability loses nothing by
+// waiting for that step, and it keeps the mana up meanwhile. That is the
+// end-of-turn Entomb or Vampiric Tutor §5 describes. The same holds for
+// tapping a creature: tapped after combat, it stays tapped through every
+// opponent's turn, so a move that taps one waits too. The bot loots with
+// Mary Read and Anne Bonny at the end of the turn before its own, as §5's
+// worked example prices it, rather than giving up a blocker. This is the
+// reading of §5 that keeps its premise, "costs nothing the bot would
+// otherwise keep", true in both windows.
+func (p *Policy) leftoverEligible(st *state, m legal.Move) bool {
+	if !st.beforeMyUntap && (p.tapsACreature(st, m) || p.instantSpeed(st, m)) {
+		return false
+	}
+	return p.costsOnlyManaAndTaps(st, m)
+}
+
+// instantSpeed reports whether m could equally be made in the end step
+// before the bot's turn: the cast of an instant or of a card with flash,
+// or an activated ability with no sorcery-speed clause.
+func (p *Policy) instantSpeed(st *state, m legal.Move) bool {
+	switch m.Kind {
+	case legal.KindCast:
+		c := st.castSource(decode[castParams](m.Params).InstanceID)
+		return c != nil && (isType(c, "instant") || hasKeyword(c, "flash"))
+	case legal.KindActivate:
+		ap := decode[activateParams](m.Params)
+		if src := st.bf[ap.SourceCardID]; src != nil {
+			if row := activatedRow(src, ap.AbilityIndex); row != nil {
+				return !row.SorcerySpeed
+			}
+		}
+	}
+	return false
+}
+
+// costsOnlyManaAndTaps reports whether m costs only mana and tapping,
+// plus the card itself for a cast (ADR 0126 §5). A move that also costs
+// life, a sacrifice, a discard, another card or a counter keeps the
+// normal threshold, and so does anything that is not a cast or an
+// activation.
 //
 // Read off the move's declared cost, its params and the ability row,
 // all of it on the wire (ADR 0033 §3).
 func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
-	if !st.beforeMyUntap && p.tapsACreature(st, m) {
-		return false
-	}
 	if c := m.Cost; c != nil {
 		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 {
 			return false

@@ -79,27 +79,38 @@ func TestTheWindowWaitsForAnEmptyStack(t *testing.T) {
 }
 
 // An untargeted one-mana instant (Entomb's shape) is priced at
-// SpellFloor, 0.10 above the card it costs: cast with leftover mana in
-// the end step before the bot's turn, and in its own second main phase.
+// SpellFloor, 0.10 above the card it costs, and is cast with leftover
+// mana in the end step before the bot's turn. In the bot's own second
+// main phase it waits for that step: the mana stays untapped until then.
+// A one-mana sorcery (Preordain's shape) has no later window, so the
+// second main phase is where it goes.
 func TestACheapUntargetedSpellIsCastWithLeftoverMana(t *testing.T) {
 	tutor := spell(cardID(1), 2, "Entomb", "{B}")
+	cantrip := spell(cardID(2), 2, "Preordain", "{U}")
+	cantrip.TypeLine = "Sorcery"
 	bf := withBattlefield(land(cardID(10), 2))
 	for _, tc := range []struct {
 		name string
 		turn viewOpt
+		want string
 	}{
-		{"end step before the bot's turn", withTurn(5, 1, "end")},
-		{"the bot's second main phase", withTurn(5, 2, "postcombat_main")},
+		{"end step before the bot's turn", withTurn(5, 1, "end"), "Cast Entomb"},
+		{"the bot's second main phase", withTurn(5, 2, "postcombat_main"), "Cast Preordain"},
+		{"the bot's first main phase", withTurn(5, 2, "precombat_main"), "Pass priority"},
 	} {
-		in := input(2, newView(fourSeats(tutor), bf, tc.turn), passMove(2), castMove(t, 2, cardID(1), "Cast Entomb"))
-		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Cast Entomb" {
-			t.Errorf("%s: chose %q, want the cast", tc.name, got)
+		moves := []legal.Move{passMove(2), castMove(t, 2, cardID(1), "Cast Entomb")}
+		if tc.name != "end step before the bot's turn" {
+			moves = append(moves, castMove(t, 2, cardID(2), "Cast Preordain"))
+		}
+		in := input(2, newView(fourSeats(tutor, cantrip), bf, tc.turn), moves...)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != tc.want {
+			t.Errorf("%s: chose %q, want %q", tc.name, got, tc.want)
 		}
 	}
-	// Not in the first main phase: 0.10 does not clear PassThreshold.
-	in := input(2, newView(fourSeats(tutor), bf, withTurn(5, 2, "precombat_main")), passMove(2), castMove(t, 2, cardID(1), "Cast Entomb"))
+	// With only the instant on offer, the second main phase passes.
+	in := input(2, newView(fourSeats(tutor), bf, withTurn(5, 2, "postcombat_main")), passMove(2), castMove(t, 2, cardID(1), "Cast Entomb"))
 	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Pass priority" {
-		t.Errorf("first main phase: chose %q, want the pass", got)
+		t.Errorf("second main phase, instant only: chose %q, want the pass (it waits for the end step)", got)
 	}
 }
 

@@ -661,7 +661,7 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			best, bestVal, bestReason = i, v, reason
 		}
 		bar := threshold
-		if leftover && v <= threshold && p.costsOnlyManaAndTaps(st, moves[i]) {
+		if leftover && v <= threshold && p.leftoverEligible(st, moves[i]) {
 			bar = p.cfg.LeftoverThreshold
 			reason += ", leftover mana"
 		}
