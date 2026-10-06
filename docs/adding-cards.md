@@ -4354,6 +4354,14 @@ the second its own `AltCostKey`: the caster claims it like an
 alternative cost, `CastOffersForLocked` lists it, and a cast that does
 not claim it uses the first.
 
+**"If you do, …" after a cast permission (#2173).** Set
+`CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
+func(g, f) error {...})` returns, declared as a package-level `var` in the
+card file. The body runs once the spell is on the stack, only when the
+cast was made through that permission, never for a declined, lapsed or
+expired offer (Conduit of Worlds). Add `RequiresNoSpellsCast: true` for
+"if you haven't cast a spell this turn" held across the window.
+
 **"Exile it until …" (#1729, CR 610.3).** Use `effects.ExileUntil`
 (`ThisLeaves: true`, or `On` plus a registered `Condition`), never a
 leaves-the-battlefield trigger or a delayed trigger: the return is a

@@ -2659,14 +2659,13 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2172). `game.ModCantBeBlockedByPlayer` (`game/scoped_block_rules.go`) is a scoped block-rule kind that stores the chosen player in `Mod.Player` with its refusal clause in `Mod.Text`, pinned to the target at resolution (CR 611.2c) and swept at end of turn. The block-rule walk adapts it into a pair rule (`BlockReasonCantBeBlockedBy`), so the block validator and the enumerator both read it; the blocker's controller is compared live. The card helper is `effects.CantBeBlockedThisTurnByPlayer`. Snapshot: the kind is new vocabulary and the mod reuses existing fields.",
 	},
 	{
-		Slug: "cast-permission-follow-up", Name: "Something that happens because you cast the card you were allowed to", Kind: KindSeam, Status: StatusMissing,
+		Slug: "cast-permission-follow-up", Name: "Something that happens because you cast the card you were allowed to", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that let you cast a card and then do something only if you cast it, such as Conduit of Worlds' \"you may cast that card. If you do, you can't cast additional spells this turn\".",
-		Missing:     "A card can let you cast a spell from your graveyard, but can't make something happen because you cast that spell.",
 		Rules:       []string{"118.12", "400.7h", "608.2g"},
 		Issue:       2173,
-		Tracked:     "#2173 (S58 tracker #2077)",
-		Waiting:     []string{"Conduit of Worlds"},
-		EngineNotes: "cast permission: `game.CastPermission` (`game/cast_permission.go`) carries a price, a timing, a lapse and a cast count, nothing runs when a cast through it happens, and the spell on the stack doesn't record which permission let it be cast. Conduit of Worlds' tap ability lets you cast the target card for its mana cost as the ability resolves (the `LapseOnPass` shape cascade uses, CR 608.2g), and only that cast is followed by a ban on casting more spells (`RestrictCasting`, `effects/cast_ban.go`); a ban written without knowing whether the card was cast would either stop that cast or bind a player who declined it. \"If you haven't cast a spell this turn\" reads the turn's cast tally, and the first line, \"You may play lands from your graveyard\", is a standing graveyard permission that works.",
+		Printed:     printedWords("you can't cast additional spells this turn"),
+		Examples:    []string{"Conduit of Worlds"},
+		EngineNotes: "**Shipped** (#2173). `game.CastPermission.FollowUp` (`game/cast_follow_up.go`) is a key into a registry of bodies (`game.RegisterCastFollowUp`, the `RegisterDrawThen` shape), so the permission stays plain data. `CastSpell` runs the body once the spell is on the stack and its `EventCast` is out, when the cast was made through the permission (`castUsesGrantLocked`, the question `CastsLeft` asks); a lapsed, expired or declined offer runs nothing. `CastPermission.RequiresNoSpellsCast` ends the permission once its holder has cast any spell this turn, for \"if you haven't cast a spell this turn\" held across the window. Conduit of Worlds registers its follow-up (a `CastBanOutright` until end of turn) in its own file. Snapshot: two additive `castPermissions[]` keys, `followUp` and `requiresNoSpellsCast`.",
 	},
 	{
 		Slug: "blight-x-additional-cost", Name: "Blight X as an additional cost", Kind: KindSeam, Status: StatusImplemented,
