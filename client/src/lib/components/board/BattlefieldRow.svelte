@@ -268,7 +268,11 @@
     <span class="row-name">{label}</span>
     {#if cards.length > 0}<span class="row-count">{cards.length}</span>{/if}
   </span>
-  <div class="row-cards" role="list" aria-label={label} use:fitRow>
+  <!-- #2438: the row's own card size, which fitRow shrinks the list's
+       cards from. It sits outside the list, so the list's override never
+       reaches it. -->
+  <span class="fit-probe" aria-hidden="true"></span>
+  <div class="row-cards" role="list" aria-label={label} use:fitRow={strip}>
     {#each piles as p (p.key)}
       <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -398,6 +402,15 @@
     --card-w: var(--card-w-sm, 88px);
     --card-h: var(--card-h-sm, 123px);
   }
+  .fit-probe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--card-w, 88px);
+    height: var(--card-h, 123px);
+    visibility: hidden;
+    pointer-events: none;
+  }
   .row-label {
     position: absolute;
     top: 4px;
@@ -485,8 +498,9 @@
     align-items: flex-start;
     height: 100%;
   }
-  /* #2336: a row stays on one line. Cards that do not fit overlap, each
-     by --fit-overlap (lib/rowFit.ts, measured by the fitRow action),
+  /* #2336: a row stays on one line. Cards that do not fit first shrink
+     (#2438: fitRow sets --card-w / --card-h on the list, down to a 56px
+     card), then overlap, each by --fit-overlap (lib/rowFit.ts),
      instead of wrapping onto a line the panel has no room for. A
      hovered card comes to the front. Past the overlap cap a huge board
      scrolls sideways, and `safe` keeps its first card reachable. */
