@@ -1604,6 +1604,9 @@ type manaParams struct {
 	// #1600: Food Chain's "Exile a creature you control" — the field
 	// activateParams carries under the same name.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+	// #2215: the activation tops up a mana component of its cost from
+	// the seat's other sources. Set on every move whose ability has one.
+	AutoTap bool `json:"auto_tap,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents and —
@@ -1743,10 +1746,14 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
 			continue
 		}
-		// A mana component in the cost has to be already floating
-		// — the activation path deliberately does not auto-tap
-		// into a mana ability, so a Signet with an empty pool is
-		// not a legal move.
+		// A mana component in the cost is paid from the pool and,
+		// for what the pool is missing, from the seat's other
+		// sources (#2215: the move carries auto_tap). Affordability
+		// is asked of the SAME top-up the engine pays through, with
+		// the same exclusions (game.ManaActivationAutoTapExclusions,
+		// the source itself, since this arm names no other pick), so
+		// a Signet with an empty pool and two untapped lands is a
+		// move and one with nothing else to tap is not.
 		//
 		// #1191: the PRICED cost, not the printed one — the same
 		// function ActivateManaAbility pays through, so Boom
@@ -1755,14 +1762,20 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// activation it can now afford, mirroring the CR 602 arm
 		// above (#544, sign reversed: pricing at the printed cost
 		// would silently hide a legal move).
+		var (
+			manaCostAsPaid game.ParsedCost
+			manaSpend      game.ManaSpendContext
+		)
 		if ab.ManaCost != "" {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
 			if err != nil {
 				continue
 			}
 			// #1600: widened as ActivateManaAbility widens it.
-			spend := game.ManaSpendForAbility(*source)
-			if !e.p.ManaPool.CanPayFor(g.CostAsPaidByForEffect(e.seat, spend, cost, 0), 0, spend) {
+			manaSpend = game.ManaSpendForAbility(*source)
+			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, 0)
+			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
+				game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{})) {
 				continue
 			}
 		}
@@ -1847,6 +1860,18 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				game.AbilityCost{SacrificeSelf: ab.SacrificeCost, ExileSelf: ab.ExileSelf}) {
 				exiles := moved.exiled
 				for _, taps := range tapSets {
+					// #2215: the mana component again, now that this
+					// payment's picks are known — none of them may be
+					// tapped for it (ManaActivationAutoTapExclusions).
+					if ab.ManaCost != "" && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
+						len(manaDiscardIDs) > 0 || len(manaExileIDs) > 0) &&
+						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
+							game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{
+								SacrificeIDs: sacs, TapIDs: taps, DiscardIDs: manaDiscardIDs,
+								ExileIDs: manaExileIDs, ExilePermanentIDs: exiles,
+							})) {
+						continue
+					}
 					for _, cc := range counterChoices {
 						label := source.Name + ": " + ab.Label
 						if ab.Label == "" {
@@ -1888,6 +1913,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								DiscardIDs:        idStrings(manaDiscardIDs),
 								ExileIDs:          idStrings(manaExileIDs),
 								ExilePermanentIDs: idStrings(exiles),
+								AutoTap:           ab.ManaCost != "",
 							}),
 						})
 					}

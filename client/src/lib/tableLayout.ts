@@ -16,7 +16,7 @@ export type TableLayout = "quadrant" | "row" | "focus";
 export const TABLE_LAYOUTS: readonly TableLayout[] = ["quadrant", "row", "focus"];
 
 /** The default, and what an unknown stored value falls back to. */
-export const DEFAULT_TABLE_LAYOUT: TableLayout = "quadrant";
+export const DEFAULT_TABLE_LAYOUT: TableLayout = "row";
 
 export function isTableLayout(v: unknown): v is TableLayout {
   return typeof v === "string" && (TABLE_LAYOUTS as readonly string[]).includes(v);

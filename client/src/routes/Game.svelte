@@ -57,6 +57,7 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
+  import { showChoiceAsList } from "../lib/boardAnsweredChoice";
   import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
   import { modalOpen } from "../lib/modalLayers";
   import {
@@ -127,7 +128,7 @@
     setShortcutContext,
   } from "../lib/shortcutRuntime";
   import { HINTS } from "../lib/hints";
-  import { replayTips } from "../lib/hints/runtime";
+  import { isInsideTip, replayTips } from "../lib/hints/runtime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
@@ -616,7 +617,7 @@
     // window.
     cancelPendingPass();
     // #1296: activate_ability is stamped too — see manaEnforcement.ts.
-    if (type === "cast_spell" || type === "activate_ability") {
+    if (type === "cast_spell" || type === "activate_ability" || type === "activate_mana_ability") {
       params = stampManaEnforcement(
         type,
         (params ?? {}) as Record<string, unknown>,
@@ -1113,7 +1114,12 @@
   const tableOnScreenSince = Date.now();
   let pointerHeld = $state(false);
   $effect(() => {
-    const down = () => (pointerHeld = true);
+    // A press on the tip card is not a gesture. Counting it made the
+    // card step aside before its own button's click landed, and come
+    // straight back on release (#2422, #2372).
+    const down = (e: PointerEvent) => {
+      if (!isInsideTip(e.target)) pointerHeld = true;
+    };
     const up = () => (pointerHeld = false);
     window.addEventListener("pointerdown", down, true);
     window.addEventListener("pointerup", up, true);
@@ -1606,6 +1612,10 @@
       ? targetingRequest($targeting, view, {
           onDone: confirmTargeting,
           onCancel: cancelTargeting,
+          // #2394: the board pick's list fallback. Board leaves the
+          // targeting flow once the choice is no longer board-answered,
+          // and ChoicePromptModal opens it.
+          onShowList: showChoiceAsList,
         })
       : null,
   );

@@ -19,10 +19,10 @@ func init() {
 		Name:         "Elves of Deep Shadow",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{B}",
-			Label:    "Add {B}. This creature deals 1 damage to you.",
-			Rider:    PainRider(1),
+			Cost:      ManaAbilityCost{Tap: true},
+			Produced:  "{B}",
+			Label:     "Add {B}. This creature deals 1 damage to you.",
+			PainToYou: 1,
 		}},
 	})
 }

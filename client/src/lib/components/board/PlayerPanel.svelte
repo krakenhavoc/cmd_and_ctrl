@@ -1096,7 +1096,9 @@
     min-height: 0;
     min-width: 0;
     display: flex;
-    justify-content: center;
+    /* safe: a back row wider than its area starts at its left edge
+       rather than spilling left over the piles beside it (#2438). */
+    justify-content: safe center;
     align-items: flex-start;
     gap: 24px;
   }
@@ -1218,6 +1220,49 @@
        carry the pile's name, so the piles stay one short row. */
     .panel.self.docked .rail :global(.pile .label) {
       display: none;
+    }
+  }
+  /* #2438: an across-table opponent is your board's mirror, flipped top
+     to bottom across the table's centre line: their hand and commander
+     along the top edge, the back row under it with the piles in its
+     left corner (yours are in the same corner of your back row), and
+     the creatures facing yours, with their identity at the bottom of
+     the rail beside them, where yours is at the top of your rail beside
+     your creatures. The rail is `display: contents`, as on yours, so
+     the piles leave it and the creatures keep its full height. */
+  @media (min-width: 600px) {
+    .panel.opponent.flipped {
+      grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-areas:
+        "bottom    bottom    bottom"
+        "piles     middle    rail"
+        "creatures creatures rail";
+    }
+    .panel.opponent.flipped .rail {
+      display: contents;
+    }
+    .panel.opponent.flipped .rail-gap {
+      display: none;
+    }
+    .panel.opponent.flipped .rail > :global(.identity) {
+      grid-area: rail;
+      align-self: end;
+    }
+    .panel.opponent.flipped .rail > :global(.pile-bar) {
+      grid-area: piles;
+      grid-template-columns: repeat(3, 44px);
+      width: auto;
+      align-self: start;
+    }
+    /* A top-row panel is narrow: the two back-row zones may give up
+       more of their width, and shrink their cards to fit (rowFit),
+       before either crowds the piles. */
+    .panel.opponent.flipped .grid-middle {
+      gap: 12px;
+    }
+    .panel.opponent.flipped .grid-middle > :global(.row) {
+      min-width: 96px;
     }
   }
   /* A narrow self panel (the quadrant's bottom right): the dock is

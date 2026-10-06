@@ -574,8 +574,8 @@
                 onchange={(e) =>
                   change("display", "opponentDetail", e.currentTarget.value as "summary" | "full")}
               >
-                <option value="summary">Summary (default)</option>
-                <option value="full">Full boards</option>
+                <option value="summary">Summary</option>
+                <option value="full">Full boards (default)</option>
               </select>
               {#if isFresh("display.opponentDetail")}<span class="saved">✓</span>{/if}
             </label>
@@ -614,8 +614,8 @@
                 onchange={(e) =>
                   change("display", "expandStyle", e.currentTarget.value as "reflow" | "overlay")}
               >
-                <option value="reflow">Reflow (default)</option>
-                <option value="overlay">Overlay</option>
+                <option value="reflow">Reflow</option>
+                <option value="overlay">Overlay (default)</option>
               </select>
               {#if isFresh("display.expandStyle")}<span class="saved">✓</span>{/if}
             </label>
@@ -651,8 +651,8 @@
                 onchange={(e) =>
                   change("display", "tableLayout", e.currentTarget.value as TableLayout)}
               >
-                <option value="quadrant">Quadrant (default)</option>
-                <option value="row">Row</option>
+                <option value="quadrant">Quadrant</option>
+                <option value="row">Row (default)</option>
                 <option value="focus">Focus</option>
               </select>
               {#if isFresh("display.tableLayout")}<span class="saved">✓</span>{/if}

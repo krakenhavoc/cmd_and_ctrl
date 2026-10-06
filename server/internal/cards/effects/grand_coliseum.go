@@ -47,10 +47,10 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:     ManaAbilityCost{Tap: true},
-				Produced: "{W|U|B|R|G}",
-				Label:    "Add one mana of any color. This land deals 1 damage to you",
-				Rider:    PainRider(1),
+				Cost:      ManaAbilityCost{Tap: true},
+				Produced:  "{W|U|B|R|G}",
+				Label:     "Add one mana of any color. This land deals 1 damage to you",
+				PainToYou: 1,
 			},
 		},
 	})

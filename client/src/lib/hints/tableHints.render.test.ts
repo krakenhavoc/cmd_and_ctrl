@@ -18,6 +18,7 @@ import { targeting, setConfirmHandler } from "../targeting";
 import { defaultSettings, settings } from "../settings";
 import { cleanup, flushSync, render } from "../test/render.svelte";
 import { resolveAnchor } from "../tutorialAnchor";
+import { L } from "../labels";
 import { HINTS } from "./index";
 import { anchorOf, emptyContext, type Hint, type HintContext } from "./hint";
 import { _resetTableMomentForTests, notQuietReason, tableState } from "./tableMoment";
@@ -279,5 +280,34 @@ describe("the opening roll's hint", () => {
     const t = get(tableState);
     expect(t).not.toBeNull();
     expect(notQuietReason({ ...t!.moment, since: 0 }, 60_000, null)).toBe("dock-request");
+  });
+});
+
+describe("a press on the tip card (#2422, #2372)", () => {
+  function pointer(type: string, target: Element): void {
+    target.dispatchEvent(new Event(type, { bubbles: true }));
+    flushSync();
+  }
+
+  it("is not a gesture, so the card stays up for its own button's click", async () => {
+    await mountGame(table());
+    const card = document.createElement("aside");
+    card.setAttribute("aria-label", L.tip);
+    const button = document.createElement("button");
+    button.textContent = "Got it";
+    card.append(button);
+    document.body.append(card);
+    try {
+      pointer("pointerdown", button);
+      expect(get(tableState)!.moment.gesture).toBe(false);
+      pointer("pointerup", button);
+      // A press anywhere else on the table still is one.
+      pointer("pointerdown", document.body);
+      expect(get(tableState)!.moment.gesture).toBe(true);
+      pointer("pointerup", document.body);
+      expect(get(tableState)!.moment.gesture).toBe(false);
+    } finally {
+      card.remove();
+    }
   });
 });

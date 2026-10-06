@@ -105,6 +105,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if problem := stackPinProblem(e.Affected, e.Mods); problem != "" {
 			unknown = append(unknown, "scoped effect "+problem)
 		}
+		// #2045: a recipient set is read only on an unpinned record.
+		if problem := recipientFilterScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}
@@ -355,6 +359,10 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 		if err := sourceFilterFields(rec["mods"], nested); err != nil {
 			return nil, err
 		}
+		// #2045: so is a shield's recipient filter, down to its queries.
+		if err := recipientFilterFields(rec["mods"], nested); err != nil {
+			return nil, err
+		}
 	}
 	for _, dt := range envelope.DelayedTriggers {
 		if err := params("a delayed trigger's params", dt["params"]); err != nil {
@@ -436,19 +444,52 @@ func sourceFilterFields(mods json.RawMessage, nested func(string, json.RawMessag
 	return nil
 }
 
+// recipientFilterFields walks each mod's recipientFilter entries with
+// `nested`, the unknown-key check: the filter's own keys and its Match
+// queries' (#2045).
+func recipientFilterFields(mods json.RawMessage, nested func(string, json.RawMessage, map[string]bool, bool) error) error {
+	if len(mods) == 0 || string(mods) == "null" {
+		return nil
+	}
+	var list []map[string]json.RawMessage
+	if err := json.Unmarshal(mods, &list); err != nil {
+		return err
+	}
+	for _, m := range list {
+		raw := m["recipientFilter"]
+		if err := nested("a mod's recipient filter", raw, damageRecipientFilterJSONKeys, true); err != nil {
+			return err
+		}
+		if len(raw) == 0 || string(raw) == "null" {
+			continue
+		}
+		var filters []map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &filters); err != nil {
+			return err
+		}
+		for _, f := range filters {
+			if err := nested("a recipient filter's query", f["match"], permanentQueryJSONKeys, true); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 var (
-	damageSourceFilterJSONKeys = jsonKeysOf(reflect.TypeOf(DamageSourceFilter{}))
-	permanentQueryJSONKeys     = jsonKeysOf(reflect.TypeOf(PermanentQuery{}))
-	scopedEffectJSONKeys       = jsonKeysOf(reflect.TypeOf(ScopedEffect{}))
-	affectedObjectJSONKeys     = jsonKeysOf(reflect.TypeOf(AffectedObject{}))
-	modJSONKeys                = jsonKeysOf(reflect.TypeOf(Mod{}))
-	durationJSONKeys           = jsonKeysOf(reflect.TypeOf(Duration{}))
-	effectParamsJSONKeys       = jsonKeysOf(reflect.TypeOf(EffectParams{}))
-	castFilterJSONKeys         = jsonKeysOf(reflect.TypeOf(CastFilter{}))
-	objectRefJSONKeys          = jsonKeysOf(reflect.TypeOf(ObjectRef{}))
-	abilityRefJSONKeys         = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
-	stackItemJSONKeys          = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
-	lastKnownSpellJSONKeys     = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
+	damageRecipientFilterJSONKeys = jsonKeysOf(reflect.TypeOf(DamageRecipientFilter{}))
+	damageSourceFilterJSONKeys    = jsonKeysOf(reflect.TypeOf(DamageSourceFilter{}))
+	permanentQueryJSONKeys        = jsonKeysOf(reflect.TypeOf(PermanentQuery{}))
+	scopedEffectJSONKeys          = jsonKeysOf(reflect.TypeOf(ScopedEffect{}))
+	affectedObjectJSONKeys        = jsonKeysOf(reflect.TypeOf(AffectedObject{}))
+	modJSONKeys                   = jsonKeysOf(reflect.TypeOf(Mod{}))
+	durationJSONKeys              = jsonKeysOf(reflect.TypeOf(Duration{}))
+	effectParamsJSONKeys          = jsonKeysOf(reflect.TypeOf(EffectParams{}))
+	castFilterJSONKeys            = jsonKeysOf(reflect.TypeOf(CastFilter{}))
+	objectRefJSONKeys             = jsonKeysOf(reflect.TypeOf(ObjectRef{}))
+	abilityRefJSONKeys            = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
+	stackItemJSONKeys             = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
+	lastKnownSpellJSONKeys        = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
 	// ADR 0108 PR 0: an owed follow-up's fields are checked too.
 	preventionFollowUpJSONKeys = jsonKeysOf(reflect.TypeOf(PreventionFollowUp{}))
 )

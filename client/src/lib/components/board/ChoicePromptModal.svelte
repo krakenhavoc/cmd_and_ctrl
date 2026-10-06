@@ -40,7 +40,7 @@
   } from "../../protocol";
   import Card from "./Card.svelte";
   import { findCardView } from "../../commanderReturn";
-  import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
+  import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
   import DockRequest from "./DockRequest.svelte";
   import DockSheet from "./DockSheet.svelte";
@@ -99,7 +99,9 @@
       // #1623: the legend rule and choose_protector are board-answered
       // too (Board.svelte drives them through the targeting banner);
       // the one shared list says so, for both sides.
-      if (isBoardAnsweredChoice(c.kind)) continue;
+      // #2394: so is a card-set pick over permanents on the battlefield
+      // ("untap up to five lands"), unless the player asked for the list.
+      if (answeredOnBoard(c, snap, $listFallback)) continue;
       // #844, CR 903.4f: a colour prompt with no colours on offer is
       // not a choice anybody can answer, and an empty picker modal
       // would block the board. The server stopped queueing one when a

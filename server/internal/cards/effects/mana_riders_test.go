@@ -408,9 +408,9 @@ func TestCityOfBrassTriggersOnAnyTapNotJustManaTaps(t *testing.T) {
 
 // --- auto-tapper interaction --------------------------------------
 
-// The auto-tapper may plan a painland, and when it does it reaches
-// for the painless half. A planner that silently spent life to save a
-// click would be a planner nobody should trust.
+// The auto-tapper may plan a painland, and for a generic pip it reaches
+// for the painless half. Its coloured half is a pain-tier source since
+// #2392, spent only when nothing painless can pay.
 func TestAutoTapUsesThePainlessHalfOfAPainland(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -430,10 +430,11 @@ func TestAutoTapUsesThePainlessHalfOfAPainland(t *testing.T) {
 	}
 }
 
-// Ancient Tomb has no painless half, so the auto-tapper declines to
-// plan it at all rather than taking 2 off the player's life
-// uninvited. It stays fully activatable by hand.
-func TestAutoTapDeclinesAncientTomb(t *testing.T) {
+// Ancient Tomb has no painless half. Since #2392 its declared rider
+// (PainToYou: 2) makes it a pain-tier source — planned, and only while
+// its 2 damage leaves the player above 0. It stays activatable by hand
+// below that.
+func TestAutoTapPlansAncientTombWhileItIsNotLethal(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	seedPermanentWithOracle(g, me.ID, "Ancient Tomb", "Land", ancientTombOracle)
@@ -442,15 +443,19 @@ func TestAutoTapDeclinesAncientTomb(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseCost: %v", err)
 	}
+	if plan, ok := g.AutoTapForCost(me.ID, cost, 0); !ok || len(plan) != 1 {
+		t.Errorf("auto-tap plan = %v ok=%v, want Ancient Tomb planned at %d life", plan, ok, me.Life)
+	}
+	g.WithWriteLock(func() { me.Life = 2 })
 	if plan, ok := g.AutoTapForCost(me.ID, cost, 0); ok {
-		t.Errorf("auto-tap planned Ancient Tomb (%v); its only ability deals 2 damage", plan)
+		t.Errorf("auto-tap planned Ancient Tomb (%v) at 2 life; its 2 damage would be lethal", plan)
 	}
 }
 
-// Mana Confluence is declined for the same reason, one step stronger:
-// its life payment is a cost, and spending a cost without being asked
-// is worse than failing to plan.
-func TestAutoTapDeclinesManaConfluence(t *testing.T) {
+// Mana Confluence likewise (#2392): its life COST is paid by the
+// automatic payment, which never takes the player to 0 even though
+// CR 119.4 would allow paying down to exactly 0.
+func TestAutoTapPlansManaConfluenceWhileItIsNotLethal(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	seedPermanentWithOracle(g, me.ID, "Mana Confluence", "Land", manaConfluenceOracle)
@@ -459,8 +464,12 @@ func TestAutoTapDeclinesManaConfluence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseCost: %v", err)
 	}
+	if plan, ok := g.AutoTapForCost(me.ID, cost, 0); !ok || len(plan) != 1 {
+		t.Errorf("auto-tap plan = %v ok=%v, want Mana Confluence planned", plan, ok)
+	}
+	g.WithWriteLock(func() { me.Life = 1 })
 	if plan, ok := g.AutoTapForCost(me.ID, cost, 0); ok {
-		t.Errorf("auto-tap planned Mana Confluence (%v); its cost includes 1 life", plan)
+		t.Errorf("auto-tap planned Mana Confluence (%v) at 1 life", plan)
 	}
 }
 
@@ -513,10 +522,10 @@ func TestEveryRiderCardIsRegisteredAndProduces(t *testing.T) {
 }
 
 // The two cycles' shapes, pinned: two abilities, the first painless
-// and colorless, the second a two-colour pipe with a damage rider.
-// The ORDER matters — game.autoTapAbilityFor takes the first
-// qualifying ability, so a swapped pair would hand the auto-tapper
-// the painful line.
+// and colorless, the second a two-colour pipe with a declared damage
+// rider (PainToYou, which is what lets the auto-tapper price it,
+// #2392). The ORDER still matters for a plan entry with no ref:
+// game.autoTapAbilityFor takes the first qualifying ability.
 func TestPainCyclesPutThePainlessAbilityFirst(t *testing.T) {
 	for _, oracle := range []string{shivanReefOracle, adarkarWastesOracle, talismanOfDominanceOracle} {
 		spec, ok := Lookup(oracle)
@@ -526,11 +535,11 @@ func TestPainCyclesPutThePainlessAbilityFirst(t *testing.T) {
 		if len(spec.ManaAbilities) != 2 {
 			t.Fatalf("%s has %d mana abilities, want 2", spec.Name, len(spec.ManaAbilities))
 		}
-		if spec.ManaAbilities[0].Rider != nil || spec.ManaAbilities[0].Cost.Life != 0 {
+		if spec.ManaAbilities[0].Rider != nil || spec.ManaAbilities[0].PainToYou != 0 || spec.ManaAbilities[0].Cost.Life != 0 {
 			t.Errorf("%s: ability 0 must be the painless one", spec.Name)
 		}
-		if spec.ManaAbilities[1].Rider == nil {
-			t.Errorf("%s: ability 1 must carry the damage rider", spec.Name)
+		if spec.ManaAbilities[1].PainToYou != 1 {
+			t.Errorf("%s: ability 1 must carry the 1-damage rider", spec.Name)
 		}
 		if spec.ManaAbilities[1].NarrowToCommanderIdentity {
 			t.Errorf("%s: the dual names two printed colours and must not narrow to the commander's identity", spec.Name)

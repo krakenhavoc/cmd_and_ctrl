@@ -1030,6 +1030,11 @@ export interface AutoTapPreviewSource {
   // #1621: a costless "once each turn" ability (Vivi Ornitier's {0}) —
   // nothing tapped, sacrificed or exiled; this turn's one use is spent.
   once_per_turn?: boolean;
+  // #2392: life the payment pays as part of the cost (Mana Confluence's
+  // "Pay 1 life"), and damage its rider deals you after the mana (a
+  // painland's coloured half, Ancient Tomb).
+  life?: number;
+  damage?: number;
 }
 
 // fetchAutoTapPreview asks the server which permanents the auto-

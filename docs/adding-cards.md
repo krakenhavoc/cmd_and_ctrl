@@ -3500,6 +3500,20 @@ once per source (Comeuppance, Judgment of Alexander). The helpers are in
 `effects/shield_source_filters.go`; "target blocked creature" is
 `BlockedCreature()`.
 
+**Protecting a set (#2045, ADR 0108 §7 amendment of 2026-10-06).** "To
+creatures" is `Protect: ShieldCreatures`, "to creatures you control"
+(without you) is `ShieldCreaturesYouControl`, and "to players" is
+`ShieldPlayers`. Any other set is `ShieldPermanents(queries…)` or
+`ShieldPermanentsYouControl(queries…)`, where the permanent must match
+EVERY query: "artifact creatures" is `ShieldPermanents(QueryTypes("artifact"),
+QueryTypes("creature"))`, and "Dogs you control" is
+`ShieldPermanentsYouControl(QuerySubtype("Dog"))`. Each composes with
+`Queries`, `Filter` and `CombatOnly`, so Chameleon Blur's "damage that
+creatures would deal to players" is `Protect: ShieldPlayers, Queries:
+creatureSources()`. Never test the set as the shield resolves: the
+engine reads it as each damage event would be dealt (CR 611.2c). A set
+can't carry a charge. The helpers are in `effects/shield_recipient_sets.go`.
+
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
 destroy entry points. A destruction a replacement rewrote

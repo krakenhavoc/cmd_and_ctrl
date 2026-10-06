@@ -56,22 +56,21 @@ func PainRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
 // and Command Tower and their kin, which do print the clause.)
 func painDual(a, b, self string) ManaAbility {
 	return ManaAbility{
-		Cost:     ManaAbilityCost{Tap: true},
-		Produced: "{" + a + "|" + b + "}",
-		Label:    "Add {" + a + "} or {" + b + "}. " + self + " deals 1 damage to you.",
-		Rider:    PainRider(1),
+		Cost:      ManaAbilityCost{Tap: true},
+		Produced:  "{" + a + "|" + b + "}",
+		Label:     "Add {" + a + "} or {" + b + "}. " + self + " deals 1 damage to you.",
+		PainToYou: 1,
 	}
 }
 
 // painlessColorless is the FIRST ability on every painland and every
 // Talisman: "{T}: Add {C}", with no rider at all.
 //
-// Keeping it at index 0 is deliberate and the auto-tapper depends on
-// it: game.autoTapAbilityFor takes the first tap ability with no
-// sacrifice cost, no life cost and no rider, so the planner reaches
-// for the painless half and never spends the player's life without
-// being asked. The colored half stays a deliberate click in the
-// ability menu.
+// Keeping it at index 0 is deliberate: game.autoTapAbilityFor, the
+// pick for a plan entry that names no ability, takes the first
+// acceptable one. The planner offers both halves since #2392 (the
+// painful one through its PainToYou declaration), and orders the
+// coloured half in its pain tier, after every painless source.
 func painlessColorless() ManaAbility {
 	return ManaAbility{
 		Cost:     ManaAbilityCost{Tap: true},

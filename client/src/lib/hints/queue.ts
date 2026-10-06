@@ -123,8 +123,11 @@ export interface HintEngine {
   /**
    * The hint on screen closes ("Got it", Escape, "Hide tips"). Returns
    * it, so the caller can mark it seen, or null if none was up.
+   * `onScreen` is the hint the card shows. It is the one dismissed when
+   * the visit no longer holds one (it stepped aside after it was
+   * drawn), so a card someone closed never comes straight back.
    */
-  dismiss(now: number): Hint | null;
+  dismiss(now: number, onScreen?: Hint | null): Hint | null;
   /**
    * Show these hints of `place` again, one after another (the Help
    * menu). The caller clears them from the seen map first.
@@ -245,20 +248,22 @@ export function createHintEngine(opts: EngineOptions = {}): HintEngine {
       return null;
     },
 
-    dismiss(now) {
+    dismiss(now, onScreen = null) {
       const v = visit();
-      const h = v?.shown ?? null;
-      if (!v || !h) return null;
-      v.shown = null;
+      const h = v?.shown ?? onScreen;
+      if (!h) return null;
       lastClosedAt = now;
+      // A replay goes on to its next hint; anything else ends the visit.
+      let visitDone = true;
       if (replay?.ids.has(h.id)) {
         replay.ids.delete(h.id);
-        if (replay.ids.size === 0) {
-          replay = null;
-          v.done = true;
-        }
-      } else {
-        v.done = true;
+        if (replay.ids.size === 0) replay = null;
+        else visitDone = false;
+      }
+      // Only the visit that held the hint is spent by closing it.
+      if (v?.shown) {
+        v.shown = null;
+        if (visitDone) v.done = true;
       }
       return h;
     },

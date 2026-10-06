@@ -14,8 +14,8 @@ package effects
 //     {B/R} as one requirement payable by either colour, and the
 //     engine validates it against the pool before the land taps, so
 //     an activation with only {G} floating fails with the Cairns
-//     untouched. There is no auto-tap into it (see signets.go); the
-//     player floats the mana and clicks.
+//     untouched. A click tops the pool up from the player's other
+//     sources (#2215, see signets.go).
 //   - The output is two independent {B|R} slots. "BB, BR, or RR" is
 //     exactly the set of two independent picks from {B, R}, so two
 //     colour prompts give the printed choice space with no third

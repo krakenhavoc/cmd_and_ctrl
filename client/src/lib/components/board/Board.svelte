@@ -32,7 +32,7 @@
     StackItemView,
     ZoneView,
   } from "../../protocol";
-  import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
+  import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
@@ -108,6 +108,7 @@
     beginForModes as beginTargetingForModes,
     advance,
     allPicks,
+    choiceAnswer,
     hasXCost,
     castLocksXAtZero,
     isModal,
@@ -1304,7 +1305,9 @@
       // prompt. The store clears when the next snapshot no longer
       // carries the choice (see the effect below).
       // #1563: a divided trigger's shares ride the same answer.
-      const answer: Record<string, unknown> = { choice_id: state.choiceID, targets };
+      // #2394: a card-set pick answered on the board sends the
+      // modal's {choice_id, card_ids} instead (choiceAnswer).
+      const answer = choiceAnswer(state, targets);
       const dist = distributionOf(state);
       if (dist) answer.distribution = dist;
       guardedSendAction("resolve_choice", answer, viewerID ?? undefined);
@@ -2445,7 +2448,7 @@
     // shape, same picker, and the server routes the answer on the
     // kind.
     const mine = (view.pending_choices ?? []).find(
-      (c) => isBoardAnsweredChoice(c.kind) && c.chooser === viewerID,
+      (c) => answeredOnBoard(c, view, $listFallback) && c.chooser === viewerID,
     );
     const cur = $targeting;
     if (mine) {
@@ -2459,7 +2462,11 @@
               ? "Battle"
               : mine.kind === "retarget"
                 ? "Retarget"
-                : "Triggered ability",
+                : mine.kind === "untap_choice"
+                  ? "Untap step"
+                  : mine.kind === "choose_cards"
+                    ? "Choose"
+                    : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };

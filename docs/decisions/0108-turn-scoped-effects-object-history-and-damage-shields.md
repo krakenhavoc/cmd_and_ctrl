@@ -508,3 +508,40 @@ Delivery PR 7b left 28 shields whose sources a `PermanentQuery` list can't descr
 - **Channel Harm** waits on `prevention-follow-up-choice` (#2040). Its shield is `notYou`, but "you may have Channel Harm deal that much damage" is a choice made as the damage is prevented (CR 615.5). A follow-up can only queue a prompt that is answered after the damage's spell or ability has finished.
 - **Encircling Fissure** waits on awaken (#2411, new row `awaken`). Its shield is the `player` controller test.
 - **Snag** waits on an alternative cost that discards a card (#2412, new row `discard-alternative-cost`). Its shield is `unblocked`.
+
+---
+
+## Amendment 2026-10-06 — §7: shields for every creature, your creatures, or players (#2045)
+
+Delivery PR 7 left twelve shields whose protected set §7's fields can't describe. `preventFromSource` protects a player (with `Types` for "you and <types> you control", which always protects you too), pinned permanents, or everything. It can't say "to creatures" (Forfend, Blinding Fog), "to creatures you control" without you (Divine Light, Sivvi's Ruse, Loyal Unicorn, Summon: Alexander's chapters I and II, Surge of Salvation), "to players" (Commencement of Festivities, Defend the Hearth, Chameleon Blur), "to Dogs you control" (Pack Leader) or "to artifact creatures" (Ethersworn Shieldmage). This amendment is how it names them.
+
+### The rules
+
+- **CR 615.1:** prevention effects "apply continuously as events happen—they aren't locked in ahead of time".
+- **CR 611.2c** fixes the affected set of a resolved continuous effect only when it modifies characteristics or changes control. Otherwise the effect "modifies the rules of the game, so it can affect objects that weren't affected when that continuous effect began". A prevention effect does neither, so "creatures you control" is every creature you control as the damage would be dealt: one that enters later, or that you gain control of, is protected, and one you lose control of is not. Blinding Fog, Surge of Salvation and Loyal Unicorn also grant a keyword, which modifies characteristics, so that half of each card is fixed as it resolves.
+- **CR 615.9:** a property shield rechecks the source as it would deal damage. Surge of Salvation's "black and/or red sources" and Chameleon Blur's "creatures" are this recheck, beside the recipient set.
+- **CR 615.11:** "the next N damage that would be dealt to each of a number of untargeted creatures" creates one shield per creature as it resolves. That is not one shared charge, so a charged shield refuses a set.
+
+### Decision
+
+1. **The shape.** One plain-data `game.DamageRecipientFilter`, in `Mod.RecipientFilter` (at most one entry). Only `preventFromSource` reads it, on an unpinned record (`ScopeGame`) with no `Player`, no `Types`, no `AndDealtBy` and no charge. Registration and restore refuse it anywhere else. Its fields:
+   - `Players`: every player.
+   - `Permanents`, narrowed by `Match` and `Controller`.
+   - `Match`: queries the permanent must match **every** one of. The engine's other query lists are any-of, but "artifact creatures" is a permanent that is both. "Creatures" is one query, `{creature}`; "Dogs" is `{Subtypes: Dog}`, so a changeling counts.
+   - `Controller`: `you`, a closed vocabulary relative to the record's controller.
+2. **When it is read.** Every time the shield meets a damage event (`nextFromSourceProtectsLocked`), never as it resolves. A player is matched by identity, and a permanent as it is on the battlefield now, by its effective characteristics and controller. A recipient the engine can't see is not protected, the weaker direction.
+3. **Composition.** The set sits beside every source field: a chosen source, `Queries` and #2026's `SourceFilter`. Surge of Salvation and Chameleon Blur are one record each, so each is one prevention effect (CR 614.5's one opportunity, CR 615.13's one application).
+4. **The card side.** `effects.ShieldCreatures`, `ShieldCreaturesYouControl`, `ShieldPlayers`, `ShieldPermanents(queries…)` and `ShieldPermanentsYouControl(queries…)` are new `ShieldTarget`s. Only `PreventDamageFromSource` reads them. A next-damage shield, which protects one thing, refuses them.
+
+### Snapshot impact
+
+- New `Mod` key `recipientFilter`. A binary from before this amendment refuses a file carrying it (an unknown mod key, ADR 0041 P4). It does not drop it, because the shield would then protect everything. The restore check also walks the filter's own keys and its `Match` queries' keys, and checks its `controller` vocabulary and the record's scope.
+- Additive under v7 (`-update-shape`). No fixture changes. No new closure route: the filter is plain data.
+
+### Cards
+
+All twelve ship Full: Blinding Fog, Chameleon Blur, Commencement of Festivities, Crystal Fragments // Summon: Alexander, Defend the Hearth, Divine Light, Ethersworn Shieldmage, Forfend, Loyal Unicorn, Pack Leader, Sivvi's Ruse and Surge of Salvation. Sivvi's Ruse's free cast is the Nemesis cycle's condition, `effects.AnOpponentControlsAAndYouControlA`. Crystal Fragments flips with ADR 0079's exile-and-return, and Summon: Alexander enters with its first lore counter (CR 714.3a).
+
+### What is still out
+
+Nothing on the row. The seam is closed.

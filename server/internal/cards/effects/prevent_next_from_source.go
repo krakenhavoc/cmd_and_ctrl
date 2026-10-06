@@ -43,6 +43,9 @@ type ShieldTarget struct {
 	ids       []uuid.UUID
 	permTypes []string
 	clause    int
+	// recipients is a recipient set's description (#2045); only the
+	// not-one-use shield reads it.
+	recipients game.DamageRecipientFilter
 }
 
 // types is a copy of the card types "you and <those> you control"
@@ -68,6 +71,10 @@ const (
 	// creature".
 	shieldClause
 	shieldThisObject
+	// #2045: a set read as the damage would be dealt — "to creatures",
+	// "to creatures you control", "to players". Only the not-one-use
+	// shield (PreventDamageFromSource) reads it.
+	shieldRecipientSet
 )
 
 var (
@@ -304,9 +311,10 @@ func (p PreventNextDamageFromSource) protect(ctx *Context, s *game.NextDamageShi
 	case shieldYouAndYourPermanentsOf:
 		s.ProtectPlayer = s.Controller
 		s.ProtectTypes = p.Protect.types()
-	case shieldTheTargetPermanents, shieldObjects:
-		// Several permanents: only PreventDamageFromSource reads these
-		// (protectMany); a next-damage shield protects one thing.
+	case shieldTheTargetPermanents, shieldObjects, shieldRecipientSet:
+		// Several permanents, or a set: only PreventDamageFromSource
+		// reads these (protectMany, recipients); a next-damage shield
+		// protects one thing.
 		return false
 	case shieldClause:
 		t, ok := ctx.ClauseTarget(p.Protect.clause)

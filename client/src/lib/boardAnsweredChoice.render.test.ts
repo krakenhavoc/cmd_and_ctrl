@@ -16,7 +16,7 @@ import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import { _resetForTests as resetDock } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
-import { isBoardAnsweredChoice } from "./boardAnsweredChoice";
+import { isBoardAnsweredChoice, listFallback, showChoiceAsList } from "./boardAnsweredChoice";
 import type { ActionType, GameView } from "./protocol";
 import { render, cleanup } from "./test/render.svelte";
 
@@ -30,6 +30,7 @@ beforeEach(() => {
   };
   resetDock();
   resetModals();
+  listFallback.set(new Set());
 });
 
 const legendRule = {
@@ -100,6 +101,57 @@ describe("choices answered on the board", () => {
   it("does not open the modal for choose_protector", () => {
     const container = mount([{ ...legendRule, id: "p-1", kind: "choose_protector" }]);
     expect(container.querySelector(".prompt-backdrop")).toBeNull();
+  });
+
+  // #2394: "untap up to five lands" is a choose_cards over tapped lands
+  // on the battlefield. It is answered on the board, not in the grid.
+  const land = (id: string) => ({
+    instance_id: id,
+    name: "Forest",
+    owner: "me",
+    controller: "me",
+    type_line: "Basic Land — Forest",
+    tapped: true,
+  });
+  const untapLands = {
+    id: "untap-1",
+    kind: "choose_cards",
+    chooser: "me",
+    from_player: "me",
+    reason: "Finale of Revelation — untap up to five lands",
+    choose_min: 0,
+    choose_max: 5,
+    options: [land("f1"), land("f2")],
+  };
+  function mountWithLands(choices: unknown[]): HTMLElement {
+    const snap = snapWith(choices) as unknown as Record<string, unknown>;
+    snap.battlefield = { kind: "battlefield", count: 2, cards: [land("f1"), land("f2")] };
+    return render(
+      ChoiceDockHarness as never,
+      {
+        snap: snap as unknown as GameView,
+        viewerID: "me",
+        sendAction: (_t: ActionType) => {},
+        lastError: null,
+      } as never,
+    ).container;
+  }
+
+  it("does not open the grid for a card-set pick over permanents on the battlefield", () => {
+    const container = mountWithLands([untapLands]);
+    expect(container.querySelectorAll(".card-pick")).toHaveLength(0);
+  });
+
+  it("opens the grid for that pick once the player asks for the list", () => {
+    showChoiceAsList("untap-1");
+    const container = mountWithLands([untapLands]);
+    expect(container.querySelectorAll(".card-pick")).toHaveLength(2);
+    expect(container.textContent).toContain("Pick up to 5 of these, or none.");
+  });
+
+  it("still opens the grid when a candidate is not on the battlefield", () => {
+    const container = mount([untapLands]);
+    expect(container.querySelectorAll(".card-pick")).toHaveLength(2);
   });
 
   it("still opens the next owed choice when a board-answered one is ahead of it", () => {

@@ -21,6 +21,10 @@
 // (Vivi Ornitier's {0}) that the planner reaches for only when nothing
 // else can pay. It taps nothing and spends nothing for good, but it
 // uses up the ability for the turn, so the summary names it.
+//
+// #2392: a source can cost LIFE too — Mana Confluence's "Pay 1 life", or
+// a painland's coloured half dealing 1 damage — and the summary says how
+// much, since that does not come back either.
 
 import type { AutoTapPreview, AutoTapPreviewSource } from "./api";
 
@@ -36,6 +40,9 @@ export interface PlanRow {
   // gone: paying spends the source for good — a sacrifice or an
   // exile — rather than a tap that untaps next turn.
   gone: boolean;
+  // life: the life paying with it costs you, as a cost or as its
+  // damage (#2392). 0 for a painless source.
+  life: number;
 }
 
 // paymentOf reads a described source's cost components. A source the
@@ -85,6 +92,7 @@ export function planRows(
       payment,
       fromHand: src?.zone === "hand",
       gone: payment !== "tap" && payment !== "once_per_turn",
+      life: (src?.life ?? 0) + (src?.damage ?? 0),
     };
   });
 }
@@ -114,6 +122,8 @@ export function planSummary(rows: PlanRow[]): string {
   if (eaten.length > 0) parts.push(`sacrifices ${joinNames(eaten)}`);
   if (exiled.length > 0) parts.push(`exiles ${joinNames(exiled)} from your hand`);
   if (oncePerTurn.length > 0) parts.push(`uses ${joinNames(oncePerTurn)}'s once-each-turn ability`);
+  const life = rows.reduce((n, r) => n + r.life, 0);
+  if (life > 0) parts.push(`costs you ${life} life`);
   const sentence = joinNames(parts);
   return sentence.charAt(0).toUpperCase() + sentence.slice(1) + ".";
 }

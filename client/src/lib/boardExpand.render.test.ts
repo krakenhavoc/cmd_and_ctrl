@@ -375,6 +375,8 @@ describe("the expand button (ADR 0120 §4)", () => {
   });
 
   it("a summary's ⤢ opens the overlay pinned, and the summary stays a summary", () => {
+    // Full boards are the default since #2433; a summary is chosen.
+    updateSettings("display", "opponentDetail", "summary");
     mountBoard();
     const show = document.querySelector<HTMLElement>(
       'button[aria-label="Show Cat\'s full board"]',

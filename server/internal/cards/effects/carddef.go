@@ -87,7 +87,8 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Label:                     a.Label,
 			Exhaust:                   a.Exhaust,
 			OncePerTurn:               a.OncePerTurn,
-			Rider:                     a.Rider,
+			Rider:                     manaRider(a),
+			RiderSelfDamage:           a.PainToYou,
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
@@ -102,6 +103,16 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 		}
 	}
 	return out
+}
+
+// manaRider is the built ability's rider: the declared Rider, or the
+// PainRider a PainToYou declaration stands for (#2392). Register refuses
+// a spec that sets both, so at most one is non-zero here.
+func manaRider(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) error {
+	if a.PainToYou > 0 {
+		return PainRider(a.PainToYou)
+	}
+	return a.Rider
 }
 
 // manaAbilityCondition is the built ability's whole activation gate:
