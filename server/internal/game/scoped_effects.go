@@ -516,6 +516,15 @@ type Mod struct {
 	// scoped shield's. Refused on every other kind, without Then, and with
 	// any other unit.
 	ThenPer PreventionUnit `json:"thenPer,omitempty"`
+	// RecipientFilter is ModPreventFromSource's protected set when it is
+	// not a player, "you and <types> you control", a pinned object or
+	// everything (#2045, ADR 0108 §7 amendment of 2026-10-06): "to
+	// creatures", "to creatures you control", "to players", "to Dogs you
+	// control", "to artifact creatures". At most one entry, read as the
+	// damage would be dealt (CR 611.2c, 615.1), on an unpinned record
+	// that names no Player or Types and no charge; refused on every
+	// other kind. A slice for the reason Objects is one.
+	RecipientFilter []DamageRecipientFilter `json:"recipientFilter,omitempty"`
 	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
 	// #1890; multiply_damage.go), refused on every other kind. Sources is
 	// "a source you control" / "a creature" when no one source is named;
@@ -1172,6 +1181,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 	if problem := stackPinProblem(affected, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
 	}
+	if problem := recipientFilterScopeProblem(scope, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
 	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
 	// programming error at registration, caught by the first test.
 	if problem := d.Problem(); problem != "" {
@@ -1218,6 +1230,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
 		m.SourceFilter = cloneSourceFilters(m.SourceFilter)
+		m.RecipientFilter = cloneRecipientFilters(m.RecipientFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m
 	}

@@ -158,6 +158,12 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		if many = p.Protect.protectMany(ctx); len(many) == 0 {
 			return nil
 		}
+	case shieldRecipientSet:
+		// #2045: the set is read as the damage would be dealt; nothing
+		// is named now.
+		if p.AndDealtBy {
+			return nil
+		}
 	default:
 		if !(PreventNextDamageFromSource{Protect: p.Protect}).protect(ctx, &protected) {
 			return nil
@@ -195,6 +201,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		ProtectTypes:      protected.ProtectTypes,
 		ProtectPermanent:  protected.ProtectPermanent,
 		ProtectPermanents: many,
+		Recipients:        p.Protect.recipients,
 		CombatOnly:        p.CombatOnly,
 		Amount:            p.Amount,
 		Then:              p.Then,
