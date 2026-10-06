@@ -419,7 +419,12 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 			// three — each priced with its own cost_branch. [nil] for
 			// every card without branches, so the loop runs once.
 			for _, branch := range e.castCostBranches(card) {
-				e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch)
+				// CR 702.120a: an escalate spell is one announcement per
+				// mode COUNT, because each extra mode owes the escalate
+				// cost again (#2126). [-1] for every other card.
+				for _, extra := range escalateCounts(card) {
+					e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra)
+				}
 			}
 		}
 	}
@@ -503,14 +508,18 @@ const maxEnumeratedRepeats = 3
 // optionalCostSets is the bot's announcement policy for optional
 // additional costs (ADR 0073 §9): decline everything, or pay exactly
 // ONE of the offered costs — once, or up to maxEnumeratedRepeats
-// times for a repeatable one.
+// times for a repeatable one — or, on a card with two kicker costs,
+// both of them.
 //
-// NOT enumerated, deliberately and for the reason escape's card
-// component is not: paying TWO different optional costs at once
-// (Thornscape Battlemage's "Kicker {R} and/or {W}") is a power-set
-// search whose every member also needs its own affordability probe,
-// and no card in the catalog offers two. A bot simply does not take
-// that line yet; it is never offered one it cannot pay for.
+// The kicker pair is the one combination enumerated (#2153): "Kicker
+// {R} and/or {W}" (CR 702.33b) prints lines that need both paid —
+// Archangel of Wrath's "if it was kicked twice", Thornscape
+// Battlemage's two linked enters abilities — and it is one extra
+// announcement, not a power set. Any OTHER pair of different optional
+// costs (a kicker beside a buyback) is still NOT enumerated, for the
+// reason escape's card component is not: a power-set search whose
+// every member also needs its own affordability probe. A bot simply
+// does not take that line; it is never offered one it cannot pay for.
 //
 // ADR 0122 §6.2: both caps file their cuts — the repeats a multikicker
 // was not offered, and the announcements the budget stopped.
@@ -537,6 +546,13 @@ func (e *enumerator) optionalCostSets(costs []game.AdditionalCost) [][]int {
 			}
 			out = append(out, set)
 		}
+	}
+	if kickers := game.KickerIndices(costs); len(kickers) == 2 {
+		if budget > 0 && len(out) >= budget {
+			e.budgetSpent()
+			return out
+		}
+		out = append(out, kickers)
 	}
 	return out
 }
@@ -618,7 +634,13 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 //
 // `branch` is the either/or branch this expansion pays (ADR 0100 §6),
 // nil for a card without one.
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int) {
+//
+// `extra` is how many modes beyond the first this expansion announces
+// when the card has escalate (CR 702.120a), -1 otherwise: only mode
+// selections of exactly extra+1 modes are built, and the escalate
+// cost's discards and taps are demanded that many times — so a mode
+// count the seat cannot pay is not offered (#2126).
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -823,6 +845,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			OracleID:      game.CatalogKey(card),
 			OptionalCosts: chosen,
 		}, game.ModeAbility{})
+		if extra >= 0 {
+			kept := modeSets[:0:0]
+			for _, ms := range modeSets {
+				if len(ms) == extra+1 {
+					kept = append(kept, ms)
+				}
+			}
+			modeSets = kept
+		}
 		if len(modeSets) == 0 {
 			return
 		}
@@ -840,6 +871,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// a mandatory one would. The wire lists are flat and the engine
 	// walks them in the same order.
 	discards, sacrifice, ok := costPaymentDemands(addCost, optional, chosen)
+	// CR 702.120a: escalate's card-shaped half, once per extra mode.
+	var escalate *game.EscalateCost
+	if modeSpec != nil && extra > 0 {
+		escalate = modeSpec.Escalate
+		discards += extra * escalate.DiscardCards
+	}
 	if !ok {
 		// Two card-shaped sacrifice clauses on one cast (a mandatory
 		// one AND a kicker's). Not enumerated: the two pools have to
@@ -933,6 +970,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	teamIDs, blightIDs, ok := e.teamworkBlightPayment(addCost, optional, chosen)
 	if !ok {
 		return
+	}
+	// CR 702.120a: Collective Effort's taps, one creature per extra mode,
+	// on the same list teamwork's ride.
+	if escalate != nil && escalate.TapCreatures > 0 {
+		teamIDs = e.tapCreaturesPayment(extra * escalate.TapCreatures)
+		if teamIDs == nil {
+			return
+		}
 	}
 
 	// ADR 0100 §6: delve's graveyard. The candidates are the engine's
@@ -2179,4 +2224,35 @@ func altCostLabel(g *game.Game, offer *game.AlternativeCost, paid []uuid.UUID) s
 		label += verb + strings.Join(names, ", ")
 	}
 	return " (" + label + ")"
+}
+
+// escalateCounts lists the mode counts to expand for a card: for an
+// escalate spell, "extra modes" 0 up to the most modes it can choose
+// less one; [-1] for every other card, which means "no filter".
+func escalateCounts(card game.Card) []int {
+	ms := game.ModeSpecFor(game.CatalogKey(card))
+	if ms == nil || ms.Escalate == nil {
+		return []int{-1}
+	}
+	most := min(ms.Max, len(ms.Options))
+	out := make([]int, 0, most)
+	for x := 0; x < most; x++ {
+		out = append(out, x)
+	}
+	return out
+}
+
+// tapCreaturesPayment names n untapped creatures to tap for an
+// escalate cost: the engine's TapCreaturesOptionsForEffect walk,
+// cheapest first (least power, so the policy keeps its attackers). Nil
+// when the seat has fewer than n — the mode count is then not offered.
+func (e *enumerator) tapCreaturesPayment(n int) []uuid.UUID {
+	pool := e.g.TapCreaturesOptionsForEffect(e.seat)
+	if len(pool) < n {
+		return nil
+	}
+	sort.SliceStable(pool, func(i, j int) bool {
+		return e.g.TeamworkPowerForEffect(pool[i]) < e.g.TeamworkPowerForEffect(pool[j])
+	})
+	return pool[:n]
 }

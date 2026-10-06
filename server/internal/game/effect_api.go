@@ -280,6 +280,12 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 	}
 	player := g.playerByIDLocked(p.Player)
 	n := p.N
+	if g.effectDiscardBlockedLocked(p.Player) {
+		// #2178: an opponent's spell or ability can't make this player
+		// discard, so nothing is asked and nothing is discarded; the
+		// rest of the effect still runs, as for an empty hand below.
+		n = 0
+	}
 	if n > player.Hand.Size() {
 		// CR 701.9a — you discard as many as you can.
 		n = player.Hand.Size()
@@ -1021,14 +1027,16 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 // on the next SBA pass, which is already the drawCardLocked
 // behaviour).
 func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
-	for i := 0; i < n; i++ {
-		if err := g.drawCardLocked(playerID); err != nil {
-			if err == ErrZoneEmpty {
-				// Flag set, stop drawing. SBA loop will handle the loss.
-				return nil
-			}
-			return err
+	// One loop in drawRunLocked, so a draw that pauses for a prompt (a
+	// dredge offer, Underrealm Lich's pick) holds the rest of the
+	// instruction behind it (CR 121.6b) instead of the later draws
+	// racing ahead of the question.
+	if err := g.drawRunLocked(playerID, n); err != nil {
+		if err == ErrZoneEmpty {
+			// Flag set, stop drawing. SBA loop will handle the loss.
+			return nil
 		}
+		return err
 	}
 	return nil
 }
@@ -1070,7 +1078,7 @@ func (g *Game) DiscardRandomThenForEffect(playerID uuid.UUID, n int, then func(g
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if n <= 0 || p.Hand.Size() == 0 {
+	if n <= 0 || p.Hand.Size() == 0 || g.effectDiscardBlockedLocked(playerID) {
 		if then == nil {
 			return nil
 		}
@@ -1335,6 +1343,11 @@ func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID, opts ...DestroyOption
 //
 // Caller must hold g.mu. Added in S21 sub-PR 1.
 func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
+	// #2178: an opponent's spell or ability can't make its controller
+	// sacrifice it; nothing happens.
+	if g.effectSacrificeBlockedLocked(g.controllerOfBattlefieldCardLocked(cardID)) {
+		return nil
+	}
 	return g.sacrificePermanentLocked(cardID)
 }
 

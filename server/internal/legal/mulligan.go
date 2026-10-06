@@ -20,6 +20,13 @@ func (e *enumerator) mulliganMoves() {
 	if p.HandKept {
 		return
 	}
+	// CR 103.5: decisions go in turn order, starting player first. A
+	// seat that is not the one deciding has nothing to offer; the
+	// engine refuses its keep and mulligan with ErrNotYourMulligan
+	// (#544: the enumerator and the engine answer the same question).
+	if e.g.MulliganDeciderLocked() != p.Seat {
+		return
+	}
 	e.add(Move{
 		Type:   TypeKeepHand,
 		Player: e.seat,

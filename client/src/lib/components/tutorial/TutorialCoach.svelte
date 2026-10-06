@@ -13,8 +13,9 @@
   //      missing for ANCHOR_GRACE_MS (it gets a moment to render) makes
   //      the step advance itself and log. A tutorial never waits on an
   //      element that is not there. The same poll times a hover step's
-  //      rest (steps 2 and 4, "hover ≥ 600ms"), and reads an anchor
-  //      that comes off the board (step 7's card) afresh each tick.
+  //      rest (steps 3, 5 and 10, "hover ≥ 600ms"), and reads an anchor
+  //      that comes off the board (step 2's roll, step 9's card) afresh
+  //      each tick.
   //   3. Placement. The card docks bottom-left (§2.3, amended
   //      2026-10-02). It publishes its live size through `onSize`, and
   //      Game.svelte turns that into --coach-w / --coach-h: on a desktop
@@ -27,6 +28,9 @@
   //
   // Skip tutorial and Finish hide the card and leave the player at the
   // practice table; the table is still a game. Replay opens a fresh one.
+  //
+  // A step that completes marks the first-use hints it teaches as seen
+  // (ADR 0125 §5.3), through `onTaught`; a skipped step marks nothing.
 
   import { onDestroy, untrack } from "svelte";
   import type { GameView } from "../../protocol";
@@ -46,6 +50,9 @@
   } from "../../tutorial";
   import { anchorRect, resolveAnchor, sameRect, type AnchorRect } from "../../tutorialAnchor";
   import { TUTORIAL_STEPS } from "../../tutorialSteps";
+  import { HINTS } from "../../hints";
+  import type { HintID } from "../../hints/hint";
+  import { markHintsTaught } from "../../hints/runtime";
   import { settings } from "../../settings";
   import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import { navigate } from "../../router";
@@ -74,8 +81,13 @@
     isHovering?: (el: Element) => boolean;
     /** A hover step on a device that cannot hover gives up after this. */
     touchHoverStepMs?: number;
-    /** The dock's autopass toggle (Game.svelte's session state), for step 9. */
+    /** The dock's autopass toggle (Game.svelte's session state), for step 12. */
     autopass?: boolean;
+    /**
+     * A completed step's `teaches`. Defaults to marking those hints seen
+     * at their current version (ADR 0125 §5.3).
+     */
+    onTaught?: (ids: readonly HintID[]) => void;
   }
 
   const {
@@ -91,10 +103,19 @@
     isHovering = (el: Element) => el.matches(":hover"),
     touchHoverStepMs = TOUCH_HOVER_STEP_MS,
     autopass = false,
+    onTaught = (ids: readonly HintID[]) => markHintsTaught(ids, HINTS),
   }: Props = $props();
 
   const run = untrack(() =>
-    createTutorialRun(steps, { viewerID, view, log, client: { autopass } }),
+    createTutorialRun(steps, {
+      viewerID,
+      view,
+      log,
+      client: { autopass },
+      onComplete: (step) => {
+        if (step.teaches?.length) onTaught(step.teaches);
+      },
+    }),
   );
   let snap = $state(run.current());
   const unsubRun = run.subscribe((s) => (snap = s));
@@ -103,7 +124,7 @@
   $effect(() => {
     run.observe(view);
   });
-  // The autopass toggle never reaches the wire; step 9 reads it here.
+  // The autopass toggle never reaches the wire; step 12 reads it here.
   $effect(() => {
     run.observeClient({ autopass });
   });
@@ -118,15 +139,19 @@
   });
 
   // A hover step on a touch screen has no hover to teach and may have no
-  // event to wait for (one Forest is not a pile), so it gives up after a
-  // read rather than wait on something that cannot happen (§2.4).
+  // event to wait for (one Forest is not a pile; the command zone has no
+  // event at all, since a tap there casts), so it gives up after a read
+  // rather than wait on something that cannot happen (§2.4).
   // Derived, so a republish of the same step (a hint, a detour) does
   // not restart the timer.
   const currentStep = $derived(snap.step);
   const shown = $derived(snap.visible);
+  // While the opening roll is open nothing is dealt, so the read starts
+  // once the hand is (ADR 0125 §5.2, heldByOpeningRoll).
+  const held = $derived(snap.held);
   $effect(() => {
     const step = currentStep;
-    if (canHover || !step.hover || !shown) return;
+    if (canHover || !step.hover || !shown || held) return;
     const t = setTimeout(
       () => run.advance(step.id, "cannot be hovered on this device"),
       touchHoverStepMs,

@@ -58,6 +58,8 @@ export interface SnapshotPlayer {
   library: SnapshotZone;
   graveyard: SnapshotZone;
   command: SnapshotZone;
+  // CR 103.5 (#2237): the one seat whose turn it is to keep or mulligan.
+  mulligan_turn?: boolean;
 }
 
 export interface PendingChoice {
@@ -94,6 +96,7 @@ export interface SnapshotTurn {
 
 export interface SnapshotView {
   state: string;
+  mulligans_open?: boolean;
   seats: SnapshotPlayer[];
   battlefield: SnapshotZone;
   exile: SnapshotZone;
@@ -864,6 +867,29 @@ export async function resolveStack(setup: S19Setup, maxAttempts = 20): Promise<S
   );
 }
 
+// keepAllHands has every seat keep its opening hand through the admin
+// connection, in the order the server asks (CR 103.5, #2237): starting
+// seat first, then round the table. A keep out of turn is refused, so
+// the order cannot be hard-coded; it follows `mulligan_turn` instead.
+export async function keepAllHands(admin: AdminClient): Promise<void> {
+  for (let i = 0; i < 16; i++) {
+    const v = await admin.waitFor(
+      (s) => s.mulligans_open !== true || s.seats.some((p) => p.mulligan_turn === true),
+      "a seat to decide on its opening hand",
+      10_000,
+    );
+    if (v.mulligans_open !== true) return;
+    const who = v.seats.find((p) => p.mulligan_turn === true)!;
+    await admin.sendActionAsPlayer(who.id, "keep_hand", {});
+    await admin.waitFor(
+      (s) => s.mulligans_open !== true || s.seats.find((p) => p.mulligan_turn === true)?.id !== who.id,
+      "the next seat to decide on its opening hand",
+      10_000,
+    );
+  }
+  throw new Error("the opening hands were not all kept after 16 decisions");
+}
+
 // setupS19Game spins up a 2-player game seeded with the S19 caster
 // and opponent decks, walks both players through join, and uses the
 // admin WS to fire keep_hand for both seats — the game is in
@@ -933,8 +959,7 @@ export async function setupS19Game(
   // Drive keep_hand for both seats from admin so the test doesn't
   // depend on the player-side mulligan dialog. Admin acts on behalf
   // of each player by populating `player` in the action payload.
-  await admin.sendActionAsPlayer(caster.playerID, "keep_hand", {});
-  await admin.sendActionAsPlayer(opponent.playerID, "keep_hand", {});
+  await keepAllHands(admin);
 
   // After both keep, the game state is active and mulligans_open
   // flips false. The hub may still be flushing snapshots — wait

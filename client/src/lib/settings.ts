@@ -7,6 +7,8 @@ import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
+import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
+import { normalizeSeen } from "./hints/seen";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -83,11 +85,15 @@ export interface Settings {
     // across-table seats on top); "row" puts every opponent in turn
     // order across the top and gives your panel the full width.
     //
-    // #956 note: at THREE players the two are now identical — the
+    // #956 note: at THREE players those two are now identical — the
     // viewer needs the whole bottom row there, and there is no third
-    // arrangement worth having. This setting only distinguishes the
-    // 4-player table.
-    tableLayout: "row" | "quadrant";
+    // arrangement worth having.
+    //
+    // "focus" (#2336) is the row arrangement split evenly: your board is
+    // the bottom half, and every opponent is a summary in the top half,
+    // whatever opponentDetail and expandActivePlayer say, and you
+    // hover or click an avatar to see a whole board. See tableLayout.ts.
+    tableLayout: TableLayout;
     // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
     // since v17) is a pile of large, readable cards on the left of the
     // table; phones and short boards draw "compact" instead, without
@@ -176,6 +182,12 @@ export interface Settings {
     // tracking posture. A card the board can't pay for still offers
     // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
+    // #1530: always raise the CR 603.3b "order your triggers" prompt,
+    // even for a batch the server would order itself because every item
+    // commutes (an all-prowess batch, #1511). The decision is the
+    // server's, so the server holds the seat's copy and the client keeps
+    // it in step (triggerOrderPref.ts). Default off.
+    alwaysAskTriggerOrder: boolean;
     // S13.6: when a stopped step lands on the viewer but the
     // legality engine reports no legal response (no castable hand
     // cards, no battlefield activations, no commander cast),
@@ -299,9 +311,25 @@ export interface Settings {
     // suppression on buttons + inputs.
     alwaysShowFocus: boolean;
   };
+
+  // ADR 0125 §4: the first-use hints. Both fields are per person, so a
+  // signed-in person's seen hints follow them to every browser, and a
+  // guest's stay in this one.
+  help: {
+    // Hint id → the version the person last dismissed (lib/hints/). A
+    // hint is unseen when its id is missing or its stored version is
+    // lower than its own, so bumping a hint's version offers it again.
+    // Ids this client does not know are KEPT: an older tab must not
+    // drop a newer client's hints. Only retired ids (hints/retired.ts)
+    // are dropped. Merged by union at sign-in and on a 412, never
+    // field-wins (settingsSync.ts).
+    seen: Record<string, number>;
+    // "Hide tips": no hint is offered until it is switched back on.
+    tipsOff: boolean;
+  };
 }
 
-export const SETTINGS_VERSION = 20;
+export const SETTINGS_VERSION = 21;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -407,6 +435,8 @@ export function defaultSettings(): Settings {
       // click taps the lands for it. Off (the S15 default) is the
       // sandbox / paper-tracking posture, still a supported choice.
       strictMana: true,
+      // #1530 default: off. The server orders a commuting batch itself.
+      alwaysAskTriggerOrder: false,
       // S13.6 default: on. The step-stops grid is the intent
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
@@ -464,6 +494,10 @@ export function defaultSettings(): Settings {
       textScale: 1.0,
       colorblindPalette: false,
       alwaysShowFocus: false,
+    },
+    help: {
+      seen: {},
+      tipsOff: false,
     },
   };
 }
@@ -539,6 +573,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     autoPassPriority: "synced",
     stepStops: "synced",
     strictMana: "synced",
+    alwaysAskTriggerOrder: "synced",
     smartAutoPass: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
@@ -567,6 +602,11 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     textScale: "device",
     colorblindPalette: "synced",
     alwaysShowFocus: "synced",
+  },
+  // ADR 0125 §4: both per person.
+  help: {
+    seen: "synced",
+    tipsOff: "synced",
   },
 });
 
@@ -631,6 +671,7 @@ export function applySyncedCopy(base: Settings, copy: unknown, version: number):
     gameplay: { ...base.gameplay },
     shortcuts: { ...base.shortcuts },
     accessibility: { ...base.accessibility },
+    help: { ...base.help },
   };
   for (const [group, key] of syncedPaths()) {
     (next[group] as Record<string, unknown>)[key] = (migrated[group] as Record<string, unknown>)[
@@ -659,6 +700,7 @@ function migrate(raw: unknown): Settings {
     gameplay: { ...d.gameplay, ...(s.gameplay ?? {}) },
     shortcuts: { ...d.shortcuts, ...(s.shortcuts ?? {}) },
     accessibility: { ...d.accessibility, ...(s.accessibility ?? {}) },
+    help: { ...d.help, ...(s.help ?? {}) },
   };
   // v1 → v2 (S13): the gameplay.stepStops map was scaffolded as `{}`
   // pre-S13. Seed defaults for any user whose stored map is empty so
@@ -883,9 +925,28 @@ function migrate(raw: unknown): Settings {
     merged.display.theme = DEFAULT_SKIN;
   }
   merged.display.accent = normalizeAccent(merged.display.accent);
+  // #2336: display.tableLayout gained "focus". A new value of an
+  // existing field needs no version bump, but the value is checked
+  // from here on: an unknown string (a hand edit, a layout that was
+  // tried and removed) falls back to the quadrant rather than to a
+  // board with no grid template.
+  if (!isTableLayout(merged.display.tableLayout)) {
+    merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
+  };
+  // v20 → v21 (ADR 0125 §4): the `help` group. The shallow merge fills
+  // it from defaults (nothing seen, tips on) for any v20 blob, so every
+  // existing player is offered each hint once. The map is checked, not
+  // trusted: a hand-edited or hostile blob keeps only string ids with a
+  // positive integer version, and retired ids are dropped. Unknown ids
+  // are kept, because adding a hint does not bump SETTINGS_VERSION and
+  // an older tab must not drop a newer client's hints on its next write.
+  merged.help = {
+    seen: normalizeSeen(merged.help?.seen),
+    tipsOff: merged.help?.tipsOff === true,
   };
   return absorbLegacy(merged);
 }

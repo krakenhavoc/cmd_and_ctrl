@@ -7,8 +7,7 @@ import {
   findCardOnBattlefield,
   openAdminClient,
   type AdminClient,
-  type SnapshotView,
-} from "./s19-helpers";
+  type SnapshotView, keepAllHands } from "./s19-helpers";
 
 // #318 "[in-app] Feature request missing attack all button".
 //
@@ -80,8 +79,7 @@ test.describe("#318 attack with all", () => {
       await startGameAs(request, adminToken, game.id);
 
       admin = await openAdminClient(adminToken, game.id, first.playerID, second.playerID);
-      await admin.sendActionAsPlayer(first.playerID, "keep_hand", {});
-      await admin.sendActionAsPlayer(second.playerID, "keep_hand", {});
+      await keepAllHands(admin);
       await admin.waitFor((v) => v.state === "active", "game state active");
       await admin.waitFor(
         (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,

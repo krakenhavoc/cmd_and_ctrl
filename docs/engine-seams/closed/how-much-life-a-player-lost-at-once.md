@@ -1,0 +1,6 @@
+---
+title: "How much life a player lost at once"
+date: 2026-10-05
+issues: [2183]
+---
+**How much life a player lost at once** (#2183, CR 603.2c, CR 120.3a) — the engine now keeps the life each player lost in the live event batch (`game/life_batch.go`), written where a life total actually moves (both damage arms and the CR 614 life change), so it is the total after every replacement and counts life paid. A `TriggeredAbility` with `AtBatchEnd` set is staged when its event arrives and asked once, with the batch's final totals, at the next priority grant or as the next batch opens; combined with `OncePerBatch` it fires once per batch. `effects.WheneverOneOrMoreOpponentsEachLoseExactly(n, …)` is the card-side shape. Two 1-damage sources into one opponent in one combat damage step are a loss of 2 and do nothing; one drain of 1 to each of two opponents is one trigger; separate resolutions and steps are separate occurrences. Undo carries the totals and staged triggers; a persisted snapshot drops them (weaker than printed, never stronger). **Cards:** Ob Nixilis, Captive Kingpin (Caveats: the engine has no "until your next end step" duration, so the exile-and-play window runs through that end step).

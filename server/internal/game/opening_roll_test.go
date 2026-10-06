@@ -210,7 +210,12 @@ func TestOpeningRollTieOpensARoundOfTheLeadersOnly(t *testing.T) {
 	if err := g.RollOpening(g.Seats[0].ID); !errors.Is(err, ErrNoOpeningRoll) {
 		t.Fatalf("a roll after the window closed: %v, want ErrNoOpeningRoll", err)
 	}
-	if err := g.KeepHand(g.Seats[0].ID); err != nil {
+	// CR 103.5: the chosen starting seat (1) decides first, so seat 0
+	// waits for its turn.
+	if err := g.KeepHand(g.Seats[0].ID); !errors.Is(err, ErrNotYourMulligan) {
+		t.Fatalf("KeepHand out of turn: %v, want ErrNotYourMulligan", err)
+	}
+	if err := g.KeepHand(g.Seats[1].ID); err != nil {
 		t.Fatalf("KeepHand after the choice: %v", err)
 	}
 }

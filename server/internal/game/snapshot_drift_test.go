@@ -85,6 +85,10 @@ var gameFields = plan(
 	// waiting on the next SBA loss pass. Carried: a restore between
 	// the effect loss and that pass must still move the turn on.
 	"ActiveSeatLeftPending", carried, "",
+	// #2165, CR 724.1: an effect ended the turn and the rest of the
+	// process (724.1c onwards) has not run. Carried: a restore between
+	// the effect and its boundary must still skip to the cleanup step.
+	"TurnEndPending", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
@@ -164,6 +168,9 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
+	// #2183 life_batch.go: exist only while a resolution is paused on its own prompt.
+	"batchLifeLost", dropped, "restores empty: the life lost in the live batch; a restore opens a fresh batch (EventBatch restores as zero from older files), so the totals restart with it",
+	"stagedBatchTriggers", dropped, "restores empty: AtBatchEnd triggers waiting for their batch to settle, which happens at the next priority boundary; a restore inside that window loses the trigger (weaker than printed, never stronger)",
 	// ADR 0107 §6: owed CR 615.5 follow-ups, plain data.
 	"preventionFollowUps", carried, "",
 	// ADR 0108 PR 0: the damage instance (damage_instance.go).
@@ -428,6 +435,7 @@ var cardFields = plan(
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
 	"ChosenOption", carried, "",
+	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
 	"ModesChosen", carried, "",
@@ -532,6 +540,8 @@ var playerFields = plan(
 	"LastTurnAttacks", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
+	"MulliganDecided", carried, "",
+	"TriggerOrderAlwaysAsk", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",
 	"UndosRemaining", carried, "",
@@ -741,6 +751,9 @@ var delayedTriggerFields = plan(
 	"Until", carried, "",
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
+	"Repeats", carried, "", // #2169, CR 603.7b
+	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
+	"ManaAdds", carried, "",
 )
 
 var pendingChoiceFields = plan(
@@ -888,7 +901,7 @@ var pendingChoiceFields = plan(
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"midResolution", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",

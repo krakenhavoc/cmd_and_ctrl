@@ -12,6 +12,8 @@
 // GameMenu.svelte draws it; this file is what Game.svelte hands it and
 // the two small rules it applies.
 
+import { L } from "./labels";
+
 export interface GameMenuOptions {
   // A seat of the viewer's own at this table: the sandbox tools, the
   // vote launcher and Concede. False for a spectator or an unseated
@@ -50,6 +52,14 @@ export interface GameMenuOptions {
   // matching the server's rate, and the items are disabled until then.
   tableRoll?: { ready: boolean } | null;
   onTableRoll?: (die: TableDie) => void;
+  // ADR 0125 §6: the Help group, after Table. "Tips for the table" and
+  // "Keyboard shortcuts" for everyone; "Replay the tutorial" only on
+  // this tab's practice table (`practice`). A real table offers no
+  // "Practice game": it would take the player out of their seat.
+  practice?: boolean;
+  onTableTips?: () => void;
+  onShortcuts?: () => void;
+  onReplayTutorial?: () => void;
   onDraw: () => void;
   onUntapAll: () => void;
   onShuffle: () => void;
@@ -74,9 +84,9 @@ export const TABLE_ROLL_COOLDOWN_MS = 2000;
 // The ⋯ menu's table-roll items, in order. Their names are a contract
 // (ADR 0121 §8, AGENTS.md "Labels are a contract").
 export const TABLE_ROLL_ITEMS: readonly { die: TableDie; label: string }[] = [
-  { die: "d6", label: "Roll a d6" },
-  { die: "d20", label: "Roll a d20" },
-  { die: "coin", label: "Flip a coin" },
+  { die: "d6", label: L.rollD6 },
+  { die: "d20", label: L.rollD20 },
+  { die: "coin", label: L.flipCoin },
 ];
 
 // A table-roll item's tooltip.

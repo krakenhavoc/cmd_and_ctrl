@@ -185,16 +185,22 @@ good in the window it was shown in.
 
 | Tool | Input | What it does |
 |---|---|---|
-| `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default `Agent`), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. |
+| `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default: the MCP client's name, see below), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. |
 | `set_deck` | `deck`, as above | Installs a deck before the game starts. An unknown id answers with the ids the server has. |
 | `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, or `my_turn_or_stack`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
 | `get_state` | `detail`: `compact` (default) or `full` | The board as the seat sees it. |
-| `legal_moves` | `card` (an instance id) or `choice` (a pending choice id, or `cleanup_discard`), both optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). A one-card request with no moves answers an empty list. |
+| `legal_moves` | `card` (an instance id) or `choice` (a pending choice id, or `cleanup_discard`), `match` (text), `targets_for` (a move number), all optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). A one-card request with no moves answers an empty list. `match` keeps only the moves whose label contains the text (case-insensitive), numbered as in the full list: `legal_moves(choice: "<id>", match: "Black Lotus")` finds one card in a search. `targets_for: N` lists move N's target clauses, see [Targets](#targets). |
 | `card` | `ref`: an instance id or a card name on the table | Name, type, cost, power/toughness and oracle text, with a note when the engine does not run the card's text. Cached per id. |
-| `act` | `window` (required), `move` (required), `value` (only for a move marked open) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
+| `act` | `window` (required), `move` (required), `value` (only for a move marked open), `targets` (only for a move that targets) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
 | `say` | `text` (1 to 500 characters) | One line of table chat. `sent` or `rate_limited` with when to retry. |
 | `concede` | `confirm: true` | Concedes. Has its own tool because the move list never offers it. |
 | `leave` | none | Disconnects and deletes the saved session. Refused while the game is live and the seat is still in it: concede first. |
+
+With no `display_name`, the seat sits under its MCP client's name, the one
+the table already shows in the AI badge: `claude-code` reads "Claude Code",
+a `codex` client reads "Codex", any other client its normalised name, and a
+client that sent no name keeps "Agent". A `display_name` always wins. Two
+seats from the same client share a name unless the prompts differ.
 
 What to know about how they behave:
 
@@ -206,6 +212,14 @@ What to know about how they behave:
   the full list before Layer A or the model sees anything. A card the
   enumerator still cut says so, with how many ("at least N" where the
   count is a floor).
+- **A capped search is fetched in full.** When the decision's list was
+  cut and the cut is a "search your library" prompt (Demonic Tutor), the
+  binary asks for that prompt's whole list itself, up to three searches
+  a window. Other capped prompts stay capped, and every cut names the
+  exact call that expands it, whether or not a card raised the prompt:
+  `choice <id>: N answers not listed … legal_moves(choice: "<id>")
+  expands it`. `legal_moves` with `choice` and `match` finds one card by
+  name in a search.
 - **A move is checked before it is sent.** A stale `window` is refused
   locally. After three rejections in one window, only the window's
   always-legal move is accepted, and the binary never picks it for the
@@ -232,6 +246,36 @@ What to know about how they behave:
 - **A server that predates the badge (#2249) refuses the join** with a
   400 about an unknown `agent` field. The binary says so and does not
   retry without the field.
+
+### Targets
+
+A move that targets says who or what, by id and never by display name
+(two seats can share one): `targets: you (seat 0)`, `targets: opponent
+«Bob» (seat 2)`, `targets: Llanowar Elves [<id>] (battlefield,
+controlled by opponent «Bob» (seat 2))`.
+
+The enumerator offers a multi-target spell as combinations, capped, so
+the set the agent wants may not be among them. Instead the agent picks
+per clause, from the board:
+
+1. `legal_moves(targets_for: N)` lists move N's target clauses: each
+   clause's wording, how many it takes ("up to 4", "any number", "X"),
+   and every candidate with its id, zone and controller. The candidates
+   are the server's own legal set for the card, ability, mode or prompt
+   as the seat's view states it. A move whose clause the view does not
+   state gets the targets seen across this window's moves instead, and
+   the listing says that list may be capped.
+2. `act(window, move: N, targets: [{slot: 0, ids: ["<id>", …]}])`. Move
+   N chooses the card and its costs; the picks replace its targets.
+   `slot` is the clause (default 0); `mode` is the occurrence for a
+   modal move that chose a mode twice.
+
+Picks are checked before sending against the listed candidates and the
+clause's bounds, with a reason, and then the server checks them as it
+checks any targeting (CR 601.2c). A move that divides an amount among
+its targets cannot be re-targeted: choose one of the listed moves. No
+wire change: the move's params already carry `targets`, and the view
+already carries each clause's legal set.
 
 ## The badge
 
@@ -265,11 +309,16 @@ gap.
 - The invite token is never stored. If your MCP client restarts the
   binary, `join` with the same invite reattaches (`resumed: true`)
   instead of claiming a second seat.
-- The file is named for the server and the game, not for the seat. So
-  **two seats on one machine at the same table need different
-  `--state-dir`s**. With a shared one, the second agent's `join` finds
-  the first agent's file, reattaches to that seat, and both agents play
-  it. See [Two agents at one table](#two-agents-at-one-table).
+- The file is named for the server and the game, not for the seat, so
+  the binary also takes an exclusive lock on `<game id>.lock` beside it
+  for as long as it holds the seat. A second binary on the same
+  `--state-dir` at the same table has its `join` **refused** with a
+  message naming the state directory, instead of reattaching and playing
+  the first agent's seat. The operating system drops the lock when the
+  process dies, so a crash never blocks a restart's `resumed: true`. The
+  lock is released on `leave`, at game end and on exit. Two seats on one
+  machine at one table still need different `--state-dir`s; see
+  [Two agents at one table](#two-agents-at-one-table).
 - On the wire the token is only ever `Authorization: Bearer`, never
   `?token=`. It is stripped from every tool result (those go to the model
   provider) and every log line, which also passes `redact.Secrets`.
@@ -373,7 +422,7 @@ with `claude-seat.log`, and `…/cmdctrl-mcpseat/codex` with
 `codex-seat.log`. The binary creates the state directory `0700` itself.
 It does not create the log file's directory. See
 [the state file](#the-token-and-the-state-file) for why the state
-directories must differ.
+directories must differ: with a shared one the second `join` is refused.
 
 An agent never hosts, and the seat has no tool to start a game. So a
 table with only agents is started by an admin with no seat, from admin
@@ -556,6 +605,12 @@ Both agents were asked what was hard. Their answers became issues:
   hand (#2278).
 - **Wording:** a turn counter that counts rounds, and abilities read
   as "cast by" (#2279).
+
+*Fixed since, 2026-10-05:* the CR 117.4 priority bug (#2275, #2312),
+the duplicate automatic answers and the shared «Agent» name (#2271,
+#2273, #2331), the capped combination pool and the capped search
+(#2276, #2277, #2355), and the wording (#2279, #2364). The automatic
+payment that tapped duals first (#2278) is still open.
 
 Both agents used `pass_until` without being told to. The Claude seat
 recognised four of its five #2271 duplicate windows as stale, and left

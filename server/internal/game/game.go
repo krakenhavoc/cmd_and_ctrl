@@ -65,6 +65,17 @@ type Game struct {
 	// Clone and the snapshot.
 	ActiveSeatLeftPending bool
 
+	// TurnEndPending is set when an effect ended the turn (CR 724.1,
+	// #2165, end_turn.go). The effect has done the parts of the process
+	// that may run inside a resolution — the waiting triggers are gone,
+	// the stack is exiled and nobody holds priority — and the rest (the
+	// CR 724.1c check, the end of combat and the skip to the cleanup
+	// step, then that step itself, which can end the turn) waits for the
+	// resolution's CR 704.3 boundary, which consumes the flag: a turn
+	// must never end inside a resolving callback (ADR 0059 Decision 6).
+	// Plain data, carried by Clone and the snapshot.
+	TurnEndPending bool
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
@@ -420,6 +431,12 @@ type Game struct {
 	// swallow one.
 	eventBatch        uint64
 	oncePerBatchFired map[string]uint64
+
+	// batchLifeLost and stagedBatchTriggers are life_batch.go (#2183):
+	// the life each player lost in the live event batch, and the
+	// AtBatchEnd triggers waiting for that batch to settle.
+	batchLifeLost       batchLifeLossTotals
+	stagedBatchTriggers []stagedBatchTrigger
 
 	// preventionFollowUps are the next-damage shields' CR 615.5
 	// additional effects owed for an instance of damage that has not yet
@@ -1835,6 +1852,13 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// S22: announce the end step so "at the beginning of your
 		// end step" triggers auto-fire through the harvester. The
 		// end step grants priority, so no auto-advance.
+		//
+		// #2373: "until your next end step" ends as that step BEGINS,
+		// so the duration sweeps run before the event — a scoped
+		// effect cannot still apply to the triggers this step puts on
+		// the stack.
+		g.ClearExpiredScopedStaticsLocked()
+		g.sweepCastPermissionsLocked(false)
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
 			g.EmitEvent(Event{
 				Kind:  EventBeginEndStep,

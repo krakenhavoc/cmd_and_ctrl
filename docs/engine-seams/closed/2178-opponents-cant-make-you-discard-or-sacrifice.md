@@ -1,0 +1,6 @@
+---
+title: "Opponents can't make you discard or sacrifice"
+date: 2026-10-05
+issues: [2178]
+---
+**Opponents can't make you discard or sacrifice** (#2178): "spells and abilities your opponents control can't cause you to discard cards / sacrifice permanents" is `Spec.OpponentEffectProtections`, read live off the battlefield by `game/cant_cause_discard_sacrifice.go` whenever an effect asks a player to discard or sacrifice, and never stored. The cause is the controller of the resolving stack item, so an opponent's edict (`queueSacrificePromptLocked`), annihilator trigger, sacrifice-all (`SacrificeAll*ForEffect`), single sacrifice, "each player discards" fan-out, random discard and revealed-hand discard skip the protected player, while their own spells and abilities do not. Costs (`DiscardCauseCost`, `sacrificeAnsweredLocked`), the cleanup-step discard and state-based sacrifices never ask the gate, because `Game.resolving` outlives its resolution and would otherwise catch them. **3 cards:** Tamiyo, Collector of Tales (new, both clauses, plus a resolution-time card-name prompt with a continuation for the +1), Tajuru Preserver (new), and Sigarda, Host of Herons (its declared simplification is gone; now complete).

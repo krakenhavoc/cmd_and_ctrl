@@ -1287,8 +1287,18 @@ per-card payoff still fires per card — but they are ONE event, and the
 window is not re-opened for them. That is what makes two Thought
 Reflections draw FOUR rather than three, and it is why a cancel-style
 draw replacement sharing the window takes the whole doubled draw rather
-than one card of it (the declared simplification; no dredge card is
-catalogued).
+than one card of it (the declared simplification).
+
+**A draw replaced by an effect that asks something (#2168, #2127):**
+dredge (`Dredge(n)` in `cards/effects/dredge.go`, on `Spec.Replacements`
+of the card in the graveyard), Underrealm Lich's look-at-three,
+Forbidden Crypt's return-a-card. The `Replace` calls
+`ev.DrawsInstead(body)`, which cancels the draw and remembers a body;
+the body runs once the window has settled, may queue a prompt, and
+calls `done` when it finishes so the rest of a multi-card draw ("draw
+three") waits behind it (CR 121.6b). `FromGraveyard: true` makes a
+replacement apply from the drawing player's graveyard instead of the
+battlefield. See `game/draw_instead.go`.
 
 **"Except the first one you draw in each of your draw steps"** has no
 per-draw-step tally behind it. Both cards that print it — Notion Thief
@@ -1800,6 +1810,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"shroud"` | Shroud (CR 702.18) — #353, targeting gate |
 | `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
 | `"changeling"` | Changeling (CR 702.73) — S26, every creature type (`game.KeywordChangeling`) |
+| `"devoid"` | Devoid (CR 702.114) — #2152, colourless in every zone (`game.KeywordDevoid`, `game/devoid.go`). A colour-defining ability like changeling's type one: the colour derivation reads it, so a card whose `Colors` is empty is colourless instead of the colour of its pips. Declare it on every devoid card file — `TestEveryCatalogDevoidCardIsColourless` fails a card that prints it and doesn't — and leave colour identity alone: CR 903.4 reads the mana symbols, which devoid keeps. A layer-5 colour effect still applies on top, and a copy "except it's black" is black (CR 707.9d), because a stamped colour list wins |
 | `"plainswalk"`, `"islandwalk"`, `"swampwalk"`, `"mountainwalk"`, `"forestwalk"` | Landwalk (CR 702.14) — #705, block legality |
 | `"nonbasic landwalk"` | Nonbasic landwalk (CR 702.14c) — #705, block legality |
 | `"fear"` | Fear (CR 702.36b) — artifact or black blockers |
@@ -1845,15 +1856,16 @@ on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
 
-Hexproof, shroud, indestructible and changeling are not combat
+Hexproof, shroud, indestructible, changeling and devoid are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same
 `HasKeyword` reader. Their
 consumers are `CanBeTargetedBy` (hexproof, shroud),
 `DestroyPermanentForEffect` + the damage-driven creature SBAs
 (indestructible — see `server/internal/game/indestructible.go` for
-what it deliberately does *not* stop) and `HasAllCreatureTypes` in
+what it deliberately does *not* stop), `HasAllCreatureTypes` in
 `creature_types.go` (changeling — see "Adding a creature-type card"
-below). The landwalk tokens are read by `Game.BlockPairRefusalLocked`
+below) and the printed-colour rule `printedColorsOf` (devoid — see
+`server/internal/game/devoid.go`). The landwalk tokens are read by `Game.BlockPairRefusalLocked`
 (`game/block_legality.go`, `game/landwalk.go`) against the defending
 player's lands, by effective characteristics on both sides; the rarer
 variants (snow swampwalk, legendary landwalk, desertwalk) join the
@@ -3056,7 +3068,25 @@ OptionalCosts: []game.AdditionalCost{Multikicker("{G}", 20)},                   
 OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                           // Capsize
 OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", Land())},       // Constant Mists
 OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())},
+OptionalCosts: Kickers("{R}", "{W}"),                                            // Thornscape Battlemage
 ```
+
+**"Kicker {R} and/or {W}"** (CR 702.33b) is `Kickers(first, second)`: two
+`Kicker` entries in printed order, both keyed kicker, each its own once-only
+toggle — either, both or neither (#2153, ADR 0073 Decision 16). Never a
+`Multikicker(…, 1)` relabelled as a kicker, which is what Urborg Lhurgoyf used
+to be. Every "was it kicked" read counts both, so both paid is "kicked twice"
+(Archangel of Wrath). "If it was kicked with its {R} kicker" (CR 702.33f) is
+`ctx.KickedWith("{R}")` on a spell and `ThisKickedWith("{R}")` as a
+permanent's enters-trigger condition, with the cost spelled exactly as the
+`Kickers` call spells it. `Register` refuses a third kicker and two kickers
+whose mana is the same, since that question could then not be answered.
+"If it was kicked with its {A} kicker, it enters with two +1/+1 counters"
+is `EntersWithCountersFromCast: CountersIfKickedWith(kind, "{A}", 2)`, one
+entry per kicker (`CastCounts.KickedWith`, #2360). The matching "and with
+<ability>" is a grant keyed on `game.CardKickedWith` — `KeywordGrant` for a
+keyword, a trigger whose `AppliesTo` checks it, an `Activated` entry whose
+`Condition` checks it. See `volvers.go`.
 
 Use the keyword constructor, never a hand-rolled
 `game.AdditionalCost{Optional: true}` — for the reason `Flashback` has
@@ -3064,7 +3094,7 @@ one. The constructor carries the `Key` the ENGINE reads, and a
 hand-rolled one compiles and then never returns a bought-back card to
 hand. `Register` refuses the mistakes that would otherwise ship
 quietly: an `Optional` cost in the mandatory slot, a missing or
-duplicated `Key`, a repeatable cost that also demands cards or
+duplicated `Key` (kicker's pair aside), a repeatable cost that also demands cards or
 permanents (every printed multikicker is mana), and an optional
 `PayLifeX` (it would fight the mandatory cost for the shared `XValue`
 slot).
@@ -3080,7 +3110,9 @@ if ctx.WasKicked() { amount = 4 }        // Burst Lightning
 
 Read it from a PERMANENT's own trigger with
 `game.CardKickedTimes(*source)` — Gatekeeper of Malakir's "when this
-enters, **if it was kicked**", Wolfbriar Elemental's count. Not the
+enters, **if it was kicked**", Wolfbriar Elemental's count — or, as
+the trigger's condition, `AllOf(Self, ThisKickedAtLeast(n))` /
+`AllOf(Self, ThisKickedWith("{R}"))`. Not the
 stack item: it is out of `StackMeta` before the ETB event is emitted,
 so the resolution path carries the record onto the permanent as
 `Card.PaidOptionalCosts` (CR 400.7d) and that is what these read. It
@@ -3095,8 +3127,38 @@ RESOLUTION, so a bought-back spell countered by game rules still goes
 to the graveyard. A card that also returned itself in `OnResolve`
 would be moving a card that is still on the stack.
 
-**Still out:** escalate and entwine (their cost is per extra MODE,
-which the index-list announcement cannot express), and "enters with a
+**Escalate (CR 702.120a, #2126):** "Escalate [cost]" is a per-mode
+cost, not an optional one, so it lives on the spell's `ModeSpec` rather
+than in `Spec.OptionalCosts`:
+
+```go
+Modes: Escalating(ChooseOneOrMore(…), EscalateMana("{G}")),        // Collective Resistance
+Modes: Escalating(ChooseOneOrMore(…), EscalateDiscard(1)),         // Collective Brutality
+Modes: Escalating(ChooseOneOrMore(…), EscalateTapCreature()),      // Collective Effort
+Modes: Escalating(ChooseN("Choose one or both", 1, 2, …), EscalateMana("{2}")), // Borrowed Malevolence
+```
+
+The cost is owed `len(modes) - 1` times, as extra entries in the cast's
+one CR 601.2f payment plan: its mana joins the total in
+`game.AddModeCostMana` (so Thalia taxes the sum once), its discards ride
+`discard_ids` and are paid with the spell on the stack (a discard payoff
+triggers above it), and its creature taps ride `teamwork_ids` as a COUNT,
+not a power floor. Nothing is paid for one mode, and the validator
+refuses a payment list of the wrong length. The view stamps
+`modes.escalate` and clamps `modes.max` to the count the viewer can pay
+the non-mana half for (`Game.EscalatePayableExtraForEffect`); the bot
+enumerator expands one announcement per mode count and demands the
+payments for it; the picker prompts for the cards or creatures after the
+modes are chosen. Mana is not asked at announce (CR 601.2g), as for every
+other additional cost. The cost is a `game.EscalateCost` (mana, discards,
+creature taps and a label), not an `AdditionalCost`: a `ModeSpec` is
+reachable from a stack item, and the wider struct would add closure routes
+to the restore-point census (`closure_fields.txt`). `Register` refuses an
+empty or unlabelled cost, a spell that can choose only one mode, and
+`TapCreatures` anywhere but `ModeSpec.Escalate`.
+
+**Still out:** entwine (one extra cost for choosing ALL modes, which
+the per-mode escalate cost does not express), and "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
 Warcaller) — that count is read during the CR 614 entry pipeline,
 before the record reaches the permanent.
@@ -5621,6 +5683,34 @@ direction, so never write one. A mana ability whose restriction
 names the chosen type uses `RestrictionsFunc`, not `Restrictions`
 (see `ChosenTypeManaRestrictions`).
 
+**A type chosen as a spell resolves** ("Choose a creature type. Destroy
+all creatures that aren't of the chosen type") is
+`ChooseCreatureTypeThen`, not a stored answer (#2382):
+
+```go
+OnResolve: func(item *game.StackItem, ctx *Context) error {
+    ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
+        func(g *game.Game, t string) error {
+            if t == "" { // the chooser left the game: nobody chose
+                return nil
+            }
+            return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(NewContext(g, item))
+        })
+    return nil
+},
+```
+
+Same prompt, vocabulary and answer as the as-enters form, so the client
+and the bot's enumerator need nothing new. Everything the card prints
+after the choice goes INSIDE the continuation, which receives the
+canonical type (and `""` when the chooser left); the line after the call
+runs before anybody has answered. "Each player chooses" is a chain: ask
+`seatsFromController`, one prompt per seat, from inside the previous
+continuation, carrying the answers by value (Patriarch's Bidding). A
+permanent whose counters depend on the answer (Banner of Kinship) queues
+the same prompt from `AsEnters` and uses `Game.SetNamedTribeForEffect`
+in the continuation.
+
 **Changeling** (CR 702.73a) is an enforced keyword since S26, so a
 **vanilla changeling needs no catalog entry at all** — the deck
 importer stamps it from Scryfall like any other printed keyword, and
@@ -5962,6 +6052,46 @@ and a trigger bound to one added combat, "at the beginning of that
 combat" (Moraug). Both ship with the first card that uses them (ADR 0059
 Decisions 4 and 8).
 
+### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
+
+"End the turn." is one primitive from
+[end_the_turn.go](../server/internal/cards/effects/end_the_turn.go), and
+it is the LAST instruction the card runs:
+
+```go
+OnResolve: endTheTurnOnResolve,                                 // Time Stop
+Effect:    endTheTurnEffect,                                    // Sundial of the Infinite's ability
+return EndTheTurn{}.Apply(ctx)                                  // after anything printed before it (Ultima's wipe)
+return ActivePlayerMayEndTheTurn{}.Apply(ctx)                   // Obeka: "the player whose turn it is may end the turn"
+```
+
+The engine does the whole of CR 724.1 (`game/end_turn.go`): triggers not
+yet on the stack cease to exist, the stack is exiled (this spell
+included; nothing is countered), state-based actions are checked with
+nobody getting priority, every creature leaves combat, and the turn goes
+straight to its cleanup step — where the active player discards to hand
+size, damage wears off and "until end of turn" effects end, and any
+trigger the process caused goes on the stack before another cleanup step
+(CR 514.3a). Three things a card author needs to know:
+
+- **It must be last.** It exiles the resolving spell. An instruction
+  printed AFTER "End the turn." that is a delayed trigger ("At the
+  beginning of your next end step, you lose the game", Glorious End) is
+  scheduled first; nothing about ending the turn reads the delayed
+  trigger queue, so the order is unobservable.
+- **Triggers from the same resolution are gone.** Ultima's "Destroy all
+  artifacts and creatures. End the turn." kills Blood Artist, and Blood
+  Artist's triggers cease to exist (CR 724.1a). That is the card, not a
+  bug to work around.
+- **The end step never begins.** "At the beginning of the end step"
+  triggers do not fire, and an unbound "next end step" delayed trigger
+  waits for next turn's. Final Fortune's loss, bound to its extra turn,
+  is swept: Sundial of the Infinite during that turn saves the player.
+
+Not built yet: Day's Undoing's "if it's your turn" is buildable on the
+same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
+cost reduction with no shape, so it stays out.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on
@@ -6030,22 +6160,30 @@ and then discard the change to `docs/engine-seams.md`.
   per permanent as well as a count and the payment sends
   `counter_kinds` beside `counter_source_ids` only when the kinds
   actually differ — [ADR 0020](decisions/0020-activated-abilities.md) addendum)
-  ([activated.go](../server/internal/game/activated.go)) and nothing else.
+  ([activated.go](../server/internal/game/activated.go)), plus the
+  card-moving components added since: discard (`DiscardSelf`,
+  `DiscardCards`, and `DiscardYourHand` for "discard your hand"), exile
+  from the hand or graveyard (`ExileCards`), exile the top of your
+  library, put a card from your hand on top of it (`library_cost.go`,
+  ADR 0109 §7), return a permanent to its owner's hand, tap other
+  permanents, and **waterbend** (`WaterbendCost("{X}")`, Katara,
+  Waterbending Master). The struct's field comments are the list of
+  record; check it before calling a cost shapeless.
   Equip needs no component of its own — `EquipAbility("{2}")` is a mana
   cost plus a target clause. **"Rather than pay" on an activated
   ability** is not an alternatives slot either: write it as a **second
   ability entry** with the same effect and its own real cost, which is
   what Heart of Kiran does ("Crew 3" and "Crew — remove a loyalty counter
   from a planeswalker you control"). The second entry must have a cost
-  that can actually go unpaid, or it is the #259 mistake below. Still
-  no shape: cycling and **convoke / waterbend on an ACTIVATED ability**
-  — don't invent one. (Two things that used to be on this list are not
+  that can actually go unpaid, or it is the #259 mistake below. Cycling is
+  not on this list either: `Cycling("{3}")` and its siblings are
+  constructors, see "Abilities from the hand". **Convoke** on an
+  ACTIVATED ability still has no shape — don't invent one. (Two things that used to be on this list are not
   any more: a counter removal **split across several permanents**
   shipped with #789 and #943's any-kind form, and a cost that **adds**
-  a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* do have one since
-  S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
-  activated-ability seam is separate and still open — Katara, Water
-  Tribe's Hope is the card waiting on it.) (**Delve** has a shape since
+  a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* have one since
+  S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`;
+  waterbend on an *activated* ability is the `WaterbendCost` above.) (**Delve** has a shape since
   ADR 0100 sub-PR 1: `Delve: true` on the Spec and nothing else. It is
   not an additional or alternative cost (CR 702.66b) but a way of
   paying the generic mana, priced next to convoke by the one pricer
@@ -6079,9 +6217,11 @@ and then discard the change to `docs/engine-seams.md`.
   **attack declarations** (`EventAttack`) and **"becomes the target of a
   spell or ability"** (`EventBecomesTarget`), both S22 — see the event
   picker above.
-- **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
-  touch the S15 cost engine rather than the S17 event pipeline. They
-  land with S28.
+- ~~**Cost-replacement effects** (Trinisphere, Thalia, Spellshift,
+  Kambal)~~ — no longer a blocker. They are `Spec.CostModifiers`
+  entries on the S15 cost engine (S28), not event-pipeline
+  replacements: `trinisphere.go`, `thalia_guardian_of_thraben.go` and
+  `kambal_consul_of_allocation.go` are the templates.
 - ~~**Cards that add a layer dependency, or that ability removal gets
   wrong**~~ — no longer a blocker, and the hold list is released
   (2026-09-18, [ADR 0067](decisions/0067-layer-dependency-ordering.md),

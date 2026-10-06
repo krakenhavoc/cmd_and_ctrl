@@ -1,6 +1,6 @@
 # ADR 0059 — Turn machinery: extra turns, extra phases and steps, and one turn identity
 
-**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17). **Amended 2026-09-30:** sub-PR 2 is split, and its first half (extra turns) has shipped — see [Amendment (2026-09-30)](#amendment-2026-09-30--sub-pr-2-is-split-2a-is-extra-turns). Its second half (the turn plan, added phases and steps) shipped the same day — see [Amendment (2026-09-30, 2b)](#amendment-2026-09-30-2b--the-turn-plan-shipped).
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17). **Amended 2026-09-30:** sub-PR 2 is split, and its first half (extra turns) has shipped — see [Amendment (2026-09-30)](#amendment-2026-09-30--sub-pr-2-is-split-2a-is-extra-turns). Its second half (the turn plan, added phases and steps) shipped the same day — see [Amendment (2026-09-30, 2b)](#amendment-2026-09-30-2b--the-turn-plan-shipped). **Amended 2026-10-05:** ending the turn (CR 724.1, #2165) ships inside the turn plan — see [Amendment (2026-10-05)](#amendment-2026-10-05--ending-the-turn-cr-7241-2165).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)), and
 0056-0058 are being drafted in parallel for
@@ -1269,3 +1269,89 @@ settled or changed:
     The CR 103.8a first-turn draw skip still keys on `Seq == 1`, so an
     added draw step on a two-player game's first turn would be skipped
     too; no card can add one that early.
+
+## Amendment (2026-10-05) — ending the turn (CR 724.1, #2165)
+
+Decision 14 did not list it, and nothing did it: CR 724.2 ("end the
+combat phase", Mandate of Peace, `game/end_combat.go`) had shipped, and
+CR 724.1 had not. Sundial of the Infinite and Obeka, Brute Chronologist
+waited on it (the `end-the-turn` registry row). It now ships as
+`Game.EndTheTurnForEffect` in `game/end_turn.go`, inside this ADR's turn
+plan. What it settled:
+
+1. **The procedure is the rule's, in its order.** 724.1a drops the
+   triggers not yet on the stack, together with the prompts still
+   announcing one (order, "you may", mode, target:
+   `dropUnstackedTriggersLocked`, which `EndCombatPhaseForEffect` now
+   shares for 724.2a). 724.1b exiles the stack through end_combat.go's
+   `exileEntireStackLocked`, so nothing is countered and a copy ceases
+   to exist. 724.1c checks state-based actions with the trigger drain
+   switched off (`stateChecksLocked(false)`, the one loop with one
+   switch, so the two cannot drift). 724.1d removes every creature
+   from combat and skips to the cleanup step. A trigger caused by any
+   of those steps survives, as 724.1a's last sentence says, because the
+   drop runs first.
+2. **The skip is a plan edit, not a second cursor.** The turn plan is
+   cut to one cleanup step (keeping the ending phase's id) and popped
+   through `advanceCursorLocked`, so nothing between begins: no end step
+   announcement, no "at the beginning of the end step" trigger
+   (724.1e), and no `fireDelayedTriggersLocked(StepEnd)`. A delayed
+   "next end step" trigger therefore waits for the next end step that
+   does begin, which is next turn's; one bound to an extra turn's end
+   step (Decision 8, Final Fortune) is swept as that turn ends without
+   reaching it. A phase an effect added after the ending phase is
+   skipped too: the turn ends. Ending the turn from a CR 514.3a cleanup
+   window pops a new cleanup step, as 724.1d's last sentence asks.
+3. **Two halves, because a turn never ends inside a resolution**
+   (Decision 6). `EndTheTurnForEffect` runs inside the resolving effect,
+   or inside the answer to a prompt it asked. It does 724.1a and
+   724.1b, parks priority (724.1f: nobody gets it during the process)
+   and sets `Game.TurnEndPending`. The resolution's CR 704.3 boundary —
+   `runStateChecksLocked` once `holdForOpenResolutionLocked` lets it
+   run — consumes the flag (`finishEndingTheTurnLocked`): 724.1c,
+   724.1d, then the cleanup step begins through `runStepEntryHooksLocked`
+   like any other. cleanup.go is unchanged and does 724.1f: the
+   hand-size discard, the CR 514.2 sweep, and its one exit, which grants
+   the active player priority when an SBA fired or a trigger is waiting
+   and otherwise ends the turn. `SettleResolution` also finishes a
+   pending turn end, so the dispatcher's after-every-action settle backs
+   up any path that does not end in a state check.
+4. **The resolution frame stops handing priority back when the cursor
+   moved.** `passPriorityLocked` gave the active player priority after
+   every resolution (CR 117.3b). After a resolution that ended the turn
+   that is wrong: a cleanup step waiting on a discard has nobody on
+   priority. It now skips the grant when `cursorMovedSince` the
+   resolution began (a different turn, step or step ordinal, or a turn
+   end still pending). The other cursor moves a resolution could already
+   make — CR 724.2's jump, a departed active player's rotation — grant
+   the same seat themselves as the new step begins, so they are
+   unchanged, except a new turn whose untap step pauses on CR 502.3's
+   prompt (#826): the old grant handed the active player priority in a
+   step that grants none, and now it does not.
+5. **State.** `Game.TurnEndPending` is carried by Clone and the
+   snapshot (`turnEndPending`, additive, no schema bump; recorded in
+   `snapshot_shape/v7.txt`). An older binary that drops it leaves an
+   ended turn's cursor where the effect found it, with priority parked
+   until the next AdvanceStep: weaker, never stronger.
+6. **Wire and log.** No view field changes; the cursor simply arrives
+   at cleanup. `EventTurnEnded` (Actor the active player, Source the
+   card, Amount the turn) is emitted as the process begins and projects
+   to one `turn_ended` log line, "Alice's turn ends (Sundial of the
+   Infinite)", ahead of the exile lines and the cleanup `step` line
+   ([docs/protocol.md](../protocol.md)). The client tones it like the
+   step spine.
+7. **Enumerator and bots.** No new prompt and no new timing: Sundial's
+   "activate only during your turn" is the existing `DuringYourTurn`
+   condition, which the enumerator reads; the cleanup step is offered as
+   it always was (a discard owed is the only move); and Obeka's question
+   is an ordinary `confirm` addressed to the active player.
+8. **Cards.** Sundial of the Infinite, Obeka, Brute Chronologist
+   (`effects.ActivePlayerMayEndTheTurn`: the player whose turn it is
+   decides, not Obeka's controller), Time Stop, Glorious End (its
+   "at the beginning of your next end step, you lose the game" is a
+   `ControllerTurnOnly` delayed trigger, scheduled before the turn ends
+   because ending it exiles the spell) and Ultima (destroy first, then
+   end the turn, so the wipe's dies triggers cease to exist under
+   724.1a), all full. Day's Undoing, Discontinuity ("costs {2}{U}{U}
+   less": a coloured reduction has no shape) and Hurkyl's Final
+   Meditation are not built here.

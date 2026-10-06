@@ -77,6 +77,7 @@
   import { settings } from "../../settings";
   import { ariaKeyshortcuts, effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import { passHint } from "../../dockHint";
+  import { L } from "../../labels";
 
   interface Props {
     view: GameView;
@@ -105,6 +106,9 @@
     // PR 6: the open sheet's width (0 when none is open, or it is
     // minimised), so the hover zoom can move left of it (§4).
     onSheet?: (width: number) => void;
+    // #2374: whether a stage sheet (the opening hand) is up and not
+    // folded away, so the log drawer, opened over it, draws above it.
+    onStage?: (up: boolean) => void;
     // PR 7 (owner decision 3): the ⋯ menu, last on the toggles row.
     // Game.svelte builds it; omitted, the row has no ⋯.
     menu?: GameMenuOptions;
@@ -126,6 +130,7 @@
     onUndo = () => {},
     onSize,
     onSheet,
+    onStage,
     menu,
   }: Props = $props();
 
@@ -225,6 +230,18 @@
     sheetOpen && minimisedKey !== null && minimisedKey === currentSheetKey,
   );
   const sheetTitle = $derived(req?.sheet?.title ?? req?.label ?? "");
+  // #2346: a stage sheet (the opening hand) covers the table, and the
+  // dock moves to the bottom centre under it while it is up. Minimised,
+  // both go back to normal: the sheet is the restore chip in the corner.
+  const staged = $derived(sheetOpen && !minimised && !!req?.sheet?.stage);
+  $effect(() => {
+    if (!onStage) return;
+    const up = staged;
+    onStage(up);
+    return () => {
+      if (up) onStage(false);
+    };
+  });
   let sheetEl: HTMLElement | null = $state(null);
   let restoreEl: HTMLButtonElement | null = $state(null);
 
@@ -406,7 +423,7 @@
 
 <svelte:window onkeydown={onWindowKey} />
 
-<section class="action-dock" aria-label="actions" bind:this={root}>
+<section class="action-dock" class:staged aria-label={L.actions} bind:this={root}>
   <div class="dock-head">
     <PhaseDisplay
       turn={view.turn}
@@ -458,7 +475,7 @@
     {/if}
   </div>
 
-  <div class="dock-toggles" role="group" aria-label="priority controls">
+  <div class="dock-toggles" role="group" aria-label={L.priorityControls}>
     <!-- #323: the escape hatch for "I DO want to respond to my own
          spell". It has to be clickable BEFORE the cast — once the spell
          is announced the client auto-passes on the following snapshot.
@@ -486,7 +503,7 @@
       class="action autopass"
       class:on={autopassEnabled && !autopassPaused}
       class:paused={autopassPaused}
-      aria-label="autopass"
+      aria-label={L.autopass}
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
       disabled={preGame}
@@ -573,11 +590,12 @@
         <div
           class="dock-sheet"
           class:minimised
+          class:stage={!!req.sheet?.stage}
           hidden={minimised}
           tabindex="-1"
           bind:this={sheetEl}
           style:--sheet-want="{sheetWidth(req)}px"
-          style:max-height={sheetMaxH > 0 ? `${sheetMaxH}px` : undefined}
+          style:max-height={sheetMaxH > 0 && !req.sheet?.stage ? `${sheetMaxH}px` : undefined}
         >
           <header class="sheet-head">
             <h2 class="sheet-title">
@@ -585,14 +603,26 @@
                   >{req.sheet.src}</span
                 >{/if}
             </h2>
-            <button
-              type="button"
-              class="sheet-min"
-              aria-label="minimise"
-              aria-expanded="true"
-              title="minimise — fold this down to look at the board; it stays open"
-              onclick={minimise}><Icon name="chevron-down" size={14} /></button
-            >
+            {#if req.sheet?.stage}
+              <!-- A stage covers the table, so its minimise says what it
+                   is for, as Arena's "View Battlefield" does. -->
+              <button
+                type="button"
+                class="sheet-min view-table"
+                aria-expanded="true"
+                title="fold this away to look at the table; it stays open"
+                onclick={minimise}><Icon name="chevron-down" size={14} />View table</button
+              >
+            {:else}
+              <button
+                type="button"
+                class="sheet-min"
+                aria-label="minimise"
+                aria-expanded="true"
+                title="minimise — fold this down to look at the board; it stays open"
+                onclick={minimise}><Icon name="chevron-down" size={14} /></button
+              >
+            {/if}
           </header>
           {#if req.sheet?.attach}
             <div class="sheet-body" use:hostSheet={req.sheet.attach}></div>
@@ -723,7 +753,7 @@
             ? `skip the rest of your turn${keyHint(keys.passTurn)}`
             : `${activePlayerName} is the active player`}
       >
-        Pass turn
+        {L.passTurn}
       </button>
       <button
         type="button"
@@ -737,7 +767,7 @@
           ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
           : "you don't hold priority"}
       >
-        next{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
+        {L.next}{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
       </button>
     </div>
   {/if}
@@ -1199,6 +1229,94 @@
   .dock-sheet:focus-visible {
     outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     outline-offset: 2px;
+  }
+  /* #2346: the stage, as Arena draws its opening hand. The sheet fills
+     the screen and dims the table under it; the body is centred, and
+     the dock (moved to the bottom centre, .staged below) is the stage's
+     button row. z-index -1 inside the dock's own stacking context puts
+     it under the dock's box and over the table. No backdrop-filter: it
+     would make the stage a containing block for the fixed hover zoom. */
+  /* #2374: the stage dims the table, not the game's top bar. It starts
+     under the bar (44px and its 1px border, as the log drawer does), so
+     Lobby, the game log, sound and settings stay usable while the hand
+     is up; covering them hid the log a d20 rolled in the mulligan is
+     written to. The top padding gives back the bar's height, so the fan
+     sits where it did. */
+  .dock-sheet.stage {
+    position: fixed;
+    inset: 45px 0 0;
+    z-index: -1;
+    width: auto;
+    min-width: 0;
+    max-height: none;
+    padding: max(12px, calc(6vh - 45px)) 24px 220px;
+    align-items: center;
+    border: none;
+    border-radius: 0;
+    background: radial-gradient(
+      ellipse at 50% 42%,
+      color-mix(in srgb, var(--bg) 74%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 95%, transparent) 75%
+    );
+    box-shadow: none;
+    animation: stage-in 240ms var(--ease);
+  }
+  .dock-sheet.stage:focus-visible {
+    outline-offset: -4px;
+  }
+  .dock-sheet.stage .sheet-head {
+    width: 100%;
+    justify-content: center;
+    padding: 0;
+  }
+  .dock-sheet.stage .sheet-title {
+    flex: 0 1 auto;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg-muted);
+  }
+  .dock-sheet.stage .sheet-min.view-table {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    width: auto;
+    height: 34px;
+    gap: 6px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border-color: var(--border-strong);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    color: var(--fg);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .dock-sheet.stage .sheet-body {
+    flex: 1 1 auto;
+    width: 100%;
+    overflow: visible;
+    padding: 0;
+    justify-content: center;
+  }
+  /* The dock under the stage: centred, its buttons as large as the
+     stage's other type. */
+  @media (min-width: 600px) {
+    .action-dock.staged {
+      right: auto;
+      left: calc(50% - clamp(300px, 26vw, 380px) / 2);
+    }
+  }
+  .action-dock.staged .dock-btn {
+    min-height: 46px;
+    font-size: 16px;
+  }
+  @keyframes stage-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   @keyframes sheet-up {
     from {

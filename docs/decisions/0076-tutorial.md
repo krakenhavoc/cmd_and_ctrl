@@ -82,6 +82,11 @@ eleven steps with anchors and completion predicates.
 
 ### 2.1 Eleven steps, ordered by when a first turn needs them
 
+> **Amended by [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §5 (S65, #2313):** fourteen steps, not eleven. The opening
+> roll is step 2, the stack is step 8 and the commander is step 10, and a step's
+> `teaches` marks the hints it covers as seen when it completes. The table below
+> is the original eleven; `client/src/lib/tutorialSteps.ts` is the current list.
+
 Each step teaches exactly one thing the UI does not advertise. The ordering is
 the turn itself, so every lesson arrives at the moment it is needed rather than
 as a list up front.
@@ -110,6 +115,11 @@ step that already carries the most new information is the kind of completeness
 that makes a tutorial worse.
 
 ### 2.2 The practice table
+
+> **Amended by [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §5.2 (S65, #2313):** the practice table opens the opening roll
+> (`StartWithOpeningRoll`), so the player rolls as at a real table. A practice bot
+> that wins it hands the first turn to the player (`aiseat.SeatSpec.FirstTurnTo`),
+> so seat 0 still takes turn one. The bot stays on the `random` tier.
 
 A private game with one human seat and one `random`-tier bot, both on a fixed
 prebuilt deck, created by a dedicated route rather than the ordinary lobby flow
@@ -210,6 +220,11 @@ and **not listed in the lobby**.
 
 ### 2.4 Anchors are the e2e selectors, deliberately
 
+> **Amended by [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §2 (S65, #2313):** anchors come from the label registry,
+> `client/src/lib/labels.ts` (`L.<key>`, listed in `docs/labels.md`). A unit test,
+> `labels.test.ts`, fails any PR whose tutorial step or hint anchors to a label no
+> component renders, so a rename is caught on the PR, not only by the nightly.
+
 Every spotlight anchors to an `aria-label` that `board-layout.spec.ts` already
 asserts on. A refactor that moves the hand or renames a zone therefore breaks a
 Playwright test **before** it breaks a new player's first session. This is the
@@ -247,6 +262,12 @@ early into another sprint (§1, scheduling). Landing a bus with no caller invite
 exactly the unrelated uses §2.5 exists to prevent.
 
 ### 2.6 Entry
+
+> **Amended by [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §4 and §6 (S65, #2313):** the lobby offer is the
+> `lobby.practice` hint, offered once with a permanent "Not now". The settings
+> field is the synced `help` settings group (`seen`, `tipsOff`), which discharges
+> the obligation below to move it to the user row. Replay lives in the Help menu
+> and in Settings → Advanced → Tips and the tutorial.
 
 An **offer, not a gate**. A card in the lobby for an account with no finished
 games, with a permanent dismiss on "Not now" — the second time someone sees a
@@ -309,6 +330,11 @@ it.
   nothing; the gestures are the content.
 
 ## 5. Implementation plan (sub-PRs)
+
+> **Amended by [ADR 0125](0125-a-walkthrough-that-keeps-up.md) (S65, #2313):** sub-PRs 5 and 6 were delivered there. Sub-PR 5
+> (entry) is [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §6 (#2345); sub-PR 6 (e2e) is `tutorial-walk.spec.ts` and
+> `hints.spec.ts` (#2393, closing #1085), which walk all fourteen steps nightly and
+> fail on any `has no anchor` console line.
 
 1. **The event bus.** `tutorialBus.ts` plus the three emits in `Card.svelte`,
    `Hand.svelte` and `BattlefieldRow.svelte`, with unit tests. Technically

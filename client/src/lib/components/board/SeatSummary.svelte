@@ -38,7 +38,9 @@
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openZoneBrowser } from "../../zoneBrowser";
   import PlayerIdentity from "./PlayerIdentity.svelte";
+  import CommandStrip from "./CommandStrip.svelte";
   import { seatColor } from "../../colors";
+  import { L } from "../../labels";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -223,7 +225,7 @@
   class:active={isActive}
   class:seat-turn={isActive}
   role="region"
-  aria-label={`${seat.name} board`}
+  aria-label={L.seatBoard(seat.name)}
 >
   <div class="top">
     <PlayerIdentity
@@ -240,6 +242,9 @@
       {onTargetPlayer}
       {considering}
     />
+    <!-- #2349: the seat's commander, face up with its tax, as it sits
+         beside the hand on a full board. -->
+    <CommandStrip {seat} compact />
     <button
       class="expand"
       type="button"
@@ -263,7 +268,7 @@
          It is a FLOOR, not a total — see manaAvailable's contract.
          The dashed "?" pip is what says so visually; manaLabel names
          the source count so the spoken form carries the same caveat. -->
-    <div class="row mana" role="group" aria-label={manaLabel(summary.mana)}>
+    <div class="row mana" data-dice-avoid role="group" aria-label={manaLabel(summary.mana)}>
       {#each manaPips as pip (pip.color)}
         <span class="pip mana-pip" style:--pip-fill={pip.meta.fill} title={pip.meta.label}>
           {pip.count}
@@ -281,7 +286,7 @@
 
     <!-- Combat math: what can block, and how hard it hits. Untapped is
          the number you read on someone else's turn. -->
-    <div class="row counts">
+    <div class="row counts" data-dice-avoid>
       <span class="stat">
         <strong>{summary.creatures.untapped}</strong> untapped
       </span>

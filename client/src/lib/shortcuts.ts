@@ -59,6 +59,7 @@ export type ShortcutID =
   | "drawCard"
   | "toggleMute"
   | "openSettings"
+  | "focusTip"
   | "toggleHelp";
 
 export type ShortcutGroup = "priority" | "combat" | "table" | "interface";
@@ -203,6 +204,18 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     // S11.5 and the command bar's gear button advertises it. Kept
     // byte-identical so nobody's muscle memory breaks.
     defaultBinding: ",",
+    kind: "view",
+    scope: "global",
+  },
+  {
+    // ADR 0125 §3.6: a first-use hint never takes focus, so this is how
+    // a keyboard reaches one. An unmodified letter no table action uses
+    // (ADR 0047). With no tip on screen it does nothing and says nothing.
+    id: "focusTip",
+    label: "Go to the tip",
+    hint: "Move focus to the tip on screen. Escape closes it and puts focus back.",
+    group: "interface",
+    defaultBinding: "i",
     kind: "view",
     scope: "global",
   },

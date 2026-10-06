@@ -40,6 +40,7 @@
   import type { MenuAction } from "../../contextMenu.logic";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
+  import { L } from "../../labels";
   import {
     HAND_SORTS,
     applyHandOrder,
@@ -659,7 +660,7 @@
   class:stacked={layout === "stacked"}
   class:reordering
   style:--hand-overlap={overlap}
-  aria-label={isSelf ? "your hand" : "opponent hand"}
+  aria-label={isSelf ? L.yourHand : "opponent hand"}
   onpointerenter={isSelf ? () => tutorialEmit("hand-hovered") : undefined}
 >
   <!-- ADR 0105 §2 (sub-PR 4): a hand card's pips (a star for
@@ -794,8 +795,10 @@
        the name, mana cost, art, and type line and hiding P/T +
        flavour / rules text. Hover lifts the whole fan up and over the
        board (see .hand:hover) to reveal full cards without pushing
-       layout. PlayerPanel's .hand-zone reserves the same 62%. */
-    max-height: calc(var(--card-h, 168px) * 0.62);
+       layout. PlayerPanel's .hand-zone reserves the same share, and
+       sets --hand-peek lower in the focus layout (#2336), where the
+       hand sits further below the edge as in Arena. */
+    max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.62));
     /* #956 — never wider than the zone that holds it. The fan's own
        width is bounded by --hand-overlap below; this is the backstop
        for the case where it is not. */
@@ -808,20 +811,36 @@
       transform 220ms var(--ease);
   }
   /* Self hand expands on hover: overflow goes visible, the whole strip
-     translates upward by the hidden 38% so full cards poke over the
+     translates upward by the hidden share so full cards poke over the
      battlefield and the fan's bottom edge stays on the panel edge,
      and z-index jumps so nothing on the board occludes the revealed
      cards. */
   .hand:not(.opponent):hover {
     max-height: none;
     overflow: visible;
-    transform: translateY(calc(var(--card-h, 168px) * -0.38));
+    transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
+  }
+  /* #2374: only the cards take the pointer, not the strip. The strip
+     is as wide as the whole bottom row, and lifted it is a card tall,
+     so its empty ends covered whatever sits beside the fan: since
+     #2336 the library, graveyard and exile in the corner above the
+     hand's left end. A pointer left over the fan (Keep hand, centred
+     under the opening-hand stage, is right above it) kept the strip
+     lifted, and a click on the library landed on the strip. Now the
+     hand lifts only while a card is under the pointer (:hover still
+     applies to the strip through its slot), and its empty ends never
+     take a click. */
+  .hand:not(.opponent) {
+    pointer-events: none;
+  }
+  .hand:not(.opponent) > .hand-slot {
+    pointer-events: auto;
   }
   /* Opponent hands stay compact — they're face-down anyway and the
      peek/reveal interaction would feel wrong on someone else's hand. */
   .hand.opponent {
-    max-height: calc(var(--card-h, 168px) * 0.55);
+    max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.55));
     overflow: hidden;
   }
   /* #956 — the overlap is handOverlap()'s answer, published by the

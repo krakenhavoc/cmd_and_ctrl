@@ -115,33 +115,41 @@ jobs:
       server: ${{ steps.paths.outputs.server }}
       client: ${{ steps.paths.outputs.client }}
       monitoring: ${{ steps.paths.outputs.monitoring }}
+      tokens: ${{ steps.paths.outputs.tokens }}
     steps:
       - name: Classify changed paths
         id: paths
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const pr = context.payload.pull_request;
-            const set = (server, client, monitoring) => {
-              core.info(`server: ${server}, client: ${client}, monitoring: ${monitoring}`);
+            const set = (server, client, monitoring, tokens) => {
+              core.info(`server: ${server}, client: ${client}, monitoring: ${monitoring}, tokens: ${tokens}`);
               core.setOutput('server', String(server));
               core.setOutput('client', String(client));
               core.setOutput('monitoring', String(monitoring));
+              core.setOutput('tokens', String(tokens));
             };
-            if (!pr) return set(true, true, true);
+            // `tokens` gates token-dump-check, a PR-only job: a push has
+            // the nightly (e2e-nightly.yml) and no PR to fail early.
+            if (!pr) return set(true, true, true, false);
             const files = await github.paginate(github.rest.pulls.listFiles, {
               ...context.repo, pull_number: pr.number, per_page: 100,
             });
             // The API stops listing at 3000 files; build everything past that.
-            if (files.length < pr.changed_files) return set(true, true, true);
+            if (files.length < pr.changed_files) return set(true, true, true, true);
             const names = files.flatMap((f) => [f.filename, f.previous_filename]).filter(Boolean);
             const frontend = (n) => n.startsWith('client/') || n.startsWith('tests-e2e/');
             const shared = (n) => n.startsWith('.github/') || !n.includes('/');
             // The monitoring config, and this workflow (which holds its job).
             const monitoring = (n) => n.startsWith('deploy/monitoring/') || n.startsWith('deploy/alloy/') ||
               n === '.github/workflows/ci-cd.yml';
+            // The token table and everything that builds a token template
+            // (#2158), plus the dump refresh script and this workflow.
+            const tokens = (n) => /^server\/internal\/cards\/effects\/token[^/]*\.go$/.test(n) ||
+              n === 'scripts/scryfall-refresh.sh' || n === '.github/workflows/ci-cd.yml';
             set(names.some((n) => !frontend(n)), names.some((n) => frontend(n) || shared(n)),
-              names.some(monitoring));
+              names.some(monitoring), names.some(tokens));
 
   server-check:
     needs: changes
@@ -149,7 +157,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # The cache is on for a GitHub-hosted runner only (#1433). A
       # hosted runner starts cold, so restoring the module and build
@@ -166,7 +174,7 @@ jobs:
       # path is inside the workspace, not $HOME.
       - &setup-go
         name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -237,7 +245,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - *setup-go
       - *free-disk
@@ -353,13 +361,63 @@ jobs:
       # "Server -- test" above: prove the regenerated tree is what
       # CENSUS_ENFORCE=1 expects, and stop. It does not push.
 
+  # The token-template check against the real Scryfall dump (#2158).
+  # TestRealDumpEveryTokenTemplateMatchesAPrintedToken skips without
+  # CMDCTRL_SCRYFALL_DUMP, so PR CI never ran it: #2096 added a template
+  # that matched no printed token, every PR check stayed green, and the
+  # nightly then failed for every branch until #2134. This job runs it on
+  # the PR that changes a token file, and nowhere else.
+  #
+  # Cost policy: the dump is ~600 MB, so the job runs ONLY when `changes`
+  # says a token file (server/internal/cards/effects/token*.go), the
+  # refresh script or this workflow changed, and the dump comes from the
+  # same day-keyed actions/cache entry the nightly saves
+  # (scryfall-default-cards-<date>; a PR may read the base branch's
+  # caches), so a download happens only on a cache miss. Same step shape
+  # as e2e-nightly.yml.
+  #
+  # NOT in cmdctrl-ci's `needs`, so it is not a required check: a red
+  # run shows on the PR but does not block it, and a Scryfall outage
+  # cannot hold up merges. Promote it by adding it to that job's list.
+  token-dump-check:
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.tokens == 'true'
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - *setup-go
+
+      - name: Compute Scryfall cache key
+        id: scryfall-stamp
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Scryfall bulk data
+        uses: actions/cache@v6
+        with:
+          path: data/scryfall
+          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          restore-keys: |
+            scryfall-default-cards-
+
+      - name: Refresh Scryfall bulk data
+        run: scripts/scryfall-refresh.sh
+
+      - name: Token templates — match against the real Scryfall dump
+        working-directory: server
+        env:
+          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v -count=1
+
   client:
     needs: changes
     if: needs.changes.outputs.client == 'true'
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # npm cache on a hosted runner only, for the same reason as "Set
       # up Go" -- ~/.npm persists on a self-hosted runner and restoring
@@ -369,7 +427,7 @@ jobs:
       # the input is how you turn it off.
       - &setup-node
         name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           # 'npm' on a hosted runner, and the empty string -- which
@@ -412,7 +470,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - *setup-go
       - *free-disk
@@ -448,7 +506,7 @@ jobs:
       # up gigabytes of dead artifacts against the storage quota.
       - name: Upload server binary
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
@@ -456,7 +514,7 @@ jobs:
 
       - name: Upload bot binary
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-bot-bin
           path: server/bin/cmd_and_ctrl-bot
@@ -464,7 +522,7 @@ jobs:
 
       - name: Upload client dist
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-client-dist
           path: client/dist/
@@ -494,7 +552,7 @@ jobs:
       ALLOY_IMAGE: grafana/alloy:v1.20.1
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Rules — promtool check rules
         run: |
@@ -608,7 +666,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Full history: the non-fast-forward retry path below needs
           # to `git reset --hard` onto whatever origin/<branch> becomes
@@ -621,7 +679,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -883,7 +941,7 @@ jobs:
       # $GITHUB_ENV, so declaring either here would pin it.)
     steps: &cd-steps
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # The deploy target is resolved in shell rather than with a
       # `${{ cond && vars.A || vars.B }}` ternary, on purpose. That
@@ -950,19 +1008,19 @@ jobs:
           echo "Env file:      ${ENV_FILE}"
 
       - name: Download server binary
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: cmdctrl-server-bin
           path: server/bin
 
       - name: Download bot binary
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: cmdctrl-bot-bin
           path: server/bin
 
       - name: Download client dist
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: cmdctrl-client-dist
           path: client/dist
@@ -1902,7 +1960,7 @@ jobs:
       # build artifacts once deployed. Skipped on failure so a re-run of
       # this job can still download them.
       - name: Delete this run's artifacts
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { data } = await github.rest.actions.listWorkflowRunArtifacts({

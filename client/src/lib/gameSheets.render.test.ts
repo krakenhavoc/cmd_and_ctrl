@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { PROTOCOL_VERSION, type CardView, type GameView, type PlayerView } from "./protocol";
 import { session, type Session } from "./session";
-import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetDock, SHEET_HAND_WIDTH } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
 import { targeting, setConfirmHandler } from "./targeting";
 import { defaultSettings, settings } from "./settings";
@@ -131,12 +131,21 @@ function table(over: Partial<GameView> = {}, me: Partial<PlayerView> = {}): Game
 }
 
 // The mulligan window, the viewer's seven cards undecided.
-const mulliganTable = (taken = 0) =>
-  table({ mulligans_open: true, turn: { ...table().turn, number: 1, step: "untap" } }, {
+// CR 103.5: it is the viewer's turn to decide unless `myTurn` is false,
+// in which case the opponent's seat is the one deciding.
+const mulliganTable = (taken = 0, myTurn = true) => {
+  const t = table({ mulligans_open: true, turn: { ...table().turn, number: 1, step: "untap" } }, {
     hand: zone("hand", ME, HAND),
     hand_kept: false,
     mulligans_taken: taken,
+    mulligan_turn: myTurn,
   } as never);
+  if (!myTurn) {
+    t.seats[1].mulligan_turn = true;
+    t.seats[1].hand_kept = false;
+  }
+  return t;
+};
 
 // Cleanup with a hand of eight and one card owed.
 const discardTable = () =>
@@ -267,6 +276,62 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     expect(dockOf(c).querySelector('[aria-label="opening hand decisions"]')).toBeNull();
   });
 
+  // #2346: drawn as Arena draws it, a stage over the table with the dock
+  // centred under it; "View table" folds it to the restore chip, and the
+  // dock goes back to its corner.
+  it("draws the opening hand as a stage, and View table folds it away", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    const sheet = dlg.querySelector<HTMLElement>(".dock-sheet")!;
+    expect(sheet.classList.contains("stage")).toBe(true);
+    expect(dockOf(c).classList.contains("staged")).toBe(true);
+    expect(dlg.textContent).toContain("A mulligan shuffles this hand away");
+    const viewTable = buttonNamed(dlg, "View table")!;
+    expect(viewTable).not.toBeNull();
+    click(viewTable);
+    expect(sheet.hidden).toBe(true);
+    expect(dockOf(c).classList.contains("staged")).toBe(false);
+    expect(buttonNamed(dlg, "Keep hand")).not.toBeNull();
+    click(buttonNamed(dlg, "restore: Your opening hand")!);
+    expect(sheet.hidden).toBe(false);
+    expect(dockOf(c).classList.contains("staged")).toBe(true);
+  });
+
+  // #2374: the game log opened from the top bar while the stage is up
+  // draws over the stage, and back under the dock once View table folds
+  // the stage away. (The stage starts under the bar, so the bar's
+  // buttons are not covered; that is CSS, which jsdom does not lay out.)
+  it("lifts the game log over the stage, and only while the stage is up", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    const openLog = c.querySelector<HTMLButtonElement>('button[aria-label="open game log"]')!;
+    expect(openLog).not.toBeNull();
+    expect(dockOf(c).contains(openLog)).toBe(false);
+    click(openLog);
+    const log = () => c.querySelector<HTMLElement>('aside[aria-label="game log"]');
+    expect(log()).not.toBeNull();
+    expect(log()!.classList.contains("over-stage")).toBe(true);
+    click(buttonNamed(dlg, "View table")!);
+    expect(log()!.classList.contains("over-stage")).toBe(false);
+    click(buttonNamed(dlg, "restore: Your opening hand")!);
+    expect(log()!.classList.contains("over-stage")).toBe(true);
+  });
+
+  it("asks for a wide sheet, so the seven cards are full size (#2200)", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    const sheet = dlg.querySelector<HTMLElement>(".dock-sheet")!;
+    // jsdom has no layout: the contract is the width the sheet asks for
+    // (CSS caps it at the screen less 24px). 720px gave ~95px cards.
+    expect(sheet.style.getPropertyValue("--sheet-want")).toBe(`${SHEET_HAND_WIDTH}px`);
+    expect(SHEET_HAND_WIDTH).toBeGreaterThan(7 * 200);
+    // The hand is still in the sheet, and the buttons are still in the bar.
+    expect(sheet.querySelectorAll(".mulligan-card")).toHaveLength(7);
+    expect(buttonNamed(dlg, "Keep hand")).not.toBeNull();
+    expect(buttonNamed(dlg, "Mulligan")).not.toBeNull();
+    expect(sheet.contains(buttonNamed(dlg, "Keep hand"))).toBe(false);
+  });
+
   it("puts Keep hand in the corner and Mulligan on the left of the bar, and sends each", async () => {
     const c = await mountGame(mulliganTable());
     const dlg = expectSheet(c, "keep or mulligan your hand");
@@ -298,6 +363,28 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     expect(FakeSocket.last!.actions("keep_hand")).toHaveLength(0);
     keydown("Enter");
     expect(FakeSocket.last!.actions("keep_hand")).toHaveLength(1);
+  });
+
+  it("waits for the seat whose turn it is: names it and presses nothing (CR 103.5)", async () => {
+    const c = await mountGame(mulliganTable(0, false));
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    expect(dlg.textContent).toContain("Waiting for Opp to decide");
+    const keepBtn = buttonNamed(dlg, "Keep hand")!;
+    const mullBtn = buttonNamed(dlg, "Mulligan")!;
+    expect(keepBtn.disabled).toBe(true);
+    expect(mullBtn.disabled).toBe(true);
+    blur();
+    keydown("Enter");
+    expect(FakeSocket.last!.actions("keep_hand")).toHaveLength(0);
+    expect(FakeSocket.last!.actions("mulligan")).toHaveLength(0);
+  });
+
+  it("enables Keep and Mulligan for the deciding seat, with no waiting line", async () => {
+    const c = await mountGame(mulliganTable());
+    const dlg = expectSheet(c, "keep or mulligan your hand");
+    expect(dlg.textContent).not.toContain("Waiting for");
+    expect(buttonNamed(dlg, "Keep hand")!.disabled).toBe(false);
+    expect(buttonNamed(dlg, "Mulligan")!.disabled).toBe(false);
   });
 
   it("takes focus into the sheet when it opens", async () => {

@@ -215,6 +215,9 @@ export type ActionType =
   // at the table for fun. Never a game roll, never undoable, and the
   // server takes one per seat per 2 s.
   | "roll_table_die"
+  // #1530: `{always_ask: boolean}` — the seat's own "always ask me to
+  // order my triggers" preference. A setting, not a play: never undoable.
+  | "set_trigger_order_preference"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -947,6 +950,11 @@ export type LogKind =
   // added: phase kinds in order, comma-separated ("combat,main"), or
   // "step:<step>" for one step ("step:end").
   | "extra_phase"
+  // #2165, CR 724.1: an effect ended the turn (Sundial of the Infinite,
+  // Time Stop). `seat` is the active player, whose turn it was, and
+  // `card_id` the card whose effect ended it. The stack's exile lines
+  // and a `step` line for the cleanup step follow it.
+  | "turn_ended"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -1730,6 +1738,14 @@ export interface PlayerView {
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
   hand_kept?: boolean;
+  // CR 103.5 (#2237): true on the one seat whose turn it is to keep or
+  // mulligan. Mulligan decisions go in turn order, starting player
+  // first. Omitempty: absent on every other seat.
+  mulligan_turn?: boolean;
+  // #1530: this seat's "always ask me to order my triggers" preference.
+  // Present (true) only in the seat's OWN view; the server blanks it for
+  // everyone else. Omitempty: absent means off.
+  trigger_order_always_ask?: boolean;
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.
@@ -1948,6 +1964,25 @@ export interface ModeSpecView {
   // turn]" on an activated ability. Each option this object's ability
   // has already chosen carries `used: true`.
   not_chosen?: ModeNotChosen;
+  // #2126, CR 702.120a: "Escalate [cost]" — what each mode beyond the
+  // first costs. Present only on an escalate spell. `max` above is
+  // already clamped to 1 + `max_extra`, so the picker never offers a
+  // count whose cards or creatures the viewer lacks.
+  escalate?: EscalateView;
+}
+
+// EscalateView is ModeSpecView.escalate. Discards ride cast_spell's
+// `discard_ids` and taps ride `teamwork_ids`, (modes - 1) times the
+// per-mode count each.
+export interface EscalateView {
+  label: string;
+  mana_cost?: string;
+  discard_cards?: number;
+  tap_creatures?: number;
+  // The viewer's untapped creatures that could pay the taps.
+  tap_options?: string[];
+  // Per viewer: the most extra modes the non-mana half can be paid for.
+  max_extra: number;
 }
 
 // AdditionalCostView is the "As an additional cost to cast this
@@ -3376,8 +3411,9 @@ export interface ProtectionView {
   // "artifacts", "everything". Badge tooltip text.
   printed: string;
   // Which characteristic of a source the quality is compared
-  // against: "color", "card_type", "subtype", "everything" or
-  // "player".
+  // against: "color", "card_type", "subtype", "everything",
+  // "player", "mana_value_at_most" (value = the bound N, #2181) or
+  // "ring_bearer" (#2145).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

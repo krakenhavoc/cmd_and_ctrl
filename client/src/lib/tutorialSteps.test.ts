@@ -1,6 +1,7 @@
-// tutorialSteps.test.ts — the nine middle steps (ADR 0076 §2.1, #1081):
-// each step's anchor, predicate, detour and "cannot", against boards
-// shaped like the practice table's, and one walk through all eleven.
+// tutorialSteps.test.ts — the middle steps (ADR 0076 §2.1, #1081; ADR
+// 0125 §5.1): each step's anchor, predicate, detour and "cannot", against
+// boards shaped like the practice table's, what each step teaches (§5.3),
+// and one walk through all fourteen.
 
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import {
@@ -10,15 +11,17 @@ import {
   createTutorialRun,
   statusText,
   type CopyContext,
-  type StepContext,
   type TutorialStep,
 } from "./tutorial";
 import {
   ATTACK,
   CAST_CREATURE,
+  COMMANDER,
   HANDOFF,
   LAND_PILES,
   MOVE_ALONG,
+  ON_THE_STACK,
+  OPENING_ROLL,
   PLAY_LAND,
   READ_HAND,
   RIGHT_CLICK,
@@ -29,7 +32,22 @@ import {
   WELCOME,
   abilityCardID,
 } from "./tutorialSteps";
-import type { CardView, GameView } from "./protocol";
+import { L } from "./labels";
+import { HINTS } from "./hints";
+import type { GameView } from "./protocol";
+import {
+  BOT,
+  ME,
+  auto,
+  board,
+  card,
+  ctx,
+  elves,
+  forest,
+  marwyn,
+  walker,
+  type Board,
+} from "./test/tutorialBoards";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -38,115 +56,53 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const ME = "me";
-const BOT = "bot";
 const keys: CopyContext = { helpKey: "?", settingsKey: ",", nextKey: "Space" };
 const noKeys: CopyContext = { helpKey: "", settingsKey: "", nextKey: "" };
 
-let n = 0;
-function card(name: string, type: string, extra: Partial<CardView> = {}): CardView {
-  n += 1;
-  return {
-    instance_id: `${name.toLowerCase().replace(/\W+/g, "-")}-${n}`,
-    name,
-    owner: ME,
-    controller: ME,
-    type_line: type,
-    ...extra,
-  } as CardView;
-}
-const forest = (extra: Partial<CardView> = {}) =>
-  card("Forest", "Basic Land — Forest", {
-    mana_abilities: [{ index: 0, label: "Add {G}" }] as unknown as CardView["mana_abilities"],
-    ...extra,
-  });
-const elves = (extra: Partial<CardView> = {}) =>
-  card("Llanowar Elves", "Creature — Elf Druid", {
-    mana_abilities: [{ index: 0, label: "Add {G}" }] as unknown as CardView["mana_abilities"],
-    ...extra,
-  });
-const walker = (extra: Partial<CardView> = {}) =>
-  card("Phyrexian Walker", "Artifact Creature — Phyrexian Construct", extra);
-
-interface Board {
-  step?: string;
-  active?: number;
-  priority?: number;
-  seq?: number;
-  mine?: CardView[];
-  theirs?: CardView[];
-  hand?: CardView[];
-  pool?: string[];
-  landsPlayed?: number;
-  stack?: CardView[];
-}
-
-function board(b: Board = {}): GameView {
-  const zone = (kind: string, cards: CardView[] = []) => ({ kind, count: cards.length, cards });
-  const seat = (id: string, i: number, hand: CardView[] = []) => ({
-    id,
-    name: id === ME ? "Player" : "Practice Bot",
-    seat: i,
-    life: 40,
-    library: zone("library"),
-    hand: zone("hand", hand),
-    graveyard: zone("graveyard"),
-    command: zone("command"),
-    mana_pool: id === ME ? (b.pool ?? []) : [],
-    lands_played_this_turn: id === ME ? (b.landsPlayed ?? 0) : 0,
-  });
-  return {
-    id: "g",
-    state: "active",
-    seats: [seat(ME, 0, b.hand ?? [forest(), elves()]), seat(BOT, 1)],
-    battlefield: zone("battlefield", [
-      ...(b.mine ?? []),
-      ...(b.theirs ?? []).map((c) => ({ ...c, owner: BOT, controller: BOT })),
-    ]),
-    stack: zone("stack", b.stack ?? []),
-    exile: zone("exile"),
-    stack_items: [],
-    turn: {
-      seq: b.seq ?? 1,
-      number: 1,
-      active_seat: b.active ?? 0,
-      priority_holder: b.priority ?? b.active ?? 0,
-      phase: "",
-      step: b.step ?? "precombat_main",
-    },
-    mulligans_open: false,
-  } as unknown as GameView;
-}
-
-const ctx = (
-  view: GameView | null,
-  start: GameView | null = view,
-  event = null,
-  autopass = false,
-): StepContext => ({
-  view,
-  start,
-  viewerID: ME,
-  event,
-  client: { autopass },
-});
-const auto = (view: GameView | null, start: GameView | null = view) => ctx(view, start, null, true);
-
 describe("the script", () => {
-  it("is eleven steps in ADR 0076 §2.1's order, ids and kinds", () => {
+  it("is fourteen steps in ADR 0125 §5.1's order, ids and kinds", () => {
     expect(TUTORIAL_STEPS).toHaveLength(TUTORIAL_STEP_COUNT);
+    expect(TUTORIAL_STEP_COUNT).toBe(14);
     expect(TUTORIAL_STEPS.map((s) => [s.n, s.id, s.kind])).toEqual([
       [1, "welcome", "opening"],
-      [2, "read-hand", "action"],
-      [3, "play-land", "action"],
-      [4, "land-piles", "action"],
-      [5, "tap-land", "action"],
-      [6, "cast-creature", "action"],
-      [7, "right-click", "action"],
-      [8, "move-along", "action"],
-      [9, "watch-bot", "action"],
-      [10, "attack", "action"],
-      [11, "handoff", "done"],
+      [2, "opening-roll", "action"],
+      [3, "read-hand", "action"],
+      [4, "play-land", "action"],
+      [5, "land-piles", "action"],
+      [6, "tap-land", "action"],
+      [7, "cast-creature", "action"],
+      [8, "on-the-stack", "action"],
+      [9, "right-click", "action"],
+      [10, "commander", "action"],
+      [11, "move-along", "action"],
+      [12, "watch-bot", "action"],
+      [13, "attack", "action"],
+      [14, "handoff", "done"],
+    ]);
+  });
+
+  it("teaches the hints ADR 0125 §5.1 lists, and only live table hints", () => {
+    expect(
+      TUTORIAL_STEPS.filter((s) => s.teaches?.length).map((s) => [s.n, [...s.teaches!]]),
+    ).toEqual([
+      [2, ["table.opening-roll"]],
+      [8, ["table.stack"]],
+      [9, ["table.right-click"]],
+      [10, ["table.commander"]],
+      [11, ["table.dock"]],
+      [14, ["table.more", "table.shortcuts"]],
+    ]);
+    const live = new Map(HINTS.map((h) => [h.id, h]));
+    for (const s of TUTORIAL_STEPS) {
+      for (const id of s.teaches ?? []) {
+        expect(live.get(id)?.place, `${s.id} teaches ${id}`).toBe("table");
+      }
+    }
+  });
+
+  it("holds every step but the roll's own while the roll is open", () => {
+    expect(TUTORIAL_STEPS.filter((s) => s.duringOpeningRoll).map((s) => s.id)).toEqual([
+      "opening-roll",
     ]);
   });
 
@@ -165,11 +121,21 @@ describe("the script", () => {
 
   it("anchors to the labels the e2e suite asserts on, scoped to your board", () => {
     const v = board({ mine: [forest(), elves()] });
+    expect(anchorsOf(OPENING_ROLL, ctx(board({ hand: [], roll: {} })))).toEqual([
+      { label: "roll for the first turn" },
+    ]);
+    expect(anchorsOf(OPENING_ROLL, ctx(board({ hand: [], roll: { rolls: [[0, 9]] } })))).toEqual([
+      { label: "opening roll" },
+    ]);
     expect(anchorsOf(READ_HAND, ctx(v))).toEqual([{ label: "your hand" }]);
     expect(anchorsOf(PLAY_LAND, ctx(v))).toEqual([{ label: "your hand" }]);
     expect(anchorsOf(LAND_PILES, ctx(v))).toEqual([{ label: "lands", within: "your board" }]);
     expect(anchorsOf(TAP_LAND, ctx(v))).toEqual([{ label: "lands", within: "your board" }]);
     expect(anchorsOf(CAST_CREATURE, ctx(v))).toEqual([{ label: "your hand" }]);
+    expect(anchorsOf(ON_THE_STACK, ctx(v))).toEqual([{ label: L.stackPile.any }]);
+    expect(anchorsOf(COMMANDER, ctx(v))).toEqual([
+      { label: L.commandZone.any, within: "your board" },
+    ]);
     expect(anchorsOf(MOVE_ALONG, ctx(v))).toEqual([{ label: "actions" }]);
     expect(anchorsOf(WATCH_BOT, ctx(v))).toEqual([{ label: "autopass", within: "actions" }]);
     expect(anchorsOf(ATTACK, ctx(v))).toEqual([
@@ -195,10 +161,10 @@ describe("the script", () => {
       const text = [s.title, s.body, s.hint, s.recover?.title, s.recover?.body, s.recover?.hint]
         .map((c) => copyText(c, keys))
         .join(" ");
-      expect(text, s.id).not.toContain("⋯");
       // Every sentence that names Undo says where it is: the dock.
       for (const m of text.match(/[^.]*\bUndo\b[^.]*/g) ?? []) {
         expect(m, s.id).toMatch(/in the dock beside autopass/);
+        expect(m, s.id).not.toContain("⋯");
       }
     }
     expect(copyText(TAP_LAND.recover?.hint, keys)).toMatch(/Undo, in the dock beside autopass/);
@@ -215,14 +181,109 @@ describe("step 1: welcome", () => {
   });
 });
 
-describe("step 2: read your hand", () => {
+// ADR 0125 §5.1, §5.2: the practice table opens the opening roll.
+describe("step 2: roll for the first turn", () => {
+  const rolling = (roll: Board["roll"]) => board({ hand: [], step: "untap", roll });
+
+  it("is the one step the roll does not hold, and completes when the roll is over", () => {
+    expect(OPENING_ROLL.duringOpeningRoll).toBe(true);
+    expect(OPENING_ROLL.done!(ctx(rolling({})))).toBe(false);
+    expect(
+      OPENING_ROLL.done!(
+        ctx(
+          rolling({
+            rolls: [
+              [0, 19],
+              [1, 4],
+            ],
+            chooser: 0,
+          }),
+        ),
+      ),
+    ).toBe(false);
+    expect(OPENING_ROLL.done!(ctx(board({ step: "upkeep" })))).toBe(true);
+    expect(OPENING_ROLL.done!(ctx(null))).toBe(false);
+  });
+
+  it("says to press Roll, with the d20 and the tie in its hint", () => {
+    expect(copyText(OPENING_ROLL.title, keys)).toBe("Roll for the first turn");
+    expect(copyText(OPENING_ROLL.body, keys)).toBe(
+      "Every game starts with a roll for the first turn. Press Roll in the dock.",
+    );
+    expect(OPENING_ROLL.hint).toMatch(/a tie rolls again/);
+  });
+
+  it("points at Roll while you owe a die, and at the banner while the bot does", () => {
+    expect(anchorsOf(OPENING_ROLL, ctx(rolling({})))).toEqual([{ label: L.rollForFirstTurn }]);
+    const waiting = ctx(rolling({ rolls: [[0, 14]] }));
+    expect(anchorsOf(OPENING_ROLL, waiting)).toEqual([{ label: L.openingRoll }]);
+    expect(statusText(OPENING_ROLL, waiting)).toBe("Waiting for Practice Bot to roll");
+    const botChooses = ctx(
+      rolling({
+        rolls: [
+          [0, 3],
+          [1, 18],
+        ],
+        chooser: 1,
+      }),
+    );
+    expect(statusText(OPENING_ROLL, botChooses)).toBe("Practice Bot is choosing who goes first");
+    // Your own roll and your own choice need no status: the card says it.
+    expect(statusText(OPENING_ROLL, ctx(rolling({})))).toBeUndefined();
+  });
+
+  it("detours onto the chooser's sheet, or its confirm, when you win", () => {
+    const won = ctx(
+      rolling({
+        rolls: [
+          [0, 19],
+          [1, 4],
+        ],
+        chooser: 0,
+      }),
+    );
+    const d = OPENING_ROLL.first!(won)!;
+    expect(d.id).toBe("choose-first");
+    expect(copyText(d.title, keys)).toBe("You won the roll");
+    expect(copyText(d.body, keys)).toBe(
+      "Choose who goes first. For this game, take it yourself: press I go first.",
+    );
+    expect(d.anchor).toEqual([{ label: L.chooseFirstTurn }, { label: L.giveFirstTurn.any }]);
+    expect(
+      OPENING_ROLL.first!(
+        ctx(
+          rolling({
+            rolls: [
+              [0, 3],
+              [1, 18],
+            ],
+            chooser: 1,
+          }),
+        ),
+      ),
+    ).toBeNull();
+    expect(OPENING_ROLL.first!(ctx(rolling({})))).toBeNull();
+  });
+});
+
+describe("step 3: read your hand", () => {
   it("completes on a 600ms rest, and a touch on the hand on a phone", () => {
     expect(READ_HAND.hover).toEqual({ ms: 600, event: "hand-hovered" });
     expect(READ_HAND.done).toBeUndefined();
   });
+
+  // #2346: the opening hand is a stage over the whole table, so the hand
+  // on the board cannot be rested on until it is kept.
+  it("detours to the opening hand while it is still to be kept", () => {
+    const d = READ_HAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: false } })))!;
+    expect(d.id).toBe("keep-hand");
+    expect(d.anchor).toEqual({ label: "keep or mulligan your hand" });
+    expect(READ_HAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: true } })))).toBeNull();
+    expect(READ_HAND.first!(ctx(board({ step: "upkeep" })))).toBeNull();
+  });
 });
 
-describe("step 3: play a land", () => {
+describe("step 4: play a land", () => {
   it("completes when a land joins your board", () => {
     const before = board({ hand: [forest()] });
     expect(PLAY_LAND.done!(ctx(before))).toBe(false);
@@ -252,6 +313,25 @@ describe("step 3: play a land", () => {
     expect(PLAY_LAND.first!(ctx(board({ active: 1 })))?.id).toBe("await-turn");
   });
 
+  // Since the roll comes first, this step can begin while the opening
+  // hand still waits on the player, when `next` does nothing for them.
+  it("detours to the opening hand while it is still to be kept", () => {
+    const d = PLAY_LAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: false } })))!;
+    expect(d.id).toBe("keep-hand");
+    expect(d.anchor).toEqual({ label: "keep or mulligan your hand" });
+    expect(copyText(d.title, keys)).toBe("First, keep your hand");
+    expect(copyText(d.body, keys)).toBe(
+      "Keep hand, under your opening hand, starts the game. A mulligan works too.",
+    );
+    // Kept, with the bot still deciding: on to the main phase.
+    expect(PLAY_LAND.first!(ctx(board({ step: "upkeep", mulligan: { kept: true } })))?.id).toBe(
+      "to-main",
+    );
+    expect(
+      CAST_CREATURE.first!(ctx(board({ step: "upkeep", mulligan: { kept: false } })))?.id,
+    ).toBe("keep-hand");
+  });
+
   it("cannot happen with no land in hand", () => {
     expect(PLAY_LAND.cannot!(ctx(board({ hand: [elves()] })))).toBe("no land in hand");
     expect(PLAY_LAND.cannot!(ctx(board()))).toBeNull();
@@ -259,14 +339,14 @@ describe("step 3: play a land", () => {
   });
 });
 
-describe("step 4: lands stack into piles", () => {
+describe("step 5: lands stack into piles", () => {
   it("completes on a rest over your lands row, pile or not", () => {
     expect(LAND_PILES.hover).toEqual({ ms: 600, event: "pile-hovered" });
     expect(copyText(LAND_PILES.hint, keys)).toMatch(/Next turn's Forest joins it/);
   });
 });
 
-describe("step 5: tap a land for mana", () => {
+describe("step 6: tap a land for mana", () => {
   it("completes when mana is in your pool", () => {
     expect(TAP_LAND.done!(ctx(board({ mine: [forest()] })))).toBe(false);
     expect(TAP_LAND.done!(ctx(board({ mine: [forest({ tapped: true })], pool: ["G"] })))).toBe(
@@ -291,7 +371,7 @@ describe("step 5: tap a land for mana", () => {
   });
 });
 
-describe("step 6: cast a creature", () => {
+describe("step 7: cast a creature", () => {
   it("completes when a creature joins your board", () => {
     const before = board({ mine: [forest()] });
     expect(CAST_CREATURE.done!(ctx(before))).toBe(false);
@@ -303,14 +383,30 @@ describe("step 6: cast a creature", () => {
     expect(CAST_CREATURE.done!(ctx(settled, settled))).toBe(false);
   });
 
-  it("says to press next while your creature waits on the stack", () => {
-    const v = board({ stack: [elves()] });
-    const d = CAST_CREATURE.first!(ctx(v))!;
-    expect(d.id).toBe("resolve");
-    expect(d.anchor).toEqual({ label: "actions" });
-    expect(copyText(d.body, keys)).toMatch(/Press next \(Space\) in the dock/);
+  // ADR 0125 §5.1: done while the spell is on the stack, so step 8 can
+  // teach the pile; the old "Now let it resolve" detour is step 8 now.
+  it("completes the moment your creature spell is on the stack", () => {
+    const before = board({ mine: [forest()] });
+    expect(CAST_CREATURE.done!(ctx(board({ mine: [forest()], stack: [elves()] }), before))).toBe(
+      true,
+    );
+    // Someone else's creature on the stack is not yours.
+    const theirs = elves({ controller: BOT, owner: BOT });
+    expect(CAST_CREATURE.done!(ctx(board({ mine: [forest()], stack: [theirs] }), before))).toBe(
+      false,
+    );
+    // A non-creature spell is not the lesson either.
+    expect(CAST_CREATURE.done!(ctx(board({ mine: [forest()], stack: [forest()] }), before))).toBe(
+      false,
+    );
+  });
+
+  it("detours to your main phase, and has no resolve detour any more", () => {
     expect(CAST_CREATURE.first!(ctx(board({ step: "draw" })))?.id).toBe("to-main");
     expect(CAST_CREATURE.first!(ctx(board()))).toBeNull();
+    for (const b of [board({ stack: [elves()] }), board({ stack: [walker()] })]) {
+      expect(CAST_CREATURE.first!(ctx(b))?.id).not.toBe("resolve");
+    }
   });
 
   it("cannot happen with no creature in hand or on the stack", () => {
@@ -345,7 +441,63 @@ describe("step 6: cast a creature", () => {
   });
 });
 
-describe("step 7: abilities live on right-click", () => {
+// ADR 0125 §5.1: the stack pile, while the creature waits on it.
+describe("step 8: your spell is on the stack", () => {
+  const f = () => forest({ tapped: true });
+
+  it("points at the stack pile and names your own next key", () => {
+    expect(copyText(ON_THE_STACK.body, keys)).toBe(
+      "Your creature waits on the stack, on the left, until both players pass. Press next (Space) in the dock and it resolves.",
+    );
+    expect(copyText(ON_THE_STACK.body, noKeys)).toContain("Press next in the dock");
+  });
+
+  it("completes when the stack empties with the creature on the battlefield", () => {
+    const e = elves();
+    const land = f();
+    const waiting = board({ mine: [land], stack: [e] });
+    expect(ON_THE_STACK.done!(ctx(waiting, waiting))).toBe(false);
+    const arrived = board({ mine: [land, { ...e, summoning_sick: true }] });
+    expect(ON_THE_STACK.done!(ctx(arrived, waiting))).toBe(true);
+    expect(ON_THE_STACK.cannot!(ctx(waiting, waiting))).toBeNull();
+  });
+
+  it("gives up when the stack was already empty as it began", () => {
+    const resolved = board({ mine: [f(), elves({ summoning_sick: true })] });
+    expect(ON_THE_STACK.done!(ctx(resolved, resolved))).toBe(false);
+    expect(ON_THE_STACK.cannot!(ctx(resolved, resolved))).toBe("the stack was already empty");
+  });
+
+  it("gives up when the spell leaves the stack without arriving", () => {
+    const land = f();
+    const waiting = board({ mine: [land], stack: [elves()] });
+    const countered = board({ mine: [land] });
+    expect(ON_THE_STACK.done!(ctx(countered, waiting))).toBe(false);
+    expect(ON_THE_STACK.cannot!(ctx(countered, waiting))).toBe(
+      "the spell left the stack without resolving",
+    );
+  });
+});
+
+// ADR 0125 §5.1: the commander beside the hand, a hover step with no bus event.
+describe("step 10: your commander", () => {
+  it("completes on a rest over your commander, with no touch event", () => {
+    expect(COMMANDER.hover).toEqual({ ms: 600 });
+    expect(COMMANDER.hover?.event).toBeUndefined();
+    expect(COMMANDER.done).toBeUndefined();
+    expect(copyText(COMMANDER.body, keys)).toBe(
+      "Your commander waits here, in the command zone beside your hand. Once your lands can pay for it, click it to cast it.",
+    );
+  });
+
+  it("gives up with no commander in the zone", () => {
+    expect(COMMANDER.cannot!(ctx(board()))).toBe("no commander in the command zone");
+    expect(COMMANDER.cannot!(ctx(board({ command: [marwyn()] })))).toBeNull();
+    expect(COMMANDER.cannot!(ctx(null))).toBeNull();
+  });
+});
+
+describe("step 9: abilities live on right-click", () => {
   it("points at your newest creature with a menu, else an untapped land, else any", () => {
     const f1 = forest({ tapped: true });
     const f2 = forest();
@@ -390,7 +542,7 @@ describe("step 7: abilities live on right-click", () => {
   });
 });
 
-describe("step 8: move the turn along", () => {
+describe("step 11: move the turn along", () => {
   it("completes when the step or the turn changes", () => {
     const main = board();
     expect(MOVE_ALONG.done!(ctx(main, main))).toBe(false);
@@ -400,7 +552,7 @@ describe("step 8: move the turn along", () => {
   });
 });
 
-describe("step 9: let the bot play (autopass)", () => {
+describe("step 12: let the bot play (autopass)", () => {
   it("completes once autopass is on and the bot's turn is running by itself", () => {
     const mine = board({ step: "begin_combat", seq: 1 });
     const theirs = board({ seq: 2, active: 1, priority: 1 });
@@ -433,7 +585,7 @@ describe("step 9: let the bot play (autopass)", () => {
   });
 });
 
-describe("step 10: attack", () => {
+describe("step 13: attack", () => {
   const ready = () => elves();
 
   it("completes when one of your creatures is attacking", () => {
@@ -491,20 +643,52 @@ describe("step 10: attack", () => {
 });
 
 // One player's first two turns, as the practice table plays them: the
-// machine walks all eleven steps on nothing but the board and the bus.
+// machine walks all fourteen steps on nothing but the board, the bus and
+// the coach's hover reports, and reports what each completed step teaches.
 describe("a whole tutorial", () => {
-  it("walks steps 1 to 11 on the boards a first game produces", () => {
+  it("walks steps 1 to 14 on the boards a first game produces", () => {
     const log = vi.fn();
+    const taught: string[] = [];
     const hand = [forest(), forest(), elves(), walker()];
-    let view = board({ step: "upkeep", hand });
-    const run = createTutorialRun(TUTORIAL_STEPS, { viewerID: ME, view, log });
+    const cmd = [marwyn()];
+    let view = board({ hand: [], step: "untap", seq: 0, roll: {} });
+    const run = createTutorialRun(TUTORIAL_STEPS, {
+      viewerID: ME,
+      view,
+      log,
+      onComplete: (s) => taught.push(...(s.teaches ?? [])),
+    });
     const at = () => run.current().step.id;
     const move = (b: Board) => {
-      view = board(b);
+      view = board({ command: cmd, ...b });
       run.observe(view);
     };
     run.start();
+    // The roll: Roll, the bot rolls, the player wins and takes the turn.
+    expect(at()).toBe("opening-roll");
+    expect(run.current().held).toBe(false);
+    move({ hand: [], step: "untap", seq: 0, roll: { rolls: [[0, 17]] } });
+    expect(anchorsOf(run.current().step, run.context())).toEqual([{ label: L.openingRoll }]);
+    move({
+      hand: [],
+      step: "untap",
+      seq: 0,
+      roll: {
+        rolls: [
+          [0, 17],
+          [1, 6],
+        ],
+        chooser: 0,
+      },
+    });
+    expect(run.current().detour?.id).toBe("choose-first");
+    // The deal: the opening hand waits to be kept.
+    move({ step: "upkeep", hand, mulligan: { kept: false } });
     expect(at()).toBe("read-hand");
+    // The opening hand is a stage over the table: keep it first.
+    expect(run.current().detour?.id).toBe("keep-hand");
+    move({ step: "upkeep", hand });
+    expect(run.current().detour).toBeNull();
     run.hovered("read-hand");
     expect(at()).toBe("play-land");
     expect(run.current().detour?.id).toBe("to-main");
@@ -525,7 +709,9 @@ describe("a whole tutorial", () => {
       landsPlayed: 1,
       stack: [e],
     });
-    expect(run.current().detour?.id).toBe("resolve");
+    // On the stack: step 8 shows the pile while it waits.
+    expect(at()).toBe("on-the-stack");
+    expect(anchorsOf(run.current().step, run.context())).toEqual([{ label: L.stackPile.any }]);
     const resolved = {
       mine: [
         { ...f, tapped: true },
@@ -539,6 +725,8 @@ describe("a whole tutorial", () => {
     // The creature just cast: the deck's mana creatures are there for this step.
     expect(anchorsOf(run.current().step, run.context())).toEqual([{ cardID: e.instance_id }]);
     run.observe(view, "ability-menu-opened");
+    expect(at()).toBe("commander");
+    run.hovered("commander");
     expect(at()).toBe("move-along");
     move({ ...resolved, step: "begin_combat" });
     expect(at()).toBe("watch-bot");
@@ -548,7 +736,7 @@ describe("a whole tutorial", () => {
     expect(at()).toBe("watch-bot");
     move({ ...resolved, step: "end" });
     move({ seq: 2, active: 1, step: "upkeep", mine: [f, e], hand: [hand[1], hand[3]] });
-    // The bot's turn is running by itself: step 10 watches it.
+    // The bot's turn is running by itself: step 13 watches it.
     expect(at()).toBe("attack");
     expect(run.current().detour?.id).toBe("watch-bot");
     move({ seq: 3, active: 0, step: "upkeep", mine: [f, e], hand: [hand[1], hand[3]] });
@@ -565,7 +753,53 @@ describe("a whole tutorial", () => {
       mine: [f, { ...e, attacking_target: BOT, tapped: true }],
     });
     expect(run.current().step).toBe(HANDOFF);
+    expect(taught).toEqual([
+      "table.opening-roll",
+      "table.stack",
+      "table.right-click",
+      "table.commander",
+      "table.dock",
+    ]);
+    // Finish: the hand-off was read to the end.
+    run.close();
+    expect(taught.slice(-2)).toEqual(["table.more", "table.shortcuts"]);
     expect(log).not.toHaveBeenCalled();
+  });
+
+  it("teaches nothing a skipped step would have taught", () => {
+    const taught: string[] = [];
+    const run = createTutorialRun(TUTORIAL_STEPS, {
+      viewerID: ME,
+      view: board({ hand: [], step: "untap", seq: 0, roll: {} }),
+      log: () => {},
+      onComplete: (s) => taught.push(...(s.teaches ?? [])),
+    });
+    run.start();
+    while (run.current().step !== HANDOFF) run.skipStep();
+    expect(taught).toEqual([]);
+  });
+
+  // The gap PR 3 left (ADR 0125 §5.2): a step entered during the roll
+  // lost its timeout to the hold, and never got it back.
+  it("gives step 12 its whole timeout once the roll is over, if entered during it", () => {
+    const log = vi.fn();
+    const run = createTutorialRun(TUTORIAL_STEPS, {
+      viewerID: ME,
+      view: board({ hand: [], step: "untap", seq: 0, roll: {} }),
+      log,
+    });
+    run.start();
+    while (run.current().step.n < WATCH_BOT.n) run.skipStep();
+    expect(run.current()).toMatchObject({ step: WATCH_BOT, held: true });
+    vi.advanceTimersByTime(WATCH_TIMEOUT_MS * 2);
+    expect(run.current().step).toBe(WATCH_BOT);
+    run.observe(board({ step: "upkeep", mine: [elves()] }));
+    expect(run.current().held).toBe(false);
+    vi.advanceTimersByTime(WATCH_TIMEOUT_MS - 1);
+    expect(run.current().step).toBe(WATCH_BOT);
+    vi.advanceTimersByTime(1);
+    expect(run.current().step).toBe(ATTACK);
+    expect(log).toHaveBeenCalledWith("tutorial: step watch-bot timed out waiting; advancing");
   });
 
   it("moves on by itself through a stalled bot turn", () => {
@@ -597,5 +831,81 @@ describe("a whole tutorial", () => {
       "tutorial: step play-land cannot happen (no land in hand); advancing",
       "tutorial: step cast-creature cannot happen (no creature in hand); advancing",
     ]);
+  });
+});
+
+// ADR 0125 §5.2: the practice table opens with the opening roll, and
+// nothing is dealt until its winner chooses. No step may complete, give
+// up or advance itself on that empty board (heldByOpeningRoll).
+describe("while the opening roll is open", () => {
+  const rolling = (): GameView =>
+    ({
+      ...board({ hand: [], step: "untap", seq: 0 }),
+      opening_roll: { rounds: [{ seats: [0, 1], rolls: [] }], chooser: -1 },
+      mulligans_open: true,
+    }) as unknown as GameView;
+
+  it("read-hand does not complete on the empty hand, by a rest or a phone's timer", () => {
+    const log = vi.fn();
+    const run = createTutorialRun([WELCOME, READ_HAND, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    run.start();
+    expect(run.current()).toMatchObject({ step: READ_HAND, held: true });
+    run.hovered(READ_HAND.id);
+    run.advance(READ_HAND.id, "cannot be hovered on this device");
+    run.anchorMissing(READ_HAND.id);
+    expect(run.current().step).toBe(READ_HAND);
+    expect(log).not.toHaveBeenCalled();
+
+    // The deal lifts the hold, and the step completes as it always has.
+    run.observe(board({ hand: [forest(), elves()], step: "upkeep" }));
+    expect(run.current().held).toBe(false);
+    run.hovered(READ_HAND.id);
+    expect(run.current().step).toBe(PLAY_LAND);
+  });
+
+  it("play-land does not give up for want of a land in an undealt hand", () => {
+    const log = vi.fn();
+    const run = createTutorialRun([WELCOME, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    run.start();
+    run.observe(rolling());
+    expect(run.current().step).toBe(PLAY_LAND);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing once the roll has closed: a land in hand keeps the step, none gives it up", () => {
+    const log = vi.fn();
+    const run = createTutorialRun([WELCOME, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    run.start();
+    run.observe(board({ hand: [forest()], step: "upkeep" }));
+    expect(run.current()).toMatchObject({ step: PLAY_LAND, held: false });
+    expect(run.current().detour?.id).toBe("to-main");
+    expect(log).not.toHaveBeenCalled();
+    // The "+1" is measured from the dealt board.
+    run.observe(board({ mine: [forest()], hand: [], landsPlayed: 1 }));
+    expect(run.current().step).toBe(HANDOFF);
+
+    const gaveUp = createTutorialRun([WELCOME, PLAY_LAND, HANDOFF], {
+      viewerID: ME,
+      view: rolling(),
+      log,
+    });
+    gaveUp.start();
+    gaveUp.observe(board({ hand: [elves()] }));
+    expect(gaveUp.current().step).toBe(HANDOFF);
+    expect(log).toHaveBeenCalledWith(
+      "tutorial: step play-land cannot happen (no land in hand); advancing",
+    );
   });
 });

@@ -8,7 +8,8 @@
   // smaller one on the command bar, opening downward (lib/gameMenu.ts).
   //
   // A seat still in an active game also has the Dice section (ADR 0121
-  // §5): "Roll a d6", "Roll a d20" and "Flip a coin".
+  // §5): "Roll a d6", "Roll a d20" and "Flip a coin". Everyone has the
+  // Help section after Table (ADR 0125 §6).
   //
   // One trigger, one popover, which shows one of three things:
   //   - the menu itself (role="menu", "game actions");
@@ -36,6 +37,7 @@
     type GameMenuOptions,
   } from "../../gameMenu";
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
+  import { L } from "../../labels";
 
   type Props = GameMenuOptions & {
     // "up": the dock's chip. "down": the command bar's icon.
@@ -158,7 +160,7 @@
     bind:this={trigger}
     aria-haspopup="menu"
     aria-expanded={mode !== "closed"}
-    aria-label="more actions"
+    aria-label={L.moreActions}
     title={props.seated ? "sandbox actions and more" : "life history, the table and more"}
     onclick={toggle}><Icon name="more" size={placement === "up" ? 15 : 17} /></button
   >
@@ -168,7 +170,13 @@
   {/if}
 
   {#if mode === "menu"}
-    <div class="pop menu" role="menu" aria-label="game actions" tabindex="-1" onkeydown={onMenuKey}>
+    <div
+      class="pop menu"
+      role="menu"
+      aria-label={L.gameActions}
+      tabindex="-1"
+      onkeydown={onMenuKey}
+    >
       {#if props.seated}
         <div class="menu-h">Sandbox</div>
         <button class="mi" role="menuitem" onclick={via(props.onDraw)} title={props.drawTitle}>
@@ -205,7 +213,7 @@
              game roll and never undone. Disabled for 2 s after the
              viewer's own roll, matching the server's rate. -->
         {@const ready = props.tableRoll.ready}
-        <div class="menu-h">Dice</div>
+        <div class="menu-h">{L.dice}</div>
         {#each TABLE_ROLL_ITEMS as item (item.die)}
           <button
             class="mi"
@@ -303,6 +311,30 @@
       <button class="mi" role="menuitem" onclick={via(props.onBack)}>
         <Icon name="chevronLeft" size={15} /> Back to lobby
       </button>
+      <!-- ADR 0125 §6: Help, after Table. The tutorial is replayed on
+           the practice table only; a real table offers no practice
+           game, which would take the player out of their seat. -->
+      <div class="sep"></div>
+      <div class="menu-h">Help</div>
+      <button
+        class="mi"
+        role="menuitem"
+        onclick={via(() => props.onTableTips?.())}
+        title="show the table's tips again, at the next quiet moments"
+      >
+        <Icon name="help" size={15} />
+        {L.tipsForTheTable}
+      </button>
+      <button class="mi" role="menuitem" onclick={via(() => props.onShortcuts?.())}>
+        <Icon name="keys" size={15} />
+        {L.keyboardShortcutsItem}
+      </button>
+      {#if props.practice}
+        <button class="mi" role="menuitem" onclick={via(() => props.onReplayTutorial?.())}>
+          <Icon name="robot" size={15} />
+          {L.replayTutorial}
+        </button>
+      {/if}
       {#if props.seated}
         <div class="sep"></div>
         <!-- Last, and confirmed: Concede is irreversible. Disabled, not

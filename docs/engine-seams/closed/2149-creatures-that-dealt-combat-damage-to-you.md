@@ -1,0 +1,6 @@
+---
+title: "Creatures that dealt combat damage to you this turn"
+date: 2026-10-05
+issues: [2149]
+---
+**Creatures that dealt combat damage to you this turn** (#2149, CR 510.2, CR 400.7) — `TurnTally.DamageDealers` records which creature objects dealt damage to which player this turn: one `DamageDealtRecord` (source, epoch, victim, combat or not) per object and victim, written as the damage is dealt, while the dealer can still be read. The epoch is the creature's `ObjectEpoch` at that moment, so a creature that was flickered afterwards is a new object that did not deal the damage, and the record outlives a creature that died or a token that ceased to exist. It is carried by clone, snapshot and undo, omitted from the wire when empty, and resets with the rest of the turn tally. Read through `Game.CreaturesThatDealtCombatDamageToThisTurn`, `CreaturesThatDealtDamageToThisTurn`, `ObjectDealtCombatDamageToPlayerThisTurn` and `ObjectDealtDamageToPlayerThisTurn`. Card side (`cards/effects/damage_dealers.go`): the `DealtDamageToYouThisTurn()` and `DealtCombatDamageToYouThisTurn()` predicates for a target clause, and `dealtCombatDamageToPlayerThisTurn(victim)` for an edict. Cards: Witch-king of Angmar, Reciprocate, Retaliate and Spear of Heliod.

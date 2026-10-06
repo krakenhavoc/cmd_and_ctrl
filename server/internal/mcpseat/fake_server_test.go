@@ -59,9 +59,11 @@ type fakeServer struct {
 	// fullMoves is what legal_moves_request answers with.
 	fullMoves []legal.Move
 	cuts      []protocol.LegalCutView
-	meStatus  int
-	joinCode  int
-	joinMsg   string
+	// choiceMoves answers a legal_moves_request that names a choice.
+	choiceMoves map[string][]legal.Move
+	meStatus    int
+	joinCode    int
+	joinMsg     string
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -229,6 +231,9 @@ func (f *fakeServer) handleWS(w http.ResponseWriter, r *http.Request) {
 			f.moveReqs = append(f.moveReqs, req)
 			old := f.oldServer
 			rep := protocol.LegalMovesPayload{Seq: f.seq, Generation: f.gen, Moves: f.fullMoves, Truncated: f.cuts}
+			if cm, ok := f.choiceMoves[req.Choice]; ok && req.Choice != "" {
+				rep.Moves, rep.Truncated = cm, nil
+			}
 			f.mu.Unlock()
 			if old {
 				f.write(protocol.Frame{V: 0, Kind: protocol.KindError, ID: fr.ID,

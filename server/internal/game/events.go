@@ -900,6 +900,16 @@ const (
 	// name. Emitted as the plan is edited, before any of them begins.
 	EventPhasesAdded EventKind = "phases_added"
 
+	// EventTurnEnded — an effect ended the turn (CR 724.1, #2165,
+	// end_turn.go): Sundial of the Infinite, Time Stop. Actor is the
+	// active player, whose turn it is, Source the card whose effect
+	// ended it, and Amount the turn's Seq. Emitted once, as the process
+	// begins and before the stack is exiled, so the exile lines that
+	// follow read as part of it. The cleanup step it skips to begins
+	// with the ordinary EventStepBegan; a turn that ends normally emits
+	// no EventTurnEnded.
+	EventTurnEnded EventKind = "turn_ended"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,
 	// Round the table-facing rotation, and Label the step name. Emitted

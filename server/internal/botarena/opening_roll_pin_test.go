@@ -23,6 +23,39 @@ import (
 // lockstep game is a pure function of its seed (#1503), so its move log
 // is the whole game: a different starting seat, a different hand or a
 // different library order changes it.
+//
+// One deliberate exception, re-pinned by hand rather than regenerated
+// (#2275, 2026-10-05): CR 117.4's passes in succession. In seed 1503 a
+// random seat taps a Mountain for mana while holding priority in
+// another player's upkeep, after three seats have passed. A mana
+// ability is an action (CR 117.3c), so those three seats pass again
+// before the step ends — three more "Pass priority" lines and nothing
+// else: the same opening, the same hands, every other move identical.
+// The other two seeds never act between passes and are unchanged.
+//
+// A second deliberate exception, re-pinned by hand (#2237, 2026-10-05):
+// CR 103.5 mulligans in turn order. Keep and mulligan are now answered
+// starting with the starting seat, so the SAME decisions appear in a
+// different order, and the log's seat labels (the order of first
+// appearance) are renumbered because the starting seat now acts first.
+// Checked against the pre-change engine on seed 1503: the same starting
+// seat, the same keeps and mulligans (a random seat mulligans to seven,
+// then six, then keeps; the heuristic seats keep on four and three
+// lands), the same 359 moves and the same turn count. Only the order of
+// the opening lines and the labels differ. The digests below are of the
+// new order.
+//
+// It is also a function of the policies, so a change to how the
+// heuristic attacks or blocks changes a long game after its opening.
+// The four-heuristic case is therefore pinned only up to its first
+// declared attack (`opening`): the opening roll, the deal, the
+// mulligans and every move of the turns before combat, which is what
+// ADR 0121 promises to keep. Its digest is of those 440 lines of the
+// pre-ADR-0121 game: #1548 derived it from develop at d9291462, whose
+// whole move log still matched the full-game digest kept below (and
+// checked it again at ca8e4d29, after #2275's passes in succession), and
+// the heuristic's gang blocks and attrition horizon part from that
+// game only at move 770, in turn 8's combat.
 func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -31,6 +64,10 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 		turns  int
 		winner int
 		digest string
+		// opening pins only the move log before the first declared
+		// attack; moves is its length, and turns and winner are not
+		// asked.
+		opening bool
 	}{
 		{
 			name: "four seats, two rounds",
@@ -41,7 +78,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 356, turns: 3, winner: -1, digest: "2478ceb8cbea76b596f61a3456004c30b9553fcd9f042ecbb8fbdb72112397be",
+			moves: 359, turns: 3, winner: -1, digest: "296da15d6f1c0f8953b18f7d41ecedecae065bbcf88b2d0858745a8f7d75dd27",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -49,7 +86,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 411, turns: 9, winner: -1, digest: "eb52ed98509e0dfeb2455bf2731114b98d9d119208188b3ce267b4c59005bf30",
+			moves: 411, turns: 9, winner: -1, digest: "cf06761b9b6c7d2c3c67ad4772ac7cc612ced4c30ad60473bfd00a545b128056",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -60,7 +97,9 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 107, TurnBudget: 60, Wall: 5 * time.Minute, Lockstep: true,
 			},
-			moves: 1971, turns: 15, winner: 3, digest: "45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08",
+			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
+			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
+			opening: true, moves: 440, digest: "055cb3a9582a4431b6493a4a54c9bb81d222aa16d4acbc1bf8095bb5022a5a6c",
 		},
 	}
 	for _, c := range cases {
@@ -68,6 +107,15 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			res, lines := playLogged(t, c.cfg)
 			if res.Stalled {
 				t.Fatalf("the game stalled:\n%s", res.StallDump)
+			}
+			if c.opening {
+				for i, l := range lines {
+					if strings.Contains(l, `applied=true "Attack `) {
+						lines = lines[:i]
+						break
+					}
+				}
+				res.Turns, res.Winner = c.turns, c.winner
 			}
 			sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
 			got := hex.EncodeToString(sum[:])

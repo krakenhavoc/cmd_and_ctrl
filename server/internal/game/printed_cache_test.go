@@ -114,6 +114,10 @@ func TestPrintedCacheAgreesAcrossEveryPrintedMutation(t *testing.T) {
 		{"type line back to an equal string", func(c *Card) { c.TypeLine = strings.Clone("Creature — Human Werewolf") }},
 		{"name", func(c *Card) { c.Name = "Renamed" }},
 		{"mana cost, colours derived from it", func(c *Card) { c.Colors = nil; c.ManaCost = "{2}{U}{B}" }},
+		// #2152: devoid changes the derived colours without touching
+		// Colors or ManaCost — the keyword is the input.
+		{"devoid keyword appended (derived colours go)", func(c *Card) { c.Keywords = append(c.Keywords, KeywordDevoid) }},
+		{"devoid keyword dropped (derived colours back)", func(c *Card) { c.Keywords = c.Keywords[:len(c.Keywords)-1] }},
 		{"power", func(c *Card) { c.Power = 7 }},
 		{"toughness", func(c *Card) { c.Toughness = -1 }},
 		{"colours replaced", func(c *Card) { c.Colors = []string{"R"} }},
@@ -182,6 +186,22 @@ func TestPrintedCacheAgreesAcrossEveryPrintedMutation(t *testing.T) {
 	assertPrintedAgrees(t, "catalog printed keywords swapped under a stamped card", &c)
 	if !printedShared(&c).AllCreatureTypes {
 		t.Error("a catalog-declared changeling did not reach the cached read")
+	}
+
+	// #2152: the same for devoid, on a card whose colours are derived.
+	// Stamped with no devoid anywhere, then the catalog answer changes
+	// under it — the cached entry must not keep the cost's colours.
+	stubPrintedKeywords(t, nil)
+	c = cacheProbeCard()
+	c.Colors = nil
+	c.stampPrinted()
+	if got := printedShared(&c).Colors; len(got) != 1 || got[0] != "G" {
+		t.Fatalf("unstamped probe colours = %v, want [G] from the cost", got)
+	}
+	stubPrintedKeywords(t, map[string][]string{"printed-cache-probe": {KeywordDevoid}})
+	assertPrintedAgrees(t, "catalog declares devoid under a stamped card", &c)
+	if got := printedShared(&c).Colors; len(got) != 0 {
+		t.Errorf("a catalog-declared devoid did not reach the cached read: colours %v", got)
 	}
 }
 

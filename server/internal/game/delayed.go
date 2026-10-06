@@ -243,7 +243,35 @@ type DelayedTrigger struct {
 	// (resolveUntilReturnsLocked), which is before any player receives
 	// priority and before the state-based actions.
 	Due bool
+
+	// --- CR 603.7b: a trigger that keeps triggering (#2169) ----------
+
+	// Repeats keeps an event-conditioned trigger queued after it fires:
+	// "whenever a creature you control deals combat damage to that
+	// player THIS TURN" (Great Train Heist). CR 603.7b ends a delayed
+	// trigger the first time it triggers "unless it has a stated
+	// duration", and this is the stated duration: the trigger fires on
+	// every matching event until Duration runs out (cleanup, for "this
+	// turn"), which the same sweep that ends a Full Throttle does. A
+	// suppressed match does not fire it and does not end it. It is not
+	// tied to its source: the spell that made it is in a graveyard.
+	Repeats bool
+
+	// ManaTapSubtype and ManaAdds are the CR 605.1b twin: a triggered
+	// MANA ability a spell sets up for the turn. "Until end of turn,
+	// whenever a player taps a Swamp for mana, that player adds an
+	// additional {B}" (Bubbling Muck) is ManaTapSubtype "Swamp",
+	// ManaAdds "{B}". Such a record has no Body and no stack item:
+	// fireManaTriggersLocked reads it beside the permanents' own mana
+	// triggers, and it resolves at once (CR 605.4a). Always has a
+	// Duration. Plain data, so it snapshots verbatim.
+	ManaTapSubtype string
+	ManaAdds       string
 }
+
+// isManaTrigger reports whether this record is a triggered mana
+// ability set up for the turn rather than a stack trigger.
+func (dt *DelayedTrigger) isManaTrigger() bool { return dt.ManaAdds != "" }
 
 // ScheduleDelayedTriggerForEffect registers a delayed triggered
 // ability. Returns the trigger's ID, or uuid.Nil when the request is
@@ -261,13 +289,13 @@ type DelayedTrigger struct {
 // CR 614 replacement pipeline, where an EmitEvent would re-enter the
 // trigger harvester in the middle of replacing an event.
 func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
-	if dt.Body.key == "" {
+	if dt.Body.key == "" && !dt.isManaTrigger() {
 		// A forgotten Body: still compiles, would silently do nothing.
 		// Loud in a test binary, logged (never fatal) in production.
 		effectKeyFault(fmt.Sprintf("game: delayed trigger %q has no body — dropped", dt.Label))
 		return uuid.Nil
 	}
-	if dt.At == "" && len(dt.On) == 0 && !(dt.Until && dt.UntilLeaves.ID != uuid.Nil) {
+	if dt.At == "" && len(dt.On) == 0 && !dt.isManaTrigger() && !(dt.Until && dt.UntilLeaves.ID != uuid.Nil) {
 		return uuid.Nil
 	}
 	if !dt.Params.Filter.Valid() || !dt.CondParams.Filter.Valid() {
@@ -290,7 +318,7 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	// event-conditioned delayed trigger there is, and CR 514.2 ends
 	// it at cleanup whether or not it fired. A caller that means
 	// something longer hands over its own Duration.
-	if len(dt.On) > 0 && dt.Duration == nil {
+	if (len(dt.On) > 0 || dt.isManaTrigger()) && dt.Duration == nil {
 		d := g.UntilEndOfTurnDuration()
 		dt.Duration = &d
 	}
@@ -401,8 +429,8 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 
 // repeatsAtStep reports whether a step-conditioned trigger stays
 // queued after it fires: it has a stated duration (CR 603.7b, "…
-// each combat this turn"). An event-conditioned trigger always fires
-// once (#663's rule), duration or not.
+// each combat this turn"). An event-conditioned trigger fires once
+// (#663's rule) unless it says Repeats.
 func (dt *DelayedTrigger) repeatsAtStep() bool {
 	return len(dt.On) == 0 && dt.Duration != nil
 }
@@ -459,6 +487,9 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		Until:              dt.Until,
 		UntilLeaves:        dt.UntilLeaves,
 		Due:                dt.Due,
+		Repeats:            dt.Repeats,
+		ManaTapSubtype:     dt.ManaTapSubtype,
+		ManaAdds:           dt.ManaAdds,
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
@@ -545,6 +576,11 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 		}
 		if dt.matchesEventLocked(ev, g) && !g.delayedTriggerSuppressedLocked(pass, dt) {
 			fire = append(fire, dt)
+			if dt.Repeats {
+				// CR 603.7b: a stated duration ("this turn") keeps it
+				// queued; the duration sweep removes it.
+				keep = append(keep, dt)
+			}
 			continue
 		}
 		keep = append(keep, dt)
@@ -554,7 +590,7 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 	}
 	g.DelayedTriggers = keep
 	for _, dt := range fire {
-		g.dispatchEventDelayedTriggerLocked(ev, dt)
+		g.dispatchEventDelayedTriggerLocked(pass, dt)
 	}
 }
 
@@ -564,7 +600,7 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 //
 // Caller must hold g.mu.
 func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
-	if len(dt.On) == 0 || !triggerWatches(dt.On, ev.Kind) {
+	if dt.isManaTrigger() || len(dt.On) == 0 || !triggerWatches(dt.On, ev.Kind) {
 		return false
 	}
 	if dt.Condition.key == "" {
@@ -590,7 +626,8 @@ func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
 // closure clone-safe (ADR 0026 §4).
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
+func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedTrigger) {
+	ev := pass.ev
 	source, lki := g.triggerSourceLocked(dt.SourceCardID, dt.Controller)
 	label, body, params := dt.Label, dt.Body.key, cloneEffectParams(dt.Params)
 	cards := append([]uuid.UUID(nil), dt.Cards...)
@@ -623,7 +660,13 @@ func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
 			return item
 		},
 	}
-	g.dispatchTriggerLocked(ev, source, lki, ability)
+	// Trigger doublers see a delayed trigger like any other (#2169):
+	// the count is fixed at the moment it triggered, before prompts.
+	extra := g.triggerDoublersLocked(pass, source, lki, ability, false)
+	g.dispatchTriggerInstanceLocked(ev, source, lki, ability, doublerRef{})
+	for _, d := range extra {
+		g.dispatchTriggerInstanceLocked(ev, source, lki, ability, d)
+	}
 }
 
 // clearExpiredDelayedTriggersLocked drops every delayed trigger whose

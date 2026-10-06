@@ -99,6 +99,23 @@ const (
 	// pass keeps such an effect rather than dropping it silently.
 	WhileInZone
 
+	// UntilYourNextEndStep ends as the named player's NEXT end step
+	// begins (#2373): "exile the top card, until your next end step you
+	// may play it" — Ob Nixilis, Captive Kingpin, Haste Magic, Wiccan.
+	//
+	// The sixth kind, appended after WhileInZone so every persisted
+	// int keeps its meaning. A restore point written before it never
+	// carries it; one written after it is refused by an older binary
+	// through Known, never restored as a window that does not end.
+	//
+	// Which end step is "next" is stamped at creation
+	// (UntilYourNextEndStepDuration): this turn's when it is the
+	// player's own turn and their end step has not begun, otherwise
+	// the end step of their next turn. The boundary is the BEGINNING
+	// of that step, so a card exiled for it cannot be played in the
+	// end step itself (CR 611.2b: the effect ends as the step begins).
+	UntilYourNextEndStep
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -502,6 +519,43 @@ func (g *Game) UntilEndOfYourNextTurnDuration(player uuid.UUID) Duration {
 	}
 }
 
+// UntilYourNextEndStepDuration is "until your next end step"
+// (CR 611.2b, #2373), stamped against `player`'s seat-turn count.
+// Caller must hold g.mu.
+//
+// From the player's own turn before its end step (any step except end
+// and cleanup) the next end step is this turn's, so the stamp is their
+// CURRENT turn. From their end step or cleanup — that end step has
+// already begun — or from anyone else's turn, it is their next turn's,
+// so the stamp is `TurnsBegun + 1`. `ExpiresAtTurnsBegun` is the turn
+// whose end step ends the effect; durationExpiredLocked reads it.
+func (g *Game) UntilYourNextEndStepDuration(player uuid.UUID) Duration {
+	target := g.turnsBegunForLocked(player)
+	if !g.endStepOfTurnStillAheadLocked(player) {
+		target++
+	}
+	return Duration{
+		Kind:                UntilYourNextEndStep,
+		Player:              player,
+		ExpiresAtTurnsBegun: target,
+	}
+}
+
+// endStepOfTurnStillAheadLocked reports whether it is `player`'s own
+// turn and their end step has not begun. Caller must hold g.mu.
+func (g *Game) endStepOfTurnStillAheadLocked(player uuid.UUID) bool {
+	if player == uuid.Nil || g.activePlayerIDLocked() != player {
+		return false
+	}
+	return !g.stepAtOrAfterEndLocked()
+}
+
+// stepAtOrAfterEndLocked is true during the end and cleanup steps.
+// Caller must hold g.mu.
+func (g *Game) stepAtOrAfterEndLocked() bool {
+	return g.Turn.Step == StepEnd || g.Turn.Step == StepCleanup
+}
+
 // WhileInZoneDuration is "for as long as this card remains in the
 // zone" (CR 611.2b) — see the WhileInZone kind. Needs no game state,
 // because the zone half is enforced by the CR 400.7 object identity
@@ -725,6 +779,21 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		return (endOfTurn && turns >= d.ExpiresAfterTurnsBegun) || turns > d.ExpiresAfterTurnsBegun
 	case UntilYourNextTurn:
 		return g.turnsBegunForLocked(d.Player) >= d.ExpiresAtTurnsBegun
+	case UntilYourNextEndStep:
+		// ExpiresAtTurnsBegun names the player's turn whose end step
+		// closes the window. Before that turn has begun the window is
+		// open; during it, it closes as the end step begins; and once
+		// that turn is over (another player is active, or the seat
+		// has begun a later turn) it is closed whatever the sweep
+		// has or has not seen — a cast permission is read live.
+		turns := g.turnsBegunForLocked(d.Player)
+		if turns != d.ExpiresAtTurnsBegun {
+			return turns > d.ExpiresAtTurnsBegun
+		}
+		if g.activePlayerIDLocked() != d.Player {
+			return true
+		}
+		return g.stepAtOrAfterEndLocked()
 	case ForAsLongAs:
 		return !g.durationConditionHoldsLocked(d)
 	case Indefinite, WhileInZone:
@@ -921,6 +990,8 @@ func (k DurationKind) String() string {
 		return "no stated duration"
 	case WhileInZone:
 		return "while it remains in the zone"
+	case UntilYourNextEndStep:
+		return "until your next end step"
 	}
 	return "unknown duration"
 }

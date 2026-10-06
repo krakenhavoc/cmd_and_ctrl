@@ -801,11 +801,42 @@ type ModeSpecView struct {
 	// ability has used are marked `used` on each ModeOptionView.
 	NotChosen string `json:"not_chosen,omitempty"`
 
+	// Escalate is CR 702.120a's cost for each mode beyond the first
+	// (#2126). Present only on an escalate spell. The label, mana and
+	// per-mode counts are the printed clause and public; `max_extra`
+	// and `tap_options` are the asking seat's answer and ride only its
+	// own frame (publicModeSpec drops them).
+	Escalate *EscalateView `json:"escalate,omitempty"`
+
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
 	// seat's answer and a bystander's copy shows what the card prints.
 	// Server-only.
 	printedMin, printedMax int
+}
+
+// EscalateView is the wire shape of game.ModeSpec.Escalate (CR
+// 702.120a): what each mode beyond the first costs, and how many the
+// viewer could pay for right now.
+type EscalateView struct {
+	// Label is the clause as printed ("Escalate {G}").
+	Label string `json:"label"`
+	// ManaCost is the mana owed per extra mode, brace notation.
+	ManaCost string `json:"mana_cost,omitempty"`
+	// DiscardCards is the cards discarded per extra mode. The picked
+	// ids ride cast_spell's discard_ids, (modes - 1) times this many.
+	DiscardCards int `json:"discard_cards,omitempty"`
+	// TapCreatures is the untapped creatures tapped per extra mode. The
+	// picked ids ride cast_spell's teamwork_ids.
+	TapCreatures int `json:"tap_creatures,omitempty"`
+	// TapOptions lists the viewer's untapped creatures that could pay
+	// the taps. Per viewer.
+	TapOptions []string `json:"tap_options,omitempty"`
+	// MaxExtra is the most extra modes the viewer can pay the non-mana
+	// half for (EscalatePayableExtraForEffect); the view's `max` is
+	// already clamped to 1 + this, so the picker never offers a count
+	// the server refuses. Per viewer.
+	MaxExtra int `json:"max_extra"`
 }
 
 // ModeBoundsView is a mode count's bounds under one announcement
@@ -937,7 +968,9 @@ type OptionalCostView struct {
 	// Index is the cost's position in the card's OptionalCosts slice
 	// — the value the announcement names.
 	Index int `json:"index"`
-	// Key is "kicker", "multikicker" or "buyback".
+	// Key is "kicker", "multikicker" or "buyback". Not unique: a card
+	// with two kicker costs (CR 702.33b, #2153) has two "kicker" offers,
+	// told apart by Index and Label.
 	Key string `json:"key"`
 	// Label is the clause as printed ("Kicker {4}").
 	Label string `json:"label,omitempty"`
@@ -1434,6 +1467,15 @@ type PlayerView struct {
 	// "kept ✓" / "deciding…" indicator during the mulligan window.
 	// Added in S08.
 	HandKept bool `json:"hand_kept,omitempty"`
+	// MulliganTurn is true on the one seat whose turn it is to keep or
+	// mulligan (CR 103.5, #2237). At most one seat has it; none does
+	// outside the mulligan window or while the opening roll is open.
+	MulliganTurn bool `json:"mulligan_turn,omitempty"`
+	// TriggerOrderAlwaysAsk reflects Player.TriggerOrderAlwaysAsk
+	// (#1530). Private to its seat: FilterViewFor clears it for every
+	// other viewer. The client compares it with its local setting and
+	// re-sends set_trigger_order_preference when they differ.
+	TriggerOrderAlwaysAsk bool `json:"trigger_order_always_ask,omitempty"`
 	// MulligansTaken reflects Player.MulligansTaken. Surfaced so the
 	// UI can show "mulligans taken: N". Added in S08.
 	MulligansTaken int `json:"mulligans_taken,omitempty"`
@@ -4558,6 +4600,12 @@ func publicModeSpec(ms *ModeSpecView) *ModeSpecView {
 	// and `min`, which a forced count raises too.
 	out.Min, out.Max = ms.printedMin, ms.printedMax
 	out.IfOptionalPaid = nil
+	if ms.Escalate != nil {
+		pub := *ms.Escalate
+		pub.TapOptions = nil
+		pub.MaxExtra = 0
+		out.Escalate = &pub
+	}
 	out.Options = make([]ModeOptionView, len(ms.Options))
 	for i, o := range ms.Options {
 		o.LegalTargets = nil
@@ -5010,6 +5058,8 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	out.TargetMode = game.TargetModeFor(key)
 	if ms := game.ModeSpecFor(key); ms != nil {
 		out.Modes = viewOfCastModeSpec(g, caster, key, src, ms)
+		castID, _ := uuid.Parse(c.InstanceID)
+		stampEscalate(g, caster, castID, out.Modes, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
 		out.AdditionalCost = viewOfAdditionalCost(g, caster, ac)
@@ -5398,7 +5448,8 @@ type ProtectionView struct {
 	Printed string `json:"printed"`
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
-	// "everything" or "player". Stable tokens; see
+	// "everything", "player", "mana_value_at_most" (Value is the
+	// bound N, #2181) or "ring_bearer" (#2145). Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour
@@ -5885,6 +5936,32 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		out = append(out, v)
 	}
 	return out
+}
+
+// stampEscalate fills ModeSpecView.Escalate for an escalate spell and
+// clamps the viewer's `max` to the mode count they can pay the
+// non-mana half for (CR 702.120a, #2126) — the same arithmetic the
+// bot enumerator and CastSpell apply, so no count is offered that is
+// refused. Caller must hold g.mu.
+func stampEscalate(g *game.Game, caster, castID uuid.UUID, out *ModeSpecView, ms *game.ModeSpec) {
+	if out == nil || ms.Escalate == nil {
+		return
+	}
+	e := ms.Escalate
+	v := &EscalateView{
+		Label:        e.Label,
+		ManaCost:     e.ManaCost,
+		DiscardCards: e.DiscardCards,
+		TapCreatures: e.TapCreatures,
+		MaxExtra:     g.EscalatePayableExtraForEffect(caster, castID, ms),
+	}
+	if e.TapCreatures > 0 {
+		v.TapOptions = cardIDStrings(g.TapCreaturesOptionsForEffect(caster))
+	}
+	out.Escalate = v
+	if out.Max > 1+v.MaxExtra {
+		out.Max = 1 + v.MaxExtra
+	}
 }
 
 // viewOfCastModeSpec is viewOfModeSpec for a card the caster could
@@ -7360,34 +7437,36 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		emblems = append(emblems, ev)
 	}
 	return PlayerView{
-		ID:                p.ID.String(),
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           viewOfZone(p.Library),
-		Hand:              viewOfZone(p.Hand),
-		Graveyard:         viewOfZone(p.Graveyard),
-		Command:           viewOfZone(p.Command),
-		CommanderDamage:   cmdrDamage,
-		LifeHistory:       history,
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		IsAgent:           p.Agent,
-		AgentClient:       p.AgentClient,
-		CommanderCasts:    cmdrCasts,
-		Counters:          cloneStringIntMap(p.Counters),
-		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
+		ID:                    p.ID.String(),
+		Name:                  p.Name,
+		Seat:                  p.Seat,
+		Life:                  p.Life,
+		Poison:                p.Poison,
+		Energy:                p.Energy,
+		Library:               viewOfZone(p.Library),
+		Hand:                  viewOfZone(p.Hand),
+		Graveyard:             viewOfZone(p.Graveyard),
+		Command:               viewOfZone(p.Command),
+		CommanderDamage:       cmdrDamage,
+		LifeHistory:           history,
+		Eliminated:            p.Eliminated,
+		HandKept:              p.HandKept,
+		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
+		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		MulligansTaken:        p.MulligansTaken,
+		DeckImported:          p.DeckImported,
+		UndosRemaining:        p.UndosRemaining,
+		DiscordID:             p.DiscordID,
+		DiscordAvatarHash:     p.DiscordAvatarHash,
+		DisplayName:           p.DisplayName,
+		IsBot:                 p.IsBot,
+		BotTier:               p.BotTier,
+		BotDeck:               p.BotDeck,
+		IsAgent:               p.Agent,
+		AgentClient:           p.AgentClient,
+		CommanderCasts:        cmdrCasts,
+		Counters:              cloneStringIntMap(p.Counters),
+		MaxHandSize:           g.EffectiveMaxHandSizeLocked(p),
 		// Locked variants: this builder already runs under the
 		// game's read lock (see legal.EnumerateFor's note), and the
 		// public accessors would take it a second time.
@@ -7672,6 +7751,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
 		out := p
+		// #1530: the trigger-ordering preference is the seat's own.
+		if p.ID != viewerID {
+			out.TriggerOrderAlwaysAsk = false
+		}
 		// S13.5: redact every visible card based on KnownBy.
 		// Hand + library still get their wholesale-hide (S04
 		// zone-default heuristic) for opponents, but the per-card

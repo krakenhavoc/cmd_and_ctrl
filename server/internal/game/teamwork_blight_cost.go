@@ -83,6 +83,63 @@ func planTeamwork(plan []costPayment) int {
 	return n
 }
 
+// planTapCreatures is the number of untapped creatures the plan taps
+// as a cost — one per escalate payment of Collective Effort (CR
+// 702.120a). Zero for every other cast.
+func planTapCreatures(plan []costPayment) int {
+	n := 0
+	for _, pay := range plan {
+		n += pay.cost.TapCreatures
+	}
+	return n
+}
+
+// TapCreaturesOptionsForEffect is the set of creatures `playerID` could
+// tap to pay a "tap an untapped creature you control" cost: the same
+// walk teamwork uses (untapped creatures they control). Named apart so
+// the view and the enumerator read it by what they ask.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) TapCreaturesOptionsForEffect(playerID uuid.UUID) []uuid.UUID {
+	return g.TeamworkOptionsForEffect(playerID)
+}
+
+// validateTapCreaturesLocked checks the creatures named to pay a
+// "tap N untapped creatures you control" cost: exactly N, distinct,
+// the caster's, creatures, untapped (CR 118.3), and not also named to
+// the convoke / waterbend taps. Power is irrelevant. No summoning
+// sickness check: this is not the {T} symbol.
+func (g *Game) validateTapCreaturesLocked(playerID uuid.UUID, n int, ids, otherTaps []uuid.UUID) error {
+	if len(ids) != n {
+		return ErrInvalidParam
+	}
+	tapping := make(map[uuid.UUID]bool, len(otherTaps))
+	for _, id := range otherTaps {
+		tapping[id] = true
+	}
+	seen := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		if seen[id] || tapping[id] {
+			return ErrInvalidParam
+		}
+		seen[id] = true
+		c := findBattlefieldCard(g, id)
+		if c == nil {
+			return ErrCardNotFound
+		}
+		if c.Controller != playerID {
+			return ErrCardCallerMismatch
+		}
+		if !c.IsCreature() {
+			return ErrNotACreature
+		}
+		if c.Tapped {
+			return ErrAlreadyTapped
+		}
+	}
+	return nil
+}
+
 // planBlight is the blight N the announced plan demands, or zero. At
 // most one entry, for planTeamwork's reason.
 func planBlight(plan []costPayment) int {
@@ -174,6 +231,9 @@ func (g *Game) TeamworkPayableForEffect(playerID uuid.UUID, n int) bool {
 // Caller must hold g.mu.
 func (g *Game) validateTeamworkLocked(playerID uuid.UUID, plan []costPayment, ids, otherTaps []uuid.UUID) error {
 	n := planTeamwork(plan)
+	if tapN := planTapCreatures(plan); tapN > 0 {
+		return g.validateTapCreaturesLocked(playerID, tapN, ids, otherTaps)
+	}
 	if n <= 0 {
 		if len(ids) > 0 {
 			return ErrInvalidParam

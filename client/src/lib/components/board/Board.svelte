@@ -39,12 +39,14 @@
   import SeatSummary from "./SeatSummary.svelte";
   import {
     decideSeatRendering,
+    expansionSettingsFor,
     legalDefenderIDs,
     seatControlsLegalTarget,
     seatHasAttackersOn,
     type SeatDecision,
   } from "../../expansion";
   import { settings } from "../../settings";
+  import { opponentsInARow } from "../../tableLayout";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   import Icon from "../Icon.svelte";
   // CommanderDamageTooltip was folded into HoverZoomOverlay — the
@@ -185,6 +187,7 @@
   import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { L } from "../../labels";
   import {
     phyrexianSymbolsForAbility,
     phyrexianSymbolsForCast,
@@ -1096,10 +1099,80 @@
     modePromptCard = null;
     modePromptChoices = {};
     if (!card) return;
+    // #2126, CR 702.120a: escalate's cards or creatures are named once
+    // the mode count is known, before the targets.
+    const owed = escalateOwed(card, modes);
+    if (owed) {
+      escalatePrompt = { card, modes, choices, stage: owed };
+      return;
+    }
+    finishModes(card, modes, choices);
+  }
+
+  function finishModes(card: CardView, modes: number[], choices: CastChoices): void {
     if (beginTargetingForModes(card, modes, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     applyCastChoices(params, choices);
     guardedSendAction("cast_spell", params, viewerID ?? undefined);
+  }
+
+  // Escalate (CR 702.120a, #2126): one discard prompt, then one tap
+  // prompt, each for (modes - 1) times the per-mode count. Both reuse
+  // DiscardCostModal as an exact-count card picker; the answers ride
+  // discard_ids and teamwork_ids.
+  let escalatePrompt = $state<{
+    card: CardView;
+    modes: number[];
+    choices: CastChoices;
+    stage: "discard" | "tap";
+  } | null>(null);
+
+  function escalateOwed(
+    card: CardView,
+    modes: number[],
+    after?: "discard",
+  ): "discard" | "tap" | null {
+    const esc = card.modes?.escalate;
+    if (!esc || modes.length < 2) return null;
+    if (after !== "discard" && (esc.discard_cards ?? 0) > 0) return "discard";
+    if ((esc.tap_creatures ?? 0) > 0) return "tap";
+    return null;
+  }
+
+  const escalateNeed = $derived.by(() => {
+    const p = escalatePrompt;
+    const esc = p?.card.modes?.escalate;
+    if (!p || !esc) return 0;
+    const per = p.stage === "discard" ? (esc.discard_cards ?? 0) : (esc.tap_creatures ?? 0);
+    return per * (p.modes.length - 1);
+  });
+
+  const escalateOptions = $derived.by(() => {
+    const p = escalatePrompt;
+    if (!p) return [];
+    if (p.stage === "discard") {
+      const me = view.seats.find((s) => s.id === viewerID);
+      return (me?.hand.cards ?? []).filter((c) => c.instance_id !== p.card.instance_id);
+    }
+    const ids = new Set(p.card.modes?.escalate?.tap_options ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmEscalate(ids: string[]): void {
+    const p = escalatePrompt;
+    escalatePrompt = null;
+    if (!p) return;
+    if (p.stage === "discard") {
+      const choices: CastChoices = { ...p.choices, discardIDs: ids };
+      const next = escalateOwed(p.card, p.modes, "discard");
+      if (next) {
+        escalatePrompt = { card: p.card, modes: p.modes, choices, stage: next };
+        return;
+      }
+      finishModes(p.card, p.modes, choices);
+      return;
+    }
+    finishModes(p.card, p.modes, { ...p.choices, teamworkIDs: ids });
   }
 
   // continueCast is the post-cost half of the cast flow: pick modes
@@ -2461,10 +2534,7 @@
         isLegalDefender: defenderIDs.has(seat.id),
       },
       { spectator: isSpectator, combatMode },
-      {
-        opponentDetail: $settings.display.opponentDetail,
-        expandActivePlayer: $settings.display.expandActivePlayer,
-      },
+      expansionSettingsFor($settings.display),
     );
   }
 
@@ -2670,7 +2740,7 @@
     return seat.id === viewerID ? "your own board, expanded" : `${seat.name}'s board, expanded`;
   }
   function expandButtonName(seat: PlayerView): string {
-    return seat.id === viewerID ? "Expand your own board" : `Expand ${seat.name}'s board`;
+    return L.expandBoard(seat.id === viewerID ? null : seat.name);
   }
   function pinButtonName(seat: PlayerView): string {
     return seat.id === viewerID
@@ -2781,7 +2851,7 @@
     <PlayerPanel
       {seat}
       isSelf={pos === "self"}
-      flipped={$settings.display.tableLayout === "row" || opponentCount === 2
+      flipped={opponentsInARow($settings.display.tableLayout) || opponentCount === 2
         ? pos !== "self"
         : pos === "across" || pos === "across_next"}
       {expanded}
@@ -2973,7 +3043,7 @@
        "attention"`, the tutorial's step-9 anchor (ADR 0076 §2.4) and an
        e2e contract. It keeps what asks nothing: the stack card, the bot
        feed, reveals, the roll-call and the toasts. -->
-  <div class="strip" role="region" aria-label="attention">
+  <div class="strip" role="region" aria-label={L.attention}>
     {#if !laneShowsStack}
       <StackOverlay
         stack={view.stack}
@@ -3400,6 +3470,21 @@
       modePromptChoices = {};
     }}
   />
+  <!-- #2126, CR 702.120a: escalate's cards or creatures, named after the
+       modes are chosen. The exact-count card picker, in two verbs. -->
+  <DiscardCostModal
+    card={escalatePrompt?.card ?? null}
+    options={escalateOptions}
+    need={escalateNeed}
+    label={escalatePrompt?.card.modes?.escalate?.label}
+    verb={escalatePrompt?.stage === "tap" ? "Tap" : "Discard"}
+    note="escalate · CR 702.120a"
+    where={escalatePrompt?.stage === "tap" ? "untapped under your control" : "in hand"}
+    onConfirm={confirmEscalate}
+    onCancel={() => {
+      escalatePrompt = null;
+    }}
+  />
   <ModePickerModal
     card={abilityModeCard}
     onConfirm={confirmAbilityModes}
@@ -3650,7 +3735,8 @@
     flex: 0 1 auto;
     min-height: 0;
   }
-  :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip {
+  :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip,
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
     left: calc(33.333% + 6px);
     width: min(512px, calc(33.333% - 132px));
   }
@@ -3718,6 +3804,32 @@
   :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-areas:
+      "next across across_next"
+      "self self   self";
+  }
+
+  /* Focus layout (#2336): an even split. Your board is the bottom
+     half and the opponents share the top half, each a summary
+     (expansionSettingsFor in expansion.ts); you hover or click an
+     avatar to see a whole board in the expanded overlay. */
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="1"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "across"
+      "self";
+  }
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="2"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "next across"
+      "self self";
+  }
+  :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "next across across_next"
       "self self   self";

@@ -87,6 +87,27 @@ func (g *Game) QueueCardNameChoiceForEffect(chooser, source uuid.UUID, reason st
 	})
 }
 
+// QueueCardNameChoiceThenForEffect queues the AT-RESOLUTION form: the
+// answer is handed to `then` and stored nowhere, so the permanent's
+// ChosenName is untouched. `then` runs with g.mu held and may queue
+// further prompts.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueCardNameChoiceThenForEffect(chooser, source uuid.UUID, reason string, then func(g *Game, name string) error) uuid.UUID {
+	return g.QueueChoiceForEffect(PendingChoice{
+		Kind:    PendingChoiceCardName,
+		Chooser: chooser,
+		Count:   1,
+		Source:  source,
+		Reason:  reason,
+		// The ceiling on resume-frame routes only falls
+		// (closure_fields.txt), so this rides the colour prompt's
+		// frame: both are "hand the single string answer to a
+		// closure", and the census already counts it.
+		chooseValueResume: &chooseValueFrame{then: then},
+	})
+}
+
 // ResolveCardNameChoice processes a resolve_choice action for a
 // PendingChoiceCardName entry: the chooser names a card and it is
 // stamped onto the source permanent's ChosenName.
@@ -131,6 +152,27 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 		return ErrInvalidParam
 	}
 	g.dequeueChoiceLocked(idx)
+
+	if frame := choice.chooseValueResume; frame != nil {
+		g.EmitEvent(Event{
+			Kind:   EventCardNameChosen,
+			Actor:  chooserID,
+			CardID: choice.Source,
+			Label:  chosen,
+		})
+		if frame.then != nil {
+			if err := frame.then(g, chosen); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    chooserID,
+					Source:   choice.Source,
+					ErrorMsg: err.Error(),
+				})
+			}
+		}
+		g.runStateChecksLocked()
+		return nil
+	}
 
 	if i := findCardOnBattlefield(g, choice.Source); i >= 0 {
 		g.Battlefield.Cards[i].ChosenName = chosen

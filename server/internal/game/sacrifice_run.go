@@ -243,6 +243,11 @@ func (g *Game) queueSacrificePromptLocked(source, playerID uuid.UUID, spec *Targ
 	if p == nil || p.Eliminated {
 		return false
 	}
+	// #2178: an opponent's spell or ability can't make this player
+	// sacrifice. Costs never reach this queue.
+	if g.effectSacrificeBlockedLocked(playerID) {
+		return false
+	}
 	options := g.sacrificeCandidatesLocked(playerID, spec)
 	if len(options) == 0 {
 		return false

@@ -152,13 +152,19 @@ func durationGrantKeyProblem(key string) string {
 // object the ability cannot find (CR 400.7), so both return nothing —
 // ErrCardNotFound is swallowed, the CR 608.2b posture.
 //
+// "Still the object that died" is checked against the epoch the trigger
+// stamped (#2156): the stamp is the battlefield object's epoch, and the
+// graveyard object it became is one zone change later. A card that
+// left the graveyard and came back under the same ID is a different
+// object (CR 400.7) and is not returned.
+//
 // `then` is the rest of the sentence ("and you create a Treasure
 // token") and runs whether or not the card came back: it is joined by
 // "and", not "if you do".
 func returnThisCreatureFromGraveyard(counters map[string]int, then func(ctx *Context) error) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneGraveyard {
+		if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneGraveyard && sameGraveyardObject(z, item) {
 			if _, err := g.ReturnFromGraveyardWithCountersForEffect(item.SourceCardID, uuid.Nil, true, counters); err != nil && !errors.Is(err, game.ErrCardNotFound) {
 				return err
 			}
@@ -168,4 +174,22 @@ func returnThisCreatureFromGraveyard(counters map[string]int, then func(ctx *Con
 		}
 		return nil
 	}
+}
+
+// sameGraveyardObject reports whether the card the trigger names, now
+// in graveyard zone z, is the very object that died: its object epoch
+// is exactly one past the battlefield epoch stamped on the item. An
+// item with no stamp (a snapshot older than #1418) keeps the old
+// "is it in a graveyard" answer.
+func sameGraveyardObject(z *game.Zone, item *game.StackItem) bool {
+	ref := item.SourceObject
+	if ref.ID != item.SourceCardID || ref.ID == uuid.Nil {
+		return true
+	}
+	for i := range z.Cards {
+		if z.Cards[i].InstanceID == ref.ID {
+			return z.Cards[i].ObjectEpoch == ref.Epoch+1
+		}
+	}
+	return false
 }

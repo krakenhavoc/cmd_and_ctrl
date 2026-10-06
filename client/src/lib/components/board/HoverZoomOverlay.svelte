@@ -26,6 +26,7 @@
   import { seatColor } from "../../colors";
   import { noUntapFooterLines } from "../../noUntap";
   import { chosenValueChips } from "../../chosenValues";
+  import { damageBadge } from "../../damageBadge";
 
   interface Props {
     view: GameView;
@@ -125,6 +126,10 @@
   // ask what a permanent does, and CR 607.2d makes this half of the
   // answer for anything with a "the chosen …" clause.
   const chosen = $derived(card ? chosenValueChips(card) : []);
+  // #2257 — the damage marked, and on an indestructible creature why
+  // it doesn't die. The badge on the card says it in a tooltip; the
+  // panel is where a player looks when the board surprises them.
+  const damage = $derived(card ? damageBadge(card) : null);
   // Bars are tinted with the commander's controller colour (the seat
   // dealing the damage) and flip to danger at lethal.
   const controllerColor = $derived(
@@ -225,7 +230,7 @@
       {#if card.unimplemented}
         <div class="not-implemented">rules not implemented — resolve this card by hand</div>
       {/if}
-      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0}
+      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage}
         <footer class="info-foot">
           {#if card.is_commander}
             <span class="state state-cmd">commander</span>
@@ -270,6 +275,9 @@
           {#each counterChips as chip (chip.name)}
             <span class="state">{chip.name} ×{chip.n}</span>
           {/each}
+          {#if damage}
+            <span class="state state-damage" title={damage.title}>{damage.summary}</span>
+          {/if}
         </footer>
       {/if}
       {#if card.is_commander}
@@ -353,14 +361,17 @@
     position: relative;
   }
 
-  /* The other printed face, tucked into the bottom-right corner of
-     the scan as a small inset — present enough to read, small
-     enough not to compete with the face that is actually up. */
+  /* The other printed face, tucked into the TOP-right corner of the
+     scan as a small inset — present enough to read, small enough not
+     to compete with the face that is actually up. Top, not bottom
+     (#1965): the bottom of a card is its rules-text box, which is the
+     thing the panel is opened to read, whereas the top corner only
+     covers a title bar and mana cost the info panel repeats below. */
   .other-face {
     position: absolute;
     right: 6px;
-    bottom: 6px;
-    width: 38%;
+    top: 6px;
+    width: 30%;
     aspect-ratio: 63 / 88;
     border-radius: 6px;
     overflow: hidden;
@@ -507,7 +518,8 @@
     border: 1px solid var(--border-strong);
     color: var(--fg-muted);
   }
-  .state-attack {
+  .state-attack,
+  .state-damage {
     color: var(--danger);
     border-color: color-mix(in srgb, var(--danger) 50%, transparent);
   }

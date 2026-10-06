@@ -80,7 +80,7 @@ func (g *Game) exitCleanupStepLocked() {
 		// repeatCleanupStepLocked below.
 		if as := g.Turn.ActiveSeat; as >= 0 && as < len(g.Seats) &&
 			g.Seats[as] != nil && !g.Seats[as].Eliminated {
-			g.Turn.PriorityHolder = as
+			g.grantPriorityLocked(as)
 			return
 		}
 		// No active seat to hand it to — fall through and end the
@@ -160,6 +160,6 @@ func (g *Game) repeatCleanupStepLocked() {
 	g.beginEventBatchLocked()
 	// The new step grants nobody priority until its own CR 514.3a
 	// check says otherwise, exactly as the first one did.
-	g.Turn.PriorityHolder = NoPriority
+	g.grantPriorityLocked(NoPriority)
 	g.runStepEntryHooksLocked()
 }

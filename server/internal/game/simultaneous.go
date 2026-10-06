@@ -960,7 +960,7 @@ func (g *Game) PutIntoGraveyardThenForEffect(cardID uuid.UUID, then func(g *Game
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then func(g *Game, sacrificed []uuid.UUID) error) error {
-	return g.routeAllThenLocked(sacrificeRoute(source), ids, then)
+	return g.routeAllThenLocked(sacrificeRoute(source), g.unprotectedFromSacrificeLocked(ids), then)
 }
 
 // SacrificeThenForEffect is the SINGLE-CARD form: sacrifice one
@@ -999,7 +999,7 @@ func (g *Game) SacrificeThenForEffect(source, cardID uuid.UUID, then func(g *Gam
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) SacrificeAllForEffect(source uuid.UUID, ids []uuid.UUID) int {
-	return g.routeAllLocked(sacrificeRoute(source), ids)
+	return g.routeAllLocked(sacrificeRoute(source), g.unprotectedFromSacrificeLocked(ids))
 }
 
 // BounceCardsToHandForEffect returns every card in `ids` to its

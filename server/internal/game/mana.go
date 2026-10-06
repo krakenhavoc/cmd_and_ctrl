@@ -261,6 +261,12 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
 	need := cost.Generic + cost.XSlots*xValue + deferred
+	// #2170: mana that can't pay generic costs may still pay the
+	// slots that only LOOK generic here — a widened coloured symbol
+	// and a coloured symbol a cast permission folded into Generic. It
+	// is spent on those first, because it can pay nothing else, and
+	// never reaches the generic loops below.
+	need -= spendNoGenericSlots(work, used, order, noGenericSlots(cost, deferred))
 	if need > 0 && strategy == SpendDistinctColors {
 		// One token at a time, because the question is about the SET
 		// of colours: a bucket loop that emptied {W} before touching
@@ -295,7 +301,7 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 				if used[i] {
 					continue
 				}
-				if work[i].Color != color {
+				if work[i].Color != color || work[i].noGeneric() {
 					continue
 				}
 				used[i] = true
@@ -326,6 +332,34 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	return out, spent, true
 }
 
+// noGenericSlots is how many of a cost's "generic" demand a mana that
+// can't pay generic costs may still pay (#2170): the widened coloured
+// symbols that no printed colour paid (`deferred`) and the coloured
+// symbols a spend-as-any-colour cast permission folded into Generic.
+// Both are coloured symbols in the rules (CR 107.4e, 609.4b), only
+// represented as generic demand here.
+func noGenericSlots(cost ParsedCost, deferred int) int {
+	return deferred + min(cost.FoldedColored, cost.Generic)
+}
+
+// spendNoGenericSlots marks up to n unused no-generic tokens (in
+// `order`) as spent and returns how many it took. Shared by the pool
+// solver and MissingFor so the two cannot disagree.
+func spendNoGenericSlots(work ManaPool, used []bool, order []int, n int) int {
+	taken := 0
+	for _, i := range order {
+		if taken == n {
+			break
+		}
+		if used[i] || !work[i].noGeneric() {
+			continue
+		}
+		used[i] = true
+		taken++
+	}
+	return taken
+}
+
 // pickDistinctColor chooses the next token to pay one generic mana
 // under SpendDistinctColors (#761), or -1 when nothing spendable is
 // left. Three tiers, in order:
@@ -348,6 +382,9 @@ func pickDistinctColor(work ManaPool, used []bool, order []int, spentColors map[
 	fresh, colorless, repeat := -1, -1, -1
 	for _, i := range order {
 		if used[i] {
+			continue
+		}
+		if work[i].noGeneric() {
 			continue
 		}
 		switch {
@@ -497,6 +534,7 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 
 	generic := cost.Generic + cost.XSlots*xValue
 	need := len(deferred) + generic
+	need -= spendNoGenericSlots(work, used, order, noGenericSlots(cost, len(deferred)))
 	for _, color := range []string{"C", "W", "U", "B", "R", "G"} {
 		if need == 0 {
 			break
@@ -505,7 +543,7 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 			if need == 0 {
 				break
 			}
-			if used[i] || work[i].Color != color {
+			if used[i] || work[i].Color != color || work[i].noGeneric() {
 				continue
 			}
 			used[i] = true
@@ -632,11 +670,15 @@ func manaSpentEvent(actor, source uuid.UUID, spent []ManaToken) Event {
 // emptyAllManaPoolsLocked clears every seated player's mana pool
 // and emits one EventManaPoolEmptied per affected player. Called
 // from runStepEntryHooksLocked at every step boundary (CR 106.4).
+// What a player is allowed to keep is mana_keep.go's (#2166).
 // No-op for players whose pool is already empty so step-cycle
 // chatter stays quiet. Caller must hold g.mu.
 func (g *Game) emptyAllManaPoolsLocked() {
 	for _, p := range g.Seats {
-		n := p.ManaPool.EmptyPool()
+		if len(p.ManaPool) == 0 {
+			continue
+		}
+		n := g.sweepManaPoolLocked(p)
 		if n == 0 {
 			continue
 		}

@@ -101,6 +101,11 @@ func TestAddBotSeatsADeckReadyBot(t *testing.T) {
 	if len(seats) != 1 || seats[0].PlayerID != botID || seats[0].Tier != "random" {
 		t.Errorf("host started: %+v", seats)
 	}
+	// Only the practice table hands the first turn away (ADR 0125
+	// §5.2): a bot at any other table chooses as its tier does.
+	if len(seats) == 1 && seats[0].FirstTurnTo != nil {
+		t.Errorf("a real table's bot hands the first turn to seat %d", *seats[0].FirstTurnTo)
+	}
 	// Delete stops them.
 	if err := l.Delete(meta.ID); err != nil {
 		t.Fatal(err)

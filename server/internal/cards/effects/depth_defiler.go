@@ -21,8 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A bullet whose target clause has no legal target cannot be chosen
 // (CR 603.3c), so a kicked cast onto an empty board still draws and
-// discards. Devoid is colour data: the dump's colour list is already
-// empty. The trigger resolves above the spell, so a counterspell aimed
+// discards. Devoid is declared in PrintedKeywords, and the engine reads
+// it as CR 702.114a's colour-defining ability (#2152), so the card is
+// colourless in every zone. The trigger resolves above the spell, so a
+// counterspell aimed
 // at the Defiler does not stop it. No simplification.
 func init() {
 	onCast := game.TriggeredAbility{
@@ -55,9 +57,10 @@ func init() {
 		).InsteadIf(2, WasKicked),
 	}
 	Register(Spec{
-		OracleID:     "8ca4ca66-30b1-4074-a2e3-545b7682381b",
-		Name:         "Depth Defiler",
-		Completeness: CompletenessFull,
+		OracleID:        "8ca4ca66-30b1-4074-a2e3-545b7682381b",
+		Name:            "Depth Defiler",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordDevoid},
 		OptionalCosts: []game.AdditionalCost{
 			Kicker("{C}"),
 		},

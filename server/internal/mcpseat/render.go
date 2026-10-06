@@ -75,13 +75,33 @@ func untrusted(s string, max int) string {
 // instruction is always marked as a name.
 type nameWrapper struct {
 	r *strings.Replacer
+	// youShared is true when the viewer's name is also another seat's, so
+	// the text cannot say "you" for it (#2279); you is the viewer's seat.
+	youShared bool
+	you       int
 }
 
 func newNameWrapper(v *protocol.GameView) nameWrapper {
+	return newViewerNameWrapper(v, "")
+}
+
+// newViewerNameWrapper is newNameWrapper that also marks the viewer: a
+// name that belongs to the seat me (a player ID) alone reads "you (seat N)"
+// in the text, the same wording playerRef uses for targets (#2279). A name
+// another seat shares can't be told apart in prose, so it stays a wrapped
+// name and logLine marks the entry by its seat instead. me == "" marks
+// nobody.
+func newViewerNameWrapper(v *protocol.GameView, me string) nameWrapper {
 	var names []string
 	seen := map[string]bool{}
+	owners := map[string]int{}
+	you := map[string]int{}
 	for i := range v.Seats {
-		for _, n := range []string{v.Seats[i].Name, v.Seats[i].DisplayName} {
+		for _, n := range uniqueNames(v.Seats[i].Name, v.Seats[i].DisplayName) {
+			owners[n]++
+			if me != "" && v.Seats[i].ID == me {
+				you[n] = v.Seats[i].Seat
+			}
 			if len(n) >= 2 && !seen[n] {
 				seen[n] = true
 				names = append(names, n)
@@ -91,10 +111,30 @@ func newNameWrapper(v *protocol.GameView) nameWrapper {
 	// Longest first, so "Bob Smith" wins over "Bob".
 	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
 	pairs := make([]string, 0, 2*len(names))
+	nw := nameWrapper{}
 	for _, n := range names {
+		if seat, ok := you[n]; ok {
+			if owners[n] == 1 {
+				pairs = append(pairs, n, fmt.Sprintf("you (seat %d)", seat))
+				continue
+			}
+			nw.youShared, nw.you = true, seat
+		}
 		pairs = append(pairs, n, untrusted(n, maxNameLen))
 	}
-	return nameWrapper{r: strings.NewReplacer(pairs...)}
+	nw.r = strings.NewReplacer(pairs...)
+	return nw
+}
+
+// uniqueNames is a seat's Name and DisplayName without the repeat or blanks.
+func uniqueNames(name, display string) []string {
+	var out []string
+	for _, n := range []string{name, display} {
+		if n != "" && (len(out) == 0 || out[0] != n) {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 func (w nameWrapper) apply(s string) string {
@@ -284,7 +324,7 @@ func hardCut(s string, max int) string {
 // every revealed card, held to budgetFull.
 func fullBoard(v *protocol.GameView, me string) string {
 	sv := safeView(v)
-	nw := newNameWrapper(v)
+	nw := newViewerNameWrapper(v, me)
 	board := boardtext.Render(sv, me, boardOptions(1<<20))
 	var logLines []string
 	start := len(v.Log) - fullLogLines
@@ -326,7 +366,12 @@ func logLine(e protocol.LogEvent, nw nameWrapper) string {
 	if text == "" {
 		text = string(e.Kind)
 	}
-	return untrusted(nw.apply(text), maxLogLen)
+	line := untrusted(nw.apply(text), maxLogLen)
+	// A shared name can't say "you" in prose; the entry's seat still can.
+	if nw.youShared && e.Seat == nw.you {
+		line += fmt.Sprintf(" [seat %d is you]", nw.you)
+	}
+	return line
 }
 
 // chatLine is one chat message for the model.
@@ -351,19 +396,32 @@ func chatLine(p protocol.ChatPayload) string {
 // never cut: a cut list would be a partial list again (§6). Only the
 // card header and one short line per alternative are written.
 func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
+	return renderMovesMatching(v, w, onlySource, "")
+}
+
+// renderMovesMatching is renderMoves limited to the moves whose label
+// holds match (case-insensitive; "" keeps every move). Numbers are the
+// window's own, so a filtered line is answered with the same index it
+// would have had in the whole list (#2277).
+func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match string) string {
 	nw := newNameWrapper(v)
+	match = strings.ToLower(strings.TrimSpace(match))
 	type group struct {
 		source string
 		idx    []int
 	}
 	var groups []*group
 	bySource := map[string]*group{}
+	shown := 0
 	for i, m := range w.moves {
 		src := ""
 		if m.Source != uuid.Nil {
 			src = m.Source.String()
 		}
 		if onlySource != "" && src != onlySource {
+			continue
+		}
+		if match != "" && !strings.Contains(strings.ToLower(m.Label), match) {
 			continue
 		}
 		g, ok := bySource[src]
@@ -373,11 +431,15 @@ func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 			groups = append(groups, g)
 		}
 		g.idx = append(g.idx, i)
+		shown++
 	}
 	var b strings.Builder
-	if onlySource == "" {
+	switch {
+	case match != "":
+		fmt.Fprintf(&b, "MOVES MATCHING %q (%d of %d) — answer with act(window: %q, move: <number>)\n", match, shown, len(w.moves), w.token)
+	case onlySource == "":
 		fmt.Fprintf(&b, "MOVES (%d) — answer with act(window: %q, move: <number>)\n", len(w.moves), w.token)
-	} else {
+	default:
 		fmt.Fprintf(&b, "MOVES FOR %s — answer with act(window: %q, move: <number>)\n", onlySource, w.token)
 	}
 	if w.partial {
@@ -390,20 +452,29 @@ func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 	for _, g := range groups {
 		b.WriteString(groupHeader(v, g.source, cuts[g.source]))
 		for _, i := range g.idx {
-			b.WriteString(moveLine(i, w.moves[i], nw))
+			b.WriteString(moveLine(i, w.moves[i], v, w.me, nw))
 		}
 	}
-	// Cuts for a card that has no move in the list at all, and for a
-	// prompt.
+	// A cut for a prompt is always named by its own id, whether or not a
+	// card raised it: a search's cut names Demonic Tutor as its source,
+	// and a hint that only said "expand the card" left the agent no id to
+	// ask for (#2277). A cut for a card with no move in the list at all
+	// is named by the card.
 	for _, c := range w.cuts {
-		if c.Source != "" && bySource[c.Source] == nil && (onlySource == "" || onlySource == c.Source) {
+		if onlySource != "" && c.Source != onlySource {
+			continue
+		}
+		switch {
+		case c.Choice != "" && match == "" && (c.Source == "" || bySource[c.Source] == nil):
+			fmt.Fprintf(&b, "choice %s: %s answers not listed (cap %s) — legal_moves(choice: %q) expands it\n",
+				c.Choice, omitted(c), c.Cap, c.Choice)
+		case c.Choice == "" && c.Source != "" && bySource[c.Source] == nil && match == "":
 			fmt.Fprintf(&b, "%s: %s moves not listed (cap %s) — legal_moves(card: %q) expands it\n",
 				cardRef(v, c.Source), omitted(c), c.Cap, c.Source)
 		}
-		if c.Source == "" && c.Choice != "" && onlySource == "" {
-			fmt.Fprintf(&b, "choice %s: %s answers not listed (cap %s) — legal_moves(choice: %q) expands it\n",
-				c.Choice, omitted(c), c.Cap, c.Choice)
-		}
+	}
+	if match != "" && shown == 0 {
+		b.WriteString("No move's label contains that text. The list may also be cut: see the \"not listed\" lines in the unfiltered list.\n")
 	}
 	return b.String()
 }
@@ -434,6 +505,10 @@ func groupHeader(v *protocol.GameView, source string, cuts []protocol.LegalCutVi
 	}
 	h := cardRef(v, source)
 	for _, c := range cuts {
+		if c.Choice != "" {
+			h += fmt.Sprintf(" [%s answers not listed, cap %s: legal_moves(choice: %q) expands it]", omitted(c), c.Cap, c.Choice)
+			continue
+		}
 		h += fmt.Sprintf(" [%s more not listed, cap %s: legal_moves(card: %q) expands it]", omitted(c), c.Cap, source)
 	}
 	return h + ":\n"
@@ -457,8 +532,11 @@ func cardRef(v *protocol.GameView, id string) string {
 
 // moveLine is one alternative: its number, its label, and what the label
 // does not say (an extra cost, an idle hint, an open value, always-legal).
-func moveLine(i int, m legal.Move, nw nameWrapper) string {
+func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapper) string {
 	var notes []string
+	if t := targetNote(v, me, m); t != "" {
+		notes = append(notes, t)
+	}
 	if m.Cost != nil {
 		if m.Cost.Life > 0 {
 			notes = append(notes, fmt.Sprintf("costs %d life", m.Cost.Life))

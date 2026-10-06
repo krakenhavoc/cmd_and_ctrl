@@ -432,7 +432,7 @@ describe("settings", () => {
         );
         const { settings, SETTINGS_VERSION } = await freshModule();
         const s = get(settings);
-        expect(SETTINGS_VERSION).toBe(20);
+        expect(SETTINGS_VERSION).toBe(21);
         expect(s.__version).toBe(SETTINGS_VERSION);
         expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
         expect(s.gameplay.smartAutoPass).toBe(false);
@@ -536,6 +536,27 @@ describe("settings", () => {
   // ADR 0105 owner decision 4: the legal-action highlights start on
   // for everyone, existing players included, whatever the stored blob
   // says — and from v15 on the player's own choice is kept.
+  // #2336: tableLayout gained "focus" without a version bump, and from
+  // then on the value is checked: an unknown one is the quadrant.
+  it("keeps every table layout and resets an unknown one to the quadrant", async () => {
+    for (const [stored, want] of [
+      ["quadrant", "quadrant"],
+      ["row", "row"],
+      ["focus", "focus"],
+      ["sideways", "quadrant"],
+      [7, "quadrant"],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 20, display: { tableLayout: stored, cardSize: "large" } }),
+      );
+      const { settings } = await freshModule();
+      const s = get(settings);
+      expect(s.display.tableLayout, `stored ${String(stored)}`).toBe(want);
+      expect(s.display.cardSize).toBe("large");
+    }
+  });
+
   it("v14 → v15 writes highlightLegalActions true whatever was stored", async () => {
     for (const stored of [false, true, "no", undefined]) {
       localStorage.setItem(
@@ -742,5 +763,131 @@ describe("per-step stops and the first-strike damage step", () => {
     expect(hasOwnStop("first_strike_damage")).toBe(false);
     expect(hasOwnStop("combat_damage")).toBe(true);
     expect(hasOwnStop("untap")).toBe(false);
+  });
+});
+
+// ---- ADR 0125 §4: the help group (first-use hints) ----
+
+describe("the help group (v20 → v21)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.doUnmock("./hints/retired");
+  });
+
+  it("adds the group to a v20 blob with nothing seen and tips on", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 20, display: { theme: "light" } }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(SETTINGS_VERSION).toBe(21);
+    expect(s.__version).toBe(21);
+    expect(s.help).toEqual({ seen: {}, tipsOff: false });
+    expect(s.display.theme).toBe("light");
+  });
+
+  it("keeps a v21 blob's seen hints and tipsOff, unknown ids included", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 21,
+        help: { seen: { "table.stack": 2, "lobby.from-a-newer-client": 1 }, tipsOff: true },
+      }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).help).toEqual({
+      seen: { "table.stack": 2, "lobby.from-a-newer-client": 1 },
+      tipsOff: true,
+    });
+  });
+
+  it("checks the stored map rather than trusting it", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 21,
+        help: { seen: { "table.stack": "2", "lobby.create": 0, "decks.check": 1 }, tipsOff: "yes" },
+      }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).help).toEqual({ seen: { "decks.check": 1 }, tipsOff: false });
+    for (const seen of [null, [1], "x"]) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 21, help: { seen } }),
+      );
+      const again = await freshModule();
+      expect(get(again.settings).help.seen, JSON.stringify(seen)).toEqual({});
+    }
+  });
+
+  it("drops retired ids", async () => {
+    vi.doMock("./hints/retired", () => ({ RETIRED_HINT_IDS: ["table.gone"] }));
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 21, help: { seen: { "table.gone": 1, "table.stack": 1 } } }),
+    );
+    const { settings, applySyncedCopy, defaultSettings } = await freshModule();
+    expect(get(settings).help.seen).toEqual({ "table.stack": 1 });
+    // An account copy goes through the same check.
+    const fromAccount = applySyncedCopy(
+      defaultSettings(),
+      { help: { seen: { "table.gone": 1, "decks.check": 1 } } },
+      21,
+    );
+    expect(fromAccount.help.seen).toEqual({ "decks.check": 1 });
+  });
+
+  it("syncs both fields, and an account copy written before v21 brings none", async () => {
+    const { SYNCED_FIELDS, syncedSubset, defaultSettings, applySyncedCopy } = await freshModule();
+    expect(SYNCED_FIELDS.help).toEqual({ seen: "synced", tipsOff: "synced" });
+    const s = defaultSettings();
+    s.help = { seen: { "table.stack": 1 }, tipsOff: true };
+    expect(syncedSubset(s).help).toEqual({ seen: { "table.stack": 1 }, tipsOff: true });
+    const old = applySyncedCopy(s, { display: { theme: "light" } }, 20);
+    expect(old.help).toEqual({ seen: {}, tipsOff: false });
+  });
+
+  // §4's size estimate: about 30 bytes an entry, so the 18 planned hints
+  // come to well under a kilobyte and the 32 KiB cap would take about a
+  // thousand. The body's depth is 3 (help.seen.<id>), inside the limit of 4.
+  it("stays small: 18 hints are under 1 KiB, and the depth is 3", async () => {
+    const { syncedSubset, defaultSettings } = await freshModule();
+    const ids = [
+      "site.help",
+      "lobby.practice",
+      "lobby.create",
+      "decks.check",
+      "decks.library",
+      "settings.display",
+      "catalog.search",
+      "roadmap.search",
+      "admin.views",
+      "table.dock",
+      "table.opening-roll",
+      "table.stack",
+      "table.right-click",
+      "table.commander",
+      "table.attention",
+      "table.more",
+      "table.expand",
+      "table.shortcuts",
+    ];
+    const s = defaultSettings();
+    s.help.seen = Object.fromEntries(ids.map((id) => [id, 1]));
+    const help = JSON.stringify(syncedSubset(s).help);
+    expect(help.length).toBeLessThan(1024);
+    expect(help.length / ids.length).toBeLessThan(32);
+    const depth = (v: unknown): number =>
+      v !== null && typeof v === "object"
+        ? 1 + Math.max(0, ...Object.values(v as object).map(depth))
+        : 0;
+    expect(depth(syncedSubset(s))).toBe(3);
+    // The whole synced body, with a thousand hints seen, still fits 32 KiB.
+    s.help.seen = Object.fromEntries(
+      Array.from({ length: 1000 }, (_, i) => [`table.hint-${i}`, 1]),
+    );
+    expect(JSON.stringify(syncedSubset(s)).length).toBeLessThan(32 * 1024);
   });
 });

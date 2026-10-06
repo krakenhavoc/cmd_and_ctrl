@@ -169,6 +169,70 @@ type ModeSpec struct {
 	// it, and a spell has no object to remember with). See
 	// mode_memory.go.
 	NotChosen ModeMemory
+
+	// Escalate is CR 702.120a's "Escalate [cost]": "For each mode you
+	// choose beyond the first as you cast this spell, you pay an
+	// additional [cost]." Paid (len(modes) - 1) times, in the cast's
+	// CR 601.2f cost plan beside the card's own additional cost, so
+	// its mana joins the total (AddModeCostMana), its discards ride
+	// discard_ids and its taps ride teamwork_ids, all validated by the
+	// ONE validator and refused when the caster cannot pay (#2126).
+	// Nil for every other modal card. Build it with effects.Escalate /
+	// EscalateDiscard / EscalateTapCreature.
+	Escalate *EscalateCost
+}
+
+// EscalateCost is the price of CR 702.120a's escalate: what ONE mode
+// beyond the first costs. A plain struct of numbers and a string, not an
+// AdditionalCost, on purpose: a ModeSpec is reachable from a stack
+// item, and AdditionalCost's target-clause fields would add closure
+// routes to the restore-point census for components an escalate cost
+// can never carry.
+type EscalateCost struct {
+	// ManaCost is the mana owed per extra mode, brace notation.
+	ManaCost string
+	// DiscardCards is the cards discarded per extra mode.
+	DiscardCards int
+	// TapCreatures is the untapped creatures the caster controls that
+	// are tapped per extra mode (Collective Effort), any power.
+	TapCreatures int
+	// Label is the clause as printed ("Escalate {G}").
+	Label string
+}
+
+// Empty reports whether the cost demands nothing. Nil-safe.
+func (e *EscalateCost) Empty() bool {
+	return e == nil || (e.ManaCost == "" && e.DiscardCards == 0 && e.TapCreatures == 0)
+}
+
+// additional is the cost as one entry of the cast's payment plan.
+func (e *EscalateCost) additional() AdditionalCost {
+	return AdditionalCost{ManaCost: e.ManaCost, DiscardCards: e.DiscardCards, TapCreatures: e.TapCreatures, Label: e.Label}
+}
+
+// EscalateExtra is how many times the escalate cost is owed for the
+// announced modes: one per mode beyond the first (CR 702.120a). Zero
+// for a spec without escalate and for one mode or none.
+func EscalateExtra(ms *ModeSpec, modes []int) int {
+	if ms == nil || ms.Escalate == nil || len(modes) < 2 {
+		return 0
+	}
+	return len(modes) - 1
+}
+
+// escalatePayments is the plan entries the escalate cost adds to one
+// cast: EscalateExtra copies of the cost, index -2 so they fold into
+// neither the optional-cost record nor the mandatory slot.
+func escalatePayments(ms *ModeSpec, modes []int) []costPayment {
+	n := EscalateExtra(ms, modes)
+	if n == 0 {
+		return nil
+	}
+	out := make([]costPayment, n)
+	for i := range out {
+		out[i] = costPayment{cost: ms.Escalate.additional(), index: -2}
+	}
+	return out
 }
 
 // ModeCountCondition names a registered "if <condition> as you cast
@@ -571,6 +635,46 @@ func EnoughChoosableModes(n int, ms *ModeSpec) bool {
 	return n >= ms.Min
 }
 
+// EscalatePayableExtraForEffect is the most modes beyond the first
+// `playerID` could pay escalate's non-mana half for right now (CR
+// 702.120a): the cards in hand other than the spell itself divided by
+// the discards per mode, the untapped creatures divided by the taps per
+// mode, whichever is smaller, capped at one fewer than the spell's most
+// modes. Mana is deliberately not asked — CR 601.2g lets the caster
+// activate mana abilities after announcing, the posture
+// AdditionalCostBranchPayableLocked takes. -1 for a spec without
+// escalate.
+//
+// ONE function, read by the view's `modes.escalate.max_extra` and
+// matched by what the bot enumerator and CastSpell enforce, so no mode
+// count is offered that cannot be paid (#2126).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) EscalatePayableExtraForEffect(playerID, castID uuid.UUID, ms *ModeSpec) int {
+	if ms == nil || ms.Escalate == nil {
+		return -1
+	}
+	best := max(min(ms.Max, len(ms.Options))-1, 0)
+	e := ms.Escalate
+	if e.DiscardCards > 0 {
+		p := g.playerByIDLocked(playerID)
+		if p == nil {
+			return 0
+		}
+		n := 0
+		for _, c := range p.Hand.Cards {
+			if c.InstanceID != castID {
+				n++
+			}
+		}
+		best = min(best, n/e.DiscardCards)
+	}
+	if e.TapCreatures > 0 {
+		best = min(best, len(g.TapCreaturesOptionsForEffect(playerID))/e.TapCreatures)
+	}
+	return best
+}
+
 // AddModeCostMana is CR 702.172a's Spree, the mana half: the sum of
 // every CHOSEN mode's own Cost, added into `cost` at CR 601.2f beside
 // AdditionalCostMana (ADR 0073 §3) — the same point in the
@@ -590,6 +694,20 @@ func EnoughChoosableModes(n int, ms *ModeSpec) bool {
 func AddModeCostMana(cost ParsedCost, ms *ModeSpec, modes []int) (ParsedCost, error) {
 	if ms == nil {
 		return cost, nil
+	}
+	// CR 702.120a: escalate's mana, once per mode beyond the first.
+	if n := EscalateExtra(ms, modes); n > 0 && ms.Escalate.ManaCost != "" {
+		add, err := ParseCost(ms.Escalate.ManaCost)
+		if err != nil {
+			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, ms.Escalate.Label, err)
+		}
+		for range n {
+			cost.Generic += add.Generic
+			cost.Required = append(cost.Required, add.Required...)
+			cost.XSlots += add.XSlots
+			cost.HasPhyrexian = cost.HasPhyrexian || add.HasPhyrexian
+			cost.HasSnow = cost.HasSnow || add.HasSnow
+		}
 	}
 	for _, m := range modes {
 		if m < 0 || m >= len(ms.Options) || ms.Options[m].Cost == "" {

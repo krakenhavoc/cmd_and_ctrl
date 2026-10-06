@@ -106,7 +106,32 @@ const (
 	// the Paruns' and Obsidian Obelisk's "spend this mana only to cast
 	// a multicolored spell" (#1600).
 	ManaRestrictMulticolored = "multicolored"
+	// ManaRestrictNoGeneric is a SYMBOL-level negative clause — "this
+	// mana can't be spent to pay generic mana costs" (Jegantha, the
+	// Wellspring, #2170). Every other tag asks what the mana pays FOR;
+	// this one asks which SYMBOL of the cost it pays, so it is not
+	// decided by ManaSpendContext.allows (which has no symbol) but by
+	// the solvers, which refuse the token to the generic part of a cost
+	// ({N}, {X}, a cost increase, commander tax: CR 107.4b) and offer
+	// it to the coloured, hybrid and Phyrexian symbols (CR 107.4e-f).
+	// It composes by AND with every other tag, and it must be a
+	// top-level tag, never inside ManaRestrictAnyOf (which panics).
+	// Weaker than printed on purpose where "as though it were mana of
+	// any colour" widens a coloured symbol: the widened symbol is still
+	// a coloured one, so this mana may pay it (CR 609.4b).
+	ManaRestrictNoGeneric = "not:generic"
 )
+
+// noGeneric reports whether a token may not pay generic mana — it
+// carries ManaRestrictNoGeneric. The one reader every solver shares.
+func (t ManaToken) noGeneric() bool {
+	for _, r := range t.Restrictions {
+		if r == ManaRestrictNoGeneric {
+			return true
+		}
+	}
+	return false
+}
 
 // ManaRestrictType builds a "the object has this card type" tag —
 // ManaRestrictType("Creature") for Ancient Ziggurat.
@@ -153,6 +178,11 @@ func ManaRestrictAnyType(types ...string) string {
 func ManaRestrictAnyOf(alternatives ...[]string) string {
 	parts := make([]string, 0, len(alternatives))
 	for _, alt := range alternatives {
+		for _, t := range alt {
+			if t == ManaRestrictNoGeneric {
+				panic("game: ManaRestrictNoGeneric is a symbol-level tag and cannot sit inside ManaRestrictAnyOf")
+			}
+		}
 		parts = append(parts, strings.Join(alt, anyOfAnd))
 	}
 	return anyOfPrefix + strings.Join(parts, anyOfOr)
@@ -277,6 +307,10 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
+	case ManaRestrictNoGeneric:
+		// Decided per symbol by the solvers (noGeneric), not by the
+		// object being paid for: nothing here to refuse.
+		return true
 	case ManaRestrictNotNonartifactSpell:
 		switch ctx.Purpose {
 		case SpendPurposeActivate:

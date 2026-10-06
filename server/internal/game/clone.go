@@ -48,6 +48,9 @@ func (g *Game) cloneLocked() *Game {
 		// an active player who lost mid-resolution.
 		Outcome:               cloneGameOutcome(g.Outcome),
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		// #2165: CR 724.1's deferred half — the turn an effect ended
+		// whose cleanup step has not begun.
+		TurnEndPending: g.TurnEndPending,
 		// #628: both halves of the CR 732 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
@@ -320,6 +323,9 @@ func (g *Game) cloneLocked() *Game {
 	// swallow the re-done one.
 	out.eventBatch = g.eventBatch
 	out.oncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	// #2183: the batch life totals rewind with the batch they name.
+	out.batchLifeLost = cloneBatchLifeLossTotals(g.batchLifeLost)
+	out.stagedBatchTriggers = g.stagedBatchTriggers
 	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
 	// to. Copy on write everywhere, so the slice is shared.
 	out.preventionFollowUps = g.preventionFollowUps
@@ -582,28 +588,30 @@ func cloneCard(c Card) Card {
 
 func clonePlayer(p *Player) *Player {
 	out := &Player{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		TurnsBegun:        p.TurnsBegun,
-		UpkeepsBegun:      p.UpkeepsBegun,
-		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		Agent:             p.Agent,
-		AgentClient:       p.AgentClient,
+		ID:                    p.ID,
+		Name:                  p.Name,
+		Seat:                  p.Seat,
+		Life:                  p.Life,
+		Poison:                p.Poison,
+		Energy:                p.Energy,
+		TurnsBegun:            p.TurnsBegun,
+		UpkeepsBegun:          p.UpkeepsBegun,
+		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:            p.Eliminated,
+		HandKept:              p.HandKept,
+		MulliganDecided:       p.MulliganDecided,
+		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		MulligansTaken:        p.MulligansTaken,
+		DeckImported:          p.DeckImported,
+		UndosRemaining:        p.UndosRemaining,
+		DiscordID:             p.DiscordID,
+		DiscordAvatarHash:     p.DiscordAvatarHash,
+		DisplayName:           p.DisplayName,
+		IsBot:                 p.IsBot,
+		BotTier:               p.BotTier,
+		BotDeck:               p.BotDeck,
+		Agent:                 p.Agent,
+		AgentClient:           p.AgentClient,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -956,7 +964,22 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ID = src.ID
 	g.CreatedAt = src.CreatedAt
 	g.State = src.State
+	// #1530: a seat's trigger-ordering preference is a setting, not a
+	// play. It is set without an undo entry, so the snapshot predates
+	// it; carry the live value across the restore (by player ID) so an
+	// undo of some earlier action cannot flip it back.
+	live := make(map[uuid.UUID]bool, len(g.Seats))
+	for _, p := range g.Seats {
+		if p != nil {
+			live[p.ID] = p.TriggerOrderAlwaysAsk
+		}
+	}
 	g.Seats = src.Seats
+	for _, p := range g.Seats {
+		if p != nil {
+			p.TriggerOrderAlwaysAsk = live[p.ID]
+		}
+	}
 	g.Battlefield = src.Battlefield
 	g.Stack = src.Stack
 	g.Exile = src.Exile
@@ -974,6 +997,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SplitSecondActive = src.SplitSecondActive
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
+	g.TurnEndPending = src.TurnEndPending
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers
@@ -1029,6 +1053,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	// cloneLocked.
 	g.eventBatch = src.eventBatch
 	g.oncePerBatchFired = src.oncePerBatchFired
+	g.batchLifeLost = cloneBatchLifeLossTotals(src.batchLifeLost)
+	g.stagedBatchTriggers = src.stagedBatchTriggers
 	g.preventionFollowUps = src.preventionFollowUps
 	g.damageInstanceSeq = src.damageInstanceSeq
 	g.openDamageInstance = src.openDamageInstance

@@ -56,6 +56,8 @@
     // (the opening roll's chooser, which has no bar buttons: without
     // it the dialog would hold nothing but the floating sheet).
     question?: string;
+    // Draw the sheet as a stage over the whole table (DockSheetSpec.stage).
+    stage?: boolean;
     children: Snippet;
   }
 
@@ -71,6 +73,7 @@
     secondary = [],
     refusal = null,
     question,
+    stage = false,
     children,
   }: Props = $props();
 
@@ -109,7 +112,7 @@
     secondary,
     refusal,
     question,
-    sheet: { title: title ?? label, src, count, width, key: sheetKey, attach },
+    sheet: { title: title ?? label, src, count, width, key: sheetKey, attach, stage },
   });
 </script>
 

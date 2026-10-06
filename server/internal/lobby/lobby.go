@@ -367,7 +367,8 @@ type gameEntry struct {
 	// 0076 §2.2): unlisted, never written to the store, reaped when
 	// idle. practiceOwner is who it belongs to for the one-per-person
 	// rule ("" opts out), and practiceHuman is the one human seat —
-	// the only seat allowed to leave it.
+	// the only seat allowed to leave it, and the seat the bot hands
+	// the first turn to when it wins the opening roll (ADR 0125 §5.2).
 	practice      bool
 	practiceOwner string
 	practiceHuman uuid.UUID
@@ -1116,7 +1117,8 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	// ADR 0121 §1: the table rolls for the first turn itself. Each seat
 	// presses Roll (a bot rolls on its own clock), the high roll chooses
 	// who goes first, and only then are libraries shuffled and hands
-	// dealt. The practice table keeps Start (ADR 0076).
+	// dealt. The practice table rolls the same way (ADR 0125 §5.2,
+	// practice.go).
 	if broadcast, err = l.applyLocked(id, entry, func() error {
 		return entry.room.Game.StartWithOpeningRoll(nil)
 	}); err != nil {
@@ -1150,6 +1152,18 @@ func (l *Lobby) botStartLocked(entry *gameEntry) func() {
 	if l.bots == nil || entry == nil {
 		return nil
 	}
+	// ADR 0125 §5.2: at the practice table, a bot that wins the opening
+	// roll hands the first turn to the human, so the tutorial follows
+	// the player's own first turn. No other table sets it.
+	var firstTurnTo *int
+	if entry.practice {
+		for _, seat := range entry.meta.Players {
+			if seat.PlayerID == entry.practiceHuman {
+				s := seat.Seat
+				firstTurnTo = &s
+			}
+		}
+	}
 	var seats []aiseat.SeatSpec
 	for _, seat := range entry.meta.Players {
 		if seat.IsBot {
@@ -1159,9 +1173,10 @@ func (l *Lobby) botStartLocked(entry *gameEntry) func() {
 			// deck was picked. Empty for a bot seated with a pasted
 			// decklist, which is a thinner prompt and not an error.
 			seats = append(seats, aiseat.SeatSpec{
-				PlayerID: seat.PlayerID,
-				Tier:     seat.BotTier,
-				Deck:     seat.BotDeck,
+				PlayerID:    seat.PlayerID,
+				Tier:        seat.BotTier,
+				Deck:        seat.BotDeck,
+				FirstTurnTo: firstTurnTo,
 			})
 		}
 	}

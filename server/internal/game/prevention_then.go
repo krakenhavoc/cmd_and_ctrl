@@ -82,6 +82,10 @@ func (u PreventionUnit) Valid() bool { return u == ThenPerRecipient || u == Then
 //
 // Caller must hold g.mu (write).
 func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
+	if a.effect.DrawInstead.key != "" {
+		g.recordDrawInsteadLocked(ev, a)
+		return
+	}
 	if a.effect.Replace == nil {
 		return
 	}

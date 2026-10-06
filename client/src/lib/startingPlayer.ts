@@ -34,8 +34,9 @@ export function openingRollWinner(view: StartingView | null): OpeningRollWinner 
     if (entry.kind === "starting_player") choice = entry;
   }
   if (!choice) {
-    // A table that never rolled (the practice table, ADR 0076) or a
-    // replay from before the opening roll: name who went first.
+    // A table that never rolled (a replay or a restored game from
+    // before the opening roll, ADR 0121; the practice table rolls too
+    // since ADR 0125 §5.2): name who went first.
     if (view.starting_seat === undefined) return null;
     const name = nameOf(view.starting_seat);
     return name === undefined ? null : { seat: view.starting_seat, name };
@@ -74,4 +75,13 @@ export function openingRollText(winner: OpeningRollWinner): string {
       : `${winner.name} won the d20 roll with ${winner.result} and`;
   if (winner.chosen) return `${won} chose ${winner.chosen.name} to go first`;
   return `${won} goes first`;
+}
+
+// firstTurnHeadline is the opening hand's headline, as Arena puts it
+// over the mulligan: who takes the first turn. The seat that goes first
+// is the one chosen, else the winner, and the viewer's own seat reads
+// "You go first". openingRollText says how it was decided, under it.
+export function firstTurnHeadline(winner: OpeningRollWinner, viewerSeat?: number): string {
+  const first = winner.chosen ?? winner;
+  return first.seat === viewerSeat ? "You go first" : `${first.name} goes first`;
 }

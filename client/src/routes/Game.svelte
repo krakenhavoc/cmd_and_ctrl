@@ -24,9 +24,9 @@
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { stampManaEnforcement } from "../lib/manaEnforcement";
   import { isStaleAbilityRefError } from "../lib/abilityRef";
-  import { closeCardMenu } from "../lib/contextMenu";
-  import { closeManaSourcePicker } from "../lib/manaSourcePicker";
-  import { closeAbilityPopover } from "../lib/abilityPopover";
+  import { cardMenu, closeCardMenu } from "../lib/contextMenu";
+  import { closeManaSourcePicker, manaSourcePicker } from "../lib/manaSourcePicker";
+  import { abilityPopover, closeAbilityPopover } from "../lib/abilityPopover";
   import {
     canManageTable,
     canSpawn,
@@ -57,7 +57,13 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
-  import { confirmAction } from "../lib/dock";
+  import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
+  import { modalOpen } from "../lib/modalLayers";
+  import {
+    publishTableMoment,
+    stackTopController,
+    type TableState,
+  } from "../lib/hints/tableMoment";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import OpeningRollBanner from "../lib/components/board/OpeningRollBanner.svelte";
   import OpeningRollDock from "../lib/components/board/OpeningRollDock.svelte";
@@ -113,15 +119,24 @@
     setStackHoldStatus,
     stackHoldRemainingMs,
   } from "../lib/stackHold";
+  import { newTriggerOrderPrefState, triggerOrderPrefToSend } from "../lib/triggerOrderPref";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
-  import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
+  import {
+    openShortcutsHelp,
+    registerShortcutHandlers,
+    setShortcutContext,
+  } from "../lib/shortcutRuntime";
+  import { HINTS } from "../lib/hints";
+  import { replayTips } from "../lib/hints/runtime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
-  import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
+  import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
+  import { mulliganWaitingText } from "../lib/mulliganTurn";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
+  import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
 
   interface Props {
@@ -778,6 +793,24 @@
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
 
+  // #1530: keep the server's copy of "always ask me to order my
+  // triggers" in step with the setting. The effect reads the live
+  // snapshot, never a replay frame, and sends only when the viewer's own
+  // seat disagrees (toggle, reconnect, restart). See triggerOrderPref.ts.
+  const triggerOrderPrefState = newTriggerOrderPrefState();
+  $effect(() => {
+    if (replaying) return;
+    const want = triggerOrderPrefToSend(
+      triggerOrderPrefState,
+      $snapshot,
+      viewerID,
+      $settings.gameplay.alwaysAskTriggerOrder,
+    );
+    if (want !== null && viewerID) {
+      client.sendAction("set_trigger_order_preference", viewerID, { always_ask: want });
+    }
+  });
+
   // ADR 0105 (#1789): the frame's legal-action lookup, built once per
   // snapshot so every card reads it in O(1), and what the board is
   // allowed to draw from it. Highlights are live while the player has
@@ -821,6 +854,10 @@
   // no hand has been dealt, so the mulligan sheet and its roll call wait.
   const openingRollOpen = $derived(!!view?.opening_roll);
   const openingRoll = $derived(openingRollWinner(view));
+  // CR 103.5: only the seat whose turn it is may keep or mulligan; the
+  // others see the sheet and who they are waiting for.
+  const viewerMulliganTurn = $derived(viewerSeat?.mulligan_turn === true);
+  const mulliganWaiting = $derived(mulliganWaitingText(seats, viewerMulliganTurn));
   const viewerNeedsToDecide = $derived(
     mulligansOpen &&
       !openingRollOpen &&
@@ -1063,11 +1100,80 @@
     if (w !== coachSize.w || h !== coachSize.h) coachSize = { w, h };
   }
   const coachShown = $derived(coachMounted && coachSize.w > 0);
+
+  // ---- First-use hints: the table's quiet moment (ADR 0125 §3.5) ----
+  // The hint layer is mounted at the app shell, so the table tells it
+  // what it needs to know: is a decision open (a dock request or a
+  // dialog), is the viewer mid-gesture (targeting, a held pointer for a
+  // drag, an open card menu or popover), does an opponent's item sit on
+  // top of the stack while the viewer holds priority, and is the coach
+  // up. lib/hints/tableMoment.ts decides; nothing here gates a hint.
+  // Only a seated viewer's table publishes one: no table hint is for a
+  // spectator.
+  const tableOnScreenSince = Date.now();
+  let pointerHeld = $state(false);
+  $effect(() => {
+    const down = () => (pointerHeld = true);
+    const up = () => (pointerHeld = false);
+    window.addEventListener("pointerdown", down, true);
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", up, true);
+    window.addEventListener("blur", up);
+    return () => {
+      window.removeEventListener("pointerdown", down, true);
+      window.removeEventListener("pointerup", up, true);
+      window.removeEventListener("pointercancel", up, true);
+      window.removeEventListener("blur", up);
+    };
+  });
+  const hintTable = $derived<TableState | null>(
+    dockShown && view
+      ? {
+          moment: {
+            since: tableOnScreenSince,
+            dockRequest: $dockRequests.length > 0,
+            dialog: $modalOpen,
+            gesture:
+              !!$targeting ||
+              pointerHeld ||
+              !!$cardMenu ||
+              !!$abilityPopover ||
+              !!$manaSourcePicker ||
+              combatSelection !== null,
+            viewerHasPriority,
+            stackTopController: stackTopController(view),
+            viewerID,
+            coachVisible: coachShown,
+          },
+          view,
+          viewerID,
+        }
+      : null,
+  );
+  let hintPublisher: ReturnType<typeof publishTableMoment> | null = null;
+  $effect(() => {
+    const t = hintTable;
+    if (!t) {
+      hintPublisher?.close();
+      hintPublisher = null;
+    } else if (!hintPublisher) {
+      hintPublisher = publishTableMoment(t);
+    } else {
+      hintPublisher.update(t);
+    }
+  });
+  onDestroy(() => hintPublisher?.close());
   // PR 6: an open sheet's width (0 when none), published as --sheet-w
   // with `.sheet-open`, so the hover zoom moves left of the sheet (§4).
   let sheetW = $state(0);
   function onDockSheet(w: number): void {
     if (w !== sheetW) sheetW = w;
+  }
+  // #2374: the opening hand's stage is up (and not folded away by View
+  // table). The log drawer, opened over it, draws above it.
+  let stageUp = $state(false);
+  function onDockStage(up: boolean): void {
+    if (up !== stageUp) stageUp = up;
   }
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
@@ -1587,6 +1693,12 @@
         ? { ready: !tableRollCooling }
         : null,
     onTableRoll: rollAtTable,
+    // ADR 0125 §6: the Help group. The tutorial is replayed on this
+    // tab's practice table only, as the coach's Replay does.
+    practice: $practiceTable?.gameID === gameID,
+    onTableTips: () => replayTips("table", HINTS),
+    onShortcuts: openShortcutsHelp,
+    onReplayTutorial: () => navigate("#/practice"),
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,
@@ -1800,7 +1912,12 @@
     transport layer.
   -->
   {#if showGameLog && view}
-    <GameLogPanel {view} {viewerID} onClose={() => (showGameLog = false)} />
+    <GameLogPanel
+      {view}
+      {viewerID}
+      overStage={dockShown && stageUp}
+      onClose={() => (showGameLog = false)}
+    />
   {/if}
 
   <ConnectionBanner
@@ -1872,7 +1989,7 @@
                    dealt. Everyone sees it, spectators included. -->
               <OpeningRollBanner {view} />
             {:else if mulligansOpen && !gameEnded}
-              <div class="att mulligan-banner" aria-label="opening hand decisions">
+              <div class="att mulligan-banner" aria-label={L.openingHandDecisions}>
                 <span class="att-label">Opening hands</span>
                 {#if openingRoll}
                   <span class="opening-roll" style="--seat-color: {seatColor(openingRoll.seat)}">
@@ -1893,8 +2010,10 @@
                       <span class="muted">eliminated</span>
                     {:else if seat.hand_kept}
                       kept <Icon name="check" size={11} />
-                    {:else}
+                    {:else if seat.mulligan_turn}
                       deciding…
+                    {:else}
+                      waiting
                     {/if}
                     {#if (seat.mulligans_taken ?? 0) > 0}
                       <span class="muted mull-count">×{seat.mulligans_taken}</span>
@@ -2077,6 +2196,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          onStage={onDockStage}
           menu={menuOptions}
         />
         {#if coachMounted}
@@ -2084,41 +2204,57 @@
         {/if}
       {/if}
       {#if viewerNeedsToDecide && dockShown}
-        <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet that
-             grows up out of the dock, with Keep hand (Enter) and
-             Mulligan in its action bar. The dialog keeps its name, "keep
-             or mulligan your hand", and the hand its list. No scrim: the
-             table and the roll call stay readable. -->
+        <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet of the
+             dock, with Keep hand (Enter) and Mulligan in its action bar.
+             The dialog keeps its name, "keep or mulligan your hand", and
+             the hand its list. #2346: it is drawn as a stage, as Arena
+             does: a dimmed table, who goes first as the headline, the
+             hand as a large fan, and the dock centred under it. "View
+             table" folds it away; the roll call is in the strip. -->
         <DockSheet
           rank="choice"
-          label="keep or mulligan your hand"
+          label={L.mulligan}
           title="Your opening hand"
-          width={720}
+          width={SHEET_HAND_WIDTH}
+          stage
           sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
-          primary={confirmAction("Keep hand", keepHand, { id: "keep" })}
-          secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
+          primary={confirmAction(L.keepHand, keepHand, {
+            id: "keep",
+            disabled: !viewerMulliganTurn,
+          })}
+          secondary={[
+            {
+              id: "mulligan",
+              label: "Mulligan",
+              onPress: mulliganDecide,
+              disabled: !viewerMulliganTurn,
+            },
+          ]}
         >
           <div class="mulligan-copy">
+            {#if mulliganWaiting}
+              <p class="first-turn" role="status">{mulliganWaiting}</p>
+            {/if}
             {#if openingRoll}
+              <p class="first-turn">{firstTurnHeadline(openingRoll, viewerSeat?.seat)}</p>
               <p class="opening-roll-copy">
                 <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
                 {openingRollText(openingRoll)}.
               </p>
             {/if}
-            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
-              <p class="muted">
-                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
-                London — no bottom-N penalty yet).
-              </p>
-            {:else}
-              <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
-            {/if}
           </div>
           {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
-            <div class="mulligan-cards" role="list" aria-label="your opening hand">
-              {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
+            {@const n = viewerSeat?.hand.cards.length ?? 0}
+            <div class="mulligan-cards" role="list" aria-label="your opening hand" style:--n={n}>
+              {#each viewerSeat?.hand.cards ?? [] as card, i (card.instance_id)}
                 {@const art = cardImageURL(card, "normal")}
-                <div class="mulligan-card" role="listitem" title={card.name}>
+                <div
+                  class="mulligan-card"
+                  role="listitem"
+                  title={card.name}
+                  style:--i={i}
+                  style:--off={i - (n - 1) / 2}
+                >
                   {#if art}
                     <img src={art} alt={card.name} loading="lazy" use:cardArt={art} />
                   {:else}
@@ -2128,6 +2264,21 @@
               {/each}
             </div>
           {/if}
+          <!-- What each button does, under the fan, as Arena writes the
+               mulligan's cost under its button. -->
+          <div class="mulligan-copy mulligan-cost">
+            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
+              <p class="muted">
+                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
+                London — no bottom-N penalty yet).
+              </p>
+            {:else}
+              <p class="muted">
+                Hand size: {viewerSeat?.hand.count ?? 0}. A mulligan shuffles this hand away and
+                deals you a new 7.
+              </p>
+            {/if}
+          </div>
         </DockSheet>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
@@ -2480,7 +2631,8 @@
      longer needs to stop above the dock. */
   section.has-dock.sheet-open {
     --dock-zoom-clear: 0px;
-    --zoom-right: calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px);
+    /* A wide sheet (the opening hand) must not push the zoom off screen. */
+    --zoom-right: min(calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px), calc(100vw - 360px));
   }
   /* §8: on a phone the dock is a full-width bar on the bottom of the
      play area, and the board ends above it rather than under it. */
@@ -2713,17 +2865,30 @@
   }
 
   /* ADR 0111 PR 6: the opening hand is a dock sheet (DockSheet), so
-     only its body is styled here: the roll line, the count, and the
-     seven cards in one row of a 720px sheet (fewer per row on a phone,
-     scrolling inside the sheet). */
+     only its body is styled here. #2346: the sheet is a stage over the
+     whole table, as Arena draws it: who goes first as the headline, the
+     hand as a large arc of cards, and what a mulligan does under it,
+     above the dock's centred buttons. It still asks for
+     SHEET_HAND_WIDTH (#2200), which a phone, where there is no stage,
+     uses for its bottom sheet. */
   .mulligan-copy {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
   }
   .mulligan-copy p {
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
+  }
+  .mulligan-copy .first-turn {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4.2vw, 56px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--fg);
   }
   .mulligan-copy .opening-roll-copy {
     display: inline-flex;
@@ -2732,25 +2897,51 @@
     color: var(--priority-strong);
     font-weight: 600;
   }
+  /* The arc. Each card is --fan-w wide, overlapping its neighbour by
+     12%, turned by its offset from the middle (--off) and dropped by
+     its square, so the row bows like a held hand. --fan-w is the
+     widest that fits the arc, turned, across the screen, and 40% of its
+     height. */
   .mulligan-cards {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-auto-rows: max-content;
-    gap: 8px;
+    --fan-w: min(calc((100vw - 160px) / (var(--n, 7) * 0.95)), 220px, calc(40vh * 5 / 7));
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     min-height: 0;
-    padding: 2px;
+    padding: 28px 0 48px;
   }
   .mulligan-card {
     /* positioned for the failed-art pip (#33) */
     position: relative;
-    min-width: 0;
+    flex: none;
+    width: var(--fan-w);
+    margin-left: calc(var(--fan-w) * -0.12);
     aspect-ratio: 5 / 7;
-    border-radius: 10px;
+    border-radius: calc(var(--fan-w) * 0.05);
     box-sizing: border-box;
     overflow: hidden;
     background: var(--surface-sunken);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(0, 0, 0, 0.4);
+    transform-origin: 50% 130%;
+    transform: rotate(calc(var(--off, 0) * 3.5deg))
+      translateY(calc(var(--off, 0) * var(--off, 0) * 5px));
+    transition: transform 160ms var(--ease);
+  }
+  .mulligan-card:first-child {
+    margin-left: 0;
+  }
+  /* Hovering a card lifts it out of the arc to be read, as Arena does. */
+  .mulligan-card:hover {
+    z-index: 2;
+    transform: translateY(-22px) scale(1.12);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mulligan-card {
+      transition: none;
+    }
   }
   .mulligan-card img {
     display: block;
@@ -2770,9 +2961,19 @@
     color: var(--fg-muted);
     box-sizing: border-box;
   }
+  /* A phone has no room for an arc: the cards wrap, flat, three or
+     four to a row. */
   @media (max-width: 599px) {
     .mulligan-cards {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      --fan-w: calc((100vw - 64px) / 3.4);
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0 16px;
+    }
+    .mulligan-card,
+    .mulligan-card:first-child {
+      margin-left: 0;
+      transform: none;
     }
   }
 

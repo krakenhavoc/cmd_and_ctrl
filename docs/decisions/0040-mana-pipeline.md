@@ -1207,3 +1207,65 @@ Proof cards: Throne of Eldraine, Crypt Rats, Crimson Hellkite, Pillar of the
 Paruns, Obsidian Obelisk (all full). Atalya, Samite Master's modal "{X}, {T}"
 ability is writable with `SpendOnlyOnX("W")` and is not catalogued. Tracker
 [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+## Amendment 2026-10-05 — mana you don't lose as steps end (#2166)
+
+CR 106.4 empties every pool at each step and phase boundary, and a family of
+cards changes what is lost. `emptyAllManaPoolsLocked` now calls
+`sweepManaPoolLocked` (`game/mana_keep.go`), which reads three sources, none of
+them stored on the pool itself:
+
+1. **A static over the pool, derived from the battlefield.** `Spec.ManaPool`
+   (`game.ManaPoolStatic`, read through `CatalogManaPool` and
+   `CatalogAbilityKey`, the `CatalogHandSize` pattern): keep all mana
+   (Upwelling, every player), keep chosen colours (Leyline Tyrant, Omnath), or
+   *becomes colourless* (Kruphix, God of Horizons). The static leaving ends it
+   at the next boundary, because nothing was written. Kruphix converts a token
+   in place, so its spend restrictions and riders stay, and the colourless mana
+   is "lost" and converted again at every later boundary: it stays for as long
+   as Kruphix does. Keeping wins over converting: kept mana is not lost.
+2. **A granted statement with a duration.** `PlayerStatic.KeepManaColors`
+   (`GrantKeepManaForEffect`): The Last Agni Kai's "until end of turn, you don't
+   lose unspent red mana", which covers red mana from any source.
+3. **Mana marked when it is produced.** `ManaRiderKeepUntilEndOfTurn`, a mark
+   that rides the token's existing rider slot (so every mint route, the colour
+   pick and the snapshot already carry it; a rider of this kind never fires at a
+   spend). `effects.KeepManaUntilEndOfTurn()` goes in `AddMana.Riders` or a mana
+   ability's `SpendRiders`. It expires when the cleanup step begins (or at the
+   next untap if none ran); the stripped token is then ordinary mana, lost or
+   converted like any other. The additive snapshot shape is a rider on a pool
+   token and a `keepManaColors` list on a player static; an older binary refuses
+   the unknown rider kind rather than dropping the mark.
+
+Not built: Omnath, Locus of Mana's "+1/+1 for each unspent green mana" (a layer
+7 read of a pool nothing recomputes layers for) and Leyline Tyrant's dies
+trigger.
+
+## Amendment 2026-10-05 — mana that can't pay generic costs (#2170)
+
+"This mana can't be spent to pay generic mana costs" (Jegantha, the Wellspring)
+limits which SYMBOL of a cost the mana pays, a question no earlier tag asks:
+the others describe the object or the purpose a payment is for.
+
+`game.ManaRestrictNoGeneric` (`"not:generic"`) is a symbol-level tag.
+`ManaSpendContext.allows` accepts it (it has no symbol to test); the solvers
+that pay the generic part of a cost refuse the token: `ManaPool.attemptSpend`,
+`MissingFor`, the distinct-colours pick, and the auto-tapper's pool credit
+(`poolShortfalls`), which credits it to coloured symbols only. The view's
+castability and `internal/legal`'s affordability probe already ask
+`CanPayFor` and the top-up, so the payment, the view and the bot agree
+without a fourth copy of the rule. `{N}`, `{X}`, cost increases and commander
+tax are generic; coloured, hybrid, Phyrexian and `{N/C}` symbols take the mana.
+
+Interactions. "Spend mana as though it were mana of any color" (#1600) changes
+the colour, not the symbol kind (CR 609.4b): a widened coloured symbol, and a
+coloured symbol a cast permission folded into `Generic`
+(`ParsedCost.FoldedColored`), may take the mana, and a genuine generic symbol
+may not. Kruphix's conversion copies the token and so keeps the tag; the
+converted colourless mana pays `{C}` but not generic. The tag is a string in
+the token's existing restriction list, so the snapshot shape is unchanged. It
+is a top-level tag only: `ManaRestrictAnyOf` panics if handed it, because an
+alternative inside an OR would stop restricting.
+
+A restricted mana ability is not planned by the auto-tapper (unchanged), so
+Jegantha is tapped by hand.

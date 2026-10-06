@@ -374,3 +374,61 @@ func TestAWardTaxOutlivesAFailedTriggerResolution(t *testing.T) {
 		t.Fatalf("PassPriority after the tax was answered: %v", err)
 	}
 }
+
+// #2365: the guarded shape with a caller-supplied decline. Same halt,
+// same answer path; the "or else" is the caller's, not a counter, so
+// the guarded spell is still on the stack afterwards.
+func TestAGuardedPayUnlessRunsItsOwnDeclineAndHaltsTheTable(t *testing.T) {
+	for _, pay := range []bool{false, true} {
+		g := newFourPlayerActiveGame(t)
+		caster := g.Seats[1]
+		spell := guardedSpellOnStack(t, g, caster)
+		if pay {
+			caster.ManaPool.AddMana(ManaToken{Color: "C"}, ManaToken{Color: "C"})
+		}
+		ran := 0
+		g.WithWriteLock(func() {
+			if err := g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
+				StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Divert",
+				OnDecline: func(*Game) error { ran++; return nil },
+			}); err != nil {
+				t.Fatalf("queue: %v", err)
+			}
+		})
+		if err := g.PassPriority(); !errors.Is(err, ErrChoicePending) {
+			t.Fatalf("pass with the guarded prompt open = %v, want ErrChoicePending", err)
+		}
+		if err := g.ResolvePayUnless(onlyPendingChoice(t, g).ID, caster.ID, pay); err != nil {
+			t.Fatalf("ResolvePayUnless: %v", err)
+		}
+		if want := map[bool]int{false: 1, true: 0}[pay]; ran != want {
+			t.Errorf("pay=%v: custom decline ran %d times, want %d", pay, ran, want)
+		}
+		if !g.Stack.Contains(spell) {
+			t.Errorf("pay=%v: the custom decline must not counter the spell", pay)
+		}
+	}
+}
+
+// A custom decline never runs for an object that has left the stack.
+func TestAGuardedPayUnlessDeclineSkipsADepartedObject(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	caster := g.Seats[1]
+	spell := guardedSpellOnStack(t, g, caster)
+	ran := false
+	g.WithWriteLock(func() {
+		_ = g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
+			StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Divert",
+			OnDecline: func(*Game) error { ran = true; return nil },
+		})
+		_ = g.CounterTargetForEffect(spell)
+	})
+	if len(g.PendingChoices) == 1 {
+		if err := g.ResolvePayUnless(g.PendingChoices[0].ID, caster.ID, false); err != nil {
+			t.Fatalf("ResolvePayUnless: %v", err)
+		}
+	}
+	if ran {
+		t.Error("the custom decline ran for a spell that was no longer on the stack")
+	}
+}

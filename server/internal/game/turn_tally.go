@@ -77,6 +77,14 @@ type PlayerTurnTally struct {
 	// while it is still on the battlefield (EventSacrifice fires then),
 	// so an artifact creature counts once.
 	ArtifactsOrCreaturesSacrificed int `json:"artifactsOrCreaturesSacrificed,omitempty"`
+	// PermanentsLeft counts the permanents this player controlled that
+	// left the battlefield, by any route and to any zone (revolt,
+	// CR 702.136; #2148): a sacrifice, a bounce, an exile, a death, a
+	// token that ceased to exist, a permanent that left and came back.
+	// "As it left" is the controller the exit stamped on the event
+	// (CR 603.10a), not the card's field afterwards. Read through
+	// Game.PermanentLeftThisTurn.
+	PermanentsLeft int `json:"permanentsLeft,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -166,6 +174,28 @@ type TurnTally struct {
 	// trigger's target predicate reads, because a target predicate is
 	// not handed the trigger's event.
 	CombatDamagedPlayers map[string]int `json:"combatDamagedPlayers,omitempty"`
+	// DamageDealers records WHICH creature objects dealt damage to
+	// which player this turn (#2149): one entry per (object, victim,
+	// combat or not), in the order the damage was dealt. Read through
+	// CreaturesThatDealtCombatDamageToThisTurn and its any-damage
+	// sibling.
+	//
+	// The OBJECT dimension CombatDamagedPlayers does not have, and the
+	// reason both exist: "each opponent sacrifices a creature that
+	// dealt combat damage to you this turn" (Witch-king of Angmar) and
+	// "destroy target creature that dealt damage to you this turn"
+	// (Spear of Heliod) are questions about named permanents, and the
+	// name/subtype cells cannot say which Goblin it was.
+	//
+	// Each entry carries the creature's ObjectEpoch as it dealt the
+	// damage, so a creature that has since been flickered is a NEW
+	// object (CR 400.7) and reads as one that did not
+	// (ObjectDealtCombatDamageToPlayerThisTurn compares the epoch to
+	// the object's current one). Recorded at the damage, like its
+	// siblings (#596): combat damage kills the dealer at the next
+	// state-based check, and the list outlives it. Additive: omitted
+	// when empty, so an older snapshot reads back as no records.
+	DamageDealers []DamageDealtRecord `json:"damageDealers,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 732 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -594,6 +624,119 @@ func (g *Game) combatDamagedPlayersLocked(controller uuid.UUID, identity string,
 	return out
 }
 
+// DamageDealtRecord is one creature object having dealt damage to one
+// player (#2149). Epoch is the dealer's Card.ObjectEpoch when it dealt
+// the damage (CR 400.7). Combat marks combat damage (CR 510); a
+// creature that dealt both kinds this turn has two records.
+type DamageDealtRecord struct {
+	Source uuid.UUID `json:"source"`
+	Epoch  int       `json:"epoch,omitempty"`
+	Victim uuid.UUID `json:"victim"`
+	Combat bool      `json:"combat,omitempty"`
+}
+
+// recordDamageDealerLocked notes that the creature `dealer` dealt
+// damage to `victim`, once per (object, victim, kind). Only a
+// creature is recorded: "a creature that dealt damage to you" is not
+// answered by a burn spell or a planeswalker's ability. Caller must
+// hold g.mu.
+func (g *Game) recordDamageDealerLocked(dealer *Card, victim uuid.UUID, combat bool) {
+	if dealer == nil || victim == uuid.Nil || !dealer.IsCreature() {
+		return
+	}
+	rec := DamageDealtRecord{Source: dealer.InstanceID, Epoch: dealer.ObjectEpoch, Victim: victim, Combat: combat}
+	for _, r := range g.TurnTally.DamageDealers {
+		if r == rec {
+			return
+		}
+	}
+	g.TurnTally.DamageDealers = append(g.TurnTally.DamageDealers, rec)
+}
+
+// creaturesThatDealtDamageToLocked is the objects recorded against
+// `victim`, first to deal damage first and each once; combatOnly
+// narrows to combat damage. Caller must hold g.mu.
+func (g *Game) creaturesThatDealtDamageToLocked(victim uuid.UUID, combatOnly bool) []ObjectRef {
+	if victim == uuid.Nil {
+		return nil
+	}
+	var out []ObjectRef
+	for _, r := range g.TurnTally.DamageDealers {
+		if r.Victim != victim || (combatOnly && !r.Combat) {
+			continue
+		}
+		ref := ObjectRef{ID: r.Source, Epoch: r.Epoch}
+		dup := false
+		for _, o := range out {
+			if o == ref {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			out = append(out, ref)
+		}
+	}
+	return out
+}
+
+// CreaturesThatDealtCombatDamageToThisTurn is the creature objects
+// that dealt combat damage to `victim` this turn, as they were when
+// they dealt it (#2149) — Witch-king of Angmar's "a creature that
+// dealt combat damage to you this turn". The refs outlive the
+// creatures: one that died, or a token that ceased to exist, is still
+// listed, so a reader that wants only the ones still in play checks
+// the object is there (ObjectDealtCombatDamageToPlayerThisTurn).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesThatDealtCombatDamageToThisTurn(victim uuid.UUID) []ObjectRef {
+	return g.creaturesThatDealtDamageToLocked(victim, true)
+}
+
+// CreaturesThatDealtDamageToThisTurn is the same list for damage of
+// any kind (combat or not): "destroy target creature that dealt
+// damage to you this turn" (Spear of Heliod, Retaliate).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesThatDealtDamageToThisTurn(victim uuid.UUID) []ObjectRef {
+	return g.creaturesThatDealtDamageToLocked(victim, false)
+}
+
+// ObjectDealtCombatDamageToPlayerThisTurn reports whether the object
+// the card `cardID` names RIGHT NOW is one that dealt combat damage to
+// `victim` this turn. A creature that left and came back is a new
+// object (CR 400.7) and answers false, because its epoch is not the
+// recorded one. A card that is nowhere answers false.
+//
+// Caller must hold g.mu.
+func (g *Game) ObjectDealtCombatDamageToPlayerThisTurn(cardID, victim uuid.UUID) bool {
+	return g.objectDealtDamageToPlayerLocked(cardID, victim, true)
+}
+
+// ObjectDealtDamageToPlayerThisTurn is the any-damage sibling of
+// ObjectDealtCombatDamageToPlayerThisTurn.
+//
+// Caller must hold g.mu.
+func (g *Game) ObjectDealtDamageToPlayerThisTurn(cardID, victim uuid.UUID) bool {
+	return g.objectDealtDamageToPlayerLocked(cardID, victim, false)
+}
+
+func (g *Game) objectDealtDamageToPlayerLocked(cardID, victim uuid.UUID, combatOnly bool) bool {
+	if cardID == uuid.Nil || victim == uuid.Nil || len(g.TurnTally.DamageDealers) == 0 {
+		return false
+	}
+	c := g.findCardByIDLocked(cardID)
+	if c == nil {
+		return false
+	}
+	for _, r := range g.TurnTally.DamageDealers {
+		if r.Source == cardID && r.Epoch == c.ObjectEpoch && r.Victim == victim && (!combatOnly || r.Combat) {
+			return true
+		}
+	}
+	return false
+}
+
 // combatDamageTallyKey names one (dealer's controller, dealer
 // identity, damaged player) cell of TurnTally.CombatDamagedPlayers.
 func combatDamageTallyKey(controller uuid.UUID, identity string, victim uuid.UUID) string {
@@ -770,6 +913,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
+	if len(t.DamageDealers) > 0 {
+		out.DamageDealers = append([]DamageDealtRecord(nil), t.DamageDealers...)
+	}
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
@@ -827,6 +973,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			return
 		}
 		g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += ev.Amount })
+		// #2149: which creature OBJECT it was, for "a creature that
+		// dealt (combat) damage to you this turn".
+		g.recordDamageDealerLocked(g.findCardByIDLocked(ev.Source), ev.Target, ev.Combat)
 		if ev.Combat && ev.Actor != uuid.Nil {
 			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CombatDamageToPlayers += ev.Amount })
 			// #596, and the reason EventSacrifice records below: WHAT
@@ -932,7 +1081,13 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 		g.recordEnteredSubtypesLocked(controller, c)
 	case EventLTB:
-		if ev.NewZone != ZoneGraveyard || ev.CardID == uuid.Nil {
+		if ev.CardID == uuid.Nil {
+			return
+		}
+		// #2148: revolt. Every battlefield exit, whatever the
+		// destination, recorded under the controller it left from.
+		g.recordPermanentLeftLocked(ev)
+		if ev.NewZone != ZoneGraveyard {
 			return
 		}
 		c := g.findCardByIDLocked(ev.CardID)
@@ -1020,4 +1175,31 @@ func hasTypeFold(types []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// recordPermanentLeftLocked bumps PermanentsLeft for the controller the
+// leaving permanent had as it left (CR 603.10a), falling back to the
+// card's controller and then its owner for an unstamped event.
+func (g *Game) recordPermanentLeftLocked(ev Event) {
+	controller, known := ev.LeftUnderControlOf()
+	if !known {
+		if c := g.findCardByIDLocked(ev.CardID); c != nil {
+			controller = c.Controller
+			if controller == uuid.Nil {
+				controller = c.Owner
+			}
+		}
+	}
+	if controller == uuid.Nil {
+		controller = ev.Actor
+	}
+	g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsLeft++ })
+}
+
+// PermanentLeftThisTurn reports revolt (CR 702.136): whether a
+// permanent `playerID` controlled left the battlefield this turn.
+//
+// Caller must hold g.mu.
+func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).PermanentsLeft > 0
 }

@@ -321,3 +321,21 @@ The owner's answers did not settle these. Each is decided above, and each can be
 16. **Six dice at most, then "+N"; bursts follow ADR 0119's rule** (§7).
 17. **The strip's text cue waits for the die to settle** (§7).
 18. **An `animations.dice` toggle,** default on, under the master switch. The result shows with motion off (§7).
+
+## Amendment, 2026-10-05: mulligans in turn order (CR 103.5, [#2237](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2237))
+
+This closes decision 7 and the "Out of scope" bullet above. No new ADR: it is one rule on the window this ADR opened. The rule was read from CR 103.5 in the repo's pinned edition.
+
+- **The order.** After the choice, each seat in turn order, starting with the starting seat, decides to keep or mulligan. `Game.MulliganDeciderLocked` derives the one seat deciding: the first seat from `StartingSeat`, in seat order, that is not eliminated, has not kept and has not answered this round. `Player.MulliganDecided` (additive in the snapshot, `mulliganDecided,omitempty`, carried by clone and restore) records that a seat has answered this round. `KeepHand` and `Mulligan` from any other seat return `ErrNotYourMulligan`; a repeat keep from a seat that already kept stays a no-op.
+- **Rounds.** When no seat is left to decide, the seats that did not keep (they mulliganed) start a new round and decide again in turn order, repeating until every live seat has kept; the window then closes exactly as before. Commander's free first mulligan is unchanged: the first mulligan is to seven, each further one a card fewer, as the enumerator already offered. The bottoming of the London mulligan is still out of scope.
+- **Redraw timing (the one rules call).** CR 103.5 has everyone who mulliganed shuffle and draw together after the round. The engine redraws at the moment of the mulligan. The redraw uses the seat's own shuffle stream and no other seat's decision reads it, so only when the new hand is dealt differs, not what anyone knows or what any deck holds. Flagged in the PR for the owner.
+- **Leaving.** A seat that concedes is skipped, and the window is settled again at once: the next seat decides, a finished round starts the next, and a departure of the last seat holding the window closes it (it used to stay open). The server has no notion of a disconnected seat, so a connected-but-silent human holds the window as they do today, with no timer (decision 3).
+- **Wire.** `PlayerView.mulligan_turn` (omitempty bool) marks the deciding seat. The enumerator offers keep and mulligan to that seat only (#544: it asks the same question as the engine), so a bot, an agent seat and the model tiers see an empty list when it is not their turn and are woken by the commit that makes it theirs.
+- **Client.** The opening-hand sheet stays up for every seat so a waiting player can read their hand; Keep hand and Mulligan are disabled unless `mulligan_turn` is set on the viewer's seat, and the sheet says "Waiting for X to decide". The strip's roll call reads "deciding…" for the deciding seat and "waiting" for the others.
+
+## Amendment, 2026-10-05: the practice table rolls ([ADR 0125](0125-a-walkthrough-that-keeps-up.md) §5.2, [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313))
+
+- **The exception is gone.** The practice table no longer calls plain `Start(nil)` (Context, "Callers"). It opens the opening roll like every lobby table, so a first-time player sees the dice, the banner and the choice they will meet at their first real table.
+- **The practice bot hands the first turn to the player** (amending §4's random-tier choice for this one table type). `aiseat.SeatSpec.FirstTurnTo` names a seat. When it is set, the runner answers a window whose moves are all `choose_starting_player` with the move naming that seat. Every other window, rolling included, goes to the `random` tier unchanged. This is one window of one table type, not a tutorial tier.
+- **The tutorial waits for the roll.** Step 2 teaches it, and every other step is held while the roll is open (`heldByOpeningRoll`), with its hint and timeout timers starting only when the roll closes.
+

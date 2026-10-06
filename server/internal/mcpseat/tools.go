@@ -24,7 +24,7 @@ import (
 // JoinInput is `join`'s input.
 type JoinInput struct {
 	InviteURL   string     `json:"invite_url" jsonschema:"the table's invite link (…/#/games/<id>/join?t=…) or an admin's seat-reclaim link"`
-	DisplayName string     `json:"display_name,omitempty" jsonschema:"the seat's name at the table (default Agent)"`
+	DisplayName string     `json:"display_name,omitempty" jsonschema:"the seat's name at the table (default: the MCP client's name, else Agent)"`
 	Deck        *DeckInput `json:"deck,omitempty" jsonschema:"optional deck to install: {id} for a pre-built deck or {list} for a decklist"`
 }
 
@@ -48,6 +48,10 @@ type GetStateInput struct {
 type LegalMovesInput struct {
 	Card   string `json:"card,omitempty" jsonschema:"optional card instance id: list that card's moves with the enumerator's caps lifted"`
 	Choice string `json:"choice,omitempty" jsonschema:"optional pending choice id, or cleanup_discard: list that prompt's answers with the caps lifted"`
+	// Match and TargetsFor are #2277 / #2276: both work on the window's
+	// own list, so neither asks the server for anything.
+	Match      string `json:"match,omitempty" jsonschema:"optional text: list only the moves whose label contains it (case-insensitive), numbered as in the full list. Combine with choice to find one card in a capped search"`
+	TargetsFor *int   `json:"targets_for,omitempty" jsonschema:"optional move number: list that move's target clauses, each with its bounds and every candidate on the board, for act's targets"`
 }
 
 // CardInput is `card`'s input.
@@ -60,6 +64,10 @@ type ActInput struct {
 	Window string `json:"window" jsonschema:"the window token from wait_for_decision"`
 	Move   int    `json:"move" jsonschema:"the number of the move in that window's list"`
 	Value  any    `json:"value,omitempty" jsonschema:"only for a move marked open: a card name, or a number for X"`
+	// Targets picks the targets for a move that has them, from the
+	// candidates legal_moves(targets_for) lists, instead of from the
+	// enumerator's combinations (#2276).
+	Targets []TargetPick `json:"targets,omitempty" jsonschema:"only for a move that targets: the picks per target clause, [{slot, ids}]. The move chooses the card and its costs, these replace its targets; see legal_moves(targets_for: <move>)"`
 }
 
 // SayInput is `say`'s input.
@@ -106,14 +114,27 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 
 	name := strings.TrimSpace(in.DisplayName)
 	if name == "" {
-		name = defaultName
+		name = defaultDisplayName(agentClientName(client))
 	}
 	name = cut(name, maxNameLen)
 
+	// One seat per saved session (#2274): a second binary on the same
+	// --state-dir would read this one's token and play its seat.
+	lock, err := s.store.lock(inv.Origin, inv.GameID)
+	if errors.Is(err, errTableHeld) {
+		return errorResult("could not take the seat: %v (%s). Give each agent its own --state-dir.", err, s.cfg.StateDir), nil
+	}
+	if err != nil {
+		return errorResult("the saved session cannot be used: %v", err), nil
+	}
 	sess, resumed, err := s.claim(ctx, inv, name, agentClientName(client))
 	if err != nil {
+		lock.Release()
 		return errorResult("could not take the seat: %v", err), nil
 	}
+	s.mu.Lock()
+	s.lock = lock
+	s.mu.Unlock()
 	s.sec.add(sess.Token)
 	if !resumed {
 		if err := s.store.save(sess); err != nil {
@@ -426,9 +447,11 @@ func (s *Seat) gameOverLocked() Result {
 	lines := []string{"status: game_over"}
 	if o := v.Outcome; o != nil {
 		switch {
+		case o.Winner != "" && o.Winner == s.sess.PlayerID.String():
+			lines = append(lines, fmt.Sprintf("outcome: you won (%s)", o.Cause))
 		case o.Winner != "":
 			name := boardtext.SeatLabelByID(safeView(v), o.Winner, s.sess.PlayerID.String())
-			lines = append(lines, fmt.Sprintf("outcome: %s wins (%s)", name, o.Cause))
+			lines = append(lines, fmt.Sprintf("outcome: you lost — %s wins (%s)", name, o.Cause))
 		case o.Kind != "":
 			lines = append(lines, fmt.Sprintf("outcome: %s (%s)", o.Kind, o.Cause))
 		}
@@ -445,7 +468,7 @@ func (s *Seat) gameOverLocked() Result {
 func (s *Seat) decisionTextLocked(w *window) Result {
 	v := s.view
 	me := s.sess.PlayerID.String()
-	nw := newNameWrapper(v)
+	nw := newViewerNameWrapper(v, me)
 	var logLines []string
 	var maxSeq uint64
 	for _, e := range v.Log {
@@ -527,8 +550,16 @@ func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, erro
 		return errorResult("no decision is open for you right now: call wait_for_decision"), nil
 	}
 	view := s.view
+	if in.TargetsFor != nil {
+		defer s.mu.Unlock()
+		text, err := targetsText(view, w, *in.TargetsFor)
+		if err != nil {
+			return errorResult("%v", err), nil
+		}
+		return textResult("window: "+w.token, text), nil
+	}
 	if req.Source == "" && req.Choice == "" {
-		text := renderMoves(view, w, "")
+		text := renderMovesMatching(view, w, "", in.Match)
 		s.stats.noteMovesShown(len(w.moves), len(text))
 		s.mu.Unlock()
 		return textResult("window: "+w.token, text), nil
@@ -553,7 +584,7 @@ func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, erro
 	}
 	if err != nil {
 		s.mu.Lock()
-		text := renderMoves(view, w, req.Source)
+		text := renderMovesMatching(view, w, req.Source, in.Match)
 		s.mu.Unlock()
 		return textResult("could not expand it: "+err.Error(), "", "window: "+w.token, text), nil
 	}
@@ -563,7 +594,7 @@ func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, erro
 		return s.staleLocked(), nil
 	}
 	added := mergeMoves(w, rep, req)
-	text := renderMoves(view, w, req.Source)
+	text := renderMovesMatching(view, w, req.Source, in.Match)
 	s.stats.noteMovesShown(len(w.moves), len(text))
 	note := fmt.Sprintf("%d moves added to this window's list.", added)
 	if len(rep.Moves) == 0 {
@@ -763,6 +794,15 @@ func (s *Seat) Act(ctx context.Context, in ActInput) (Result, error) {
 	params, err := applyValue(m, in.Value)
 	if err != nil {
 		return errorResult("%v", err), nil
+	}
+	if len(in.Targets) > 0 {
+		s.mu.Lock()
+		view := s.view
+		s.mu.Unlock()
+		params, err = applyTargets(view, m, params, in.Targets)
+		if err != nil {
+			return errorResult("%v", err), nil
+		}
 	}
 	if err := s.actions.wait(ctx); err != nil {
 		return textResult("status: cancelled", "Nothing was sent."), nil

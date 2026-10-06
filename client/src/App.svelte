@@ -23,6 +23,7 @@
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
   import SettingsSyncToast from "./lib/components/SettingsSyncToast.svelte";
+  import HintLayer from "./lib/components/hints/HintLayer.svelte";
   import SiteFooter from "./lib/components/SiteFooter.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
@@ -189,6 +190,12 @@
      appear on any route, and deliberately non-modal so it never
      interrupts a game. -->
 <UpdatePrompt />
+
+<!-- First-use hints (ADR 0125 §3): one small card at a time, beside the
+     feature it explains, the first time someone meets it. No scrim and
+     no focus theft; at the table only in a quiet moment. A hint for the
+     Settings dialog is drawn inside it, by its HintSlot. -->
+<HintLayer />
 
 <!-- Account settings (ADR 0110 §4): shown for the rest of the visit
      after a sign-in applied the account's settings over different ones

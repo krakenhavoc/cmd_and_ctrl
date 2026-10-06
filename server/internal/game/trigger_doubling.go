@@ -93,6 +93,9 @@ type harvestPass struct {
 	hasSubject bool
 	modifiers  []modifierCandidate
 	scanned    bool
+	// settled is set by settleBatchEndTriggersLocked: the batch is over,
+	// so an AtBatchEnd ability dispatches instead of staging (#2183).
+	settled bool
 }
 
 func (g *Game) newHarvestPassLocked(ev Event) harvestPass {

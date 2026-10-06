@@ -156,9 +156,11 @@ func (g *Game) SettleResolution() {
 
 // settleResolutionLocked is SettleResolution under the caller's lock.
 // Concede calls it too, because a departure can drop the prompt a
-// resolution was paused on. Caller must hold g.mu.
+// resolution was paused on. An ended turn whose cleanup step has not
+// begun (TurnEndPending, end_turn.go, #2165) is owed the same boundary
+// and gets it here too. Caller must hold g.mu.
 func (g *Game) settleResolutionLocked() {
-	if !g.resolutionOpen || g.State != StateActive {
+	if (!g.resolutionOpen && !g.TurnEndPending) || g.State != StateActive {
 		return
 	}
 	g.runStateChecksLocked()

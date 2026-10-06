@@ -291,6 +291,26 @@ type ReplacementEvent struct {
 	// zero would be a draw that vanished. See ADR 0013 §5ab.
 	DrawCount int
 
+	// drawInstead is the body of a draw replaced by an EFFECT rather
+	// than by a number: dredge's "mill N cards and return this card",
+	// Underrealm Lich's "look at the top three cards, put one into your
+	// hand and the rest into your graveyard", Forbidden Crypt's "return
+	// a card from your graveyard to your hand". Set when a replacement
+	// declaring ReplacementEffect.DrawInstead is applied, which also
+	// cancels the draw. See draw_instead.go.
+	//
+	// It is a registered KEY plus the source card, not a function: the
+	// body is looked up when the window settles, so the event holds
+	// plain data and a snapshot taken across a prompt carries nothing a
+	// clone could share.
+	drawInstead drawInsteadRun
+
+	// drawTail is how many individual draws of the SAME instruction are
+	// still owed once this one is finished — "draw three" paused on its
+	// first card owes two. Unexported engine plumbing; the catalog
+	// neither sets nor reads it.
+	drawTail int
+
 	// --- RepEventProduceMana fields ---
 
 	// ManaPlayer is the player whose pool the mana is about to reach —
@@ -440,6 +460,14 @@ type ReplacementEvent struct {
 	// meaningful when NewZone == ZoneBattlefield, and ignored for a
 	// permanent with no prepare spell (CR 722.3a).
 	EntersPrepared bool
+
+	// EntersDevoured is the number of creatures devoured as this
+	// permanent enters (CR 702.82a), stamped by a devour clause's
+	// EntryCardChoice.Devour and copied onto Card.Devoured by
+	// every battlefield landing. Rides the event for EntersTapped's
+	// reason: the permanent is not on the battlefield while the
+	// sacrifice is chosen.
+	EntersDevoured int
 
 	// EntersWithHaste is riot's "if you don't, it gains haste" (CR
 	// 702.136a, ADR 0109 §10): set by the haste answer to an entry_riot
@@ -1351,6 +1379,26 @@ type ReplacementEffect struct {
 	// gather derives the replacement from the entry look-ahead.
 	entryKeyword string
 
+	// DrawInstead, on a RepEventDraw replacement, replaces the draw with
+	// an effect that may need to ask something (draw_instead.go). The
+	// effect is applied like any other, but instead of a Replace it
+	// cancels the draw and, once the window has SETTLED, runs the
+	// registered body (RegisterDrawInstead), which may queue prompts and
+	// calls `done` when it has finished so the rest of a multi-card draw
+	// waits behind it (CR 121.6b).
+	//
+	// Leave Replace nil: the engine cancels the draw itself. The zero
+	// value is "not a draw-substituting effect".
+	DrawInstead DrawInsteadRef
+
+	// FromGraveyard makes this a replacement its source applies from
+	// the DRAWING PLAYER's graveyard rather than from the battlefield —
+	// dredge (CR 702.52a), the one ability a card has in that zone. The
+	// battlefield walk skips such an effect, and the gather finds it in
+	// the graveyard instead. Only a draw event consults the graveyard
+	// (draw_instead.go).
+	FromGraveyard bool
+
 	// commanderZone marks the CR 903.9 built-in
 	// (commanderZoneReplacement) so the gather can honour an answer
 	// its owner gave BEFORE the move (ReplacementEvent.commanderAnswer,
@@ -1591,6 +1639,13 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		// first is asked alone, and the rest are gathered again
 		// afterwards, as #792 does for two copies of one effect.
 		if len(applicable) > 1 && sameEntryKeyword(applicable) {
+			applicable = applicable[:1]
+		}
+		// Dredge cards in one graveyard (draw_instead.go): each is its
+		// own "may", so ordering them is not a question. Asking each in
+		// turn lets the player pick any one of them or none, and the
+		// first "yes" ends the draw.
+		if len(applicable) > 1 && allGraveyardOptions(applicable) {
 			applicable = applicable[:1]
 		}
 		if len(applicable) > 1 {
@@ -2095,6 +2150,11 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					continue
 				}
 				eff := reps[repIdx]
+				if eff.FromGraveyard {
+					// Applies from the drawing player's graveyard
+					// (dredge), gathered below, never from play.
+					continue
+				}
 				if !eventKindMatches(eff.Watches, ev.Kind) {
 					continue
 				}
@@ -2110,6 +2170,9 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 			}
 		}
 	}
+
+	// Graveyard replacements: dredge (draw_instead.go).
+	out = g.gatherGraveyardReplacementsLocked(ev, applied, out)
 
 	// Self-replacements — a card replacing its OWN entry ("This land
 	// enters tapped": every Temple, Guildgate and tri-land).
@@ -2284,6 +2347,10 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 	// Scoped replacements (Fog, a prevention shield, …), by Seq.
 	if id >= scopedReplacementIDBase {
 		return g.scopedReplacementLabelLocked(id), uuid.UUID{}
+	}
+	// Graveyard replacements (dredge).
+	if label, card, ok := g.graveyardReplacementMetaLocked(id); ok {
+		return label, card
 	}
 	// Catalog — the packed (battlefield index, slot) range, unpacked
 	// by the same pair the gather pass mints with.

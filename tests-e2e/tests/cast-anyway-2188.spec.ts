@@ -9,8 +9,7 @@ import {
   seedHandWithCard,
   type AdminClient,
   type SnapshotCard,
-  type SnapshotView,
-} from "./s19-helpers";
+  type SnapshotView, keepAllHands } from "./s19-helpers";
 
 // #2188 / ADR 0118 §§1–2: strict payment by default, and "Cast anyway
 // (don't pay)", end to end.
@@ -124,8 +123,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       await startGameAs(request, adminToken, game.id);
 
       admin = await openAdminClient(adminToken, game.id, first.playerID, second.playerID);
-      await admin.sendActionAsPlayer(first.playerID, "keep_hand", {});
-      await admin.sendActionAsPlayer(second.playerID, "keep_hand", {});
+      await keepAllHands(admin);
       await admin.waitFor((v) => v.state === "active", "game state active");
       await admin.waitFor(
         (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,

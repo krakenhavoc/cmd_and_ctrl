@@ -109,8 +109,10 @@ type Card struct {
 	// from {"W","U","B","R","G"} — as Scryfall computes it (color
 	// indicators and Devoid included). Empty means colorless OR
 	// "not stamped" (tokens, test fixtures); HasColor / IsColorless
-	// fall back to deriving colors from ManaCost in that case. S20
-	// targeting predicates read this. Added in S20 sub-PR 1.
+	// fall back to deriving colors from ManaCost in that case —
+	// unless the card prints devoid, which makes an empty list
+	// colourless (CR 702.114a, #2152, devoid.go). S20 targeting
+	// predicates read this. Added in S20 sub-PR 1.
 	Colors []string
 
 	// ColorIdentity is the card's Commander colour identity (CR
@@ -667,6 +669,14 @@ type Card struct {
 	// nothing else; read with ChosenOptionOf or the gate. Added for
 	// #1572; see ADR 0071's amendment of 2026-09-27.
 	ChosenOption string
+
+	// Devoured is how many creatures this permanent devoured as it
+	// entered (CR 702.82a), the number CR 702.82b's "each creature it
+	// devoured" counts. Stamped at entry from ReplacementEvent.
+	// EntersDevoured; zero for everything else. Per instance, carried by
+	// the snapshot, cleared when the permanent leaves the battlefield
+	// (CR 400.7). Not a copiable value (CR 707.2). Read with DevouredBy.
+	Devoured int
 
 	// ModesChosen is "choose one that hasn't been chosen" with no
 	// duration (ADR 0097, #1749 — Silent Hallcreeper, Demonic Pact):
@@ -1757,8 +1767,9 @@ func NewCommander(name string, owner uuid.UUID) Card {
 
 // EffectiveColors returns the card's colors after continuous effects: the
 // layer-5 result on the battlefield, otherwise the stamped Colors list when
-// present, then the colored symbols found in ManaCost (hybrid "{W/U}"
-// contributes both). Added in S20 sub-PR 1.
+// present, then nothing for a card that prints devoid (CR 702.114a, #2152),
+// then the colored symbols found in ManaCost (hybrid "{W/U}" contributes
+// both). Added in S20 sub-PR 1.
 func (c Card) EffectiveColors() []string {
 	if c.effective != nil {
 		return c.effective.Colors
@@ -1772,6 +1783,12 @@ func (c Card) EffectiveColors() []string {
 	}
 	if len(c.Colors) > 0 {
 		return c.Colors
+	}
+	// CR 702.114a (#2152): an unstamped devoid card is colourless, not
+	// the colour of its cost — the rule printedColorsOf applies to the
+	// baseline Effective() reads, so the two answers cannot disagree.
+	if c.printsDevoid() {
+		return nil
 	}
 	seen := map[byte]bool{}
 	var out []string

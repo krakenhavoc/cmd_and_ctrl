@@ -35,6 +35,7 @@
   import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
+  import HelpMenu from "./HelpMenu.svelte";
   import { isAdmin } from "../admin";
 
   let menuOpen = $state(false);
@@ -226,63 +227,70 @@
       {/if}
     </nav>
 
-    <div class="account" bind:this={accountEl}>
-      {#if isSignedIn}
-        <button
-          type="button"
-          class="ghost sm acct-btn"
-          aria-haspopup="true"
-          aria-expanded={accountOpen}
-          aria-controls="account-menu"
-          class:admin-on={adminOn}
-          aria-label={acctLabel}
-          title={adminOn ? "admin mode on" : undefined}
-          onclick={toggleAccount}
-        >
-          {#if adminOn}<span class="admin-dot" aria-hidden="true"></span>{/if}
-          <span class="who">{whoAmI}</span>
-          <span class="caret" class:open={accountOpen}><Icon name="chevronRight" size={12} /></span>
-        </button>
-        {#if accountOpen}
-          <div class="acct-menu" id="account-menu" role="group" aria-label="account">
-            <div class="acct-id">
-              <span class="acct-name">{whoAmI}</span>
-              <span class="acct-kind">{accountKind}</span>
-            </div>
-            <!-- ADR 0112 §2 item 9: the Admin chip for an allowlisted
+    <div class="account">
+      <!-- Help (ADR 0125 §6), between the site nav and the account
+           control, for everyone: tips, a practice game, the keymap. -->
+      <HelpMenu />
+      <div class="acct" bind:this={accountEl}>
+        {#if isSignedIn}
+          <button
+            type="button"
+            class="ghost sm acct-btn"
+            aria-haspopup="true"
+            aria-expanded={accountOpen}
+            aria-controls="account-menu"
+            class:admin-on={adminOn}
+            aria-label={acctLabel}
+            title={adminOn ? "admin mode on" : undefined}
+            onclick={toggleAccount}
+          >
+            {#if adminOn}<span class="admin-dot" aria-hidden="true"></span>{/if}
+            <span class="who">{whoAmI}</span>
+            <span class="caret" class:open={accountOpen}
+              ><Icon name="chevronRight" size={12} /></span
+            >
+          </button>
+          {#if accountOpen}
+            <div class="acct-menu" id="account-menu" role="group" aria-label="account">
+              <div class="acct-id">
+                <span class="acct-name">{whoAmI}</span>
+                <span class="acct-kind">{accountKind}</span>
+              </div>
+              <!-- ADR 0112 §2 item 9: the Admin chip for an allowlisted
                  person, or the token's static "Admin token" badge, first
                  in the menu. Renders nothing for anyone else. -->
-            <AdminChip />
-            <button type="button" class="acct-item" onclick={settings}>
-              <Icon name="gear" size={14} /> Settings
-            </button>
-            {#if discordEnabled && hasLinkedUser}
-              <!-- ADR 0110 §2 item 3: a repeat sign-in skips Discord's
+              <AdminChip />
+              <button type="button" class="acct-item" onclick={settings}>
+                <Icon name="gear" size={14} /> Settings
+              </button>
+              {#if discordEnabled && hasLinkedUser}
+                <!-- ADR 0110 §2 item 3: a repeat sign-in skips Discord's
                    screen and uses whichever account the browser is
                    signed in to. This asks for the screen, which has
                    Discord's own account switcher. -->
-              <a class="acct-item" href={discordLoginHref({ consent: true })}>
-                Sign in with a different Discord account
-              </a>
-            {/if}
-            <div class="acct-sep" aria-hidden="true"></div>
-            <button type="button" class="acct-item" onclick={signOut}>Sign out</button>
-            {#if canSignOutEverywhere($session)}
-              <button
-                type="button"
-                class="acct-item"
-                title="sign out of every browser signed in with this Discord account"
-                onclick={signOutEverywhere}>Sign out everywhere</button
-              >
-            {/if}
-            {#if accountError}
-              <p class="acct-error" role="alert">{accountError}</p>
-            {/if}
-          </div>
+                <a class="acct-item" href={discordLoginHref({ consent: true })}>
+                  Sign in with a different Discord account
+                </a>
+              {/if}
+              <div class="acct-sep" aria-hidden="true"></div>
+              <button type="button" class="acct-item" onclick={signOut}>Sign out</button>
+              {#if canSignOutEverywhere($session)}
+                <button
+                  type="button"
+                  class="acct-item"
+                  title="sign out of every browser signed in with this Discord account"
+                  onclick={signOutEverywhere}>Sign out everywhere</button
+                >
+              {/if}
+              {#if accountError}
+                <p class="acct-error" role="alert">{accountError}</p>
+              {/if}
+            </div>
+          {/if}
+        {:else}
+          <a class="ghost-link" href="#/login">Sign in</a>
         {/if}
-      {:else}
-        <a class="ghost-link" href="#/login">Sign in</a>
-      {/if}
+      </div>
     </div>
   </div>
 </header>
@@ -350,11 +358,16 @@
   }
 
   .account {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .acct {
     position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-left: auto;
   }
   .who {
     font-family: var(--font-mono);

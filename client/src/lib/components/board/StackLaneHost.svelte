@@ -57,6 +57,7 @@
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget } from "../../targeting";
   import { metaFor } from "../../cardMetaCache";
+  import { L } from "../../labels";
   import Icon from "../Icon.svelte";
   import StackLanePile from "./StackLanePile.svelte";
   import StackLaneFan from "./StackLaneFan.svelte";
@@ -263,7 +264,7 @@
     // The pile moves when the strip's content (a toast, a reveal)
     // grows or shrinks.
     const strip = boardEl.querySelector<HTMLElement>(
-      ':scope > [role="region"][aria-label="attention"]',
+      `:scope > [role="region"][aria-label="${L.attention}"]`,
     );
     if (strip && style === "pile") ro.observe(strip);
     return () => ro.disconnect();
@@ -325,11 +326,7 @@
     data-stack-style={style}
   >
     {#if style === "pile" && collapsed}
-      <section
-        class="stack-lane collapsed"
-        bind:this={laneEl}
-        aria-label={`stack: ${stackCount} on the stack`}
-      >
+      <section class="stack-lane collapsed" bind:this={laneEl} aria-label={L.stackPile(stackCount)}>
         <button
           type="button"
           class="stack-tab"
@@ -340,11 +337,7 @@
         </button>
       </section>
     {:else}
-      <section
-        class="stack-lane"
-        bind:this={laneEl}
-        aria-label={`stack: ${stackCount} on the stack`}
-      >
+      <section class="stack-lane" bind:this={laneEl} aria-label={L.stackPile(stackCount)}>
         <header class="head">
           <span class="label">the stack <b class="count">{stackCount}</b></span>
           {#if model.splitSecond}

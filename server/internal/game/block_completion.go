@@ -392,7 +392,7 @@ func (g *Game) completeAllBlockDeclarationsLocked() bool {
 func (g *Game) beginBlockDeclarationLocked() {
 	g.autoCompleteBlockDeclarationsLocked()
 	if !g.allBlockDeclarationsCompleteLocked() {
-		g.Turn.PriorityHolder = NoPriority
+		g.grantPriorityLocked(NoPriority)
 	}
 }
 
@@ -432,7 +432,7 @@ func (g *Game) blockPriorityParkedLocked() bool {
 // Caller must hold g.mu in write mode.
 func (g *Game) unparkBlockPriorityLocked() {
 	if g.blockPriorityParkedLocked() && g.allBlockDeclarationsCompleteLocked() {
-		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		g.grantPriorityLocked(g.Turn.ActiveSeat)
 	}
 }
 
@@ -482,7 +482,7 @@ func (g *Game) closeBlockDeclarationIfCompleteLocked() bool {
 	}
 	g.runStateChecksLocked()
 	if g.State == StateActive {
-		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		g.grantPriorityLocked(g.Turn.ActiveSeat)
 	}
 	return true
 }

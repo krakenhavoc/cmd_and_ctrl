@@ -493,7 +493,8 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 	if !ok {
 		return nil
 	}
-	return SourceCharacteristics(&c)
+	// CR 202.3e: a spell on the stack counts its announced X.
+	return SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
 }
 
 // damageTailFromFrame builds a combat damage tail from a queued
@@ -805,6 +806,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	if t.combat {
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
+			g.noteLifeLostLocked(p.ID, lifeLoss)
 			g.invalidateLayersForLifeChangeLocked()
 		}
 		// CR 903.10a: combat damage from a commander accrues toward
@@ -817,6 +819,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 		g.emitDealDamageLocked(ev, t)
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
+			g.noteLifeLostLocked(p.ID, lifeLoss)
 			g.invalidateLayersForLifeChangeLocked()
 		}
 	}

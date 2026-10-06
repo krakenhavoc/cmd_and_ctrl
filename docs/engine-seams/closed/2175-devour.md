@@ -1,0 +1,6 @@
+---
+title: "Devour"
+date: 2026-10-05
+issues: [2175]
+---
+**Devour** (#2175, CR 702.82): "as this creature enters, you may sacrifice any number of creatures; it enters with N +1/+1 counters for each." It is the sacrifice `EntryCardChoice` of ADR 0098 in an "any number" form (`AnyNumber`: floor zero, ceiling the candidate count, no "if you do" branch) plus `ThenEntering`, a hook handed the paused entry event so the choice can rewrite what the creature lands as. Devour uses it to add the counters to the entry (`ev.AddCounterAtETB`), so Doubling Season and Hardened Scales apply, and to record the number devoured (`ReplacementEvent.EntersDevoured`, copied onto the new per-instance `Card.Devoured` at every landing and cleared when the permanent leaves) for CR 702.82b's "each creature it devoured". The sacrifice goes through `SacrificeAllThenForEffect` before the creature enters, so sacrifice and dies triggers fire and nothing can respond in between; a token copy asks like any other entry. `effects.Devour(name, n)` declares it. **6 cards:** Ravenous Tyrannosaurus (with its attack trigger's excess damage to the creature's controller), Predator Dragon, Thunder-Thrash Elder, Gorger Wurm, Skullmulcher and Marrow Chomper.

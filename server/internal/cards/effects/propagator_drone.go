@@ -21,14 +21,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // triggers, so the grant is already on the tokens when the Drone's own
 // EventETB is judged, and a 0/1 Spawn evolves off the 2/2 Drone.
 //
-// Devoid is colour data — the dump's colour list is already empty.
+// Devoid is declared in PrintedKeywords, and the engine reads it as CR
+// 702.114a's colour-defining ability (#2152), so the card is colourless
+// in every zone.
 //
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "9485db26-7e03-4a66-beeb-627a3bc6f367",
-		Name:         "Propagator Drone",
-		Completeness: CompletenessFull,
+		OracleID:        "9485db26-7e03-4a66-beeb-627a3bc6f367",
+		Name:            "Propagator Drone",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordDevoid},
 		Static: []game.StaticAbility{
 			KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.IsToken() && target.Controller == source.Controller

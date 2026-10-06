@@ -65,6 +65,7 @@ battlefield.cards[].counterStampedAt{}	number:int64
 battlefield.cards[].counters	map:string
 battlefield.cards[].counters{}	number:int
 battlefield.cards[].damageMarked	number:int
+battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
 battlefield.cards[].durationCopyBase.ColorIdentity	array
@@ -349,6 +350,8 @@ delayedTriggers[].duration.SourceEnteredAt	number:int64
 delayedTriggers[].hasEffect	bool
 delayedTriggers[].id	custom(uuid.UUID)
 delayedTriggers[].label	string
+delayedTriggers[].manaAdds	string
+delayedTriggers[].manaTapSubtype	string
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
 delayedTriggers[].on[]	string
@@ -369,6 +372,7 @@ delayedTriggers[].params.object	object
 delayedTriggers[].params.object.epoch	number:int
 delayedTriggers[].params.object.id	custom(uuid.UUID)
 delayedTriggers[].params.player	custom(uuid.UUID)
+delayedTriggers[].repeats	bool
 delayedTriggers[].sourceCardId	custom(uuid.UUID)
 delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
@@ -481,6 +485,7 @@ exile.cards[].counterStampedAt{}	number:int64
 exile.cards[].counters	map:string
 exile.cards[].counters{}	number:int
 exile.cards[].damageMarked	number:int
+exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
 exile.cards[].durationCopyBase.ColorIdentity	array
@@ -760,6 +765,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Supertyp
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Supertypes[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwner	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].Source	custom(uuid.UUID)
@@ -788,6 +794,9 @@ lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
 lastKnownBattlefield{}.Power	number:int
 lastKnownBattlefield{}.Restrictions	number:uint8
+lastKnownBattlefield{}.SourceManaValue	number:int
+lastKnownBattlefield{}.SourceManaValueKnown	bool
+lastKnownBattlefield{}.SourceRingBearer	bool
 lastKnownBattlefield{}.Subtypes	array
 lastKnownBattlefield{}.Subtypes[]	string
 lastKnownBattlefield{}.Supertypes	array
@@ -847,6 +856,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustCo
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Supertypes[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwner	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].Source	custom(uuid.UUID)
@@ -875,6 +885,9 @@ lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
 lastKnownPermanents{}[].characteristic.Power	number:int
 lastKnownPermanents{}[].characteristic.Restrictions	number:uint8
+lastKnownPermanents{}[].characteristic.SourceManaValue	number:int
+lastKnownPermanents{}[].characteristic.SourceManaValueKnown	bool
+lastKnownPermanents{}[].characteristic.SourceRingBearer	bool
 lastKnownPermanents{}[].characteristic.Subtypes	array
 lastKnownPermanents{}[].characteristic.Subtypes[]	string
 lastKnownPermanents{}[].characteristic.Supertypes	array
@@ -895,6 +908,7 @@ lastKnownPermanents{}[].left	bool
 lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
+lastKnownPermanents{}[].ringBearer	bool
 lastKnownPermanents{}[].tapped	bool
 lastKnownPermanents{}[].toughness	number:int
 lastKnownStack	array
@@ -939,6 +953,7 @@ lastKnownStack[].card.counterStampedAt{}	number:int64
 lastKnownStack[].card.counters	map:string
 lastKnownStack[].card.counters{}	number:int
 lastKnownStack[].card.damageMarked	number:int
+lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
 lastKnownStack[].card.durationCopyBase.ColorIdentity	array
@@ -1466,6 +1481,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderM
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Supertypes[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
@@ -1494,6 +1510,9 @@ pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
 pendingChoices[].damageAssignment.SourceLKI.Power	number:int
 pendingChoices[].damageAssignment.SourceLKI.Restrictions	number:uint8
+pendingChoices[].damageAssignment.SourceLKI.SourceManaValue	number:int
+pendingChoices[].damageAssignment.SourceLKI.SourceManaValueKnown	bool
+pendingChoices[].damageAssignment.SourceLKI.SourceRingBearer	bool
 pendingChoices[].damageAssignment.SourceLKI.Subtypes	array
 pendingChoices[].damageAssignment.SourceLKI.Subtypes[]	string
 pendingChoices[].damageAssignment.SourceLKI.Supertypes	array
@@ -1832,6 +1851,7 @@ phasedOut.cards[].counterStampedAt{}	number:int64
 phasedOut.cards[].counters	map:string
 phasedOut.cards[].counters{}	number:int
 phasedOut.cards[].damageMarked	number:int
+phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
 phasedOut.cards[].durationCopyBase.ColorIdentity	array
@@ -2324,6 +2344,7 @@ seats[].command.cards[].counterStampedAt{}	number:int64
 seats[].command.cards[].counters	map:string
 seats[].command.cards[].counters{}	number:int
 seats[].command.cards[].damageMarked	number:int
+seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
 seats[].command.cards[].durationCopyBase.ColorIdentity	array
@@ -2599,6 +2620,7 @@ seats[].emblems.cards[].counterStampedAt{}	number:int64
 seats[].emblems.cards[].counters	map:string
 seats[].emblems.cards[].counters{}	number:int
 seats[].emblems.cards[].damageMarked	number:int
+seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
 seats[].emblems.cards[].durationCopyBase.ColorIdentity	array
@@ -2864,6 +2886,7 @@ seats[].graveyard.cards[].counterStampedAt{}	number:int64
 seats[].graveyard.cards[].counters	map:string
 seats[].graveyard.cards[].counters{}	number:int
 seats[].graveyard.cards[].damageMarked	number:int
+seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
 seats[].graveyard.cards[].durationCopyBase.ColorIdentity	array
@@ -3128,6 +3151,7 @@ seats[].hand.cards[].counterStampedAt{}	number:int64
 seats[].hand.cards[].counters	map:string
 seats[].hand.cards[].counters{}	number:int
 seats[].hand.cards[].damageMarked	number:int
+seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
 seats[].hand.cards[].durationCopyBase.ColorIdentity	array
@@ -3403,6 +3427,7 @@ seats[].library.cards[].counterStampedAt{}	number:int64
 seats[].library.cards[].counters	map:string
 seats[].library.cards[].counters{}	number:int
 seats[].library.cards[].damageMarked	number:int
+seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
 seats[].library.cards[].durationCopyBase.ColorIdentity	array
@@ -3656,6 +3681,7 @@ seats[].manaPool[].riders[].when	array
 seats[].manaPool[].riders[].when[]	string
 seats[].maxHandSize	number:int
 seats[].maxHandSizeAt	number:int64
+seats[].mulliganDecided	bool
 seats[].mulligansTaken	number:int
 seats[].name	string
 seats[].poison	number:int
@@ -3716,6 +3742,8 @@ seats[].statics[].gameEnd.cantWin	bool
 seats[].statics[].gameEnd.causes	array
 seats[].statics[].gameEnd.causes[]	string
 seats[].statics[].gameEnd.scope	number:uint8
+seats[].statics[].keepManaColors	array
+seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
 seats[].statics[].label	string
 seats[].statics[].lifeTotalLocked	bool
@@ -3735,6 +3763,7 @@ seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
+seats[].triggerOrderAlwaysAsk	bool
 seats[].turnsBegun	number:int
 seats[].undosRemaining	number:int
 seats[].upkeepsBegun	number:int
@@ -3797,6 +3826,7 @@ stack.cards[].counterStampedAt{}	number:int64
 stack.cards[].counters	map:string
 stack.cards[].counters{}	number:int
 stack.cards[].damageMarked	number:int
+stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
 stack.cards[].durationCopyBase.ColorIdentity	array
@@ -4222,6 +4252,7 @@ turn.Extra	bool
 turn.ExtraRef	number:int
 turn.Number	number:int
 turn.OrderSeat	number:int
+turn.PassedInSuccession	number:uint64
 turn.Phase	string
 turn.PhaseID	number:int
 turn.PhaseOrdinal	number:int
@@ -4229,6 +4260,7 @@ turn.PriorityHolder	number:int
 turn.Seq	number:int
 turn.Step	string
 turn.StepOrdinal	number:int
+turnEndPending	bool
 turnPlan	array
 turnPlan[]	object
 turnPlan[].phaseId	number:int
@@ -4245,6 +4277,12 @@ turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatDamagedPlayers	map:string
 turnTally.combatDamagedPlayers{}	number:int
 turnTally.creaturesDied	number:int
+turnTally.damageDealers	array
+turnTally.damageDealers[]	object
+turnTally.damageDealers[].combat	bool
+turnTally.damageDealers[].epoch	number:int
+turnTally.damageDealers[].source	custom(uuid.UUID)
+turnTally.damageDealers[].victim	custom(uuid.UUID)
 turnTally.entered	map:array
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
@@ -4272,6 +4310,7 @@ turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
+turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.resolved	map:string

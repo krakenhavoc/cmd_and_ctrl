@@ -15,6 +15,7 @@ import {
   type TutorialStep,
 } from "./tutorial";
 import { HANDOFF, TUTORIAL_STEPS, WELCOME } from "./tutorialSteps";
+import { L } from "./labels";
 import type { GameView } from "./protocol";
 
 beforeEach(() => {
@@ -35,17 +36,17 @@ const action = (over: Partial<TutorialStep> = {}): TutorialStep => ({
   title: "Tap a land for mana",
   body: "Click one of the Forests.",
   hint: "A land already on the table.",
-  anchor: { label: "lands", within: "your board" },
+  anchor: { label: L.lands, within: L.yourBoard },
   ...over,
 });
 
 const script = (...middle: TutorialStep[]) => [WELCOME, ...middle, HANDOFF];
 
 describe("the script's two button steps", () => {
-  it("opens with step 1 and closes with step 11, with the canvas's copy", () => {
+  it("opens with step 1 and closes with step 14, with the canvas's copy", () => {
     expect([TUTORIAL_STEPS[0], TUTORIAL_STEPS.at(-1)]).toEqual([WELCOME, HANDOFF]);
-    expect([WELCOME.n, WELCOME.kind, HANDOFF.n, HANDOFF.kind]).toEqual([1, "opening", 11, "done"]);
-    expect(TUTORIAL_STEP_COUNT).toBe(11);
+    expect([WELCOME.n, WELCOME.kind, HANDOFF.n, HANDOFF.kind]).toEqual([1, "opening", 14, "done"]);
+    expect(TUTORIAL_STEP_COUNT).toBe(14);
     expect(copyText(WELCOME.title, { helpKey: "?", settingsKey: "," })).toBe(
       "A five-minute practice game",
     );
@@ -60,6 +61,12 @@ describe("the script's two button steps", () => {
     );
     expect(copyText(HANDOFF.body, { helpKey: "", settingsKey: "" })).toMatch(
       /^The keymap is in Settings\. /,
+    );
+  });
+
+  it("says where Help is, which replays any of it (ADR 0125 §5.1)", () => {
+    expect(copyText(HANDOFF.body, { helpKey: "?", settingsKey: "," })).toMatch(
+      /Help, in the ⋯ menu here and in the header elsewhere, replays any of this\.$/,
     );
   });
 });
@@ -314,11 +321,11 @@ describe("detours, cannot, hover and advance", () => {
 
   it("spotlights a detour's own anchor, else the step's", () => {
     const step = action();
-    expect(spotAnchors(step, null)).toEqual([{ label: "lands", within: "your board" }]);
-    expect(spotAnchors(step, { ...detour, anchor: { label: "actions" } })).toEqual([
-      { label: "actions" },
+    expect(spotAnchors(step, null)).toEqual([{ label: L.lands, within: L.yourBoard }]);
+    expect(spotAnchors(step, { ...detour, anchor: { label: L.actions } })).toEqual([
+      { label: L.actions },
     ]);
-    expect(spotAnchors(step, detour)).toEqual([{ label: "lands", within: "your board" }]);
+    expect(spotAnchors(step, detour)).toEqual([{ label: L.lands, within: L.yourBoard }]);
     expect(statusText(action(), { view: null, start: null, viewerID: null, event: null })).toBe(
       undefined,
     );
@@ -331,5 +338,160 @@ describe("spotlit", () => {
       spotlit,
     );
     expect(lit).toEqual(["action", "hint", "recovered"]);
+  });
+});
+
+// ADR 0125 §5.3: a step that completes reports itself, so the coach can
+// mark the hints it teaches as seen. One that is skipped, gives up,
+// times out or loses its anchor reports nothing.
+describe("onComplete", () => {
+  const teaching = (over: Partial<TutorialStep> = {}) =>
+    action({ teaches: ["table.stack"], ...over });
+
+  function runWith(steps: TutorialStep[]) {
+    const done: string[] = [];
+    const run = createTutorialRun(steps, {
+      viewerID: "me",
+      log: () => {},
+      onComplete: (s) => done.push(s.id),
+    });
+    return { run, done };
+  }
+
+  it("reports Start, a predicate, a hover, and Finish on the last step", () => {
+    const hover = action({ id: "h", hover: { ms: 600 } });
+    const pred = teaching({ id: "p", done: (c) => turnOf(c.view) === 2 });
+    const { run, done } = runWith(script(pred, hover));
+    run.start();
+    run.observe(v(2));
+    run.hovered("h");
+    expect(run.current().step).toBe(HANDOFF);
+    run.close();
+    expect(done).toEqual(["welcome", "p", "h", "handoff"]);
+    // A second close reports nothing more.
+    run.close();
+    expect(done).toHaveLength(4);
+  });
+
+  it("reports nothing for a skip, a give-up, a timeout or a missing anchor", () => {
+    const steps = script(
+      teaching({ id: "skipped" }),
+      teaching({ id: "gave-up", cannot: (c) => (turnOf(c.view) === 3 ? "gone" : null) }),
+      teaching({ id: "timed-out", timeoutMs: 1_000 }),
+      teaching({ id: "no-anchor" }),
+      teaching({ id: "advanced" }),
+    );
+    const { run, done } = runWith(steps);
+    run.start();
+    run.skipStep();
+    run.observe(v(3));
+    expect(run.current().step.id).toBe("timed-out");
+    vi.advanceTimersByTime(1_000);
+    run.anchorMissing("no-anchor");
+    run.advance("advanced", "cannot be hovered on this device");
+    expect(run.current().step).toBe(HANDOFF);
+    expect(done).toEqual(["welcome"]);
+  });
+
+  it("reports nothing when Skip tutorial closes the opening card", () => {
+    const { run, done } = runWith(script(teaching()));
+    run.close();
+    expect(done).toEqual([]);
+  });
+
+  it("moves on, and logs, when the report throws", () => {
+    const log = vi.fn();
+    const run = createTutorialRun(script(teaching({ done: () => true })), {
+      viewerID: "me",
+      log,
+      onComplete: () => {
+        throw new Error("boom");
+      },
+    });
+    run.start();
+    expect(run.current().step).toBe(HANDOFF);
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/step act completion failed/));
+  });
+});
+
+// ADR 0125 §5.2: while the opening roll is open every step but the roll's
+// own is held, and a held step's hint and timeout wait for the deal.
+describe("the opening roll's hold and a step's timers", () => {
+  const rolling = () =>
+    ({
+      id: "g",
+      turn: { number: 1 },
+      opening_roll: { rounds: [{ seats: [0, 1], rolls: [] }] },
+    }) as unknown as GameView;
+
+  it("starts a held step's timeout when the hold lifts, for its full length", () => {
+    const log = vi.fn();
+    const run = createTutorialRun(script(action({ timeoutMs: 5_000 })), {
+      viewerID: "me",
+      view: rolling(),
+      log,
+    });
+    run.start();
+    expect(run.current()).toMatchObject({ step: { id: "act" }, held: true });
+    // The roll outlasts the step's whole timeout: nothing happens yet.
+    vi.advanceTimersByTime(8_000);
+    expect(run.current().step.id).toBe("act");
+    run.observe(v(1));
+    expect(run.current().held).toBe(false);
+    vi.advanceTimersByTime(4_999);
+    expect(run.current().step.id).toBe("act");
+    vi.advanceTimersByTime(1);
+    expect(run.current().step).toBe(HANDOFF);
+    expect(log).toHaveBeenCalledWith("tutorial: step act timed out waiting; advancing");
+  });
+
+  it("starts a held step's hint when the hold lifts", () => {
+    const run = createTutorialRun(script(action()), { viewerID: "me", view: rolling() });
+    run.start();
+    vi.advanceTimersByTime(HINT_AFTER_MS * 2);
+    expect(run.current().coach).toBe("action");
+    run.observe(v(1));
+    vi.advanceTimersByTime(HINT_AFTER_MS - 1);
+    expect(run.current().coach).toBe("action");
+    vi.advanceTimersByTime(1);
+    expect(run.current().coach).toBe("hint");
+  });
+
+  it("stops a step's timers while a hold lasts and starts them afresh after it", () => {
+    const run = createTutorialRun(script(action({ timeoutMs: 5_000 })), {
+      viewerID: "me",
+      view: v(1),
+      log: () => {},
+    });
+    run.start();
+    vi.advanceTimersByTime(4_000);
+    run.observe(rolling());
+    vi.advanceTimersByTime(5_000);
+    expect(run.current().step.id).toBe("act");
+    run.observe(v(1));
+    vi.advanceTimersByTime(4_999);
+    expect(run.current().step.id).toBe("act");
+    vi.advanceTimersByTime(1);
+    expect(run.current().step).toBe(HANDOFF);
+  });
+
+  it("does not hold the step that teaches the roll", () => {
+    const log = vi.fn();
+    const roll = action({
+      id: "roll",
+      duringOpeningRoll: true,
+      done: (c) => !!c.view && !(c.view as { opening_roll?: unknown }).opening_roll,
+      first: () => ({ id: "choose", title: "You won", body: "Choose." }),
+    });
+    const run = createTutorialRun(script(roll), { viewerID: "me", view: rolling(), log });
+    run.start();
+    // Its detour and its hint work during the roll; the roll's end completes it.
+    expect(run.current()).toMatchObject({ step: { id: "roll" }, held: false });
+    expect(run.current().detour?.id).toBe("choose");
+    vi.advanceTimersByTime(HINT_AFTER_MS);
+    expect(run.current().coach).toBe("hint");
+    run.observe(v(1));
+    expect(run.current().step).toBe(HANDOFF);
+    expect(log).not.toHaveBeenCalled();
   });
 });
