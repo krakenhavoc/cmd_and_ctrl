@@ -41,6 +41,8 @@ export interface SnapshotCard {
   // Player ID this card is declared to attack. #328's spec reads it
   // to confirm an attack landed before the blocking window opens.
   attacking_target?: string;
+  // #2219: the non-keyword abilities behind an art tile's chips.
+  ability_rows?: { kind: string; label: string }[];
 }
 
 export interface SnapshotZone {

@@ -314,8 +314,11 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// ADR 0093: the granted-ability text list. Redacted with the
 		// ability rows it describes.
 		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
-		Abilities:        []string{"flying"},
-		Restrictions:     []string{"cant_block"},
+		// #2219: the tile's ability rows. Redacted with the ability
+		// lists they are read beside.
+		AbilityRows:  []AbilityRowView{{Kind: "triggered", Label: "Draw a card"}},
+		Abilities:    []string{"flying"},
+		Restrictions: []string{"cant_block"},
 		// ADR 0106 §2: redacted with Restrictions.
 		AttackTargetRestrictions: []AttackTargetRestrictionView{{Player: "p-owner", Planeswalkers: true, Source: "Xantcha, Sleeper Agent"}},
 		// ADR 0083. Public on a token the viewer can see, and a token

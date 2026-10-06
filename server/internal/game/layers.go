@@ -367,6 +367,22 @@ type StaticAbility struct {
 	// refuses one that is not a layer-6 keyword grant from the
 	// battlefield: the stack step applies keywords and nothing else.
 	AffectsSpells bool
+
+	// Label is this static's player-facing wording, as a stack label
+	// is for a triggered or activated row: "Attacks each combat if
+	// able." Shown in the art tile's static-ability chip (#2219,
+	// AbilityRowsOf). Optional: a row with none is described by its
+	// layer ("Power/toughness effect"). Catalog data; not persisted
+	// and never read by the layer pass.
+	Label string
+
+	// Keywords names the keyword abilities this row IS, when it is
+	// one: the self-only layer-6 static the effects package
+	// synthesises from Spec.PrintedKeywords carries them here. The
+	// tile's keyword chips already show those, so AbilityRowsOf
+	// leaves such a row out rather than counting it twice (#2219).
+	// Catalog data; not persisted and never read by the layer pass.
+	Keywords []string
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter
