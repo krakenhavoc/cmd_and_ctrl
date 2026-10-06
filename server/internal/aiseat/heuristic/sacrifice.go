@@ -39,9 +39,9 @@ import (
 // The Altars (Ashnod's, Phyrexian) are mana abilities, and the bot does
 // not activate a mana ability for floating mana (§7). The auto-tapper
 // still sacrifices to them when a cast needs it, as before. A row that
-// sacrifices its own source (Sakura-Tribe Elder) prices no sacrifice
-// today, so it gets no payoff either: adding one would make an
-// uncosted sacrifice more eager, not a costed one cheaper.
+// sacrifices its own source (Sakura-Tribe Elder) is not read here: PR 7
+// charges the source's full value when the row declares a purpose
+// (moves.go), and nothing at all when it does not.
 
 // sacrificeCost prices sacrificing the permanents `ids` to pay a cost,
 // as a positive number. Under BaselineConfig it is the sum of their

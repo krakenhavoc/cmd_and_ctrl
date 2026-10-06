@@ -5,7 +5,7 @@
     "activate",
     "sacrifice"
   ],
-  "note": "The bot's own main phase, with Viscera Seer, Syr Konrad (the commander), Zulaport Cutthroat and Bastion of Remembrance out, and an opponent at 3 life. Sacrificing any other creature triggers all three payoffs (Konrad 1 damage, Zulaport 1, Bastion 1) and kills that opponent. The summoning-sick Human Soldier token is the cheapest creature to sacrifice. Sacrificing Konrad himself is wrong: it gives up the commander, and Konrad does not see his own death, so the opponent survives at 1. Passing misses the kill. The other creature sacrifices also kill but cost more, and are left unlabelled.",
+  "note": "The bot's own main phase, with Viscera Seer, Syr Konrad (the commander), Zulaport Cutthroat and Bastion of Remembrance out, and an opponent at 3 life. Sacrificing any other creature triggers all three payoffs (Konrad 1 damage, Zulaport 1, Bastion 1) and kills that opponent. The summoning-sick Human Soldier token is the cheapest creature to sacrifice. Casting Night's Whisper first is also accepted: it loses nothing, since the Seer and the token are still there afterwards. Sacrificing Konrad himself is wrong: it gives up the commander, and Konrad does not see his own death, so the opponent survives at 1. Passing misses the kill. The other creature sacrifices also kill but cost more, and are left unlabelled.",
   "gate": [
     "heuristic"
   ],
@@ -23,6 +23,9 @@
     "accept": [
       {
         "label": "Viscera Seer: Sacrifice a creature: Scry 1. (sacrificing Human Soldier)"
+      },
+      {
+        "label": "Cast Night's Whisper"
       }
     ],
     "reject": [
