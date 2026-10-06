@@ -711,7 +711,7 @@ Not detectably worse: the `heuristic` interval's upper bound is 34.3%, above 25%
 
 Three readings of §7, each the closest to its stated intent:
 
-- **The bar.** §7 says dying-anyway pricing "makes 'sacrifice it in response' the bot's play". A response is made outside a sorcery-speed window, where the bar is `InstantThreshold` (1.50). An outlet activation is worth `ActivateBase` (0.50), less the flat 0.30 that a non-tapping row on a creature already pays, so no dying-anyway price can clear 1.50. Sacrificing a permanent that is about to be lost spends nothing the bot would otherwise keep, which is §5's premise. So a move whose only non-mana cost is sacrificing permanents that are dying anyway clears `LeftoverThreshold` (0.00), in any window.
+- **The bar.** §7 says dying-anyway pricing "makes 'sacrifice it in response' the bot's play". A response is made outside a sorcery-speed window, where the bar is `InstantThreshold` (1.50). An outlet activation is worth `ActivateBase` (0.50), less the flat 0.30 that a non-tapping row on a creature already pays, so no dying-anyway price can clear 1.50. Sacrificing a permanent that is about to be lost spends nothing the bot would otherwise keep, which is §5's premise. So a move whose only non-mana cost is sacrificing permanents that are dying anyway clears `LeftoverThreshold` (0.00), in any window. The owner approved this reading on 2026-10-06.
 - **What "dying anyway" reads.**
   - A spell's sweep is read from the slot its stack item names: the alternative cost, the modes, or the card. An ability's stack item does not say which row it came from, so a planeswalker's or a saga's sweep is not seen.
   - In combat, a creature counts as losing only when sacrificing it gives up nothing. An attacker loses when its blockers kill it, it kills none of them, and it puts no trample damage over. A blocker loses when it dies and every attacker it blocks dies or lives the same without it.
@@ -793,4 +793,4 @@ Two positions are new and gated for `heuristic`, harvested from logged arena run
 - `sacrifice-the-creature-the-removal-targets`. An opponent's Acidic Slime trigger targets one of three Phyrexian Wurms, and the bot sacrifices that Wurm to Viscera Seer. `BaselineConfig()` passes.
 - `do-not-sacrifice-the-commander`. Syr Konrad, Zulaport Cutthroat and Bastion of Remembrance are out and an opponent is at 3. The bot sacrifices its summoning-sick Human Soldier token, which kills that opponent, and never Konrad. On PR 7's tree it casts Night's Whisper first, which the label also accepts. `BaselineConfig()` passes, which misses the kill.
 
-Their labels await the owner's review.
+**Owner label review (2026-10-06).** The owner approved both labels as written, and both are stamped `reviewer: krakenhavoc`, `reviewed_at: 2026-10-06`.
