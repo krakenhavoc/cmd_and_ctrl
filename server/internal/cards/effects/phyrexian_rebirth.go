@@ -32,6 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6ef3c75d-6af2-4ea0-b98d-96c5d7d3af58",
 		Name:         "Phyrexian Rebirth",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{

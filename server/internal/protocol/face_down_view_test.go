@@ -316,7 +316,10 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
 		// #2219: the tile's ability rows. Redacted with the ability
 		// lists they are read beside.
-		AbilityRows:  []AbilityRowView{{Kind: "triggered", Label: "Draw a card"}},
+		AbilityRows: []AbilityRowView{{Kind: "triggered", Label: "Draw a card"}},
+		// ADR 0126 §6: the card's declared purpose. Redacted with the
+		// ability rows: "draws two, loses two" is Night's Whisper.
+		Purpose:      &PurposeView{Draws: 2},
 		Abilities:    []string{"flying"},
 		Restrictions: []string{"cant_block"},
 		// ADR 0106 §2: redacted with Restrictions.
@@ -360,6 +363,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
 			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
 			Cost: "{1}{U}", Used: true,
+			Purpose: &PurposeView{Sweep: &SweepView{Matches: "creatures", How: "exile"}},
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
@@ -371,6 +375,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			XLockedAtZero:    true, PhyrexianSymbols: 1,
 			// #1686.
 			TimingClosed: true,
+			// ADR 0126 §6.
+			Purpose: &PurposeView{Sweep: &SweepView{Matches: "nonland_permanents", How: "bounce", OpponentsOnly: true}},
 		}},
 		// #1012: the flag that says the printed cost is not one of
 		// the prices this cast may claim. Redacted with the offer
@@ -861,6 +867,9 @@ var modeOptionScopes = map[string]castSurfaceScope{
 	// the choice was made in public — and never set on a hand card,
 	// whose modes are a spell's and remember nothing.
 	"Used": surfacePublicPile,
+	// ADR 0126 §6: the catalog's declared purpose for the bullet, read
+	// off the printed card like Label, which says the same in words.
+	"Purpose": surfacePublicPile,
 	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
 	// and "target opponent", so seat A's is not seat B's to read.
 	"LegalTargets": surfacePrivate,
@@ -892,6 +901,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,
+	// ADR 0126 §6: what the spell does when cast for this cost, read
+	// off the printed card like Label.
+	"Purpose": surfacePublicPile,
 }
 
 // TestHandPublicCastSurfaceIsAnAllowlist is the #1169 guard, and it is

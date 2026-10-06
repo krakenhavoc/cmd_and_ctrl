@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "ccaa44f2-96be-44e2-884f-c31baa3908d5",
-		Name:         "Kindred Dominance",
+		OracleID: "ccaa44f2-96be-44e2-884f-c31baa3908d5",
+		Name:     "Kindred Dominance",
+		// ADR 0126 §6: creatures of the chosen type stay.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",

@@ -30,8 +30,10 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "9f95027a-5f04-48b4-99a0-8913be3a520a",
-		Name:         "Selective Obliteration",
+		OracleID: "9f95027a-5f04-48b4-99a0-8913be3a520a",
+		Name:     "Selective Obliteration",
+		// ADR 0126 §6: a colorless permanent, or one only of the color its controller chose, stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepAllPermanents, How: game.SweepExile, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return selectiveObliterationAsk(ctx.Game, item, apnapPlayers(ctx.Game), map[uuid.UUID]string{})

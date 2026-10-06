@@ -21,8 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "a6fd90dc-0ec3-4dce-a77a-4d04f5e254bf",
-		Name:         "Winds of Rath",
+		OracleID: "a6fd90dc-0ec3-4dce-a77a-4d04f5e254bf",
+		Name:     "Winds of Rath",
+		// ADR 0126 §6: an enchanted creature stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Creature(), b15NotEnchanted()), CantBeRegenerated: true}.Apply(ctx)

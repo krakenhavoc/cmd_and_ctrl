@@ -13,6 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a332e80a-dc51-4dc6-bc85-e114a1c6fdb8",
 		Name:         "Vanquish the Horde",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessEach(PermanentsOnBattlefield(Creature()),

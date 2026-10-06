@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Supreme Verdict — Sorcery {1}{W}{W}{U}:
 //
 //	"This spell can't be countered.
@@ -16,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "0230de18-8d15-4cfa-9d42-7ccddd9f9570",
 		Name:            "Supreme Verdict",
+		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		CantBeCountered: true,
 		OnResolve:       wrathDestroyAllCreatures,
 	})

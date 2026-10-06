@@ -25,8 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // gap, closed for every "destroy all" card at once in S30 (#470).
 func init() {
 	Register(Spec{
-		OracleID:     "3c2aec69-ffd9-4a34-888c-58adbbb99bb5",
-		Name:         "Wakening Sun's Avatar",
+		OracleID: "3c2aec69-ffd9-4a34-888c-58adbbb99bb5",
+		Name:     "Wakening Sun's Avatar",
+		// ADR 0126 §6: Dinosaurs stay, and only when cast from your hand.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {

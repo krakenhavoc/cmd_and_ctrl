@@ -29,7 +29,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
 			},
-			Key: "Balefire Dragon — that much damage to each creature that player controls",
+			Key:     "Balefire Dragon — that much damage to each creature that player controls",
+			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true}},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if item.Trigger == nil {
 					return nil

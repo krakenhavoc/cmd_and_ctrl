@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "9e608ace-2844-419b-9204-9054127557b2",
-		Name:         "Flamebreak",
+		OracleID: "9e608ace-2844-419b-9204-9054127557b2",
+		Name:     "Flamebreak",
+		// ADR 0126 §6: a creature with flying is spared.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 3, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return damageEachMatchingAndEachPlayerThen(ctx, And(Creature(), WithoutKeyword("flying")), 3,

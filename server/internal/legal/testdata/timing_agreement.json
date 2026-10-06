@@ -3080,7 +3080,10 @@
                   },
                   "label": "Sacrifice a creature"
                 },
-                "mana_cost": "{B}"
+                "mana_cost": "{B}",
+                "purpose": {
+                  "draws": 2
+                }
               }
             ]
           },
@@ -3478,7 +3481,10 @@
                   },
                   "label": "Sacrifice a creature"
                 },
-                "mana_cost": "{B}"
+                "mana_cost": "{B}",
+                "purpose": {
+                  "draws": 2
+                }
               }
             ]
           },

@@ -27,10 +27,10 @@ func init() {
 		Name:         "Austere Command",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose two", 2, 2,
-			Mode("Destroy all artifacts."),
-			Mode("Destroy all enchantments."),
-			Mode("Destroy all creatures with mana value 3 or less."),
-			Mode("Destroy all creatures with mana value 4 or greater."),
+			ModeWithPurpose(Mode("Destroy all artifacts."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifacts, How: game.SweepDestroy}}),
+			ModeWithPurpose(Mode("Destroy all enchantments."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepEnchantments, How: game.SweepDestroy}}),
+			ModeWithPurpose(Mode("Destroy all creatures with mana value 3 or less."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreaturesManaValue3OrLess, How: game.SweepDestroy}}),
+			ModeWithPurpose(Mode("Destroy all creatures with mana value 4 or greater."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreaturesManaValue4OrMore, How: game.SweepDestroy}}),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			sweeps := []CardPredicate{

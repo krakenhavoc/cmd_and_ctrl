@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a6f38908-aa4f-4f99-a28e-85d11dab52e4",
 		Name:         "Ruinous Ultimatum",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Nonland(), OpponentControls())}.Apply(ctx)

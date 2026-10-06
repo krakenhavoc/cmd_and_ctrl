@@ -21,8 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reported on #305 and fixed in S30 (#470 / #446).
 func init() {
 	Register(Spec{
-		OracleID:     "2b7c4dab-e432-4b34-b058-3cec5c0d72df",
-		Name:         "Martial Coup",
+		OracleID: "2b7c4dab-e432-4b34-b058-3cec5c0d72df",
+		Name:     "Martial Coup",
+		// ADR 0126 §6: the sweep happens only when X is 5 or more, and spares the Soldiers.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

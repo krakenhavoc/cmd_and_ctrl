@@ -28,7 +28,9 @@ func init() {
 	Register(Spec{
 		OracleID: "c52cfb41-18f3-4e73-b5e7-d75baf74e578",
 		Name:     "River's Rebuke",
-		Targets:  TargetPlayer("target player"),
+		// ADR 0126 §6: cast at an opponent.
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, OpponentsOnly: true}},
+		Targets: TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil

@@ -22,6 +22,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"TargetMode":                 "the spell's target hint",
 	"Targets":                    "the spell's target clause",
 	"Modes":                      "the spell's modes",
+	"Purpose":                    "the catalog's declared purpose for the bot (ADR 0126 §6), already the card's own purpose field",
 	"ManaAbilities":              "mana abilities: ADR 0105's drop pip and the mana menu are their surface",
 	"PrintedKeywords":            "keywords: the keyword chips",
 	"ManaTriggers":               "triggered MANA abilities (CR 605.1b): mana, like ManaAbilities",

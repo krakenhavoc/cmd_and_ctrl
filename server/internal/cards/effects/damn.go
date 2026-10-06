@@ -27,7 +27,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		AlternativeCosts: []game.AlternativeCost{
-			Overload("{2}{W}{W}"),
+			CostWithPurpose(Overload("{2}{W}{W}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}}),
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if ctx.PaidAltCost("overload") {

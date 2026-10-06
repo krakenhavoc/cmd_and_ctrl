@@ -29,8 +29,9 @@ func init() {
 		Name:         "Pyrohemia",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{R}: Pyrohemia deals 1 damage to each creature and each player.",
-			Cost:  ManaCost("{R}"),
+			Label:   "{R}: Pyrohemia deals 1 damage to each creature and each player.",
+			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}},
+			Cost:    ManaCost("{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b23DamageEachCreatureAndEachPlayer(NewContext(g, item), 1)
 			},

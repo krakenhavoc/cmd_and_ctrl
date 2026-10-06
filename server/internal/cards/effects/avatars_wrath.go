@@ -51,8 +51,10 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "e3431dae-969c-4896-9f9e-a80e7bec4bdf",
-		Name:         "Avatar's Wrath",
+		OracleID: "e3431dae-969c-4896-9f9e-a80e7bec4bdf",
+		Name:     "Avatar's Wrath",
+		// ADR 0126 §6: the creature it targets stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepExile, Partial: true}},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("up to one target creature").WithCount(0, 1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

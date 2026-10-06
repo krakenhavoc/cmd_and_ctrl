@@ -39,7 +39,7 @@ func init() {
 		Name:         "Syr Konrad, the Grim",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(OnAny([]game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Kind == game.EventLTB {
 					if ev.CardID == source.InstanceID {
 						return false // "another"
@@ -51,7 +51,7 @@ func init() {
 					b02CreatureCardLeftYourGraveyard(ev, source, g)
 			}, "Syr Konrad, the Grim — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
-			}),
+			}), game.Purpose{DeathPayoff: true}),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{B}: Each player mills a card.",

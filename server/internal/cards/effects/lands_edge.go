@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // enchantment entering puts the older one into its owner's graveyard.
 //
 // No purpose for the bot: whether the ability helps depends on holding
-// a land card, which ActivationPurpose does not describe.
+// a land card, which Purpose does not describe.
 //
 // No simplification.
 func init() {

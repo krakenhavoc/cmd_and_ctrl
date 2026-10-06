@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "4aa119f7-d411-4188-956e-547f7d14e789",
 		Name:           "Crush the Weak",
+		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2}},
 		Completeness:   CompletenessFull,
 		SpecialActions: []game.SpecialAction{Foretell("{R}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

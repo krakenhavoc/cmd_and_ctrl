@@ -38,11 +38,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{b22SlimeShrink()},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			TriggerWithPurpose(On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Kind == game.EventBeginEndStep
 			}, "Toxrill — a slime counter on each creature you don't control", func(g *game.Game, item *game.StackItem) error {
 				return b22PutCounterOnEachCreatureYouDontControl(g, item, "slime")
-			}),
+			}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, OpponentsOnly: true}}),
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22SlimedCreatureYouDontControlDied(ev, source, g)
 			}, "Toxrill — create a 1/1 black Slug", Do(CreateToken{Template: TokenCard("1/1 black Slug"), N: 1})),

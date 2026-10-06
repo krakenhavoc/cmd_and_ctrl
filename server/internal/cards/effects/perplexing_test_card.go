@@ -23,8 +23,8 @@ func init() {
 		Name:         "Perplexing Test",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Return all creature tokens to their owners' hands."),
-			Mode("Return all nontoken creatures to their owners' hands."),
+			ModeWithPurpose(Mode("Return all creature tokens to their owners' hands."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}}),
+			ModeWithPurpose(Mode("Return all nontoken creatures to their owners' hands."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}}),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if ctx.HasMode(0) {

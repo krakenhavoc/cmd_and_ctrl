@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // under the activator's control (CR 109.5, 111.2), not the
 // enchantment's controller's.
 //
-// No Purpose: ActivationPurpose has no "you create a token" field, so
-// the bot does not reach across the table for it (ADR 0106 owner
-// decision 2).
+// No Purpose: the bot prices another player's row by the cards it
+// draws and its controller's life loss alone, and this row has
+// neither, so the bot does not reach across the table for it (ADR 0106
+// owner decision 2).
 //
 // No simplification.
 func init() {

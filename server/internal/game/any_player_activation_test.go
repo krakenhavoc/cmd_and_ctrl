@@ -29,7 +29,7 @@ func stubAnyPlayerCard(t *testing.T, resolvedFor *uuid.UUID) {
 			Label:     "{1}: Anyone. Any player may activate this ability.",
 			Cost:      AbilityCost{Mana: "{1}"},
 			AnyPlayer: true,
-			Purpose:   ActivationPurpose{Draws: 1},
+			Purpose:   Purpose{Draws: 1},
 			Condition: func(g *Game, controller, _ uuid.UUID) bool {
 				// "Activate only during your turn", where "your" is the
 				// activator's (CR 109.5): read with the ACTIVATOR.

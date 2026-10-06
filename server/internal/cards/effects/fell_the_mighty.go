@@ -18,8 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "1fbb2a7c-8093-4729-b8fe-cf032d99470f",
-		Name:         "Fell the Mighty",
+		OracleID: "1fbb2a7c-8093-4729-b8fe-cf032d99470f",
+		Name:     "Fell the Mighty",
+		// ADR 0126 §6: only creatures with power greater than the target's.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

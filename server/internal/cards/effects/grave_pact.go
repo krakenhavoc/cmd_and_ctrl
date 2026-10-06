@@ -26,11 +26,11 @@ func init() {
 		Name:         "Grave Pact",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverACreatureYouControlDies("Grave Pact — each other player sacrifices a creature", Do(EachPlayerSacrifices{
+			TriggerWithPurpose(WheneverACreatureYouControlDies("Grave Pact — each other player sacrifices a creature", Do(EachPlayerSacrifices{
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-			})),
+			})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }
