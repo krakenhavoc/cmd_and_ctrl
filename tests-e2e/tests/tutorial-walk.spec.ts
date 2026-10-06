@@ -156,6 +156,8 @@ function budgetFor(c: Coach): number {
 
 /** Where visiblePoint looks first, as fractions of what shows: the middle, then outwards. */
 const MIDDLE_FIRST = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+/** Where restOn looks first: the bottom of what shows, then upwards. */
+const BOTTOM_FIRST = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
 
 /**
  * visiblePoint finds a point of `el`, relative to its box, where the
@@ -303,10 +305,12 @@ class Walk {
   }
 
   /**
-   * Rest the pointer on a card of `zone`, the one nearest the middle.
-   * A card lifts while the pointer is on it, so rest on the upper part
-   * of what shows: rested on near the bottom edge it lifts away from
-   * under the pointer, drops back under it, and is never hovered long.
+   * Rest the pointer on a card of `zone`, the one nearest the middle,
+   * on the lowest part of it that shows. A card lifts while the pointer
+   * is on it, and its hover holds wherever the pointer rests (#2396):
+   * the slot it rose out of keeps the pointer. Near the bottom edge is
+   * where it used to lift away from under the pointer, drop back and
+   * never be hovered long, so that is where the walk rests.
    */
   private async restOn(zone: Locator): Promise<void> {
     await this.park();
@@ -318,7 +322,7 @@ class Walk {
     );
     for (const i of order) {
       const card = cards.nth(i);
-      const at = await card.evaluate(visiblePoint, [0.15, 0.25, 0.35, 0.5]);
+      const at = await card.evaluate(visiblePoint, BOTTOM_FIRST);
       if (at) {
         await card.hover({ position: at });
         return;

@@ -60,6 +60,7 @@
   import {
     CAST_ZONE_MARGIN_PX,
     IDLE,
+    innerLift,
     SNAP_REASON_MS,
     autoTapHighlight,
     clearAutoTapHighlight,
@@ -328,7 +329,8 @@
       cardID: e.card.instance_id,
       x: ev.clientX,
       y: ev.clientY,
-      handTop: row.getBoundingClientRect().top,
+      // #2396: the row stays put and its cards rise inside their slots.
+      handTop: row.getBoundingClientRect().top - innerLift(slot),
     });
     listen();
   }
@@ -543,35 +545,38 @@
     class:castable={leg.legal}
     title={leg.legal ? undefined : leg.reason}
   >
-    <div class="deal-wrap" in:dealIn out:dealOut>
-      <Card
-        card={e.card}
-        showManaCost={badge === null}
-        ready={legal.castableFrom(e.card.instance_id, e.zone)}
-        readyZone={e.zone}
-        {legal}
-        onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
-        onCastAnyway={castAnywayHere(e) ? () => castAnyway(e) : undefined}
-        castAnywayBlocked={castAnywayHere(e) ? castStripCastAnywayBlocked(e, view, viewerID) : ""}
-        onActivateAbility={activateFor(e)}
-        {sorcerySpeedBlocked}
-        {legalGate}
-      />
-      {#if badge}
-        <span class="cost-tag" title={badge.title} aria-label={badge.label}>
-          {#each pipRun(badge.symbols) as p, i (i)}
-            <ManaSymbol symbol={p.symbol} size={15} />
-          {/each}
-          {#if badge.life}
-            <span class="life">+{badge.life}♥</span>
-          {/if}
-        </span>
-      {/if}
-      {#if e.hint}
-        <span class="hint">{e.hint}</span>
-      {:else if e.verb === "play" && leg.legal}
-        <span class="hint verb">play</span>
-      {/if}
+    <!-- #2396: .rise lifts the card on hover; the slot stays put. -->
+    <div class="rise">
+      <div class="deal-wrap" in:dealIn out:dealOut>
+        <Card
+          card={e.card}
+          showManaCost={badge === null}
+          ready={legal.castableFrom(e.card.instance_id, e.zone)}
+          readyZone={e.zone}
+          {legal}
+          onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
+          onCastAnyway={castAnywayHere(e) ? () => castAnyway(e) : undefined}
+          castAnywayBlocked={castAnywayHere(e) ? castStripCastAnywayBlocked(e, view, viewerID) : ""}
+          onActivateAbility={activateFor(e)}
+          {sorcerySpeedBlocked}
+          {legalGate}
+        />
+        {#if badge}
+          <span class="cost-tag" title={badge.title} aria-label={badge.label}>
+            {#each pipRun(badge.symbols) as p, i (i)}
+              <ManaSymbol symbol={p.symbol} size={15} />
+            {/each}
+            {#if badge.life}
+              <span class="life">+{badge.life}♥</span>
+            {/if}
+          </span>
+        {/if}
+        {#if e.hint}
+          <span class="hint">{e.hint}</span>
+        {:else if e.verb === "play" && leg.legal}
+          <span class="hint verb">play</span>
+        {/if}
+      </div>
     </div>
   </div>
 {/snippet}
@@ -682,17 +687,30 @@
     overflow: hidden;
     position: relative;
     z-index: 1;
-    transition:
-      max-height 220ms var(--ease),
-      transform 220ms var(--ease);
+    transition: max-height 220ms var(--ease);
+    /* How far a card rises on hover: the hand's rise (Hand.svelte). */
+    --strip-rise: calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1) + 6px);
   }
-  /* The hand's lift, exactly: overflow goes visible and the row rises
-     by the hidden 38% so whole cards show over the board. */
+  /* The hand's lift, exactly: overflow goes visible and every card
+     rises by the hidden share, less 6px, so whole cards show over the
+     board.
+
+     #2396: as in the hand, the cards rise, not the row or their slots.
+     Each slot stays where it rests and keeps the pointer, and the card
+     inside it (.rise, with its price tag and caption) rises. When
+     the whole row rose, a lifted card's bottom edge landed exactly on
+     the bottom of what showed at rest, and a castable card rose 6px
+     more, so a pointer resting near the bottom of your commander was
+     no longer on it: the row dropped back under the pointer and rose
+     again, over and over. The row keeps its resting height too: the
+     strip aligns it to its bottom edge, so a row grown to a whole card
+     rose with its slots. */
   .strip-cards:hover {
-    max-height: none;
     overflow: visible;
-    transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
+  }
+  .strip-cards:hover .rise {
+    transform: translateY(var(--strip-rise));
   }
   /* #2349: the command zone's cards, a row inside the row. The slot
      after it overlaps it as any next slot does. */
@@ -704,7 +722,6 @@
   .strip-slot {
     position: relative;
     margin-left: calc(var(--card-w, 80px) * -1 * var(--strip-overlap, 0.42));
-    transition: transform 120ms var(--ease);
   }
   .strip-slot:first-child {
     margin-left: 0;
@@ -712,9 +729,18 @@
   .strip-slot:last-child .cost-tag {
     right: -5px;
   }
+  /* A castable card rises 6px more under the pointer; the slot stays. */
   .strip-slot.castable:hover {
-    transform: translateY(-6px);
     z-index: 2;
+  }
+  .strip-slot.castable:hover .rise {
+    transform: translateY(-6px);
+  }
+  .strip-cards:hover .strip-slot.castable:hover .rise {
+    transform: translateY(calc(var(--strip-rise) - 6px));
+  }
+  .rise {
+    transition: transform 220ms var(--ease);
   }
   .deal-wrap {
     position: relative;
@@ -879,6 +905,13 @@
       overflow: visible;
       transform: none;
     }
+    /* Whole cards already: nothing rises but a castable card's 6px. */
+    .strip-cards:hover .rise {
+      transform: none;
+    }
+    .strip-cards:hover .strip-slot.castable:hover .rise {
+      transform: translateY(-6px);
+    }
     .strip-slot {
       margin-left: 6px;
     }
@@ -1008,6 +1041,9 @@
     white-space: nowrap;
   }
   @media (prefers-reduced-motion: reduce) {
+    .rise {
+      transition: none;
+    }
     .drag-ghost,
     .drag-ghost.snapping {
       transition: none;

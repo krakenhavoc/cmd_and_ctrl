@@ -4,7 +4,7 @@
 // properties so multiple effects can stack without fighting each
 // other:
 //
-//   transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px))
+//   transform: rotate(var(--tap-rot, 0deg)) translateY(50%) scale(var(--hover-scale, 1)) translateY(-50%)
 //
 // CSS owns the static state (hover lift, base rotation). GSAP drives
 // the animated transitions by tweening the relevant custom property,
