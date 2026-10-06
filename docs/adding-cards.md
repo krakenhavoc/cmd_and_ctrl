@@ -5233,10 +5233,58 @@ What the engine does for you:
 - The server refuses any other pick, the bot is offered only the
   matches, and the prompt greys out the rest of the hand.
 
-Not this shape, so leave the card out and put it on
-`revealed-hand-pick-variants` (#2115): the chosen card is **exiled**
-rather than discarded, the pick is "**you may** choose … if you do / if
-you don't", or a later clause **reads the chosen card**.
+**The variants (#2115, ADR 0116's 2026-10-05 amendment).** Four more
+fields on `ChooseFromRevealedHand`, any of which raises the
+`revealed_hand_pick` kind instead:
+
+- `Exile: true` — "… and exile that card" (Appetite for Brains).
+  Exiling is not discarding (CR 701.9a): madness and "whenever a player
+  discards" never see it.
+- `Optional: true` — "**you may** choose" (Nightsnare, Extract the
+  Truth). Choosing nothing is an answer.
+- `FromGraveyard: true` — "or a card from their graveyard" (Agonizing
+  Remorse). Every graveyard card is a candidate; `Filter` reads the hand
+  only.
+- `Then` — the rest of the card, told what was chosen: "if you do / if
+  you don't", or a clause that must wait for the move (Tourach's
+  Canticle's random discard). It is a KEYED continuation, never a
+  closure, so the open pick stays a restore point. Declare it as a
+  package-level var in the card's file:
+
+  ```go
+  var nightsnareIfYouDont = RevealedPickThen("revealed-pick/nightsnare-discard-two",
+  	func(ctx *Context, pick game.RevealedPick) error {
+  		if len(pick.Chosen) > 0 {
+  			return nil
+  		}
+  		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: pick.FromPlayer, Source: pick.Source, N: 2})
+  		return nil
+  	})
+  ```
+
+  Then append the key to the ledger (`go test ./internal/cards/effects
+  -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys`).
+  The key is an on-disk identity: never rename or reuse one. `Then`
+  runs after the card has moved, and it runs when there was nothing to
+  choose too, so "if you don't" checks `len(pick.Chosen) == 0`. A clause
+  printed BEFORE the move (Talara's Bane's "you gain life …, then that
+  player discards that card") is `RevealedPickFirst`, which must call
+  `pick.Done(g)` exactly once. `pick.Chosen` is the cards as they were
+  in the hand; `ctx.Controller()` is the chooser.
+- `Measure` — a number read off each candidate while the spell is still
+  on the stack, handed to `Then` as `pick.Measures` (Talara's Bane's
+  toughness). Read it there, not in `Then`: by the time the pick is
+  answered the spell is in its graveyard, which a graveyard-counting
+  toughness would see. `game.ToughnessAnywhereForEffect` applies a
+  card's own characteristic-defining ability outside the battlefield
+  (CR 113.6a).
+
+A choice made before the pick (Addle's colour) or a count read from an
+earlier instruction (Last Rites) is the earlier prompt's continuation
+raising the pick, as `addle.go` and `last_rites.go` do. Still not this
+shape, so leave the card out and put it on `revealed-hand-pick-variants`:
+one pick of two cards under two different filters (Distended
+Mindbender).
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 
