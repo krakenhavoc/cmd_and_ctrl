@@ -411,3 +411,38 @@ This is the sanity row: the two policies are one config, so each takes exactly t
 **Suite:** `boteval suite run --policy heuristic`: 22 of 22 agree, every tag at 100% (attack 4, block 4, cast 7, choice 1, combat 8, land 3, mulligan 6, removal 1). The answers are identical to `develop`'s, position by position.
 
 **No price change:** a fixed-seed lockstep run (`--games 8 --rotate --seed 1 --lockstep` on the four decks) gives the same games before and after this PR: the same winner, turns, life totals and runner counters in every game.
+
+### PR 5: the two windows (2026-10-06)
+
+`develop` at `717d7ce51` plus PR 5. `DefaultConfig()` against `BaselineConfig()`: `LeftoverWindows` true (baseline false), `LeftoverThreshold` 0.00 (0), `SpellFloor` 1.30 (0), `TapByTiming` true (false). The starting values in §9, unchanged by tuning. Arena runs use the concurrent schedule, turn budget 60.
+
+Two readings of §5, both recorded in the PR:
+
+- **The second main phase is a sorcery-speed window.** There the leftover bar is for sorcery-speed moves that tap no creature. An instant, a flash spell, an instant-speed ability, or any move that taps a creature waits for the end step before the bot's turn. The mana and the creature are both still untapped then. The first arena run without this rule cast Entomb and Vampiric Tutor after combat, and looted with Mary Read and Anne Bonny there, giving up a blocker for a whole round.
+- **`SpellFloor` is for untargeted spells only:** a spell with no target on the card, on any mode, or on the move. A targeted spell is priced by its targets, as before. A floor under it would fire removal at smaller creatures outside the windows. Out of scope says that must not change.
+
+**Run 1:** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1`. 64 games, 0 stalls, 1 rejected move, turns p50 13 (baseline 14).
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 2) | Non-land cards offered |
+|---|---:|---:|---|---:|---:|
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 14 (19) | 64 |
+| izzet-aggro | 5 | 7.8% | 3.4%–17.0% | 18 (22) | 72 |
+| mono-black-aristocrats | 43 | 67.2% | 55.0%–77.4% | 23 (29) | 70 |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 13 (24) | 64 |
+
+The PR moves A6 the wrong way. Mono-black's interval now lies entirely above 50%. The black deck's cheap creatures, its tutors, and Syr Konrad's untargeted mill in the end step before its turn all clear the leftover bar, and its opponents' rocks and engines still do not (PRs 3 and 4).
+
+Canaries (A3), games used out of games offered: Mary Read and Anne Bonny's loot **27 of 61 (44%)**, was 0 of 62. Entomb **16 of 18 (89%)**, was 0 of 14. Viscera Seer (cast) **18 of 21 (86%)**, was 0 of 20; its sacrifice ability is still never used (PR 8). Harrow 0 of 22, unchanged: its additional cost sacrifices a land, so §5 keeps the normal bar for it, and it waits for §6's `purpose.lands` (PR 7). Sol Ring and Rhystic Study are unchanged at 0 (PRs 3 and 4).
+
+Mana rocks and dorks (A2): every rock is still at 0% (PR 3). The cheap dorks are now cast with leftover mana in the second main phase: Llanowar Elves 28 of 30, Fyndhorn Elves 21 of 23, Elvish Mystic 13 of 18, all 0% before.
+
+**Run 2:** two `heuristic` and two `heuristic-baseline` contestants, `--games 48 --rotate --seed 1` twice, the decks split as in PR 2's row, then swapped. 96 games, 0 stalls.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves | Turns p50 |
+|---|---:|---:|---:|---|---:|---:|
+| heuristic | 192 | 51 | 26.6% | 20.8%–33.2% | 2 | 15 / 14 |
+| heuristic-baseline | 192 | 45 | 23.4% | 18.0%–29.9% | 4 | 15 / 14 |
+
+Not detectably worse: the `heuristic` interval's upper bound is 33.2%, above 25%. Turns p50 is per half.
+
+**Suite:** `boteval suite run --policy heuristic`: 25 of 25 agree, every tag at 100% (activate 1, attack 4, block 4, cast 9, choice 1, combat 8, land 3, leftover 3, mulligan 6, removal 1). The three new positions are gated for `heuristic`: `loot-at-the-end-step-before-yours`, `tutor-at-the-end-step-before-yours` and `cantrip-with-leftover-mana`. `BaselineConfig()` passes on all three, and its rankings are recorded. `do-not-cantrip-before-the-three-drop` is not added. The harvest found no window where it was the unambiguous answer. `TestTheCantripDoesNotBeatTheThreeDrop` pins it in `heuristic` instead.
