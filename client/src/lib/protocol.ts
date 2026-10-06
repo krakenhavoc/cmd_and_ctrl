@@ -1076,6 +1076,12 @@ export interface PendingChoiceView {
   id: string;
   kind:
     | "discard_from_hand"
+    // #2115: the revealed-hand pick with a variant — the chosen card is
+    // exiled (`pick_destination`), "you may choose" (`choose_min` 0),
+    // or the revealing player's graveyard is offered too
+    // (`pick_from_graveyard`). Answered with {choice_id, card_ids}, an
+    // empty list when choosing nothing.
+    | "revealed_hand_pick"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
@@ -1323,6 +1329,12 @@ export interface PendingChoiceView {
   // ADR 0116: what `eligible` holds, as the card prints it — "nonland
   // card", "card with mana value 3 or greater".
   eligible_label?: string;
+  // #2115: for "revealed_hand_pick", where the chosen card goes —
+  // "discard", or "exile", which is not a discard.
+  pick_destination?: "discard" | "exile" | string;
+  // #2115: for "revealed_hand_pick", `options` ends with the revealing
+  // player's graveyard, every card of which may be chosen.
+  pick_from_graveyard?: boolean;
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
   // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
@@ -1470,8 +1482,22 @@ export interface PendingChoiceView {
   // ADR 0115 decision 2: populated for kind "commander_return" — the
   // owner could cast or play the commander from the graveyard or exile
   // it is in now (escape, flashback, an adventure), ignoring timing and
-  // mana. Computed by the server on every view.
+  // mana. Computed by the server on every view. #2390: also set on the
+  // "optional_replacement" that is CR 903.9b's commander question when
+  // the commander is headed for its owner's hand.
   playable_from_zone?: boolean;
+  // #2390: populated for an "optional_replacement" that offers a dredge
+  // (CR 702.52a) — N, the number of cards the yes mills. The card it
+  // returns rides `source`. Computed by the server on every view.
+  dredge?: number;
+  // #2419: populated for an "entry_sacrifice" that is devour (CR
+  // 702.82a) — N, the +1/+1 counters each sacrificed creature buys, and
+  // what the entering creature's own "for each creature it devoured"
+  // ability pays per creature (cards drawn, life gained). Absent on the
+  // fixed-count sacrifice lands. Computed by the server on every view.
+  devour?: number;
+  devour_draw?: number;
+  devour_life?: number;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -2024,6 +2050,11 @@ export interface AdditionalCostView {
   pay_life?: number;
   blight?: number;
   blight_options?: LegalTargetsView;
+  // #2174: "blight X" — the announced X is the counter count, put on the
+  // one creature in `blight_options`; `blight_x_max` (absent at 0) is the
+  // greatest toughness among your creatures, the most X may be.
+  blight_x?: boolean;
+  blight_x_max?: number;
   payable?: boolean;
 }
 
@@ -3312,6 +3343,14 @@ export interface CardView extends CastSurfaceView {
   // CR 707.9a grant (no source). The one place a granted TRIGGER is
   // visible at all — it has no menu row. One entry per grantor.
   granted_abilities?: GrantedAbilityView[];
+  // #2219 — the card's non-keyword triggered, static and activated
+  // abilities right now, triggered first, each with a short label the
+  // SERVER wrote (the stack's label for a triggered or activated row).
+  // The art tile counts them in one chip per kind (⚡ ◆ ↻) and lists
+  // the labels on hover or focus. Battlefield and hand only; absent
+  // for an uncatalogued card, a keyword-only card and a face-down
+  // permanent. The client never reads oracle text for these.
+  ability_rows?: AbilityRowView[];
   // #662 — this permanent's CR 702.16 protections, already PARSED by
   // the server. The raw "protection from red" tokens are in
   // `abilities` like every other keyword; this is the same list with
@@ -3385,6 +3424,14 @@ export interface GrantedAbilityView {
   text: string;
   source_id?: string;
   source_name?: string;
+}
+
+// #2219: one non-keyword ability of a card, for the art tile's chips.
+// Mirrors protocol.AbilityRowView.
+export type AbilityRowKind = "triggered" | "static" | "activated";
+export interface AbilityRowView {
+  kind: AbilityRowKind;
+  label: string;
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may

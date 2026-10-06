@@ -22,7 +22,9 @@ import (
 //
 // THE SHAPE. An EXIT opens the CR 614 window, so it can be cancelled
 // ("cards in graveyards can't be exiled"), redirected (a commander card
-// taking CR 903.9's offer) or merely PAUSED on a prompt. The
+// bound for hand or library taking CR 903.9b's offer) or merely PAUSED
+// on a prompt (that same offer; a graveyard or exile move no longer
+// pauses, ADR 0115). The
 // fire-and-forget forms — `ExileTarget` with no `Then`,
 // `g.ExileCardForEffect`, and the same pair for every other verb —
 // return nil for all three, so a card that pays out on the next line
@@ -84,8 +86,8 @@ import (
 //
 // `discardVerb` covers the RANDOM discard beside them, and it names
 // `g.DiscardRandomThenForEffect` (#1027): a random discard is not a
-// prompt, but it is still an exit, so a discarded commander's CR 903.9
-// prompt holds the batch and the fire-and-forget form returns first.
+// prompt, but it is still an exit, and it can be cancelled or
+// redirected like any other, so the fire-and-forget form is flagged.
 //
 // FALSE POSITIVES ARE EXPECTED AND CHEAP, exactly as they are in the
 // life guard: add the "<file>:<line>" to the allowlist with the reason
@@ -219,9 +221,9 @@ var exitStartsTheClock = map[string]exitVerb{
 	// #1027: the two PROMPT-driven discards, out for exactly the same
 	// reason and in for exactly the same one. They queue a question
 	// over the player's own hand and hand back the prompt's ID;
-	// nothing has left the hand, and a discarded commander's CR 903.9
-	// prompt can hold the batch for an action after the answer. The
-	// run is the fix (discard_run.go).
+	// nothing has left the hand when they return, so no clause may gate
+	// on the outcome (a discarded commander lands in the graveyard and
+	// CR 903.9a asks afterwards). The run is the fix (discard_run.go).
 	"QueueDiscardChoiceForEffect": discardPromptVerb,
 	"DiscardChoiceForEffect":      discardPromptVerb,
 	"EachPlayerDiscardsForEffect": discardPromptVerb,

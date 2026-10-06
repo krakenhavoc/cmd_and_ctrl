@@ -124,6 +124,21 @@ func PayXLifeCost() *game.AdditionalCost {
 	return &game.AdditionalCost{PayLifeX: true, Label: "Pay X life"}
 }
 
+// BlightXCost is "As an additional cost to cast this spell, blight X.
+// X can't be greater than the greatest toughness among creatures you
+// control" — Soul Immolation (#2174), and the fourth shape the clause
+// takes after discard, sacrifice and pay-X-life.
+//
+// X is announced with the cast (CR 107.3a) and is the SAME number the
+// spell's text reads back with ctx.X(); the caster names the one
+// creature that takes the X -1/-1 counters on cast_spell's blight_ids.
+// The counters are placed at CR 601.2h with the spell already on the
+// stack, so a creature that dies of them dies before the spell
+// resolves, and the cost stays paid. See game.AdditionalCost.BlightX.
+func BlightXCost() *game.AdditionalCost {
+	return &game.AdditionalCost{BlightX: true, Label: "Blight X"}
+}
+
 // --- either/or additional costs (ADR 0100 §2, #1732) ---------------
 //
 // "As an additional cost to cast this spell, sacrifice an artifact or
@@ -277,7 +292,7 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q either/or branch %d has no Key — build it with .Keyed(\"…\")", spec.Name, i))
 		case seen[b.Key]:
 			panic(fmt.Sprintf("effects.Register: %q declares two either/or branches keyed %q", spec.Name, b.Key))
-		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.Targets != nil:
+		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
@@ -343,6 +358,28 @@ func checkVariableSacrificePlan(spec Spec) {
 // the reason Overload and Evoke have one: the keyword carries the Key
 // the engine reads, and a hand-rolled game.AdditionalCost{Optional:
 // true} compiles and then never returns a bought-back card to hand.
+
+// OptionalAdditionalCostKey is the key of a plain optional additional
+// cost that is no keyword — "As an additional cost to cast this spell,
+// you may pay {2}{R}" (Undergrowth). It is not a kicker, so nothing that
+// asks "was it kicked" sees it.
+const OptionalAdditionalCostKey = "additional"
+
+// OptionalAdditionalMana is that cost: "As an additional cost to cast
+// this spell, you may pay <mana>" (CR 118.8b, 601.2b). The caster
+// chooses as the spell is cast; read it back with
+// ctx.OptionalCostTimes(OptionalAdditionalCostKey) > 0, which is "if
+// this spell's additional cost was paid".
+//
+//	OptionalCosts: []game.AdditionalCost{OptionalAdditionalMana("{2}{R}")},   // Undergrowth
+func OptionalAdditionalMana(mana string) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      OptionalAdditionalCostKey,
+		ManaCost: mana,
+		Label:    "Pay " + mana,
+	}
+}
 
 // Kicker is CR 702.33's "Kicker [cost]" — "you may pay an additional
 // [cost] as you cast this spell". Read back at resolution with

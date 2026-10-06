@@ -17,7 +17,7 @@
   import type { CardView, GameView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
-  import { fanAngle, fanLift, handOverlap } from "../../handFan";
+  import { fanAngle, fanLift, fitFan, handOverlap } from "../../handFan";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { emit as tutorialEmit } from "../../tutorialBus";
@@ -56,6 +56,7 @@
   import {
     CAST_ZONE_MARGIN_PX,
     IDLE,
+    innerLift,
     SNAP_REASON_MS,
     autoTapHighlight,
     clearAutoTapHighlight,
@@ -199,7 +200,49 @@
   // three resting values are the ones the CSS used to hard-code per
   // layout; handOverlap only ever tightens them.
   const overlapBase = $derived(layout === "stacked" ? 0.85 : isSelf ? 0.5 : 0.62);
-  const overlap = $derived(handOverlap(cards.length, overlapBase));
+
+  // #2395 — and fitted to the row the viewer's own hand sits in. The
+  // row is narrower than the resting fan wherever something shares it
+  // (the tutorial's coach card at its left, the commander strip at its
+  // right), and the fan's end cards ran out of it, under those, where
+  // the pointer could not reach them. fitFan tightens and flattens the
+  // fan until it fits, or asks for a scroll (handFan.ts). Measured from
+  // the strip and one card; until then, and for opponents' face-down
+  // fans, the resting overlap stands.
+  let handEl = $state<HTMLElement | null>(null);
+  let room = $state({ w: 0, cardW: 0, cardH: 0 });
+  function measureRoom(): void {
+    const el = handEl;
+    if (!el) return;
+    const cs = getComputedStyle(el);
+    const w =
+      el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const slot = el.querySelector<HTMLElement>(".hand-slot");
+    const cardW = slot?.offsetWidth ?? 0;
+    const cardH = slot?.offsetHeight ?? 0;
+    if (w !== room.w || cardW !== room.cardW || cardH !== room.cardH) room = { w, cardW, cardH };
+  }
+  $effect(() => {
+    const el = handEl;
+    if (!el || !isSelf || typeof ResizeObserver === "undefined") return;
+    // The strip's own box changes with the row's width and, through its
+    // peek height, with the card size; a card coming or going does not
+    // resize it, so the count is read below as well.
+    const ro = new ResizeObserver(() => measureRoom());
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  $effect(() => {
+    void cards.length;
+    void layout;
+    if (isSelf) measureRoom();
+  });
+  const fit = $derived(
+    isSelf
+      ? fitFan(cards.length, overlapBase, room.w, room.cardW, room.cardH, layout !== "stacked")
+      : { overlap: handOverlap(cards.length, overlapBase), tilt: 1, scroll: false },
+  );
+  const overlap = $derived(fit.overlap);
 
   // Once an order is saved, keep it in step with the hand: a card that
   // left drops out and a new one is recorded at the right end, so a
@@ -404,7 +447,10 @@
     const slot = ev.currentTarget as HTMLElement;
     const handEl = slot.closest(".hand") as HTMLElement | null;
     const handRect = (handEl ?? slot).getBoundingClientRect();
-    const handTop = handRect.top;
+    // #2396: the strip stays put and its cards rise inside their slots,
+    // so the band is the strip's box raised to where the cards are.
+    const lift = innerLift(slot);
+    const handTop = handRect.top - lift;
     // #1524: the reorder band is the hand itself, and the insertion
     // points are the other cards' centres, both as they are now — the
     // gap that opens later must not move the targets under the pointer.
@@ -437,7 +483,7 @@
       x: ev.clientX,
       y: ev.clientY,
       handTop,
-      handBottom: handEl ? handRect.bottom : undefined,
+      handBottom: handEl ? handRect.bottom - lift : undefined,
       slotCenters,
       fromIndex: index,
     });
@@ -655,10 +701,12 @@
 <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  bind:this={handEl}
   class="hand"
   class:opponent={!isSelf}
   class:stacked={layout === "stacked"}
   class:reordering
+  class:scroll={fit.scroll}
   style:--hand-overlap={overlap}
   aria-label={isSelf ? L.yourHand : "opponent hand"}
   onpointerenter={isSelf ? () => tutorialEmit("hand-hovered") : undefined}
@@ -690,37 +738,45 @@
       onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
       style:transform={layout === "stacked"
         ? gapX || "none"
-        : `${gapX}rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
+        : `${gapX}rotate(${fanAngle(i, cards.length) * fit.tilt}deg) translateY(${fanLift(i, cards.length) * fit.tilt}px)`}
+      style:--slot-rot="{layout === 'stacked' ? 0 : fanAngle(i, cards.length) * fit.tilt}deg"
     >
-      <!-- Inner wrapper carries the deal-in / deal-out transforms so
-           they don't fight the .hand-slot's fan-layout transform. -->
-      <div class="deal-wrap" in:dealIn out:dealOut use:handLifecycle>
-        <Card
-          card={c}
-          faceDown={!isSelf && c.known_by_you !== true}
-          showManaCost={isSelf}
-          artOnly={isSelf && $settings.display.handArt}
-          priority={isSelf}
-          onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
-            ? (idx) => onActivateAbility?.(c, idx)
-            : undefined}
-          onActivateManaAbility={isSelf && (c.zone_mana_abilities?.length ?? 0) > 0
-            ? (idx) => onActivateManaAbility?.(c, idx)
-            : undefined}
-          {sorcerySpeedBlocked}
-          onSpecialAction={isSelf && (c.special_actions?.length ?? 0) > 0
-            ? onSpecialAction
-            : undefined}
-          onCastAnyway={castAnywayHere(c) ? () => requestCastAnyway(c, "hand") : undefined}
-          castAnywayBlocked={castAnywayHere(c) ? castAnywayBlocked(c, snap, viewerID, "hand") : ""}
-          legal={isSelf ? legal : undefined}
-          legalGate={isSelf ? legalGate : undefined}
-          pips={cPips}
-          readyZone="hand"
-          ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
-          idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
-          onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
-        />
+      <!-- #2396: .rise lifts the card on hover while the slot stays put
+           and keeps the pointer. Inner wrapper (.deal-wrap) carries the
+           deal-in / deal-out transforms (inline, from GSAP) so they
+           don't fight the .hand-slot's fan-layout transform or the
+           lift. -->
+      <div class="rise">
+        <div class="deal-wrap" in:dealIn out:dealOut use:handLifecycle>
+          <Card
+            card={c}
+            faceDown={!isSelf && c.known_by_you !== true}
+            showManaCost={isSelf}
+            artOnly={isSelf && $settings.display.handArt}
+            priority={isSelf}
+            onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
+              ? (idx) => onActivateAbility?.(c, idx)
+              : undefined}
+            onActivateManaAbility={isSelf && (c.zone_mana_abilities?.length ?? 0) > 0
+              ? (idx) => onActivateManaAbility?.(c, idx)
+              : undefined}
+            {sorcerySpeedBlocked}
+            onSpecialAction={isSelf && (c.special_actions?.length ?? 0) > 0
+              ? onSpecialAction
+              : undefined}
+            onCastAnyway={castAnywayHere(c) ? () => requestCastAnyway(c, "hand") : undefined}
+            castAnywayBlocked={castAnywayHere(c)
+              ? castAnywayBlocked(c, snap, viewerID, "hand")
+              : ""}
+            legal={isSelf ? legal : undefined}
+            legalGate={isSelf ? legalGate : undefined}
+            pips={cPips}
+            readyZone="hand"
+            ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
+            idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
+            onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
+          />
+        </div>
       </div>
     </div>
   {/each}
@@ -810,16 +866,42 @@
       max-height 220ms var(--ease),
       transform 220ms var(--ease);
   }
-  /* Self hand expands on hover: overflow goes visible, the whole strip
-     translates upward by the hidden share so full cards poke over the
-     battlefield and the fan's bottom edge stays on the panel edge,
-     and z-index jumps so nothing on the board occludes the revealed
-     cards. */
+  /* Self hand expands on hover: overflow goes visible, every card rises
+     by the hidden share so full cards poke over the battlefield, and
+     z-index jumps so nothing on the board occludes the revealed cards.
+
+     #2396: the cards rise, not the strip or their slots. Each slot
+     stays where it rests and keeps the pointer (a pointer on the slot
+     is on the hand), and the card inside it, its .rise, rises
+     straight up: the rotate pair turns the rise out of the slot's
+     tilt, so it is screen-vertical as the strip's was. Lifting the
+     whole strip moved the cards out from under a resting pointer: the
+     bottom 4px of each card (the strip's padding), and on a tilted end
+     card a band along its outer edge as wide as the rise times the
+     tilt's tangent (57px at 1920×1080). The hand dropped, came back
+     under the pointer and lifted again. The rise is 6px short of the
+     hidden share, so a lifted card still covers every point of it that
+     showed at rest; the 6px it keeps below is under the panel's edge.
+     A scrolling hand (fitFan's last resort) still lifts as a strip:
+     its overflow-y would clip a card rising out of it, and it is flat,
+     so there is no tilt to undo. */
+  .hand {
+    --hand-rise: calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1) + 6px);
+  }
   .hand:not(.opponent):hover {
     max-height: none;
     overflow: visible;
-    transform: translateY(calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1)));
     z-index: 20;
+  }
+  .rise {
+    transition: transform 220ms var(--ease);
+  }
+  .hand:not(.opponent):not(.scroll):hover > .hand-slot > .rise {
+    transform: rotate(calc(-1 * var(--slot-rot, 0deg))) translateY(var(--hand-rise))
+      rotate(var(--slot-rot, 0deg));
+  }
+  .hand.scroll:hover {
+    transform: translateY(var(--hand-rise));
   }
   /* #2374: only the cards take the pointer, not the strip. The strip
      is as wide as the whole bottom row, and lifted it is a card tall,
@@ -835,6 +917,20 @@
     pointer-events: none;
   }
   .hand:not(.opponent) > .hand-slot {
+    pointer-events: auto;
+  }
+  /* #2395: a hand too long for its row even flat, at fitFan's thinnest
+     sliver, scrolls sideways rather than run under what is beside it.
+     It scrolls lifted too: the lift's max-height: none still shows the
+     whole card, since a flat fan has no corner reaching past it. The
+     fan fills the row, so the strip has no empty ends to keep clear,
+     and it takes the pointer for its scrollbar. */
+  .hand.scroll,
+  .hand.scroll:hover {
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
     pointer-events: auto;
   }
   /* Opponent hands stay compact — they're face-down anyway and the
@@ -1087,7 +1183,8 @@
     white-space: nowrap;
   }
   @media (prefers-reduced-motion: reduce) {
-    .hand.reordering .hand-slot {
+    .hand.reordering .hand-slot,
+    .rise {
       transition: none;
     }
     .drag-ghost,

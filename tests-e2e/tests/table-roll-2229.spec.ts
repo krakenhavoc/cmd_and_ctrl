@@ -81,6 +81,23 @@ test.describe("#2229 Roll a die", () => {
       expect(result).toBeLessThanOrEqual(20);
       await expect((await openLog(bob.page)).getByText(d20)).toHaveText(aliceLine!.trim());
 
+      // #2403: the log drawer, open over the opening-hand stage, covers
+      // neither the stage's View table nor Keep hand: the page's topmost
+      // element at each one's centre is that button. (Not a trial click:
+      // Keep hand is disabled for the seat that decides second.)
+      for (const p of [alice, bob]) {
+        await expect(p.page.locator('[aria-label="game log"]')).toBeVisible();
+        const stage = p.page.getByRole("dialog", { name: /keep or mulligan/i });
+        for (const name of ["View table", "Keep hand"]) {
+          const onTop = await stage.getByRole("button", { name }).evaluate((b) => {
+            const r = b.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return !!hit && b.contains(hit);
+          });
+          expect(onTop, `${name} is under the game log`).toBe(true);
+        }
+      }
+
       // It is not a game action: the mulligan is still waiting on both.
       // They decide in turn order (CR 103.5), so keep side by side.
       await Promise.all(

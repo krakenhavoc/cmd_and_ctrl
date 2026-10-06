@@ -95,17 +95,8 @@ func malcolmChorusAndLoot(g *game.Game, item *game.StackItem) error {
 	// malcolmOfferFreeCast's "four or more" check could read the
 	// pre-placement count.
 	return g.AddCounterThenForEffect(source, malcolmChorusCounter, 1, func(g *game.Game, _ int) error {
-		ctx := NewContext(g, item)
-		if err := (DrawCards{Player: controller, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-		return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-			Player:   controller,
-			Source:   source,
-			N:        1,
-			Question: "Malcolm, Alluring Scoundrel — discard a card",
-		}, func(g *game.Game, discarded game.PromptedDiscards) error {
-			return malcolmOfferFreeCast(g, controller, source, discarded.Cards())
+		return g.DrawNThenForEffect(controller, 1, game.DrawThen{
+			Ref: malcolmDiscardThen, Player: controller, Source: source,
 		})
 	})
 }
@@ -152,3 +143,18 @@ func malcolmOfferFreeCast(g *game.Game, controller, source uuid.UUID, discarded 
 			return nil
 		}, nil)
 }
+
+// malcolmDiscardThen is the continuation of the trigger's draw: the
+// discard, and the free-cast offer hung off it, open only once the
+// draw has resolved (#2391).
+var malcolmDiscardThen = game.RegisterDrawThen("malcolm-discard", func(g *game.Game, d game.DrawThen) error {
+	controller, source := d.Player, d.Source
+	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+		Player:   controller,
+		Source:   source,
+		N:        1,
+		Question: "Malcolm, Alluring Scoundrel — discard a card",
+	}, func(g *game.Game, discarded game.PromptedDiscards) error {
+		return malcolmOfferFreeCast(g, controller, source, discarded.Cards())
+	})
+})

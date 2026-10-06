@@ -4516,3 +4516,27 @@ the catalog.
 7. Once-per-event tracking applies to all fired replacements, not
    only `SelfReplacement`.
 8. No protocol version bump; `replacement_order` is additive.
+
+## Amendment (2026-10-05) — "draw, then …" waits for a paused draw (#2391)
+
+A clause printed after a draw ("draw two cards, then discard two") is
+part of the same instruction (CR 608.2c), and since #2388 a draw can
+pause on a prompt: a dredge offer, a draw-instead pick or a CR 616
+ordering prompt. A statement written after `DrawNForEffect` ran as soon
+as the call returned, with the draw unanswered.
+
+`Game.DrawNThenForEffect(player, n, game.DrawThen{...})` is the
+continuation form. The rest of the card is DATA, not a closure: a key
+into a registry (`game.RegisterDrawThen`, the shape
+`RegisterDrawInstead` uses) plus a player, a source card and an int. It
+rides `ReplacementEvent.drawThen` through the same resume frame as
+`drawTail`, so undo and a mid-pause snapshot replay it, and the closure
+census gains no line. It runs once the last draw of the instruction is
+done, inline when nothing paused, from the answer when something did,
+and also when a draw found the library empty. Effects-side helpers
+live in `cards/effects/draw_then.go`; the looters, Faithless Looting,
+Frantic Search, Brainstorm, Chart a Course, Anvil of Bogardan, Depth
+Defiler, Cephalid Coliseum, Mask of Memory, Malcolm and Teferi, Akosa
+of Zhalfir use it. Other "draw, then …" cards whose follow-up is not a
+prompt (a life loss, a token) still sequence after the draw and are not
+converted here.

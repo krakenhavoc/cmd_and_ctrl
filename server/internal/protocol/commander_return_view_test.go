@@ -79,3 +79,58 @@ func TestCommanderReturnCarriesPlayableFromZone(t *testing.T) {
 		t.Errorf("a plain commander: playable_from_zone = %v (present %v), want false", p, ok)
 	}
 }
+
+// TestCommanderReturnIsVisibleToTheOtherSeats — ADR 0115 PR 5: the
+// seats that are not deciding see whose question it is and which card
+// it is about, so the client can say "X is deciding" and name the
+// commander. The chooser and the source are public on every view; the
+// source sits in the owner's graveyard, which is public too.
+func TestCommanderReturnIsVisibleToTheOtherSeats(t *testing.T) {
+	g := buildActiveGame(t)
+	me, other := g.Seats[0], g.Seats[1]
+
+	cmd := game.NewCommander("Public Commander", me.ID)
+	cmd.TypeLine = "Legendary Creature — Elf"
+	cmd.KnownBy = map[uuid.UUID]bool{me.ID: true, other.ID: true}
+	me.Graveyard.PushTop(cmd)
+	g.WithWriteLock(func() {
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:    game.PendingChoiceCommanderReturn,
+			Chooser: me.ID,
+			Count:   1,
+			Source:  cmd.InstanceID,
+			Reason:  cmd.Name + " — put it into the command zone?",
+		})
+	})
+
+	v := ViewOfGameFor(g, other.ID.String())
+	var found *PendingChoiceView
+	for i := range v.PendingChoices {
+		if v.PendingChoices[i].Kind == string(game.PendingChoiceCommanderReturn) {
+			found = &v.PendingChoices[i]
+		}
+	}
+	if found == nil {
+		t.Fatal("the other seat's view has no commander_return prompt")
+	}
+	if found.Chooser != me.ID.String() {
+		t.Errorf("chooser = %s, want the owner %s", found.Chooser, me.ID)
+	}
+	if found.Source != cmd.InstanceID.String() {
+		t.Errorf("source = %s, want the commander %s", found.Source, cmd.InstanceID)
+	}
+	named := false
+	for _, s := range v.Seats {
+		if s.ID != me.ID.String() {
+			continue
+		}
+		for _, c := range s.Graveyard.Cards {
+			if c.InstanceID == cmd.InstanceID.String() && c.Name == cmd.Name {
+				named = true
+			}
+		}
+	}
+	if !named {
+		t.Error("the commander is not named in the owner's graveyard on the other seat's view")
+	}
+}

@@ -291,13 +291,15 @@ func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 // hand-rolled loop. The loop read the top of the library, milled one
 // card, and asked whether the card it had read was a land — which is
 // the #911 shape with a mill in the middle of it, and it did not merely
-// mispay a clause, it SPUN. A milled commander's CR 903.9 prompt leaves
-// the card exactly where it was (`millPlanLocked`), so the next pass
-// read the same top card, milled it again, and went round until the
-// 1000-iteration fuse blew or the player answered. MillToZone chooses
-// the whole run up front against the pre-move copies — the same cards
-// the reveal above named — so one paused leg no longer re-reads
-// anything, and the run ends where the card says it ends.
+// mispay a clause, it SPUN. Before ADR 0115 a milled commander's
+// CR 903.9 prompt left the card exactly where it was (`millPlanLocked`),
+// so the next pass read the same top card, milled it again, and went
+// round until the 1000-iteration fuse blew or the player answered. A
+// milled commander now lands in the graveyard and is offered the
+// command zone afterwards (CR 903.9a), so that exact spin cannot
+// happen. MillToZone still chooses the whole run up front against the
+// pre-move copies — the same cards the reveal above named — so no
+// pass re-reads anything, and the run ends where the card says it ends.
 func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	if p := ctx.PlayerByID(player); p != nil && p.Library != nil {
 		run := make([]uuid.UUID, 0, 8)
@@ -319,9 +321,10 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	// whole of "until they reveal a land card" — the card that ends the
 	// run is milled too.
 	//
-	// #1161: an Until run SEQUENCES, so a milled commander's CR 903.9
-	// prompt holds the rest of this seat's run until it is answered and
-	// the land that ends the run is the land that ARRIVED. The other
+	// #1161: an Until run SEQUENCES, so the land that ends the run is
+	// the land that ARRIVED. (A milled commander used to hold the run on
+	// its owner's CR 903.9 prompt; since ADR 0115 it lands in the
+	// graveyard and the run goes on.) The other
 	// seats' runs are unaffected — each is its own instruction.
 	//
 	// #1176: and the run REPEATS a one-card mill, so a mill-amount

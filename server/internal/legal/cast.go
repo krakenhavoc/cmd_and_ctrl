@@ -811,6 +811,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
+	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
+		// #2174: "blight X" is the other non-mana price on X.
+		xLifeCeiling = bx
+	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
 	// together never claim more than the seat has (CR 119.4). A "pay X
@@ -1257,7 +1261,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					// "mana value X or less" bound, a division, a
 					// sacrifice count, a delve payment sized to it.
 					var xv *MoveValue
-					if (modeCost.XSlots > 0 || (addCost != nil && addCost.PayLifeX)) &&
+					if (modeCost.XSlots > 0 || (addCost != nil && (addCost.PayLifeX || addCost.BlightX))) &&
 						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 {
 						xv = openX(xFloor, payX)
 					}

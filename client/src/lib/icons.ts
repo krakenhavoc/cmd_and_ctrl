@@ -143,6 +143,10 @@ export const ICONS = {
   ],
   draw: [p("M12 4v11"), p("M7 10l5 5 5-5"), p("M4 20h16")],
   untap: [p("M4 12a8 8 0 1 0 2.5-5.8"), p("M4 4v5h5")],
+  // #2219: the art tile's ability chips — ◆ a static ability, ↻ an
+  // activated one (the trigger chip uses `bolt`).
+  diamond: [p("M12 3l8 9-8 9-8-9z")],
+  cycle: [p("M20 12a8 8 0 1 1-2.5-5.8"), p("M20 4v5h-5")],
   flag: [p("M5 21V4h12l-2 4 2 4H5")],
   // ADR 0120 §4: the expanded board's pin toggle — a push pin.
   pin: [p("M8 3h8"), p("M10 3v6l-4 5h12l-4-5V3"), p("M12 14v7")],

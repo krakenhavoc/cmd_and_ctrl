@@ -158,6 +158,18 @@ export function inCastZone(y: number, handTop: number, margin = CAST_ZONE_MARGIN
   return y < handTop - margin;
 }
 
+// innerLift: how far a hovered slot's card has risen above the slot, in
+// px (#2396). The hand and the castable strip lift their cards on an
+// inner element (the slot's .rise) while the slot stays where it
+// rests, so the slot keeps the pointer; the drag's lines are drawn
+// where the cards are, so they are raised by this much. 0 when nothing
+// is lifted (or nothing is laid out).
+export function innerLift(slot: Element): number {
+  const wrap = slot.querySelector(".rise");
+  if (!wrap) return 0;
+  return Math.max(0, slot.getBoundingClientRect().top - wrap.getBoundingClientRect().top);
+}
+
 // inReorderBand: is the pointer inside the hand's own band? Inclusive
 // at both edges; a hand that gave no bottom edge has no band.
 export function inReorderBand(y: number, handTop: number, handBottom: number | null): boolean {

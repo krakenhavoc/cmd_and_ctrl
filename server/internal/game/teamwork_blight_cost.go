@@ -142,12 +142,49 @@ func (g *Game) validateTapCreaturesLocked(playerID uuid.UUID, n int, ids, otherT
 
 // planBlight is the blight N the announced plan demands, or zero. At
 // most one entry, for planTeamwork's reason.
-func planBlight(plan []costPayment) int {
+func planBlight(plan []costPayment, xValue int) int {
 	n := 0
 	for _, pay := range plan {
 		n += pay.cost.Blight
+		if pay.cost.BlightX {
+			n += xValue
+		}
 	}
 	return n
+}
+
+// planBlightsX reports whether the plan carries a "blight X" component
+// (#2174).
+func planBlightsX(plan []costPayment) bool {
+	for _, pay := range plan {
+		if pay.cost.BlightX {
+			return true
+		}
+	}
+	return false
+}
+
+// BlightXCeilingForEffect is the largest X a "blight X" cost may
+// announce for `playerID` right now: the greatest toughness among the
+// creatures they control (Soul Immolation's printed limit), never
+// below zero. A seat with no creature gets 0 — X=0 is the only legal
+// announcement, and it pays nothing.
+//
+// ONE walk, read by the validator, the view's `blight_x_max` and the
+// bot enumerator, so the three cannot disagree about the cap (#544).
+// Effective toughness after the layers, so an anthem and a -1/-1
+// counter both count.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) BlightXCeilingForEffect(playerID uuid.UUID) int {
+	g.RecomputeLayersIfStaleLocked()
+	best := 0
+	for _, id := range g.BlightOptionsForEffect(playerID) {
+		if c := findBattlefieldCard(g, id); c != nil && c.CurrentToughness() > best {
+			best = c.CurrentToughness()
+		}
+	}
+	return best
 }
 
 // TeamworkOptionsForEffect is the set of creatures that could be
@@ -326,9 +363,26 @@ func (g *Game) BlightOptionsForEffect(playerID uuid.UUID) []uuid.UUID {
 // (CR 701.68a). Nothing is placed here.
 //
 // Caller must hold g.mu.
-func (g *Game) validateBlightLocked(playerID uuid.UUID, plan []costPayment, ids []uuid.UUID) error {
-	n := planBlight(plan)
+func (g *Game) validateBlightLocked(playerID uuid.UUID, plan []costPayment, ids []uuid.UUID, xValue int) error {
+	n := planBlight(plan, xValue)
+	// #2174: "blight X" may not announce an X above the greatest
+	// toughness among the caster's creatures. Checked before anything
+	// is paid, so an unpayable X is a refused cast.
+	isX := planBlightsX(plan)
+	if isX && xValue > g.BlightXCeilingForEffect(playerID) {
+		return ErrInvalidParam
+	}
 	if n <= 0 {
+		// "Blight 0" puts nothing anywhere, so naming a creature for it
+		// is harmless and accepted (a client that always asks for one
+		// need not special-case X=0); it still has to be a creature the
+		// caster controls. Any other cast names none.
+		if isX && len(ids) <= 1 {
+			if len(ids) == 1 {
+				return g.validateBlightCreatureLocked(playerID, ids[0])
+			}
+			return nil
+		}
 		if len(ids) > 0 {
 			return ErrInvalidParam
 		}
@@ -337,7 +391,13 @@ func (g *Game) validateBlightLocked(playerID uuid.UUID, plan []costPayment, ids 
 	if len(ids) != 1 {
 		return ErrInvalidParam
 	}
-	c := findBattlefieldCard(g, ids[0])
+	return g.validateBlightCreatureLocked(playerID, ids[0])
+}
+
+// validateBlightCreatureLocked is the one-creature half of
+// validateBlightLocked: on the battlefield, the caster's, a creature.
+func (g *Game) validateBlightCreatureLocked(playerID, id uuid.UUID) error {
+	c := findBattlefieldCard(g, id)
 	if c == nil {
 		return ErrCardNotFound
 	}
@@ -400,8 +460,8 @@ func (g *Game) blightLocked(playerID, creatureID uuid.UUID, n int) (int, error) 
 // can move it under one lock today) is skipped rather than erroring.
 //
 // Caller must hold g.mu.
-func (g *Game) payBlightLocked(playerID uuid.UUID, plan []costPayment, ids []uuid.UUID) error {
-	n := planBlight(plan)
+func (g *Game) payBlightLocked(playerID uuid.UUID, plan []costPayment, ids []uuid.UUID, xValue int) error {
+	n := planBlight(plan, xValue)
 	if n <= 0 || len(ids) != 1 {
 		return nil
 	}

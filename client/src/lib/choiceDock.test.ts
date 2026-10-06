@@ -69,6 +69,7 @@ describe("isInlineChoice", () => {
       "sacrifice_choice",
       "choose_cards",
       "discard_from_hand",
+      "revealed_hand_pick",
     ]) {
       expect(isInlineChoice(choice({ kind })), kind).toBe(false);
     }

@@ -12,10 +12,11 @@ import (
 // Two halves:
 //
 //  1. The case as reported: a commander with "{1}, Sacrifice this"
-//     activated twice while the first activation's CR 903.9 prompt was
-//     open, paying both with one card. #1423 (#1397) fixed that by
-//     asking BEFORE paying; the regression test below pins it in that
-//     model.
+//     activated twice while the first activation's command-zone prompt
+//     was open, paying both with one card. #1423 (#1397) fixed that by
+//     asking BEFORE paying. Since ADR 0115 the sacrifice is paid and
+//     lands first and CR 903.9a asks afterwards, so the regression
+//     test below pins that the second activation has nothing to spend.
 //  2. #1445, what #1423 leaves: a commander whose exit an EFFECT has paused
 //     (bounced, with its owner still deciding) sits on the
 //     battlefield, and no cost may spend it in that window.

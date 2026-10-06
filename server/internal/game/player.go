@@ -169,6 +169,15 @@ type Player struct {
 	// had). Card.ControlledSinceUpkeep is stamped from it.
 	UpkeepsBegun int
 
+	// EndStepTurn is the value of TurnsBegun at which this player's most
+	// recent END STEP began (#2385). A turn that is ended (CR 724.1)
+	// skips its end step, so it never stamps this: "until your next end
+	// step" (UntilYourNextEndStep) reads it to tell a turn that reached
+	// its end step from one that did not, and the window then lasts to
+	// the player's next real end step (CR 611.2b: it ends as that step
+	// BEGINS, and an ended turn's end step never begins, CR 724.1d).
+	EndStepTurn int
+
 	// LastTurnAttacks is every attack this player's creatures declared
 	// during the last turn this player took (ADR 0108 §6, #1882, CR
 	// 508.1): "if it attacked during your last turn" (Goblin Rock Sled,

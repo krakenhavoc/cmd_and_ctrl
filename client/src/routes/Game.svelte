@@ -2255,11 +2255,15 @@
                   style:--i={i}
                   style:--off={i - (n - 1) / 2}
                 >
-                  {#if art}
-                    <img src={art} alt={card.name} loading="lazy" use:cardArt={art} />
-                  {:else}
-                    <span class="mulligan-card-fallback">{card.name}</span>
-                  {/if}
+                  <!-- #2396: the face lifts on hover; the item stays
+                       in the arc and keeps the pointer. -->
+                  <div class="mulligan-face">
+                    {#if art}
+                      <img src={art} alt={card.name} loading="lazy" use:cardArt={art} />
+                    {:else}
+                      <span class="mulligan-card-fallback">{card.name}</span>
+                    {/if}
+                  </div>
                 </div>
               {/each}
             </div>
@@ -2911,12 +2915,23 @@
     padding: 28px 0 48px;
   }
   .mulligan-card {
-    /* positioned for the failed-art pip (#33) */
     position: relative;
     flex: none;
     width: var(--fan-w);
     margin-left: calc(var(--fan-w) * -0.12);
     aspect-ratio: 5 / 7;
+    transform-origin: 50% 130%;
+    transform: rotate(calc(var(--off, 0) * 3.5deg))
+      translateY(calc(var(--off, 0) * var(--off, 0) * 5px));
+  }
+  .mulligan-card:first-child {
+    margin-left: 0;
+  }
+  .mulligan-face {
+    /* positioned for the failed-art pip (#33) */
+    position: relative;
+    width: 100%;
+    height: 100%;
     border-radius: calc(var(--fan-w) * 0.05);
     box-sizing: border-box;
     overflow: hidden;
@@ -2926,20 +2941,27 @@
       0 18px 40px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(0, 0, 0, 0.4);
     transform-origin: 50% 130%;
-    transform: rotate(calc(var(--off, 0) * 3.5deg))
-      translateY(calc(var(--off, 0) * var(--off, 0) * 5px));
     transition: transform 160ms var(--ease);
   }
-  .mulligan-card:first-child {
-    margin-left: 0;
-  }
-  /* Hovering a card lifts it out of the arc to be read, as Arena does. */
+  /* Hovering a card lifts it out of the arc to be read, as Arena does:
+     upright, 22px up and 12% larger.
+
+     #2396: the face lifts, not the card. The card stays in the arc and
+     keeps the pointer, so a pointer resting near its bottom edge, where
+     the lifted card no longer is, still holds the hover. Lifting the
+     card itself moved it out from under that pointer, and it dropped
+     back and lifted again. The face undoes the card's own turn and
+     drop first (the same origin, so the two compose to exactly the old
+     lift). */
   .mulligan-card:hover {
     z-index: 2;
-    transform: translateY(-22px) scale(1.12);
+  }
+  .mulligan-card:hover > .mulligan-face {
+    transform: translateY(calc(var(--off, 0) * var(--off, 0) * -5px))
+      rotate(calc(var(--off, 0) * -3.5deg)) translateY(-22px) scale(1.12);
   }
   @media (prefers-reduced-motion: reduce) {
-    .mulligan-card {
+    .mulligan-face {
       transition: none;
     }
   }
@@ -2974,6 +2996,10 @@
     .mulligan-card:first-child {
       margin-left: 0;
       transform: none;
+    }
+    /* No arc to undo. */
+    .mulligan-card:hover > .mulligan-face {
+      transform: translateY(-22px) scale(1.12);
     }
   }
 

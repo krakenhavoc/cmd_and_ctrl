@@ -605,6 +605,12 @@ type playerSnapshot struct {
 	// measured in. Absent from every earlier file, which restores as
 	// 0 — no permanent of such a file has an echo stamp to compare.
 	UpkeepsBegun int `json:"upkeepsBegun,omitempty"`
+	// EndStepTurn is Player.EndStepTurn (#2385): the seat-turn count of
+	// the last end step that began. Additive: a file written before it
+	// restores with 0, so an "until your next end step" window already
+	// open in such a file stays open until its player's next end step
+	// begins rather than closing on a turn boundary.
+	EndStepTurn int `json:"endStepTurn,omitempty"`
 	// LastTurnAttacks is what this player's creatures attacked during
 	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
 	// written before it restores with none, which reads as "nothing
@@ -1308,8 +1314,17 @@ type pendingChoiceSnapshot struct {
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
 	DiscardLabel   string      `json:"discardLabel,omitempty"`
-	CopyOptions    []uuid.UUID `json:"copyOptions,omitempty"`
-	ScryCards      []uuid.UUID `json:"scryCards,omitempty"`
+	// #2115: a revealed_hand_pick's variant — where the chosen card
+	// goes, whether choosing nothing is an answer, whether the
+	// revealing player's graveyard is offered, and the KEY of its
+	// continuation (checkEffectKeys refuses one this binary lacks).
+	PickDestination   PickDestination `json:"pickDestination,omitempty"`
+	PickOptional      bool            `json:"pickOptional,omitempty"`
+	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
+	PickThen          string          `json:"pickThen,omitempty"`
+	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
+	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -1992,6 +2007,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
+		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
@@ -2262,6 +2278,11 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:       copyUUIDs(c.DiscardOptions),
 		DiscardLabel:         c.DiscardLabel,
+		PickDestination:      c.PickDestination,
+		PickOptional:         c.PickOptional,
+		PickFromGraveyard:    c.PickFromGraveyard,
+		PickThen:             c.PickThen,
+		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
@@ -2848,6 +2869,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Emblems:               restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
+		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
@@ -3070,6 +3092,11 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:       copyUUIDs(c.DiscardOptions),
 		DiscardLabel:         c.DiscardLabel,
+		PickDestination:      c.PickDestination,
+		PickOptional:         c.PickOptional,
+		PickFromGraveyard:    c.PickFromGraveyard,
+		PickThen:             c.PickThen,
+		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,

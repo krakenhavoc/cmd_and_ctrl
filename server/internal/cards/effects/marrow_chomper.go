@@ -13,7 +13,7 @@ func init() {
 		OracleID:     "96313465-6a97-4c0e-ae9a-91e95f247f5b",
 		Name:         "Marrow Chomper",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{Devour("Marrow Chomper", 2)},
+		Replacements: []game.ReplacementEffect{DevourPaying("Marrow Chomper", 2, 0, 2)},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: Self,

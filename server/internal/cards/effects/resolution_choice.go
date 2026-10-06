@@ -260,9 +260,10 @@ type ChoosePermanents struct {
 	// Sacrifice sacrifices everything chosen, across every leg, before
 	// Then runs — "target opponent sacrifices the creature you choose".
 	// The permanents leave through the one sacrifice path
-	// (SacrificeAllThenForEffect), so a sacrificed commander's CR 903.9
-	// prompt pauses the card exactly as it would anywhere else, and
-	// Then really does run after the permanents have gone.
+	// (SacrificeAllThenForEffect), so a sacrificed commander goes to the
+	// graveyard like any other permanent (CR 903.9a offers it the
+	// command zone afterwards, ADR 0115), and Then really does run
+	// after the permanents have gone.
 	//
 	// A card that sacrifices something OTHER than what was chosen —
 	// Tragic Arrogance sacrifices the rest — leaves this false and does
@@ -393,11 +394,13 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 		// #993: the picked permanent goes through the sacrifice's
 		// CONTINUATION, so `Then` really does run "once the permanent
 		// has gone" the way this type promises. The fire-and-forget
-		// call returns nil while a sacrificed commander's owner is
-		// still answering CR 903.9, and the clause behind it then ran
-		// with the permanent on the battlefield and the question open
-		// — Chain of Vapor offered its copy while the land's owner was
-		// mid-prompt. The answer is not read: the prompt was mandatory
+		// call could return before the permanent had gone (it did while
+		// a sacrificed commander's owner was still answering CR 903.9,
+		// before ADR 0115), and the clause behind it then ran with the
+		// permanent on the battlefield and the question open — Chain of
+		// Vapor offered its copy while the land's owner was
+		// mid-prompt. The continuation stays, because a sacrifice is
+		// still a sequence the clause must follow. The answer is not read: the prompt was mandatory
 		// (Min 1), so a clause hanging off it is "then", not "if you
 		// do".
 		Then: func(g *game.Game, picked []uuid.UUID) error {

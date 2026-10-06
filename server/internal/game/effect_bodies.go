@@ -192,6 +192,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := effectAliases[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already an alias", kind, key))
 	}
+	// #2115: a revealed-hand pick's continuation shares the namespace.
+	if _, dup := revealedPickThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a revealed-hand pick continuation", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -313,11 +317,12 @@ func KnownEffectBody(key string) bool { _, ok := lookupBody(key); return ok }
 func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); return ok }
 
 // RegisteredEffectKeys lists every registered key as "body <key>",
-// "condition <key>" or "alias <old> <new>", sorted — for the ledger.
+// "condition <key>", "alias <old> <new>" or — a revealed-hand pick's
+// continuation (#2115) — "pick <key>", sorted, for the ledger.
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -327,6 +332,7 @@ func RegisteredEffectKeys() []string {
 	for k, v := range effectAliases {
 		out = append(out, "alias "+k+" "+v)
 	}
+	out = append(out, registeredRevealedPickKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

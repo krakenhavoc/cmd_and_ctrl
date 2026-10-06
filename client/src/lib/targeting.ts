@@ -1106,6 +1106,15 @@ export function castBlightOffer(
 ): ClaimedCreatureCost | undefined {
   // ADR 0100: a chosen either/or branch that blights ("blight 2 or pay
   // {1}") asks the same question with the same picker.
+  // #2174: "blight X" asks for the same one-creature pick; X itself is
+  // announced at the X prompt that follows (n is 0 here, so the label
+  // names X rather than a number).
+  const mandatory = card.additional_cost;
+  if (mandatory?.blight_x) {
+    // No creature means the ceiling is 0: nothing to pick, X is 0.
+    if ((mandatory.blight_options?.cards ?? []).length === 0) return undefined;
+    return { offer: mandatory, n: 0, options: mandatory.blight_options?.cards ?? [] };
+  }
   const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
   if (branch?.blight !== undefined && branch.blight > 0) {
     return { offer: branch, n: branch.blight, options: branch.blight_options?.cards ?? [] };

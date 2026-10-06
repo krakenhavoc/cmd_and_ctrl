@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { L } from "../../client/src/lib/labels";
 import { ADMIN_TOKEN } from "./env";
+import { unreachableHandCards } from "./hand-reach";
 
 // tutorial-walk: the practice tutorial, walked end to end (ADR 0125 §8,
 // ADR 0076 sub-PR 6, #1085).
@@ -155,6 +156,8 @@ function budgetFor(c: Coach): number {
 
 /** Where visiblePoint looks first, as fractions of what shows: the middle, then outwards. */
 const MIDDLE_FIRST = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+/** Where restOn looks first: the bottom of what shows, then upwards. */
+const BOTTOM_FIRST = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
 
 /**
  * visiblePoint finds a point of `el`, relative to its box, where the
@@ -184,6 +187,12 @@ function visiblePoint(
   }
   return null;
 }
+
+/**
+ * A hand card the pointer cannot reach (#2395). Not a race with the
+ * game for the walk to retry: it fails the walk where it happens.
+ */
+class HiddenCard extends Error {}
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -252,20 +261,33 @@ class Walk {
 
   /**
    * Play a ready card from the hand: the first of `names`, in order of
-   * preference, that the page shows. The hand is a fan that overlaps
-   * itself and peeks above the bottom edge, so a card's centre is often
-   * not on the card: click a point of it that is.
+   * preference. The hand is a fan that overlaps itself and peeks above
+   * the bottom edge, so a card's centre is often not on the card: click
+   * a point of it that is.
    *
-   * The fan is also wider than its row, and with the coach up its
-   * outer cards can sit wholly under the coach card. When every ready
-   * card is hidden like that, the walk does what a keyboard player
-   * does, Tab to the card and press Enter, and says so in the report.
+   * Every card of the hand must show such a point, coach card up or not
+   * (#2395: the fan fits its row, so none runs under the coach card, the
+   * piles or the commander). One that shows none fails the walk outright,
+   * naming it; there is no keyboard fallback to hide it behind.
    */
   private async clickInHand(names: RegExp[]): Promise<void> {
     await this.park();
     const any = this.hand.getByRole("button", { name: names[0] });
     // A card is a button only while this page may play it: wait for one.
     await expect(any.first()).toBeVisible({ timeout: 10_000 });
+    // A card dealt a moment ago may still be sliding in: give the fan a
+    // moment to settle before calling a card hidden.
+    let hidden: string[] = [];
+    await expect
+      .poll(async () => (hidden = await unreachableHandCards(this.page)), {
+        timeout: 5_000,
+      })
+      .toEqual([])
+      .catch(() => {
+        throw new HiddenCard(
+          `hand cards the pointer cannot reach (#2395): ${hidden.join("; ")}`,
+        );
+      });
     for (const name of names) {
       const cards = this.hand.getByRole("button", { name });
       for (let i = 0; i < (await cards.count()); i++) {
@@ -277,20 +299,18 @@ class Walk {
         }
       }
     }
-    const card = any.first();
-    test.info().annotations.push({
-      type: "hidden card",
-      description: `${await card.getAttribute("aria-label")}: under the coach or the piles; played with Enter`,
-    });
-    await card.focus();
-    await this.page.keyboard.press("Enter");
+    throw new HiddenCard(
+      `no ready card in the hand shows a point to click (#2395): ${names.join(", ")}`,
+    );
   }
 
   /**
-   * Rest the pointer on a card of `zone`, the one nearest the middle.
-   * A card lifts while the pointer is on it, so rest on the upper part
-   * of what shows: rested on near the bottom edge it lifts away from
-   * under the pointer, drops back under it, and is never hovered long.
+   * Rest the pointer on a card of `zone`, the one nearest the middle,
+   * on the lowest part of it that shows. A card lifts while the pointer
+   * is on it, and its hover holds wherever the pointer rests (#2396):
+   * the slot it rose out of keeps the pointer. Near the bottom edge is
+   * where it used to lift away from under the pointer, drop back and
+   * never be hovered long, so that is where the walk rests.
    */
   private async restOn(zone: Locator): Promise<void> {
     await this.park();
@@ -302,7 +322,7 @@ class Walk {
     );
     for (const i of order) {
       const card = cards.nth(i);
-      const at = await card.evaluate(visiblePoint, [0.15, 0.25, 0.35, 0.5]);
+      const at = await card.evaluate(visiblePoint, BOTTOM_FIRST);
       if (at) {
         await card.hover({ position: at });
         return;
@@ -379,6 +399,7 @@ class Walk {
       try {
         await this.act(c);
       } catch (err) {
+        if (err instanceof HiddenCard) throw err;
         lastError = String(err).split("\n")[0];
         if (process.env.WALK_DEBUG) await this.debugRetry(err);
       }

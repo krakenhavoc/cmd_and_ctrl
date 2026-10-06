@@ -2927,6 +2927,15 @@ branch, and components on the branched cost itself. Reveal, behold,
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
+**Blight X (#2174):** "As an additional cost to cast this spell, blight X.
+X can't be greater than the greatest toughness among creatures you
+control" is `AdditionalCost: BlightXCost()` (Soul Immolation). X rides the
+same `x_value` slot as pay-X-life, the spell reads it with `ctx.X()`, and
+declare `XMatters: true` when the whole effect scales with it. The
+engine owns the ceiling (`Game.BlightXCeilingForEffect`); a card file
+never writes it. Mandatory slot only; Register refuses it in an optional
+cost or an either/or branch, and beside pay-X-life.
+
 **Variable sacrifice costs on a cast (ADR 0100 sub-PR 4):** two more
 shapes of the mandatory sacrifice clause, beside `SacrificeCost` and
 `SacrificeNCost`:
@@ -3472,6 +3481,24 @@ sentence ("up to two target creatures", "those creatures") are one
 record too: `Protect: ShieldTheTargetPermanents` or `ShieldObjects(ids…)`.
 "You and permanents you control" is `ShieldYouAndPermanentsYouControl`.
 The rows and helpers are in `effects/shield_families_recipient.go`.
+
+**Sources a property list can't describe (#2026, ADR 0108 §7 amendment
+of 2026-10-05).** "Non-Spider creatures", "creatures with power 3 or
+less", "attacking creatures", "unblocked creatures", "colorless
+sources", "with no +1/+1 counters", "without flying", "you don't
+control", "your opponents control" and "target opponent controls" are a
+`game.DamageSourceFilter` on `PreventDamageFromSource.Filter`, beside its
+`Queries`. `combatShieldAgainstCreatures(filter)` is "prevent all combat
+damage … by creatures <filter>", and `exceptSubtypes(…)` is the "non-"
+filter. Haze Frog's "other creatures" is `.OtherThanThis()`, and
+Terrifying Presence's "other than target creature" is
+`.OtherThanTarget(i)`. Never test the filter as the spell resolves: the
+engine reads it as each source would deal damage (CR 609.7b), and a
+source that has left the battlefield is read as it last existed there.
+A follow-up that names "that creature" sets `ThenPerSource`, so it runs
+once per source (Comeuppance, Judgment of Alexander). The helpers are in
+`effects/shield_source_filters.go`; "target blocked creature" is
+`BlockedCreature()`.
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
@@ -4083,8 +4110,12 @@ non-empty and unique per card; `Register` panics otherwise. Only
 overload / evoke / cleave / flashback / warp / escape / disturb exist, plus the
 non-mana prices below (pitch, pay life, return, and since #1727 a
 sacrifice) —
-spree has no shape yet, and a card carrying it ships without it (say
-so in the card comment). Preparation cards are a layout, not a cost —
+spree is not on this list because it is not an alternative cost: it is a
+modal spell whose bullets each carry an additional cost (CR 702.172a),
+declared as `Modes: Spree(SpreeMode(label, cost, targets...), ...)` (or
+`SpreeModeDoing` for a bullet with its own closure) in
+[modes.go](../server/internal/cards/effects/modes.go) — see Caught in the
+Crossfire and Great Train Heist. Preparation cards are a layout, not a cost —
 see "Adding a preparation card" below. Foretell,
 suspend and plot are not alternative costs at all: they are CR 116.2
 special actions, declared in `Spec.SpecialActions` with
@@ -4326,6 +4357,14 @@ terms (Court of Locthwain's free cast beside its play permission), give
 the second its own `AltCostKey`: the caster claims it like an
 alternative cost, `CastOffersForLocked` lists it, and a cast that does
 not claim it uses the first.
+
+**"If you do, …" after a cast permission (#2173).** Set
+`CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
+func(g, f) error {...})` returns, declared as a package-level `var` in the
+card file. The body runs once the spell is on the stack, only when the
+cast was made through that permission, never for a declined, lapsed or
+expired offer (Conduit of Worlds). Add `RequiresNoSpellsCast: true` for
+"if you haven't cast a spell this turn" held across the window.
 
 **"Exile it until …" (#1729, CR 610.3).** Use `effects.ExileUntil`
 (`ThisLeaves: true`, or `On` plus a registered `Condition`), never a
@@ -5233,10 +5272,58 @@ What the engine does for you:
 - The server refuses any other pick, the bot is offered only the
   matches, and the prompt greys out the rest of the hand.
 
-Not this shape, so leave the card out and put it on
-`revealed-hand-pick-variants` (#2115): the chosen card is **exiled**
-rather than discarded, the pick is "**you may** choose … if you do / if
-you don't", or a later clause **reads the chosen card**.
+**The variants (#2115, ADR 0116's 2026-10-05 amendment).** Four more
+fields on `ChooseFromRevealedHand`, any of which raises the
+`revealed_hand_pick` kind instead:
+
+- `Exile: true` — "… and exile that card" (Appetite for Brains).
+  Exiling is not discarding (CR 701.9a): madness and "whenever a player
+  discards" never see it.
+- `Optional: true` — "**you may** choose" (Nightsnare, Extract the
+  Truth). Choosing nothing is an answer.
+- `FromGraveyard: true` — "or a card from their graveyard" (Agonizing
+  Remorse). Every graveyard card is a candidate; `Filter` reads the hand
+  only.
+- `Then` — the rest of the card, told what was chosen: "if you do / if
+  you don't", or a clause that must wait for the move (Tourach's
+  Canticle's random discard). It is a KEYED continuation, never a
+  closure, so the open pick stays a restore point. Declare it as a
+  package-level var in the card's file:
+
+  ```go
+  var nightsnareIfYouDont = RevealedPickThen("revealed-pick/nightsnare-discard-two",
+  	func(ctx *Context, pick game.RevealedPick) error {
+  		if len(pick.Chosen) > 0 {
+  			return nil
+  		}
+  		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: pick.FromPlayer, Source: pick.Source, N: 2})
+  		return nil
+  	})
+  ```
+
+  Then append the key to the ledger (`go test ./internal/cards/effects
+  -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys`).
+  The key is an on-disk identity: never rename or reuse one. `Then`
+  runs after the card has moved, and it runs when there was nothing to
+  choose too, so "if you don't" checks `len(pick.Chosen) == 0`. A clause
+  printed BEFORE the move (Talara's Bane's "you gain life …, then that
+  player discards that card") is `RevealedPickFirst`, which must call
+  `pick.Done(g)` exactly once. `pick.Chosen` is the cards as they were
+  in the hand; `ctx.Controller()` is the chooser.
+- `Measure` — a number read off each candidate while the spell is still
+  on the stack, handed to `Then` as `pick.Measures` (Talara's Bane's
+  toughness). Read it there, not in `Then`: by the time the pick is
+  answered the spell is in its graveyard, which a graveyard-counting
+  toughness would see. `game.ToughnessAnywhereForEffect` applies a
+  card's own characteristic-defining ability outside the battlefield
+  (CR 113.6a).
+
+A choice made before the pick (Addle's colour) or a count read from an
+earlier instruction (Last Rites) is the earlier prompt's continuation
+raising the pick, as `addle.go` and `last_rites.go` do. Still not this
+shape, so leave the card out and put it on `revealed-hand-pick-variants`:
+one pick of two cards under two different filters (Distended
+Mindbender).
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 

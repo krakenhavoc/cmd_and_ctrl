@@ -44,10 +44,12 @@ import (
 // So the Helm asks for an UNBOUNDED mill and stops itself. X is not
 // the mill's amount, and that is the whole of the fix:
 //
-//   - a card the CR 614 window diverts costs the run nothing. A
-//     milled commander whose owner takes the command zone was never
-//     put into that graveyard, so it neither ends the run nor uses up
-//     one of the X, and the Helm mills another card in its place.
+//   - a card the CR 614 window diverts costs the run nothing: a card
+//     that was never put into that graveyard neither ends the run nor
+//     uses up one of the X, and the Helm mills another card in its
+//     place. (A milled commander is not diverted since ADR 0115: it
+//     lands in the graveyard and counts, and CR 903.9a offers its
+//     owner the command zone afterwards.)
 //   - under Rest in Peace or Leyline of the Void NOTHING is ever put
 //     into that graveyard, so the run never reaches X and the Helm
 //     mills the victim's whole library. That is the famous combo, and

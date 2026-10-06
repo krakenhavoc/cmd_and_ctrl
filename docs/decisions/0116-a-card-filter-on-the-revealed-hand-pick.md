@@ -1,6 +1,6 @@
 # ADR 0116 — A card filter on the revealed-hand pick
 
-**Status:** Accepted · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
+**Status:** Accepted · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077)). Amended 2026-10-05 for the pick's variants ([#2115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2115)); see [the amendment](#amendment-2026-10-05--variants-of-the-pick-2115).
 **Issues:** [#2078](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2078) (this change). Requested cards: Unmask and Pelakka Predation // Pelakka Caverns ([#2063](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2063)).
 **Owner decision behind it (2026-10-03):** fix it now, faithfully, with this ADR first. Thoughtseize ships stronger than printed today, which AGENTS.md §7 forbids. See [Owner decisions](#owner-decisions-2026-10-03).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-03. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 43 remote heads: `origin/develop`, `origin/main`, the `feat/s58-*` card and seam branches, and the other chore, docs, feat, fix, repro and wip branches. The highest number anywhere is 0115, so this ADR takes **0116**.
@@ -206,3 +206,56 @@ These go on the new `revealed-hand-pick-variants` row:
 ## Owner decisions (2026-10-03)
 
 The owner approved the faithful filter on 2026-10-03: fix Thoughtseize now, and build the filter that its printed text and the rules require. The rules above settle every remaining question. A card with no legal pick reveals and discards nothing (CR 609.3 and Thoughtseize's ruling), a reveal is shown to every player (CR 701.20a and Unmask's ruling), and the pick is mandatory when a legal card exists. No question is left for the owner.
+
+---
+
+## Amendment 2026-10-05 — variants of the pick (#2115)
+
+**Issue:** [#2115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2115), the `revealed-hand-pick-variants` registry row. **Sprint:** S58.
+
+[Out of scope](#out-of-scope) listed five variants of the pick. Each was checked in the code on `origin/develop` at `de685935a` before it was called missing, and each rule below against the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`). The rulings are Scryfall's, read on 2026-10-05.
+
+### The rules
+
+- **CR 701.9a:** "To discard a card, move it from its owner's hand to that player's graveyard." Exiling a card from a hand is not a discard. Madness (CR 702.35a: "If a player would discard this card …") and every "whenever a player discards" therefore never see Appetite for Brains, Aggressive Negotiations or Agonizing Remorse.
+- **"You may choose"** is optional even with a legal card in the hand (Extract the Truth's 2022-04-29 ruling). "If you don't" happens when nothing was chosen, which includes a hand with nothing to choose. Nightsnare's 2015-06-22 ruling says the player then discards two cards of their own choice.
+- **CR 608.2c:** the instructions run in the order written. Talara's Bane's life gain is printed before the discard, and its 2008-08-01 ruling reads the toughness while the card is in the hand. Reckoner Shakedown's counters are chosen after the pick (its 2022-02-18 ruling).
+- **CR 608.2h:** information an effect reads off an object that has left its zone is last-known information.
+- **CR 113.6a, 208.2a, 604.3:** a characteristic-defining ability works in every zone. Talara's Bane's ruling says the same of a `*` toughness in a hand.
+- **CR 608.2n:** a resolved instant or sorcery is put into its owner's graveyard as the final part of its resolution. In this engine that happens before a prompt the resolution raised is answered, which matters only to a clause that reads the graveyards (§6 below).
+- **CR 701.27e:** "When this creature transforms into Revealing Eye" triggers only on a transform that leaves Revealing Eye's face up.
+- **Agonizing Remorse** (its 2020-01-24 rulings): a graveyard card may be a land; a card must be chosen from either place if any exists; nothing can happen between the choice and the exile; and with nothing to choose the caster still loses 1 life.
+
+### What existed
+
+- `RevealedHandDiscard` (§1) always discarded and always took exactly `Count`, with no continuation.
+- The resolution-time colour prompt (`QueueColorChoiceThenForEffect`, Wash Out) and the prompted discard run (`PlayerDiscardsThenForEffect`, #1027) each hand a continuation the answer, with the resolution still open (#1289).
+- The keyed body registry of ADR 0041 phase 3 (`effect_bodies.go`) names a delayed trigger's body by an on-disk key, with a ledger (`testdata/effect_keys.txt`) and a restore-time refusal of an unknown key (`ErrUnknownEffectKey`).
+- `TransformPermanentForEffect` emits `EventTransform`, but no card watched it.
+- Nothing applied a characteristic-defining ability off the battlefield.
+
+### Decision
+
+1. **A kind of its own.** A pick with any variant is `PendingChoiceRevealedHandPick` (`"revealed_hand_pick"`), raised by `Game.RevealedHandPickForEffect(RevealedHandDiscard)`. `QueueDiscardFromRevealedHand` hands a variant to it, and a plain pick is unchanged. A new kind rather than more fields on `discard_from_hand`, for the rollback case (ADR 0041 Decision 5). A binary from before this change does not know the kind, so it refuses the restore point (ADR 0115 §8) and the file is kept. Fields on the old kind would have been dropped by that binary, restoring an exile as a discard or an optional pick as a mandatory one.
+2. **A destination.** `RevealedHandDiscard.Destination` is `PickDiscard` (the zero value) or `PickExile`. An exile goes through the one exile route (`ExileCardsThenForEffect`), never the discard path, so no `EventDiscardCard` is emitted (CR 701.9a). The vocabulary is closed: restore refuses any other value.
+3. **An optional floor.** `Optional` makes the empty answer legal. Any other answer must still name exactly `Count` cards from the candidates, none twice (§5).
+4. **The graveyard.** `FromGraveyard` adds every card in `FromPlayer`'s graveyard to the candidates, after the hand's matches and unfiltered. A pick is accepted while the card is still in the hand or that graveyard.
+5. **A keyed continuation.** `Then` is a `RevealedPickThen` registered once at init with `RegisterRevealedPickThen(key, fn)`, or `RegisterRevealedPickFirst(key, fn)` for a clause printed before the move. The key shares the effect-key namespace, sits in the ledger as `pick <key>`, and is refused at restore if this binary lacks it. The prompt carries only the key (`PendingChoice.PickThen`), so it stays a restore point. The function is handed a `RevealedPick`: the chooser, the revealing player, the source, and the chosen cards as value copies read before they moved (their last-known information, CR 608.2h). A `Then` runs after the move has finished; the move is itself a continuation, so a move that pauses on a replacement's prompt holds it. A `First` runs before the move and moves the cards by calling `RevealedPick.Done`. Keys are on-disk identities, never renamed or reused, and they have no alias.
+6. **A number read as the pick goes up.** `Measure func(Card) int` reads each candidate when the pick is raised, while the spell is still on the stack. The readings are stored as `PendingChoice.PickMeasures` and handed to the continuation for the chosen cards. Talara's Bane needs this. Read at the answer, a Tarmogoyf's toughness would count Talara's Bane, a sorcery, already in its owner's graveyard (CR 608.2n as this engine orders it), which is one more than printed. Nothing else can change in between, because the prompt stops the table. Like `Filter`, the func is never stored. `Game.ToughnessAnywhereForEffect` is the toughness reader: off the battlefield it applies the card's own layer-7a abilities (CR 113.6a), so a `*` creature card is read correctly.
+7. **Nothing to choose still runs the rest.** With no candidate no prompt goes up (§4), and the continuation runs at once, told that nothing was chosen (CR 609.3). "If you don't" happens, and Tourach's Canticle still discards at random.
+8. **Opponent protection is checked at the discard.** #2178's "can't cause you to discard" stops the discard, not the reveal or the choice, so a variant pick still goes up and Talara's Bane still gains the life. The check is made when the cards would move, with the chooser as the cause. The chooser is the controller of the effect that asked, and asking the prompt makes the answer independent of whatever resolved last.
+9. **Choices and counts from earlier text compose.** Addle's colour is the existing resolution-time colour prompt, whose answer raises the plain pick filtered by `OfColor`. Last Rites' count is the prompted discard run's `PromptedDiscards.Count()`. Both prompts are queued while the resolution is open, so the pick is stamped `midResolution` and state-based actions still wait (#1289). The earlier prompt holds a closure, as it always has, so the table is not a restore point until it is answered. The pick it raises is a restore point.
+10. **Wire and client.** The view sends the new kind with the same `options[]` (the revealed hand, then the graveyard when it is open), `eligible` and `eligible_label`, plus `choose_min` / `choose_max`, `pick_destination` and `pick_from_graveyard`. Every seat gets all of it, because the hand was revealed (CR 701.20a) and a graveyard is public, so nothing new is hidden or leaked. `ChoicePromptModal` greys the ineligible cards as before. With nothing selected on an optional pick, its primary button reads "Choose nothing". It says when the card will be exiled, and it captions a graveyard card. No registered label changes.
+11. **The bot.** `legal.EnumerateFor` offers every `Count`-sized set of candidates still in place, using `Game.RevealedPickCandidateLocked`, the resolver's own test. An optional pick also gets the empty answer, marked `AlwaysLegal`. The heuristic prices the kind as it prices the plain pick: it takes an opponent's best card, and from its own hand it chooses nothing when it may. Layer A escalates choices to the heuristic as before.
+12. **Snapshot impact.** Additive within schema v7. Five `omitempty` fields on `pendingChoices[]` are recorded with `-update-shape` and classified `carried` in the drift table: `pickDestination`, `pickOptional`, `pickFromGraveyard`, `pickThen` and `pickMeasures`. `checkEffectKeys` refuses an unknown `pickThen` or `pickDestination`. Three corpus boards are new files, written with `-write-corpus`: `revealed_hand_pick_optional_then`, `revealed_hand_pick_exile_graveyard` and `revealed_hand_pick_measures`. The closure ratchet does not move: no closure reaches `Game`. The departure table reassigns the kind (CR 800.4g) like `discard_from_hand`.
+
+### Cards
+
+All Full, each checked against its oracle text and rulings: Appetite for Brains, Aggressive Negotiations, Agonizing Remorse, Nightsnare, Binding Negotiation, Reckoner Shakedown, Extract the Truth, Talara's Bane, Tourach's Canticle, Concealing Curtains // Revealing Eye, Addle and Last Rites. Revealing Eye is the first card to watch `EventTransform`.
+
+Still waiting, on the same registry row, now `partial`:
+
+- **Distended Mindbender:** "you choose from it a nonland card with mana value 3 or less and a card with mana value 4 or greater" is one pick of two cards under two different filters, which this shape does not express. Its cast also needs emerge (CR 702.119), which the engine lacks.
+- **Traumatic Revelation:** the pick is this shape, but its "if you don't" branch is incubate (CR 701.53), which the engine lacks.
+
+So #2115 stays open for the two-filter pick.

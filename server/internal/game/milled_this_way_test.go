@@ -15,7 +15,7 @@ import (
 // the CR 614 window cancelled never moved at all, a leg a replacement
 // sent somewhere else moved but not this way ("if a card would be put
 // into a graveyard from anywhere, exile it instead"), and a commander
-// that took CR 903.9's offer went to the command zone. Oona, Queen of
+// that took the command-zone offer went to the command zone. Oona, Queen of
 // the Fae reads that list as "exiled this way" and made a Faerie for
 // each of them.
 //
@@ -127,9 +127,10 @@ func TestMilledThisWayCountsOnlyWhatLanded(t *testing.T) {
 }
 
 // TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard is
-// the CR 903.9 half. The list cannot be taken while the prompt is
-// open, so the rest of the mill waits for it; when the answer arrives
-// the commander counts only if the graveyard is where it went.
+// the paused-leg half, on a test "may" replacement. The list cannot be
+// taken while the prompt is open, so the rest of the mill waits for it;
+// when the answer arrives the commander counts only if the graveyard is
+// where it went.
 func TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -188,7 +189,7 @@ func TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testing.T) {
 // TestUndoAcrossAPausedMillLegReplays is the undo contract the
 // continuation signs, the one DestroyPermanentsThenForEffect and
 // ExileCardsThenForEffect already sign: rewinding into the open
-// CR 903.9 prompt and answering again mills the same cards and reports
+// "may" prompt and answering again mills the same cards and reports
 // the same list, because the landed list is carried forward by value.
 func TestUndoAcrossAPausedMillLegReplays(t *testing.T) {
 	g := newActiveGame(t)

@@ -147,6 +147,39 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": discard nothing", p)
 			}
 
+		case game.PendingChoiceRevealedHandPick:
+			// #2115: the variants. The pool is what the prompt offered,
+			// still where it was offered — the hand, or a graveyard the
+			// prompt opens (RevealedPickCandidateLocked, the resolver's
+			// own test). "You may choose" adds the empty answer, which
+			// nothing can refuse, so it is this kind's AlwaysLegal move.
+			var pool []uuid.UUID
+			for _, id := range c.DiscardOptions {
+				if _, ok := g.RevealedPickCandidateLocked(c, id); ok {
+					pool = append(pool, id)
+				}
+			}
+			verb := "discard"
+			if c.PickDestination == game.PickExile {
+				verb = "exile"
+			}
+			if c.PickOptional {
+				p := base()
+				p.CardIDs = []string{}
+				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+			}
+			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+				p := base()
+				p.CardIDs = idStrings(set)
+				label := reason + ": " + verb
+				for _, id := range set {
+					// The hand was revealed to this seat; a graveyard
+					// is public. cardNameFor all the same (ADR 0033 §3).
+					label += " " + cardNameFor(g, id, e.seat)
+				}
+				e.addChoice(c, label, p)
+			}
+
 		case game.PendingChoiceMana:
 			for _, color := range c.ColorOptions {
 				p := base()
@@ -734,11 +767,23 @@ func (e *enumerator) choiceMoves() bool {
 				a := apply
 				p := base()
 				p.Apply = &a
-				verb := "enter tapped"
-				if apply {
-					verb = "pay " + c.PayCost
+				if !apply {
+					e.addChoice(c, reason+": enter tapped", p)
+					continue
 				}
-				e.addChoice(c, reason+": "+verb, p)
+				// #2390: the pay branch carries its life as #547's
+				// MoveCost, as a confirm's accept branch does, so a
+				// policy prices the 2 life instead of paying it blind —
+				// at 2 life, paying is the game.
+				e.add(Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  reason + ": pay " + c.PayCost,
+					Source: c.Source,
+					Params: mustJSON(p),
+					Cost:   moveCost(c.LifeCost, 0),
+				})
 			}
 
 		case game.PendingChoiceEntryRiot:

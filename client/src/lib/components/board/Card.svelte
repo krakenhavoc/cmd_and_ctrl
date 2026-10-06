@@ -676,7 +676,7 @@
   // Drive the tap rotation with GSAP so it eases instead of snapping
   // and so future combat / damage effects can sequence against it.
   // The rotation lives in --tap-rot (animated) while the hover lift
-  // lives in --hover-lift (CSS-only); composing via custom properties
+  // lives in --hover-scale (CSS-only); composing via custom properties
   // keeps the two effects independent.
   let cardEl: HTMLDivElement | undefined = $state();
   // Fire the tap SFX only on the untapped→tapped transition, not on
@@ -859,6 +859,8 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
+    <!-- #2219: an art tile has no rules text, so it adds the ⚡ / ◆ / ↻
+         ability chips after the keywords. A full card prints its own. -->
     <KeywordBadgeRow
       abilities={card.abilities}
       chosenColor={card.chosen_color}
@@ -867,6 +869,7 @@
       chosenName={card.chosen_name}
       protection={card.protection}
       riotHaste={card.riot_haste}
+      abilityRows={artTile ? card.ability_rows : null}
     />
     {#if damage}
       <span
@@ -1231,8 +1234,18 @@
     user-select: none;
     -webkit-user-select: none;
     /* Compose tap rotation (animated by GSAP via --tap-rot) with the
-       CSS-only hover lift (--hover-lift). */
-    transform: rotate(var(--tap-rot, 0deg)) translateY(var(--hover-lift, 0px));
+       CSS-only hover lift (--hover-scale). The lift grows the card
+       from its own bottom edge (the translateY pair moves the scale's
+       origin from the centre, where the tap turns, to the bottom
+       centre): its top rises as a lift's would, and its bottom stays
+       where it was. #2396: it used to translate the whole card up 8px,
+       which moved it out from under a pointer resting near its bottom
+       edge; the card lost its hover, dropped back under the pointer
+       and lifted again, over and over, and the hover zoom flickered
+       with it. A grown card still covers every point it covered at
+       rest, so a hover anywhere on it holds. */
+    transform: rotate(var(--tap-rot, 0deg)) translateY(50%) scale(var(--hover-scale, 1))
+      translateY(-50%);
     /* The failed-art pip (#33) sits on the left edge, one badge row
        down. The top-right corner is the busiest on the tile — GOAD,
        the hand's cost chip and a counter column that grows downward
@@ -1293,7 +1306,8 @@
     cursor: pointer;
   }
   .card.clickable:hover {
-    --hover-lift: -8px;
+    /* About the 8px the lift used to be on a 168-235px card. */
+    --hover-scale: 1.04;
     box-shadow:
       0 14px 28px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(122, 167, 255, 0.35),

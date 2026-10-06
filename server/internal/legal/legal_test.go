@@ -1114,8 +1114,16 @@ func TestShocklandEntryOffersPayOrTapped(t *testing.T) {
 		switch {
 		case strings.HasSuffix(m.Label, ": pay 2 life"):
 			pay++
+			// #2390: the pay branch carries its price, as #547's
+			// MoveCost, so a policy can see it.
+			if m.Cost == nil || m.Cost.Life != 2 {
+				t.Errorf("the pay branch's cost = %+v, want 2 life", m.Cost)
+			}
 		case strings.HasSuffix(m.Label, ": enter tapped"):
 			tapped++
+			if m.Cost != nil {
+				t.Errorf("entering tapped costs nothing, got %+v", m.Cost)
+			}
 		}
 	}
 	if len(moves) != 2 || pay != 1 || tapped != 1 {

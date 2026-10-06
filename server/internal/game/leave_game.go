@@ -520,6 +520,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// over its own frame so a leg is never settled twice.
 	PendingChoiceChooseCards:     {reassign: true, onDrop: dropDefault},
 	PendingChoiceDiscardFromHand: {reassign: true},
+	// #2115: the same pick with a variant, and the same answer. A
+	// dropped one takes its continuation with it, as the plain pick
+	// takes its discard: the departure drops it only when its chooser
+	// was picking from their own hand, and CR 800.4a takes that hand
+	// out of the game with them.
+	PendingChoiceRevealedHandPick: {reassign: true},
 	// option_pick: the second half of a pile split is a living
 	// player's cards. Torment of Hailfire's "each opponent chooses"
 	// is the same KIND and is still dropped — by the material test in

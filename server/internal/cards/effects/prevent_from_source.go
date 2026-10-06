@@ -44,6 +44,21 @@ type PreventDamageFromSource struct {
 	// prompt and rechecked as the damage would be dealt (CR 615.9).
 	Queries []game.PermanentQuery
 
+	// Filter is the rest of an unnamed source's description (#2026):
+	// "non-Spider", "with power 3 or less", "attacking", "without
+	// flying", "colorless", "with no +1/+1 counters", "your opponents
+	// control" — read as the damage would be dealt, every time
+	// (game.DamageSourceFilter). Only with no Choose, FromThis or From.
+	Filter game.DamageSourceFilter
+	// exceptThis and exceptClause add objects pinned as the shield
+	// resolves to Filter.ExceptObjects: this object (Haze Frog's "other
+	// creatures") or the target answering clause exceptClause
+	// (Terrifying Presence's "creatures other than target creature").
+	// Set with OtherThanThis and OtherThanTarget.
+	exceptThis      bool
+	exceptClause    int
+	hasExceptClause bool
+
 	// Protect is what the shield protects.
 	Protect ShieldTarget
 
@@ -61,6 +76,11 @@ type PreventDamageFromSource struct {
 
 	// Then is the CR 615.5 follow-up. Zero is none.
 	Then game.BodyRef
+	// ThenPerSource runs Then once per damage source within one instance
+	// of damage rather than once for the instance (#2026): Comeuppance's
+	// "If damage from a creature source is prevented this way,
+	// Comeuppance deals that much damage to that creature".
+	ThenPerSource bool
 	// thenTo is the target clause whose answer the follow-up deals its
 	// damage to (Refraction Trap's "any target", ADR 0108 §9), when
 	// hasThenTo is set. Set with DealingTo.
@@ -87,6 +107,24 @@ func PreventDamageFromChosenSource(protect ShieldTarget, queries ...game.Permane
 // Charged returns the shield as "the next n damage" (CR 615.7).
 func (p PreventDamageFromSource) Charged(n int) PreventDamageFromSource {
 	p.Amount = n
+	return p
+}
+
+// OtherThanThis returns the shield with this object's damage left alone:
+// Haze Frog's "other creatures". The object is the one the ability came
+// from (CR 400.7): if it left and came back before the ability resolved,
+// the new object is "another" creature, and its damage is prevented.
+func (p PreventDamageFromSource) OtherThanThis() PreventDamageFromSource {
+	p.exceptThis = true
+	return p
+}
+
+// OtherThanTarget returns the shield with the damage of the target that
+// answered clause i left alone, pinned as the object it is as the shield
+// resolves: Terrifying Presence's "creatures other than target
+// creature".
+func (p PreventDamageFromSource) OtherThanTarget(clause int) PreventDamageFromSource {
+	p.exceptClause, p.hasExceptClause = clause, true
 	return p
 }
 
@@ -144,10 +182,15 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		})
 		return nil
 	}
+	filter, ok := p.filter(ctx)
+	if !ok {
+		return nil
+	}
 	shield := game.DamageShield{
 		EffectSource:      ctx.Source(),
 		Controller:        ctx.Controller(),
 		Queries:           p.Queries,
+		Filter:            filter,
 		ProtectPlayer:     protected.ProtectPlayer,
 		ProtectTypes:      protected.ProtectTypes,
 		ProtectPermanent:  protected.ProtectPermanent,
@@ -155,6 +198,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		CombatOnly:        p.CombatOnly,
 		Amount:            p.Amount,
 		Then:              p.Then,
+		ThenPerSource:     p.ThenPerSource,
 		UntilYourNextTurn: p.UntilYourNextTurn,
 		Label:             label,
 	}
@@ -165,6 +209,37 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 	}
 	pick := shieldSourcePick{Choose: p.Choose, FromThis: p.FromThis, From: p.From, Queries: p.Queries, Question: p.Question}
 	return pick.resolve(ctx, registerSourceShield(shield))
+}
+
+// filter is the shield's Filter with the objects pinned as it resolves
+// added. False when one of those objects can't be named: the target is
+// gone (and with it, for a spell whose only target it was, the spell) or
+// the ability has no source object.
+func (p PreventDamageFromSource) filter(ctx *Context) (game.DamageSourceFilter, bool) {
+	f := p.Filter
+	f.ExceptObjects = append([]game.ObjectRef(nil), f.ExceptObjects...)
+	if p.exceptThis {
+		ref, ok := ctx.SourceRef()
+		if !ok {
+			return f, false
+		}
+		f.ExceptObjects = append(f.ExceptObjects, ref)
+	}
+	if p.hasExceptClause {
+		t, ok := ctx.ClauseTarget(p.exceptClause)
+		if !ok || t.Kind != game.TargetCard {
+			return f, false
+		}
+		ref, ok := ctx.Game.PermanentRefForEffect(t.ID)
+		if !ok {
+			return f, false
+		}
+		f.ExceptObjects = append(f.ExceptObjects, ref)
+	}
+	if len(f.ExceptObjects) == 0 {
+		f.ExceptObjects = nil
+	}
+	return f, true
 }
 
 // registerSourceShield finishes a source shield once its source is

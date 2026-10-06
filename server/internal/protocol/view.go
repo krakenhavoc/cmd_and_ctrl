@@ -335,6 +335,14 @@ type PendingChoiceView struct {
 	// EligibleLabel names what Eligible holds, the way the card
 	// prints it: "nonland card".
 	EligibleLabel string `json:"eligible_label,omitempty"`
+	// PickDestination populates the "revealed_hand_pick" kind (#2115):
+	// where the chosen card goes, "discard" or "exile". Exiling it is
+	// not a discard.
+	PickDestination string `json:"pick_destination,omitempty"`
+	// PickFromGraveyard populates the same kind: Options ends with the
+	// revealing player's graveyard, every card of which may be chosen
+	// ("or a card from their graveyard").
+	PickFromGraveyard bool `json:"pick_from_graveyard,omitempty"`
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
@@ -502,8 +510,36 @@ type PendingChoiceView struct {
 	// adventurer on an adventure, a cast permission), ignoring timing
 	// and mana. Computed on every view, never stored. The client says
 	// so beside Yes / No, and a bot declines the command zone when it
-	// is set. Absent on every other kind.
+	// is set.
+	//
+	// #2390: also set on the "optional_replacement" that is CR 903.9b's
+	// commander question when the commander is headed for its owner's
+	// HAND, the one destination it can always be cast from (and without
+	// the CR 903.8 tax, which only a cast from the command zone pays).
+	// Unset when it is headed for a library. Absent on every other kind.
 	PlayableFromZone bool `json:"playable_from_zone,omitempty"`
+
+	// Dredge populates an "optional_replacement" that offers a dredge
+	// (CR 702.52a, #2127): N, the number of cards the yes mills. The
+	// card it returns rides Source, in the chooser's graveyard. A grant
+	// that names no card — The Necrobloom's "land cards in your
+	// graveyard have dredge 2" — leaves Source empty, and the land is
+	// picked after the yes. Computed on every view, never stored. A bot
+	// weighs the card and the mill against the draw it replaces (#2390).
+	// Absent on every other prompt.
+	Dredge int `json:"dredge,omitempty"`
+
+	// Devour, DevourDraw and DevourLife populate an "entry_sacrifice"
+	// that is CR 702.82a's devour (#2419): N, the +1/+1 counters each
+	// creature sacrificed buys the entering creature, and what its own
+	// "for each creature it devoured" ability pays per creature (cards
+	// drawn, life gained). Computed on every view, never stored. Absent
+	// on the fixed-count sacrifice lands that share the kind, and on
+	// every other prompt. A bot weighs them against the creatures it
+	// would eat.
+	Devour     int `json:"devour,omitempty"`
+	DevourDraw int `json:"devour_draw,omitempty"`
+	DevourLife int `json:"devour_life,omitempty"`
 
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -941,6 +977,15 @@ type AdditionalCostView struct {
 	// cast_spell as `blight_ids`.
 	Blight        int               `json:"blight,omitempty"`
 	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
+	// BlightX marks "blight X" (CR 701.68a, Soul Immolation, #2174): the
+	// announced X (`demands_x` is set too, so the X prompt opens) is the
+	// number of -1/-1 counters, put on the ONE creature named in
+	// `blight_ids` out of `blight_options`. BlightXMax is the printed
+	// ceiling — the greatest toughness among the viewer's creatures —
+	// and is absent at 0 (no creature, so X = 0 is the only
+	// announcement). The server refuses a larger X.
+	BlightX    bool `json:"blight_x,omitempty"`
+	BlightXMax int  `json:"blight_x_max,omitempty"`
 	// Payable marks a branch the viewer could pay right now:
 	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
 	// the bot enumerator ask. Absent means the branch cannot be taken
@@ -2434,6 +2479,24 @@ type CardView struct {
 	// cannot (a face-down permanent's non-controllers). Absent — which
 	// is nearly always — means nothing granted this permanent anything.
 	GrantedAbilities []GrantedAbilityView `json:"granted_abilities,omitempty"`
+
+	// AbilityRows are the card's non-keyword triggered, static and
+	// activated abilities right now, triggered first, each with a short
+	// label (#2219, game.AbilityRowsOf). The art tile draws one chip per
+	// kind with a count and lists the labels on hover or focus; the
+	// client never reads oracle text for them.
+	//
+	// Current, not printed: a "loses all abilities" effect empties it,
+	// a granted ability is in it (beside granted_abilities' text), a
+	// designation gate decides a gated row, and a face-down permanent
+	// has none (CR 708.2). Keyword abilities (the keyword chips) and
+	// mana abilities (ADR 0105's drop pip) are left out.
+	//
+	// Battlefield and hand only, the zones a tile is drawn in. Public on
+	// a card the viewer can see, like the ability rows, and cleared
+	// with them for a viewer who cannot. Absent for an uncatalogued
+	// card, which keeps its `unimplemented` mark instead.
+	AbilityRows []AbilityRowView `json:"ability_rows,omitempty"`
 
 	// Abilities is the card's effective keyword list — strings like
 	// "flying", "first strike", "trample". Layered effects (Lord of
@@ -5845,7 +5908,7 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
 	out := &AdditionalCostView{
 		DiscardCards: ac.DiscardCards,
-		DemandsX:     ac.PayLifeX,
+		DemandsX:     ac.PayLifeX || ac.BlightX,
 		Label:        ac.Label,
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
@@ -5856,6 +5919,13 @@ func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCos
 		// shroud gate must not narrow the list the client offers. The
 		// same list, count and order the abilities ship (#747).
 		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+	}
+	if ac.BlightX {
+		// #2174: the same creature walk, and the ceiling the validator
+		// and the bot enumerator read (BlightXCeilingForEffect).
+		out.BlightX = true
+		out.BlightXMax = g.BlightXCeilingForEffect(caster)
+		out.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
 	}
 	if ac.Blight > 0 {
 		// The engine's own walk (#1703), as for an optional blight.
@@ -6884,6 +6954,39 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.EligibleLabel = c.DiscardLabel
 			}
 		}
+		// #2115: the variant pick shows the same revealed hand, then —
+		// "or a card from their graveyard" — the graveyard it also
+		// offers, which is public. The bounds are public too: the hand
+		// was revealed to every seat. choose_min is 0 for "you may
+		// choose", and pick_destination says where the card goes.
+		if c.Kind == game.PendingChoiceRevealedHandPick {
+			if fromP := g.PlayerByIDForEffect(c.FromPlayer); fromP != nil {
+				zones := []*game.Zone{fromP.Hand}
+				if c.PickFromGraveyard {
+					zones = append(zones, fromP.Graveyard)
+				}
+				for _, z := range zones {
+					if z == nil {
+						continue
+					}
+					for _, card := range z.Cards {
+						v.Options = append(v.Options, viewOfCard(card))
+					}
+				}
+			}
+			v.Eligible = cardIDStrings(c.DiscardOptions)
+			v.EligibleLabel = c.DiscardLabel
+			v.ChooseMax = c.Count
+			v.ChooseMin = c.Count
+			if c.PickOptional {
+				v.ChooseMin = 0
+			}
+			v.PickDestination = string(c.PickDestination)
+			if v.PickDestination == "" {
+				v.PickDestination = string(game.PickDiscard)
+			}
+			v.PickFromGraveyard = c.PickFromGraveyard
+		}
 		// PendingChoiceSacrifice — "each player sacrifices a
 		// creature". Inline the chooser's own candidate permanents as
 		// Options so the picker renders card faces rather than UUIDs.
@@ -6952,6 +7055,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// which is what the Locked suffix means.
 		if c.Kind == game.PendingChoiceCommanderReturn {
 			v.PlayableFromZone = g.PlayableFromZoneLocked(c.Chooser, c.Source)
+		}
+		// #2390: the facts an optional_replacement's yes turns on, read
+		// off its paused event — a dredge's N, and CR 903.9b's commander
+		// headed for a hand.
+		if c.Kind == game.PendingChoiceOptionalReplacement {
+			v.Dredge = c.DredgeOffer()
+			v.PlayableFromZone = c.CommanderHeadedFor() == game.ZoneHand
+		}
+		if c.Kind == game.PendingChoiceEntrySacrifice {
+			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel
@@ -7669,6 +7782,11 @@ func viewOfZone(z *game.Zone) ZoneView {
 			x, y := c.BattleX, c.BattleY
 			cards[i].BattleX, cards[i].BattleY = &x, &y
 		}
+		// #2219: the art tile's ability chips, on the two zones a tile
+		// is drawn in.
+		if onBattlefield || z.Kind == game.ZoneHand {
+			cards[i].AbilityRows = viewOfAbilityRows(c)
+		}
 	}
 	owner := ""
 	if !z.IsShared() {
@@ -8090,7 +8208,10 @@ func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(Card
 	// The pool is the chooser's own when no other seat is named, or
 	// when the named seat IS the chooser.
 	ownPool := c.FromPlayer == "" || c.FromPlayer == c.Chooser
-	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand)
+	// #2115: revealed_hand_pick is the same pool, and was revealed the
+	// same way; its graveyard candidates are public.
+	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand) ||
+		c.Kind == string(game.PendingChoiceRevealedHandPick)
 	keepUnknown := c.Chooser == viewerID && (ownPool || handPool)
 	out := make([]CardView, 0, len(cards))
 	for _, card := range cards {
@@ -8392,6 +8513,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// the card underneath, and "rarely" is not the bar this function
 	// holds a field to.
 	out.GrantedAbilities = nil
+	// #2219: the tile's ability rows are read off the card's catalog
+	// entry exactly as the ability lists above are, and "Draw a card"
+	// under a face-down card says which card it is.
+	out.AbilityRows = nil
 	// #660: a hand ability quotes the card's text as loudly as its
 	// mana cost — "Cycling {3}" on an opponent's face-down hand card
 	// would name the Triome. It is also the only ability list on the

@@ -116,7 +116,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, 1)
+	return g.drawRunLocked(playerID, 1, DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
@@ -769,6 +769,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// for. Decided here, of the card as it sits in its source zone and
 	// under the claim just settled, and spent once the cast is made.
 	spendsGrant := grant != nil && grant.CastsLeft > 0 && g.castUsesGrantLocked(card, src.Kind, alt)
+	// #2173: the follow-up the permission carries runs when the cast is
+	// made through it, decided on the same question as the spend above.
+	followUp := CastFollowUpKey("")
+	if grant != nil && grant.FollowUp != "" && g.castUsesGrantLocked(card, src.Kind, alt) {
+		followUp = grant.FollowUp
+	}
+	grantSource := uuid.Nil
+	if grant != nil {
+		grantSource = grant.Source
+	}
 	grantCard := card
 	// CR 708.4, ADR 0082 decision 2: the whole of "casting a card
 	// face down" is this line, and where it sits is the decision.
@@ -1144,7 +1154,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
-	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad blight payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1628,7 +1638,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// window and for the same reason. A creature the blight kills
 	// dies at the closing state-based check, with the cost paid.
 	g.payTeamworkLocked(playerID, params.TeamworkIDs)
-	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Error("cast_spell: blight cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1729,6 +1739,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+	}
+	if followUp != "" {
+		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID}
+		if err := g.runCastFollowUpLocked(followUp, f); err != nil {
+			return err
+		}
 	}
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
