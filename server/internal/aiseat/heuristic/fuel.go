@@ -152,7 +152,21 @@ func castableFromHere(c *protocol.CardView) bool {
 // Lifted out of valueOfCast by #1013 so the fuel price and the cast
 // price agree about what a card is worth by construction. `x` is the
 // announced X, which is zero for a card nobody is casting yet.
+//
+// This is the price of a card being SPENT (a pitch, an escape's fuel):
+// it reads the card's own purpose, and a sweep in it counts for no less
+// than nothing (purposeValue's clampSweep). A cast prices the purpose
+// of the slot it names through resolvedValueFor.
 func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
+	return p.resolvedValueFor(st, c, x, cardPurpose(c), true)
+}
+
+// resolvedValueFor is resolvedValue with the purpose to price passed in
+// (ADR 0126 §6, purpose.go): the card's own for a card being spent, the
+// cost's or the chosen modes' for a cast. A declared purpose the Config
+// prices replaces an instant's or a sorcery's mana-value proxy, and is
+// added to a permanent's body as its enters effect.
+func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps purposeSet, spent bool) float64 {
 	if c == nil {
 		return 0
 	}
@@ -168,13 +182,24 @@ func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
 			pv *= st.w.SickCreature
 		}
 		v = pv
+		if p.purposePriced(ps) {
+			// Its enters effect: Wood Elves' land, Mulldrifter's two
+			// cards.
+			v += p.purposeValue(st, ps, x, c, spent)
+		}
 	default:
 		// An instant or sorcery: no body, so its value is a mana-value
 		// proxy for whatever it does that the wire does not describe.
 		// (valueOfCast adds the TARGETS on top; the fuel price does
 		// not, because a card being pitched is not being pointed at
 		// anything.)
-		v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+		if p.purposePriced(ps) {
+			// ADR 0126 §6: what it is declared to do, in place of the
+			// proxy. A sweep is priced by what it removes (§4).
+			v = p.purposeValue(st, ps, x, c, spent)
+		} else {
+			v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+		}
 	}
 	if c.IsCommander {
 		v += p.cfg.CommanderBonus

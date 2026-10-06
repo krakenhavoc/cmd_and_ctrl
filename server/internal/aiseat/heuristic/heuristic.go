@@ -88,6 +88,39 @@ type Config struct {
 	// its hand.
 	RampWantCap int
 
+	// PricePurposes turns on ADR 0126 §6's prices (purpose.go): a
+	// spell, mode, alternative cost or own activated row that declares
+	// what it does is priced by that, in place of the mana-value proxy
+	// or ActivateBase, and a permanent's declared enters effect is added
+	// to its body. Off (the zero value) is the pre-S66 heuristic.
+	PricePurposes bool
+	// TutorWeight is a card searched out to hand or the top of the
+	// library, in cards drawn: above one, because the bot picks it.
+	TutorWeight float64
+	// SelfMillWeight is a card searched out into the graveyard (Entomb),
+	// in cards drawn: below one, because only a graveyard plan the
+	// policy cannot see makes it a card.
+	SelfMillWeight float64
+	// DiscardWeight is one card discarded on resolution (a loot's
+	// second half). Below Weights.Hand: the bot discards its worst card.
+	DiscardWeight float64
+	// TokenWeight is one token the purpose makes (a Treasure, a Clue).
+	TokenWeight float64
+	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
+	// the change in ScoreEval with the permanents it removes taken off
+	// the board (sweepValue), so the bot stops casting a wipe onto its
+	// own winning board. Off (the zero value) is the pre-S66 proxy.
+	PriceSweeps bool
+	// DiscardCostByCard turns on the discard half of ADR 0126 §7: a
+	// card discarded to pay a spell's additional cost costs what it is
+	// worth to the bot (cardValue), not a flat Weights.Hand. Off (the
+	// zero value) is the pre-S66 flat price.
+	DiscardCostByCard bool
+	// LastLandDiscard is what discarding the last land in hand costs on
+	// top of its cardValue while the bot is short of LandsWanted: the
+	// land drop it may miss (discardCost).
+	LastLandDiscard float64
+
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
 	// in a graveyard does nothing at all without a Crucible, which is
@@ -268,12 +301,22 @@ func DefaultConfig() Config {
 		ActivateBase:   0.50,
 		RampPerMana:    1.00,
 		RampWantCap:    7,
-		FuelFloor:      0.05,
-		FuelIdle:       0.30,
-		FuelRecast:     0.55,
-		LifePayoff:     0.35,
-		LifeFloor:      1,
-		ManaFloat:      -0.50,
+
+		PricePurposes:     true,
+		TutorWeight:       1.00,
+		SelfMillWeight:    0.50,
+		DiscardWeight:     0.60,
+		TokenWeight:       0.50,
+		PriceSweeps:       true,
+		DiscardCostByCard: true,
+		LastLandDiscard:   1.00,
+
+		FuelFloor:  0.05,
+		FuelIdle:   0.30,
+		FuelRecast: 0.55,
+		LifePayoff: 0.35,
+		LifeFloor:  1,
+		ManaFloat:  -0.50,
 
 		SpecialActionValue: 1.00,
 
@@ -334,6 +377,15 @@ func BaselineConfig() Config {
 	c.Weights.ManaPerExtra = 0
 	c.RampPerMana = 0
 	c.RampWantCap = 0
+	// §4, §6's prices and §7's discard half (PR 7).
+	c.PricePurposes = false
+	c.TutorWeight = 0
+	c.SelfMillWeight = 0
+	c.DiscardWeight = 0
+	c.TokenWeight = 0
+	c.PriceSweeps = false
+	c.DiscardCostByCard = false
+	c.LastLandDiscard = 0
 	return c
 }
 

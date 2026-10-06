@@ -283,6 +283,31 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			}
 			v, reason = pv, "activate another player's ability"
 		}
+		// ADR 0126 §6: a row of the bot's own that declares what it
+		// does — a loot, a land search, a sweep — is priced by that, in
+		// place of the flat ActivateBase, and a row that sacrifices its
+		// own source pays for the source. A row with no purpose keeps
+		// ActivateBase (owner decision 6).
+		purposed := false
+		if !across {
+			var ps purposeSet
+			ps.add(rowPurpose(src, cp.AbilityIndex))
+			if p.purposePriced(ps) {
+				v, reason, purposed = p.purposeValue(st, ps, cp.XValue, nil, false), "activate (declared purpose)", true
+				row := activatedRowAt(src, cp.AbilityIndex)
+				if row != nil && row.SacrificeSelf {
+					v -= st.permanentValue(src)
+				}
+				// A row that taps a creature that could attack this turn
+				// costs that attack before combat, as station's tap
+				// already does (#759): a declared loot is worth less than
+				// the commander's swing it would replace.
+				if row != nil && row.TapCost && src != nil && isCreature(src) && !src.Tapped && !src.SummoningSick &&
+					src.Power > 0 && st.myTurn && st.step == "precombat_main" {
+					v -= st.w.Power * float64(src.Power)
+				}
+			}
+		}
 		v += st.targetsValue(p.cfg, cp.Targets)
 		for _, id := range cp.SacrificeIDs {
 			if c := st.bf[id]; c != nil {
@@ -313,7 +338,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// valueOfCast uses, for the same reason: with no oracle text
 		// on the wire, what the ability cost is the best available
 		// signal for what it does.
-		if cp.XValue > 0 {
+		if cp.XValue > 0 && !purposed {
 			v += p.cfg.SpellPerMana * float64(cp.XValue)
 		}
 		if src != nil && !across && isCreature(src) && !src.Tapped {
@@ -416,7 +441,11 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// escape buys" cannot disagree about one card (#1013, fuel.go).
 		// The targets are added below; a card being pitched points at
 		// nothing, which is the one difference.
-		v += p.resolvedValue(st, card, cp.XValue)
+		// ADR 0126 §6: priced by the purpose of the cost or the modes
+		// this cast names, so an overloaded Rift is a sweep and a
+		// hard-cast one is not.
+		ps := castPurpose(card, cp)
+		v += p.resolvedValueFor(st, card, cp.XValue, ps, false)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
 		// mana now, which a card being pitched to a cost is not.
@@ -430,6 +459,10 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		case reason == "cast mana source":
 		case isCreature(card) || isPermanentSpell(card):
 			reason = "cast permanent"
+		case p.cfg.PriceSweeps && len(ps.sweeps) > 0:
+			reason = "cast wipe"
+		case p.purposePriced(ps):
+			reason = "cast spell (declared purpose)"
 		default:
 			reason = "cast spell"
 		}
@@ -464,7 +497,16 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v -= p.fuelValue(st, id)
 	}
 	// Additional costs are paid out of the same pool of resources.
-	v -= st.w.Hand * float64(len(cp.DiscardIDs))
+	// ADR 0126 §7: a discarded card costs what IT is worth to the bot,
+	// so the enumerator's one payment per discard combination lets the
+	// bot pitch the spare land rather than the last one.
+	if p.cfg.DiscardCostByCard {
+		for _, id := range cp.DiscardIDs {
+			v -= p.discardCost(st, id, cp.InstanceID, cp.DiscardIDs)
+		}
+	} else {
+		v -= st.w.Hand * float64(len(cp.DiscardIDs))
+	}
 	for _, id := range cp.SacrificeIDs {
 		if c := st.bf[id]; c != nil {
 			v -= st.permanentValue(c)
@@ -496,16 +538,23 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 // deficit closes on its own. A land is never cast, and a one-shot
 // source (a Treasure, a ritual) is not repeatable, so neither gets it.
 func (p *Policy) rampPremium(st *state, card *protocol.CardView) float64 {
-	if p.cfg.RampPerMana == 0 || card == nil || isLand(card) || st.seat == nil {
+	if card == nil || isLand(card) {
 		return 0
 	}
-	amount := repeatableMana(card)
-	if amount <= 0 {
+	return p.rampFor(st, card, repeatableMana(card))
+}
+
+// rampFor is the ramp premium for `amount` more mana a turn, with the
+// card `card` (nil for none) left out of `want`: a new mana source's,
+// or the lands a ramp spell puts onto the battlefield (ADR 0126 §6,
+// purposeValue).
+func (p *Policy) rampFor(st *state, card *protocol.CardView, amount int) float64 {
+	if p.cfg.RampPerMana == 0 || amount <= 0 || st.seat == nil {
 		return 0
 	}
 	want := 0
 	consider := func(c *protocol.CardView, tax int) {
-		if c.InstanceID == card.InstanceID || isLand(c) {
+		if (card != nil && c.InstanceID == card.InstanceID) || isLand(c) {
 			return
 		}
 		if mv := manaValue(c.ManaCost, 0) + tax; mv > want {
