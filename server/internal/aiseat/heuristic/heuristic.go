@@ -375,6 +375,12 @@ func BaselineConfig() Config {
 	c.Weights.ManaPerExtra = 0
 	c.RampPerMana = 0
 	c.RampWantCap = 0
+	// §3, permanents by what they do (PR 4).
+	c.Weights.PermanentPerMana = 0
+	c.Weights.RowTriggered = 0
+	c.Weights.RowStatic = 0
+	c.Weights.RowActivated = 0
+	c.Weights.RowCap = 0
 	// §5, the two windows (PR 5).
 	c.LeftoverWindows = false
 	c.LeftoverThreshold = 0
