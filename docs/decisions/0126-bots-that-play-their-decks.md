@@ -866,3 +866,32 @@ Other canaries: Sol Ring 90–100%, Rhystic Study 11 of 17 (esper) and 18 of 21 
 | heuristic-baseline | 192 | 44 | 22.9% | 17.5%–29.4% | 0 |
 
 Not detectably worse: the `heuristic` interval's upper bound is 33.8%, above 25%. PR 7 measured 53 of 192. By half, `heuristic` won 10 of 96 seat-games on esper and izzet against the baseline's black and simic, and 42 of 96 on black and simic against the baseline's esper and izzet.
+
+**Re-measured on `develop` with PR 8.** PR 8 (#2459) merged while this PR was open, so the suite and runs 1 and 2 were repeated on the merge of `develop` `835bd475e` into this branch (`58464780b`), with the same commands and seeds. `BaselineConfig()` zeroes both PRs' terms: `SacrificeDyingAnyway`, `DeathPayoff` and `PriceDiscardPayoffs`.
+
+Suite: 37 of 37 agree, every tag at 100% (activate 3, attack 4, block 4, cast 19, choice 1, combat 8, discard 2, land 4, leftover 3, mulligan 6, removal 1, sacrifice 2, wipe 2).
+
+Run 1: 64 games, 0 stalls, 15 rejected moves (14 stale `declare_attacker`, 1 pass), turns p50 13.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 8) |
+|---|---:|---:|---|---:|
+| esper-control | 5 | 7.8% | 3.4%–17.0% | 1 (1) |
+| izzet-aggro | 6 | 9.4% | 4.4%–19.0% | 3 (3) |
+| mono-black-aristocrats | 40 | 62.5% | 50.3%–73.3% | 4 (4) |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 2 (2) |
+
+The `never` lists are PR 8's, card for card. A6 still fails: black's interval lies entirely above 50%.
+
+- Mary Read and Anne Bonny's loot: 49 of 61 games, 80%.
+- With Mary Read on the bot's own battlefield, a matching card was offered in 72 discard windows and discarded in 21, 29%. PR 7's log gave 18%.
+- The payoff cards are cast as before: Marauding Mako 19 of 21 games, Scrounging Skyray 15 of 16, Glint-Horn Buccaneer 14 of 16, Magmakin Artillerist 10 of 12.
+- Other canaries: Sol Ring 85–100%, Rhystic Study 10 of 17 (esper) and 18 of 22 (simic), Entomb 11 of 15, Viscera Seer (cast) 23 of 23, Harrow 8 of 26.
+
+Run 2: 96 games, 0 stalls, turns p50 14 and 12 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
+|---|---:|---:|---:|---|---:|
+| heuristic | 192 | 55 | 28.6% | 22.7%–35.4% | 3 |
+| heuristic-baseline | 192 | 41 | 21.4% | 16.1%–27.7% | 0 |
+
+Not detectably worse: the upper bound is 35.4%. PR 8 measured the same 55 of 192. By half, `heuristic` won 11 of 96 on esper and izzet, and 44 of 96 on black and simic.
