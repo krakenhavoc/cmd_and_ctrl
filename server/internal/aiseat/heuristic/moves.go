@@ -417,9 +417,17 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// The targets are added below; a card being pitched points at
 		// nothing, which is the one difference.
 		v += p.resolvedValue(st, card, cp.XValue)
+		// ADR 0126 §2: the ramp premium is a CAST price only. It is
+		// what one more source is worth to a seat that is short of
+		// mana now, which a card being pitched to a cost is not.
+		if r := p.rampPremium(st, card); r > 0 {
+			v += r
+			reason = "cast mana source"
+		}
 		switch {
 		case card.Unimplemented:
 			reason = "cast (unimplemented)"
+		case reason == "cast mana source":
 		case isCreature(card) || isPermanentSpell(card):
 			reason = "cast permanent"
 		default:
@@ -470,6 +478,61 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v -= st.w.CommanderTax * 0.5
 	}
 	return v, reason
+}
+
+// rampPremium is ADR 0126 §2's cast-time premium for a new repeatable
+// mana source: RampPerMana for each mana it makes, up to how short the
+// bot is of casting what it holds.
+//
+//	want    = the largest mana value among the other cards in hand and
+//	          the commander in the command zone (with its tax), capped
+//	          at RampWantCap
+//	sources = the mana the bot's own sources make, tapped or not
+//	deficit = max(0, want − sources)
+//
+// The card being cast is left out of `want`: once it resolves the bot
+// no longer holds it, so a Signet in a hand of one-drops closes no gap.
+// The premium needs no turn decay, because sources grow and the
+// deficit closes on its own. A land is never cast, and a one-shot
+// source (a Treasure, a ritual) is not repeatable, so neither gets it.
+func (p *Policy) rampPremium(st *state, card *protocol.CardView) float64 {
+	if p.cfg.RampPerMana == 0 || card == nil || isLand(card) || st.seat == nil {
+		return 0
+	}
+	amount := repeatableMana(card)
+	if amount <= 0 {
+		return 0
+	}
+	want := 0
+	consider := func(c *protocol.CardView, tax int) {
+		if c.InstanceID == card.InstanceID || isLand(c) {
+			return
+		}
+		if mv := manaValue(c.ManaCost, 0) + tax; mv > want {
+			want = mv
+		}
+	}
+	for i := range st.seat.Hand.Cards {
+		consider(&st.seat.Hand.Cards[i], 0)
+	}
+	for i := range st.seat.Command.Cards {
+		c := &st.seat.Command.Cards[i]
+		consider(c, 2*st.seat.CommanderCasts[c.InstanceID])
+	}
+	if want > p.cfg.RampWantCap {
+		want = p.cfg.RampWantCap
+	}
+	sources := 0
+	for _, c := range st.bf {
+		if c.Controller == st.me {
+			sources += repeatableMana(c)
+		}
+	}
+	deficit := want - sources
+	if deficit <= 0 {
+		return 0
+	}
+	return p.cfg.RampPerMana * float64(min(amount, deficit))
 }
 
 // castSource finds the card a cast move names, in any zone a cast can

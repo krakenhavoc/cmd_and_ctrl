@@ -420,6 +420,46 @@ This is the sanity row: the two policies are one config, so each takes exactly t
 
 **No price change:** a fixed-seed lockstep run (`--games 8 --rotate --seed 1 --lockstep` on the four decks) gives the same games before and after this PR: the same winner, turns, life totals and runner counters in every game.
 
+### PR 3: mana sources (2026-10-06)
+
+`develop` at `717d7ce51` plus PR 3's `5c457891d`. `DefaultConfig()` gains three terms and `BaselineConfig()` zeroes all three: `Weights.ManaPerExtra` 1.00, `RampPerMana` 1.00, `RampWantCap` 7, the §9 starting values unchanged. Arena runs use the concurrent schedule, turn budget 60.
+
+Two readings of §2, both chosen as the closest to its intent:
+
+- A source's amount is **net** of its ability's own mana cost, so a Signet's "{1}, {T}: Add {W}{U}" makes one mana, not two. Read literally ("the count of symbols in `produced`"), every Signet would be priced as a Sol Ring.
+- `want` leaves out the card being cast, so a rock in a hand of nothing else closes no gap.
+
+**Run 1:** the same command and seed as PR 2's. 64 games, 0 stalls, turns p50 14. There were 10 rejected moves, against PR 2's 2. Every one is `declare_attacker` refused with "action not legal in current step": a stale attack submitted after the step moved on, in the concurrent schedule, while the machine was heavily loaded by parallel runs. None is a cast or a mana source.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 2) |
+|---|---:|---:|---|---:|
+| esper-control | 2 | 3.1% | 0.9%–10.7% | 11 (19) |
+| izzet-aggro | 5 | 7.8% | 3.4%–17.0% | 15 (22) |
+| mono-black-aristocrats | 42 | 65.6% | 53.4%–76.1% | 24 (29) |
+| simic-ramp | 15 | 23.4% | 14.7%–35.1% | 16 (24) |
+
+A6 still fails, as it did at PR 2: mono-black's interval lies entirely above 25%, but not entirely above 50%.
+
+Canaries (A3), games used out of games offered: Sol Ring 20 of 20 (esper), 12 of 12 (izzet), 17 of 17 (black), 16 of 17 (simic), all at PR 2's 0%. Rhystic Study, Mary Read's loot, Entomb, Harrow and Viscera Seer are still 0%; they belong to PRs 4 to 8.
+
+Mana rocks and dorks (A2), games used out of games offered, against PR 2's 0% for every rock:
+
+| Meets 80% | Below 80% |
+|---|---|
+| Sol Ring 94–100% in every deck; Hedron Archive 13 of 14; Worn Powerstone 15 of 16; and, as at PR 2, Palladium Myr, Birds of Paradise, Ornithopter of Paradise and Delighted Halfling | Arcane Signet 29–64%, the Signets 20–50%, the Talismans 20–53%, Mind Stone 11–44%, Thought Vessel 17–55%, Commander's Sphere 0–50%; Llanowar Elves 14 of 28, Fyndhorn Elves 7 of 18, Elvish Mystic 5 of 16 (all 0% at PR 2) |
+
+Why the one-mana sources stop short: across the run, a (game, seat, card) offer of a one-mana rock or elf that was never used had a deficit of 0 or less at its first offer in 221 of 287 cases. The rock arrived after the bot's sources already covered everything it held. §2 prices that cast at 1.0 − 1.2 = −0.20 on purpose ("Arcane Signet, turn 9, deficit 0"), and §5's `LeftoverThreshold` (0.00) does not take a −0.20 move either. A2 counts every game in which the card was offered, so as written it cannot reach 80% for a one-mana source drawn late. The owner decides at PR 9 whether A2 should count only offers made while the deficit is open, or whether a late rock should be priced up.
+
+**Run 2:** the same shape and seeds as PR 2's: two `heuristic` and two `heuristic-baseline` contestants, `--games 48 --rotate --seed 1` twice, the decks swapped between halves. 96 games, 0 stalls, turns p50 14.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
+|---|---:|---:|---:|---|---:|
+| heuristic | 192 | 55 | 28.6% | 22.7%–35.4% | 2 |
+| heuristic-baseline | 192 | 41 | 21.4% | 16.1%–27.7% | 0 |
+
+Not detectably worse: the `heuristic` interval's upper bound is 35.4%, above 25%. Per half: `heuristic` won 10 of 96 seat-games on esper and izzet against the baseline's black and simic, and 45 of 96 on black and simic against the baseline's esper and izzet.
+
+**Suite:** four positions added and gated for `heuristic`: `cast-sol-ring-turn-one`, `cast-the-signet-when-short`, `cast-the-elf-turn-one` and `hold-the-signet-late`. Each comes from a run 1 decision log. `boteval suite run --policy heuristic` gives 26 of 26, every tag at 100% (attack 4, block 4, cast 11, choice 1, combat 8, land 4, mulligan 6, removal 1). `BaselineConfig()` passes priority in the first three positions instead of casting, which is the change they measure, and its rankings are recorded in `baseline_rankings.json`.
 ### PR 6: the purpose signal (2026-10-06)
 
 `develop` at `717d7ce51` against PR 6's branch. No price changes: `BaselineConfig()` and `DefaultConfig()` are untouched, and the heuristic reads no new field (an any-player row's `Draws` and `ControllerLosesLife` are still the only purpose it reads, and they did not change on any card).
