@@ -499,6 +499,23 @@ type Mod struct {
 	// (CR 615.13). Refused on every other kind, and on a preventFromSource
 	// that also names a source, a property, a player or a charge.
 	AndDealtBy bool `json:"andDealtBy,omitempty"`
+	// SourceFilter is ModPreventFromSource's description of its sources
+	// beyond Queries (#2026, ADR 0108 §7 amendment of 2026-10-05): "non-",
+	// "other than", a power bound, attacking or unblocked, colourless, no
+	// counters of a kind, and the source's controller relative to the
+	// record's. At most one entry, read as the damage would be dealt
+	// (CR 609.7b), refused on every other kind and beside a pinned source
+	// or AndDealtBy. A slice for the reason Objects is one.
+	SourceFilter []DamageSourceFilter `json:"sourceFilter,omitempty"`
+	// ThenPer is ModPreventFromSource's unit for its follow-up (#2026):
+	// ThenPerSource runs Then once per damage SOURCE within one damage
+	// instance — "If damage from a creature source is prevented this way,
+	// Comeuppance deals that much damage to that creature" is one
+	// application per creature, not one for the whole combat damage step.
+	// Empty is one application per record and instance, as every other
+	// scoped shield's. Refused on every other kind, without Then, and with
+	// any other unit.
+	ThenPer PreventionUnit `json:"thenPer,omitempty"`
 	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
 	// #1890; multiply_damage.go), refused on every other kind. Sources is
 	// "a source you control" / "a creature" when no one source is named;
@@ -1200,6 +1217,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
+		m.SourceFilter = cloneSourceFilters(m.SourceFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m
 	}

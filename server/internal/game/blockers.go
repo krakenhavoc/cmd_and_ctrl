@@ -373,8 +373,9 @@ func (g *Game) attackerBlockedLocked(attacker uuid.UUID) bool {
 // UnblockedAttackerForEffect reports whether `id` is an UNBLOCKED
 // ATTACKER right now — CR 509.1h's term, and the question ninjutsu's
 // "Return an unblocked attacker you control to hand" cost asks
-// (CR 702.49a, #1227). It is the only exported reader of the blocked
-// record; before it, `Game.blockedAttackers` was visible to the combat
+// (CR 702.49a, #1227). It and BlockedAttackerForEffect (#2026) are the
+// exported readers of the blocked record; before it,
+// `Game.blockedAttackers` was visible to the combat
 // damage steps and to nothing in `internal/cards/effects`.
 //
 // Three facts, and all three are load-bearing:
@@ -431,6 +432,41 @@ func (g *Game) UnblockedAttackerForEffect(id uuid.UUID) bool {
 		}
 	}
 	return true
+}
+
+// BlockedAttackerForEffect reports whether `id` is a BLOCKED creature
+// right now (CR 509.1h): "target blocked creature" (Benalish
+// Missionary, #2026). UnblockedAttackerForEffect's three facts with the
+// last one turned round: the permanent is attacking, its defending
+// player has declared blockers in this combat, and the blocked record
+// names it — or a staged block points at it before the lock-in writes
+// the record. The record outlives the blockers, so a creature whose
+// blockers have all died, been bounced or been removed from combat is
+// still blocked ("A creature remains blocked even if all the creatures
+// blocking it are removed from combat"). Removing the attacker from
+// combat clears its attack and so ends it.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) BlockedAttackerForEffect(id uuid.UUID) bool {
+	if id == uuid.Nil || !g.blockersDeclaredStepLocked() {
+		return false
+	}
+	c := findBattlefieldCard(g, id)
+	if c == nil || c.AttackingTarget == uuid.Nil {
+		return false
+	}
+	if !g.blockDeclarationCompleteForAttackerLocked(c) {
+		return false
+	}
+	if g.attackerBlockedLocked(id) {
+		return true
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].IsBlockingAttacker(id) {
+			return true
+		}
+	}
+	return false
 }
 
 // blockersDeclaredStepLocked reports whether the cursor is at a step

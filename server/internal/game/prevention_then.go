@@ -140,6 +140,10 @@ func (g *Game) oweStaticFollowUpLocked(ev *ReplacementEvent, a activeReplacement
 // it is (ADR 0108 §9; redirectDamageModProblem checks that kind). "" when
 // it is sound.
 func followUpModProblem(m Mod) string {
+	if m.ThenPer != "" && (m.Kind != ModPreventFromSource || m.Then == "" || m.ThenPer != ThenPerSource) {
+		// #2026: only a source shield's follow-up is per source.
+		return fmt.Sprintf("a %s mod carries follow-up unit %q; only a preventFromSource follow-up may be per source", m.Kind, m.ThenPer)
+	}
 	if len(m.To) == 0 || m.Kind == ModRedirectDamage {
 		return ""
 	}

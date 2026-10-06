@@ -115,3 +115,6 @@ body sauron-the-necromancer/exile-token-unless-ring-bearer
 body treasure/create-tapped
 condition block/an-opponents-creature-blocks
 condition combat/your-creature-hit-the-player
+body prevention/back-at-the-creature-or-its-controller
+body prevention/commanders-strike-that-creature
+body prevention/commanders-strike-that-creature-trigger

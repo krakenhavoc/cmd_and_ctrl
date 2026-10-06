@@ -3473,6 +3473,24 @@ record too: `Protect: ShieldTheTargetPermanents` or `ShieldObjects(ids…)`.
 "You and permanents you control" is `ShieldYouAndPermanentsYouControl`.
 The rows and helpers are in `effects/shield_families_recipient.go`.
 
+**Sources a property list can't describe (#2026, ADR 0108 §7 amendment
+of 2026-10-05).** "Non-Spider creatures", "creatures with power 3 or
+less", "attacking creatures", "unblocked creatures", "colorless
+sources", "with no +1/+1 counters", "without flying", "you don't
+control", "your opponents control" and "target opponent controls" are a
+`game.DamageSourceFilter` on `PreventDamageFromSource.Filter`, beside its
+`Queries`. `combatShieldAgainstCreatures(filter)` is "prevent all combat
+damage … by creatures <filter>", and `exceptSubtypes(…)` is the "non-"
+filter. Haze Frog's "other creatures" is `.OtherThanThis()`, and
+Terrifying Presence's "other than target creature" is
+`.OtherThanTarget(i)`. Never test the filter as the spell resolves: the
+engine reads it as each source would deal damage (CR 609.7b), and a
+source that has left the battlefield is read as it last existed there.
+A follow-up that names "that creature" sets `ThenPerSource`, so it runs
+once per source (Comeuppance, Judgment of Alexander). The helpers are in
+`effects/shield_source_filters.go`; "target blocked creature" is
+`BlockedCreature()`.
+
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
 destroy entry points. A destruction a replacement rewrote

@@ -457,3 +457,54 @@ The owner answered the four questions on 2026-10-02. Every answer was the recomm
 2. **"Prevented this way" on the existing scoped shields.** `preventDamage` and `preventCombatDamage` read `Then` in Delivery PR 8, and the eight existing shields with a follow-up land: Acolyte's Reward, Candles' Glow, Inkshield, Sacred Boon, Scars of the Veteran, Temper, Test of Faith and Vengeful Archon (§8 decision 6).
 3. **Non-mana echo costs.** Delivery PR 4 teaches the pay-unless prompt "discard N cards" and "sacrifice N permanents of a type" as payments. Deepcavern Imp, Rakdos Headliner and Skizzik Surger land, and so do the cumulative upkeep cards with the same payments: Polar Kraken, Vexing Sphinx and Phyrexian Soulgorger (§5 decision 4).
 4. **What "at the same time" means for damage.** Each damage instruction and each combat damage step stamps a transient `DamageInstance` ID on the events it opens. It is the unit for decision 1's split, §8's follow-up granularity, §10's life check and every "next time" spend, and it fixes ADR 0107 §6's known limit. It lands in Delivery PR 0, before every PR that reads it (Shared machinery, the damage instance).
+
+---
+
+## Amendment 2026-10-05 — §7: shields against sources described by what they aren't, their power, combat status or controller (#2026)
+
+Delivery PR 7b left 28 shields whose sources a `PermanentQuery` list can't describe: "non-Spider creatures", "nongreen creatures", "creatures other than target creature", "creatures with power 3 or less", "attacking creatures", "unblocked creatures", "colorless sources", "creatures with no +1/+1 counters on them", "without trample", "sources you don't control", "creatures your opponents control", "creatures target opponent controls", and Benalish Missionary's "target blocked creature". This amendment is how §7's `preventFromSource` names them.
+
+### The rules
+
+- **CR 609.7b, 615.9:** a shield against sources with certain properties rechecks the properties when the source would deal damage. If they no longer match, the damage isn't prevented and the shield isn't used up.
+- **CR 611.2c** fixes the affected set of a resolved continuous effect only when the effect modifies characteristics or changes control. A prevention effect does neither. So "creatures with power 3 or less" is every creature that has power 3 or less as it would deal damage, including one that entered after the spell resolved. Every card's ruling agrees (Hindervines, Vine Snare, Tanglesap, Moonmist, Hunter's Ambush, Lithomancer's Focus, Haze Frog, Inspire Awe, Encircling Fissure).
+- **CR 608.2h:** a source that has left the battlefield is read as it last existed there. Heavy Fog's ruling applies it to combat status: a departed creature's noncombat damage is prevented "if it was an attacking creature at the time it left". Frontline Strategist's applies it to creature types.
+- **CR 509.1h:** an attacking creature becomes blocked or unblocked as blockers are declared, and stays so until it is removed from combat or the combat phase ends. "A creature remains blocked even if all the creatures blocking it are removed from combat."
+- **CR 105.2c:** a colorless object has no color.
+- **CR 603.2c:** an ability triggers once each time its trigger event occurs, and repeatedly when one event contains several occurrences.
+
+### Decision
+
+1. **The shape.** One plain-data `game.DamageSourceFilter`, in `Mod.SourceFilter` (at most one entry), beside the record's `Queries`. Only `preventFromSource` reads it. It is refused on every other kind, beside a pinned source, and with `AndDealtBy`. Its fields:
+   - `Except`: queries the source must match none of. "Non-Spider creatures" is `Queries {creature}` plus `Except {Subtypes: Spider}`. A changeling is every creature type (CR 702.73a), so it is a Spider. `Except` may ask `Enchanted`, which is read off the battlefield (Inspire Awe).
+   - `ExceptObjects`: objects pinned as the shield resolves (CR 400.7). These are the only sets a card locks in itself: Haze Frog's "other creatures" pins the Frog, and Terrifying Presence's "other than target creature" pins the target. The same card as a new object is "other".
+   - `PowerBounded` and `PowerAtMost`: "with power N or less", with counters included.
+   - `Colorless`, and `NoCounters` (counter kinds the source must have none of).
+   - `Combat`: `attacking` or `unblocked`. A closed vocabulary.
+   - `Controller`: `notYou`, `opponents`, or `player` with `ControllerPlayer`. A closed vocabulary, relative to the record's controller. `notYou` and `opponents` are the same test in this free-for-all engine. They are separate words because the cards print separate words.
+2. **When it is read.** Every time the shield meets a damage event, never as it resolves, off one view of the source (`damageSourceViewLocked`):
+   - **On the battlefield:** its characteristics as the event was opened (`ReplacementEvent.SourceLKI`, the reading every property shield already shares). Its own facts are read now: power with counters, counters, attacking, unblocked (`UnblockedAttackerForEffect`), enchanted, and which object it is.
+   - **Left the battlefield this turn, and not since cast:** the permanent as it last existed there, controller and characteristics included (CR 608.2h). `PermanentInfo` gained `Attacking` and `Enchanted` for this.
+   - **Anything else** (a spell, an emblem, a card in another zone): its characteristics only. It is not attacking, has no counters and is not enchanted.
+
+   A filtered shield reads its `Queries` off the same view, so "attacking creatures" asks both halves of one source. A source the engine can't see matches nothing, the weaker direction.
+3. **Blocked.** `game.BlockedAttackerForEffect` is CR 509.1h's blocked reader, beside `UnblockedAttackerForEffect`. It needs an attacking creature, a completed declaration, and the blocked record (or a staged block). `effects.BlockedCreature` targets with it (Benalish Missionary).
+4. **A follow-up per source.** "If damage from a creature source is prevented this way, Comeuppance deals that much damage to that creature" and Judgment of Alexander's "Whenever damage from a creature is prevented this way … to that creature" each name one creature. The follow-up queue grouped a scoped shield's applications per record and instance, so three attackers stopped in one combat damage step were one entry. `Mod.ThenPer` (`ThenPerSource`, the static's unit from §8) now keys a source shield's entry on the damage source too: one application per source, which is CR 603.2c's one trigger per occurrence. It is refused on every other kind and without `Then`. The follow-up also carries the source's card types as it would have dealt the damage (`PreventionFollowUp.SourceTypes`, handed to the body as `Event.LastKnownTypes`).
+5. **Undergrowth's additional cost** is a plain optional additional cost (`effects.OptionalAdditionalMana`, CR 118.8b), not a kicker, so nothing that asks "was it kicked" sees it.
+
+### Snapshot impact
+
+- New `Mod` keys `sourceFilter` and `thenPer`. A binary from before this amendment refuses a file carrying either (an unknown mod key, ADR 0041 P4). It does not drop them, because a shield without its filter would prevent more than printed. The restore check also walks the filter's own keys, its `Except` queries' keys and its pinned objects' keys, so a key a later binary adds is refused too. Its vocabularies (`combat`, `controller`, `thenPer`) are checked as keys.
+- `PreventionFollowUp.sourceTypes`, refused by an older binary for a file of the current schema, like every follow-up field.
+- `PermanentInfo.attacking` and `.enchanted` on `lastKnownPermanents`. An older binary drops them. Their only readers are filtered shields, which that binary refuses anyway.
+- All additive under v7 (`-update-shape`). No fixture changes. No new closure route: the filter is plain data.
+
+### Cards
+
+25 ship Full: Al-abara's Carpet, Arachnogenesis, Benalish Missionary, Comeuppance, Deep Wood, Fog of War, Frontline Strategist, Galadhrim Ambush, Harmless Assault, Haze Frog, Heavy Fog, Hindervines, Hunter's Ambush, Inspire Awe, Judgment of Alexander, Lithomancer's Focus, Moonmist, Obscuring Haze, Repel the Abominable, Tanglesap, Terrifying Presence, Thwart the Enemy, Undergrowth, Vine Snare and Winds of Qal Sisma. Deep Wood and Heavy Fog's "only if you've been attacked this step" reads the turn's attack declarations in the current combat phase.
+
+### What is still out
+
+- **Channel Harm** waits on `prevention-follow-up-choice` (#2040). Its shield is `notYou`, but "you may have Channel Harm deal that much damage" is a choice made as the damage is prevented (CR 615.5). A follow-up can only queue a prompt that is answered after the damage's spell or ability has finished.
+- **Encircling Fissure** waits on awaken (#2411, new row `awaken`). Its shield is the `player` controller test.
+- **Snag** waits on an alternative cost that discards a card (#2412, new row `discard-alternative-cost`). Its shield is `unblocked`.
