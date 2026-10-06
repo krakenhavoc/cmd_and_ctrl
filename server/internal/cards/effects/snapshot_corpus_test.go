@@ -437,7 +437,82 @@ func corpusBoards() []corpusBoard {
 		// and 3 tied on 8, and round 2 half rolled (openingRoll, with
 		// its rounds, seats, results and presser). No hand dealt yet.
 		{"opening_roll_tie", corpusOpeningRollTie},
+		// v7, added by #2115 (ADR 0116's 2026-10-05 amendment) as new
+		// files: the revealed_hand_pick kind. Nightsnare's optional pick
+		// with its keyed "if you don't" (pickOptional, pickThen);
+		// Agonizing Remorse's exile with the graveyard open
+		// (pickDestination, pickFromGraveyard, a graveyard card among the
+		// discardOptions); and Talara's Bane's continuation printed
+		// before the discard, with each candidate's toughness read as
+		// the pick went up (pickMeasures).
+		{"revealed_hand_pick_optional_then", corpusRevealedHandPickOptional},
+		{"revealed_hand_pick_exile_graveyard", corpusRevealedHandPickExile},
+		{"revealed_hand_pick_measures", corpusRevealedHandPickMeasures},
 	}
+}
+
+// corpusRevealedHandPickHand gives seat 1 a land and two spells, seat 1
+// a graveyard card, and returns the chooser and the victim.
+func corpusRevealedHandPickHand(g *game.Game) (*game.Player, *game.Player) {
+	chooser, victim := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() {
+		victim.Hand.Cards = nil
+		for _, c := range []game.Card{
+			{Name: "Forest", TypeLine: "Basic Land — Forest"},
+			{Name: "Grizzly Bears", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Colors: []string{"G"}, Power: 2, Toughness: 2},
+			{Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}", Colors: []string{"U"}},
+		} {
+			c.InstanceID, c.Owner, c.Controller = uuid.New(), victim.ID, victim.ID
+			victim.Hand.PushTop(c)
+		}
+		victim.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: "Swamp", TypeLine: "Basic Land — Swamp",
+			Owner: victim.ID, Controller: victim.ID})
+	})
+	return chooser, victim
+}
+
+// corpusRevealedHandPick raises d and fails unless a prompt went up.
+func corpusRevealedHandPick(t *testing.T, g *game.Game, d game.RevealedHandDiscard) {
+	t.Helper()
+	var id uuid.UUID
+	var err error
+	g.WithWriteLock(func() { id, err = g.RevealedHandPickForEffect(d) })
+	if err != nil || id == uuid.Nil {
+		t.Fatalf("setup: the revealed-hand pick did not go up: %v", err)
+	}
+}
+
+func corpusRevealedHandPickOptional(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	chooser, victim := corpusRevealedHandPickHand(g)
+	corpusRevealedHandPick(t, g, game.RevealedHandDiscard{
+		Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Nightsnare",
+		Filter: func(c game.Card) bool { return !c.IsLand() }, Label: "nonland card",
+		Optional: true, Then: nightsnareIfYouDont,
+	})
+	return g
+}
+
+func corpusRevealedHandPickExile(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	chooser, victim := corpusRevealedHandPickHand(g)
+	corpusRevealedHandPick(t, g, game.RevealedHandDiscard{
+		Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Agonizing Remorse",
+		Filter: func(c game.Card) bool { return !c.IsLand() }, Label: "nonland card",
+		Destination: game.PickExile, FromGraveyard: true,
+	})
+	return g
+}
+
+func corpusRevealedHandPickMeasures(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	chooser, victim := corpusRevealedHandPickHand(g)
+	corpusRevealedHandPick(t, g, game.RevealedHandDiscard{
+		Chooser: chooser.ID, FromPlayer: victim.ID, Count: 1, Reason: "Talara's Bane",
+		Filter: func(c game.Card) bool { return c.IsCreature() }, Label: "green or white creature card",
+		Then: talarasBaneGainToughness, Measure: func(c game.Card) int { return c.Toughness },
+	})
+	return g
 }
 
 // corpusOpeningRollTie is ADR 0121 §1's board: four seats roll for the

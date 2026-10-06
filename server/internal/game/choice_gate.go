@@ -144,7 +144,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoicePayUnless: false,
 
 	// Everything else stops the table.
-	PendingChoiceDiscardFromHand:     true,
+	PendingChoiceDiscardFromHand: true,
+	// #2115: the revealed-hand pick's variants block for the reason
+	// the plain pick does: the resolution waits on the answer.
+	PendingChoiceRevealedHandPick:    true,
 	PendingChoiceMana:                true,
 	PendingChoiceReplacementOrder:    true,
 	PendingChoiceOptionalReplacement: true,

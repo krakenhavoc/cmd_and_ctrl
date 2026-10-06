@@ -5,6 +5,8 @@
 # "alias <old> <new>". A restore point can name any of them, so they are
 # on-disk identities: APPEND-ONLY. Never delete or edit a line; rename a
 # key with game.EffectAlias(old, new), which keeps the old one resolving.
+# "pick <key>" is a revealed-hand pick's continuation (#2115), which
+# has no alias: never rename one.
 #
 # Append new keys with:
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
@@ -118,3 +120,9 @@ condition combat/your-creature-hit-the-player
 body prevention/back-at-the-creature-or-its-controller
 body prevention/commanders-strike-that-creature
 body prevention/commanders-strike-that-creature-trigger
+pick revealed-pick/binding-negotiation-exiled-to-graveyard
+pick revealed-pick/nightsnare-discard-two
+pick revealed-pick/reckoner-shakedown-two-counters
+pick revealed-pick/revealing-eye-draw
+pick revealed-pick/talaras-bane-gain-toughness
+pick revealed-pick/tourachs-canticle-discard-at-random

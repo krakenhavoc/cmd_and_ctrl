@@ -281,6 +281,19 @@
   // ADR 0114 §4, CR 701.54a: "choose your Ring-bearer" — one of the
   // chooser's own creatures, untargeted.
   const isRingBearer = $derived(active?.kind === "ring_bearer");
+  // #2115: the revealed-hand pick with a variant. The same revealed
+  // hand and the same `eligible` list as discard_from_hand, plus a
+  // floor (`choose_min` 0 is "you may choose": an empty answer is a
+  // real one), a destination (exiling is not discarding), and — for
+  // Agonizing Remorse — the revealing player's graveyard after the hand.
+  const isRevealedVariant = $derived(active?.kind === "revealed_hand_pick");
+  const isExilePick = $derived(isRevealedVariant && active?.pick_destination === "exile");
+  // Which options are the graveyard's, for their caption.
+  const graveyardIDs = $derived.by<Set<string>>(() => {
+    if (!isRevealedVariant || !active?.pick_from_graveyard) return new Set();
+    const seat = snap.seats.find((s) => s.id === active.from_player);
+    return new Set((seat?.graveyard?.cards ?? []).map((c) => c.instance_id));
+  });
   // The kinds that share the bounded card-set grid.
   const isCardSetPick = $derived(
     isChooseCards ||
@@ -300,12 +313,16 @@
   const pickMax = $derived(
     isSearch
       ? (active?.search_max ?? 1)
-      : isCardSetPick
+      : isCardSetPick || isRevealedVariant
         ? (active?.choose_max ?? active?.count ?? 0)
         : (active?.count ?? 0),
   );
   const pickMin = $derived(
-    isSearch || isCopyTarget ? 0 : isCardSetPick ? (active?.choose_min ?? 0) : (active?.count ?? 0),
+    isSearch || isCopyTarget
+      ? 0
+      : isCardSetPick || isRevealedVariant
+        ? (active?.choose_min ?? 0)
+        : (active?.count ?? 0),
   );
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
@@ -314,7 +331,9 @@
   // `eligible` absent means every option. The server refuses any other
   // pick, so this is the courtesy, not the rule.
   const eligibleSet = $derived<Set<string> | null>(
-    active?.kind === "discard_from_hand" && active.eligible ? new Set(active.eligible) : null,
+    (active?.kind === "discard_from_hand" || isRevealedVariant) && active?.eligible
+      ? new Set(active.eligible)
+      : null,
   );
   function isEligible(id: string): boolean {
     return eligibleSet === null || eligibleSet.has(id);
@@ -1423,7 +1442,7 @@
                             ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
                             : [
                                 `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                                isSelfSource ? "discard" : "reveal",
+                                isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
                               ];
     const verb = isSacrifice
       ? "Sacrifice"
@@ -1451,8 +1470,11 @@
                     ? "Choose this source"
                     : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
                       ? "Choose"
-                      : "Confirm";
-    const clearable = isSearch || isCopyTarget || (isCardSetPick && pickMin === 0);
+                      : isRevealedVariant && none && pickMin === 0
+                        ? "Choose nothing"
+                        : "Confirm";
+    const clearable =
+      isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
       label,
       src,
@@ -2069,6 +2091,28 @@
           be chosen — a permanent, a spell on the stack, or a card that something on the stack still
           refers to. If the card names a kind of source, that is checked again when the damage would
           be dealt.
+        {:else if isRevealedVariant}
+          {#if isSelfSource}
+            Pick {pickWhat} from your revealed hand{active.pick_from_graveyard
+              ? ", or any card from your graveyard"
+              : ""}.
+          {:else}
+            Pick {pickWhat} from
+            <strong>{fromName}</strong>'s revealed hand{active.pick_from_graveyard
+              ? ", or any card from their graveyard"
+              : ""}.
+          {/if}
+          {#if isExilePick}
+            Your pick is exiled. That isn't a discard, so nothing that cares about discarding sees
+            it.
+          {:else if isSelfSource}
+            You will discard your pick{active.count === 1 ? "" : "s"}.
+          {:else}
+            <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
+          {/if}
+          {#if pickMin === 0}
+            You may choose nothing; the card says what happens then.
+          {/if}
         {:else if isSelfSource}
           Pick {pickWhat} from your hand to discard.
         {:else}
@@ -2077,7 +2121,10 @@
           <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
         {/if}
         {#if eligibleSet && active.eligible_label}
-          Cards that aren't {pickWhat.replace(/^\d+ of these, each /, "")} are greyed out.
+          {active.pick_from_graveyard ? "Cards in the hand" : "Cards"} that aren't {pickWhat.replace(
+            /^\d+ of these, each /,
+            "",
+          )} are greyed out.
         {/if}
       </p>
       <div class="card-grid">
@@ -2097,6 +2144,8 @@
               <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
             {:else if isChooseCards || isUntapChoice}
               <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
+            {:else if graveyardIDs.has(c.instance_id)}
+              <span class="source-caption">in graveyard</span>
             {/if}
           </button>
         {/each}

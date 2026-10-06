@@ -198,9 +198,15 @@ var carriedFixture = map[string]any{
 		out := v.Interface().([]*PendingChoice)
 		for _, c := range out {
 			c.Kind = PendingChoiceDiscardFromHand
+			// #2115: the continuation key and the destination are
+			// refused at restore when this binary does not know them.
+			c.PickThen = carriedTestPickKey.Key()
+			c.PickDestination = PickExile
 		}
 		return out
 	},
+	"PendingChoice.PickThen":        carriedTestPickKey.Key(),
+	"PendingChoice.PickDestination": PickExile,
 	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
 	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
 	// invented one would fail the restore, not test the carry.
@@ -825,6 +831,9 @@ func render(v reflect.Value) string {
 var (
 	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
 	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
+	// #2115: a revealed-hand pick's continuation key.
+	carriedTestPickKey = RegisterRevealedPickThen(testEffectKeyPrefix+"carried-pick",
+		func(*Game, RevealedPick) error { return nil })
 )
 
 // carriedTestRiderCount is the counted-rider key the carried probes use

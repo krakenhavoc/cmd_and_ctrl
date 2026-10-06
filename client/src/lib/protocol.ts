@@ -1076,6 +1076,12 @@ export interface PendingChoiceView {
   id: string;
   kind:
     | "discard_from_hand"
+    // #2115: the revealed-hand pick with a variant — the chosen card is
+    // exiled (`pick_destination`), "you may choose" (`choose_min` 0),
+    // or the revealing player's graveyard is offered too
+    // (`pick_from_graveyard`). Answered with {choice_id, card_ids}, an
+    // empty list when choosing nothing.
+    | "revealed_hand_pick"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
@@ -1323,6 +1329,12 @@ export interface PendingChoiceView {
   // ADR 0116: what `eligible` holds, as the card prints it — "nonland
   // card", "card with mana value 3 or greater".
   eligible_label?: string;
+  // #2115: for "revealed_hand_pick", where the chosen card goes —
+  // "discard", or "exile", which is not a discard.
+  pick_destination?: "discard" | "exile" | string;
+  // #2115: for "revealed_hand_pick", `options` ends with the revealing
+  // player's graveyard, every card of which may be chosen.
+  pick_from_graveyard?: boolean;
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
   // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
