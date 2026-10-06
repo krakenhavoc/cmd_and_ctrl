@@ -16,7 +16,7 @@ func init() {
 		OracleID: "76b003e0-15af-4f22-bdf2-1ade5430964a",
 		Name:     "Zulaport Cutthroat",
 		Triggered: []game.TriggeredAbility{
-			WheneverACreatureYouControlDies("Zulaport Cutthroat — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
+			TriggerWithPurpose(WheneverACreatureYouControlDies("Zulaport Cutthroat — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, opp := range ctx.Opponents() {
 					if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
@@ -24,7 +24,7 @@ func init() {
 					}
 				}
 				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-			}),
+			}), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

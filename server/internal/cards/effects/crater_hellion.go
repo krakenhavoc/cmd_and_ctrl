@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2d37c437-0d5c-400d-88ce-10d173b28eda",
 		Name:         "Crater Hellion",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 4}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Echo("Crater Hellion", "{4}{R}{R}"),

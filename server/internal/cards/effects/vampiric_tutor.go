@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ededbdae-d9dc-4206-9335-d7158f2d7700",
 		Name:         "Vampiric Tutor",
+		Purpose:      game.Purpose{Tutors: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (SearchLibrary{

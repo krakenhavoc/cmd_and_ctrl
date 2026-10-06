@@ -111,10 +111,12 @@ const (
 	// Dosan leaves you every instant-speed window on your own turn
 	// and takes away the rest, so the two cannot share a value.
 	//
-	// No CastPermission declares it — it is the per-PLAYER
-	// restriction's spelling (cast_timing.go), carried on this enum
-	// rather than on a second one so the engine has ONE timing
-	// vocabulary. Exactly the posture TimingFlash was added under.
+	// It is the per-PLAYER restriction's spelling (cast_timing.go),
+	// carried on this enum rather than on a second one so the engine
+	// has ONE timing vocabulary. A CastPermission may also declare it
+	// (#2179, Tinybones, Bauble Burglar's "during your turn, you may
+	// play…"): CastTimingOpenLocked refuses the cast off the holder's
+	// own turn and leaves the card's own timing in force on it.
 	TimingYourTurnOnly GrantTiming = "your_turn"
 
 	// TimingPlot is a plotted card's window (CR 702.170d, #1318): its
@@ -192,6 +194,20 @@ type PermissionFilter struct {
 	// by the derivation for FromChosenType; a catalog card may also
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
+
+	// NotOwnedByHolder is Tinybones, Bauble Burglar's "cards YOU DON'T
+	// OWN": a card whose owner is the permission's holder does not
+	// qualify. The holder is not known to the pure-data Matches, so the
+	// clause is read in permissionReachesPileLocked beside the other
+	// ownership rule.
+	NotOwnedByHolder bool `json:"notOwnedByHolder,omitempty"`
+
+	// WithCounter is the name of a counter the card must carry — the
+	// "stash" counter on Tinybones' exiled cards. Counters on a card in
+	// exile are per object (CR 122.2, 400.7) and MoveCard clears them
+	// when the card leaves exile, so the marker survives exactly as long
+	// as the card stays there.
+	WithCounter string `json:"withCounter,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -219,6 +235,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
+		return false
+	}
+	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
 		return false
 	}
 	return true
@@ -1177,6 +1196,12 @@ func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Ca
 	if perm.Scope != ScopeStanding {
 		return true
 	}
+	// "Cards you don't own" (Tinybones, Bauble Burglar): the owner is the
+	// card's, the holder is the permission's, and exile is shared, so
+	// this is the one place both are known.
+	if perm.Filter.NotOwnedByHolder && card.Owner == holder {
+		return false
+	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {
 		return true
 	}
@@ -1585,7 +1610,42 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			}
 		}
 	}
+	if fallback == nil || zone == ZoneExile {
+		// #2179: exile is the one SHARED pile, so a derived standing
+		// permission can reach a card in it for a holder who does not
+		// own it (Tinybones, Bauble Burglar). Every other pile is its
+		// owner's, which is why only a stored permission could name a
+		// foreign holder and the walk above was exact.
+		if derived := g.standingExilePermissionOnLocked(card, zone); derived != nil {
+			return derived
+		}
+	}
 	return fallback
+}
+
+// standingExilePermissionOnLocked is the derived half of
+// CastPermissionOnCardForEffect: the first seat's standing permission
+// that opens this EXILED card for that seat, or nil. The same three
+// questions castPermissionLocked asks of a derived permission.
+//
+// Caller must hold g.mu.
+func (g *Game) standingExilePermissionOnLocked(card Card, zone ZoneKind) *CastPermission {
+	if zone != ZoneExile {
+		return nil
+	}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		for _, perm := range g.standingCastPermissionsLocked(p) {
+			if perm.CoversCard(card, zone) && permissionReachesPileLocked(p.ID, &perm, card, zone) &&
+				g.permissionPositionOKLocked(p.ID, &perm, card) {
+				out := perm
+				return &out
+			}
+		}
+	}
+	return nil
 }
 
 // cardHasCreatureType reports whether a card in a non-battlefield

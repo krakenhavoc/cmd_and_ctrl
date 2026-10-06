@@ -38,8 +38,10 @@ func init() {
 		options = append(options, Mode(fmt.Sprintf("%d — destroy all creatures with power %d or greater", n, n)))
 	}
 	Register(Spec{
-		OracleID:     "744b7e93-c893-4770-a3bb-6a45b7f8e4f7",
-		Name:         "Expel the Interlopers",
+		OracleID: "744b7e93-c893-4770-a3bb-6a45b7f8e4f7",
+		Name:     "Expel the Interlopers",
+		// ADR 0126 §6: only power at least the chosen number.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The number is chosen when the spell is cast, not when it resolves, so opponents know it before they respond.",

@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     sacrifices the enchantment and, only if that happened, destroys
 //     the targets that are still legal (CR 608.2b).
 //
-// No purpose for the bot: no ActivationPurpose field says "brings a
+// No purpose for the bot: no Purpose field says "brings a
 // two-creature wipe closer", so a bot never pays for another player's
 // counter.
 //

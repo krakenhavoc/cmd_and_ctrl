@@ -69,6 +69,35 @@ func TestGoblinSharpshooterUntapsOnlyAfterACreatureDies(t *testing.T) {
 	}
 }
 
+// Goblin Sharpshooter's own death triggers its untap ("whenever a
+// creature dies"), and by the time the trigger resolves the
+// Sharpshooter is in the graveyard. Untapping it does nothing; it is
+// not an effect error (ADR 0126 PR 5's catalog soak, seed 2026100601).
+func TestGoblinSharpshooterDyingUntapsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	shooter := pushCatalogPermanent(g, me.ID, "Goblin Sharpshooter", "Creature — Goblin", sharpshooterOracle, false)
+	if err := g.TapCard(shooter, true); err != nil {
+		t.Fatal(err)
+	}
+	g.WithWriteLock(func() {
+		if err := g.SacrificePermanentForEffect(shooter); err != nil {
+			t.Errorf("sacrifice: %v", err)
+		}
+	})
+	if !hasTriggerFor(g, shooter) {
+		t.Fatal("Goblin Sharpshooter's own death did not trigger its untap (CR 603.10a looks back)")
+	}
+	passPriorityAroundTable(t, g)
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == game.EventEffectError {
+				t.Errorf("effect error resolving the untap: %s", ev.ErrorMsg)
+			}
+		}
+	})
+}
+
 func TestTraxosEntersTappedAndUntapsForHistoricCastOnly(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

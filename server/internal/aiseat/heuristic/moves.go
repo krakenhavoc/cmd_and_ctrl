@@ -317,14 +317,21 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			v += p.cfg.SpellPerMana * float64(cp.XValue)
 		}
 		if src != nil && !across && isCreature(src) && !src.Tapped {
-			// Tapping a creature for an ability costs us a blocker.
-			v -= 0.3
+			// Tapping a creature for an ability costs us a blocker,
+			// priced by when it happens (ADR 0126 §5) when the row's
+			// cost really taps it. A row that does not tap keeps the
+			// flat price it always had.
+			if row := activatedRow(src, cp.AbilityIndex); row != nil && row.TapCost {
+				v -= p.tapCreatureCost(st, src)
+			} else {
+				v -= tappedBlocker
+			}
 		}
 		// Crewing taps creatures that would otherwise block, and the
 		// enumerator names them, so the cost is visible here.
 		for _, id := range cp.CrewIDs {
 			if c := st.bf[id]; c != nil && !c.Tapped {
-				v -= 0.3
+				v -= p.tapCreatureCost(st, c)
 			}
 		}
 		// #1310: a waterbend payment taps artifacts and creatures the
@@ -333,7 +340,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// can see, which is why the enumerator taps those first.
 		for _, id := range cp.WaterbendIDs {
 			if c := st.bf[id]; c != nil && !c.Tapped && isCreature(c) {
-				v -= 0.3
+				v -= p.tapCreatureCost(st, c)
 			}
 		}
 		// #759: a tap-another cost (station) taps a creature the
@@ -357,10 +364,16 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			if c == nil || c.Tapped {
 				continue
 			}
-			v -= 0.3
 			if c.Power > 0 {
 				v += stationPowerPayoff * float64(c.Power)
 			}
+			if p.cfg.TapByTiming {
+				// ADR 0126 §5 generalised this branch's attack price to
+				// every tapped creature; tapCreatureCost carries it.
+				v -= p.tapCreatureCost(st, c)
+				continue
+			}
+			v -= tappedBlocker
 			if st.myTurn && st.step == "precombat_main" && !c.SummoningSick && c.Power > 0 {
 				v -= st.w.Power * float64(c.Power)
 			}
@@ -416,7 +429,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// escape buys" cannot disagree about one card (#1013, fuel.go).
 		// The targets are added below; a card being pitched points at
 		// nothing, which is the one difference.
-		v += p.resolvedValue(st, card, cp.XValue)
+		v += p.resolvedValueOf(st, card, cp.XValue, len(cp.Targets) > 0)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
 		// mana now, which a card being pitched to a cost is not.

@@ -33,8 +33,8 @@ func init() {
 		Name:         "Crux of Fate",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Destroy all Dragon creatures."),
-			Mode("Destroy all non-Dragon creatures."),
+			ModeWithPurpose(Mode("Destroy all Dragon creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
+			ModeWithPurpose(Mode("Destroy all non-Dragon creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			sweeps := []CardPredicate{

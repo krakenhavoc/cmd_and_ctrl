@@ -30,7 +30,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     counters can still be activated and then does nothing (CR 609.3).
 //
 // No purpose for the bot: removing a counter protects every player,
-// and no ActivationPurpose field says so, so a bot never reaches for
+// and no Purpose field says so, so a bot never reaches for
 // another player's Clock.
 //
 // No simplification.

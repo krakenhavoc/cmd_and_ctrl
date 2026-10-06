@@ -21,8 +21,10 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:       "db982577-1c75-4bc9-ab15-1888ea0be16d",
-		Name:           "Endemic Plague",
+		OracleID: "db982577-1c75-4bc9-ab15-1888ea0be16d",
+		Name:     "Endemic Plague",
+		// ADR 0126 §6: only creatures sharing a type with the sacrificed one.
+		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -20,8 +20,10 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "15e5136e-ed15-49a8-b027-e09436673fb4",
-		Name:         "Culling Ritual",
+		OracleID: "15e5136e-ed15-49a8-b027-e09436673fb4",
+		Name:     "Culling Ritual",
+		// ADR 0126 §6: only mana value 2 or less.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{

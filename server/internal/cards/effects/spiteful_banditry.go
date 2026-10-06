@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fde2653f-5270-4b8f-9642-0835dbb076c2",
 		Name:         "Spiteful Banditry",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{

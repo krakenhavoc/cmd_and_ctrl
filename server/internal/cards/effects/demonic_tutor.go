@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "82004860-e589-4e38-8d61-8c0210e4ea39",
 		Name:         "Demonic Tutor",
+		Purpose:      game.Purpose{Tutors: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{

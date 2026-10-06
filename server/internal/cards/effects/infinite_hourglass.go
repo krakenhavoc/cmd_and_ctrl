@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // time counters only on a card in exile (CR 702.62b).
 //
 // No purpose for the bot: the effect changes every creature at the
-// table and no ActivationPurpose field describes it.
+// table and no Purpose field describes it.
 //
 // No simplification.
 func init() {

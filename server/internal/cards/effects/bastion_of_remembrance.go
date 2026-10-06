@@ -22,13 +22,14 @@ func init() {
 	Register(Spec{
 		OracleID:     "c7f33cea-2ec8-4081-9208-a5b1d86721b3",
 		Name:         "Bastion of Remembrance",
+		Purpose:      game.Purpose{Tokens: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Bastion of Remembrance — create a 1/1 Human Soldier", Do(CreateToken{
 				Template: TokenCard("1/1 white Human Soldier"),
 				N:        1,
 			})),
-			WheneverACreatureYouControlDies("Bastion of Remembrance — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
+			TriggerWithPurpose(WheneverACreatureYouControlDies("Bastion of Remembrance — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, opp := range ctx.Opponents() {
 					if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
@@ -36,7 +37,7 @@ func init() {
 					}
 				}
 				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-			}),
+			}), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

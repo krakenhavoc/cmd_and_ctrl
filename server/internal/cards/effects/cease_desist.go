@@ -52,6 +52,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ba4d644f-1931-4fc4-aed5-681a476a5a58#1",
 		Name:         "Desist",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifactsAndEnchantments, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: Or(Artifact(), Enchantment())}.Apply(ctx)

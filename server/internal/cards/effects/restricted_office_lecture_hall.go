@@ -13,8 +13,8 @@ func init() {
 		Name:         "Restricted Office // Lecture Hall",
 		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{
-			WhenYouUnlockThisDoor(game.DoorLeft, "Restricted Office — destroy all creatures with power 3 or greater",
-				Do(DestroyAllMatching{Match: And(Creature(), PowerGE(3))})),
+			TriggerWithPurpose(WhenYouUnlockThisDoor(game.DoorLeft, "Restricted Office — destroy all creatures with power 3 or greater",
+				Do(DestroyAllMatching{Match: And(Creature(), PowerGE(3))})), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
 		}},
 		Right: Door{Static: []game.StaticAbility{b16GrantKeywords(
 			func(target *game.Card, _ *game.Game, source *game.Card) bool {

@@ -45,6 +45,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "93cf50cf-0ecc-4d3e-abea-778c1ebacec4",
 		Name:         "Massacre Wurm",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Massacre Wurm — opponents' creatures get -2/-2", func(g *game.Game, item *game.StackItem) error {

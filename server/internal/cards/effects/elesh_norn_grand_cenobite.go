@@ -19,8 +19,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:        "958d71ff-c9f7-46f0-96ca-79e7f4d65a16",
-		Name:            "Elesh Norn, Grand Cenobite",
+		OracleID: "958d71ff-c9f7-46f0-96ca-79e7f4d65a16",
+		Name:     "Elesh Norn, Grand Cenobite",
+		// ADR 0126 §6: a static -2/-2, not an enters effect, but it removes the same creatures.
+		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2, OpponentsOnly: true}},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Static: []game.StaticAbility{

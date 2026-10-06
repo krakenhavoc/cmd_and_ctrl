@@ -34,7 +34,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target artifact you don't control", artifactYouDontControl),
 		AlternativeCosts: []game.AlternativeCost{
-			Overload("{4}{R}"),
+			CostWithPurpose(Overload("{4}{R}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifacts, How: game.SweepDestroy, OpponentsOnly: true}}),
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if ctx.PaidAltCost("overload") {

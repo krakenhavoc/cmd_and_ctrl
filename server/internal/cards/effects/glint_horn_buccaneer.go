@@ -33,6 +33,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{1}{R}, Discard a card: Draw a card. Activate only if this creature is attacking.",
+			Purpose:   game.Purpose{Draws: 1},
 			Cost:      Plus(ManaCost("{1}{R}"), DiscardACard()),
 			Condition: SourceIsAttacking(),
 			Effect: func(g *game.Game, item *game.StackItem) error {

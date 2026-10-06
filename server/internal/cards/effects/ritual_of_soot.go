@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID: "29e9cf1c-a6bd-4bee-9000-ac1b4e19d6b0",
 		Name:     "Ritual of Soot",
+		Purpose:  game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreaturesManaValue3OrLess, How: game.SweepDestroy}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Creature(), ManaValueLE(3))}.Apply(ctx)
 		},

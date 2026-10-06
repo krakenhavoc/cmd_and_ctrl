@@ -43,8 +43,10 @@ import (
 // available.
 func init() {
 	Register(Spec{
-		OracleID:     "bb9bb65e-504f-4edd-8d47-d0efa03e7d17",
-		Name:         "Spectral Deluge",
+		OracleID: "bb9bb65e-504f-4edd-8d47-d0efa03e7d17",
+		Name:     "Spectral Deluge",
+		// ADR 0126 §6: only toughness X or less, X the Islands you control.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, OpponentsOnly: true, Partial: true}},
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Foretell is not available — the Deluge can only be cast from your hand for its full {4}{U}{U}, never split across two turns as a face-down exiled card.",

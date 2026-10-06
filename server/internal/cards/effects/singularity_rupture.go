@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e1976b6c-7e43-4f4a-b082-f95495a1b260",
 		Name:         "Singularity Rupture",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("any number of target players").WithCount(0, 0),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

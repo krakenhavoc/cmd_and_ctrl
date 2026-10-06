@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3656338d-ca08-465b-b09a-d8d8d1196eec",
 		Name:         "Blazing Volley",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, And(Creature(), OpponentControls()), 1)

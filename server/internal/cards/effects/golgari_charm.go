@@ -28,7 +28,7 @@ func init() {
 		Name:         "Golgari Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("All creatures get -1/-1 until end of turn."),
+			ModeWithPurpose(Mode("All creatures get -1/-1 until end of turn."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1}}),
 			Mode("Destroy target enchantment.", TargetPermanent("target enchantment", Enchantment())),
 			Mode("Regenerate each creature you control."),
 		),

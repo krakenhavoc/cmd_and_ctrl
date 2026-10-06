@@ -21,8 +21,10 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "ba7f1b09-5727-484d-a502-3dcf4d618c56",
-		Name:         "Slash the Ranks",
+		OracleID: "ba7f1b09-5727-484d-a502-3dcf4d618c56",
+		Name:     "Slash the Ranks",
+		// ADR 0126 §6: commanders stay, and planeswalkers are not a sweep class.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: Except(Or(Creature(), Planeswalker()), g2IsCommander)}.Apply(ctx)

@@ -152,6 +152,7 @@ func buildDef(spec Spec) *game.CardDef {
 		TargetMode:                 spec.TargetMode,
 		Targets:                    spec.Targets,
 		Modes:                      spec.Modes,
+		Purpose:                    spec.Purpose,
 		Replacements:               spec.Replacements,
 		EntersWithCountersFromCast: spec.EntersWithCountersFromCast,
 		PrintedKeywords:            spec.PrintedKeywords,

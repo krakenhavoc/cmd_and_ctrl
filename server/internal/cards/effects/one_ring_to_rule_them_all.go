@@ -29,9 +29,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "One Ring to Rule Them All — the Ring tempts you, then each player mills", oneRingTemptThenMill),
-			ChapterTrigger(2, "One Ring to Rule Them All — destroy all nonlegendary creatures", func(g *game.Game, item *game.StackItem) error {
+			TriggerWithPurpose(ChapterTrigger(2, "One Ring to Rule Them All — destroy all nonlegendary creatures", func(g *game.Game, item *game.StackItem) error {
 				return DestroyAllMatching{Match: And(Creature(), Not(Legendary()))}.Apply(NewContext(g, item))
-			}),
+			}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
 			ChapterTrigger(3, "One Ring to Rule Them All — each opponent loses life for their creature cards", oneRingDrain),
 		},
 	})

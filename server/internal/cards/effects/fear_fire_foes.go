@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "35a0e085-df04-454d-b4d3-42db387bbad0",
-		Name:         "Fear, Fire, Foes!",
+		OracleID: "35a0e085-df04-454d-b4d3-42db387bbad0",
+		Name:     "Fear, Fire, Foes!",
+		// ADR 0126 §6: 1 damage to each other creature the target's controller controls.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, OpponentsOnly: true, Partial: true}},
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Targets:      TargetCreature("target creature"),

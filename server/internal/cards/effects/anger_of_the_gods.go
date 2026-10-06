@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3a7fe095-8278-4b1d-bec4-19b35bdcdd1b",
 		Name:         "Anger of the Gods",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 3}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachExileIfDealtDies(ctx, Creature(), 3, false)

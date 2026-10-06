@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "16e015b2-f8a3-4b1a-80be-58a8f5fb5e8c",
 		Name:         "Frantic Search",
+		Purpose:      game.Purpose{Draws: 2, Discards: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := lootOne(ctx.Game, item, 2); err != nil {
