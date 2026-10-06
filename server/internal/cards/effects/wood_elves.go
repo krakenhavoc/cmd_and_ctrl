@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID: "8973bd99-20f8-4867-90ef-50392147ee1b",
 		Name:     "Wood Elves",
+		Purpose:  game.Purpose{Lands: 1},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Wood Elves — search for a Forest card", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{

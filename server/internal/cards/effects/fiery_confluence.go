@@ -25,10 +25,10 @@ func init() {
 		Name:         "Fiery Confluence",
 		Completeness: CompletenessFull,
 		Modes: ChooseNRepeating("Choose three (you may choose the same mode more than once)", 3, 3,
-			ModeDoing("Fiery Confluence deals 1 damage to each creature.", nil,
+			ModeWithPurpose(ModeDoing("Fiery Confluence deals 1 damage to each creature.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return damageEachMatching(ctx, Creature(), 1)
-				}),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}}),
 			ModeDoing("Fiery Confluence deals 2 damage to each opponent.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					return damageToEachOpponent(ctx.Game, item, 2)

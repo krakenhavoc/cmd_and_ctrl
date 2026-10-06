@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     not asked about (CR 608.2b).
 //
 // No purpose for the bot: what the protection is worth depends on the
-// colour its controller then picks, which no ActivationPurpose field
+// colour its controller then picks, which no Purpose field
 // can say in advance.
 //
 // No simplification.

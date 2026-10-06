@@ -16,8 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "3bc13640-03f8-4b19-b0a4-7e7cb5271c0c",
-		Name:         "Hour of Reckoning",
+		OracleID: "3bc13640-03f8-4b19-b0a4-7e7cb5271c0c",
+		Name:     "Hour of Reckoning",
+		// ADR 0126 §6: a token stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		TapCost:      Convoke(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

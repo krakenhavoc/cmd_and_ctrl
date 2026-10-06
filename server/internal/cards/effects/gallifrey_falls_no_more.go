@@ -30,6 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d4424585-9564-4ec2-8267-3f5438e1f29e",
 		Name:         "Gallifrey Falls",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 4}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachExileIfDealtDies(ctx, Creature(), 4, false)

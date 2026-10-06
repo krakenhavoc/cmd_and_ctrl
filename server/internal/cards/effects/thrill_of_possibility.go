@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "1cb0610b-a731-42c2-b93f-0a29f63cebf4",
 		Name:           "Thrill of Possibility",
+		Purpose:        game.Purpose{Draws: 2},
 		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

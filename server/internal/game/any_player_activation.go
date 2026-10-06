@@ -23,32 +23,13 @@ import "github.com/google/uuid"
 // one function here, mayActivate, and three callers: the activation
 // path, internal/legal's enumerator and the view.
 
-// ActivationPurpose is what activating an any-player ability does for
-// a player who does NOT control its source — the card-side declaration
-// a policy reads to know whether reaching across the table is worth it
-// (ADR 0106 §1 decision 8, owner decision 2). ADR 0102's
-// ControlPurpose, for an ability instead of a gift.
-//
-// The engine never reads it. It rides the wire as the row's `purpose`,
-// and the heuristic bot activates another player's ability ONLY when
-// the row declares one: Flailing Ogre's "{1}: +1/+1" has none, so a bot
-// never pumps an opponent's Ogre.
-//
-// Every field is a printed amount, read from the oracle text by the
-// card file, and the zero value is "no declared purpose".
-type ActivationPurpose struct {
-	// Draws is how many cards the ACTIVATOR draws ("you draw a card",
-	// CR 109.5 — "you" is the player who activated it).
-	Draws int
-	// ControllerLosesLife is how much life the SOURCE'S CONTROLLER
-	// loses ("Xantcha's controller loses 2 life").
-	ControllerLosesLife int
-}
-
-// IsZero reports whether the row declares no purpose.
-func (p ActivationPurpose) IsZero() bool {
-	return p == ActivationPurpose{}
-}
+// What an any-player row buys an activator who does not control it
+// is the row's Purpose (purpose.go): the card-side declaration a policy
+// reads to know whether reaching across the table is worth it (ADR 0106
+// §1 decision 8, owner decision 2). The heuristic bot activates another
+// player's ability ONLY when the row declares one, and prices it by its
+// Draws and ControllerLosesLife: Flailing Ogre's "{1}: +1/+1" has none,
+// so a bot never pumps an opponent's Ogre.
 
 // MayActivate is the CR 602.2 "who may activate this" answer for one
 // row of `source`, which is sitting in `zone`. The one predicate the

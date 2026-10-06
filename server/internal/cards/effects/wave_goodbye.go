@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "06ef46c6-00ba-40e6-b866-d0095ab83749",
-		Name:         "Wave Goodbye",
+		OracleID: "06ef46c6-00ba-40e6-b866-d0095ab83749",
+		Name:     "Wave Goodbye",
+		// ADR 0126 §6: a creature with a +1/+1 counter stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BounceAllMatching{Match: And(Creature(), b13WithoutPlusOneCounter())}.Apply(ctx)

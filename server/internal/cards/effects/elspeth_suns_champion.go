@@ -73,7 +73,9 @@ func init() {
 			},
 			{
 				Label: "−3: Destroy all creatures with power 4 or greater.",
-				Cost:  LoyaltyCost(-3),
+				// ADR 0126 §6: only power 4 or greater.
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
+				Cost:    LoyaltyCost(-3),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					// Snapshot first: destroying moves cards out of

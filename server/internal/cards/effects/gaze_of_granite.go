@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "103d9ad0-d655-4bd5-a899-e9f8869e333d",
-		Name:         "Gaze of Granite",
+		OracleID: "103d9ad0-d655-4bd5-a899-e9f8869e333d",
+		Name:     "Gaze of Granite",
+		// ADR 0126 §6: only mana value X or less.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

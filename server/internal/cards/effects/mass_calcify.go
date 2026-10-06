@@ -26,8 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "3ab3996f-aa3f-4041-8634-8e197d51f108",
-		Name:         "Mass Calcify",
+		OracleID: "3ab3996f-aa3f-4041-8634-8e197d51f108",
+		Name:     "Mass Calcify",
+		// ADR 0126 §6: a white creature stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Creature(), Not(OfColor("W")))}.Apply(ctx)

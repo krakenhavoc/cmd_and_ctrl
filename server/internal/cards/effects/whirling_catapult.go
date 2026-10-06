@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Whirling Catapult — Artifact {4}:
 //
 //	"{2}, Exile the top two cards of your library: This artifact deals 1
@@ -18,9 +20,11 @@ func init() {
 		Name:         "Whirling Catapult",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, Exile the top two cards of your library: This artifact deals 1 damage to each creature with flying and each player.",
-			Cost:   Plus(ManaCost("{2}"), ExileTopOfLibrary(2)),
-			Effect: thisDealsDamageToEachCreatureMatchingAndEachPlayer(HasKeyword("flying"), 1),
+			Label: "{2}, Exile the top two cards of your library: This artifact deals 1 damage to each creature with flying and each player.",
+			// ADR 0126 §6: only creatures with flying.
+			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
+			Cost:    Plus(ManaCost("{2}"), ExileTopOfLibrary(2)),
+			Effect:  thisDealsDamageToEachCreatureMatchingAndEachPlayer(HasKeyword("flying"), 1),
 		}},
 	})
 }

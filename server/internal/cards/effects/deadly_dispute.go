@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "457af74a-02b3-4659-846d-63e482667f34",
 		Name:           "Deadly Dispute",
+		Purpose:        game.Purpose{Draws: 2, Tokens: 1},
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("an artifact or creature", Or(Artifact(), Creature())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

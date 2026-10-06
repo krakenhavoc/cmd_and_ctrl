@@ -112,6 +112,18 @@ type Config struct {
 	// ActivateBase is the flat value of using an activated ability.
 	ActivateBase float64
 
+	// RampPerMana is the cast-time premium per mana a new repeatable
+	// mana source closes of the bot's mana deficit (ADR 0126 §2,
+	// rampPremium): large while the bot cannot cast what it holds, and
+	// nothing once it can, so the premium fades as the game goes on
+	// without a turn counter. Zero is the pre-S66 price, and
+	// BaselineConfig zeroes it.
+	RampPerMana float64
+	// RampWantCap caps the mana the deficit aims at: past seven mana,
+	// one more source is not what stands between a Commander deck and
+	// its hand.
+	RampWantCap int
+
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
 	// in a graveyard does nothing at all without a Crucible, which is
@@ -295,6 +307,8 @@ func DefaultConfig() Config {
 		SpellPerMana:   0.60,
 		CommanderBonus: 1.50,
 		ActivateBase:   0.50,
+		RampPerMana:    1.00,
+		RampWantCap:    7,
 		FuelFloor:      0.05,
 		FuelIdle:       0.30,
 		FuelRecast:     0.55,
@@ -351,13 +365,17 @@ func DefaultConfig() Config {
 // with every one of them zeroed, so a run of `heuristic` against
 // `heuristic-baseline` measures exactly what those terms changed.
 // Each PR that adds a term zeroes it here in the same change.
+//
 // TestBaselineConfigRanksTheSuiteAsBefore (aiseat/suite) holds it to
 // the rankings the policy gave every suite position before S66,
 // whatever DefaultConfig becomes.
 func BaselineConfig() Config {
 	c := DefaultConfig()
-	// ADR 0126 §5: the two windows, the spell floor and the tap price
-	// by timing.
+	// §2, mana sources (PR 3).
+	c.Weights.ManaPerExtra = 0
+	c.RampPerMana = 0
+	c.RampWantCap = 0
+	// §5, the two windows (PR 5).
 	c.LeftoverWindows = false
 	c.LeftoverThreshold = 0
 	c.SpellFloor = 0

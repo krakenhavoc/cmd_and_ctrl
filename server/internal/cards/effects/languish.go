@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ef1a83f2-6707-41a2-b5ed-861c8e45ae07",
 		Name:         "Languish",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 4}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BoostUntilEOT{

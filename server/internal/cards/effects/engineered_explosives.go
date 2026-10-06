@@ -29,7 +29,9 @@ func init() {
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, Sacrifice this artifact: Destroy each nonland permanent with mana value equal to the number of charge counters on this artifact.",
-			Cost:  Plus(ManaCost("{2}"), SacrificeThis()),
+			// ADR 0126 §6: only mana value equal to its charge counters.
+			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
+			Cost:    Plus(ManaCost("{2}"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				info, ok := ctx.SourcePermanent()

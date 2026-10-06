@@ -40,6 +40,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3d92f2e6-27df-4329-b552-cf905f7616ba",
 		Name:         "Flood of Tears",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()

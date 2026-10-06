@@ -18,6 +18,11 @@ type AbilityRowView struct {
 	// ability with for a triggered or activated row, a static's own
 	// label, or what the effect is when the catalog gives it no text.
 	Label string `json:"label"`
+	// Purpose is the row's declared purpose (ADR 0126 §6,
+	// purpose_view.go): `death_payoff` on Blood Artist's trigger, a
+	// sweep on a saga chapter. Absent for a static row and a row that
+	// declares none. Public and cleared with the row.
+	Purpose *PurposeView `json:"purpose,omitempty"`
 }
 
 // viewOfAbilityRows projects game.AbilityRowsOf. Stamped by viewOfZone
@@ -31,7 +36,7 @@ func viewOfAbilityRows(c game.Card) []AbilityRowView {
 	}
 	out := make([]AbilityRowView, len(rows))
 	for i, r := range rows {
-		out[i] = AbilityRowView{Kind: string(r.Kind), Label: r.Label}
+		out[i] = AbilityRowView{Kind: string(r.Kind), Label: r.Label, Purpose: viewOfPurpose(r.Purpose)}
 	}
 	return out
 }

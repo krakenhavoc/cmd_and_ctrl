@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ed3d113d-f2c3-4ef3-8bdd-ed4824a22ab0",
 		Name:         "Underworld Fires",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachExileIfDealtDies(ctx, Or(Creature(), Planeswalker()), 1, true)

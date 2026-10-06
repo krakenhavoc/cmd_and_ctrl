@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c0afbb32-dc50-436a-bd24-2990c103a4f8",
 		Name:         "The Black Breath",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (BoostUntilEOT{

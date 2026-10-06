@@ -25,6 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7a2484a9-04fd-41a0-8224-610c1c07ed10",
 		Name:         "Blasphemous Act",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 13}},
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessEach(PermanentsOnBattlefield(Creature()),

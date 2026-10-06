@@ -51,6 +51,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "afaef788-34d1-460b-b884-9d7ae6ddeb18",
 		Name:           "Toxic Deluge",
+		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, AmountIsX: true}},
 		Completeness:   CompletenessFull,
 		XMatters:       true,
 		AdditionalCost: PayXLifeCost(),

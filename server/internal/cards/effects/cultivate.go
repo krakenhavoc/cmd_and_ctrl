@@ -35,6 +35,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8b755881-a72d-4e21-a369-d2924eb4585a",
 		Name:         "Cultivate",
+		Purpose:      game.Purpose{Lands: 1, Tutors: 1},
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"If your library holds only one basic land, it is always put onto the battlefield tapped — you can't choose to put it into your hand instead."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

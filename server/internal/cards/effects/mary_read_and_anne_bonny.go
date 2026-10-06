@@ -35,8 +35,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Draw a card, then discard a card",
-			Cost:  TapCost(),
+			Label:   "{T}: Draw a card, then discard a card",
+			Purpose: game.Purpose{Draws: 1, Discards: 1},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return lootOne(g, item, 1)
 			},

@@ -29,7 +29,7 @@ func init() {
 				TargetSpell("target noncreature spell", Noncreature())),
 			Mode("Izzet Charm deals 2 damage to target creature.",
 				TargetCreature("target creature")),
-			Mode("Draw two cards, then discard two cards."),
+			ModeWithPurpose(Mode("Draw two cards, then discard two cards."), game.Purpose{Draws: 2, Discards: 2}),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			switch {

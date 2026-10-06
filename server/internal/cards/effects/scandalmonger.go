@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // prompt; a player who has left the game or become an illegal target is
 // asked nothing (CR 608.2b).
 //
-// No Purpose: ActivationPurpose has no "target opponent discards"
+// No Purpose: Purpose has no "target opponent discards"
 // field, so the bot does not reach across the table for it (ADR 0106
 // owner decision 2).
 //

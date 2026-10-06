@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Malicious Malfunction — Sorcery {1}{B}{B}:
 //
 //	"All creatures get -2/-2 until end of turn. If a creature would die
@@ -12,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c7ecaa1a-fbf7-436b-a1c9-d7810b0dc5dc",
 		Name:         "Malicious Malfunction",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2}},
 		Completeness: CompletenessFull,
 		OnResolve:    allCreaturesShrinkThenExileIfTheyDie(-2, false),
 	})

@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3dfeb0c5-85d6-48fb-b924-d7b77f4b89d6",
 		Name:         "Yamabushi's Storm",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachExileIfDealtDies(ctx, Creature(), 1, false)

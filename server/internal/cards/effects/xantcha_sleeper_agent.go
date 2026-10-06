@@ -49,7 +49,7 @@ func init() {
 			Label:     "{3}: Xantcha's controller loses 2 life and you draw a card. Any player may activate this ability.",
 			Cost:      game.AbilityCost{Mana: "{3}"},
 			AnyPlayer: true,
-			Purpose:   game.ActivationPurpose{Draws: 1, ControllerLosesLife: 2},
+			Purpose:   game.Purpose{Draws: 1, ControllerLosesLife: 2},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if info, ok := ctx.SourcePermanent(); ok {

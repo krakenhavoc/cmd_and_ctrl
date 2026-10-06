@@ -56,6 +56,11 @@ type CardDef struct {
 	Targets    *TargetSpec
 	Modes      *ModeSpec
 
+	// Purpose is what the card does, declared on its Spec (ADR 0126
+	// §6): the spell's resolution or a permanent's enters effect. Read
+	// by the view alone, through CardPurposeOf; the engine never asks.
+	Purpose Purpose
+
 	ManaAbilities []ManaAbilityShape
 	Activated     []ActivatedAbilityShape
 	// Static includes the Layer 6 keyword static synthesised from

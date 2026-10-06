@@ -28,6 +28,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fdd94383-b573-439a-8e1c-925af887c5a6",
 		Name:         "Evacuation",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BounceAllMatching{Match: Creature()}.Apply(ctx)

@@ -25,8 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // legendary sorceries from spelling it ten ways.
 func init() {
 	Register(Spec{
-		OracleID:           "978e0d87-3ff2-4a73-916c-ff0dc0ab2797",
-		Name:               "Urza's Ruinous Blast",
+		OracleID: "978e0d87-3ff2-4a73-916c-ff0dc0ab2797",
+		Name:     "Urza's Ruinous Blast",
+		// ADR 0126 §6: a legendary permanent stays.
+		Purpose:            game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepExile, Partial: true}},
 		Completeness:       CompletenessFull,
 		CastCondition:      LegendarySorcery(),
 		CastConditionLabel: LegendarySorceryLabel,

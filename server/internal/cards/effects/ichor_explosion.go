@@ -21,8 +21,10 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:       "d33aa11b-011b-4d12-85a9-4f956153fb1d",
-		Name:           "Ichor Explosion",
+		OracleID: "d33aa11b-011b-4d12-85a9-4f956153fb1d",
+		Name:     "Ichor Explosion",
+		// ADR 0126 §6: the -X/-X is the sacrificed creature's power, counted as it is cast, so it is declared as the destruction it usually is, an upper bound.
+		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

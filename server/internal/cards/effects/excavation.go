@@ -27,7 +27,7 @@ func init() {
 			Label:     "{1}, Sacrifice a land: Draw a card. Any player may activate this ability.",
 			Cost:      Plus(ManaCost("{1}"), b08SacrificeALand()),
 			AnyPlayer: true,
-			Purpose:   game.ActivationPurpose{Draws: 1},
+			Purpose:   game.Purpose{Draws: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

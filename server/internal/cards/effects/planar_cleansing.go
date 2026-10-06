@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID: "a98c2d81-4add-4292-bbdd-e1b69ff936d4",
 		Name:     "Planar Cleansing",
+		Purpose:  game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: Nonland()}.Apply(ctx)
 		},

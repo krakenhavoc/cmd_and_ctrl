@@ -1,0 +1,267 @@
+package decks
+
+import (
+	"os"
+	"regexp"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// realdump_purpose_manual_test.go — ADR 0126 §6's manual audit of
+// declared purposes, against the real Scryfall dump. Gated on
+// CMDCTRL_SCRYFALL_DUMP like realdump_manual_test.go, for the same
+// reason: CI has no dump.
+//
+//	CMDCTRL_SCRYFALL_DUMP=data/scryfall/default-cards.json \
+//	  go test ./internal/decks/ -run RealDumpPurpose -v
+//
+// Two checks:
+//
+//   - TestRealDumpPurposeCuratedSpellList: curatedInstantsAndSorceries
+//     (purpose_test.go) is exactly the curated decks' instants and
+//     sorceries by Scryfall's type lines, so TestCuratedDeckPurposes
+//     covers every one of them offline.
+//   - TestRealDumpPurposeAudit: every catalog card whose oracle text
+//     reads as a board wipe declares a Sweep somewhere (owner decision
+//     2: every catalog wipe), or is on reviewedNotAWipe with the reason.
+//     It also LISTS, without failing, the catalog cards whose text reads
+//     as a draw, a tutor or a land search and that declare no purpose:
+//     a review aid, since ADR 0126 declares those for the curated decks
+//     alone.
+
+// The oracle-text readings. Deliberately loose: a false positive is a
+// line on reviewedNotAWipe, a false negative is a wipe nobody declared.
+var (
+	sweepText = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\b(destroy|exile) (all|each) `),
+		regexp.MustCompile(`(?i)damage to each (other )?(\w+ )?creature`),
+		regexp.MustCompile(`(?i)\b(all|each) (other )?(non-?\w+ )?creatures?\b[^.]*\bgets? -`),
+		regexp.MustCompile(`(?i)creatures (your opponents control|you don't control|target (player|opponent) controls) get -`),
+		regexp.MustCompile(`(?i)\breturn (all|each) [^.]*\bto (its|their) owners?'s? hands?`),
+		regexp.MustCompile(`(?i)\bsacrifices? all\b`),
+		regexp.MustCompile(`(?i)change "target" in its text to "each"`),
+	}
+	drawText      = regexp.MustCompile(`(?i)\b(you )?draws? (a|an|one|two|three|four|five|six|seven) cards?\b`)
+	tutorText     = regexp.MustCompile(`(?i)search your library for`)
+	landToBfText  = regexp.MustCompile(`(?i)search your library for [^.]*\bland[^.]*onto the battlefield`)
+	instantSorcer = regexp.MustCompile(`\b(Instant|Sorcery)\b`)
+)
+
+// reviewedNotAWipe is every catalog card the sweep reading flags that
+// declares no Sweep, with why. Each was read.
+var reviewedNotAWipe = map[string]string{
+	"Armageddon":                      "destroys lands, which no sweep class holds alone",
+	"Bag of Holding":                  "returns the cards it exiled, not permanents",
+	"Bazaar of Wonders":               "exiles graveyards",
+	"Beyeen Veil // Beyeen Coast":     "-2/-0 kills nothing",
+	"Crypt Incursion":                 "exiles a graveyard",
+	"Eye of Singularity":              "destroys only permanents sharing a name, which no class says",
+	"Glorious End":                    "ends the turn",
+	"Jace, the Mind Sculptor":         "exiles a library",
+	"Karn Liberated":                  "restarts the game",
+	"Last Laugh":                      "a ping engine that fires only when a permanent dies",
+	"Living Death":                    "a symmetric mass reanimation (purpose_test.go's noPrintedAmount)",
+	"Mandate of Peace":                "ends combat and exiles the stack",
+	"Obeka, Brute Chronologist":       "ends the turn",
+	"Ondu Inversion // Ondu Skyruins": "only the land face is catalogued; the sweep is played by hand",
+	"Rest in Peace":                   "exiles graveyards",
+	"Scavenger Grounds":               "exiles graveyards",
+	"Soul-Guide Lantern":              "exiles graveyards",
+	"Sundial of the Infinite":         "ends the turn",
+	"Time Stop":                       "ends the turn",
+	"Ugin's Binding":                  "a single target, and an exile from the graveyard",
+	"Ugin, the Spirit Dragon":         "the -X sweep is not registered (its caveat says so)",
+	"Watchdog":                        "-1/-0 to attackers kills nothing",
+}
+
+// anyPurpose reports whether a spec declares a purpose in any slot.
+func anyPurpose(s effects.Spec) (declared, sweep bool) {
+	note := func(zero bool, hasSweep bool) {
+		if !zero {
+			declared = true
+		}
+		if hasSweep {
+			sweep = true
+		}
+	}
+	note(s.Purpose.IsZero(), !s.Purpose.Sweep.IsZero())
+	if s.Modes != nil {
+		for _, o := range s.Modes.Options {
+			note(o.Purpose.IsZero(), !o.Purpose.Sweep.IsZero())
+		}
+	}
+	for _, a := range s.AlternativeCosts {
+		note(a.Purpose.IsZero(), !a.Purpose.Sweep.IsZero())
+	}
+	for _, a := range s.Activated {
+		note(a.Purpose.IsZero(), !a.Purpose.Sweep.IsZero())
+		if a.Modes != nil {
+			for _, o := range a.Modes.Options {
+				note(o.Purpose.IsZero(), !o.Purpose.Sweep.IsZero())
+			}
+		}
+	}
+	for _, t := range s.Triggered {
+		note(t.Purpose.IsZero(), !t.Purpose.Sweep.IsZero())
+		if t.Modes != nil {
+			for _, o := range t.Modes.Options {
+				note(o.Purpose.IsZero(), !o.Purpose.Sweep.IsZero())
+			}
+		}
+	}
+	return declared, sweep
+}
+
+// loadDumpForPurpose loads the dump or skips.
+func loadDumpForPurpose(t *testing.T) *cards.Index {
+	t.Helper()
+	path := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
+	if path == "" {
+		t.Skip("set CMDCTRL_SCRYFALL_DUMP to run against the real dump")
+	}
+	idx := cards.NewIndex()
+	if _, err := idx.Load(path); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return idx
+}
+
+// printed returns a card's type line and oracle text, every face
+// joined.
+func printed(c cards.Card) (typeLine, text string) {
+	types, texts := []string{c.TypeLine}, []string{c.OracleText}
+	for _, f := range c.CardFaces {
+		types = append(types, f.TypeLine)
+		texts = append(texts, f.OracleText)
+	}
+	return strings.Join(types, " // "), strings.Join(texts, "\n")
+}
+
+func TestRealDumpPurposeCuratedSpellList(t *testing.T) {
+	idx := loadDumpForPurpose(t)
+	want := map[string]bool{}
+	for _, d := range All() {
+		for _, c := range d.Cards() {
+			if c.Basic {
+				continue
+			}
+			id, err := uuid.Parse(c.OracleID)
+			if err != nil {
+				t.Fatalf("%s: %v", c.Name, err)
+			}
+			card, ok := idx.FindByOracleID(id)
+			if !ok {
+				t.Errorf("%s is not in the dump", c.Name)
+				continue
+			}
+			if tl, _ := printed(card); instantSorcer.MatchString(tl) && !strings.Contains(tl, "Land") {
+				want[c.Name] = true
+			}
+		}
+	}
+	got := map[string]bool{}
+	for _, n := range curatedInstantsAndSorceries {
+		got[n] = true
+	}
+	var diff []string
+	for n := range want {
+		if !got[n] {
+			diff = append(diff, "missing from curatedInstantsAndSorceries: "+n)
+		}
+	}
+	for n := range got {
+		if !want[n] {
+			diff = append(diff, "not an instant or sorcery in any curated deck: "+n)
+		}
+	}
+	if len(diff) > 0 {
+		sort.Strings(diff)
+		t.Errorf("curatedInstantsAndSorceries is wrong:\n\t%s", strings.Join(diff, "\n\t"))
+	}
+}
+
+func TestRealDumpPurposeAudit(t *testing.T) {
+	idx := loadDumpForPurpose(t)
+
+	// Every Spec under one base oracle ID is one card: its faces, a
+	// split card's halves.
+	type entry struct {
+		name             string
+		declared, sweeps bool
+	}
+	byBase := map[string]*entry{}
+	for _, s := range effects.All() {
+		base, _, _ := strings.Cut(s.OracleID, "#")
+		e := byBase[base]
+		if e == nil {
+			e = &entry{name: s.Name}
+			byBase[base] = e
+		}
+		d, sw := anyPurpose(s)
+		e.declared = e.declared || d
+		e.sweeps = e.sweeps || sw
+	}
+
+	var undeclaredWipes, staleReviews []string
+	listed := map[string][]string{}
+	for base, e := range byBase {
+		id, err := uuid.Parse(base)
+		if err != nil {
+			continue // a token key, which has no printing
+		}
+		card, ok := idx.FindByOracleID(id)
+		if !ok {
+			continue
+		}
+		typeLine, text := printed(card)
+		reads := func(re *regexp.Regexp) bool { return re.MatchString(text) }
+		wipe := false
+		for _, re := range sweepText {
+			if reads(re) {
+				wipe = true
+				break
+			}
+		}
+		_, reviewed := reviewedNotAWipe[card.Name]
+		switch {
+		case wipe && !e.sweeps && !reviewed:
+			undeclaredWipes = append(undeclaredWipes, card.Name+" ("+base+")")
+		case reviewed && (e.sweeps || !wipe):
+			staleReviews = append(staleReviews, card.Name)
+		}
+		if e.declared {
+			continue
+		}
+		switch {
+		case reads(landToBfText):
+			listed["land search"] = append(listed["land search"], card.Name)
+		case reads(tutorText):
+			listed["tutor"] = append(listed["tutor"], card.Name)
+		case reads(drawText) && instantSorcer.MatchString(typeLine):
+			listed["draw (instant or sorcery)"] = append(listed["draw (instant or sorcery)"], card.Name)
+		}
+	}
+	if len(undeclaredWipes) > 0 {
+		sort.Strings(undeclaredWipes)
+		t.Errorf("%d catalog card(s) read as a board wipe and declare no Sweep (ADR 0126 owner decision 2): "+
+			"declare one, or add the card to reviewedNotAWipe with the reason:\n\t%s",
+			len(undeclaredWipes), strings.Join(undeclaredWipes, "\n\t"))
+	}
+	if len(staleReviews) > 0 {
+		sort.Strings(staleReviews)
+		t.Errorf("reviewedNotAWipe lists cards that now declare a Sweep, or no longer read as one:\n\t%s",
+			strings.Join(staleReviews, "\n\t"))
+	}
+	for _, class := range []string{"land search", "tutor", "draw (instant or sorcery)"} {
+		names := listed[class]
+		sort.Strings(names)
+		t.Logf("review aid: %d catalog card(s) read as a %s and declare no purpose:\n\t%s",
+			len(names), class, strings.Join(names, "\n\t"))
+	}
+}

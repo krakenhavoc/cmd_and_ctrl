@@ -25,8 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (#470).
 func init() {
 	Register(Spec{
-		OracleID:     "8241277d-654f-4985-9d49-a22c1e59eec2",
-		Name:         "Zombie Apocalypse",
+		OracleID: "8241277d-654f-4985-9d49-a22c1e59eec2",
+		Name:     "Zombie Apocalypse",
+		// ADR 0126 §6: only Humans.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b29ReturnZombieCardsTappedThenDestroyHumans(ctx)

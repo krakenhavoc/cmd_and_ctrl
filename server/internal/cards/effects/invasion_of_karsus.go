@@ -33,6 +33,7 @@ func init() {
 	Register(Spec{
 		OracleID:     invasionOfKarsusOracleID,
 		Name:         "Invasion of Karsus",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 3}},
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{SiegeTransformedCastCaveat},
 		Battle: &BattleSpec{
