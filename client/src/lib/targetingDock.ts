@@ -27,6 +27,7 @@ import { L } from "./labels";
 import type { GameView } from "./protocol";
 import {
   canConfirm,
+  isCardSetPick,
   isMultiPick,
   legalTargetCount,
   type TargetingMode,
@@ -61,9 +62,22 @@ function modeHint(mode: TargetingMode | string | undefined): string {
   }
 }
 
+// cardSetCount is how many a card-set pick asks for, in words.
+function cardSetCount(state: TargetingState): string {
+  if (state.min === state.max) return `${state.max}`;
+  if (state.min === 0) return `up to ${state.max}`;
+  return `${state.min} to ${state.max}`;
+}
+
 // targetingQuestion is the question line's sentence.
 function targetingQuestion(state: TargetingState): string {
   const name = state.card.name;
+  if (isCardSetPick(state)) {
+    // #2394: a choice made as the card resolves, not a target. The
+    // label is the card's own question ("Finale of Revelation — untap
+    // up to five lands"); the sentence says where to answer it.
+    return `${state.label || name} — click ${cardSetCount(state)} of the highlighted permanents`;
+  }
   if (state.choiceID && state.choiceKind === "retarget") {
     // #1196, CR 115.7: the source is a spell that is RESOLVING, not a
     // trigger, and it is pointing something else somewhere else.
@@ -118,7 +132,7 @@ export function targetingDetail(state: TargetingState, view?: GameView | null): 
     parts.push(`step ${state.step + 1} of ${state.steps.length}`);
   }
   const count = legalTargetCount(state);
-  if (count >= 0) parts.push(`${count} legal`);
+  if (count >= 0) parts.push(isCardSetPick(state) ? `${count} to choose from` : `${count} legal`);
   // #1559: the clause's rule over the chosen set. Candidates that would
   // break it are greyed; this says why.
   if (state.different) parts.push(`targets must ${state.different.label}`);
@@ -141,6 +155,9 @@ export function targetingDetail(state: TargetingState, view?: GameView | null): 
 export interface TargetingHandlers {
   onDone: () => void;
   onCancel: () => void;
+  // #2394: a card-set pick answered on the board offers the same
+  // choice as the list. Called with the choice's ID.
+  onShowList?: (choiceID: string) => void;
 }
 
 export function targetingRequest(
@@ -150,6 +167,7 @@ export function targetingRequest(
 ): DockRequest {
   const multi = isMultiPick(state);
   const confirmable = canConfirm(state);
+  const cardSet = isCardSetPick(state);
   // A single pick completes on the click, so it has no Done (as the
   // banner had none): the corner stays empty, like a combat selection.
   const primary: DockAction | null = multi
@@ -160,15 +178,30 @@ export function targetingRequest(
         title:
           state.min > 0 && state.picked.length < state.min
             ? `pick at least ${state.min}`
-            : "confirm targets",
+            : cardSet
+              ? "confirm your choice"
+              : "confirm targets",
         keyShortcuts: "Enter",
         cap: "⏎",
         onPress: h.onDone,
       }
     : null;
   // A pending choice's target cannot be refused: the trigger needs one.
-  const secondary: DockAction[] = state.choiceID
-    ? []
+  // A card-set pick offers its list instead (#2394): the same question,
+  // in the modal's grid, for a player who would rather read names.
+  const showList = h.onShowList;
+  const choiceID = state.choiceID;
+  const secondary: DockAction[] = choiceID
+    ? cardSet && showList
+      ? [
+          {
+            id: "show-list",
+            label: L.showAsList,
+            title: "choose from a list instead of on the board",
+            onPress: () => showList(choiceID),
+          },
+        ]
+      : []
     : [
         {
           id: "cancel",
@@ -181,8 +214,8 @@ export function targetingRequest(
       ];
   return {
     rank: state.choiceID ? "choice" : "flow",
-    label: L.selectTarget(state.card.name),
-    tag: "target",
+    label: cardSet ? L.chooseOnBoard(state.card.name) : L.selectTarget(state.card.name),
+    tag: cardSet ? "choose" : "target",
     tone: "gold",
     live: true,
     question: targetingQuestion(state),

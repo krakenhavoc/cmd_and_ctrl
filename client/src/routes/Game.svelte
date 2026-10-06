@@ -57,6 +57,7 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
+  import { showChoiceAsList } from "../lib/boardAnsweredChoice";
   import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
   import { modalOpen } from "../lib/modalLayers";
   import {
@@ -1606,6 +1607,10 @@
       ? targetingRequest($targeting, view, {
           onDone: confirmTargeting,
           onCancel: cancelTargeting,
+          // #2394: the board pick's list fallback. Board leaves the
+          // targeting flow once the choice is no longer board-answered,
+          // and ChoicePromptModal opens it.
+          onShowList: showChoiceAsList,
         })
       : null,
   );

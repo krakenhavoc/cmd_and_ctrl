@@ -48,6 +48,8 @@ registered, or when this file is stale.
 | `openingHandDecisions` | `opening hand decisions` | generic | aria | `routes/Game.svelte` | the strip's roll call while hands are kept or mulliganed |
 | `discard` | `Discard <N> card(s)` (starts with `Discard `) | dialog | aria | `lib/components/board/DiscardPromptModal.svelte` | the discard request (cleanup or an effect) |
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
+| `chooseOnBoard` | `Choose on the board for <card>` (starts with `Choose on the board for `) | dialog | aria | `lib/targetingDock.ts` | a card-set pick answered by clicking permanents on the board (#2394) |
+| `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list |
 | `castWithoutPaying` | `Cast <card> without paying its mana cost?` (ends with ` without paying its mana cost?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2), with its Cast and Cancel |
 | `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it unpaid |
 | `cancel` | `Cancel` | button | text | `lib/targetingDock.ts`<br>`lib/dock.ts` | Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included |

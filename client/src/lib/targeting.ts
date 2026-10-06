@@ -13,6 +13,7 @@ import type {
   TapCostView,
 } from "./protocol";
 import type { CounterPayment } from "./counterCost";
+import { isBoardPickedCardSetKind } from "./boardAnsweredChoice";
 
 // targeting.ts is the shared-store plumbing for the S14 "cast a
 // catalog card, pick a target" flow. When a player clicks a hand
@@ -1387,6 +1388,10 @@ export function legalTargetCount(t: TargetingState): number {
 // choice. `card` is the trigger's source (for the banner); the
 // legal set comes from the choice itself.
 export function beginChoice(choice: PendingChoiceView, card: CardView): void {
+  if (isBoardPickedCardSetKind(choice.kind)) {
+    targeting.set(cardSetPickState(choice, card));
+    return;
+  }
   const pt = choice.pick_target ?? {};
   // A pick_target prompt is always ONE clause: the server walks a
   // multi-clause trigger one prompt at a time (#764), so the client
@@ -1400,6 +1405,51 @@ export function beginChoice(choice: PendingChoiceView, card: CardView): void {
       doubledByName: choice.doubled_by_name,
     }),
   );
+}
+
+// cardSetPickState is #2394's board pick for a card-set choice over
+// permanents on the battlefield (choose_cards, untap_choice): the
+// candidates are the legal set, choose_min / choose_max the bounds, and
+// the walk is one step. Nothing here is a target (the card says "untap
+// up to five lands", not "target lands"); the targeting store is only
+// the board's machinery for highlighting and clicking permanents.
+export function cardSetPickState(choice: PendingChoiceView, card: CardView): TargetingState {
+  const ids = (choice.options ?? []).map((o) => o.instance_id);
+  const max = choice.choose_max ?? ids.length;
+  const step: TargetStep = {
+    mode: "permanent",
+    legal: { players: new Set(), cards: new Set(ids) },
+    label: choice.reason,
+    min: choice.choose_min ?? 0,
+    // The targeting store reads max 0 as unbounded; a card set is
+    // never bigger than its candidates.
+    max: max > 0 ? max : ids.length,
+    modeIndex: 0,
+    slot: 0,
+    distinct: false,
+  };
+  return openWalk(card, [step], {
+    choiceID: choice.id,
+    choiceKind: choice.kind,
+    label: choice.reason,
+  });
+}
+
+// isCardSetPick reports whether a targeting state answers a card-set
+// choice rather than a target prompt.
+export function isCardSetPick(t: TargetingState): boolean {
+  return !!t.choiceID && isBoardPickedCardSetKind(t.choiceKind ?? "");
+}
+
+// choiceAnswer is the resolve_choice payload for a board-answered
+// choice. A target prompt sends `targets`; a card-set pick sends the
+// {choice_id, card_ids} answer the modal's grid sends for the same
+// kind, so the server sees no difference between the two surfaces.
+export function choiceAnswer(t: TargetingState, targets: TargetRef[]): Record<string, unknown> {
+  if (isCardSetPick(t)) {
+    return { choice_id: t.choiceID, card_ids: targets.map((r) => r.id) };
+  }
+  return { choice_id: t.choiceID, targets };
 }
 
 // cancel clears the prompt without firing cast_spell. Wired to the
