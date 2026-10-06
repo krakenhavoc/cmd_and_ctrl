@@ -47,8 +47,10 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "8a29bd35-33ef-4317-9fe5-8aaff5d7d64d",
-		Name:         "Tragic Arrogance",
+		OracleID: "8a29bd35-33ef-4317-9fe5-8aaff5d7d64d",
+		Name:     "Tragic Arrogance",
+		// ADR 0126 §6: you choose one artifact, creature, enchantment and planeswalker each player keeps.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepSacrifice, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ChoosePermanents{

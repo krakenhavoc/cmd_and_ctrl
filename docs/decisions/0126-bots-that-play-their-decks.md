@@ -239,6 +239,14 @@ A sweep is priced by §4 instead.
 
 **No snapshot change.** A purpose is catalog data projected into the view, not game state. Nothing new is captured, and `SnapshotSchemaVersion` does not move. Clients ignore the new fields. `docs/protocol.md` documents them.
 
+**As built (PR 6, 2026-10-06).** Declaring every catalog wipe (owner decision 2) met wipes §4's three-field `sweep` cannot describe truthfully, so PR 6 made these additive choices. Each is catalog data and changes no price; PR 7 decides how to read them.
+
+- `sweep` gained three optional fields: `amount_is_x` (Earthquake, Toxic Deluge, Crypt Rats), `opponents_only` ("creatures your opponents control", Cyclonic Rift's overload, a sweep that targets a player), and `partial` (the sweep spares some of its class by a condition the class does not name: nonwhite, without flying, power 4 or greater). With `partial`, `matches` is an upper bound.
+- `how` gained `sacrifice` (All Is Dust, Tragic Arrogance, The Eternal Wanderer's −4).
+- `matches` gained the two classes a curated card needs, Austere Command's `creatures_mana_value_3_or_less` and `creatures_mana_value_4_or_greater`, and nothing else. A wipe outside the curated decks declares the smallest listed class that holds what it removes, leaving out kinds no class names (planeswalkers, battles, lands), with `partial` when that class holds permanents it spares: Nevinyrral's Disk is `nonland_permanents`, partial.
+- An amount that is X or counted at resolution is not declared (Pull from Tomorrow, Windfall, Shamanic Revelation). `TestCuratedDeckPurposes` names those curated spells on a second list, `noPrintedAmount`, beside the target list. Living Death is on it: it is a symmetric mass reanimation, and a sweep purpose would price the sacrifice and miss the return.
+- A permanent's enters effect is the card's own `purpose` (Mulldrifter `{draws: 2}`, Wood Elves `{lands: 1}`), as §6 says. A triggered row declares `death_payoff`, and a saga chapter or an unlock trigger that sweeps declares its `sweep`. The activated rows of the curated decks' loots, tutors and land sacrifices declare theirs.
+
 ### 7. Discard costs and sacrifice outlets
 
 Ranked fifth and sixth, because the cards are fewer.
@@ -503,3 +511,13 @@ A6: mono-black at 65.1% (52.8%–75.7%) is PR 3's number (65.6%, 53.4%–76.1%) 
 Run 2: `heuristic` 52 of 192, 27.1% (21.3%–33.8%). `heuristic-baseline` 44 of 192, 22.9% (17.5%–29.4%). 0 stalls, 3 and 3 rejected moves. Not detectably worse.
 
 Suite on the merged tree: 28 of 28, every tag at 100% (attack 4, block 4, cast 13, choice 1, combat 8, land 4, mulligan 6, removal 1).
+
+### PR 6: the purpose signal (2026-10-06)
+
+`develop` at `717d7ce51` against PR 6's branch, and again at `62bc4ddec` (PR 3 merged) against the branch with `develop` merged in. No price changes: `BaselineConfig()` and `DefaultConfig()` are untouched, and the heuristic reads no new field (an any-player row's `Draws` and `ControllerLosesLife` are still the only purpose it reads, and they did not change on any card).
+
+**Suite:** `boteval suite run --policy heuristic` with both binaries: 22 of 22 agree on `717d7ce51` and 26 of 26 on `62bc4ddec`, every tag at 100%, and the two JSON reports are identical apart from latency.
+
+**Arena:** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 8 --rotate --seed 1 --lockstep` with both binaries. `games.jsonl` and `summary.json` are identical apart from game IDs and timings: the same winner, turns and life totals in every game, the same runner counters (decisions, applied, rejected, passes) and Layer A meter per seat, and the same Cards table (offered and taken per card).
+
+**Snapshot:** `TestSnapshotShapeIsRecorded` passes with `testdata/snapshot_shape/` unchanged; `SnapshotSchemaVersion` does not move.

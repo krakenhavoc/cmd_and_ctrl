@@ -34,8 +34,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // yours and still pays a Food.
 func init() {
 	Register(Spec{
-		OracleID:     "a94c191d-a938-458e-bc1b-2f44fd8873a3",
-		Name:         "The Battle of Bywater",
+		OracleID: "a94c191d-a938-458e-bc1b-2f44fd8873a3",
+		Name:     "The Battle of Bywater",
+		// ADR 0126 §6: only power 3 or greater.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{

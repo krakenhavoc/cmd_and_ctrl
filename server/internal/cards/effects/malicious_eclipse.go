@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Malicious Eclipse — Sorcery {1}{B}{B}:
 //
 //	"All creatures get -2/-2 until end of turn. If a creature an
@@ -14,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5beb8d6e-d3c1-46a5-8516-d6bf66413cff",
 		Name:         "Malicious Eclipse",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2}},
 		Completeness: CompletenessFull,
 		OnResolve:    allCreaturesShrinkThenExileIfTheyDie(-2, true),
 	})

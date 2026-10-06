@@ -40,7 +40,7 @@ func TestXantchaAnyPlayerMayActivate(t *testing.T) {
 	if len(rows) != 1 || !rows[0].AnyPlayer {
 		t.Fatalf("Xantcha's rows = %+v, want one any-player row", rows)
 	}
-	if rows[0].Purpose != (game.ActivationPurpose{Draws: 1, ControllerLosesLife: 2}) {
+	if rows[0].Purpose != (game.Purpose{Draws: 1, ControllerLosesLife: 2}) {
 		t.Errorf("purpose = %+v", rows[0].Purpose)
 	}
 

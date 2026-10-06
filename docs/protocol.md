@@ -1073,6 +1073,11 @@ canonical type definition. High-level shape:
 - **CardView.token_text** (S46, [ADR 0083](decisions/0083-token-abilities.md), omitempty): a TOKEN's printed ability text, verbatim — `"When this token dies, you gain 1 life."`, with `\n` between printed lines. Absent for every printed card and for a vanilla token, which is what makes it additive: a pre-ADR-0083 client ignores the unknown key harmlessly. **It exists for the tokens ADR 0078's resolver still can't place.** [ADR 0078](decisions/0078-token-art.md) resolves most tokens to a Scryfall token printing at creation and stamps it onto `scryfall_id`; a token that resolves to nothing (no matching printing, or the dump the process loaded doesn't have one) keeps `scryfall_id` empty and renders through `Card.svelte`'s `.name-fallback` branch — the name on a grey rectangle. A mana or activated ability escapes that either way, because it reaches the player as a row in the right-click menu; a token's own TRIGGER ("when this token dies, create a 2/2 red Dragon") or STATIC has no control to hang text off, so without this field the words are nowhere on the client at all for a token that has no art. `EmblemView.text` is the same field for the same reason, one object over. **Derived on every read** from the token template's catalog entry (`game.TokenTextForCard`), never stored, so a wording fix reaches a game already in progress. Keyed on `CatalogKey` and not `CatalogAbilityKey`: a token silenced by Dress Down still shows what it PRINTS, exactly as the client keeps rendering a silenced card's oracle text. CR 707.2 rides along — a token that is a copy of a printed card has that card's oracle ID, answers empty here, and renders that card's own printing instead. Cleared on the non-knower redaction with the other catalog reads, though a token is known to every seat so the cell never fires in a real game.
 
 - **CardView.ability_rows** (#2219, omitempty): `[{ kind, label }]`, the card's non-keyword abilities for the art tile's chips. `kind` is `"triggered"`, `"static"` or `"activated"`; the list is in that order. `label` is written by the server: a triggered row's `Key` and an activated row's `Label` (the names a stack item carries, ADR 0041 P9), a static slot's own label, each with the card's own name dropped from the front (`"Inferno Titan — 3 damage divided…"` reads `"3 damage divided…"`; a granted row keeps its grantor's name); a row the catalog gives no words is described by what it is (`"Replacement effect"`, `"Power/toughness effect"`). The client draws one chip per kind present with a count (⚡ ◆ ↻) after the keyword chips and lists the labels on hover or focus; **it never reads oracle text for them**. Built by `game.AbilityRowsOf` from the catalog through the same accessors the engine uses, so it is the card's **current** abilities: a CR 613.1f "loses all abilities" effect empties it, a layer-6 grant the layer pass let survive is in it (beside `granted_abilities`' text), an ADR 0071 designation gate decides a gated row, and a face-down permanent has none (CR 708.2). Off the battlefield it is what the card prints. Left out: keyword abilities (a trigger with a `Keyword`, the static synthesised from `PrintedKeywords`, and activated keyword abilities such as equip, crew and cycling — the keyword chips and the type line carry those) and mana abilities (ADR 0105's drop pip). An ability that only wears a keyword's frame around its own effect (`"Exhaust — {4}: Earthbend 4."`) is counted. Static rows come from `Static` and every other `CardDef` slot that holds a static ability of the object (cost modifiers, replacement effects, "can't gain life" and the rest); `game.TestEveryCardDefSlotIsClassifiedForAbilityRows` fails on a new slot until it is placed. Stamped only on the **battlefield and the hand**, the zones a tile is drawn in; absent for an uncatalogued card, which keeps `unimplemented`. Public on a card the viewer can see and cleared with the ability rows on the non-knower redaction. Additive: a client that ignores it shows no chips.
+- **CardView.purpose** (ADR 0126 §6, omitempty): what the card does, as
+  the catalog declares it. See
+  [Declared purpose](#declared-purpose-what-a-spell-or-an-ability-does-adr-0126-6-2026-10-06).
+  Hand, battlefield and stack; cleared with `ability_rows` on the
+  non-knower redaction.
 
 - **CardView.prepared** (#1328, [ADR 0090](decisions/0090-preparation-cards.md), omitempty): a permanent's CR 722.3a PREPARED designation. While it is set, the permanent's controller may cast the copy of its prepare spell that sits in exile — and that copy needs no new field: it is an ordinary card in `exile` whose `name` / `type_line` / `mana_cost` are the prepare spell's (face `1` active), carrying the `exile_play` stamp the client's exile button already reads, with `faces: [1]` and `player` naming the prepared permanent's controller. The stamp is DERIVED from the live permanent on every frame, so it disappears the moment the permanent leaves, is unprepared or its copy is cast; the copy itself leaves the `exile` zone view at the next state check. Public (the prepared creature and its copy are both visible across the table) and absent rather than `false` for every permanent that is not prepared; cleared on the non-knower redaction with `class_level` and `solved`. The client renders it through the same designation badge ("PREPARED").
 - **CardView.doors** ([ADR 0103](decisions/0103-rooms.md), omitempty): a Room's two CR 709.5c designations, `{ "left": bool, "right": bool }` — `true` is an unlocked door. Present only for a face-up Room on the battlefield, so `false` inside it is a locked door and its absence means "not a Room on the battlefield". A locked half has no name, mana cost or rules text (CR 709.5), so a fully locked Room's `name` and `mana_cost` are empty: the client labels it from `faces`, which carries both halves. Public; cleared on the non-knower redaction with `class_level`. Each locked door's unlock is a `special_actions` row with `kind: "unlock"` and `door: "left"` or `"right"`, priced at that half's cost, with the server's own `available` timing answer.
@@ -2616,7 +2621,9 @@ Feral Hydra, Excavation) says everyone.
 - **`purpose: {draws?, controller_loses_life?}` on such a row.** What the
   row buys an activator who does not control the permanent, declared by
   the catalog (ADR 0106 §1 decision 8). The bot reads it; a client may
-  ignore it.
+  ignore it. Since ADR 0126 the field is the one `purpose` object below,
+  and may appear on any row; `controller_loses_life` is still declared
+  on `any_player` rows alone.
 - **The digest.** `legal_actions.sources` (ADR 0105) is built from the
   viewer's own move list, so another player's permanent appears there,
   for the viewer alone, exactly when the viewer may activate one of its
@@ -2627,6 +2634,81 @@ Feral Hydra, Excavation) says everyone.
   Alice's Xantcha, Sleeper Agent", with `target_seat` the controller.
   An activation by the permanent's own controller is not narrated, as
   before.
+
+## Declared purpose: what a spell or an ability does (ADR 0126 §6, 2026-10-06)
+
+Additive, `v` unmoved, no snapshot change. A `purpose` object says what
+a card, a mode, an alternative cost or an ability does, as printed
+amounts. It is declared by hand on the card file in the catalog, like
+the completeness mark, and never derived from oracle text at run time.
+The engine never reads it: it is there for the heuristic bot, which
+reads the view and nothing else (ADR 0033 §3), and could not otherwise
+tell Wrath of God from Divination. A client may ignore it. A card or
+row that declares nothing has no `purpose` key at all.
+
+```json
+"purpose": {
+  "draws": 2, "controller_loses_life": 2, "discards": 1, "lands": 2,
+  "tutors": 1, "self_mill_tutor": 1, "tokens": 2,
+  "sweep": {"matches": "creatures", "how": "destroy", "amount": 3,
+            "amount_is_x": true, "opponents_only": true, "partial": true},
+  "death_payoff": true
+}
+```
+
+Every field is omitted when zero.
+
+| Field | Meaning | Example |
+|---|---|---|
+| `draws` | cards its controller draws (on an `any_player` row, the activator) | Night's Whisper 2 |
+| `controller_loses_life` | life the source's controller loses; `any_player` activated rows only (ADR 0106) | Xantcha 2 |
+| `discards` | cards its controller discards on resolution (a discard paid as a cost is `additional_cost`'s) | Faithless Looting 2 |
+| `lands` | land cards it puts onto the battlefield | Harrow 2 |
+| `tutors` | cards it searches out to hand or to the top of the library | Demonic Tutor 1 |
+| `self_mill_tutor` | cards it searches out into the graveyard | Entomb 1 |
+| `tokens` | tokens it creates for its controller | Big Score 2 |
+| `sweep` | present on a board wipe; see below | Wrath of God |
+| `death_payoff` | on a triggered row: it pays out whenever a creature its controller controls dies | Blood Artist |
+
+An amount is the printed number. A card whose amount is X, or is
+counted at resolution ("draw a card for each creature you control"),
+does not declare it.
+
+`sweep` describes the permanents a wipe removes:
+
+- `matches`: `creatures`, `nonland_permanents`, `artifacts`,
+  `enchantments`, `artifacts_and_enchantments`, `all_permanents`,
+  `creatures_mana_value_3_or_less`, `creatures_mana_value_4_or_greater`.
+- `how`: `destroy`, `exile`, `bounce` (to the owners' hands), `damage`,
+  `minus` (−N/−N) or `sacrifice`.
+- `amount`: the damage or the N, for `damage` and `minus`. Absent with
+  `amount_is_x`, when the amount is the spell's or ability's X.
+- `opponents_only`: only permanents its controller's opponents control
+  ("creatures your opponents control", "target player controls").
+- `partial`: some permanents of the class are spared by a condition
+  `matches` does not name (nonwhite, without flying, power 4 or
+  greater), so `matches` is an upper bound.
+
+Where it rides:
+
+- **`CardView.purpose`**: the spell's resolution, or a permanent's
+  enters effect. On the hand, the battlefield and the stack. Public on a
+  card the viewer can see, and cleared with `ability_rows` for a viewer
+  who cannot, so an opponent's hand card and a face-down object never
+  carry one.
+- **`modes.options[i].purpose`**: one bullet of a modal spell or
+  ability (Farewell's "Exile all creatures."). A modal card declares its
+  purposes here rather than on the card.
+- **`alternative_costs[i].purpose`**: what the spell does when cast for
+  that cost, where that differs from the card's own (overload turns
+  Cyclonic Rift into a bounce sweep).
+- **`activated_abilities[i].purpose`**: an activated row's own (a loot,
+  Nevinyrral's Disk). It is no longer only on `any_player` rows.
+- **`ability_rows[i].purpose`**: a triggered or activated row's, on the
+  tile's row list (`death_payoff` on Blood Artist's trigger).
+
+The modes and the offers are public with their labels, which say the
+same thing in words, and hidden exactly when those are.
 
 ## Schema evolution rules
 

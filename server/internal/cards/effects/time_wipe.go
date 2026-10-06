@@ -38,6 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "36c78a5f-0148-4596-a346-f8e35037b694",
 		Name:         "Time Wipe",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ChoosePermanents{

@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     puts back nothing (CR 609.3).
 //
 // No purpose for the bot on the any-player row: destroying the Dungeon
-// helps whoever is being locked by it, which no ActivationPurpose field
+// helps whoever is being locked by it, which no Purpose field
 // describes.
 //
 // No simplification.

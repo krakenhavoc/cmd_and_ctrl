@@ -919,6 +919,10 @@ type ModeOptionView struct {
 	// same reason `target_mode` is public while `legal_targets` is
 	// not. Added by ADR 0065's 2026-09-23 amendment.
 	Cost string `json:"cost,omitempty"`
+	// Purpose is what this bullet does, as the catalog declares it
+	// (ADR 0126 §6): Farewell's "Exile all creatures" is a creature
+	// sweep. Public alongside `label`, which says the same in words.
+	Purpose *PurposeView `json:"purpose,omitempty"`
 }
 
 // AdditionalCostView is the wire shape of game.AdditionalCost — the
@@ -1178,6 +1182,13 @@ type AlternativeCostView struct {
 	// today — shipped because the field the client reads must not
 	// depend on which cost is being paid.
 	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+
+	// Purpose is what the spell does when cast for THIS cost, where
+	// that differs from the card's own `purpose` (ADR 0126 §6):
+	// overload turns Cyclonic Rift into a bounce sweep. Absent for an
+	// offer that leaves the effect alone. Public with the rest of the
+	// printed offer.
+	Purpose *PurposeView `json:"purpose,omitempty"`
 
 	// TimingClosed says the engine will refuse THIS offer right now for
 	// timing (CR 307.1) even though its zone and payability both check
@@ -2498,6 +2509,20 @@ type CardView struct {
 	// card, which keeps its `unimplemented` mark instead.
 	AbilityRows []AbilityRowView `json:"ability_rows,omitempty"`
 
+	// Purpose is what the card does, as the catalog declares it (ADR
+	// 0126 §6, purpose_view.go): the spell's resolution — Night's
+	// Whisper draws two, Wrath of God is a creature sweep — or a
+	// permanent's enters effect. Declared by hand on the card file,
+	// never derived, and absent when the card declares none. A modal
+	// spell declares it per bullet (`modes.options[].purpose`) and an
+	// overload on its offer (`alternative_costs[].purpose`) instead.
+	//
+	// On the hand, the battlefield and the stack. Public on a card the
+	// viewer can see, and cleared with `ability_rows` for a viewer who
+	// cannot, so an opponent's hand card and a face-down object never
+	// carry one.
+	Purpose *PurposeView `json:"purpose,omitempty"`
+
 	// Abilities is the card's effective keyword list — strings like
 	// "flying", "first strike", "trample". Layered effects (Lord of
 	// Atlantis grants flying to other Merfolk) populate this in
@@ -3486,20 +3511,14 @@ type ActivatedAbilityView struct {
 	// CR 109.5). Whether the row is live for the viewer right now is
 	// still the digest's answer (`legal_actions`), never the row's.
 	AnyPlayer bool `json:"any_player,omitempty"`
-	// Purpose is what the row does for an activator who does not
-	// control the permanent (ADR 0106 §1 decision 8): the cards they
-	// draw and the life the permanent's controller loses. Catalog data,
-	// read by the bot; absent when the card declares none, and a bot
-	// never activates another player's row without one.
-	Purpose *ActivationPurposeView `json:"purpose,omitempty"`
-}
-
-// ActivationPurposeView is game.ActivationPurpose on the wire: the
-// printed amounts an any-player row buys its activator (ADR 0106 §1
-// decision 8).
-type ActivationPurposeView struct {
-	Draws               int `json:"draws,omitempty"`
-	ControllerLosesLife int `json:"controller_loses_life,omitempty"`
+	// Purpose is what the row does, as the catalog declares it (ADR
+	// 0126 §6, purpose_view.go): a loot's draw and discard, a sweep. On
+	// an any-player row it is also what the row buys an activator who
+	// does not control the permanent (ADR 0106 §1 decision 8): the cards
+	// they draw and the life the permanent's controller loses, and a bot
+	// never activates another player's row without one. Absent when the
+	// card declares none. Public with the row.
+	Purpose *PurposeView `json:"purpose,omitempty"`
 }
 
 // CounterCostView describes the counter components of an ability's
@@ -5844,6 +5863,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
 			PhyrexianSymbols: phyrexianSymbolsIn(ac.ManaCost),
+			Purpose:          viewOfPurpose(ac.Purpose),
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
 			v.TargetMode = spec.Mode
@@ -6078,7 +6098,7 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 	}
 	used := g.ModesChosenForEffect(ms, ab)
 	for i, o := range ms.Options {
-		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i)}
+		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i), Purpose: viewOfPurpose(o.Purpose)}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
 			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
@@ -7787,6 +7807,12 @@ func viewOfZone(z *game.Zone) ZoneView {
 		if onBattlefield || z.Kind == game.ZoneHand {
 			cards[i].AbilityRows = viewOfAbilityRows(c)
 		}
+		// ADR 0126 §6: what the card does, where a seat decides to
+		// cast it (the hand), prices it as a permanent (the
+		// battlefield) or sees it coming (the stack).
+		if onBattlefield || z.Kind == game.ZoneHand || z.Kind == game.ZoneStack {
+			cards[i].Purpose = viewOfPurpose(game.CardPurposeOf(c))
+		}
 	}
 	owner := ""
 	if !z.IsShared() {
@@ -8517,6 +8543,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// entry exactly as the ability lists above are, and "Draw a card"
 	// under a face-down card says which card it is.
 	out.AbilityRows = nil
+	// ADR 0126 §6: a declared purpose says what the card does, which
+	// names it as surely as its ability rows ("draws two, loses two" is
+	// Night's Whisper).
+	out.Purpose = nil
 	// #660: a hand ability quotes the card's text as loudly as its
 	// mana cost — "Cycling {3}" on an opponent's face-down hand card
 	// would name the Triome. It is also the only ability list on the
@@ -9318,13 +9348,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			LoyaltyCost:   a.Cost.Loyalty,
 			AnyPlayer:     a.AnyPlayer,
 		}
-		// ADR 0106 §1 decision 8: the bot's reason to reach across.
-		if !a.Purpose.IsZero() {
-			v.Purpose = &ActivationPurposeView{
-				Draws:               a.Purpose.Draws,
-				ControllerLosesLife: a.Purpose.ControllerLosesLife,
-			}
-		}
+		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
+		// and the bot's reason to reach across.
+		v.Purpose = viewOfPurpose(a.Purpose)
 		// #1594: a computed life component (War Room's "pay life
 		// equal to the number of colors in your commanders' color
 		// identity") is priced for the controller now, through the

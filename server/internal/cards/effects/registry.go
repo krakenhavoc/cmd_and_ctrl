@@ -33,6 +33,8 @@ func Register(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: duplicate OracleID %s (existing %q, new %q)",
 			spec.OracleID, existing.Name, spec.Name))
 	}
+	// ADR 0126 §6: what a declared Purpose may say, slot by slot.
+	checkSpecPurposes(spec)
 	if spec.Modes != nil {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))

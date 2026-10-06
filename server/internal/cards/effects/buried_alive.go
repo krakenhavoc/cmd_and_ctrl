@@ -38,6 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8203c621-a1a0-4865-8c9a-0d4064c86107",
 		Name:         "Buried Alive",
+		Purpose:      game.Purpose{SelfMillTutor: 3},
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"If your library holds three or fewer creatures, all of them are put into your graveyard — you cannot choose to bury fewer."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

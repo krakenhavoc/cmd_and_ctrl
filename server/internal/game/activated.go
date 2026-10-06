@@ -720,11 +720,12 @@ type ActivatedAbilityShape struct {
 	// has tested.
 	AnyPlayer bool
 
-	// Purpose is what the ability does for an activator who does not
-	// control its source (ADR 0106 §1 decision 8). The engine never
-	// reads it; see ActivationPurpose. Meaningful only with AnyPlayer,
-	// and effects.Register refuses it without.
-	Purpose ActivationPurpose
+	// Purpose is what the ability does, as printed amounts (ADR 0126
+	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
+	// also what the row buys an activator who does not control the
+	// source (ADR 0106 §1 decision 8), and ControllerLosesLife is
+	// declared there alone. The engine never reads it; see Purpose.
+	Purpose Purpose
 
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,

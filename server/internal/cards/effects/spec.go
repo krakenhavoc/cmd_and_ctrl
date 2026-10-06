@@ -1324,6 +1324,16 @@ type Spec struct {
 	// server/internal/game/copy_grants.go.
 	Grants []AbilityGrant
 
+	// Purpose is what the card does, as printed amounts, declared by
+	// hand for the bot like Completeness (ADR 0126 §6): the spell's
+	// resolution (Night's Whisper {Draws: 2}, Harrow {Lands: 2}, Wrath
+	// of God a creature sweep) or a permanent's enters effect. A modal
+	// spell declares it per bullet on Modes.Options instead, and an
+	// overload on its alternative cost. Nothing derives it, and the
+	// engine never reads it. Zero means "not declared". See
+	// game.Purpose and purpose.go.
+	Purpose game.Purpose
+
 	Completeness Completeness
 
 	// Caveats names the printed clauses this spec does NOT model,
@@ -1472,13 +1482,15 @@ type ActivatedAbility struct {
 	// component and on an ability with a non-battlefield zone. See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
-	// Purpose is what the ability buys an activator who does NOT control
-	// its source, for the bot (ADR 0106 §1 decision 8, owner decision 2).
-	// Leave it zero unless the printed effect is plainly worth it to that
-	// player: a row with no purpose is never chosen by a bot reaching
-	// across the table. Register refuses it without AnyPlayer. See
-	// game.ActivationPurpose.
-	Purpose game.ActivationPurpose
+	// Purpose is what the ability does, as printed amounts, for the bot
+	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
+	// AnyPlayer row it is also what the row buys an activator who does
+	// NOT control its source (ADR 0106 §1 decision 8, owner decision 2):
+	// leave it zero there unless the printed effect is plainly worth it
+	// to that player, because a row with no purpose is never chosen by a
+	// bot reaching across the table. ControllerLosesLife is refused off
+	// an AnyPlayer row. See game.Purpose and purpose.go.
+	Purpose game.Purpose
 	Effect  func(g *game.Game, item *game.StackItem) error
 }
 

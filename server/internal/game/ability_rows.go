@@ -68,6 +68,11 @@ type AbilityRow struct {
 	// catalog gives no text is described by what it is ("Replacement
 	// effect", "Power/toughness effect").
 	Label string
+	// Purpose is the row's declared purpose (ADR 0126 §6): a triggered
+	// row's TriggeredAbility.Purpose, an activated row's
+	// ActivatedAbilityShape.Purpose. Zero for a static row and for a
+	// row that declares none.
+	Purpose Purpose
 }
 
 // AbilityRowsOf lists the object's non-keyword triggered, static and
@@ -86,14 +91,14 @@ func abilityRowsOf(c *Card) []AbilityRow {
 		if t.Keyword != "" {
 			continue
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowTriggered, Label: abilityRowLabel(t.Key, names, "Triggered ability")})
+		out = append(out, AbilityRow{Kind: AbilityRowTriggered, Label: abilityRowLabel(t.Key, names, "Triggered ability"), Purpose: t.Purpose})
 	}
 	out = appendStaticRows(out, c, names)
 	for _, a := range activatedAbilitiesOf(c) {
 		if IsKeywordActivatedAbility(a) {
 			continue
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowActivated, Label: abilityRowLabel(a.Label, names, "Activated ability")})
+		out = append(out, AbilityRow{Kind: AbilityRowActivated, Label: abilityRowLabel(a.Label, names, "Activated ability"), Purpose: a.Purpose})
 	}
 	return out
 }

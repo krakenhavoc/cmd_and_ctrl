@@ -24,7 +24,7 @@ func init() {
 		Name:         "Let's Play a Game",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Creatures your opponents control get -1/-1 until end of turn.", nil,
+			ModeWithPurpose(ModeDoing("Creatures your opponents control get -1/-1 until end of turn.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return BoostUntilEOT{
 						Match:     And(Creature(), OpponentControls()),
@@ -32,7 +32,7 @@ func init() {
 						Toughness: -1,
 						Label:     "Let's Play a Game — -1/-1 until end of turn",
 					}.Apply(ctx)
-				}),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, OpponentsOnly: true}}),
 			ModeDoing("Each opponent discards two cards.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					for _, opp := range ctx.Opponents() {

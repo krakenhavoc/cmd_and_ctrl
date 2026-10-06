@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Squallmonger — Creature — Monger {3}{G}, 3/3:
 //
 //	"{2}: This creature deals 1 damage to each creature with flying and
@@ -12,8 +14,10 @@ package effects
 // ability resolves, and every player is hit, the activator included
 // (effects_damage_each_creature_and_player.go).
 //
-// No Purpose: the effect is symmetric, so the bot does not reach across
-// the table for it (ADR 0106 owner decision 2).
+// Its Purpose is a creature sweep, which buys a player who does not
+// control it nothing the bot prices (ADR 0106 owner decision 2: draws
+// and the controller's life loss), so the bot does not reach across the
+// table for it.
 //
 // No simplification.
 func init() {
@@ -22,7 +26,9 @@ func init() {
 		Name:         "Squallmonger",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:     "{2}: This creature deals 1 damage to each creature with flying and each player. Any player may activate this ability.",
+			Label: "{2}: This creature deals 1 damage to each creature with flying and each player. Any player may activate this ability.",
+			// ADR 0126 §6: only creatures with flying.
+			Purpose:   game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
 			Cost:      ManaCost("{2}"),
 			AnyPlayer: true,
 			Effect:    thisDealsDamageToEachCreatureMatchingAndEachPlayer(HasKeyword("flying"), 1),

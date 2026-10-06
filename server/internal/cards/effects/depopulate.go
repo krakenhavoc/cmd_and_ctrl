@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4a83c2fa-f2d2-4b86-8407-4269f127936d",
 		Name:         "Depopulate",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			drawers := map[uuid.UUID]bool{}

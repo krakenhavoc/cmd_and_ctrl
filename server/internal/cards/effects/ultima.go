@@ -27,8 +27,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "c9a45c28-826e-4e6e-8adc-1368ea1af11a",
-		Name:         "Ultima",
+		OracleID: "c9a45c28-826e-4e6e-8adc-1368ea1af11a",
+		Name:     "Ultima",
+		// ADR 0126 §6: artifacts and creatures, the smallest listed class that holds both.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (DestroyAllMatching{Match: Or(Artifact(), Creature())}).Apply(ctx); err != nil {

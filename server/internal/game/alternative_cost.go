@@ -341,6 +341,13 @@ type AlternativeCost struct {
 	// 118.9a). Never serialised: an offer is catalog data built per
 	// query, and a claim reaches the stack as its key alone.
 	Granted bool
+
+	// Purpose is what the spell does when cast for this cost, where
+	// that differs from the card's own (ADR 0126 §6): overload turns
+	// Cyclonic Rift into a bounce sweep. Zero for a cost that leaves the
+	// spell's effect alone; the card's Purpose then applies. Catalog
+	// data for the view; the engine never reads it.
+	Purpose Purpose
 }
 
 // CastFaceOf returns the card as a cast claiming this offer puts it on

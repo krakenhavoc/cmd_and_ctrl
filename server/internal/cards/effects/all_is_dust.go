@@ -24,8 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "14693689-d087-43b6-9c3f-63ab0648fc20",
-		Name:         "All Is Dust",
+		OracleID: "14693689-d087-43b6-9c3f-63ab0648fc20",
+		Name:     "All Is Dust",
+		// ADR 0126 §6: only permanents that are one or more colors.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepSacrifice, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b08SacrificeAllMatching(ctx, Not(Colorless()))

@@ -32,6 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7024532b-f99b-43a7-b0ed-5b3e7ec7592b",
 		Name:         "Starfall Invocation",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The gift can't be promised, so the spell only destroys all creatures — it never returns one of yours to the battlefield.",

@@ -48,7 +48,7 @@ func init() {
 		Name:         "Noxious Ghoul",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventETB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == uuid.Nil {
 					return false
 				}
@@ -61,7 +61,7 @@ func init() {
 					Toughness: -1,
 					Label:     "Noxious Ghoul — non-Zombies get -1/-1",
 				}.Apply(NewContext(g, item))
-			}),
+			}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, Partial: true}}),
 		},
 	})
 }

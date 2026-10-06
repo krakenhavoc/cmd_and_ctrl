@@ -24,8 +24,8 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Target creature gets -5/-5 until end of turn. If that creature would die this turn, exile it instead.",
 				TargetCreature("target creature"), gnashingShrinkAndExileIfItDies),
-			ModeDoing("Creatures target player controls get -1/-1 until end of turn.",
-				TargetPlayer("target player"), gnashingShrinkPlayersCreatures),
+			ModeWithPurpose(ModeDoing("Creatures target player controls get -1/-1 until end of turn.",
+				TargetPlayer("target player"), gnashingShrinkPlayersCreatures), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, OpponentsOnly: true}}),
 		),
 	})
 }

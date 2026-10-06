@@ -28,7 +28,7 @@ func init() {
 		Targets: TargetPermanent("target nonland permanent you don't control",
 			nonlandYouDontControl),
 		AlternativeCosts: []game.AlternativeCost{
-			Overload("{6}{U}"),
+			CostWithPurpose(Overload("{6}{U}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, OpponentsOnly: true}}),
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if ctx.PaidAltCost("overload") {

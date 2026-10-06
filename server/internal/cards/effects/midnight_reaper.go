@@ -23,7 +23,7 @@ func init() {
 		Name:         "Midnight Reaper",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
 				return ok && leftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
 			}, "Midnight Reaper — 1 damage to you, draw a card", func(g *game.Game, item *game.StackItem) error {
@@ -36,7 +36,7 @@ func init() {
 					return err
 				}
 				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			}),
+			}), game.Purpose{Draws: 1, DeathPayoff: true}),
 		},
 	})
 }

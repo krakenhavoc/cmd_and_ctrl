@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
 		Name:         "Kodama's Reach",
+		Purpose:      game.Purpose{Lands: 1, Tutors: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()

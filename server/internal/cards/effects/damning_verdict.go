@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "355ed7ef-bfa6-4538-99fb-a2d203eb7005",
-		Name:         "Damning Verdict",
+		OracleID: "355ed7ef-bfa6-4538-99fb-a2d203eb7005",
+		Name:     "Damning Verdict",
+		// ADR 0126 §6: a creature with a counter on it stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Creature(), b10NoCounters())}.Apply(ctx)

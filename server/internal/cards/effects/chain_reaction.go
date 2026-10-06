@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "086b2564-9114-4ba2-94fd-b490f98f38a7",
-		Name:         "Chain Reaction",
+		OracleID: "086b2564-9114-4ba2-94fd-b490f98f38a7",
+		Name:     "Chain Reaction",
+		// ADR 0126 §6: the damage is the number of creatures, counted as it resolves, so it is declared as the destruction it usually is, an upper bound.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, Creature(), len(MatchingBattlefield(ctx, Creature())))

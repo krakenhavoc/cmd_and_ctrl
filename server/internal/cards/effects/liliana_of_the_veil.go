@@ -88,7 +88,9 @@ func init() {
 				},
 			},
 			{
-				Label:   "−6: Separate all permanents target player controls into two piles. That player sacrifices all permanents in the pile of their choice.",
+				Label: "−6: Separate all permanents target player controls into two piles. That player sacrifices all permanents in the pile of their choice.",
+				// ADR 0126 §6: one of two piles of the target player's permanents.
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepAllPermanents, How: game.SweepSacrifice, OpponentsOnly: true, Partial: true}},
 				Cost:    LoyaltyCost(-6),
 				Targets: TargetPlayer("target player"),
 				Effect: func(g *game.Game, item *game.StackItem) error {

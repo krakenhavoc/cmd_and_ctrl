@@ -14,8 +14,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "d06be0a6-0d45-4e95-b132-88ce80dd7cb6",
-		Name:         "Subterranean Shambler",
+		OracleID: "d06be0a6-0d45-4e95-b132-88ce80dd7cb6",
+		Name:     "Subterranean Shambler",
+		// ADR 0126 §6: a creature with flying is spared.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Echo("Subterranean Shambler", "{3}{R}"),
