@@ -743,6 +743,95 @@ Not detectably worse: the `heuristic` interval's upper bound is 34.3%, above 25%
 - **`cantrip-with-leftover-mana` (PR 5) keeps its label and is stamped reviewed.** The owner would rather cast Night's Whisper first. Since PR 4 the heuristic casts Exquisite Blood there, which the label accepts. Choosing the draw spell needs lookahead over the turn's mana, which goes to a follow-up issue.
 - **`windfall-discarding-a-spare-land` keeps its label and has no `reviewed_at` yet.** Mary Read and Anne Bonny is on the battlefield there, so discarding the Island makes a Treasure, and the owner wants Island first. A follow-up PR adds a `discard_payoff` purpose as an amendment to this ADR, flips the label and stamps it.
 
+### PR 8: sacrifice outlets (2026-10-06)
+
+`develop` at `427d3f702` (PRs 3 to 7 merged) plus PR 8. `DefaultConfig()` against `BaselineConfig()`: `SacrificeDyingAnyway` true (baseline false) and `DeathPayoff` 0.60 (0). `DeathPayoff` is §9's starting value, not changed by tuning, and the removal discount is the existing `RemovalConfidence` (0.80). Arena runs use the concurrent schedule, turn budget 60.
+
+Three readings of §7, each the closest to its stated intent:
+
+- **The bar.** §7 says dying-anyway pricing "makes 'sacrifice it in response' the bot's play". A response is made outside a sorcery-speed window, where the bar is `InstantThreshold` (1.50). An outlet activation is worth `ActivateBase` (0.50), less the flat 0.30 that a non-tapping row on a creature already pays, so no dying-anyway price can clear 1.50. Sacrificing a permanent that is about to be lost spends nothing the bot would otherwise keep, which is §5's premise. So a move whose only non-mana cost is sacrificing permanents that are dying anyway clears `LeftoverThreshold` (0.00), in any window. The owner approved this reading on 2026-10-06.
+- **What "dying anyway" reads.**
+  - A spell's sweep is read from the slot its stack item names: the alternative cost, the modes, or the card. An ability's stack item does not say which row it came from, so a planeswalker's or a saga's sweep is not seen.
+  - In combat, a creature counts as losing only when sacrificing it gives up nothing. An attacker loses when its blockers kill it, it kills none of them, and it puts no trample damage over. A blocker loses when it dies and every attacker it blocks dies or lives the same without it.
+  - A chump in front of a trampler is not losing (CR 702.19d). A chump in front of any other attacker is, because the attacker stays blocked (CR 509.1h).
+- **Payoffs.**
+  - A payoff's own row is not counted towards its own sacrifice, because whether it sees its own death is text the wire does not carry.
+  - A row that sacrifices its own source is left as PR 7 priced it.
+  - A devoured creature is sacrificed, so devour counts the payoffs too.
+  - The payoff is added for every creature sacrificed, as §7 says. For a creature that dies anyway, the triggers would have fired regardless, so this overstates the gain. Its only effect is to make the bot keener to sacrifice something it is losing.
+
+**Run 1:** the same command and seed as PR 2's. 64 games, 0 stalls, 2 rejected moves, turns p50 13.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` | PR 7's `never` |
+|---|---:|---:|---|---:|---:|
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 1 | 1 |
+| izzet-aggro | 6 | 9.4% | 4.4%–19.0% | 3 | 3 |
+| mono-black-aristocrats | 42 | 65.6% | 53.4%–76.1% | 4 | 10 |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 2 | 2 |
+
+Mono-black's `never` list is down to Ashnod's Altar, Phyrexian Altar, Blood Artist and Burnished Hart's activation.
+
+Sacrifice outlets on PR 7's run 1 and on this one, as taken out of windows offered, then games used out of games offered:
+
+| Card and move | PR 7 | PR 8 |
+|---|---|---|
+| Viscera Seer, activate | 0 of 2433; 0 of 21 | 11 of 2312; 8 of 22 |
+| Carrion Feeder, activate | 0 of 2177; 0 of 13 | 9 of 1822; 4 of 13 |
+| Vampiric Rites, activate | 0 of 1004; 0 of 8 | 3 of 603; 1 of 7 |
+| Warren Soultrader, activate | 0 of 1821; 0 of 19 | 8 of 1781; 4 of 17 |
+| Village Rites (cast) | 0 of 22 games | 11 of 19 games |
+| Altar's Reap (cast) | 0 of 12 games | 8 of 14 games |
+| Deadly Dispute (cast) | 13 of 22 games | 19 of 24 games |
+| Ashnod's Altar, Phyrexian Altar (cast) | 0 of 15; 0 of 13 games | 0 of 17; 0 of 13 games |
+
+- The outlets are now used, but sparingly. Their sacrifices are mostly into a sweep or a losing combat, or of a token while several payoffs are out.
+- The Altars are still never cast. Each is a mana source whose ability sacrifices a creature, so §2 does not count it as repeatable and §7 does not price it. Their mana abilities are not activated for floating mana (§7).
+- Blood Artist is never cast either (0 of 23 games). Its 0/1 body plus one triggered row is worth less than the card it costs. §7 prices a payoff while it is on the battlefield, not when it is cast.
+
+**A6 still fails, and this PR does not move it.** Mono-black's interval (53.4%–76.1%) lies entirely above 50%. PR 7's run 1 had the same result: 64.1%, 51.8%–74.7%. Death payoffs did not push black higher in this run.
+
+**Run 2:** the same shape and seeds as PR 2's. 96 games, 0 stalls, 2 rejected moves (both `heuristic`, half A), turns p50 15 and 12 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval |
+|---|---:|---:|---:|---|
+| heuristic | 192 | 55 | 28.6% | 22.7%–35.4% |
+| heuristic-baseline | 192 | 41 | 21.4% | 16.1%–27.7% |
+
+It is not detectably worse: the `heuristic` interval's upper bound, 35.4%, is above 25%. By half, `heuristic` won 11 of 96 seat-games on esper and izzet, and 44 of 96 on black and simic.
+
+The four rejected moves across runs 1 and 2 are two attacks submitted after the step moved on and two passes that raced a Rhystic Study prompt, all in the concurrent schedule. None is a sacrifice.
+
+**Before PR 7 merged.** The same runs on `6f73abab8` plus this PR gave:
+
+- run 1: black 66.7% (54.4%–77.1%), black's `never` count falling from 11 to 4, and 1 stall;
+- run 2: `heuristic` 28.1% (22.2%–34.9%) against `heuristic-baseline` 21.9% (16.6%–28.2%).
+
+The stall was seed 21, the Sanguine Bond and Exquisite Blood loop at the CR 732 loop breaker (#2450), with the black seat at 75 life.
+
+**Suite:** `boteval suite run --policy heuristic` gives 37 of 37, every tag at 100%:
+
+| Tag | Positions |
+|---|---:|
+| activate | 3 |
+| attack | 4 |
+| block | 4 |
+| cast | 19 |
+| choice | 1 |
+| combat | 8 |
+| discard | 2 |
+| land | 4 |
+| leftover | 3 |
+| mulligan | 6 |
+| removal | 1 |
+| sacrifice | 2 |
+| wipe | 2 |
+
+Two positions are new and gated for `heuristic`, harvested from logged arena runs on this branch (seeds 101 and 201):
+
+- `sacrifice-the-creature-the-removal-targets`. An opponent's Acidic Slime trigger targets one of three Phyrexian Wurms, and the bot sacrifices that Wurm to Viscera Seer. `BaselineConfig()` passes.
+- `do-not-sacrifice-the-commander`. Syr Konrad, Zulaport Cutthroat and Bastion of Remembrance are out and an opponent is at 3. The bot sacrifices its summoning-sick Human Soldier token, which kills that opponent, and never Konrad. On PR 7's tree it casts Night's Whisper first, which the label also accepts. `BaselineConfig()` passes, which misses the kill.
+
+**Owner label review (2026-10-06).** The owner approved both labels as written, and both are stamped `reviewer: krakenhavoc`, `reviewed_at: 2026-10-06`.
 
 ### Amendment: discard payoffs (2026-10-06)
 

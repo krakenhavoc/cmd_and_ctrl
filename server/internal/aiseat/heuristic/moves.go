@@ -303,11 +303,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			}
 		}
 		v += st.targetsValue(p.cfg, cp.Targets)
-		for _, id := range cp.SacrificeIDs {
-			if c := st.bf[id]; c != nil {
-				v -= st.permanentValue(c)
-			}
-		}
+		// ADR 0126 §7: priced by the chance the bot would have kept
+		// each permanent, less its death payoffs (sacrifice.go).
+		v -= p.sacrificeCost(st, cp.SacrificeIDs)
 		// #1600: a permanent exiled to pay the cost leaves the board as
 		// surely as a sacrificed one, so it costs the same.
 		for _, id := range cp.ExilePermanentIDs {
@@ -521,11 +519,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	for _, id := range cp.DiscardIDs {
 		v += st.discardPayoff(p.cfg, st.mine[id])
 	}
-	for _, id := range cp.SacrificeIDs {
-		if c := st.bf[id]; c != nil {
-			v -= st.permanentValue(c)
-		}
-	}
+	v -= p.sacrificeCost(st, cp.SacrificeIDs)
 	v += st.targetsValue(p.cfg, cp.Targets)
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
