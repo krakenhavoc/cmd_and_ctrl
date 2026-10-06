@@ -3589,7 +3589,7 @@ The members are ADR 0126's Delivery PRs.
 - [x] PR 4: permanents by what they do. A mana-value floor for non-creature permanents, and utility from `ability_rows` for them and for creatures.
 - [x] PR 5: the two windows. The bot's own second main and the end step before its turn: spend leftover mana and free taps, a floor under instants and sorceries, and a tapped-blocker price that depends on timing.
 - [x] PR 6: the purpose signal. `PurposeView` on the wire and `Spec.Purpose` in the catalog, declared for the curated decks and every board wipe, with `TestCuratedDeckPurposes` and a manual dump audit.
-- [ ] PR 7: wipes priced by the change in score, ramp spells by the lands they fetch, and discard costs net of the cards drawn.
+- [x] PR 7: wipes priced by the change in score, ramp spells by the lands they fetch, and discard costs net of the cards drawn.
 - [ ] PR 8: sacrifice outlets. A creature that is dying anyway, and death payoffs.
 - [ ] PR 9: the exit run against ADR 0126's acceptance bar, the Measurements, `docs/bot.md`, and the evidence on #2435.
 - [ ] [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436): rebalance the curated decks, measured with the new pricing. Starts after PR 9.
