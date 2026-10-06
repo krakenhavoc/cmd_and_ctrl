@@ -1870,6 +1870,41 @@ within 1 exchange(s); crack-back 0 < my 6`. In the Wurm mirror that is
 one Wurm into theirs. Nothing is remembered between decisions, and the
 search stops after 100 swings evaluated per decision.
 
+### The free answer (#2310)
+
+The race's **now** is what the defender takes when it blocks only to
+survive. A defender has another cheap answer: block with everything
+whose block costs it nothing, and take the rest. A block is free when
+the blocker lives, or when the blocker is the defender's commander.
+CR 903.9a sends a dying commander to the command zone, and the
+defender casts it again before the bot's next attack. This is the
+definition of a free block that the attrition horizon already used.
+
+The race now has to win against both answers. It computes now and next
+for each and decides on the pair that leaves the defender more life.
+Under the free answer, an attacker of the bot's that a free block kills
+is dead for next turn, and a commander that died blocking is back to
+block. The crack-back is the larger of the two. Under the free answer
+the defender loses none of the creatures its chumps would have cost it,
+so they can all swing back. The recast commander cannot: it was cast
+that turn, so it can attack only if it has haste.
+
+Without this the full seed-1409 Wurm mirror looped. Once the Ogres had
+traded off, the race sent a lone 3/3 commander: `3 now + 4 next turn ≥
+their 6 life`. The defender blocked it with its own commander, both
+were cast again, and the same race came back for about a dozen turns.
+The loop ended only when the commander tax outran one player's lands.
+Against the free answer that swing is 0 now and 2 next, so it is not a
+race. The bot sends the smallest swing that is: its commander and two
+Bears, `4 now + 2 next turn`.
+
+Two refinements were measured and left out, because both made the
+heuristic gate's games longer. One counted a commander as free only
+while the defender could pay the tax to cast it again (CR 903.8). The
+other let a trampler's overflow past a free chump through. Each makes
+some smaller swing qualify, and the race and the attrition horizon
+send the smallest swing that qualifies.
+
 ### Trample overflow on the attacking side (#1504)
 
 `lethalPush` and the race's now and next count what a blocked trampler
