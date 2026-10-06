@@ -638,3 +638,57 @@ The result is not detectably worse in either tree: the `heuristic` interval's up
 - `do-not-cantrip-before-the-three-drop` is not added, because the harvest found no window where it was the unambiguous answer. `TestTheCantripDoesNotBeatTheThreeDrop` pins that behaviour in `heuristic` instead.
 
 **Engine bug found:** the catalog soak on this branch failed on nightly seed 2026100601. Goblin Sharpshooter's own death triggers its untap. The untap then resolved against the card in exile and raised an effect error. The PR fixes it in `UntapTarget` (CR 400.7), with a regression test.
+
+### PR 8: sacrifice outlets (2026-10-06)
+
+`develop` at `6f73abab8` (PRs 3, 4, 5 and 6 merged) plus PR 8. `DefaultConfig()` against `BaselineConfig()`: `SacrificeDyingAnyway` true (baseline false) and `DeathPayoff` 0.60 (0). `DeathPayoff` is §9's starting value, not changed by tuning; the removal discount is the existing `RemovalConfidence` (0.80). Arena runs use the concurrent schedule, turn budget 60.
+
+Three readings of §7, each the one closest to its stated intent:
+
+- **The bar.** §7 says dying-anyway pricing "makes 'sacrifice it in response' the bot's play", but a response happens outside a sorcery-speed window, where the bar is `InstantThreshold` (1.50), and an outlet activation is worth `ActivateBase` (0.50) less the flat 0.30 a non-tapping row on a creature already pays. No dying-anyway price can clear 1.50. A sacrifice of a permanent that is about to be lost spends nothing the bot would otherwise keep, which is §5's premise, so a move whose only non-mana cost is sacrificing permanents that are dying anyway clears `LeftoverThreshold` (0.00), in any window.
+- **What "dying anyway" reads.** A spell's sweep is read from the slot its stack item names (alternative cost, modes, or the card). An ability's stack item does not say which row it came from, so a planeswalker's or a saga's sweep is not seen. In combat, a creature counts as losing only when sacrificing it gives up nothing: an attacker its blockers kill that kills none of them and tramples nothing over, or a blocker that dies whose attackers live or die the same without it. A chump in front of a trampler is not losing (CR 702.19d); one in front of anything else is, since the attacker stays blocked (CR 509.1h).
+- **Payoffs.** A payoff's own row is not counted towards its own sacrifice (whether it sees its own death is text the wire does not carry), and a row that sacrifices its own source (Sakura-Tribe Elder) gets no payoff, because that sacrifice is not priced as a cost at all. A devoured creature is sacrificed, so devour counts the payoffs too.
+
+**Run 1:** the same command and seed as PR 2's. 64 games, 1 stall, 7 rejected moves, turns p50 12.
+
+| Deck | Wins | Win rate of decided | Wilson 95% interval | `never` | `never` before (PRs 3–6) |
+|---|---:|---:|---|---:|---:|
+| esper-control | 1 | 1.6% | 0.3%–8.5% | 2 | 2 |
+| izzet-aggro | 3 | 4.8% | 1.6%–13.1% | 6 | 7 |
+| mono-black-aristocrats | 42 | 66.7% | 54.4%–77.1% | 4 | 11 |
+| simic-ramp | 17 | 27.0% | 17.6%–39.0% | 2 | 2 |
+
+The "before" column is PR 4's re-measurement on `develop` with PRs 3, 5 and 6, the pricing this PR starts from.
+
+Sacrifice outlets, before (that re-measurement) and after:
+
+| Card and move | Before: taken of windows, games used of offered | After |
+|---|---|---|
+| Viscera Seer, activate | 0 of 2722, 0 of 21 | 17 of 2197, 10 of 21 |
+| Carrion Feeder, activate | 0 of 2099, 0 of 12 | 8 of 1814, 6 of 11 |
+| Vampiric Rites, activate | 0 of 606, 0 of 11 | 6 of 550, 3 of 12 |
+| Warren Soultrader, activate | 0 of 1603, 0 of 14 | 4 of 1401, 3 of 13 |
+| Altar's Reap, Village Rites, Deadly Dispute (cast) | 0 in every game | 5 of 15, 3 of 17, 1 of 17 games |
+| Ashnod's Altar, Phyrexian Altar (cast) | 0 of 17, 0 of 13 | 0 of 16, 0 of 14 |
+
+The Altars are still never cast. They are mana sources whose ability sacrifices a creature, so §2 does not count them as repeatable and §7 does not price them, and their mana abilities are not activated for floating mana (§7). Blood Artist is also never cast (0 of 20 games): its 0/1 body plus one triggered row is below the card it costs, and §7 prices payoffs on the battlefield, not at cast.
+
+A6 still fails, and this PR does not move it. Mono-black's interval (54.4%–77.1%) lies entirely above 50%, as it did before this PR (69.8%, 57.6%–79.8%). The point estimate is 3 points lower, well inside the noise. Death payoffs did not push black higher in this run.
+
+The stall is game 21 (seed 21): the aristocrats seat at 75 life and an opponent at 2, the Sanguine Bond and Exquisite Blood loop at the CR 732 loop breaker (#2450). The 7 rejected moves are 3 attacks submitted after the step moved on and 4 passes that raced a Rhystic Study prompt, all in the concurrent schedule; none is a sacrifice.
+
+**Run 2:** the same shape and seeds as PR 2's. 96 games, 0 stalls, 0 rejected moves, turns p50 14 and 13 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval |
+|---|---:|---:|---:|---|
+| heuristic | 192 | 54 | 28.1% | 22.2%–34.9% |
+| heuristic-baseline | 192 | 42 | 21.9% | 16.6%–28.2% |
+
+Not detectably worse: the `heuristic` interval's upper bound, 34.9%, is above 25%. By half: `heuristic` won 10 of 96 seat-games on esper and izzet, and 44 of 96 on black and simic.
+
+**Suite:** `boteval suite run --policy heuristic`: 33 of 33 agree, every tag at 100% (activate 3, attack 4, block 4, cast 15, choice 1, combat 8, land 4, leftover 3, mulligan 6, removal 1, sacrifice 2). This tree has 31 positions before this PR; PR 7's four are not merged yet. Two positions are new and gated for `heuristic`, harvested from logged arena runs on this branch (seeds 101 and 201):
+
+- `sacrifice-the-creature-the-removal-targets`: an opponent's Acidic Slime trigger targets one of three Phyrexian Wurms, and the bot sacrifices that Wurm to Viscera Seer. `BaselineConfig()` passes.
+- `do-not-sacrifice-the-commander`: with Syr Konrad, Zulaport Cutthroat and Bastion of Remembrance out and an opponent at 3, the bot sacrifices its summoning-sick Human Soldier token, which kills that opponent, not Konrad. `BaselineConfig()` passes, which misses the kill.
+
+Their labels await the owner's review.
