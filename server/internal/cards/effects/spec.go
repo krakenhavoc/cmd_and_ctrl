@@ -1564,8 +1564,11 @@ type ManaAbility struct {
 	// runs immediately after the produced mana lands in the pool,
 	// inside the same atomic mana-ability resolution (CR 605.3b).
 	//
-	// Build one with PainRider(n) rather than by hand — that helper
-	// is the whole reason this slot exists so far.
+	// The commonest rider, "This land deals N damage to you", is
+	// declared with PainToYou below instead, which builds this
+	// callback AND tells the auto-tapper what it costs. A hand-written
+	// Rider is opaque to the planner, so a source that carries one is
+	// never auto-tapped (#2392).
 	//
 	// A rider is NOT a cost: it happens whether or not the player
 	// could "afford" it, and a source with a damage rider stays
@@ -1577,6 +1580,17 @@ type ManaAbility struct {
 	//
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *game.Game, controller, source uuid.UUID) error
+
+	// PainToYou is the painland rider declared as data: "This land
+	// deals N damage to you" after the "Add …" clause (the painlands,
+	// the Talismans' coloured half, Ancient Tomb, Grand Coliseum).
+	// Register builds the Rider from it with PainRider(n), so the
+	// damage is dealt exactly as a hand-written PainRider dealt it,
+	// and the built ability also carries the number
+	// (game.ManaAbilityShape.RiderSelfDamage) so the auto-tapper can
+	// price the source and plan it (#2392). Set this or Rider, never
+	// both; Register refuses the pair.
+	PainToYou int
 
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
@@ -1832,9 +1846,11 @@ type ManaAbilityCost struct {
 	//
 	// Paid out of the controller's pool before the source taps, and
 	// validated with every other component first, so an unaffordable
-	// activation fails with the source untouched. No auto-tap: the
-	// player floats the mana first, which is how a Signet is played
-	// on paper — see ActivateManaAbility.
+	// activation fails with the source untouched. An activation sent
+	// with auto_tap (#2215, which the client always sends) tops the
+	// pool up from the controller's other sources first; the
+	// auto-tapper still never plans such a source FOR a spell. See
+	// ActivateManaAbility.
 	//
 	// This is the last of S15's "mana / life / counter sub-costs
 	// land with later sprints when a catalog card demands them"

@@ -23,16 +23,16 @@ package effects
 //     Signet activated on an empty pool fails with the artifact still
 //     untapped. (Contrast a rider, which happens regardless — see
 //     Ancient Tomb.)
-//   - There is no auto-tap into it. ActivateManaAbility deliberately
-//     will not tap other permanents to fund a mana ability: a mana
-//     ability resolves with no priority window (CR 605.3b), and the
-//     planner cannot weigh "tap three lands to filter one". The
-//     player floats the {1} and clicks the Signet, which is exactly
-//     how the card is played on paper.
-//   - Consequently the auto-tapper does not plan Signets as sources
-//     either (autoTapAbilityFor skips any ability with a mana cost).
-//     A Signet already tapped for mana pays for the next spell like
-//     any other mana in the pool; it just is not tapped FOR you.
+//   - A click on the Signet pays the {1} for you (#2215): the
+//     activation carries auto_tap, and ActivateManaAbility taps one
+//     of the player's other sources for whatever the floating pool
+//     is missing (CR 605.3a lets a player activate mana abilities
+//     while paying for one). Mana already floating is spent first.
+//   - The auto-tapper still does not plan a Signet as a SOURCE for a
+//     spell (autoTapAbilityAccepts skips any ability with an unpriced
+//     mana cost): that would be a second cost to solve inside the
+//     first. A Signet already tapped for mana pays for the next spell
+//     like any other mana in the pool.
 //
 // Net-positive filtering: {1} in, {A}{B} out, so a Signet ramps by
 // one and fixes by two. That is the whole card and it is all here.

@@ -11,8 +11,9 @@ package effects
 // Two separate abilities, not one ability with an optional rider.
 // The colorless half is genuinely free; the colored half always
 // hurts. That distinction is the card, and it is why the auto-tapper
-// can use a painland safely (see painlessColorless) while a human
-// clicking the colored line knows what they signed up for.
+// pays a generic pip with the painless half (see painlessColorless)
+// and spends the coloured half, for its 1 damage, only when nothing
+// painless can pay the colour (#2392).
 //
 // The damage is a RIDER, not a cost: "This land deals 1 damage to
 // you" sits after the "Add" clause in the same ability, so it happens

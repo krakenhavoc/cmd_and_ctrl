@@ -840,3 +840,80 @@ spends the once-each-turn use.
 **Still open.** The client-side "make it obvious" half of #1621 is a highlight
 on the legal actions a seat can take, and it is being designed as ADR 0105. It
 is not part of this amendment.
+
+## Amendment (2026-10-06, #2392, #2215, #2278): life is a tier, a mana ability's mana cost is auto-paid, and generic spends the fewest colours
+
+S59 made automation the default (ADR 0117, ADR 0118): a click casts, and the
+planner's answer to "can this be paid?" is what the ready ring, the strict gate
+and every bot read. Three gaps in that answer were reported from play.
+
+### 1. A source that costs life is planned, in its own tier (#2392)
+
+Mana Confluence was the only source for a one-mana instant, and nothing was
+highlighted. The picker refused every mana ability with a life cost and every
+one with a rider, on the old principle that the planner may not spend life it
+was not asked to spend. Under click-to-act the click is the asking, as it
+already was for Phyrexian life (ADR 0118 §2).
+
+- **What is admitted.** A life cost the player can pay now (CR 119.4: a life
+  total at least the amount; CR 119.8: not while the total can't change).
+  And a rider that DECLARES its damage: `ManaAbilityShape.RiderSelfDamage`,
+  set by `effects.ManaAbility.PainToYou`, which also builds the rider. Every
+  `PainRider(n)` card moved to it: the painlands' and Talismans' coloured
+  halves, Ancient Tomb, Grand Coliseum, Tarnished Citadel, Barbarian Ring,
+  Cephalid Coliseum, Elves of Deep Shadow. An opaque `Rider` closure is still
+  refused, because the planner cannot know what it does.
+- **The tier.** `tapSource.Pain` is the life cost plus the declared damage.
+  Both comparators test it after the sacrifice keys and before `Frozen`, so
+  the order is ordinary → frozen → pain (cheapest first) → sacrificed → out
+  of hand → once-each-turn. A painland's `{C}` half stays an ordinary
+  candidate, so a generic pip never costs life while anything painless is
+  left.
+- **The budget.** A plan's total `Pain` stays below its controller's life
+  (`painBudgetFor`: life − 1), summed over the plan, so two painlands at 2
+  life are one too many. This is the planner's own bar, not a rule: CR 119.4
+  allows paying down to exactly 0, and a rider is not a cost at all. A click
+  that casts a spell must not be the click that loses the game, so below the
+  budget the source is one deliberate tap from its ability menu.
+- **The executor** pays the life after the tap and before a sacrifice, and
+  runs the rider after the mint, which is `ActivateManaAbility`'s order.
+- **The preview** says so: `AutoTapPlanEntry.Life` and `.Damage`, `life` and
+  `damage` on the `/autotap` preview's `sources`, and the client's summary
+  ends "…and costs you N life".
+
+**Known limit.** A cast move's `cost` does not carry the life its auto-tap
+plan would spend, so the heuristic bot does not price it. The move list and
+the engine still agree on whether the cast is payable, because both ask the
+same planner.
+
+### 2. A mana ability's own mana cost is auto-paid (#2215)
+
+Crystal Quarry's "{5}, {T}: Add {W}{U}{B}{R}{G}" refused an empty pool, so
+the player had to tap five sources by hand first. `ManaAbilityParams.AutoTap`
+(`auto_tap` on `activate_mana_ability`) plans what the floating pool is
+missing through the same top-up every other payer uses, read-only and before
+anything is paid, so an unpayable cost still fails with nothing tapped. The
+plan is carried out once every other component has been validated, just before
+the first payment. CR 605.1a keeps the ability a mana ability, and CR 605.3a
+lets a player activate mana abilities while paying for one.
+
+The source itself and every card another component names are excluded
+(`ManaActivationAutoTapExclusions`). The client stamps `auto_tap` on every
+mana activation, whatever the strict setting, because this mana is paid for
+real in every mode and the only alternative is an error. The legal-move
+enumerator asks the same top-up and puts `auto_tap` on every move whose
+ability has a mana component.
+
+§7 of ADR 0040 still holds for the PLANNER: a Signet or a Quarry is not a
+source for a spell, because funding it is a second cost to solve inside the
+first.
+
+### 3. Generic spends the source with the fewest colours (#2278)
+
+`tierForGeneric` ranked any multi-colour source before a single-colour one, so
+a generic {2} tapped Glacial Fortress and Hallowed Fountain beside an untapped
+Plains. The tier is now the number of colours a source can make: 0 for
+colourless, 1 for a basic, 2 for a dual, 5 for Birds. What stays untapped makes
+the most colours. The keys above it (the wish, once-each-turn, the hand, the
+sacrifice and pain tiers, frozen) are unchanged and tested first, so a Treasure
+is still the last thing a generic pip reaches for (#1215).

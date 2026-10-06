@@ -312,11 +312,14 @@ type ManaAbilityShape struct {
 	//
 	// Paid out of the controller's pool BEFORE the source taps, and
 	// validated alongside every other component first, so a Signet
-	// activated on an empty pool fails without tapping. There is no
-	// auto-tap here: ActivateManaAbility will not tap other
-	// permanents to fund a mana ability, because a mana ability
-	// resolves with no priority window (CR 605.3b) and the player
-	// has to have floated the mana deliberately.
+	// activated on an empty pool fails without tapping. With
+	// ManaAbilityParams.AutoTap (#2215) ActivateManaAbility tops the
+	// pool up from the controller's other sources first — CR 605.3a
+	// lets a player activate mana abilities while paying for one —
+	// and an unpayable cost still fails with nothing tapped. The
+	// auto-tapper does not plan a source with an unpriced mana cost
+	// as a SOURCE (autoTapAbilityAccepts): that would be a second
+	// cost to solve inside the first.
 	//
 	// This closes the last of S15's "mana / life / counter
 	// sub-costs land with later sprints" note (#352 sub-gap 1).
@@ -686,6 +689,19 @@ type ManaAbilityShape struct {
 	//
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *Game, controller, source uuid.UUID) error
+
+	// RiderSelfDamage is the damage Rider deals the ability's
+	// controller, when Rider is exactly "This permanent deals N damage
+	// to you" (effects.ManaAbility.PainToYou builds both). Zero for an
+	// opaque rider, or none.
+	//
+	// It exists for the auto-tapper (#2392). A Rider is a closure the
+	// planner cannot read, so a source with one is never planned —
+	// unless it declares what the rider costs here, which makes the
+	// painlands' coloured halves, Ancient Tomb and Grand Coliseum
+	// plannable in the pain tier (tapSource.Pain), never for more
+	// damage than leaves the player above 0 life.
+	RiderSelfDamage int
 
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and

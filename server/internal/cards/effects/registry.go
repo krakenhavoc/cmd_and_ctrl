@@ -418,6 +418,12 @@ func Register(spec Spec) {
 	// #1547: a spend rider that could never fire is a card that says
 	// something the engine silently does not do.
 	for i, ma := range spec.ManaAbilities {
+		// #2392: PainToYou BUILDS the rider, so a spec that also
+		// declares one would deal its damage one way and tell the
+		// auto-tapper another.
+		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
+		}
 		for _, r := range ma.SpendRiders {
 			if err := validateManaSpendRider(r); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d: %v", spec.Name, i, err))

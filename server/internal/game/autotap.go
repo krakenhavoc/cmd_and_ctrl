@@ -2,6 +2,7 @@ package game
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -89,6 +90,14 @@ import (
 // card's own instruction wins; the tier governs only what the planner
 // reaches for when nothing asked. See the sort in
 // autoTapPreferringLocked and orderUnusedByGenericPreference.
+
+// #2392: and a source that costs LIFE — Mana Confluence's "Pay 1 life",
+// a horizon land's, a painland's coloured half and Ancient Tomb's damage
+// rider (the rider only when it declares how much it deals:
+// ManaAbilityShape.RiderSelfDamage) — is plannable since automation
+// became the default (S59). It is its own tier, between a frozen source
+// and a sacrificed one (tapSource.Pain), and a plan never spends more
+// life than leaves its controller above 0 (painBudgetFor).
 
 // AutoTapBudget is the maximum number of solver-recursion nodes
 // the auto-tapper expands before bailing. Hit this cap and the
@@ -227,6 +236,12 @@ type AutoTapPlanEntry struct {
 	// for it, and without this bit the entry would read as a tap, which
 	// it is not.
 	OncePerTurn bool
+	// Life is the life the payment pays as part of the ability's cost
+	// (Mana Confluence's "Pay 1 life", #2392), and Damage the damage its
+	// rider deals the controller after the mana (a painland's coloured
+	// half, Ancient Tomb). Zero for a painless source.
+	Life   int
+	Damage int
 }
 
 // AutoTapPlanPreferringExcluding is AutoTapForCostPreferringExcluding
@@ -274,6 +289,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 			if ab := g.autoTapAbilityForRef(controller, c, planned.Ref); ab != nil {
 				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
 				entry.OncePerTurn = autoTapFreeOncePerTurn(*ab)
+				entry.Life, entry.Damage = ab.LifeCost, ab.RiderSelfDamage
 			}
 			out = append(out, entry)
 			continue
@@ -462,6 +478,13 @@ func (g *Game) autoTapPreferringLocked(
 		if sources[i].SacrificesCreature != sources[j].SacrificesCreature {
 			return !sources[i].SacrificesCreature
 		}
+		// #2392: a source that costs life after every painless one,
+		// frozen included, and before every sacrificed one (tested
+		// after the sacrifice keys, so it ranks above them). Among two
+		// pain sources, the cheaper first.
+		if sources[i].Pain != sources[j].Pain {
+			return sources[i].Pain < sources[j].Pain
+		}
 		if sources[i].Frozen != sources[j].Frozen {
 			return !sources[i].Frozen
 		}
@@ -483,16 +506,43 @@ func (g *Game) autoTapPreferringLocked(
 	// widened slots are paid as generic, and the planner never taps
 	// an Orrery's colourless for a {R} a Mountain was there to pay.
 	deferred := 0
-	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred) {
+	// #2392: the life a plan may spend on pain-tier sources, shared by
+	// both passes — see painBudgetFor.
+	pain := painBudgetFor(g, controller)
+	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred, &pain) {
 		return nil, false
 	}
 	if budget <= 0 {
 		return nil, false
 	}
-	if !recruitGeneric(sources, used, consumed, &plan, need+deferred) {
+	if !recruitGeneric(sources, used, consumed, &plan, need+deferred, &pain) {
 		return nil, false
 	}
 	return plan, true
+}
+
+// painBudgetFor is how much life an auto-tap plan may spend on pain-tier
+// sources (#2392): one less than the controller's life total, so the
+// automatic payment never takes a player to 0 or below.
+//
+// That is a bar the planner holds itself to, not a rule. CR 119.4 lets a
+// player pay life down to exactly 0, and a painland's damage is not a
+// cost at all, so a player at 1 life may tap Mana Confluence or a Shivan
+// Reef's coloured half and lose — but a click that casts a spell must
+// never be the click that loses the game. They stay one deliberate tap
+// away, from the permanent's own ability menu.
+//
+// The sum is the plan's, not each source's: two painlands at 2 life are
+// one too many. A life cost's own CR 119.4 and CR 119.8 test is asked
+// per ability by autoTapAbilityAccepts, which this budget then bounds.
+//
+// Caller must hold g.mu.
+func painBudgetFor(g *Game, controller uuid.UUID) int {
+	p := g.playerByIDLocked(controller)
+	if p == nil || p.Life <= 1 {
+		return 0
+	}
+	return p.Life - 1
 }
 
 // tapSource is one available mana ability on the battlefield. Slots
@@ -617,6 +667,19 @@ type tapSource struct {
 	// they cast next. Below the hand tier too, because the ruling was
 	// a floor under everything, not a slot between two tiers.
 	FreeOncePerTurn bool
+
+	// Pain is the life this candidate spends (#2392): its ability's
+	// "Pay N life" cost plus the damage its declared rider deals the
+	// controller (ManaAbilityShape.RiderSelfDamage). Mana Confluence is
+	// 1, a painland's coloured half 1, Ancient Tomb 2; zero for every
+	// painless source.
+	//
+	// A tier of both comparators: below a frozen source and above a
+	// sacrificed one, so the planner spends life only when no untapped,
+	// painless source could pay, and spends a point of life before it
+	// cracks a Treasure. The solver also bounds a plan's total Pain by
+	// painBudgetFor.
+	Pain int
 }
 
 // lastResort is the tier #1215 opened for the sources a plan should
@@ -764,6 +827,8 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				// no sacrifice, which it does only for a costless
 				// once-each-turn one.
 				FreeOncePerTurn: autoTapFreeOncePerTurn(*picked),
+				// #2392: life the payment spends.
+				Pain: picked.LifeCost + picked.RiderSelfDamage,
 			}, slots)
 		}
 	}
@@ -1078,13 +1143,12 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //     the one family it was built for;
 //
 //   - a cost that ADDS a counter spends a resource the player never
-//     agreed to spend, like a life cost (#789);
+//     agreed to spend (#789) — a -1/-1 counter on Devoted Druid stays;
 //
-//   - a life cost spends a resource the player never agreed to spend
-//     (Mana Confluence);
-//
-//   - a rider spends one too, one the player can't decline (Ancient
-//     Tomb's 2 damage);
+//   - a life cost the player cannot pay right now (CR 119.4, CR 119.8).
+//     A payable one is planned since #2392, in the pain tier, and so is
+//     a rider that declares its damage (RiderSelfDamage); a rider that
+//     does not is a closure the planner cannot read, and it stays out;
 //
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first,
@@ -1109,13 +1173,13 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 // spent by the cast path like any other (that is the point of the
 // spend context — see mana_restriction.go).
 //
-// The painland and Talisman cycles come through this filter intact,
-// because on those cards the painless "{T}: Add {C}" is ability 0 and
-// the rider lives on ability 1 — the auto-tapper plans them as
-// colorless sources and leaves the painful colored half to a
-// deliberate click. Ancient Tomb and Mana Confluence have no painless
-// ability and drop out of auto-tap planning entirely; they are still
-// fully activatable by hand from the permanent's ability menu.
+// The painland and Talisman cycles offer the planner BOTH halves since
+// #2392: the painless "{T}: Add {C}" is an ordinary candidate and the
+// coloured half a pain-tier one, so a generic pip still taps the land
+// for {C} and only a coloured pip nothing painless can pay costs the
+// point of damage. Ancient Tomb and Mana Confluence are pain-tier
+// sources outright. Before #2392 all of them were hand-tap only, and a
+// spell only they could pay for read as uncastable.
 //
 // City of Brass deliberately does NOT drop out: its pain is a
 // separate "whenever this land becomes tapped" TRIGGER, not part of
@@ -1241,7 +1305,15 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 	if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
 		return false
 	}
-	if a.LifeCost > 0 || a.Rider != nil {
+	// #2392: a life cost is plannable — the automatic payment pays it
+	// (CR 119.4: only from a life total at least that large; CR 119.8:
+	// not at all while the total can't change) — and so is a rider
+	// that declares the damage it deals. An opaque rider stays out: the
+	// planner cannot know what it does.
+	if a.Rider != nil && a.RiderSelfDamage <= 0 {
+		return false
+	}
+	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
 		return false
 	}
 	if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
@@ -1578,6 +1650,7 @@ func solveColored(
 	reqIdx int,
 	budget *int,
 	deferred *int,
+	pain *int,
 ) bool {
 	if *budget <= 0 {
 		return false
@@ -1605,21 +1678,28 @@ func solveColored(
 		if slotIdx < 0 {
 			continue
 		}
+		// #2392: a source whose life cost or rider the plan's
+		// remaining pain budget cannot cover is not one.
+		wasUsed := used[i]
+		if !wasUsed && sources[i].Pain > *pain {
+			continue
+		}
 		// Tentatively pick. Mark used (idempotent for
 		// already-used sources), bump the consumed counter,
 		// append to plan only on the source's first use.
-		wasUsed := used[i]
 		if !wasUsed {
 			used[i] = true
+			*pain -= sources[i].Pain
 			*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 		}
 		consumed[i]++
-		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred) {
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
 			return true
 		}
 		consumed[i]--
 		if !wasUsed {
 			used[i] = false
+			*pain += sources[i].Pain
 			*plan = (*plan)[:len(*plan)-1]
 		}
 	}
@@ -1628,7 +1708,7 @@ func solveColored(
 	// after every placement on a matching slot.
 	if req.AnyMana {
 		*deferred++
-		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred) {
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
 			return true
 		}
 		*deferred--
@@ -1671,6 +1751,7 @@ func recruitGeneric(
 	consumed []int,
 	plan *tapPlan,
 	need int,
+	pain *int,
 ) bool {
 	if need <= 0 {
 		return true
@@ -1700,6 +1781,11 @@ func recruitGeneric(
 		if plan.hasCard(sources[i].CardID) {
 			continue
 		}
+		// #2392: the plan's pain budget, as in the coloured pass.
+		if sources[i].Pain > *pain {
+			continue
+		}
+		*pain -= sources[i].Pain
 		used[i] = true
 		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 		deficit -= len(sources[i].Slots)
@@ -1716,8 +1802,10 @@ func recruitGeneric(
 // orderUnusedByGenericPreference returns indices into `sources`
 // for the unused entries in the order the generic recruiter
 // should try them. Colorless-only sources (Sol Ring) come first
-// — they preserve colored mana for future casts. Then any-color
-// (Birds-style), then plain monocolored. Within a tier, slot
+// — they preserve colored mana for future casts. Then single-colour
+// sources (a basic), then multi-colour ones by fewest colours — a
+// dual before a tri-land before Birds (#2278): what stays untapped
+// should make as many colours as it can. Within a tier, slot
 // count descending so a single recruitment plan covers more
 // generic faster. A frozen source comes after every ordinary source
 // regardless of its generic tier, preserving a permanent that will
@@ -1749,7 +1837,8 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		sacrifices bool
 		creature   bool
 		frozen     bool
-		tier       int // 0 = colorless-only, 1 = any-color, 2 = monocolored
+		pain       int
+		tier       int // 0 = colorless-only, else how many colours (#2278)
 		slotCnt    int
 	}
 	out := make([]rank, 0, len(sources))
@@ -1766,6 +1855,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			sacrifices: s.lastResort(),
 			creature:   s.SacrificesCreature,
 			frozen:     s.Frozen,
+			pain:       s.Pain,
 			tier:       t,
 			slotCnt:    len(s.Slots),
 		})
@@ -1822,6 +1912,13 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		if out[a].creature != out[b].creature {
 			return !out[a].creature
 		}
+		// #2392: the pain tier, in the same place as in the coloured
+		// comparator — a painland's {C} half is an ordinary candidate
+		// and pays the generic pip; its coloured half never does while
+		// anything painless is left.
+		if out[a].pain != out[b].pain {
+			return out[a].pain < out[b].pain
+		}
 		if out[a].frozen != out[b].frozen {
 			return !out[a].frozen
 		}
@@ -1838,29 +1935,40 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 }
 
 // tierForGeneric scores a source's "generic-spending preference"
-// — lower = recruit-first. Colorless-only producers are tier 0
-// (Sol Ring); any-color (Birds, Signet) tier 1; plain mono-
-// colored tier 2 (basics — preserve them as long as possible).
+// — lower = recruit-first. It is the number of colours the source can
+// make: 0 for a colourless-only producer (Sol Ring, Wastes), 1 for a
+// single-colour one (a basic), 2 for a dual, 3 for a tri-land, 5 for
+// Birds of Paradise.
+//
+// #2278: the order used to run single-colour LAST, behind every
+// multi-colour source, on the reading "preserve the basics". That
+// spent a Glacial Fortress on a generic {2} and left the Plains beside
+// it untapped, which strands blue: the Plains could only ever have
+// paid {W}. Spending the source that makes the fewest colours keeps
+// the most colours available for the next spell, which is what this
+// ordering was always for. Colourless first is unchanged, for the same
+// reason.
+//
+// Only the generic recruit reads this. The coloured pass has its own
+// restriction-first order (restrictivenessScore), and the tiers above
+// it — the wish, the hand, the sacrifice and pain tiers, frozen — are
+// keys tested before this one, so a Treasure (five colours, and
+// sacrificed) is still the last thing a generic pip reaches for
+// (#1215).
 func tierForGeneric(s tapSource) int {
-	allColorless := true
-	anyMulti := false
+	var colors [6]bool
+	n := 0
 	for _, slot := range s.Slots {
-		if len(slot.Options) == 1 && slot.Options[0] == "C" {
-			continue
-		}
-		allColorless = false
-		if len(slot.Options) > 1 {
-			anyMulti = true
+		for _, opt := range slot.Options {
+			i := strings.Index("WUBRGC", opt)
+			if i < 0 || i == 5 || colors[i] {
+				continue
+			}
+			colors[i] = true
+			n++
 		}
 	}
-	switch {
-	case allColorless:
-		return 0
-	case anyMulti:
-		return 1
-	default:
-		return 2
-	}
+	return n
 }
 
 // intersectColors returns the elements of `a` that also appear in

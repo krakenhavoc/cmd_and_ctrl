@@ -1,6 +1,7 @@
 package legal_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -115,10 +116,12 @@ func TestASpentExhaustManaAbilityIsNotEnumerated(t *testing.T) {
 	control := battlefieldCard(g, active, basic("Forest", "Forest"))
 	advanceTo(t, g, game.StepPrecombatMain)
 
-	// Non-vacuity: the {G} in the cost has to be floatable, so the
-	// enumerator offers the tap only with a Forest available for it.
-	if got := movesFrom(legal.EnumerateFor(g, active.ID), loot, legal.KindMana); len(got) != 0 {
-		t.Fatalf("with an empty pool the mana ability is not a move yet, got %v", labels(got))
+	// Non-vacuity: the {G} in the cost is payable — since #2215 from an
+	// untapped Forest too, so the move is offered with an empty pool and
+	// carries auto_tap.
+	if got := movesFrom(legal.EnumerateFor(g, active.ID), loot, legal.KindMana); len(got) != 1 ||
+		!strings.Contains(string(got[0].Params), `"auto_tap":true`) {
+		t.Fatalf("with an empty pool and Forests untapped: want 1 auto_tap mana move, got %v", labels(got))
 	}
 	active.ManaPool.AddMana(game.ManaToken{Color: "G"})
 	before := movesFrom(legal.EnumerateFor(g, active.ID), loot, legal.KindMana)

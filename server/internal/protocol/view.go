@@ -3644,11 +3644,11 @@ type ManaAbilityView struct {
 	LifeCost int `json:"life_cost,omitempty"`
 	// ManaCost is a mana component of the activation cost — the
 	// Signet cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}".
-	// Advisory, like LifeCost: the client renders the cost chip so
-	// the player knows to float the mana first, and the server does
-	// the real check. The engine deliberately does NOT auto-tap
-	// into a mana ability, so an ability with this set can only be
-	// fired against mana the player has already produced.
+	// Advisory, like LifeCost: the client renders the cost chip, and
+	// the server does the real check. An activation sent with
+	// `auto_tap` (#2215; the client always sends it) pays what the
+	// floating pool is missing by tapping the player's other sources;
+	// without it the mana has to be floating already.
 	// Added in the S32 mana-pipeline pass (#352).
 	ManaCost string `json:"mana_cost,omitempty"`
 	// ChargedManaCost is ActivatedAbilityView.ChargedManaCost for a

@@ -24,10 +24,10 @@ func init() {
 		Name:         "Cephalid Coliseum",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{U}",
-			Label:    "Add {U}. This land deals 1 damage to you.",
-			Rider:    PainRider(1),
+			Cost:      ManaAbilityCost{Tap: true},
+			Produced:  "{U}",
+			Label:     "Add {U}. This land deals 1 damage to you.",
+			PainToYou: 1,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "Threshold — {U}, {T}, Sacrifice this land: Target player draws three cards, then discards three cards. Activate only if there are seven or more cards in your graveyard.",

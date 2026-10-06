@@ -2272,6 +2272,11 @@ func writeAutoTapPreview(
 		// {0}) — nothing tapped, sacrificed or exiled, only this
 		// turn's one use spent.
 		OncePerTurn bool `json:"once_per_turn,omitempty"`
+		// #2392: life the payment pays as part of the cost (Mana
+		// Confluence), and damage its rider deals the player after the
+		// mana (a painland's coloured half, Ancient Tomb).
+		Life   int `json:"life,omitempty"`
+		Damage int `json:"damage,omitempty"`
 	}
 	type response struct {
 		OK      bool     `json:"ok"`
@@ -2298,6 +2303,8 @@ func writeAutoTapPreview(
 				Sacrifice:   e.Sacrifices,
 				ExileCards:  e.Exiles,
 				OncePerTurn: e.OncePerTurn,
+				Life:        e.Life,
+				Damage:      e.Damage,
 			}
 		}
 	} else {

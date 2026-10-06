@@ -3548,8 +3548,9 @@ export interface ManaAbilityView {
   life_cost?: number;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
-  // life_cost. The server never auto-taps into a mana ability, so the
-  // player has to float this mana before the entry will fire.
+  // life_cost. The client sends every activate_mana_ability with
+  // `auto_tap` (#2215), so the server taps the player's other sources
+  // for whatever the floating pool is missing.
   mana_cost?: string;
   // #1191, #1190: ActivatedAbilityView.charged_mana_cost for a mana
   // ability — CR 605.1a makes a mana ability an activated ability, so

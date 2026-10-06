@@ -19,12 +19,10 @@ package effects
 //     ActivateManaAbility runs a state-based-action pass on the way
 //     out of any activation whose rider fired.
 //
-// Ancient Tomb is deliberately excluded from the auto-tapper (see
-// game.autoTapAbilityFor): its only ability carries the rider, and an
-// auto-tap that quietly took 2 off a player's life to save them a
-// click would be the wrong trade. It taps by hand from the ability
-// menu, which is also how it plays in paper — Ancient Tomb is a
-// decision, not a land drop.
+// The rider is declared as PainToYou, so the auto-tapper can price it
+// (#2392): Ancient Tomb is a pain-tier source, spent only when nothing
+// painless can pay, and never when its 2 damage would take its
+// controller to 0. Below that it taps by hand from the ability menu.
 //
 // No simplification.
 func init() {
@@ -33,10 +31,10 @@ func init() {
 		Name:         "Ancient Tomb",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{C}{C}",
-			Label:    "Add {C}{C}. This land deals 2 damage to you.",
-			Rider:    PainRider(2),
+			Cost:      ManaAbilityCost{Tap: true},
+			Produced:  "{C}{C}",
+			Label:     "Add {C}{C}. This land deals 2 damage to you.",
+			PainToYou: 2,
 		}},
 	})
 }

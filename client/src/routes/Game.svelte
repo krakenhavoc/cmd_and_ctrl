@@ -616,7 +616,7 @@
     // window.
     cancelPendingPass();
     // #1296: activate_ability is stamped too — see manaEnforcement.ts.
-    if (type === "cast_spell" || type === "activate_ability") {
+    if (type === "cast_spell" || type === "activate_ability" || type === "activate_mana_ability") {
       params = stampManaEnforcement(
         type,
         (params ?? {}) as Record<string, unknown>,

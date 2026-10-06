@@ -2232,6 +2232,17 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if tapped {
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
 		}
+		// #2392: the life cost (Mana Confluence's "Pay 1 life"), after
+		// the tap and before the sacrifice — ActivateManaAbility's
+		// component order. The picker re-asked CR 119.4 and CR 119.8
+		// above (autoTapAbilityAccepts), so this refuses only when a
+		// replacement stops the payment; the source is then tapped and
+		// mints nothing, the sacrifice's honest answer below.
+		if ab.LifeCost > 0 {
+			if err := g.PayLifeForEffect(cardID, p.ID, ab.LifeCost); err != nil {
+				continue
+			}
+		}
 		// #1215: the sacrifice, AFTER the tap and BEFORE the mana —
 		// the component order ActivateManaAbility pays in, and for
 		// the same reason: the tap has to happen while the permanent
@@ -2361,6 +2372,23 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// triggered mana abilities watch a permanent tapped for mana,
 		// and a cracked Eldrazi Spawn was not — the same `ab.TapCost &&`
 		// ActivateManaAbility gates its own firing on.
+		// #2392: the declared rider — a painland's "This land deals 1
+		// damage to you" — after the mana and before the triggered mana
+		// abilities, where ActivateManaAbility runs it. The picker only
+		// accepts a rider that declares its damage (RiderSelfDamage), so
+		// this is never an opaque closure the planner could not price.
+		// Any state-based action it causes is checked by the caller,
+		// which runs the state checks before anyone next gets priority.
+		if ab.Rider != nil {
+			if err := ab.Rider(g, p.ID, cardID); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    p.ID,
+					Source:   cardID,
+					ErrorMsg: err.Error(),
+				})
+			}
+		}
 		if tapped && len(addedColors) > 0 {
 			g.fireManaTriggersLocked(ManaProduced{
 				Source:     tappedForMana,
@@ -6215,6 +6243,19 @@ type ManaAbilityParams struct {
 	// set it.
 	Colors []string
 
+	// AutoTap lets the activation pay a MANA component of its cost
+	// (Crystal Quarry's "{5}, {T}", a Signet's "{1}, {T}") by tapping
+	// the activator's other mana sources for whatever the floating pool
+	// is missing (#2215) — the same planner, top-up and executor every
+	// other auto-tapped payment uses. CR 605.3a lets a player activate
+	// mana abilities while paying for one. The source itself, and every
+	// card another component of this cost names, is never spent on it
+	// (ManaActivationAutoTapExclusions). Without it, the mana has to be
+	// floating already, as before. On the wire as `auto_tap`; the client
+	// sends it on every mana activation, and the legal-move enumerator
+	// on every one with a mana component.
+	AutoTap bool
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -6487,12 +6528,19 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// nothing extra: ManaAbilityManaCostForEffect returns the printed
 	// cost unchanged and walks nothing.
 	//
-	// Deliberately no auto-tap. A mana ability resolves with no
-	// priority window (CR 605.3b), and tapping three lands to feed a
-	// Signet is a decision with consequences the planner cannot
-	// weigh — the player floats the mana first, which is how the card
-	// is played on paper anyway.
-	var manaCost ParsedCost
+	// #2215: with AutoTap, the part the pool cannot pay is planned from
+	// the activator's other sources HERE, read-only, so a cost no plan
+	// can fund still fails with nothing tapped. The plan is carried out
+	// below, once every other component has been validated and just
+	// before the first payment (CR 601.2g via CR 602.2b: mana abilities
+	// are activated before costs are paid, and CR 605.3a allows it in
+	// the middle of activating one). Without AutoTap the mana has to be
+	// floating already, which is how this path always worked.
+	var (
+		manaCost  ParsedCost
+		manaPlan  tapPlan
+		manaShort ParsedCost
+	)
 	if ab.ManaCost != "" {
 		priced, perr := g.ManaAbilityManaCostForEffect(playerID, *card, ab)
 		if perr != nil {
@@ -6508,7 +6556,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// spends under, because it spends this manaCost.
 		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, 0)
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
-			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+			if !params.AutoTap {
+				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+			}
+			plan, short, ok := g.autoTapTopUpLocked(playerID, manaCost, 0, spendCtx,
+				ManaActivationAutoTapExclusions(cardID, params), 0)
+			if !ok {
+				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+			}
+			manaPlan, manaShort = plan, short
 		}
 	}
 
@@ -6592,6 +6648,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// `Ever` is what exhaust reads and `Turn` is the per-turn count
 	// the "Activate only once each turn" cards will read, and both are
 	// one write at one call site.
+	// #2215: the plan made above, carried out now that nothing left can
+	// refuse the activation. Other mana abilities, activated to pay this
+	// one's mana component (CR 605.3a); whatever they trigger or
+	// sacrifice is drained by the state checks on the way out.
+	if len(manaPlan) > 0 {
+		g.materializePlanLocked(p, manaPlan, manaShort)
+		needStateChecks = true
+	}
+
 	g.noteAbilityActivationLocked(activationKey)
 
 	// --- pay ----------------------------------------------------

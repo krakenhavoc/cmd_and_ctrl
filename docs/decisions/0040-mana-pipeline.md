@@ -144,6 +144,12 @@ so on both the `game` and `effects` copies.
 
 ### 7. The auto-tapper refuses two new source kinds
 
+> **Amended 2026-10-06** ([ADR 0011](0011-mana-pool-and-auto-tapper.md),
+> #2392, #2215): life costs and declared damage riders are planned now, in a
+> pain tier. A mana ability's own mana cost is auto-paid when it is
+> activated with `auto_tap`. A Signet is still not a planned source for a
+> spell.
+
 `autoTapAbilityFor` already skipped sacrifice costs, life costs and
 riders on one principle: *no further player decisions, no hidden
 costs*. Two more now join them.
