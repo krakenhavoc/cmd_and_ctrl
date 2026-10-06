@@ -381,6 +381,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 2 - fuel/(1+fuel), "discard the cheapest land"
 
 	case choiceEntrySacrifice:
+		if ch != nil && ch.Devour > 0 {
+			// #2419: devour is a "may", any number, and each creature
+			// sacrificed buys counters — see devour.go.
+			return p.devourValue(st, ch, cp.CardIDs)
+		}
 		// ADR 0098 Decision 11, Heart of Yavimaya and Lotus Vale:
 		// "sacrifice <N> instead" is not a "may", so every offered set
 		// has the same size and the only question is which. Spend the

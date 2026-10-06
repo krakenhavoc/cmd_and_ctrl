@@ -40,3 +40,23 @@ func (c *PendingChoice) CommanderHeadedFor() ZoneKind {
 	}
 	return f.ev.NewZone
 }
+
+// DevourOffer is what an entry_sacrifice prompt for devour (CR 702.82a,
+// #2419) is worth per creature named: N counters, and what the entering
+// creature's own "for each creature it devoured" ability pays on top
+// (cards drawn, life gained). All zero on every other prompt, including
+// the fixed-count sacrifice lands that share the kind.
+func (c *PendingChoice) DevourOffer() (n, draw, life int) {
+	if c == nil || c.Kind != PendingChoiceEntrySacrifice {
+		return 0, 0, 0
+	}
+	f := c.replacementResume
+	if f == nil || len(f.applicable) != 1 {
+		return 0, 0, 0
+	}
+	spec := f.applicable[0].effect.EntryCardChoice
+	if spec == nil || spec.Devour <= 0 {
+		return 0, 0, 0
+	}
+	return spec.Devour, spec.DevourDraw, spec.DevourLife
+}

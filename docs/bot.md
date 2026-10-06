@@ -366,6 +366,22 @@ kinds of their own (`entry_discard_from_hand`, `entry_reveal_from_hand`,
 `entry_sacrifice`), priced in `choices.go`, and never reached the old
 default.
 
+**Devour (`entry_sacrifice` with `devour`, CR 702.82a, #2419).** "You may
+sacrifice any number of creatures; it enters with N +1/+1 counters for
+each" is the one sacrifice prompt whose empty answer is legal, so the
+bot prices each creature on its own (`heuristic/devour.go`): N counters
+at `Weights.Power + Weights.Toughness` each, plus what the creature's own
+"for each creature it devoured" ability pays per creature (a card at
+`drawValue` for Skullmulcher, `Weights.Life` per point for Marrow
+Chomper), minus what the creature is worth on the board, a premium for a
+nontoken (`DevourPermanent`), and a large one for its own commander
+(`DevourCommander`). A set is the sum of its creatures, so the bot eats
+every creature worth less than its counters and stops there; tokens go
+first, and a 1/1 token is only eaten for N of two or more. The
+enumerator orders the pool cheapest first, so the best set is always
+among the offered prefixes. The fixed-count sacrifice lands carry no
+`devour` and keep the cheapest-set rule.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's

@@ -182,6 +182,15 @@ type EntryCardChoice struct {
 	// declaration carries no closure a restore point would have to
 	// rebuild. Only meaningful with AnyNumber.
 	Devour int
+
+	// DevourDraw and DevourLife are what a creature's own "for each
+	// creature it devoured" ability pays per sacrificed creature
+	// (Skullmulcher draws one, Marrow Chomper gains two). They do
+	// nothing in the engine, whose trigger reads Card.Devoured; they
+	// are on the declaration so the prompt can say what each creature
+	// is worth (PendingChoice.DevourOffer) to a seat that cannot read
+	// the entering card's text. Only meaningful with Devour.
+	DevourDraw, DevourLife int
 }
 
 // zone is where the choice's candidates live.
