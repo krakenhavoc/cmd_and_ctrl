@@ -248,13 +248,16 @@ func nextFromSourceModProblem(m Mod) string {
 		if m.Kind == ModRedirectDamage {
 			sourced, queries = false, false
 		}
-		if sourced || queries || m.Half || m.AndDealtBy {
+		if sourced || queries || m.Half || m.AndDealtBy || len(m.SourceFilter) != 0 {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
 	}
 	if m.AndDealtBy {
 		return fmt.Sprintf("a %s shield carries andDealtBy, which only preventFromSource reads", m.Kind)
+	}
+	if len(m.SourceFilter) != 0 {
+		return fmt.Sprintf("a %s shield carries a source filter, which only preventFromSource reads", m.Kind)
 	}
 	if m.CombatOnly {
 		// The combat-only shield is its own kind, so that an older
@@ -579,8 +582,10 @@ type PreventionFollowUp struct {
 	// Static marks a prevention STATIC's entry (ADR 0108 §8): Source is
 	// the permanent whose static ability it is, Epoch the object it was
 	// (CR 400.7), Slot the replacement's index in its catalog entry, and
-	// Unit the recipient or the damage source its ThenPer names. All
-	// four are zero on a scoped shield's entry.
+	// Unit the recipient or the damage source its ThenPer names. Static,
+	// Epoch and Slot are zero on a scoped shield's entry, and so is Unit
+	// unless the shield's follow-up is per source (Mod.ThenPer, #2026),
+	// when it is the damage source.
 	Static bool      `json:"static,omitempty"`
 	Epoch  int       `json:"epoch,omitempty"`
 	Slot   int       `json:"slot,omitempty"`
@@ -602,6 +607,12 @@ type PreventionFollowUp struct {
 	SourceColors     []string  `json:"sourceColors,omitempty"`
 	Target           uuid.UUID `json:"target,omitempty"`
 	Combat           bool      `json:"combat,omitempty"`
+	// SourceTypes are the source's card types as it was when the damage
+	// would have been dealt (#2026): "if damage from a creature source is
+	// prevented this way" (Comeuppance), "whenever damage from a creature
+	// is prevented this way" (Judgment of Alexander). Handed to the body
+	// as the trigger event's LastKnownTypes.
+	SourceTypes []string `json:"sourceTypes,omitempty"`
 	// To and ToEpoch are the object the follow-up deals its damage to,
 	// chosen as the shield was made (Mod.To: Acolyte's Reward's second
 	// target, Vengeful Archon's player). Zero is none.
@@ -618,7 +629,9 @@ func (f PreventionFollowUp) owes(o PreventionFollowUp) bool {
 	if f.Static || o.Static {
 		return f.Static && o.Static && f.Source == o.Source && f.Epoch == o.Epoch && f.Slot == o.Slot && f.Unit == o.Unit
 	}
-	return f.Seq == o.Seq
+	// A scoped shield's Unit is zero unless its follow-up is per source
+	// (Mod.ThenPer, #2026).
+	return f.Seq == o.Seq && f.Unit == o.Unit
 }
 
 // newPreventionFollowUpLocked is an entry for one application to `ev`,
@@ -640,6 +653,7 @@ func (g *Game) newPreventionFollowUpLocked(ev *ReplacementEvent, body string, pr
 	if lki := ev.SourceLKI; lki != nil {
 		f.SourceController = lki.Controller
 		f.SourceColors = copyStrings(lki.Colors)
+		f.SourceTypes = copyStrings(lki.Types)
 	}
 	return f
 }
@@ -683,6 +697,10 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 	f.Label = e.Label
 	if len(m.To) == 1 {
 		f.To, f.ToEpoch = m.To[0].ID, m.To[0].Epoch
+	}
+	if m.ThenPer == ThenPerSource {
+		// #2026: one application per damage source within the instance.
+		f.Unit = ev.DamageSource
 	}
 	g.owePreventionFollowUpLocked(f)
 }
@@ -766,6 +784,9 @@ func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
 		Actor:  f.SourceController,
 		Colors: copyStrings(f.SourceColors),
 		Combat: f.Combat,
+		// #2026: the source's card types, as it would have dealt the
+		// damage.
+		LastKnownTypes: copyStrings(f.SourceTypes),
 	}
 	item := &StackItem{
 		ID:           uuid.New(),

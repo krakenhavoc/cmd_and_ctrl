@@ -344,6 +344,28 @@ func checkVariableSacrificePlan(spec Spec) {
 // the engine reads, and a hand-rolled game.AdditionalCost{Optional:
 // true} compiles and then never returns a bought-back card to hand.
 
+// OptionalAdditionalCostKey is the key of a plain optional additional
+// cost that is no keyword — "As an additional cost to cast this spell,
+// you may pay {2}{R}" (Undergrowth). It is not a kicker, so nothing that
+// asks "was it kicked" sees it.
+const OptionalAdditionalCostKey = "additional"
+
+// OptionalAdditionalMana is that cost: "As an additional cost to cast
+// this spell, you may pay <mana>" (CR 118.8b, 601.2b). The caster
+// chooses as the spell is cast; read it back with
+// ctx.OptionalCostTimes(OptionalAdditionalCostKey) > 0, which is "if
+// this spell's additional cost was paid".
+//
+//	OptionalCosts: []game.AdditionalCost{OptionalAdditionalMana("{2}{R}")},   // Undergrowth
+func OptionalAdditionalMana(mana string) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      OptionalAdditionalCostKey,
+		ManaCost: mana,
+		Label:    "Pay " + mana,
+	}
+}
+
 // Kicker is CR 702.33's "Kicker [cost]" — "you may pay an additional
 // [cost] as you cast this spell". Read back at resolution with
 // ctx.WasKicked(), and from an entering permanent's own trigger with

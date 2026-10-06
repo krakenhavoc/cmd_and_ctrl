@@ -339,6 +339,12 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 		if err := nested("a mod", rec["mods"], modJSONKeys, true); err != nil {
 			return nil, err
 		}
+		// #2026: a shield's source filter is a mod's own vocabulary, so
+		// a key a newer binary added to it is refused here too, down to
+		// its queries and its pinned objects.
+		if err := sourceFilterFields(rec["mods"], nested); err != nil {
+			return nil, err
+		}
 	}
 	for _, dt := range envelope.DelayedTriggers {
 		if err := params("a delayed trigger's params", dt["params"]); err != nil {
@@ -385,17 +391,54 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 	return out, nil
 }
 
+// sourceFilterFields walks each mod's sourceFilter entries with
+// `nested`, the unknown-key check: the filter's own keys, its Except
+// queries' and its ExceptObjects' (#2026).
+func sourceFilterFields(mods json.RawMessage, nested func(string, json.RawMessage, map[string]bool, bool) error) error {
+	if len(mods) == 0 || string(mods) == "null" {
+		return nil
+	}
+	var list []map[string]json.RawMessage
+	if err := json.Unmarshal(mods, &list); err != nil {
+		return err
+	}
+	for _, m := range list {
+		raw := m["sourceFilter"]
+		if err := nested("a mod's source filter", raw, damageSourceFilterJSONKeys, true); err != nil {
+			return err
+		}
+		if len(raw) == 0 || string(raw) == "null" {
+			continue
+		}
+		var filters []map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &filters); err != nil {
+			return err
+		}
+		for _, f := range filters {
+			if err := nested("a source filter's except query", f["except"], permanentQueryJSONKeys, true); err != nil {
+				return err
+			}
+			if err := nested("a source filter's excepted object", f["exceptObjects"], objectRefJSONKeys, true); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 var (
-	scopedEffectJSONKeys   = jsonKeysOf(reflect.TypeOf(ScopedEffect{}))
-	affectedObjectJSONKeys = jsonKeysOf(reflect.TypeOf(AffectedObject{}))
-	modJSONKeys            = jsonKeysOf(reflect.TypeOf(Mod{}))
-	durationJSONKeys       = jsonKeysOf(reflect.TypeOf(Duration{}))
-	effectParamsJSONKeys   = jsonKeysOf(reflect.TypeOf(EffectParams{}))
-	castFilterJSONKeys     = jsonKeysOf(reflect.TypeOf(CastFilter{}))
-	objectRefJSONKeys      = jsonKeysOf(reflect.TypeOf(ObjectRef{}))
-	abilityRefJSONKeys     = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
-	stackItemJSONKeys      = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
-	lastKnownSpellJSONKeys = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
+	damageSourceFilterJSONKeys = jsonKeysOf(reflect.TypeOf(DamageSourceFilter{}))
+	permanentQueryJSONKeys     = jsonKeysOf(reflect.TypeOf(PermanentQuery{}))
+	scopedEffectJSONKeys       = jsonKeysOf(reflect.TypeOf(ScopedEffect{}))
+	affectedObjectJSONKeys     = jsonKeysOf(reflect.TypeOf(AffectedObject{}))
+	modJSONKeys                = jsonKeysOf(reflect.TypeOf(Mod{}))
+	durationJSONKeys           = jsonKeysOf(reflect.TypeOf(Duration{}))
+	effectParamsJSONKeys       = jsonKeysOf(reflect.TypeOf(EffectParams{}))
+	castFilterJSONKeys         = jsonKeysOf(reflect.TypeOf(CastFilter{}))
+	objectRefJSONKeys          = jsonKeysOf(reflect.TypeOf(ObjectRef{}))
+	abilityRefJSONKeys         = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
+	stackItemJSONKeys          = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
+	lastKnownSpellJSONKeys     = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
 	// ADR 0108 PR 0: an owed follow-up's fields are checked too.
 	preventionFollowUpJSONKeys = jsonKeysOf(reflect.TypeOf(PreventionFollowUp{}))
 )

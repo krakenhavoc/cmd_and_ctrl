@@ -73,8 +73,9 @@ import (
 // deal [to <protected>] this turn" (Amount 0), or "prevent the next N
 // damage <source> would deal [to <protected>] this turn" (Amount N,
 // CR 615.7). Reads Objects, SourceZone, Queries, Player, Types,
-// CombatOnly, Amount and Then. Scope ScopeGame for a protected player or
-// none; pinned (ScopeNone) to a protected permanent.
+// CombatOnly, Amount, Then and SourceFilter (#2026). Scope ScopeGame
+// for a protected player or none; pinned (ScopeNone) to a protected
+// permanent.
 const ModPreventFromSource ModKind = "preventFromSource"
 
 // DamageShield is the queue-side description of a ModPreventFromSource
@@ -94,6 +95,12 @@ type DamageShield struct {
 
 	// Queries is the CR 615.9 recheck. Empty is no recheck.
 	Queries []PermanentQuery
+
+	// Filter is the rest of the source description (#2026): "non-",
+	// "other than", power, combat status, colourless, counters and the
+	// source's controller (shield_source_filter.go). The zero value asks
+	// nothing. Refused beside a pinned Source and with AndDealtBy.
+	Filter DamageSourceFilter
 
 	// ProtectPlayer, ProtectTypes and ProtectPermanent are what the
 	// shield protects; all zero protects everything.
@@ -128,6 +135,12 @@ type DamageShield struct {
 	// 0108 §9); uuid.Nil is none. Pinned to the object it is now.
 	To uuid.UUID
 
+	// ThenPerSource runs Then once per damage source within an instance
+	// (#2026, Mod.ThenPer): Comeuppance's "If damage from a creature
+	// source is prevented this way, Comeuppance deals that much damage to
+	// that creature". False is once per instance.
+	ThenPerSource bool
+
 	// UntilYourNextTurn is Gideon of the Trials' "until your next turn"
 	// (CR 611.2b), "you" being Controller. False is "this turn" (CR
 	// 514.2), which every other printed member says.
@@ -146,7 +159,11 @@ type DamageShield struct {
 //
 // Caller must hold g.mu (write) — every caller is a resolving effect.
 func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
-	if s.Amount < 0 || (s.Amount > 0 && s.Source.ID == uuid.Nil && len(s.Queries) == 0) {
+	filtered := !s.Filter.IsZero()
+	if s.Amount < 0 || (s.Amount > 0 && s.Source.ID == uuid.Nil && len(s.Queries) == 0 && !filtered) {
+		return false
+	}
+	if filtered && (s.Source.ID != uuid.Nil || s.AndDealtBy || sourceFilterProblem(s.Filter) != "") {
 		return false
 	}
 	protected := s.ProtectPermanents
@@ -167,6 +184,15 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 		Amount:     s.Amount,
 		Then:       s.Then.key,
 		AndDealtBy: s.AndDealtBy,
+	}
+	if filtered {
+		m.SourceFilter = []DamageSourceFilter{s.Filter.clone()}
+	}
+	if s.ThenPerSource {
+		if s.Then.key == "" {
+			return false
+		}
+		m.ThenPer = ThenPerSource
 	}
 	if s.Source.ID != uuid.Nil {
 		m.Objects = []ObjectRef{s.Source}
@@ -214,7 +240,18 @@ func fromSourceModProblem(m Mod) string {
 	if m.Amount < 0 {
 		return fmt.Sprintf("a preventFromSource shield has a negative charge, %d", m.Amount)
 	}
-	if m.Amount > 0 && len(m.Objects) == 0 && len(m.Queries) == 0 {
+	if len(m.SourceFilter) > 1 {
+		return "a preventFromSource shield carries more than one source filter"
+	}
+	for _, f := range m.SourceFilter {
+		if problem := sourceFilterProblem(f); problem != "" {
+			return problem
+		}
+	}
+	if len(m.SourceFilter) == 1 && len(m.Objects) != 0 {
+		return "a preventFromSource shield names one source and a source filter"
+	}
+	if m.Amount > 0 && len(m.Objects) == 0 && len(m.Queries) == 0 && len(m.SourceFilter) == 0 {
 		return "a charged preventFromSource shield names neither a source nor a property (that shield is preventDamage)"
 	}
 	for _, q := range m.Queries {
@@ -225,7 +262,7 @@ func fromSourceModProblem(m Mod) string {
 	if m.SpentBatch != 0 || m.SpentInstance != 0 || m.Half {
 		return "a preventFromSource shield carries a next-time field (spentBatch, spentInstance or half)"
 	}
-	if m.AndDealtBy && (len(m.Objects) != 0 || len(m.Queries) != 0 || m.Player != uuid.Nil || len(m.Types) != 0 || m.Amount != 0) {
+	if m.AndDealtBy && (len(m.Objects) != 0 || len(m.Queries) != 0 || len(m.SourceFilter) != 0 || m.Player != uuid.Nil || len(m.Types) != 0 || m.Amount != 0) {
 		return "a to-and-by preventFromSource shield names a source, a property, a player or a charge; its pinned objects are both"
 	}
 	if m.Then != "" && !KnownEffectBody(m.Then) {
@@ -257,7 +294,16 @@ func (g *Game) fromSourceMeetsLocked(e ScopedEffect, m Mod, ev *ReplacementEvent
 	if len(m.Objects) == 1 && !g.damageFromChosenSourceLocked(m, ev.DamageSource) {
 		return false
 	}
-	if len(m.Queries) > 0 && !queriesMatchCharacteristic(m.Queries, ev.SourceLKI) {
+	if len(m.SourceFilter) == 1 {
+		// #2026: a filtered shield reads its Queries and its filter off
+		// one view of the source, as the damage would be dealt (CR
+		// 609.7b), last-known once it has left the battlefield (CR
+		// 608.2h).
+		v, ok := g.damageSourceViewLocked(ev)
+		if !ok || (len(m.Queries) > 0 && !queriesMatchView(m.Queries, v)) || !sourceFilterMatches(e, m.SourceFilter[0], v) {
+			return false
+		}
+	} else if len(m.Queries) > 0 && !queriesMatchCharacteristic(m.Queries, ev.SourceLKI) {
 		return false
 	}
 	return g.nextFromSourceProtectsLocked(e, m, ev.DamageTarget)

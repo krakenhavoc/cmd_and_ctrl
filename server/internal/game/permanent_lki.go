@@ -157,6 +157,16 @@ type PermanentInfo struct {
 	// (#2145); the designation is cleared on leaving (CR 400.7), so
 	// only this record remembers it.
 	RingBearer bool `json:"ringBearer,omitempty"`
+
+	// Attacking is whether it was an attacking creature (CR 508.1k) as
+	// it last existed on the battlefield, and Enchanted whether an Aura
+	// was attached to it (#2026). A damage shield against "attacking
+	// creatures" prevents a departed creature's noncombat damage only
+	// "if it was an attacking creature at the time it left" (Heavy Fog's
+	// ruling, CR 608.2h); leaving the battlefield removes it from combat
+	// (CR 506.4), so only this record remembers it.
+	Attacking bool `json:"attacking,omitempty"`
+	Enchanted bool `json:"enchanted,omitempty"`
 }
 
 // permanentManaValue is PermanentInfo.ManaValue's reading of a
@@ -185,6 +195,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		NamedTribe:     c.NamedTribe,
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
+		Attacking:      c.AttackingTarget != uuid.Nil,
 	}
 }
 
@@ -205,6 +216,7 @@ func (g *Game) rememberDepartingPermanentLocked(cardID uuid.UUID) {
 	}
 	info := permanentInfoOf(c)
 	info.Left = true
+	info.Enchanted = g.isEnchantedLocked(cardID)
 	if g.lastKnownPermanents == nil {
 		g.lastKnownPermanents = make(map[uuid.UUID][]PermanentInfo)
 	}
@@ -294,7 +306,9 @@ func (g *Game) LastKnownPermanentForEffect(cardID uuid.UUID) (PermanentInfo, boo
 func (g *Game) PermanentForEffect(ref ObjectRef) (PermanentInfo, bool) {
 	g.RecomputeLayersIfStaleLocked()
 	if c := findBattlefieldCard(g, ref.ID); c != nil && c.ObjectEpoch == ref.Epoch {
-		return permanentInfoOf(c), true
+		info := permanentInfoOf(c)
+		info.Enchanted = g.isEnchantedLocked(c.InstanceID)
+		return info, true
 	}
 	return g.lastKnownPermanentLocked(ref)
 }
