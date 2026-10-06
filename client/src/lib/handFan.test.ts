@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { fanAngle, fanLift, handOverlap } from "./handFan";
+import {
+  FAN_MIN_SLIVER,
+  FAN_SNUG,
+  fanAngle,
+  fanLift,
+  fanOverhang,
+  fitFan,
+  handOverlap,
+} from "./handFan";
 
 describe("fanAngle", () => {
   it("is flat for zero or one card", () => {
@@ -66,5 +74,78 @@ describe("handOverlap", () => {
     // This records the boundary so it is a decision, not a surprise.
     expect(fanWidth(20)).toBeLessThanOrEqual(4.5);
     expect(fanWidth(60)).toBeGreaterThan(4.5);
+  });
+});
+
+describe("fanOverhang (#2395)", () => {
+  it("is nothing for an upright fan", () => {
+    expect(fanOverhang(1, 168, 235)).toBe(0);
+    expect(fanOverhang(7, 168, 235, 0)).toBe(0);
+  });
+
+  it("is how far the end card's top corner swings past its upright box", () => {
+    // Seven cards: the end card turns 21 degrees about its bottom centre.
+    const rad = (21 * Math.PI) / 180;
+    expect(fanOverhang(7, 168, 235)).toBeCloseTo(235 * Math.sin(rad) - 84 * (1 - Math.cos(rad)));
+    // Less tilt, less overhang.
+    expect(fanOverhang(7, 168, 235, 0.5)).toBeLessThan(fanOverhang(7, 168, 235));
+  });
+});
+
+// The width a fitted fan takes: its upright width plus both end cards'
+// corners.
+const fittedWidth = (n: number, w: number, h: number, f: { overlap: number; tilt: number }) =>
+  w + (n - 1) * w * (1 - f.overlap) + 2 * fanOverhang(n, w, h, f.tilt);
+
+describe("fitFan (#2395)", () => {
+  it("keeps the resting fan when the row has room, or is not measured yet", () => {
+    expect(fitFan(7, 0.5, 1800, 168, 235)).toEqual({ overlap: 0.5, tilt: 1, scroll: false });
+    expect(fitFan(7, 0.5, 0, 168, 235)).toEqual({ overlap: 0.5, tilt: 1, scroll: false });
+    expect(fitFan(7, 0.5, 800, 0, 0)).toEqual({ overlap: 0.5, tilt: 1, scroll: false });
+    expect(fitFan(1, 0.5, 50, 168, 235)).toEqual({ overlap: 0.5, tilt: 1, scroll: false });
+  });
+
+  it("tightens a fan that would run out of its row, corners included", () => {
+    // 1440x900 without the coach: the row is 800px.
+    const f = fitFan(7, 0.5, 800, 168, 235);
+    expect(f.tilt).toBe(1);
+    expect(f.overlap).toBeGreaterThan(0.5);
+    expect(f.overlap).toBeLessThanOrEqual(FAN_SNUG);
+    expect(fittedWidth(7, 168, 235, f)).toBeCloseTo(800);
+  });
+
+  it("eases off the tilt before it goes past FAN_SNUG", () => {
+    // 1280x720 beside the coach card: seven 120px cards in 410px.
+    const f = fitFan(7, 0.5, 410, 120, 168);
+    expect(f.tilt).toBeGreaterThan(0);
+    expect(f.tilt).toBeLessThan(1);
+    expect(f.overlap).toBeLessThanOrEqual(FAN_SNUG);
+    expect(fittedWidth(7, 120, 168, f)).toBeLessThanOrEqual(410.0001);
+  });
+
+  it("goes flat and tighter still in the issue's row: seven 168px cards in 452px", () => {
+    // 1440x900 beside the coach card (#2395).
+    const f = fitFan(7, 0.5, 452, 168, 235);
+    expect(f).toMatchObject({ tilt: 0, scroll: false });
+    expect(f.overlap).toBeGreaterThan(FAN_SNUG);
+    expect(f.overlap).toBeLessThanOrEqual(1 - FAN_MIN_SLIVER);
+    expect(fittedWidth(7, 168, 235, f)).toBeCloseTo(452);
+  });
+
+  it("scrolls when even the thinnest flat sliver does not fit", () => {
+    const f = fitFan(30, 0.5, 452, 168, 235);
+    expect(f).toEqual({ overlap: 1 - FAN_MIN_SLIVER, tilt: 0, scroll: true });
+  });
+
+  it("never loosens a large hand past handOverlap", () => {
+    const f = fitFan(14, 0.5, 5000, 168, 235);
+    expect(f.overlap).toBe(handOverlap(14, 0.5));
+  });
+
+  it("has no tilt to give up in the stacked layout", () => {
+    const f = fitFan(7, 0.85, 300, 168, 235, false);
+    expect(f.overlap).toBeGreaterThan(0.85);
+    expect(f.scroll).toBe(false);
+    expect(168 + 6 * 168 * (1 - f.overlap)).toBeCloseTo(300);
   });
 });
