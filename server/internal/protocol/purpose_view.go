@@ -47,6 +47,27 @@ type PurposeView struct {
 	// DeathPayoff is set on a triggered row that pays out whenever a
 	// creature its controller controls dies.
 	DeathPayoff bool `json:"death_payoff,omitempty"`
+	// DiscardPayoff is present on a triggered row that pays out
+	// whenever its controller discards a card it matches (ADR 0126's
+	// amendment of 2026-10-06).
+	DiscardPayoff *DiscardPayoffView `json:"discard_payoff,omitempty"`
+}
+
+// DiscardPayoffView is game.DiscardPayoff on the wire: which discarded
+// cards the row pays on, and what it pays for each one.
+type DiscardPayoffView struct {
+	// Any: every card its controller discards pays.
+	Any bool `json:"any,omitempty"`
+	// Types: otherwise, the lowercase card types and subtypes it pays
+	// on; a card with any one of them on its type line matches.
+	Types []string `json:"types,omitempty"`
+	// Tokens is the tokens it creates for its controller per card.
+	Tokens int `json:"tokens,omitempty"`
+	// Counters is the +1/+1 counters it puts on its source per card.
+	Counters int `json:"counters,omitempty"`
+	// DamageEachOpponent is the damage its source deals to each
+	// opponent per card.
+	DamageEachOpponent int `json:"damage_each_opponent,omitempty"`
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView, from when a
@@ -87,6 +108,15 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		SelfMillTutor:       p.SelfMillTutor,
 		Tokens:              p.Tokens,
 		DeathPayoff:         p.DeathPayoff,
+	}
+	if d := p.DiscardPayoff; d != nil {
+		v.DiscardPayoff = &DiscardPayoffView{
+			Any:                d.Any,
+			Types:              append([]string(nil), d.Types...),
+			Tokens:             d.Tokens,
+			Counters:           d.Counters,
+			DamageEachOpponent: d.DamageEachOpponent,
+		}
 	}
 	if s := p.Sweep; !s.IsZero() {
 		v.Sweep = &SweepView{

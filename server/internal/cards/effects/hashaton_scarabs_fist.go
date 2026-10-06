@@ -61,6 +61,11 @@ func init() {
 				return discardedByYou(ev, source) && eventCardHasType(ev, g, "creature")
 			},
 			Key: "Hashaton, Scarab's Fist — pay {2}{U} to copy the discarded creature",
+			// ADR 0126's amendment of 2026-10-06: a creature card
+			// discarded may become a 4/4 token. The {2}{U} it asks for
+			// is not in the declaration; the token is priced as any
+			// token is, well under a 4/4, which leaves room for it.
+			Purpose: game.Purpose{DiscardPayoff: &game.DiscardPayoff{Types: []string{"creature"}, Tokens: 1}},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				discarded := item.Trigger.Event.CardID
 				return MayPay{

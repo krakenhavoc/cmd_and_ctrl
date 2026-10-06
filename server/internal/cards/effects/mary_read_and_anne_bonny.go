@@ -43,13 +43,16 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return discardedByYou(ev, source) &&
 					eventCardHasType(ev, g, "island", "pirate", "vehicle")
 			}, "Mary Read and Anne Bonny — create a tapped Treasure", Do(CreateToken{
 				Template: tappedTreasureToken(),
 				N:        1,
-			})),
+			})), game.Purpose{DiscardPayoff: &game.DiscardPayoff{
+				Types:  []string{"island", "pirate", "vehicle"},
+				Tokens: 1,
+			}}),
 		},
 	})
 }

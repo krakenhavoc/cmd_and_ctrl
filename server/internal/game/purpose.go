@@ -65,6 +65,35 @@ type Purpose struct {
 	// creature its controller controls dies: Blood Artist, Zulaport
 	// Cutthroat (ADR 0126 §7). Refused on every other slot.
 	DeathPayoff bool
+	// DiscardPayoff is set on a TRIGGERED row that pays out whenever
+	// its controller discards a card it matches: Mary Read and Anne
+	// Bonny's Treasure for an Island, Pirate or Vehicle card, Marauding
+	// Mako's +1/+1 counter for any card (ADR 0126's amendment of
+	// 2026-10-06). Nil is "not a discard payoff". Refused on every
+	// other slot. A pointer so Purpose stays comparable.
+	DiscardPayoff *DiscardPayoff
+}
+
+// DiscardPayoff says which discarded cards a triggered row pays on, and
+// what it pays for EACH one, as printed amounts. The heuristic prices a
+// discard of a matching card that much cheaper.
+type DiscardPayoff struct {
+	// Any is set when every card its controller discards pays ("a
+	// card", "one or more cards").
+	Any bool
+	// Types, when Any is not set, are the card types and subtypes it
+	// pays on, lowercase, as printed: Mary Read's "island", "pirate",
+	// "vehicle". A card with any one of them on its type line matches.
+	Types []string
+	// Tokens is the tokens it creates for its controller per card:
+	// Mary Read's tapped Treasure.
+	Tokens int
+	// Counters is the +1/+1 counters it puts on its source per card:
+	// Marauding Mako's "that many".
+	Counters int
+	// DamageEachOpponent is the damage its source deals to each
+	// opponent per card: Glint-Horn Buccaneer's 1.
+	DamageEachOpponent int
 }
 
 // IsZero reports whether nothing is declared.
@@ -188,9 +217,13 @@ func (p Purpose) plus(o Purpose) Purpose {
 		Tokens:              p.Tokens + o.Tokens,
 		Sweep:               p.Sweep,
 		DeathPayoff:         p.DeathPayoff || o.DeathPayoff,
+		DiscardPayoff:       p.DiscardPayoff,
 	}
 	if out.Sweep.IsZero() {
 		out.Sweep = o.Sweep
+	}
+	if out.DiscardPayoff == nil {
+		out.DiscardPayoff = o.DiscardPayoff
 	}
 	return out
 }

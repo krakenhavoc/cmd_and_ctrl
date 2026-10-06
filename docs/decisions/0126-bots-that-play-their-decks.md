@@ -219,6 +219,7 @@ The signal follows the precedent of ADR 0106 §1 decision 8: catalog data the bo
 | `tokens` | Treasure or other tokens it makes for its controller | Big Score 2 |
 | `sweep` | `{matches, how, amount}` (§4) | Wrath of God `{creatures, destroy}` |
 | `death_payoff` | on a triggered row: the row pays out whenever a creature of its controller's dies | Blood Artist, Zulaport Cutthroat |
+| `discard_payoff` | on a triggered row: which discarded cards it pays on, and what it pays for each ([amendment of 2026-10-06](#amendment-2026-10-06-discard-payoffs)) | Mary Read and Anne Bonny, Marauding Mako |
 
 **Where it is carried.** On `CardView` (the spell, or a permanent's enters-the-battlefield effect), on each `ModeOptionView`, on each `AlternativeCostView`, on `ActivatedAbilityView` (the existing field, now also for the controller's own rows), and on `AbilityRowView` (for `death_payoff`). It is projected in the same zones as `ability_rows`, hand and battlefield, and cleared for a viewer who may not see the card, like them. An opponent's hand card never has one. The stack's top card has one, so §7 can see a wipe coming.
 
@@ -368,6 +369,43 @@ The owner answered the eight open questions on 2026-10-06. Questions 1, 2, 4 and
 6. **Konrad's mill and the flat `ActivateBase`: left alone in S66.** Non-tap activated abilities stay at +0.50. Acceptance bar A6 decides whether black's lead needs a later change.
 7. **Which decks are measured: today's four.** The acceptance bar is measured on the current curated decks. #2436 is measured afterwards with the fixed heuristic.
 8. **The windows: both.** §5 applies in the bot's own second main phase and in the end step of the seat immediately before the bot's turn.
+
+## Amendment (2026-10-06): discard payoffs
+
+The owner approved this on #2435, after reviewing PR 7's position `windfall-discarding-a-spare-land`. The bot plays izzet-aggro there, with its commander Mary Read and Anne Bonny on the battlefield: "Whenever you discard an Island, Pirate, or Vehicle card, create a tapped Treasure token." The owner's answer is to discard the Island. The bot could not see why. §6 gave a triggered row `death_payoff` and nothing for a discard, and §7 priced a discarded card by `cardValue` alone, so the Island and the Mountain cost the same.
+
+**The signal.** `PurposeView` gains `discard_payoff`, on a triggered row only, like `death_payoff`. It says which discarded cards the row pays on, and what it pays for each one, as printed amounts:
+
+| Field | Meaning | Example |
+|---|---|---|
+| `any` | every card its controller discards | Marauding Mako |
+| `types` | otherwise, the card types and subtypes it pays on, lowercase; a card with any one of them on its type line matches | Mary Read `["island", "pirate", "vehicle"]` |
+| `tokens` | tokens it creates for its controller per card | Mary Read 1 |
+| `counters` | +1/+1 counters it puts on its source per card | Marauding Mako 1 |
+| `damage_each_opponent` | damage its source deals to each opponent per card | Glint-Horn Buccaneer 1 |
+
+**How it is declared.** `game.Purpose.DiscardPayoff` on the card file's triggered row, with `TriggerWithPurpose`, by hand like every purpose. The registration guard refuses one anywhere but a triggered row, one with neither `any` nor `types` or with both, a type that is not one lowercase word, a negative amount, and one that pays nothing. It is projected on `ability_rows` with the row and cleared with it, so a hidden hand card and a face-down permanent never carry one. No snapshot change.
+
+**How a discard is priced against it.** When the bot discards one of its own cards, every `discard_payoff` on a permanent it controls that matches the card pays:
+
+```
+payoff = TokenWeight × tokens
+       + (Weights.Power + Weights.Toughness) × counters
+       + DamageToOpponent × damage_each_opponent × live opponents
+```
+
+These are the units the policy already uses: a Treasure as a purpose's token, a +1/+1 counter as `counterRemovalValue` charges for losing one, a point of damage as an attack prices it. The discard costs `cardValue − payoff`. That applies wherever the policy prices a discard of its own card: §7's discard cost, the card it names on resolution (a loot, a rummage, "discard a card") and at cleanup, and the discards a purpose declares (a loot's `discards: 1`). For the last, the payoff is the payoff of the cards the bot would name, read from the hand it holds. `PriceDiscardPayoffs` switches it on in `DefaultConfig()` and is off in `BaselineConfig()`.
+
+Worked, in the owner's position: late in the game a land in hand has a `cardValue` of 0.30. The Island makes a Treasure (0.50), so discarding it costs −0.20, against the Mountain's 0.30. Breeches, Brazen Plunderer is a Pirate and makes the same Treasure. It is a castable four-mana creature, though, and its `cardValue` is several points, so a 0.50 Treasure does not close the gap. It stays rejected.
+
+**Which cards declare it.** Every curated card with a discard payoff:
+
+- Mary Read and Anne Bonny: `types` Island, Pirate, Vehicle, `tokens: 1`.
+- Marauding Mako and Scrounging Skyray: `any`, `counters: 1`.
+- Magmakin Artillerist and Glint-Horn Buccaneer: `any`, `damage_each_opponent: 1`.
+- Hashaton, Scarab's Fist: `types` creature, `tokens: 1`. The `{2}{U}` it asks for is not declared. A token is priced well under a 4/4, which leaves room for the mana.
+
+`TestCuratedDeckPurposes` holds each to its declaration.
 
 ## Consequences
 
@@ -794,3 +832,66 @@ Two positions are new and gated for `heuristic`, harvested from logged arena run
 - `do-not-sacrifice-the-commander`. Syr Konrad, Zulaport Cutthroat and Bastion of Remembrance are out and an opponent is at 3. The bot sacrifices its summoning-sick Human Soldier token, which kills that opponent, and never Konrad. On PR 7's tree it casts Night's Whisper first, which the label also accepts. `BaselineConfig()` passes, which misses the kill.
 
 **Owner label review (2026-10-06).** The owner approved both labels as written, and both are stamped `reviewer: krakenhavoc`, `reviewed_at: 2026-10-06`.
+
+### Amendment: discard payoffs (2026-10-06)
+
+`develop` at `427d3f702` (PRs 2 to 7) plus this PR's `76e22fc5e`. `DefaultConfig()` against `BaselineConfig()`: `PriceDiscardPayoffs` true (baseline false). No weight is new: a payoff is priced with PR 7's `TokenWeight` (0.50), `Weights.Power + Weights.Toughness` (1.45) per +1/+1 counter, and `DamageToOpponent` (0.30) per point to each live opponent. Arena runs use the concurrent schedule, turn budget 60.
+
+**Suite:** `windfall-discarding-a-spare-land` is relabelled as the owner asked. The Island is the one accepted move. The Mountain is unlabelled. Breeches, Negate and Bident of Thassa stay rejected. Breeches is a Pirate and would make the same Treasure, but it is a castable four-mana creature against a spare land, and a 0.50 Treasure does not close that gap. The position is stamped `reviewer: krakenhavoc`, `reviewed_at: 2026-10-06`. Six positions hold a card that now declares a payoff: this one, `do-not-windfall-away-the-last-land`, `loot-at-the-end-step-before-yours`, `cantrip-with-leftover-mana`, `hold-the-signet-late` and `wrath-a-losing-board`. Each frozen view had the `discard_payoff` the server now projects stamped onto that row, and nothing else changed. `boteval suite run --policy heuristic` gives 35 of 35, every tag at 100% (activate 1, attack 4, block 4, cast 19, choice 1, combat 8, discard 2, land 4, leftover 3, mulligan 6, removal 1, wipe 2). The heuristic now picks the Island. `BaselineConfig()` ranks every position as recorded in `baseline_rankings.json`.
+
+**Run 1:** the same command and seed as PR 2's, with `--decision-log`. 64 games, 0 stalls, 14 rejected moves (10 stale `declare_attacker`, 3 passes over an unanswered Rhystic Study prompt, 1 cast), turns p50 14.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 7) |
+|---|---:|---:|---|---:|
+| esper-control | 5 | 7.8% | 3.4%–17.0% | 1 (1) |
+| izzet-aggro | 4 | 6.2% | 2.5%–15.0% | 3 (3) |
+| mono-black-aristocrats | 40 | 62.5% | 50.3%–73.3% | 10 (10) |
+| simic-ramp | 15 | 23.4% | 14.7%–35.1% | 2 (2) |
+
+The `never` lists are PR 7's, card for card. A6 fails as it does on `develop`: black's interval lies entirely above 50%.
+
+**This amendment's class:**
+
+- Mary Read and Anne Bonny's loot (A3): 48 of 62 games, 77% (PR 7: 41 of 62, 66%). With an Island in hand, the loot is now also priced by the Treasure it makes.
+- Discards made with Mary Read on the bot's own battlefield, from the run 1 decision log: a matching card (Island, Pirate or Vehicle) was offered in 72 discard windows and discarded in 22, 31%. On PR 7's run 1 log it was 8 of 44, 18%. Most of the windows where none was discarded offered only Pirate creatures, which the bot keeps. In the rest the bot was short of lands and kept the Island over a cheap rock or spell, which a land worth 1.50 in hand outweighs.
+- The other payoff cards are cast as before: Marauding Mako 18 of 21 games, Scrounging Skyray 15 of 16, Glint-Horn Buccaneer 16 of 17, Magmakin Artillerist 11 of 13.
+
+Other canaries: Sol Ring 90–100%, Rhystic Study 11 of 17 (esper) and 18 of 21 (simic), Entomb 13 of 18, Viscera Seer (cast) 22 of 22, Harrow 8 of 25.
+
+**Run 2:** the same shape and seeds as PR 2's. 96 games, 0 stalls, turns p50 14 and 12 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
+|---|---:|---:|---:|---|---:|
+| heuristic | 192 | 52 | 27.1% | 21.3%–33.8% | 2 |
+| heuristic-baseline | 192 | 44 | 22.9% | 17.5%–29.4% | 0 |
+
+Not detectably worse: the `heuristic` interval's upper bound is 33.8%, above 25%. PR 7 measured 53 of 192. By half, `heuristic` won 10 of 96 seat-games on esper and izzet against the baseline's black and simic, and 42 of 96 on black and simic against the baseline's esper and izzet.
+
+**Re-measured on `develop` with PR 8.** PR 8 (#2459) merged while this PR was open, so the suite and runs 1 and 2 were repeated on the merge of `develop` `835bd475e` into this branch (`58464780b`), with the same commands and seeds. `BaselineConfig()` zeroes both PRs' terms: `SacrificeDyingAnyway`, `DeathPayoff` and `PriceDiscardPayoffs`.
+
+Suite: 37 of 37 agree, every tag at 100% (activate 3, attack 4, block 4, cast 19, choice 1, combat 8, discard 2, land 4, leftover 3, mulligan 6, removal 1, sacrifice 2, wipe 2).
+
+Run 1: 64 games, 0 stalls, 15 rejected moves (14 stale `declare_attacker`, 1 pass), turns p50 13.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 8) |
+|---|---:|---:|---|---:|
+| esper-control | 5 | 7.8% | 3.4%–17.0% | 1 (1) |
+| izzet-aggro | 6 | 9.4% | 4.4%–19.0% | 3 (3) |
+| mono-black-aristocrats | 40 | 62.5% | 50.3%–73.3% | 4 (4) |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 2 (2) |
+
+The `never` lists are PR 8's, card for card. A6 still fails: black's interval lies entirely above 50%.
+
+- Mary Read and Anne Bonny's loot: 49 of 61 games, 80%.
+- With Mary Read on the bot's own battlefield, a matching card was offered in 72 discard windows and discarded in 21, 29%. PR 7's log gave 18%.
+- The payoff cards are cast as before: Marauding Mako 19 of 21 games, Scrounging Skyray 15 of 16, Glint-Horn Buccaneer 14 of 16, Magmakin Artillerist 10 of 12.
+- Other canaries: Sol Ring 85–100%, Rhystic Study 10 of 17 (esper) and 18 of 22 (simic), Entomb 11 of 15, Viscera Seer (cast) 23 of 23, Harrow 8 of 26.
+
+Run 2: 96 games, 0 stalls, turns p50 14 and 12 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
+|---|---:|---:|---:|---|---:|
+| heuristic | 192 | 55 | 28.6% | 22.7%–35.4% | 3 |
+| heuristic-baseline | 192 | 41 | 21.4% | 16.1%–27.7% | 0 |
+
+Not detectably worse: the upper bound is 35.4%. PR 8 measured the same 55 of 192. By half, `heuristic` won 11 of 96 on esper and izzet, and 44 of 96 on black and simic.

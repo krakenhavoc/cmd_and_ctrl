@@ -38,11 +38,11 @@ func init() {
 			"Discarding several cards at once deals the damage as separate 1s.",
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			TriggerWithPurpose(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
 			}, "Magmakin Artillerist — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
-			}),
+			}), game.Purpose{DiscardPayoff: &game.DiscardPayoff{Any: true, DamageEachOpponent: 1}}),
 			InGraveyard(On(game.EventCycle, Self,
 				"Magmakin Artillerist — cycled: 1 damage to each opponent",
 				func(g *game.Game, item *game.StackItem) error {

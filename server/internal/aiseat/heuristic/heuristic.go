@@ -172,6 +172,13 @@ type Config struct {
 	// top of its cardValue while the bot is short of LandsWanted: the
 	// land drop it may miss (discardCost).
 	LastLandDiscard float64
+	// PriceDiscardPayoffs turns on ADR 0126's amendment of 2026-10-06:
+	// discarding a card that one of the bot's own triggered rows
+	// declares a discard_payoff for (Mary Read's Treasure for an
+	// Island, Marauding Mako's counter for any card) costs what that
+	// payoff pays less (discard_payoff.go). Off (the zero value) prices
+	// a discard by the card alone.
+	PriceDiscardPayoffs bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -368,6 +375,8 @@ func DefaultConfig() Config {
 		DiscardCostByCard: true,
 		LastLandDiscard:   1.00,
 
+		PriceDiscardPayoffs: true,
+
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
 		FuelRecast: 0.55,
@@ -460,6 +469,8 @@ func BaselineConfig() Config {
 	// §7, sacrifice outlets (PR 8).
 	c.SacrificeDyingAnyway = false
 	c.DeathPayoff = 0
+	// ADR 0126's amendment of 2026-10-06: discard payoffs.
+	c.PriceDiscardPayoffs = false
 	return c
 }
 

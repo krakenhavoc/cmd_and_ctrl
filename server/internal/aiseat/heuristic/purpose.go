@@ -151,6 +151,10 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 	if p.cfg.PricePurposes && ps.hasAmounts() {
 		v += st.w.Hand * (float64(ps.draws) + p.cfg.TutorWeight*float64(ps.tutors) + p.cfg.SelfMillWeight*float64(ps.selfMill))
 		v -= p.cfg.DiscardWeight * float64(ps.discards)
+		// The discards may trigger the bot's own discard payoffs
+		// (discard_payoff.go): Mary Read's loot with an Island in hand
+		// makes a Treasure.
+		v += st.resolutionDiscardPayoff(p.cfg, ps.discards, self)
 		v += p.cfg.TokenWeight * float64(ps.tokens)
 		if ps.lands > 0 {
 			v += st.w.ManaSource * float64(ps.lands)
