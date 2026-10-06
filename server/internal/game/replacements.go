@@ -1404,6 +1404,14 @@ type ReplacementEffect struct {
 	// (draw_instead.go).
 	FromGraveyard bool
 
+	// Dredge is N on a dredge offer (CR 702.52a): how many cards
+	// saying yes mills. Informational. The engine runs the offer
+	// through DrawInstead and never reads this; it is here so the
+	// optional_replacement prompt can say what the yes costs, and a
+	// policy can weigh the mill against the draw it replaces (#2390).
+	// Zero on every other effect.
+	Dredge int
+
 	// commanderZone marks the CR 903.9 built-in
 	// (commanderZoneReplacement) so the gather can honour an answer
 	// its owner gave BEFORE the move (ReplacementEvent.commanderAnswer,

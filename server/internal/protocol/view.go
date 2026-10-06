@@ -510,8 +510,24 @@ type PendingChoiceView struct {
 	// adventurer on an adventure, a cast permission), ignoring timing
 	// and mana. Computed on every view, never stored. The client says
 	// so beside Yes / No, and a bot declines the command zone when it
-	// is set. Absent on every other kind.
+	// is set.
+	//
+	// #2390: also set on the "optional_replacement" that is CR 903.9b's
+	// commander question when the commander is headed for its owner's
+	// HAND, the one destination it can always be cast from (and without
+	// the CR 903.8 tax, which only a cast from the command zone pays).
+	// Unset when it is headed for a library. Absent on every other kind.
 	PlayableFromZone bool `json:"playable_from_zone,omitempty"`
+
+	// Dredge populates an "optional_replacement" that offers a dredge
+	// (CR 702.52a, #2127): N, the number of cards the yes mills. The
+	// card it returns rides Source, in the chooser's graveyard. A grant
+	// that names no card — The Necrobloom's "land cards in your
+	// graveyard have dredge 2" — leaves Source empty, and the land is
+	// picked after the yes. Computed on every view, never stored. A bot
+	// weighs the card and the mill against the draw it replaces (#2390).
+	// Absent on every other prompt.
+	Dredge int `json:"dredge,omitempty"`
 
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -7027,6 +7043,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// which is what the Locked suffix means.
 		if c.Kind == game.PendingChoiceCommanderReturn {
 			v.PlayableFromZone = g.PlayableFromZoneLocked(c.Chooser, c.Source)
+		}
+		// #2390: the facts an optional_replacement's yes turns on, read
+		// off its paused event — a dredge's N, and CR 903.9b's commander
+		// headed for a hand.
+		if c.Kind == game.PendingChoiceOptionalReplacement {
+			v.Dredge = c.DredgeOffer()
+			v.PlayableFromZone = c.CommanderHeadedFor() == game.ZoneHand
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel

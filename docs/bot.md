@@ -323,6 +323,49 @@ sacrificed, countered, discarded, milled or exiled commander is asked;
 the `optional_replacement` above is left for a commander headed for a
 hand or a library (CR 903.9b).
 
+**The other "may" replacements (`optional_replacement`, `entry_pay_life`,
+`copy_target`, #2390).** Until #2390 the heuristic said yes to every
+optional replacement, so once dredge (#2388) used that prompt a bot with
+a dredge card in its graveyard dredged on every draw. Each one now has an
+answer of its own (`aiseat/heuristic/replacement.go`, `dredge.go`):
+
+- **Dredge** (the prompt carries `dredge`, the N it mills, and the card in
+  `source`). The yes is worth the card in hand, plus `DredgePlaySoon` if
+  the bot could play it this turn or next, plus N milled cards at the mean
+  fuel value of the bot's graveyard (so a graveyard it casts from makes
+  milling worth more), less what the card was worth in the graveyard. The
+  no is the draw, priced at the mean value of the cards the bot has already
+  seen from its library, so a bot short of lands values its draw higher. A
+  dredge that would leave fewer than `DredgeLibraryFloor` (10) cards in the
+  library is declined, whatever it returns. The Necrobloom's grant names no
+  card; the bot prices it as its best land card in the graveyard.
+- **A commander headed for a hand** (CR 903.9b; the prompt sets
+  `playable_from_zone`): no. In hand it is cast without the commander tax,
+  which is owner decision 2 of ADR 0115 applied to the one zone a commander
+  can always be cast from. Headed for a library, or asked before a cost is
+  paid: yes.
+- **Library of Leng and Moonlit Meditation**: yes. Leng's prompt does not
+  name the discarded card (it is in a hand), so the bot cannot price it, and
+  keeping a card beats losing it. Moonlit Meditation enchants a permanent
+  the bot chose, and the copies are the Aura's only text.
+- **Unleash**: unchanged, see riot and unleash above.
+- **A shockland's "pay 2 life"** (`entry_pay_life`): the pay move now carries
+  its life as `cost.life`. The bot pays only when the untapped land lets it
+  cast more before the land would untap anyway (spells and its commander on
+  its own turn, instants and flash otherwise), and only when the mana is
+  worth more than the life at `LifeCostValue`'s price, which rises steeply
+  near death. At 2 life it never pays 2.
+- **"Enter as a copy of"** (`copy_target`): the most valuable permanent on
+  offer, as the bot's own. It used to take the first answer, which declines,
+  so a Clone entered as a 0/0 and died. A legendary permanent the bot
+  already controls is passed over (the legend rule keeps one), which is
+  weaker than Spark Double but never a dead copy.
+
+Mox Diamond, the reveal lands, the sacrifice lands and devour have prompt
+kinds of their own (`entry_discard_from_hand`, `entry_reveal_from_hand`,
+`entry_sacrifice`), priced in `choices.go`, and never reached the old
+default.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's

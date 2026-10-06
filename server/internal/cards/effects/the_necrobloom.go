@@ -51,6 +51,10 @@ func necrobloomDredge() game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:  []game.EventKind{game.EventDrawCard},
 		Optional: true,
+		// The bot prices a dredge that names no card as returning a
+		// LAND (aiseat/heuristic/dredge.go, #2390), which is this
+		// grant's printed class.
+		Dredge: 2,
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			if ev.Kind != game.RepEventDraw || ev.DrawCount <= 0 || src == nil || ev.DrawPlayer != src.Controller {
 				return false

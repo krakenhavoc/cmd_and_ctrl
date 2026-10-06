@@ -41,6 +41,7 @@ func Dredge(n int) game.ReplacementEffect {
 		Watches:       []game.EventKind{game.EventDrawCard},
 		FromGraveyard: true,
 		Optional:      true,
+		Dredge:        n,
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			if ev.Kind != game.RepEventDraw || ev.DrawCount <= 0 || src == nil {
 				return false
