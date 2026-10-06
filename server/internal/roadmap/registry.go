@@ -2527,13 +2527,12 @@ var items = []Item{
 		EngineNotes: "target clause: `game.TargetSpec.CardOK` sees the caster but not the source, and a `TargetsFrom` that reads the source's power reads the board, which ADR 0041 P9 forbids for a restorable trigger. Mentor is the same shape. Found landing ADR 0114 PR 5.",
 	},
 	{
-		Slug: "face-down-piles", Name: "Face-down and face-up piles", Kind: KindSeam, Status: StatusMissing,
+		Slug: "face-down-piles", Name: "Face-down and face-up piles", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects where an opponent looks at cards and separates them into a face-down pile and a face-up pile for you to choose between, such as Sauron's Ransom.",
-		Missing:     "Cards can be split into two piles only when every card is revealed; a pile you can't see isn't supported.",
 		Rules:       []string{"701.20a"},
 		Issue:       2147,
-		Waiting:     []string{"Sauron's Ransom"},
-		EngineNotes: "prompt: Fact or Fiction's split (a choose-cards prompt to the opponent, then an option pick over the piles) relies on a reveal. A look by the opponent only, a split whose face-down pile is redacted from the caster, and a pick over a pile they can't see do not exist. Found landing ADR 0114 PR 5.",
+		Examples:    []string{"Sauron's Ransom", "Fortune's Favor", "Atris, Oracle of Half-Truths", "Riddles in the Dark", "Curator of Destinies"},
+		EngineNotes: "prompt: `PileSplit{FaceDown: true}` (`game.PileSplitPrompt.FaceDown`, `QueuePileSplitForEffect` in `game/option_pick.go`). The cards are looked at, not revealed: the card side calls `LookAtTopOfPlayersLibraryForEffect`, which makes the separator the only knower, so the split prompt reaches them alone. Their picked cards are the face-down pile; when they answer, the rest are revealed to every seat, and the pick is offered face-up pile first. The face-down pile is never revealed, so the wire's one redaction pass drops it from every seat that is not a knower: a caster who owns the cards gets backs they can answer, an opponent chooser (Riddles in the Dark, Curator of Destinies) and bystanders get nothing, and each option's label carries the pile's size. No wire change, no new prompt kind; the bot's legal moves are the existing reveal-pick and option-pick answers. Card helpers are in `cards/effects/face_down_piles.go`.",
 	},
 	{
 		Slug: "a-permanent-you-controlled-left", Name: "A permanent you controlled left the battlefield this turn", Kind: KindSeam, Status: StatusImplemented,
