@@ -2181,6 +2181,11 @@ func dispatch(g *game.Game, a Action) error {
 			// activation, which the auto-tapper and the bots use.
 			Color  string   `json:"color,omitempty"`
 			Colors []string `json:"colors,omitempty"`
+			// #2215 — auto_tap lets a mana component of the cost
+			// (Crystal Quarry's {5}, a Signet's {1}) be paid by tapping
+			// the activator's other sources for whatever the pool is
+			// missing. See game.ManaAbilityParams.AutoTap.
+			AutoTap bool `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2256,6 +2261,7 @@ func dispatch(g *game.Game, a Action) error {
 			ExileIDs:          manaExileIDs,
 			ExilePermanentIDs: manaExilePermanentIDs,
 			Colors:            manaColors,
+			AutoTap:           p.AutoTap,
 		})
 
 	case TypeSetMaxHandSize:

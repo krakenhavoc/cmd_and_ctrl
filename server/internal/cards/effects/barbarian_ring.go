@@ -21,10 +21,10 @@ func init() {
 		Name:         "Barbarian Ring",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{R}",
-			Label:    "Add {R}. This land deals 1 damage to you.",
-			Rider:    PainRider(1),
+			Cost:      ManaAbilityCost{Tap: true},
+			Produced:  "{R}",
+			Label:     "Add {R}. This land deals 1 damage to you.",
+			PainToYou: 1,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "Threshold — {R}, {T}, Sacrifice this land: It deals 2 damage to any target. Activate only if there are seven or more cards in your graveyard.",

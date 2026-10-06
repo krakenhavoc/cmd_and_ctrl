@@ -54,6 +54,21 @@ describe("stampManaEnforcement", () => {
     expect(stampManaEnforcement("activate_ability", paper, true)).toBe(paper);
   });
 
+  // #2215: Crystal Quarry's "{5}, {T}" errored on an empty pool. A mana
+  // ability's mana component has no paper path, so the activation is
+  // always stamped auto_tap, whatever the setting.
+  it("stamps every mana activation with auto_tap, strict or not", () => {
+    const quarry = { card_id: "quarry", ability_index: 1, ref: "own:1" };
+    expect(stampManaEnforcement("activate_mana_ability", quarry, true)).toEqual({
+      ...quarry,
+      auto_tap: true,
+    });
+    expect(stampManaEnforcement("activate_mana_ability", quarry, false)).toEqual({
+      ...quarry,
+      auto_tap: true,
+    });
+  });
+
   it("does not touch other actions", () => {
     const tap = { instance_id: "land" };
     expect(stampManaEnforcement("tap", tap, true)).toBe(tap);

@@ -103,4 +103,29 @@ describe("planSummary", () => {
       "Taps 2 permanents and uses Vivi Ornitier's once-each-turn ability.",
     );
   });
+
+  // #2392: Mana Confluence's "Pay 1 life" and a painland's 1 damage are
+  // spent for good, so the summary adds them up.
+  it("says how much life the payment costs", () => {
+    const rows = planRows(
+      {
+        ok: true,
+        cost: "{R}{W}",
+        plan: ["conf", "forge"],
+        sources: [
+          { card_id: "conf", name: "Mana Confluence", zone: "battlefield", tap: true, life: 1 },
+          {
+            card_id: "forge",
+            name: "Battlefield Forge",
+            zone: "battlefield",
+            tap: true,
+            damage: 1,
+          },
+        ],
+      },
+      nameOf,
+    );
+    expect(rows.map((r) => r.life)).toEqual([1, 1]);
+    expect(planSummary(rows)).toBe("Taps 2 permanents and costs you 2 life.");
+  });
 });

@@ -155,6 +155,16 @@ func TestAnyColorSpendManaAbilityCostIsOfferedUnderTheGrant(t *testing.T) {
 			grantPermanent(g, seat, "Chromatic Orrery", "Legendary Artifact", oracleChromaticOrrery)
 		}
 		bluffs := grantPermanent(g, seat, "Cascade Bluffs", "Land", oracleCascadeBluffs)
+		// #2215: the move tops its cost up from untapped sources, and
+		// a Mountain pays {U/R} on its own. Tap them, so the floating
+		// {C} is the only mana and the grant is what decides.
+		g.WithWriteLock(func() {
+			for i := range g.Battlefield.Cards {
+				if g.Battlefield.Cards[i].Name == "Mountain" {
+					g.Battlefield.Cards[i].Tapped = true
+				}
+			}
+		})
 		seat.ManaPool.AddMana(game.ManaToken{Color: "C"})
 		var filter []legal.Move
 		for _, m := range movesFrom(legal.EnumerateFor(g, seat.ID), bluffs, legal.KindMana) {

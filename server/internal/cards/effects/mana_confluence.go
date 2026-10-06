@@ -24,9 +24,11 @@ package effects
 // {B} and {R}). Narrowing it would be a lie about what the card does:
 // the player would see a two-colour picker on a card that prints five.
 //
-// Excluded from the auto-tapper (game.autoTapAbilityFor): a planner
-// that spends life without being asked is a planner nobody should
-// trust. It taps by hand.
+// Planned by the auto-tapper since #2392, in its pain tier: only when
+// no painless source can pay, and never for life that would take its
+// controller to 0 (game.painBudgetFor). The automatic payment pays the
+// 1 life as the cost it is. Below that it taps by hand, where CR 119.4
+// still allows paying down to exactly 0.
 //
 // No simplification.
 func init() {

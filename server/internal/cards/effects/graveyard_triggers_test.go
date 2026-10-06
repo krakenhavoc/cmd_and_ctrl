@@ -207,3 +207,26 @@ func onBattlefieldByName(g *game.Game, name string) bool {
 	}
 	return false
 }
+
+// Two landfall triggers on the stack (two lands entering, or a fetch
+// and its land): the first returns Bloodghast, and the second finds it
+// gone from the graveyard. CR 400.7 makes that a new object, so the
+// second does nothing — it used to fail with "card instance not found
+// in zone", which the catalog soak caught.
+func TestBloodghastSecondLandfallAfterItReturnedDoesNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	id := seedPermanentWithOracle(g, me.ID, "Bloodghast", "Creature — Vampire Spirit", bloodghastOracle)
+	var err error
+	g.WithWriteLock(func() {
+		err = returnThisCardFromYourGraveyard(g, &game.StackItem{
+			Kind: game.StackItemTriggered, SourceCardID: id, Controller: me.ID,
+		})
+	})
+	if err != nil {
+		t.Fatalf("a landfall resolving after Bloodghast left the graveyard: %v", err)
+	}
+	if !onBattlefieldByName(g, "Bloodghast") {
+		t.Error("Bloodghast moved")
+	}
+}

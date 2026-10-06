@@ -113,6 +113,25 @@ func ActivationAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, params Ac
 		params.WaterbendIDs, params.TopIDs, params.randomDiscards, params.ExilePermanentIDs)
 }
 
+// ManaActivationAutoTapExclusions is the set a MANA ability's own
+// auto-tap (#2215, ManaAbilityParams.AutoTap) may not spend on the
+// ability's mana component: the SOURCE, always, and every permanent and
+// card another component of the cost names (its sacrifice, tap-another,
+// discard, exile and exile-a-permanent picks).
+//
+// The source is excluded whatever the cost prints. With a {T} it is
+// CR 602.2b's reason, as on a CR 602 activation: the tap and the mana
+// are components of one cost. Without one, the only way the source
+// could pay is through another of its own mana abilities, and a mana
+// ability funding itself through its own permanent is not a payment a
+// player would want planned behind their back. ONE function for the
+// activation and the legal-move enumerator, so the move list never
+// offers an activation the engine then cannot fund.
+func ManaActivationAutoTapExclusions(sourceID uuid.UUID, params ManaAbilityParams) map[uuid.UUID]bool {
+	return unionIDs([]uuid.UUID{sourceID}, params.SacrificeIDs, params.TapIDs, params.DiscardIDs,
+		params.ExileIDs, params.ExilePermanentIDs)
+}
+
 // WithAutoTapExclusions returns `base` plus `ids`, copying rather than
 // writing into `base` — the legal-move enumerator keeps one base set
 // per ability and widens it per payment it offers.

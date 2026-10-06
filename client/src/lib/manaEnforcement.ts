@@ -42,5 +42,15 @@ export function stampManaEnforcement(
   if (type === "activate_ability" && strictMana && params.ability_index !== undefined) {
     return { ...params, strict: true, auto_tap: true };
   }
+  // #2215: a mana ability whose cost has a mana component (Crystal
+  // Quarry's "{5}, {T}", a Signet's "{1}, {T}") pays it for real in
+  // every mode — there is no paper path — so without auto_tap the only
+  // answer to an empty pool is an error. With it the server taps the
+  // player's other sources for what the pool is missing. Stamped
+  // whatever the setting says, and inert on an ability with no mana
+  // component.
+  if (type === "activate_mana_ability") {
+    return { ...params, auto_tap: true };
+  }
   return params;
 }

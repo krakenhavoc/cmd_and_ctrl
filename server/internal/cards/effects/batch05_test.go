@@ -108,7 +108,7 @@ func TestBatch05CycleRowsHaveTheirPrintedShape(t *testing.T) {
 	if !ok || len(talisman.ManaAbilities) != 2 {
 		t.Fatalf("Talisman of Impulse: want two mana abilities, got %+v", talisman.ManaAbilities)
 	}
-	if talisman.ManaAbilities[0].Produced != "{C}" || talisman.ManaAbilities[1].Produced != "{R|G}" || talisman.ManaAbilities[1].Rider == nil {
+	if talisman.ManaAbilities[0].Produced != "{C}" || talisman.ManaAbilities[1].Produced != "{R|G}" || talisman.ManaAbilities[1].PainToYou != 1 {
 		t.Errorf("Talisman of Impulse: painless {C} first, then {R|G} with the damage rider; got %+v", talisman.ManaAbilities)
 	}
 	savage, ok := Lookup(b05SavageLandsOracle)

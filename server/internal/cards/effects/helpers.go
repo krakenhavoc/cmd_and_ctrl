@@ -858,6 +858,14 @@ func destroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error 
 // reads the ID off item.SourceCardID rather than out of a closure,
 // which is what lets both cards share one package-level func.
 func returnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
+	// CR 400.7: a card that has left the graveyard since the ability
+	// triggered — a second Bloodghast landfall after the first already
+	// returned it — is a new object, and the ability does nothing. The
+	// guard its two siblings below already have; without it the
+	// resolution failed with "card instance not found in zone".
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
 	return ReturnFromGraveyard{
 		Target: item.SourceCardID,
 		Dest:   game.ZoneBattlefield,
