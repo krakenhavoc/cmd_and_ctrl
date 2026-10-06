@@ -72,6 +72,27 @@ type Weights struct {
 	Planeswalker float64
 	Loyalty      float64
 
+	// PermanentPerMana is ADR 0126 §3's mana-value floor for a
+	// permanent that is neither a creature, a mana source, a land nor a
+	// planeswalker: such a permanent is worth at least this much per
+	// point of its mana value, and never less than Permanent. A card's
+	// mana value is what its designers charged for what it does, which
+	// is the only evidence of size the wire carries. Zero is the
+	// pre-S66 flat Permanent.
+	PermanentPerMana float64
+	// RowTriggered, RowStatic and RowActivated are what one of a
+	// permanent's non-keyword ability rows (CardView.AbilityRows, #2219)
+	// adds to its value, by the row's kind, counting at most RowCap rows
+	// (ADR 0126 §3). A row is a sign that the card does something, not
+	// of how much: a drawback reads as a positive, which is accepted
+	// because the alternative is reading oracle text. Keyword and mana
+	// abilities are not rows, so a flier and a mana elf are not paid
+	// twice. All zero, or RowCap zero, is the pre-S66 evaluation.
+	RowTriggered float64
+	RowStatic    float64
+	RowActivated float64
+	RowCap       int
+
 	// AttachedAura and AttachedEquipment are what an attached BUFF is
 	// worth on its OWN line, once its host already carries the boost
 	// (#727 — see AttachmentRole). An Aura is worth nearly nothing
@@ -144,6 +165,12 @@ func DefaultWeights() Weights {
 		Permanent:    1.20,
 		Planeswalker: 3.00,
 		Loyalty:      0.40,
+
+		PermanentPerMana: 0.50,
+		RowTriggered:     0.60,
+		RowStatic:        0.50,
+		RowActivated:     0.40,
+		RowCap:           3,
 
 		AttachedAura:      0.10,
 		AttachedEquipment: 0.60,
@@ -299,6 +326,11 @@ func (w Weights) creatureValue(c *protocol.CardView, restricted float64) float64
 		// zero or the blocker logic stops caring whether it dies.
 		v = 0.25
 	}
+	// ADR 0126 §3: what its ability rows say it does, before the
+	// multipliers, so a summoning-sick Blood Artist is discounted like
+	// any other sick creature. CombatValue does not add it (owner
+	// decision 3): the combat planner trades bodies.
+	v += w.rowUtility(c)
 	v *= restricted
 	if c.Tapped {
 		v *= w.TappedCreature
@@ -446,8 +478,59 @@ func (w Weights) permanentValue(c *protocol.CardView) float64 {
 		}
 		return w.ManaSource
 	default:
+		return w.utilityPermanentValue(c)
+	}
+}
+
+// utilityPermanentValue is ADR 0126 §3's price for a permanent that is
+// neither a creature, a planeswalker, a land nor a mana source — an
+// enchantment or artifact engine, an Equipment, a Vehicle, an Altar:
+// the larger of the flat Permanent and its mana-value floor, plus what
+// its ability rows say it does.
+//
+// An unimplemented card (ADR 0037) keeps the flat Permanent: the engine
+// runs none of its rules, so neither its cost nor its rows say anything
+// about what it will do, and the bot must be no keener to cast it than
+// it was.
+func (w Weights) utilityPermanentValue(c *protocol.CardView) float64 {
+	if c.Unimplemented {
 		return w.Permanent
 	}
+	v := w.Permanent
+	if floor := w.PermanentPerMana * float64(manaValue(c.ManaCost, 0)); floor > v {
+		v = floor
+	}
+	return v + w.rowUtility(c)
+}
+
+// rowUtility is what a permanent's ability rows add to its value (ADR
+// 0126 §3): RowTriggered, RowStatic or RowActivated per row, by kind,
+// for at most RowCap rows in the order the wire lists them. Zero for an
+// unimplemented card, which has no rows to read and keeps ADR 0037's
+// penalty instead.
+func (w Weights) rowUtility(c *protocol.CardView) float64 {
+	if c == nil || c.Unimplemented {
+		return 0
+	}
+	var v float64
+	n := 0
+	for _, r := range c.AbilityRows {
+		if n >= w.RowCap {
+			break
+		}
+		switch r.Kind {
+		case "triggered":
+			v += w.RowTriggered
+		case "static":
+			v += w.RowStatic
+		case "activated":
+			v += w.RowActivated
+		default:
+			continue
+		}
+		n++
+	}
+	return v
 }
 
 // AttachRole is what an attached permanent is DOING to the board, and

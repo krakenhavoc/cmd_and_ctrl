@@ -311,12 +311,18 @@ func DefaultConfig() Config {
 // `heuristic-baseline` measures exactly what those terms changed.
 // Each PR that adds a term zeroes it here in the same change.
 //
-// No term exists yet (ADR 0126's measurement PR adds none), so today
-// this is DefaultConfig unchanged. TestBaselineConfigRanksTheSuiteAsBefore
-// (aiseat/suite) holds it to the rankings the policy gave every suite
-// position before S66, whatever DefaultConfig becomes.
+// TestBaselineConfigRanksTheSuiteAsBefore (aiseat/suite) holds it to
+// the rankings the policy gave every suite position before S66,
+// whatever DefaultConfig becomes.
 func BaselineConfig() Config {
-	return DefaultConfig()
+	cfg := DefaultConfig()
+	// §3, PR 4: permanents by what they do.
+	cfg.Weights.PermanentPerMana = 0
+	cfg.Weights.RowTriggered = 0
+	cfg.Weights.RowStatic = 0
+	cfg.Weights.RowActivated = 0
+	cfg.Weights.RowCap = 0
+	return cfg
 }
 
 // Policy is the heuristic aiseat.Policy. Construct one per bot seat:
