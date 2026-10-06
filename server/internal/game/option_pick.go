@@ -569,6 +569,7 @@ func (g *Game) QueuePileSplitForEffect(p PileSplitPrompt) {
 	source := p.Source
 	pickQuestion := p.PickQuestion
 	then := p.Then
+	faceDown := p.FaceDown
 	if who := g.playerByIDLocked(p.Splitter); who == nil || who.Eliminated {
 		// The splitter has left the game BEFORE the question could go
 		// up (CR 800.4a). Nobody can separate the cards, so the whole
@@ -590,6 +591,9 @@ func (g *Game) QueuePileSplitForEffect(p PileSplitPrompt) {
 		Min:      0,
 		Max:      len(cards),
 	}, func(g *Game, picked, _ []uuid.UUID) error {
+		if faceDown {
+			return g.queueFaceDownPilePickLocked(chooser, owner, source, pickQuestion, cards, picked, then)
+		}
 		return g.queuePilePickLocked(chooser, owner, source, pickQuestion, cards, picked, then)
 	})
 	if err != nil {
@@ -618,6 +622,16 @@ type PileSplitPrompt struct {
 	// Then receives the pile the chooser took and the pile they left,
 	// in that order. Runs with g.mu held.
 	Then func(g *Game, taken, left []uuid.UUID) error
+	// FaceDown makes this the "face-down pile and a face-up pile" split
+	// (Sauron's Ransom, Fortune's Favor, Atris, Riddles in the Dark,
+	// Curator of Destinies; #2147). The splitter's cards are picked as the
+	// FACE-DOWN pile, the rest are the face-up pile and are revealed to the
+	// whole table the moment the split is answered, and the pick is offered
+	// face-up pile first. The caller must already have made the splitter a
+	// knower of every card (a "look at", CR 701.20a): the face-down pile
+	// is never revealed, so only the knower set keeps it off the chooser's
+	// wire and the table's.
+	FaceDown bool
 }
 
 // queuePilePickLocked is the second link of a pile split: the chooser
@@ -658,6 +672,72 @@ func (g *Game) queuePilePickLocked(
 	// The chooser has left the game between the split and the pick.
 	// Take the first pile so the rest of the card still resolves.
 	return then(g, pileOne, pileTwo)
+}
+
+// queueFaceDownPilePickLocked is the second link of a face-down split.
+// `faceDown` is the pile the splitter chose to hide; everything else is
+// the face-up pile, which is revealed to every seat here (CR 701.20a)
+// before the chooser is asked, so the table sees exactly what the
+// chooser sees. The face-down pile is not revealed, so redactChoiceCards
+// drops it from every seat that is not a knower: the splitter keeps it
+// (they looked), the chooser gets backs when the cards are their own and
+// nothing at all when they are not, and the option's label carries the
+// count either way.
+//
+// The options are face-up pile first and face-down second, a fixed order
+// that does not depend on which cards are where, so the order says
+// nothing about them.
+//
+// Caller must hold g.mu.
+func (g *Game) queueFaceDownPilePickLocked(
+	chooser, owner, source uuid.UUID,
+	question string,
+	all, faceDown []uuid.UUID,
+	then func(g *Game, taken, left []uuid.UUID) error,
+) error {
+	down, up := partitionPiles(all, faceDown)
+	g.RevealForEffect(RevealSpec{
+		Player: owner,
+		Source: source,
+		Reason: "face-up pile",
+		Cards:  up,
+	})
+	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:    chooser,
+		FromPlayer: owner,
+		Source:     source,
+		Question:   question,
+		Options: []ChoiceOption{
+			{Label: facePileLabel("face-up", up), Cards: up},
+			{Label: facePileLabel("face-down", down), Cards: down},
+		},
+		Then: func(g *Game, index int) error {
+			if index == 1 {
+				return then(g, down, up)
+			}
+			return then(g, up, down)
+		},
+	})
+	if queued != uuid.Nil {
+		return nil
+	}
+	// The chooser has left between the split and the pick. Take the
+	// face-up pile, the one the table could see, so the rest of the card
+	// still resolves.
+	return then(g, up, down)
+}
+
+// facePileLabel names a face-up or face-down pile for its option
+// button: "Take the face-down pile (3 cards)".
+func facePileLabel(kind string, cards []uuid.UUID) string {
+	switch len(cards) {
+	case 0:
+		return "Take the " + kind + " pile (empty)"
+	case 1:
+		return "Take the " + kind + " pile (1 card)"
+	default:
+		return "Take the " + kind + " pile (" + strconv.Itoa(len(cards)) + " cards)"
+	}
 }
 
 // partitionPiles splits `all` into the cards named by `first` and the
