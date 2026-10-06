@@ -14,6 +14,7 @@
 //   - declare attackers goes to end of combat when nothing attacked
 //     (CR 508.8), and to declare blockers otherwise.
 
+import { commanderReturnWaiting } from "./commanderReturn";
 import { openingRollStatus } from "./openingRoll";
 import type { GameView } from "./protocol";
 import { buildStackLane } from "./stackLane";
@@ -57,6 +58,11 @@ const NEXT_STEP: Partial<Record<StepID, StepID | "next_turn">> = {
 export function passHint(view: GameView | null | undefined, viewerHasPriority: boolean): string {
   if (view?.opening_roll) return openingRollStatus(view);
   if (!view || view.mulligans_open === true) return "";
+  // ADR 0115 PR 5: CR 903.9a holds the whole boundary while an owner
+  // decides, so nobody can usefully pass. The deciding seat has the
+  // question in the action bar, which hides this line.
+  const deciding = commanderReturnWaiting(view);
+  if (deciding) return deciding;
   if (!viewerHasPriority) return blockWaitHint(view);
 
   const top = topOfStackName(view);

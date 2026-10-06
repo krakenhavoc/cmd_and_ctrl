@@ -103,6 +103,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Faerie Rogue with flying":            {Name: "Faerie Rogue", TypeLine: "Token Creature — Faerie Rogue", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 colorless Construct artifact":              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 1, Toughness: 1},
 	"1/1 colorless Gnome artifact":                  {Name: "Gnome", TypeLine: "Token Artifact Creature — Gnome", Power: 1, Toughness: 1},
+	"1/1 colorless Hero":                            {Name: "Hero", TypeLine: "Token Creature — Hero", Power: 1, Toughness: 1},
 	"1/1 white Human":                               {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 colorless Insect artifact with flying":     {Name: "Insect", TypeLine: "Token Artifact Creature — Insect", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"1/1 colorless Myr artifact":                    {Name: "Myr", TypeLine: "Token Artifact Creature — Myr", Power: 1, Toughness: 1},

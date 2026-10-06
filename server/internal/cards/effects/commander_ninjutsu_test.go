@@ -251,9 +251,9 @@ func TestCommanderNinjutsuFromTheHand(t *testing.T) {
 	}
 }
 
-// CR 400.7 on the way back: a commander discarded in response to her
-// own hand ninjutsu takes CR 903.9's command zone — a zone the ability
-// ALSO names, with the same instance ID. She is a new object there and
+// CR 400.7 on the way back: a commander that leaves the hand for the
+// command zone in response to her own hand ninjutsu — a zone the
+// ability ALSO names, with the same instance ID. She is a new object there and
 // the ability has lost her; it must not put her onto the battlefield.
 func TestCommanderNinjutsuLosesACommanderThatMovedInResponse(t *testing.T) {
 	g := newCatalogGame(t)
@@ -272,8 +272,8 @@ func TestCommanderNinjutsuLosesACommanderThatMovedInResponse(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("activate from hand: %v", err)
 	}
-	// The response: out of the hand and into the command zone, as a
-	// discard whose owner took CR 903.9's offer would leave her.
+	// The response: out of the hand and into the command zone, as a move
+	// to a hand-bound zone whose owner took CR 903.9b's offer would leave her.
 	g.WithWriteLock(func() {
 		if _, err := game.MoveCard(me.Hand, me.Command, yuriko); err != nil {
 			t.Fatalf("MoveCard: %v", err)

@@ -49,7 +49,9 @@ func requirementFrom(source *game.Card, otherThan uuid.UUID) game.AttackRequirem
 // (CR 613.1f — the catalog stops being asked once CatalogAbilityKey
 // answers empty).
 func AttacksEachCombat() game.StaticAbility {
-	return AttacksEachCombatWhere(selfOnly)
+	s := AttacksEachCombatWhere(selfOnly)
+	s.Label = "Attacks each combat if able." // #2219: the tile's label
+	return s
 }
 
 // AttacksEachCombatWhere is "<creatures> attack each combat if able"

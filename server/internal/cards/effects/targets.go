@@ -79,6 +79,18 @@ func AttackingOrBlocking() CardPredicate {
 	}
 }
 
+// BlockedCreature — "blocked creature" (CR 509.1h): an attacking
+// creature that became blocked as blockers were declared, and stays
+// blocked even if every creature blocking it has left combat ("Works
+// even if the creature is 'blocked' by an effect rather than actual
+// creatures", Benalish Missionary's ruling). Read through
+// game.BlockedAttackerForEffect (#2026).
+func BlockedCreature() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsCreature() && g.BlockedAttackerForEffect(c.InstanceID)
+	}
+}
+
 // NonbasicLand — "nonbasic land" (CR 205.4c): a land without the
 // basic SUPERTYPE. The land TYPE is not the test — a Sacred Foundry
 // is a Mountain and still nonbasic, and a Snow-Covered Swamp is

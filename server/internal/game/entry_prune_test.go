@@ -222,7 +222,7 @@ func stalableGraveyardExit(t *testing.T, g *Game, owner *Player, cardID uuid.UUI
 }
 
 // TestAnArrivalPrunesAStaleMoveOutOfTheGraveyard is #1175's shape: a
-// commander's CR 903.9 prompt is open over a move OUT of its owner's
+// test "may" prompt (may_detour_test.go) is open over a move OUT of its owner's
 // graveyard, and the card is reanimated while the question hangs. The
 // exile it asks about can never happen — the card is not in the
 // graveyard any more — so the prompt is as stale as one whose card was

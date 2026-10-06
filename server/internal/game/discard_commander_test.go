@@ -58,7 +58,7 @@ func emptyHandWithCommanders(t *testing.T, g *Game, p *Player, n int) []uuid.UUI
 	return ids
 }
 
-// commanderPromptCard reports which card the queued CR 903.9 prompt is
+// commanderPromptCard reports which card the queued CR 903.9b prompt is
 // asking about, read off the resume frame the prompt is holding.
 func commanderPromptCard(t *testing.T, c *PendingChoice) uuid.UUID {
 	t.Helper()

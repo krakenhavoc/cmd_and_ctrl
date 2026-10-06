@@ -45,14 +45,9 @@ func init() {
 		Name:         "Brainstorm",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 3}.Apply(ctx)); err != nil {
-				return err
-			}
-			return PutFromHandOnTopInAnyOrder{
-				Player: item.Controller,
-				N:      2,
-				Label:  "Brainstorm — put two cards from your hand on top of your library",
-			}.Apply(ctx)
+			return ctx.Game.DrawNThenForEffect(item.Controller, 3, game.DrawThen{
+				Ref: drawThenBrainstormPutBack, Player: item.Controller, Source: item.SourceCardID, N: 2,
+			})
 		},
 	})
 }

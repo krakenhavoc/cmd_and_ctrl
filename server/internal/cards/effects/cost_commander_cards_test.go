@@ -12,13 +12,12 @@ import (
 // cards whose COST can move a commander, one per cost component the
 // fix touched. Each one used to settle without asking (the discard,
 // return and exile payers) or pause half way through the payment (the
-// sacrifice). Each now parks the announcement on a CR 903.9 question
-// to the commander's owner, pays nothing until it is answered, and
-// finishes the card once it is. The engine half — every component,
-// both answers, undo — is game/cost_commander_choice_test.go.
+// sacrifice). The engine half — every component, both answers, undo —
+// is game/cost_commander_choice_test.go.
 //
-// ADR 0115 narrowed that to the costs that put a card into a HAND or a
-// LIBRARY (CR 903.9b): ninjutsu below still asks first. A commander
+// Since ADR 0115 only a cost that puts a card into a HAND or a LIBRARY
+// (CR 903.9b) parks the announcement on a question to the commander's
+// owner and pays nothing until it is answered: ninjutsu below. A commander
 // discarded, exiled or sacrificed to pay a cost is paid like any other
 // card, and the CR 903.9a state-based action asks its owner afterwards;
 // the other four cards here pin that order.
@@ -32,7 +31,7 @@ func costCommander(owner uuid.UUID, name string) game.Card {
 	}
 }
 
-// answerCostCommander answers the one open CR 903.9 prompt as `owner`,
+// answerCostCommander answers the one open CR 903.9b prompt as `owner`,
 // after checking it is addressed to them and nothing has been paid.
 func answerCostCommander(t *testing.T, g *game.Game, owner uuid.UUID, apply bool) {
 	t.Helper()

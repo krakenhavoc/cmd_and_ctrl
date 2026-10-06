@@ -287,6 +287,9 @@ func buildDef(spec Spec) *game.CardDef {
 		synth := game.StaticAbility{
 			Layer:     game.Layer6Ability,
 			AppliesTo: selfOnly,
+			// #2219: this row IS the printed keywords, which the
+			// tile already shows as keyword chips.
+			Keywords: kws,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				appendKeywordsTo(c, kws)
 			},

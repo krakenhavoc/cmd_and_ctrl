@@ -265,7 +265,13 @@
                 }
               }
             ],
-            "mana_cost": "{1}{R}"
+            "mana_cost": "{1}{R}",
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Sacrifice a creature: deal 1 damage to any target"
+              }
+            ]
           },
           {
             "instance_id": "00000009-0000-4000-8000-000000000000",
@@ -311,6 +317,12 @@
                     "R"
                   ]
                 ]
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "triggered",
+                "label": "+1/+1 counter and 1 damage to each opponent"
               }
             ]
           }

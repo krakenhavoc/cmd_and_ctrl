@@ -324,17 +324,7 @@ func b33EachPlayerDrawsThenDiscardsAtRandom(ctx *Context, n int) error {
 // of the controller's choice — the discard prompt opens after the
 // draws land, so the drawn cards are among the choices.
 func b33DrawPerIslandThenDiscardTwo(item *game.StackItem, ctx *Context) error {
-	if n := b33IslandsControlled(ctx.Game, item.Controller); n > 0 {
-		if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: item.Controller,
-		Source: item.SourceCardID,
-		N:      2,
-	})
-	return nil
+	return drawThenDiscard(ctx.Game, item.Controller, item.SourceCardID, b33IslandsControlled(ctx.Game, item.Controller), 2, "")
 }
 
 // b33CounterTargetThenControllerLosesLife is Countersquall's body:

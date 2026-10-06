@@ -273,9 +273,11 @@ func b35TutelageMill(g *game.Game, item *game.StackItem) error {
 // recursion through the mill's continuation rather than a loop.
 //
 // #893: the pair to test is the cards that were PUT INTO THE GRAVEYARD
-// this way (CR 400.7), and a commander coming off the top stops to
-// answer CR 903.9 — so the pass that decides whether to repeat cannot
-// read its own result on the next line. `guard` is carried by value,
+// this way (CR 400.7), and the pass that decides whether to repeat
+// reads the mill's result from its continuation, not from the line
+// after the call. (A commander off the top used to stop to answer
+// CR 903.9 there; since ADR 0115 it lands in the graveyard like any
+// card and counts.) `guard` is carried by value,
 // which keeps the bound honest across an undo that rewinds into the
 // prompt and replays the answer.
 func b35TutelageMillPass(ctx *Context, victim uuid.UUID, guard int) error {
@@ -365,9 +367,10 @@ func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Contex
 // base case, where the Zombies are created.
 //
 // #893: "each creature card put into a graveyard this way" is what
-// LANDED in a graveyard (CR 400.7), and any seat's mill can stop to
-// ask its owner about CR 903.9, so the tally cannot be read on the line
-// after the mill and the seats cannot all be milled on one line either.
+// LANDED in a graveyard (CR 400.7), so the tally is read from each
+// mill's continuation, not from the line after the mill, and the seats
+// are milled one after another through it. (Before ADR 0115 any seat's
+// mill could stop to ask its owner about CR 903.9, which is why.)
 // The running count is carried forward BY VALUE, which is what makes an
 // undo across the prompt replay identically rather than counting the
 // first run's creatures twice.
@@ -534,18 +537,20 @@ func b35ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) erro
 // trigger), and if it was, the announced card returns to hand if it
 // is still in the controller's graveyard. A Greenwarden that has
 // since left the graveyard — reanimated in response, or a commander
-// sent to the command zone — cannot be exiled, so "if you do" fails
+// whose owner moved it to the command zone (CR 903.9a) — cannot be exiled, so "if you do" fails
 // and nothing returns. A Greenwarden chosen as its own target is
 // exiled first and is then no longer in the graveyard, so nothing
 // returns either — as printed.
 //
 // #870: the "if you do" reads the exile's CONTINUATION rather than the
 // exile zone on the next line. The Greenwarden is a commander often
-// enough to matter, and a graveyard is a CR 903.9 zone: the old
-// read-back ran while the owner's prompt was still open, found the
-// card not in exile and returned nothing — and then the owner said
-// "exile it" and the card sat in exile with the second half of its own
-// trigger already skipped.
+// enough to matter, and exile was a CR 903.9 pause: the old read-back
+// ran while the owner's prompt was still open, found the card not in
+// exile and returned nothing — and then the owner said "exile it" and
+// the card sat in exile with the second half of its own trigger
+// already skipped. Since ADR 0115 the exile does not pause (CR 903.9a
+// offers the command zone afterwards); the continuation is kept
+// because the exile is still its own event.
 func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	z := g.FindCardZoneForEffect(item.SourceCardID)

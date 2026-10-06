@@ -220,7 +220,7 @@ func TestSylvanLibraryCannotPayLifeItDoesNotHave(t *testing.T) {
 // the draw is what put them there, and a card that has since been
 // discarded is not one this ability can choose), and the put-back it
 // would otherwise perform is a move to a library, whose CR 616
-// replacement window — a drawn commander's CR 903.9 question, the
+// replacement window — a drawn commander's CR 903.9b question, the
 // reason the chain hangs off the tuck's continuation (#783) — never
 // opens because nothing moves. So the ability finishes having done
 // nothing to a hand that no longer holds what it asked about.

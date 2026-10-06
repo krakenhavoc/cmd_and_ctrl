@@ -113,7 +113,7 @@ func TestTuckAtDepthLandsThirdFromTheTop(t *testing.T) {
 // TestCommanderTuckedAtDepthDeclineKeepsTheDepth is the pair to
 // TestCommanderTuckedToBottomDeclineKeepsTheBottom: the depth is the
 // second piece of per-route bookkeeping that has to survive the CR
-// 903.9 pause, and it survives for the same reason — it rides the
+// 903.9b pause, and it survives for the same reason — it rides the
 // route rather than being applied by the caller.
 func TestCommanderTuckedAtDepthDeclineKeepsTheDepth(t *testing.T) {
 	g := newActiveGame(t)

@@ -24,9 +24,9 @@ func pushCommandZoneCommander(owner *Player, name string) uuid.UUID {
 
 // A card PUT from the command zone arrives tapped and attacking under
 // the same instance ID, keeps its designation, is not a cast (the
-// CR 903.8 tally is untouched) and asks no CR 903.9 question — that
-// replacement is about leaving for a library, hand, graveyard or
-// exile, and the battlefield is none of them.
+// CR 903.8 tally is untouched) and asks no CR 903.9 question — those
+// rules are about leaving for a library or hand (903.9b) or a graveyard or
+// exile (903.9a), and the battlefield is none of them.
 func TestPutFromCommandZoneOntoBattlefieldIsNotACast(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -71,7 +71,7 @@ func TestPutFromCommandZoneOntoBattlefieldIsNotACast(t *testing.T) {
 	}
 
 	// And the designation is live on the way OUT: bounced, the owner is
-	// offered CR 903.9's command zone by the shared exit primitive.
+	// offered CR 903.9b's command zone by the shared exit primitive.
 	g.WithWriteLock(func() {
 		if err := g.BounceToHandForEffect(cmd); err != nil {
 			t.Fatalf("BounceToHandForEffect: %v", err)

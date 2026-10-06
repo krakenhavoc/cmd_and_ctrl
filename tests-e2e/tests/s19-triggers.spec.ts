@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { L } from "../../client/src/lib/labels";
 import { CARDS } from "./s19-deck-fixture";
 import {
   adminMoveByName,
@@ -153,6 +154,26 @@ test.describe("S19 ETB triggers", () => {
 
     // Caster's browser should not have a trigger prompt dialog.
     await expect(caster.page.getByRole("dialog", { name: /trigger/i })).toHaveCount(0);
+
+    // #2219: Mulldrifter's tile on the battlefield is an art tile (the
+    // default) and says it has a triggered ability: the server lists the
+    // ETB draw in `ability_rows` (its flying is a keyword chip, and its
+    // evoke is a cost, not an ability row), and the tile draws a chip
+    // named for the count, whose list holds the label.
+    const onBoard = findCardOnBattlefield(after, CARDS.Mulldrifter);
+    expect(onBoard?.ability_rows ?? []).toContainEqual({
+      kind: "triggered",
+      label: "Draw two cards",
+    });
+    const triggered = (onBoard?.ability_rows ?? []).filter((r) => r.kind === "triggered").length;
+    const tile = caster.page.locator(`.card[data-instance-id="${onBoard?.instance_id}"]`).first();
+    const chip = tile.getByRole("button", { name: L.abilityChip(triggered, "triggered") });
+    await expect(chip).toBeVisible({ timeout: 20_000 });
+    // A press pins the list open (hover and keyboard focus open it too).
+    await chip.click();
+    await expect(caster.page.locator('.ability-list[data-ability-list="triggered"]')).toContainText(
+      "Draw two cards",
+    );
   });
 
   test("Reclamation Sage optional ETB → Yes destroys opponent's artifact", async ({

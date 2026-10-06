@@ -12,8 +12,8 @@ import (
 // found, resolved through the real priority loop.
 //
 // exile_payout_cards_test.go is the same file for #911's exile, and the
-// boards here are its boards with a different verb: a CR 903.9 prompt
-// held open by a commander, and a CR 614 window that cancels the move
+// boards here are its boards with a different verb: a CR 903.9b prompt
+// held open by a bounced commander, and a CR 614 window that cancels the move
 // outright. What each card owes on those boards is the whole of the
 // triage, and it is not the same answer for all five:
 //
@@ -50,7 +50,7 @@ import (
 // "if you controlled that permanent" is a condition about the PLAYER's
 // past relationship to the spell's target, true before anything moves
 // and beyond any replacement's reach. A commander of yours that took
-// CR 903.9's offer was still yours.
+// CR 903.9b's offer was still yours.
 func TestBoomerangBasicsWaitsForTheCommandZoneAnswer(t *testing.T) {
 	for _, tc := range []struct {
 		name        string

@@ -917,7 +917,7 @@ func TestB19LiesaReturnsYoursAndExilesTheirs(t *testing.T) {
 // ADR 0115: there is no CR 616 ordering any more. Liesa's replacement is
 // the only one that applies, the commander is exiled, and the CR 903.9a
 // state-based action then asks its owner.
-func TestB19LiesaExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *testing.T) {
+func TestB19LiesaExilesAnOpponentsDyingCommanderThenAsksItsOwner(t *testing.T) {
 	for _, takeCommandZone := range []bool{false, true} {
 		g := newCatalogGame(t)
 		me, opp := g.Seats[0], g.Seats[1]

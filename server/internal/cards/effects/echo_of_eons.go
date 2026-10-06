@@ -18,13 +18,15 @@ import (
 // one simultaneous exit per player, through the same
 // TuckCardsToLibraryThenForEffect batch Jace, the Mind Sculptor's
 // ultimate already chains exile→tuck→shuffle through — and only once
-// EVERY player's shuffle has landed does anyone draw. #539's "CR 903.9
-// holds 'from anywhere'" generalization is what makes the graveyard
+// EVERY player's shuffle has landed does anyone draw. #539's "the
+// commander replacement holds 'from anywhere'" generalization is what makes the graveyard
 // half of the tuck real: the same exit primitive that moves a hand
 // card to a library moves a graveyard card there too, so "hand and
 // graveyard" is one combined batch per player rather than two
 // mechanisms bolted together. A commander sitting in a hand or
-// graveyard gets its CR 903.9 offer exactly as any other tuck does.
+// graveyard gets its CR 903.9b offer exactly as any other tuck does:
+// the library is one of that replacement's destinations, so the
+// owner is asked before the card moves.
 //
 // The shuffle-then-draw split (not "shuffle a player, draw for that
 // player, shuffle the next") mirrors Wheel of Fortune's own reasoning
@@ -50,7 +52,7 @@ func init() {
 // echoOfEonsShuffleEach tucks the head player's hand and graveyard
 // into their own library as one simultaneous exit, shuffles, and
 // continues with the tail — recursive rather than a plain loop
-// because the tuck can pause on a CR 903.9 prompt, and the
+// because the tuck can pause on a CR 903.9b prompt, and the
 // continuation must resolve against whatever *Game it is handed then,
 // not the one this call started with. Once every player has shuffled,
 // `all` (the untouched full roster) hands off to the draw phase.

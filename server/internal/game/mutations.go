@@ -116,7 +116,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, 1)
+	return g.drawRunLocked(playerID, 1, DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a

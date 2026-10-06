@@ -139,8 +139,14 @@
      dock (z-index 55) and dims everything under it. Opened there, the
      drawer would be drawn under the dim. It still stops above the dock
      (--dock-log-clear), so lifting it covers none of the dock. */
+  /* #2403: and it starts below the stage's View table, which sits in
+     the stage's top-right corner, under the drawer's top: 16px below
+     the stage's top (the bar's 45px) and 34px tall (ActionDock's
+     .view-table). So the stage can still be folded away with the log
+     open, and the log keeps the rest of its height. */
   .log-panel.over-stage {
     z-index: 56;
+    top: calc(45px + 16px + 34px + 8px);
   }
 
   .log-head {

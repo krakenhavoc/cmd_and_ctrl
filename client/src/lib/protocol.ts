@@ -3324,6 +3324,14 @@ export interface CardView extends CastSurfaceView {
   // CR 707.9a grant (no source). The one place a granted TRIGGER is
   // visible at all — it has no menu row. One entry per grantor.
   granted_abilities?: GrantedAbilityView[];
+  // #2219 — the card's non-keyword triggered, static and activated
+  // abilities right now, triggered first, each with a short label the
+  // SERVER wrote (the stack's label for a triggered or activated row).
+  // The art tile counts them in one chip per kind (⚡ ◆ ↻) and lists
+  // the labels on hover or focus. Battlefield and hand only; absent
+  // for an uncatalogued card, a keyword-only card and a face-down
+  // permanent. The client never reads oracle text for these.
+  ability_rows?: AbilityRowView[];
   // #662 — this permanent's CR 702.16 protections, already PARSED by
   // the server. The raw "protection from red" tokens are in
   // `abilities` like every other keyword; this is the same list with
@@ -3397,6 +3405,14 @@ export interface GrantedAbilityView {
   text: string;
   source_id?: string;
   source_name?: string;
+}
+
+// #2219: one non-keyword ability of a card, for the art tile's chips.
+// Mirrors protocol.AbilityRowView.
+export type AbilityRowKind = "triggered" | "static" | "activated";
+export interface AbilityRowView {
+  kind: AbilityRowKind;
+  label: string;
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may
