@@ -1098,7 +1098,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one tier per chair, comma-separated. 2–4 chairs. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, or `heuristic-baseline`: the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). That one is an arena name only; the lobby and `GET /bot/options` never offer it. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
@@ -1248,6 +1248,29 @@ game.
   them as independent, which makes it **conservative** — it will not
   manufacture a `beats null` — but `seat-games` is not a count of
   independent trials.
+- **Play by contestant** — the same columns again, one row per
+  policy *and deck* ([ADR 0126](decisions/0126-bots-that-play-their-decks.md)
+  §1). Four `heuristic` seats on the four curated decks are one Play
+  row, which wins 25% by construction, and four rows here, which is
+  where the deck balance shows. Name the chairs with `--names` or not;
+  the deck column says which is which either way.
+- **Cards** — for each contestant, every non-land card of its own it
+  was offered: a `cast` or `activate` move naming it. Per card: the
+  windows it was offered in, the windows it was taken in, and the
+  seat-games in which it was offered and in which it was used at least
+  once. A window counts a card once however many ways it is offered
+  (two targets, two abilities). A card offered in five or more windows
+  and never taken is `never`, and the summary table lists each
+  contestant's `never` cards. Below it, ADR 0126's acceptance-bar cards:
+  every mana rock and dork (A2: a repeatable tap mana ability, so not
+  Lotus Petal or an Altar), and the six A3 canaries (Sol Ring, Rhystic
+  Study, Mary Read and Anne Bonny's loot, Entomb, Harrow, Viscera Seer),
+  each with the share of games it was used in and the bar it is held
+  to. A canary nobody was dealt says `not offered`. The full per-card
+  tables are folded under `<details>`. The tally is the runner's
+  observer, so it needs no decision log; `summary.json` carries it as
+  `cards` and `canaries`, and each game's per-seat counts are in
+  `games.jsonl`.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a

@@ -158,6 +158,11 @@ type Options struct {
 	// Config overrides the model funnel's tuning. Nil takes the
 	// tier's default.
 	Config *model.Config
+	// Heuristic overrides the heuristic tier's tuning. Nil takes
+	// heuristic.DefaultConfig. It exists for the arena's
+	// `heuristic-baseline` contestant (ADR 0126 §1), which plays
+	// heuristic.BaselineConfig; the lobby never sets it.
+	Heuristic *heuristic.Config
 }
 
 // Models names the model ids for the two funnel slots.
@@ -221,7 +226,11 @@ func New(t Tier, opt Options) (aiseat.Policy, error) {
 		return aiseat.NewRandomPolicy(opt.Rand), nil
 
 	case Heuristic:
-		f := rules.NewFilter(heuristic.New(), opt.Meter)
+		h := heuristic.New()
+		if opt.Heuristic != nil {
+			h = heuristic.NewWithConfig(*opt.Heuristic)
+		}
+		f := rules.NewFilter(h, opt.Meter)
 		f.Tier = string(Heuristic)
 		return f, nil
 

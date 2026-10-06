@@ -378,4 +378,36 @@ The owner answered the eight open questions on 2026-10-06. Questions 1, 2, 4 and
 
 ## Measurements
 
-*Empty on purpose. PR 2 records the baseline: run 1's per-deck win rates, intervals and `never` counts, and run 2's baseline-against-baseline sanity row. Each later PR appends its row. Every row records: git SHA, `BaselineConfig()` and `DefaultConfig()` deltas, seeds, games, per-deck win rate with Wilson 95% interval, `never` counts, canary use rates, run 2's policy win rate with its interval, suite agreement overall and per tag, stalls, rejected moves, and turns p50.*
+*Each PR appends its row. Every row records: git SHA, `BaselineConfig()` and `DefaultConfig()` deltas, seeds, games, per-deck win rate with Wilson 95% interval, `never` counts, canary use rates, run 2's policy win rate with its interval, suite agreement overall and per tag, stalls, rejected moves, and turns p50.*
+
+### PR 2: the S66 baseline (2026-10-06)
+
+`develop` at `61c6b02c1` plus PR 2's `74a1d4921`, which changes no price. `BaselineConfig()` equals `DefaultConfig()`: no ADR 0126 term exists yet, so the delta is empty. Arena runs use the concurrent schedule, turn budget 60.
+
+**Run 1:** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1`. 64 games, 0 stalls, 2 rejected moves, turns p50 14.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` | Non-land cards offered |
+|---|---:|---:|---|---:|---:|
+| esper-control | 4 | 6.2% | 2.5%–15.0% | 19 | 64 |
+| izzet-aggro | 8 | 12.5% | 6.5%–22.8% | 22 | 72 |
+| mono-black-aristocrats | 38 | 59.4% | 47.1%–70.5% | 29 | 69 |
+| simic-ramp | 14 | 21.9% | 13.5%–33.4% | 24 | 64 |
+
+A6 fails today as the ADR expected: mono-black's interval lies entirely above 25%, but not entirely above 50%.
+
+Canaries (A3), games used out of games offered: Sol Ring 0 of 22 (esper), 0 of 15 (izzet), 0 of 18 (black), 0 of 20 (simic). Rhystic Study 0 of 15 (esper), 0 of 13 (simic). Mary Read and Anne Bonny's loot 0 of 62. Entomb 0 of 14. Harrow 0 of 28. Viscera Seer (cast) 0 of 20.
+
+Mana rocks and dorks (A2): every rock in every deck is used in 0% of the games it was offered in. The only A2 cards above the 80% bar are creatures with a body big enough to clear today's price: Birds of Paradise 24 of 25, Ornithopter of Paradise 23 of 24, Delighted Halfling 18 of 19, Palladium Myr 21 of 24 (simic) and 9 of 10 (black). Llanowar, Fyndhorn and Elvish Mystic Elves are 0%.
+
+**Run 2:** two `heuristic` and two `heuristic-baseline` contestants, `--games 48 --rotate --seed 1` twice: `heuristic` on esper-control and izzet-aggro and `heuristic-baseline` on mono-black-aristocrats and simic-ramp, then swapped. 96 games, 0 stalls.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves | Turns p50 |
+|---|---:|---:|---:|---|---:|---:|
+| heuristic | 192 | 48 | 25.0% | 19.4%–31.6% | 2 | 14 |
+| heuristic-baseline | 192 | 48 | 25.0% | 19.4%–31.6% | 1 | 14 |
+
+This is the sanity row: the two policies are one config, so each takes exactly the null. With the same seeds in both halves, each policy plays every deal once on each deck pair.
+
+**Suite:** `boteval suite run --policy heuristic`: 22 of 22 agree, every tag at 100% (attack 4, block 4, cast 7, choice 1, combat 8, land 3, mulligan 6, removal 1). The answers are identical to `develop`'s, position by position.
+
+**No price change:** a fixed-seed lockstep run (`--games 8 --rotate --seed 1 --lockstep` on the four decks) gives the same games before and after this PR: the same winner, turns, life totals and runner counters in every game.
