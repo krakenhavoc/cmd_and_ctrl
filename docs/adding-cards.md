@@ -2927,6 +2927,15 @@ branch, and components on the branched cost itself. Reveal, behold,
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
+**Blight X (#2174):** "As an additional cost to cast this spell, blight X.
+X can't be greater than the greatest toughness among creatures you
+control" is `AdditionalCost: BlightXCost()` (Soul Immolation). X rides the
+same `x_value` slot as pay-X-life, the spell reads it with `ctx.X()`, and
+declare `XMatters: true` when the whole effect scales with it. The
+engine owns the ceiling (`Game.BlightXCeilingForEffect`); a card file
+never writes it. Mandatory slot only; Register refuses it in an optional
+cost or an either/or branch, and beside pay-X-life.
+
 **Variable sacrifice costs on a cast (ADR 0100 sub-PR 4):** two more
 shapes of the mandatory sacrifice clause, beside `SacrificeCost` and
 `SacrificeNCost`:

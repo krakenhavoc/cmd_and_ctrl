@@ -182,6 +182,23 @@ type AdditionalCost struct {
 	// ("blight 2 or pay {1}", Wild Unraveling, ADR 0100 §2).
 	Blight int
 
+	// BlightX is "As an additional cost to cast this spell, blight X.
+	// X can't be greater than the greatest toughness among creatures
+	// you control" (CR 701.68a, Soul Immolation, #2174): X -1/-1
+	// counters on ONE creature the caster controls, where X is the
+	// number announced on CastSpellParams.XValue — the same slot Toxic
+	// Deluge's PayLifeX rides, and for the same reason: the cost's X and
+	// the spell text's X are one number (CR 107.3a / 107.3i). The
+	// creature rides CastSpellParams.BlightIDs.
+	//
+	// The ceiling is part of the component, not the card: every
+	// printed "blight X" carries it, and a component that omitted it
+	// would ship a card stronger than printed (BlightXCeilingForEffect).
+	// X = 0 is legal and puts nothing anywhere. Mandatory slot only;
+	// effects.Register refuses it anywhere else, and beside PayLifeX
+	// (one announced X cannot pay both).
+	BlightX bool
+
 	// PayLife is a FIXED "pay N life" (CR 119.4) — Bitter Triumph's
 	// "discard a card or pay 3 life". Paid on the cost path through
 	// PayLifeForEffect, as PayLifeX is, and refused at announce when
@@ -292,7 +309,7 @@ func (c *AdditionalCost) MaxPayments() int {
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
-		c.Teamwork == 0 && c.Blight == 0 && c.PayLife == 0 && c.TapCreatures == 0 && len(c.Either) == 0)
+		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.TapCreatures == 0 && len(c.Either) == 0)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -303,7 +320,7 @@ func (c *AdditionalCost) Empty() bool {
 // a non-mana component all the same, so it is counted here and a
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
-	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 ||
+	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
 		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0)
 }
 

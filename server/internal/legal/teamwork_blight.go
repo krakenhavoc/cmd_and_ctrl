@@ -48,6 +48,16 @@ func (e *enumerator) teamworkBlightPayment(mandatory *game.AdditionalCost, optio
 			return nil, nil, false
 		}
 	}
+	if mandatory != nil && mandatory.BlightX {
+		// #2174: "blight X". X is announced by the cast search (capped by
+		// BlightXCeilingForEffect), and ANY creature is a legal pick at
+		// any X, so the pick is made against the ceiling — the cheapest
+		// creature, which is the one a bot loses least by shrinking.
+		// A seat with no creature has a ceiling of 0 and names none.
+		if id, found := e.blightPayment(e.g.BlightXCeilingForEffect(e.seat), team); found {
+			blight = []uuid.UUID{id}
+		}
+	}
 	if blightN > 0 {
 		id, found := e.blightPayment(blightN, team)
 		if !found {

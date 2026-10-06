@@ -2036,6 +2036,11 @@ export interface AdditionalCostView {
   pay_life?: number;
   blight?: number;
   blight_options?: LegalTargetsView;
+  // #2174: "blight X" — the announced X is the counter count, put on the
+  // one creature in `blight_options`; `blight_x_max` (absent at 0) is the
+  // greatest toughness among your creatures, the most X may be.
+  blight_x?: boolean;
+  blight_x_max?: number;
   payable?: boolean;
 }
 
