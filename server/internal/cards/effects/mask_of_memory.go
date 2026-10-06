@@ -74,13 +74,5 @@ func maskOfMemoryMayDrawTwo(g *game.Game, item *game.StackItem) error {
 //
 // Caller holds g.mu.
 func maskOfMemoryDrawThenDiscard(ctx *Context) error {
-	if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: ctx.Controller(),
-		Source: ctx.Source(),
-		N:      1,
-	})
-	return nil
+	return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 2, 1, "")
 }

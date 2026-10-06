@@ -311,6 +311,11 @@ type ReplacementEvent struct {
 	// neither sets nor reads it.
 	drawTail int
 
+	// drawThen is the rest of the card after "draw …, then": plain
+	// data (a registered body's key and scalars), run once the last
+	// draw of the instruction is done. See DrawNThenForEffect.
+	drawThen DrawThen
+
 	// --- RepEventProduceMana fields ---
 
 	// ManaPlayer is the player whose pool the mana is about to reach —

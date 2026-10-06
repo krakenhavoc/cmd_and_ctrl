@@ -605,6 +605,12 @@ type playerSnapshot struct {
 	// measured in. Absent from every earlier file, which restores as
 	// 0 — no permanent of such a file has an echo stamp to compare.
 	UpkeepsBegun int `json:"upkeepsBegun,omitempty"`
+	// EndStepTurn is Player.EndStepTurn (#2385): the seat-turn count of
+	// the last end step that began. Additive: a file written before it
+	// restores with 0, so an "until your next end step" window already
+	// open in such a file stays open until its player's next end step
+	// begins rather than closing on a turn boundary.
+	EndStepTurn int `json:"endStepTurn,omitempty"`
 	// LastTurnAttacks is what this player's creatures attacked during
 	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
 	// written before it restores with none, which reads as "nothing
@@ -1992,6 +1998,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
+		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
@@ -2848,6 +2855,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Emblems:               restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
+		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,

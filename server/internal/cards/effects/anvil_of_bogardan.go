@@ -34,16 +34,7 @@ func init() {
 				if player == uuid.Nil {
 					return nil
 				}
-				if err := g.DrawNForEffect(player, 1); err != nil {
-					return err
-				}
-				g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player:   player,
-					Source:   item.SourceCardID,
-					N:        1,
-					Question: "Anvil of Bogardan — discard a card",
-				})
-				return nil
+				return drawThenDiscard(g, player, item.SourceCardID, 1, 1, "Anvil of Bogardan — discard a card")
 			}),
 		},
 	})

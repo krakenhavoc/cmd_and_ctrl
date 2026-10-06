@@ -781,19 +781,19 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		return g.turnsBegunForLocked(d.Player) >= d.ExpiresAtTurnsBegun
 	case UntilYourNextEndStep:
 		// ExpiresAtTurnsBegun names the player's turn whose end step
-		// closes the window. Before that turn has begun the window is
-		// open; during it, it closes as the end step begins; and once
-		// that turn is over (another player is active, or the seat
-		// has begun a later turn) it is closed whatever the sweep
-		// has or has not seen — a cast permission is read live.
-		turns := g.turnsBegunForLocked(d.Player)
-		if turns != d.ExpiresAtTurnsBegun {
-			return turns > d.ExpiresAtTurnsBegun
-		}
-		if g.activePlayerIDLocked() != d.Player {
-			return true
-		}
-		return g.stepAtOrAfterEndLocked()
+		// closes the window, and the window closes as an end step
+		// begins — whatever the sweep has or has not seen, because a
+		// cast permission is read live.
+		//
+		// A turn being OVER is not "its end step began" (#2385): a turn that is
+		// ended (CR 724.1) skips its end step, which then never
+		// begins, so the window carries to the player's next end step
+		// that does. Player.EndStepTurn is the seat-turn count of the
+		// last end step that began, so any real end step on or after
+		// the stamped turn closes it, and a turn that skipped it does
+		// not.
+		p := g.playerByIDLocked(d.Player)
+		return p != nil && p.EndStepTurn >= d.ExpiresAtTurnsBegun
 	case ForAsLongAs:
 		return !g.durationConditionHoldsLocked(d)
 	case Indefinite, WhileInZone:

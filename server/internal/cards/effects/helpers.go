@@ -326,24 +326,14 @@ func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
 // card, then discard a card" in the printed order, so the drawn card
 // is a legal discard exactly as it is in paper.
 //
-// The ORDER is the whole helper (#651). DrawCards resolves
-// synchronously and QueueDiscardChoiceForEffect only queues a prompt,
-// so the draw has to be the statement above: the prompt is built from
-// the post-draw hand, and nothing after it may assume the cards are
-// already in the graveyard. A card that reads the other way round
+// The ORDER is the whole helper (#651, #2391). The discard is the
+// continuation of the draw (drawThenDiscard), so it opens only once
+// every draw has resolved, even one paused on a dredge offer. A card
+// that reads the other way round
 // ("discard a card, then ...") puts its second half in
 // DiscardPrompt.Then instead.
 func lootOne(g *game.Game, item *game.StackItem, n int) error {
-	ctx := NewContext(g, item)
-	if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-		return err
-	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: item.Controller,
-		Source: item.SourceCardID,
-		N:      n,
-	})
-	return nil
+	return drawThenDiscard(g, item.Controller, item.SourceCardID, n, n, "")
 }
 
 // drawTwoThenDiscardOne is "draw two cards, then discard a card" as a
@@ -351,15 +341,7 @@ func lootOne(g *game.Game, item *game.StackItem, n int) error {
 // is the statement above the queue because the discard prompt is built
 // from the post-draw hand.
 func drawTwoThenDiscardOne(item *game.StackItem, ctx *Context, _ int) error {
-	if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: item.Controller,
-		Source: item.SourceCardID,
-		N:      1,
-	})
-	return nil
+	return drawThenDiscard(ctx.Game, item.Controller, item.SourceCardID, 2, 1, "")
 }
 
 // --- S21 sub-PR 3: aristocrats helpers ---------------------------
