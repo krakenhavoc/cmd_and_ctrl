@@ -35,9 +35,16 @@
   // player most often has to check before pointing a spell at the
   // permanent come first.
 
+  //
+  // #2219 adds the art tile's ability chips (AbilityKindChips) at the
+  // END of the row, after the keywords: a keyword is read at a glance,
+  // and the ⚡ / ◆ / ↻ chips say there is more to read. Only an art tile
+  // passes `abilityRows`; a full card prints its own text.
+
   import { chosenValueChips } from "../../chosenValues";
   import { KEYWORD_ICONS } from "../../keywordIcons";
-  import type { ProtectionView } from "../../protocol";
+  import type { AbilityRowView, ProtectionView } from "../../protocol";
+  import AbilityKindChips from "./AbilityKindChips.svelte";
 
   interface Props {
     abilities?: string[];
@@ -56,6 +63,9 @@
     // ADR 0109 §10: the permanent's haste came from its own riot, so
     // the haste chip says so.
     riotHaste?: boolean;
+    // #2219: the server's non-keyword ability rows, for an art tile's
+    // ⚡ / ◆ / ↻ chips. Absent everywhere else.
+    abilityRows?: AbilityRowView[] | null;
   }
 
   const {
@@ -66,6 +76,7 @@
     chosenName,
     protection = [],
     riotHaste = false,
+    abilityRows = null,
   }: Props = $props();
 
   const chosen = $derived(
@@ -89,7 +100,12 @@
   const protections = $derived([
     ...new Map((protection ?? []).map((p) => [p.printed.toLowerCase(), p])).values(),
   ]);
-  const anyBadges = $derived(plain.length > 0 || protections.length > 0 || chosen.length > 0);
+  const anyBadges = $derived(
+    plain.length > 0 ||
+      protections.length > 0 ||
+      chosen.length > 0 ||
+      (abilityRows?.length ?? 0) > 0,
+  );
 
   const KEYWORD_LONG: Record<string, string> = {
     flying: "Flying",
@@ -176,6 +192,9 @@
         </span>
       {/if}
     {/each}
+    {#if abilityRows && abilityRows.length > 0}
+      <AbilityKindChips rows={abilityRows} />
+    {/if}
   </div>
 {/if}
 

@@ -35,6 +35,7 @@ registered, or when this file is stale.
 | `stackPile` | `stack: <N> on the stack` (starts with `stack: `) | region | aria | `lib/components/board/StackLaneHost.svelte`<br>`lib/components/board/StackOverlay.svelte` | the stack pile (ADR 0119), and the floating stack overlay; the tutorial's stack step anchors here |
 | `attention` | `attention` | region | aria | `lib/components/board/Board.svelte` | the attention strip, top left: bot chatter, reveals, the roll call |
 | `turnPhase` | `turn and phase indicator` | generic | aria | `lib/components/board/PhaseDisplay.svelte` | the turn number, the active player and the step |
+| `abilityChip` | `<N> <kind> ability, or <N> <kind> abilities (kind: triggered, static or activated)` (contains ` abilit`) | button | aria | `lib/components/board/AbilityKindChips.svelte` | an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's |
 | `actions` | `actions` | region | aria | `lib/components/board/ActionDock.svelte` | the action dock; the tutorial's move-along step and its detours anchor here |
 | `priorityControls` | `priority controls` | group | aria | `lib/components/board/ActionDock.svelte` | the dock's toggles: autopass, undo, the ⋯ menu |
 | `autopass` | `autopass` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's autopass toggle (state in aria-pressed); the tutorial's let-the-bot-play step anchors here, within actions |
