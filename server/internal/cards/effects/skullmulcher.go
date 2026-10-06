@@ -13,7 +13,7 @@ func init() {
 		OracleID:     "66cdbd34-a864-4c39-acac-9fb26ef4adf9",
 		Name:         "Skullmulcher",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{Devour("Skullmulcher", 1)},
+		Replacements: []game.ReplacementEffect{DevourPaying("Skullmulcher", 1, 1, 0)},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: Self,

@@ -1490,6 +1490,14 @@ export interface PendingChoiceView {
   // (CR 702.52a) — N, the number of cards the yes mills. The card it
   // returns rides `source`. Computed by the server on every view.
   dredge?: number;
+  // #2419: populated for an "entry_sacrifice" that is devour (CR
+  // 702.82a) — N, the +1/+1 counters each sacrificed creature buys, and
+  // what the entering creature's own "for each creature it devoured"
+  // ability pays per creature (cards drawn, life gained). Absent on the
+  // fixed-count sacrifice lands. Computed by the server on every view.
+  devour?: number;
+  devour_draw?: number;
+  devour_life?: number;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything

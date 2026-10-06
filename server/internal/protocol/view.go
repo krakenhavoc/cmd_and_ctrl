@@ -529,6 +529,18 @@ type PendingChoiceView struct {
 	// Absent on every other prompt.
 	Dredge int `json:"dredge,omitempty"`
 
+	// Devour, DevourDraw and DevourLife populate an "entry_sacrifice"
+	// that is CR 702.82a's devour (#2419): N, the +1/+1 counters each
+	// creature sacrificed buys the entering creature, and what its own
+	// "for each creature it devoured" ability pays per creature (cards
+	// drawn, life gained). Computed on every view, never stored. Absent
+	// on the fixed-count sacrifice lands that share the kind, and on
+	// every other prompt. A bot weighs them against the creatures it
+	// would eat.
+	Devour     int `json:"devour,omitempty"`
+	DevourDraw int `json:"devour_draw,omitempty"`
+	DevourLife int `json:"devour_life,omitempty"`
+
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
 	// Carried for the same reason legal.MoveCost.Life is (#547): a
@@ -7050,6 +7062,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceOptionalReplacement {
 			v.Dredge = c.DredgeOffer()
 			v.PlayableFromZone = c.CommanderHeadedFor() == game.ZoneHand
+		}
+		if c.Kind == game.PendingChoiceEntrySacrifice {
+			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel

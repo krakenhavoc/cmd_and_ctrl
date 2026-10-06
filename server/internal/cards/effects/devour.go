@@ -48,3 +48,14 @@ func devourOver(name string, n int, plural string, matches func(game.Card) bool)
 	r.Replace = nil
 	return r
 }
+
+// DevourPaying is Devour with the creature's own "for each creature it
+// devoured" ability declared as data: cards drawn and life gained per
+// creature. The trigger still reads Card.Devoured; this is only what
+// the prompt tells a bot (#2419).
+func DevourPaying(name string, n, drawPer, lifePer int) game.ReplacementEffect {
+	r := Devour(name, n)
+	r.EntryCardChoice.DevourDraw = drawPer
+	r.EntryCardChoice.DevourLife = lifePer
+	return r
+}

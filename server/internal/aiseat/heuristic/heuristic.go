@@ -167,6 +167,15 @@ type Config struct {
 	// the CR 704.5b decking loss on a timer.
 	DredgeLibraryFloor int
 
+	// DevourCommander is what eating the bot's own commander costs on
+	// top of its board value (#2419, devour.go): a commander is the
+	// win condition and a recurring cast, never fodder.
+	DevourCommander float64
+	// DevourPermanent is the flat premium on eating a nontoken
+	// creature, over and above its stats: a card on the board is an
+	// ability the stat line does not show, where a token is just a body.
+	DevourPermanent float64
+
 	// DamageToOpponent prices one point of damage the bot DEALS.
 	DamageToOpponent float64
 	// DesperateDamage replaces DamageValue once a hit would put the
@@ -264,6 +273,8 @@ func DefaultConfig() Config {
 
 		DredgePlaySoon:     0.50,
 		DredgeLibraryFloor: 10,
+		DevourCommander:    10.0,
+		DevourPermanent:    0.25,
 
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
