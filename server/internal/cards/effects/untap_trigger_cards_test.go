@@ -69,31 +69,33 @@ func TestGoblinSharpshooterUntapsOnlyAfterACreatureDies(t *testing.T) {
 	}
 }
 
-// The S66 catalog soak (seed 2026100601): Goblin Sharpshooter died
-// while another creature died, and its "untap this creature" trigger
-// resolved with it in the graveyard. Untapping a permanent that is gone
-// does nothing; it is not an effect error.
-func TestGoblinSharpshooterUntapAfterItDiedDoesNothing(t *testing.T) {
+// Goblin Sharpshooter's own death triggers its untap ("whenever a
+// creature dies"), and by the time the trigger resolves the
+// Sharpshooter is in the graveyard. Untapping it does nothing; it is
+// not an effect error (ADR 0126 PR 5's catalog soak, seed 2026100601).
+func TestGoblinSharpshooterDyingUntapsNothing(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	shooter := pushCatalogPermanent(g, me.ID, "Goblin Sharpshooter", "Creature — Goblin", sharpshooterOracle, false)
-	bear := pushPermanentForTest(g, opp.ID, "Dead Bear", "", "Creature — Bear")
-	before := len(g.Events)
+	if err := g.TapCard(shooter, true); err != nil {
+		t.Fatal(err)
+	}
 	g.WithWriteLock(func() {
-		if err := g.SacrificePermanentForEffect(bear); err != nil {
-			t.Fatalf("sacrifice the bear: %v", err)
-		}
 		if err := g.SacrificePermanentForEffect(shooter); err != nil {
-			t.Fatalf("sacrifice the shooter: %v", err)
+			t.Errorf("sacrifice: %v", err)
 		}
 	})
 	if !hasTriggerFor(g, shooter) {
-		t.Fatal("no untap trigger was queued")
+		t.Fatal("Goblin Sharpshooter's own death did not trigger its untap (CR 603.10a looks back)")
 	}
 	passPriorityAroundTable(t, g)
-	if n := countCatalogEvents(g, game.EventEffectError, before); n != 0 {
-		t.Errorf("EventEffectError count = %d, want 0: untapping a dead Sharpshooter does nothing", n)
-	}
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == game.EventEffectError {
+				t.Errorf("effect error resolving the untap: %s", ev.ErrorMsg)
+			}
+		}
+	})
 }
 
 func TestTraxosEntersTappedAndUntapsForHistoricCastOnly(t *testing.T) {

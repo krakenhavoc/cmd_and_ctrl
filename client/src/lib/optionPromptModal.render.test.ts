@@ -161,6 +161,23 @@ describe("ChoicePromptModal — option_pick (#568)", () => {
     expect(sent[0].params).toMatchObject({ choice_id: "choice-1", option_index: 1 });
   });
 
+  it("draws a face-down pile as card backs next to a face-up pile (#2147)", () => {
+    // Sauron's Ransom: the caster picks between the revealed cards and
+    // a pile they cannot read. The server sends the unknown cards with
+    // known_by_you false, and the shared Card renders them as backs.
+    const up = { instance_id: "u1", name: "Island", known_by_you: true } as CardView;
+    const down = { instance_id: "d1", name: "", known_by_you: false } as CardView;
+    const { container } = mountOptionPick([
+      { label: "Take the face-up pile (1 card)", cards: [up] },
+      { label: "Take the face-down pile (1 card)", cards: [down] },
+    ]);
+    const dlg = dockDialog(container)!;
+    const piles = [...dlg.querySelectorAll<HTMLButtonElement>("button.pick-option")];
+    expect(piles).toHaveLength(2);
+    expect(piles[0].querySelector(".face-down")).toBeNull();
+    expect(piles[1].querySelector(".face-down")).not.toBeNull();
+  });
+
   it("draws an option pick with more than six options, or a long label, as a sheet", () => {
     const seven = Array.from({ length: 7 }, (_, i) => ({ label: `Option ${i + 1}` }));
     const many = mountOptionPick(seven);

@@ -521,3 +521,91 @@ Suite on the merged tree: 28 of 28, every tag at 100% (attack 4, block 4, cast 1
 **Arena:** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 8 --rotate --seed 1 --lockstep` with both binaries. `games.jsonl` and `summary.json` are identical apart from game IDs and timings: the same winner, turns and life totals in every game, the same runner counters (decisions, applied, rejected, passes) and Layer A meter per seat, and the same Cards table (offered and taken per card).
 
 **Snapshot:** `TestSnapshotShapeIsRecorded` passes with `testdata/snapshot_shape/` unchanged; `SnapshotSchemaVersion` does not move.
+
+### PR 5: the two windows (2026-10-06)
+
+`DefaultConfig()` against `BaselineConfig()`: `LeftoverWindows` true (baseline false), `LeftoverThreshold` 0.00 (0), `SpellFloor` 1.30 (0), `TapByTiming` true (false). These are the starting values in §9, not changed by tuning. Measured twice:
+
+- on `717d7ce51` (PR 2) plus PR 5 alone;
+- on `277743d08` (PRs 3 and 6 merged) plus PR 5, the `develop` it merges into.
+
+Arena runs use the concurrent schedule, turn budget 60.
+
+Two readings of §5, both recorded in the PR:
+
+- **The second main phase is a sorcery-speed window.** There the leftover bar is for sorcery-speed moves that tap no creature. An instant, a flash spell, an instant-speed ability, or any move that taps a creature waits for the end step before the bot's turn. The mana and the creature are both still untapped then. The first arena run without this rule did three things after combat: cast Entomb, cast Vampiric Tutor, and looted with Mary Read and Anne Bonny, giving up a blocker for a whole round.
+- **`SpellFloor` is for untargeted spells only:** a spell with no target on the card, on any mode, or on the move. A targeted spell is priced by its targets, as before. A floor under it would fire removal at smaller creatures outside the windows. Out of scope says that must not change.
+
+**Run 1:** the same command and seed as PR 2's.
+
+On `277743d08` + PR 5: 64 games, 0 stalls, 1 rejected move, turns p50 12.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 3; PR 2) |
+|---|---:|---:|---|---:|
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 6 (11; 19) |
+| izzet-aggro | 4 | 6.2% | 2.5%–15.0% | 10 (15; 22) |
+| mono-black-aristocrats | 44 | 68.8% | 56.6%–78.8% | 16 (24; 29) |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 8 (16; 24) |
+
+On `717d7ce51` + PR 5 alone: 64 games, 0 stalls, 1 rejected move, turns p50 13.
+
+| Deck | Wins | Win rate | Wilson 95% interval | `never` |
+|---|---:|---:|---|---:|
+| esper-control | 3 | 4.7% | 1.6%–12.9% | 14 |
+| izzet-aggro | 5 | 7.8% | 3.4%–17.0% | 18 |
+| mono-black-aristocrats | 43 | 67.2% | 55.0%–77.4% | 23 |
+| simic-ramp | 13 | 20.3% | 12.3%–31.7% | 13 |
+
+This PR moves A6 the wrong way. Mono-black's interval now lies entirely above 50%. Three things in the black deck clear the leftover bar: its cheap creatures, its tutors, and Syr Konrad's untargeted mill in the end step before its turn. In four harvest games, 13 of 21 Konrad activations came from that window. Its opponents' engines still do not clear the bar; that is PR 4.
+
+Canaries (A3), games used out of games offered, on `277743d08` + PR 5 (PR 5 alone in brackets; PR 2 was 0% for each):
+
+| Canary | Games used | Meets A3 |
+|---|---|:--:|
+| Mary Read and Anne Bonny's loot | 32 of 62, 52% (27 of 61) | yes |
+| Entomb | 13 of 19, 68% (16 of 18) | yes |
+| Viscera Seer (cast) | 17 of 20, 85% (18 of 21) | yes |
+| Sol Ring | 93–100% in every deck, from PR 3 | yes |
+| Harrow | 0 of 27 | no |
+| Rhystic Study | 0% | no |
+
+- Viscera Seer's sacrifice ability is still never used (PR 8).
+- Harrow does not move. Its additional cost sacrifices a land, so §5 keeps the normal bar for it, and it waits for §6's `purpose.lands` (PR 7).
+- Rhystic Study is PR 4.
+
+Mana rocks and dorks (A2), on `277743d08` + PR 5:
+
+- Llanowar Elves 24 of 27, Fyndhorn Elves 23 of 24 and Elvish Mystic 16 of 18 now meet 80%. They were 14 of 28, 7 of 18 and 5 of 16 at PR 3. A cheap dork is cast with leftover mana in the second main phase.
+- Worn Powerstone (13 of 16) meets 80%.
+- The other one-mana and two-mana rocks are still below 80%, at 0–67%: a late rock is still priced below 0.00 (PR 3's note).
+
+**Run 2:** the same shape and seeds as PR 2's. 96 games each, 0 stalls.
+
+| Tree | Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves | Turns p50 |
+|---|---|---:|---:|---:|---|---:|---:|
+| `277743d08` + PR 5 | heuristic | 192 | 49 | 25.5% | 19.9%–32.1% | 2 | 13 |
+| | heuristic-baseline | 192 | 47 | 24.5% | 18.9%–31.0% | 1 | 13 |
+| `717d7ce51` + PR 5 | heuristic | 192 | 51 | 26.6% | 20.8%–33.2% | 2 | 15 / 14 |
+| | heuristic-baseline | 192 | 45 | 23.4% | 18.0%–29.9% | 4 | 15 / 14 |
+
+The result is not detectably worse in either tree: the `heuristic` interval's upper bound is 32.1% and 33.2%, both above 25%. PR 3 alone measured 28.6% (22.7%–35.4%). All three intervals overlap widely.
+
+**Suite:** `boteval suite run --policy heuristic` on `277743d08` + PR 5 gives 29 of 29, every tag at 100%:
+
+| Tag | Positions |
+|---|---:|
+| activate | 1 |
+| attack | 4 |
+| block | 4 |
+| cast | 13 |
+| choice | 1 |
+| combat | 8 |
+| land | 4 |
+| leftover | 3 |
+| mulligan | 6 |
+| removal | 1 |
+
+- Three new positions are gated for `heuristic`: `loot-at-the-end-step-before-yours`, `tutor-at-the-end-step-before-yours` and `cantrip-with-leftover-mana`. `BaselineConfig()` passes on all three, and its rankings are recorded.
+- `do-not-cantrip-before-the-three-drop` is not added, because the harvest found no window where it was the unambiguous answer. `TestTheCantripDoesNotBeatTheThreeDrop` pins that behaviour in `heuristic` instead.
+
+**Engine bug found:** the catalog soak on this branch failed on nightly seed 2026100601. Goblin Sharpshooter's own death triggers its untap. The untap then resolved against the card in exile and raised an effect error. The PR fixes it in `UntapTarget` (CR 400.7), with a regression test.
