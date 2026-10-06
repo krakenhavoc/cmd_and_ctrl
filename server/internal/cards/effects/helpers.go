@@ -1427,3 +1427,15 @@ func putChargeCounterOnThis(g *game.Game, item *game.StackItem) error {
 	}
 	return g.AddCounterForEffect(item.SourceCardID, "charge", 1)
 }
+
+// millHalfOfTargetPlayer is "target player mills half their library,
+// rounded down" as an OnResolve: Traumatize, Overture. A target that
+// left the game in response makes the spell do nothing.
+func millHalfOfTargetPlayer(_ *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return b22MillHalf(ctx, t.ID)
+		}
+	}
+	return nil
+}
