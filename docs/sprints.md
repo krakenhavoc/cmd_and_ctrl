@@ -109,6 +109,7 @@ planned just-in-time from the S12 pain-point triage.
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
 | S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
+| S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | planned     |
 
 ### How to read the status column
 
@@ -3571,6 +3572,42 @@ From the tracker, [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/231
 ### Status
 
 **Planned** (2026-10-05). ADR 0125 is proposed and awaits the owner's review.
+
+---
+
+## S66 — Bots that play their decks
+
+**Phase:** 7 · **Goal:** the heuristic bot plays the cards in its deck. It casts its mana rocks and dorks while it is short of mana, its engines, its small utility creatures and its cheap spells; it loots and tutors at the end of the turn before its own; it sacrifices a creature that is dying anyway; and it casts a board wipe only onto a board where the wipe helps it. Per [ADR 0126](decisions/0126-bots-that-play-their-decks.md). Issue [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435), which is also the sprint's tracker.
+
+Opened 2026-10-06, after a precon evaluation (52 arena games with decision logs) found the heuristic never casts 19 to 30 of each curated deck's 61 to 64 non-land cards, and the decks' win rates ran from 63% (mono-black) to 4% (esper). The owner decided the order the same day, on #2435: fix the pricing first, with an ADR before any weight changes; rebalance the decks after it (#2436); add a fifth deck later (#2437).
+
+The members are ADR 0126's Delivery PRs.
+
+- [ ] ADR 0126: the heuristic prices what a card does (PR 1, with this section)
+- [ ] PR 2: measurement. The arena's per-deck Play table and Cards section (offered, taken, `never`), the `heuristic-baseline` contestant and `BaselineConfig()`, and the baseline runs recorded in the ADR. No price changes.
+- [ ] PR 3: mana sources. A source is worth the mana it makes, and a ramp premium applies while the bot is short of mana for its hand and commander.
+- [ ] PR 4: permanents by what they do. A mana-value floor for non-creature permanents, and utility from `ability_rows` for them and for creatures.
+- [ ] PR 5: the two windows. The bot's own second main and the end step before its turn: spend leftover mana and free taps, a floor under instants and sorceries, and a tapped-blocker price that depends on timing.
+- [ ] PR 6: the purpose signal. `PurposeView` on the wire and `Spec.Purpose` in the catalog, declared for the curated decks and every board wipe, with `TestCuratedDeckPurposes` and a manual dump audit.
+- [ ] PR 7: wipes priced by the change in score, ramp spells by the lands they fetch, and discard costs net of the cards drawn.
+- [ ] PR 8: sacrifice outlets. A creature that is dying anyway, and death payoffs.
+- [ ] PR 9: the exit run against ADR 0126's acceptance bar, the Measurements, `docs/bot.md`, and the evidence on #2435.
+- [ ] [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436): rebalance the curated decks, measured with the new pricing. Starts after PR 9.
+- [ ] Stretch, or the next sprint: [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck (Gruul or Boros creature combat).
+
+### Exit criteria
+
+From [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) and ADR 0126 §8:
+
+1. ADR 0126 is accepted, and every PR in its Delivery table has merged into `develop`.
+2. On today's four decks, a 64-game four-deck rotation shows at most 5 `never` cards per deck, every mana rock and dork used in at least 80% of the games it was offered in, and each of the six canaries (Sol Ring, Rhystic Study, Mary Read's loot, Entomb, Harrow, Viscera Seer) used in at least 50%.
+3. In 96 games of the new heuristic against `heuristic-baseline`, with the decks split evenly, the new heuristic's Wilson interval lies above the 25% null. No deck's interval in the rotation lies entirely above 50%.
+4. Every gated suite position passes, including the new ones for each card class, and no tag's agreement falls. The `bot-games`, `bot-soak` and `catalog-soak` nightly jobs are green on `develop`.
+5. The evidence is posted on #2435. #2436 can then start.
+
+### Status
+
+**Planned** (2026-10-06). ADR 0126 is accepted. The owner answered its eight open questions on 2026-10-06, all as recommended, and they are recorded in the ADR. PR 2 (measurement) is next.
 
 ---
 
