@@ -3585,7 +3585,7 @@ The members are ADR 0126's Delivery PRs.
 
 - [ ] ADR 0126: the heuristic prices what a card does (PR 1, with this section)
 - [ ] PR 2: measurement. The arena's per-deck Play table and Cards section (offered, taken, `never`), the `heuristic-baseline` contestant and `BaselineConfig()`, and the baseline runs recorded in the ADR. No price changes.
-- [ ] PR 3: mana sources. A source is worth the mana it makes, and a ramp premium applies while the bot is short of mana for its hand and commander.
+- [x] PR 3: mana sources. A source is worth the mana it makes, and a ramp premium applies while the bot is short of mana for its hand and commander.
 - [x] PR 4: permanents by what they do. A mana-value floor for non-creature permanents, and utility from `ability_rows` for them and for creatures.
 - [ ] PR 5: the two windows. The bot's own second main and the end step before its turn: spend leftover mana and free taps, a floor under instants and sorceries, and a tapped-blocker price that depends on timing.
 - [ ] PR 6: the purpose signal. `PurposeView` on the wire and `Spec.Purpose` in the catalog, declared for the curated decks and every board wipe, with `TestCuratedDeckPurposes` and a manual dump audit.

@@ -1,6 +1,7 @@
 package heuristic
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -109,6 +110,15 @@ type Weights struct {
 	ManaSource       float64
 	TappedManaSource float64
 	FrozenManaSource float64
+	// ManaPerExtra is what each FURTHER mana a non-land, non-creature
+	// mana source makes is worth, over the ManaSource its first mana is
+	// worth (ADR 0126 §2): Sol Ring's {C}{C} is ManaSource +
+	// ManaPerExtra. It reads the source's best repeatable ability
+	// (repeatableMana), net of that ability's own mana cost, so a
+	// Signet's "{1}, {T}: Add {W}{U}" is one mana, not two. A tapped or
+	// frozen source keeps the same ratio to its untapped price. Zero is
+	// the pre-S66 price, and BaselineConfig zeroes it.
+	ManaPerExtra float64
 
 	// CommanderTax is the penalty per commander cast already made —
 	// the {2} surcharge compounds and a seat that has recast its
@@ -178,6 +188,7 @@ func DefaultWeights() Weights {
 		ManaSource:       1.00,
 		TappedManaSource: 0.55,
 		FrozenManaSource: 0.25,
+		ManaPerExtra:     1.00,
 
 		CommanderTax: 1.00,
 		Unknown:      1.50,
@@ -470,13 +481,23 @@ func (w Weights) permanentValue(c *protocol.CardView) float64 {
 	case isType(c, "planeswalker"):
 		return w.Permanent + w.Planeswalker + w.Loyalty*float64(c.Counters["loyalty"])
 	case len(c.ManaAbilities) > 0 || isLand(c):
+		// ADR 0126 §2: a rock is priced by the mana it makes. A land is
+		// left alone (the land drop is priced on its own terms, and a
+		// land's value is what every other number here was tuned
+		// against); a creature never reaches this arm.
+		scale := 1.0
+		if !isLand(c) && w.ManaPerExtra != 0 && w.ManaSource > 0 {
+			if extra := repeatableMana(c) - 1; extra > 0 {
+				scale = (w.ManaSource + w.ManaPerExtra*float64(extra)) / w.ManaSource
+			}
+		}
 		if c.Tapped {
 			if WontUntap(c) {
-				return w.FrozenManaSource
+				return w.FrozenManaSource * scale
 			}
-			return w.TappedManaSource
+			return w.TappedManaSource * scale
 		}
-		return w.ManaSource
+		return w.ManaSource * scale
 	default:
 		return w.utilityPermanentValue(c)
 	}
@@ -721,6 +742,76 @@ func WontUntap(c *protocol.CardView) bool {
 		}
 	}
 	return false
+}
+
+// repeatableMana is how much mana a source makes per turn, as far as the
+// view can say (ADR 0126 §2): the most any ONE of its repeatable mana
+// abilities nets per activation. Repeatable means a {T} ability that
+// costs no sacrifice and no exile (a Treasure, a Lotus Petal and a
+// Spirit Guide make their mana once). Net means less the ability's own
+// mana cost, so a Signet's "{1}, {T}: Add {W}{U}" makes one, the
+// mana it adds on top of the mana it eats.
+//
+// A land with no ability rows on the view counts one. Zero means the
+// card is not a repeatable source.
+func repeatableMana(c *protocol.CardView) int {
+	if c == nil {
+		return 0
+	}
+	best := 0
+	for i := range c.ManaAbilities {
+		ab := &c.ManaAbilities[i]
+		if !ab.TapCost || ab.SacrificeCost || ab.ExileSelf || ab.AddsNoMana {
+			continue
+		}
+		if n := manaAmount(ab.Produced) - manaValue(ab.ManaCost, 0); n > best {
+			best = n
+		}
+	}
+	if best == 0 && len(c.ManaAbilities) == 0 && isLand(c) {
+		return 1
+	}
+	return best
+}
+
+// manaAmount counts the mana one activation of a mana ability adds,
+// from its `produced` string. Each brace is one mana: "{C}{C}" is two,
+// and a choice "{W|U|B|R|G}" is one. A choice of N of one colour is
+// written with the count on each option ("{W3|U3|B3|R3|G3}",
+// effects.OneColorOfAmount) and is N. An empty string is a derived
+// output the view cannot size (Cabal Coffers, Gaea's Cradle), counted
+// as one.
+func manaAmount(produced string) int {
+	if produced == "" {
+		return 1
+	}
+	total := 0
+	for {
+		i := strings.IndexByte(produced, '{')
+		if i < 0 {
+			break
+		}
+		j := strings.IndexByte(produced[i:], '}')
+		if j < 0 {
+			break
+		}
+		sym := produced[i+1 : i+j]
+		produced = produced[i+j+1:]
+		if k := strings.IndexByte(sym, '|'); k >= 0 {
+			sym = sym[:k]
+		}
+		n := 1
+		if k := strings.IndexAny(sym, "0123456789"); k > 0 {
+			if m, err := strconv.Atoi(sym[k:]); err == nil && m > 0 {
+				n = m
+			}
+		}
+		total += n
+	}
+	if total == 0 {
+		return 1
+	}
+	return total
 }
 
 // producesMana reports whether a permanent can be tapped for mana
