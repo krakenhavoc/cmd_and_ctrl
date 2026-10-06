@@ -141,8 +141,9 @@ func acPlayerRef(id uuid.UUID) []game.TargetRef {
 }
 
 // acSettleDecliningCommandZone passes priority until the stack is
-// empty, declining each CR 903.9 command-zone prompt on the way, so
-// several stacked bounces can resolve in turn.
+// empty, declining each CR 903.9b command-zone prompt (a bounced
+// commander headed for hand) on the way, so several stacked bounces can
+// resolve in turn.
 func acSettleDecliningCommandZone(t *testing.T, g *game.Game, owner uuid.UUID) {
 	t.Helper()
 	for i := 0; i < 32; i++ {

@@ -19,7 +19,7 @@ import (
 // The catalog half — the real Library of Leng — is in
 // cards/effects/library_of_leng_test.go. What is here is the engine's
 // own contract: the kind, the cause, the destination a replacement
-// rewrites, the event that still fires afterwards, the CR 903.9 offer
+// rewrites, the event that still fires afterwards, the CR 903.9a offer
 // that still works through it, and the cost that still cannot pause.
 
 // discardReplacement builds a test replacement on the discard event.

@@ -61,7 +61,7 @@ func pushCrewVehicle(g *Game, owner *Player) uuid.UUID {
 
 // tapCostTable is the board every case below starts from: a bounced
 // commander with a {T} ability and a {T} mana ability, its owner's
-// CR 903.9 prompt open, and one source per tap-another shape to name
+// CR 903.9b prompt open, and one source per tap-another shape to name
 // it to.
 type tapCostTable struct {
 	g        *Game

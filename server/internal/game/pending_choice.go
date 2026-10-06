@@ -1705,6 +1705,13 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 		// about the card in the graveyard (#2127).
 		choice.Source = chosen.source.InstanceID
 	}
+	if chosen.effect.commanderZone && ev != nil && ev.CardID != uuid.Nil {
+		// CR 903.9b (ADR 0115 decision 2): the question is about the
+		// commander that would go to a hand or a library, and the
+		// built-in has no source card of its own, so the prompt names
+		// the moving card, as the cost path's does.
+		choice.Source = ev.CardID
+	}
 	g.QueueChoiceForEffect(choice)
 }
 

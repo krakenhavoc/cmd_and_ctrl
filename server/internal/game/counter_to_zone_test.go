@@ -82,7 +82,7 @@ func TestReturnSpellToHandForEffectIsNotACounter(t *testing.T) {
 	}
 }
 
-// TestCommanderReturnedToHandOffersCommandZone: CR 903.9's "from
+// TestCommanderReturnedToHandOffersCommandZone: CR 903.9b's "from
 // anywhere" reaches ReturnSpellToHandForEffect's stack exit exactly
 // as it reaches counterSpellLocked's.
 func TestCommanderReturnedToHandOffersCommandZone(t *testing.T) {

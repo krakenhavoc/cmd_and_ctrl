@@ -17,7 +17,7 @@ import (
 // graveyard before anybody had chosen a creature.
 //
 // What a run has to survive, one test each below: several seats
-// answering in any order, a leg the CR 903.9 window has PAUSED, a seat
+// answering in any order, a leg an optional replacement has PAUSED, a seat
 // that leaves mid-prompt, a seat that had nothing to sacrifice, a
 // prompt the engine withdraws, and an undo across a half-answered
 // fan-out.
@@ -127,11 +127,12 @@ func TestAPromptedSacrificeRunWaitsForEveryAskedSeat(t *testing.T) {
 	}
 }
 
-// TestAPromptedSacrificeRunWaitsForAPausedLeg is the CR 903.9
+// TestAPromptedSacrificeRunWaitsForAPausedLeg is the paused-leg
 // half, and the reason the answer goes through SacrificeThenForEffect
-// rather than the fire-and-forget call: a sacrificed commander is
-// STILL ON THE BATTLEFIELD while its owner is asked about the command
-// zone, so a run that settled on the line after the answer would pay
+// rather than the fire-and-forget call: a sacrificed card whose "may"
+// replacement is pending (a test one; a commander was the vehicle
+// before ADR 0115) is STILL ON THE BATTLEFIELD while its owner is
+// asked, so a run that settled on the line after the answer would pay
 // out with the permanent still in play.
 func TestAPromptedSacrificeRunWaitsForAPausedLeg(t *testing.T) {
 	g := newActiveGame(t)

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// paused_tuck_continuation_test.go — #783. A library is a CR 903.9
+// paused_tuck_continuation_test.go — #783. A library is a CR 903.9b
 // destination, so every tuck can PAUSE; this file pins the engine half
 // of the answer, the continuation TuckToLibraryThenForEffect hands over
 // instead of letting its caller write the next line.
@@ -38,7 +38,7 @@ func tuckThen(t *testing.T, g *Game, cardID uuid.UUID, opts TuckOptions) (runs *
 }
 
 // TestTuckContinuationWaitsForTheCommandZoneAnswer is the bug. Nothing
-// after the tuck may happen while the CR 903.9 question is open.
+// after the tuck may happen while the CR 903.9b question is open.
 func TestTuckContinuationWaitsForTheCommandZoneAnswer(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]

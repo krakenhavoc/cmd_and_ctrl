@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// stale_commander_prompt_test.go pins #605: a CR 903.9 "send your
+// stale_commander_prompt_test.go pins #605: a CR 903.9 (a/b) "send your
 // commander to the command zone instead?" prompt must never outlive
 // the card it asks about.
 //

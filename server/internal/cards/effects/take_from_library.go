@@ -15,7 +15,9 @@ import (
 // same way. The MOVE is engine:
 // game.TakeFromLibraryToHandThenForEffect routes library -> hand like
 // every other zone change, so the CR 614 window opens, a commander is
-// offered CR 903.9, and the continuation is told what ARRIVED. The
+// offered CR 903.9b's replacement (a hand is one of its destinations,
+// so this move pauses on it), and the continuation is told what
+// ARRIVED. The
 // PICK is card text — which of the looked-at cards qualify, "a" or
 // "any number", "you may", whether the taken cards are revealed, and
 // where the rest go — and it lives here, on a choose_cards prompt with
@@ -154,7 +156,8 @@ type TakeFromLibraryResult struct {
 	Player uuid.UUID
 	// Taken are the cards that reached a hand, in the order given.
 	// Empty when none did: a declined "you may", no candidate, or a
-	// commander that took CR 903.9's offer instead.
+	// commander that took CR 903.9b's offer and went to the command
+	// zone instead of the hand.
 	Taken []uuid.UUID
 	// Rest are the cards of Cards that are still in a library — "the
 	// rest", "the cards revealed this way that weren't put into your
@@ -499,8 +502,11 @@ func TakeRestOnBottomInRandomOrder(g *game.Game, res TakeFromLibraryResult) erro
 // TakeRestIntoGraveyard is the Then for "put the rest into your
 // graveyard". Not a mill (CR 701.17a is a count off the TOP), so it
 // emits an ordinary zone move — and it goes through
-// game.PutIntoGraveyardForEffect, which routes, so Rest in Peace,
-// Leyline of the Void and CR 903.9 all see the arrival.
+// game.PutIntoGraveyardForEffect, which routes, so Rest in Peace and
+// Leyline of the Void see the arrival. A commander among the rest
+// lands in the graveyard like any other card and does not pause the
+// loop: CR 903.9a offers it the command zone afterwards, as a
+// state-based action (ADR 0115).
 //
 // A token among the rest stays where it is (CR 111.8). An error on one
 // card does not keep the others out of the graveyard: the loop carries
@@ -587,8 +593,8 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 //
 // In Players order, each player's picks move to their hand and that
 // player's Take.Then runs; the next player's cards move from inside
-// that continuation, so a commander's CR 903.9 pause holds the rest of
-// the table's moves behind it rather than being overtaken. Then runs
+// that continuation, so a commander's CR 903.9b pause (the move is to
+// a hand) holds the rest of the table's moves behind it rather than being overtaken. Then runs
 // last, once, with every result. A short library is looked at as far
 // as it goes and an empty one is a look at nothing; a player with no
 // candidate is not asked, and their whole look is "the rest".
@@ -665,7 +671,7 @@ func (e EachPlayerTakesFromLibrary) Apply(ctx *Context) error {
 // from inside that continuation, then runs `then` with every result.
 //
 // `done` is copied at every step rather than appended in place: the
-// continuation can outlive this frame (a paused CR 903.9 leg), and an
+// continuation can outlive this frame (a leg paused on CR 903.9b), and an
 // undone-then-replayed answer must not see the first run's entries.
 func eachPlayerTakeMoves(g *game.Game, source uuid.UUID, takes []TakeFromLibraryToHand, chosen [][]uuid.UUID,
 	done []TakeFromLibraryResult, then func(*game.Game, []TakeFromLibraryResult) error,

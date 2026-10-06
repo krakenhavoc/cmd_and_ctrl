@@ -281,8 +281,8 @@ func TestReanimationFinishesAfterTheEntryPrompt(t *testing.T) {
 // TestFetchedCommanderEntryWaitsBesideACommandZonePrompt — a paused
 // ENTRY and a paused EXIT are two independent frames on one queue, and
 // answering them in either order has to leave both cards where their
-// answers say. The commander's own CR 903.9 question is about the OTHER
-// card; a library → battlefield move is not a CR 903.9 destination, so
+// answers say. The commander's own CR 903.9b question is about the OTHER
+// card; a library → battlefield move is not a CR 903.9b destination, so
 // the fetched commander is asked nothing about the command zone.
 //
 // The paused exit is a BOUNCE: since ADR 0115 an exiled commander no

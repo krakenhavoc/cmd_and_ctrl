@@ -301,7 +301,7 @@ func TestMassDestructionClearsTheDamageOnEveryPermanentThatLeft(t *testing.T) {
 //     collected, so the permanent is never destroyed a first time, let
 //     alone a second. Its damage stays marked, exactly as
 //     indestructible.go describes.
-//   - A PAUSED exit (the CR 903.9 prompt) is skipped by
+//   - A PAUSED exit (a "may" replacement prompt) is skipped by
 //     zoneChangePausedLocked, the #605 guard —
 //     TestPausedDestructionKeepsTheDamageUntilItLands covers it.
 //   - "EXILE IT INSTEAD" and friends move the permanent, so there is

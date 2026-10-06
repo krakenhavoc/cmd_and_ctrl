@@ -20,13 +20,13 @@ import (
 // to run them.
 //
 // The reporter's board is the ordinary Commander one: an Aura on a
-// commander creature. The commander leaves, the owner is asked
-// CR 903.9's "put it in the command zone instead?", and the Aura is
+// commander creature. Before ADR 0115 the commander left, the owner
+// was asked CR 903.9's "put it in the command zone instead?", and the Aura was
 // left attached to a card that is no longer on the battlefield — no
 // CR 704.5m, no graveyard, and the client draws the orphan in the
 // enchantments row because that is what an unattached enchantment
 // looks like. Since #539 made that window open on every exit "from
-// anywhere", it is how a commander usually leaves.
+// anywhere", it was how a commander usually left.
 //
 // Since ADR 0115 a commander headed for the graveyard no longer pauses
 // (it lands, and CR 903.9a asks afterwards), so the tests below put a
