@@ -40,10 +40,9 @@ func init() {
 					if t.Kind != game.TargetPlayer {
 						continue
 					}
-					if err := (DrawCards{Player: t.ID, N: 3}).Apply(ctx); err != nil {
+					if err := drawThenDiscard(g, t.ID, item.SourceCardID, 3, 3, ""); err != nil {
 						return err
 					}
-					g.DiscardChoiceForEffect(t.ID, 3)
 				}
 				return nil
 			},

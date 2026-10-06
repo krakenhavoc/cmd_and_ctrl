@@ -151,12 +151,16 @@ var teferiAkosaKnights = TribeFilter{Tribes: []string{"Knight"}, YoursOnly: true
 //
 // Caller holds g.mu.
 func teferiAkosaDrawThenDiscard(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	return teferiAkosaQueueDiscard(g, item)
+	return g.DrawNThenForEffect(item.Controller, 2, game.DrawThen{
+		Ref: teferiAkosaDiscardThen, Player: item.Controller, Source: item.SourceCardID,
+	})
 }
+
+// teferiAkosaDiscardThen is the continuation of the +1's draw: the
+// conditional discard opens only once both draws have resolved (#2391).
+var teferiAkosaDiscardThen = game.RegisterDrawThen("teferi-akosa-discard", func(g *game.Game, d game.DrawThen) error {
+	return teferiAkosaQueueDiscard(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source})
+})
 
 // teferiAkosaQueueDiscard queues the "discard two cards unless you
 // discard a creature card" pick.
