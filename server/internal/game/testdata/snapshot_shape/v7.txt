@@ -2323,6 +2323,7 @@ seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
+seats[].castPermissions[].followUp	string
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].label	string
 seats[].castPermissions[].lapseOnPass	string
@@ -2331,6 +2332,7 @@ seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
 seats[].castPermissions[].player	custom(uuid.UUID)
+seats[].castPermissions[].requiresNoSpellsCast	bool
 seats[].castPermissions[].scope	string
 seats[].castPermissions[].seesLibraryTop	bool
 seats[].castPermissions[].source	custom(uuid.UUID)

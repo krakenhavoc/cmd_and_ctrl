@@ -4110,8 +4110,12 @@ non-empty and unique per card; `Register` panics otherwise. Only
 overload / evoke / cleave / flashback / warp / escape / disturb exist, plus the
 non-mana prices below (pitch, pay life, return, and since #1727 a
 sacrifice) —
-spree has no shape yet, and a card carrying it ships without it (say
-so in the card comment). Preparation cards are a layout, not a cost —
+spree is not on this list because it is not an alternative cost: it is a
+modal spell whose bullets each carry an additional cost (CR 702.172a),
+declared as `Modes: Spree(SpreeMode(label, cost, targets...), ...)` (or
+`SpreeModeDoing` for a bullet with its own closure) in
+[modes.go](../server/internal/cards/effects/modes.go) — see Caught in the
+Crossfire and Great Train Heist. Preparation cards are a layout, not a cost —
 see "Adding a preparation card" below. Foretell,
 suspend and plot are not alternative costs at all: they are CR 116.2
 special actions, declared in `Spec.SpecialActions` with
@@ -4353,6 +4357,14 @@ terms (Court of Locthwain's free cast beside its play permission), give
 the second its own `AltCostKey`: the caster claims it like an
 alternative cost, `CastOffersForLocked` lists it, and a cast that does
 not claim it uses the first.
+
+**"If you do, …" after a cast permission (#2173).** Set
+`CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
+func(g, f) error {...})` returns, declared as a package-level `var` in the
+card file. The body runs once the spell is on the stack, only when the
+cast was made through that permission, never for a declined, lapsed or
+expired offer (Conduit of Worlds). Add `RequiresNoSpellsCast: true` for
+"if you haven't cast a spell this turn" held across the window.
 
 **"Exile it until …" (#1729, CR 610.3).** Use `effects.ExileUntil`
 (`ThisLeaves: true`, or `On` plus a registered `Condition`), never a

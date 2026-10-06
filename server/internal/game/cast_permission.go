@@ -521,6 +521,30 @@ type CastPermission struct {
 	// permission that prints a count is CastOnly.
 	CastsLeft int `json:"castsLeft,omitempty"`
 
+	// FollowUp names a registered body (RegisterCastFollowUp) that runs
+	// when a cast is made BECAUSE of this permission — "if you do, you
+	// can't cast additional spells this turn" (Conduit of Worlds, CR
+	// 608.2g), "when you cast a spell this way, ..." (#2173). It runs
+	// once the spell is on the stack and its EventCast has gone out, so
+	// a cast that never happens (the permission lapsed, expired or was
+	// declined) runs nothing. A cast the card's own text allowed does
+	// not run it, for the reason CastsLeft gives (castUsesGrantLocked).
+	//
+	// A key, not a func: the type stays pure data, the snapshot carries
+	// the key, and the closure ratchet does not move. Empty is "nothing
+	// follows", which is every permission written before #2173.
+	FollowUp CastFollowUpKey `json:"followUp,omitempty"`
+
+	// RequiresNoSpellsCast ends the permission the moment its holder
+	// has cast any spell this turn. It is the "if you haven't cast a
+	// spell this turn, you may cast that card" half of Conduit of
+	// Worlds: the card checks the tally as the ability resolves, and
+	// because the cast is a stored permission rather than part of the
+	// resolution, the permission has to notice a spell cast in between
+	// (CR 608.2g puts the whole cast inside the resolution, so nothing
+	// can come between).
+	RequiresNoSpellsCast bool `json:"requiresNoSpellsCast,omitempty"`
+
 	// --- provenance ------------------------------------------------
 
 	// Source is the card instance whose effect granted this, and
@@ -556,6 +580,9 @@ func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UU
 	// The floor is checked first because it applies to an unbounded
 	// window too (see NotBeforeSeq).
 	if p.NotBeforeSeq > 0 && g.Turn.Seq < p.NotBeforeSeq {
+		return false
+	}
+	if p.RequiresNoSpellsCast && g.CastTallyFor(playerID).Total > 0 {
 		return false
 	}
 	// `false`: this is a query, not the cleanup sweep. An
