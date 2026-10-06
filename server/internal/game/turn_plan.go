@@ -230,6 +230,14 @@ func (g *Game) noteStepBegunLocked() {
 	}
 	t.StepsBegun[g.Turn.Step]++
 	g.Turn.StepOrdinal = t.StepsBegun[g.Turn.Step]
+	if g.Turn.Step == StepEnd && g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+		// #2385: an end step that really begins. A turn that is ended
+		// never gets here, which is what "until your next end step"
+		// reads to keep its window open across it.
+		if p := g.Seats[g.Turn.ActiveSeat]; p != nil {
+			p.EndStepTurn = p.TurnsBegun
+		}
+	}
 }
 
 // derivePrePlanOrdinalsLocked fills in the ordinals for a restore
