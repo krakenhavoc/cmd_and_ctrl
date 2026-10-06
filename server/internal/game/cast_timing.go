@@ -391,6 +391,13 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if perm != nil && perm.Timing == TimingPlot {
 		return g.SorcerySpeedOpenLocked(playerID)
 	}
+	// 0b. A permission's own "during your turn" (Tinybones, Bauble
+	// Burglar): a gate on whose turn it is, nothing else — the card's
+	// own timing still applies on top, so a creature is still a
+	// sorcery-speed cast on that turn.
+	if perm != nil && perm.Timing == TimingYourTurnOnly && g.activeSeatIDLocked() != playerID {
+		return false
+	}
 	// 1. The card's own timing.
 	instantSpeed := card.IsInstant() || HasKeyword(&card, "flash")
 	// 2. The permission's override, if it carries one.
