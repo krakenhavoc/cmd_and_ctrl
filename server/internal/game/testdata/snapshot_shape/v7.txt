@@ -1578,6 +1578,11 @@ pendingChoices[].owedInStep	object
 pendingChoices[].owedInStep.Step	string
 pendingChoices[].owedInStep.Turn	number:int
 pendingChoices[].payCost	string
+pendingChoices[].pickDestination	string
+pendingChoices[].pickFromGraveyard	bool
+pendingChoices[].pickMeasures	array
+pendingChoices[].pickMeasures[]	number:int
+pendingChoices[].pickOptional	bool
 pendingChoices[].pickOptions	array
 pendingChoices[].pickOptions[]	object
 pendingChoices[].pickOptions[].Cards	array
@@ -1591,6 +1596,7 @@ pendingChoices[].pickTargetMax	number:int
 pendingChoices[].pickTargetMin	number:int
 pendingChoices[].pickTargetPlayers	array
 pendingChoices[].pickTargetPlayers[]	custom(uuid.UUID)
+pendingChoices[].pickThen	string
 pendingChoices[].reason	string
 pendingChoices[].replacementEffectIds	array
 pendingChoices[].replacementEffectIds[]	number:uint64

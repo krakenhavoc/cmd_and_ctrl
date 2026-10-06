@@ -24,6 +24,7 @@ import (
 // (game.PendingChoiceKind).
 const (
 	choiceDiscardFromHand     = "discard_from_hand"
+	choiceRevealedHandPick    = "revealed_hand_pick"
 	choiceMana                = "mana_pick"
 	choiceReplacementOrder    = "replacement_order"
 	choiceOptionalReplacement = "optional_replacement"
@@ -199,7 +200,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		return v, "search: take the best"
 
-	case choiceDiscardFromHand:
+	case choiceDiscardFromHand, choiceRevealedHandPick:
+		// #2115: the variant pick (exile instead, "you may choose", a
+		// graveyard card) is priced the same way. Choosing nothing is
+		// worth zero, so the bot takes an opponent's best card and
+		// declines to give up its own when it may.
 		sign := 1.0
 		reason := "take their best"
 		if ch == nil || ch.FromPlayer == st.me {

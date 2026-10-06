@@ -335,6 +335,14 @@ type PendingChoiceView struct {
 	// EligibleLabel names what Eligible holds, the way the card
 	// prints it: "nonland card".
 	EligibleLabel string `json:"eligible_label,omitempty"`
+	// PickDestination populates the "revealed_hand_pick" kind (#2115):
+	// where the chosen card goes, "discard" or "exile". Exiling it is
+	// not a discard.
+	PickDestination string `json:"pick_destination,omitempty"`
+	// PickFromGraveyard populates the same kind: Options ends with the
+	// revealing player's graveyard, every card of which may be chosen
+	// ("or a card from their graveyard").
+	PickFromGraveyard bool `json:"pick_from_graveyard,omitempty"`
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
@@ -6884,6 +6892,39 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.EligibleLabel = c.DiscardLabel
 			}
 		}
+		// #2115: the variant pick shows the same revealed hand, then —
+		// "or a card from their graveyard" — the graveyard it also
+		// offers, which is public. The bounds are public too: the hand
+		// was revealed to every seat. choose_min is 0 for "you may
+		// choose", and pick_destination says where the card goes.
+		if c.Kind == game.PendingChoiceRevealedHandPick {
+			if fromP := g.PlayerByIDForEffect(c.FromPlayer); fromP != nil {
+				zones := []*game.Zone{fromP.Hand}
+				if c.PickFromGraveyard {
+					zones = append(zones, fromP.Graveyard)
+				}
+				for _, z := range zones {
+					if z == nil {
+						continue
+					}
+					for _, card := range z.Cards {
+						v.Options = append(v.Options, viewOfCard(card))
+					}
+				}
+			}
+			v.Eligible = cardIDStrings(c.DiscardOptions)
+			v.EligibleLabel = c.DiscardLabel
+			v.ChooseMax = c.Count
+			v.ChooseMin = c.Count
+			if c.PickOptional {
+				v.ChooseMin = 0
+			}
+			v.PickDestination = string(c.PickDestination)
+			if v.PickDestination == "" {
+				v.PickDestination = string(game.PickDiscard)
+			}
+			v.PickFromGraveyard = c.PickFromGraveyard
+		}
 		// PendingChoiceSacrifice — "each player sacrifices a
 		// creature". Inline the chooser's own candidate permanents as
 		// Options so the picker renders card faces rather than UUIDs.
@@ -8090,7 +8131,10 @@ func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(Card
 	// The pool is the chooser's own when no other seat is named, or
 	// when the named seat IS the chooser.
 	ownPool := c.FromPlayer == "" || c.FromPlayer == c.Chooser
-	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand)
+	// #2115: revealed_hand_pick is the same pool, and was revealed the
+	// same way; its graveyard candidates are public.
+	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand) ||
+		c.Kind == string(game.PendingChoiceRevealedHandPick)
 	keepUnknown := c.Chooser == viewerID && (ownPool || handPool)
 	out := make([]CardView, 0, len(cards))
 	for _, card := range cards {

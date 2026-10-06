@@ -147,6 +147,39 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": discard nothing", p)
 			}
 
+		case game.PendingChoiceRevealedHandPick:
+			// #2115: the variants. The pool is what the prompt offered,
+			// still where it was offered — the hand, or a graveyard the
+			// prompt opens (RevealedPickCandidateLocked, the resolver's
+			// own test). "You may choose" adds the empty answer, which
+			// nothing can refuse, so it is this kind's AlwaysLegal move.
+			var pool []uuid.UUID
+			for _, id := range c.DiscardOptions {
+				if _, ok := g.RevealedPickCandidateLocked(c, id); ok {
+					pool = append(pool, id)
+				}
+			}
+			verb := "discard"
+			if c.PickDestination == game.PickExile {
+				verb = "exile"
+			}
+			if c.PickOptional {
+				p := base()
+				p.CardIDs = []string{}
+				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+			}
+			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+				p := base()
+				p.CardIDs = idStrings(set)
+				label := reason + ": " + verb
+				for _, id := range set {
+					// The hand was revealed to this seat; a graveyard
+					// is public. cardNameFor all the same (ADR 0033 §3).
+					label += " " + cardNameFor(g, id, e.seat)
+				}
+				e.addChoice(c, label, p)
+			}
+
 		case game.PendingChoiceMana:
 			for _, color := range c.ColorOptions {
 				p := base()

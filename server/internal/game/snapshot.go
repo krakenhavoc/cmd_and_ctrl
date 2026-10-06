@@ -1308,8 +1308,17 @@ type pendingChoiceSnapshot struct {
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
 	DiscardLabel   string      `json:"discardLabel,omitempty"`
-	CopyOptions    []uuid.UUID `json:"copyOptions,omitempty"`
-	ScryCards      []uuid.UUID `json:"scryCards,omitempty"`
+	// #2115: a revealed_hand_pick's variant — where the chosen card
+	// goes, whether choosing nothing is an answer, whether the
+	// revealing player's graveyard is offered, and the KEY of its
+	// continuation (checkEffectKeys refuses one this binary lacks).
+	PickDestination   PickDestination `json:"pickDestination,omitempty"`
+	PickOptional      bool            `json:"pickOptional,omitempty"`
+	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
+	PickThen          string          `json:"pickThen,omitempty"`
+	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
+	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -2262,6 +2271,11 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:       copyUUIDs(c.DiscardOptions),
 		DiscardLabel:         c.DiscardLabel,
+		PickDestination:      c.PickDestination,
+		PickOptional:         c.PickOptional,
+		PickFromGraveyard:    c.PickFromGraveyard,
+		PickThen:             c.PickThen,
+		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
@@ -3070,6 +3084,11 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:       copyUUIDs(c.DiscardOptions),
 		DiscardLabel:         c.DiscardLabel,
+		PickDestination:      c.PickDestination,
+		PickOptional:         c.PickOptional,
+		PickFromGraveyard:    c.PickFromGraveyard,
+		PickThen:             c.PickThen,
+		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,

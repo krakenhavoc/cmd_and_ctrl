@@ -57,7 +57,17 @@ func (g *Game) effectCauseControllerLocked() uuid.UUID {
 // opponent's and `victim` controls a permanent that stops it. Caller must
 // hold g.mu (read or write). Reads only.
 func (g *Game) opponentEffectBlockedLocked(victim uuid.UUID, discard bool) bool {
-	cause := g.effectCauseControllerLocked()
+	return g.opponentEffectBlockedByLocked(g.effectCauseControllerLocked(), victim, discard)
+}
+
+// opponentEffectBlockedByLocked is opponentEffectBlockedLocked with the
+// cause named rather than read off the resolving item. A discard made
+// when a prompt is answered, after the resolution that asked for it
+// (the revealed-hand pick's variants, ADR 0116's 2026-10-05 amendment,
+// #2115), is caused by the controller of the effect that asked, and the
+// prompt records that player as its chooser. Caller must hold g.mu
+// (read or write). Reads only.
+func (g *Game) opponentEffectBlockedByLocked(cause, victim uuid.UUID, discard bool) bool {
 	if cause == uuid.Nil || cause == victim || victim == uuid.Nil {
 		return false
 	}

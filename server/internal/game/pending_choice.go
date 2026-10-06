@@ -594,6 +594,24 @@ type PendingChoice struct {
 	// Client copy only; never read by the resolver.
 	DiscardLabel string
 
+	// PickDestination, PickOptional, PickFromGraveyard and PickThen
+	// are the rest of a PendingChoiceRevealedHandPick (ADR 0116's
+	// 2026-10-05 amendment, #2115): where the chosen card goes, whether
+	// "you may choose" lets the chooser choose nothing, whether the
+	// candidates include the revealing player's graveyard, and the KEY
+	// of the registered continuation that runs once the pick is made
+	// (revealed_hand_pick.go). All four are plain data, so a table
+	// waiting on the pick is still a restore point. Zero on every
+	// other kind, and on a discard_from_hand.
+	PickDestination   PickDestination
+	PickOptional      bool
+	PickFromGraveyard bool
+	PickThen          string
+	// PickMeasures is RevealedHandDiscard.Measure's reading of each
+	// candidate, in DiscardOptions order, taken as the pick was raised.
+	// Nil when the card measures nothing.
+	PickMeasures []int
+
 	// promptRun links this prompt to the RUN it is one leg of — the
 	// printed instruction whose continuation waits for every seat it
 	// asked (#1019, #1027, prompt_run.go). uuid.Nil on a prompt
@@ -1258,6 +1276,11 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 	choice := g.PendingChoices[idx]
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
+	}
+	if choice.Kind == PendingChoiceRevealedHandPick {
+		// #2115: an optional pick takes an empty answer, so it is
+		// routed ahead of the exact-count check below.
+		return g.resolveRevealedHandPickLocked(idx, choice, picks)
 	}
 	if len(picks) != choice.Count {
 		return ErrInvalidParam
@@ -2618,6 +2641,44 @@ type RevealedHandDiscard struct {
 	Filter func(Card) bool
 	// Label is what Filter admits, for the client ("nonland card").
 	Label string
+
+	// The variants (ADR 0116's 2026-10-05 amendment, #2115). Any one of
+	// them set makes the pick a PendingChoiceRevealedHandPick, raised
+	// through RevealedHandPickForEffect (revealed_hand_pick.go).
+
+	// Destination is where the chosen card goes. The zero value and
+	// PickDiscard discard it; PickExile exiles it, which is not a
+	// discard (CR 701.9a), so madness and "whenever a player discards"
+	// never see it (Appetite for Brains).
+	Destination PickDestination
+	// Optional is "You may choose": the chooser may choose nothing
+	// (Nightsnare, Extract the Truth).
+	Optional bool
+	// FromGraveyard is "or a card from their graveyard" (Agonizing
+	// Remorse): every card in FromPlayer's graveyard is a candidate as
+	// well as the hand's matches. Filter applies to the hand only.
+	FromGraveyard bool
+	// Then is the registered continuation told what was chosen: "if
+	// you do / if you don't", a clause that reads the chosen card, or
+	// anything else printed after the pick that must wait for it.
+	Then RevealedPickThen
+	// Measure reads a number off each candidate as the pick is raised,
+	// while the spell is still resolving: Talara's Bane's "that creature
+	// card's toughness". The continuation is handed the chosen cards'
+	// numbers (RevealedPick.Measures). Read here rather than in the
+	// continuation because the continuation runs when the pick is
+	// answered, and by then the resolved spell has been put into its
+	// graveyard (CR 608.2n), which a toughness that counts graveyards
+	// would see; nothing else can change in between, since the prompt
+	// stops the table. Like Filter, the func is never stored.
+	Measure func(Card) int
+}
+
+// isVariant reports whether d needs the variant prompt rather than the
+// plain discard_from_hand.
+func (d RevealedHandDiscard) isVariant() bool {
+	return (d.Destination != "" && d.Destination != PickDiscard) ||
+		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil
 }
 
 // QueueDiscardFromRevealedHand is the revealed-hand pick (ADR 0116,
@@ -2647,8 +2708,21 @@ type RevealedHandDiscard struct {
 //
 // Returns the prompt's ID, or uuid.Nil when nothing was queued.
 //
+// A variant (Destination, Optional, FromGraveyard or Then set) is
+// handed to RevealedHandPickForEffect, which can also return an error
+// from a continuation it ran at once; here that error is reported as an
+// effect error, the way an answered prompt's would be. A card calls
+// RevealedHandPickForEffect itself to see it.
+//
 // Caller must hold g.mu.
 func (g *Game) QueueDiscardFromRevealedHand(d RevealedHandDiscard) uuid.UUID {
+	if d.isVariant() {
+		id, err := g.RevealedHandPickForEffect(d)
+		if err != nil {
+			g.emitChoiceEffectErrorLocked(d.Chooser, d.Source, err)
+		}
+		return id
+	}
 	p := g.playerByIDLocked(d.FromPlayer)
 	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
 		return uuid.Nil

@@ -833,6 +833,17 @@ var pendingChoiceFields = plan(
 	// them would let the chooser take a land with Thoughtseize.
 	"DiscardOptions", carried, "",
 	"DiscardLabel", carried, "",
+	// #2115: a revealed_hand_pick's variant. Carried for the same
+	// reason: a restored pick that forgot them would discard what it
+	// should exile, refuse "choose nothing", hide the graveyard, or
+	// drop the rest of the card. PickThen is a key, not a closure.
+	"PickDestination", carried, "",
+	"PickOptional", carried, "",
+	"PickFromGraveyard", carried, "",
+	"PickThen", carried, "",
+	// Talara's Bane's toughness, read as the pick was raised: without
+	// it a restored pick would gain nothing.
+	"PickMeasures", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",

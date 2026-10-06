@@ -35,9 +35,35 @@ type ChooseFromRevealedHand struct {
 	Label  string
 	// Count defaults to one.
 	Count int
+
+	// The variants (#2115, ADR 0116's 2026-10-05 amendment). See
+	// game.RevealedHandDiscard for each; leaving all four zero is the
+	// plain discard above.
+
+	// Exile exiles the chosen card instead of discarding it: "You
+	// choose a … card from it and exile that card" (Appetite for
+	// Brains). Not a discard, so no madness and no discard triggers.
+	Exile bool
+	// Optional is "You may choose".
+	Optional bool
+	// FromGraveyard adds "or a card from their graveyard" (Agonizing
+	// Remorse). Filter reads the hand only.
+	FromGraveyard bool
+	// Then is the rest of the card, told what was chosen: a
+	// RevealedPickThen or RevealedPickFirst var declared in the card's
+	// file.
+	Then game.RevealedPickThen
+	// Measure reads a number off each candidate while the spell is
+	// still resolving (Talara's Bane's toughness), for Then to read
+	// back off the chosen card as pick.Measures. See
+	// game.RevealedHandDiscard.Measure for why it is read here.
+	Measure func(g *game.Game, c game.Card) int
 }
 
 // Apply queues the reveal and the pick. See the type comment.
+//
+// With a Then and nothing to choose, Then runs before Apply returns,
+// and its error is Apply's.
 func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 	if e.Player == uuid.Nil {
 		return nil
@@ -52,15 +78,64 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 		g, pred := ctx.Game, e.Filter
 		filter = func(c game.Card) bool { return pred(g, chooser, c) }
 	}
-	ctx.Game.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{
-		Chooser:    chooser,
-		FromPlayer: e.Player,
-		Source:     ctx.Source(),
-		Count:      count,
-		Filter:     filter,
-		Label:      e.Label,
-	})
+	d := game.RevealedHandDiscard{
+		Chooser:       chooser,
+		FromPlayer:    e.Player,
+		Source:        ctx.Source(),
+		Count:         count,
+		Filter:        filter,
+		Label:         e.Label,
+		Optional:      e.Optional,
+		FromGraveyard: e.FromGraveyard,
+		Then:          e.Then,
+	}
+	if e.Exile {
+		d.Destination = game.PickExile
+	}
+	if e.Measure != nil {
+		g, measure := ctx.Game, e.Measure
+		d.Measure = func(c game.Card) int { return measure(g, c) }
+	}
+	if e.Exile || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil {
+		_, err := ctx.Game.RevealedHandPickForEffect(d)
+		return err
+	}
+	ctx.Game.QueueDiscardFromRevealedHand(d)
 	return nil
+}
+
+// RevealedPickThen registers a revealed-hand pick's continuation that
+// runs once the chosen card has moved, as a card file's package-level
+// var. The body is handed a Context rebuilt from values — the chooser
+// as its controller, the card that asked as its source — never from
+// the stack item it began with, which has long resolved; and the pick.
+// The key is an on-disk identity ("revealed-pick/<card>-<what>"): never
+// renamed, never reused.
+func RevealedPickThen(key string, body func(ctx *Context, pick game.RevealedPick) error) game.RevealedPickThen {
+	return game.RegisterRevealedPickThen(key, func(g *game.Game, r game.RevealedPick) error {
+		return body(revealedPickContext(g, r), r)
+	})
+}
+
+// RevealedPickFirst is RevealedPickThen for a clause printed BEFORE the
+// move, which reads the chosen card while it is still in the hand
+// (Talara's Bane). The body must call pick.Done exactly once.
+func RevealedPickFirst(key string, body func(ctx *Context, pick game.RevealedPick) error) game.RevealedPickThen {
+	return game.RegisterRevealedPickFirst(key, func(g *game.Game, r game.RevealedPick) error {
+		return body(revealedPickContext(g, r), r)
+	})
+}
+
+// revealedPickContext is the resolving spell's context as a pick's
+// continuation sees it, rebuilt from values (invertPolarityContext's
+// shape).
+func revealedPickContext(g *game.Game, r game.RevealedPick) *Context {
+	return NewContext(g, &game.StackItem{
+		Kind:         game.StackItemSpell,
+		Controller:   r.Chooser,
+		Owner:        r.Chooser,
+		SourceCardID: r.Source,
+	})
 }
 
 // TargetedPlayer is the player the spell's first target clause chose,

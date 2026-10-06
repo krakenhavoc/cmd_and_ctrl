@@ -151,6 +151,16 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if !KnownChoiceKind(c.Kind) {
 			unknown = append(unknown, "pending-choice kind "+string(c.Kind))
 		}
+		// #2115: a revealed-hand pick's continuation is a key, and its
+		// destination a closed vocabulary. Restored without either, the
+		// pick would move the card somewhere else or skip the rest of
+		// the card.
+		if c.PickThen != "" && !KnownRevealedPickThen(c.PickThen) {
+			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
+		}
+		if !knownPickDestination(c.PickDestination) {
+			unknown = append(unknown, "revealed-hand pick destination "+string(c.PickDestination))
+		}
 	}
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
