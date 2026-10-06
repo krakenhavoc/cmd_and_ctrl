@@ -69,12 +69,14 @@ describe("settings", () => {
   // consequences section is written assuming exactly these values.
   // If one of them flips, that document is wrong and should move with
   // the code.
-  it("defaults an opponent's board to the summary rendering", async () => {
+  // #2433: full opponent boards, the overlay and the row layout.
+  it("defaults an opponent's board to full, expansion to the overlay, and the table to a row", async () => {
     const { defaultSettings } = await freshModule();
     const d = defaultSettings();
-    expect(d.display.opponentDetail).toBe("summary");
+    expect(d.display.opponentDetail).toBe("full");
     expect(d.display.expandActivePlayer).toBe(true);
-    expect(d.display.expandStyle).toBe("reflow");
+    expect(d.display.expandStyle).toBe("overlay");
+    expect(d.display.tableLayout).toBe("row");
   });
 
   // ADR 0121 §7: dice animate by default, and a stored blob from before
@@ -232,10 +234,10 @@ describe("settings", () => {
     const { settings, SETTINGS_VERSION } = await freshModule();
     const s = get(settings);
     expect(s.__version).toBe(SETTINGS_VERSION);
-    // The three new fields arrive at their defaults.
-    expect(s.display.opponentDetail).toBe("summary");
+    // The three new fields arrive at their defaults (today's: #2433).
+    expect(s.display.opponentDetail).toBe("full");
     expect(s.display.expandActivePlayer).toBe(true);
-    expect(s.display.expandStyle).toBe("reflow");
+    expect(s.display.expandStyle).toBe("overlay");
     // Everything the user had actually chosen is untouched.
     expect(s.display.cardSize).toBe("large");
     expect(s.display.tableLayout).toBe("row");
@@ -538,13 +540,13 @@ describe("settings", () => {
   // says — and from v15 on the player's own choice is kept.
   // #2336: tableLayout gained "focus" without a version bump, and from
   // then on the value is checked: an unknown one is the quadrant.
-  it("keeps every table layout and resets an unknown one to the quadrant", async () => {
+  it("keeps every table layout and resets an unknown one to the default row", async () => {
     for (const [stored, want] of [
       ["quadrant", "quadrant"],
       ["row", "row"],
       ["focus", "focus"],
-      ["sideways", "quadrant"],
-      [7, "quadrant"],
+      ["sideways", "row"],
+      [7, "row"],
     ] as const) {
       localStorage.setItem(
         "cmdctrl.settings.v1",
