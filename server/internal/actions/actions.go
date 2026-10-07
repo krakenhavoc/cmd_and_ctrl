@@ -1784,6 +1784,10 @@ func dispatch(g *game.Game, a Action) error {
 			// an ordinary answer, and so is the empty list on a
 			// "choose up to one".
 			Modes []int `json:"modes"`
+			// Amount answers a PendingChoicePayAmount (ADR 0129 §3):
+			// how much energy the chooser pays. Routed by the choice's
+			// KIND, for Iterations' reason — paying nothing is zero.
+			Amount int `json:"amount"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1801,6 +1805,12 @@ func dispatch(g *game.Game, a Action) error {
 		// presence to route on.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLoopShortcut {
 			return g.ResolveLoopShortcut(choiceID, a.Player, p.Iterations)
+		}
+		// ADR 0129 §3, CR 118.12: "you may pay any amount of {E}".
+		// Routed by kind: the whole payload is an integer whose
+		// commonest value may be zero.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoicePayAmount {
+			return g.ResolvePayAmount(choiceID, a.Player, p.Amount)
 		}
 		// #568, CR 608.2: "choose one of the following", addressed to
 		// any seat. Routed by kind for the same reason the shortcut

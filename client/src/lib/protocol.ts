@@ -1482,6 +1482,14 @@ export interface PendingChoiceView {
   // discard's options are the chooser's hand and reach the chooser
   // only. Absent for a mana payment.
   pay_cards?: PayCardsView;
+  // ADR 0129 §3: the energy a "pay_unless" asks for ("you may pay
+  // {E}{E}", "unless you pay {E}"). pay_cost carries the symbols. Paying
+  // 0 {E} is a payment too, so 0 is present. A "Pay" from a seat with
+  // less energy is a decline.
+  pay_energy?: number;
+  // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
+  // {E}". Answered with { amount }: 0, or min..max.
+  pay_amount?: PayAmountView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
@@ -2282,6 +2290,15 @@ export interface DelveView {
 // instance IDs (the chooser's hand for a discard, the permanents of
 // the clause's kind they control for a sacrifice); one payment names
 // exactly `count` of them.
+// ADR 0129 §3: the bounds of a pay_amount prompt. goal is the card's
+// own threshold (the stepper starts there); unit is what one energy buys.
+export interface PayAmountView {
+  min: number;
+  max: number;
+  goal?: number;
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
+}
+
 export interface PayCardsView {
   action: "discard" | "sacrifice";
   count: number;

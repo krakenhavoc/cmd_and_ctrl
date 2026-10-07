@@ -50,6 +50,7 @@ const (
 	choiceMayCast             = "may_cast"
 	choiceChooseSource        = "choose_source"
 	choiceCommanderReturn     = "commander_return"
+	choicePayAmount           = "pay_amount"
 )
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
@@ -123,6 +124,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	}
 
 	switch kind {
+	case choicePayAmount:
+		return payAmountValue(ch, cp.Amount)
 	case choiceEntryController:
 		return st.entryControllerValue(ch, cp.OptionIndex)
 	case choiceEntryRiot:
@@ -504,6 +507,16 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 					loss = 0
 				}
 				return 1 - 0.4*loss/(1+loss), "pay with the least valuable"
+			}
+			// ADR 0129 §7: an energy payment is still paid, priced at
+			// Weights.Energy a counter. The tie-break stays above the
+			// decline's 0.5, as a discard's does.
+			if kind == choicePayUnless && ch != nil && ch.PayEnergy != nil {
+				e := st.w.Energy * float64(*ch.PayEnergy)
+				if e < 0 {
+					e = 0
+				}
+				return 1 - 0.4*e/(1+e), "pay the energy"
 			}
 			// ADR 0131 §5: a mana payment that spends 2 life on a symbol
 			// (a ward {B} under K'rrik, a printed {B/P}) is the Phyrexian

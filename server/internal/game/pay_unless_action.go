@@ -41,6 +41,7 @@ const (
 	// PayActionSacrifice sacrifices Count permanents the payer controls
 	// that match Of (CR 701.21).
 	PayActionSacrifice PayActionKind = "sacrifice"
+	// PayActionEnergy is in energy_payment.go (ADR 0129 §3).
 )
 
 // PayAction is a non-mana pay-unless payment: "discard N cards" or
@@ -143,6 +144,12 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		})
 	case PayActionSacrifice:
 		if err := g.payCostSacrificesLocked(picked, nil); err != nil {
+			return err
+		}
+	case PayActionEnergy:
+		// ADR 0129 §3 (energy_payment.go): the counters come off the
+		// payer through the one path that pays energy.
+		if err := g.payEnergyLocked(chooser, a.Count, source); err != nil {
 			return err
 		}
 	}

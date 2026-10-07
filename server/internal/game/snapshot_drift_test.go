@@ -815,6 +815,7 @@ var pendingChoiceFields = plan(
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	"PayAmount", dropped, "ADR 0129 §3: a pay_amount prompt always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"NoLegalTarget", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",
