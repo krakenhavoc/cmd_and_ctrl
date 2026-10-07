@@ -40,6 +40,7 @@ func (g *Game) cloneLocked() *Game {
 		OpeningRoll:       cloneOpeningRoll(g.OpeningRoll),
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
+		DayNight:          g.DayNight,
 		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
@@ -1008,6 +1009,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.OpeningRoll = src.OpeningRoll
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
+	g.DayNight = src.DayNight
 	// Settings are NOT restored (ADR 0075 §2.3): the live value is
 	// carried forward, so an undo cannot roll back a settings change —
 	// least of all the undo limit it is spending against. A snapshot

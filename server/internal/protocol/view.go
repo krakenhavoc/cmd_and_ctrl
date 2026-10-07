@@ -66,6 +66,11 @@ type GameView struct {
 	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
 	// Monarch. Added in S10.
 	Initiative string `json:"initiative,omitempty"`
+	// DayNight is the game's day/night designation (CR 731, ADR 0132):
+	// "day" or "night", omitted while the game has neither. Public and
+	// identical for every viewer — it belongs to the game, not to a
+	// seat. The client shows it beside the turn line.
+	DayNight string `json:"day_night,omitempty"`
 	// Promises is the per-pair "I owe you" token tally as
 	// "{from}->{to}" string keys → count. Zero entries are dropped on
 	// the wire so the map stays small. Added in S10.
@@ -4196,6 +4201,7 @@ func ViewOfGame(g *game.Game) GameView {
 			MulligansOpen:         g.MulligansOpen,
 			Monarch:               uuidStringOrEmpty(g.Monarch),
 			Initiative:            uuidStringOrEmpty(g.Initiative),
+			DayNight:              string(g.DayNight.Designation),
 			Promises:              viewOfPromises(g.Promises),
 			Vote:                  viewOfVote(g.Vote),
 			UndoLimit:             g.Settings.UndoLimit,
@@ -8254,6 +8260,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		MulligansOpen: v.MulligansOpen,
 		Monarch:       v.Monarch,
 		Initiative:    v.Initiative,
+		DayNight:      v.DayNight,
 		Promises:      v.Promises,
 		Vote:          v.Vote,
 		UndoLimit:     v.UndoLimit,

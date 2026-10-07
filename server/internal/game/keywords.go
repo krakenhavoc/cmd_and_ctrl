@@ -298,6 +298,15 @@ var canonicalKeywords = map[string]bool{
 	// the ~130 devoid cards are colourless with no catalog entry. See
 	// devoid.go for why a stamped colour list still wins (CR 707.9d).
 	KeywordDevoid: true,
+	// daybound and nightbound (CR 702.145) join with #2561 (ADR 0132),
+	// in the same change that teaches the engine to honour them. Their
+	// consumer is daynight.go: the designation they set going, the
+	// transform they trigger and the guard that makes a permanent with
+	// either ability transform for nothing else. Stamped by the deck
+	// importer from each face's own keyword lines like every other
+	// canonical token, so a werewolf works with no catalog entry.
+	KeywordDaybound:   true,
+	KeywordNightbound: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

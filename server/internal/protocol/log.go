@@ -372,6 +372,12 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogDayNight — the game became day or night (CR 731.1). `Label` is
+	// the new designation ("day" or "night"). Narrated because the
+	// untap-step check (CR 502.2) changes it with no spell or ability
+	// behind it, so the table would otherwise watch every werewolf
+	// turn over with nothing saying why. ADR 0132.
+	LogDayNight LogKind = "day_night"
 	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
 	// (CR 702.26). #1199, ADR 0084.
 	//
@@ -1623,6 +1629,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventDayNightChanged:
+		// CR 731.1. Not tied to a card: the untap-step check and a
+		// daybound permanent arriving both change it with no source.
+		base.Kind = LogDayNight
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventStorm:
 		// CR 702.40a, #1238. The count is the card, and nothing else
 		// says it: a spell copy emits no event (CR 707.10 — it is
@@ -2319,6 +2332,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:
 		return fmt.Sprintf("%s phased in", card)
+	case LogDayNight:
+		return fmt.Sprintf("It becomes %s", e.Label)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

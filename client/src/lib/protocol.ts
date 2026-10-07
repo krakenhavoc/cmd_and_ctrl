@@ -371,6 +371,10 @@ export interface GameView {
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
   initiative?: string;
+  // The game's day/night designation (CR 731, ADR 0132): "day" or
+  // "night", omitted while the game has neither. Public and the same
+  // for every viewer; the action dock shows it beside the turn line.
+  day_night?: "day" | "night";
   // Per-pair "I owe you" promise tally as "{from}->{to}" string keys
   // → count. Sparse: zero entries are dropped server-side. Added in
   // S10.
@@ -807,6 +811,10 @@ export type LogKind =
   // ADR 0130 §5: a player exerted a permanent (CR 701.43a). `seat` is
   // the player, `card_id` the permanent; server-rendered `text`.
   | "exert"
+  // ADR 0127 §6: the server answered a prompt with its chooser's
+  // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
+  // Server-rendered `text`.
+  | "auto_answer"
   // A player left the game. `cause` says why ("life", "empty_draw",
   // "poison", "commander_damage", "effect", "concede"); `card_id` is
   // the source of an effect loss. One line per departure (ADR 0057).
@@ -953,6 +961,10 @@ export type LogKind =
   // the log says which.
   | "phase_out"
   | "phase_in"
+  // ADR 0132 (#2561): the game became day or night (CR 731.1). `label`
+  // is the new designation. Narrated because the untap-step check
+  // changes it with no spell or ability behind it.
+  | "day_night"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.

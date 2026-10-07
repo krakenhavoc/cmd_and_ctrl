@@ -87,6 +87,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		MulligansOpen: true,
 		Monarch:       ownerID,
 		Initiative:    ownerID,
+		DayNight:      "night",
 		Promises:      map[string]int{ownerID + "->" + oppID: 1},
 		Vote:          &VoteView{ID: "vote-1", Topic: "raise a toast", Options: []string{"yes"}, Initiator: ownerID, Ballots: map[string]int{ownerID: 0}},
 		UndoLimit:     3,
