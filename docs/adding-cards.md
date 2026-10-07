@@ -636,11 +636,22 @@ The price shown stays printed; the engine folds the clause into coloured
 symbols wherever a payment or an affordability check reads the cost, so the
 auto-tapper, the bot and the view all agree with the payment. Under
 Chromatic Orrery any mana pays such a COST (CR 609.4b), while a mana
-RESTRICTION still binds. The clause works on activated abilities only:
-"Spend only black mana on X" on a SPELL (Drain Life), "Spend only mana
-produced by basic lands" (Imperiosaur) and Emblazoned Golem's
-one-of-each-colour cap have no shape yet. See ADR 0040's 2026-10-03
-amendment.
+RESTRICTION still binds. The same sentences on a SPELL are two `Spec`
+fields (#2556, ADR 0040's 2026-10-07 amendment):
+
+```go
+SpendOnly:        SpellSpendOnlyOnX("B"),       // Drain Life: "Spend only black mana on X"
+SpendOnly:        SpellSpendOnlyOnX("B", "R"),  // Soul Burn: "black and/or red"
+SpendOnlySources: game.ManaSourceBasicLand,     // Imperiosaur: "…produced by basic lands"
+SpendOnlySources: game.ManaSourceCreature,      // Myr Superion: "…produced by creatures"
+```
+
+The colour clause is stamped on the cast's price and folded like an
+ability's; the source clause is read from the cast's spend context by the
+pool and by the auto-tapper's planner. A spell's clause is the "on X" form
+only, and `Register` refuses it beside delve or convoke / waterbend.
+Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
+2026-10-03 and 2026-10-07 amendments.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.

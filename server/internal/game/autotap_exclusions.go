@@ -158,3 +158,48 @@ func WithAutoTapExclusions(base map[uuid.UUID]bool, ids ...[]uuid.UUID) map[uuid
 func unionIDs(lists ...[]uuid.UUID) map[uuid.UUID]bool {
 	return WithAutoTapExclusions(nil, lists...)
 }
+
+// excludeNonQualifyingSourcesLocked is `excluded` plus every source of
+// `controller`'s that could not make mana a source-restricted payment
+// accepts (#2556): "Spend only mana produced by basic lands to cast
+// this spell" (Imperiosaur) is a rule about the SOURCE, and the planner
+// plans from permanents, so a source whose kinds miss `only` is simply
+// not reachable — the same exclusion list a convoked creature or a
+// sacrificed Treasure gets, which every gatherer already honours.
+//
+// The kinds are read the way a mint site reads them (manaSourceKindsOf),
+// so a permanent the planner skips here is exactly one whose mana the
+// pool solver would then refuse. `only` zero returns `excluded`
+// unchanged (nil stays nil): the walk is paid by the few casts that
+// print the clause. Never mutates its argument. Caller must hold g.mu.
+func (g *Game) excludeNonQualifyingSourcesLocked(controller uuid.UUID, excluded map[uuid.UUID]bool, only ManaSourceKinds) map[uuid.UUID]bool {
+	if only == 0 {
+		return excluded
+	}
+	out := make(map[uuid.UUID]bool, len(excluded))
+	for id := range excluded {
+		out[id] = true
+	}
+	skip := func(c Card) {
+		if !manaSourceKindsOf(c).HasAny(only) {
+			out[c.InstanceID] = true
+		}
+	}
+	if g.Battlefield != nil {
+		for _, c := range g.Battlefield.Cards {
+			if c.Controller == controller {
+				skip(c)
+			}
+		}
+	}
+	if p := g.playerByIDLocked(controller); p != nil {
+		for _, kind := range supportedManaAbilityZones {
+			if pile := playerManaZone(p, kind); pile != nil {
+				for _, c := range pile.Cards {
+					skip(c)
+				}
+			}
+		}
+	}
+	return out
+}

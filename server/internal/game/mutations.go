@@ -2950,6 +2950,13 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// needs red creatures for its {R}{R}, exactly as the player static
 	// (costAsPaidByLocked) is read after the taps.
 	cost = spendAsThoughAny(grant, cost)
+	// #2556: the spell's own "Spend only black mana on X" — resolved
+	// against THIS card and stamped last, as the ability pricer stamps
+	// an ability's (cost_modifier.go), so every copy of the cost made
+	// from here on (the modifiers, the taps, the enumerator's repricing
+	// of Base) carries it to costAsPaidByLocked, which folds it for the
+	// announced X. String() ignores it: the price shown stays printed.
+	cost.SpendOnly = SpellSpendOnlyFor(CatalogKey(card)).ResolveFor(card)
 	return cost, chosen, nil
 }
 
