@@ -96,6 +96,16 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
+	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
+	// (Soul Burn), #2556: the colour half of a restriction on the mana
+	// that pays THIS spell. The cast pricer stamps it onto the
+	// ParsedCost, where costAsPaidByLocked folds it (spend_only.go).
+	SpendOnly *ManaSpendOnly
+	// SpendOnlySources is the source half — "Spend only mana produced
+	// by basic lands to cast this spell" (Imperiosaur) — read into the
+	// cast's ManaSpendContext (ManaSpendForCast).
+	SpendOnlySources ManaSourceKinds
 	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
@@ -573,6 +583,18 @@ func init() {
 			return d.TapCost
 		}
 		return nil
+	}
+	CatalogSpellSpendOnly = func(key string) *ManaSpendOnly {
+		if d := catalogDef(key); d != nil {
+			return d.SpendOnly
+		}
+		return nil
+	}
+	CatalogSpellSpendOnlySources = func(key string) ManaSourceKinds {
+		if d := catalogDef(key); d != nil {
+			return d.SpendOnlySources
+		}
+		return 0
 	}
 	CatalogDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {

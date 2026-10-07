@@ -85,7 +85,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 	ngCounts := map[string]int{}
 	total, ngTotal := 0, 0
 	for _, tok := range pool {
-		if ctx.allows(tok.Restrictions) {
+		if ctx.allowsToken(tok) {
 			counts[tok.Color]++
 			if tok.noGeneric() {
 				ngCounts[tok.Color]++
@@ -286,6 +286,10 @@ func (g *Game) autoTapTopUpLocked(
 	excluded map[uuid.UUID]bool,
 	prefer ManaSourceKinds,
 ) (tapPlan, ParsedCost, bool) {
+	// #2556: "Spend only mana produced by basic lands to cast this
+	// spell" — the sources that could not pay are out of every plan
+	// below, the pool top-up and the costed pass alike.
+	excluded = g.excludeNonQualifyingSourcesLocked(controller, excluded, ctx.SourceOnly)
 	p := g.playerByIDLocked(controller)
 	if p == nil {
 		plan, ok := g.autoTapPreferringLocked(controller, cost, xValue, excluded, prefer)

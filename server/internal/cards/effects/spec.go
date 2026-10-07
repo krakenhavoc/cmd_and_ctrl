@@ -607,6 +607,33 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
+	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
+	// (Soul Burn) — a restriction on the mana that pays THIS spell
+	// (#2556, ADR 0040's 2026-10-07 amendment). Build it with
+	// SpellSpendOnlyOnX; never by hand.
+	//
+	//	SpendOnly: SpellSpendOnlyOnX("B"), // Drain Life
+	//
+	// The cast pricer stamps it on the price and costAsPaidByLocked
+	// folds it for the announced X, so the cast, its auto-tap, the
+	// legal-move list and the auto-tap preview all pay it the same way
+	// and the price shown stays printed. Refused beside Delve or
+	// TapCost (convoke / waterbend), where which part of the cost a
+	// tap or an exiled card pays is a question no printed card asks.
+	SpendOnly *game.ManaSpendOnly
+
+	// SpendOnlySources is "Spend only mana produced by basic lands to
+	// cast this spell" (Imperiosaur) or "…by creatures" (Myr Superion):
+	// a restriction on the SOURCE of the mana that pays this spell.
+	//
+	//	SpendOnlySources: game.ManaSourceBasicLand, // Imperiosaur
+	//
+	// Carried by the cast's ManaSpendContext, so the pool solver
+	// refuses mana from any other source and the auto-tapper plans from
+	// qualifying permanents only. Zero for every other card.
+	SpendOnlySources game.ManaSourceKinds
+
 	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). A static
 	// ability of the permanent (CR 604.1), read off the battlefield as a

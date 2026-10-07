@@ -489,7 +489,7 @@
   // the action as they always did.
   const activateManaAbility = $derived(
     isSelf
-      ? (card: CardView, abilityIndex: number, colors?: string[]) => {
+      ? (card: CardView, abilityIndex: number, colors?: string[], phyrexianLife?: number) => {
           // #1228: a permanent publishes `mana_abilities` and a card
           // in hand whose mana ability functions there publishes
           // `zone_mana_abilities` — never both. One lookup reads
@@ -510,6 +510,8 @@
               // ADR 0093: the row this click meant, so a stale one is refused.
               ...manaAbilityRef(card, abilityIndex),
               ...manaColorParams(colors),
+              // ADR 0131 §2: the "Pay life for {B}…" row's claim.
+              ...(phyrexianLife ? { phyrexian_life: phyrexianLife } : {}),
             },
             seat.id,
           );

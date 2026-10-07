@@ -439,7 +439,7 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) error {
 	g.EmitEvent(ev)
 	switch c.Kind {
 	case PendingChoicePayUnless:
-		g.answerPayUnlessLocked(idx, c, c.Chooser, yes, nil, nil, false, true)
+		g.answerPayUnlessLocked(idx, c, c.Chooser, yes, nil, nil, 0, false, true)
 	case PendingChoiceTriggerPrompt:
 		g.answerTriggerPromptLocked(idx, c, yes, true)
 	case PendingChoiceConfirm:

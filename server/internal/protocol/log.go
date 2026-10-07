@@ -319,6 +319,12 @@ const (
 	// the walk found nothing. The line comes when the card is settled:
 	// after the cast that used the grant, or once it is in a hand.
 	LogDiscover LogKind = "discover"
+	// LogManifestDread — a player manifested dread (CR 701.62a, ADR
+	// 0082's 2026-10-07 amendment). NEVER a card, for anyone: the
+	// manifested card is face down and known only to its controller, and
+	// the card that went to the graveyard is already on the table's
+	// zone-move line.
+	LogManifestDread LogKind = "manifest_dread"
 	// LogSagaChapter — a lore counter advanced a Saga onto a chapter
 	// (CR 714.2b); `Amount` is the chapter number.
 	LogSagaChapter LogKind = "saga_chapter"
@@ -1536,6 +1542,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventManifestDread:
+		// CR 701.62a. Carries no card reference on purpose: the
+		// manifested card is hidden from every seat but its controller
+		// (CR 708.5) and the line must not be the leak.
+		base.Kind = LogManifestDread
+		return base, true
+
 	case game.EventSagaChapter:
 		// CR 714.2b. A chapter firing is a beat of the turn, and until
 		// #1021 only the chapter ability's own resolve line marked it
@@ -2235,6 +2248,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s discovered %d and found nothing", actor, e.Amount)
 		}
 		return fmt.Sprintf("%s discovered %d — %s", actor, e.Amount, card)
+	case LogManifestDread:
+		return fmt.Sprintf("%s manifested dread", actor)
 	case LogSagaChapter:
 		if e.Amount <= 0 {
 			return fmt.Sprintf("%s advanced a chapter", card)

@@ -219,7 +219,7 @@ func TestTeferiMasterOfTimeMinusThreePhasesOut(t *testing.T) {
 func TestEveryEquipAbilityIsMarked(t *testing.T) {
 	for _, spec := range All() {
 		for _, ab := range spec.Activated {
-			isEquip := strings.HasPrefix(ab.Label, "Equip ")
+			isEquip := strings.HasPrefix(ab.Label, "Equip ") || strings.HasPrefix(ab.Label, "Equip—")
 			if isEquip && !ab.Equip {
 				t.Errorf("%s: %q looks like an equip ability and is not marked — use EquipAbility or EquipOnlyAbility", spec.Name, ab.Label)
 			}

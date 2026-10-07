@@ -81,6 +81,14 @@ const (
 	// Nykthos and Serra's Sanctum are enchantment-adjacent shapes and
 	// a "mana from an enchantment" clause is one printing away).
 	ManaSourceEnchantment
+
+	// ManaSourceBasicLand is a land with the BASIC supertype, which a
+	// land also sets ManaSourceLand for — "mana produced by basic
+	// lands" (Imperiosaur, #2556) asks for exactly this and a plain
+	// land bit cannot answer it. The supertype at mint time, so a
+	// Forest that Blood Moon-style effects stripped of Basic is not
+	// one.
+	ManaSourceBasicLand
 )
 
 // Has reports whether every bit in `want` is set. The zero `want` is
@@ -122,6 +130,9 @@ func manaSourceKindsOf(c Card) ManaSourceKinds {
 	}
 	if c.IsLand() {
 		k |= ManaSourceLand
+		if c.HasSupertype("Basic") {
+			k |= ManaSourceBasicLand
+		}
 	}
 	if c.IsArtifact() {
 		k |= ManaSourceArtifact
