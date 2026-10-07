@@ -41,6 +41,7 @@ func TestMergeAccountServesItsSections(t *testing.T) {
 	rows := AccountRows{
 		Account:               AccountRow{ID: "u1", Name: "Ann", LastSignInAt: at(time.Hour)},
 		DiscordLinkedAt:       at(time.Minute),
+		PlaymatURL:            "/playmats/abc",
 		Games:                 []GameRow{{ID: g, Name: "T", State: "ended", CreatedAt: t0, TheirSeat: &seat}},
 		GamesTruncated:        true,
 		Decks:                 []DeckRow{{ID: "d", Name: "Deck", Format: "text"}},
@@ -51,6 +52,9 @@ func TestMergeAccountServesItsSections(t *testing.T) {
 	if !got.Account.PlayingNow || got.SignIn.RevokePath != "/admin/users/u1/revoke-sessions" ||
 		got.SignIn.LastSignInAt != at(time.Hour).UnixMilli() || got.SignIn.DiscordLinkedAt == 0 || got.SignIn.SessionsInvalidBefore != 0 {
 		t.Errorf("account / sign-in = %+v / %+v", got.Account, got.SignIn)
+	}
+	if got.PlaymatURL != "/playmats/abc" {
+		t.Errorf("PlaymatURL = %q", got.PlaymatURL)
 	}
 	if len(got.Games) != 1 || got.Games[0].TheirSeat == nil || *got.Games[0].TheirSeat != 1 || !got.GamesTruncated {
 		t.Errorf("games = %+v", got.Games)

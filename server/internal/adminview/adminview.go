@@ -117,8 +117,12 @@ type AccountRow struct {
 // AccountRows is Account's answer: everything GET /admin/users/{id}
 // reads from the database.
 type AccountRows struct {
-	Account               AccountRow
-	DiscordLinkedAt       time.Time // identities.linked_at; zero with no identity
+	Account         AccountRow
+	DiscordLinkedAt time.Time // identities.linked_at; zero with no identity
+	// PlaymatURL is the same-origin /playmats/<uuid> path of the
+	// account's playmat, or "" for none. The handler fills it from the
+	// playmat service (ADR 0128); it is not a column the store reads.
+	PlaymatURL            string
 	SessionsInvalidBefore time.Time // zero while users.sessions_invalid_before is 0
 	Games                 []GameRow // newest first, each with TheirSeat
 	GamesTruncated        bool

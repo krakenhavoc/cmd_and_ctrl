@@ -421,3 +421,11 @@ The owner's answers did not settle these. Each is decided above, and each can be
 19. **The Grafana link host comes from the blackbox probe's `instance`** through a hidden `site` variable (§9), rather than a second hand-kept list of hosts.
 20. **Panel 12's queries keep their `window` label**, so each bar links to its own window (§9).
 21. **No new rate limit on the admin reads** (§2).
+
+## Amendment, 2026-10-07: a second action, Remove playmat (#2501)
+
+Decision 3 ("read-only first") linked the existing actions from their rows. The account view now carries a second one beside Revoke sessions: **Remove playmat**, which calls the route ADR 0128 §9 already added, `DELETE /admin/users/{id}/playmat`. No new route, no new rate limit, and the census is unchanged.
+
+- **The read side.** `GET /admin/users/{id}` serves `playmat_url`, the same-origin `/playmats/<uuid>` path or absent for none. It sits at the top level of the account body, not on the account row, so the accounts list does not grow a field. The handler fills it from the playmat service (`AccountRows.PlaymatURL`); the store reads no new column. `TestAdminViewsServeOnlyTheirFields` pins it.
+- **The client.** The Playmat card shows a small thumbnail of the current mat, so the admin sees what they are removing, loaded through the same token-bearing `playmatSrc` the table uses. The button opens a confirmation that names the person, as Revoke sessions does, and a successful removal reloads the account. With no mat there is a line saying so and no button.
+- **Still true.** The views stay read-only apart from the linked actions; the person can upload another mat, so this removes an image and does not ban the feature.

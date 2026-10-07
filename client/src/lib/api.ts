@@ -783,6 +783,13 @@ export async function removeMyPlaymat(): Promise<MyPlaymat> {
   return (await res.json()) as MyPlaymat;
 }
 
+// removeUserPlaymat is ADR 0128's admin removal, the account view's
+// second action (ADR 0124 amendment): DELETE /admin/users/{id}/playmat.
+// Removing none succeeds, so a second click is harmless.
+export async function removeUserPlaymat(id: string): Promise<void> {
+  await authFetch(`/admin/users/${encodeURIComponent(id)}/playmat`, { method: "DELETE" });
+}
+
 // seatLibraryDeck installs a deck already in the caller's library
 // (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
 // unlike uploadDeck/installPrebuiltDeck, a player session already

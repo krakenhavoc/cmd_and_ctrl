@@ -2936,6 +2936,7 @@ requests (at most 100, newest first, then `deck_requests_truncated`).
 {
   "generated_at": 1791206364278,
   "account": { "id": "<uuid>", "name": "Ann", "games_played": 12, "playing_now": false },
+  "playmat_url": "/playmats/<uuid>",
   "sign_in": {
     "last_sign_in_at": 1791200000000,
     "discord_linked_at": 1790000000000,
@@ -2969,7 +2970,9 @@ absent while unset, is the only per-person session state: a session
 issued at or before it is refused. `revoke_path` is
 [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only).
 A deck has no list and no coverage report. A deck request is matched to
-the account through its Discord identity in SQL.
+the account through its Discord identity in SQL. `playmat_url` is the
+account's playmat path, absent for none; the account view's Remove playmat
+button calls `DELETE /admin/users/{id}/playmat` ([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) amendment).
 
 | Status | Reason |
 |---|---|

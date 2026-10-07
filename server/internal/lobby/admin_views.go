@@ -149,6 +149,9 @@ func adminViewAccount(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return adminViewFailed(c, "account", err)
 	}
+	if c.Playmats != nil {
+		rows.PlaymatURL = c.Playmats.URL(id)
+	}
 	return writeJSON(w, http.StatusOK, adminview.MergeAccount(rows, live, ov, c.now()))
 }
 
