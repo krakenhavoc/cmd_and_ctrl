@@ -37,6 +37,7 @@
   import { damageBadge } from "../../damageBadge";
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openCardMenu } from "../../contextMenu";
+  import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
   import {
     acrossFor,
     castAnywayItem,
@@ -45,6 +46,7 @@
     menuManaRows,
     specialActionItems,
     type MenuAction,
+    type MenuItem,
   } from "../../contextMenu.logic";
   import {
     abilityPopover,
@@ -176,6 +178,11 @@
     // popover. It draws no pip and does not light the ready ring.
     // Undefined: no row.
     onCastAnyway?: () => void;
+    // ADR 0131 §4: the popover's "Pay life for {B}…" row, on a hand card
+    // whose cost has a symbol K'rrik lets life pay. It starts the cast
+    // with the life stepper open. Counts toward `hasMenu`. Undefined: no
+    // row.
+    onPayLife?: () => void;
     // Why that row is greyed (timing.ts castAnywayBlocked), or "" when it
     // is live.
     castAnywayBlocked?: string;
@@ -298,6 +305,7 @@
     onActivateManaAbility,
     onRawTap,
     onCastAnyway,
+    onPayLife,
     castAnywayBlocked = "",
     onMenuAction,
     view,
@@ -370,6 +378,10 @@
   // ADR 0118 §2: the Sandbox section's Cast anyway row, one builder with
   // the admin menu's (contextMenu.logic.ts castAnywayItem).
   const castAnywayRow = $derived(onCastAnyway ? castAnywayItem(castAnywayBlocked) : undefined);
+  // ADR 0131 §4: the Payment group's row, a label contract.
+  const payLifeRow = $derived<MenuItem | undefined>(
+    onPayLife ? { id: "pay-life", label: PAY_LIFE_LABEL, hint: PAY_LIFE_TITLE } : undefined,
+  );
   // hasMenu: the popover has at least one row to show. Since ADR 0117
   // §3 that is every permanent the viewer controls (its Sandbox row),
   // so a right-click on a vanilla creature opens the popover with Tap.
@@ -379,7 +391,8 @@
       specialRows.length > 0 ||
       loyaltyRows.length > 0 ||
       sandbox ||
-      !!castAnywayRow,
+      !!castAnywayRow ||
+      !!payLifeRow,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
@@ -1204,6 +1217,8 @@
         onRawTap={sandbox ? onRawTap : undefined}
         castAnyway={castAnywayRow}
         {onCastAnyway}
+        payLife={payLifeRow}
+        {onPayLife}
         onClose={closeAbilityPopover}
       />
     </div>

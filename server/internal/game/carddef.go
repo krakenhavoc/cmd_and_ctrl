@@ -277,6 +277,11 @@ type CardDef struct {
 	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
 	// battlefield through CatalogAnyColorSpend; see spend_any_color.go.
 	AnyColorSpend []AnyColorSpendStatic
+	// LifeForMana are this permanent's printed "for each {B} in a cost,
+	// you may pay 2 life rather than pay that mana" statics (CR 107.4f,
+	// ADR 0131) — K'rrik, Son of Yawgmoth. Read from the battlefield
+	// through CatalogLifeForMana; see life_for_mana.go.
+	LifeForMana []LifeForManaStatic
 	// LegendRuleExemptions are this permanent's printed "the legend rule
 	// doesn't apply" statics (CR 704.5j) — Mirror Box, Mirror Gallery,
 	// Sakashima of a Thousand Faces. Read from the battlefield through
@@ -776,6 +781,12 @@ func init() {
 	CatalogAnyColorSpend = func(key string) []AnyColorSpendStatic {
 		if d := catalogDef(key); d != nil {
 			return d.AnyColorSpend
+		}
+		return nil
+	}
+	CatalogLifeForMana = func(key string) []LifeForManaStatic {
+		if d := catalogDef(key); d != nil {
+			return d.LifeForMana
 		}
 		return nil
 	}

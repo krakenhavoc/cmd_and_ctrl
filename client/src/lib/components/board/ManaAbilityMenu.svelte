@@ -85,6 +85,12 @@
     // section's only row. Undefined hides it.
     castAnyway?: MenuItem;
     onCastAnyway?: () => void;
+    // ADR 0131 §4: the "Pay life for {B}…" row on a hand card whose cost
+    // has a symbol a grant (K'rrik) lets life pay. Choosing it fires
+    // `onPayLife`, which starts the cast with the life stepper open;
+    // nothing is sent from here. Undefined hides it.
+    payLife?: MenuItem;
+    onPayLife?: () => void;
     // ADR 0117 §2: the card the rows belong to, for its restrictions
     // (Arrest, Faith's Fetters) and, with `view` and `viewerID`, a
     // planeswalker's "already activated this turn" and the −N it cannot
@@ -131,6 +137,8 @@
     onRawTap,
     castAnyway,
     onCastAnyway,
+    payLife,
+    onPayLife,
     onClose,
     payerLife,
     across = false,
@@ -196,6 +204,11 @@
       ? "Untap it by hand: a manual change that activates nothing"
       : "Turn it sideways by hand: a manual change that adds no mana and activates nothing",
   );
+
+  function firePayLife(): void {
+    onPayLife?.();
+    onClose?.();
+  }
 
   function fireCastAnyway(): void {
     if (!castAnyway || castAnyway.disabled) return;
@@ -365,6 +378,26 @@
         <span class="label">{item.label}</span>
       </button>
     {/each}
+  {/if}
+  {#if payLife && onPayLife}
+    <!-- ADR 0131 §4: the name is a label contract (AGENTS.md §5). It is a
+         payment choice, not a sandbox override, so it has its own group. -->
+    <div class="sandbox" role="group" aria-label="payment">
+      <span class="section-label" aria-hidden="true">Payment</span>
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        title={payLife.hint || payLife.label}
+        data-pay-life
+        onclick={(ev) => {
+          ev.stopPropagation();
+          firePayLife();
+        }}
+      >
+        <span class="label">{payLife.label}</span>
+      </button>
+    </div>
   {/if}
   {#if onRawTap || (castAnyway && onCastAnyway)}
     <!-- ADR 0117 §3: the Sandbox section. Never a pip, never counted by

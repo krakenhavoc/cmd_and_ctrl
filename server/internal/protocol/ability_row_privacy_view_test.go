@@ -69,7 +69,7 @@ var activatedRowScopes = map[string]rowScope{
 	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
 	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
-	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,
+	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.

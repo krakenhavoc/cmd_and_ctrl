@@ -1207,6 +1207,14 @@ type AlternativeCostView struct {
 	// today — shipped because the field the client reads must not
 	// depend on which cost is being paid.
 	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+	// PhyrexianGranted is how many of `phyrexian_symbols` are payable
+	// with life only because the viewer controls a life-for-mana
+	// grant — K'rrik's "for each {B} in a cost, you may pay 2 life"
+	// (ADR 0131) — rather than because the cost prints a Phyrexian
+	// symbol. Zero, and omitted, for every viewer without such a
+	// permanent. The client uses it to ask about life only when mana
+	// falls short and to label the always-available entry.
+	PhyrexianGranted int `json:"phyrexian_granted,omitempty"`
 
 	// Purpose is what the spell does when cast for THIS cost, where
 	// that differs from the card's own `purpose` (ADR 0126 §6):
@@ -2858,6 +2866,14 @@ type CastSurfaceView struct {
 	// with them. Absent — which is nearly every card — means there
 	// is no life half to offer.
 	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+	// PhyrexianGranted is how many of `phyrexian_symbols` are payable
+	// with life only because the viewer controls a life-for-mana
+	// grant — K'rrik's "for each {B} in a cost, you may pay 2 life"
+	// (ADR 0131) — rather than because the cost prints a Phyrexian
+	// symbol. Zero, and omitted, for every viewer without such a
+	// permanent. The client uses it to ask about life only when mana
+	// falls short and to label the always-available entry.
+	PhyrexianGranted int `json:"phyrexian_granted,omitempty"`
 	// TargetCostNotes are the printed clauses of this card's own cost
 	// modifiers whose price depends on its targets — Fireball's "This
 	// spell costs {1} more to cast for each target beyond the first",
@@ -3538,6 +3554,14 @@ type ActivatedAbilityView struct {
 	// client that re-parsed the cost string to find out would be a
 	// second parser of the same syntax.
 	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+	// PhyrexianGranted is how many of `phyrexian_symbols` are payable
+	// with life only because the viewer controls a life-for-mana
+	// grant — K'rrik's "for each {B} in a cost, you may pay 2 life"
+	// (ADR 0131) — rather than because the cost prints a Phyrexian
+	// symbol. Zero, and omitted, for every viewer without such a
+	// permanent. The client uses it to ask about life only when mana
+	// falls short and to label the always-available entry.
+	PhyrexianGranted int `json:"phyrexian_granted,omitempty"`
 	// TargetMode / LegalTargets mirror the cast-time targeting
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
@@ -5299,7 +5323,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// modifiers add generic, so the two agree today, and reading the
 	// effective one keeps them agreeing if that ever stops being
 	// true.
-	out.PhyrexianSymbols = phyrexianSymbolsIn(f.manaCost)
+	out.PhyrexianSymbols, out.PhyrexianGranted = phyrexianSymbolsIn(g, caster, f.manaCost)
 	spec := game.TargetSpecFor(key)
 	// #1012: THE list of CR 118.9 prices this cast may claim out of
 	// this zone, from the one function that answers the question for
@@ -5449,15 +5473,22 @@ func castGateFace(live game.Card, offers []*game.AlternativeCost) game.Card {
 // activation is refused with ErrUnparseableCost long before any
 // payment is announced (#289), so there is no life half to offer and
 // nothing for the view to say about it.
-func phyrexianSymbolsIn(costStr string) int {
+//
+// ADR 0131: counted as `payer` will pay it, so a symbol K'rrik makes
+// payable with life is in the total (the ceiling on `phyrexian_life`)
+// and in `granted`, the part of it that is not printed. The same
+// function the payment marks the symbols with, so the client's ceiling
+// is the engine's.
+func phyrexianSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, granted int) {
 	if costStr == "" {
-		return 0
+		return 0, 0
 	}
 	cost, err := game.ParseCost(costStr)
 	if err != nil {
-		return 0
+		return 0, 0
 	}
-	return cost.PhyrexianSymbols()
+	cost = g.LifeGrantedCostForEffect(payer, cost)
+	return cost.PhyrexianSymbols(), cost.LifeGrantedSymbols()
 }
 
 // castableNow is `castable_here` for a card in a graveyard, on a
@@ -5938,9 +5969,9 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// #916: the offer replaces the mana cost, so it replaces
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
-			PhyrexianSymbols: phyrexianSymbolsIn(ac.ManaCost),
-			Purpose:          viewOfPurpose(ac.Purpose),
+			Purpose: viewOfPurpose(ac.Purpose),
 		}
+		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
@@ -8592,6 +8623,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.
 	out.PhyrexianSymbols = 0
+	out.PhyrexianGranted = 0
 	// #746: a quoted cost clause names the card like its mana cost.
 	out.TargetCostNotes = nil
 	// S29: "castable from where it sits" is only ever set on cards
@@ -9525,7 +9557,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.XSlots = a.Cost.XSlots()
 		}
 		// #917 / #916: the "or 2 life" half of the announcement.
-		v.PhyrexianSymbols = phyrexianSymbolsIn(a.Cost.Mana)
+		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, a.Cost.Mana)
 		// #1190: the row shows what AbilityManaCostForEffect actually
 		// charges, not the printed string alone — `caster` is the
 		// permanent's controller here, the same activator the

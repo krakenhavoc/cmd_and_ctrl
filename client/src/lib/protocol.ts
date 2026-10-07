@@ -2209,6 +2209,14 @@ export interface AlternativeCostView {
   // offer a payment the announce gate rejects. Absent for every offer
   // that prints none, which is all of them today.
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // #1686: the engine will refuse THIS offer right now for timing (CR
   // 307.1) even though its zone and payability both check out. Every
   // S22 keyword here answers to the card's own printed timing (or a
@@ -2635,6 +2643,14 @@ export interface ActivatedAbilityView {
   // menu knows to open the stepper at all. A COUNT rather than
   // something the client derives, for the reason demands_x is one.
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
@@ -2941,6 +2957,14 @@ export interface CastSurfaceView {
   // cards and absent everywhere else, so its presence IS the question
   // "is there a life half to offer here".
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its

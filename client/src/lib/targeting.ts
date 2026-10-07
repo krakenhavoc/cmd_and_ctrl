@@ -165,6 +165,11 @@ export interface CastChoices {
   // no mana is spent and the log says so. Life for Phyrexian symbols
   // and every additional cost are still paid.
   forceCast?: boolean;
+  // ADR 0131 (#2531): the cast was started from the card menu's "Pay
+  // life for {B}…" row, so the Phyrexian stepper opens even when every
+  // symbol is a granted one and the mana would have paid. Never sent:
+  // it only decides whether the prompt opens.
+  askPhyrexianLife?: boolean;
 }
 
 // CastSourceZone is the `from_zone` vocabulary the server's
@@ -250,11 +255,13 @@ export function castChoicesBase(
   fromZone?: CastSourceZone,
   viaDrag = false,
   forceCast = false,
+  askPhyrexianLife = false,
 ): CastChoices {
   const out: CastChoices = {};
   if (fromZone) out.fromZone = fromZone;
   if (viaDrag) out.viaDrag = true;
   if (forceCast) out.forceCast = true;
+  if (askPhyrexianLife) out.askPhyrexianLife = true;
   return out;
 }
 

@@ -1766,6 +1766,24 @@ either label it stays in the `cast_prices` string as printed —
 `phyrexian_symbols`, so the cast may claim it for 2 life with
 `phyrexian_life`. When it is paid with mana instead, any mana pays it.
 
+**`phyrexian_granted` (ADR 0131, #2531, omitempty)** sits beside
+`phyrexian_symbols` on `CardView`, on `alternative_costs[i]` and on
+`activated_abilities[i]`. When the viewer controls a permanent that
+lets them pay 2 life for each `{B}` in a cost (K'rrik, Son of
+Yawgmoth), `phyrexian_symbols` counts those symbols too — it stays
+the ceiling on `phyrexian_life` — and `phyrexian_granted` says how
+many of them are the grant's rather than printed Phyrexian symbols.
+It counts the `{B}` half of a hybrid symbol and never generic mana,
+`{C}` or the black mana a "spend only black mana on X" clause adds.
+The price in `mana_cost`, `cast_prices` and the activated-ability row
+stays as printed. The server never pays a granted symbol with life
+unless the action claims it with `phyrexian_life`, auto-tap included
+(`auto_tap` plans the cost as mana), so a client asks only when mana
+falls short and keeps an always-available "Pay life for {B}…" entry
+for the player who wants it. The same claim works on `declare_attacker`
+and `declare_attackers` for a `{B}` attack tax, and the bot's legal
+moves carry it as `params.phyrexian_life` and `cost.phyrexian_life`.
+
 **`alternative_costs` lists only offers the caster could pay (#695).**
 An offer is stamped when its condition holds, when the caster's life
 total is at least its `life` (CR 119.4 — exactly N still appears,

@@ -999,6 +999,45 @@ ADR 0129 PR 3; energy as an alternative cost, replicate or a keyword's cost on P
 turn" on PR 5. Put such a card on the matching registry row's `Waiting`
 list.
 
+### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
+
+"For each {B} in a cost, you may pay 2 life rather than pay that mana"
+(K'rrik, Son of Yawgmoth) is a player static, declared on
+`Spec.LifeForMana` with the card-side sentence in
+`effects/life_for_mana.go`:
+
+```go
+LifeForMana: YouMayPayLifeForMana("B"), // K'rrik, Son of Yawgmoth
+```
+
+It changes how the controller PAYS, not the cost, so it is read at the
+payment, never in a pricer. `costAsPaidByLocked` (`game/spend_any_color.go`)
+calls `grantLifeForManaLocked` first, which marks each requirement whose
+options include the granted colour `ColorRequirement.LifeGranted`;
+`PaysWithLife()` is then true for it exactly as for a printed `{B/P}`, and
+the one strike-and-pay helper (`PhyrexianLifePlan`,
+`strikePhyrexianLifeLocked`) pays it. Consequences worth knowing before you
+touch it:
+
+- It reaches `{B}` and the `{B}` half of a hybrid symbol (`{B/G}`, `{2/B}`),
+  never generic mana, `{C}`, or the black requirements a "spend only black
+  mana on X" clause folds in (the mark runs before the fold).
+- The price shown, the mana value and the card's colour are unchanged: the
+  flag lives on the copy made at payment.
+- **Auto-tap never pays life.** The life is paid only when the action
+  claims it with `phyrexian_life` (CR 601.2b), the same field a printed
+  Phyrexian symbol uses, on a cast, an activation or an attack
+  declaration. The view reports `phyrexian_symbols` (the ceiling) and
+  `phyrexian_granted` (how many are the grant's) for the viewer.
+- The enumerator and the bot need no new code: the life loops in
+  `legal/cast.go`, `legal/abilities.go` and `legal/combat.go` call
+  `LifeGrantedCostForEffect` before they count symbols.
+- A grant for another colour is data: `YouMayPayLifeForMana("G")`.
+
+**Not yet (ADR 0131 PR 2):** a mana ability's mana cost and the payments
+made while a spell or ability resolves (ward, "unless its controller
+pays") have no life answer, so a card that needs them keeps a caveat.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,

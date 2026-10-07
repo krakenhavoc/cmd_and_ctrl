@@ -1735,6 +1735,9 @@ func (e *enumerator) castPayment(
 	if !lifeAllowed {
 		return castPaymentSolve{}, false
 	}
+	// ADR 0131: count the symbols a life-for-mana grant (K'rrik) makes
+	// payable with life, marked by the function the payment uses.
+	priced = e.g.LifeGrantedCostForEffect(e.seat, priced)
 	for n := 1; n <= priced.PhyrexianSymbols(); n++ {
 		reduced, life := game.PhyrexianLifePlan(priced, e.p.ManaPool, spend, n)
 		if !e.g.CanPayLifeLocked(e.p, reserved+life) {
@@ -1756,11 +1759,12 @@ func (e *enumerator) castPayment(
 // symbols only removes requirements, so the last is a belt, but the
 // enumerator offers nothing it has not priced.
 func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendContext, reserved int) (int, bool) {
-	n := first.printed.PhyrexianSymbols()
+	printed := e.g.LifeGrantedCostForEffect(e.seat, first.printed)
+	n := printed.PhyrexianSymbols()
 	if n == 0 || n <= first.life {
 		return 0, false
 	}
-	reduced, life := game.PhyrexianLifePlan(first.printed, e.p.ManaPool, spend, n)
+	reduced, life := game.PhyrexianLifePlan(printed, e.p.ManaPool, spend, n)
 	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
 		return 0, false
 	}

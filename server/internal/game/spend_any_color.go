@@ -163,6 +163,9 @@ func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 // itself when neither applies. THE one reading — see the file comment
 // for where it is called and why there.
 //
+// Before both, a life-for-mana grant marks the symbols it reaches
+// (life_for_mana.go).
+//
 // The order is the rule: CR 609.4b's grant changes how a cost may be
 // paid, and "spend only white mana" is a rule about how it may be paid,
 // so the grant reaches the folded symbols exactly as it reaches a
@@ -174,6 +177,11 @@ func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
+	// ADR 0131: K'rrik's "you may pay 2 life rather than pay that {B}"
+	// marks the printed symbols FIRST, so the requirements the
+	// spend-only fold adds below (Crypt Rats' "black mana on X") are not
+	// marked: life never pays generic mana (the 2019-08-23 ruling).
+	cost = g.grantLifeForManaLocked(payer, cost)
 	cost = cost.foldSpendOnly(x)
 	if len(cost.Required) == 0 || !g.spendsManaAsAnyColorLocked(payer, ctx) {
 		return cost
