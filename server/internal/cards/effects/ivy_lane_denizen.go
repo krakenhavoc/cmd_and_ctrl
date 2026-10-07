@@ -30,15 +30,7 @@ func init() {
 			},
 			Targets: TargetCreature("target creature"),
 			Key:     "Ivy Lane Denizen — put a +1/+1 counter on target creature",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Effect:  plusOneCounterOnChosenTargets,
 		}},
 	})
 }

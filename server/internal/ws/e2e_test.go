@@ -141,6 +141,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// placeholder rather than allocating a new one.
 	out.Monarch = n.id(v.Monarch)
 	out.Initiative = n.id(v.Initiative)
+	// ADR 0132: "day" or "night", no IDs.
+	out.DayNight = v.DayNight
 	out.Promises = n.promises(v.Promises)
 	out.Vote = n.vote(v.Vote)
 	out.StartingSeat = v.StartingSeat
@@ -503,6 +505,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		MulligansOpen: true,
 		Monarch:       ownerID,
 		Initiative:    ownerID,
+		DayNight:      "night",
 		Promises:      map[string]int{ownerID + "->" + oppID: 1},
 		Vote: &protocol.VoteView{
 			ID: "vote-1", Topic: "raise a toast", Options: []string{"yes"},

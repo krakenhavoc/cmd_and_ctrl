@@ -37,6 +37,7 @@
   } from "../../turnRules";
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
   import { L } from "../../labels";
+  import { dayNightChip } from "../../dayNight";
 
   interface Props {
     turn: TurnView;
@@ -54,6 +55,9 @@
     // ADR 0108 §9: the live damage redirections' banner lines
     // (GameView.damage_redirections).
     damageRedirections?: string[];
+    // ADR 0132 (CR 731): GameView.day_night, absent while the game has
+    // neither designation.
+    dayNight?: string;
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
     // highlighted action on this frame (legalActions.ts
     // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
@@ -74,6 +78,7 @@
     damageShields = [],
     damageMultipliers = [],
     damageRedirections = [],
+    dayNight = undefined,
     readyActions = 0,
     trackOpen = false,
   }: Props = $props();
@@ -94,6 +99,7 @@
   const shieldsLine = $derived(damageShieldsLine(damageShields));
   const multiplierLines = $derived(damageMultiplierLines(damageMultipliers));
   const redirectionLines = $derived(damageRedirectionLines(damageRedirections));
+  const dayNightBadge = $derived(dayNightChip(dayNight));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -200,6 +206,12 @@
       <span class="seat-dot" style="background:{activeColor}"></span>
       <span class="active-name">{activePlayer?.name ?? `seat ${activeSeat}`}</span>
     </span>
+    {#if dayNightBadge}
+      <span class="day-night" data-day-night={dayNight} title={dayNightBadge.title}>
+        <span aria-hidden="true">{dayNightBadge.glyph}</span>
+        {dayNightBadge.label}
+      </span>
+    {/if}
     {#if turn.extra}
       <span class="extra-turn" title="This turn was created by an effect">Extra turn</span>
     {/if}
@@ -316,6 +328,7 @@
   .summary {
     justify-content: flex-start;
   }
+  .day-night,
   .extra-turn,
   .next-extra {
     font-size: 0.75em;

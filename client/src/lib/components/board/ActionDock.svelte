@@ -434,6 +434,7 @@
       damageShields={view.damage_shields ?? []}
       damageMultipliers={view.damage_multipliers ?? []}
       damageRedirections={view.damage_redirections ?? []}
+      dayNight={view.day_night}
       {readyActions}
       {trackOpen}
     />
