@@ -218,7 +218,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 	covered := map[ModKind]bool{
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
-		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
+		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,

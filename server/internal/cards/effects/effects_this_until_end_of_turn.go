@@ -54,3 +54,15 @@ func thisGainsKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, it
 			game.AddKeywordsMod(keyword))
 	}
 }
+
+// thisLosesOwnReplacementUntilEndOfTurn is "This creature loses '<one of
+// its own replacement effects>' until end of turn": row `row` of the
+// card's Spec.Replacements switched off by a layer-6 loseOwnAbility
+// record with its own timestamp (CR 613.1f, #1859). A grant of the same
+// text with a later timestamp is a different row and still applies.
+func thisLosesOwnReplacementUntilEndOfTurn(row int, label string) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		return untilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
+			game.LoseOwnAbilityMod(game.AbilitySlotReplacement, row))
+	}
+}

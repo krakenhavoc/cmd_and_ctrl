@@ -135,6 +135,26 @@ func PreventDamageASourceWouldDeal(p PreventionStatic) game.ReplacementEffect {
 	return p.replacement(game.ThenPerSource)
 }
 
+// PreventAllDamageDealtTo is "Prevent all damage that would be dealt to
+// X" with no additional effect (Glittering Lion and Lynx, #1859): the
+// plain CR 615.1a prevention, which PreventDamageDealtTo cannot express
+// because it demands a Then. Then is refused here.
+func PreventAllDamageDealtTo(p PreventionStatic) game.ReplacementEffect {
+	if p.Then.Key() != "" {
+		panic("effects: PreventAllDamageDealtTo with a Then: use PreventDamageDealtTo")
+	}
+	return game.ReplacementEffect{
+		Watches:    []game.EventKind{game.EventDealDamage},
+		Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			return src != nil && p.applies(ev, g, src)
+		},
+		Replace:    preventThatDamage,
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
+		Label:      p.Label,
+	}
+}
+
 func (p PreventionStatic) replacement(per game.PreventionUnit) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
