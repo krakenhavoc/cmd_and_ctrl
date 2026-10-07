@@ -157,7 +157,7 @@ func Register(spec Spec) {
 		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
 		// three black creatures" is life plus ONE.
 		if n := altCostCardComponents(ac); n > 1 {
-			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard and Sacrifice",
+			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice and DiscardFromHand",
 				spec.Name, ac.Key, n))
 		}
 		// The sacrifice component is the additional cost's clause and
@@ -1168,7 +1168,7 @@ func checkCastsFace(spec Spec, ac game.AlternativeCost) {
 // payments (#1727) — the ones whose cards ride alt_cost_ids.
 func altCostCardComponents(ac game.AlternativeCost) int {
 	n := 0
-	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice} {
+	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
 		if spec != nil {
 			n++
 		}

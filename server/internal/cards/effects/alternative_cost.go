@@ -275,6 +275,41 @@ func Escape(cost string, n int) game.AlternativeCost {
 	}
 }
 
+// Retrace is "Retrace (You may cast this card from your graveyard by
+// discarding a land card in addition to paying its other costs.)" —
+// CR 702.81, #2528.
+//
+// Unlike flashback and escape, the mana is NOT replaced: retrace casts the
+// card for its printed mana cost and adds the discard. So the one
+// parameter is that printed cost, spelled exactly as the card prints it
+// (hybrid symbols included), and the price is a land card from hand
+// discarded as a cost — so a discard payoff sees it, and a countered
+// retrace spell does not give the land back. Like escape it carries NO
+// exile-on-leaving-the-stack clause: a retraced spell goes to the
+// graveyard when it resolves, ready to be retraced again, which is the
+// keyword.
+//
+// The model bends here and the bend is stated (ADR 0066, 2026-10-07
+// amendment): retrace is an additional cost, carried on a graveyard-bound
+// priced offer so the claim is what opens the zone, and the offer is
+// claimed alone — retrace cannot be combined with another alternative cost
+// on one cast.
+//
+// The card file still opens the zone, as flashback's does:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{Retrace("{R}")},
+func Retrace(printedCost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:             game.AltCostKeyRetrace,
+		Label:           "Retrace — discard a land card",
+		ManaCost:        printedCost,
+		FromZone:        game.ZoneGraveyard,
+		DiscardFromHand: game.RetraceDiscardSpec(),
+		PayLabel:        "a land card",
+	}
+}
+
 // EscapeWithCounters is Escape plus "this creature escapes with N
 // +1/+1 counters on it" (CR 702.138c) — the rider most escape
 // creatures print, and the reason an escaped Voracious Typhon is a

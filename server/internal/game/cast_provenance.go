@@ -79,6 +79,13 @@ import "github.com/google/uuid"
 // permission Underworld Breach grants, and the reader below.
 const AltCostKeyEscape = "escape"
 
+// AltCostKeyRetrace is CR 702.81's key (#2528): "you may cast this
+// card from your graveyard by discarding a land card in addition to
+// paying its other costs". Spelled by the catalog's Retrace()
+// constructor and by the permission Six grants, which is why it is a
+// constant here beside escape's.
+const AltCostKeyRetrace = "retrace"
+
 // CastProvenance is what a permanent remembers about the spell that
 // became it (CR 400.7d). The zero value is a permanent that did not
 // come from a spell at all — a token, a reanimated creature, a land —
