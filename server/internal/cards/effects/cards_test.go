@@ -2400,3 +2400,49 @@ func TestFinaleOfRevelationHighXShufflesDrawsUntapsAndGrantsNoMaxHandSize(t *tes
 		t.Error("Finale of Revelation should exile itself")
 	}
 }
+
+// TestKaldheimPathwayFrontFacesManaAbilities verifies that each of the
+// nine Kaldheim Pathway front faces taps for its correct color. The back
+// faces were already registered in mdfc_lands.go; this test covers only
+// the front faces added by the catalog.
+func TestKaldheimPathwayFrontFacesManaAbilities(t *testing.T) {
+	tests := []struct {
+		name     string
+		cardName string
+		oracleID string
+		color    string
+	}{
+		{"Barkchannel", "Barkchannel Pathway", "59d22de5-e310-44d7-89cf-ef3529e40cef", "G"},
+		{"Blightstep", "Blightstep Pathway", "e580a229-e800-4746-9d37-c32fcef8de28", "B"},
+		{"Branchloft", "Branchloft Pathway", "7c304547-a4b1-46c9-baed-16d2bfbe16eb", "G"},
+		{"Brightclimb", "Brightclimb Pathway", "1c633e02-95ef-445e-b4e0-fbfbc5ed9cc9", "W"},
+		{"Clearwater", "Clearwater Pathway", "144119bc-7fd1-45c5-9e29-f742e7c255ac", "U"},
+		{"Cragcrown", "Cragcrown Pathway", "727ca426-f4cc-4218-8ae5-8c427af2e816", "R"},
+		{"Darkbore", "Darkbore Pathway", "868e6e68-4367-4073-a864-235d5961ae56", "B"},
+		{"Hengegate", "Hengegate Pathway", "461b3f2f-fcee-4160-abfa-061f8b6a784f", "W"},
+		{"Riverglide", "Riverglide Pathway", "4924b3a4-a218-4783-8a4d-82361fdecc78", "U"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			caster := g.Seats[0]
+			pathwayID := uuid.New()
+			g.Battlefield.PushTop(game.Card{
+				InstanceID: pathwayID,
+				Name:       tt.cardName,
+				TypeLine:   "Land",
+				OracleID:   tt.oracleID,
+				Owner:      caster.ID,
+				Controller: caster.ID,
+			})
+
+			if err := g.ActivateManaAbility(caster.ID, pathwayID, 0, game.ManaAbilityParams{}); err != nil {
+				t.Fatalf("ActivateManaAbility on %s: %v", tt.cardName, err)
+			}
+			if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != tt.color {
+				t.Errorf("%s tap: got %+v, want 1×%s", tt.cardName, caster.ManaPool, tt.color)
+			}
+		})
+	}
+}

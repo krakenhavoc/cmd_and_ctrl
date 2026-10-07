@@ -159,6 +159,12 @@ func delveBudget(cost ParsedCost, xValue int) int {
 		xValue = 0
 	}
 	n := cost.Generic + cost.XSlots*xValue
+	if cost.SpendOnly != nil && cost.SpendOnly.XOnly {
+		// #2556: "Spend only black mana on X" — the X mana is coloured
+		// mana, not generic, so there is nothing in it to delve away
+		// (a Teval-granted delve on Drain Life).
+		n = cost.Generic
+	}
 	if n < 0 {
 		return 0
 	}
@@ -186,6 +192,12 @@ func delveAdjusted(cost ParsedCost, n, xValue int) ParsedCost {
 	}
 	if b := delveBudget(cost, xValue); n > b {
 		n = b
+	}
+	if cost.SpendOnly != nil && cost.SpendOnly.XOnly {
+		// #2556: settle the restricted X into coloured requirements
+		// before the generic subtraction, or folding it into Generic
+		// below would hand the restriction away.
+		cost = cost.foldSpendOnly(xValue)
 	}
 	out := cost
 	out.Required = append([]ColorRequirement(nil), cost.Required...)

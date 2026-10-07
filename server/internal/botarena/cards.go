@@ -1,6 +1,7 @@
 package botarena
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -25,6 +26,10 @@ import (
 // the card on the table to be used", not "how many shapes did the
 // enumerator find".
 //
+// An attack that exerts the card (ADR 0130 §9) is tallied as the action
+// `exert`: offered when the window held the twin attack move that exerts
+// it, taken when that move was dispatched.
+//
 // The tally comes from the runner's observer, the same feed the
 // decision log writes, so it needs no log on disk. It reads only the
 // seat's own filtered view and move list, which the runner hands the
@@ -40,6 +45,10 @@ import (
 const (
 	ActionCast     = "cast"
 	ActionActivate = "activate"
+	// ActionExert is an attack that exerts the card (ADR 0130 §9):
+	// offered in a window whose moves hold the twin attack move that
+	// exerts it, taken when that move was the one dispatched.
+	ActionExert = "exert"
 )
 
 // NeverWindows is how many windows a card must have been offered in,
@@ -82,7 +91,7 @@ func (t *cardTally) Observe(ev aiseat.DecisionEvent) {
 	)
 	seat := ev.Seat.String()
 	keyOf := func(m legal.Move) (cardKey, *protocol.CardView, bool) {
-		action := cardAction(m.Kind)
+		action := cardAction(m)
 		if action == "" || m.Source == uuid.Nil {
 			return cardKey{}, nil, false
 		}
@@ -153,12 +162,19 @@ func repeatableManaSource(c *protocol.CardView) bool {
 	return false
 }
 
-func cardAction(k legal.Kind) string {
-	switch k {
+func cardAction(m legal.Move) string {
+	switch m.Kind {
 	case legal.KindCast:
 		return ActionCast
 	case legal.KindActivate:
 		return ActionActivate
+	case legal.KindAttack:
+		var p struct {
+			Exert bool `json:"exert"`
+		}
+		if json.Unmarshal(m.Params, &p) == nil && p.Exert {
+			return ActionExert
+		}
 	}
 	return ""
 }
@@ -398,7 +414,7 @@ func writeCards(b *strings.Builder, s Summary) {
 		return
 	}
 	b.WriteString("\n### Cards\n\n")
-	fmt.Fprintf(b, "Every non-land card each contestant was offered: a `cast` or `activate` move naming it. `never` is offered in %d or more windows and taken in none. Games are seat-games.\n\n", NeverWindows)
+	fmt.Fprintf(b, "Every non-land card each contestant was offered: a `cast` or `activate` move naming it, or an attack that `exert`s it. `never` is offered in %d or more windows and taken in none. Games are seat-games.\n\n", NeverWindows)
 	b.WriteString("| contestant | seat-games | cards offered | never | never cast or used |\n")
 	b.WriteString("|---|---:|---:|---:|---|\n")
 	for _, cc := range s.Cards {
@@ -448,8 +464,11 @@ func writeCards(b *strings.Builder, s Summary) {
 
 // cardName is a card as the report names it: an activation says so.
 func cardName(t CardTotals) string {
-	if t.Action == ActionActivate {
+	switch t.Action {
+	case ActionActivate:
 		return t.Name + " (activate)"
+	case ActionExert:
+		return t.Name + " (exert)"
 	}
 	return t.Name
 }

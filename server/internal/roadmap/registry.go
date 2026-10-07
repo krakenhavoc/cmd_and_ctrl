@@ -423,6 +423,17 @@ var items = []Item{
 		NoCatalogExample: "Its only catalogued card hasn't been reviewed yet, so none is listed as fully automated.",
 	},
 	{
+		// ADR 0131 (#2531). Casts, activations and attack taxes shipped
+		// in PR 1; PR 2 added mana abilities and pay-unless payments.
+		Slug: "pay-life-for-mana", Name: "Paying life for black mana", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "A permanent like K'rrik, Son of Yawgmoth lets you pay 2 life for each {B} in a cost instead of paying that mana. It reaches spells, abilities, attack costs, mana abilities and costs paid while a spell or ability resolves, such as ward.",
+		Rules:    []string{"107.4f", "601.2b"},
+		Issue:    2531,
+		ADR:      "0131-krrik-pay-life-for-black-mana.md",
+		Mechanic: "paying 2 life instead of black mana",
+		Examples: []string{"K'rrik, Son of Yawgmoth"},
+	},
+	{
 		Slug: "computed-life-cost", Name: "Life costs that are counted", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Abilities whose life cost is worked out when you activate them, like paying life equal to the colors in your commanders' identity, or half your life.",
 		Rules:    []string{"601.2f", "602.2b"},
@@ -1005,13 +1016,10 @@ var items = []Item{
 		Mechanic: "either/or additional cost",
 		Examples: []string{"Demand Answers", "Bone Shards", "Lightning Axe"},
 		Waiting: []string{
-			"Daring Buccaneer", "Flamekin Bladewhirl", "Goldmeadow Stalwart", "Sadistic Skymarcher", "Silvergill Adept",
-			"Squeaking Pie Sneak", "Surtland Elementalist", "Thunderherd Migration", "Wren's Run Vanquisher",
-			"Caustic Exhale", "Kinsbaile Aspirant", "Lys Alana Dignitary", "Mudbutton Cursetosser", "Silvergill Mentor", "Soulbright Seeker",
 			"Disruption Protocol", "Soaring Stoneglider", "Feed the Cycle", "Monstrous Emergence",
 			"Titania, Rugged Rumbler", "Dusk Mangler",
 		},
-		EngineNotes: "**Shipped** (ADR 0100 sub-PR 3): `AdditionalCost.Either` — one mandatory cost whose branches are ordinary `AdditionalCost`s with a `Key`, built with `effects.EitherCost(…)` and `.Keyed(…)` — plus the fixed `PayLife` component (`effects.PayLifeCost`), a mana branch (`effects.ManaAdditionalCost`) and blight in a branch (`effects.BlightCost`). The branch is announced as `CastSpellParams.CostBranch` (`cost_branch` on the wire and on the auto-tap preview), required on a branched card and refused on any other; `game.ChosenAdditionalCost` hands the chosen branch to `castCostPayments` as the plan's mandatory entry, so there is still one validator and one payer. `game.AdditionalCostMana` (which replaced `AddOptionalCostMana`) prices the branch's mana with the optional costs' at CR 601.2f. `Game.AdditionalCostBranchPayableLocked` is read by the view's `additional_cost.branches[].payable`, the enumerator (one move per payable branch) and `CastSpell`. `PaidCost.CostBranch` (index + 1, read by key through `ctx.PaidCostBranch`) and `PaidCost.Discarded` (every card the additional cost discarded, read through `ctx.Discarded`; owner decision 6, which is Grab the Prize) are additive within schema v7 and kept by a CR 707.10 copy. **Still open:** the branch components the cast path has no shape for yet — reveal a card from your hand (9 cards), behold (6), tap an untapped artifact (Disruption Protocol), exile two cards from your graveyard (Soaring Stoneglider), forage (Feed the Cycle) and \"choose a creature you control or reveal a creature card\" (Monstrous Emergence); each arrives with its first card as a new branch component. Titania, Rugged Rumbler's cast cost works but her \"Ward—Discard a card or pay {2}\" is an either/or on a WARD. Dusk Mangler pays its cost today and is held for its entry trigger's sacrifice, discard and life loss in printed order. Betrayer's Bargain shipped with ADR 0108 PR 1 (#1886).",
+		EngineNotes: "**Shipped** (ADR 0100 sub-PR 3): `AdditionalCost.Either` — one mandatory cost whose branches are ordinary `AdditionalCost`s with a `Key`, built with `effects.EitherCost(…)` and `.Keyed(…)` — plus the fixed `PayLife` component (`effects.PayLifeCost`), a mana branch (`effects.ManaAdditionalCost`) and blight in a branch (`effects.BlightCost`). The branch is announced as `CastSpellParams.CostBranch` (`cost_branch` on the wire and on the auto-tap preview), required on a branched card and refused on any other; `game.ChosenAdditionalCost` hands the chosen branch to `castCostPayments` as the plan's mandatory entry, so there is still one validator and one payer. `game.AdditionalCostMana` (which replaced `AddOptionalCostMana`) prices the branch's mana with the optional costs' at CR 601.2f. `Game.AdditionalCostBranchPayableLocked` is read by the view's `additional_cost.branches[].payable`, the enumerator (one move per payable branch) and `CastSpell`. `PaidCost.CostBranch` (index + 1, read by key through `ctx.PaidCostBranch`) and `PaidCost.Discarded` (every card the additional cost discarded, read through `ctx.Discarded`; owner decision 6, which is Grab the Prize) are additive within schema v7 and kept by a CR 707.10 copy. **Reveal and behold shipped** (ADR 0100 amendment 2026-10-07): `AdditionalCost.Reveal` (`effects.RevealCardCost` / `BeholdCost`, and the shared `effects.RevealOrPay` / `BeholdOrPay` for the printed \"or pay {N}\" pair) names one card on `cast_spell.reveal_ids`, from the hand or, to behold, from the permanents you control, and paying it shows a hand card to the table. Fifteen cards ship on it. **Still open:** the branch components the cast path has no shape for yet — tap an untapped artifact (Disruption Protocol), exile two cards from your graveyard (Soaring Stoneglider), forage (Feed the Cycle) and \"choose a creature you control or reveal a creature card\" (Monstrous Emergence, which also reads the power of what it chose); each arrives with its first card as a new branch component. Titania, Rugged Rumbler's cast cost works but her \"Ward—Discard a card or pay {2}\" is an either/or on a WARD. Dusk Mangler pays its cost today and is held for its entry trigger's sacrifice, discard and life loss in printed order. Betrayer's Bargain shipped with ADR 0108 PR 1 (#1886).",
 	},
 	{
 		Slug: "variable-sacrifice-cast-cost", Name: "Variable sacrifice costs on spells", Kind: KindSeam, Status: StatusImplemented,
@@ -1150,15 +1158,12 @@ var items = []Item{
 		Rules:   []string{"709.3", "709.4", "709.5", "702.102", "702.127"},
 		Issue:   1756,
 		ADR:     "0103-rooms.md",
-		Missing: "Eight Rooms are not in the catalog, because one of their doors does something the engine can't do yet. The engine plays all of them, so they can be cast and unlocked and only the door text is manual.",
+		Missing: "Eight Rooms play only part of their text, because one door does something the engine can't do yet: manifest dread (Ticket Booth, Experimental Lab, Moldering Gym, Underwater Tunnel), a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade). Experimental Lab's Staff Room also can't turn a creature face up for free.",
 		Tracked: "#1756",
 		// Walk-In Closet // Forgotten Cellar landed with
 		// exile-instead-of-graveyard-this-turn (#1823, ADR 0108 §4), the
-		// seam its door waited on.
-		Waiting: []string{
-			"Experimental Lab // Staff Room", "Moldering Gym // Weight Room", "Ticket Booth // Tunnel of Hate", "Underwater Tunnel // Slimy Aquarium",
-			"Charred Foyer // Warped Space", "Cramped Vents // Access Maze", "Dazzling Theater // Prop Room", "Secret Arcade // Dusty Parlor",
-		},
+		// seam its door waited on. The last eight Rooms were catalogued
+		// with caveats on their blocked doors (#2555).
 		Examples:    []string{"Roaring Furnace // Steaming Sauna"},
 		EngineNotes: "**Built by [ADR 0103](decisions/0103-rooms.md)** (#1756), on ADR 0071's designation gate. `Card.Unlocked` holds a Room's two CR 709.5c designations; `materialiseSplit` keeps a split card's name, cost and colours right in every zone (the whole card off the stack, the cast half on it, the unlocked doors on the battlefield); a Room spell enters with its cast door unlocked (CR 709.5d) and `EventDoorUnlocked` fires after the ETB (CR 709.5h); the `unlock` special action (CR 709.5e) is derived from the card, so an uncatalogued Room can be unlocked too; `UnlockDoorForEffect` / `LockDoorForEffect` are the instructions (CR 709.5f-g) and `EventRoomFullyUnlocked` the full unlock (CR 709.5i). `effects.Room` builds a Room's Spec with every ability gated on its door, and Register refuses an ungated one. Every split card casts either half (CR 709.3); aftermath's half only from a graveyard (CR 702.127a); fuse from hand (CR 702.102). The cards themselves are catalogued separately (ADR 0103 PRs 3 and 4).",
 	},
@@ -1949,15 +1954,35 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2045, ADR 0108 §7 amendment of 2026-10-06): `game.DamageRecipientFilter` is plain data in `Mod.RecipientFilter` (at most one, `ModPreventFromSource` only, on an unpinned record with no `Player`, `Types` or charge): `Players` (every player), `Permanents` with `Match` (queries the permanent must match EVERY one of, so \"artifact creatures\" is two queries) and `Controller` (`you`, a closed vocabulary). It is read as each damage event would be dealt, never as the shield resolves (CR 615.1; a prevention effect doesn't modify characteristics, so CR 611.2c doesn't lock its set): a creature that enters later is protected, one you lose control of is not. It composes with every source field, so Surge of Salvation's \"black and/or red sources … to creatures you control\" (`Queries`) and Chameleon Blur's \"damage that creatures would deal to players\" are one record each. A charged shield refuses it, since CR 615.11 makes \"the next N damage … to each creature\" one shield per creature. Helpers: `effects.ShieldCreatures`, `ShieldCreaturesYouControl`, `ShieldPlayers`, `ShieldPermanents(queries…)`, `ShieldPermanentsYouControl(queries…)`; `effects.AnOpponentControlsAAndYouControlA` is the Nemesis free-spell condition. An older binary refuses a file carrying the filter, and an unknown key inside it is refused too. **Cards** (12): Blinding Fog, Chameleon Blur, Commencement of Festivities, Crystal Fragments // Summon: Alexander, Defend the Hearth, Divine Light, Ethersworn Shieldmage, Forfend, Loyal Unicorn, Pack Leader, Sivvi's Ruse and Surge of Salvation.",
 	},
 	{
-		Slug: "planeswalker-becomes-creature", Name: "A planeswalker that becomes a creature", Kind: KindSeam, Status: StatusMissing,
-		Summary: "Planeswalkers that become creatures while staying planeswalkers, such as Gideon Jura's \"Until end of turn, Gideon Jura becomes a 6/6 Human Soldier creature that's still a planeswalker\".",
-		Missing: "A planeswalker can't also be a creature: damage to it and the rules that remove it from the battlefield aren't checked for both at once.",
-		Rules:   []string{"120.3c", "120.3e", "704.5g", "704.5i"},
-		Issue:   2046,
-		Tracked: "#2046 (found landing ADR 0108 PR 7, #1904)",
-		Waiting: []string{"Gideon Jura", "Gideon, Ally of Zendikar", "Gideon, Champion of Justice",
-			"Gideon, Martial Paragon", "Gideon, the Oathsworn", "Gideon Blackblade", "Kytheon, Hero of Akros // Gideon, Battle-Forged"},
-		EngineNotes: "permanent that is two card types with two damage results: damage to a creature planeswalker removes loyalty (CR 120.3c) and is marked (CR 120.3e), and both state-based actions apply (CR 704.5g, 704.5i); `stateBasedActionsLocked` checks the creature rules first and `continue`s past the planeswalker rule for any creature. No catalog card makes a planeswalker a creature, so nothing exercises the damage tail, combat or the state-based actions for one. The \"prevent all damage that would be dealt to him this turn\" half is `ModPreventFromSource` pinned to the planeswalker (ADR 0108 PR 7, #1904). Gideon of the Trials shipped with ADR 0109 PR 6 on the strength of that shield: damage to him is prevented, so the gap shows only under damage that can't be prevented (CR 615.12).",
+		Slug: "planeswalker-becomes-creature", Name: "A planeswalker that becomes a creature", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Planeswalkers that become creatures while staying planeswalkers, such as Gideon, Ally of Zendikar's \"Until end of turn, Gideon becomes a 5/5 Human Soldier Ally creature with indestructible that's still a planeswalker\".",
+		Rules:       []string{"120.3c", "120.3e", "704.5g", "704.5i"},
+		Issue:       2046,
+		Tracked:     "#2046 (found landing ADR 0108 PR 7, #1904); ADR 0032 amendment of 2026-10-07",
+		ADR:         "0032-planeswalkers.md",
+		Printed:     `(?i)\bstill a planeswalker\b`,
+		Examples:    []string{"Gideon, Ally of Zendikar", "Gideon Blackblade", "Gideon of the Trials"},
+		EngineNotes: "**Shipped** (#2046, ADR 0032 amendment of 2026-10-07): the damage split was already additive (`applyDamageToPermanentLocked`: marked on a creature, loyalty off a planeswalker, defense off a battle, each by what the permanent is as the damage lands); what was missing was the state-based check. `stateBasedActionsLocked` now judges every permanent against every rule its current types call for — 704.5f/g/h as a creature, 704.5i as a planeswalker, 704.5v/w as a battle — with no `continue` past the others, and dooms it destroyed only if every rule that doomed it destroys, so an indestructible creature planeswalker at no loyalty still goes (704.5i is \"put into a graveyard\"). A creature whose toughness is unknown skips the creature rules and keeps the loyalty one. `effects.animateGideon` (`gideon_animate.go`) is the shared body of \"becomes a P/T creature that's still a planeswalker; prevent all damage to him this turn\": one `ScopedEffectFor` (layer 4 Creature and subtypes, layer 5 colour, layer 7b base P/T, layer 6 indestructible) and the source shield pinned to him. The client shows loyalty and power/toughness together on such a card. **Cards** (5): Gideon, Ally of Zendikar, Gideon, Martial Paragon, Gideon, the Oathsworn and Gideon Blackblade (Full), and the already-shipped Gideon of the Trials, whose unpreventable-damage case now holds. **Moved to other rows:** Gideon Jura and Kytheon, Hero of Akros // Gideon, Battle-Forged (#2567, `attack-requirement-on-a-permanent`: creatures that must attack one particular permanent during one particular player's next turn) and Gideon, Champion of Justice (#2569, `base-pt-from-a-count`: base power and toughness set to a count).",
+	},
+	{
+		Slug: "attack-requirement-on-a-permanent", Name: "Creatures that must attack a particular permanent", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that make a player's creatures attack one planeswalker during that player's next turn, such as Gideon Jura's \"During target opponent's next turn, creatures that player controls attack Gideon Jura if able\".",
+		Missing:     "Creatures can be required to attack, but not to attack one particular planeswalker during one particular player's next turn.",
+		Rules:       []string{"508.1d", "611.2c"},
+		Issue:       2567,
+		Tracked:     "#2567 (found building #2046)",
+		Waiting:     []string{"Gideon Jura", "Kytheon, Hero of Akros // Gideon, Battle-Forged"},
+		EngineNotes: "three missing pieces, none of which is a planeswalker rule. (1) `game.AttackRequirement` (attack_requirements.go) is \"attacks each combat\" or \"attacks a player other than X\"; it needs a target field obeyed only by attacking exactly that permanent, counted by the CR 508.1d maximisation and named in the refusal sentence. (2) `DurationUntilYourNextTurn` ends as the named player's next turn BEGINS; \"during target opponent's next turn\" has to end at the end of THAT player's next turn. (3) `ScopeOpponentsCreatures` is every opponent's creatures; Gideon Jura names one opponent's, and in a four-player game another opponent's turn before the target's would wrongly be required to attack him, stronger than printed. It needs a scope or a player parameter for \"creatures that player controls\", read live (CR 611.2c). Kytheon's back face is the same requirement pinned to one creature \"during its controller's next turn\"; his front face also needs \"at end of combat, if Kytheon and at least two other creatures attacked this combat, exile him, then return him transformed\".",
+	},
+	{
+		Slug: "base-pt-from-a-count", Name: "Power and toughness set to a count", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that set a permanent's power and toughness to a number counted on the board, such as Gideon, Champion of Justice's \"power and toughness each equal to the number of loyalty counters on him\".",
+		Missing:     "An until-end-of-turn effect can set power and toughness to a fixed number, but not to a number counted on the board.",
+		Rules:       []string{"611.2c", "613.4b"},
+		Issue:       2569,
+		Tracked:     "#2569 (found building #2046)",
+		Waiting:     []string{"Gideon, Champion of Justice"},
+		EngineNotes: "`ModSetBasePower` / `ModSetBaseToughness` carry a fixed integer; a `StaticAbility` can compute one but belongs to a permanent, not to a one-shot until-end-of-turn record. It needs a Mod kind that reads a counter kind off the affected object at every layer pass. Owner question first (#2569): is the count live (the size follows his loyalty as damage and costs change it) or locked when the ability resolves? The two readings give different cards and the Oracle ruling is not in the repository.",
 	},
 	{
 		Slug: "damage-prevented-triggers", Name: "\"Whenever damage is prevented\"", Kind: KindSeam, Status: StatusMissing,
@@ -2381,14 +2406,14 @@ var items = []Item{
 	{
 		Slug: "costs-only-some-mana-can-pay", Name: "Costs that only some mana can pay", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Costs that say which mana may pay them, such as Crypt Rats' \"Spend only black mana on X\" and Throne of Eldraine's \"Spend only mana of the chosen color to activate this ability\", and mana that may be spent only on spells of exactly one color, or of two or more.",
-		Missing:     "Spells that say which mana may pay for them, such as Drain Life's \"Spend only black mana on X\" or Imperiosaur's \"Spend only mana produced by basic lands to cast this spell\", can't be cast with that limit yet.",
+		Missing:     "Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" can't be cast with that limit yet: no cost can say that each mana must be a different color.",
 		Rules:       []string{"105.2a", "105.2b", "609.4b"},
 		Issue:       1600,
 		ADR:         "0040-mana-pipeline.md",
 		Probe:       declaresSpendOnly,
-		Examples:    []string{"Throne of Eldraine", "Crypt Rats", "Crimson Hellkite", "Pillar of the Paruns"},
-		Waiting:     []string{"Drain Life", "Consume Spirit", "Soul Burn", "Imperiosaur", "Myr Superion", "Emblazoned Golem"},
-		EngineNotes: "**The ability side and the token side shipped** (#1600, [ADR 0040](decisions/0040-mana-pipeline.md)'s 2026-10-03 amendment): `game.AbilityCost.SpendOnly` (`game.ManaSpendOnly{Colors, ChosenColor, XOnly}`, built with `effects.SpendOnlyManaOfTheChosenColor()` / `effects.SpendOnlyOnX(colors...)`), resolved against the source and stamped on the `ParsedCost` by the one ability pricer (`AbilityManaCostForTargetsForEffect`), then FOLDED into coloured requirements by `costAsPaidByLocked` — which now takes the announced X — before the any-colour widening, so the activation, its auto-tap, `internal/legal`'s probe and the auto-tap preview pay it identically and the shown price stays printed. Under Chromatic Orrery any mana pays it (CR 609.4b; the Celestial Dawn rulings). The tag vocabulary gained `monocolored` and `multicolored` (CR 105.2a–b). **Still open:** the CAST side. Nothing stamps a spell's \"Spend only black mana on X\" (Drain Life, Consume Spirit; Soul Burn's \"black and/or red\") — the fold would pay it, but the cast pricer, delve and convoke would each need a reading of which part of the cost the clause covers. \"Spend only mana produced by basic lands / creatures to cast this spell\" (Imperiosaur, Myr Superion; Security Rhox's alternative cost from Treasures) restricts by SOURCE, which `ManaToken.SourceKinds` records and no cost reads. Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" is a distinct-colours cap with no shape. Atalya, Samite Master's modal \"{X}, {T}\" ability is now writable with `SpendOnlyOnX(\"W\")` and is not catalogued.",
+		Examples:    []string{"Throne of Eldraine", "Crypt Rats", "Crimson Hellkite", "Pillar of the Paruns", "Drain Life", "Imperiosaur"},
+		Waiting:     []string{"Emblazoned Golem"},
+		EngineNotes: "**The ability side and the token side shipped** (#1600, [ADR 0040](decisions/0040-mana-pipeline.md)'s 2026-10-03 amendment): `game.AbilityCost.SpendOnly` (`game.ManaSpendOnly{Colors, ChosenColor, XOnly}`, built with `effects.SpendOnlyManaOfTheChosenColor()` / `effects.SpendOnlyOnX(colors...)`), resolved against the source and stamped on the `ParsedCost` by the one ability pricer (`AbilityManaCostForTargetsForEffect`), then FOLDED into coloured requirements by `costAsPaidByLocked` — which now takes the announced X — before the any-colour widening, so the activation, its auto-tap, `internal/legal`'s probe and the auto-tap preview pay it identically and the shown price stays printed. Under Chromatic Orrery any mana pays it (CR 609.4b; the Celestial Dawn rulings). The tag vocabulary gained `monocolored` and `multicolored` (CR 105.2a–b). **The cast side shipped** (#2556, the 2026-10-07 amendment): `Spec.SpendOnly` (`effects.SpellSpendOnlyOnX(colors...)`) is stamped on the `ParsedCost` by the cast pricer (`printedCostLocked`) and folded by `costAsPaidByLocked` like an ability's, so the cast, its auto-tap, `internal/legal` and the preview pay it identically (Drain Life, Consume Spirit, Soul Burn); `Spec.SpendOnlySources` (`game.ManaSourceKinds`, new `ManaSourceBasicLand`) rides `ManaSpendContext.SourceOnly`, refused by the pool (`allowsToken`) and excluded from the auto-tap plan (Imperiosaur, Myr Superion). **Still open:** Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" is a distinct-colours cap with no shape (and a kicker {X} that is not the printed cost), and Security Rhox's Treasure-only alternative cost needs the source restriction on `AlternativeCost`. Soul Burn counts the black spent on X as the least it could have been, because the payment record does not say which cost component each mana paid. Atalya, Samite Master's modal \"{X}, {T}\" ability is now writable with `SpendOnlyOnX(\"W\")` and is not catalogued.",
 	},
 	{
 		Slug: "exile-a-permanent-you-control-cost", Name: "Exiling a permanent you control as a cost", Kind: KindSeam, Status: StatusPartial,
@@ -2533,7 +2558,7 @@ var items = []Item{
 		Missing:     "Players don't have a speed yet, so a card with start your engines! or a max speed ability can't be added.",
 		Rules:       []string{"702.178", "702.179"},
 		Issue:       2122,
-		Waiting:     []string{"Gastal Raider"},
+		Waiting:     []string{"Gastal Raider", "Perilous Snare"},
 		EngineNotes: "player state: no per-player speed value, no state-based action setting it to 1 for a player who controls a permanent with start your engines! (CR 702.179a), no inherent sourceless trigger raising it once each turn when an opponent loses life during that player's turn (CR 702.179d), and no condition a static grant can read for \"Max speed — [ability]\" (CR 702.178a). Gastal Raider's enters trigger is the revealed-hand pick and already works (ADR 0116). Found landing the ADR 0116 pool (#2078).",
 	},
 	{

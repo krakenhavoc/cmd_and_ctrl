@@ -25,11 +25,14 @@ type choiceParams struct {
 	Apply    *bool    `json:"apply,omitempty"`
 	// TapIDs rides a pay_unless "pay" whose cost is a waterbend cost
 	// (#1311): the permanents tapped for part of the generic.
-	TapIDs      []string      `json:"tap_ids,omitempty"`
-	Assignments []assignParam `json:"assignments,omitempty"`
-	TrampleTo   int           `json:"trample_to_player,omitempty"`
-	Target      *targetWire   `json:"target,omitempty"`
-	Targets     []targetWire  `json:"targets"`
+	TapIDs []string `json:"tap_ids,omitempty"`
+	// PhyrexianLife rides a pay_unless "pay" that spends 2 life on each
+	// of that many symbols of the cost (ADR 0131 §2).
+	PhyrexianLife int           `json:"phyrexian_life,omitempty"`
+	Assignments   []assignParam `json:"assignments,omitempty"`
+	TrampleTo     int           `json:"trample_to_player,omitempty"`
+	Target        *targetWire   `json:"target,omitempty"`
+	Targets       []targetWire  `json:"targets"`
 	// Distribution rides a pick_target answer whose clause divides
 	// (#1563): game.PickTargetDefaultDistribution, the even split.
 	Distribution map[string]int `json:"distribution,omitempty"`
@@ -312,6 +315,7 @@ func (e *enumerator) choiceMoves() bool {
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false
 			var taps []uuid.UUID
+			payLife := 0
 			if cost, err := game.ParseCost(c.PayCost); err == nil {
 				if c.PayTapCost().Empty() {
 					// Zero spend context, matching payCostLocked: a
@@ -319,6 +323,26 @@ func (e *enumerator) choiceMoves() bool {
 					// activation, so restricted mana cannot fund it
 					// (#352).
 					canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+					if !canPay {
+						// ADR 0131 §2: a printed {B/P}, or a {B} under
+						// K'rrik, may be paid with 2 life. Mana first;
+						// then the fewest symbols paid with life that
+						// make the cost payable, bounded by the
+						// engine's own life predicate (CR 119.4, CR
+						// 119.8) so an offered payment is one the
+						// answer accepts (#544).
+						lifeCost := g.LifeGrantedCostForEffect(e.seat, cost)
+						for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
+							reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, game.ManaSpendContext{}, n)
+							if !g.CanPayLifeLocked(e.p, life) {
+								break
+							}
+							if e.canPay(reduced, 0, game.ManaSpendContext{}) {
+								canPay, payLife = true, n
+								break
+							}
+						}
+					}
 				} else {
 					// #1311, "Ward—Waterbend {4}": the payment may tap
 					// artifacts and creatures for the generic, so
@@ -341,8 +365,16 @@ func (e *enumerator) choiceMoves() bool {
 						verb += fmt.Sprintf(" (waterbending with %d)", len(taps))
 						p.TapIDs = idStrings(taps)
 					}
+					if payLife > 0 {
+						verb += phyrexianLifeLabel(payLife)
+						p.PhyrexianLife = payLife
+					}
 				}
-				e.addChoice(c, reason+": "+verb, p)
+				var price *MoveCost
+				if apply {
+					price = withPhyrexianLife(nil, payLife)
+				}
+				e.addChoiceCost(c, reason+": "+verb, p, price)
 			}
 
 		case game.PendingChoicePayAmount:
@@ -1254,12 +1286,20 @@ func (e *enumerator) loopIsSelfActivated(c *game.PendingChoice) bool {
 }
 
 func (e *enumerator) addChoice(c *game.PendingChoice, label string, p choiceParams) {
+	e.addChoiceCost(c, label, p, nil)
+}
+
+// addChoiceCost is addChoice for an answer that charges something the
+// params do not show — a pay_unless "pay" that spends life on symbols
+// (ADR 0131 §2), which the heuristic prices through Move.Cost.
+func (e *enumerator) addChoiceCost(c *game.PendingChoice, label string, p choiceParams, cost *MoveCost) {
 	e.add(Move{
 		Type:   TypeResolveChoice,
 		Player: e.seat,
 		Kind:   KindChoice,
 		Label:  label,
 		Source: c.Source,
+		Cost:   cost,
 		Params: mustJSON(p),
 	})
 }

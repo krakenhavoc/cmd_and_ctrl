@@ -23,8 +23,10 @@ func init() {
 		Completeness:  CompletenessFull,
 		ExertOnAttack: ExertAsItAttacks(),
 		Triggered: []game.TriggeredAbility{
-			WheneverYouExert("Resolute Survivors — 1 damage to each opponent, gain 1 life",
-				damageEachOpponentThenGainLife(1)),
+			TriggerWithPurpose(
+				WheneverYouExert("Resolute Survivors — 1 damage to each opponent, gain 1 life",
+					damageEachOpponentThenGainLife(1)),
+				game.Purpose{DamageEachOpponent: 1, LifeGain: 1}),
 		},
 	})
 }

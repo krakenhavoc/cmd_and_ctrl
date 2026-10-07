@@ -69,7 +69,7 @@ var activatedRowScopes = map[string]rowScope{
 	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
 	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
-	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,
+	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.
@@ -131,7 +131,7 @@ var manaRowScopes = map[string]rowScope{
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
-	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
+	"ChargedManaCost": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
 	// #1443: the commander identity it is narrowed and ordered by is
 	// public (the command zone, and CR 903.4a fixes it before the game).

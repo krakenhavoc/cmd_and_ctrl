@@ -235,6 +235,28 @@ func BlightCost(n int) *game.AdditionalCost {
 	return &game.AdditionalCost{Blight: n, Label: fmt.Sprintf("Blight %d", n)}
 }
 
+// RevealCardCost is a branch that reveals a card — Wren's Run
+// Vanquisher's "reveal an Elf card from your hand" (CR 701.20). The
+// caster names the card on cast_spell as reveal_ids; paying shows it to
+// the table and moves nothing. `article` is the printed "a" or "an".
+func RevealCardCost(article, subtype string) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		Reveal: &game.RevealCost{Subtype: subtype},
+		Label:  "Reveal " + article + " " + subtype + " card from your hand",
+	}
+}
+
+// BeholdCost is a branch that beholds — Silvergill Mentor's "behold a
+// Merfolk": choose a Merfolk you control or reveal a Merfolk card from
+// your hand. The same reveal_ids pick as RevealCardCost, widened to the
+// caster's permanents; a permanent chosen is not revealed.
+func BeholdCost(article, subtype string) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		Reveal: &game.RevealCost{Subtype: subtype, Behold: true},
+		Label:  "Behold " + article + " " + subtype,
+	}
+}
+
 // checkEitherCost is Register's guard for an either/or cost (ADR 0100
 // §2). Each refused shape compiles and then pays something the card
 // does not print:
@@ -253,7 +275,7 @@ func BlightCost(n int) *game.AdditionalCost {
 // a fixed PayLife in an optional cost and a mandatory mana cost.
 func checkEitherCost(spec Spec) {
 	for _, oc := range spec.OptionalCosts {
-		if oc.PayLife != 0 || len(oc.Either) > 0 {
+		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Reveal != nil {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
 		}
 	}
@@ -262,6 +284,9 @@ func checkEitherCost(spec Spec) {
 		return
 	}
 	if !ac.Branched() {
+		if ac.Reveal != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares a reveal / behold cost outside an either/or branch — every printed one is a branch beside mana (ADR 0100 amendment 2026-10-07)", spec.Name))
+		}
 		if ac.ManaCost != "" {
 			panic(fmt.Sprintf("effects.Register: %q declares a mandatory additional MANA cost — mana on the mandatory slot is a branch of EitherCost (ADR 0100); a single mana cost is part of the mana cost", spec.Name))
 		}
@@ -294,6 +319,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two either/or branches keyed %q", spec.Name, b.Key))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
+		case b.Reveal != nil && b.Reveal.Subtype == "":
+			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no type", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
 		}

@@ -518,6 +518,16 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 				}
 				return 1 - 0.4*e/(1+e), "pay the energy"
 			}
+			// ADR 0131 §5: a mana payment that spends 2 life on a symbol
+			// (a ward {B} under K'rrik, a printed {B/P}) is the Phyrexian
+			// life a cast spends. It takes the cast's floor: declined
+			// below it, and below the all-mana payment above it.
+			if kind == choicePayUnless && m.Cost != nil && m.Cost.PhyrexianLife > 0 {
+				if st.myLife()-m.Cost.Life < phyrexianLifeFloor {
+					return phyrexianLifeDeclined, "Phyrexian life would take it below the floor"
+				}
+				return 0.75, "pay with life"
+			}
 			return 1, "yes"
 		}
 		return 0.5, "no"

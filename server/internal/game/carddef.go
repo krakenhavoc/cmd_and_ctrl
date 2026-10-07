@@ -96,6 +96,16 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
+	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
+	// (Soul Burn), #2556: the colour half of a restriction on the mana
+	// that pays THIS spell. The cast pricer stamps it onto the
+	// ParsedCost, where costAsPaidByLocked folds it (spend_only.go).
+	SpendOnly *ManaSpendOnly
+	// SpendOnlySources is the source half — "Spend only mana produced
+	// by basic lands to cast this spell" (Imperiosaur) — read into the
+	// cast's ManaSpendContext (ManaSpendForCast).
+	SpendOnlySources ManaSourceKinds
 	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
@@ -277,6 +287,11 @@ type CardDef struct {
 	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
 	// battlefield through CatalogAnyColorSpend; see spend_any_color.go.
 	AnyColorSpend []AnyColorSpendStatic
+	// LifeForMana are this permanent's printed "for each {B} in a cost,
+	// you may pay 2 life rather than pay that mana" statics (CR 107.4f,
+	// ADR 0131) — K'rrik, Son of Yawgmoth. Read from the battlefield
+	// through CatalogLifeForMana; see life_for_mana.go.
+	LifeForMana []LifeForManaStatic
 	// LegendRuleExemptions are this permanent's printed "the legend rule
 	// doesn't apply" statics (CR 704.5j) — Mirror Box, Mirror Gallery,
 	// Sakashima of a Thousand Faces. Read from the battlefield through
@@ -569,6 +584,18 @@ func init() {
 		}
 		return nil
 	}
+	CatalogSpellSpendOnly = func(key string) *ManaSpendOnly {
+		if d := catalogDef(key); d != nil {
+			return d.SpendOnly
+		}
+		return nil
+	}
+	CatalogSpellSpendOnlySources = func(key string) ManaSourceKinds {
+		if d := catalogDef(key); d != nil {
+			return d.SpendOnlySources
+		}
+		return 0
+	}
 	CatalogDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.Delve
@@ -776,6 +803,12 @@ func init() {
 	CatalogAnyColorSpend = func(key string) []AnyColorSpendStatic {
 		if d := catalogDef(key); d != nil {
 			return d.AnyColorSpend
+		}
+		return nil
+	}
+	CatalogLifeForMana = func(key string) []LifeForManaStatic {
+		if d := catalogDef(key); d != nil {
+			return d.LifeForMana
 		}
 		return nil
 	}

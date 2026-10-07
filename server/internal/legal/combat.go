@@ -1,6 +1,8 @@
 package legal
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -17,6 +19,12 @@ type attackParams struct {
 	// that performs the move, so a move offered on the strength of the
 	// tapper has to carry permission to use it.
 	AutoTap bool `json:"auto_tap,omitempty"`
+
+	// PhyrexianLife is how many symbols of the attack tax are paid with
+	// 2 life each (CR 107.4f; ADR 0131: a {B} under K'rrik). Set only
+	// when mana alone cannot cover the tax, as the cast arm does, and
+	// the same `phyrexian_life` field the declaration verb reads.
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
 
 	// Exert is the choice to exert the attacker as it attacks
 	// (CR 701.43d, ADR 0130 §6). Set only on the twin move.
@@ -145,28 +153,24 @@ func (e *enumerator) combatMoves() {
 				// three times, and each re-enumeration prices the next
 				// one against the mana the last one left.
 				price := g.PriceAttackDeclarationForEffect(decl)
-				autoTap := false
+				autoTap, phyLife := false, 0
 				if !price.IsFree() {
 					// #1600: widened as the engine's tax payment
 					// widens it (payAbilityManaCostLocked).
 					total := e.g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, price.Total, 0)
-					if !e.p.ManaPool.CanPayFor(total, 0, game.ManaSpendContext{}) {
-						// Only the tapper can cover it, so the move
-						// has to say so — and if the tapper cannot
-						// either, the move is not offered at all.
-						// ADR 0118 §1: the pool tops up, as
-						// attackTaxAffordableLocked asks it.
-						if !e.g.AutoTapTopUpForEffectExcluding(e.seat, total, 0, game.ManaSpendContext{}, nil) {
-							continue
-						}
-						autoTap = true
+					var ok bool
+					// Mana first, then the tapper, then (ADR 0131) 2
+					// life per symbol the tax lets life pay. If none
+					// of them covers it the move is not offered at all.
+					if autoTap, phyLife, ok = e.attackTaxPayment(total); !ok {
+						continue
 					}
 				}
 				e.add(Move{
 					Type:   TypeDeclareAttacker,
 					Player: e.seat,
 					Kind:   KindAttack,
-					Label:  attackMoveLabel(g, t, c.Name, price),
+					Label:  attackMoveLabel(g, t, c.Name, price) + attackLifeLabel(phyLife),
 					Source: c.InstanceID,
 					// #1571: an attack that answers an owed
 					// requirement is the declaration's unconditional
@@ -175,11 +179,12 @@ func (e *enumerator) combatMoves() {
 					// make the engine refuse it — so a seat whose
 					// policy declines is not left holding the table.
 					AlwaysLegal: owedPair(owed, c.InstanceID, t.ID),
-					Cost:        withAttackTax(nil, price.Cost),
+					Cost:        withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
 					Params: mustJSON(attackParams{
-						Attacker: c.InstanceID.String(),
-						Target:   t.ID.String(),
-						AutoTap:  autoTap,
+						Attacker:      c.InstanceID.String(),
+						Target:        t.ID.String(),
+						AutoTap:       autoTap,
+						PhyrexianLife: phyLife,
 					}),
 				})
 				// ADR 0130 §6: "You may exert this creature as it
@@ -196,14 +201,15 @@ func (e *enumerator) combatMoves() {
 						Type:   TypeDeclareAttacker,
 						Player: e.seat,
 						Kind:   KindAttack,
-						Label:  attackExertMoveLabel(g, t, c.Name, price),
+						Label:  attackExertMoveLabel(g, t, c.Name, price) + attackLifeLabel(phyLife),
 						Source: c.InstanceID,
-						Cost:   withAttackTax(nil, price.Cost),
+						Cost:   withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
 						Params: mustJSON(attackParams{
-							Attacker: c.InstanceID.String(),
-							Target:   t.ID.String(),
-							AutoTap:  autoTap,
-							Exert:    true,
+							Attacker:      c.InstanceID.String(),
+							Target:        t.ID.String(),
+							AutoTap:       autoTap,
+							PhyrexianLife: phyLife,
+							Exert:         true,
 						}),
 					})
 				}
@@ -477,6 +483,54 @@ func attackExertMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string,
 		return label
 	}
 	return label + " (pays " + price.Cost + ")"
+}
+
+// attackTaxPayment is how the seat pays an attack tax `total` (already
+// as the engine's payment reads it): from the floating pool, with the
+// auto-tapper's help (autoTap), or — ADR 0131 — by paying 2 life for
+// each of the fewest symbols that makes it payable. Mana first: the
+// enumerator never spends life to save mana the board could produce.
+// Reports false when none of them pays.
+//
+// The bounds are the ones the engine validates, so an offered payment is
+// one the declaration accepts: the symbols the tax actually lets life
+// pay, and game.CanPayLifeLocked (CR 119.4, CR 119.8).
+func (e *enumerator) attackTaxPayment(total game.ParsedCost) (autoTap bool, phyrexianLife int, ok bool) {
+	spend := game.ManaSpendContext{}
+	pay := func(cost game.ParsedCost) (tap, ok bool) {
+		if e.p.ManaPool.CanPayFor(cost, 0, spend) {
+			return false, true
+		}
+		// ADR 0118 §1: the pool tops up, as attackTaxAffordableLocked
+		// asks it.
+		if e.g.AutoTapTopUpForEffectExcluding(e.seat, cost, 0, spend, nil) {
+			return true, true
+		}
+		return false, false
+	}
+	if tap, ok := pay(total); ok {
+		return tap, 0, true
+	}
+	total = e.g.LifeGrantedCostForEffect(e.seat, total)
+	for n := 1; n <= total.PhyrexianSymbols(); n++ {
+		reduced, life := game.PhyrexianLifePlan(total, e.p.ManaPool, spend, n)
+		if !e.g.CanPayLifeLocked(e.p, life) {
+			break
+		}
+		if tap, ok := pay(reduced); ok {
+			return tap, n, true
+		}
+	}
+	return false, 0, false
+}
+
+// attackLifeLabel is the label suffix of an attack that pays part of
+// its tax with life (ADR 0131). Empty for the usual attack.
+func attackLifeLabel(symbols int) string {
+	if symbols <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (paying %d life)", symbols*game.PhyrexianLifePerSymbol)
 }
 
 // withAttackTax adds the CR 508.1a mana price to a (possibly nil)

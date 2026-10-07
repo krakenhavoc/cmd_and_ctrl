@@ -109,6 +109,83 @@ func BattleDeck(owner uuid.UUID) []game.Card {
 // deck.
 const oracleLightningBolt = "4457ed35-7c10-48c8-9776-456485fdf070"
 
+// ExertDeckID is the arena deck id of ExertBattleDeck: `--decks
+// exert-battle`. Synthetic, so it needs no Scryfall dump.
+const ExertDeckID = "exert-battle"
+
+// ExertBattleDeck is BattleDeck in red and white with fifteen of the
+// catalogued exert cards in it: ADR 0130 §9's small arena check (ADR
+// 0126 §8), since no curated deck holds an exert card. It is
+// BattleDeck's curve with some of its vanilla creatures and burn swapped
+// for Oketra's Avenger, Combat Celebrant, Glorybringer and Resolute
+// Survivors, dealt by oracle ID so the catalog gives each its abilities.
+// The printed costs and stats are the cards' own.
+func ExertBattleDeck(owner uuid.UUID) []game.Card {
+	deck := []game.Card{}
+	cmdr := game.NewCommander("Commander Bear", owner)
+	cmdr.TypeLine = "Legendary Creature — Bear"
+	cmdr.ManaCost = "{2}{R}"
+	cmdr.Power, cmdr.Toughness = 3, 3
+	deck = append(deck, cmdr)
+	add := func(n int, build func() game.Card) {
+		for i := 0; i < n; i++ {
+			deck = append(deck, build())
+		}
+	}
+	vanilla := func(name, typeLine, cost string, p, t int, kw ...string) func() game.Card {
+		return func() game.Card {
+			c := game.NewCard(name, owner)
+			c.TypeLine, c.ManaCost = typeLine, cost
+			c.Power, c.Toughness = p, t
+			c.Keywords = kw
+			return c
+		}
+	}
+	exert := func(name, oracle, typeLine, cost string, p, t int) func() game.Card {
+		return func() game.Card {
+			c := game.NewCard(name, owner)
+			c.OracleID = oracle
+			c.TypeLine, c.ManaCost = typeLine, cost
+			c.Power, c.Toughness = p, t
+			return c
+		}
+	}
+	add(12, func() game.Card {
+		c := game.NewCard("Mountain", owner)
+		c.TypeLine = "Basic Land — Mountain"
+		return c
+	})
+	add(12, func() game.Card {
+		c := game.NewCard("Plains", owner)
+		c.TypeLine = "Basic Land — Plains"
+		return c
+	})
+	add(9, vanilla("Bear", "Creature — Bear", "{1}{R}", 2, 2))
+	add(4, vanilla("Ogre", "Creature — Ogre", "{3}{R}", 4, 4))
+	add(4, vanilla("Drake", "Creature — Drake", "{2}{R}", 3, 3, "flying"))
+	add(4, vanilla("Wurm", "Creature — Wurm", "{5}{R}", 7, 7, "trample"))
+	add(6, func() game.Card {
+		c := game.NewCard("Lightning Bolt", owner)
+		c.TypeLine = "Instant"
+		c.ManaCost = "{R}"
+		c.OracleID = oracleLightningBolt
+		return c
+	})
+	add(4, exert("Oketra's Avenger", oracleOketrasAvenger, "Creature — Human Warrior", "{1}{W}", 3, 1))
+	add(4, exert("Combat Celebrant", oracleCombatCelebrant, "Creature — Human Warrior", "{2}{R}", 4, 1))
+	add(3, exert("Glorybringer", oracleGlorybringer, "Creature — Dragon", "{3}{R}{R}", 4, 4))
+	add(4, exert("Resolute Survivors", oracleResoluteSurvivors, "Creature — Human Warrior", "{1}{R}{W}", 3, 3))
+	return deck
+}
+
+// The exert cards' catalog keys (ADR 0130 §11).
+const (
+	oracleOketrasAvenger    = "8f064160-3afe-408a-85b4-b335eae8571c"
+	oracleCombatCelebrant   = "5e15ff93-99a0-4000-918e-4bd2c257188d"
+	oracleGlorybringer      = "b75c3902-633e-4d24-acde-d7a9cc8f466e"
+	oracleResoluteSurvivors = "3d699db7-cc52-4ee3-947b-0ba291bf037a"
+)
+
 // CuratedDeck deals one of the four pre-built decks (docs/bot.md,
 // "The four curated decks"), which is what the model tiers are
 // actually configured for: the prompt's static block is that deck's

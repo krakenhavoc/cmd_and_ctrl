@@ -3824,7 +3824,25 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil)
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, 0)
+}
+
+// ResolvePayUnlessWithLife is ResolvePayUnlessWithTaps with the number
+// of the cost's symbols the chooser pays 2 life each for instead of the
+// mana (CR 107.4f, ADR 0131 §2): a ward {B} or a Rhystic Study tax paid
+// under K'rrik, Son of Yawgmoth, or a printed {B/P} in a pay-unless
+// cost. The same count, the same ceiling and the same CR 119.4 / 119.8
+// gate a cast or an activation announces (strikePhyrexianLifeLocked).
+//
+// A claim on a "Don't pay", on a non-mana payment, or past what the
+// cost lets life pay is REFUSED with the prompt left in place, the
+// posture the tap and card lists take. A claim whose remaining mana
+// cannot be funded degrades to a decline with no life paid, as an
+// unfundable mana "yes" always has.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolvePayUnlessWithLife(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID, phyrexianLife int) error {
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, phyrexianLife)
 }
 
 // ResolvePayUnlessWithCards is ResolvePayUnless for a prompt whose
@@ -3842,12 +3860,12 @@ func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply boo
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithCards(choiceID, chooserID uuid.UUID, apply bool, cardIDs []uuid.UUID) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs)
+	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0)
 }
 
 // resolvePayUnless is the one body behind the three pay-unless
 // resolvers.
-func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID) error {
+func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -3890,6 +3908,21 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if len(cardIDs) > 0 && (!apply || action == nil || action.Kind == PayActionEnergy) {
 		return ErrInvalidParam
 	}
+	// ADR 0131 §2: the life half of a mana payment, announced beside the
+	// "pay". Validated against the cost as this chooser would pay it
+	// before the prompt is dequeued, so a malformed or unpayable claim
+	// leaves it to be answered again.
+	if phyrexianLife != 0 {
+		if !apply || frame == nil || action != nil || phyrexianLife < 0 {
+			return ErrInvalidParam
+		}
+		if p := g.playerByIDLocked(chooserID); p != nil {
+			cost := g.costAsPaidByLocked(chooserID, ManaSpendContext{}, WaterbendReduced(frame.cost, 0, len(tapIDs)), 0)
+			if _, _, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(choice.Source), cost, ManaSpendContext{}, phyrexianLife, nil); err != nil {
+				return err
+			}
+		}
+	}
 	payable := false
 	if apply && action != nil && action.Kind == PayActionEnergy {
 		// ADR 0129 §3: an energy payment names nothing. "Pay" is a
@@ -3929,7 +3962,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
 			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
-			paid = g.payCostLocked(p, cost, choice.Source, unionIDs(tapIDs))
+			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife)
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)
 			}
@@ -4026,19 +4059,49 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 //
 // Caller must hold g.mu.
 func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool) bool {
+	return g.payCostWithLifeLocked(p, cost, source, excluded, 0)
+}
+
+// payCostWithLifeLocked is payCostLocked for a payment that also
+// announces `phyrexianLife` symbols paid with 2 life each (CR 107.4f,
+// ADR 0131 §2). The strike and the life payment are the helper pair a
+// cast and an activation run (strikePhyrexianLifeLocked,
+// payPhyrexianLifeLocked), so a ward {B} under K'rrik and a spell's {B}
+// are one code path. The life is paid only once the mana half is known
+// payable and before any land taps, because the life is the fallible
+// half: false leaves the life total, the pool and every land alone. The
+// claim was validated when the answer arrived; one that no longer holds
+// here is a decline.
+func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife int) bool {
 	// #1600, CR 609.4b: Chromatic Orrery's "you may spend mana as
 	// though it were mana of any color" reaches a ward or a Rhystic
 	// Study tax too — every cost the player pays. A narrowed grant
 	// (Oath of Nissa's planeswalker spells) does not: the zero context
 	// names no spell.
 	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost, 0)
+	cost, lifeOwed, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(source), cost, ManaSpendContext{}, phyrexianLife, nil)
+	if err != nil {
+		return false
+	}
+	var (
+		plan  tapPlan
+		short ParsedCost
+		tap   bool
+	)
 	if !p.ManaPool.CanPay(cost, 0) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
-		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, 0, ManaSpendContext{}, excluded, 0)
+		var ok bool
+		plan, short, ok = g.autoTapTopUpLocked(p.ID, cost, 0, ManaSpendContext{}, excluded, 0)
 		// #2461: a plan that would not fund the cost taps nothing.
 		if !ok || !g.planFundsLocked(p, plan, short, cost, 0, ManaSpendContext{}) {
 			return false
 		}
+		tap = true
+	}
+	if err := g.payPhyrexianLifeLocked(source, p.ID, lifeOwed); err != nil {
+		return false
+	}
+	if tap {
 		g.materializePlanLocked(p, plan, short)
 	}
 	spent, ok := p.ManaPool.SpendManaFor(cost, 0, ManaSpendContext{})

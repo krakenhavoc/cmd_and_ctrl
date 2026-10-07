@@ -24,10 +24,12 @@ func init() {
 		PrintedKeywords: []string{"flying", "haste"},
 		ExertOnAttack:   ExertAsItAttacks(),
 		Triggered: []game.TriggeredAbility{
-			Targeting(
-				WhenExerted("Glorybringer — 4 damage to target non-Dragon creature an opponent controls",
-					sourceDealsDamageToEachLegalTarget(4)),
-				TargetCreature("target non-Dragon creature an opponent controls", Not(Subtype("Dragon")), OpponentControls())),
+			TriggerWithPurpose(
+				Targeting(
+					WhenExerted("Glorybringer — 4 damage to target non-Dragon creature an opponent controls",
+						sourceDealsDamageToEachLegalTarget(4)),
+					TargetCreature("target non-Dragon creature an opponent controls", Not(Subtype("Dragon")), OpponentControls())),
+				game.Purpose{DamageToCreature: 4}),
 		},
 	})
 }

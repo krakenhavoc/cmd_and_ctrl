@@ -491,7 +491,26 @@ type TriggeredAbility struct {
 	// projected onto the row's `ability_rows` entry; the engine never
 	// reads it.
 	Purpose Purpose
+
+	// Exert marks a row as one of exert's (ADR 0130's amendment of
+	// 2026-10-07): ExertRowLinked on the "when you do" trigger linked
+	// to "You may exert this creature as it attacks" (CR 607.2h), and
+	// ExertRowPayoff on "Whenever you exert a creature". Set by
+	// effects.WhenExerted and effects.WheneverYouExert and nowhere
+	// else; projected onto the row's `ability_rows` entry for the bot,
+	// which prices an exert by these rows' purposes. The engine never
+	// reads it.
+	Exert ExertRow
 }
+
+// ExertRow is TriggeredAbility.Exert: which of exert's triggers a row
+// is. The zero value is "not an exert row".
+type ExertRow string
+
+const (
+	ExertRowLinked ExertRow = "linked"
+	ExertRowPayoff ExertRow = "payoff"
+)
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
 // before firing" gate. Question is rendered in the client prompt

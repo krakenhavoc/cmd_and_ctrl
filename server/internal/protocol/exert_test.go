@@ -59,3 +59,60 @@ func TestExertLogLine(t *testing.T) {
 		t.Errorf("line = %q", got)
 	}
 }
+
+// TestExertRowsOnTheWire is ADR 0130's amendment of 2026-10-07 on the
+// wire: an exert card's rows say which of exert's triggers they are, and
+// carry the purpose the card declares, for the bot to price.
+func TestExertRowsOnTheWire(t *testing.T) {
+	owner := uuid.New()
+	cases := []struct {
+		name, typeLine, oracle string
+		exert, purpose         string
+	}{
+		{"Oketra's Avenger", "Creature — Human Warrior", "8f064160-3afe-408a-85b4-b335eae8571c", "linked", `{"prevent_combat_damage_to_self":true}`},
+		{"Combat Celebrant", "Creature — Human Warrior", "5e15ff93-99a0-4000-918e-4bd2c257188d", "linked", `{"extra_combat":1}`},
+		{"Glorybringer", "Creature — Dragon", "b75c3902-633e-4d24-acde-d7a9cc8f466e", "linked", `{"damage_to_creature":4}`},
+		{"Resolute Survivors", "Creature — Human Warrior", "3d699db7-cc52-4ee3-947b-0ba291bf037a", "payoff", `{"damage_each_opponent":1,"life_gain":1}`},
+	}
+	for _, c := range cases {
+		rows := viewOfAbilityRows(rowsFixtureCard(c.name, c.typeLine, c.oracle, owner))
+		var got []AbilityRowView
+		for _, r := range rows {
+			if r.Exert != "" {
+				got = append(got, r)
+			}
+		}
+		if len(got) != 1 {
+			t.Errorf("%s: %d exert rows in %+v, want 1", c.name, len(got), rows)
+			continue
+		}
+		if got[0].Exert != c.exert {
+			t.Errorf("%s: exert = %q, want %q", c.name, got[0].Exert, c.exert)
+		}
+		b, err := json.Marshal(got[0].Purpose)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != c.purpose {
+			t.Errorf("%s: purpose = %s, want %s", c.name, b, c.purpose)
+		}
+	}
+}
+
+// TestPumpOnTheWire: a declared pump projects as {power, toughness,
+// keywords}, and its keyword list is a copy.
+func TestPumpOnTheWire(t *testing.T) {
+	kw := []string{"trample"}
+	v := viewOfPurpose(game.Purpose{Pump: &game.Pump{Power: 2, Keywords: kw}})
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != `{"pump":{"power":2,"keywords":["trample"]}}` {
+		t.Errorf("pump = %s", b)
+	}
+	kw[0] = "flying"
+	if v.Pump.Keywords[0] != "trample" {
+		t.Error("the view shares the catalog's keyword slice")
+	}
+}

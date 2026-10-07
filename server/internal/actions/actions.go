@@ -628,6 +628,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 701.68a). Absent unless optional_costs names one.
 			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 			BlightIDs   []string `json:"blight_ids,omitempty"`
+			// ADR 0100 amendment 2026-10-07 — the one card an
+			// announced reveal / behold branch shows ("reveal an Elf
+			// card from your hand or pay {3}"). Absent unless the
+			// chosen cost_branch reveals.
+			RevealIDs []string `json:"reveal_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -750,6 +755,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
@@ -1662,6 +1668,13 @@ func dispatch(g *game.Game, a Action) error {
 			// other answer, and refused on one that has no waterbend
 			// clause. The same wire name a cast's convoke taps use.
 			TapIDs []string `json:"tap_ids,omitempty"`
+			// PhyrexianLife rides a PendingChoicePayUnless "pay" answer
+			// (ADR 0131 §2): how many symbols of the cost the chooser
+			// pays 2 life each for instead of the mana — a ward {B}
+			// under K'rrik, or a printed {B/P}. The wire name casts and
+			// activations use. Refused on a "Don't pay" and on a
+			// non-mana payment.
+			PhyrexianLife int `json:"phyrexian_life,omitempty"`
 			// Assignments populates an S18 sub-PR 3
 			// PendingChoiceDamageAssignment pick — each entry is
 			// {blocker_id, amount}. The attacker's controller
@@ -1974,6 +1987,9 @@ func dispatch(g *game.Game, a Action) error {
 					}
 					return g.ResolvePayUnlessWithCards(choiceID, a.Player, *p.OptionalApply, cardIDs)
 				}
+				if p.PhyrexianLife != 0 {
+					return g.ResolvePayUnlessWithLife(choiceID, a.Player, *p.OptionalApply, tapIDs, p.PhyrexianLife)
+				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:
 				// S28 cascade: "you may cast it without paying its
@@ -2207,6 +2223,12 @@ func dispatch(g *game.Game, a Action) error {
 			// the activator's other sources for whatever the pool is
 			// missing. See game.ManaAbilityParams.AutoTap.
 			AutoTap bool `json:"auto_tap,omitempty"`
+			// ADR 0131 §2 — phyrexian_life is how many of the mana
+			// component's symbols are paid with 2 life each: a printed
+			// {B/P}, or a {B} under K'rrik. The same wire name
+			// cast_spell and activate_ability use. See
+			// game.ManaAbilityParams.PhyrexianLife.
+			PhyrexianLife int `json:"phyrexian_life,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2283,6 +2305,7 @@ func dispatch(g *game.Game, a Action) error {
 			ExilePermanentIDs: manaExilePermanentIDs,
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
+			PhyrexianLife:     p.PhyrexianLife,
 		})
 
 	case TypeSetMaxHandSize:

@@ -1356,8 +1356,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, or `heuristic-baseline`: the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). That one is an arena name only; the lobby and `GET /bot/options` never offer it. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline` or `heuristic-noexert`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
@@ -2533,7 +2533,7 @@ is offered once per card out of the budget the targets left over. The
 counts in between are the same trade paid partly, so they are not
 offered. Every count is bounded by the engine's own life predicate
 (CR 119.4, and CR 119.8's locked life total). The move label says
-`paying 4 life for Phyrexian mana`, and `Move.Cost` carries the life
+`paying 4 life instead of mana`, and `Move.Cost` carries the life
 twice: in `life`, with the rest of what the move charges, and in
 `phyrexian_life`, the part that buys nothing extra.
 
@@ -2545,6 +2545,15 @@ mana payment scores higher. The heuristic also never pays Phyrexian
 life that would leave it below 10 (`phyrexianLifeFloor`, the default
 `DangerLife`). The random tier picks among the legal moves like any
 other.
+
+The same payment is offered for a `{B}` under K'rrik, Son of Yawgmoth
+([ADR 0131](decisions/0131-krrik-pay-life-for-black-mana.md)), and for
+the two payments that are not casts: a mana ability's own mana cost (the
+move carries `phyrexian_life`) and a mana `pay_unless` such as ward
+(the "pay" answer carries it). The enumerator offers the fewest symbols
+paid with life that make the move payable, after mana. The heuristic
+prices a life-paid ward like a Phyrexian cast: declined below the floor
+of 10, and below the all-mana answer above it.
 
 **"Discard your hand" is priced by the hand it throws away.** Lion's
 Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry
