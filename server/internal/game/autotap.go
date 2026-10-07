@@ -492,7 +492,15 @@ func (g *Game) autoTapPreferringLocked(
 	})
 	need := cost.Generic + cost.XSlots*xValue
 	used := make([]bool, len(sources))
-	consumed := make([]int, len(sources)) // per-source slot consumption (colored reqs eat 1 each)
+	// #2461: WHICH slots of each source a coloured requirement has
+	// booked, not how many. A count cannot tell a Simic Growth
+	// Chamber's {G} from its {U}: with one {U} booked the next search
+	// started at slot 1 and found that same {U} again, so {U}{U} was
+	// "paid" by one {G}{U} land.
+	consumed := make([][]bool, len(sources))
+	for i := range sources {
+		consumed[i] = make([]bool, len(sources[i].Slots))
+	}
 	plan := make(tapPlan, 0, len(cost.Required))
 	budget := AutoTapBudget
 	// #1589: a Phyrexian slot a spend grant widened to any mana is
@@ -1644,7 +1652,7 @@ func restrictivenessScore(s tapSource) int {
 func solveColored(
 	sources []tapSource,
 	used []bool,
-	consumed []int,
+	consumed [][]bool,
 	plan *tapPlan,
 	reqs []ColorRequirement,
 	reqIdx int,
@@ -1663,19 +1671,11 @@ func solveColored(
 	for i := range sources {
 		// Try each source — used or not. A used source can still
 		// satisfy a requirement from one of its remaining slots.
-		if consumed[i] >= len(sources[i].Slots) {
-			continue
-		}
+		//
 		// #779: a colour candidate of a permanent already in the plan
 		// under a DIFFERENT colour is not available — the permanent
 		// taps once and makes one pick.
 		if !used[i] && plan.hasCard(sources[i].CardID) {
-			continue
-		}
-		// Find a slot in this source that hasn't been consumed
-		// AND matches the requirement's options.
-		slotIdx := pickMatchingSlot(sources[i], consumed[i], req)
-		if slotIdx < 0 {
 			continue
 		}
 		// #2392: a source whose life cost or rider the plan's
@@ -1684,23 +1684,33 @@ func solveColored(
 		if !wasUsed && sources[i].Pain > *pain {
 			continue
 		}
-		// Tentatively pick. Mark used (idempotent for
-		// already-used sources), bump the consumed counter,
-		// append to plan only on the source's first use.
-		if !wasUsed {
-			used[i] = true
-			*pain -= sources[i].Pain
-			*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
-		}
-		consumed[i]++
-		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
-			return true
-		}
-		consumed[i]--
-		if !wasUsed {
-			used[i] = false
-			*pain += sources[i].Pain
-			*plan = (*plan)[:len(*plan)-1]
+		// #2461: every free slot of this source that can pay the
+		// requirement is a branch, not only the first one. A {W/U}
+		// slot beside a {U} slot must be able to leave the {U} for a
+		// later {U} pip. Slots identical to one already tried are
+		// skipped, so Sol Ring's two {C} cost one branch, not two.
+		for _, slotIdx := range matchingFreeSlots(sources[i], consumed[i], req) {
+			// Tentatively pick. Mark used (idempotent for
+			// already-used sources), book the slot, append to plan
+			// only on the source's first use.
+			if !wasUsed {
+				used[i] = true
+				*pain -= sources[i].Pain
+				*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
+			}
+			consumed[i][slotIdx] = true
+			if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
+				return true
+			}
+			consumed[i][slotIdx] = false
+			if !wasUsed {
+				used[i] = false
+				*pain += sources[i].Pain
+				*plan = (*plan)[:len(*plan)-1]
+			}
+			if *budget <= 0 {
+				return false
+			}
 		}
 	}
 	// #1600: no slot of a printed colour is left for a widened
@@ -1716,27 +1726,77 @@ func solveColored(
 	return false
 }
 
-// pickMatchingSlot returns the index of the first slot in `s`
-// (starting at startIdx — the next un-consumed slot) that can make a
-// colour the requirement PRINTS (matchColor over its Options). -1 when
-// nothing matches. A widened requirement (AnyMana, #1589 / #1600) is
-// asked the same question: what it admits beyond its printed colours
-// is paid as generic (solveColored's deferral), never by booking a
-// slot here. The
-// "starting at consumed[i]" convention is fine for the simple
-// uniform-slot case (Sol Ring's two C slots are interchangeable);
-// a richer multi-color mana rock would need a per-slot pick, but
-// that doesn't ship in S15.
-func pickMatchingSlot(s tapSource, startIdx int, req ColorRequirement) int {
-	for i := startIdx; i < len(s.Slots); i++ {
-		slot := s.Slots[i]
-		for _, opt := range slot.Options {
-			if matchColor(opt, req.Options) {
-				return i
+// matchingFreeSlots returns the indices of the slots of `s` that no
+// requirement has booked yet (consumed[k] false) and that can make a
+// colour the requirement PRINTS (matchColor over its Options), in slot
+// order, with a slot whose Options repeat an earlier listed slot's
+// left out: two identical free slots are the same choice.
+//
+// A widened requirement (AnyMana, #1589 / #1600) is asked the same
+// question: what it admits beyond its printed colours is paid as
+// generic (solveColored's deferral), never by booking a slot here.
+//
+// #2461: this replaced pickMatchingSlot, which took a COUNT of
+// consumed slots and searched from it. That was right for uniform
+// sources (Sol Ring, Ancient Tomb) and wrong for every source whose
+// slots differ — a bounce land's {G}{U}, an Izzet Boilerworks's
+// {U}{R}, a Signet's two colours when a reduction makes it free —
+// where it booked one slot twice or skipped a free one.
+func matchingFreeSlots(s tapSource, consumed []bool, req ColorRequirement) []int {
+	var out []int
+	for k, slot := range s.Slots {
+		if consumed[k] || !slotPays(slot, req) {
+			continue
+		}
+		dup := false
+		for _, prev := range out {
+			if sameOptions(s.Slots[prev].Options, slot.Options) {
+				dup = true
+				break
 			}
 		}
+		if !dup {
+			out = append(out, k)
+		}
 	}
-	return -1
+	return out
+}
+
+// slotPays reports whether one produced slot can make a colour the
+// requirement prints.
+func slotPays(slot ProducedManaEntry, req ColorRequirement) bool {
+	for _, opt := range slot.Options {
+		if matchColor(opt, req.Options) {
+			return true
+		}
+	}
+	return false
+}
+
+// sameOptions reports whether two slots offer the same colours in the
+// same order.
+func sameOptions(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// freeSlotCount is how many of a source's slots no coloured
+// requirement has booked: what it has left for generic.
+func freeSlotCount(consumed []bool) int {
+	n := 0
+	for _, c := range consumed {
+		if !c {
+			n++
+		}
+	}
+	return n
 }
 
 // recruitGeneric tallies spare slots across already-used sources
@@ -1748,7 +1808,7 @@ func pickMatchingSlot(s tapSource, startIdx int, req ColorRequirement) int {
 func recruitGeneric(
 	sources []tapSource,
 	used []bool,
-	consumed []int,
+	consumed [][]bool,
 	plan *tapPlan,
 	need int,
 	pain *int,
@@ -1763,7 +1823,7 @@ func recruitGeneric(
 		if !used[i] {
 			continue
 		}
-		spare += len(sources[i].Slots) - consumed[i]
+		spare += freeSlotCount(consumed[i])
 	}
 	if spare >= need {
 		return true
