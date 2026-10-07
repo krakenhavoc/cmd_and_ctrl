@@ -1245,6 +1245,16 @@
     .panel.opponent.flipped .grid-middle {
       flex-direction: row-reverse;
     }
+    /* #2486: and what they hold faces them, as it would across a real
+       table. Their hand, their piles' top cards and their commander are
+       turned 180°, so the fan arcs down toward you and each card's top
+       points at the table's centre. What you read stays upright: the
+       pile counts, the commander's tax, and their battlefield. */
+    .panel.opponent.flipped .hand-zone > :global(.hand),
+    .panel.opponent.flipped .rail :global(.pile .thumb),
+    .panel.opponent.flipped :global(.command-strip .slot .card) {
+      transform: rotate(180deg);
+    }
     .panel.opponent.flipped .rail {
       display: contents;
     }
