@@ -398,6 +398,20 @@ type TriggeredAbility struct {
 	// data, not a func. See counterPlacedDeltaLocked.
 	PerCounter string
 
+	// PerCounterRemoved is the removal twin of PerCounter (#2466):
+	// "whenever a [kind] counter is removed from ~" triggers ONCE PER
+	// COUNTER removed (CR 603.2c, Protean Hydra's ruling). The same
+	// EventCounterPlaced carries a removal as a lower post-change
+	// total, so the number of counters it took off is the number of
+	// occurrences. Removal by any cause counts — a cost, an effect, the
+	// CR 704.5q cancel, prevented damage — and a placement or another
+	// kind is zero occurrences. Counters that go away because the
+	// permanent LEFT the battlefield are not removed at all (CR 122.2,
+	// the permanent no longer exists): the engine clears them with the
+	// card and emits no event, so nothing fires. Plain data, not a
+	// func. See counterRemovedDeltaLocked.
+	PerCounterRemoved string
+
 	// BatchKey is the SECOND dimension of the OncePerBatch key: the
 	// distinct object the printed clause quantifies over, read off
 	// the event (#784).
@@ -732,6 +746,9 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	occurrences := 1
 	if t.PerCounter != "" {
 		occurrences = g.counterPlacedDeltaLocked(pass.ev, t.PerCounter)
+	}
+	if t.PerCounterRemoved != "" {
+		occurrences = g.counterRemovedDeltaLocked(pass.ev, t.PerCounterRemoved)
 	}
 	if occurrences < 1 {
 		return
@@ -1124,4 +1141,37 @@ func (g *Game) counterPlacedDeltaLocked(ev Event, kind string) int {
 		return 0
 	}
 	return ev.Amount - before
+}
+
+// counterRemovedDeltaLocked is how many `kind` counters the
+// EventCounterPlaced `ev` TOOK OFF its target, or zero for a placement,
+// a different kind or a different event — counterPlacedDeltaLocked's
+// mirror (#2466). The previous total is read the same way: the most
+// recent EventCounterPlaced for the card and kind, stopping at the
+// card's arrival (CR 400.7: a new object has no counters, so nothing
+// can have been removed from it before its first placement).
+//
+// Caller must hold g.mu.
+func (g *Game) counterRemovedDeltaLocked(ev Event, kind string) int {
+	if ev.Kind != EventCounterPlaced || ev.Label != kind {
+		return 0
+	}
+	before := 0
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		prev := g.Events[i]
+		if prev.Seq >= ev.Seq {
+			continue
+		}
+		if (prev.Kind == EventETB || prev.Kind == EventTokenCreated) && prev.CardID == ev.Target {
+			break
+		}
+		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
+			before = prev.Amount
+			break
+		}
+	}
+	if ev.Amount >= before {
+		return 0
+	}
+	return before - ev.Amount
 }
