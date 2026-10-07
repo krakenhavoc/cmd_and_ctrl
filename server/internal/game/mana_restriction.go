@@ -237,6 +237,21 @@ type ManaSpendContext struct {
 	// Cavern of Souls mana named for Elf is legal, and refusing it
 	// would be a rules error a tribal player hits immediately.
 	AllCreatureTypes bool
+
+	// SourceOnly is the spell's own "Spend only mana produced by basic
+	// lands to cast this spell" (Imperiosaur) or "…by creatures"
+	// (Myr Superion), #2556: when set, only a mana whose recorded
+	// source (ManaToken.SourceKinds) has one of these kinds may pay.
+	//
+	// A property of the SPELL, not of any mana, so it rides this
+	// context — which every cast payment, the pool solver, the
+	// auto-tapper's pool top-up, internal/legal's probe and the preview
+	// already thread through — rather than a tag on the token, where
+	// the restriction of the cost would have to be written onto every
+	// other mana source in the game. Set by ManaSpendForCast from the
+	// card's catalog declaration (SpendOnlySourcesFor); zero for every
+	// other payment, which means no source restriction.
+	SourceOnly ManaSourceKinds
 }
 
 // ManaSpendForCast builds the spend context for casting `c`.
@@ -249,7 +264,20 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		Supertypes:       ch.Supertypes,
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
+		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 	}
+}
+
+// allowsToken reports whether `tok` may be spent in this context: the
+// token's own restrictions (allows) AND the payment's source
+// restriction. A token with no recorded source kinds (mana from a
+// spell, a token minted before kinds were recorded) can never satisfy
+// a source restriction — the weaker direction.
+func (ctx ManaSpendContext) allowsToken(tok ManaToken) bool {
+	if ctx.SourceOnly != 0 && !tok.SourceKinds.HasAny(ctx.SourceOnly) {
+		return false
+	}
+	return ctx.allows(tok.Restrictions)
 }
 
 // ManaSpendForAbility builds the spend context for activating an
