@@ -45,6 +45,16 @@ import (
 // the opening lines and the labels differ. The digests below are of the
 // new order.
 //
+// A third deliberate exception, re-pinned by hand (#2462, 2026-10-07):
+// no attack after the active seat's pass. In seed 31, turn 8, seat 0
+// declares its Drake, keeps its Bear home and passes; the lockstep
+// schedule then steps seat 0 again while seat 1 holds priority, and the
+// enumerator used to offer it "Attack heuristic0 with Bear" as its only
+// legal move, which it took (move 270). Now it is offered nothing, the
+// Bear stays home, and from move 270 on the game differs: no block, and
+// 412 moves to the same turn 9 instead of 411. Checked by diffing the
+// two move logs: the first 269 lines are identical.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -86,7 +96,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 411, turns: 9, winner: -1, digest: "cf06761b9b6c7d2c3c67ad4772ac7cc612ced4c30ad60473bfd00a545b128056",
+			moves: 412, turns: 9, winner: -1, digest: "1a4e782275b723171772da310280380c548eef6210556799d93384e42060cf55",
 		},
 		{
 			name: "four heuristic seats to a winner",
