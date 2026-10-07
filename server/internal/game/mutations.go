@@ -365,6 +365,13 @@ type CastSpellParams struct {
 	TeamworkIDs []uuid.UUID
 	BlightIDs   []uuid.UUID
 
+	// RevealIDs names the ONE card an announced reveal / behold cost
+	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
+	// in the caster's hand, or — to behold — a matching permanent they
+	// control. Refused rather than ignored when the announcement pays no
+	// such cost.
+	RevealIDs []uuid.UUID
+
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
 	// declared game.AlternativeCost entries, "overload" / "evoke" /
@@ -1163,6 +1170,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad reveal payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"reveal_received", len(params.RevealIDs),
+			"err", err,
+		)
+		return err
+	}
 	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
 	// here with the other announce-time choices and paid further
 	// down once the spell is on the stack, same validate-all-then-pay
@@ -1646,6 +1662,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0100 amendment 2026-10-07: a revealed card is shown with the
+	// spell on the stack, so the table sees the Elf the Vanquisher paid
+	// with. Nothing moves.
+	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
 	if splitSecond {
 		g.SplitSecondActive = true
 	}

@@ -48,6 +48,9 @@ type castParams struct {
 	// (#1703) — CastSpellParams.TeamworkIDs / BlightIDs.
 	TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 	BlightIDs   []string `json:"blight_ids,omitempty"`
+	// RevealIDs is the one card a reveal / behold branch shows —
+	// CastSpellParams.RevealIDs.
+	RevealIDs []string `json:"reveal_ids,omitempty"`
 	// DelveIDs are the graveyard cards exiled to delve (CR 702.66a,
 	// ADR 0100 §6) — CastSpellParams.DelveIDs.
 	DelveIDs []string `json:"delve_ids,omitempty"`
@@ -975,6 +978,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if !ok {
 		return
 	}
+	// ADR 0100 amendment 2026-10-07: a reveal / behold branch names one
+	// card. A seat with none is not offered the branch.
+	revealIDs, ok := e.revealPayment(card.InstanceID, addCost)
+	if !ok {
+		return
+	}
 	// CR 702.120a: Collective Effort's taps, one creature per extra mode,
 	// on the same list teamwork's ride.
 	if escalate != nil && escalate.TapCreatures > 0 {
@@ -994,7 +1003,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	budget := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1404,7 +1413,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs []uuid.UUID,
+	teamIDs, blightIDs, revealIDs []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1488,6 +1497,7 @@ func (e *enumerator) castMoveEmitter(
 				CostBranch:      branch,
 				TeamworkIDs:     idStrings(teamIDs),
 				BlightIDs:       idStrings(blightIDs),
+				RevealIDs:       idStrings(revealIDs),
 				DelveIDs:        idStrings(delve),
 				Distribution:    distributionWire(dist),
 				GiftOpponent:    giftWire(giftTo),
