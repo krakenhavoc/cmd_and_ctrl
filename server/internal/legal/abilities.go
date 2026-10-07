@@ -1529,7 +1529,22 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 //
 // Nil when the pool has fewer than N candidates, so the ability or
 // spell is not offered at all (#544).
+//
+// #2526: a clause with a SET RULE (TargetSpec.EachOf — "a Swamp and a
+// Forest") is the case where "the first N" is wrong, because the first
+// two of the payment order may both be Swamps. It is one payment found
+// by game.SacrificeSetPaymentForEffect, which searches for a set that
+// fills every entry; nil when the board has none, so the ability is not
+// offered (#544).
 func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
+	if len(spec.EachOf) > 0 {
+		ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
+		pay := e.g.SacrificeSetPaymentForEffect(spec, ordered)
+		if pay == nil {
+			return nil
+		}
+		return [][]uuid.UUID{pay}
+	}
 	n := game.SacrificeCostCount(spec)
 	if n <= 1 {
 		return e.combos(pool, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)

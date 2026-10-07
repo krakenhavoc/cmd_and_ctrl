@@ -568,6 +568,34 @@ type TargetSpec struct {
 	// effects.Register refuses one at boot. Build it with
 	// effects.Clauses(first, then…). Added by #764 (ADR 0065 §1).
 	Rest []TargetClause
+
+	// EachOf is a rule over the chosen SET of a SACRIFICE clause's
+	// picks, for a cost that names different kinds of permanent
+	// (#2526): Jarad, Golgari Lich Lord's "Sacrifice a Swamp and a
+	// Forest". The picks (Min == Max == len(EachOf), so one per entry)
+	// must be matchable ONE-TO-ONE against these kinds: every entry is
+	// filled by a distinct pick that is of that kind. Empty — every
+	// clause but a handful — means no set rule, and the clause reads
+	// exactly as it did.
+	//
+	// The head spec's own predicate is the UNION of the entries
+	// (effects.SacrificeEach builds it from them), so the per-permanent
+	// walks that list candidates — the validator, the legal enumerator
+	// and the protocol view — keep judging one permanent at a time and
+	// need no new idea of "candidate". What they could not say before is
+	// that two Swamps are not "a Swamp and a Forest"; this is that rule.
+	// A dual land that is both a Swamp and a Forest can fill either entry
+	// but not both, which is why the check is a matching and not a
+	// per-entry "does any pick fit" (one permanent pays one sacrifice).
+	//
+	// DATA, not a predicate, and a SacrificeKind rather than a
+	// TargetClause on purpose. Three readers answer this rule (the
+	// validator, the enumerator that has to SEARCH for a payment, and the
+	// client's picker) and only two are Go; and a clause here would be a
+	// second route from Game to a func (ADR 0041's closure ratchet), for
+	// a rule that only ever asks "is it a Swamp". See
+	// SacrificeSetSatisfiedForEffect.
+	EachOf []SacrificeKind
 }
 
 // ClauseCount is the number of clauses in this statement: 1 for the

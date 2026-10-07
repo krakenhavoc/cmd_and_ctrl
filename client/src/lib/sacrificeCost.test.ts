@@ -5,6 +5,9 @@ import type { CardView } from "./protocol";
 import {
   canConfirmSacrifice,
   canConfirmSacrificeRange,
+  canFillEachOf,
+  chooseSacrificeSetForMe,
+  fillsEachOf,
   chooseForMeState,
   chooseSacrificeForMe,
   keepAvailablePicks,
@@ -235,5 +238,67 @@ describe("sacrificeRangeShortfall", () => {
 
   it("says nothing with no clause at all", () => {
     expect(sacrificeRangeShortfall(undefined, "a creature")).toBe("");
+  });
+});
+
+// #2526: "Sacrifice a Swamp and a Forest" — a set rule over the picks.
+describe("a sacrifice clause with a set rule (each_of)", () => {
+  const swampPart = { label: "a Swamp", cards: ["swamp", "swamp2", "tomb"] };
+  const forestPart = { label: "a Forest", cards: ["forest", "tomb"] };
+  const groups = [swampPart, forestPart];
+
+  it("refuses two permanents of one kind and a stranger", () => {
+    expect(fillsEachOf(["swamp", "swamp2"], groups)).toBe(false);
+    expect(fillsEachOf(["swamp", "island"], groups)).toBe(false);
+    expect(fillsEachOf(["swamp"], groups)).toBe(false);
+  });
+
+  it("accepts one of each in either order, and a dual land for one part", () => {
+    expect(fillsEachOf(["swamp", "forest"], groups)).toBe(true);
+    expect(fillsEachOf(["forest", "swamp"], groups)).toBe(true);
+    expect(fillsEachOf(["tomb", "forest"], groups)).toBe(true);
+    expect(fillsEachOf(["swamp2", "tomb"], groups)).toBe(true);
+  });
+
+  it("never lets a dual land fill both parts", () => {
+    expect(fillsEachOf(["tomb", "tomb"], groups)).toBe(false);
+    expect(
+      canFillEachOf([
+        { label: "a Swamp", cards: ["tomb"] },
+        { label: "a Forest", cards: ["tomb"] },
+      ]),
+    ).toBe(false);
+    expect(canFillEachOf([{ label: "a Swamp", cards: ["tomb"] }, forestPart])).toBe(true);
+  });
+
+  it("says a board with no Forest cannot pay it, so the row greys", () => {
+    const opts = {
+      cards: ["swamp", "swamp2"],
+      min: 2,
+      max: 2,
+      each_of: [
+        { label: "a Swamp", cards: ["swamp", "swamp2"] },
+        { label: "a Forest", cards: [] },
+      ],
+    };
+    expect(sacrificeRangeShortfall(opts, "a Swamp and a Forest")).toBe(
+      "needs a Swamp and a Forest (you have 2)",
+    );
+    expect(sacrificeShortfall(opts, "a Swamp and a Forest")).not.toBe("");
+  });
+
+  it("Choose for me fills both parts and keeps the dual land when basics will do", () => {
+    // Payment order puts the two Swamps first; the first two would be
+    // both Swamps.
+    const order = ["swamp", "swamp2", "tomb", "forest"];
+    expect(chooseSacrificeSetForMe(order, groups).sort()).toEqual(["forest", "swamp"]);
+    expect(chooseSacrificeSetForMe(["tomb", "forest"], groups).sort()).toEqual(["forest", "tomb"]);
+    expect(chooseSacrificeSetForMe(["swamp", "swamp2"], groups)).toEqual([]);
+  });
+
+  it("a clause without groups reads exactly as before", () => {
+    expect(fillsEachOf(["a"], undefined)).toBe(true);
+    expect(canFillEachOf([])).toBe(true);
+    expect(chooseSacrificeSetForMe(["a", "b"], undefined)).toEqual([]);
   });
 });
