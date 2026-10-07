@@ -514,6 +514,24 @@
   .row:not(.strip) .pile:hover {
     z-index: 6;
   }
+  /* #2442: a tapped card turns 90 degrees about its centre, so it
+     overhangs its box by (h - w) / 2 on each side while its box keeps
+     the upright width, and the turned card painted over its
+     neighbours. The room is padding, not margin, so it is part of the
+     pile's width: fitRow measures it, scales it with the card and
+     counts it in the overlap (lib/rowFit.ts tappedRoom). It eases in
+     over the turn (animations.ts TAP_DURATION). */
+  .row:not(.strip) .pile {
+    transition: padding-inline 180ms var(--ease);
+  }
+  .row:not(.strip) .pile.tapped {
+    padding-inline: calc((var(--card-h, 123px) - var(--card-w, 88px)) / 2);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .row:not(.strip) .pile {
+      transition: none;
+    }
+  }
   /* Outside the strip a pile is one card and nothing more; the
      wrapper exists so the markup has one shape. */
   .pile {
