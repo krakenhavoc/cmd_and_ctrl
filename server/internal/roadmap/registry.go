@@ -2539,7 +2539,7 @@ var items = []Item{
 		Missing:     "Players don't have a speed yet, so a card with start your engines! or a max speed ability can't be added.",
 		Rules:       []string{"702.178", "702.179"},
 		Issue:       2122,
-		Waiting:     []string{"Gastal Raider"},
+		Waiting:     []string{"Gastal Raider", "Perilous Snare"},
 		EngineNotes: "player state: no per-player speed value, no state-based action setting it to 1 for a player who controls a permanent with start your engines! (CR 702.179a), no inherent sourceless trigger raising it once each turn when an opponent loses life during that player's turn (CR 702.179d), and no condition a static grant can read for \"Max speed — [ability]\" (CR 702.178a). Gastal Raider's enters trigger is the revealed-hand pick and already works (ADR 0116). Found landing the ADR 0116 pool (#2078).",
 	},
 	{
