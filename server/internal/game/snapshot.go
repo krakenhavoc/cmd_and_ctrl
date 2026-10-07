@@ -1365,6 +1365,12 @@ type pendingChoiceSnapshot struct {
 	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
 	ChooseCards     []uuid.UUID `json:"chooseCards,omitempty"`
 	ChooseMin       int         `json:"chooseMin,omitempty"`
+	// #2525: a proliferate's seats on offer and the engine's suggested
+	// answer. Carried for ChooseCards' reason — the prompt is its
+	// options — even though the prompt's continuation frame keeps a
+	// game with one open from being restorable until it is answered.
+	ChoosePlayers   []uuid.UUID `json:"choosePlayers,omitempty"`
+	ChooseSuggested []uuid.UUID `json:"chooseSuggested,omitempty"`
 	// #568: the branches of an option pick. Carried for the reason
 	// ChooseCards is — the prompt is the options, and a restored game
 	// that forgot them would render a question with no answers.
@@ -2316,6 +2322,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
@@ -3133,6 +3141,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),

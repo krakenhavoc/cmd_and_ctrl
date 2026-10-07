@@ -1287,6 +1287,19 @@ after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
 
+**Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
+asks: once the window above has settled it queues a
+`PendingChoiceProliferate` offering every permanent and player with a
+counter, with the beneficial pick suggested (and pre-selected, and what
+a bot answers with). It PAUSES the effect that asked, so anything the
+card says after "proliferate" goes in `Proliferate{Then: func(g
+*game.Game) error {…}}` and not on the next line — Steady Progress draws
+from its `Then`. Capture scalars, never the `*Context`. Explicit lists
+(`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
+proliferates is `CompletenessFull`; there is no caveat to write. In a
+test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+`answerProliferate(t, g, picks…)` takes a chosen one.
+
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an
 opponent would mill one or more cards, they mill twice that many cards
@@ -6208,8 +6221,14 @@ A spell file that moves its own card (Beacon, Rise of the Eldrazi's
 `TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
 spell moving itself is not a permanent's ability.
 
-Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
-no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
+Skipping an EXTRA turn is `SkipOpponentsExtraTurns()` in `Spec.Replacements`
+(Trouble in Pairs, #2529): a CR 614 replacement over `RepEventExtraTurn`,
+the window the rotation seam opens when a queued extra turn would begin.
+A cancel is the skip, and a delayed trigger bound to that turn goes with
+it (CR 614.10a). The window cannot pause (ADR 0059 amendment 2026-10-07),
+so write the replacement as a pure cancel. Skipping a NORMAL turn ("skip
+your next turn": Magosi, Lethal Vapors) and a step of a named turn (Savor
+the Moment) have no shape yet. Declare those as a caveat.
 
 ### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
 

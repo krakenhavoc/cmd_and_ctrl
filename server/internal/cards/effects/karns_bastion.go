@@ -19,13 +19,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     out the other for the turn — the engine validates the whole
 //     cost before paying any of it.
 //
-// No simplification beyond the shared proliferate auto-pick.
+// No simplification: the player chooses what to proliferate (#2525).
 func init() {
 	Register(Spec{
 		OracleID:     "9fb8cd81-403a-4988-8f1c-b8eccf8abd9c",
 		Name:         "Karn's Bastion",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

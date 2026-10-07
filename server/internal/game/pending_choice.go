@@ -852,6 +852,20 @@ type PendingChoice struct {
 	// bot that keeps picking one holds the table forever.
 	ChooseMin, ChooseMax int
 
+	// ChoosePlayers are the SEATS a PendingChoiceProliferate offers
+	// alongside ChooseCards (CR 701.34a: "permanents and/or players").
+	// A seat is named in the answer's card_ids by its player ID, so
+	// the one payload every card-set pick shares still carries it.
+	// Empty for every other kind.
+	ChoosePlayers []uuid.UUID
+
+	// ChooseSuggested is the engine's recommended answer, a subset of
+	// ChooseCards and ChoosePlayers (#2525). It is a default and not a
+	// rule: the client pre-selects it, the enumerator always offers it
+	// as one move, and the bot answers with it. Empty for every kind
+	// that has no recommendation.
+	ChooseSuggested []uuid.UUID
+
 	// chooseCardsResume is the server-only continuation for a
 	// PendingChoiceChooseCards: what the picks mean, plus the zone
 	// they are re-checked against. Not serialised. See
@@ -2025,6 +2039,14 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
 		}
+	case RepEventExtraTurn:
+		// #2529. The player whose extra turn it is. The prompt this
+		// would order is never put to them (the window sets
+		// mustSettleNow), so the arm is the honest answer to "who would
+		// be asked" and the value a pausing replacement would need.
+		if ev.ExtraTurnSeat >= 0 && ev.ExtraTurnSeat < len(g.Seats) {
+			return g.Seats[ev.ExtraTurnSeat].ID
+		}
 	case RepEventProduceMana:
 		// #1222. CR 106.12b: the mana is produced for a player, and
 		// that player is the affected one whoever controls the
@@ -2260,6 +2282,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// Then the rest of the instruction (CR 121.6b): a "draw three"
 		// paused on its first card still owes two (draw_instead.go).
 		return g.settleResumedDrawLocked(ev, false)
+	case RepEventExtraTurn:
+		// #2529: unreachable. The window sets mustSettleNow (the
+		// rotation seam has no resume), so no event of this kind ever
+		// queues a prompt, and the turn it describes is begun or
+		// skipped by popExtraTurnLocked itself.
+		return nil
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
 		// oversight. A production sets mustSettleNow (CR 605.3b — a
@@ -2617,6 +2645,11 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// instruction ("draw three" has two more to go), which the
 		// body pays through `done`. draw_instead.go.
 		return g.settleResumedDrawLocked(ev, true)
+	case RepEventExtraTurn:
+		// #2529: a cancelled extra turn is a SKIPPED one, and
+		// popExtraTurnLocked acts on that verdict itself, inline. The
+		// window never pauses, so nothing resumes into here.
+		return nil
 	case RepEventProduceMana:
 		// #1222: a production cannot even reach this function — it
 		// sets mustSettleNow, so it never pauses and nothing resumes

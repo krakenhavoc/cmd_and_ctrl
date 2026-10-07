@@ -425,6 +425,13 @@ const (
 	// no longer the next seat, and the table needs to know why before
 	// the turn bar moves.
 	LogExtraTurn LogKind = "extra_turn"
+	// LogExtraTurnSkipped — a queued extra turn was skipped instead of
+	// beginning (CR 614.10, #2529: Trouble in Pairs). `seat` is the
+	// player who would have taken it and `card_id` the card whose effect
+	// created it. Narrated because the LogExtraTurn line promised a turn
+	// and the turn bar will not move to it; without this line the
+	// promise just vanishes.
+	LogExtraTurnSkipped LogKind = "extra_turn_skipped"
 	// LogExtraPhase — an effect added phases or a step to the current
 	// turn (CR 500.8 / 500.9, ADR 0059 Decision 11). `seat` is the
 	// active player, whose turn gets them, and `card_id` the card whose
@@ -1602,6 +1609,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventExtraTurnSkipped:
+		base.Kind = LogExtraTurnSkipped
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventTurnEnded:
 		base.Kind = LogTurnEnded
 		base.CardID = uuidStringOrEmpty(ev.Source)
@@ -2249,6 +2261,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s will take an extra turn", actor)
 		}
 		return fmt.Sprintf("%s will take an extra turn (%s)", actor, card)
+	case LogExtraTurnSkipped:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s skips their extra turn", actor)
+		}
+		return fmt.Sprintf("%s skips their extra turn (%s)", actor, card)
 	case LogTurnEnded:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s's turn ends", actor)

@@ -135,7 +135,7 @@ func isCardSetPickKind(kind PendingChoiceKind) bool {
 	switch kind {
 	case PendingChoiceChooseCards, PendingChoiceUntapChoice, PendingChoiceEntryRevealFromHand,
 		PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice, PendingChoiceChooseSource,
-		PendingChoiceRingBearer:
+		PendingChoiceRingBearer, PendingChoiceProliferate:
 		return true
 	}
 	return isResolutionPickKind(kind)
@@ -527,6 +527,10 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 	}
 	candidates := make(map[uuid.UUID]bool, len(choice.ChooseCards))
 	for _, id := range choice.ChooseCards {
+		candidates[id] = true
+	}
+	// A proliferate names seats as well as permanents (CR 701.34a).
+	for _, id := range choice.ChoosePlayers {
 		candidates[id] = true
 	}
 	frame := choice.chooseCardsResume

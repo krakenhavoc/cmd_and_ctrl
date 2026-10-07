@@ -2023,6 +2023,26 @@ that quietly stops happening. The runtime half is
 tier through the factory and asks it everything the runner and the
 enumerator will ask it.
 
+## Proliferating (#2525)
+
+A proliferate (CR 701.34a) asks the proliferating seat which permanents
+and players with counters get another counter of each kind. The
+enumerator offers the empty answer (always legal), the engine's
+suggested set as ONE whole move, first, and then the subsets its walk
+reaches. The suggested set is the beneficial pick: every permanent or
+player of the seat's own that a counter helps, and every opponent's one
+it hurts (a -1/-1 or stun counter, poison, rad), where a single unwanted
+kind rules a permanent out. It is offered whole on purpose: on a board
+wider than the expansion cap the walk never builds the large set, and a
+bot that could only name small ones would strand the rest.
+
+The heuristic scores an answer by its overlap with the suggestion (+1 a
+member, -1.5 anything else), so the exact suggestion wins, a strict
+subset ranks below it, and with nothing suggested it chooses nothing.
+The same table of harmful counters serves the client's pre-selection and
+the bot, so they cannot drift. The model tiers get the same move list and
+the same labels (`proliferate <name> …`, seats by name).
+
 ## Choosing a Ring-bearer (ADR 0114 §7)
 
 When the Ring tempts a bot seat that controls two or more creatures, it

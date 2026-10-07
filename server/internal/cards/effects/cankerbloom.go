@@ -15,14 +15,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The two destroy bullets are Bant Charm's shared body; the
 // proliferate bullet has no target.
 //
-// Proliferate has no chooser prompt in the catalog yet (see Evolution
-// Sage), so the game picks for you.
+// The proliferate bullet asks the player what to proliferate (#2525).
 func init() {
 	Register(Spec{
 		OracleID:     "d5b80895-621a-40df-bf48-6c7295658f21",
 		Name:         "Cankerbloom",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "{1}, Sacrifice this creature: Choose one — destroy target artifact; destroy target enchantment; or proliferate.",
 			Cost:  Plus(ManaCost("{1}"), SacrificeThis()),

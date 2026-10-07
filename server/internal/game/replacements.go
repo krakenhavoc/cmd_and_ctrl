@@ -35,6 +35,7 @@ import (
 //   - MarkDamage / MarkCombatDamage → RepEventDamage
 //   - AddCounter → RepEventCounter
 //   - runStepEntryHooksLocked → RepEventStepTransition
+//   - popExtraTurnLocked → RepEventExtraTurn (#2529, extra_turns.go)
 //
 // The six *ForEffect helpers in effect_api.go route through the same
 // pipeline so catalog-driven mutations fire replacements too.
@@ -60,6 +61,7 @@ import (
 //	"keyword_action"— RepEventKeywordAction — KeywordAction, KeywordActionCount (CR 701.22 / 701.25 / 701.34)
 //	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.17a)
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
+//	"extra_turn"   — RepEventExtraTurn — ExtraTurnSeat, ExtraTurnRef (CR 500.7 / 614.10)
 type ReplacementEventKind string
 
 const (
@@ -167,6 +169,29 @@ const (
 	RepEventProduceMana ReplacementEventKind = "produce_mana"
 
 	RepEventStepTransition ReplacementEventKind = "step"
+
+	// RepEventExtraTurn is one queued extra turn about to BEGIN (CR
+	// 500.7), opened at the rotation seam (popExtraTurnLocked) after the
+	// turn has been chosen and before the cursor moves onto it. Cancelled,
+	// it is a SKIPPED turn (CR 614.10): it never begins, so nothing
+	// scheduled for it happens (CR 614.10a) and the next queued turn, or
+	// normal rotation, follows. Trouble in Pairs, "if an opponent would
+	// begin an extra turn, that player skips that turn instead", is the
+	// card that needs it. #2529.
+	//
+	// It carries the SEAT and the turn's ExtraTurn.Ref rather than a
+	// player ID, for the reason RepEventStepTransition carries a seat:
+	// the event is built from the rotation cursor, which speaks in seats.
+	//
+	// It never pauses. The rotation seam is the one place a turn is
+	// chosen and has no resume, so the event sets mustSettleNow and a
+	// CR 616.1 ordering among several skips is applied in gather order
+	// instead of asked. That is unobservable while every replacement of
+	// this kind is a cancel: whichever skip is applied first skips the
+	// turn, and the rest see a cancelled event. A replacement that did
+	// something else ("instead, you may take it as a normal turn") would
+	// have to teach the seam to pause first.
+	RepEventExtraTurn ReplacementEventKind = "extra_turn"
 )
 
 // isExitMove reports whether a kind is a routed move OUT of a zone — an
@@ -1033,6 +1058,13 @@ type ReplacementEvent struct {
 	StepTransitionStep Step
 	// StepTransitionSeat is the seat whose step is being entered.
 	StepTransitionSeat int
+
+	// --- RepEventExtraTurn fields ---
+
+	// ExtraTurnSeat is the seat index about to take the extra turn.
+	ExtraTurnSeat int
+	// ExtraTurnRef is the queued turn's ExtraTurn.Ref.
+	ExtraTurnRef int
 
 	// mustSettleNow marks an event that CANNOT pause: the pipeline
 	// must reach a settled answer before applyReplacementsLocked
@@ -2492,6 +2524,14 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// contains the engine-only sentinel EventStepTransition,
 		// which replacements.go exports below.
 		want = EventStepTransition
+	case RepEventExtraTurn:
+		// CR 500.7 / 614.10. EventExtraTurnAdded is the twin of QUEUING
+		// the turn, which happens long before this window and under a
+		// different effect, so it is the wrong key; EventTurnBegan is
+		// the twin of the turn beginning, which a cancelled event
+		// never reaches. A sentinel like EventStepTransition, for the
+		// same reason.
+		want = EventExtraTurnBegin
 	default:
 		return false
 	}

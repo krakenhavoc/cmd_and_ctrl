@@ -30,20 +30,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     use the stack, so a Stifle can answer the destroy or the draw
 //     in response.
 //
-// Proliferate carries the catalog's one standing simplification
-// (proliferate.go): the "choose any number of permanents and/or
-// players" is picked FOR the controller by a deterministic
-// beneficial auto-pick rather than prompted, exactly as Karn's
-// Bastion's identical "{4}, {T}: Proliferate" already declares. That
-// is why this card is CompletenessCaveats rather than Full, and why
-// the caveat below is worded the same way Karn's Bastion's is — same
-// primitive, same gap.
+// Proliferate asks the controller what to proliferate (#2525,
+// proliferate.go): the "choose any number of permanents and/or
+// players" is a real prompt with the beneficial pick suggested. It
+// used to be picked FOR the controller, which is why this card
+// carried a caveat until that issue closed.
 func init() {
 	Register(Spec{
 		OracleID:     "11c7662f-e688-40a6-98fd-6ae89d231b44",
 		Name:         "Staff of Compleation",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Life: 2},
 			Produced: "{W|U|B|R|G}",

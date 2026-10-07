@@ -36,8 +36,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "c5229c17-b7be-4b05-b683-f2277edc4849",
-		Name:     "Enlightened Tutor",
+		OracleID:     "c5229c17-b7be-4b05-b683-f2277edc4849",
+		Name:         "Enlightened Tutor",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return tutorToTop(ctx, "Enlightened Tutor — an artifact or enchantment card", true,
 				func(c game.Card) bool { return c.IsArtifact() || c.IsEnchantment() })

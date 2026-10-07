@@ -645,6 +645,21 @@ const (
 	// Added in S17 sub-PR 2.
 	EventStepTransition EventKind = "step_transition"
 
+	// EventExtraTurnBegin is the replacement-watch key for a queued
+	// extra turn about to begin (RepEventExtraTurn, CR 500.7 / 614.10,
+	// #2529). An engine-internal sentinel of the EventStepTransition
+	// shape: cards read it only via ReplacementEffect.Watches and
+	// nothing emits it to the public log. The log's twins are
+	// EventExtraTurnAdded (queued) and EventTurnBegan (began).
+	EventExtraTurnBegin EventKind = "extra_turn_begin"
+
+	// EventExtraTurnSkipped — a queued extra turn was skipped instead of
+	// beginning (CR 614.10, #2529; Trouble in Pairs). Actor is the
+	// player who would have taken it, Source the card whose effect
+	// created it and Amount the turn's ExtraTurn.Ref. Emitted by the
+	// rotation seam when the RepEventExtraTurn window cancels.
+	EventExtraTurnSkipped EventKind = "extra_turn_skipped"
+
 	// EventKeywordAction is the second engine-internal sentinel of
 	// the same shape, and the replacement-watch key for a KEYWORD
 	// ACTION with a count: proliferate (CR 701.34), scry (CR 701.22),

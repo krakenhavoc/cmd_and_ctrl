@@ -253,23 +253,6 @@ func b17MilledCreatureCards(g *game.Game, owner uuid.UUID, seq uint64) []uuid.UU
 	return out
 }
 
-// b17GreatestManaValue picks the card with the greatest mana value
-// among `ids`, the first listed on a tie — the auto-pick Colossal
-// Grave-Reaver declares for "put one of them onto the battlefield".
-func b17GreatestManaValue(g *game.Game, ids []uuid.UUID) (uuid.UUID, bool) {
-	best, bestMV := uuid.Nil, -1
-	for _, id := range ids {
-		c, ok := g.LookupCardForEffect(id)
-		if !ok {
-			continue
-		}
-		if mv := c.ManaValue(); mv > bestMV {
-			best, bestMV = id, mv
-		}
-	}
-	return best, best != uuid.Nil
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b17SelfOrZombieYouControlDied is Undead Augur's condition: the

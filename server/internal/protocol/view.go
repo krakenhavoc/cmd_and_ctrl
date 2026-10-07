@@ -563,6 +563,16 @@ type PendingChoiceView struct {
 	ChooseMin int `json:"choose_min,omitempty"`
 	ChooseMax int `json:"choose_max,omitempty"`
 
+	// ChoosePlayers and ChooseSuggested populate the "proliferate"
+	// kind (#2525, CR 701.34a). ChoosePlayers are the seats on offer
+	// beside Options (the permanents); a seat is picked by sending its
+	// player ID in card_ids, the one payload every card-set pick shares.
+	// ChooseSuggested is the engine's beneficial pick — instance IDs and
+	// player IDs — which the client pre-selects. A default, never a
+	// rule: any subset is a legal answer.
+	ChoosePlayers   []string `json:"choose_players,omitempty"`
+	ChooseSuggested []string `json:"choose_suggested,omitempty"`
+
 	// SearchMax populates the S22 "search_library" kind: how many of
 	// Options the searcher may take. The minimum is always zero —
 	// CR 701.23b permits failing to find — so the client's submit
@@ -7171,6 +7181,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				if card, ok := g.LookupCardForEffect(id); ok {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
+			}
+		}
+		// PendingChoiceProliferate — #2525. The permanents ride Options
+		// above (battlefield cards, public); the seats on offer and the
+		// engine's suggested answer ride beside them. All of it is
+		// public information: counters are on the table.
+		if c.Kind == game.PendingChoiceProliferate {
+			for _, id := range c.ChoosePlayers {
+				v.ChoosePlayers = append(v.ChoosePlayers, id.String())
+			}
+			for _, id := range c.ChooseSuggested {
+				v.ChooseSuggested = append(v.ChooseSuggested, id.String())
 			}
 		}
 		// PendingChoiceOptionPick — #568's "choose one of the
