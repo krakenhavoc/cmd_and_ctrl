@@ -250,13 +250,24 @@ func (g *Game) runAsTransformsIntoLocked(cardID uuid.UUID) {
 // which is strictly worse than not exiling it. CanTransform already
 // asks exactly that question.
 //
+// A permanent that is no longer on the battlefield is not an error
+// either: the ability does nothing (#2497). "This Saga" names one
+// object, and once it has left the battlefield it is gone (CR 400.7)
+// — a copy of chapter III resolving after the original already
+// exiled and returned it (Gogo, Master of Mimicry: a copy refers to
+// the same object as the original, CR 707.10b), or a Saga bounced or
+// destroyed in response. Nothing is exiled, so nothing returns, and
+// the new object the first resolution made is left alone. Before
+// #2497 this returned ErrCardNotFound and every such copy logged an
+// effect error.
+//
 // controller is who it returns under; uuid.Nil means its owner.
 //
 // Caller must hold g.mu. Added in S46 (ADR 0079, #343).
 func (g *Game) ExileAndReturnTransformedForEffect(cardID, controller uuid.UUID) error {
 	card := findBattlefieldCard(g, cardID)
 	if card == nil {
-		return ErrCardNotFound
+		return nil
 	}
 	if !CanTransform(*card) {
 		return nil
