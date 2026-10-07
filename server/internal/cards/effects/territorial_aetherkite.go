@@ -12,7 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ADR 0129 §3 (#1995, owner decision 3): "one or more" is the pay_amount
 // prompt with a floor of 1, from the energy just gotten and any held
 // before. Paying is "doing" (CR 603.12): the reflexive trigger carries
-// the amount paid and deals it to each other creature.
+// the amount paid and deals it to each other creature. Its purpose
+// declares the sweep at the two energy it gives, the amount it can
+// always pay.
 //
 // No simplification.
 func init() {
@@ -21,7 +23,8 @@ func init() {
 		Name:            "Territorial Aetherkite",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "haste"},
-		Purpose:         game.Purpose{Energy: 2},
+		Purpose: game.Purpose{Energy: 2,
+			Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Territorial Aetherkite — you get {E}{E}, then may pay one or more {E}",
 				func(g *game.Game, item *game.StackItem) error {
