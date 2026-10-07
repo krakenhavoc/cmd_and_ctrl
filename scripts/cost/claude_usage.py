@@ -186,6 +186,16 @@ def default_person():
     return login or getpass.getuser()
 
 
+def published_days(person):
+    """The days already on the cost-ledger branch for this person, or {} offline / first time."""
+    try:
+        git("fetch", "--quiet", "origin", f"+refs/heads/{LEDGER_BRANCH}:refs/remotes/origin/{LEDGER_BRANCH}")
+        text = git("show", f"refs/remotes/origin/{LEDGER_BRANCH}:usage/claude-usage-{person}.json")
+        return json.loads(text).get("days", {})
+    except (subprocess.CalledProcessError, ValueError):
+        return {}
+
+
 def push(ledger_path, person, attempts=3):
     """Commit the ledger as usage/claude-usage-<person>.json on the cost-ledger branch and push it.
 
@@ -250,8 +260,12 @@ def main():
         with open(ledger_path, encoding="utf-8") as fh:
             ledger = json.load(fh)
 
+    # The published copy goes in first: a fresh checkout, worktree or machine
+    # has no local ledger, and pushing one built from transcripts alone would
+    # overwrite the days those transcripts have since lost.
+    ledger["days"] = merge(ledger.get("days", {}), published_days(person))
     fresh = scan(args.projects, sorted(set(repo_names)))
-    ledger["days"] = merge(ledger.get("days", {}), fresh)
+    ledger["days"] = merge(ledger["days"], fresh)
     ledger["updated"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     ledger["transcripts_cover_from"] = min(fresh) if fresh else None
 
