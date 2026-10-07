@@ -18,6 +18,7 @@
     chargedManaCostNote,
     energyCostSymbols,
     energyCostWords,
+    exertCostWords,
     judgeAbilityRows,
     type AbilityRowContext,
     type MenuAction,
@@ -328,6 +329,13 @@
           <ManaCost cost={energyCostSymbols(a)} size={13} label={energyCostWords(a)} />
         </span>
       {/if}
+      {#if a.exert}
+        <!-- ADR 0130 §4: "Exert this land" (Arena of Glory). Never
+             greyed: an exert can always be paid. -->
+        <span class="cost exert" title={exertCostWords(a)} aria-label={exertCostWords(a)}
+          >exert</span
+        >
+      {/if}
     </button>
     {#each lifeCounts(a) as k (k)}
       <!-- ADR 0131 §2: pays k of the ability's mana symbols with 2 life
@@ -393,6 +401,12 @@
           <span class="cost" title={energyCostWords(a)}>
             <ManaCost cost={energy} size={13} label={energyCostWords(a)} />
           </span>
+        {/if}
+        {#if a.exert}
+          <!-- ADR 0130 §4: "Exert this creature" (Steward of Solidarity). -->
+          <span class="cost exert" title={exertCostWords(a)} aria-label={exertCostWords(a)}
+            >exert</span
+          >
         {/if}
       </button>
     {/each}
@@ -563,6 +577,12 @@
   .cost {
     font-weight: 700;
     opacity: 0.75;
+  }
+  /* ADR 0130 §4: the exert chip, a word rather than a symbol. */
+  .cost.exert {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
      "available". Spoken, not drawn: the accent already draws it. */

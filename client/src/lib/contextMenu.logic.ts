@@ -652,6 +652,8 @@ export interface AbilityCost {
   // server's cant_activate already says when the seat is short.
   energy_cost?: number;
   energy_cost_x?: boolean;
+  // ADR 0130 §4: an exert component on an activated or mana ability.
+  exert?: boolean;
   // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
@@ -781,6 +783,12 @@ export function energyCostWords(a: AbilityCost): string {
   const n = a.energy_cost ?? 0;
   if (a.energy_cost_x) return n > 0 ? `pay X plus ${n} energy` : "pay X energy";
   return n > 0 ? `pay ${n} energy` : "";
+}
+
+// exertCostWords says what an exert component costs (ADR 0130 §4,
+// CR 701.43a): "" when the ability exerts nothing.
+export function exertCostWords(a: AbilityCost): string {
+  return a.exert ? "exert it: it won't untap during your next untap step" : "";
 }
 
 // ReturnOptionsShape is the part of a LegalTargetsView a return-to-hand

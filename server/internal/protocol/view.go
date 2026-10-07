@@ -3398,6 +3398,14 @@ type ActivatedAbilityView struct {
 	// It is here so a client or a bot can tell that activating the row
 	// returns the permanent without parsing the label.
 	ReturnSelf bool `json:"return_self,omitempty"`
+	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
+	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
+	// source won't untap during the activator's next untap step.
+	// Always payable (CR 701.43b), so it never greys the row; nothing
+	// is chosen, so nothing rides the payload. The client draws an
+	// "exert" chip from it, and a bot prices it without parsing the
+	// label.
+	Exert bool `json:"exert,omitempty"`
 	// DiscardCostN / Label / Options describe a "Discard N cards"
 	// cost component (#660): Fauna Shaman's "Discard a creature
 	// card", Cryptbreaker's "Discard a card". DiscardCostN is the
@@ -3791,6 +3799,11 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
+	// Exert is an "Exert this land" / "Exert this creature" component
+	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
+	// (CR 701.43b). The auto-tapper never pays such a row on its own,
+	// so the player activates it from this menu.
+	Exert bool `json:"exert,omitempty"`
 	// ManaCost is a mana component of the activation cost — the
 	// Signet cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}".
 	// Advisory, like LifeCost: the client renders the cost chip, and
@@ -9537,6 +9550,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			DiscardSelf:   a.Cost.DiscardSelf,
 			ExileSelf:     a.Cost.ExileSelf,
 			ReturnSelf:    a.Cost.ReturnSelf,
+			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
@@ -10141,6 +10155,7 @@ func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityV
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
+			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,

@@ -145,6 +145,13 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	if c.Energy > 0 {
 		v -= st.w.Energy * float64(c.Energy)
 	}
+	// ADR 0130 §4 and §9: an activation that exerts its source (Steward
+	// of Solidarity, Arena of Glory) gives up the source's next untap,
+	// priced like the attack twin's exert (exertCost) under the same
+	// switch, so heuristic-baseline is unchanged.
+	if c.Exert && p.cfg.PriceExert && src != nil {
+		v -= p.costExertCost(st, src)
+	}
 	return v, false
 }
 

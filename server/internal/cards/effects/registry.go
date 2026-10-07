@@ -427,6 +427,11 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// ADR 0130 §4: as for an activated ability, an exert beside a
+		// cost that moves the source is not modelled.
+		if ma.Cost.Exert && (ma.Cost.Sacrifice || ma.Cost.ExileSelf) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)", spec.Name, i))
+		}
 		// ADR 0129 §5: zero is "no energy component".
 		if ma.Cost.Energy < 0 {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative energy cost %d", spec.Name, i, ma.Cost.Energy))
@@ -549,6 +554,12 @@ func Register(spec Spec) {
 		// card does; the activation would refuse every attempt.
 		if ab.Cost.ReturnSelf && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d returns its source to hand AND sacrifices or exiles it — one permanent pays one cost component",
+				spec.Name, i))
+		}
+		// ADR 0130 §4: no printed card exerts a source its own cost also
+		// moves, and the exert would expire with the object (CR 400.7).
+		if ab.Cost.Exert && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)",
 				spec.Name, i))
 		}
 		// DiscardSelf is cycling's component (CR 702.29a) and it
