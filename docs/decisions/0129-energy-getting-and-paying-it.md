@@ -1,8 +1,8 @@
 # ADR 0129 — Energy: getting {E} and paying it
 
-**Status:** Proposed · 2026-10-07 · S68 — Cost components and alternative costs (milestone 77)
+**Status:** Accepted (owner answers 2026-10-07) · 2026-10-07 · S68 — Cost components and alternative costs (milestone 77)
 **Issues:** [#1995](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1995) (paying energy as an activation cost: Consulate Surveillance, and Gonti's Aether Heart from the S58 deck requests, [#2033](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2033)). Registry row: `pay-energy-cost`.
-**Owner decisions:** none yet. The six questions are under [Questions for the owner](#questions-for-the-owner). Each has a recommended option, listed first, and the sections below are written as if it were chosen. The other options are kept beside them.
+**Owner decisions:** the owner answered this ADR's six questions on 2026-10-07, each with the recommended option. The answers are quoted under [Owner decisions](#owner-decisions-2026-10-07) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-07. I ran `git fetch --all --prune` and listed `docs/decisions/` on all nine remote heads. The highest number on any of them is 0128 (`0128-playmats.md`). The one open pull request (#2516) adds no ADR. This ADR takes **0129**.
 **Builds on:** [ADR 0008](0008-counter-mechanics.md) §2 (the `Player.Counters` map and the legacy `Poison` / `Energy` ints), [ADR 0056](0056-infect-wither-toxic.md) Decision 5 (counters on players go through the CR 614 window and emit `player_counter_placed`), [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md) (cost components, and a payment fact reaching the effect), [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) (strict payment, Cast anyway, granted alternative costs), [ADR 0126](0126-bots-that-play-their-decks.md) (the heuristic's pricing and the `purpose` signal), [ADR 0127](0127-answering-repeated-prompts-for-you.md) (Ask, Always or Never on repeated prompts), [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator) and [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) decision 6 (a PR lands every card its seam unblocks, each checked against its full text).
 
@@ -15,6 +15,17 @@ This ADR was written plan-first. No code changed with it. The changes land in th
 A player can already get energy. Decoction Module puts an energy counter on its controller each time a creature of theirs enters, and the seat shows the total. Nothing can spend it. `game.AbilityCost` removes counters from permanents but never from a player, so the 45 Commander-legal activated abilities that print "Pay {E}…:" can't be catalogued. Consulate Surveillance waits on it (its shield shipped with ADR 0108 PR 6, #1904), and so does Gonti's Aether Heart. Energy is also paid while abilities resolve ("you may pay {E}{E}. If you do", "sacrifice it unless you pay {E}"), and as an alternative cost.
 
 Every claim below was checked on `origin/develop` at `0e20f52b1`. Every rule was checked against the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`, "effective as of September 25, 2026").
+
+### Owner decisions (2026-10-07)
+
+The owner answered this ADR's six questions on 2026-10-07, each with the recommended option:
+
+1. **A dedicated energy cost component** (question 1, §2). `AbilityCost.Energy` / `EnergyX` and `ManaAbilityShape.EnergyCost`, paid by one helper that removes the counters from the activator.
+2. **The auto-tapper spends energy as a last resort, before paying life, and the preview shows it** (question 2, §5).
+3. **A new min-max stepper prompt** (question 3, §3). `pay_amount`, answered with a stepper in the action dock.
+4. **Energy is always charged, like life; only mana is waived** (question 4, §4).
+5. **The bot values energy at a flat amount per counter, tuned under ADR 0126 §8** (question 5, §7).
+6. **All five PRs, about 120 cards** (question 6, [Delivery](#delivery)).
 
 ### The rules
 
@@ -114,7 +125,7 @@ It is paid with the other non-mana costs, after validation and before the stack 
 
 **`PaidCost`.** No new field in PR 1. A fixed cost's amount is printed, and a variable one's is the announced X on the stack item. A resolution amount (§3) is carried by the prompt that asked for it. If a later card needs "the energy paid to activate it", `PaidCost.EnergyPaid` is the neighbour of `LifePaid`, additive in schema 7. ADR 0109's shared section notes that an older binary drops unknown keys inside `paid` silently, so the field would be written only by a card that tolerates it missing.
 
-Considered and rejected: **widening `RemoveCounters` with a player form.** `CounterRemovalCost` is about permanents: `From` is a permanent query, `Among` splits across permanents, the any-kind form asks for a kind, and the payment names `CounterSourceIDs`. A player form would have to switch off most of that, and the payer can only ever be the activator (CR 602.1a), so there is nothing to choose. Energy is closer to life: a resource on the player, checked and paid as a number. **Putting {E} inside the `Mana` string** would make energy a symbol `ParseCost` accepts, and every reader of a mana cost would have to know it is not mana. Mana value, cost reduction, the auto-tapper, `spend only` and the strict mana gate would all be at risk. Both are listed in question 1.
+Considered and rejected: **widening `RemoveCounters` with a player form.** `CounterRemovalCost` is about permanents: `From` is a permanent query, `Among` splits across permanents, the any-kind form asks for a kind, and the payment names `CounterSourceIDs`. A player form would have to switch off most of that, and the payer can only ever be the activator (CR 602.1a), so there is nothing to choose. Energy is closer to life: a resource on the player, checked and paid as a number. **Putting {E} inside the `Mana` string** would make energy a symbol `ParseCost` accepts, and every reader of a mana cost would have to know it is not mana. Mana value, cost reduction, the auto-tapper, `spend only` and the strict mana gate would all be at risk. The owner chose the dedicated component (owner decision 1); both alternatives are kept under question 1.
 
 ### 3. Paying energy while an ability resolves
 
@@ -132,19 +143,19 @@ PayActionEnergy PayActionKind = "energy"
 
 ADR 0127's Ask, Always or Never covers these prompts with no extra work. They are `pay_unless` prompts from a card. "Always pay" pays when the energy is there and asks otherwise, which is ADR 0127 §5's rule for mana.
 
-**A chosen amount** ("then you may pay any amount of {E}", "one or more {E}", Vault 112's "Pay any amount of {E}") needs a number. PR 3 adds a prompt, `PendingChoicePayAmount` (`pay_amount`). It carries `min`, `max` and a question. The max is the payer's energy, and the min is 0 or 1 as printed ("one or more" is 1, CR 107.1b). It is answered with `amount`, and the energy is paid through `payEnergyLocked` before the rider runs with the amount. The client answers it with a stepper in the action dock (ADR 0111 §2), with the total shown and Pay and Pay nothing (or Don't pay) buttons. The names are new labels (ADR 0125 §2). The heuristic answers it by `purpose` (§7), and the enumerator offers 0, the max and, when they differ, the smallest amount the card's own threshold names, so a 50-energy prompt is three moves and not 51. Question 3 asks whether this should be a new prompt or a long `option_pick`.
+**A chosen amount** ("then you may pay any amount of {E}", "one or more {E}", Vault 112's "Pay any amount of {E}") needs a number. PR 3 adds a prompt, `PendingChoicePayAmount` (`pay_amount`). It carries `min`, `max` and a question. The max is the payer's energy, and the min is 0 or 1 as printed ("one or more" is 1, CR 107.1b). It is answered with `amount`, and the energy is paid through `payEnergyLocked` before the rider runs with the amount. The client answers it with a stepper in the action dock (ADR 0111 §2), with the total shown and Pay and Pay nothing (or Don't pay) buttons. The names are new labels (ADR 0125 §2). The heuristic answers it by `purpose` (§7), and the enumerator offers 0, the max and, when they differ, the smallest amount the card's own threshold names, so a 50-energy prompt is three moves and not 51. The owner chose the new prompt over a long `option_pick` (owner decision 3).
 
 **"An amount of {E} equal to …"** (Confiscation Coup, Jolted Awake, Volatile Stormdrake, Behemoth of Vault 0) is a fixed amount the effect computes at resolution, so it is the `PayActionEnergy` prompt with that `Count`.
 
 ### 4. The cost pipeline: strict payment, the permissive posture and Cast anyway
 
-Energy is never waived. Strict, permissive and `force_cast` decide whether **mana** is charged (ADR 0011 §1, ADR 0118 §2: "`force_cast` waives only the mana"). Energy is paid in all three, as life and every other non-mana component are today. A permissive seat tracking mana on paper still has its energy charged, and Cast anyway on Nissa's eight-energy alternative cost still pays the eight. Question 4 asks this, because the sandbox posture is a choice.
+Energy is never waived. Strict, permissive and `force_cast` decide whether **mana** is charged (ADR 0011 §1, ADR 0118 §2: "`force_cast` waives only the mana"). Energy is paid in all three, as life and every other non-mana component are today. A permissive seat tracking mana on paper still has its energy charged, and Cast anyway on Nissa's eight-energy alternative cost still pays the eight. The owner confirmed this (owner decision 4).
 
 The sandbox is not lost. A player whose energy is wrong fixes it with the seat steppers or `set_energy`, which ADR 0111's table keeps as a sandbox control on the seat.
 
 ### 5. Energy in the auto-tapper, and in other costs
 
-**Mana abilities with an energy cost** (Aether Hub, Servant of the Conduit, Solar Transformer, Conversion Apparatus) are planned by the auto-tapper in a new **energy tier**. A plan spends energy only when no plan without it pays the cost. It comes before the pain tier, so energy is spent before life. Within the tier, the plan spending the least energy wins. The auto-tap preview lists "Pay {E}" against the source, so the player sees it before confirming. The planner also checks the energy across the whole plan, not per source: two Aether Hubs with one energy between them pay for one coloured pip, not two. This follows #2392's pain tier. Aether Hub's whole purpose is to turn energy into colour. Without the tier, a strict table could never auto-pay a spell whose colour only the Hub provides, and the move list would dim it. Question 2 offers the other orderings, and leaving these sources to the player.
+**Mana abilities with an energy cost** (Aether Hub, Servant of the Conduit, Solar Transformer, Conversion Apparatus) are planned by the auto-tapper in a new **energy tier**. A plan spends energy only when no plan without it pays the cost. It comes before the pain tier, so energy is spent before life. Within the tier, the plan spending the least energy wins. The auto-tap preview lists "Pay {E}" against the source, so the player sees it before confirming. The planner also checks the energy across the whole plan, not per source: two Aether Hubs with one energy between them pay for one coloured pip, not two. This follows #2392's pain tier. Aether Hub's whole purpose is to turn energy into colour. Without the tier, a strict table could never auto-pay a spell whose colour only the Hub provides, and the move list would dim it. The owner chose this ordering (owner decision 2). The other orderings, and leaving these sources to the player, are kept under question 2.
 
 **Alternative costs** (PR 4). `AlternativeCost` and ADR 0118 §3's granted offer gain `Energy int`, paid through `payEnergyLocked` with the rest of the cast's non-mana costs. The offer is listed only when the player has the energy, through the same `AlternativeCostPayableLocked` filter that already gates a life cost. Nissa's offer is a standing static over "permanent spells you cast", which is ADR 0118 §3's seam with a type filter. Primal Prayers adds "as though it had flash" to the same offer. Amped Raptor's offer is the cast permission's own alternative cost (`CastPermission.AlternativeCostFor`) with a computed amount, "energy equal to its mana value".
 
@@ -168,7 +179,7 @@ The sandbox is not lost. A player whose energy is wrong fixes it with the seat s
 - Getting: ADR 0126 §6's `purpose` gains an `energy` field, the energy a spell, an enters effect or an activated row gives its controller, so "you get {E}{E}" adds `Energy × 2` to `purposeValue`. It is declared by hand on each energy card, like the other purpose fields.
 - Resolution amounts: a `pay_amount` rider declares its purpose per unit ("damage", "counters", "cards"), and the heuristic pays the smallest amount that reaches the goal it is already pricing. For Harnessed Lightning, that is the target's toughness. Otherwise it pays nothing.
 
-Question 5 offers the alternatives: price energy by the best sink the bot controls, or leave it unpriced.
+The owner chose the flat weight (owner decision 5). Pricing energy by the best sink the bot controls, and leaving it unpriced, are kept under question 5.
 
 **The board text.** Each seat's line prints its non-zero player counters after the pool ("4 energy, 2 poison"), so a model seat and the MCP seat see what they can pay (`boardtext.go:102-106`). It is a shared change: the bot prompt and the MCP seat read the same `Render`.
 
@@ -216,34 +227,46 @@ Each PR lands its engine change and its cards together, test first. Each flips i
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each question lists the recommended option first. The sections above are written as if every recommendation were chosen.
+Each question lists the recommended option first, then the others. The owner chose the recommended option for all six on 2026-10-07 (owner decisions 1–6). The questions are kept with the options not chosen.
 
 1. **How paying {E} is modelled on an activated ability (§2; CR 107.14, 602.1a).**
    - **(a) Recommended:** a dedicated `AbilityCost.Energy` / `EnergyX` component and `ManaAbilityShape.EnergyCost`, paid by one helper that removes the counters from the activator, checked up front like life. It is small, it matches CR 107.14's "removes one energy counter from themselves" exactly, and there is nothing for the player to choose.
    - (b) Widen `RemoveCounters` with a player form. It reuses one struct, but most of that struct (`From`, `Among`, the kind choice, `CounterSourceIDs`) has to be switched off for the player case, and every reader must learn the new branch.
    - (c) Put {E} in the `Mana` cost string. It needs the least new plumbing, but every mana-cost reader (mana value, reductions, the auto-tapper, the strict gate) would have to skip a symbol that is not mana.
 
+   **Answered: (a), as recommended (owner decision 1).**
+
 2. **Mana abilities with an energy cost and the auto-tapper (§5; CR 605.3a, 118.3c).**
    - **(a) Recommended:** an energy tier, used only when no energy-free plan exists, before the pain tier, shown in the auto-tap preview. Aether Hub pays colours on a strict table with no extra click. Energy is spent before life, and only when needed.
    - (b) An energy tier after the pain tier. Life is spent before energy, which keeps energy for the cards' sinks but costs life the player may need more.
    - (c) Never planned. The player activates these by hand, like restricted mana. Nothing is ever spent without a click, but a spell only the Hub's colour can pay is dimmed until the player floats the mana.
 
+   **Answered: (a), as recommended (owner decision 2).**
+
 3. **Resolution payments of a chosen amount (§3; CR 118.12, 107.1b).** "Pay any amount of {E}", "one or more {E}".
    - **(a) Recommended:** a new `pay_amount` prompt with `min` and `max`, answered by a stepper in the dock. A 20-energy total is one control, and the prompt can later serve "pay any amount of life" or mana.
    - (b) Reuse `option_pick` with one option per amount from 0 to the total. No new prompt kind or wire shape, but the list is as long as the energy total, and the bot's move list grows with it.
 
+   **Answered: (a), as recommended (owner decision 3).**
+
 4. **Energy under the permissive posture and Cast anyway (§4; ADR 0118 §2).**
    - **(a) Recommended:** energy is always paid, like life. Only mana is waived. CR 118.3 holds for every component the engine can count, and the table's energy stays true.
    - (b) Energy is waived with mana when the payment is permissive or forced. It is more lenient on a sandbox table, but the energy total then drifts from what was paid, and nothing in the log says so.
+
+   **Answered: (a), as recommended (owner decision 4).**
 
 5. **How the heuristic values energy (§7; ADR 0126).**
    - **(a) Recommended:** a flat weight per counter (`Weights.Energy`, starting at 0.25 of a card), charged when spent, credited through an `energy` purpose when gained, and tuned under ADR 0126 §8. It is simple and measurable, and the bot uses a sink when the effect is worth more than the counters.
    - (b) Price energy by the best sink the bot controls, so energy is worth 0 with no sink and more with Aetherworks Marvel out. Play is sharper, but there is one more board read per decision, and it needs the sinks' purposes declared before it can work.
    - (c) Leave energy unpriced. The bot spends it greedily on any sink. It needs no new weight, but the bot will burn eight energy on a weak effect while a better use waits.
 
+   **Answered: (a), as recommended (owner decision 5).**
+
 6. **What the delivery covers (Delivery; ADR 0106 decision 6, ADR 0109 decision 4).**
    - **(a) Recommended:** all five PRs, each landing every card its seam unblocks, including the about 14 cards that only get energy (they need nothing new, and PR 1 tests the counter they add). About 120 of the 142 cards land, and energy decks become playable end to end.
    - (b) PRs 1 to 3 only: activation costs, mana abilities and resolution payments, which is about 105 cards. Alternative costs, replicate and the paid-or-lost tally go on registry rows. It is a shorter sprint, and the seven alt-cost and keyword cards and the two tally readers wait.
    - (c) PR 1 only, with the two waiting cards and the fixed activations, about 30 cards. It closes #1995 quickly and leaves every resolution payer, which is most of the energy cards, on the backlog.
+
+   **Answered: (a), as recommended (owner decision 6).**
