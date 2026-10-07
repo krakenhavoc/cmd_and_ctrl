@@ -424,6 +424,43 @@ func TestExileAndReturnTransformedMakesANewObject(t *testing.T) {
 	AssertFaceInvariant(t, g)
 }
 
+// TestExileAndReturnTransformedOnAGoneObjectDoesNothing is #2497: the
+// second resolution of "exile this, then return it transformed" (a
+// copy of the ability, CR 707.10b, resolving after the original) finds
+// the object it names gone (CR 400.7). It does nothing, and that is
+// not an error; the new object the first one made is left alone.
+func TestExileAndReturnTransformedOnAGoneObjectDoesNothing(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	card := transformCreatureFixture(me.ID)
+	old := pushTransformFixture(t, g, card)
+
+	if err := g.ExileAndReturnTransformedForEffect(old, me.ID); err != nil {
+		t.Fatalf("first resolution: %v", err)
+	}
+	var back uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.OracleID == card.OracleID {
+			back = c.InstanceID
+		}
+	}
+	if back == uuid.Nil {
+		t.Fatal("nothing came back to the battlefield")
+	}
+	before := len(g.Events)
+
+	if err := g.ExileAndReturnTransformedForEffect(old, me.ID); err != nil {
+		t.Fatalf("second resolution on the gone object: want a no-op, got %v", err)
+	}
+	if findBattlefieldCard(g, back) == nil {
+		t.Fatal("the second resolution moved the NEW object — it names the old one")
+	}
+	if n := len(g.Events) - before; n != 0 {
+		t.Errorf("the no-op emitted %d events, want 0", n)
+	}
+	AssertFaceInvariant(t, g)
+}
+
 // TestExileAndReturnTransformedRefusesWhatCannotTransform: a permanent
 // whose other face is not reachable must not be exiled at all, or the
 // card is strictly worse than printed — it would vanish instead of
