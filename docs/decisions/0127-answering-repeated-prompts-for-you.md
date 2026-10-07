@@ -1,8 +1,8 @@
 # ADR 0127 — Answering repeated prompts for you
 
-**Status:** Proposed · 2026-10-07 · S59 — Automated table: clicks that act, payment that counts (tracker [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189))
+**Status:** Accepted (owner answers 2026-10-07) · 2026-10-07 · S59 — Automated table: clicks that act, payment that counts (tracker [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189))
 **Issues:** [#1961](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1961) (this change). Related: [#1968](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1968) (accept the trigger order automatically, S60) and [#1530](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1530), whose item 2 shipped as PR [#2334](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2334) (`Player.TriggerOrderAlwaysAsk`).
-**Owner decisions:** the three answers of 2026-10-07 on #1961, quoted under [Owner decisions](#owner-decisions-2026-10-07). They are binding. Everything else below is a call this ADR makes, and the calls the owner should rule on are numbered under [Questions for the owner](#questions-for-the-owner).
+**Owner decisions:** the three answers of 2026-10-07 on #1961, and the owner's answers to this ADR's eight questions the same day, each the recommended option. All eleven are quoted under [Owner decisions](#owner-decisions-2026-10-07) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-07. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: `origin/develop`, `origin/main`, `origin/docs/issue-audit`, `origin/feat/750-conditional-block-restrictions`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default` and `pr/2326`. The highest number on any of them is 0126 (`0126-bots-that-play-their-decks.md`). No open pull request adds an ADR. This ADR takes **0127**.
 **Builds on:** [ADR 0018](0018-triggers-on-the-stack.md) (triggers, the trigger prompt, and the 2026-10-05 amendment for #1530 item 2), [ADR 0055](0055-loop-breaker.md) (the CR 732 loop breaker), [ADR 0110](0110-remember-me.md) §4 (settings on the account), [ADR 0111](0111-action-dock.md) §2 (small prompts inline in the dock) and §10 (labels), [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) (strict payment and the auto-tapper's pool top-up), [ADR 0119](0119-a-stack-you-can-follow.md) §2 (the stack hold), [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §2 (the label registry).
 
@@ -23,6 +23,17 @@ On #1961:
 1. **It fits strict payment.** Write the ADR first.
 2. **Ask, Always or Never.** Each player picks Ask, Always or Never for each prompting card.
 3. **"Always pay" pays only when auto-pay can cover the cost, and asks otherwise.**
+
+The owner then answered this ADR's eight questions on 2026-10-07, each with the recommended option:
+
+4. **The server answers, as its own commit** (question 1, §4).
+5. **The key is card plus prompt** (question 2, §2).
+6. **The commander return question is not in this ADR** (question 3, §1).
+7. **The rules live in the account's synced settings, mirrored to each seat** (question 4, §3).
+8. **Undoing an automatic answer does not use the undo budget** (question 5, §4 and §6).
+9. **With an empty library, "Always" asks by hand** (question 6, §4).
+10. **Asking CR 603.5's question at resolution is filed separately**, as [#2494](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2494) (question 7, [Out of scope](#out-of-scope)).
+11. **The log marks automatic answers "(automatic)"** (question 8, §6).
 
 ### The rules
 
@@ -47,7 +58,7 @@ On #1961:
 
 Rhystic Study is two prompts to two players: the caster is asked to pay, and if they do not, the Study's controller is asked whether to draw (`effects/rhystic_study.go`). The second is queued from inside the first's decline branch, after the trigger has finished resolving.
 
-**The engine asks CR 603.5's question early.** A `trigger_prompt` is asked when the ability triggers, and a "No" drops the trigger before it reaches the stack (`ResolveTriggerPrompt`). CR 603.5 puts it on the stack and asks at resolution. This ADR does not change that; see [Out of scope](#out-of-scope) and question 7.
+**The engine asks CR 603.5's question early.** A `trigger_prompt` is asked when the ability triggers, and a "No" drops the trigger before it reaches the stack (`ResolveTriggerPrompt`). CR 603.5 puts it on the stack and asks at resolution. This ADR does not change that; see [Out of scope](#out-of-scope) and owner decision 10.
 
 **What a pay-unless answer does.** `resolvePayUnless` dequeues the prompt first. On "Pay" it calls `payCostLocked` (`:3984`), which pays from the pool and auto-taps the rest. If that fails it taps and spends nothing, and the answer becomes a decline: the "unless" branch runs. So a "Pay" that cannot be covered is a "Don't pay" today. A non-mana payment (`PayAction`, discard or sacrifice; `game/pay_unless_action.go`) needs the payer to name cards.
 
@@ -94,7 +105,7 @@ A prompt is **covered** when one standing answer can be the whole answer, and no
 - **A life payment** (`confirm` with `LifeCost`, `entry_pay_life` on a shockland). Life is the board.
 - **Every pick**: cards, targets, colours, options, numbers, damage assignment, the trigger order, the CR 732 shortcut.
 
-`commander_return` and the commander's `optional_replacement` are plain yes/no questions about one card. Whether they are covered is question 3; this ADR is written as though they are not, and covering them changes nothing else below.
+`commander_return` and the commander's `optional_replacement` are plain yes/no questions about one card. They are not covered (owner decision 6). Covering them later would be a small follow-up on the same mechanism.
 
 ### 2. The key: card and prompt
 
@@ -118,7 +129,7 @@ Every prompt carries `auto_answer_key` on the wire, empty when not covered, and 
 - **The client setting.** `gameplay.autoAnswers`, a list of `{key, card, prompt, answer}` where `answer` is `"always"` or `"never"`. Ask is the absence of an entry. `card` and `prompt` are display copies, so Settings can list the rules without the server. The field is `"synced"` (ADR 0110 §4, `SYNCED_FIELDS`), so a rule set on one device applies everywhere the person is signed in. A guest keeps it in the browser only. It defaults to an empty list, and the shallow merge fills it in, so `SETTINGS_VERSION` does not need to change. The list holds at most **100** rules. Adding a 101st is refused with a message to remove one in Settings. 100 rules of about 200 bytes each fit inside the account's 32 KiB.
 - **The server copy.** `Player.AutoAnswers`, a map from key to answer. It is set by a new action, `set_auto_answers {rules: [{key, answer}]}`, which replaces the whole map. The action is player-scoped (a seat sets only its own; the admin may set any), mints no undo entry (`MintsNoUndo`), is allowed during the opening roll, and is refused above 100 rules or with a key over 256 bytes. The enumerator never offers it, so no bot sends it and a bot seat's map is always empty. The MCP seat does not expose it.
 - **Reconcile, not send on join.** The client compares its setting with the seat's `auto_answers` on every live frame and sends the action when they disagree, through the same shape as `triggerOrderPrefToSend` (one pure module, `autoAnswerPref.ts`, with a `lastSent` guard). This covers a change in Settings, a reconnect, a second device, and a server restored from an older snapshot.
-- **Not per table.** There is no separate per-table rule (question 4). A player who wants different answers at a different table changes the rule; it takes effect at the next frame.
+- **Not per table.** There is no separate per-table rule (owner decision 7). A player who wants different answers at a different table changes the rule; it takes effect at the next frame.
 
 The server copy is what makes it work with the browser closed: once a seat has connected once, its rules are in the game, and they are in every restore point.
 
@@ -130,7 +141,7 @@ The server copy is what makes it work with the browser closed: once a seat has c
 
 1. Clone the game for the undo entry.
 2. `Game.AutoAnswer(choiceID)` checks the prompt again and answers it through the kind's own resolver body, with one difference: it removes the prompt with `removeChoiceAtLocked`, **not** `dequeueChoiceLocked`, so an automatic answer is not a player decision and does not reset the loop run (§7).
-3. Push an undo entry stamped with the **chooser**, marked `freeUndo` (question 5), and with the answered prompt's ID recorded on the entry.
+3. Push an undo entry stamped with the **chooser**, marked `freeUndo` (owner decision 8), and with the answered prompt's ID recorded on the entry.
 4. Capture the frame.
 
 The room repeats this until no prompt qualifies, then returns the last frame to the caller as today. Every replay line and dump is written. A prompt raised by a bot's commit, an admin's or a lobby step is answered the same way, because they all commit through the room. The room clears up within one call, so no goroutine, timer or subscriber is involved, and a lockstep arena replays the same answers in the same order.
@@ -142,7 +153,7 @@ The room repeats this until no prompt qualifies, then returns the last frame to 
 - the prompt is not marked `asked_by_hand` (below);
 - the enumerator would list an answer to it for that seat now (`legal` `choiceMoves`), so the answer goes in the order the table would take it;
 - `LoopNotice` is not set (§7);
-- for **Always**: the chooser's library is not empty, since the engine cannot tell which Yes draws (question 6);
+- for **Always**: the chooser's library is not empty, since the engine cannot tell which Yes draws (owner decision 9);
 - for **Always** on a `pay_unless`: auto-pay can cover the cost (§5).
 
 **Asked by hand.** When a prompt has a rule but fails one of the last three checks, the server marks it `asked_by_hand` and does not look at it again. The player answers it in the dock, with a line saying why ("Always pay: not enough mana"). Without the mark, a prompt the player is thinking about could be answered under them the moment they tap a land. The same mark is set when an automatic answer is undone (§6).
@@ -240,63 +251,63 @@ After PR 3: run the nightly E2E on `develop`, then close #1961 with evidence (th
 
 ## Out of scope
 
-- **Asking CR 603.5's question at resolution.** The engine asks an optional trigger's question before the trigger goes on the stack. That is a separate engine change (question 7). The keys here name the ability row, not the moment of asking, so a rule set now still works after that change.
+- **Asking CR 603.5's question at resolution.** The engine asks an optional trigger's question before the trigger goes on the stack. That is a separate engine change, filed as [#2494](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2494) (owner decision 10). The keys here name the ability row, not the moment of asking, so a rule set now still works after that change.
 - **Bots.** They keep deciding for themselves.
-- **A rule per table** (question 4).
+- **A rule per table** (owner decision 7).
 - **Choosing which sources pay.** "Always pay" uses the auto-tapper's choice.
 - **The trigger order** (#1968) and every other pick.
 - **Telling the other players about a rule before it fires.** The log line is the disclosure.
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each question lists the most CR-faithful option first, then the others. The recommendation is the option the Decision above is written with.
+Each question lists the most CR-faithful option first, then the others. The owner chose the recommended option for all eight on 2026-10-07 (owner decisions 4–11). The questions are kept with the options not chosen.
 
 1. **Who answers: the server or the client?**
    - (a) **The server, as its own commit** (§4). It works with the browser closed, the chooser can undo it, and the loop breaker still sees it as automatic.
    - (b) The server, inside the commit that raised the prompt. Simpler, but the chooser can't undo it, because the entry belongs to whoever acted.
    - (c) The client. Nothing happens while the tab is closed.
 
-   **Recommendation: (a).**
+   **Answered: (a), as recommended (owner decision 4).**
 
 2. **The key: card and prompt, or card alone?**
    - (a) **Card and prompt** (§2). Rhystic Study's tax and its draw are different questions, often to the same player.
    - (b) Card alone. One rule would answer both, so "Always" could mean pay and draw at once.
 
-   **Recommendation: (a).**
+   **Answered: (a), as recommended (owner decision 5).**
 
 3. **Cover the commander return (CR 903.9a)?** It is asked every time a commander dies, and it is a plain yes/no about one card.
    - (a) **Not covered.** Sometimes the graveyard or exile is the right answer (reanimation, a card that cares about exile), and ADR 0115 made this a deliberate question.
    - (b) Covered, keyed by the commander, Ask by default.
 
-   **Recommendation: (a)** for this ADR. (b) is a small follow-up on the same mechanism if players ask for it.
+   **Answered: (a), as recommended (owner decision 6).** (b) is a small follow-up on the same mechanism if players ask for it.
 
 4. **Where the rules live.**
    - (a) **The account's synced settings, mirrored to each seat** (§3).
    - (b) Per table only: set again in every game.
    - (c) Both, with a per-table override.
 
-   **Recommendation: (a).** The cards are in a person's decks, so the answers travel with the person. (c) can be added later without changing the server.
+   **Answered: (a), as recommended (owner decision 7).** The cards are in a person's decks, so the answers travel with the person. (c) can be added later without changing the server.
 
 5. **Does undoing an automatic answer spend the undo budget?**
    - (a) **No (`freeUndo`).** The player didn't click it, and the budget polices taking back your own clicks. A bot improvisation is free for the same reason.
    - (b) Yes, like any other undo.
 
-   **Recommendation: (a).**
+   **Answered: (a), as recommended (owner decision 8).**
 
 6. **"Always" on a prompt whose Yes may draw, with an empty library.** CR 121.3 lets a player draw from an empty library, and CR 704.5b then makes them lose.
    - (a) **Ask by hand whenever the chooser's library is empty**, for every Always. This is coarse: the engine can't tell which yes draws. It costs one click, and only in that rare case.
    - (b) Answer anyway. That follows the rule literally and can lose the game with nobody clicking.
 
-   **Recommendation: (a).** It is CR-faithful too, since the player is still free to draw. They just choose it themselves.
+   **Answered: (a), as recommended (owner decision 9).** It is CR-faithful too, since the player is still free to draw. They just choose it themselves.
 
 7. **File the CR 603.5 change?** Put optional triggers on the stack and ask when they resolve, as the rule says.
    - (a) **Yes: a separate issue and ADR**, not part of this one.
    - (b) Leave it.
 
-   **Recommendation: (a).** It is the more faithful engine, and it would make an automatic "No" to a Sphinx visible on the stack for the hold before it resolves doing nothing. It touches every optional trigger, so it should not ride on this feature.
+   **Answered: (a), as recommended (owner decision 10): filed as [#2494](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2494).** It is the more faithful engine, and it would make an automatic "No" to a Sphinx visible on the stack for the hold before it resolves doing nothing. It touches every optional trigger, so it should not ride on this feature.
 
 8. **The log's word for it.**
    - (a) **"(automatic)"** at the end of the line.
    - (b) No marker. The answer is public either way.
 
-   **Recommendation: (a).** CR 732.1a's shortcuts are acceptable when everyone understands them, and a marker is how the table learns that a player has one.
+   **Answered: (a), as recommended (owner decision 11).** CR 732.1a's shortcuts are acceptable when everyone understands them, and a marker is how the table learns that a player has one.
