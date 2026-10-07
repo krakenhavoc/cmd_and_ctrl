@@ -1369,3 +1369,45 @@ therefore lasts to the player's next real end step. The field is
 additive in the snapshot (`seats[].endStepTurn`): a restore point
 written before it reads 0, which keeps a window open until its player's
 next end step begins.
+
+## Amendment (2026-10-07, #2529) — skipping an extra turn
+
+Decision 14 left "skip a turn" out of scope, and Trouble in Pairs' "if an
+opponent would begin an extra turn, that player skips that turn instead"
+(CR 614.1b, 614.10) was the card waiting on it. The half of skipping that
+extra turns need is small, so only that half is built.
+
+1. **A new replacement-event kind, `RepEventExtraTurn`.** It is opened
+   in `popExtraTurnLocked` (the rotation seam) after a queued extra turn
+   of a seat still in the game has been chosen and before the cursor
+   moves onto it. It carries `ExtraTurnSeat` and `ExtraTurnRef`; `Actor`
+   is the player and `Source` the card that queued the turn. The watch key
+   is `EventExtraTurnBegin`, a sentinel nothing emits (the shape of
+   `EventStepTransition`): `EventExtraTurnAdded` is the twin of queuing and
+   `EventTurnBegan` of beginning, and the window is neither.
+2. **A cancel is a skip.** The turn is already off the queue, so it never
+   begins: no `Turn` is stamped, no per-turn reset runs, `Seq` does not
+   move, and the loop in `popExtraTurnLocked` looks at the next queued turn
+   or falls through to normal rotation. Anything bound to that turn
+   (`DelayedTrigger.OnExtraTurn`, Final Fortune's lose-the-game) is dropped
+   by `sweepUnreachableBoundTriggersLocked` as the next turn starts, which
+   is CR 614.10a ("anything scheduled for a skipped turn won't happen")
+   with no new code. A skipped turn does not count toward `TurnsBegun`,
+   as Decision 1 already says for a turn skipped by an effect.
+3. **The window never pauses.** The seam has no resume, so the event sets
+   `mustSettleNow` and the CR 616 ordering among several skips is applied
+   in gather order. That is unobservable while every replacement of the
+   kind is a cancel; `effects.SkipOpponentsExtraTurns` is `PureCancel`, so
+   two Troubles in Pairs under different controllers do not even try to
+   ask. A replacement that did something else with the turn would have to
+   teach the seam to pause first. This is the declared limit.
+4. **A log line.** `EventExtraTurnSkipped` is emitted when the window
+   cancels and projects to the public log as `extra_turn_skipped`
+   ("Alice skips their extra turn (Time Warp)"), so the earlier
+   `extra_turn` line does not promise a turn that silently never comes.
+5. **Cards.** Trouble in Pairs is `full`. Still out of scope: "skip your
+   next turn" (Magosi, Lethal Vapors) and skipping a step of a named turn
+   (Savor the Moment), which need a skip on a NORMAL turn and a binding to
+   "that turn". Ugin's Nexus is the same replacement with the "an
+   opponent" comparison dropped, and waits on its other half (the
+   exile-instead, take-a-turn clause), not on this seam.

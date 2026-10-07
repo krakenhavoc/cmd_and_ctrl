@@ -82,6 +82,7 @@ var silentEventKinds = map[string]string{
 	// --- the step spine ----------------------------------------------
 	"EventTurnBegan":          "the first EventStepBegan announces the same boundary to the table; this kind exists for engine consumers after per-turn resets",
 	"EventStepTransition":     silentStepSpine,
+	"EventExtraTurnBegin":     "a replacement-watch sentinel that nothing emits (#2529): a skipped turn is a LogExtraTurnSkipped line and a turn that began is the step spine",
 	"EventBeginUpkeep":        silentStepSpine,
 	"EventBeginDrawStep":      silentStepSpine,
 	"EventBeginPrecombatMain": silentStepSpine,
