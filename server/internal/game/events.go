@@ -61,7 +61,8 @@ const (
 
 	// EventDealDamage — Amount damage was dealt from Source to Target.
 	// Target may be a player or a card (distinguished by whether
-	// Target resolves in PlayerByID vs the zone scan).
+	// Target resolves in PlayerByID vs the zone scan). To a player,
+	// the life it cost is Event.DamageLifeLoss, not Amount (#2105).
 	EventDealDamage EventKind = "deal_damage"
 
 	// EventChangeLife — a player's life total changed by Amount
@@ -1329,6 +1330,20 @@ type Event struct {
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
 
+	// DamageNotLifeLoss is the part of an EventDealDamage to a PLAYER
+	// that cost that player no life (#2105): all of it when the source
+	// had infect, or was dealt as though it had (CR 120.3b, CR 702.90b),
+	// and all of it when the player's life total can't change (CR 119.8,
+	// ADR 0085). The damage is still DEALT either way, so Amount keeps
+	// the damage and "whenever ~ is dealt damage" readers are unchanged;
+	// a life-loss reader asks DamageLifeLoss instead.
+	//
+	// Stored as the part NOT lost rather than the part lost so that the
+	// zero value is the ordinary case: an event written before this field
+	// existed (a restore point's queued trigger, this turn's log) reads as
+	// the life loss it was taken for when it was written.
+	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
+
 	// Round is the table-facing round for EventStepBegan. Amount carries
 	// the turn sequence on EventStepBegan and EventTurnBegan; keeping the
 	// display value separate lets same-seat and extra turns retain distinct
@@ -1634,6 +1649,19 @@ type Event struct {
 	// S35 (#1032, ADR 0075).
 	SettingOld string `json:"setting_old,omitempty"`
 	SettingNew string `json:"setting_new,omitempty"`
+}
+
+// DamageLifeLoss is the life an EventDealDamage cost the player it was
+// dealt to (#2105, CR 119.2, CR 120.3a): its Amount less the part that
+// cost no life (DamageNotLifeLoss: infect, or a life total that can't
+// change). 0 for any other kind of event. Damage to a permanent is the
+// caller's to rule out by checking that Target is a player, as every
+// life-loss reader already does.
+func (ev Event) DamageLifeLoss() int {
+	if ev.Kind != EventDealDamage {
+		return 0
+	}
+	return max(ev.Amount-ev.DamageNotLifeLoss, 0)
 }
 
 // The two values of Event.CombatStep (and DamageAssignmentFrame's
