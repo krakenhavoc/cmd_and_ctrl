@@ -2270,6 +2270,13 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				continue
 			}
 		}
+		// ADR 0129 §5: the energy tier's payment (Aether Hub), after the
+		// life. The planner held the plan to the controller's energy
+		// (autoTapBudget), so this refuses only if something spent it
+		// since; the source is then tapped and mints nothing.
+		if err := g.payEnergyLocked(p.ID, ab.EnergyCost, cardID); err != nil {
+			continue
+		}
 		// #1215: the sacrifice, AFTER the tap and BEFORE the mana —
 		// the component order ActivateManaAbility pays in, and for
 		// the same reason: the tap has to happen while the permanent
@@ -6484,6 +6491,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// the same predicate.
 		return ErrInvalidParam
 	}
+	// ADR 0129 §5, CR 118.3: "Pay {E}" (Aether Hub). Checked with the
+	// life, so a player short of energy taps nothing.
+	if err := EnergyShortfall(p, ab.EnergyCost); err != nil {
+		return err
+	}
 	// #789: the counter components, validated by the SAME functions
 	// the CR 602 activated path uses, because it is the same
 	// component — a Vivid land's charge counter and Heart of Kiran's
@@ -6758,6 +6770,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		}
 		paid.LifePaid = ab.LifeCost
 		needStateChecks = true
+	}
+	// ADR 0129 §5: the energy, after the life, through the one path
+	// that pays energy (CR 107.14). Validated above.
+	if err := g.payEnergyLocked(playerID, ab.EnergyCost, cardID); err != nil {
+		return err
 	}
 	// #789: counters after the life and before the sacrifice, the
 	// same component order ActivateCatalogAbility pays in — a self

@@ -1814,6 +1814,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
 			continue
 		}
+		// ADR 0129 §5, CR 118.3: the energy component, through the
+		// predicate ActivateManaAbility refuses with (#544).
+		if game.EnergyShortfall(e.p, ab.EnergyCost) != nil {
+			continue
+		}
 		// A mana component in the cost is paid from the pool and,
 		// for what the pool is missing, from the seat's other
 		// sources (#2215: the move carries auto_tap). Affordability
@@ -1956,7 +1961,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						// and so is a charge counter: the params name the
 						// permanent but never the price. #1600: and so is
 						// Lion's Eye Diamond's hand.
-						cost := moveCost(ab.LifeCost, 0)
+						cost := withEnergy(moveCost(ab.LifeCost, 0), ab.EnergyCost)
 						for _, price := range cc.prices() {
 							cost = withCounterPrice(cost, price)
 						}

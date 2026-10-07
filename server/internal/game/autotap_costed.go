@@ -203,7 +203,7 @@ type costedSolver struct {
 	// costGeneric[j] is chain member j's generic.
 	costGeneric []int
 	deferred    int
-	pain        int
+	pain        spendBudget
 	budget      *int
 }
 
@@ -238,7 +238,7 @@ func (g *Game) autoTapCostedLocked(
 	floating := floatingSources(p.ManaPool)
 
 	budget := AutoTapBudget
-	painBudget := painBudgetFor(g, p.ID)
+	painBudget := autoTapSpendBudget(g, p.ID)
 	keys := make([]string, len(costed))
 	for i := range costed {
 		keys[i] = costedShapeKey(costed[i])
@@ -327,7 +327,7 @@ func costedShapeKey(s tapSource) string {
 		b.WriteString("|")
 		b.WriteString(strings.Join(slot.Options, ","))
 	}
-	b.WriteString("|" + s.OneColor + "|" + strconv.Itoa(s.Pain))
+	b.WriteString("|" + s.OneColor + "|" + strconv.Itoa(s.Pain) + "|" + strconv.Itoa(s.Energy))
 	for _, bit := range []bool{s.Frozen, s.Sacrifices, s.SacrificesCreature, s.Wanted, s.GrantedCreature} {
 		if bit {
 			b.WriteString("1")
@@ -367,7 +367,7 @@ func solveCostedChain(
 	seq []int,
 	ordinary, floating []tapSource,
 	cost ParsedCost,
-	xValue, painBudget int,
+	xValue int, painBudget spendBudget,
 	budget *int,
 ) (tapPlan, bool) {
 	m := len(seq)
@@ -393,13 +393,13 @@ func solveCostedChain(
 	}
 	for j, i := range seq {
 		s.add(costedSrc{tapSource: costed[i], pos: j}, true)
-		s.pain -= costed[i].Pain
+		s.pain.spend(costed[i])
 		s.costGeneric[j] = costed[i].Cost.Generic
 		for _, r := range costed[i].Cost.Required {
 			s.reqs = append(s.reqs, ownedReq{req: r, owner: j})
 		}
 	}
-	if s.pain < 0 {
+	if s.pain.overdrawn() {
 		return nil, false
 	}
 	for _, r := range widenedLast(cost.Required) {
@@ -429,13 +429,13 @@ func (s *costedSolver) add(src costedSrc, used bool) {
 func (s *costedSolver) use(i int) {
 	s.used[i] = true
 	s.taken[s.srcs[i].CardID] = true
-	s.pain -= s.srcs[i].Pain
+	s.pain.spend(s.srcs[i].tapSource)
 }
 
 func (s *costedSolver) unuse(i int) {
 	s.used[i] = false
 	delete(s.taken, s.srcs[i].CardID)
-	s.pain += s.srcs[i].Pain
+	s.pain.refund(s.srcs[i].tapSource)
 }
 
 func (s *costedSolver) book(i, k, owner int, color string) {
@@ -454,7 +454,7 @@ func (s *costedSolver) unbook(i, k int) {
 // its permanent is not already in it, and the pain budget covers it.
 func (s *costedSolver) usable(i int) bool {
 	src := s.srcs[i]
-	return src.pos == posOrdinary && !s.taken[src.CardID] && src.Pain <= s.pain
+	return src.pos == posOrdinary && !s.taken[src.CardID] && s.pain.covers(src.tapSource)
 }
 
 // colored places coloured requirement ri and every one after it, then

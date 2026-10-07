@@ -426,6 +426,10 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// ADR 0129 §5: zero is "no energy component".
+		if ma.Cost.Energy < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative energy cost %d", spec.Name, i, ma.Cost.Energy))
+		}
 		for _, r := range ma.SpendRiders {
 			if err := validateManaSpendRider(r); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d: %v", spec.Name, i, err))

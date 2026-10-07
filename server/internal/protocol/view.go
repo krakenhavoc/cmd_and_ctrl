@@ -3724,6 +3724,11 @@ type ManaAbilityView struct {
 	// appear here — it's part of the ability's Label.
 	// Added in the S22 mana-ability-rider pass.
 	LifeCost int `json:"life_cost,omitempty"`
+	// EnergyCost is a "Pay N {E}" component (ADR 0129 §5, §8) — Aether
+	// Hub's "{T}, Pay {E}:". Omitted at zero. When the controller is
+	// short, CantActivate carries the engine's refusal ("Not enough
+	// energy (have 0, need 1)").
+	EnergyCost int `json:"energy_cost,omitempty"`
 	// ManaCost is a mana component of the activation cost — the
 	// Signet cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}".
 	// Advisory, like LifeCost: the client renders the cost chip, and
@@ -6588,6 +6593,14 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 		if restricted {
 			views[i].CantActivate = g.CantActivateReasonLocked(controller, card, game.ZoneBattlefield,
 				game.ActivationAbility{Label: raw[i].Label, Mana: true})
+		}
+		// ADR 0129 §8: a controller short of the energy the row costs
+		// gets the engine's own refusal, so the row greys and the click
+		// and the engine agree.
+		if views[i].CantActivate == "" && raw[i].EnergyCost > 0 {
+			if short := game.EnergyShortfall(g.PlayerByIDForEffect(controller), raw[i].EnergyCost); short != nil {
+				views[i].CantActivate = short.Error()
+			}
 		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
@@ -10026,6 +10039,7 @@ func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityV
 			SacrificeCost: a.SacrificeCost,
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
+			EnergyCost:    a.EnergyCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,

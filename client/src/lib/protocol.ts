@@ -3644,6 +3644,9 @@ export interface ManaAbilityView {
   // damage to you", the painlands / Ancient Tomb) is NOT a cost and
   // never appears here — it is spelled out in `label` instead.
   life_cost?: number;
+  // ADR 0129 §5: a "Pay N {E}" component — Aether Hub's "{T}, Pay
+  // {E}:". When the controller is short, cant_activate says so.
+  energy_cost?: number;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with

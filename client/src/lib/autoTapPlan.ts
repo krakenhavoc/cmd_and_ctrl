@@ -25,6 +25,9 @@
 // #2392: a source can cost LIFE too — Mana Confluence's "Pay 1 life", or
 // a painland's coloured half dealing 1 damage — and the summary says how
 // much, since that does not come back either.
+//
+// ADR 0129 §5: and ENERGY — Aether Hub's "{T}, Pay {E}" — which the row
+// lists as "Pay {E}" against the source and the summary totals.
 
 import type { AutoTapPreview, AutoTapPreviewSource } from "./api";
 
@@ -43,6 +46,9 @@ export interface PlanRow {
   // life: the life paying with it costs you, as a cost or as its
   // damage (#2392). 0 for a painless source.
   life: number;
+  // energy: the energy paying with it costs you (ADR 0129 §5). 0 for a
+  // source that pays none.
+  energy: number;
 }
 
 // paymentOf reads a described source's cost components. A source the
@@ -54,6 +60,13 @@ export function paymentOf(src: AutoTapPreviewSource | undefined): PlanPayment {
   if (src.once_per_turn) return "once_per_turn";
   if (src.sacrifice) return src.tap ? "tap_sacrifice" : "sacrifice";
   return "tap";
+}
+
+// energyBadge is the "Pay {E}" a row shows beside its payment for a
+// source whose ability costs energy, in brace notation for ManaCost.
+// "" for a source that pays none.
+export function energyBadge(row: PlanRow): string {
+  return row.energy > 0 ? "{E}".repeat(row.energy) : "";
 }
 
 // paymentVerb is the short badge a row shows.
@@ -93,6 +106,7 @@ export function planRows(
       fromHand: src?.zone === "hand",
       gone: payment !== "tap" && payment !== "once_per_turn",
       life: (src?.life ?? 0) + (src?.damage ?? 0),
+      energy: src?.energy ?? 0,
     };
   });
 }
@@ -123,6 +137,8 @@ export function planSummary(rows: PlanRow[]): string {
   if (exiled.length > 0) parts.push(`exiles ${joinNames(exiled)} from your hand`);
   if (oncePerTurn.length > 0) parts.push(`uses ${joinNames(oncePerTurn)}'s once-each-turn ability`);
   const life = rows.reduce((n, r) => n + r.life, 0);
+  const energy = rows.reduce((n, r) => n + r.energy, 0);
+  if (energy > 0) parts.push(`pays ${energy} energy`);
   if (life > 0) parts.push(`costs you ${life} life`);
   const sentence = joinNames(parts);
   return sentence.charAt(0).toUpperCase() + sentence.slice(1) + ".";

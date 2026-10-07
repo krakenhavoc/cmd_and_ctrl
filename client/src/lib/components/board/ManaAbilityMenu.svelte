@@ -294,6 +294,13 @@
              cost, so it shows up in the label instead of here. -->
         <span class="cost" aria-label={`pay ${a.life_cost} life`}>♥{a.life_cost}</span>
       {/if}
+      {#if a.energy_cost}
+        <!-- ADR 0129 §5: "Pay {E}" (Aether Hub). A seat short of energy
+             has the row greyed by the server's cant_activate. -->
+        <span class="cost" title={energyCostWords(a)}>
+          <ManaCost cost={energyCostSymbols(a)} size={13} label={energyCostWords(a)} />
+        </span>
+      {/if}
     </button>
   {/each}
   {#if activated.length > 0 || manualLoyalty.length > 0}
