@@ -1,6 +1,6 @@
 # ADR 0126 — Bots that play their decks: the heuristic prices what a card does
 
-**Status:** Accepted · 2026-10-06 · S66 — Bots that play their decks. The owner accepted it on 2026-10-06 and answered its eight open questions, all as recommended. The answers are recorded under [Owner decisions](#owner-decisions-2026-10-06).
+**Status:** Accepted · 2026-10-06 · S66 — Bots that play their decks. The owner accepted it on 2026-10-06 and answered its eight open questions, all as recommended. The answers are recorded under [Owner decisions](#owner-decisions-2026-10-06). S66 closed on 2026-10-07 with the owner's [exit decisions](#exit-decisions-2026-10-07) on the acceptance bar.
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
@@ -275,7 +275,7 @@ Every sub-PR from §1 onward carries ADR 0052's report block in its description,
 | # | Measure | Today | Bar | Why this number |
 |---|---|---|---|---|
 | A1 | `never` count per deck (run 1) | 19–30 | **≤ 5 for every deck** | Some cards are legitimately held: a counterspell with nothing to counter, a removal spell with no target worth it, Kismet. Five per deck leaves room for those and nothing else. |
-| A2 | Mana rocks and dorks (run 1) | used in 0% of games where offered | **used in ≥ 80% of the games in which each was offered** | Casting a rock is almost always right. 80% leaves room for a turn where a land and a bigger spell use all the mana. |
+| A2 | Mana rocks and dorks (run 1) | used in 0% of games where offered | **used in ≥ 80% of the games in which each was offered** (amended for S66 on 2026-10-07: see [Exit decisions](#exit-decisions-2026-10-07)) | Casting a rock is almost always right. 80% leaves room for a turn where a land and a bigger spell use all the mana. |
 | A3 | The six canaries: Sol Ring, Rhystic Study, Mary Read's loot, Entomb, Harrow, Viscera Seer (run 1) | 0 uses | **each used in ≥ 50% of the games in which it was offered** | They name the six classes. If one stays dead, its class is not fixed. |
 | A4 | Wipes (suite) | always cast | **both new wipe positions pass, and are gated** | Arena games rarely set up the bad-wipe board, so a fixed position is the reliable test. |
 | A5 | New against baseline (run 2) | n/a | **`beats null: yes` for `heuristic`**: the Wilson interval's lower bound above 25% | The claim is that the bot plays its deck better, so it must beat the old bot in a fair seating. With 192 seat-games, that needs about 31% or more (about 60 of 96 games). |
@@ -369,6 +369,22 @@ The owner answered the eight open questions on 2026-10-06. Questions 1, 2, 4 and
 6. **Konrad's mill and the flat `ActivateBase`: left alone in S66.** Non-tap activated abilities stay at +0.50. Acceptance bar A6 decides whether black's lead needs a later change.
 7. **Which decks are measured: today's four.** The acceptance bar is measured on the current curated decks. #2436 is measured afterwards with the fixed heuristic.
 8. **The windows: both.** §5 applies in the bot's own second main phase and in the end step of the seat immediately before the bot's turn.
+
+Later in S66, the owner made three more decisions on #2435:
+
+- **A2 counts only offers made while the mana deficit is open** (2026-10-06). A late one-mana rock that §2 prices below zero on purpose, as in its "Arcane Signet, turn 9" row, does not count against the 80% bar. PR 3's run 1 had shown why: 221 of 287 unused one-mana rock and elf offers came with a deficit of 0 or less. PR 9 measures A2 this way.
+- **The label review** (2026-10-06): ten of the thirteen S66 positions were approved as written. The other three are recorded under PR 7 in [Measurements](#measurements): `windfall-discarding-a-spare-land` led to the [discard-payoff amendment](#amendment-2026-10-06-discard-payoffs), and the other two keep accepted answers the heuristic gives.
+- **Two follow-ups** came out of that review, outside S66: [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457) (cycling cards as cheap discards, and the bot's own draw step as a spend window) and [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458) (draw before deploying: a turn-mana lookahead for cantrips).
+
+## Exit decisions (2026-10-07)
+
+PR 9 measured the acceptance bar ([Measurements](#pr-9-the-exit-2026-10-06)). A1, A4, A6 and A7 passed; A2, A3, A5 and A8 failed. As §8 provides, the owner decided each on 2026-10-07. S66 ends with these decisions.
+
+- **A6: black's lead goes to #2436.** No retune in S66. The `ActivateBase` experiment showed that Konrad's flat-priced mill is not what makes mono-black win, and that the frozen baseline wins as often on that deck. Owner decision 6 stands: `ActivateBase` stays at 0.50.
+- **A2: amended for S66.** The bar was "used in ≥ 80% of the games in which each was offered", already narrowed by the owner on 2026-10-06 to offers made while the mana deficit is open. The amendment: in an open-deficit window, a rock or dork that is not cast must lose its window to a land drop or to another spell, never to a pass. PR 9's run 1 meets that: in all 571 such windows the bot played a land (275), cast another spell (295) or activated an ability (1). The 80% games-used rate (68% measured) is not an S66 bar. Casting the rock first and the spell a turn later needs a plan for the turn's mana, which is [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458).
+- **A3: accepted for S66, with Harrow as a follow-up.** Five of the six canaries pass. Harrow (30%) keeps the normal bar in the leftover windows because its land sacrifice is not a mana-and-taps cost. [#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469) treats a land sacrifice that the move's `purpose.lands` replaces as net mana for that rule. It is outside S66.
+- **A5: accepted on the pooled result.** Over the 96 games §8 names, `heuristic`'s interval (22.2%–34.9%) does not clear 25%. Over 288 games on three seed blocks it is 165 of 574, 28.7% (25.2%–32.6%), and every block points the same way.
+- **A8: accepted as known.** Every run-1 rejection was a pass racing a prompt that another seat's answer opened, which the runner recovers from. The two real defects behind the other rejections, [#2461](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2461) (auto-tap and bounce lands) and [#2462](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2462) (attacks after the active seat's pass), are fixed next, before #2436 is measured.
 
 ## Amendment (2026-10-06): discard payoffs
 
@@ -895,3 +911,107 @@ Run 2: 96 games, 0 stalls, turns p50 14 and 12 by half.
 | heuristic-baseline | 192 | 41 | 21.4% | 16.1%–27.7% | 0 |
 
 Not detectably worse: the upper bound is 35.4%. PR 8 measured the same 55 of 192. By half, `heuristic` won 11 of 96 on esper and izzet, and 44 of 96 on black and simic.
+
+### PR 9: the exit (2026-10-06)
+
+`develop` at `e84f04622`: PRs 2 to 8 and the discard-payoff amendment, with nothing added. `DefaultConfig()` against `BaselineConfig()` is the union of the rows above:
+
+- `ManaPerExtra` 1.00, `RampPerMana` 1.00, `RampWantCap` 7;
+- `PermanentPerMana` 0.50, `RowTriggered` / `RowStatic` / `RowActivated` 0.60 / 0.50 / 0.40, `RowCap` 3;
+- `LeftoverWindows` on, `LeftoverThreshold` 0.00, `SpellFloor` 1.30, `TapByTiming` on;
+- `PricePurposes` on, `TutorWeight` 1.00, `SelfMillWeight` 0.50, `DiscardWeight` 0.60, `TokenWeight` 0.50, `PriceSweeps` on, `DiscardCostByCard` on, `LastLandDiscard` 1.00;
+- `SacrificeDyingAnyway` on, `DeathPayoff` 0.60;
+- `PriceDiscardPayoffs` on.
+
+Every term is zero or off in `BaselineConfig()`. No weight moved from §9's starting values in S66. Arena runs use the concurrent schedule, turn budget 60.
+
+**Run 1:** the command in §8, seed 1. Run ID `2026-10-06T23:54:04.143426041Z`. 64 games, 0 stalls, 4 rejected moves, turns p50 13.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | `never` (PR 2) | `never` cards |
+|---|---:|---:|---|---:|---|
+| esper-control | 5 | 7.8% | 3.4%–17.0% | 1 (19) | Commander's Sphere |
+| izzet-aggro | 6 | 9.4% | 4.4%–19.0% | 3 (22) | Lotus Petal; Glint-Horn Buccaneer's and Professional Face-Breaker's activations |
+| mono-black-aristocrats | 38 | 59.4% | 47.1%–70.5% | 4 (29) | Ashnod's Altar, Phyrexian Altar, Blood Artist; Burnished Hart's activation |
+| simic-ramp | 15 | 23.4% | 14.7%–35.1% | 2 (24) | Tarmogoyf; Sakura-Tribe Elder's sacrifice |
+
+Canaries (A3), games used out of games offered:
+
+| Canary | Deck | Used | Rate | PR 2 |
+|---|---|---:|---:|---:|
+| Sol Ring | esper, izzet, black, simic | 23 of 24, 17 of 17, 14 of 14, 19 of 21 | 90%–100% | 0% |
+| Rhystic Study | esper | 10 of 17 | 59% | 0% |
+| Rhystic Study | simic | 18 of 23 | 78% | 0% |
+| Mary Read and Anne Bonny's loot | izzet | 46 of 61 | 75% | 0% |
+| Entomb | black | 11 of 16 | 69% | 0% |
+| Harrow | simic | 8 of 27 | 30% | 0% |
+| Viscera Seer (cast) | black | 23 of 23 | 100% | 0% |
+
+Mana rocks and dorks (A2), measured as the owner decided on #2435 (below). The same command and seed were run again with `--decision-log --decision-log-mode all` (run ID `2026-10-07T00:00:13.141101708Z`, `run1log` below), because the deficit is read off each window's view. Over the games in which each rock or dork was offered while the bot's mana deficit was open, it was cast in **210 of 311 (68%)**. PR 7 measured 214 of 323 (66%) the same way.
+
+- **At or above 80%:** Sol Ring 32 of 32, Llanowar Elves 14 of 14, Fyndhorn Elves 6 of 6, Birds of Paradise 11 of 11, Delighted Halfling 7 of 7, Palladium Myr 10 of 11, Hedron Archive 7 of 8, Elvish Mystic 5 of 6, Ornithopter of Paradise 8 of 10, Talisman of Curiosity 8 of 10.
+- **Below 80%:** Worn Powerstone 10 of 13, Thought Vessel 13 of 20, Simic Signet 5 of 8, Mind Stone 21 of 35, Arcane Signet 20 of 40, Dimir Signet 7 of 14, Talisman of Creativity 6 of 13, Azorius Signet 4 of 9, Orzhov Signet 3 of 7, Izzet Signet 4 of 10, Commander's Sphere 7 of 21, Talisman of Progress 2 of 6.
+- **Why they stop short.** In every one of the 571 windows where a rock was offered with the deficit open and not taken, the bot did something else in that window: it played a land in 275, cast another spell in 295, and activated an ability in 1. It never passed over one. The rock's own price there was positive (+0.80 for a two-mana Signet in 446 of them). By its next window, the land and the other spell had usually closed the deficit, and a rock with no deficit is priced below zero on purpose (§2's "Arcane Signet, turn 9" row). Casting the rock first and the spell a turn later is a turn plan, which the heuristic does not make.
+
+**Run 2:** the shape in §8, seeds 1 to 48 in both halves. Run IDs `2026-10-06T23:54:04.114189398Z` (half A: `heuristic` on esper and izzet) and `2026-10-06T23:54:04.17840261Z` (half B, swapped). 96 games, 0 stalls, turns p50 14 and 12 by half.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | Rejected moves |
+|---|---:|---:|---:|---|---:|
+| heuristic | 192 | 54 | 28.1% | 22.2%–34.9% | 0 |
+| heuristic-baseline | 192 | 42 | 21.9% | 16.6%–28.2% | 1 |
+
+By half, `heuristic` won 10 of 96 seat-games on esper and izzet, and 44 of 96 on black and simic.
+
+**Suite:** `boteval suite run --policy heuristic`: 37 of 37 agree, every tag at 100% (activate 3, attack 4, block 4, cast 19, choice 1, combat 8, discard 2, land 4, leftover 3, mulligan 6, removal 1, sacrifice 2, wipe 2). Every S66 position is gated for `heuristic`, and all thirteen labels the owner reviewed are stamped.
+
+#### The acceptance bar
+
+| # | Bar | Result | Evidence |
+|---|---|:--:|---|
+| A1 | `never` ≤ 5 for every deck (run 1) | **PASS** | 1, 3, 4 and 2 (PR 2: 19, 22, 29 and 24) |
+| A2 | each rock and dork used in ≥ 80% of the games it was offered in, counting offers made while the deficit is open | **FAIL** | 210 of 311 overall (68%); 10 of 22 cards meet 80%, 12 do not |
+| A3 | each canary used in ≥ 50% of the games it was offered in | **FAIL** | five of six pass (Sol Ring 90%–100%, Rhystic Study 59% and 78%, the loot 75%, Entomb 69%, Viscera Seer 100%); Harrow 8 of 27, 30% |
+| A4 | both wipe positions pass, gated | **PASS** | `do-not-wrath-your-winning-board` and `wrath-a-losing-board` agree, gated for `heuristic` |
+| A5 | `heuristic`'s run 2 interval lies above 25% | **FAIL** | 54 of 192, 28.1%, 22.2%–34.9% |
+| A6 | no deck's run 1 interval lies entirely above 50% | **PASS, narrowly** | mono-black 47.1%–70.5%. Not robust: see below |
+| A7 | every gated position passes; no tag falls | **PASS** | 37 of 37, every tag 100% |
+| A8 | 0 stalls; rejected moves not above the baseline run's; turns p50 within ±3 | **FAIL on rejected moves** | 0 stalls in runs 1 and 2. Turns p50 13 (run 1) and 14 / 12 (run 2), against PR 2's 14. Rejected moves: run 2 has 0 for `heuristic` against 1 for `heuristic-baseline`, but run 1 has 4 against PR 2's 2 |
+
+**A6 is not robust.** Run 1 again with the same seeds and the decision log on (`run1log`) gave mono-black 40 of 64, 62.5% (50.3%–73.3%), which fails. Run 1's shape on seeds 65 to 128 gave 38 of 64, 59.4% (47.1%–70.5%), which passes. Pooled over the three runs, mono-black won 116 of 192 seat-games, 60.4% (53.4%–67.1%): its interval lies entirely above 50%. Black's lead is the deck's, not S66's. `heuristic-baseline` on black won 30 of 48 seat-games, 62.5%, in run 2's half A, without casting a single enchantment engine, and PR 2's run 1 had black at 59.4%.
+
+**What drives black's lead.** From run 1's per-seat card counts:
+
+- Syr Konrad's mill: 139 activations in 33 of 56 games where it was offered. PR 2 had 222 in 44 of 61. Black won 16 of the 31 games (52%) in which Konrad did not mill.
+- Sanguine Bond: black won 11 of the 13 games in which it cast it (85%), and 27 of the 51 in which it did not (53%). It cast both halves of the drain loop in 4 games and won all 4.
+- Death payoffs: black won 28 of 43 games with one or two cast (65%), and 9 of 16 with three or more (56%).
+
+These are correlations within a deck that wins most of its games either way; a longer game sees more of every card.
+
+**An experiment, not committed.** `ActivateBase` 0.25 in place of 0.50, run 1's shape on seeds 1 to 64 and 65 to 128. At 0.25, a purposeless non-tap activation on an untapped creature prices at −0.05 and on a tapped one at 0.25, so it clears neither `PassThreshold` nor `LeftoverThreshold` on its own.
+
+| Run 1 shape | `ActivateBase` 0.50 (develop) | `ActivateBase` 0.25 |
+|---|---|---|
+| Black, seeds 1–64 | 38 of 64, 59.4% | 42 of 64, 65.6% (53.4%–76.1%) |
+| Black, seeds 65–128 | 38 of 64, 59.4% | 39 of 64, 60.9% (48.7%–71.9%) |
+| Konrad mills, seeds 1–64 / 65–128 | 139 / 136 | 89 / 87 |
+| `never`, esper / izzet / black / simic, seeds 1–64 | 1 / 3 / 4 / 2 | 2 / 9 / 7 / 3 |
+
+Halving `ActivateBase` cut Konrad's mills by about a third and did not lower black's win rate, 81 of 128 against 76 of 128. It also added twelve entries to the `never` lists, every one an activated ability with no declared purpose: Mind Stone's in all four decks, Commander's Sphere's in izzet and black, Hedron Archive's, and Krenko, Mob Boss's, Marauding Mako's, Magmakin Artillerist's, Scrounging Skyray's and Solphim's. Konrad's mill is not what makes black win.
+
+**Run 2 on fresh seeds.** Run 2's shape twice more, on seeds 49 to 96 and 97 to 144:
+
+| Seeds | `heuristic` | Wilson 95% interval | `heuristic-baseline` |
+|---|---|---|---|
+| 1–48 (run 2) | 54 of 192, 28.1% | 22.2%–34.9% | 42 of 192, 21.9% |
+| 49–96 | 58 of 192, 30.2% | 24.2%–37.0% | 38 of 192, 19.8% |
+| 97–144 | 53 of 190, 27.9% | 22.0%–34.7% | 42 of 190, 22.1% |
+| pooled | 165 of 574, 28.7% | **25.2%–32.6%** | 122 of 574, 21.3% |
+
+Every block points the same way, and pooled over 288 games the `heuristic` interval lies above 25%. One game in the 97 to 144 block (seed 141) stalled at the CR 732 loop breaker after a drain loop eliminated two seats, the #2450 shape.
+
+**Rejected moves.** Every rejection in these runs is one of three kinds:
+
+- A pass decided just before another seat's answer opened a blocking prompt: Rhystic Study's "draw a card?" after the payer declined, or Sun Titan's trigger. The table is fine and the runner decides again. These exist because the bot now casts Rhystic Study. Run 1's four rejections are all of this kind.
+- An attack declared after the active seat had passed priority in declare attackers. The enumerator still offers attacks then, and Layer A takes one as the only legal move. In `run1log`, 28 such attacks were accepted, in 23 of 64 games, and 6 were refused because the step had moved on. Filed as #2462.
+- A cast refused for insufficient mana. The auto-tapper books one slot of a bounce land twice (Simic Growth Chamber's `{G}{U}` as `{U}{U}`), and a refused strict cast leaves the land tapped and its mana floating. Filed as #2461, with a reproduction.
+
+**For the owner.** A1, A4 and A7 pass. A6 passes on the run §8 names, but not robustly. A2, A3, A5 and A8 fail, with the evidence above. A5 passes on the 288 pooled games. The owner decided them on 2026-10-07: see [Exit decisions](#exit-decisions-2026-10-07).
