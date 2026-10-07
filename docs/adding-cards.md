@@ -992,9 +992,36 @@ energy tier: only when no plan that spends no energy pays, before the
 pain tier, and never for more energy than the controller has across the
 whole plan (ADR 0129 owner decision 2).
 
-**Not yet:** energy paid while an ability resolves ("you may pay {E}{E}.
-If you do", "unless you pay {E}", "pay any amount of {E}") waits on
-ADR 0129 PR 3; energy as an alternative cost, replicate or a keyword's cost on PR 4;
+**Paying it while an ability resolves** (PR 3, CR 118.12 and 118.12a).
+Each primitive queues a prompt, so what the card does after the payment
+goes inside the branch, never after `Apply` returns. Every one holds the
+step it was asked in, so an attack trigger's counter lands before
+blockers.
+
+```go
+MayPayEnergy{N: 2, Question: "…", OnPay: func(ctx *Context) error { … }}        // "you may pay {E}{E}. If you do, …"
+PayEnergyUnless{N: 2, Question: "…", OnDecline: func(ctx *Context) error { … }} // "sacrifice it unless you pay {E}{E}"
+PayEnergyOrElse{N: 2, OrElse: func(ctx *Context) error { … }}                    // "pay {E}{E}. If you can't, …" (asks nothing)
+PayEnergyAmount{Min: 0, Unit: game.PayAmountDamage, Goal: lethalDamageGoal,      // "you may pay any amount of {E}"
+	Then: func(ctx *Context, paid int) error { … }}                               // Min: 1 for "one or more"
+```
+
+`MayPayEnergy` / `PayEnergyUnless` are the `pay_unless` prompt with an
+energy payment: "Pay" is a payment only when the payer has the energy
+(CR 118.3), and an amount computed at resolution ("an amount of {E}
+equal to its mana value") is just `N`. `PayEnergyAmount` is the
+`pay_amount` prompt: `Then` always runs exactly once, with 0 when
+nothing was paid (no energy, declined, or the payer left), so the rest
+of the card ("Destroy all creatures") lives inside it. `Goal` is the
+amount the card is for, computed when it is asked (the lethal damage,
+`lethalDamageGoal`; `AsMuchAsYouCan` for counters or a token's size):
+the bot pays it and the stepper opens on it. A reflexive "When you do,
+…" is `WhenYouDo(...)` applied inside `OnPay`. The shared lines are in
+`effects/energy_resolution.go`: `whenThisAttacksMayPayEnergy`,
+`mayPayEnergyThen`, `sacrificeThisUnlessYouPayEnergy`,
+`getEnergyThenPayAnyAmountToDamageTarget`.
+
+**Not yet:** energy as an alternative cost, replicate or a keyword's cost waits on ADR 0129 PR 4;
 "whenever you get one or more {E}" and "{E} you've paid or lost this
 turn" on PR 5. Put such a card on the matching registry row's `Waiting`
 list.

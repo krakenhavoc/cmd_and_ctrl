@@ -45,3 +45,16 @@ func capEnergyX(pay abilityManaPayment, cost game.AbilityCost, ceiling, floor in
 	}
 	return pay, true
 }
+
+// payAmountOffers is what a pay_amount prompt (ADR 0129 §3) is offered
+// as: nothing, the smallest payment, the card's own threshold when it
+// names one, and the ceiling, each once, ascending.
+func payAmountOffers(pa *game.PayAmountPrompt) []int {
+	out := []int{0}
+	for _, n := range []int{pa.Min, pa.Goal, pa.Max} {
+		if n > out[len(out)-1] && n >= pa.Min && n <= pa.Max {
+			out = append(out, n)
+		}
+	}
+	return out
+}
