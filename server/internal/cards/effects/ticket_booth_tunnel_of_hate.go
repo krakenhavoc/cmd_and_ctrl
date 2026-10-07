@@ -8,17 +8,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	Tunnel of Hate {4}{R}{R}: "Whenever you attack, target attacking
 //	 creature gains double strike until end of turn."
 //
-// Ticket Booth is NOT implemented: manifest dread (CR 701.62a) has no
-// keyword action in the engine, so the door is empty. That is weaker
-// than printed, and the card says so. Tunnel of Hate is one trigger per
-// attack declaration (the OncePerBatch Hospital Room uses) whose
-// attacking-creature target is chosen as it goes on the stack.
+// Ticket Booth is manifest dread (CR 701.62a, ADR 0082's 2026-10-07
+// amendment). Tunnel of Hate is one trigger per attack declaration (the
+// OncePerBatch Hospital Room uses) whose attacking-creature target is
+// chosen as it goes on the stack.
+//
+// No simplification.
 func init() {
 	Register(Room(RoomSpec{
 		OracleID:     "4d01b62b-b924-4da5-8ff5-b2f29d7f19b2",
 		Name:         "Ticket Booth // Tunnel of Hate",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Ticket Booth's manifest dread isn't implemented, so unlocking it does nothing."},
+		Completeness: CompletenessFull,
+		Left: Door{Triggered: []game.TriggeredAbility{
+			WhenYouUnlockThisDoor(game.DoorLeft, "Ticket Booth — manifest dread", Do(ManifestDread{})),
+		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			OncePerBatch(Targeting(
 				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
