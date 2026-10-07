@@ -73,6 +73,16 @@ surface tiny.
    resolution against the source's effective power, or its last-known
    power once it has left (#2146). Don't read `source.CurrentPower()` in
    a `TargetsFrom`: that freezes the bound when the trigger is built.
+   "Target creature it's blocking" / "blocked by this creature" /
+   "blocking equipped creature" is the same idea for combat: wrap the
+   clause in `BlockedBySource(spec)`, `BlockingSource(spec)`,
+   `BlockingEquipped(spec)` or `BlockedByEquipped(spec)` and keep the
+   candidate's own type and keywords in the predicates
+   (`BlockedBySource(TargetCreature("…", HasKeyword("flying")))`). It is
+   `game.TargetSpec.CombatWithSource`, judged at announce and at
+   resolution; a creature removed from combat in response is illegal,
+   and a source that has left is read from its last-known blocks
+   (#1863, ADR 0019 amendment 2026-10-07).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
