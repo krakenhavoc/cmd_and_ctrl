@@ -9,6 +9,7 @@ import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane"
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
 import { normalizeSeen } from "./hints/seen";
+import { DEFAULT_PLAYMATS_MODE, isPlaymatsMode, type PlaymatsMode } from "./playmatMode";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -157,6 +158,13 @@ export interface Settings {
     //                    where a player reads what a card does.
     battlefieldArt: boolean;
     handArt: boolean;
+    // ADR 0128: whose playmats are drawn behind the battlefields.
+    // "all" (the default) draws every player's, "mine" only yours,
+    // "off" none. Per device: it is about this screen (a low-power
+    // phone, a window where someone else's art is a distraction), not
+    // about the person. Having a playmat of your own is an account
+    // matter and lives on the server (PUT /me/playmat), not here.
+    playmats: PlaymatsMode;
   };
 
   gameplay: {
@@ -424,6 +432,9 @@ export function defaultSettings(): Settings {
       // in the hand.
       battlefieldArt: true,
       handArt: false,
+      // ADR 0128: every player's playmat is drawn, until the player
+      // turns them down.
+      playmats: DEFAULT_PLAYMATS_MODE,
     },
     gameplay: {
       confirmExit: true,
@@ -570,6 +581,8 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     // answer 5).
     battlefieldArt: "synced",
     handArt: "synced",
+    // ADR 0128: about this screen, not the person.
+    playmats: "device",
   },
   gameplay: {
     confirmExit: "synced",
@@ -936,6 +949,14 @@ function migrate(raw: unknown): Settings {
   if (!isTableLayout(merged.display.tableLayout)) {
     merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
   }
+  // ADR 0128: display.playmats is new. The shallow merge fills it with
+  // "all" for any older blob, and a value that is not one of the three
+  // (a hand edit) falls back to the default rather than to a board that
+  // draws nothing for a reason nobody can see. No version bump: it is
+  // per device, so no account copy carries it.
+  if (!isPlaymatsMode(merged.display.playmats)) {
+    merged.display.playmats = DEFAULT_PLAYMATS_MODE;
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
@@ -1133,6 +1154,7 @@ export type SettingsTab =
   | "audio"
   | "animations"
   | "display"
+  | "playmat"
   | "gameplay"
   | "shortcuts"
   | "accessibility"

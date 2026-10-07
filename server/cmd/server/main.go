@@ -162,6 +162,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -338,6 +339,10 @@ func main() {
 	// by the same person's next one) closes its sockets through the
 	// hub, as an operator delete does (ADR 0076 §2.2).
 	l.SetEvictor(hub)
+	// Playmats (ADR 0128): wired BEFORE RestoreFromDisk so a resumed
+	// table's seats get their owners' mats back.
+	playmats := newPlaymatService(log, cfg.DataDir, database)
+	l.SetPlaymats(playmats)
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
 	// database at scrape time.
@@ -575,6 +580,7 @@ func main() {
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
+		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
@@ -1093,6 +1099,19 @@ func newUserSettingsStore(database *db.DB) usersettings.Store {
 		return usersettings.NoStore{}
 	}
 	return usersettings.NewSQLStore(database)
+}
+
+// newPlaymatService builds the playmat feature (ADR 0128, migration
+// 0011). It needs both a data directory (the images live under
+// <data>/playmats) and a database (the pointer is users.playmat_id);
+// without either it is disabled, which the client reads from GET
+// /me/playmat and hides its Settings section for.
+func newPlaymatService(log *slog.Logger, dataDir string, database *db.DB) *playmat.Service {
+	if dataDir == "" || database == nil {
+		log.Info("playmats disabled — they need CMDCTRL_DATA_DIR and the user database")
+		return playmat.NewService(playmat.NewFileStore(""), nil, nil)
+	}
+	return playmat.NewService(playmat.NewFileStore(filepath.Join(dataDir, "playmats")), database.DB, playmat.NewFetcher())
 }
 
 // newTableSetupStore builds the last-setup store (ADR 0110 section 5,

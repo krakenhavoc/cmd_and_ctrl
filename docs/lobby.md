@@ -2519,6 +2519,112 @@ always a 412.
 - A failed write never blocks the UI. It is retried with a backoff, and
   again when the browser comes back online.
 
+### Playmats (ADR 0128)
+
+A signed-in person can give themselves one **playmat**: an image every
+player at the table sees behind *their* battlefield, as with a mat on a
+paper table. One per account. Bots, guests and agent seats have none.
+The reasons for every choice here are in
+[ADR 0128](decisions/0128-playmats.md).
+
+| Route | Who | What |
+|---|---|---|
+| `GET /me/playmat` | a signed-in person | the caller's playmat |
+| `PUT /me/playmat` | a signed-in person | upload one: `multipart/form-data`, part `file` |
+| `POST /me/playmat/link` | a signed-in person | `{"url": "https://…"}`: the server fetches it once and stores it |
+| `DELETE /me/playmat` | a signed-in person | remove it |
+| `PATCH /me/playmat` | a signed-in person | `{"wash": 30..90}`: how dark the playmat is under the cards (ADR 0128 amendment) |
+| `GET /playmats/{id}` | any session | the image |
+| `DELETE /admin/users/{id}/playmat` | admin | remove anyone's playmat (moderation) |
+
+Same caller rule as the rest of `/me/*`: no credential is **401**; a
+guest's seat or spectator session, the admin token and every session on
+a deployment with no database are **403**, never 401 (#1154). A server
+with a database but no `CMDCTRL_DATA_DIR` has nowhere to store an
+image: `GET /me/playmat` answers `{"enabled": false}` and the writes are
+**503**. The client hides the Settings section in both cases.
+
+**The body of all four `/me/playmat` routes**, with `Cache-Control:
+no-store`:
+
+```json
+{ "enabled": true, "url": "/playmats/6f1c2a9e-1b2c-4d3e-8f40-0123456789ab", "width": 2560, "height": 1440 }
+```
+
+`url`, `width` and `height` are absent for a person with none.
+`url` is always this server's own route, never the link that was pasted.
+
+**What is stored.** The bytes sent are never stored. They are decoded
+(PNG, JPEG or WebP, by content, never by `Content-Type` or file name;
+anything else, including GIF and SVG, is **415**), refused over 10 MB
+(**413**) or over 40 megapixels (**413**, judged from the header before
+any pixel buffer exists), downscaled so the long edge is at most 2560 px,
+and re-encoded as a JPEG at quality 85. That strips EXIF (a phone photo
+carries the location), XMP and anything appended to the original; the
+EXIF orientation is applied first, so a portrait photo is not stored
+sideways. Transparency is flattened onto white. The file is
+`<data dir>/playmats/<uuid>.jpg` and `users.playmat_id` points at it.
+A replacement is a new uuid, the old file is deleted, and the old URL
+is a 404 from then on. Removing deletes the file.
+
+**`POST /me/playmat/link`.** The server makes the request, once, and
+stores the result exactly like an upload; the link is never kept or
+shown to anyone, and no other player's browser ever contacts that host.
+The fetch is guarded against SSRF (ADR 0128 §3): `https` only (an
+`http` link is refused); the address is checked **where it is
+dialled**, on the resolved IP, so a name that resolves to a private
+address, or rebinds to one, is refused; loopback, private, link-local
+(including `169.254.169.254`), carrier-grade NAT, multicast,
+unspecified, unique-local and reserved ranges are all refused, and an
+IPv4 address written as IPv6 (`::ffff:`, NAT64, 6to4) is judged by the
+IPv4 address inside it; every redirect is checked the same way, at most
+3, and a redirect to `http` is refused; 10 seconds for the whole
+request; the body is capped at 10 MB; no proxy, cookies, credentials or
+`Referer`. A refusal is **422** `{error}` that says what to do and never
+echoes what the guard saw.
+
+| Status | When |
+|---|---|
+| 200 | Stored (or removed, for `DELETE`; removing none is a 200) |
+| 400 | Not multipart, or no `file` part; a link body that is malformed |
+| 401 / 403 | See the caller rule above |
+| 413 | Over 10 MB, or over 40 megapixels |
+| 415 | Not a PNG, JPEG or WebP |
+| 422 | The link was refused or could not be fetched |
+| 429 | Over the per-person bucket (a burst of 5, then one every 6 seconds, shared by upload, link and remove) or the per-IP one (1 a second, a burst of 10). `Retry-After` is set |
+| 503 | No data directory; or too many images are being decoded at once (`Retry-After: 5`: at most 2 at a time) |
+
+**`GET /playmats/{id}`** needs a session, like `/avatars` and `/cards`,
+and any session may fetch any id: every player must see every other
+player's mat. There is no listing route. The `<img>` carries the session
+as `?token=`, as an avatar's does. Served as `image/jpeg` with
+`X-Content-Type-Options: nosniff`, `Content-Security-Policy:
+default-src 'none'; sandbox`, `Referrer-Policy: no-referrer` and
+`Cache-Control: private, max-age=31536000, immutable` (the bytes at a
+URL never change). A malformed or unknown id is **404**, the same
+answer for both.
+
+**On the wire.** The seat's owner's playmat is `PlayerView.playmat_url`
+([docs/protocol.md](protocol.md)), stamped by the room on every capture,
+so a change reaches everyone on the next state broadcast.
+
+**The wash** (ADR 0128 amendment) is the owner's: how strongly their
+playmat is darkened under the cards, a whole percentage from 30 to 90,
+58 until they set one. Every `/me/playmat` answer carries it as `wash`
+while the feature is enabled. `PATCH /me/playmat` with `{"wash": n}`
+sets it, image or not; out of range, a non-number or any other field is
+**400**. Its rate is one a second per person with a burst of 5 (a
+slider's worth), apart from the upload bucket. The table sees it as
+`PlayerView.playmat_wash` beside the URL, pushed to every live seat the
+person holds as an upload is. It is stored in `users.playmat_wash`
+(migration 0012).
+
+**`DELETE /admin/users/{id}/playmat`** is `requireAdmin`, so admin mode
+off gets a non-admin's 403. **204**, also for a person with none; **404**
+for an unknown user; **400** for a malformed id. The person can upload
+another; this removes an image and does not ban the feature. The
+admin account view has no button for it yet.
+
 ### `POST /deck-requests`
 
 Ask for a deck's missing cards to be added to the engine

@@ -100,6 +100,16 @@ type Room struct {
 	hostMu sync.Mutex
 	host   uuid.UUID
 
+	// playmats maps a seat to the URL of its owner's playmat (ADR
+	// 0128), set by the lobby through SetPlaymat and stamped on every
+	// capture. Guarded by playmatMu, never by mu, for the same reason
+	// as host. See playmat.go.
+	playmatMu sync.Mutex
+	playmats  map[uuid.UUID]string
+	// playmatWashes is each seat's owner-set wash, stamped beside its
+	// URL (ADR 0128 amendment). Same guard.
+	playmatWashes map[uuid.UUID]int
+
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
 	// census (#524) can report how far a live table has drifted from
@@ -635,6 +645,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	}
 	view := protocol.ViewOfGame(r.Game)
 	r.stampHostLocked(&view)
+	r.stampPlaymatsLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot

@@ -71,6 +71,9 @@ describe("SYNCED_FIELDS", () => {
         "display.opponentDetail",
         "display.expandActivePlayer",
         "display.expandStyle",
+        // Whose playmats this screen draws (ADR 0128 §2): a low-power
+        // phone and a desk want different answers from one person.
+        "display.playmats",
         "accessibility.textScale",
         // Follow the OS reduced-motion signal at runtime.
         "animations.enabled",
