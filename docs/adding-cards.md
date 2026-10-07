@@ -6222,8 +6222,14 @@ A spell file that moves its own card (Beacon, Rise of the Eldrazi's
 `TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
 spell moving itself is not a permanent's ability.
 
-Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
-no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
+Skipping an EXTRA turn is `SkipOpponentsExtraTurns()` in `Spec.Replacements`
+(Trouble in Pairs, #2529): a CR 614 replacement over `RepEventExtraTurn`,
+the window the rotation seam opens when a queued extra turn would begin.
+A cancel is the skip, and a delayed trigger bound to that turn goes with
+it (CR 614.10a). The window cannot pause (ADR 0059 amendment 2026-10-07),
+so write the replacement as a pure cancel. Skipping a NORMAL turn ("skip
+your next turn": Magosi, Lethal Vapors) and a step of a named turn (Savor
+the Moment) have no shape yet. Declare those as a caveat.
 
 ### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
 

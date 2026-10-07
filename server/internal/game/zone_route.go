@@ -459,8 +459,8 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// run, and running it again through the cleared pointer would
 		// be a no-op rather than a second payout.
 		return nil
-	case RepEventDraw, RepEventCounter, RepEventStepTransition, RepEventProduceMana:
-		// No continuation exists on any of the four, so an abandoned
+	case RepEventDraw, RepEventCounter, RepEventStepTransition, RepEventProduceMana, RepEventExtraTurn:
+		// No continuation exists on any of the five, so an abandoned
 		// one owes nobody an answer. A cancelled step transition is a
 		// SKIP and does move the cursor (CR 500.11), but only when its
 		// prompt is ANSWERED — one taken away leaves the step where it

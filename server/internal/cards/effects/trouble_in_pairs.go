@@ -31,21 +31,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // swings the whole team at somebody else gives you nothing. An attack
 // at your planeswalker or battle counts as an attack at you.
 //
-// One clause is dropped: "If an opponent would begin an extra turn,
-// that player skips that turn instead." Extra turns exist since #753
-// (ADR 0059 Decision 5), but skipping a turn does not: ADR 0059
-// Decision 14 leaves "skip a turn" (CR 614.10) out of scope, and the
-// replacement needs an event for a turn about to begin. So an
-// opponent's Time Warp still gives them the turn — weaker than
-// printed, in this card's controller's disfavour.
+// "If an opponent would begin an extra turn, that player skips that
+// turn instead" is SkipOpponentsExtraTurns (#2529): a CR 614 replacement
+// over RepEventExtraTurn, the window the rotation seam opens when a
+// queued extra turn is about to begin. An opponent's Time Warp is still
+// cast and still resolves; the turn it queued simply never begins, and
+// the log says so. The controller's own extra turns are untouched.
 func init() {
 	Register(Spec{
 		OracleID:     "f349f58b-8cc8-45e4-9565-2b46fdf976c9",
 		Name:         "Trouble in Pairs",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The clause that makes an opponent skip an extra turn isn't implemented — they still take it.",
-		},
+		Completeness: CompletenessFull,
+		Replacements: []game.ReplacementEffect{SkipOpponentsExtraTurns()},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return opponentAttackedYouWithAtLeast(ev, source, g, 2, troubleInPairsAttackLabel)
