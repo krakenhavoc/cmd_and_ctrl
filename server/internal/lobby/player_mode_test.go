@@ -1048,6 +1048,10 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /admin/users/{id}/playmat", []string{"route:DELETE /admin/users/{id}/playmat"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmat", nil)
 		}},
+		// ... and one saved playmat of three (ADR 0128 section 11).
+		{"DELETE /admin/users/{id}/playmats/{slot}", []string{"route:DELETE /admin/users/{id}/playmats/{slot}"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmats/2", nil)
+		}},
 		{"GET /games/{id}/bot/stats", []string{"BotStatsHandler"}, true, httpProbe("GET", "/games/{id}/bot/stats", nil)},
 		// The admin views (ADR 0124 §8).
 		{"GET /admin/users", []string{"route:GET /admin/users"}, true, httpProbe("GET", "/admin/users?played=7d", nil)},

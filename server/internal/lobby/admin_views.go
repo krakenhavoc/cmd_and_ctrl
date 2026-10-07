@@ -149,8 +149,14 @@ func adminViewAccount(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return adminViewFailed(c, "account", err)
 	}
-	if c.Playmats != nil {
-		rows.PlaymatURL = c.Playmats.URL(id)
+	if c.Playmats.Enabled() {
+		// A failed read shows no thumbnails and does not fail the view:
+		// the playmats are an extra, not the account.
+		if st, err := c.Playmats.State(r.Context(), id); err == nil {
+			for _, s := range st.Slots {
+				rows.Playmats = append(rows.Playmats, adminview.PlaymatSlot{Slot: s.Slot, URL: s.URL, Active: s.Slot == st.Active})
+			}
+		}
 	}
 	return writeJSON(w, http.StatusOK, adminview.MergeAccount(rows, live, ov, c.now()))
 }

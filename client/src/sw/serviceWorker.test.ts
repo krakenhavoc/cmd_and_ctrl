@@ -100,7 +100,7 @@ describe("service worker routing", () => {
     // cache already holds (immutable); the worker must not keep a second
     // copy of someone's living room.
     "/playmats/6f1c2a9e-0000-4000-8000-000000000000",
-    "/me/playmat",
+    "/me/playmats/2",
     "/bugreport",
     "/bugreport/upload",
     // S31 bot seats: the Add-bot picker's options probe.

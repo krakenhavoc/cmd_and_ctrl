@@ -795,6 +795,27 @@ the default 58% again. Rolling forward again recreates the column empty.
 `TestMigration0012RollbackByHand` runs exactly this sequence and then
 rolls forward.
 
+Migration 0013 (ADR 0128 §11, three saved playmats) adds one table,
+`user_playmats`, one row per saved playmat (user, slot 1 to 3, image
+id), and backfills every existing `users.playmat_id` into slot 1. An
+older binary refuses the v13 schema. Drop the table by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE user_playmats; DELETE FROM schema_migrations WHERE version = 13;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+`users.playmat_id` is not touched, and keeps pointing at the **active**
+mat, so the older binary finds the one playmat it knew. It costs the
+other saved mats: their files stay under `<data dir>/playmats/` as files
+nothing points at, and can be deleted. Rolling forward again recreates
+the table and backfills the active mat into slot 1, so a person who had
+three is back to one. `TestMigration0013RollbackByHand` runs exactly
+this sequence and then rolls forward.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,

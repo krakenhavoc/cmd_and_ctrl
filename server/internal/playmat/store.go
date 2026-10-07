@@ -99,6 +99,15 @@ func (s *FileStore) Open(id string) (*os.File, os.FileInfo, error) {
 	return f, info, nil
 }
 
+// Exists reports whether a stored image is on disk, without opening it.
+func (s *FileStore) Exists(id string) bool {
+	if !s.Enabled() || !ValidID(id) {
+		return false
+	}
+	info, err := os.Stat(s.path(id))
+	return err == nil && !info.IsDir()
+}
+
 // Delete removes a stored image. A missing file is not an error: the
 // caller is cleaning up and the goal state already holds.
 func (s *FileStore) Delete(id string) error {

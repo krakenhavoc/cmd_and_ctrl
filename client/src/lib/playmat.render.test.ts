@@ -6,9 +6,9 @@
 //     zones, under the per-device all / mine / off setting, with no
 //     broken-image box when the file will not load, and never a URL
 //     that is not the server's own route;
-//   - the Settings "Playmat" tab: the per-device choice for everyone,
-//     and an account's preview, upload, link and Remove with the
-//     server's message when it refuses.
+//   - the owner-set wash on the seat's mat.
+//
+// The Settings "Playmat" tab is in playmatSettings.render.test.ts.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -17,21 +17,11 @@ import { flushSync } from "svelte";
 
 vi.mock("./sounds", () => ({ play: () => {} }));
 
-const api = vi.hoisted(() => ({
-  fetchMyPlaymat: vi.fn(),
-  uploadMyPlaymat: vi.fn(),
-  linkMyPlaymat: vi.fn(),
-  removeMyPlaymat: vi.fn(),
-  setMyPlaymatWash: vi.fn(),
-}));
-vi.mock("./api", async (orig) => ({ ...((await orig()) as object), ...api }));
-
 import PlayerPanel from "./components/board/PlayerPanel.svelte";
-import PlaymatSettings from "./components/PlaymatSettings.svelte";
 import type { GameView, PlayerView } from "./protocol";
 import { resetSettings, updateSettings } from "./settings";
-import { LobbyApiError, session, type Session } from "./session";
-import { cleanup, click, render } from "./test/render.svelte";
+import { session, type Session } from "./session";
+import { cleanup, render } from "./test/render.svelte";
 
 const ME = "me";
 const BOB = "bob";
@@ -41,7 +31,6 @@ const THEIRS = "/playmats/22222222-2222-4222-8222-222222222222";
 beforeEach(() => {
   resetSettings();
   session.set(null);
-  for (const f of Object.values(api)) f.mockReset();
 });
 
 afterEach(() => {
@@ -226,189 +215,9 @@ describe("a seat's playmat on the board", () => {
   });
 });
 
-describe("the Settings Playmat tab", () => {
-  const person = (): Session =>
-    ({
-      token: "tok",
-      expiresAt: "2999-01-01T00:00:00Z",
-      principal: { role: "identified", user_id: "u1" },
-    }) as unknown as Session;
-
-  async function settle(): Promise<void> {
-    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 0));
-    flushSync();
-  }
-
-  const radio = (c: HTMLElement, v: string) =>
-    c.querySelector<HTMLInputElement>(`input[name="playmats-mode"][value="${v}"]`)!;
-  const button = (c: HTMLElement, text: string) =>
-    [...c.querySelectorAll<HTMLButtonElement>("button")].find(
-      (b) => b.textContent?.trim() === text,
-    );
-
-  it("always offers the per-device choice, defaulting to everyone's, and saves it", async () => {
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    expect(radio(r.container, "all").checked).toBe(true);
-    click(radio(r.container, "off"));
-    const stored = JSON.parse(localStorage.getItem("cmdctrl.settings.v1") ?? "{}");
-    expect(stored.display.playmats).toBe("off");
-    expect(radio(r.container, "off").checked).toBe(true);
-  });
-
-  it("hides the account controls from a guest, and does not ask the server", async () => {
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    expect(api.fetchMyPlaymat).not.toHaveBeenCalled();
-    expect(button(r.container, "Upload an image")).toBeUndefined();
-    expect(r.container.querySelector('input[type="url"]')).toBeNull();
-    expect(r.container.textContent).toContain("Sign in with Discord");
-  });
-
-  it("hides them when the server says 403 (no account to own a playmat)", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockRejectedValue(new LobbyApiError(403, "not signed in as a person"));
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    expect(button(r.container, "Upload an image")).toBeUndefined();
-    expect(radio(r.container, "all")).not.toBeNull();
-  });
-
-  it("hides them when the server has nowhere to store one", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: false });
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    expect(button(r.container, "Upload an image")).toBeUndefined();
-  });
-
-  it("shows the preview and Remove for an account that has a playmat", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: true, url: MINE, width: 100, height: 60 });
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    expect(r.container.querySelector<HTMLImageElement>(".preview img")!.getAttribute("src")).toBe(
-      `${MINE}?token=tok`,
-    );
-    api.removeMyPlaymat.mockResolvedValue({ enabled: true });
-    click(button(r.container, "Remove")!);
-    await settle();
-    expect(api.removeMyPlaymat).toHaveBeenCalledTimes(1);
-    expect(r.container.querySelector(".preview")).toBeNull();
-    expect(button(r.container, "Remove")).toBeUndefined();
-    expect(r.container.textContent).toContain("You have no playmat");
-  });
-
-  it("shows no broken image when the preview will not load", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: true, url: MINE });
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    r.container.querySelector(".preview img")!.dispatchEvent(new Event("error"));
-    flushSync();
-    expect(r.container.querySelector(".preview")).toBeNull();
-  });
-
-  it("uses a pasted link, sends it to the server once, and clears the field", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: true });
-    api.linkMyPlaymat.mockResolvedValue({ enabled: true, url: MINE, width: 8, height: 8 });
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    const use = button(r.container, "Use this image")!;
-    expect(use.disabled).toBe(true); // nothing pasted yet
-    const input = r.container.querySelector<HTMLInputElement>('input[type="url"]')!;
-    input.value = " https://example.com/mat.jpg ";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    flushSync();
-    r.container
-      .querySelector("form")!
-      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-    await settle();
-    expect(api.linkMyPlaymat).toHaveBeenCalledTimes(1);
-    expect(api.linkMyPlaymat).toHaveBeenCalledWith("https://example.com/mat.jpg");
-    expect(input.value).toBe("");
-    // The preview is OUR url, not the pasted one.
-    expect(r.container.querySelector(".preview img")!.getAttribute("src")).toContain("/playmats/");
-    expect(r.container.querySelector(".preview")!.innerHTML).not.toContain("example.com");
-  });
-
-  it("shows the server's message when it refuses a link", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: true });
-    api.linkMyPlaymat.mockRejectedValue(
-      new LobbyApiError(422, "could not fetch that link: only https links are accepted"),
-    );
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    const input = r.container.querySelector<HTMLInputElement>('input[type="url"]')!;
-    input.value = "http://example.com/a.png";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    flushSync();
-    r.container
-      .querySelector("form")!
-      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-    await settle();
-    expect(r.container.querySelector('[role="alert"]')!.textContent).toContain("only https links");
-    // The field keeps what was typed, so it can be fixed.
-    expect(input.value).toBe("http://example.com/a.png");
-  });
-
-  it("uploads a chosen file", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: true });
-    api.uploadMyPlaymat.mockResolvedValue({ enabled: true, url: THEIRS, width: 4, height: 4 });
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    const file = new File([new Uint8Array(10)], "mat.png", { type: "image/png" });
-    const input = r.container.querySelector<HTMLInputElement>('input[type="file"]')!;
-    expect(input.getAttribute("accept")).toBe("image/png,image/jpeg,image/webp");
-    Object.defineProperty(input, "files", { value: [file], configurable: true });
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    await settle();
-    expect(api.uploadMyPlaymat).toHaveBeenCalledTimes(1);
-    expect(api.uploadMyPlaymat).toHaveBeenCalledWith(file);
-    expect(r.container.querySelector(".preview img")).not.toBeNull();
-  });
-
-  it("refuses an oversized file before sending it, and shows the server's message when it refuses one", async () => {
-    session.set(person());
-    api.fetchMyPlaymat.mockResolvedValue({ enabled: true });
-    const r = render(PlaymatSettings as never, {} as never);
-    await settle();
-    const input = r.container.querySelector<HTMLInputElement>('input[type="file"]')!;
-
-    const big = new File([new Uint8Array(1)], "big.png", { type: "image/png" });
-    Object.defineProperty(big, "size", { value: 11 * 1024 * 1024 });
-    Object.defineProperty(input, "files", { value: [big], configurable: true });
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    await settle();
-    expect(api.uploadMyPlaymat).not.toHaveBeenCalled();
-    expect(r.container.querySelector('[role="alert"]')!.textContent).toContain("10 MB");
-
-    api.uploadMyPlaymat.mockRejectedValue(
-      new LobbyApiError(415, "that file is not a PNG, JPEG or WebP image"),
-    );
-    const bad = new File([new Uint8Array(4)], "x.png", { type: "image/png" });
-    Object.defineProperty(input, "files", { value: [bad], configurable: true });
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    await settle();
-    expect(r.container.querySelector('[role="alert"]')!.textContent).toContain(
-      "not a PNG, JPEG or WebP",
-    );
-  });
-});
-
 // ADR 0128 amendment: the owner sets how dark their playmat is, and
 // every viewer draws it at that strength.
 describe("the owner-set wash", () => {
-  const person = (): Session =>
-    ({
-      token: "tok",
-      expiresAt: "2999-01-01T00:00:00Z",
-      principal: { role: "identified", user_id: "u1" },
-    }) as unknown as Session;
-
   const washOf = (el: HTMLElement | null) => el!.style.getPropertyValue("--playmat-wash");
 
   it("is drawn on the seat's mat, and the default when the server sends none", () => {
@@ -419,34 +228,5 @@ describe("the owner-set wash", () => {
     const plain = mountPanel(gameView(MINE, THEIRS), true);
     expect(washOf(plain.container.querySelector<HTMLElement>(".playmat"))).toBe("");
     expect(panelSource()).toMatch(/var\(--bg\) var\(--playmat-wash, 58%\)/);
-  });
-
-  it("starts from the account's wash and saves once the slider rests", async () => {
-    vi.useFakeTimers();
-    try {
-      session.set(person());
-      api.fetchMyPlaymat.mockResolvedValue({ enabled: true, url: MINE, wash: 70 });
-      api.setMyPlaymatWash.mockResolvedValue({ enabled: true, url: MINE, wash: 45 });
-      const r = render(PlaymatSettings as never, {} as never);
-      await vi.advanceTimersByTimeAsync(10);
-      flushSync();
-      const slider = r.container.querySelector<HTMLInputElement>(
-        'input[aria-label="Playmat darkness"]',
-      )!;
-      expect(slider.value).toBe("70");
-      expect(washOf(r.container.querySelector<HTMLElement>(".preview"))).toBe("70%");
-      for (const v of ["60", "50", "45"]) {
-        slider.value = v;
-        slider.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-      flushSync();
-      expect(washOf(r.container.querySelector<HTMLElement>(".preview"))).toBe("45%");
-      expect(api.setMyPlaymatWash).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(450);
-      expect(api.setMyPlaymatWash).toHaveBeenCalledTimes(1);
-      expect(api.setMyPlaymatWash).toHaveBeenCalledWith(45);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 });

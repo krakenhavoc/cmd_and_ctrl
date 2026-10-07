@@ -720,18 +720,57 @@ export async function putAccountSettings(
   return (await res.json()) as AccountSettings;
 }
 
-// MyPlaymat mirrors lobby.playmatResponse: the signed-in person's
-// playmat (ADR 0128). enabled is false when the server has nowhere to
-// store one (no data directory), and then the Settings section is
-// hidden. url is a same-origin /playmats/<uuid> path, absent for a
-// person with none; load it through playmatSrc().
-export interface MyPlaymat {
+// The saved-playmats wire (ADR 0128 §11), mirroring lobby.playmatResponse.
+// A person keeps up to three playmats in slots 1 to 3 and shows at most
+// one; "none" is allowed. Each image is a same-origin /playmats/<uuid>
+// path: load it through playmatSrc().
+
+/** A rectangle in a stored image's own pixels. */
+export interface PlaymatCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * What "fit to best size" would do to a stored image: keep `crop`
+ * (centred by default) and scale it down to target_width x target_height.
+ * The server never enlarges, so `smaller` is true when the image is too
+ * small to reach the ideal size and the result may look soft.
+ */
+export interface PlaymatSuggestion {
+  target_width: number;
+  target_height: number;
+  crop: PlaymatCrop;
+  smaller: boolean;
+}
+
+export interface PlaymatSlot {
+  slot: number;
+  url: string;
+  width: number;
+  height: number;
+  /** True when the image needs no fitting (the right shape and big enough). */
+  fits: boolean;
+  /** Present only when a fit would change something (the shape is off). */
+  suggestion?: PlaymatSuggestion;
+}
+
+export interface MyPlaymats {
+  /** False when the server has nowhere to store one; the section is hidden. */
   enabled: boolean;
-  url?: string;
-  width?: number;
-  height?: number;
-  // The owner-set darkness over the image, in percent (ADR 0128
-  // amendment): sent whenever enabled, image or not.
+  max_slots?: number;
+  /** The size the server fits to, for the prompt's text. */
+  ideal_width?: number;
+  ideal_height?: number;
+  /** The occupied slots, in slot order. Absent for none. */
+  slots?: PlaymatSlot[];
+  /** The slot the table shows. Absent when none is. */
+  active?: number;
+  /** The slot an upload, link or fit just wrote. */
+  slot?: number;
+  /** The owner-set darkness over every one of their mats, in percent. */
   wash?: number;
 }
 
@@ -740,54 +779,81 @@ export const PLAYMAT_MIN_WASH = 30;
 export const PLAYMAT_MAX_WASH = 90;
 export const PLAYMAT_DEFAULT_WASH = 58;
 
-// setMyPlaymatWash is PATCH /me/playmat: the owner-set wash, which every
-// player at the table sees. It may be set before any image is uploaded.
-export async function setMyPlaymatWash(wash: number): Promise<MyPlaymat> {
-  const res = await authFetch("/me/playmat", { method: "PATCH", body: JSON.stringify({ wash }) });
-  return (await res.json()) as MyPlaymat;
+/** How many playmats an account keeps when the server does not say. */
+export const PLAYMAT_SLOTS = 3;
+
+// setMyPlaymatWash is PATCH /me/playmats: the owner-set wash, one per
+// account, which every player at the table sees. It may be set before
+// any image is saved.
+export async function setMyPlaymatWash(wash: number): Promise<MyPlaymats> {
+  const res = await authFetch("/me/playmats", { method: "PATCH", body: JSON.stringify({ wash }) });
+  return (await res.json()) as MyPlaymats;
 }
 
-// fetchMyPlaymat is GET /me/playmat. A 403 (a guest, the admin token, a
+// fetchMyPlaymats is GET /me/playmats. A 403 (a guest, the admin token, a
 // server with no database) rejects with a LobbyApiError(403), which the
-// Settings section reads as "no playmat for you" and hides itself.
-export async function fetchMyPlaymat(): Promise<MyPlaymat> {
-  const res = await authFetch("/me/playmat", { cache: "no-store" });
-  return (await res.json()) as MyPlaymat;
+// Settings section reads as "no playmats for you" and hides itself.
+export async function fetchMyPlaymats(): Promise<MyPlaymats> {
+  const res = await authFetch("/me/playmats", { cache: "no-store" });
+  return (await res.json()) as MyPlaymats;
 }
 
-// uploadMyPlaymat is PUT /me/playmat, a multipart upload. The server
-// decodes the bytes and stores its own re-encoded JPEG; the file's type
-// and name are not what it goes by. A refusal rejects with the server's
-// message (not an image, too large, too many pixels) for the form to show.
-export async function uploadMyPlaymat(file: Blob): Promise<MyPlaymat> {
+// uploadMyPlaymat is PUT /me/playmats/{slot}, a multipart upload. The
+// server decodes the bytes and stores its own re-encoded JPEG; the file's
+// type and name are not what it goes by. A refusal rejects with the
+// server's message (not an image, too large, too many pixels) for the
+// form to show.
+export async function uploadMyPlaymat(slot: number, file: Blob): Promise<MyPlaymats> {
   const body = new FormData();
   body.append("file", file);
-  const res = await authFetch("/me/playmat", { method: "PUT", body });
-  return (await res.json()) as MyPlaymat;
+  const res = await authFetch(`/me/playmats/${slot}`, { method: "PUT", body });
+  return (await res.json()) as MyPlaymats;
 }
 
-// linkMyPlaymat is POST /me/playmat/link: the SERVER fetches the https
-// URL once and stores the image like an upload. The link is never kept
-// and never reaches another player's browser.
-export async function linkMyPlaymat(url: string): Promise<MyPlaymat> {
-  const res = await authFetch("/me/playmat/link", {
+// linkMyPlaymat is POST /me/playmats/{slot}/link: the SERVER fetches the
+// https URL once and stores the image like an upload. The link is never
+// kept and never reaches another player's browser.
+export async function linkMyPlaymat(slot: number, url: string): Promise<MyPlaymats> {
+  const res = await authFetch(`/me/playmats/${slot}/link`, {
     method: "POST",
     body: JSON.stringify({ url }),
   });
-  return (await res.json()) as MyPlaymat;
+  return (await res.json()) as MyPlaymats;
 }
 
-// removeMyPlaymat is DELETE /me/playmat. Removing none succeeds.
-export async function removeMyPlaymat(): Promise<MyPlaymat> {
-  const res = await authFetch("/me/playmat", { method: "DELETE" });
-  return (await res.json()) as MyPlaymat;
+// fitMyPlaymat is POST /me/playmats/{slot}/fit: crop the stored image to
+// the ideal shape with its top-left corner at (x, y) of the image, and
+// scale it down to the ideal size. The server validates the rectangle.
+export async function fitMyPlaymat(slot: number, x: number, y: number): Promise<MyPlaymats> {
+  const res = await authFetch(`/me/playmats/${slot}/fit`, {
+    method: "POST",
+    body: JSON.stringify({ x, y }),
+  });
+  return (await res.json()) as MyPlaymats;
 }
 
-// removeUserPlaymat is ADR 0128's admin removal, the account view's
-// second action (ADR 0124 amendment): DELETE /admin/users/{id}/playmat.
-// Removing none succeeds, so a second click is harmless.
-export async function removeUserPlaymat(id: string): Promise<void> {
-  await authFetch(`/admin/users/${encodeURIComponent(id)}/playmat`, { method: "DELETE" });
+// removeMyPlaymat is DELETE /me/playmats/{slot}. Removing an empty slot
+// succeeds. Removing the active one leaves none showing.
+export async function removeMyPlaymat(slot: number): Promise<MyPlaymats> {
+  const res = await authFetch(`/me/playmats/${slot}`, { method: "DELETE" });
+  return (await res.json()) as MyPlaymats;
+}
+
+// activateMyPlaymat is PUT /me/playmats/active: which saved playmat the
+// table shows, or null to show none. It never touches an image.
+export async function activateMyPlaymat(slot: number | null): Promise<MyPlaymats> {
+  const res = await authFetch("/me/playmats/active", {
+    method: "PUT",
+    body: JSON.stringify({ slot }),
+  });
+  return (await res.json()) as MyPlaymats;
+}
+
+// removeUserPlaymat is the admin's removal of one saved playmat (ADR
+// 0128 §11, ADR 0124 amendment): DELETE /admin/users/{id}/playmats/{slot}.
+// Removing an empty slot succeeds, so a second click is harmless.
+export async function removeUserPlaymat(id: string, slot: number): Promise<void> {
+  await authFetch(`/admin/users/${encodeURIComponent(id)}/playmats/${slot}`, { method: "DELETE" });
 }
 
 // seatLibraryDeck installs a deck already in the caller's library

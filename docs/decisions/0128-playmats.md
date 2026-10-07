@@ -1,7 +1,7 @@
 # ADR 0128 — Playmats: an image on your account that shows behind your battlefield
 
 **Status:** Accepted · 2026-10-07 · outside a numbered sprint (S66 is bot play; this is table UX, like #2483 and #2486). The owner asked for it on 2026-10-07; the decisions below were set in the request brief and are recorded with their reasons.
-**Issues:** [#2495](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2495) (this change).
+**Issues:** [#2495](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2495) (this change); [#2515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2515) (§11, three saved playmats and the best-size fit).
 **Owner request:** 2026-10-07: "Adding a playmat to the view, so you can upload or link an image to your account and the battlefield will have the image, like a playmat in person on paper."
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-07. I ran `git fetch origin` and listed `docs/decisions/` on `origin/develop` and on every live remote head (`main`, `docs/1961-auto-answer-adr`, `docs/issue-audit`, `feat/750-conditional-block-restrictions`, `feat/opponent-top-row`, `fix/2449-reequip-loop`, `fix/caddy-reload-admin-off`, `wip/836-one-click-default`). The highest number is 0127, on PR #2490's branch `docs/1961-auto-answer-adr`. `origin/develop` stops at 0126. No open issue's claim comment reserves a higher one. This ADR takes **0128**. The same sweep covered the migration number: the highest on any head is `0010_seat_agent.sql`, so the new migration is **0011**.
 **Builds on:** [ADR 0051](0051-user-database.md) (the user database; a playmat belongs to a `users` row), [ADR 0110](0110-remember-me.md) §4 (`/me/*` and the per-person and per-device settings split), [ADR 0017](0017-bug-report-button.md) §6 (the uuid-keyed, inert-headers store this one copies), [ADR 0075](0075-table-settings-and-host-controls.md) (the room stamps what is not engine state), [ADR 0124](0124-admin-views-accounts-games-and-who-is-on-now.md) (the admin account view).
@@ -22,7 +22,7 @@ The feature is small to describe and has three places where a careless version i
 
 ### 1. Who can have a playmat
 
-Only a **signed-in account backed by the database** (a `users` row, [ADR 0051](0051-user-database.md)). One playmat per account.
+Only a **signed-in account backed by the database** (a `users` row, [ADR 0051](0051-user-database.md)). One playmat per account (**up to three saved, one active, since §11**).
 
 A guest has no account to hang it on, the admin token is a credential and not a person, and a server with no database has no `users` table. All three get **403** from every `/me/playmat` route, the same way `GET /me/settings` refuses them ([ADR 0110](0110-remember-me.md) §4, #1154: never 401, which would sign the browser out), and the client hides the control. A server with a database but no data directory has a user to own a playmat and nowhere to put the file: that is `{"enabled": false}` on `GET` and **503** on a write, as bug-report attachments report themselves disabled without `CMDCTRL_DATA_DIR`.
 
@@ -142,6 +142,90 @@ Owner decision: the playmat is "dimmed, cover-fit" by default, "but allow an adj
 - **On the wire as `PlayerView.playmat_wash`**, stamped by the room beside `playmat_url` and only where a URL is (`Room.SetPlaymatWash`, `stampPlaymatsLocked`), so like the URL it is not engine state. The lobby binds it wherever `bindPlaymat` binds the URL, through a small `PlaymatWashSource` interface the service implements, and `PlaymatChanged` re-reads it, so a `PATCH` reaches every live seat the person holds the way an upload does.
 - **Drawn** as `color-mix(in srgb, var(--bg) var(--playmat-wash, 58%), transparent)`: the same theme-aware scrim, with `--playmat-wash` set on the seat's `.playmat` layer from the wire. The Settings tab gains a **Darken** slider under the preview; the preview wears the same scrim, follows the slider at once, and the value is saved once the slider has rested (400 ms), so a drag is one write.
 - **Unchanged:** who sees a playmat (the per-device `all` / `mine` / `off` choice is the viewer's), the image pipeline and every route above.
+
+### 11. Amendment (2026-10-07, owner request): three saved playmats, and a best-size fit
+
+**Issue:** [#2515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2515). **Owner request:** 2026-10-07: "Allow up to 3 playmats to be saved and used." and "If the image is not the best dimensions, suggest the best image dimensions, with a button to accept or deny the preferred size. If they choose the ideal one, resize the image to the best size for playing."
+
+**Numbering:** no new ADR; this is a dated section of 0128, as §10 is. The migration number was swept as the first paragraph above did: `git fetch origin`, then `server/internal/db/migrations` on `origin/develop` and on every remote head (93 branches); the highest on any head is `0012_playmat_wash.sql`, and no open issue's claim comment reserves a higher one. This change takes **0013**.
+
+This section **supersedes** what the sections above say about "one playmat per account" (the start of §1, the pointer in §5, the route table in §6, the Settings tab in §8, and the single admin route in §9). The rest of them stands: the SSRF guard (§3), validation by decoding (§4), the file store, the wire field, the serving route and the wash.
+
+#### 11.1 Three slots, at most one active
+
+An account keeps **up to three saved playmats, in slots 1 to 3**, and **at most one is active**: the one the table shows. "None" is allowed: a person can keep saved mats and show none.
+
+- **Storage.** Migration 0013 adds `user_playmats(user_id, slot, playmat_id, width, height, created_at)`, primary key `(user_id, slot)`, `slot` checked to 1 to 3, one image in one slot (a unique index on `playmat_id`). `width` and `height` are written when an image is stored and are `NULL` on a backfilled row, where the service reads the file's header, as v1 did. `users.playmat_id` **stays and now means the active pointer**, so the room's stamp, the lobby's binds and the per-user cache are the code they were: `Service.URL` reads the active pointer.
+- **The invariant**, kept by every write and tested: *a non-NULL `users.playmat_id` equals the `playmat_id` of exactly one `user_playmats` row of the same user.* SQLite cannot add a foreign key to an existing column, so it is the service's, not the schema's. Every write takes the user's row first (`UPDATE users SET playmat_id = playmat_id`), reads and writes the slot row and the pointer in one transaction, and updates the cache after the commit, so two simultaneous writes cannot leave a pointer at a row that is gone or leak a file. The migration **backfills** every non-NULL `users.playmat_id` into slot 1, and clears an empty-string pointer (nothing writes one), so an unmatched pointer is impossible from the moment the migration runs. `TestMigration0013BackfillsEveryExistingPlaymatIntoSlotOne` and `checkInvariant` (asked of the database after every write test) pin both.
+- **Files.** Switching the active mat never touches a file. Removing a slot deletes its file, and clears the active pointer if that slot was active. Replacing a slot (upload, link or fit) deletes the old file, and moves the active pointer if that slot was active. The old file is deleted after the row changes, as in §5.
+- **A saved row whose file is gone** (a restored database, a wiped volume) is left out of the list, not shown as a dead link, as §5 reads a dead pointer as "no playmat". Replacing or removing its slot still works.
+- **The wash stays per account** (`users.playmat_wash`, §10), unchanged. **A per-mat wash is a possible follow-up** (a nullable `wash` on `user_playmats`, falling back to the account's); it is not built, because one slider for "whichever mat I am using" was the owner's decision in §10 and nobody has asked to split it.
+
+#### 11.2 Routes
+
+| Route | What |
+|---|---|
+| `GET /me/playmats` | the occupied slots (url, width, height, `fits`, and the `suggestion` when it does not fit), the active slot, the wash, and the constants (`max_slots`, `ideal_width`, `ideal_height`) |
+| `PUT /me/playmats/{slot}` | upload into a slot |
+| `POST /me/playmats/{slot}/link` | fetch a link into a slot |
+| `POST /me/playmats/{slot}/fit` | `{"x", "y"}`: crop to the best size (11.4) |
+| `DELETE /me/playmats/{slot}` | remove a slot's playmat |
+| `PUT /me/playmats/active` | `{"slot": n \| null}` |
+| `PATCH /me/playmats` | the wash, as §10 had it at `/me/playmat` |
+| `DELETE /admin/users/{id}/playmats/{slot}`, `DELETE /admin/users/{id}/playmat` | admin moderation (11.5) |
+
+Every `/me/playmats` answer is the same body (the list), and an upload, link or fit adds `slot`, the slot it wrote, so the client opens the best-size prompt on that slot's `suggestion`. A slot outside 1 to 3, or not a whole number, is **400** on every route that takes one.
+
+- **The v1 singular routes are removed.** `grep` of the server, `cmd/` and the MCP seat found no caller of `/me/playmat` but the Settings tab, which moves with the server in this change, so keeping them would be dead surface. Their tests were rewritten for the plural routes, and `TestTheV1SingularPlaymatRoutesAreGone` pins the removal. **`PATCH` moved with them**, to `PATCH /me/playmats`: a route family with one verb left on the singular path would have been the odd one out.
+- **Activation.** *Uploading into an empty slot while no mat is active makes it active.* Any other write leaves the active mat alone, except that replacing or fitting the active slot points the active pointer at the new image (the table must not keep showing a file that was just deleted). `PUT /me/playmats/active` with a slot that holds nothing is **404**; `null` shows none.
+- **Rate limits.** Upload, link and fit use the buckets §6 gave upload and link: per IP (1 a second, burst 10) outside auth for the three that decode or fetch, per person (burst 5, then one every 6 s) inside it, shared with remove. Activate shares the wash's cheaper bucket (1 a second, burst 5), as it is a pointer and not an image.
+- **The room.** Activating, removing or fitting the active mat, or replacing the active slot, must reach every live seat the person holds. The routes compare `Service.URL` before and after the write and call `Lobby.PlaymatChanged` when it moved, the push v1 used; no new message type. Saving into an inactive slot moves nothing the table can see and so costs no broadcast.
+
+#### 11.3 What fits
+
+Measured first, not assumed. The board draws a seat's battlefield area as `.panel.seat-panel`, and the playmat layer fills it (`inset: 0`, §8). I measured those boxes in Luke's current layout (#2485, #2488, #2492) with Playwright driving a Chromium-based browser against a built server and the Vite client, a four-seat table (one human, three bots) after the mulligan, at four viewport sizes:
+
+| Viewport | Across-table seats (three) | Ratio | Own seat | Ratio |
+|---|---|---|---|---|
+| 1920 x 1080 | 624 x 350 | 1.784 | 1889 x 650 | 2.906 |
+| 2560 x 1440 | 838 x 476 | 1.760 | 2529 x 884 | 2.861 |
+| 1600 x 900 | 518 x 287 | 1.804 | 1569 x 533 | 2.944 |
+| 1366 x 768 | 440 x 241 | 1.826 | 1335 x 447 | 2.986 |
+
+The paper shape, **24 x 14 in = 12:7 = 1.714**, is within 2.7% (2560), 4.1% (1920), 5.2% (1600) and 6.5% (1366) of the three across-table panels. **The own-seat panel is 2.86 to 2.99:1**, about 70% wider than 12:7: it is the docked, full-width panel with the hand fan over its bottom edge.
+
+**The chosen target is 2400 x 1400, 12:7, in the constants `IdealWidth` and `IdealHeight` (`internal/playmat/fit.go`).** This keeps the brief's default **although the own-seat area is beyond its 15% rule** (which says to use the measured shape then). The reasons, in order of weight:
+
+1. **A mat is seen four times.** Every viewer sees a person's mat on the three across-table panels at 1.76 to 1.83, and only that person sees it on the docked own panel. The paper shape serves the three; a 3:1 target would crop the art to its middle 59% in each of them.
+2. **The own panel is not a mat-shaped area.** It is a wide strip with the hand over it; `object-fit: cover` already shows its centred band, which is what a person looking at their own board wants to see through the cards.
+3. **The prompt's text is "the shape of a paper playmat".** A person with a photo of a real mat (24 x 14 in) would be told their image is the wrong shape and asked to crop it to a banner.
+
+The cost is that the owner sees the middle 59% of the art's height behind their own cards. If the owner wants the own view exact, change the pair and the table above together; a per-viewer `object-position` for the own panel is a cheaper follow-up that costs the art nothing.
+
+**"Fits"** means the aspect ratio within **5%** of 12:7 (`AspectTolerance`) **and** a long edge of at least **1600 px** (`MinLongEdge`). An image that fits gets no prompt.
+
+**The suggestion** (`Suggest`) is offered only when the shape is off, because a crop of a right-shaped image changes nothing: *the crop rectangle* is the largest 12:7 rectangle that fits inside the stored image, centred, in the stored image's pixels; *the target* is the ideal size when the crop is at least 2400 px wide, and the crop's own size when it is smaller. **The server never upscales.** A small image is cropped to the shape at its own resolution, and `smaller` is true so the prompt can say it may look soft at the table. A right-shaped image that is small has `fits: false` and no `suggestion`: the fix is a bigger image, and the Settings tab says nothing about it.
+
+#### 11.4 The fit
+
+`POST /me/playmats/{slot}/fit` takes `{"x", "y"}`, the crop window's top-left corner in the stored image's pixels. The window's *size* is the server's, so a client names only where it sits along the axis being cropped: the server validates that the rectangle lies inside the image (**400** otherwise), crops the stored image, scales the crop down to the target with the same Catmull-Rom scaler (never up), re-encodes through the same JPEG path (quality 85), writes **a new file under a new uuid** (so the immutable cache of §6 never serves the old image), swaps the slot's pointer and the active pointer if that slot was active, and deletes the old file. The swap is conditional on the slot still holding the image the crop was made from, so a fit that loses a race with a replacement drops its own file and answers **409** (ask again) instead of overwriting the newer upload. Decoding is bounded by the same two-at-a-time limit as uploads (`ErrBusy`, **503**).
+
+- **Fitting a mat that already fits is a 409**, not a silent success, so a client that offers the action where it is not needed finds out. An empty slot is a 404.
+- **A fit works from the stored image**, which is already normalised to a long edge of at most 2560 px (§4). That is enough for a landscape source. **A portrait source has lost resolution before the fit sees it:** a 3000 x 4000 phone photo is stored at 1920 x 2560, and the 12:7 crop of that is 1920 x 1120, below the ideal, so the result is the smaller, softer kind and says so. We do not keep originals: they are disk the account would hold twice, and the original is where EXIF (the GPS of a phone photo, §4) lives, and the design promise is that it never reaches disk.
+- Each fit re-encodes a JPEG, so it costs one generation of JPEG loss on top of the upload's. Accepting the fit once is the intended path; the Settings tab does not offer it again on a mat that fits.
+
+#### 11.5 Client, and the admin account view
+
+- **Settings, Playmat tab** (`PlaymatSettings.svelte`): three slot cards, each with a thumbnail or an empty "Add a playmat" state, a **Using** badge on the active one, and **Use / Stop using**, **Replace** (upload or link, in a panel for that slot), **Fit to best size** (only when the image has a suggestion) and **Remove** (after a confirmation). With all three slots full, **Add a playmat** asks which one to replace. The **Darken** slider and the preview work on the active mat. The per-device `all / mine / off` choice is as before.
+- **The best-size prompt** (`PlaymatFitPrompt.svelte`) opens right after an upload or a link whose result has a suggestion: the stored image with the kept area outlined and the rest dimmed; "This image is W x H. Playmats look best at 2400 x 1400 (the shape of a paper playmat)."; and **Fit to best size** and **Keep as is**. The kept window starts centred and can be **dragged along the axis being cropped** (the other axis has no room), or moved with the arrow keys once it has focus (Shift for bigger steps, Home and End for the ends); **Enter** fits and **Escape** keeps the image as it is. The window is a labelled slider with a position in words. *Keep as is* leaves the image exactly as stored, shown at cover-fit on the table, and the slot keeps its small **Fit to best size** action, so the decision is not one-shot.
+- **Admin account view** (adapting ADR 0124's amendment and #2509): `GET /admin/users/{id}` serves `playmats: [{slot, url, active?}]` in place of `playmat_url`, and the view lists the person's saved mats as thumbnails, each with **Remove** and the same confirmation naming the person. **The admin route is both:** `DELETE /admin/users/{id}/playmats/{slot}` removes one (what the thumbnails call), and `DELETE /admin/users/{id}/playmat` stays as "remove all", so the route §9 documented, and anything that `curl`s it, keeps working. Both are `requireAdmin` and in the player-mode census.
+
+#### 11.6 Not done
+
+- A per-mat wash (11.1).
+- Keeping the original upload, so a fit could work from more pixels than the stored 2560 px (11.4).
+- A per-viewer `object-position` for the own-seat panel (11.3).
+- Reordering slots. A slot is a place, not a rank; replace to move.
 
 ## Alternatives considered
 
