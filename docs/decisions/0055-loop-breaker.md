@@ -339,8 +339,9 @@ have failed.
 
 ## Amendment (2026-10-07, #2450): a batch of triggers is not a loop, and a loop that ends the game is not a runaway
 
-**Status of this amendment: Proposed.** Nothing below is built. The
-owner's answers to the questions at the end decide what is.
+**Status of this amendment: Accepted (2026-10-07).** The owner answered
+the questions at the end; see "Owner decisions (2026-10-07)". A and B
+are built in two PRs under #2450.
 
 ### The problem
 
@@ -555,3 +556,28 @@ rejected.
    Exquisite Blood triggers), and correct docs/bot.md's paragraph naming
    Sanguine Bond and Exquisite Blood, in the PR that implements A?
    *Recommended: yes.*
+
+### Owner decisions (2026-10-07)
+
+Every question was answered with the recommendation.
+
+1. **A is adopted.** A run of a triggered ability restarts whenever the
+   stack plus pending triggers reaches a new low since the last
+   decision.
+2. **B is adopted too**, as a second PR under this amendment.
+3. **Progress for B** is (a) a player leaving the game, (b) a new lowest
+   life total this turn, or (c) a new highest poison count this turn. A
+   smaller library does not count.
+4. **A player who can't lose the game, or can't lose life (ADR 0057), is
+   left out** of B's life and poison checks, through ADR 0057's own
+   predicate.
+5. **A restart clears the notice and withdraws any pending shortcut
+   prompt**, as a decision does, without counting as a decision for
+   anything else.
+6. **Engine-wide.** The rule applies to every seat, human and bot.
+7. **`DefaultLoopThreshold` stays at 25.**
+8. **CR 732.4's draw is not built now.** It is filed as its own issue,
+   parked in the backlog.
+9. **#2450 is retitled to the observed cause**, and docs/bot.md's
+   paragraph naming Sanguine Bond and Exquisite Blood is corrected, in
+   A's PR.
