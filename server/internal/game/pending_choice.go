@@ -3991,7 +3991,8 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, exclu
 	if !p.ManaPool.CanPay(cost, 0) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
 		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, 0, ManaSpendContext{}, excluded, 0)
-		if !ok {
+		// #2461: a plan that would not fund the cost taps nothing.
+		if !ok || !g.planFundsLocked(p, plan, short, cost, 0, ManaSpendContext{}) {
 			return false
 		}
 		g.materializePlanLocked(p, plan, short)

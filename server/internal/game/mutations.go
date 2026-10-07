@@ -1975,7 +1975,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// missing, so mana already in the pool is spent first, and it is
 	// colour-picked against that shortfall (autotap_topup.go).
 	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
-	if !ok {
+	// #2461: and the plan, carried out, must fund the cost — asked on a
+	// clone before anything here is tapped, so a refusal leaves no land
+	// tapped and no mana floating.
+	if !ok || !g.planFundsLocked(p, plan, short, cost, params.XValue, spendCtx) {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	g.materializePlanLocked(p, plan, short)
@@ -6565,7 +6568,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			}
 			plan, short, ok := g.autoTapTopUpLocked(playerID, manaCost, 0, spendCtx,
 				ManaActivationAutoTapExclusions(cardID, params), 0)
-			if !ok {
+			// #2461: refused here, before the activation begins, when the
+			// plan carried out would not fund the cost.
+			if !ok || !g.planFundsLocked(p, plan, short, manaCost, 0, spendCtx) {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 			}
 			manaPlan, manaShort = plan, short
