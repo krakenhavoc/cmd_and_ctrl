@@ -229,6 +229,54 @@ func TestKurukChapterThreeReturnsAsAvatarKuruk(t *testing.T) {
 	assertFaceInvariant(t, g)
 }
 
+// TestKurukChapterThreeCopiedReturnsItOnce is #2497, found by the
+// catalog soak: Gogo, Master of Mimicry copied chapter III. A copy
+// refers to the same Saga as the original (CR 707.10b), so whichever
+// resolves first exiles it and returns it as Avatar Kuruk, a new
+// object (CR 400.7), and the other finds nothing to exile and does
+// nothing. One Avatar, and no effect error.
+func TestKurukChapterThreeCopiedReturnsItOnce(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+
+	saga := importAndCast(t, g, kurukRow(), me)
+	passPriorityAroundTable(t, g)
+	answerScryKeepAll(t, g, me.ID)
+	advanceToPrecombatMainOf(t, g, seat)
+	passPriorityAroundTable(t, g)
+	answerScryKeepAll(t, g, me.ID)
+	advanceToPrecombatMainOf(t, g, seat)
+
+	chapter := acItemOnStack(g, "The Legend of Kuruk — exile it")
+	if chapter == nil {
+		t.Fatal("chapter III is not on the stack")
+	}
+	var err error
+	g.WithWriteLock(func() { err = g.CopyAbilityForEffect(chapter.ID, me.ID, false) })
+	if err != nil {
+		t.Fatalf("copy chapter III: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if errs := effectErrors(g); len(errs) != 0 {
+		t.Fatalf("effect errors: %v — the copy that resolved second must do nothing", errs)
+	}
+	assertReturnedAsAvatar(t, g, saga, me.ID, "Avatar Kuruk", 4, 3)
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Avatar Kuruk" {
+				n++
+			}
+		}
+	})
+	if n != 1 {
+		t.Errorf("%d Avatar Kuruks on the battlefield, want 1", n)
+	}
+	assertFaceInvariant(t, g)
+}
+
 // TestAvatarKurukCreatesASpiritWhenYouCastASpell is the back-face
 // ability: "Whenever you cast a spell, create a 1/1 colorless
 // Spirit." The Spirit's own "can't block or be blocked by non-Spirit

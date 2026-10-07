@@ -200,7 +200,55 @@ func newCatalogRoom(t *testing.T, seats int, seed uint64, idx *cards.Index, pool
 	if err := g.Start(rand.New(rand.NewPCG(seed, seed+1))); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
+	g.RegisterListener(&cardNamer{seen: map[uuid.UUID]game.Card{}})
 	return ws.NewRoom(g, testLogger(), "")
+}
+
+// cardNamer remembers every card an event names, at the moment the
+// event is emitted. tally names a card by walking the zones once the
+// game is over, and a card that has left the game by then — a token
+// that died, a copy of a spell that resolved — is in no zone at all,
+// so an effect error it caused used to be reported as
+// "(unattributed)". The catalog soak registers one of these on every
+// table so its failures name their card.
+type cardNamer struct {
+	seen map[uuid.UUID]game.Card
+}
+
+// OnEvent runs under the game's write lock, so it reads the zones
+// directly. A cache hit costs one map lookup; only an ID never seen
+// before walks the zones.
+func (n *cardNamer) OnEvent(g *game.Game, ev game.Event) {
+	for _, id := range [...]uuid.UUID{ev.Source, ev.CardID} {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := n.seen[id]; ok {
+			continue
+		}
+		if c, ok := findInZones(g, id); ok {
+			n.seen[id] = c
+		}
+	}
+}
+
+// findInZones looks id up in every zone of g. The caller holds a lock.
+func findInZones(g *game.Game, id uuid.UUID) (game.Card, bool) {
+	zones := []*game.Zone{g.Battlefield, g.Stack, g.Exile}
+	for _, p := range g.Seats {
+		zones = append(zones, p.Library, p.Hand, p.Graveyard, p.Command)
+	}
+	for _, z := range zones {
+		if z == nil {
+			continue
+		}
+		for _, c := range z.Cards {
+			if c.InstanceID == id {
+				return c, true
+			}
+		}
+	}
+	return game.Card{}, false
 }
 
 // cardStat is one catalog card's tally across every game in a run.
@@ -226,6 +274,9 @@ type effectError struct {
 // The identity map is built by walking every zone first: a card that
 // resolved is in a graveyard, on the battlefield, or exiled by the
 // time we look, and Event carries instance IDs rather than names.
+// A card that left the game before it ended (a token that died, a
+// Saga exiled and returned as a new object) is in no zone by then, so
+// a cardNamer registered on the game fills in what the walk misses.
 // Tokens have no oracle ID and are counted under their name, which is
 // the honest answer — a Treasure is not a catalog card.
 func tally(g *game.Game, stats map[string]*cardStat) []effectError {
@@ -248,6 +299,17 @@ func tally(g *game.Game, stats map[string]*cardStat) []effectError {
 			note(p.Hand)
 			note(p.Graveyard)
 			note(p.Command)
+		}
+		// A card that left the game before it ended is in no zone;
+		// the cardNamer saw it while it was still somewhere.
+		for _, l := range g.Listeners {
+			if cn, ok := l.(*cardNamer); ok {
+				for id, c := range cn.seen {
+					if _, ok := named[id]; !ok {
+						named[id] = c
+					}
+				}
+			}
 		}
 
 		bump := func(id uuid.UUID, f func(*cardStat)) {
