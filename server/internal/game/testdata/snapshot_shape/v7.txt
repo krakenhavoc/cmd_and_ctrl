@@ -109,6 +109,9 @@ battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
+battlefield.cards[].exiledWith	object
+battlefield.cards[].exiledWith.epoch	number:int
+battlefield.cards[].exiledWith.id	custom(uuid.UUID)
 battlefield.cards[].faceDown	bool
 battlefield.cards[].faceDownKind	string
 battlefield.cards[].faceDownListed	object
@@ -532,6 +535,9 @@ exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
+exile.cards[].exiledWith	object
+exile.cards[].exiledWith.epoch	number:int
+exile.cards[].exiledWith.id	custom(uuid.UUID)
 exile.cards[].faceDown	bool
 exile.cards[].faceDownKind	string
 exile.cards[].faceDownListed	object
@@ -1013,6 +1019,9 @@ lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
+lastKnownStack[].card.exiledWith	object
+lastKnownStack[].card.exiledWith.epoch	number:int
+lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
 lastKnownStack[].card.faceDown	bool
 lastKnownStack[].card.faceDownKind	string
 lastKnownStack[].card.faceDownListed	object
@@ -1936,6 +1945,9 @@ phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
+phasedOut.cards[].exiledWith	object
+phasedOut.cards[].exiledWith.epoch	number:int
+phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
 phasedOut.cards[].faceDown	bool
 phasedOut.cards[].faceDownKind	string
 phasedOut.cards[].faceDownListed	object
@@ -2372,6 +2384,10 @@ seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
+seats[].castPermissions[].filter.exiledWith	object
+seats[].castPermissions[].filter.exiledWith.epoch	number:int
+seats[].castPermissions[].filter.exiledWith.id	custom(uuid.UUID)
+seats[].castPermissions[].filter.exiledWithSource	bool
 seats[].castPermissions[].filter.fromChosenType	bool
 seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
@@ -2485,6 +2501,9 @@ seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
+seats[].command.cards[].exiledWith	object
+seats[].command.cards[].exiledWith.epoch	number:int
+seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].command.cards[].faceDown	bool
 seats[].command.cards[].faceDownKind	string
 seats[].command.cards[].faceDownListed	object
@@ -2764,6 +2783,9 @@ seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
+seats[].emblems.cards[].exiledWith	object
+seats[].emblems.cards[].exiledWith.epoch	number:int
+seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].emblems.cards[].faceDown	bool
 seats[].emblems.cards[].faceDownKind	string
 seats[].emblems.cards[].faceDownListed	object
@@ -3034,6 +3056,9 @@ seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
+seats[].graveyard.cards[].exiledWith	object
+seats[].graveyard.cards[].exiledWith.epoch	number:int
+seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].graveyard.cards[].faceDown	bool
 seats[].graveyard.cards[].faceDownKind	string
 seats[].graveyard.cards[].faceDownListed	object
@@ -3302,6 +3327,9 @@ seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
+seats[].hand.cards[].exiledWith	object
+seats[].hand.cards[].exiledWith.epoch	number:int
+seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].hand.cards[].faceDown	bool
 seats[].hand.cards[].faceDownKind	string
 seats[].hand.cards[].faceDownListed	object
@@ -3581,6 +3609,9 @@ seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
+seats[].library.cards[].exiledWith	object
+seats[].library.cards[].exiledWith.epoch	number:int
+seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].library.cards[].faceDown	bool
 seats[].library.cards[].faceDownKind	string
 seats[].library.cards[].faceDownListed	object
@@ -3809,6 +3840,10 @@ seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
+seats[].statics[].cantBeCountered.filter.exiledWith	object
+seats[].statics[].cantBeCountered.filter.exiledWith.epoch	number:int
+seats[].statics[].cantBeCountered.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].cantBeCountered.filter.exiledWithSource	bool
 seats[].statics[].cantBeCountered.filter.fromChosenType	bool
 seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
@@ -3826,6 +3861,10 @@ seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
+seats[].statics[].castBan.filter.exiledWith	object
+seats[].statics[].castBan.filter.exiledWith.epoch	number:int
+seats[].statics[].castBan.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].castBan.filter.exiledWithSource	bool
 seats[].statics[].castBan.filter.fromChosenType	bool
 seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
@@ -3873,6 +3912,10 @@ seats[].statics[].nextSpell.counters	number:int
 seats[].statics[].nextSpell.filter	object
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
+seats[].statics[].nextSpell.filter.exiledWith	object
+seats[].statics[].nextSpell.filter.exiledWith.epoch	number:int
+seats[].statics[].nextSpell.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].nextSpell.filter.exiledWithSource	bool
 seats[].statics[].nextSpell.filter.fromChosenType	bool
 seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
@@ -3892,6 +3935,10 @@ seats[].statics[].timing.affects	string
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
+seats[].statics[].timing.filter.exiledWith	object
+seats[].statics[].timing.filter.exiledWith.epoch	number:int
+seats[].statics[].timing.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].timing.filter.exiledWithSource	bool
 seats[].statics[].timing.filter.fromChosenType	bool
 seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
@@ -4011,6 +4058,9 @@ stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
+stack.cards[].exiledWith	object
+stack.cards[].exiledWith.epoch	number:int
+stack.cards[].exiledWith.id	custom(uuid.UUID)
 stack.cards[].faceDown	bool
 stack.cards[].faceDownKind	string
 stack.cards[].faceDownListed	object

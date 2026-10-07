@@ -208,6 +208,28 @@ type PermissionFilter struct {
 	// when the card leaves exile, so the marker survives exactly as long
 	// as the card stays there.
 	WithCounter string `json:"withCounter,omitempty"`
+
+	// ExiledWithSource is Valgavoth, Terror Eater's "cards exiled with
+	// Valgavoth" (#2530, CR 607.2a): the card must carry
+	// Card.ExiledWith naming the permanent that grants the permission,
+	// as the very object it is now. The catalog declares the flag; the
+	// derivation (stampStandingPermissionLocked) fills ExiledWith with
+	// the granting permanent's {instance, epoch}, because a catalog
+	// entry is static and cannot name an object. A flag with no
+	// derived object matches nothing — "exiled with nothing" is not a
+	// qualification.
+	//
+	// The epoch is what ends the permission with the permanent: a
+	// Valgavoth that leaves and returns is a new object (CR 400.7),
+	// so the cards its earlier self exiled are no longer "exiled with"
+	// it. And because the permission is a standing one, derived off
+	// the battlefield on every query, a Valgavoth that has left grants
+	// nothing at all.
+	ExiledWithSource bool `json:"exiledWithSource,omitempty"`
+
+	// ExiledWith is ExiledWithSource's derived payload: the source
+	// object the card must be linked to. Zero on every catalog entry.
+	ExiledWith PermissionCardRef `json:"exiledWith"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -238,6 +260,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
+		return false
+	}
+	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
 	return true
@@ -1397,6 +1422,11 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 			return CastPermission{}, false
 		}
 		perm.Filter.CreatureType = c.NamedTribe
+	}
+	if perm.Filter.ExiledWithSource {
+		// Valgavoth, Terror Eater (#2530): "cards exiled with this
+		// permanent" is this OBJECT's cards, so the filter names it.
+		perm.Filter.ExiledWith = PermissionCardRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
 	}
 	return perm, true
 }

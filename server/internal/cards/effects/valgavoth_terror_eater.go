@@ -13,8 +13,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 you cast a spell this way, pay life equal to its mana value
 //	 rather than pay its mana cost."
 //
-// The nine-drop that eats the table's graveyards. Three of the four
-// clauses ship.
+// The nine-drop that eats the table's graveyards. All four clauses
+// ship.
 //
 // The WARD is the reason WardSacrificeCost grew a count: every ward
 // in the catalog before this one demanded a single permanent, and the
@@ -39,21 +39,49 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature that would DIE is exiled instead, so it never died and its
 // own dies-triggers never fire (CR 700.4).
 //
-// The FOURTH clause is dropped. Playing a card out of exile is a
-// permission that belongs to one exiled instance, and the engine
-// grants it from a resolving effect; a replacement has no post-move
-// hook to register one from, and the permission's filter is a closed
-// set of flags with no "exiled by this permanent" member. The cards
-// are still exiled, which is most of what Valgavoth is for — they are
-// simply gone rather than yours.
+// The FOURTH clause (#2530) was held back for a while, and the answer
+// is that it needs no per-card permission at all. A replacement runs
+// before the card moves, so it cannot register a permission over the
+// card it is moving — the #1117 triage. Two halves instead, each
+// already shaped like something the engine had:
+//
+//   - The LINK. LinkExiled makes the replacement leave
+//     ReplacementEvent.ExiledWith on the event, and the move that
+//     lands the card in exile stamps it as Card.ExiledWith: Valgavoth
+//     as the object it is now (CR 607.2a, 400.7). A card a different
+//     replacement exiled (Leyline of the Void) or an ability exiled is
+//     not linked, because only this replacement declares it.
+//   - The PERMISSION. A STANDING cast permission over exile, derived
+//     off the battlefield on every query and never stored (Tinybones,
+//     Bauble Burglar's shape, ADR 0066), narrowed by the filter
+//     ExiledWithSource: the card's link must name THIS Valgavoth. So
+//     it reaches cards exiled before anyone asked, ends the moment
+//     Valgavoth leaves, and a Valgavoth that comes back is a new
+//     object with no claim on the old one's cards.
+//
+// "During your turn" is TimingYourTurnOnly, which refuses the cast off
+// the holder's own turn and leaves the card's own timing in force, so
+// an exiled creature is still a sorcery-speed cast. Lands are played,
+// not cast, so no cost attaches to them (CastOnly is deliberately
+// unset, and the alternative cost is never offered on a land).
+//
+// "Pay life equal to its mana value rather than pay its mana cost" is
+// the alternative cost Bolas's Citadel already claims
+// (LifeEqualToManaValue, CR 118.9 and 119.4): the price is life and no
+// mana, it is a cost so a player without the life cannot claim it, and
+// a spell with mana value 0 costs nothing. It is the only way to cast
+// a card this way — the printed mana cost is not on offer, because the
+// clause says "rather than".
+//
+// Whose card it is does not matter: the cards are the opponents', and
+// Valgavoth's controller plays them from exile.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "cae3ec72-436d-4086-9dcb-17b3d92ad5c4",
-		Name:         "Valgavoth, Terror Eater",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Cards Valgavoth exiles stay exiled — you can't play them.",
-		},
+		OracleID:        "cae3ec72-436d-4086-9dcb-17b3d92ad5c4",
+		Name:            "Valgavoth, Terror Eater",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardSacrificeN(3, "three nonland permanents", Nonland()),
@@ -62,7 +90,16 @@ func init() {
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			OpponentsOnly:      true,
 			NotControlledByYou: true,
+			LinkExiled:         true,
 			Label:              "Valgavoth, Terror Eater — exile it instead",
 		}.Build()},
+		CastPermissions: []game.CastPermission{{
+			Zone:                 game.ZoneExile,
+			Filter:               game.PermissionFilter{ExiledWithSource: true},
+			Timing:               game.TimingYourTurnOnly,
+			AltCostKey:           "valgavoth_terror_eater",
+			LifeEqualToManaValue: true,
+			Label:                "Pay life equal to its mana value (Valgavoth, Terror Eater)",
+		}},
 	})
 }

@@ -2711,3 +2711,94 @@ a coloured symbol only if it shares the colour, and otherwise only generic.
 
 Out of scope, unchanged: an any-colour grant on a spell with waterbend (the
 extra cost is generic and the grant does not touch it).
+
+## Amendment — 2026-10-07 (#2530): "cards exiled with this permanent", when a replacement did the exiling
+
+Valgavoth, Terror Eater: "If a card you didn't control would be put into an
+opponent's graveyard from anywhere, exile it instead. During your turn, you
+may play cards exiled with Valgavoth. If you cast a spell this way, pay life
+equal to its mana value rather than pay its mana cost." The #1117 triage held
+the second sentence back because a replacement effect runs before the card
+moves, so it has no post-move moment at which to register a stored permission
+over the card that lands, and because `PermissionFilter` had no "exiled by
+this permanent" member.
+
+This is a dated amendment, not a new ADR: it adds one filter flag and one
+card-carried link to the model decision 1 already defines, and writes no
+second grant type.
+
+### Decision 1 — a STANDING permission, not a stored one
+
+The permission is `Spec.CastPermissions` — derived off the battlefield on every
+query, never stored — the shape Tinybones, Bauble Burglar (#2179) and Bolas's
+Citadel already use. That is what makes the stored-permission problem go away:
+nothing is registered when the card is exiled, so nothing has to be registered
+over a card that has not landed yet. It also reaches cards exiled before the
+permission was asked for, and ends the moment Valgavoth leaves, because a
+permanent that is gone grants nothing (decision 1's "for as long as the source
+remains", free).
+
+### Decision 2 — `Card.ExiledWith`, a link stamped after the move
+
+CR 607.2a's "exiled with [this permanent]" for an exile a REPLACEMENT made is a
+card-carried link, `Card.ExiledWith PermissionCardRef` — the permanent object
+`{instance, epoch}`, the shape `Card.HiddenBy` (ADR 0091) already has. It is not
+the effects package's event-log record (`b27ExiledWith`), which opens a window
+on an `EventResolve` for an ABILITY; a replacement resolves nothing, so there is
+no event to key on, and a pure-data filter has a `Card` in hand and no log.
+
+A replacement still cannot write to the card, so it leaves the link on the
+event: `ReplacementEvent.ExiledWith`, set by the same `Replace` that rewrites
+`NewZone` (the `ShuffleDestinationLibrary` pattern, ADR 0013 §5ah). The two
+functions that perform every replaced exit's physical landing —
+`executeZoneRouteLocked` and `executeBattlefieldLeaveLocked` — call
+`stampExiledWithLocked` once the card has landed, and it writes the link only
+if the destination zone really is exile. A move a later replacement redirected
+to a command zone, hand or library stamps nothing. `MoveCard` clears the link on
+every move, so a card that leaves exile and comes back by another route was
+exiled with nothing.
+
+The shared `effects.GraveyardBecomesExile` gets `LinkExiled`, off by default:
+Rest in Peace and the Leylines exile without a link, because nothing refers to
+the cards they exile.
+
+### Decision 3 — `PermissionFilter.ExiledWithSource`
+
+A catalog entry is static and cannot name an object, so the filter carries a
+flag and the derivation fills in the object. `ExiledWithSource` says "the card
+must be linked to the permanent granting this"; `stampStandingPermissionLocked`
+writes the granting permanent's `{InstanceID, ObjectEpoch}` into
+`PermissionFilter.ExiledWith`, the way it already fills `CreatureType` for
+`FromChosenType`; `Matches` compares the card's link to it. A flag with no
+derived object matches nothing. The epoch is the CR 400.7 check: a Valgavoth
+that is bounced and replayed keeps its `InstanceID` and is a new object, so
+the cards its earlier self exiled are not exiled with it. Every consumer of
+`Matches` (the cast validator, the enumerator, the view) gets the narrowing
+with no change.
+
+### Decision 4 — the price is Citadel's, unchanged
+
+"Pay life equal to its mana value rather than pay its mana cost" is
+`LifeEqualToManaValue` with an `AltCostKey` (`valgavoth_terror_eater`): a CR 118.9
+alternative cost with a CR 119.4 life component, refused when the player cannot
+pay, never offered on a land (a land is played, with no cost). The printed mana
+cost is not on offer for a card exiled this way: a zone that has a bound offer
+can only be cast from by claiming it (decision 3 above). "During your turn" is
+`TimingYourTurnOnly`, which leaves the card's own timing in force.
+
+### Snapshot
+
+One additive key, `exiledWith`, on every card (`Card.ExiledWith`), and
+`exiledWith` / `exiledWithSource` under every `PermissionFilter`. A file written
+before it decodes as "exiled with nothing", which is every game before it; a
+binary before it that drops the key leaves an eaten card unlinked, which errs
+toward weaker, never stronger. `snapshot_shape/v7.txt` is regenerated; no schema
+bump.
+
+### Out of scope, stated
+
+- Cards exiled by an ABILITY's resolution and then played (Court of Locthwain,
+  Currency Converter) keep `b27ExiledWith` and a stored grant. Moving them onto
+  this link would be a second change; the two coexist because they answer
+  different questions (an ability's window versus a replacement's event).
+- No wire change: `Card.ExiledWith` is engine state, like `HiddenBy`.
