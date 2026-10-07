@@ -236,6 +236,27 @@ promoted squash commits back to their original PRs and honors line-leading
 each closing directive explicit in that section; prose such as "does not close"
 and references outside it are deliberately ignored.
 
+### Model tiers
+
+Triage gives every open issue one `tier:*` label: the weakest model that
+can take it from start to merged PR without supervision. The names are
+vendor-neutral on purpose, so "work only on tier 2 and below" means the
+same thing to any agent. The tiers are ordered, 1 < 2 < 3.
+
+| Label | Takes it to a merged PR |
+|---|---|
+| `tier:1-mechanical` | One area of the code, with a recipe or a sibling to copy: a card whose seams all exist, a docs fix, a copy or label change, a flake with an obvious cause. The acceptance test is clear from the issue text. Any capable model. |
+| `tier:2-standard` | Several files, but it follows an existing ADR or pattern: a bug that has a repro, a small extension to an existing seam, a client feature built from existing components, a heuristic tweak with an arena or suite measurement. A mid-tier model or above. |
+| `tier:3-design` | Needs an ADR or an owner decision not yet recorded, a new engine seam, CR edge cases (layers, replacement ordering, copies, loops), cross-cutting engine + protocol + client work, a snapshot-schema change, bot strategy design, a diagnosis with no repro, or an epic. The strongest model only. |
+
+Tier by the hardest part of the work, and pick the higher tier when unsure.
+An agent told to stay at or below a tier lists candidates with
+`gh issue list --label tier:1-mechanical` (plus `tier:2-standard` when
+allowed). It skips an issue labelled `in-progress` or `question`. If the
+work turns out harder than its label, it stops, comments on the issue
+saying why, and relabels it rather than pushing through. Re-tier an issue
+when its scope changes.
+
 ---
 
 ## 5. Commands you'll actually run
