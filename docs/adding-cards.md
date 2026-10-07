@@ -4272,6 +4272,33 @@ is a *price* rather than a permission:
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
 
+**Retrace (#2528, CR 702.81, [ADR 0066 amendment 2026-10-07](decisions/0066-granted-cast-and-play-permissions.md))**
+is "cast this from your graveyard by discarding a land card in addition
+to paying its other costs". The card file is escape's two lines, with
+the card's own printed mana cost spelled out (hybrid symbols included),
+because retrace never replaces the mana:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+AlternativeCosts: []game.AlternativeCost{Retrace("{R}")},   // Flame Jab
+```
+
+Retrace is an **additional** cost, and the engine carries it on a
+graveyard-bound priced offer (`AlternativeCost.DiscardFromHand`, a land
+card from hand discarded **as a cost**, so a discard payoff sees it and a
+countered spell does not give the land back). That makes the claim the
+thing that opens the graveyard, so the discard is owed on exactly the
+graveyard cast and never on the hand cast. The one thing the model gives
+up is combining retrace with another alternative cost on one cast; no
+catalog card can. A card that GRANTS retrace to others declares a
+`CastPermission` with `AltCostKey: game.AltCostKeyRetrace` and
+`DiscardLandCard: true` — on `Spec.CastPermissions` for a permanent (Six,
+with `Filter: PermissionFilter{NonLandPermanentOnly: true}` and
+`Timing: game.TimingYourTurnOnly`), or on `EmblemSpec.CastPermissions`
+for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). Standing
+permissions are derived from the battlefield or the owner's emblems on
+every query, so they end when the source does.
+
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
 `AlternativeCost.CastsFace: 1`, so the spell is the card's **back
@@ -6584,8 +6611,8 @@ Three things to know:
 - **`Register` panics** on an `EmblemSpec` with no `Label`, no `Text`,
   or no abilities at all. An emblem whose printed ability the engine
   cannot express yet is NOT declared with an empty `Static` — leave
-  the ultimate omitted and say why in `Caveats`, as Wrenn and Six does
-  for retrace (#652). ADR 0032 still holds: a −7 that costs seven
+  the ultimate omitted and say why in `Caveats`, as Wrenn and Six did
+  for retrace until #2528. ADR 0032 still holds: a −7 that costs seven
   loyalty and delivers a chip that does nothing is the lie the
   omission exists to avoid.
 - **Nothing removes an emblem**, and nothing can name one. It is not a

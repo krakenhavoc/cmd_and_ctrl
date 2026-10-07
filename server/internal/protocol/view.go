@@ -5907,6 +5907,14 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Players = nil
 			v.PayOptions = opts
+		} else if paySpec := ac.DiscardFromHand; paySpec != nil {
+			// Retrace's discard (#2528): the caster's own hand, so the
+			// picker can offer nothing the spec's land predicate and
+			// ownership check would then refuse.
+			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			opts.Cards = withoutID(opts.Cards, self)
+			opts.Players = nil
+			v.PayOptions = opts
 		} else if paySpec := ac.ReturnToHand; paySpec != nil {
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = filterToController(g, opts.Cards, caster)

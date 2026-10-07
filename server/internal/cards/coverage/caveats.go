@@ -219,6 +219,31 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Escape("{cost}", n) — EscapeWithCounters when the creature escapes with counters`,
 	},
 	{
+		// #2528, CR 702.81: printed on the card (Retrace("{cost}")) or granted
+		// to the cards in a graveyard by a standing permission (Six).
+		Name:    "retrace",
+		Phrases: []string{"retrace"},
+		Implements: func(s effects.Spec) bool {
+			if game.AlternativeCostByKey(s.OracleID, game.AltCostKeyRetrace) != nil {
+				return true
+			}
+			for _, p := range s.CastPermissions {
+				if p.AltCostKey == game.AltCostKeyRetrace {
+					return true
+				}
+			}
+			for _, p := range s.GatedCastPermissions {
+				if p.Permission.AltCostKey == game.AltCostKeyRetrace {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   `a printed Retrace("{cost}") offer, or a CastPermission whose AltCostKey is "retrace"`,
+		Confidence: Exact,
+		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Retrace("{printed cost}"); a granting permanent declares a CastPermission with AltCostKey game.AltCostKeyRetrace and DiscardLandCard`,
+	},
+	{
 		Name:       "warp",
 		Phrases:    []string{"warp"},
 		Implements: altCost("warp"),

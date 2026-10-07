@@ -2346,6 +2346,7 @@ seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
 seats[].castPermissions[].discover.source	custom(uuid.UUID)
@@ -2377,6 +2378,7 @@ seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
+seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
@@ -3814,6 +3816,7 @@ seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
+seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
@@ -3831,6 +3834,7 @@ seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.nonLandOnly	bool
+seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
@@ -3878,6 +3882,7 @@ seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.landsOnly	bool
 seats[].statics[].nextSpell.filter.nonLandOnly	bool
+seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
 seats[].statics[].nextSpell.filter.sorceryOnly	bool
@@ -3897,6 +3902,7 @@ seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.nonLandOnly	bool
+seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.notOwnedByHolder	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
