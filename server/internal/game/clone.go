@@ -40,6 +40,7 @@ func (g *Game) cloneLocked() *Game {
 		OpeningRoll:       cloneOpeningRoll(g.OpeningRoll),
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
+		DayNight:          g.DayNight,
 		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
@@ -614,6 +615,7 @@ func clonePlayer(p *Player) *Player {
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -982,16 +984,20 @@ func (g *Game) RestoreFrom(src *Game) {
 	// play. It is set without an undo entry, so the snapshot predates
 	// it; carry the live value across the restore (by player ID) so an
 	// undo of some earlier action cannot flip it back.
+	// ADR 0127 §8: so are its standing answers, by the same rule.
 	live := make(map[uuid.UUID]bool, len(g.Seats))
+	liveAnswers := make(map[uuid.UUID]map[string]AutoAnswer, len(g.Seats))
 	for _, p := range g.Seats {
 		if p != nil {
 			live[p.ID] = p.TriggerOrderAlwaysAsk
+			liveAnswers[p.ID] = p.AutoAnswers
 		}
 	}
 	g.Seats = src.Seats
 	for _, p := range g.Seats {
 		if p != nil {
 			p.TriggerOrderAlwaysAsk = live[p.ID]
+			p.AutoAnswers = copyAutoAnswers(liveAnswers[p.ID])
 		}
 	}
 	g.Battlefield = src.Battlefield
@@ -1003,6 +1009,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.OpeningRoll = src.OpeningRoll
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
+	g.DayNight = src.DayNight
 	// Settings are NOT restored (ADR 0075 §2.3): the live value is
 	// carried forward, so an undo cannot roll back a settings change —
 	// least of all the undo limit it is spending against. A snapshot

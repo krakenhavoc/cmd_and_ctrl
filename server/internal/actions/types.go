@@ -58,6 +58,7 @@ var allTypes = []Type{
 	TypeChooseStartingPlayer,
 	TypeRollTableDie,
 	TypeSetTriggerOrderPreference,
+	TypeSetAutoAnswers,
 }
 
 // Types returns every action type, in declaration order. The slice is

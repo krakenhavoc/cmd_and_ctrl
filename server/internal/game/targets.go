@@ -75,6 +75,14 @@ type TargetSource struct {
 	// Read through PowerToughness (#2146).
 	Power, Toughness int
 	PTKnown          bool
+
+	// Departed is the same last-known record, whole, for a clause that
+	// reads more than power and toughness off a source that has left
+	// the battlefield: who it was blocking (TargetSpec.CombatWithSource)
+	// and what it was attached to. DepartedID is the object's id, which
+	// the record does not carry (#1863). Nil for a live source.
+	Departed   *PermanentInfo
+	DepartedID uuid.UUID
 }
 
 // PowerToughness is the source's power and toughness as a
@@ -167,6 +175,7 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 			if rec, ok := g.departedAbilitySourceLocked(item); ok {
 				src := SourceSnapshot(item.Controller, lastKnownSourceCharacteristics(rec))
 				src.Power, src.Toughness, src.PTKnown = rec.Power, rec.Toughness, true
+				src.Departed, src.DepartedID = &rec, item.SourceCardID
 				return src
 			}
 		}
@@ -322,6 +331,23 @@ type TargetSpec struct {
 	// refused, so a walk that cannot say what it is relative to never
 	// admits more than printed. Build one with effects.RelativeToSource.
 	RelativeToSource []SourceComparison
+
+	// CombatWithSource is the clause described by what the source (or
+	// the creature it is attached to) is DOING in combat: "target
+	// creature it's blocking" (Wall of Vipers, Goblin Snowman),
+	// "target creature with flying blocked by this creature" (Whip
+	// Vine), "target creature that's blocking equipped creature"
+	// (Plasma Caster) (#1863). Like RelativeToSource it is data judged
+	// beside CardOK in the one shared walk, so the legal set, the
+	// announce check (CR 601.2c), the resolution re-check (CR 608.2b),
+	// the client's picker and the bot's moves agree, and a creature
+	// that has left combat in response is an illegal target (CR
+	// 506.4). The zero value says nothing. A source that has left the
+	// battlefield is read from its last-known record (CR 608.2h); with
+	// no source at all, or a host that is gone, the clause admits
+	// nothing, never everything. Build one with effects.BlockedBySource
+	// / BlockingSource / BlockingEquipped.
+	CombatWithSource SourceCombat
 
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
@@ -835,7 +861,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
 					continue
 				}
-				if !spec.sourceAdmits(src, c) {
+				if !spec.sourceAdmits(g, src, c) {
 					continue
 				}
 				if !spec.xBoundAdmits(c) {
@@ -1096,7 +1122,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 				return false
 			}
 			return (spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)) &&
-				spec.sourceAdmits(src, c)
+				spec.sourceAdmits(g, src, c)
 		}
 	}
 	return false
@@ -1148,9 +1174,120 @@ func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
 	return false
 }
 
-// sourceAdmits is RelativeToSource's gate: true with no comparison,
-// false when there is one and the walk has no source to be relative to.
-func (s *TargetSpec) sourceAdmits(src TargetSource, c Card) bool {
+// SourceCombatOf says whose combat a SourceCombat reads.
+type SourceCombatOf string
+
+const (
+	// CombatOfSource is the ability's own source: "this creature".
+	CombatOfSource SourceCombatOf = "source"
+	// CombatOfHost is the permanent the source is attached to: "equipped
+	// creature" on an Equipment's ability (Plasma Caster).
+	CombatOfHost SourceCombatOf = "host"
+)
+
+// CombatRole is how the candidate relates to the reference creature.
+type CombatRole string
+
+const (
+	// CombatBlockedBy: the candidate is an attacking creature the
+	// reference creature is blocking ("creature it's blocking",
+	// "creature blocked by this creature").
+	CombatBlockedBy CombatRole = "blocked_by"
+	// CombatBlocking: the candidate is a creature blocking the
+	// reference creature, which is itself attacking ("creature
+	// blocking equipped creature").
+	CombatBlocking CombatRole = "blocking"
+)
+
+// SourceCombat is one combat relation between a candidate and the
+// reference creature named by Of. The zero value (Role "") is no
+// relation at all.
+type SourceCombat struct {
+	Of   SourceCombatOf `json:"of,omitempty"`
+	Role CombatRole     `json:"role,omitempty"`
+}
+
+// combatReference is the creature a SourceCombat is about, as the
+// walk can know it: its id, the attackers it blocked, and whether it
+// was attacking. ok is false when there is nothing to be relative to.
+type combatReference struct {
+	id        uuid.UUID
+	blocks    []uuid.UUID
+	attacking bool
+}
+
+// combatReferenceLocked resolves SourceCombat.Of against the walk's
+// source. A live source reads the battlefield now; one that has left
+// reads its record (CR 608.2h). A host is always read live: if it has
+// left, the relation cannot be judged and nothing is admitted.
+//
+// Caller must hold g.mu.
+func (g *Game) combatReferenceLocked(src TargetSource, of SourceCombatOf) (combatReference, bool) {
+	var id uuid.UUID
+	switch of {
+	case CombatOfSource:
+		switch {
+		case src.Departed != nil:
+			return combatReference{id: src.DepartedID, blocks: src.Departed.Blocking, attacking: src.Departed.Attacking}, true
+		case src.Object != nil:
+			id = src.Object.InstanceID
+		}
+	case CombatOfHost:
+		switch {
+		case src.Departed != nil:
+			if src.Departed.AttachedTo.Kind == TargetCard {
+				id = src.Departed.AttachedTo.ID
+			}
+		case src.Object != nil && src.Object.AttachedTo.Kind == TargetCard:
+			id = src.Object.AttachedTo.ID
+		}
+	}
+	if id == uuid.Nil {
+		return combatReference{}, false
+	}
+	r := findBattlefieldCard(g, id)
+	if r == nil {
+		return combatReference{}, false
+	}
+	return combatReference{id: id, blocks: r.BlockedAttackers(), attacking: r.AttackingTarget != uuid.Nil}, true
+}
+
+// combatAdmits is CombatWithSource's gate: true with no relation,
+// false when there is one and the walk has nothing to be relative to.
+func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
+	if s.CombatWithSource.Role == "" {
+		return true
+	}
+	ref, ok := g.combatReferenceLocked(src, s.CombatWithSource.Of)
+	if !ok {
+		return false
+	}
+	switch s.CombatWithSource.Role {
+	case CombatBlockedBy:
+		// A creature removed from combat is no longer blocked by anything
+		// (CR 506.4), so the candidate must still be an attacker.
+		if c.AttackingTarget == uuid.Nil {
+			return false
+		}
+		for _, a := range ref.blocks {
+			if a == c.InstanceID {
+				return true
+			}
+		}
+	case CombatBlocking:
+		return ref.attacking && c.IsBlockingAttacker(ref.id)
+	}
+	return false
+}
+
+// sourceAdmits is the source-relative gate: RelativeToSource's stat
+// comparisons and CombatWithSource's combat relation. True with
+// neither, false when there is one and the walk has no source to be
+// relative to.
+func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.combatAdmits(g, src, c) {
+		return false
+	}
 	if len(s.RelativeToSource) == 0 {
 		return true
 	}

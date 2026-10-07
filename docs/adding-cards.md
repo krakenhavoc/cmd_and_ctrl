@@ -73,6 +73,16 @@ surface tiny.
    resolution against the source's effective power, or its last-known
    power once it has left (#2146). Don't read `source.CurrentPower()` in
    a `TargetsFrom`: that freezes the bound when the trigger is built.
+   "Target creature it's blocking" / "blocked by this creature" /
+   "blocking equipped creature" is the same idea for combat: wrap the
+   clause in `BlockedBySource(spec)`, `BlockingSource(spec)`,
+   `BlockingEquipped(spec)` or `BlockedByEquipped(spec)` and keep the
+   candidate's own type and keywords in the predicates
+   (`BlockedBySource(TargetCreature("…", HasKeyword("flying")))`). It is
+   `game.TargetSpec.CombatWithSource`, judged at announce and at
+   resolution; a creature removed from combat in response is illegal,
+   and a source that has left is read from its last-known blocks
+   (#1863, ADR 0019 amendment 2026-10-07).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -6940,6 +6950,43 @@ Three things to know:
   `WheneverTheRingTemptsYou`, Call of the Ring's
   `WheneverYouChooseARingBearer`, Ringsight's search in `Then` (read the
   board there, after the tempt: the new Ring-bearer is legendary).
+
+### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
+
+The game itself can be day or night. The designation, the untap-step
+check that changes it (CR 502.2) and the werewolf turn-over are engine
+(`game/daynight.go`); a card needs only the vocabulary in
+[daynight.go](../server/internal/cards/effects/daynight.go):
+
+```go
+AsEnters: BecomesDayAsEnters(),   // "If it's neither day nor night, it becomes day as ~ enters."
+Triggered: []game.TriggeredAbility{
+    WheneverDayBecomesNightOrNightBecomesDay("Firmament Sage — draw a card", Do(DrawCards{N: 1})),
+},
+OnResolve: …Do(BecomeNight{})…    // also BecomeDay{} and ToggleDayNight{} (The Celestus)
+SelfCostModifiers: []game.CostModifier{CostsLess(2, "…if it's night.", ItsNightCost())},
+```
+
+**The trigger is a flip.** The first designation a game gains is not
+"day becomes night", so `WheneverDayBecomesNightOrNightBecomesDay`
+ignores it; write your own `On(game.EventDayNightChanged, …)` only for a
+card that cares about the first one, and read `ev.Label` ("day" /
+"night"). "If it's night" inside a resolution is `ItsNight(ctx.Game)`.
+
+**A werewolf is two `Spec`s and no machinery.** The front face's key is
+the oracle ID and the back face's is `"<oracle_id>#1"`; each declares
+its own `PrintedKeywords` including `"daybound"` / `"nightbound"`. The
+engine turns the permanent over when the designation changes, makes a
+daybound card cast at night enter on its back face (so it is the back
+face's "enters" ability that triggers, and no transform event fires),
+and refuses every other instruction to transform it. See
+[village_watch.go](../server/internal/cards/effects/village_watch.go) and
+[infestation_expert.go](../server/internal/cards/effects/infestation_expert.go);
+a face with nothing but keywords is a row of the table in
+[werewolves_keyword.go](../server/internal/cards/effects/werewolves_keyword.go).
+Test them through `deck.ToGameCard` (`werewolfRow` in
+`werewolf_cards_test.go`), because the per-face keywords reach the card
+only through the importer.
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 

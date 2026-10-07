@@ -214,7 +214,6 @@ var tokenTable = map[string]game.Card{
 	"8/8 blue Scion of the Deep":                    {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"9/9 blue Kraken":                               {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
 	"20/20 black Marit Lage":                        {Name: "Marit Lage", TypeLine: "Token Legendary Creature — Avatar", Power: 20, Toughness: 20, Colors: []string{"B"}, Keywords: []string{"flying", "indestructible"}},
-	"Munitions":                                     {Name: "Munitions", TypeLine: "Token Artifact"},
 
 	// A key longer than every row above: kept in its own block so gofmt
 	// does not re-align the whole table (and every open PR's rows) for it.

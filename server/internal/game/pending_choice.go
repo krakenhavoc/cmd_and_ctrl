@@ -921,6 +921,22 @@ type PendingChoice struct {
 	// wait for it. Stamped by QueueChoiceForEffect, never by a caller.
 	// Carried by the snapshot. See resolution_pause.go.
 	midResolution bool
+
+	// AutoAnswerKey is the key a standing answer to this prompt is
+	// filed under (ADR 0127 §2), or "" when the prompt is not covered
+	// (§1). Derived by the server when the prompt is queued and opaque
+	// to the client. AutoAnswerCard and AutoAnswerPrompt are its
+	// display copies: the asking card's name and the question, which
+	// the client stores beside the rule. All three are on the
+	// chooser's view only. Carried by the clone and the snapshot.
+	AutoAnswerKey    string
+	AutoAnswerCard   string
+	AutoAnswerPrompt string
+
+	// AskedByHand marks a prompt with a standing answer that is asked
+	// by hand instead, and says why (ADR 0127 §4): the room never
+	// answers it automatically again. Empty on every other prompt.
+	AskedByHand AskedByHand
 }
 
 // payUnlessFrame carries a pay-unless prompt's parsed cost and the
@@ -1256,6 +1272,9 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	}
 	// #1289: a prompt a resolution asks is part of that resolution.
 	choice.midResolution = g.resolutionOpen && choiceBelongsToResolution(&choice)
+	// ADR 0127 §2: a covered pay_unless or confirm is filed under the
+	// key of the resolution or branch that asks it.
+	g.keyResolutionPromptLocked(&choice)
 	g.PendingChoices = append(g.PendingChoices, &choice)
 	return choice.ID
 }
@@ -3104,13 +3123,26 @@ func (g *Game) queueTriggerPromptLocked(
 	if ability.HasLegalTarget != nil {
 		noLegalTarget = !ability.HasLegalTarget(tc.Event, &source, lki, g)
 	}
+	// ADR 0127 §2: an optional trigger's standing answer is filed under
+	// its catalog row.
+	key, card, prompt := triggerPromptKey(source, ability), "", ""
+	if key != "" {
+		card = source.Name
+		prompt = question
+		if prompt == "" {
+			prompt = ability.Key
+		}
+	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:          PendingChoiceTriggerPrompt,
-		Chooser:       chooser,
-		Count:         1,
-		Source:        source.InstanceID,
-		Reason:        question,
-		NoLegalTarget: noLegalTarget,
+		Kind:             PendingChoiceTriggerPrompt,
+		Chooser:          chooser,
+		Count:            1,
+		Source:           source.InstanceID,
+		Reason:           question,
+		NoLegalTarget:    noLegalTarget,
+		AutoAnswerKey:    key,
+		AutoAnswerCard:   card,
+		AutoAnswerPrompt: prompt,
 		triggerResume: &triggerResumeFrame{
 			tc:        tc,
 			source:    source,
@@ -3439,13 +3471,21 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	g.answerTriggerPromptLocked(idx, choice, apply, false)
+	return nil
+}
+
+// answerTriggerPromptLocked is ResolveTriggerPrompt's body, shared with
+// the automatic answer (ADR 0127 §4): `auto` takes the prompt out of the
+// queue without counting it as a player decision. Caller must hold g.mu.
+func (g *Game) answerTriggerPromptLocked(idx int, choice *PendingChoice, apply, auto bool) {
 	frame := choice.triggerResume
-	g.dequeueChoiceLocked(idx)
+	g.answerChoiceLocked(idx, auto)
 	if !apply || frame == nil || !frame.ability.builds() {
 		// #1529: declining still releases the batch the drain was
 		// holding for this trigger (CR 603.3b).
 		g.runStateChecksLocked()
-		return nil
+		return
 	}
 	// S20: a targeted optional trigger continues into the target
 	// pick; an untargeted one builds straight away.
@@ -3457,7 +3497,6 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	// answering "yes" is the moment the ability is put on the stack
 	// (CR 603.3), and SBAs run at the same boundary.
 	g.runStateChecksLocked()
-	return nil
 }
 
 // QueuePayUnlessForEffect queues an "unless that player pays
@@ -3925,27 +3964,50 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 			payable = true
 		}
 	}
-	g.dequeueChoiceLocked(idx)
+	g.answerPayUnlessLocked(idx, choice, chooserID, apply, tapIDs, cardIDs, phyrexianLife, payable, false)
+	return nil
+}
+
+// answerPayUnlessLocked is resolvePayUnless's body once the answer has
+// been validated, shared with the automatic answer (ADR 0127 §4):
+// `phyrexianLife` is the symbols paid with 2 life (ADR 0131 §2; an
+// automatic answer pays mana only), `payable` is whether a non-mana
+// payment can be made, and `auto` takes
+// the prompt out of the queue without counting it as a player decision.
+// The branch runs as the answered prompt's branch, so a prompt it
+// queues is keyed from this one's (§2). Caller must hold g.mu.
+func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, payable, auto bool) {
+	frame := choice.payUnlessResume
+	var action *PayAction
+	if frame != nil {
+		action = frame.action
+	}
+	g.answerChoiceLocked(idx, auto)
 	if frame == nil {
-		return nil
+		return
+	}
+	branch := func(fn func(g *Game) error) {
+		g.runPromptBranchLocked(choice.AutoAnswerKey, func() {
+			g.runPayUnlessBranchLocked(choice, chooserID, fn)
+		})
 	}
 	if action != nil {
 		// CR 118.12a: "sacrifice it unless you discard a card" — the
 		// discard is the payment, and the "yes" branch runs once it has
 		// been made. An unpayable "yes" is the decline.
 		if !payable {
-			g.runPayUnlessBranchLocked(choice, chooserID, frame.onDecline)
+			branch(frame.onDecline)
 			g.runStateChecksLocked()
-			return nil
+			return
 		}
 		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, func(g *Game) error {
-			g.runPayUnlessBranchLocked(choice, chooserID, frame.onPay)
+			branch(frame.onPay)
 			return nil
 		}); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
 		}
 		g.runStateChecksLocked()
-		return nil
+		return
 	}
 	paid := false
 	if apply {
@@ -3965,9 +4027,8 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if paid {
 		consequence = frame.onPay
 	}
-	g.runPayUnlessBranchLocked(choice, chooserID, consequence)
+	branch(consequence)
 	g.runStateChecksLocked()
-	return nil
 }
 
 // runPayUnlessBranchLocked runs one branch of an answered pay-unless,
@@ -4018,14 +4079,9 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 	if c == nil || c.payUnlessResume == nil || c.payUnlessResume.onDecline == nil {
 		return
 	}
-	if err := c.payUnlessResume.onDecline(g); err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Actor:    c.Chooser,
-			Source:   c.Source,
-			ErrorMsg: err.Error(),
-		})
-	}
+	g.runPromptBranchLocked(c.AutoAnswerKey, func() {
+		g.runPayUnlessBranchLocked(c, c.Chooser, c.payUnlessResume.onDecline)
+	})
 }
 
 // S32 (#352): this one keeps the zero spend context deliberately. A

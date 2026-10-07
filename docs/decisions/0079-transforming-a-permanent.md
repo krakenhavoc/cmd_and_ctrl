@@ -412,7 +412,9 @@ Each of these stays on the seam registry's transform row after this ADR lands.
    cards cannot transform, so the verb is already correct about them.
 3. **Day and night** (CR 731). The designation, its turn-based transitions and the
    daybound/nightbound keywords are a turn-machinery change, not a transform one.
-   The werewolves wait on it, not on this.
+   The werewolves wait on it, not on this. **Closed by [ADR 0132](0132-day-and-night.md)
+   (2026-10-07, #2561)**, which also adds the one guard this verb needed: a permanent
+   with daybound or nightbound can't be transformed by an instruction (CR 702.145b/e).
 4. **The Siege grant's existing path is untouched.** `CastPermission.Faces`,
    `faceForCastLocked` and `faceOnResolve` keep doing exactly what S32 built. A cast
    of a back face and a transform of a permanent reach the same face by different

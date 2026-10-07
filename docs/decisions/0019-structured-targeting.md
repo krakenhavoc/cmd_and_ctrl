@@ -843,3 +843,91 @@ and Spellskite destroyed or flickered in response.
   there are — the same gap the random-retarget row (#1815) records for
   Chef's Kiss.
 - **A free multi-slot "change a target"** — still no printed card.
+
+## Amendment (2026-10-07, #1863): targets described by what the source is doing in combat
+
+"Target creature it's blocking" (Wall of Vipers, Goblin Snowman),
+"target creature with flying blocked by this creature" (Whip Vine) and
+"target creature that's blocking equipped creature" (Plasma Caster) name
+a creature by its relation to the object whose ability this is. A
+`CardPredicate` is handed the caster and the candidate and cannot say
+it; `TargetSpec.RelativeToSource` (#2146) already established the
+answer for power and toughness: **the relation is data on the clause,
+judged in the one shared walk beside `CardOK`**, so the legal set, the
+announce check (CR 601.2c), the resolution re-check (CR 608.2b), the
+client's `legal_targets` and the bot's enumerated moves are one answer.
+This amendment adds the second kind of relation to the same walk.
+
+### 1. `TargetSpec.CombatWithSource`
+
+`game.SourceCombat{Of, Role}`. The zero value says nothing.
+
+- **`Of`** is whose combat the clause reads: `CombatOfSource` ("this
+  creature") or `CombatOfHost` (the permanent the source is attached to,
+  for an Equipment's "equipped creature" or an Aura's "enchanted
+  creature"). Plasma Caster is the only host card today; Auras with the
+  same wording would use the same value.
+- **`Role`** is how the candidate relates to that creature: `CombatBlockedBy`
+  (the candidate is an attacker the reference creature is blocking) or
+  `CombatBlocking` (the candidate blocks the reference creature, which is
+  itself attacking). The reference's blocked set is
+  `Card.BlockedAttackers`, so a creature that blocks several attackers
+  (Palace Guard) offers each of them.
+- A creature that has left combat is no longer blocked or blocking (CR
+  506.4): `CombatBlockedBy` requires the candidate to still be an
+  attacker, and `CombatBlocking` requires the reference to still be one.
+  That is what makes a Wall of Vipers whose target left combat in
+  response do nothing at all (CR 608.2b), the Wall included.
+
+### 2. A source that has left, and a source that was never there
+
+An ability resolves after its source has gone (CR 608.2), and the
+target is then judged by what the source last was (CR 608.2h).
+`PermanentInfo` gains `Blocking []uuid.UUID`, written beside `Attacking`
+when a permanent departs, and `TargetSource` carries the whole record
+(`Departed`, `DepartedID`) for the one case `stackItemSourceLocked`
+already identifies. So a Goblin Snowman destroyed in response to its own
+ability still deals its damage to the creature it was blocking.
+
+Two cases admit **nothing**, never everything: a walk with no source at
+all (`SourceChooser`, a cost payment), and `CombatOfHost` whose host is
+not on the battlefield (an unattached Equipment, or a host that has
+left, which is read live rather than from its own record). Both are
+weaker than printed, which is the direction a simplification may err
+(#259). A TRIGGER whose source is already gone as its targets are chosen
+has no record to read either; no card needs it yet.
+
+### 3. Why not a closure, and why not `TargetsFrom`
+
+A spec rides a paused prompt and a stack item, and a func there is a
+restore-point blocker (`closure_fields.txt`), which is why
+`RelativeToSource` is data and this follows it. A `TargetsFrom` that
+reads the source's blockers reads the board when the trigger is built,
+which ADR 0041 P9 forbids for a restorable trigger and which would
+freeze the answer against a block removed in response.
+
+### Cards
+
+Wall of Vipers, Whip Vine and Goblin Snowman use `Of: source, Role:
+blocked_by`; Plasma Caster uses `Of: host, Role: blocking`. Old Man of
+the Sea needed no new targeting shape: "power less than or equal to this
+creature's power" is the #2146 `PowerNoGreater` comparison, and its
+duration is ADR 0109 §3's conjunction. All five are `Full`.
+
+### Tests
+
+`game/targets_combat_source_test.go` pins each (Of, Role) pairing, the
+departed record, the no-source case and the left-combat case on the bare
+walk; `legal/combat_relative_targets_test.go` pins that the enumerator,
+the wire's `legal_targets` and the engine's dispatch agree; each card has
+announce, resolution and response tests in
+`cards/effects/combat_relative_targets_test.go`.
+
+### Out of scope (still)
+
+- **A trigger whose source has left before its target is chosen** reads
+  no combat record (see §2).
+- **Relations other than blocking** ("creature that's attacking you",
+  "creature dealt damage by this creature") are different data and are
+  not claimed by this field; `AttackingYou` already covers the first as
+  a plain predicate because it names the caster, not the source.

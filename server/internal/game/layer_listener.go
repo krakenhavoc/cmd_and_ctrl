@@ -198,6 +198,11 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	case EventTokenCreated:
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)
+	case EventDayNightChanged:
+		// ADR 0132: "as long as it's night" is a layer input the board
+		// does not move to announce, exactly as the monarchy is. The
+		// werewolves' own turn-over bumps through EventTransform.
+		g.layerVersion.Add(1)
 	case EventMonarchChanged:
 		// #1722, ADR 0096: "as long as you're the monarch" (Entourage of
 		// Trest's extra block) is a layer input that no permanent moving

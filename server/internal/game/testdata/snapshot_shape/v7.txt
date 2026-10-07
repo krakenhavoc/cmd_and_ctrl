@@ -312,6 +312,10 @@ continuations.turnScopedReplacements	number:int
 continuations.turnScopedStatics	number:int
 continuations.unpersistableRng	bool
 createdAt	custom(time.Time)
+dayNight	object
+dayNight.designation	string
+dayNight.prevTurnKnown	bool
+dayNight.prevTurnSpells	number:int
 delayedTriggers	array
 delayedTriggers[]	object
 delayedTriggers[].at	string
@@ -841,6 +845,8 @@ lastKnownPermanents{}[].attachedTo.Kind	string
 lastKnownPermanents{}[].attachedTo.Mode	number:int
 lastKnownPermanents{}[].attachedTo.Slot	number:int
 lastKnownPermanents{}[].attacking	bool
+lastKnownPermanents{}[].blocking	array
+lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic	object
 lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
@@ -1458,6 +1464,10 @@ outcome.winner	custom(uuid.UUID)
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
+pendingChoices[].askedByHand	string
+pendingChoices[].autoAnswerCard	string
+pendingChoices[].autoAnswerKey	string
+pendingChoices[].autoAnswerPrompt	string
 pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseMax	number:int
@@ -2367,6 +2377,8 @@ scopedEffects[].timestamp	number:int64
 seats	array
 seats[]	object
 seats[].agentClient	string
+seats[].autoAnswers	map:string
+seats[].autoAnswers{}	string
 seats[].botDeck	string
 seats[].botTier	string
 seats[].castPermissions	array

@@ -219,6 +219,18 @@ A prompt over anything else (the battlefield, a graveyard, an
 opponent's hand or library) carries nothing on the wire that says what
 naming a card costs, so the bot takes the first answer offered.
 
+### Automatic answers are for people (ADR 0127)
+
+A person can tell the server to answer a repeated prompt for them —
+"never pay for Rhystic Study", "always draw two off Consecrated Sphinx"
+([ADR 0127](decisions/0127-answering-repeated-prompts-for-you.md),
+`set_auto_answers`). Bots do not use it. A bot answers its own prompts
+through the enumerator, as it always has: the enumerator never offers
+`set_auto_answers`, the server refuses rules for a bot seat, and the room
+checks that a seat is human before it answers anything for it. A
+person's automatic answer reaches a bot as an ordinary state change and
+an `auto_answer` log line.
+
 ### What a bot answers when somebody else's card asks (#796 / #568 / #929)
 
 Three prompt shapes reach a bot seat from a spell or ability it does

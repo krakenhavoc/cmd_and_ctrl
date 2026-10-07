@@ -144,6 +144,12 @@ type Game struct {
 	// Added in S10.
 	Initiative uuid.UUID
 
+	// DayNight is the game's day/night designation (CR 731) and the one
+	// number its turn-based check reads (ADR 0132, daynight.go). The
+	// zero value is the start of every game: neither day nor night.
+	// Carried by Clone, RestoreFrom and the snapshot.
+	DayNight DayNightState
+
 	// Settings is the table's configuration: the undo budget and
 	// scope, starting life, the commander damage threshold, bot pace
 	// and the spawn switch (ADR 0075 §2.2, settings.go). NewGame sets
@@ -751,6 +757,12 @@ type Game struct {
 	resolutionOpen  bool
 	resolutionDepth int
 
+	// promptKeys is the transient bookkeeping behind the keys of the
+	// prompts a resolution or an answered prompt's branch queues (ADR
+	// 0127 §2, auto_answer.go). Reset where each begins, so neither
+	// Clone nor the snapshot carries it.
+	promptKeys promptKeyState
+
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
 	// random draw goes through randForLocked in rng.go, which derives
@@ -952,6 +964,11 @@ func NewGame() *Game {
 	// that event. See turn_tally.go.
 	g.Listeners = append(g.Listeners, turnTallyListener{})
 	g.Listeners = append(g.Listeners, layerVersionBump{})
+	// ADR 0132, CR 702.145b: a daybound permanent that enters at night
+	// enters transformed. Directly after the layer bump (which stamps
+	// the entry) and ahead of the harvester, so the ETB event that
+	// follows the zone move is harvested off the face that entered.
+	g.Listeners = append(g.Listeners, dayNightListener{})
 	// S19 sub-PR 1: install the auto-fire trigger dispatcher. Walks
 	// the battlefield (and the LKI map for LTB events) on every
 	// emit, queues matching catalog-declared TriggeredAbility

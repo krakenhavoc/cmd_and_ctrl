@@ -101,6 +101,9 @@ var gameFields = plan(
 	"OpeningRoll", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
+	// ADR 0132: the day/night designation and the previous turn's spell
+	// count. Plain data.
+	"DayNight", carried, "",
 	"Settings", carried, "",
 	"StartingSeat", carried, "",
 	"StackMeta", carried, "",
@@ -187,6 +190,9 @@ var gameFields = plan(
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
+	// ADR 0127 §2: the ordinals behind the keys of the prompts one
+	// resolution or one answered prompt's branch queues.
+	"promptKeys", dropped, "not game state: read only inside one resolution function or one answered prompt's branch, and reset where each begins (ADR 0127 §2)",
 	// #830 block-declaration lock-in, and #715's blocked state.
 	// Carried for the same reason and in the same pair-wise way: the
 	// map of announced pairings names what the blocked marks were
@@ -552,6 +558,7 @@ var playerFields = plan(
 	"HandKept", carried, "",
 	"MulliganDecided", carried, "",
 	"TriggerOrderAlwaysAsk", carried, "",
+	"AutoAnswers", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",
 	"UndosRemaining", carried, "",
@@ -927,6 +934,10 @@ var pendingChoiceFields = plan(
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"midResolution", carried, "",
+	"AutoAnswerKey", carried, "",
+	"AutoAnswerCard", carried, "",
+	"AutoAnswerPrompt", carried, "",
+	"AskedByHand", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
