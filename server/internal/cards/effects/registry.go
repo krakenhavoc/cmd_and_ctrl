@@ -516,6 +516,7 @@ func Register(spec Spec) {
 		// ADR 0109 §7: the random discard and the two library
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
+		checkEnergyCost(spec.Name, i, ab.Cost)
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
@@ -1009,6 +1010,31 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a sacrifice twice (AllowSame)", card, where))
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
+	}
+	checkSacrificeSetRule(card, where, spec)
+}
+
+// checkSacrificeSetRule is #2526's guard for TargetSpec.EachOf on a
+// sacrifice clause ("a Swamp and a Forest"). The rule is a one-to-one
+// matching of picks to entries, so it only means something on a FIXED
+// count equal to the entry count, with at least two entries (one entry
+// is an ordinary clause) that each name something to match. Anything else would register a cost the
+// validator and the picker read differently.
+func checkSacrificeSetRule(card, where string, spec *game.TargetSpec) {
+	if len(spec.EachOf) == 0 {
+		return
+	}
+	if len(spec.EachOf) < 2 {
+		panic(fmt.Sprintf("effects.Register: %q %s has a one-entry set rule — that is an ordinary sacrifice clause (SacrificeN), not EachOf", card, where))
+	}
+	if spec.CountFromX || game.SacrificeCostVariable(spec) || spec.Min != len(spec.EachOf) || spec.Max != len(spec.EachOf) {
+		panic(fmt.Sprintf("effects.Register: %q %s has a set rule over %d entries but sacrifices %d to %d permanents — the count must be exactly the entry count (SacrificeEach)",
+			card, where, len(spec.EachOf), spec.Min, spec.Max))
+	}
+	for i, k := range spec.EachOf {
+		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s set-rule entry %d names no subtype or card type — it would match nothing", card, where, i))
+		}
 	}
 }
 
@@ -1524,6 +1550,26 @@ func checkAbilityWaterbend(name string, i int, cost game.AbilityCost) {
 	if err != nil || cost.Mana == "" || clause.Generic > mana.Generic || clause.XSlots > mana.XSlots {
 		panic(fmt.Sprintf("effects.Register: %q ability %d waterbends %q but its mana component %q does not contain it — CR 701.67b lets the taps pay only mana the ability charges",
 			name, i, wb.Extra, cost.Mana))
+	}
+}
+
+// checkEnergyCost is the boot-time refusal for ADR 0129 §2's energy
+// component:
+//
+//   - a negative Energy is a card-file mistake (zero is "no such
+//     component");
+//   - "Pay X {E}" beside another component that claims the announced X
+//     as a count (sacrifice X, tap X) is refused, the same rule #1213
+//     makes for {X} in the mana: one announced X cannot be a count of
+//     permanents and an amount of energy, and no printed card asks it to
+//     be.
+func checkEnergyCost(name string, i int, cost game.AbilityCost) {
+	if cost.Energy < 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares a negative energy cost %d", name, i, cost.Energy))
+	}
+	if cost.EnergyX && (game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
+			name, i))
 	}
 }
 

@@ -2104,6 +2104,12 @@ func dispatch(g *game.Game, a Action) error {
 				// ADR 0107 §6, CR 609.7a: "a source of your choice" —
 				// exactly one, from the prompt's candidates.
 				return g.ResolveChooseSource(choiceID, a.Player, ids)
+			case game.PendingChoiceProliferate:
+				// #2525, CR 701.34a: "choose any number of permanents
+				// and/or players with counters". Floor zero, so an
+				// EMPTY list is a real answer; seats ride in the same
+				// list by player ID.
+				return g.ResolveProliferate(choiceID, a.Player, ids)
 			case game.PendingChoiceRingBearer:
 				// ADR 0114 §4, CR 701.54a: "choose a creature you
 				// control" as the Ring tempts you — exactly one, from

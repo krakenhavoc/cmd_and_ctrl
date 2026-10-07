@@ -770,6 +770,10 @@ export interface MoveCost {
   // whole hand reads as free. Absent for an empty hand, which pays
   // the cost.
   hand?: number;
+  // ADR 0129 §7: the energy counters the move removes from the seat
+  // (CR 107.14) — "Pay N {E}", or N + X for "Pay X {E}" at the move's
+  // X. Always positive when present, and payable.
+  energy?: number;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
@@ -1289,6 +1293,14 @@ export interface PendingChoiceView {
     // candidates are battlefield creatures. Its reason is "choose your
     // Ring-bearer".
     | "ring_bearer"
+    // #2525, CR 701.34a: "choose any number of permanents and/or
+    // players with counters on them" — a proliferate. The permanents
+    // are `options`; the seats on offer are `choose_players`, and a
+    // seat is picked by sending its player ID in the same `card_ids`
+    // list. `choose_suggested` is the engine's beneficial pick, which
+    // the modal pre-selects. Floor zero; public (counters are on the
+    // table). Answered with {choice_id, card_ids}.
+    | "proliferate"
     // ADR 0108 §7 (#1904), CR 615.7: a charged prevention shield ("the
     // next 3 damage") that meets several damage events at once, more
     // than it can cover — the protected player divides the charge among
@@ -1517,6 +1529,12 @@ export interface PendingChoiceView {
   // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // #2525: kind "proliferate" only. The seats on offer beside
+  // `options` (player IDs), and the engine's suggested answer
+  // (instance IDs and player IDs) for the modal to pre-select. A
+  // default, not a rule: any subset is a legal answer.
+  choose_players?: string[];
+  choose_suggested?: string[];
   // CR 603.2d: when this is a trigger_prompt or pick_target choice,
   // the public permanent that caused the additional trigger. The
   // server omits both fields for ordinary choices.
@@ -2381,6 +2399,13 @@ export interface ActivatedAbilityView {
   // chosen. See targetPrices.ts.
   target_charged_mana_costs?: Record<string, string>;
   life_cost?: number;
+  // ADR 0129 §8: "Pay N {E}" — the energy counters an activation
+  // removes from the activator (CR 107.14). energy_cost_x marks "Pay X
+  // {E}": the announced X is added, and demands_x is set. When the
+  // controller is short, cant_activate carries the server's refusal
+  // ("Not enough energy (have 2, need 3)").
+  energy_cost?: number;
+  energy_cost_x?: boolean;
   sorcery_speed?: boolean;
   // #1208: true when the engine will refuse this activation RIGHT NOW
   // for timing (CR 602.5d, CR 606.3), as modified by any per-player
@@ -2640,6 +2665,8 @@ export interface PurposeView {
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
+  // ADR 0129 §7: energy counters it gives its controller.
+  energy?: number;
   sweep?: SweepView;
   death_payoff?: boolean;
 }
@@ -2689,7 +2716,18 @@ export interface ModeOptionView {
 
 // LegalTargetsView is a clause's legal set right now plus its
 // target count (S20 sub-PR 5): min..max picks, max 0 = unbounded.
+// #2526: one part of a sacrifice clause's set rule ("a Swamp") and the
+// candidates that could fill it. A candidate that fits two parts (a
+// Swamp Forest) is listed in both.
+export interface SacrificeGroupView {
+  label: string;
+  cards?: string[];
+}
+
 export interface LegalTargetsView {
+  // #2526: a SACRIFICE clause's set rule — the picks must fill every
+  // group with a different permanent. See sacrificeCost.ts.
+  each_of?: SacrificeGroupView[];
   players?: string[];
   cards?: string[];
   min?: number;

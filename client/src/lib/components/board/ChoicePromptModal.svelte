@@ -156,7 +156,15 @@
         active?.kind === "untap_choice" &&
         options.length > 0 &&
         (active.choose_max ?? 0) >= options.length;
-      selected = preselect ? new Set(options.map((c) => c.instance_id)) : new Set();
+      // #2525: a proliferate opens on the engine's suggested pick — the
+      // answer a player takes nearly every time — and the player's click
+      // is the deviation.
+      selected =
+        active?.kind === "proliferate"
+          ? new Set(active.choose_suggested ?? [])
+          : preselect
+            ? new Set(options.map((c) => c.instance_id))
+            : new Set();
       ordered = [];
       rejection = null;
       submission = null;
@@ -283,6 +291,19 @@
   // ADR 0114 §4, CR 701.54a: "choose your Ring-bearer" — one of the
   // chooser's own creatures, untargeted.
   const isRingBearer = $derived(active?.kind === "ring_bearer");
+  // #2525, CR 701.34a: "choose any number of permanents and/or players
+  // with counters on them". The grid shows the permanents, the seats on
+  // offer are chips beside it, and both are picked into the one
+  // `selected` set (a seat by its player ID) and sent as card_ids. The
+  // engine's suggested pick is pre-selected.
+  const isProliferate = $derived(active?.kind === "proliferate");
+  const proliferateSeats = $derived.by<{ id: string; name: string }[]>(() => {
+    if (!isProliferate || !active) return [];
+    return (active.choose_players ?? []).map((id) => ({
+      id,
+      name: snap.seats.find((s) => s.id === id)?.name ?? "a player",
+    }));
+  });
   // #2115: the revealed-hand pick with a variant. The same revealed
   // hand and the same `eligible` list as discard_from_hand, plus a
   // floor (`choose_min` 0 is "you may choose": an empty answer is a
@@ -306,7 +327,8 @@
       isRevealPick ||
       isPermanentPick ||
       isChooseSource ||
-      isRingBearer,
+      isRingBearer ||
+      isProliferate,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -1442,10 +1464,12 @@
                           ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
                           : isRingBearer
                             ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
-                            : [
-                                `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                                isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
-                              ];
+                            : isProliferate
+                              ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
+                              : [
+                                  `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                  isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
+                                ];
     const verb = isSacrifice
       ? "Sacrifice"
       : isSearch
@@ -1470,11 +1494,15 @@
                   ? "Sacrifice"
                   : isChooseSource
                     ? "Choose this source"
-                    : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                      ? "Choose"
-                      : isRevealedVariant && none && pickMin === 0
-                        ? "Choose nothing"
-                        : "Confirm";
+                    : isProliferate
+                      ? none
+                        ? "Proliferate nothing"
+                        : "Proliferate"
+                      : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                        ? "Choose"
+                        : isRevealedVariant && none && pickMin === 0
+                          ? "Choose nothing"
+                          : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -2085,6 +2113,10 @@
             Pick between {pickMin} and {pickMax} of your permanents.
           {/if}
           Nothing here is targeted — the choice is being made now, as the card resolves.
+        {:else if isProliferate}
+          Each permanent and player you pick gets another counter of every kind it already has. The
+          engine's suggestion is selected: what a counter helps on your side and hurts on theirs.
+          Pick any number, or none.
         {:else if isRingBearer}
           The Ring tempts you. Pick one of your creatures to be your Ring-bearer. It isn't targeted,
           so anything listed can be chosen.
@@ -2144,7 +2176,7 @@
             <Card card={c} />
             {#if isChooseSource}
               <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
-            {:else if isChooseCards || isUntapChoice}
+            {:else if isChooseCards || isUntapChoice || isProliferate}
               <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
             {:else if graveyardIDs.has(c.instance_id)}
               <span class="source-caption">in graveyard</span>
@@ -2152,6 +2184,23 @@
           </button>
         {/each}
       </div>
+      {#if proliferateSeats.length > 0}
+        <div class="seat-picks" role="group" aria-label="Players with counters">
+          {#each proliferateSeats as seat (seat.id)}
+            <button
+              type="button"
+              class="seat-pick"
+              class:selected={selected.has(seat.id)}
+              disabled={!selected.has(seat.id) && selected.size >= pickMax}
+              onclick={() => toggle(seat.id)}
+              aria-pressed={selected.has(seat.id)}
+              aria-label={`select ${seat.name}`}
+            >
+              {seat.name}
+            </button>
+          {/each}
+        </div>
+      {/if}
     {/if}
   </DockSheet>
 {/if}
@@ -2255,6 +2304,31 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     gap: 8px;
+  }
+  /* #2525: the seats a proliferate may pick, beside the permanents. */
+  .seat-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .seat-pick {
+    padding: 6px 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    cursor: pointer;
+  }
+  .seat-pick:hover:not(:disabled) {
+    border-color: var(--border-strong);
+  }
+  .seat-pick.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .seat-pick:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
   .card-pick {
     background: transparent;

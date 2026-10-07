@@ -145,7 +145,7 @@
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
-  import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import { abilityEnergyMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
   import { castSacrificeRange, orderSacrificeOptions, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
@@ -343,8 +343,12 @@
   // the X the same mana buys a one-slot cost — and never below the
   // printed floor, which the modal also enforces.
   const suggestedAbilityX = $derived.by(() =>
-    xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX) : 0,
+    xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX, viewerEnergy) : 0,
   );
+
+  // ADR 0129 §8: the viewer's energy, the ceiling on a "Pay X {E}"
+  // ability's X (CR 118.3).
+  const viewerEnergy = $derived(view.seats.find((s) => s.id === viewerID)?.counters?.energy ?? 0);
 
   // #916: the viewer's life total, which is CR 119.4's cap on a
   // Phyrexian life payment. Read off the live snapshot so a life loss
@@ -3085,6 +3089,7 @@
     options={sacrificeOptions}
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
+    eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -3164,6 +3169,7 @@
     options={altSacOptions}
     count={altSacBounds.max}
     min={altSacBounds.min}
+    eachOf={altSacPromptClause?.each_of}
     onConfirm={confirmAltSacrifice}
     onCancel={() => {
       altSacPromptCard = null;
@@ -3361,6 +3367,7 @@
     count={castSacrificeBounds.max}
     min={castSacrificeBounds.min}
     countIsX={sacrificePromptClause?.count_from_x === true}
+    eachOf={sacrificePromptClause?.each_of}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;
@@ -3402,6 +3409,7 @@
     abilityIndex={xAbilityPrompt?.ability.index}
     costLabel={xAbilityPrompt?.ability.mana_cost}
     minX={xAbilityPrompt?.ability.min_x ?? 0}
+    maxX={xAbilityPrompt ? abilityEnergyMaxX(xAbilityPrompt.ability, viewerEnergy) : undefined}
     confirmVerb="Activate"
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
