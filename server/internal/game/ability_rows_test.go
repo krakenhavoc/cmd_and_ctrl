@@ -31,6 +31,8 @@ var abilityRowFieldsNotRows = map[string]string{
 	"AlternativeCosts":           "the spell's own alternative costs",
 	"TapCost":                    "the spell's own tap cost (convoke and the like)",
 	"Delve":                      "the spell's own delve, a keyword",
+	"SpendOnly":                  "the spell's own spend-only clause on X (#2556): a restriction on how its cost is paid, shown by the cast surface",
+	"SpendOnlySources":           "the spell's own spend-only-by-source clause (#2556): the same, for the mana's source",
 	"SelfCostModifiers":          "what THIS spell costs, shown by the cast surface",
 	"CastableZones":              "where the card may be cast from, shown by the cast surface",
 	"SpecialActions":             "special actions (CR 116), not abilities: ADR 0105's star pip",

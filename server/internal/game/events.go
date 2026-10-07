@@ -429,6 +429,24 @@ const (
 	// scry.
 	EventDiscover EventKind = "discover"
 
+	// EventManifestDread — Actor finished a manifest dread
+	// (CR 701.62a, ADR 0082's 2026-10-07 amendment). Source is the
+	// permanent or spell that asked. CardID is the permanent that
+	// entered face down (uuid.Nil if none did) and Target is the card
+	// put into Actor's graveyard "this way" (uuid.Nil if none was),
+	// so "whenever you manifest dread, put a card you put into your
+	// graveyard this way into your hand" (Paranormal Analyst) reads it
+	// straight off the event.
+	//
+	// Emitted once, after both moves have settled. Not emitted when
+	// the library showed no cards, because no manifest dread happened.
+	//
+	// Its own kind rather than a flag on an ordinary manifest: a card
+	// that cares about manifest dread must not fire on a plain
+	// manifest of the top card (Cloak, Manifest), which is a
+	// different keyword action.
+	EventManifestDread EventKind = "manifest_dread"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.21):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE

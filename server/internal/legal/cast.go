@@ -1449,7 +1449,7 @@ func (e *enumerator) castMoveEmitter(
 			label += " → " + playerName(g, giftTo)
 		}
 		if phyLife > 0 {
-			label += fmt.Sprintf(" paying %d life for Phyrexian mana", phyLife*game.PhyrexianLifePerSymbol)
+			label += phyrexianLifeLabel(phyLife)
 		}
 		// ADR 0100: the delved and the undelved casts are otherwise the
 		// same line in the move log.

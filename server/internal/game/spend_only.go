@@ -196,3 +196,52 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 func unpayableByAnyMana(r ColorRequirement) bool {
 	return len(r.Options) == 1 && r.Options[0] == noManaColor
 }
+
+// # The cast side (#2556)
+//
+// A SPELL prints the same clauses an ability does:
+//
+//	Drain Life    "Spend only black mana on X."
+//	Soul Burn     "Spend only black and/or red mana on X."
+//	Imperiosaur   "Spend only mana produced by basic lands to cast this spell."
+//
+// The colour half is the ability half's ManaSpendOnly, declared on the
+// card (CardDef.SpendOnly), resolved against the card being cast and
+// stamped onto the ParsedCost by THE cast pricer (printedCostLocked) —
+// the way AbilityManaCostForTargetsForEffect stamps an ability's. From
+// there nothing is spell-specific: costAsPaidByLocked folds it with the
+// announced X, so the cast, its auto-tap, internal/legal's probe and
+// the preview pay it identically, and the shown price stays printed.
+//
+// The source half is not a colour, so it is not folded into
+// requirements: it is a property of the payment, carried by the
+// ManaSpendContext every cast payment already threads
+// (ManaSpendContext.SourceOnly). The pool solver skips a token whose
+// recorded source does not qualify (allowsToken), and the auto-tapper
+// leaves every permanent that could not make a qualifying mana out of
+// its plan (autoTapTopUpLocked, excludeNonQualifyingSourcesLocked).
+
+// CatalogSpellSpendOnly and CatalogSpellSpendOnlySources are the
+// catalog hooks behind CardDef.SpendOnly and CardDef.SpendOnlySources.
+var (
+	CatalogSpellSpendOnly        func(key string) *ManaSpendOnly
+	CatalogSpellSpendOnlySources func(key string) ManaSourceKinds
+)
+
+// SpellSpendOnlyFor is the card's own "spend only <colour> mana on X"
+// declaration, or nil — nearly every card.
+func SpellSpendOnlyFor(key string) *ManaSpendOnly {
+	if CatalogSpellSpendOnly == nil || key == "" {
+		return nil
+	}
+	return CatalogSpellSpendOnly(key)
+}
+
+// SpendOnlySourcesFor is the card's own "spend only mana produced by
+// <sources> to cast this spell" declaration, or zero.
+func SpendOnlySourcesFor(key string) ManaSourceKinds {
+	if CatalogSpellSpendOnlySources == nil || key == "" {
+		return 0
+	}
+	return CatalogSpellSpendOnlySources(key)
+}

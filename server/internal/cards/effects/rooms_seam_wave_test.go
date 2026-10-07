@@ -26,7 +26,10 @@ const (
 )
 
 func TestRoomsSeamWaveDeclareTheirGaps(t *testing.T) {
-	for _, id := range []string{moldGymOracle, ticketBoothOracle, underwaterOracle, expLabOracle,
+	// Moldering Gym, Ticket Booth and Underwater Tunnel are not here any
+	// more: their manifest-dread doors shipped with #2570 and they are
+	// complete. Experimental Lab keeps its Staff Room caveat.
+	for _, id := range []string{expLabOracle,
 		charredFoyerOracle, crampedVentsOracle, dazzlingOracle, secretArcadeOracle} {
 		spec, ok := Lookup(id)
 		if !ok {
@@ -114,8 +117,12 @@ func TestStaffRoomIsInertWhileLocked(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
 	a := pushVanillaCreature(g, me.ID, "Bear A", 2, 2)
+	// Experimental Lab, the unlocked door, manifests dread and asks which
+	// of the top two to manifest.
+	advanceToMain(t, g)
+	top := stackTopLibrary(me, "Over", "Under")[0]
 	roomsBCast(t, g, me, roomsBCard(me.ID, expLabOracle, "Experimental Lab", "{3}{G}", "Staff Room", "{2}{G}"), 0)
-	roomsBSettle(t, g, me)
+	roomsBSettle(t, g, me, top)
 	attackWith(t, g, opp.ID, a)
 	roomsBSettle(t, g, me)
 	if findBattlefieldCardForTest(g, a).Counters[game.CounterPlusOne] != 0 {
