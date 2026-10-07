@@ -68,7 +68,7 @@ def change_comment(old, new):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", "krakenhavoc/cmd_and_ctrl"))
-    ap.add_argument("--category", default="Announcements")
+    ap.add_argument("--category", default="General")
     ap.add_argument("--comment", action="store_true", help="also comment with the change since the last update")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
