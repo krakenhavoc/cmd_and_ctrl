@@ -102,6 +102,37 @@ var (
 		constTargets(func() *game.TargetSpec {
 			return TargetCreature("target creature an opponent controls", OpponentControls())
 		}))
+
+	// Riddle Gate Gargoyle (ADR 0129 §3): "when you do, target creature
+	// you control gains lifelink until end of turn".
+	riddleGateLifelinkBody = game.ReflexiveBody("riddle-gate-gargoyle/lifelink",
+		simpleBody(firstTargetGainsUntilEndOfTurn(0, "Riddle Gate Gargoyle — lifelink until end of turn", "lifelink")),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+
+	// Cyclops Superconductor (ADR 0129 §3): "when you do, this creature
+	// deals damage equal to its power to any target". The power is its
+	// last-known power as it died, fixed when the energy was paid, and
+	// rides Params.Amount; the creature is the damage's source.
+	cyclopsSuperconductorDamageBody = game.ReflexiveBody("cyclops-superconductor/damage", breechesBlastEffect, constTargets(TargetAny))
+
+	// Behemoth of Vault 0 (ADR 0129 §3): "when you do, destroy that
+	// permanent" — the dies trigger's own target, carried in the
+	// payload. Untargeted: nothing new is chosen.
+	behemothDestroyBody = game.SimpleDelayedBody("behemoth-of-vault-0/destroy", destroyPayloadPermanents)
+
+	// Territorial Aetherkite (ADR 0129 §3): "when you do, this creature
+	// deals that much damage to each other creature". The amount paid
+	// rides Params.Amount.
+	// Guide of Souls (ADR 0129 §3): "when you do, put two +1/+1 counters
+	// and a flying counter on target attacking creature. It becomes an
+	// Angel in addition to its other types."
+	guideOfSoulsAngelBody = game.ReflexiveBody("guide-of-souls/angel", simpleBody(guideOfSoulsAngel),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target attacking creature", AttackingCreature()) }))
+
+	territorialAetherkiteDamageBody = game.DelayedBody("territorial-aetherkite/damage-each-other",
+		func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+			return damageEachMatching(NewContext(g, item), And(Creature(), NotSelf(item.SourceCardID)), p.Amount)
+		})
 )
 
 // simpleBody adapts a no-params reflexive body — every one of them
