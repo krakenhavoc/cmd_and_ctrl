@@ -537,6 +537,13 @@ func Register(spec Spec) {
 					spec.Name, i, z, why))
 			}
 		}
+		// #2028: the source pays one component (CR 118.3), so a cost
+		// cannot both return it and sacrifice or exile it. No printed
+		// card does; the activation would refuse every attempt.
+		if ab.Cost.ReturnSelf && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d returns its source to hand AND sacrifices or exiles it — one permanent pays one cost component",
+				spec.Name, i))
+		}
 		// DiscardSelf is cycling's component (CR 702.29a) and it
 		// discards the source, so the source has to be a card in a
 		// hand. A battlefield ability that declared it would have

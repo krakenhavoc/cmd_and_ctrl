@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"errors"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -717,23 +715,36 @@ func TestB14EerieUltimatumReturnsOnePermanentPerName(t *testing.T) {
 	land := seedGraveyardCard(t, g, "Forest", "Basic Land — Forest", "")
 	shrine := seedGraveyardCard(t, g, "Shrine", "Enchantment", "")
 	bolt := seedGraveyardCard(t, g, "Bolt", "Instant", "")
-	if legalCards(g, me.ID, b14EerieUltimatumOracle)[bolt] {
-		t.Error("an instant is not a permanent card")
+	// #2524: no target clause — the spell is cast with none, and the
+	// choice is made as it resolves.
+	if spec, _ := Lookup(b14EerieUltimatumOracle); spec.Targets != nil {
+		t.Fatal("Eerie Ultimatum does not target")
 	}
-	// #1559: two cards of one name break the clause's set rule and
-	// are refused at announce, rather than the second being skipped
-	// as the spell resolves.
-	err := castCatalogSpellErr(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, []game.TargetRef{
-		{Kind: game.TargetCard, ID: bearA}, {Kind: game.TargetCard, ID: bearB},
-		{Kind: game.TargetCard, ID: land}, {Kind: game.TargetCard, ID: shrine},
-	})
-	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "different name") {
-		t.Fatalf("two Bears are refused naming the rule, got %v", err)
-	}
-	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, []game.TargetRef{
-		{Kind: game.TargetCard, ID: bearA}, {Kind: game.TargetCard, ID: land}, {Kind: game.TargetCard, ID: shrine},
-	})
+	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, nil)
 	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("the caster is asked on resolution")
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 4 {
+		t.Errorf("bounds %d..%d, want 0..4 (any number of the four permanent cards)", pick.ChooseMin, pick.ChooseMax)
+	}
+	offered := map[uuid.UUID]bool{}
+	for _, id := range pick.ChooseCards {
+		offered[id] = true
+	}
+	if offered[bolt] || !offered[bearA] || !offered[bearB] || !offered[land] || !offered[shrine] {
+		t.Errorf("offered %v: want the four permanent cards and not the instant", pick.ChooseCards)
+	}
+	// Two cards of one name break the set rule and are refused.
+	err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{bearA, bearB, land})
+	if err == nil {
+		t.Fatal("two Bears are refused")
+	}
+	if b12ZoneOf(g, bearA) != game.ZoneGraveyard {
+		t.Error("the refused answer moves nothing")
+	}
+	answerChooseCards(t, g, me.ID, bearA, land, shrine)
 	for _, id := range []uuid.UUID{bearA, land, shrine} {
 		if !g.Battlefield.Contains(id) {
 			t.Errorf("%s should have returned", id)
@@ -745,9 +756,44 @@ func TestB14EerieUltimatumReturnsOnePermanentPerName(t *testing.T) {
 	if b12ZoneOf(g, bolt) != game.ZoneGraveyard {
 		t.Error("the instant stays")
 	}
-	// "Any number" includes none: castable with nothing chosen.
+}
+
+// "Any number" includes none, and an empty graveyard asks nothing.
+func TestB14EerieUltimatumAnyNumberIncludesNone(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
 	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, nil)
 	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Fatal("no permanent card in the graveyard: nothing to ask")
+	}
+	bear := seedGraveyardCard(t, g, "Bear", "Creature — Bear", "")
+	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerChooseCards(t, g, me.ID)
+	if b12ZoneOf(g, bear) != game.ZoneGraveyard {
+		t.Error("choosing nothing returns nothing")
+	}
+}
+
+// An opponent's response cannot strand a card: exiling one before
+// resolution just shrinks the pool the caster is asked about.
+func TestB14EerieUltimatumResponseCannotStrandACard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	keep := seedGraveyardCard(t, g, "Bear", "Creature — Bear", "")
+	gone := seedGraveyardCard(t, g, "Shrine", "Enchantment", "")
+	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, nil)
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(gone) })
+	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || len(pick.ChooseCards) != 1 || pick.ChooseCards[0] != keep {
+		t.Fatalf("the pool is read on resolution: %+v", pick)
+	}
+	answerChooseCards(t, g, me.ID, keep)
+	if !g.Battlefield.Contains(keep) {
+		t.Error("the remaining card returns")
+	}
 }
 
 // --- Archfiend of Depravity ------------------------------------------

@@ -1149,7 +1149,7 @@ func TestB17ContainmentConstructExilesADiscardToPlayThisTurn(t *testing.T) {
 	}
 }
 
-func TestB17ColossalGraveReaverMillsAndReanimatesTheBiggestCreature(t *testing.T) {
+func TestB17ColossalGraveReaverMillsAndReanimatesTheChosenCreature(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	// seedSearchLibrary pushes each card under the previous, so the
@@ -1165,18 +1165,49 @@ func TestB17ColossalGraveReaverMillsAndReanimatesTheBiggestCreature(t *testing.T
 	if me.Library.Size() != 1 {
 		t.Fatalf("the ETB mills three: library %d, want 1", me.Library.Size())
 	}
-	wurm, bear := findBattlefieldByName(g, "Big Wurm"), findBattlefieldByName(g, "Small Bear")
-	if wurm == uuid.Nil || controllerOf(t, g, wurm) != me.ID {
-		t.Fatal("one milled creature card comes back — the greatest mana value")
+	// #2523: the controller chooses — here the SMALLER creature, which
+	// the old greatest-mana-value auto-pick would never have returned.
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("two milled creature cards: the controller is asked which one returns")
 	}
-	if bear != uuid.Nil {
+	if pick.ChooseMin != 1 || pick.ChooseMax != 1 || len(pick.ChooseCards) != 2 {
+		t.Errorf("prompt is %d..%d over %d cards, want exactly one of the two creature cards",
+			pick.ChooseMin, pick.ChooseMax, len(pick.ChooseCards))
+	}
+	var bearID uuid.UUID
+	for _, id := range pick.ChooseCards {
+		if c, ok := g.LookupCardForEffect(id); ok && c.Name == "Small Bear" {
+			bearID = id
+		}
+	}
+	if bearID == uuid.Nil {
+		t.Fatal("the Small Bear is not offered")
+	}
+	answerChooseCards(t, g, me.ID, bearID)
+	passPriorityAroundTable(t, g)
+	wurm, bear := findBattlefieldByName(g, "Big Wurm"), findBattlefieldByName(g, "Small Bear")
+	if bear == uuid.Nil || controllerOf(t, g, bear) != me.ID {
+		t.Fatal("the chosen creature card comes back")
+	}
+	if wurm != uuid.Nil {
 		t.Error("only ONE of them")
 	}
-	if !b02bGraveyardHasNamed(me, "Small Bear") || !b02bGraveyardHasNamed(me, "Forest") {
+	if !b02bGraveyardHasNamed(me, "Big Wurm") || !b02bGraveyardHasNamed(me, "Forest") {
 		t.Error("the rest stay milled")
 	}
 	if !hasEffectiveKeyword(t, g, reaver, "flying") {
 		t.Error("flying")
+	}
+	// A lone milled creature card returns without a question.
+	seedSearchLibrary(me, game.Card{Name: "Lone Elf", TypeLine: "Creature — Elf", ManaCost: "{G}"})
+	g.WithWriteLock(func() { _ = g.MillNForEffect(me.ID, 1) })
+	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("one candidate is no choice")
+	}
+	if findBattlefieldByName(g, "Lone Elf") == uuid.Nil {
+		t.Error("the lone milled creature returns")
 	}
 	// An opponent milling creature cards is not your graveyard.
 	seedSearchLibrary(opp, game.Card{Name: "Their Bear", TypeLine: "Creature — Bear", ManaCost: "{1}{G}"})
