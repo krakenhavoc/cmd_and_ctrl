@@ -372,16 +372,20 @@ export function attackLimitBinds(
 
 // offersAttackPicker is whether the attack-all cluster shows the
 // "choose attackers…" control beside a seat: when attacking it is
-// taxed (#1162, the seat may afford only some of the swing), or when a
+// taxed (#1162, the seat may afford only some of the swing), when a
 // limit binds and still has room (#1533, only some of it may attack at
-// all). A used-up limit (room 0) leaves nothing to choose.
+// all), and (#2441) whenever more than one creature can attack that
+// seat, so a subset is one pick away with no tax or limit in play. A
+// used-up limit (room 0) leaves nothing to choose, and a single
+// attacker is what the per-creature click is for.
 export function offersAttackPicker(
   view: GameView | null | undefined,
   plan: AttackAllPlan,
   defenderSeatID: string,
 ): boolean {
   if (attackTaxOn(view, defenderSeatID)) return true;
-  return attackLimitBinds(view, plan, defenderSeatID) && attackLimitOn(view, defenderSeatID) !== 0;
+  if (attackLimitOn(view, defenderSeatID) === 0) return false;
+  return eligibleAt(plan, defenderSeatID).length > 1;
 }
 
 // seedAttackSelection is what the picker checks when it opens: every

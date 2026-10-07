@@ -102,7 +102,8 @@ describe("attackLimitBinds / offersAttackPicker — when the picker is offered u
     expect(attackLimitBinds(v, plan, "b")).toBe(true);
     expect(attackLimitBinds(v, plan, "c")).toBe(false);
     expect(offersAttackPicker(v, plan, "b")).toBe(true);
-    expect(offersAttackPicker(v, plan, "c")).toBe(false);
+    // Not bound, but three creatures can attack: still a subset to pick (#2441).
+    expect(offersAttackPicker(v, plan, "c")).toBe(true);
   });
 
   it("offers nothing to pick under a used-up limit", () => {
@@ -115,6 +116,49 @@ describe("attackLimitBinds / offersAttackPicker — when the picker is offered u
   it("still offers it for a tax alone (#1162)", () => {
     const v = limitedView(3, [{ kind: "player", id: "b", tax: "{2}" }]);
     expect(offersAttackPicker(v, planAttackAll(v, "a"), "b")).toBe(true);
+  });
+});
+
+// #2441: with no tax and no limit, the picker is offered whenever more
+// than one creature can attack the seat.
+describe("offersAttackPicker — more than one attacker (#2441)", () => {
+  it("is offered with two or more eligible creatures and nothing restricting them", () => {
+    expect(
+      offersAttackPicker(limitedView(2, []), planAttackAll(limitedView(2, []), "a"), "b"),
+    ).toBe(true);
+    const v = limitedView(4, [{ kind: "player", id: "b" }]);
+    expect(offersAttackPicker(v, planAttackAll(v, "a"), "b")).toBe(true);
+  });
+
+  it("is not offered for a lone attacker, or none", () => {
+    const one = limitedView(1, []);
+    expect(offersAttackPicker(one, planAttackAll(one, "a"), "b")).toBe(false);
+    const none = limitedView(0, []);
+    expect(offersAttackPicker(none, planAttackAll(none, "a"), "b")).toBe(false);
+  });
+
+  it("counts only the creatures that can attack that seat", () => {
+    const v = limitedView(3, []);
+    const plan = planAttackAll(v, "a");
+    plan.targets = { bear1: ["c"], bear2: ["c"], bear3: ["b"] };
+    expect(offersAttackPicker(v, plan, "b")).toBe(false);
+    expect(offersAttackPicker(v, plan, "c")).toBe(true);
+  });
+
+  it("still offers nothing under a used-up limit, however many could attack", () => {
+    const v = limitedView(3, [{ kind: "player", id: "b", attack_limit: 0 }]);
+    expect(offersAttackPicker(v, planAttackAll(v, "a"), "b")).toBe(false);
+  });
+
+  it("opens at every creature checked, and a click unchecks one", () => {
+    const v = limitedView(3, []);
+    const eligible = planAttackAll(v, "a").eligible;
+    const seeded = seedAttackSelection(eligible, null);
+    expect(seeded).toEqual(["bear1", "bear2", "bear3"]);
+    expect(
+      toggleAttackSelection(toggleAttackSelection(seeded, "bear2", null), "bear2", null),
+    ).toEqual(["bear1", "bear3", "bear2"]);
+    expect(toggleAttackSelection(seeded, "bear2", null)).toEqual(["bear1", "bear3"]);
   });
 });
 
