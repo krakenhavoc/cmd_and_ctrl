@@ -2698,6 +2698,13 @@ export interface PurposeView {
   energy?: number;
   sweep?: SweepView;
   death_payoff?: boolean;
+  // ADR 0130 (amendment of 2026-10-07): what an exert row does.
+  pump?: { power?: number; toughness?: number; keywords?: string[] };
+  extra_combat?: number;
+  prevent_combat_damage_to_self?: boolean;
+  damage_to_creature?: number;
+  damage_each_opponent?: number;
+  life_gain?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.
@@ -3560,6 +3567,9 @@ export interface AbilityRowView {
   label: string;
   // ADR 0126 §6: the row's declared purpose (death_payoff). Bot data.
   purpose?: PurposeView;
+  // ADR 0130 (amendment of 2026-10-07): "linked" on exert's "when you
+  // do" trigger, "payoff" on "Whenever you exert a creature". Bot data.
+  exert?: "linked" | "payoff";
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may

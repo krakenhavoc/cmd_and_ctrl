@@ -6486,6 +6486,19 @@ Triggered: []game.TriggeredAbility{
 - **The skip is ADR 0058's next-untap marker**, keyed to the exerting
   player's untap step (CR 701.43a). A second exert before that step adds
   no second marker (CR 701.43b); don't make the plain marker count.
+- **Declare what the exert does** (ADR 0130's amendment of 2026-10-07).
+  The bot prices an exert by the purposes of the rows the two helpers
+  stamp (`exert: "linked"` and `"payoff"` on the wire), so wrap each in
+  `TriggerWithPurpose` with the printed amounts: `Pump` for "this
+  creature gets +N/+N and gains …", `PreventCombatDamageToSelf`,
+  `DamageToCreature`, `DamageEachOpponent`, `LifeGain`, `ExtraCombat`,
+  or the ADR 0126 §6 fields (`Draws`, `Tokens`, …). Oketra's Avenger:
+
+  ```go
+  TriggerWithPurpose(WhenExerted("…", effect), game.Purpose{PreventCombatDamageToSelf: true}),
+  ```
+
+  A row with no purpose is an exert the bot takes only when it is free.
 - **Exert as an activation cost** ("Exert this creature: …", Arena of
   Glory) is ADR 0130 PR 4, a cost component on `AbilityCost` and
   `ManaAbilityCost`. Until it lands, those cards wait.

@@ -2724,6 +2724,12 @@ Every field is omitted when zero.
 | `sweep` | present on a board wipe; see below | Wrath of God |
 | `death_payoff` | on a triggered row: it pays out whenever a creature its controller controls dies | Blood Artist |
 | `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
+| `pump` | on a triggered or activated row: `{power, toughness, keywords}` it gives its own source until end of turn ([ADR 0130](decisions/0130-exert.md), amendment of 2026-10-07) | an exert self-pump |
+| `extra_combat` | additional combat phases it adds | Combat Celebrant 1 |
+| `prevent_combat_damage_to_self` | on a triggered or activated row: it prevents all combat damage that would be dealt to its source this turn | Oketra's Avenger |
+| `damage_to_creature` | damage it deals to one target creature | Glorybringer 4 |
+| `damage_each_opponent` | damage it deals to each opponent | Resolute Survivors 1 |
+| `life_gain` | life its controller gains | Resolute Survivors 1 |
 
 An amount is the printed number. A card whose amount is X, or is
 counted at resolution ("draw a card for each creature you control"),
@@ -2780,6 +2786,13 @@ Where it rides:
 - **`ability_rows[i].purpose`**: a triggered or activated row's, on the
   tile's row list (`death_payoff` on Blood Artist's trigger,
   `discard_payoff` on Mary Read and Anne Bonny's).
+
+**`ability_rows[i].exert`** ([ADR 0130](decisions/0130-exert.md),
+amendment of 2026-10-07) marks a triggered row as one of exert's:
+`"linked"` on the "when you do" trigger linked to "You may exert this
+creature as it attacks", and `"payoff"` on "Whenever you exert a
+creature". Absent on every other row. The heuristic prices an exert by
+these rows' purposes; a client may ignore it.
 
 The modes and the offers are public with their labels, which say the
 same thing in words, and hidden exactly when those are.
