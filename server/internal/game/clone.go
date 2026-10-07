@@ -247,6 +247,12 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ChooseCards) > 0 {
 				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
+			if len(c.ChoosePlayers) > 0 {
+				cloned.ChoosePlayers = append([]uuid.UUID(nil), c.ChoosePlayers...)
+			}
+			if len(c.ChooseSuggested) > 0 {
+				cloned.ChooseSuggested = append([]uuid.UUID(nil), c.ChooseSuggested...)
+			}
 			// #568: the branches of an option pick. A slice of
 			// structs each holding a card slice, so the deep copy
 			// goes one level further than every other field here —

@@ -169,6 +169,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		return v, "shield against the likeliest source"
 
+	case choiceProliferate:
+		// #2525: the engine's suggested pick (proliferate.go).
+		return proliferateValue(ch, cp.CardIDs), "proliferate what helps us and hurts them"
+
 	case choiceRingBearer:
 		// ADR 0114 §7: the creature that attacks hardest carries the
 		// Ring (ring_bearer.go).

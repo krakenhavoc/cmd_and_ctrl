@@ -69,7 +69,7 @@ func TestTekuthalProliferatesTwice(t *testing.T) {
 	theirs := pushCounterCreature(g, opp.ID, "Theirs", game.CounterMinusOne, 1)
 
 	castCatalogSpell(t, g, "Steady Progress", "Instant", steadyProgressOracle, nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 3 {
 		t.Errorf("my +1/+1 counters = %d, want 3 (one printed, two proliferates)", got)
@@ -91,7 +91,7 @@ func TestSteadyProgressWithoutTekuthalProliferatesOnce(t *testing.T) {
 	mine := pushCounterCreature(g, me.ID, "Mine", game.CounterPlusOne, 1)
 
 	castCatalogSpell(t, g, "Steady Progress", "Instant", steadyProgressOracle, nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("my +1/+1 counters = %d, want 2", got)

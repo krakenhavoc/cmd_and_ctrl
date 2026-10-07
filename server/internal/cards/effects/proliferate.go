@@ -16,35 +16,35 @@ import (
 // is the application — and, since #976, the CR 614 window on the
 // keyword ACTION, so "if you would proliferate, proliferate twice
 // instead" (Tekuthal, Inquiry Dominus) is a replacement the primitive
-// needs to know nothing about. It takes the chosen lists verbatim;
-// this file is the choice.
+// needs to know nothing about.
 //
-// Sandbox simplification — the choice is made FOR the proliferating
-// player, by a deterministic beneficial pick (BeneficialProliferateChoice
-// below), rather than prompted. "Any number of permanents and/or
-// players" is a free-form multi-select over the whole board, which is a
-// picker the client does not have and nothing else in the catalog needs
-// yet; the S20 target picker is per-slot and legality-checked, which is
-// the wrong shape. The pick below is what a player takes essentially
-// every time — everything of yours that a counter helps, everything of
-// theirs that a counter hurts — and the two halves of the rule are
-// already split so a real picker only has to supply the lists.
+// THE CHOICE IS THE PLAYER'S (#2525). Proliferate{} with no lists asks
+// game.ProliferateChoosingForEffect, which queues a
+// PendingChoiceProliferate once the window has settled: a multi-select
+// over every permanent and player that has a counter, with the
+// engine's beneficial pick suggested (game.ProliferateSuggestionForEffect
+// — everything of yours a counter helps, everything of theirs one
+// hurts). That is what a player takes nearly every time, so it is the
+// default, but it is no longer the only answer: a player can now
+// decline a counter — "put another -1/-1 counter on my own persist
+// creature to stop it coming back", or leave a Stun counter off a
+// permanent — which the old auto-pick could not.
 //
-// Where the auto-pick is observably different from paper: a player who
-// wants to DECLINE a counter cannot (proliferating a Stun counter onto
-// your own permanent to untap it more slowly is not a thing anyone
-// wants, but "put another -1/-1 counter on my own persist creature to
-// stop it coming back" is a real, rare line, and the auto-pick will not
-// take it). Declared rather than silently wrong.
+// Because the choice is a prompt, a proliferate PAUSES the effect that
+// asked for it. Anything the card says after "proliferate" goes in
+// Proliferate.Then, which runs once every proliferate of the settled
+// count has been answered (or at once when there is nothing to choose),
+// never on the next line of the card's OnResolve — see Steady Progress,
+// whose "draw a card" would otherwise be drawn while the player is
+// still deciding.
 
 // Proliferate gives each chosen permanent and player one more counter
 // of each kind already on it.
 //
-// With Cards and Players both nil the primitive picks for the
-// proliferating player via BeneficialProliferateChoice. A card that
-// knows exactly what it wants (or a test) sets them explicitly; an
-// explicitly empty, non-nil slice means "choose nothing", which is a
-// legal proliferate.
+// With Cards and Players both nil the proliferating player is asked.
+// A card that knows exactly what it wants (or a test) sets them
+// explicitly and no prompt is queued; an explicitly empty, non-nil
+// slice means "choose nothing", which is a legal proliferate.
 type Proliferate struct {
 	// Controller is the player proliferating. Zero value means the
 	// effect's controller, which is what every printed proliferate
@@ -52,9 +52,15 @@ type Proliferate struct {
 	Controller uuid.UUID
 
 	// Cards / Players are an explicit choice. Nil for both means
-	// "pick for me".
+	// "ask the player".
 	Cards   []uuid.UUID
 	Players []uuid.UUID
+
+	// Then is the rest of the sentence after "proliferate". It runs
+	// with the game lock held, once the proliferate is finished.
+	// Capture scalars only (the controller's ID), never a *Context or
+	// a *Game: an undone game resolves it against the restored one.
+	Then func(g *game.Game) error
 }
 
 func (p Proliferate) Apply(ctx *Context) error {
@@ -62,96 +68,26 @@ func (p Proliferate) Apply(ctx *Context) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	cards, players := p.Cards, p.Players
-	if cards == nil && players == nil {
-		cards, players = BeneficialProliferateChoice(ctx.Game, controller)
+	if p.Cards == nil && p.Players == nil {
+		return ctx.Game.ProliferateChoosingForEffect(controller, ctx.Source(), p.Then)
 	}
-	return ctx.Game.ProliferateForEffect(controller, ctx.Source(), cards, players)
-}
-
-// harmfulCardCounters are the counter kinds a permanent's controller
-// does not want more of. Everything else — +1/+1, loyalty, charge,
-// shield, lore, defense on a battle you are not fighting — is either
-// wanted or harmless, and proliferate gives one of EACH kind a
-// permanent has, so a single unwanted kind rules the permanent out
-// entirely rather than being skipped.
-//
-// Lore is a judgement call: another lore counter advances a Saga
-// towards its final chapter and its sacrifice, which is usually the
-// point (you want the chapter abilities) — it is treated as wanted.
-var harmfulCardCounters = map[string]bool{
-	game.CounterMinusOne: true,
-	game.CounterStun:     true,
-}
-
-// harmfulCardCounter is harmfulCardCounters widened to every P/T
-// counter kind (#1664, CR 122.1a): a -2/-1 or a -0/-1 shrinks the
-// creature exactly as a -1/-1 does, and a +1/+0 or a +0/+1 grows it.
-// A P/T kind is harmful when it takes more than it gives.
-func harmfulCardCounter(name string) bool {
-	if harmfulCardCounters[name] {
-		return true
+	if err := ctx.Game.ProliferateForEffect(controller, ctx.Source(), p.Cards, p.Players); err != nil {
+		return err
 	}
-	p, t, ok := game.ParsePTCounter(name)
-	return ok && p+t < 0
+	if p.Then != nil {
+		return p.Then(ctx.Game)
+	}
+	return nil
 }
 
-// harmfulPlayerCounters are the player-level counters you do not want
-// on yourself and do want on an opponent.
-var harmfulPlayerCounters = map[string]bool{
-	game.CounterPoison: true,
-	game.CounterRad:    true,
-}
-
-// BeneficialProliferateChoice picks the permanents and players a
-// proliferate should choose on `controller`'s behalf: everything they
-// control whose counters all help, plus every other permanent whose
-// counters all hurt, and the same test applied to each player's own
-// counters.
+// BeneficialProliferateChoice is the pick a proliferate suggests on
+// `controller`'s behalf (game.ProliferateSuggestionForEffect). Kept
+// under this name for the tests and for any card that wants to hand a
+// beneficial pick to Proliferate.Cards / Players explicitly.
 //
 // Only things that already have at least one counter can be chosen
 // (CR 701.34a), so an empty board or a board with no counters on it
 // returns two empty lists and the proliferate is a legal no-op.
-//
-// Deterministic: battlefield order then seat order, so the same board
-// always produces the same event stream.
 func BeneficialProliferateChoice(g *game.Game, controller uuid.UUID) (cards []uuid.UUID, players []uuid.UUID) {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if len(c.Counters) == 0 {
-			continue
-		}
-		if wantsMoreCounters(c.Counters, harmfulCardCounter, c.Controller == controller) {
-			cards = append(cards, c.InstanceID)
-		}
-	}
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated || len(p.Counters) == 0 {
-			continue
-		}
-		if wantsMoreCounters(p.Counters, func(name string) bool { return harmfulPlayerCounters[name] }, p.ID == controller) {
-			players = append(players, p.ID)
-		}
-	}
-	return cards, players
-}
-
-// wantsMoreCounters is the shared test both halves of the pick use.
-// For something of yours (`mine`): choose it only when NO kind on it
-// is harmful. For something that isn't: choose it only when EVERY
-// kind on it is harmful — an opponent's creature with a -1/-1 counter
-// is a fine choice; the same creature also carrying a +1/+1 counter
-// is not, because proliferate would hand them both.
-func wantsMoreCounters(counters map[string]int, harmful func(string) bool, mine bool) bool {
-	seen := false
-	for name, n := range counters {
-		if n <= 0 {
-			continue
-		}
-		seen = true
-		if wanted := !harmful(name); wanted != mine {
-			// Mine and harmful, or theirs and helpful.
-			return false
-		}
-	}
-	return seen
+	return g.ProliferateSuggestionForEffect(controller)
 }
