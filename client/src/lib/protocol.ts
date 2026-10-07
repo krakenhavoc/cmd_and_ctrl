@@ -2094,6 +2094,13 @@ export interface AdditionalCostView {
   // greatest toughness among your creatures, the most X may be.
   blight_x?: boolean;
   blight_x_max?: number;
+  // ADR 0100 amendment 2026-10-07: a branch that reveals a card from your
+  // hand (`reveal`) or, to behold (`behold`), may choose a permanent you
+  // control instead. `reveal_options` lists the cards that could pay it,
+  // hand cards first; the one pick rides cast_spell as `reveal_ids`.
+  reveal?: boolean;
+  behold?: boolean;
+  reveal_options?: LegalTargetsView;
   payable?: boolean;
 }
 

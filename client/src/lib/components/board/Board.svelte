@@ -122,6 +122,7 @@
     optionalCostsOf,
     castTeamworkOffer,
     castBlightOffer,
+    castRevealCost,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -611,6 +612,28 @@
     orderSacrificeOptions(view.battlefield.cards, blightPromptOptionIDs),
   );
 
+  // ADR 0100 amendment 2026-10-07: a chosen reveal / behold branch asks
+  // which one card to show — a card in your hand or, to behold, a
+  // permanent you control. The same single-pick sheet the blight
+  // creature uses, over the server's `reveal_options` (hand first, then
+  // permanents), resolved against both zones.
+  let revealPrompt = $state<{ card: CardView; label: string; choices: CastChoices } | null>(null);
+  let revealPromptOptionIDs = $state<string[]>([]);
+  const revealOptions = $derived.by(() => {
+    const me = view.seats.find((s) => s.id === viewerID);
+    return orderSacrificeOptions(
+      [...(me?.hand.cards ?? []), ...view.battlefield.cards],
+      revealPromptOptionIDs,
+    );
+  });
+
+  function confirmReveal(ids: string[]): void {
+    const p = revealPrompt;
+    revealPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, revealIDs: ids });
+  }
+
   function afterSacrificeCost(card: CardView, choices: CastChoices): void {
     const tw = castTeamworkOffer(card, choices);
     if (tw && choices.teamworkIDs === undefined) {
@@ -627,6 +650,16 @@
           bl.n === 0
             ? `a creature you control for ${bl.offer.label ?? "Blight X"} (it gets X -1/-1 counters)`
             : `a creature you control for ${bl.offer.label ?? `Blight ${bl.n}`} (it gets ${bl.n} -1/-1 counter${bl.n === 1 ? "" : "s"})`,
+        choices,
+      };
+      return;
+    }
+    const rv = castRevealCost(card, choices);
+    if (rv && choices.revealIDs === undefined) {
+      revealPromptOptionIDs = rv.options;
+      revealPrompt = {
+        card,
+        label: rv.behold ? `${rv.label} (choose or reveal)` : rv.label,
         choices,
       };
       return;
@@ -3248,6 +3281,16 @@
     verb="Choose"
     onConfirm={confirmBlight}
     onCancel={() => (blightPrompt = null)}
+  />
+  <!-- ADR 0100 amendment: reveal a card from hand / behold — one pick. -->
+  <SacrificeCostModal
+    source={revealPrompt?.card ?? null}
+    label={revealPrompt?.label ?? "a card to show"}
+    options={revealOptions}
+    count={1}
+    verb="Choose"
+    onConfirm={confirmReveal}
+    onCancel={() => (revealPrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}
