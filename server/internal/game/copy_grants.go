@@ -167,13 +167,16 @@ func mergedCatalogDef(key string) *CardDef {
 	if d, ok := mergedDefMemo.get(key); ok {
 		return d
 	}
-	base, grants := splitCatalogKeyGrants(key)
+	base, tail := splitCatalogKeyGrants(key)
+	// #1859: removal parts ("-replacement:0") are not grants; they are
+	// applied to the base definition after the merge.
+	grants, removed := splitRemovedRows(tail)
 	parts := make([]*CardDef, 0, 1+len(grants))
 	parts = append(parts, lookupPart(base))
 	for _, g := range grants {
 		parts = append(parts, lookupPart(g))
 	}
-	d := mergeCatalogParts(parts)
+	d := dropRemovedRows(mergeCatalogParts(parts), parts[0], removed)
 	mergedDefMemo.put(key, base, grants, parts, d)
 	return d
 }

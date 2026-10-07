@@ -1893,14 +1893,13 @@ var items = []Item{
 		EngineNotes: "Shaman's Trance (\"Other players can't play lands or cast spells from their graveyards this turn. You may play lands and cast spells from other players' graveyards this turn as though those cards were in your graveyard.\"): its first sentence is a land-play and cast gate by zone, which `ModCantPlayLands` does not express (it bans every land for a player, not one zone) and the cast ban (`CastBanRule.ExceptFromZone`) bans every zone but one. The second sentence is a permission over cards the caster does not own, and `CastPermission` is scoped to the holder's own zones.",
 	},
 	{
-		Slug: "lose-one-printed-ability", Name: "Losing one of its own abilities", Kind: KindSeam, Status: StatusMissing,
+		Slug: "lose-one-printed-ability", Name: "Losing one of its own abilities", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that make a permanent lose one particular ability of its own for a while, such as Glittering Lion, which can lose \"Prevent all damage that would be dealt to this creature\" until end of turn.",
-		Missing:     "A permanent can lose all its abilities, or a keyword, but not one particular ability that isn't a keyword.",
 		Rules:       []string{"613.1f", "611.2a"},
 		Issue:       1859,
-		Tracked:     "#1859 (S50 tracker #1784; found landing ADR 0106 PR 6, #1793)",
-		Waiting:     []string{"Glittering Lion", "Glittering Lynx"},
-		EngineNotes: "layer-6 removal of ONE non-keyword ability: the scoped-effect vocabulary has `removeKeywords` (a keyword token) and `loseAllAbilities` (CR 613.1f, every own ability), and a catalog ability is read through the `Catalog*` hooks keyed on the whole object, so there is no mod kind that switches off one replacement or one activated row by ability ref. Glittering Lion and Glittering Lynx print \"Prevent all damage that would be dealt to this creature\" (a self replacement, Caduceus's shape) and an any-player row (#1793) that removes exactly that ability until end of turn; the removal has to be an ordinary layer-6 effect with a timestamp, so a later grant of the same text still works and a copy of the creature still has it.",
+		ADR:         "0107-state-triggers-rebound-disturb-and-damage-prevention.md",
+		Examples:    []string{"Glittering Lion", "Glittering Lynx"},
+		EngineNotes: "`loseOwnAbility` (layer 6, CR 613.1f) names one replacement, triggered or activated row of the object's own definition by slot and index and writes `Characteristic.RemovedOwnAbilities`; `catalogAbilityKeyOf` turns it into a definition without that row, and `activatedAbilityRows` filters an activated row while keeping the survivors' refs. A later grant of the same text is a different row and survives; a copy and a flickered object still have the ability. Static and mana rows are refused at registration: a static is gathered before any effect applies, and no card waits on either.",
 	},
 	{
 		Slug: "next-damage-from-a-source", Name: "The next damage from a source", Kind: KindSeam, Status: StatusImplemented,

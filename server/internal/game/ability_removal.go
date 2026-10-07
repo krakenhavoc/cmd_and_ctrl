@@ -141,7 +141,13 @@ func CatalogAbilityKey(c Card) string { return catalogAbilityKeyOf(&c) }
 // the exported by-value shape stays for the catalog and open branches.
 func catalogAbilityKeyOf(c *Card) string {
 	own := ownAbilityKey(c)
-	if c.effective == nil || len(c.effective.GrantedAbilities) == 0 {
+	if c.effective == nil {
+		return own
+	}
+	// #1859: a row of the object's own definition switched off one at a
+	// time rides the key, ahead of the grants (own_ability_removal.go).
+	own = withRemovedRows(own, c.effective.RemovedOwnAbilities)
+	if len(c.effective.GrantedAbilities) == 0 {
 		return own
 	}
 	return composeAbilityKey(own, c.effective.GrantedAbilities)

@@ -111,6 +111,25 @@ type Characteristic struct {
 	// GrantedAbilities below, and every reader keeps that half.
 	AbilitiesRemoved bool
 
+	// RemovedOwnAbilities are the individual catalog rows of this
+	// object's OWN definition that a layer-6 effect switched off, one
+	// at a time (CR 613.1f, ADR 0106 amendment of 2026-10-07, #1859):
+	// Glittering Lion's "this creature loses 'Prevent all damage that
+	// would be dealt to this creature.'". Each entry is a slot of the
+	// card's definition and the row's index in the FULL declared list of
+	// that slot, so a designation gate opening does not renumber it.
+	//
+	// Written only by the loseOwnAbility mod's Apply, in that effect's
+	// timestamp slot; read by catalogAbilityKeyOf (replacement and
+	// triggered rows, which drop out of the composite key's definition)
+	// and activatedAbilityRows (activated rows). A later layer-6 GRANT
+	// of the same text is a different row (GrantedAbilities) and is not
+	// touched, which is CR 613.6's "a later effect puts it back". Not
+	// copiable (CR 707.2) for the reason GrantedAbilities is not: a copy
+	// reads PrintedValues. AbilitiesRemoved dominates: with every own
+	// ability gone there is nothing left to name.
+	RemovedOwnAbilities []OwnAbilityRemoval
+
 	// GrantedAbilities are the abilities OTHER effects gave this
 	// object in layer 6 (CR 113.10, CR 613.1f) — Cryptolith Rite's
 	// "{T}: Add one mana of any color" on every creature you control,
