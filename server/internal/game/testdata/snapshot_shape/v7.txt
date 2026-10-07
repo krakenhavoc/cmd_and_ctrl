@@ -414,6 +414,7 @@ events[].colors	array
 events[].colors[]	string
 events[].combat	bool
 events[].combat_step	string
+events[].damage_not_life_loss	number:int
 events[].discard_cause	string
 events[].error_msg	string
 events[].exhaust	bool
@@ -1348,6 +1349,7 @@ lastKnownStack[].item.trigger.Event.colors	array
 lastKnownStack[].item.trigger.Event.colors[]	string
 lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
+lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
@@ -1811,6 +1813,7 @@ pendingTriggers[].trigger.Event.colors	array
 pendingTriggers[].trigger.Event.colors[]	string
 pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
+pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
@@ -4407,6 +4410,7 @@ stackMeta[].trigger.Event.colors	array
 stackMeta[].trigger.Event.colors[]	string
 stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
+stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool

@@ -103,6 +103,10 @@ func init() {
 //
 // Life GAIN is an EventChangeLife with a positive amount and is
 // explicitly not a loss — the sign test is the whole filter.
+//
+// Damage counts the life it COST (game.Event.DamageLifeLoss, #2105):
+// infect damage, and damage to a player whose life total can't change,
+// loses no life (CR 702.90b, CR 119.8).
 func s22PlayerLostLife(ev game.Event, playerID uuid.UUID, g *game.Game) (int, bool) {
 	if playerID == uuid.Nil || ev.Target != playerID || g.PlayerByIDForEffect(playerID) == nil {
 		return 0, false
@@ -113,8 +117,8 @@ func s22PlayerLostLife(ev game.Event, playerID uuid.UUID, g *game.Game) (int, bo
 			return -ev.Amount, true
 		}
 	case game.EventDealDamage:
-		if ev.Amount > 0 {
-			return ev.Amount, true
+		if lost := ev.DamageLifeLoss(); lost > 0 {
+			return lost, true
 		}
 	}
 	return 0, false
