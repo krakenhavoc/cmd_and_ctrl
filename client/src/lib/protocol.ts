@@ -2602,6 +2602,9 @@ export interface ActivatedAbilityView {
   // live for the viewer right now is still the digest's answer
   // (`legal_actions`), never the row's. Absent on every other row.
   any_player?: boolean;
+  // #2449: a CR 702.6 equip ability. Bot data; the client does not
+  // read it.
+  equip?: boolean;
   // ADR 0126 §6 (and ADR 0106 §1 decision 8 on an any-player row):
   // what the row does. Bot data; the client does not read it.
   purpose?: PurposeView;

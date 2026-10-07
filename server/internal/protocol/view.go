@@ -3511,6 +3511,14 @@ type ActivatedAbilityView struct {
 	// CR 109.5). Whether the row is live for the viewer right now is
 	// still the digest's answer (`legal_actions`), never the row's.
 	AnyPlayer bool `json:"any_player,omitempty"`
+	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
+	// set by effects.EquipAbility and nothing else, #1208). Absent on
+	// every other row. Bot data (#2449): an equip that moves an
+	// Equipment between two of the seat's own creatures buys only what
+	// the new host gains, and the policy cannot tell an equip from any
+	// other "target creature you control" row without it. Public with
+	// the row; the client does not read it.
+	Equip bool `json:"equip,omitempty"`
 	// Purpose is what the row does, as the catalog declares it (ADR
 	// 0126 §6, purpose_view.go): a loot's draw and discard, a sweep. On
 	// an any-player row it is also what the row buys an activator who
@@ -9347,6 +9355,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
 			AnyPlayer:     a.AnyPlayer,
+			Equip:         a.Equip,
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
 		// and the bot's reason to reach across.

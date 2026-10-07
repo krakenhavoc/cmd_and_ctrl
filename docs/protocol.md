@@ -2732,6 +2732,20 @@ Where it rides:
 The modes and the offers are public with their labels, which say the
 same thing in words, and hidden exactly when those are.
 
+## An equip row says it is one (#2449, 2026-10-07)
+
+Additive, `v` unmoved.
+
+- **`equip: true` on an `activated_abilities[i]` row** that is a CR
+  702.6 equip ability: the row `effects.EquipAbility` builds, the same
+  bit Leonin Shikari reads (#1208). Absent on every other row.
+
+It is bot data. A bot's policy reads it to tell an equip from any other
+"target creature you control" row, because moving an Equipment between
+two of its own creatures buys only what the new host gains, and a free
+equip priced like a pump was moved back and forth forever (#2449). The
+client does not read it. Public with the row.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client
