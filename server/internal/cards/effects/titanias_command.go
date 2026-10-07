@@ -52,8 +52,8 @@ func init() {
 		Modes: ChooseN("Choose two", 2, 2,
 			Mode("Exile target player's graveyard. You gain 1 life for each card exiled this way.",
 				TargetPlayer("target player")),
-			Mode("Search your library for up to two land cards, put them onto the battlefield tapped, then shuffle."),
-			Mode("Create two 2/2 green Bear creature tokens."),
+			ModeWithPurpose(Mode("Search your library for up to two land cards, put them onto the battlefield tapped, then shuffle."), game.Purpose{Lands: 2}),
+			ModeWithPurpose(Mode("Create two 2/2 green Bear creature tokens."), game.Purpose{Tokens: 2}),
 			Mode("Put two +1/+1 counters on each creature you control."),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

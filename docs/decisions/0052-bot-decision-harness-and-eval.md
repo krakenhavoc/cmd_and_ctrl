@@ -476,10 +476,16 @@ between the two deployments.
 
   | Deck | Distinct cards | Static block |
   |---|---|---|
-  | izzet-aggro | 88 | ≈ 4.3k (5.0k) tokens |
-  | simic-ramp | 88 | ≈ 3.9k (4.5k) |
-  | esper-control | 92 | ≈ 3.6k (4.2k) |
-  | mono-black-aristocrats | 82 | ≈ 3.4k (4.0k) |
+  | izzet-aggro | 88 | ≈ 4.5k (5.3k) tokens |
+  | simic-ramp | 89 | ≈ 4.0k (4.7k) |
+  | esper-control | 94 | ≈ 3.5k (4.1k) |
+  | mono-black-aristocrats | 83 | ≈ 3.6k (4.2k) |
+
+  Re-measured on 2026-10-07 for the rebalanced decks of #2436, the
+  same way, counting the commander and each basic land once. The
+  first measurement was izzet 4.3k, simic 3.9k, esper 3.6k and
+  mono-black 3.4k: the new lists carry more oracle text, and the
+  conclusions below do not change.
 
   Add a 1–2k board delta and a single call is **5–7k tokens**. That
   fits this box's 16k window and would be silently truncated at

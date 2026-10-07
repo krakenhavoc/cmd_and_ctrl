@@ -1387,7 +1387,7 @@ answer for every table — so the client fetches it once.
   "decks": [
     { "id": "izzet-aggro", "name": "Raid and Ransack", "description": "aggro — …", "colors": ["U", "R"], "commander": "Mary Read and Anne Bonny" },
     { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
-    { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Hashaton, Scarab's Fist" },
+    { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Y'shtola, Night's Blessed" },
     { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }
   ]
 }

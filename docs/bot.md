@@ -961,10 +961,20 @@ time a spec was refactored.
 
 | ID | Name | Commander | Archetype |
 |---|---|---|---|
-| `izzet-aggro` | Raid and Ransack | Mary Read and Anne Bonny | Aggro (UR) — cheap creatures that turn artifacts and discards into damage, backed by burn and a thin counterspell suite |
-| `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — mana creatures and land ramp into large green threats, drawing a card on every land drop |
-| `esper-control` | The Long Answer | Hashaton, Scarab's Fist | Control (WUB) — counterspells, one-for-one removal and six board wipes, with just enough creatures to close |
-| `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — free sacrifice outlets, drain-on-death payoffs, and a graveyard full of things to sacrifice again |
+| `izzet-aggro` | Raid and Ransack | Mary Read and Anne Bonny | Aggro (UR) — Pirates and Islands: loot and rummage away the cards you don't need, and every Island, Pirate or Vehicle you discard becomes a Treasure |
+| `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — landfall: extra land drops every turn, a card off each with Tatyova, and landfall payoffs that turn the lands into mana, tokens and threats |
+| `esper-control` | The Long Answer | Y'shtola, Night's Blessed | Control (WUB) — big spells: every noncreature spell of mana value 3 or more drains each opponent, so the answers also win the game |
+| `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — death triggers: sacrifice creatures for value, drain the table each time one dies, then reanimate the best of them |
+
+The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
+fetchlands and dual lands, but no fast mana beyond Sol Ring and few
+tutors, and each one teaches the single mechanic in its row above.
+Every non-basic card is graded `full` in the catalog, apart from a
+short list of minor caveats named in `internal/decks/full_test.go`
+(Path of Ancestry, Delighted Halfling, Cultivate, Tireless Provisioner,
+the two partner Pirates, Ragavan and the two Artillerists), and that
+test fails the build when a card falls below it. A saved table setup
+names a deck by ID, so it seats the current list.
 
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
