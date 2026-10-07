@@ -144,6 +144,29 @@ func (g *Game) TransformPermanentForEffect(cardID uuid.UUID) error {
 	if !CanTransform(*card) {
 		return nil
 	}
+	// CR 702.145b / 702.145e (ADR 0132): a permanent with daybound or
+	// nightbound "can't transform except due to" that ability, so an
+	// instruction to transform it does nothing, exactly as CR 701.27c
+	// treats an object that can't. The day/night rules themselves turn
+	// it over through transformInPlaceLocked, which has no such guard.
+	if hasDayNightKeyword(card) {
+		return nil
+	}
+	g.transformInPlaceLocked(card)
+	return nil
+}
+
+// transformInPlaceLocked is the body of the verb with every guard
+// already answered: the face goes over, the printed-value cache is
+// dropped, EventTransform announces it and the new face's "as this
+// transforms into" clause runs. TransformPermanentForEffect is the
+// guarded entry for an instruction; the day/night rules (CR 702.145c,
+// 702.145f) call this directly, because they are the one thing a
+// daybound or nightbound permanent can transform for.
+//
+// Caller must hold g.mu, and must have checked CanTransform.
+func (g *Game) transformInPlaceLocked(card *Card) {
+	cardID := card.InstanceID
 	from := card.Name
 	to := 1 - card.ActiveFace
 	controller := card.Controller
@@ -157,7 +180,6 @@ func (g *Game) TransformPermanentForEffect(cardID uuid.UUID) error {
 		Label:  from,
 	})
 	g.runAsTransformsIntoLocked(cardID)
-	return nil
 }
 
 // runAsTransformsIntoLocked runs the "As this permanent transforms into

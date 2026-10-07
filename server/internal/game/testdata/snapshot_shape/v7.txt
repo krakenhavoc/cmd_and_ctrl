@@ -312,6 +312,10 @@ continuations.turnScopedReplacements	number:int
 continuations.turnScopedStatics	number:int
 continuations.unpersistableRng	bool
 createdAt	custom(time.Time)
+dayNight	object
+dayNight.designation	string
+dayNight.prevTurnKnown	bool
+dayNight.prevTurnSpells	number:int
 delayedTriggers	array
 delayedTriggers[]	object
 delayedTriggers[].at	string

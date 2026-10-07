@@ -101,6 +101,9 @@ var gameFields = plan(
 	"OpeningRoll", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
+	// ADR 0132: the day/night designation and the previous turn's spell
+	// count. Plain data.
+	"DayNight", carried, "",
 	"Settings", carried, "",
 	"StartingSeat", carried, "",
 	"StackMeta", carried, "",

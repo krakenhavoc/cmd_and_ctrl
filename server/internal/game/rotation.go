@@ -170,6 +170,9 @@ func (g *Game) beginNextTurnLocked() {
 	// ADR 0108 §6: the turn that is ending is its player's last turn
 	// from here on. Before g.Turn and the tally are replaced.
 	g.recordLastTurnAttacksLocked()
+	// ADR 0132, CR 502.2: and the spells its active player cast, which
+	// the NEXT untap step's day/night check reads.
+	g.recordPrevTurnSpellsLocked()
 	if et, ok := g.popExtraTurnLocked(); ok {
 		g.Turn = Turn{
 			Seq:            g.Turn.Seq + 1,
