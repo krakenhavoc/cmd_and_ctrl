@@ -852,6 +852,20 @@ type PendingChoice struct {
 	// bot that keeps picking one holds the table forever.
 	ChooseMin, ChooseMax int
 
+	// ChoosePlayers are the SEATS a PendingChoiceProliferate offers
+	// alongside ChooseCards (CR 701.34a: "permanents and/or players").
+	// A seat is named in the answer's card_ids by its player ID, so
+	// the one payload every card-set pick shares still carries it.
+	// Empty for every other kind.
+	ChoosePlayers []uuid.UUID
+
+	// ChooseSuggested is the engine's recommended answer, a subset of
+	// ChooseCards and ChoosePlayers (#2525). It is a default and not a
+	// rule: the client pre-selects it, the enumerator always offers it
+	// as one move, and the bot answers with it. Empty for every kind
+	// that has no recommendation.
+	ChooseSuggested []uuid.UUID
+
 	// chooseCardsResume is the server-only continuation for a
 	// PendingChoiceChooseCards: what the picks mean, plus the zone
 	// they are re-checked against. Not serialised. See

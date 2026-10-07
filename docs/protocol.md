@@ -600,6 +600,32 @@ that leaves the battlefield while the prompt is open is taken off it; if
 none is left, the prompt is withdrawn and the Ring has still tempted the
 player, with no Ring-bearer chosen (CR 701.54d).
 
+### `proliferate` — choose what to proliferate (ADR 0013 amendment 2026-10-07, #2525, CR 701.34a)
+
+`pending_choices` may carry `kind: "proliferate"`. It is asked of the
+proliferating player once the proliferate has settled (so "proliferate
+twice" asks twice, the second over the board the first answer left), and
+the rest of the card waits on it, so it blocks the table. It is only
+asked when some permanent or player has a counter.
+
+It carries and is answered like `choose_cards` with a floor of zero:
+`options[]` are the battlefield permanents with at least one counter,
+`choose_min` is `0` and `choose_max` is the number of candidates,
+permanents and seats together. Two fields are specific to the kind:
+
+- `choose_players[]` — the seats that have a counter (player IDs). A seat
+  is picked by sending its player ID in the answer's `card_ids`, beside
+  the permanents.
+- `choose_suggested[]` — the engine's beneficial pick (instance IDs and
+  player IDs): everything of the chooser's a counter helps and everything
+  of an opponent's one hurts. A default for the client to pre-select, not
+  a rule; any subset is a legal answer.
+
+`resolve_choice { choice_id, card_ids: [id…] }` names the picks, and an
+empty list is a legal answer ("choose none"). Each pick gets one more
+counter of every kind it already has. Counters are on the table, so the
+options, the seats and the suggestion reach every seat unredacted.
+
 ### `divide_shield` — which damage a charged shield prevents (ADR 0108 §7, #1904, CR 615.7)
 
 `pending_choices` may carry `kind: "divide_shield"`. It is asked when a

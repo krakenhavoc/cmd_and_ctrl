@@ -70,7 +70,7 @@ func b16Activate(t *testing.T, g *game.Game, controller, card uuid.UUID, idx int
 	if err := g.ActivateCatalogAbility(controller, card, idx, params); err != nil {
 		t.Fatalf("ActivateCatalogAbility %d: %v", idx, err)
 	}
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 }
 
 // b16Tapped reads a battlefield card's tapped state.
