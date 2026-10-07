@@ -1313,13 +1313,12 @@ var items = []Item{
 		Examples: []string{"Murderous Redcap", "Persistent Constrictor"},
 	},
 	{
-		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusMissing,
+		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that say \"whenever a counter is put on\" a permanent trigger once for each counter, so two counters at once are two triggers.",
-		Missing:     "An ability that triggers for each counter put on a permanent can't trigger more than once for one placement yet.",
-		Rules:       []string{"603.2c"},
+		Rules:       []string{"603.2c", "122.6"},
 		Issue:       1841,
-		Waiting:     []string{"Fathom Mage", "Protean Hydra"},
-		EngineNotes: "harvester: one `EventCounterPlaced` per placement (post-change total), and a trigger fires at most once per event. \"Whenever one or more counters are put\" fits (Herd Baloth, Scurry Oak); \"whenever a counter is put\" is one trigger per counter (CR 603.2c), so a placement of two must be two stack objects. Likely a per-event multiplicity on `TriggeredAbility`, fed by the delta `b33CountersPlacedDelta` reads. Found landing the evolve cards (#1805). Protean Hydra (ADR 0108 PR 8, #1906) is the removal side: \"Whenever a +1/+1 counter is removed from this creature\" triggers once per counter removed (its ruling), and nothing triggers on a counter's removal at all yet.",
+		Examples:    []string{"Fathom Mage", "Bloodcrazed Hoplite", "Flourishing Defenses"},
+		EngineNotes: "**Shipped** (#1841): `TriggeredAbility.PerCounter` names the counter kind, and `harvestMatchLocked` dispatches the ability once per counter the `EventCounterPlaced` put (`counterPlacedDeltaLocked`, the delta read off the log the way `b33CountersPlacedDelta` does). Replacements have already settled the count, so Doubling Season and Hardened Scales change how many triggers fire; each is its own stack object and its own \"you may\"; entry counters are placed after the permanent arrives, so its own ability sees them (CR 122.6). Constructors: `WheneverACounterIsPutOnThis` and `WheneverACounterIsPutOnACreature` in `effects/counter_each.go`. The removal side (Protean Hydra, \"whenever a counter is removed\") is still open as #2466.",
 	},
 	{
 		Slug: "target-bounded-by-counters-removed", Name: "Targets bounded by X or by the counters removed", Kind: KindSeam, Status: StatusImplemented,

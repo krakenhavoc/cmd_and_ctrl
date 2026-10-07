@@ -1,0 +1,6 @@
+---
+title: "A trigger once per counter put on a permanent"
+date: 2026-10-07
+issues: [1841]
+---
+**A trigger once per counter put on a permanent** (#1841, CR 603.2c and 122.6) — "whenever a +1/+1 counter is put on this creature" is one trigger per COUNTER, not per placement. The engine emits one `EventCounterPlaced` per placement carrying the post-change total, so `TriggeredAbility.PerCounter` (plain data: the counter kind) tells `harvestMatchLocked` to dispatch the ability once per counter that event put, read off the log by `counterPlacedDeltaLocked` the way `b33CountersPlacedDelta` does. A replacement has already settled the count by then, so Doubling Season and Hardened Scales change how many triggers fire; every instance is its own stack object, target pick and "you may"; a removal or another kind is zero occurrences; counters a permanent enters with are placed after it arrives, so its own ability sees them. It is not `OncePerBatch`, the opposite of `WheneverYouPutOneOrMoreCountersOnThis`. Constructors `WheneverACounterIsPutOnThis` and `WheneverACounterIsPutOnACreature` live in `effects/counter_each.go`. **Cards:** Fathom Mage, Bloodcrazed Hoplite and Flourishing Defenses, all Full. **Still open:** the removal side (Protean Hydra) is #2466.

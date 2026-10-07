@@ -384,6 +384,20 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// PerCounter is "whenever a [kind] counter is put on ~": the
+	// counter kind whose placement this ability triggers on ONCE PER
+	// COUNTER (#1841, CR 603.2c and the Fathom Mage rulings). The
+	// engine emits one EventCounterPlaced per placement, and a
+	// replacement (Doubling Season, Hardened Scales) has already
+	// settled the count by then, so the number of counters the event
+	// put is the number of occurrences: two counters are two triggers,
+	// each its own stack object and each its own "you may". A removal
+	// or another kind is zero occurrences. Counters a permanent enters
+	// with are placed after it arrives, so they count too (CR 122.6).
+	// Empty — every other ability — is one occurrence per event. Plain
+	// data, not a func. See counterPlacedDeltaLocked.
+	PerCounter string
+
 	// BatchKey is the SECOND dimension of the OncePerBatch key: the
 	// distinct object the printed clause quantifies over, read off
 	// the event (#784).
@@ -715,10 +729,19 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {
 		return
 	}
+	occurrences := 1
+	if t.PerCounter != "" {
+		occurrences = g.counterPlacedDeltaLocked(pass.ev, t.PerCounter)
+	}
+	if occurrences < 1 {
+		return
+	}
 	extra := g.triggerDoublersLocked(pass, source, lki, t, origin == triggerOfSpell)
-	g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
-	for _, d := range extra {
-		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
+	for n := 0; n < occurrences; n++ {
+		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
+		for _, d := range extra {
+			g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
+		}
 	}
 }
 
@@ -1067,4 +1090,38 @@ func triggerWatches(kinds []EventKind, kind EventKind) bool {
 		}
 	}
 	return false
+}
+
+// counterPlacedDeltaLocked is how many `kind` counters the
+// EventCounterPlaced `ev` PUT on its target, or zero for a removal, a
+// different kind or a different event. The event carries only the
+// post-change total, so the previous total is the most recent
+// EventCounterPlaced for the same card and kind, or zero when the card
+// arrived on the battlefield (or as a token) more recently than that
+// (CR 400.7: it came with no counters). The effects package's
+// b33CountersPlacedDelta is the same walk for a card's own predicate.
+//
+// Caller must hold g.mu.
+func (g *Game) counterPlacedDeltaLocked(ev Event, kind string) int {
+	if ev.Kind != EventCounterPlaced || ev.Label != kind {
+		return 0
+	}
+	before := 0
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		prev := g.Events[i]
+		if prev.Seq >= ev.Seq {
+			continue
+		}
+		if (prev.Kind == EventETB || prev.Kind == EventTokenCreated) && prev.CardID == ev.Target {
+			break
+		}
+		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
+			before = prev.Amount
+			break
+		}
+	}
+	if ev.Amount <= before {
+		return 0
+	}
+	return ev.Amount - before
 }
