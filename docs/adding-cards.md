@@ -6384,6 +6384,44 @@ Not built yet: Day's Undoing's "if it's your turn" is buildable on the
 same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
 cost reduction with no shape, so it stays out.
 
+### Exert (ADR 0130, #2048, CR 701.43)
+
+"You may exert this creature as it attacks" is an optional cost to
+attack (CR 701.43d, 508.1g). Declare it on the Spec, and put a linked
+"when you do" trigger (CR 607.2h) in `Triggered`:
+
+```go
+ExertOnAttack: ExertAsItAttacks(),
+Triggered: []game.TriggeredAbility{
+    WhenExerted("Oketra's Avenger — prevent all combat damage that would be dealt to it this turn", effect),
+},
+```
+
+- **`ExertAsItAttacks()`** is the static ability. The engine reads it off
+  the creature's effective abilities, offers each attack twice (plain
+  and exerting), pays a chosen exert as the declaration locks in, in the
+  attacks' event batch, and emits `game.EventExert`. A card file never
+  exerts anything itself.
+- **`ExertAsItAttacksUnless(cond)`** adds a condition under which it may
+  NOT be exerted. Combat Celebrant's "If this creature hasn't been
+  exerted this turn" is `ExertAsItAttacksUnless(ExertedThisTurn)`, which
+  reads `Game.ExertedThisTurn` (per object, CR 400.7).
+- **`WhenExerted(label, effect)`** is the linked "When you do". It fires
+  only when this permanent is exerted as it attacks (the event names an
+  attack target). Wrap it in `Targeting` for a targeted one (Glorybringer):
+  the creature may be exerted with no legal target, and the trigger is
+  then removed (CR 603.3d).
+- **`WheneverYouExert(label, effect)`** is "Whenever you exert a
+  creature" (Resolute Survivors, Battlefield Scavenger). It sees the
+  source itself, any other creature its controller exerts, and a
+  creature exerted to pay a cost, but not a land.
+- **The skip is ADR 0058's next-untap marker**, keyed to the exerting
+  player's untap step (CR 701.43a). A second exert before that step adds
+  no second marker (CR 701.43b); don't make the plain marker count.
+- **Exert as an activation cost** ("Exert this creature: …", Arena of
+  Glory) is ADR 0130 PR 4, a cost component on `AbilityCost` and
+  `ManaAbilityCost`. Until it lands, those cards wait.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on

@@ -131,6 +131,12 @@ type LegalSourceView struct {
 	// AttackTargets are the players, planeswalkers and battles this
 	// creature may attack.
 	AttackTargets []string `json:"attack_targets,omitempty"`
+	// ExertOnAttack is set when the creature may be exerted as it
+	// attacks right now (CR 701.43d, ADR 0130 §5): the enumerator
+	// offers an attack move with `exert: true` beside the plain one.
+	// The client offers the choice from this and never from oracle
+	// text.
+	ExertOnAttack bool `json:"exert_on_attack,omitempty"`
 	// Blocks are the attackers this creature may block, alone or as
 	// part of a grouped declaration.
 	Blocks []string `json:"blocks,omitempty"`
@@ -234,6 +240,7 @@ type (
 	}
 	digestAttackParams struct {
 		Target string `json:"target"`
+		Exert  bool   `json:"exert"`
 	}
 	digestBlockParams struct {
 		Blocker  string `json:"blocker"`
@@ -332,6 +339,9 @@ func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 			var p digestAttackParams
 			if json.Unmarshal(m.Params, &p) == nil {
 				e.AttackTargets = appendUniqueNonEmpty(e.AttackTargets, p.Target)
+				if p.Exert {
+					e.ExertOnAttack = true
+				}
 			}
 		case legal.KindBlock:
 			digestBlockMove(m, e, entry)

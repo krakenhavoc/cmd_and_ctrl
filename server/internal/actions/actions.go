@@ -1000,6 +1000,9 @@ func dispatch(g *game.Game, a Action) error {
 		var p struct {
 			Attacker string `json:"attacker"`
 			Target   string `json:"target"`
+			// Exert is the choice to exert the attacker as it attacks
+			// (CR 701.43d, ADR 0130 §5). Absent means no.
+			Exert bool `json:"exert,omitempty"`
 			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
@@ -1020,13 +1023,15 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return err
 		}
-		return g.DeclareAttackerWith(attackerID, targetID, declParams)
+		return g.DeclareAttackerDeclWith(game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: p.Exert}, declParams)
 
 	case TypeDeclareAttackers:
 		var p struct {
 			Attackers []struct {
 				Attacker string `json:"attacker"`
 				Target   string `json:"target"`
+				// Exert: ADR 0130 §5, per attacker.
+				Exert bool `json:"exert,omitempty"`
 			} `json:"attackers"`
 			attackTaxParams
 		}
@@ -1057,7 +1062,7 @@ func dispatch(g *game.Game, a Action) error {
 			if err := requireCardController(g, a.Caller, attackerID); err != nil {
 				return err
 			}
-			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID})
+			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert})
 		}
 		declParams, err := p.attackTaxParams.decode("declare_attackers")
 		if err != nil {
