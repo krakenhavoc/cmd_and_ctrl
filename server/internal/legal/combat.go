@@ -33,10 +33,22 @@ type blocksParams struct {
 }
 
 // combatMoves enumerates per-creature attack and block declarations,
-// and a pending defender's finish_blocks. None is priority-gated in the
-// engine — the step and the card's controller are the whole check — so
-// a defending seat declares while priority is parked for the
-// declaration (#1501).
+// and a pending defender's finish_blocks. The engine's verbs check only
+// the step and the card's controller, so the timing is decided here:
+//
+//   - A defending seat declares blockers while priority is parked for
+//     the declaration (#1501), so blocks are not priority-gated.
+//   - The active seat declares attackers only while it holds priority
+//     (#2462). CR 508.1 has it declare first and CR 508.2 then gives
+//     it priority; this engine stages the declaration inside that
+//     first priority window (attackers.go), and the active seat's pass
+//     is the declaration's checkpoint (#1571). Once it has
+//     passed, another seat holds priority and the declaration is over:
+//     an attack offered then is one the engine refuses as soon as the
+//     step ends, and a bot holding no priority took it as its only
+//     legal move. The #1571 owed-requirement case is unaffected,
+//     because there the pass is withheld and the active seat keeps
+//     priority.
 //
 // Attack and block sets are combinatorial; a policy composes a full
 // declaration from these per-creature moves, re-enumerating after
@@ -53,7 +65,7 @@ func (e *enumerator) combatMoves() {
 	g := e.g
 	switch g.Turn.Step {
 	case game.StepDeclareAttackers:
-		if !isActiveSeat(g, e.seat) {
+		if !isActiveSeat(g, e.seat) || !holdsPriority(g, e.seat) {
 			return
 		}
 		// #1571 / CR 508.1d: while the declaration owes a requirement,
