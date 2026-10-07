@@ -76,7 +76,7 @@ export function tappedRoom(cardW: number, cardH: number): number {
  * cards to fit (publishing `--card-w` / `--card-h` on the list) and then
  * publishes the overlap that is still needed as `--fit-overlap`.
  *
- * The row's own card size is read from a `.fit-probe` beside the list,
+ * The row's own card size is read from a `.fit-probe-card` beside the list,
  * which is sized by the inherited `--card-w` / `--card-h` and so never
  * sees the list's override. With `strip`, the piles overlap each other
  * by design (the land strip), so the row's natural width is its
@@ -90,7 +90,8 @@ export function fitRow(
   if (typeof ResizeObserver === "undefined") return { update() {}, destroy() {} };
   let frame = 0;
   let scale = 1;
-  const probe = node.parentElement?.querySelector<HTMLElement>(":scope > .fit-probe") ?? null;
+  const probe =
+    node.parentElement?.querySelector<HTMLElement>(":scope > .fit-probe > .fit-probe-card") ?? null;
   const measure = (): void => {
     frame = 0;
     const piles = [...node.children].filter((c): c is HTMLElement => c instanceof HTMLElement);
