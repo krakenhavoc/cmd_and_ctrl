@@ -1037,9 +1037,11 @@
   .panel.opponent.flipped {
     /* Across-table seats: one more size down (the top row is the
        short one), rows reversed so the hand hugs the top edge and
-       creatures face the centre of the table. */
+       creatures face the centre of the table. #2491: the top row is
+       the tucked commander, half a card, so H = 2h + ~72px and
+       h ≈ 50cqh - 36px. */
     --card-h-max: 168px;
-    --card-h: clamp(70px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
+    --card-h: clamp(70px, calc((50cqh - 36px) * var(--card-scale-opponent, 1)), var(--card-h-max));
     --card-h-sm: clamp(48px, calc(var(--card-h) * 0.5), 90px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
@@ -1226,8 +1228,8 @@
      board is yours turned 180° about the table's centre, with the cards
      themselves left upright to read: their hand along the top edge with
      their commander on its left (yours is on your hand's right), the
-     back row under it reading enchantments/artifacts then lands with
-     the piles in its right corner (yours are in your back row's left),
+     back row under it reading enchantments/artifacts then lands, the
+     piles in the top right corner (yours are bottom left),
      and the creatures facing yours, with their identity at the bottom
      of the rail on the left, where yours is at the top of your rail on
      the right. The rail is `display: contents`, as on yours, so the
@@ -1236,10 +1238,31 @@
     .panel.opponent.flipped {
       grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
       grid-template-rows: auto auto minmax(0, 1fr);
+      /* #2491: the piles sit in the hand's row, against the top edge
+         like the hand, not in the back row under it. */
       grid-template-areas:
-        "bottom bottom    bottom"
-        "rail   middle    piles"
+        "bottom bottom    piles"
+        "rail   middle    middle"
         "rail   creatures creatures";
+    }
+    /* #2491: their commander is tucked behind the top edge as yours is
+       behind the bottom one: a hand-size card in a box half its height,
+       aligned to the box's foot, so the panel's edge cuts off the half
+       away from the table and the half that faces you shows. The tax
+       goes to the edge you can see. */
+    .panel.opponent.flipped :global(.command-strip) {
+      --strip-h: var(--card-h);
+      height: calc(var(--card-h) * 0.5);
+      align-self: flex-start;
+      align-items: flex-end;
+      padding: 0;
+    }
+    .panel.opponent.flipped :global(.command-strip .slot) {
+      flex: none;
+    }
+    .panel.opponent.flipped :global(.command-strip .tax-badge) {
+      top: auto;
+      bottom: 3px;
     }
     .panel.opponent.flipped .grid-bottom,
     .panel.opponent.flipped .grid-middle {
