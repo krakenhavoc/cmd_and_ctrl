@@ -1261,8 +1261,10 @@
     .panel.opponent.flipped .grid-middle {
       gap: 12px;
     }
+    /* Room for "Enchant / artifact 3" when the panel has it; under that
+       the label ends in "…" rather than scrolling the row. */
     .panel.opponent.flipped .grid-middle > :global(.row) {
-      min-width: 96px;
+      min-width: min(124px, 44%);
     }
   }
   /* A narrow self panel (the quadrant's bottom right): the dock is
