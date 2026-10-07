@@ -1575,6 +1575,20 @@ type PlayerView struct {
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
 
+	// PlaymatURL is the same-origin URL of the playmat the seat's
+	// signed-in owner chose (ADR 0128), drawn behind that seat's
+	// battlefield. Public and identical for every viewer, like the
+	// seat's name. Empty for a guest, a bot, an agent and a person who
+	// has none. Not read from the engine: the room stamps it on each
+	// capture from what the lobby set (ws/playmat.go), so a change made
+	// mid-game reaches the table on the next snapshot.
+	PlaymatURL string `json:"playmat_url,omitempty"`
+	// PlaymatWash is how strongly the owner darkens that playmat under
+	// the cards, in percent (30 to 90), set by the owner and the same
+	// for every viewer (ADR 0128 amendment). Present only with
+	// PlaymatURL; a client with none in hand uses 58.
+	PlaymatWash int `json:"playmat_wash,omitempty"`
+
 	// IsHost marks the table host (ADR 0075 §2.1) — the seat that may
 	// change table settings alongside the server admin. Public to
 	// every viewer. Not read from the engine: the room stamps it on

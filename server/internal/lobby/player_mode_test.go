@@ -1044,6 +1044,10 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"POST /admin/users/{id}/revoke-sessions", []string{"route:POST /admin/users/{id}/revoke-sessions"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},
+		// Playmat moderation (ADR 0128 section 9).
+		{"DELETE /admin/users/{id}/playmat", []string{"route:DELETE /admin/users/{id}/playmat"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmat", nil)
+		}},
 		{"GET /games/{id}/bot/stats", []string{"BotStatsHandler"}, true, httpProbe("GET", "/games/{id}/bot/stats", nil)},
 		// The admin views (ADR 0124 §8).
 		{"GET /admin/users", []string{"route:GET /admin/users"}, true, httpProbe("GET", "/admin/users?played=7d", nil)},

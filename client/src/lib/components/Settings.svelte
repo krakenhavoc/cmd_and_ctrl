@@ -37,6 +37,7 @@
   } from "../shortcuts";
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
+  import PlaymatSettings from "./PlaymatSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
@@ -66,6 +67,7 @@
     | "audio"
     | "animations"
     | "display"
+    | "playmat"
     | "gameplay"
     | "shortcuts"
     | "accessibility"
@@ -386,6 +388,9 @@
           >
           <button class:active={activeTab === "display"} onclick={() => (activeTab = "display")}
             >Display</button
+          >
+          <button class:active={activeTab === "playmat"} onclick={() => (activeTab = "playmat")}
+            >Playmat</button
           >
           <button class:active={activeTab === "gameplay"} onclick={() => (activeTab = "gameplay")}
             >Gameplay</button
@@ -751,6 +756,8 @@
               Show card art in your hand (hover for the full card)
               {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
             </label>
+          {:else if activeTab === "playmat"}
+            <PlaymatSettings />
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
             <label>

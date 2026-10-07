@@ -114,6 +114,9 @@ func (l *Lobby) LinkPendingSeats(discordID string, userID uuid.UUID) (int, error
 			s := &entry.meta.Players[i]
 			if s.UserID == "" && !s.IsBot && s.DiscordID == discordID {
 				s.UserID = uid
+				// The seat is now this account's, so its playmat is too
+				// (ADR 0128). It reaches the table on the next capture.
+				l.bindPlaymat(entry.room, s.PlayerID, userID)
 			}
 		}
 	}
@@ -270,6 +273,10 @@ func (l *Lobby) LinkSeat(gameID, playerID uuid.UUID, identity DiscordIdentity, u
 	name := identity.DisplayName()
 	var err error
 	if broadcast, err = l.applyLocked(gameID, entry, func() error {
+		// The seat now belongs to this account, or to nobody's: its
+		// playmat follows (ADR 0128).
+		entry.room.SetPlaymat(playerID, "")
+		l.bindPlaymat(entry.room, playerID, userID)
 		return entry.room.Game.SetDiscordIdentity(playerID, identity.ID, identity.AvatarHash, name)
 	}); err != nil {
 		return GameMeta{}, SeatInfo{}, err

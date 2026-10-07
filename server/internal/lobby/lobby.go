@@ -267,6 +267,11 @@ type Lobby struct {
 	// SetBotHost; nil means bot seats can be added but never play
 	// (tests, or a server built without the bot host).
 	bots BotHost
+	// playmats, when non-nil, answers "what is this account's playmat
+	// URL" for the seats a signed-in person holds (playmat.go). Set once
+	// at boot via SetPlaymats, before RestoreFromDisk; nil means no seat
+	// carries one.
+	playmats PlaymatSource
 	// reclaims holds the outstanding seat-reclaim tickets, keyed by
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
@@ -790,6 +795,11 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 			bindNamedHost = true
 		case entry.room.HostPlayerID() == uuid.Nil:
 			entry.room.SetHost(p.ID)
+		}
+		if agent == nil {
+			// ADR 0128: a signed-in person's playmat, set inside the
+			// apply so this commit's capture already carries it.
+			l.bindPlaymat(entry.room, p.ID, userID)
 		}
 		if identity.Populated() {
 			// Mirror the identity onto the game.Player so it flows

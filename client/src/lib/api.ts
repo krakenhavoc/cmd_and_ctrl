@@ -720,6 +720,69 @@ export async function putAccountSettings(
   return (await res.json()) as AccountSettings;
 }
 
+// MyPlaymat mirrors lobby.playmatResponse: the signed-in person's
+// playmat (ADR 0128). enabled is false when the server has nowhere to
+// store one (no data directory), and then the Settings section is
+// hidden. url is a same-origin /playmats/<uuid> path, absent for a
+// person with none; load it through playmatSrc().
+export interface MyPlaymat {
+  enabled: boolean;
+  url?: string;
+  width?: number;
+  height?: number;
+  // The owner-set darkness over the image, in percent (ADR 0128
+  // amendment): sent whenever enabled, image or not.
+  wash?: number;
+}
+
+// The wash's range and default, the server's (internal/playmat).
+export const PLAYMAT_MIN_WASH = 30;
+export const PLAYMAT_MAX_WASH = 90;
+export const PLAYMAT_DEFAULT_WASH = 58;
+
+// setMyPlaymatWash is PATCH /me/playmat: the owner-set wash, which every
+// player at the table sees. It may be set before any image is uploaded.
+export async function setMyPlaymatWash(wash: number): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat", { method: "PATCH", body: JSON.stringify({ wash }) });
+  return (await res.json()) as MyPlaymat;
+}
+
+// fetchMyPlaymat is GET /me/playmat. A 403 (a guest, the admin token, a
+// server with no database) rejects with a LobbyApiError(403), which the
+// Settings section reads as "no playmat for you" and hides itself.
+export async function fetchMyPlaymat(): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat", { cache: "no-store" });
+  return (await res.json()) as MyPlaymat;
+}
+
+// uploadMyPlaymat is PUT /me/playmat, a multipart upload. The server
+// decodes the bytes and stores its own re-encoded JPEG; the file's type
+// and name are not what it goes by. A refusal rejects with the server's
+// message (not an image, too large, too many pixels) for the form to show.
+export async function uploadMyPlaymat(file: Blob): Promise<MyPlaymat> {
+  const body = new FormData();
+  body.append("file", file);
+  const res = await authFetch("/me/playmat", { method: "PUT", body });
+  return (await res.json()) as MyPlaymat;
+}
+
+// linkMyPlaymat is POST /me/playmat/link: the SERVER fetches the https
+// URL once and stores the image like an upload. The link is never kept
+// and never reaches another player's browser.
+export async function linkMyPlaymat(url: string): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat/link", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+  return (await res.json()) as MyPlaymat;
+}
+
+// removeMyPlaymat is DELETE /me/playmat. Removing none succeeds.
+export async function removeMyPlaymat(): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat", { method: "DELETE" });
+  return (await res.json()) as MyPlaymat;
+}
+
 // seatLibraryDeck installs a deck already in the caller's library
 // (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
 // unlike uploadDeck/installPrebuiltDeck, a player session already

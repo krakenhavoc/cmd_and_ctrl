@@ -76,6 +76,8 @@
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import { seatColor } from "../../colors";
+  import { settings } from "../../settings";
+  import { playmatShownFor, playmatSrc } from "../../playmat";
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
@@ -243,6 +245,16 @@
   const flipped = $derived(flippedProp && !expanded);
   const docked = $derived(dockedProp && !expanded);
   const coached = $derived(coachedProp && !expanded);
+  // ADR 0128: this seat's playmat, drawn behind its battlefield. The
+  // per-device setting decides whose are drawn; a mat that fails to
+  // load is dropped for that URL (no broken-image box), leaving the
+  // plain board. Keyed by the wire URL, not the src, so a renewed
+  // session token does not retry a mat that already failed.
+  const playmatURL = $derived(playmatShownFor($settings.display.playmats, seat, isSelf));
+  let playmatFailed = $state<string | null>(null);
+  const playmat = $derived(
+    playmatURL !== null && playmatFailed !== playmatURL ? playmatSrc(playmatURL) : null,
+  );
   // The surface this panel's cards are drawn on, for the ability
   // popover (abilityPopover.ts): set as context for every Card below,
   // and used directly by this panel's own click router.
@@ -713,6 +725,24 @@
   role={expanded ? "group" : "region"}
   aria-label={expanded ? undefined : isSelf ? L.yourBoard : L.seatBoard(seat.name)}
 >
+  {#if playmat}
+    <!-- ADR 0128: the owner's playmat, under everything. An <img> and
+         not a CSS background so a failed load is detectable. -->
+    <div
+      class="playmat"
+      aria-hidden="true"
+      style:--playmat-wash={seat.playmat_wash ? `${seat.playmat_wash}%` : undefined}
+    >
+      <img
+        src={playmat}
+        alt=""
+        draggable="false"
+        decoding="async"
+        referrerpolicy="no-referrer"
+        onerror={() => (playmatFailed = playmatURL)}
+      />
+    </div>
+  {/if}
   <div class="grid-creatures">
     <BattlefieldRow
       label={L.creatures}
@@ -953,6 +983,50 @@
     border-radius: 14px;
     overflow: hidden;
     position: relative;
+    /* The playmat sits at z-index -1, under the zones, so the panel must
+       be its own stacking context. container-type: size already makes it
+       one (layout containment); this says so where it is relied on. */
+    isolation: isolate;
+  }
+  /* ADR 0128: the seat owner's playmat, a background layer and nothing
+     else. It takes no space in the grid (absolute), takes no pointer
+     events, and paints under every zone. `cover` and centred, as a mat
+     on a table would be. The scrim is theme-aware: it is the page's own
+     background colour at partial opacity, so in a dark skin the mat is
+     dimmed toward dark and in the light skin toward light, and the
+     cards, chips and text above it keep their contrast either way. */
+  .playmat {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+  .playmat img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    user-select: none;
+  }
+  .playmat::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* The owner sets the strength (ADR 0128 amendment); 58% when they
+       have not, or the server sent none. */
+    background: color-mix(in srgb, var(--bg) var(--playmat-wash, 58%), transparent);
+  }
+  /* An across-table opponent's board is yours turned 180° about the
+     table's centre (#2438, below), so their mat is turned with it: the
+     art faces its owner, as it would on paper. Only where that turn
+     applies (the same 600px floor as the layout). */
+  @media (min-width: 600px) {
+    .panel.opponent.flipped .playmat img {
+      transform: rotate(180deg);
+    }
   }
   /* ADR 0111 §4 (owner decision 1): the action dock owns the screen's
      bottom-right corner, which is this panel's. The rail spans the
