@@ -2972,7 +2972,7 @@ issued at or before it is refused. `revoke_path` is
 A deck has no list and no coverage report. A deck request is matched to
 the account through its Discord identity in SQL. `playmat_url` is the
 account's playmat path, absent for none; the account view's Remove playmat
-button calls [`DELETE /admin/users/{id}/playmat`](#adminusersidplaymat) ([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) amendment).
+button calls `DELETE /admin/users/{id}/playmat` ([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) amendment).
 
 | Status | Reason |
 |---|---|
