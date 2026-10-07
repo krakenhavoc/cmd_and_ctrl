@@ -691,6 +691,10 @@ var stackItemFields = plan(
 	// ADR 0106 §4 (#1806): "this spell can't be countered" marks.
 	// Carried: a restore that lost one would let a Counterspell through.
 	"CantBeCountered", carried, "",
+	// #1852: extra "enters with" counters a spent next-spell promise
+	// marked on the spell. Carried: a restore that lost it would drop
+	// the counter Savage Summoning promised.
+	"PromisedCounters", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 	// #1511: which pending triggers may skip the CR 603.3b prompt.

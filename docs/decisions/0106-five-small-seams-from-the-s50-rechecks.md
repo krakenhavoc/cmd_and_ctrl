@@ -392,3 +392,19 @@ The player view's `counter_shields` line is public, like `end_gates`, and the cl
 - **The move label.** The enumerator's label for a row on a permanent the seat does not control is "Xantcha, Sleeper Agent (controlled by Alice): {3}: …".
 - **The log line.** A new public log kind, `activate_across`, narrates only an activation of another player's permanent. `EventActivateAbility` carries that permanent's controller in `Target` for it, and `uuid.Nil` for every ordinary activation, which stays off the log as before.
 - **ADR 0105 §2's "never mark opponents' cards"** now has one exception: a permanent another player controls lights exactly when the viewer's own digest lists it, which happens only for its any-player rows.
+
+---
+
+## Amendment (2026-10-07): "the next spell you cast" promises beyond uncounterability (#1852)
+
+§4 decision 3 built the one-use promise for "can't be countered" and left the rest of the family open. It shipped as one data payload, `PlayerStatic.NextSpell` (`game.NextSpellPromise`), spent at the same CR 601.2i moment by `spendNextSpellPromisesLocked`, which `castSpellLocked` calls beside `spendCounterShieldPromisesLocked`. The two promise kinds stay separate: Insist and Overmaster keep `CounterShieldGrant{NextOnly}`, and a new card that wants uncounterability alongside another rider sets `NextSpellPromise.CantBeCountered`, which spends into the same `StackItem.CantBeCountered` mark.
+
+The riders are read at three different times, which is why the promise is data and not a callback:
+
+- **Flash is read before the cast.** `castTimingVerdictLocked` folds a live matching promise into the verdict a per-player timing statement already feeds, so `CastSpell`, the enumerator and `castable_here` agree through `CastTimingOpenLocked`. It is spent by any cast the filter matches, including one made at sorcery speed.
+- **A cost reduction and affinity are read while pricing.** `activeCostModifiersLocked` binds each live matching promise as one more CR 601.2f reduction (generic mana only, floored at the generic component). Affinity counts the permanents of a card type the caster controls when the cast is priced. Pricing never spends the promise, so a cast that cannot be paid for leaves it.
+- **An extra counter is read after the cast.** The spend writes a `PromisedCounter` onto the spell's stack item, and `applyCastEntryCountersLocked` seeds it into the entry event, so Doubling Season and Hardened Scales see it. Like the other marks it lives on the object: a copy never has it (CR 707.10) and it ends with the item (CR 400.7).
+
+A rider none of these covers registers a body with `RegisterCastFollowUp` and names it in `NextSpellPromise.FollowUp`; it runs once the spell is on the stack and `EventCast` is out. A promise lasts until end of turn unless it is granted `IndefiniteDuration` (an effect with no stated end, such as Xho Cai's).
+
+The snapshot carries the promise on `seats[].statics[].nextSpell` and the mark on `stack[].promisedCounters`, both additive; a binary from before the field refuses a file carrying a mark, the designed rollback case. Cards: Savage Summoning, Quicken, Hardened Berserker, Kaza, Roil Chaser, Saheeli, the Gifted.

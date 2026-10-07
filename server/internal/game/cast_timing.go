@@ -278,6 +278,12 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 		// same reason — the sweep is hygiene at known moments and
 		// this read has to be right between them.
 		for _, st := range p.Statics {
+			// #1852: a one-use "the next <kind> spell you cast can be
+			// cast as though it had flash" promise. Spent by the cast it
+			// permits (spendNextSpellPromisesLocked), never here.
+			if st.NextSpell.Flash && g.livePromise(st) && st.NextSpell.Filter.Matches(card) {
+				v.Flash = true
+			}
 			if st.Timing.Timing == TimingNormal {
 				continue
 			}
