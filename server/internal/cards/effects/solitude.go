@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "dcb9c2a7-ae54-4ddc-a567-640bf4bf4366",
 		Name:            "Solitude",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "lifelink"},
 		AlternativeCosts: []game.AlternativeCost{
 			EvokePitch(
@@ -41,17 +42,22 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Targets: TargetCreature("up to one other target creature").WithCount(0, 1),
-			Key:     "Solitude — exile a creature, its controller gains life",
+			// "OTHER target creature": the clause is built per source so
+			// Solitude itself is never a legal pick (a static Targets
+			// clause is not handed the source).
+			TargetsFrom: func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
+				return TargetCreature("up to one other target creature", NotSelf(source.InstanceID)).WithCount(0, 1)
+			},
+			Key: "Solitude — exile a creature, its controller gains life",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil
 				}
 				victim := item.Targets[0].ID
 				if victim == item.SourceCardID {
-					// "OTHER target creature" — the picker
-					// should never offer Solitude itself, and
-					// refusing here costs one comparison.
+					// "OTHER target creature" — the clause
+					// already excludes Solitude; this is a
+					// belt-and-braces guard.
 					return nil
 				}
 				ctx := NewContext(g, item)
