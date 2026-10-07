@@ -123,6 +123,9 @@ const LOG_TONE: Record<LogKind, string> = {
   trigger: "tone-cast",
   activate: "tone-cast",
   cycle: "tone-zone",
+  // ADR 0127 §6: a prompt the server answered with its chooser's
+  // standing answer. A decision, so toned like a cast.
+  auto_answer: "tone-cast",
   counters: "tone-quiet",
   scry: "tone-quiet",
   surveil: "tone-quiet",
