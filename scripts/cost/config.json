@@ -1,0 +1,52 @@
+{
+  "_comment": "Inputs for scripts/cost. Prices are Anthropic first-party API list prices in USD per million tokens. Everything under 'human' is an assumption; change it and re-run.",
+
+  "pricing_per_mtok": {
+    "_columns": ["input", "output", "cache_write_5m", "cache_write_1h", "cache_read"],
+    "claude-fable-5-1":   [10.00, 50.00, 12.50, 20.00, 0.25],
+    "claude-mythos-5-1":  [10.00, 50.00, 12.50, 20.00, 0.25],
+    "claude-fable-5":     [10.00, 50.00, 12.50, 20.00, 1.00],
+    "claude-opus-5-5":    [4.00, 20.00, 5.00, 8.00, 0.20],
+    "claude-opus-5":      [5.00, 25.00, 6.25, 10.00, 0.50],
+    "claude-opus-4":      [5.00, 25.00, 6.25, 10.00, 0.50],
+    "claude-sonnet-5-5":  [2.00, 10.00, 2.50, 4.00, 0.20],
+    "claude-sonnet-5":    [2.00, 10.00, 2.50, 4.00, 0.20],
+    "claude-sonnet-4":    [3.00, 15.00, 3.75, 6.00, 0.30],
+    "claude-haiku-5-5":   [0.10, 0.50, 0.125, 0.20, 0.01],
+    "claude-haiku-5-5@long": [0.50, 2.50, 0.625, 1.00, 0.05],
+    "claude-haiku-4":     [1.00, 5.00, 1.25, 2.00, 0.10],
+    "_fast_mode_multiplier": 2.0
+  },
+
+  "people": [
+    {
+      "name": "Ian",
+      "github": "irobinson010",
+      "git_names": ["Ian Robinson"],
+      "plans": [
+        {"name": "Max 20x (Max 5x until 2026-09-18)", "usd_per_month": 200, "from": "2026-09", "to": null}
+      ]
+    },
+    {
+      "name": "Luke",
+      "github": "krakenhavoc",
+      "git_names": ["Luke Wilkinson", "krakenhavoc"],
+      "plans": [
+        {"name": "Max 20x", "usd_per_month": 200, "from": "2026-04", "to": null}
+      ]
+    }
+  ],
+
+  "human": {
+    "_comment": "Three scenarios. 'low' = an efficient senior team writing leaner code; 'high' = typical industry pace. Productivity is per developer per working day and covers writing, testing, debugging and review of that code.",
+    "hourly_usd":               {"low": 100,  "mid": 120,  "high": 150},
+    "hours_per_day": 8,
+    "hours_per_person_year": 1600,
+    "engine_prod_lines_per_day": {"low": 150, "mid": 100,  "high": 60},
+    "client_prod_lines_per_day": {"low": 180, "mid": 120,  "high": 75},
+    "hours_per_card":            {"low": 0.75, "mid": 1.25, "high": 2.0},
+    "doc_lines_per_day":         {"low": 400, "mid": 250,  "high": 150},
+    "overhead_fraction":         {"low": 0.20, "mid": 0.25, "high": 0.35},
+    "days_per_merged_pr":        {"low": 1.5, "mid": 2.5,  "high": 4.0}
+  }
+}

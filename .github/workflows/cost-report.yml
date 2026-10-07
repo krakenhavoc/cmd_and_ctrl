@@ -1,0 +1,51 @@
+name: cmd_and_ctrl cost report
+
+# Weekly: what the project would have cost a human team, what its Claude
+# usage is worth at API list price, and what the subscriptions actually
+# cost. Posted to the "Project cost tracker" discussion; see
+# scripts/cost/README.md.
+#
+# The Claude usage cannot be measured here: it lives in each person's local
+# Claude Code transcripts. Each of us pushes a token-count ledger to the
+# cost-ledger branch with `make cost-push`, and this job reads whatever is
+# there. Nobody pushing just means the numbers lean on the per-PR estimate.
+
+permissions:
+  contents: read
+  discussions: write
+  issues: read
+  pull-requests: read
+
+on:
+  schedule:
+    # Mondays 12:00 UTC.
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: cmdctrl-cost-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Measure the integration branch, not the release branch the
+          # schedule runs from: develop is where the work lands.
+          ref: develop
+          fetch-depth: 0
+
+      - name: Fetch usage ledgers
+        run: |
+          mkdir -p data/cost
+          if git fetch --quiet origin cost-ledger; then
+            git archive FETCH_HEAD usage | tar -x --strip-components=1 -C data/cost
+          fi
+          ls -l data/cost
+
+      - name: Post report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/cost/post_discussion.py --comment
