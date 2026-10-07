@@ -881,12 +881,6 @@ export type LogKind =
   // (absent when they controlled none); `cause` is "forced" when it was
   // their only creature and was chosen for them.
   | "ring_tempted"
-  // ADR 0127 §6: the server answered a prompt with its chooser's
-  // standing answer. `seat` is the chooser, `card_id` the asking card,
-  // `call` the answer ("pay", "dont_pay", "yes", "no"), `label` the cost
-  // paid or the trigger's label; `auto_answer_key` is the rule's key, on
-  // the chooser's own view only. The text ends "(automatic)".
-  | "auto_answer"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
