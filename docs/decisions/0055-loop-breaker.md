@@ -336,3 +336,222 @@ which, and ADR 0049's amendment of the same date carries the table.
 Pinned by `TestLoopBreakerStillTripsWhenTheSourceLeavesAndReturns`
 (turn_tally_object_test.go), which is the test the naive fix would
 have failed.
+
+## Amendment (2026-10-07, #2450): a batch of triggers is not a loop, and a loop that ends the game is not a runaway
+
+**Status of this amendment: Proposed.** Nothing below is built. The
+owner's answers to the questions at the end decide what is.
+
+### The problem
+
+Three bot-only tables in ADR 0126's measurement runs stopped at this
+breaker. Every seat logged `bot holding: automatic passing is suspended
+by the loop breaker (CR 732)`, and the commit sequence stopped:
+
+| Run | Seed | Where | Life totals when it stopped |
+| --- | --- | --- | --- |
+| run 1 (#2445, ADR 0126 PR 4) | 15 | turn 11, precombat main | aristocrats 82; 7, 2, 5 |
+| run 1 (ADR 0126 PR 7 and PR 8) | 21 | turn 10, precombat main | aristocrats 75; 32, 2, one seat out |
+| run 2 (ADR 0126 PR 9, #2463) | 141 | turn 13, declare attackers | simic 57; esper 9; two seats out at -48 and -50 |
+
+#2450 named the Sanguine Bond and Exquisite Blood drain loop. The arena
+records say otherwise. **Sanguine Bond was cast in none of the three
+games.** In seeds 15 and 21 the aristocrats seat had cast Syr Konrad,
+the Grim and Exquisite Blood. In seed 141 no seat cast either
+enchantment.
+
+A scratch test (not committed) rebuilt seeds 15 and 21's shape on four
+seats. The board was Syr Konrad and Exquisite Blood, with 30 opposing
+creatures destroyed at once:
+
+- One event kills 30 creatures, so Konrad triggers 30 times (CR 603.2c).
+  Each Konrad trigger deals 1 damage to each of three opponents, which
+  triggers Exquisite Blood three times.
+- Exquisite Blood's key reaches 25 resolutions after nine Konrad
+  triggers, with no player decision in between, and the notice goes up.
+- The bot answers the shortcut prompt with 10. The 35th Blood resolution
+  asks again, and the second ask offers only "stop here" (§6 amendment).
+  Every seat then holds with Konrad triggers still waiting.
+- The aristocrats seat ends at 40 + 35 = 75 life, which is seed 21's
+  number exactly.
+
+Konrad alone, with 30 deaths, trips the breaker too. There the
+shortcut's 10 more covers the last five triggers, so that table finishes.
+Seed 141 was not rebuilt. Its board fits the same shape: no drain
+enchantment was cast, and simic had Avenger of Zendikar's Plants on the
+battlefield. It is listed here as unconfirmed.
+
+Two more findings:
+
+- **Sanguine Bond and Exquisite Blood never trip the breaker in this
+  engine.** Each Bond trigger asks its controller for a target
+  (`pick_target`), and answering a prompt is a decision (§3). So every
+  run restarts each iteration. A scratch run of that pair drained 372
+  times in one turn with no notice.
+- **The notice is not cleared when a player leaves the game.** Only a
+  decision, the turn boundary (`resetTurnTallyLocked`) or a running
+  shortcut takes it down. That much of the triage was right. It is not
+  what stopped these tables, though: in seed 15 no seat had left.
+
+So the observed stalls are a **false positive**. They are a finite batch
+of triggers, all caused by one event, and the stack is draining. §2
+argued that 25 resolutions of one key "is unreachable by accident". A
+wrath across a token board with one death trigger and one per-opponent
+payoff gets there in about nine deaths.
+
+There is also a second case, latent so far: **a real mandatory loop that
+ends the game.** Exquisite Blood with Marauding Blight-Priest or
+Cliffhaven Vampire ("Whenever you gain life, each opponent loses 1
+life") is such a loop. All three cards are catalogued, and nothing in
+the loop targets. Each iteration adds more triggers than it resolves,
+until every opponent is dead. Any detector should call it a loop. On a
+bot-only table it stops after threshold + 10, exactly as the drain was
+expected to. No curated deck holds the pair, but the catalog soak can
+deal it. This is the shape #2450 described.
+
+### What the rules say
+
+From the Comprehensive Rules effective September 25, 2026:
+
+- **CR 732.1b:** "Occasionally the game gets into a state in which a set
+  of actions could be repeated indefinitely (thus creating a 'loop'). In
+  that case, the shortcut rules can be used to determine how many times
+  those actions are repeated without having to actually perform them,
+  and how the loop is broken."
+- **CR 732.2a:** the player with priority may suggest a shortcut, and
+  "This sequence may be a non-repetitive series of choices, a loop that
+  repeats a specified number of times, multiple loops, or nested loops,
+  and may even cross multiple turns."
+- **CR 732.4:** "If a loop contains only mandatory actions, the game is a
+  draw. (See rules 104.4b and 104.4f.)" **CR 104.4b** says when that
+  applies: the game "somehow enters a 'loop' of mandatory actions,
+  repeating a sequence of events with no way to stop".
+- **CR 603.2c:** "An ability triggers only once each time its trigger
+  event occurs. However, it can trigger repeatedly if one event contains
+  multiple occurrences."
+- **CR 704.5a:** "If a player has 0 or less life, that player loses the
+  game." **CR 104.2a:** "A player still in the game wins the game if that
+  player's opponents have all left the game."
+
+Three readings follow:
+
+1. Thirty triggers from one wrath are thirty triggers (CR 603.2c). They
+   are not a set of actions that "could be repeated indefinitely" (CR
+   732.1b), so CR 732 has nothing to say about them. The game resolves
+   them.
+2. A mandatory loop that drives every opponent to 0 life ends. Its
+   opponents lose to CR 704.5a and its controller wins under CR 104.2a.
+   It is not 104.4b's loop "with no way to stop", so CR 732.4's draw
+   does not apply. CR 732.2a lets it be shortcut ("a loop that repeats a
+   specified number of times"), and the number is however many
+   iterations it takes.
+3. The draw is for a mandatory loop that never ends. This engine still
+   does not build it (§6 amendment), and nothing below changes that.
+
+### Options
+
+**A. A batch that drains is not a loop.** A loop refills the stack and a
+batch empties it. While the stack plus `PendingTriggers` keeps reaching
+new lows, the table is working through something finite.
+
+- *Rule.* After each resolution, once the triggers it caused are
+  waiting, the engine counts the stack plus `PendingTriggers`.
+  `TurnTally` keeps the lowest such count since the last decision; the
+  first resolution after a decision sets it. When a resolution leaves
+  the count strictly below that low, every run of a **triggered** key
+  restarts.
+- *Effect on the cases.* The wrath resolves and leaves 30 Konrad
+  triggers waiting: the low is 30. One Konrad trigger and its three
+  Blood triggers make a cycle (30, 32, 31, 30, 29), so every cycle
+  makes a new low and no run gets past three. A real trigger loop replaces what it resolves, so it
+  never makes a new low and trips at 25 as it does today. This covers
+  #628's token engines and Blight-Priest with Blood.
+- *#810 is untouched.* An activation loop empties the stack every
+  iteration by construction, so the rule never restarts an activated
+  key's run. That run stays with `notePlayerActivationLocked`.
+- *Cost.* One integer on `TurnTally`, carried by undo and the snapshot (an
+  additive field within schema v7, recorded with `-update-shape`), and one
+  comparison in `noteResolutionForLoopLocked`. It fixes seeds 15 and 21
+  as rebuilt, and seed 141 if that is a batch too.
+
+**B. A loop that is ending the game keeps stepping.** A run restarts on
+progress that can only happen finitely often:
+
+- a player leaves the game, or
+- a player who can lose the game reaches a new lowest life total for the
+  turn, or
+- a player reaches a new highest poison count for the turn (CR 122.1f
+  ends it at ten).
+
+Each player's life can make only so many new lows before CR 704.5a takes
+them, and players can leave only so many times. So a loop that keeps
+restarting this way must end. Blight-Priest with Blood plays out to the
+win. A loop that gains life forever, or makes tokens forever, still
+trips the breaker.
+
+B alone would also release the observed batches, because every Konrad
+trigger lowers three life totals. A batch that touches no life total
+would still trip it, though: thirty "whenever a creature dies, scry 1"
+triggers, say. B costs one low-water mark per player on
+`PlayerTurnTally` (additive), set from the same life-change events the
+tally already reads.
+
+**C. Clear the notice when a player leaves the game.** This is the triage
+proposal. It is narrow: seed 15 stopped with nobody gone. B includes it
+as one of its progress events.
+
+**D. No hold at a table with no humans.** The runner passes through the
+notice when every seat is a bot. That plays out every batch and every
+ending loop, but a real infinite loop on a bot table then spins until the
+wall clock, which is the runaway §5 exists to stop. The event log grows
+without limit too (#629). It is also the least faithful option: it makes
+bot tables play by a different rule, where the CR gives such a loop a
+draw. Not recommended.
+
+### Recommendation
+
+**A and B together.** Ship A first, because it is the observed stall,
+then B as the second half of the same amendment. A tells a batch from a
+loop. B tells a loop that is ending the game from one that is not, which
+is the distinction CR 104.4b draws. With both, the breaker fires only on
+a loop that neither drains nor progresses. That is a loop CR 732.4 would
+call a draw, and §5's stop is still the honest answer for it until the
+draw is built. Both rules apply to every seat, human and bot, because
+ADR 0055 is one rule for the table. A human can still turn autopass off
+and step through either case by hand. C is subsumed by B, and D is
+rejected.
+
+### Questions for the owner
+
+1. Adopt A, so that a run of triggered abilities restarts whenever the
+   stack plus pending triggers reaches a new low since the last
+   decision? *Recommended: yes.*
+2. Adopt B as well, as a second PR under this amendment? *Recommended:
+   yes.*
+3. Which events count as progress for B? The candidates are (a) a player
+   leaves the game, (b) a new lowest life total this turn, (c) a new
+   highest poison count this turn and (d) a new smallest library.
+   *Recommended: a, b and c. Leave out d: milling a player to an empty
+   library ends nothing until they draw.*
+4. Should a player who can't lose the game, or can't lose life (ADR
+   0057), be left out of B's life and poison checks? Otherwise a drain
+   into a Platinum Angel would count as progress for ever.
+   *Recommended: yes, using ADR 0057's own predicate.*
+5. When A or B restarts the runs while a notice is standing, should it
+   also clear the notice and withdraw a pending shortcut prompt, as a
+   decision does? *Recommended: yes. A new low or new progress means the
+   notice's claim no longer holds. A stale shortcut prompt blocks the
+   table, so leaving one up would wedge it.*
+6. Engine-wide, so that human autopass also plays through a batch or a
+   loop that is ending the game? Or bot seats only? *Recommended:
+   engine-wide, the same rule for every seat. A human can still turn
+   autopass off to step by hand.*
+7. Keep `DefaultLoopThreshold` at 25? *Recommended: yes. A removes the
+   reason to raise it.*
+8. Build CR 732.4's draw now, for a mandatory loop that neither drains
+   nor progresses? *Recommended: no. File it separately and keep §5's
+   stop until then.*
+9. Retitle #2450 to the observed shape (a batch of Syr Konrad and
+   Exquisite Blood triggers), and correct docs/bot.md's paragraph naming
+   Sanguine Bond and Exquisite Blood, in the PR that implements A?
+   *Recommended: yes.*
