@@ -167,6 +167,15 @@ type PermanentInfo struct {
 	// (CR 506.4), so only this record remembers it.
 	Attacking bool `json:"attacking,omitempty"`
 	Enchanted bool `json:"enchanted,omitempty"`
+
+	// Blocking is every attacker it was blocking, in declaration order
+	// (Card.BlockedAttackers), as it last existed on the battlefield.
+	// Leaving the battlefield removes it from combat (CR 506.4), so
+	// only this record remembers it: Goblin Snowman's "target creature
+	// it's blocking" is still judged against these when the Snowman has
+	// died in response (#1863, TargetSpec.CombatWithSource). Nil when
+	// it was not blocking.
+	Blocking []uuid.UUID `json:"blocking,omitempty"`
 }
 
 // permanentManaValue is PermanentInfo.ManaValue's reading of a
@@ -196,6 +205,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
 		Attacking:      c.AttackingTarget != uuid.Nil,
+		Blocking:       c.BlockedAttackers(),
 	}
 }
 

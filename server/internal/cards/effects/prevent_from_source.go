@@ -91,10 +91,47 @@ type PreventDamageFromSource struct {
 	// Trials); false is "this turn".
 	UntilYourNextTurn bool
 
+	// Lasts is a duration that is neither: "this combat" or "for as long
+	// as this Saga remains on the battlefield" (ADR 0108 amendment
+	// 2026-10-07, #2027). The zero value is "this turn". Refused beside
+	// UntilYourNextTurn.
+	Lasts ShieldLasts
+
 	// Question is the source prompt's header; Label the shield's. Both
 	// default to the card's name.
 	Question string
 	Label    string
+}
+
+// ShieldLasts is how long a PreventDamageFromSource shield lasts when
+// it is not "this turn".
+type ShieldLasts int
+
+const (
+	// ShieldThisTurn is "this turn" (CR 514.2), the default.
+	ShieldThisTurn ShieldLasts = iota
+	// ShieldThisCombat is "this combat" (CR 511.3, 724.2d): the combat
+	// phase in progress. Outside a combat phase there is no combat for
+	// it to last through, so nothing is registered.
+	ShieldThisCombat
+	// ShieldWhileSourceRemains is "for as long as this <permanent>
+	// remains on the battlefield" (CR 611.2b), the permanent the
+	// resolving ability came from — Old Fat Spider Can't See Me's
+	// chapter II. Nothing is registered when that permanent is no longer
+	// the object the ability came from (CR 611.2b, CR 400.7).
+	ShieldWhileSourceRemains
+)
+
+// duration is the shield's game.Duration, or false when the effect never
+// begins. The zero Duration (with true) means "use the default".
+func (l ShieldLasts) duration(ctx *Context) (game.Duration, bool) {
+	switch l {
+	case ShieldThisCombat:
+		return ctx.Game.UntilEndOfCombatDuration()
+	case ShieldWhileSourceRemains:
+		return DurationWhileSourceRemains(ctx, ctx.Source())
+	}
+	return game.Duration{}, true
 }
 
 // PreventDamageFromChosenSource is "Prevent all damage a [<queries>]
@@ -148,6 +185,10 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 	if label == "" {
 		label = shieldSourceName(ctx) + " — prevent damage from a source this turn"
 	}
+	lasts, ok := p.Lasts.duration(ctx)
+	if !ok || (p.Lasts != ShieldThisTurn && p.UntilYourNextTurn) {
+		return nil
+	}
 	// What the shield protects is read exactly as the next-damage
 	// shield reads it, or, for several permanents in one record, by
 	// protectMany (ADR 0108 Delivery PR 7).
@@ -184,6 +225,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 			CombatOnly:        p.CombatOnly,
 			Then:              p.Then,
 			UntilYourNextTurn: p.UntilYourNextTurn,
+			Duration:          lasts,
 			Label:             label,
 		})
 		return nil
@@ -207,6 +249,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		Then:              p.Then,
 		ThenPerSource:     p.ThenPerSource,
 		UntilYourNextTurn: p.UntilYourNextTurn,
+		Duration:          lasts,
 		Label:             label,
 	}
 	if p.hasThenTo {

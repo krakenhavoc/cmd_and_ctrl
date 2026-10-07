@@ -185,6 +185,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// ADR 0114 PR 5: There and Back Again's Smaug.
 	printedSmaugToken,
+
+	// Weapons Manufacturing's Munitions.
+	printedMunitionsToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

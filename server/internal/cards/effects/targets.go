@@ -91,6 +91,16 @@ func BlockedCreature() CardPredicate {
 	}
 }
 
+// BlockingCreature — "blocking creature" (CR 506.4): a creature declared
+// as a blocker, from the declaration until combat is cleared as the end
+// of combat step ends (CR 511.3), so outside that window nothing
+// matches. Glyph of Destruction's "target blocking Wall you control".
+func BlockingCreature() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsCreature() && c.BlockingTarget != uuid.Nil
+	}
+}
+
 // NonbasicLand — "nonbasic land" (CR 205.4c): a land without the
 // basic SUPERTYPE. The land TYPE is not the test — a Sacred Foundry
 // is a Mountain and still nonbasic, and a Snow-Covered Swamp is

@@ -73,6 +73,16 @@ surface tiny.
    resolution against the source's effective power, or its last-known
    power once it has left (#2146). Don't read `source.CurrentPower()` in
    a `TargetsFrom`: that freezes the bound when the trigger is built.
+   "Target creature it's blocking" / "blocked by this creature" /
+   "blocking equipped creature" is the same idea for combat: wrap the
+   clause in `BlockedBySource(spec)`, `BlockingSource(spec)`,
+   `BlockingEquipped(spec)` or `BlockedByEquipped(spec)` and keep the
+   candidate's own type and keywords in the predicates
+   (`BlockedBySource(TargetCreature("…", HasKeyword("flying")))`). It is
+   `game.TargetSpec.CombatWithSource`, judged at announce and at
+   resolution; a creature removed from combat in response is illegal,
+   and a source that has left is read from its last-known blocks
+   (#1863, ADR 0019 amendment 2026-10-07).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -727,7 +737,10 @@ func init() {
 | "until end of turn" | `DurationUntilEndOfTurn(ctx)` | that turn's cleanup step (CR 514.2) |
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
+| "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
+
+A damage shield takes the last two rows through `PreventDamageFromSource{Lasts: ShieldThisCombat}` ("prevent all combat damage that would be dealt this combat", Sewers of Estark) and `Lasts: ShieldWhileSourceRemains` ("for as long as this Saga remains on the battlefield", Old Fat Spider Can't See Me); the default is this turn.
 
 Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell that changes characteristics or control must pin its affected set at resolution (CR 611.2c). A mass restriction changes neither and reads a live set instead (`RestrictUntilEOT{Scope}`, #1650). `ScopedEffectFor` does the pinning itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](decisions/0063-durations-and-control.md) and [ADR 0035](decisions/0035-until-end-of-turn-effects.md).
 

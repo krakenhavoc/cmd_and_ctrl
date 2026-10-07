@@ -14,44 +14,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // excluded, so the Munitions themselves never chain. The token is a
 // colorless artifact named Munitions and nothing else.
 //
-// The token's printed trigger cannot live on the token: a token
-// template carries no triggered abilities and a token has no oracle
-// ID for the catalog to key one on. So the Manufacturing carries it
-// on the tokens' behalf (the Simulacrum Synthesizer posture): a
-// second trigger on the enchantment watches for a Munitions token
-// its controller controls leaving the battlefield by any route
-// (b31MunitionsYouControlLeft), targets "any target" when it goes
-// on the stack, and deals the 2 from the TOKEN that left rather
-// than from the Manufacturing — a colorless source, as printed, so
-// a red-damage payoff does not see it (b31DamageChosenTargetFrom).
+// The printed trigger lives on the TOKEN (MunitionsToken in
+// tokens.go, ADR 0083), not on this enchantment: the Munitions
+// shoots whether or not the Manufacturing is still on the
+// battlefield, and for whoever controls the token when it leaves —
+// an opponent who stole it gets the 2 damage, as printed. The
+// damage is dealt by the token, a colorless source, so a red-damage
+// payoff does not see it.
 //
-// Sandbox simplification, declared and weaker than printed: because
-// the enchantment carries the trigger, a Munitions that leaves the
-// battlefield after Weapons Manufacturing has left deals no damage,
-// and a Munitions an opponent has taken control of deals none
-// either. Printed, the token's own ability would fire in both
-// cases.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "e48a8160-cffe-4e00-a3e9-a59d7fc7b3a2",
 		Name:         "Weapons Manufacturing",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A Munitions token only deals its 2 damage while Weapons Manufacturing is still on the battlefield and the token is still yours — the enchantment carries the token's ability for it.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b31NontokenArtifactYouControlEntered(ev, source, g)
-			}, "Weapons Manufacturing — create a Munitions token", Do(CreateToken{Template: TokenCard("Munitions"), N: 1})),
-			{
-				Watches: []game.EventKind{game.EventLTB},
-				Key:     "Munitions — 2 damage to any target",
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b31MunitionsYouControlLeft(ev, source, g)
-				},
-				Targets: TargetAny(),
-				Effect:  b31MunitionsDamageChosenTarget,
-			},
+			}, "Weapons Manufacturing — create a Munitions token", Do(CreateToken{Template: MunitionsToken(), N: 1})),
 		},
 	})
 }

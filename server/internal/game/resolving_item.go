@@ -79,6 +79,7 @@ type resolvingItem struct {
 // beginResolvingLocked parks an item in the resolving slot. Caller
 // must hold g.mu.
 func (g *Game) beginResolvingLocked(item *StackItem) {
+	g.beginPromptKeysForItemLocked(item)
 	if item == nil {
 		g.resolving = nil
 		return
@@ -109,6 +110,7 @@ func (g *Game) resolvingSourceEpochLocked(item *StackItem) (int, bool) {
 // the stack held, so a copy made after the spell has been routed away
 // still has its copiable values. Caller must hold g.mu.
 func (g *Game) beginResolvingSpellLocked(item *StackItem, card Card) {
+	g.beginPromptKeysForItemLocked(item)
 	if item == nil {
 		g.resolving = nil
 		return

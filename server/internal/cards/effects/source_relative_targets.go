@@ -82,3 +82,48 @@ func Mentor(key string) game.TriggeredAbility {
 func attackingPred() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.AttackingTarget != uuid.Nil }
 }
+
+// Targets described by what the source is DOING in combat (#1863,
+// ADR 0019 amendment 2026-10-07): "target creature it's blocking"
+// (Wall of Vipers, Goblin Snowman), "target creature with flying
+// blocked by this creature" (Whip Vine), "target creature that's
+// blocking equipped creature" (Plasma Caster).
+//
+// A CardPredicate is handed the caster and the candidate, never the
+// source, so the relation is data on the clause,
+// game.TargetSpec.CombatWithSource, judged in the one shared walk at
+// announce and again at resolution (CR 608.2b). A creature removed from
+// combat in response is an illegal target (CR 506.4). Wrap the clause
+// like RelativeToSource; the candidate's own type and keywords stay in
+// the predicates:
+//
+//	Targets: BlockedBySource(TargetCreature("target creature it's blocking"))
+
+// BlockedBySource is "creature it's blocking" / "creature blocked by
+// this creature": an attacker the ability's source is blocking.
+func BlockedBySource(spec *game.TargetSpec) *game.TargetSpec {
+	spec.CombatWithSource = game.SourceCombat{Of: game.CombatOfSource, Role: game.CombatBlockedBy}
+	return spec
+}
+
+// BlockingSource is "creature blocking this creature": a blocker of
+// the ability's source, which is itself attacking.
+func BlockingSource(spec *game.TargetSpec) *game.TargetSpec {
+	spec.CombatWithSource = game.SourceCombat{Of: game.CombatOfSource, Role: game.CombatBlocking}
+	return spec
+}
+
+// BlockingEquipped is "creature that's blocking equipped creature" (or
+// enchanted creature): a blocker of the permanent the ability's source
+// is attached to. An unattached source has no such creature and admits
+// nothing.
+func BlockingEquipped(spec *game.TargetSpec) *game.TargetSpec {
+	spec.CombatWithSource = game.SourceCombat{Of: game.CombatOfHost, Role: game.CombatBlocking}
+	return spec
+}
+
+// BlockedByEquipped is "creature blocked by equipped creature".
+func BlockedByEquipped(spec *game.TargetSpec) *game.TargetSpec {
+	spec.CombatWithSource = game.SourceCombat{Of: game.CombatOfHost, Role: game.CombatBlockedBy}
+	return spec
+}
