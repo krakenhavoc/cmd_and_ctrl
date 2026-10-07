@@ -1808,6 +1808,12 @@ export interface PlayerView {
   // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
   is_agent?: boolean;
   agent_client?: string;
+  // The playmat the seat's signed-in owner chose (ADR 0128): a
+  // same-origin path, /playmats/<uuid>, drawn behind that seat's
+  // battlefield. Public and identical for every viewer. Absent for a
+  // guest, a bot, an agent and a person with none. Use playmatSrc()
+  // (lib/playmat.ts) to turn it into something an <img> can load.
+  playmat_url?: string;
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;

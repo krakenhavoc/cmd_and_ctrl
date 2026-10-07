@@ -49,6 +49,17 @@ func newUserStack(t *testing.T, sealer *users.Sealer) userStack {
 // 6's DM-invite tests need to add a bot token and an invite origin.
 func newUserStackWith(t *testing.T, sealer *users.Sealer, configure func(*Config)) userStack {
 	t.Helper()
+	return newUserStackWithDB(t, sealer, func(c *Config, _ *db.DB) {
+		if configure != nil {
+			configure(c)
+		}
+	})
+}
+
+// newUserStackWithDB is newUserStackWith whose hook also receives the
+// database, for a test that builds a store of its own over it.
+func newUserStackWithDB(t *testing.T, sealer *users.Sealer, configure func(*Config, *db.DB)) userStack {
+	t.Helper()
 	dir := t.TempDir()
 	d := openTestDB(t, dir)
 	us := users.NewSQLStore(d, sealer)
@@ -62,7 +73,7 @@ func newUserStackWith(t *testing.T, sealer *users.Sealer, configure func(*Config
 		c.Users = us
 		c.UserSettings = usersettings.NewSQLStore(d)
 		if configure != nil {
-			configure(c)
+			configure(c, d)
 		}
 	})
 	stub.tokenBody = `{"access_token":"tok-stub","token_type":"Bearer","expires_in":3600,"refresh_token":"rt-stub-secret","scope":"identify"}`

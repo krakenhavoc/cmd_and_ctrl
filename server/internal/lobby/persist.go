@@ -443,6 +443,11 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 			info.IsAgent = true
 			info.AgentClient = s.AgentClient
 		}
+		// The playmat is the account's, not the snapshot's (ADR 0128):
+		// a restored seat is stamped from the account again.
+		if !info.IsBot && !info.IsAgent && s.UserID != "" {
+			l.bindPlaymat(room, s.PlayerID, parseUUIDOrNil(s.UserID))
+		}
 		meta.Players = append(meta.Players, info)
 	}
 	return &gameEntry{

@@ -94,6 +94,10 @@ export default defineConfig({
       // tries to render HTML as a PNG — onerror fires and the
       // PlayerHeader latches the failed-avatar state.
       "/avatars": { target: "http://localhost:8080", changeOrigin: true },
+      // ADR 0128: a player's playmat image, served by the Go side. Same
+      // reason as /avatars: without the proxy Vite answers with its
+      // index.html and the board's background never loads.
+      "/playmats": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
 });

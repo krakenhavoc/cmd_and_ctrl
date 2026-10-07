@@ -30,6 +30,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -206,6 +207,14 @@ type Config struct {
 	// answer 403 before they reach it.
 	UserSettings usersettings.Store
 
+	// Playmats is a signed-in person's playmat (ADR 0128, migration
+	// 0011), behind /me/playmat and GET /playmats/{id}. Nil, or a
+	// service with no data directory or no database, reports the
+	// feature disabled: GET /me/playmat says so and a write is a 503.
+	// With no database no principal carries a UserID, so every
+	// /me/playmat route answers 403 before it gets here.
+	Playmats *playmat.Service
+
 	// TableSetups is each person's last table setup (ADR 0110 section
 	// 5, migration 0008's table_setups): written when a table starts
 	// (startGame), read by GET /me/setup, applied by POST
@@ -307,6 +316,11 @@ type GameEvictor interface {
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
+//	GET  /me/playmat        — signed in: the caller's playmat (ADR 0128), or {"enabled":…} with no url
+//	PUT  /me/playmat        — signed in: upload one (multipart, part "file")
+//	POST /me/playmat/link   — signed in: fetch one from an https URL, once, and store it
+//	DELETE /me/playmat      — signed in: remove it
+//	GET  /playmats/{id}     — any session: a stored playmat image
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	GET  /me/setup          — signed in: the caller's last table setup
 //	GET  /me/last-deck      — signed in: the deck the caller last seated
@@ -604,6 +618,23 @@ func Handler(c Config) http.Handler {
 	settingsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// Playmats (ADR 0128). The two writes that decode an image are
+	// rate-limited per person (a burst of 5, then one per 6 s) inside
+	// auth, and per IP outside it, so a table behind one proxy address
+	// cannot spend each other's allowance. The link route also makes
+	// an outbound request, which is why it is not looser than upload.
+	// The read and the image route ride the avatar bucket.
+	playmatWrite := newLimiter(1.0/6, 5)
+	playmatIP := newLimiter(1, 10)
+	mux.Handle("GET /me/playmat", auth.Middleware(c.Auth)(handlerFunc(c, myPlaymat)))
+	mux.Handle("PUT /me/playmat", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, putMyPlaymat)))))
+	mux.Handle("POST /me/playmat/link", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, linkMyPlaymat)))))
+	mux.Handle("DELETE /me/playmat", auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, deleteMyPlaymat))))
+	// NOTE: /playmats is a new top-level prefix; it is in
+	// deploy/Caddyfile's @api matcher, client/vite.config.ts and the
+	// service worker's API_PATH, all of which have to agree or this
+	// 404s only in production.
+	mux.Handle("GET /playmats/{id}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, servePlaymat))))
 	// The last setup and the last deck (ADR 0110 section 5). Same
 	// caller rule as the rest of /me/*: a signed-in person, else 403.
 	// Applying a setup seats bot decks, so it rides the deck bucket,
@@ -697,6 +728,8 @@ func Handler(c Config) http.Handler {
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
 	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
+	// Moderation for a playmat on a shared table (ADR 0128 section 9).
+	mux.Handle("DELETE /admin/users/{id}/playmat", requireAdmin(c, handlerFunc(c, adminRemovePlaymat)))
 	// The admin views (ADR 0124 §2, admin_views.go): read-only, behind
 	// requireAdmin like every admin route, so the same-answer census
 	// finds each pattern. No rate limit of their own: only admins reach
