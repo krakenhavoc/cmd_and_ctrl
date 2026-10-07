@@ -146,9 +146,12 @@ const ACCOUNTS: AdminAccountsResponse = {
   ],
 };
 
+const MAT = "/playmats/3f2a1b0c-4d5e-4f60-8a7b-9c8d7e6f5a4b";
+
 const ACCOUNT: AdminAccountResponse = {
   generated_at: NOW,
   account: ACCOUNTS.accounts[0],
+  playmat_url: MAT,
   sign_in: {
     last_sign_in_at: NOW - 86_400_000,
     discord_linked_at: NOW - 30 * 86_400_000,
@@ -184,6 +187,7 @@ interface Call {
 }
 let calls: Call[];
 let forbid: boolean;
+let matRemoved: boolean;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -201,7 +205,13 @@ async function serve(url: string, init: RequestInit = {}): Promise<Response> {
   if (url.endsWith("/revoke-sessions")) {
     return json({ user_id: USER, sessions_invalid_before: "x", sockets_closed: 2 });
   }
-  if (url.startsWith("/admin/users/")) return json(ACCOUNT);
+  if (url.endsWith("/playmat") && method === "DELETE") {
+    matRemoved = true;
+    return new Response(null, { status: 204 });
+  }
+  if (url.startsWith("/admin/users/")) {
+    return json(matRemoved ? { ...ACCOUNT, playmat_url: undefined } : ACCOUNT);
+  }
   if (url.startsWith("/admin/users")) return json(ACCOUNTS);
   if (url.endsWith("/archive")) return json({ id: GAME, name: "Friday night", players: [] });
   return json({ error: "nope" }, 404);
@@ -243,6 +253,7 @@ function person(admin: boolean, allowed = true): Session {
 beforeEach(() => {
   calls = [];
   forbid = false;
+  matRemoved = false;
   resetAdminChecksForTest();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
@@ -420,6 +431,30 @@ describe("one account", () => {
     await settle();
     expect(calls).toContainEqual({ url: `/admin/users/${USER}/revoke-sessions`, method: "POST" });
     expect(text(c)).toContain("2 connections closed");
+  });
+});
+
+describe("one account's playmat", () => {
+  it("shows a thumbnail and removes the mat after naming the person", async () => {
+    const c = await show({ view: "account", id: USER });
+    const img = c.querySelector<HTMLImageElement>("img.mat");
+    expect(img?.getAttribute("src")).toContain(MAT);
+    click(button(c, "Remove playmat")!);
+    expect(text(c.querySelector(".confirm"))).toContain("Remove zed's playmat?");
+    expect(calls).not.toContainEqual({ url: `/admin/users/${USER}/playmat`, method: "DELETE" });
+    click(button(c, "remove their playmat")!);
+    await settle();
+    expect(calls).toContainEqual({ url: `/admin/users/${USER}/playmat`, method: "DELETE" });
+    expect(c.querySelector("img.mat")).toBeNull();
+    expect(text(c)).toContain("Playmat removed.");
+  });
+
+  it("offers nothing to remove when the account has no playmat", async () => {
+    matRemoved = true;
+    const c = await show({ view: "account", id: USER });
+    expect(c.querySelector("img.mat")).toBeNull();
+    expect(button(c, "Remove playmat")).toBeUndefined();
+    expect(text(c)).toContain("No playmat.");
   });
 });
 

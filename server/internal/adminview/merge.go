@@ -165,9 +165,12 @@ type DeckRequest struct {
 
 // AccountResponse is GET /admin/users/{id}.
 type AccountResponse struct {
-	GeneratedAt           int64         `json:"generated_at"`
-	Account               Account       `json:"account"`
-	SignIn                SignIn        `json:"sign_in"`
+	GeneratedAt int64   `json:"generated_at"`
+	Account     Account `json:"account"`
+	SignIn      SignIn  `json:"sign_in"`
+	// PlaymatURL is the account's playmat path, absent for none: what
+	// the "Remove playmat" action would take away (ADR 0124 amendment).
+	PlaymatURL            string        `json:"playmat_url,omitempty"`
 	Games                 []Game        `json:"games"`
 	GamesTruncated        bool          `json:"games_truncated"`
 	Decks                 []Deck        `json:"decks"`
@@ -375,6 +378,7 @@ func MergeAccount(rows AccountRows, live []string, ov Overlay, now time.Time) Ac
 	out := AccountResponse{
 		GeneratedAt: now.UnixMilli(),
 		Account:     account(rows.Account, set(live)[rows.Account.ID]),
+		PlaymatURL:  rows.PlaymatURL,
 		SignIn: SignIn{
 			LastSignInAt:          ms(rows.Account.LastSignInAt),
 			DiscordLinkedAt:       ms(rows.DiscordLinkedAt),
