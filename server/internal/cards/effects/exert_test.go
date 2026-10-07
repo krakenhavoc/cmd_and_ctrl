@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -303,5 +304,57 @@ func TestTwoCombatCelebrantsGiveTwoCombats(t *testing.T) {
 	}
 	if combats != 3 {
 		t.Errorf("%d combat phases this turn, want 3", combats)
+	}
+}
+
+// TestExertPurposeGuard is ADR 0130's amendment of 2026-10-07: a pump
+// and a self shield are an ability's, about its own source.
+func TestExertPurposeGuard(t *testing.T) {
+	cases := []struct {
+		name string
+		slot purposeSlot
+		p    game.Purpose
+		want string // "" = accepted
+	}{
+		{"pump on a triggered row", purposeOnTriggered, game.Purpose{Pump: &game.Pump{Power: 2, Keywords: []string{"first strike"}}}, ""},
+		{"pump on an activated row", purposeOnActivated, game.Purpose{Pump: &game.Pump{Toughness: 1}}, ""},
+		{"pump on the card", purposeOnCard, game.Purpose{Pump: &game.Pump{Power: 1}}, "off a triggered or activated row"},
+		{"pump on a mode", purposeOnMode, game.Purpose{Pump: &game.Pump{Power: 1}}, "off a triggered or activated row"},
+		{"shield on the card", purposeOnCard, game.Purpose{PreventCombatDamageToSelf: true}, "off a triggered or activated row"},
+		{"empty pump", purposeOnTriggered, game.Purpose{Pump: &game.Pump{}}, "gives nothing"},
+		{"capital keyword", purposeOnTriggered, game.Purpose{Pump: &game.Pump{Keywords: []string{"Trample"}}}, "not lowercase"},
+		{"negative extra combat", purposeOnCard, game.Purpose{ExtraCombat: -1}, "negative amount"},
+		{"negative life", purposeOnTriggered, game.Purpose{LifeGain: -1}, "negative amount"},
+		{"damage on a spell", purposeOnCard, game.Purpose{DamageToCreature: 3, DamageEachOpponent: 1, LifeGain: 1, ExtraCombat: 1}, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var msg string
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						msg, _ = r.(string)
+					}
+				}()
+				checkPurpose("Test Card", "triggered ability 0", c.slot, c.p)
+			}()
+			switch {
+			case c.want == "" && msg != "":
+				t.Errorf("refused: %s", msg)
+			case c.want != "" && !strings.Contains(msg, c.want):
+				t.Errorf("got %q, want a refusal containing %q", msg, c.want)
+			}
+		})
+	}
+}
+
+// TestExertHelpersStampTheirRows: WhenExerted's row is "linked",
+// WheneverYouExert's is "payoff" (ADR 0130's amendment of 2026-10-07).
+func TestExertHelpersStampTheirRows(t *testing.T) {
+	if got := WhenExerted("x", nil).Exert; got != game.ExertRowLinked {
+		t.Errorf("WhenExerted stamps %q", got)
+	}
+	if got := WheneverYouExert("x", nil).Exert; got != game.ExertRowPayoff {
+		t.Errorf("WheneverYouExert stamps %q", got)
 	}
 }

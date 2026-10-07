@@ -25,13 +25,15 @@ func init() {
 		Completeness:  CompletenessFull,
 		ExertOnAttack: ExertAsItAttacksUnless(ExertedThisTurn),
 		Triggered: []game.TriggeredAbility{
-			WhenExerted("Combat Celebrant — untap all other creatures you control; an additional combat phase after this phase",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := untapAllOtherCreaturesYouControl(g, item); err != nil {
-						return err
-					}
-					return ExtraCombatAfterThisPhase().Apply(NewContext(g, item))
-				}),
+			TriggerWithPurpose(
+				WhenExerted("Combat Celebrant — untap all other creatures you control; an additional combat phase after this phase",
+					func(g *game.Game, item *game.StackItem) error {
+						if err := untapAllOtherCreaturesYouControl(g, item); err != nil {
+							return err
+						}
+						return ExtraCombatAfterThisPhase().Apply(NewContext(g, item))
+					}),
+				game.Purpose{ExtraCombat: 1}),
 		},
 	})
 }

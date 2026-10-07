@@ -73,6 +73,9 @@ type AbilityRow struct {
 	// ActivatedAbilityShape.Purpose. Zero for a static row and for a
 	// row that declares none.
 	Purpose Purpose
+	// Exert is the triggered row's TriggeredAbility.Exert (ADR 0130's
+	// amendment of 2026-10-07): "linked", "payoff" or empty.
+	Exert ExertRow
 }
 
 // AbilityRowsOf lists the object's non-keyword triggered, static and
@@ -91,7 +94,7 @@ func abilityRowsOf(c *Card) []AbilityRow {
 		if t.Keyword != "" {
 			continue
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowTriggered, Label: abilityRowLabel(t.Key, names, "Triggered ability"), Purpose: t.Purpose})
+		out = append(out, AbilityRow{Kind: AbilityRowTriggered, Label: abilityRowLabel(t.Key, names, "Triggered ability"), Purpose: t.Purpose, Exert: t.Exert})
 	}
 	out = appendStaticRows(out, c, names)
 	for _, a := range activatedAbilitiesOf(c) {

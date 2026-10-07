@@ -49,8 +49,13 @@ func ExertedThisTurn(g *game.Game, source *game.Card) bool {
 // A targeted one (Glorybringer) takes Targeting as usual; with no legal
 // target it is removed from the stack and the creature stays exerted
 // (CR 603.3d, the Glorybringer ruling).
+//
+// The row is stamped game.ExertRowLinked, so the bot knows to price an
+// exert by its declared Purpose (ADR 0130's amendment of 2026-10-07).
 func WhenExerted(label string, effect Effect) game.TriggeredAbility {
-	return On(game.EventExert, exertedAsItAttacked, label, effect)
+	t := On(game.EventExert, exertedAsItAttacked, label, effect)
+	t.Exert = game.ExertRowLinked
+	return t
 }
 
 // exertedAsItAttacked is WhenExerted's condition.
@@ -68,8 +73,14 @@ func exertedAsItAttacked(ev game.Event, source *game.Card, _ game.Characteristic
 // The harvester reads the event as it is emitted, while the exerted
 // permanent is still on the battlefield, so "was a creature as it was
 // exerted" is read off it now.
+//
+// The row is stamped game.ExertRowPayoff, so the bot adds its declared
+// Purpose to every exert it prices (ADR 0130's amendment of
+// 2026-10-07).
 func WheneverYouExert(label string, effect Effect) game.TriggeredAbility {
-	return On(game.EventExert, youExertedACreature, label, effect)
+	t := On(game.EventExert, youExertedACreature, label, effect)
+	t.Exert = game.ExertRowPayoff
+	return t
 }
 
 // youExertedACreature is WheneverYouExert's condition.

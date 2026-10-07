@@ -76,6 +76,42 @@ type Purpose struct {
 	// 2026-10-06). Nil is "not a discard payoff". Refused on every
 	// other slot. A pointer so Purpose stays comparable.
 	DiscardPayoff *DiscardPayoff
+
+	// The fields below were added for exert (ADR 0130 §9 and its
+	// amendment of 2026-10-07). The heuristic reads them on a row the
+	// catalog stamps as an exert row (TriggeredAbility.Exert); they are
+	// printed amounts like the rest, and true wherever they are declared.
+
+	// Pump is what the row gives its own source until end of turn:
+	// "this creature gets +2/+0 and gains trample until end of turn".
+	// Nil is "no pump". Refused off a triggered or activated row. A
+	// pointer so Purpose stays comparable.
+	Pump *Pump
+	// ExtraCombat is the additional combat phases it adds ("after this
+	// phase, there is an additional combat phase"): Combat Celebrant 1.
+	ExtraCombat int
+	// PreventCombatDamageToSelf is set when it prevents all combat
+	// damage that would be dealt to its source this turn: Oketra's
+	// Avenger. Refused off a triggered or activated row.
+	PreventCombatDamageToSelf bool
+	// DamageToCreature is the damage it deals to one target creature:
+	// Glorybringer's 4.
+	DamageToCreature int
+	// DamageEachOpponent is the damage it deals to each opponent:
+	// Resolute Survivors' 1. (DiscardPayoff.DamageEachOpponent is the
+	// same amount PER discarded card, on a discard payoff.)
+	DamageEachOpponent int
+	// LifeGain is the life its controller gains: Resolute Survivors' 1.
+	LifeGain int
+}
+
+// Pump is a self pump until end of turn (Purpose.Pump): the power and
+// toughness it adds and the keywords it grants, lowercase as the wire's
+// `abilities` spells them.
+type Pump struct {
+	Power     int
+	Toughness int
+	Keywords  []string
 }
 
 // DiscardPayoff says which discarded cards a triggered row pays on, and
@@ -212,17 +248,26 @@ func CardPurposeOf(c Card) Purpose {
 // half's when it has one, else the second's.
 func (p Purpose) plus(o Purpose) Purpose {
 	out := Purpose{
-		Draws:               p.Draws + o.Draws,
-		ControllerLosesLife: p.ControllerLosesLife + o.ControllerLosesLife,
-		Discards:            p.Discards + o.Discards,
-		Lands:               p.Lands + o.Lands,
-		Tutors:              p.Tutors + o.Tutors,
-		SelfMillTutor:       p.SelfMillTutor + o.SelfMillTutor,
-		Tokens:              p.Tokens + o.Tokens,
-		Energy:              p.Energy + o.Energy,
-		Sweep:               p.Sweep,
-		DeathPayoff:         p.DeathPayoff || o.DeathPayoff,
-		DiscardPayoff:       p.DiscardPayoff,
+		Draws:                     p.Draws + o.Draws,
+		ControllerLosesLife:       p.ControllerLosesLife + o.ControllerLosesLife,
+		Discards:                  p.Discards + o.Discards,
+		Lands:                     p.Lands + o.Lands,
+		Tutors:                    p.Tutors + o.Tutors,
+		SelfMillTutor:             p.SelfMillTutor + o.SelfMillTutor,
+		Tokens:                    p.Tokens + o.Tokens,
+		Energy:                    p.Energy + o.Energy,
+		Sweep:                     p.Sweep,
+		DeathPayoff:               p.DeathPayoff || o.DeathPayoff,
+		DiscardPayoff:             p.DiscardPayoff,
+		Pump:                      p.Pump,
+		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
+		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf || o.PreventCombatDamageToSelf,
+		DamageToCreature:          p.DamageToCreature + o.DamageToCreature,
+		DamageEachOpponent:        p.DamageEachOpponent + o.DamageEachOpponent,
+		LifeGain:                  p.LifeGain + o.LifeGain,
+	}
+	if out.Pump == nil {
+		out.Pump = o.Pump
 	}
 	if out.Sweep.IsZero() {
 		out.Sweep = o.Sweep

@@ -171,6 +171,7 @@ In PR 1 the heuristic never picks an exert move, so nothing changes for bots unt
   - **cost**: zero when the exert is free: the creature has vigilance, already won't untap during the bot's next untap step, or the attack is a lethal push. Otherwise the creature's attack value next turn plus its blocking value across the opponents' turns, since it stays tapped through them.
   - Combat Celebrant is priced by the extra combat: the bot's other untapped creatures' attack value in a second combat.
   - It is measured with ADR 0052's arena report, and must not lose to the S66 heuristic.
+  - *As amended on 2026-10-07* ([below](#amendment-2026-10-07-exert-rows-and-what-they-declare)): the rows say they are exert rows, and `PurposeView` gains six fields, not one.
 - (b) Simple rules. Exert only when free, on a lethal push, or when the trigger draws or makes a card. Smaller, and right most of the time. It undervalues pumps and Combat Celebrant.
 - (c) Bots never exert. The 36 cards are worse in a bot's deck than printed. It is the right default for PR 1 only.
 
@@ -239,6 +240,27 @@ PRs 1 and 2 should reach `main` in the same promotion, so a human player at a pr
 - An ADR 0127 preference for the exert question (§7 (c)). Not now (owner decision 1); it can follow.
 
 ---
+
+## Amendment (2026-10-07): exert rows and what they declare
+
+PR 3 found two gaps in §9 before any code was written, and the owner answered both on 2026-10-07.
+
+**1. The bot could not tell which rows are exert rows.** `ability_rows` carried each row's kind, label and purpose, and nothing said a triggered row was a linked "when you do" or a "whenever you exert" payoff. The owner chose (a): the two helpers stamp their rows. `effects.WhenExerted` sets a new `game.TriggeredAbility.Exert` field to `"linked"` and `effects.WheneverYouExert` sets it to `"payoff"`. The field reaches the wire as `AbilityRowView.exert`, absent on every other row. It is catalog data set by the helper that declares the row, not text parsing, and the engine never reads it. Rejected: (b) treating a row that declares `pump` as the linked row, which finds no payoff rows and no linked row that isn't a pump.
+
+**2. No purpose field described the gains of PR 1's four cards.** Oketra's Avenger's shield, Glorybringer's 4 damage, Combat Celebrant's extra combat and Resolute Survivors' drain had no field, so §9's "one additive field" would have priced three of the four at zero. The owner chose (a): six additive fields on `Purpose` and `PurposeView`, each declared by hand on the card, the way `death_payoff` is. This widens §9's "one additive field, `pump`" to these six:
+
+| Field | Meaning | Declared on |
+|---|---|---|
+| `pump` | `{power, toughness, keywords}` the row gives its own source until end of turn | the PR 5 self-pump cards |
+| `extra_combat` | additional combat phases it adds | Combat Celebrant 1 |
+| `prevent_combat_damage_to_self` | it prevents all combat damage that would be dealt to its source this turn | Oketra's Avenger |
+| `damage_to_creature` | damage it deals to one target creature | Glorybringer 4 |
+| `damage_each_opponent` | damage it deals to each opponent | Resolute Survivors 1 |
+| `life_gain` | life its controller gains | Resolute Survivors 1 |
+
+None of these existed on `Purpose` under another name. `DiscardPayoff.DamageEachOpponent` is the same amount per discarded card, on a discard payoff only, so it is not reused; the top-level field takes its name. The registration guard refuses `pump` and `prevent_combat_damage_to_self` off a triggered or activated row (each is about the ability's own source), a `pump` that gives nothing, and a negative amount. Rejected: (b) `pump` and `extra_combat` only, and (c) `pump` alone.
+
+The pricing sits behind `Config.PriceExert`, which is off in `BaselineConfig()`, so `heuristic-baseline` stays frozen (ADR 0126 §9). The arena gains a second arena-only contestant, `heuristic-noexert` (today's heuristic with `PriceExert` off), so the exert pricing can be measured alone, and a synthetic deck, `exert-battle`, because no curated deck holds an exert card (ADR 0126 §8). The measurements are in PR 3.
 
 ## Questions for the owner (answered)
 

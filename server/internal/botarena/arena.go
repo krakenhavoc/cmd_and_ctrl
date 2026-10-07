@@ -74,8 +74,8 @@ type SeatSpec struct {
 	// "assisted vs heuristic" run wants; set it to compare two
 	// configurations of the SAME tier in one run.
 	Name string `json:"name,omitempty"`
-	// Variant is an arena-only configuration of Tier. The one there is
-	// is VariantBaseline. Empty is the tier as the lobby seats it.
+	// Variant is an arena-only configuration of Tier: VariantBaseline
+	// or VariantNoExert. Empty is the tier as the lobby seats it.
 	Variant string `json:"variant,omitempty"`
 }
 
@@ -88,15 +88,28 @@ const VariantBaseline = "baseline"
 // BaselineContestant is VariantBaseline's contestant name.
 const BaselineContestant = string(tiers.Heuristic) + "-" + VariantBaseline
 
-// ParseContestant reads one `--seats` entry: a tier, or
-// `heuristic-baseline`.
+// VariantNoExert is today's heuristic with ADR 0130 §9's exert pricing
+// off (Config.PriceExert false), seated as `heuristic-noexert`: the
+// heuristic as it played before ADR 0130 PR 3, so a run against
+// `heuristic` measures the exert pricing alone. An arena name only,
+// like heuristic-baseline.
+const VariantNoExert = "noexert"
+
+// NoExertContestant is VariantNoExert's contestant name.
+const NoExertContestant = string(tiers.Heuristic) + "-" + VariantNoExert
+
+// ParseContestant reads one `--seats` entry: a tier,
+// `heuristic-baseline` or `heuristic-noexert`.
 func ParseContestant(s string) (SeatSpec, error) {
-	if s == BaselineContestant {
+	switch s {
+	case BaselineContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantBaseline}, nil
+	case NoExertContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoExert}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q", err, BaselineContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q", err, BaselineContestant, NoExertContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -261,8 +274,8 @@ func (c Config) Validate() error {
 		if _, err := tiers.Parse(string(s.Tier)); err != nil {
 			return fmt.Errorf("botarena: seat %d: %w", i, err)
 		}
-		if s.Variant != "" && (s.Variant != VariantBaseline || s.Tier != tiers.Heuristic) {
-			return fmt.Errorf("botarena: seat %d: %q is not a contestant (the one arena variant is %q)", i, s.Contestant(), BaselineContestant)
+		if s.Variant != "" && ((s.Variant != VariantBaseline && s.Variant != VariantNoExert) || s.Tier != tiers.Heuristic) {
+			return fmt.Errorf("botarena: seat %d: %q is not a contestant (the arena variants are %q and %q)", i, s.Contestant(), BaselineContestant, NoExertContestant)
 		}
 		// A model tier with no client is the one misconfiguration
 		// that would silently corrupt the measurement rather than
@@ -274,7 +287,7 @@ func (c Config) Validate() error {
 		if s.Tier.NeedsModel() && c.Client == nil {
 			return fmt.Errorf("botarena: seat %d is %s, which needs a model endpoint: set --endpoint or $CMDCTRL_OPENAI_ENDPOINT (an %s seat with no client silently plays the heuristic)", i, s.Tier, s.Tier)
 		}
-		if s.Deck != "" && c.Index == nil {
+		if s.Deck != "" && s.Deck != ExertDeckID && c.Index == nil {
 			return fmt.Errorf("botarena: seat %d plays %q, which needs a Scryfall dump: set --dump or $CMDCTRL_SCRYFALL_DUMP", i, s.Deck)
 		}
 	}
@@ -700,8 +713,13 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		// playing the same moves.
 		Rand: rand.NewPCG(seed, uint64(pos)+1),
 	}
-	if spec.Variant == VariantBaseline {
+	switch spec.Variant {
+	case VariantBaseline:
 		h := heuristic.BaselineConfig()
+		opt.Heuristic = &h
+	case VariantNoExert:
+		h := heuristic.DefaultConfig()
+		h.PriceExert = false
 		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
@@ -725,8 +743,11 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 }
 
 func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
-	if spec.Deck == "" {
+	switch spec.Deck {
+	case "":
 		return BattleDeck(uuid.Nil), nil
+	case ExertDeckID:
+		return ExertBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

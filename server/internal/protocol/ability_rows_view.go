@@ -23,6 +23,11 @@ type AbilityRowView struct {
 	// sweep on a saga chapter. Absent for a static row and a row that
 	// declares none. Public and cleared with the row.
 	Purpose *PurposeView `json:"purpose,omitempty"`
+	// Exert is "linked" on the "when you do" trigger linked to "You may
+	// exert this creature as it attacks", and "payoff" on "Whenever you
+	// exert a creature" (ADR 0130's amendment of 2026-10-07). Absent on
+	// every other row.
+	Exert string `json:"exert,omitempty"`
 }
 
 // viewOfAbilityRows projects game.AbilityRowsOf. Stamped by viewOfZone
@@ -36,7 +41,7 @@ func viewOfAbilityRows(c game.Card) []AbilityRowView {
 	}
 	out := make([]AbilityRowView, len(rows))
 	for i, r := range rows {
-		out[i] = AbilityRowView{Kind: string(r.Kind), Label: r.Label, Purpose: viewOfPurpose(r.Purpose)}
+		out[i] = AbilityRowView{Kind: string(r.Kind), Label: r.Label, Purpose: viewOfPurpose(r.Purpose), Exert: string(r.Exert)}
 	}
 	return out
 }
