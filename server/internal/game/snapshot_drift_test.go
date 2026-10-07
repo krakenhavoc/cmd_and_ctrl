@@ -416,6 +416,9 @@ var cardFields = plan(
 	// restore that dropped it would leave a Phantasmal Image copy
 	// with no sacrifice trigger and no Illusion type.
 	"GrantedAbilities", carried, "",
+	// #2322 / CR 707.9d: a colour-setting copy exception dropped the
+	// copied devoid. Carried: nothing else on the card says so.
+	"ColorCDADropped", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",

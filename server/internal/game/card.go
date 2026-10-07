@@ -198,6 +198,8 @@ type Card struct {
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
 
+	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
+
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
 
 	// ManaAbilities are mana abilities carried on the card object,
@@ -990,6 +992,18 @@ type Card struct {
 	// weren't already going to learn, and a false one costs the
 	// signal its credibility.
 	NeedsEffect bool
+
+	// ColorCDADropped records that a CR 707.9d copy exception gave
+	// this object a colour, so the copy did not take the copied
+	// object's colour-defining ability (devoid) at all. A copiable
+	// value like Keywords: a copy of the copy inherits it. It exists
+	// for the catalog road, where devoid arrives through the copied
+	// oracle ID's PrintedKeywords and cannot be stripped from
+	// Keywords. Written by SetCopyExceptionColors (and the copy
+	// plumbing); read by printedInputsOf, printsDevoid and
+	// PrintedKeywordsHonouringCopy. Carried by the snapshot; reset
+	// when the object becomes a new object (#2322).
+	ColorCDADropped bool
 
 	// Tapped is the usual MTG tap state. Only meaningful for cards on
 	// the battlefield; ignored in other zones.

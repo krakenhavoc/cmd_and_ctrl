@@ -302,8 +302,10 @@ func buildDef(spec Spec) *game.CardDef {
 			// #2219: this row IS the printed keywords, which the
 			// tile already shows as keyword chips.
 			Keywords: kws,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				appendKeywordsTo(c, kws)
+			Apply: func(c *game.Characteristic, target *game.Card, _ *game.Game, _ *game.Card) {
+				// CR 707.9d (#2322): a copy whose colour exception
+				// dropped devoid does not get it back from the entry.
+				appendKeywordsTo(c, target.PrintedKeywordsHonouringCopy(kws))
 			},
 		}
 		d.Static = append(append([]game.StaticAbility(nil), spec.Static...), synth)

@@ -4967,6 +4967,15 @@ per-instance state (counters, `ExilePlay`, the cached characteristic) is
 deliberately not copied — CR 707.2. "Enters as a copy" for a real card
 (Clone) is a different thing: see "Adding a copy effect" above.
 
+An exception that provides a colour ("except it's a 4/4 black Zombie")
+must set it with `t.SetCopyExceptionColors("B")`, never `t.Colors = ...`
+(#2322, CR 707.9d): the copied object's colour-defining ability is not
+copied, so a devoid creature's token copy is not devoid. The helper
+strips devoid from `Keywords` and sets `Card.ColorCDADropped`, which the
+printed-keyword merge and the catalog's synthesised keyword static both
+honour; the mark is a copiable value, so a copy of that token has no
+devoid either.
+
 **Event picker.** Each row is the `when` for `On(kind, when, label, effect)`; the rows with a name in `triggers_common.go` are the constructors above.
 
 | Trigger text | `Watches` | `AppliesTo` |

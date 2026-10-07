@@ -254,6 +254,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// bounced Cavern of Souls names a tribe again when it is
 		// replayed, and a Cavern in a graveyard names none.
 		c.NamedTribe = ""
+		// #2322 / CR 400.7: a colour exception's dropped devoid belongs to
+		// the copy object, not the card; a new object has its own text.
+		c.ColorCDADropped = false
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
