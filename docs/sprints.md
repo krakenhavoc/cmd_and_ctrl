@@ -109,7 +109,7 @@ planned just-in-time from the S12 pain-point triage.
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
 | S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
-| S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | planned     |
+| S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | in progress |
 
 ### How to read the status column
 
@@ -3583,8 +3583,8 @@ Opened 2026-10-06, after a precon evaluation (52 arena games with decision logs)
 
 The members are ADR 0126's Delivery PRs.
 
-- [ ] ADR 0126: the heuristic prices what a card does (PR 1, with this section)
-- [ ] PR 2: measurement. The arena's per-deck Play table and Cards section (offered, taken, `never`), the `heuristic-baseline` contestant and `BaselineConfig()`, and the baseline runs recorded in the ADR. No price changes.
+- [x] ADR 0126: the heuristic prices what a card does (PR 1, with this section)
+- [x] PR 2: measurement. The arena's per-deck Play table and Cards section (offered, taken, `never`), the `heuristic-baseline` contestant and `BaselineConfig()`, and the baseline runs recorded in the ADR. No price changes.
 - [x] PR 3: mana sources. A source is worth the mana it makes, and a ramp premium applies while the bot is short of mana for its hand and commander.
 - [x] PR 4: permanents by what they do. A mana-value floor for non-creature permanents, and utility from `ability_rows` for them and for creatures.
 - [x] PR 5: the two windows. The bot's own second main and the end step before its turn: spend leftover mana and free taps, a floor under instants and sorceries, and a tapped-blocker price that depends on timing.
@@ -3592,7 +3592,7 @@ The members are ADR 0126's Delivery PRs.
 - [x] PR 7: wipes priced by the change in score, ramp spells by the lands they fetch, and discard costs net of the cards drawn.
 - [x] ADR 0126 amendment (2026-10-06): discard payoffs. A `discard_payoff` purpose on a triggered row (Mary Read and Anne Bonny, Marauding Mako and four more), and a discard the bot's own payoffs pay for priced that much cheaper.
 - [x] PR 8: sacrifice outlets. A creature that is dying anyway, and death payoffs.
-- [ ] PR 9: the exit run against ADR 0126's acceptance bar, the Measurements, `docs/bot.md`, and the evidence on #2435.
+- [x] PR 9: the exit run against ADR 0126's acceptance bar, the Measurements, `docs/bot.md`, and the evidence on #2435.
 - [ ] [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436): rebalance the curated decks, measured with the new pricing. Starts after PR 9.
 - [ ] Stretch, or the next sprint: [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck (Gruul or Boros creature combat).
 
@@ -3608,7 +3608,12 @@ From [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) and ADR 01
 
 ### Status
 
-**Planned** (2026-10-06). ADR 0126 is accepted. The owner answered its eight open questions on 2026-10-06, all as recommended, and they are recorded in the ADR. PR 2 (measurement) is next.
+**In progress: every Delivery PR has merged, and four bars wait on the owner** (2026-10-06). PR 9 measured ADR 0126's acceptance bar on `develop` `e84f04622`. The numbers and the run IDs are in the ADR's [Measurements](decisions/0126-bots-that-play-their-decks.md#pr-9-the-exit-2026-10-06) and on #2435.
+
+- **Passed:** A1 (`never` counts 1, 3, 4 and 2, from 19 to 29), A4 (both wipe positions), A6 (mono-black 47.1%–70.5%, but not robustly: pooled over three runs its interval lies above 50%), and A7 (37 of 37 positions).
+- **Failed:** A2 (rocks and dorks cast in 68% of the games they were offered in while the bot was short, against 80%), A3 (Harrow 30%; the other five canaries 59% to 100%), A5 (`heuristic` 28.1%, 22.2%–34.9%, over the 96 games §8 names; 28.7%, 25.2%–32.6%, over 288), and A8 on rejected moves (4 in run 1 against PR 2's 2; 0 stalls, turns p50 within range).
+- **Exit criteria:** 1 is met. 2 and 3 are not, as above. 4 waits on the nightly jobs on `develop`. 5, the evidence on #2435, is posted. Criteria 2 and 3 depend on the owner's decision on the failing bars, so they stay open, and #2435 stays open with them. #2436 starts once the owner has decided.
+- **Filed during the exit:** #2461 (auto-tap counts a bounce land's two mana as two of one colour) and #2462 (bots attack after passing priority in declare attackers).
 
 ---
 
