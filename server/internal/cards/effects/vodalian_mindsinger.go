@@ -15,10 +15,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counters count both together (CR 702.33d): CountersPerKick on the
 // CR 614 entry pipeline, which Doubling Season doubles.
 //
-// "Power less than this creature's power" is a bound on the target
-// clause, fixed from the Mindsinger's power as the trigger goes on the
-// stack (TargetsFrom hands the clause its source) and re-checked at
-// resolution (CR 608.2b). The counters are already on it by then, so a
+// "Power less than this creature's power" is a clause relative to the
+// Mindsinger (#2146, RelativeToSource), judged against its power as the
+// trigger goes on the stack and again at resolution (CR 608.2b), so a
+// Mindsinger pumped or shrunk in response moves the bound. The counters
+// are already on it by then, so a
 // kicked Mindsinger reaches bigger creatures, as printed. The theft
 // lasts while the controller still controls the Mindsinger
 // (CR 611.2b): it ends if the Mindsinger leaves or changes hands, and
@@ -36,9 +37,9 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: Self,
 			Key:       "Vodalian Mindsinger — gain control of target creature with lesser power",
-			TargetsFrom: func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
-				return TargetCreature("target creature with power less than this creature's power", PowerLE(source.CurrentPower()-1))
-			},
+			Targets: RelativeToSource(
+				TargetCreature("target creature with power less than this creature's power"),
+				LesserPower()),
 			Effect: GainControlOfTargetFor("Vodalian Mindsinger — gain control while you control it", func(ctx *Context) (game.Duration, bool) {
 				return DurationWhileYouControlSource(ctx, ctx.Source(), ctx.Controller())
 			}),
