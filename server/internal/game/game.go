@@ -751,6 +751,12 @@ type Game struct {
 	resolutionOpen  bool
 	resolutionDepth int
 
+	// promptKeys is the transient bookkeeping behind the keys of the
+	// prompts a resolution or an answered prompt's branch queues (ADR
+	// 0127 §2, auto_answer.go). Reset where each begins, so neither
+	// Clone nor the snapshot carries it.
+	promptKeys promptKeyState
+
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
 	// random draw goes through randForLocked in rng.go, which derives
