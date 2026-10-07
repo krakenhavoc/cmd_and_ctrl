@@ -203,7 +203,9 @@ Issue: #1
 ```
 
 `<type>` is one of: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `spike`.
-`<scope>` is the top-level dir being touched (`server`, `client`, `docs`, etc.).
+`<scope>` is the top-level dir being touched (`server`, `client`, etc.). A change
+to documentation only has no scope: `docs: <subject>`, never `docs(docs): …`.
+A PR's title follows the same rule, since it becomes the squash commit.
 
 ### Pull request format
 
