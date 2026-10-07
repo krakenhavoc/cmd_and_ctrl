@@ -379,6 +379,12 @@ var items = []Item{
 		Mechanic: "escape",
 	},
 	{
+		Slug: "retrace", Name: "Retrace", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a card from your graveyard for its mana cost by discarding a land card in addition, whether it prints retrace or another card grants it.",
+		Rules:    []string{"702.81"},
+		Mechanic: "retrace",
+	},
+	{
 		Slug: "warp", Name: "Warp", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Cast a permanent cheaply for its warp cost; it's exiled at the next end step and can be cast again on a later turn.",
 		Rules:    []string{"702.185"},

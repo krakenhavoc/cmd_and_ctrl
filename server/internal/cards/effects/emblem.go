@@ -130,6 +130,15 @@ type EmblemSpec struct {
 	// creatures with greater power".
 	BlockRules []game.BlockRule
 
+	// CastPermissions are the emblem's STANDING cast permissions
+	// (#2528, CR 114.3): the `Spec.CastPermissions` slot one zone over,
+	// built the same way and normalised by the same standingCastPermissions.
+	// Wrenn and Six's "Instant and sorcery cards in your graveyard have
+	// retrace". Derived from `Player.Emblems` on every query by
+	// standingCastPermissionsLocked, so it lasts as long as the emblem —
+	// which is as long as the game (CR 114.2).
+	CastPermissions []game.CastPermission
+
 	// Lines are the emblem's abilities line by line, each with the
 	// count it is gained at, for an emblem whose abilities switch on one
 	// by one (the Ring, CR 701.54c). The wire's text for it is derived
@@ -158,7 +167,9 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		// ADR 0114 §5: read through CatalogBlockRules by the
 		// block-rule walk's emblem half.
 		BlockRules: e.BlockRules,
-		Emblem:     &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
+		// #2528: standing permissions an emblem grants its owner.
+		CastPermissions: standingCastPermissions(e.CastPermissions),
+		Emblem:          &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
 	}
 }
 
@@ -177,7 +188,7 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	}
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
 		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
-		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 {
+		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)

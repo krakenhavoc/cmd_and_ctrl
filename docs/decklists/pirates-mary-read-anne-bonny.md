@@ -154,8 +154,8 @@ Navigator; Ghost of Ramirez DePietro. Each is playable, but Partner
 is not supported, so none can be your commander. Untracked.
 
 **Alternative cast paths** — Ragavan (dash), Impulsive Pilferer
-(encore), Decaying Time Loop (retrace). The base card works; the
-alternative cast is missing. Untracked.
+(encore). Decaying Time Loop's retrace shipped in #2528. The base
+card works; the alternative cast is missing. Untracked.
 
 **Batched triggers** — Ingenious Artillerist and Magmakin Artillerist.
 "Whenever one or more X" fires once per X instead of once per batch,

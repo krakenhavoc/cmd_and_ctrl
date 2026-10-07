@@ -179,8 +179,30 @@ type AlternativeCost struct {
 	// variable sacrifice that the announce path could price.
 	Sacrifice *TargetSpec
 
+	// DiscardFromHand is retrace's "discarding a land card in addition
+	// to paying its other costs" (CR 702.81a, #2528): a card from the
+	// caster's HAND, named in CastSpellParams.AltCostIDs and DISCARDED
+	// rather than exiled, so a discard payoff (Waste Not, Mary Read and
+	// Anne Bonny, Marauding Mako) sees it and a graveyard card (Wrenn
+	// and Six's own land, Crucible) gets it. The spec's Min is the count,
+	// one when unset; no printed cost discards more.
+	//
+	// It is an ALTERNATIVE-cost field carrying an ADDITIONAL cost's
+	// rule, and the one place the model bends (ADR 0066, 2026-10-07
+	// amendment). Retrace is not an alternative cost (CR 702.81a): the
+	// mana cost is still paid. The offer is built to say so — ManaCost
+	// is the card's printed cost, never empty — and claiming it is what
+	// opens the graveyard, so the discard is owed exactly when the cast
+	// is a retrace cast and never on the hand cast of the same card.
+	// What the model gives up is combining retrace with another
+	// alternative cost on one cast, which no card in the catalog can do.
+	//
+	// The spell being cast is never a legal discard: CR 601.2a has
+	// already moved it to the stack, and it is not in hand anyway.
+	DiscardFromHand *TargetSpec
+
 	// PayLabel is the picker's prompt copy for the card component —
-	// ExileFromHand, ReturnToHand, ExileFromGraveyard or Sacrifice ("a
+	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand or Sacrifice ("a
 	// blue card", "an Island you control", "three creatures"). Empty
 	// falls back to Label.
 	PayLabel string
@@ -386,6 +408,12 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 			n = 1
 		}
 		return a.ExileFromHand, ZoneHand, n
+	case a.DiscardFromHand != nil:
+		n := a.DiscardFromHand.Min
+		if n < 1 {
+			n = 1
+		}
+		return a.DiscardFromHand, ZoneHand, n
 	case a.ReturnToHand != nil:
 		return a.ReturnToHand, ZoneBattlefield, 1
 	case a.ExileFromGraveyard != nil:
@@ -873,6 +901,17 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 				return err
 			}
 		}
+	case alt.DiscardFromHand != nil:
+		// Retrace (#2528, CR 702.81a): a discard, paid as a COST, so
+		// with the spell already on the stack a discard trigger lands
+		// above it, and a countered Flame Jab does not hand the land
+		// back. Through the one discard helper's cost path (it may not
+		// pause — CR 601.2h) with the CR 903.9 answers the cast
+		// collected up front.
+		return g.discardCardsLocked(playerID, ids, discardOptions{
+			cause:            DiscardCauseCost,
+			commanderAnswers: answers,
+		})
 	case alt.ReturnToHand != nil:
 		return move(ids[0], ZoneHand)
 	case alt.ExileFromGraveyard != nil:

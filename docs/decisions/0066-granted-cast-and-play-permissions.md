@@ -2711,3 +2711,104 @@ a coloured symbol only if it shares the colour, and otherwise only generic.
 
 Out of scope, unchanged: an any-colour grant on a spell with waterbend (the
 extra cost is generic and the grant does not touch it).
+
+## Amendment — 2026-10-07 (#2528): retrace, an additional cost on a priced graveyard offer, and an emblem that grants permissions
+
+Retrace (CR 702.81a) is "you may cast this card from your graveyard by
+discarding a land card in addition to paying its other costs". Printed on
+ten cards and granted by Six ("During your turn, nonland permanent cards in
+your graveyard have retrace") and by Wrenn and Six's emblem ("Instant and
+sorcery cards in your graveyard have retrace"). The model already had every
+piece but one: a graveyard cast zone (`Spec.CastableZones`), a standing
+permission over a filtered graveyard (Underworld Breach's escape), a timing
+rule on a permission (`TimingYourTurnOnly`, Tinybones) and a discard that is
+paid as a cost (`DiscardCauseCost`). The missing piece was a cost component
+that discards a card from hand and is owed only on the graveyard cast.
+
+### Decision 1: the discard rides a priced offer, not `Spec.AdditionalCost`
+
+`Spec.AdditionalCost` is unconditional per spell: it is paid on every cast
+of the card, hand or graveyard. Retrace's discard is owed only when the cast
+is a retrace cast, and a printed `AdditionalCost` that depended on the cast
+zone would need the zone threaded through the additional-cost validator, the
+view's cost stamp, the enumerator and the client's prompt chain. The
+alternative-cost path already carries a zone binding (`FromZone`), a claim on
+the wire (`alternative_cost`), a card component paid from `alt_cost_ids`, a
+view stamp (`pay_options`), an enumerator walk (`AltCostCandidatesLocked`)
+and a client picker. So retrace is an `AlternativeCost` with a new card
+component, `DiscardFromHand`, whose ManaCost is the card's PRINTED cost and
+never empty, which is what keeps it from being read as a replacement of the
+mana. The discard goes through `discardCardsLocked` with `DiscardCauseCost`,
+the same path an additional discard cost uses: it may not pause (CR 601.2h),
+it emits `EventDiscardCard` so a discard payoff sees the land, and the land
+is gone even if the spell is countered. A card's own `AdditionalCost` is
+untouched and still applies.
+
+**What the model gives up, stated.** Retrace is not an alternative cost (CR
+702.81a), and here it is claimed as one, so a cast cannot combine it with
+another alternative cost (overload, flashback, escape). No catalog card can:
+the ten printed retrace cards print no other alternative cost, and a card
+that prints a graveyard cast of its own keeps its own price under a granted
+retrace, by rule 4 of `validateCastPathLocked` as for every grant. A card
+with an ADDITIONAL cost of its own (an optional kicker, a discard) pays it as
+well; that composition is the point of using the offer's price rather than
+replacing it.
+
+`effects.Retrace(printedCost)` bundles the zone binding, the key, the land
+discard and the printed price. It takes the cost as a string, like
+`Flashback`, because the offer is catalog data built before any card exists;
+`TestPrintedRetraceCardsDeclareBothHalves` pins every card's string and the
+fixture check in the PR pins it against the Scryfall dump. Unlike flashback it
+carries no `ExileOnLeavingStack`: a retraced spell resolves into the
+graveyard and can be retraced again.
+
+### Decision 2: a granted retrace is a permission field, `DiscardLandCard`
+
+`CastPermission.AlternativeCostFor` synthesises the offer a permission prices
+the cast under. It gains one boolean, `DiscardLandCard`, that fills
+`DiscardFromHand` with the same `game.RetraceDiscardSpec()` the catalog
+constructor uses, so a printed and a granted retrace pay one price by
+construction. The key is the shared `game.AltCostKeyRetrace`, the way
+"escape" is, so a rule that reads "retraced" reads one string however the
+cast arrived. `PermissionFilter` gains `NonLandPermanentOnly` for Six; the
+instants-and-sorceries filter Past in Flames wrote already existed.
+
+Six is a plain `Spec.CastPermissions` entry with `Timing: TimingYourTurnOnly`
+(CR "during your turn", the card's own timing still in force, so a flash
+creature is an instant-speed cast on Six's controller's turn and nothing on
+anyone else's). It is derived from the battlefield on every query, so it
+lasts as long as Six does, covers a card milled by the very attack that
+triggers it, and two Sixes compose.
+
+### Decision 3: an emblem may declare standing permissions
+
+Wrenn and Six's emblem is a rule over a player and a zone, not an effect
+that resolves, so it is the `ScopeStanding` shape, and an emblem's abilities
+function in the command zone (CR 114.3). `EmblemSpec.CastPermissions` is the
+`Spec.CastPermissions` slot one zone over, normalised by the same
+`standingCastPermissions`, and `standingCastPermissionsLocked` walks the
+seat's own `Player.Emblems` after the battlefield, exactly as the
+activation-timing read already has a second address there (#1275). An emblem
+leaves only with its owner (CR 800.4a), so its presence is the duration and
+nothing is stored. Ungated only: no printed emblem gates a permission on a
+designation.
+
+### What does not change
+
+The wire. `alternative_costs[].pay_options` already carries a card-shaped
+payment, and the client's `AltCostPaymentModal` already renders it from
+`pay_label`; the new component sets `pay_label` to "a land card". The
+snapshot gains two additive bool fields on `CastPermission` and one on
+`PermissionFilter`; both zero-value to "not retrace", so a restore point
+written before them restores unchanged.
+
+### Out of scope, stated
+
+- Deeproot Historian ("Merfolk and Druid cards in your graveyard have
+  retrace") needs a two-subtype filter; `PermissionFilter.CreatureType` names
+  one. Left to a follow-up.
+- Cenn's Enlistment, Call the Skybreaker, Worm Harvest and Formless Genesis
+  print retrace and need tokens the token table has no printed-token row for
+  (Kithkin Soldier, a 5/5 flying Elemental, Worm, a variable Shapeshifter);
+  Glamerdye needs text-change effects and Reality Scramble a type-matching
+  reveal. Not catalogued here.
