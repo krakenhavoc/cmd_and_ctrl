@@ -237,21 +237,68 @@ export function blockRequest(staged: number, onFinish: () => void): DockRequest 
   };
 }
 
+// ExertChoice is the selected attacker's exert question (ADR 0130 §7,
+// owner decision 1): present only for a creature the server says may be
+// exerted as it attacks. `chosen` is null until the player answers; the
+// seat click commits nothing before then, so no click chooses for them
+// (CR 508.1g).
+export interface ExertChoice {
+  chosen: boolean | null;
+  onChoose: (exert: boolean) => void;
+}
+
+// EXERT_NOTE is the reminder the exert question carries: CR 701.43a in
+// the card's own reminder-text words.
+export const EXERT_NOTE = "An exerted creature won't untap during your next untap step.";
+
+function exertQuestion(cardName: string, exert: ExertChoice): string {
+  if (exert.chosen === null) return `Attack with ${cardName}: exert it as it attacks?`;
+  const how = exert.chosen ? "Attacking and exerting" : "Attacking";
+  return `${how} with ${cardName} — click an opponent's seat to commit, or the creature again to cancel.`;
+}
+
+function exertRow(exert: ExertChoice): DockAction[] {
+  return [
+    {
+      id: "attack-plain",
+      label: L.attackPlain,
+      title: "attack without exerting it",
+      pressed: exert.chosen === false,
+      emphasis: exert.chosen === null,
+      onPress: () => exert.onChoose(false),
+    },
+    {
+      id: "attack-exert",
+      label: L.attackAndExert,
+      title: `attack and exert it — ${EXERT_NOTE.toLowerCase()}`,
+      pressed: exert.chosen === true,
+      onPress: () => exert.onChoose(true),
+    },
+  ];
+}
+
 export function combatSelectionRequest(
   kind: "attacker" | "blocker",
   cardName: string,
   onCancel: () => void,
+  // ADR 0130 §7: the exert question, for an attacker that may be exerted.
+  exert: ExertChoice | null = null,
 ): DockRequest {
   const attacking = kind === "attacker";
+  const asking = attacking && exert !== null;
   return {
     rank: "flow",
     label: `${attacking ? "attacking" : "blocking"} with ${cardName}`,
     tag: attacking ? "attack" : "block",
     tone: "danger",
     live: true,
-    question: attacking
-      ? `Attacking with ${cardName} — click an opponent's seat to commit, or the creature again to cancel.`
-      : `Blocking with ${cardName} — click an incoming attacker to commit, or the creature again to cancel.`,
+    question: asking
+      ? exertQuestion(cardName, exert)
+      : attacking
+        ? `Attacking with ${cardName} — click an opponent's seat to commit, or the creature again to cancel.`
+        : `Blocking with ${cardName} — click an incoming attacker to commit, or the creature again to cancel.`,
+    detail: asking ? EXERT_NOTE : undefined,
+    row: asking ? exertRow(exert) : undefined,
     primary: null,
     secondary: [
       {

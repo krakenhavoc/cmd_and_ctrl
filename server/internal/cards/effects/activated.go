@@ -566,6 +566,28 @@ func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
 }
 
+// DiscardX is "Discard X cards" as a cost (#2527, ADR 0113's
+// 2026-10-07 amendment) — Gix, Yawgmoth Praetor's
+//
+//	Plus(ManaCost("{4}{B}{B}{B}"), DiscardX("X cards"))
+//
+// The count is the X announced with the activation (CR 602.2b), which
+// the effect reads back with ctx.X() exactly as an {X} mana cost's is,
+// and the activator names that many cards in hand (`discard_ids`). It
+// makes the ability demand an X even when the mana component has none,
+// so Register refuses a cost that ALSO puts {X} in its mana cost or
+// sacrifices or taps X: one announced number cannot pay two clauses.
+// It needs a stack item to carry the announcement, so Register refuses
+// it on a mana ability (CR 605.3b). Pass a predicate for "X creature
+// cards"; the label is the clause as printed, without the verb.
+func DiscardX(label string, match ...func(game.Card) bool) game.AbilityCost {
+	dc := &game.DiscardCost{Label: label, CountFromX: true}
+	if len(match) > 0 {
+		dc.Match = match[0]
+	}
+	return game.AbilityCost{DiscardCards: dc}
+}
+
 // DiscardAtRandom is "Discard N cards at random" as a cost (ADR 0109
 // §7, owner decision 3; CR 701.9b) — Pyromancy's "{3}, Discard a card
 // at random:", Meteor Storm's "Discard two cards at random". The

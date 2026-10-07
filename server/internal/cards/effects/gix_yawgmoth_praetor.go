@@ -34,23 +34,34 @@ import (
 // affordability when the answer arrives, since life moves between the
 // question and the answer.
 //
-// The activated ability is NOT implemented, and it is the cost rather
-// than the effect that blocks it: "Discard X cards" is a variable
-// COUNT, and the engine's X only lives in the mana component of a cost
-// (AbilityCost.DiscardCards is a fixed number, and "this ability
-// prompts for X" is derived from the mana string, which here is a
-// fixed {4}{B}{B}{B}). Shipping it with a fixed discard would be a
-// different card; shipping it with none would be a free one. Both
-// halves of the seam — a variable-count cost component — are the same
-// gap Ruthless Technomancer's "Sacrifice X artifacts" waits on.
+// The activated ability (#2527, ADR 0113's 2026-10-07 amendment):
+// "Discard X cards" is the variable-count discard cost,
+// effects.DiscardX, whose count IS the X announced with the activation
+// (CR 602.2b) -- the discard twin of SacrificeX. The activator names
+// that many cards in hand, they are discarded as the cost is paid
+// (so a discard payoff triggers above the ability), and the effect
+// reads the same number with ctx.X(). X may be zero (a legal, empty
+// payment, CR 107.3a); XMatters tells the legal-move enumerator not to
+// offer that no-op, as it does for any other card whose whole effect
+// is X.
+//
+// The effect exiles the top X cards of the TARGET OPPONENT's library
+// face up, and the activator may play lands and cast spells from among
+// them "without paying their mana costs" for as long as they stay in
+// exile -- no "this turn", the printed text has none (compare Urza,
+// whose free play is until end of turn). That is ExileTopWithPermission
+// with Free (a {0} cost in place of the printed one) and WhileExiled.
+// A card is exiled "this way" only if it actually went to exile, so a
+// commander that goes to the command zone instead (CR 903.9) gets no
+// permission; the primitive stamps the grant from its continuation.
+// Fewer than X cards in the library exile what is there. If the target
+// is gone on resolution nothing is exiled, but the discards were paid.
 func init() {
 	Register(Spec{
 		OracleID:     "928d977e-cff0-4e0e-83bb-16d73a754f35",
 		Name:         "Gix, Yawgmoth Praetor",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The last ability — \"{4}{B}{B}{B}, Discard X cards: Exile the top X cards of target opponent's library\" — isn't implemented. The combat-damage draw works.",
-		},
+		Completeness: CompletenessFull,
+		XMatters:     true,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -82,8 +93,36 @@ func init() {
 				}.Apply(NewContext(g, item))
 			},
 		}},
+		Activated: []ActivatedAbility{{
+			Label:   gixExileLabel,
+			Cost:    Plus(ManaCost("{4}{B}{B}{B}"), DiscardX("X cards")),
+			Targets: TargetPlayer("target opponent", Opponent()),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				x := ctx.X()
+				if x <= 0 {
+					return nil
+				}
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetPlayer {
+						continue
+					}
+					return ExileTopWithPermission{
+						From:        t.ID,
+						GrantTo:     item.Controller,
+						N:           x,
+						Free:        true,
+						WhileExiled: true,
+					}.Apply(ctx)
+				}
+				return nil
+			},
+		}},
 	})
 }
+
+// gixExileLabel is the activated ability as printed.
+const gixExileLabel = "{4}{B}{B}{B}, Discard X cards: Exile the top X cards of target opponent's library. You may play lands and cast spells from among cards exiled this way without paying their mana costs."
 
 // gixPayOneLifeLabel is the stack label.
 const gixPayOneLifeLabel = "Gix, Yawgmoth Praetor — its controller may pay 1 life to draw a card"

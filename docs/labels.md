@@ -42,6 +42,10 @@ registered, or when this file is stale.
 | `next` | `next` | button | text | `lib/components/board/ActionDock.svelte` | the dock's primary: pass priority |
 | `passTurn` | `Pass turn` | button | text | `lib/components/board/ActionDock.svelte` | the dock's secondary: skip the rest of the turn |
 | `declareAttackers` | `declare attackers` | dialog, group | aria | `lib/combatDock.ts` | the attack request's dialog and its row group |
+| `attackPlain` | `Attack` | button | text | `lib/combatDock.ts` | ADR 0130 §7: the dock's choice for a creature that may be exerted, attacking without exerting it |
+| `attackAndExert` | `Attack and exert` | button | text | `lib/combatDock.ts` | ADR 0130 §7: the dock's choice for a creature that may be exerted, attacking and exerting it |
+| `declareAttackerAndExert` | `Declare attacker and exert` | menuitem | text | `lib/contextMenu.logic.ts` | ADR 0130 §7: the card menu's row beside Declare attacker, for a creature that may be exerted |
+| `exertAttacker` | `Exert <name>` (starts with `Exert `) | switch | aria | `lib/components/board/AttackDeclarationModal.svelte` | ADR 0130 §7: the Choose attackers picker's per-row Exert toggle |
 | `declareBlockers` | `declare blockers` | dialog, group | aria | `lib/combatDock.ts` | the block request's dialog and its row group |
 | `mulligan` | `keep or mulligan your hand` | dialog | aria | `routes/Game.svelte` | the opening hand sheet; the tutorial's play-land and cast-creature steps detour here while it waits |
 | `keepHand` | `Keep hand` | button | text | `routes/Game.svelte` | the opening hand sheet's primary |

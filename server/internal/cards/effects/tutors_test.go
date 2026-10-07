@@ -94,7 +94,10 @@ func TestEnlightenedTutorPutsAnArtifactOnTopAndRevealsIt(t *testing.T) {
 
 func TestWorldlyTutorFindsACreature(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[0]
+	me, opp := g.Seats[0], g.Seats[1]
+	// Not creatures: must not be offered.
+	pushLibraryCardForTest(me, game.Card{Name: "Bolt", TypeLine: "Instant"})
+	pushLibraryCardForTest(me, game.Card{Name: "Sol Ring", TypeLine: "Artifact"})
 	needle := pushLibraryCardForTest(me, game.Card{
 		Name: "Craterhoof Behemoth", TypeLine: "Creature — Beast",
 	})
@@ -103,11 +106,20 @@ func TestWorldlyTutorFindsACreature(t *testing.T) {
 	if top.InstanceID != needle {
 		t.Errorf("top of library is %q, want the tutored creature", top.Name)
 	}
+	if !top.IsKnownTo(opp.ID) {
+		t.Error("an opponent does not know the revealed card; Worldly Tutor says reveal it")
+	}
+	if me.Hand.Contains(needle) {
+		t.Error("the tutored card went to hand; this tutor puts it on top")
+	}
 }
 
 func TestMysticalTutorFindsAnInstantOrSorcery(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[0]
+	me, opp := g.Seats[0], g.Seats[1]
+	// Not instants or sorceries: must not be offered.
+	pushLibraryCardForTest(me, game.Card{Name: "Bear", TypeLine: "Creature — Bear"})
+	pushLibraryCardForTest(me, game.Card{Name: "Sol Ring", TypeLine: "Artifact"})
 	needle := pushLibraryCardForTest(me, game.Card{
 		Name: "Counterspell", TypeLine: "Instant",
 	})
@@ -115,6 +127,12 @@ func TestMysticalTutorFindsAnInstantOrSorcery(t *testing.T) {
 	top := tutorTopOfLibrary(t, g, me, "Mystical Tutor", "Instant", mysticalTutorOracle, needle)
 	if top.InstanceID != needle {
 		t.Errorf("top of library is %q, want the tutored instant", top.Name)
+	}
+	if !top.IsKnownTo(opp.ID) {
+		t.Error("an opponent does not know the revealed card; Mystical Tutor says reveal it")
+	}
+	if me.Hand.Contains(needle) {
+		t.Error("the tutored card went to hand; this tutor puts it on top")
 	}
 }
 
@@ -205,5 +223,40 @@ func TestBeseechTheQueenIsCappedByLandCount(t *testing.T) {
 	answerSearchByID(t, g, me.ID, cheap)
 	if !me.Hand.Contains(cheap) {
 		t.Error("the tutored card is not in hand")
+	}
+}
+
+// TestTutorSearchTypeRestrictions pins the card type each tutor's
+// search allows: two legal cards (so the engine must prompt) and one
+// illegal one; only the legal ones are offered.
+func TestTutorSearchTypeRestrictions(t *testing.T) {
+	cases := []struct {
+		name, typeLine, oracle string
+		good, bad              string
+	}{
+		{"Worldly Tutor", "Instant", worldlyTutorOracle, "Creature — Bear", "Instant"},
+		{"Mystical Tutor", "Instant", mysticalTutorOracle, "Sorcery", "Creature — Bear"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			g1 := pushLibraryCardForTest(me, game.Card{Name: "G1", TypeLine: tc.good})
+			g2 := pushLibraryCardForTest(me, game.Card{Name: "G2", TypeLine: tc.good})
+			b := pushLibraryCardForTest(me, game.Card{Name: "B", TypeLine: tc.bad})
+			castCatalogSpell(t, g, tc.name, tc.typeLine, tc.oracle, nil)
+			passPriorityAroundTable(t, g)
+			ch := searchChoiceFor(g, me.ID)
+			if ch == nil {
+				t.Fatal("no search prompt")
+			}
+			offered := map[uuid.UUID]bool{}
+			for _, id := range ch.SearchCards {
+				offered[id] = true
+			}
+			if !offered[g1] || !offered[g2] || offered[b] {
+				t.Errorf("offered %v, want only the two matching cards", offered)
+			}
+		})
 	}
 }

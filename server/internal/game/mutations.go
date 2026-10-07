@@ -6528,7 +6528,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// (effects.ManaAbilityCost has no such field to set).
 	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, AbilityCost{
 		DiscardCards: ab.DiscardCards,
-	}, params.DiscardIDs)
+	}, params.DiscardIDs, 0)
 	if err != nil {
 		return err
 	}

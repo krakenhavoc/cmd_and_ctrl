@@ -3418,6 +3418,14 @@ type ActivatedAbilityView struct {
 	// shows a confirm naming the cost instead of a picker, and the
 	// engine draws the cards as it pays (CR 701.9b, CR 601.2h).
 	DiscardCostRandom bool `json:"discard_cost_random,omitempty"`
+	// DiscardCostCountFromX marks the "Discard X cards" form (#2527,
+	// ADR 0113's 2026-10-07 amendment) — Gix, Yawgmoth Praetor. The
+	// count is the X the activator announces, so DiscardCostN is absent
+	// and the number of cards picked IS the announcement: the client
+	// always opens its picker (zero to as many as DiscardCostOptions
+	// lists), sends the picks as `discard_ids` and the count as
+	// `x_value`, and skips the X stepper. `demands_x` is set beside it.
+	DiscardCostCountFromX bool `json:"discard_cost_count_from_x,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -9567,8 +9575,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 				v.ChargedManaCost = &s
 			}
 		}
-		if dc := a.Cost.DiscardCards; dc != nil && dc.N > 0 {
+		if dc := a.Cost.DiscardCards; dc != nil && (dc.N > 0 || dc.CountFromX) {
 			v.DiscardCostN = dc.N
+			v.DiscardCostCountFromX = dc.CountFromX
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.

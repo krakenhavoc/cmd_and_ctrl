@@ -36,6 +36,17 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 	if dc == nil {
 		return
 	}
+	// #2527: "Discard X cards" counts from the announced X, so N is
+	// never read; a fixed count, "at random" or the hand form beside it
+	// is a card file that has mixed the forms up. An ABILITY only is
+	// checked by checkDiscardXClause, which knows the owner.
+	if dc.CountFromX {
+		if dc.N != 0 || dc.Random || dc.Hand {
+			panic(fmt.Sprintf("effects.Register: %q %s discards X cards and also declares a count, \"at random\" or your hand — build it with DiscardX",
+				name, where))
+		}
+		return
+	}
 	if dc.Hand {
 		if dc.N != 0 || dc.Match != nil || dc.Random {
 			panic(fmt.Sprintf("effects.Register: %q %s discards your hand and also declares a count, a predicate or \"at random\" — build it with DiscardYourHand",
@@ -48,6 +59,42 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 	if dc.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s discards %d cards — a discard cost discards at least one",
 			name, where, dc.N))
+	}
+}
+
+// checkDiscardXBesideOtherCosts is the cross-component half of the
+// "Discard X cards" form (#2527), for an activated ability's cost:
+//
+//   - one announced X cannot pay two clauses, so {X} in the mana
+//     component, a sacrifice-X clause or a tap-X clause beside it is
+//     refused (the rule SacrificeX and TapXUntapped already follow);
+//   - the cards are named in `discard_ids` out of the hand, and the
+//     other hand-spending components (discard this, put a card from
+//     the hand on top, exile a card from the hand) name theirs out of
+//     the same hand with a count the ladder of X cannot reserve. No
+//     printed cost combines them, and the enumerator's X ladder
+//     assumes it, so a card file that does is refused rather than
+//     offered moves the engine bounces.
+func checkDiscardXBesideOtherCosts(name, where string, cost game.AbilityCost) {
+	if !game.DiscardCountFromX(cost.DiscardCards) {
+		return
+	}
+	if cost.EnergyX {
+		panic(fmt.Sprintf("effects.Register: %q %s pays X energy AND discards X cards — one announced X cannot pay both",
+			name, where))
+	}
+	if cost.XSlots() > 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s has {X} in its mana cost %q AND discards X cards — one announced X cannot pay both",
+			name, where, cost.Mana))
+	}
+	if game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers) {
+		panic(fmt.Sprintf("effects.Register: %q %s discards X cards and also sacrifices or taps X permanents — one announced X cannot pay both",
+			name, where))
+	}
+	if cost.DiscardSelf || cost.PutFromHandOnLibraryTop > 0 ||
+		(cost.ExileCards != nil && cost.ExileCards.Zone() == game.ZoneHand) {
+		panic(fmt.Sprintf("effects.Register: %q %s discards X cards and also spends another card from the hand — no printed cost does both",
+			name, where))
 	}
 }
 

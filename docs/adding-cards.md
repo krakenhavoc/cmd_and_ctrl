@@ -2998,8 +2998,10 @@ much mana is around at resolution.
 
 X lives in the MANA component, or in a cost with a variable COUNT:
 Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
-0100) and Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
-(#1421). The count the activator names IS the announced X, read with
+0100), Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
+(#1421) and Gix, Yawgmoth Praetor's "Discard X cards" is `DiscardX`
+(#2527, ADR 0113's 2026-10-07 amendment). The count the activator
+names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
 puts X in two places.
 
