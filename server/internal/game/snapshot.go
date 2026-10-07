@@ -624,22 +624,26 @@ type playerSnapshot struct {
 	MulliganDecided bool `json:"mulliganDecided,omitempty"`
 	// TriggerOrderAlwaysAsk is Player.TriggerOrderAlwaysAsk (#1530).
 	// Additive: a file written before it restores with false, the default.
-	TriggerOrderAlwaysAsk bool              `json:"triggerOrderAlwaysAsk,omitempty"`
-	MulligansTaken        int               `json:"mulligansTaken"`
-	DeckImported          bool              `json:"deckImported"`
-	UndosRemaining        int               `json:"undosRemaining"`
-	DiscordID             string            `json:"discordId,omitempty"`
-	DiscordAvatarHash     string            `json:"discordAvatarHash,omitempty"`
-	DisplayName           string            `json:"displayName,omitempty"`
-	IsBot                 bool              `json:"isBot,omitempty"`
-	BotTier               string            `json:"botTier,omitempty"`
-	BotDeck               string            `json:"botDeck,omitempty"`
-	Agent                 bool              `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
-	AgentClient           string            `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
-	AttemptedEmptyDraw    bool              `json:"losesAtNextSba"`
-	CommanderCasts        map[uuid.UUID]int `json:"commanderCasts,omitempty"`
-	Counters              map[string]int    `json:"counters,omitempty"`
-	MaxHandSize           int               `json:"maxHandSize"`
+	TriggerOrderAlwaysAsk bool `json:"triggerOrderAlwaysAsk,omitempty"`
+	// AutoAnswers is Player.AutoAnswers (ADR 0127 §8). Additive: a file
+	// written before it restores with none, which asks every prompt;
+	// the client's reconcile sends the rules again on the next frame.
+	AutoAnswers        map[string]AutoAnswer `json:"autoAnswers,omitempty"`
+	MulligansTaken     int                   `json:"mulligansTaken"`
+	DeckImported       bool                  `json:"deckImported"`
+	UndosRemaining     int                   `json:"undosRemaining"`
+	DiscordID          string                `json:"discordId,omitempty"`
+	DiscordAvatarHash  string                `json:"discordAvatarHash,omitempty"`
+	DisplayName        string                `json:"displayName,omitempty"`
+	IsBot              bool                  `json:"isBot,omitempty"`
+	BotTier            string                `json:"botTier,omitempty"`
+	BotDeck            string                `json:"botDeck,omitempty"`
+	Agent              bool                  `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
+	AgentClient        string                `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
+	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
+	Counters           map[string]int        `json:"counters,omitempty"`
+	MaxHandSize        int                   `json:"maxHandSize"`
 	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
@@ -1390,6 +1394,13 @@ type pendingChoiceSnapshot struct {
 	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
 	// MidResolution is PendingChoice.midResolution (#1289).
 	MidResolution bool `json:"midResolution,omitempty"`
+	// ADR 0127 §8: the standing-answer key and its display copies, and
+	// whether the prompt is asked by hand. Additive: a file written
+	// before them restores a prompt with no key, which is asked.
+	AutoAnswerKey    string      `json:"autoAnswerKey,omitempty"`
+	AutoAnswerCard   string      `json:"autoAnswerCard,omitempty"`
+	AutoAnswerPrompt string      `json:"autoAnswerPrompt,omitempty"`
+	AskedByHand      AskedByHand `json:"askedByHand,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -2041,6 +2052,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -2338,6 +2350,10 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		MidResolution:        c.midResolution,
+		AutoAnswerKey:        c.AutoAnswerKey,
+		AutoAnswerCard:       c.AutoAnswerCard,
+		AutoAnswerPrompt:     c.AutoAnswerPrompt,
+		AskedByHand:          c.AskedByHand,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -2909,6 +2925,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -3158,6 +3175,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		midResolution:        c.MidResolution,
+		AutoAnswerKey:        c.AutoAnswerKey,
+		AutoAnswerCard:       c.AutoAnswerCard,
+		AutoAnswerPrompt:     c.AutoAnswerPrompt,
+		AskedByHand:          c.AskedByHand,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.

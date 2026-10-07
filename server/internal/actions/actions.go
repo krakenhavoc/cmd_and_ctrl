@@ -174,6 +174,12 @@ const (
 	// mints no undo entry (MintsNoUndo); undo carries it forward. Never
 	// a bot move — the enumerator does not offer it.
 	TypeSetTriggerOrderPreference Type = "set_trigger_order_preference"
+	// ADR 0127 §3 — a seat's standing answers to repeated prompts,
+	// params `{rules: [{key, answer}]}` with answer "always" or "never";
+	// the list replaces the seat's rules. A setting, not a play, like
+	// set_trigger_order_preference: legal during the opening roll, mints
+	// no undo entry, carried across an undo, never a bot move.
+	TypeSetAutoAnswers Type = "set_auto_answers"
 )
 
 // openingRollActions are the only action types Dispatch accepts while
@@ -189,6 +195,7 @@ var openingRollActions = map[Type]struct{}{
 	TypeChooseStartingPlayer:      {},
 	TypeRollTableDie:              {},
 	TypeSetTriggerOrderPreference: {},
+	TypeSetAutoAnswers:            {},
 	TypeConcede:                   {},
 	TypeSetTableSettings:          {},
 	TypeSetUndoLimit:              {},
@@ -214,7 +221,7 @@ func MintsNoUndo(g *game.Game, t Type) bool {
 	switch t {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
 		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit,
-		TypeSetTriggerOrderPreference:
+		TypeSetTriggerOrderPreference, TypeSetAutoAnswers:
 		return true
 	}
 	return g.OpeningRollOpen()
@@ -485,6 +492,8 @@ var playerScopedActions = map[Type]struct{}{
 	TypeRollTableDie: {},
 	// #1530: a seat sets only its own preference.
 	TypeSetTriggerOrderPreference: {},
+	// ADR 0127 §3: and only its own standing answers.
+	TypeSetAutoAnswers: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
 	// initiative are NOT player-scoped — any seated player may flip
@@ -985,6 +994,34 @@ func dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("%w: %s always_ask", ErrMissingParams, a.Type)
 		}
 		return g.SetTriggerOrderPreference(a.Player, *p.AlwaysAsk)
+
+	case TypeSetAutoAnswers:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Rules *[]struct {
+				Key    string `json:"key"`
+				Answer string `json:"answer"`
+			} `json:"rules"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.Rules == nil {
+			return fmt.Errorf("%w: %s rules", ErrMissingParams, a.Type)
+		}
+		if len(*p.Rules) > game.MaxAutoAnswerRules {
+			return game.ErrTooManyAutoAnswers
+		}
+		rules := make(map[string]game.AutoAnswer, len(*p.Rules))
+		for _, r := range *p.Rules {
+			if _, dup := rules[r.Key]; dup {
+				return fmt.Errorf("%w: %s names %q twice", game.ErrInvalidParam, a.Type, r.Key)
+			}
+			rules[r.Key] = game.AutoAnswer(r.Answer)
+		}
+		return g.SetAutoAnswers(a.Player, rules)
 
 	case TypeRollTableDie:
 		if a.Player == uuid.Nil {

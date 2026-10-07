@@ -222,6 +222,15 @@ type Player struct {
 	// (RestoreFrom carries it forward) and the snapshot.
 	TriggerOrderAlwaysAsk bool
 
+	// AutoAnswers is this seat's standing answers to repeated prompts
+	// (ADR 0127 §3), by key (PendingChoice.AutoAnswerKey). Ask is the
+	// absence of a key. Set only by set_auto_answers, which replaces
+	// the whole map and mints no undo entry; RestoreFrom carries it
+	// across an undo, like TriggerOrderAlwaysAsk. Always empty for a bot
+	// seat. Server-held so the server can answer while the player's
+	// browser is closed.
+	AutoAnswers map[string]AutoAnswer
+
 	// MulligansTaken is the count of Mulligan calls this player has
 	// made in the current opening-hand window. Reset at Start. Used
 	// by the UI to show "mulligans taken: N" and is the seed for a

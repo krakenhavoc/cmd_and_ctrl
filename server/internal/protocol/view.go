@@ -467,6 +467,18 @@ type PendingChoiceView struct {
 	// Added in S19 sub-PR 6.
 	PayCost string `json:"pay_cost,omitempty"`
 
+	// AutoAnswerKey is the key a standing answer to this prompt is
+	// filed under (ADR 0127 §2), empty when the prompt cannot take one.
+	// AutoAnswerCard and AutoAnswerPrompt are its display copies: the
+	// card's name and the question, which the client keeps beside the
+	// rule in Settings. AskedByHand says why a prompt that has a rule
+	// is asked anyway ("no_mana", "empty_library", "loop", "undone").
+	// All four are the chooser's alone: FilterViewFor clears them for
+	// every other viewer.
+	AutoAnswerKey    string `json:"auto_answer_key,omitempty"`
+	AutoAnswerCard   string `json:"auto_answer_card,omitempty"`
+	AutoAnswerPrompt string `json:"auto_answer_prompt,omitempty"`
+	AskedByHand      string `json:"asked_by_hand,omitempty"`
 	// PhyrexianSymbols / PhyrexianGranted are the "or 2 life" half of a
 	// mana "pay_unless" (ADR 0131 §2): how many symbols of PayCost the
 	// CHOOSER could pay with life — a printed {B/P}, or a {B} under
@@ -1585,6 +1597,11 @@ type PlayerView struct {
 	// other viewer. The client compares it with its local setting and
 	// re-sends set_trigger_order_preference when they differ.
 	TriggerOrderAlwaysAsk bool `json:"trigger_order_always_ask,omitempty"`
+	// AutoAnswers reflects Player.AutoAnswers (ADR 0127 §3), sorted by
+	// key. Private to its seat, like TriggerOrderAlwaysAsk: the client
+	// compares it with its synced setting and sends set_auto_answers
+	// when they differ.
+	AutoAnswers []AutoAnswerRuleView `json:"auto_answers,omitempty"`
 	// MulligansTaken reflects Player.MulligansTaken. Surfaced so the
 	// UI can show "mulligans taken: N". Added in S08.
 	MulligansTaken int `json:"mulligans_taken,omitempty"`
@@ -7113,6 +7130,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
 			PayCost:       c.PayCost,
+			// ADR 0127 §8, filtered to the chooser in FilterViewFor.
+			AutoAnswerKey:    c.AutoAnswerKey,
+			AutoAnswerCard:   c.AutoAnswerCard,
+			AutoAnswerPrompt: c.AutoAnswerPrompt,
+			AskedByHand:      string(c.AskedByHand),
 		}
 		// ADR 0131 §2: the life half of a mana payment.
 		if c.Kind == game.PendingChoicePayUnless && c.PayAction() == nil {
@@ -7792,6 +7814,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           viewOfAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -8104,6 +8127,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1530: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
 			out.TriggerOrderAlwaysAsk = false
+			// ADR 0127 §8: and so are its standing answers.
+			out.AutoAnswers = nil
 		}
 		// S13.5: redact every visible card based on KnownBy.
 		// Hand + library still get their wholesale-hide (S04
@@ -8308,6 +8333,13 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 	out := make([]PendingChoiceView, len(src))
 	for i, c := range src {
 		out[i] = c
+		// ADR 0127 §8: the standing-answer fields are the chooser's.
+		if c.Chooser != viewerID {
+			out[i].AutoAnswerKey = ""
+			out[i].AutoAnswerCard = ""
+			out[i].AutoAnswerPrompt = ""
+			out[i].AskedByHand = ""
+		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].SearchMax = 0
@@ -10293,4 +10325,25 @@ func topCostLabel(n int) string {
 		return "a card from your hand on top of your library"
 	}
 	return fmt.Sprintf("%d cards from your hand on top of your library", n)
+}
+
+// AutoAnswerRuleView is one of a seat's standing answers (ADR 0127 §3):
+// the key and "always" or "never".
+type AutoAnswerRuleView struct {
+	Key    string `json:"key"`
+	Answer string `json:"answer"`
+}
+
+// viewOfAutoAnswers is a seat's rules sorted by key, so two frames of
+// the same rules are the same bytes.
+func viewOfAutoAnswers(rules map[string]game.AutoAnswer) []AutoAnswerRuleView {
+	if len(rules) == 0 {
+		return nil
+	}
+	out := make([]AutoAnswerRuleView, 0, len(rules))
+	for k, v := range rules {
+		out = append(out, AutoAnswerRuleView{Key: k, Answer: string(v)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out
 }
