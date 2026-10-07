@@ -1,7 +1,8 @@
 # ADR 0131 — K'rrik: paying 2 life for {B} in any cost
 
-**Status:** Proposed · 2026-10-07 · S68 — Cost components and alternative costs
+**Status:** Accepted (owner answers 2026-10-07) · 2026-10-07 · S68 — Cost components and alternative costs
 **Issues:** [#2531](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2531) (K'rrik, Son of Yawgmoth's payment grant; part of the "Life is just a resource" Betor deck goal). Earlier triage: [#1117](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1117).
+**Owner decisions:** the owner answered this ADR's six questions on 2026-10-07, each with the recommended option. The answers are quoted under [Owner decisions](#owner-decisions-2026-10-07) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** the AGENTS.md §4 sweep on 2026-10-07 found 0130 (`0130-exert.md`) as the highest number on any remote head. This ADR takes **0131**.
 **Builds on:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the auto-tapper), [ADR 0085](0085-life-total-cant-change.md) (a life total that can't change), [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) (strict payment and the pool top-up), [ADR 0126](0126-bots-that-play-their-decks.md) (the heuristic), [ADR 0127](0127-answering-repeated-prompts-for-you.md) (repeated prompts) and [ADR 0129](0129-energy-getting-and-paying-it.md) §5 (the auto-tapper spends energy last, before life). It reuses the Phyrexian life payment of #787, #916 and #917, and the payer-scoped spend grant of #1600.
 
@@ -12,6 +13,17 @@ This ADR was written plan-first. No code changed with it. The changes land in th
 ## Context
 
 K'rrik is catalogued with a caveat: "only its own printed Phyrexian mana symbols can be paid with life." Its third ability is missing. Every claim below was checked on `origin/develop` at `bdbc0cbad`. Every rule was checked against the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`).
+
+### Owner decisions (2026-10-07)
+
+The owner answered this ADR's six questions on 2026-10-07, each with the recommended option:
+
+1. **A player static that marks granted {B} at payment, before the spend-only fold** (question 1, §1).
+2. **Every mana payment its controller makes**, including the {B} half of hybrid symbols and never generic mana (question 2, §2).
+3. **Auto-tap never pays life** (question 3, §3).
+4. **The client asks only when mana is short, and a "Pay life for {B}…" entry is always available** (question 4, §4).
+5. **The bot gets the same life options as for a printed Phyrexian symbol, with the floor of 10** (question 5, §5).
+6. **Two PRs** (question 6, [Delivery](#delivery)).
 
 ### The card and its rulings
 
@@ -151,36 +163,48 @@ Each PR regenerates only K'rrik's oracle fixture (`-update-oracle -oracle-ids=cb
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each question lists the most CR-faithful option first, which is also the recommendation.
+Each question lists the most CR-faithful option first, which was also the recommendation. The owner chose the recommended option for all six on 2026-10-07 (owner decisions 1–6). The questions are kept with the options not chosen.
 
 1. **How the grant is modelled (§1; CR 107.4f, 601.2f, 118.9a).**
    - (a) **Recommended:** a player static that marks granted {B} requirements `LifeGranted` at payment, in `costAsPaidByLocked`, before the spend-only fold. The price shown stays printed and the generic ruling holds, and every payment path picks it up, because they all already call this function.
    - (b) Rewrite {B} to {B/P} at pricing. It needs less plumbing, but the price shown changes and black mana abilities drop out of the costed auto-tapper.
    - (c) A K'rrik alternative cost. Simplest for spells, but it breaks CR 118.9a (no evoke or dash with it) and can't reach activations.
 
+   **Answered: (a), as recommended (owner decision 1).**
+
 2. **Which costs it covers (§2; the 2024 ruling, CR 107.4e).**
    - (a) **Recommended:** every mana payment its controller makes: spells with their alternative and additional costs, activations, mana abilities, attack taxes and resolution payments. That includes the {B} half of hybrid symbols, and never generic mana. It plays as printed, but it needs PR 2's two new paths.
    - (b) Casts, activations and attack taxes only, with a caveat for the rest. One PR, but a ward {B} or a filter land's {B} can't be paid with life.
    - (c) Spells only. Smallest, and most unlike the card.
+
+   **Answered: (a), as recommended (owner decision 2).**
 
 3. **Does auto-tap ever pay life for {B} (§3; CR 601.2b)?**
    - (a) **Recommended:** never. Life is paid only when the announcement claims it, as for printed Phyrexian symbols today. No life is lost without a click, and a spell only life can pay still lights up and opens the stepper.
    - (b) As a last tier, after mana and energy (ADR 0129 §5), shown in the preview. One fewer click when the player is short, but life is spent that the player never chose to spend.
    - (c) Always prefer life above a floor. It saves mana, but it decides a strategic choice for the player.
 
+   **Answered: (a), as recommended (owner decision 3).**
+
 4. **How the client asks (§4).**
    - (a) **Recommended:** if every symbol is granted, ask only when mana can't pay the cost, and add a **Pay life for {B}…** entry the player can use at any time. The choice is always there, without an extra click on every black spell.
    - (b) Always open the stepper, as for printed Phyrexian symbols. It is consistent, but it adds a click to almost every spell in a K'rrik deck.
    - (c) A seat setting (Ask, Only when short, Never), synced like ADR 0127's rules. Most flexible, but it adds a setting for one card.
+
+   **Answered: (a), as recommended (owner decision 4).**
 
 5. **How the bot uses it (§5; ADR 0126).**
    - (a) **Recommended:** no new code. It gets the same two life variants as a printed Phyrexian symbol, with the same floor of 10. The bot plays K'rrik as printed and nothing needs tuning.
    - (b) Lower the life price while the seat controls a lifelinker such as K'rrik. Sharper play, but it adds a board read and a weight to tune under ADR 0126 §8.
    - (c) Hide granted symbols from the bot. It needs no testing, but the bot plays K'rrik weaker than printed.
 
+   **Answered: (a), as recommended (owner decision 5).**
+
 6. **Delivery (Delivery).**
    - (a) **Recommended:** two PRs. PR 1 covers casts, activations and attack taxes, and PR 2 adds mana abilities and resolution payments. Each is small enough to review, and K'rrik is complete after PR 2.
    - (b) One PR with everything. A single review, but it touches the cast path, the mana-ability path, the prompt and the client at once.
    - (c) PR 1 only, with the rest on a registry `Waiting` row. Fastest, but K'rrik keeps a narrower caveat.
+
+   **Answered: (a), as recommended (owner decision 6).**
