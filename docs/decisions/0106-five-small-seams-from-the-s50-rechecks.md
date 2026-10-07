@@ -408,3 +408,20 @@ The riders are read at three different times, which is why the promise is data a
 A rider none of these covers registers a body with `RegisterCastFollowUp` and names it in `NextSpellPromise.FollowUp`; it runs once the spell is on the stack and `EventCast` is out. A promise lasts until end of turn unless it is granted `IndefiniteDuration` (an effect with no stated end, such as Xho Cai's).
 
 The snapshot carries the promise on `seats[].statics[].nextSpell` and the mark on `stack[].promisedCounters`, both additive; a binary from before the field refuses a file carrying a mark, the designed rollback case. Cards: Savage Summoning, Quicken, Hardened Berserker, Kaza, Roil Chaser, Saheeli, the Gifted.
+
+---
+
+## Amendment (2026-10-07): "Only your opponents may activate this ability" and "Only this creature's owner may activate" (#1947)
+
+§1 decision 1 made the permission part of the ability and left the other direction open: a row only the controller's opponents may use (Clergy and Knight of the Holy Nimbus), and a row only the owner may use (Personal Incarnation, whose controller can be a thief). Both ride the predicate decision 2 already made single.
+
+- **Two more bits beside `AnyPlayer`**: `ActivatedAbility.OpponentsOnly` and `OwnerOnly`, mirrored on `game.ActivatedAbilityShape`. At most one of the three is set. A copy or a layer-6 grant carries them, and ability removal takes them, for the same reason `AnyPlayer` does.
+- **`game.MayActivate` reads them on the battlefield**: opponents-only is every player but `source.Controller`; owner-only is `source.Owner` alone. So the controller of a stolen Incarnation is refused and its owner is not. Off the battlefield CR 108.4a is unchanged. `HasAnyPlayerAbility`, the enumerator's and the activation path's fast negative, now means "some row names an activator other than the controller" (`ActivatedAbilityShape.ReachesAcross`); the named row is still held to `MayActivate`, so a controller visiting its own Clergy is offered nothing.
+- **Registration** shares `checkAnyPlayerAbility`: two named activators on one row, the `{T}` / loyalty / crew / sacrifice-this components and a non-battlefield zone are refused as for `AnyPlayer`, and so is a `Purpose` on an opponents-only row, which the bot never reads (the heuristic reaches across only for an any-player row that declares one, decision 8; a bot that owns a stolen Incarnation therefore never activates it, which is weaker than printed, never stronger).
+- **Wire**: `opponents_only` and `owner_only` on `activated_abilities[i]`, additive. The per-seat copy a non-controller receives (decision 5) is filed for these rows exactly as for `any_player` rows. The controller's own opponents-only row (and a thief's owner-only row) is the client's to grey, from the card's `controller` and `owner` (`rowOpenToViewer`); whether a row is live for a seat is still only the digest's answer.
+- **Bots and models**: the enumerator offers the row to exactly the seats `MayActivate` names, so a model tier sees a Clergy it may activate against, labelled with the controller as for any-player rows, and `legal`'s dispatch test pins that the engine accepts every offered move (#544).
+- **`effects.RedirectToSourceOwner`** is Personal Incarnation's "is dealt to its owner instead" (ADR 0108 §9's `RedirectTo`), read from the source object's owner at resolution.
+
+Not shipped: Martyrdom's granted "Only you may activate this ability". Its activator is whoever cast the granting spell, which is not the creature's controller once the creature has changed hands, and an `AbilityGrant` bundle is registered by key with no per-grant player. Shipping it on the creature's controller would let a creature stolen after Martyrdom resolved hand its new controller the ability, which is stronger than printed. It stays on the seam row's `Waiting` list until a grant can carry the granting player.
+
+Cards: Clergy of the Holy Nimbus, Knight of the Holy Nimbus, Personal Incarnation.

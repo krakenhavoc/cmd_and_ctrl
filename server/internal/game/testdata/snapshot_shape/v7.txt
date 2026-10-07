@@ -174,6 +174,8 @@ battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
 battlefield.cards[].nextUntapSkips[].while.Also	array
 battlefield.cards[].nextUntapSkips[].while.Also[]	number:int
+battlefield.cards[].nextUntapSkips[].while.CombatPhase	number:int
+battlefield.cards[].nextUntapSkips[].while.CombatTurn	number:int
 battlefield.cards[].nextUntapSkips[].while.Condition	number:int
 battlefield.cards[].nextUntapSkips[].while.CounterKind	string
 battlefield.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -341,6 +343,8 @@ delayedTriggers[].due	bool
 delayedTriggers[].duration	object
 delayedTriggers[].duration.Also	array
 delayedTriggers[].duration.Also[]	number:int
+delayedTriggers[].duration.CombatPhase	number:int
+delayedTriggers[].duration.CombatTurn	number:int
 delayedTriggers[].duration.Condition	number:int
 delayedTriggers[].duration.CounterKind	string
 delayedTriggers[].duration.ExpiresAfterTurnsBegun	number:int
@@ -414,6 +418,7 @@ events[].colors	array
 events[].colors[]	string
 events[].combat	bool
 events[].combat_step	string
+events[].damage_not_life_loss	number:int
 events[].discard_cause	string
 events[].error_msg	string
 events[].exhaust	bool
@@ -601,6 +606,8 @@ exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
 exile.cards[].nextUntapSkips[].while.Also	array
 exile.cards[].nextUntapSkips[].while.Also[]	number:int
+exile.cards[].nextUntapSkips[].while.CombatPhase	number:int
+exile.cards[].nextUntapSkips[].while.CombatTurn	number:int
 exile.cards[].nextUntapSkips[].while.Condition	number:int
 exile.cards[].nextUntapSkips[].while.CounterKind	string
 exile.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -834,6 +841,8 @@ lastKnownPermanents{}[].attachedTo.Kind	string
 lastKnownPermanents{}[].attachedTo.Mode	number:int
 lastKnownPermanents{}[].attachedTo.Slot	number:int
 lastKnownPermanents{}[].attacking	bool
+lastKnownPermanents{}[].blocking	array
+lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic	object
 lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
@@ -1086,6 +1095,8 @@ lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
 lastKnownStack[].card.nextUntapSkips[].while.Also	array
 lastKnownStack[].card.nextUntapSkips[].while.Also[]	number:int
+lastKnownStack[].card.nextUntapSkips[].while.CombatPhase	number:int
+lastKnownStack[].card.nextUntapSkips[].while.CombatTurn	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Condition	number:int
 lastKnownStack[].card.nextUntapSkips[].while.CounterKind	string
 lastKnownStack[].card.nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -1348,6 +1359,7 @@ lastKnownStack[].item.trigger.Event.colors	array
 lastKnownStack[].item.trigger.Event.colors[]	string
 lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
+lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
@@ -1448,6 +1460,10 @@ outcome.winner	custom(uuid.UUID)
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
+pendingChoices[].askedByHand	string
+pendingChoices[].autoAnswerCard	string
+pendingChoices[].autoAnswerKey	string
+pendingChoices[].autoAnswerPrompt	string
 pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseMax	number:int
@@ -1811,6 +1827,7 @@ pendingTriggers[].trigger.Event.colors	array
 pendingTriggers[].trigger.Event.colors[]	string
 pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
+pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
@@ -2017,6 +2034,8 @@ phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
 phasedOut.cards[].nextUntapSkips[].while.Also	array
 phasedOut.cards[].nextUntapSkips[].while.Also[]	number:int
+phasedOut.cards[].nextUntapSkips[].while.CombatPhase	number:int
+phasedOut.cards[].nextUntapSkips[].while.CombatTurn	number:int
 phasedOut.cards[].nextUntapSkips[].while.Condition	number:int
 phasedOut.cards[].nextUntapSkips[].while.CounterKind	string
 phasedOut.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -2191,6 +2210,8 @@ scopedEffects[].controller	custom(uuid.UUID)
 scopedEffects[].duration	object
 scopedEffects[].duration.Also	array
 scopedEffects[].duration.Also[]	number:int
+scopedEffects[].duration.CombatPhase	number:int
+scopedEffects[].duration.CombatTurn	number:int
 scopedEffects[].duration.Condition	number:int
 scopedEffects[].duration.CounterKind	string
 scopedEffects[].duration.ExpiresAfterTurnsBegun	number:int
@@ -2352,6 +2373,8 @@ scopedEffects[].timestamp	number:int64
 seats	array
 seats[]	object
 seats[].agentClient	string
+seats[].autoAnswers	map:string
+seats[].autoAnswers{}	string
 seats[].botDeck	string
 seats[].botTier	string
 seats[].castPermissions	array
@@ -2373,6 +2396,8 @@ seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
 seats[].castPermissions[].duration.Also	array
 seats[].castPermissions[].duration.Also[]	number:int
+seats[].castPermissions[].duration.CombatPhase	number:int
+seats[].castPermissions[].duration.CombatTurn	number:int
 seats[].castPermissions[].duration.Condition	number:int
 seats[].castPermissions[].duration.CounterKind	string
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
@@ -2576,6 +2601,8 @@ seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
 seats[].command.cards[].nextUntapSkips[].while.Also	array
 seats[].command.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].command.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].command.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].command.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].command.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].command.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -2859,6 +2886,8 @@ seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
 seats[].emblems.cards[].nextUntapSkips[].while.Also	array
 seats[].emblems.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].emblems.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].emblems.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3133,6 +3162,8 @@ seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
 seats[].graveyard.cards[].nextUntapSkips[].while.Also	array
 seats[].graveyard.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].graveyard.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].graveyard.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3405,6 +3436,8 @@ seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
 seats[].hand.cards[].nextUntapSkips[].while.Also	array
 seats[].hand.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].hand.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].hand.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].hand.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].hand.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3688,6 +3721,8 @@ seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
 seats[].library.cards[].nextUntapSkips[].while.Also	array
 seats[].library.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].library.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].library.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].library.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].library.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].library.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3896,6 +3931,8 @@ seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].duration	object
 seats[].statics[].duration.Also	array
 seats[].statics[].duration.Also[]	number:int
+seats[].statics[].duration.CombatPhase	number:int
+seats[].statics[].duration.CombatTurn	number:int
 seats[].statics[].duration.Condition	number:int
 seats[].statics[].duration.CounterKind	string
 seats[].statics[].duration.ExpiresAfterTurnsBegun	number:int
@@ -4142,6 +4179,8 @@ stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
 stack.cards[].nextUntapSkips[].while.Also	array
 stack.cards[].nextUntapSkips[].while.Also[]	number:int
+stack.cards[].nextUntapSkips[].while.CombatPhase	number:int
+stack.cards[].nextUntapSkips[].while.CombatTurn	number:int
 stack.cards[].nextUntapSkips[].while.Condition	number:int
 stack.cards[].nextUntapSkips[].while.CounterKind	string
 stack.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -4407,6 +4446,7 @@ stackMeta[].trigger.Event.colors	array
 stackMeta[].trigger.Event.colors[]	string
 stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
+stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool

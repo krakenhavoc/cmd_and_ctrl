@@ -116,6 +116,27 @@ const (
 	// end step itself (CR 611.2b: the effect ends as the step begins).
 	UntilYourNextEndStep
 
+	// UntilEndOfCombat is "this combat" and "until end of combat"
+	// (ADR 0108 amendment 2026-10-07, #2027): the effect lasts until the
+	// combat PHASE it was made in ends. CR 511.3 and 724.2d both say
+	// "effects that last 'until end of combat' expire", at the moment
+	// the end of combat step ends or an effect ends the phase early.
+	//
+	// The seventh kind, appended after UntilYourNextEndStep so every
+	// persisted int keeps its meaning. A binary from before it refuses
+	// a file carrying it through Known; it never restores a window that
+	// does not end.
+	//
+	// Which combat is "this combat" is the phase INSTANCE, not the turn:
+	// an additional combat phase (Aurelia, Karlach) is a second combat
+	// in the same turn, and a "this combat" effect from the first has
+	// ended by the time the second begins. The stamp is the turn's
+	// identity (Turn.Seq) plus the phase instance (Turn.PhaseID), read
+	// by UntilEndOfCombatDuration and compared with the cursor by
+	// durationExpiredLocked. It is a pure read of the cursor, so there
+	// is no flag to forget to clear.
+	UntilEndOfCombat
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -264,6 +285,9 @@ func (d Duration) Problem() string {
 		if !c.Known() {
 			return fmt.Sprintf("duration condition %d joined by Also", c)
 		}
+	}
+	if d.Kind != UntilEndOfCombat && (d.CombatTurn != 0 || d.CombatPhase != 0) {
+		return fmt.Sprintf("a combat stamp on a %s duration", d.Kind)
 	}
 	if d.Kind != ForAsLongAs {
 		if len(d.Also) > 0 {
@@ -425,6 +449,14 @@ type Duration struct {
 	// the unknown-field scan names it, and Known refuses the condition.
 	CounterKind string `json:"CounterKind,omitempty"`
 
+	// CombatTurn and CombatPhase name the combat an UntilEndOfCombat
+	// duration lasts through: Turn.Seq and Turn.PhaseID as it was made
+	// (see the kind). Zero, and omitted, for every other kind; Problem
+	// refuses them there, because a binary that ignored them would be
+	// reading a duration differently from the one that wrote it.
+	CombatTurn  int `json:"CombatTurn,omitempty"`
+	CombatPhase int `json:"CombatPhase,omitempty"`
+
 	// Also is the rest of a conjunction (ADR 0109 §3, CR 611.2b): a
 	// ForAsLongAs duration lasts while Condition AND every condition
 	// listed here hold, and ends the moment any one of them stops.
@@ -539,6 +571,29 @@ func (g *Game) UntilYourNextEndStepDuration(player uuid.UUID) Duration {
 		Player:              player,
 		ExpiresAtTurnsBegun: target,
 	}
+}
+
+// UntilEndOfCombatDuration is "this combat" / "until end of combat"
+// (CR 511.3, 724.2d), stamped against the combat phase in progress.
+// The second return is false outside a combat phase: an effect that
+// lasts "this combat" when there is no combat has no combat to last
+// through, so by CR 611.2b's reading it never begins and the caller
+// registers nothing. Caller must hold g.mu.
+func (g *Game) UntilEndOfCombatDuration() (Duration, bool) {
+	if PhaseOf(g.Turn.Step) != PhaseCombat {
+		return Duration{}, false
+	}
+	return Duration{
+		Kind:        UntilEndOfCombat,
+		CombatTurn:  g.Turn.Seq,
+		CombatPhase: g.Turn.PhaseID,
+	}, true
+}
+
+// inCombatPhaseLocked reports whether the cursor is inside the combat
+// phase instance named by (turn, phase). Caller must hold g.mu.
+func (g *Game) inCombatPhaseLocked(turn, phase int) bool {
+	return PhaseOf(g.Turn.Step) == PhaseCombat && g.Turn.Seq == turn && g.Turn.PhaseID == phase
 }
 
 // endStepOfTurnStillAheadLocked reports whether it is `player`'s own
@@ -794,6 +849,13 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// not.
 		p := g.playerByIDLocked(d.Player)
 		return p != nil && p.EndStepTurn >= d.ExpiresAtTurnsBegun
+	case UntilEndOfCombat:
+		// Over the moment the cursor is outside the combat phase it
+		// names (CR 511.3, 724.2d): the next step after end of combat,
+		// the next phase an effect ended the combat for, or any later
+		// turn. Pure, so the sweeps that run at step transitions
+		// (advanceCursorLocked) and at cleanup need no special case.
+		return !g.inCombatPhaseLocked(d.CombatTurn, d.CombatPhase)
 	case ForAsLongAs:
 		return !g.durationConditionHoldsLocked(d)
 	case Indefinite, WhileInZone:
@@ -992,6 +1054,8 @@ func (k DurationKind) String() string {
 		return "while it remains in the zone"
 	case UntilYourNextEndStep:
 		return "until your next end step"
+	case UntilEndOfCombat:
+		return "until end of combat"
 	}
 	return "unknown duration"
 }

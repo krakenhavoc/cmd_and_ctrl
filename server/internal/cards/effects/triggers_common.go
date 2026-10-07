@@ -1062,7 +1062,7 @@ func WheneverOneOrMoreOpponentsEachLoseExactly(n int, label string, effect Effec
 			if ev.Kind == game.EventChangeLife && ev.Amount >= 0 {
 				return false
 			}
-			if ev.Kind == game.EventDealDamage && ev.Amount <= 0 {
+			if ev.Kind == game.EventDealDamage && ev.DamageLifeLoss() <= 0 {
 				return false
 			}
 			p := g.PlayerByIDForEffect(ev.Target)

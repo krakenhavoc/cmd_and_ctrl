@@ -48,6 +48,7 @@ const (
 	redirectToClause
 	redirectToEnchanted
 	redirectToObject
+	redirectToSourceOwner
 )
 
 var (
@@ -66,6 +67,11 @@ var (
 	// an Aura's own ability (Saving Grace), the creature it is attached to
 	// as the ability resolves, or as the Aura last existed (CR 608.2h).
 	RedirectToEnchanted = RedirectTo{kind: redirectToEnchanted}
+	// RedirectToSourceOwner is "is dealt to its owner instead": the OWNER
+	// of the object the ability came from, which is not its controller
+	// once it has been stolen (Personal Incarnation). A source that has
+	// left or is a new object leaves nowhere to redirect to.
+	RedirectToSourceOwner = RedirectTo{kind: redirectToSourceOwner}
 )
 
 // RedirectToClause is "is dealt to <the target that answered clause i>
@@ -169,6 +175,16 @@ func (t RedirectTo) resolve(ctx *Context, red *game.DamageRedirection) bool {
 		red.To = src
 	case redirectToYou:
 		red.To = ctx.Controller()
+	case redirectToSourceOwner:
+		src := ctx.Source()
+		if src == uuid.Nil || ctx.isNewSourceObjectAsThis(src) {
+			return false
+		}
+		card, ok := ctx.Game.LookupCardForEffect(src)
+		if !ok {
+			return false
+		}
+		red.To = card.Owner
 	case redirectToSourceController:
 		red.ToSourceController = true
 	case redirectToClause:

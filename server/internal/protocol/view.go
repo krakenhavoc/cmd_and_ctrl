@@ -467,6 +467,18 @@ type PendingChoiceView struct {
 	// Added in S19 sub-PR 6.
 	PayCost string `json:"pay_cost,omitempty"`
 
+	// AutoAnswerKey is the key a standing answer to this prompt is
+	// filed under (ADR 0127 §2), empty when the prompt cannot take one.
+	// AutoAnswerCard and AutoAnswerPrompt are its display copies: the
+	// card's name and the question, which the client keeps beside the
+	// rule in Settings. AskedByHand says why a prompt that has a rule
+	// is asked anyway ("no_mana", "empty_library", "loop", "undone").
+	// All four are the chooser's alone: FilterViewFor clears them for
+	// every other viewer.
+	AutoAnswerKey    string `json:"auto_answer_key,omitempty"`
+	AutoAnswerCard   string `json:"auto_answer_card,omitempty"`
+	AutoAnswerPrompt string `json:"auto_answer_prompt,omitempty"`
+	AskedByHand      string `json:"asked_by_hand,omitempty"`
 	// PhyrexianSymbols / PhyrexianGranted are the "or 2 life" half of a
 	// mana "pay_unless" (ADR 0131 §2): how many symbols of PayCost the
 	// CHOOSER could pay with life — a printed {B/P}, or a {B} under
@@ -1614,6 +1626,11 @@ type PlayerView struct {
 	// other viewer. The client compares it with its local setting and
 	// re-sends set_trigger_order_preference when they differ.
 	TriggerOrderAlwaysAsk bool `json:"trigger_order_always_ask,omitempty"`
+	// AutoAnswers reflects Player.AutoAnswers (ADR 0127 §3), sorted by
+	// key. Private to its seat, like TriggerOrderAlwaysAsk: the client
+	// compares it with its synced setting and sends set_auto_answers
+	// when they differ.
+	AutoAnswers []AutoAnswerRuleView `json:"auto_answers,omitempty"`
 	// MulligansTaken reflects Player.MulligansTaken. Surfaced so the
 	// UI can show "mulligans taken: N". Added in S08.
 	MulligansTaken int `json:"mulligans_taken,omitempty"`
@@ -3427,6 +3444,14 @@ type ActivatedAbilityView struct {
 	// It is here so a client or a bot can tell that activating the row
 	// returns the permanent without parsing the label.
 	ReturnSelf bool `json:"return_self,omitempty"`
+	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
+	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
+	// source won't untap during the activator's next untap step.
+	// Always payable (CR 701.43b), so it never greys the row; nothing
+	// is chosen, so nothing rides the payload. The client draws an
+	// "exert" chip from it, and a bot prices it without parsing the
+	// label.
+	Exert bool `json:"exert,omitempty"`
 	// DiscardCostN / Label / Options describe a "Discard N cards"
 	// cost component (#660): Fauna Shaman's "Discard a creature
 	// card", Cryptbreaker's "Discard a card". DiscardCostN is the
@@ -3647,6 +3672,16 @@ type ActivatedAbilityView struct {
 	// CR 109.5). Whether the row is live for the viewer right now is
 	// still the digest's answer (`legal_actions`), never the row's.
 	AnyPlayer bool `json:"any_player,omitempty"`
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (Clergy of the Holy Nimbus) and OwnerOnly is "Only this creature's
+	// owner may activate this ability" (Personal Incarnation), ADR 0106
+	// §1 amendment 2026-10-07, #1947. Absent on every other row. The
+	// client reads them with the permanent's controller and owner to say
+	// who the row is open to: the controller's own opponents-only row is
+	// greyed, and a non-controller sees the rows open to it (they ride
+	// the same per-seat copy as any_player rows).
+	OpponentsOnly bool `json:"opponents_only,omitempty"`
+	OwnerOnly     bool `json:"owner_only,omitempty"`
 	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
 	// set by effects.EquipAbility and nothing else, #1208). Absent on
 	// every other row. Bot data (#2449): an equip that moves an
@@ -3810,6 +3845,11 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
+	// Exert is an "Exert this land" / "Exert this creature" component
+	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
+	// (CR 701.43b). The auto-tapper never pays such a row on its own,
+	// so the player activates it from this menu.
+	Exert bool `json:"exert,omitempty"`
 	// ManaCost is a mana component of the activation cost — the
 	// Signet cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}".
 	// Advisory, like LifeCost: the client renders the cost chip, and
@@ -6398,6 +6438,12 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	}
 }
 
+// reachesAcross reports whether the row names an activator other than
+// the plain controller (any player, only opponents, only the owner).
+func (a ActivatedAbilityView) reachesAcross() bool {
+	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly
+}
+
 // stampAnyPlayerOffers files, for every seat that does not control the
 // permanent, its own copy of the permanent's "Any player may activate
 // this ability" rows (ADR 0106 §1 decision 5, #1793).
@@ -6422,7 +6468,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller uuid.UUID, restricted bool) {
 	anyRow := false
 	for _, a := range c.ActivatedAbilities {
-		if a.AnyPlayer {
+		if a.reachesAcross() {
 			anyRow = true
 			break
 		}
@@ -6437,13 +6483,13 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 		mine := viewOfActivatedAbilities(g, card, p.ID, game.ZoneBattlefield, restricted)
 		byIndex := make(map[int]ActivatedAbilityView, len(mine))
 		for _, a := range mine {
-			if a.AnyPlayer {
+			if a.reachesAcross() {
 				byIndex[a.Index] = a
 			}
 		}
 		rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
 		for i, a := range c.ActivatedAbilities {
-			if own, ok := byIndex[a.Index]; ok && a.AnyPlayer {
+			if own, ok := byIndex[a.Index]; ok && a.reachesAcross() {
 				// The grantor's name rides the exported row only
 				// (stampGrantedAbilities); keep it on this copy too.
 				own.GrantedBy = a.GrantedBy
@@ -7113,6 +7159,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
 			PayCost:       c.PayCost,
+			// ADR 0127 §8, filtered to the chooser in FilterViewFor.
+			AutoAnswerKey:    c.AutoAnswerKey,
+			AutoAnswerCard:   c.AutoAnswerCard,
+			AutoAnswerPrompt: c.AutoAnswerPrompt,
+			AskedByHand:      string(c.AskedByHand),
 		}
 		// ADR 0131 §2: the life half of a mana payment.
 		if c.Kind == game.PendingChoicePayUnless && c.PayAction() == nil {
@@ -7799,6 +7850,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           viewOfAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -8111,6 +8163,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1530: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
 			out.TriggerOrderAlwaysAsk = false
+			// ADR 0127 §8: and so are its standing answers.
+			out.AutoAnswers = nil
 		}
 		// S13.5: redact every visible card based on KnownBy.
 		// Hand + library still get their wholesale-hide (S04
@@ -8315,6 +8369,13 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 	out := make([]PendingChoiceView, len(src))
 	for i, c := range src {
 		out[i] = c
+		// ADR 0127 §8: the standing-answer fields are the chooser's.
+		if c.Chooser != viewerID {
+			out[i].AutoAnswerKey = ""
+			out[i].AutoAnswerCard = ""
+			out[i].AutoAnswerPrompt = ""
+			out[i].AskedByHand = ""
+		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].SearchMax = 0
@@ -9557,11 +9618,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			DiscardSelf:   a.Cost.DiscardSelf,
 			ExileSelf:     a.Cost.ExileSelf,
 			ReturnSelf:    a.Cost.ReturnSelf,
+			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
 			AnyPlayer:     a.AnyPlayer,
+			OpponentsOnly: a.OpponentsOnly,
+			OwnerOnly:     a.OwnerOnly,
 			Equip:         a.Equip,
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
@@ -10159,6 +10223,7 @@ func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityV
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
+			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
@@ -10296,4 +10361,25 @@ func topCostLabel(n int) string {
 		return "a card from your hand on top of your library"
 	}
 	return fmt.Sprintf("%d cards from your hand on top of your library", n)
+}
+
+// AutoAnswerRuleView is one of a seat's standing answers (ADR 0127 §3):
+// the key and "always" or "never".
+type AutoAnswerRuleView struct {
+	Key    string `json:"key"`
+	Answer string `json:"answer"`
+}
+
+// viewOfAutoAnswers is a seat's rules sorted by key, so two frames of
+// the same rules are the same bytes.
+func viewOfAutoAnswers(rules map[string]game.AutoAnswer) []AutoAnswerRuleView {
+	if len(rules) == 0 {
+		return nil
+	}
+	out := make([]AutoAnswerRuleView, 0, len(rules))
+	for k, v := range rules {
+		out = append(out, AutoAnswerRuleView{Key: k, Answer: string(v)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out
 }

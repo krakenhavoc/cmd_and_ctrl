@@ -1539,6 +1539,15 @@ type ActivatedAbility struct {
 	// component and on an ability with a non-battlefield zone. See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (Clergy of the Holy Nimbus); OwnerOnly is "Only this creature's
+	// owner may activate this ability" (Personal Incarnation). The
+	// activator is "you" in the effect. Register refuses them beside each
+	// other or AnyPlayer, with the components and zones AnyPlayer refuses,
+	// and with a Purpose (the bot never reads one on these rows). See
+	// game.ActivatedAbilityShape.OpponentsOnly.
+	OpponentsOnly bool
+	OwnerOnly     bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does
@@ -1913,6 +1922,12 @@ type ManaAbilityCost struct {
 	// Add one mana of any color". Paid after the life; the auto-tapper
 	// plans it in the energy tier, before the pain tier.
 	Energy int
+
+	// Exert is "Exert this land" / "Exert this creature" (ADR 0130 §4):
+	// Arena of Glory's "{R}, {T}, Exert this land: Add {R}{R}". Still a
+	// mana ability (CR 605.1a). The auto-tapper never pays it on its
+	// own; the player activates the row.
+	Exert bool
 
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",

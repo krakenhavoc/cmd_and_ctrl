@@ -148,6 +148,10 @@ var (
 	// listed card that is still in a graveyard (CR 603.7c).
 	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
 
+	// "Manifest dread" after the creature died (Turn Inside Out, #2570):
+	// the trigger's controller manifests dread.
+	manifestDreadAfterItDiedBody = game.SimpleDelayedBody("dies/manifest-dread", manifestDreadBody)
+
 	// "That spell gains sunburst" for the spell an event-conditioned
 	// trigger fired on (Solar Array, ADR 0109 §11).
 	thatSpellGainsSunburstBody = game.SimpleDelayedBody("sunburst/that-spell-gains", thatSpellYouJustCastGainsSunburst)
@@ -155,6 +159,11 @@ var (
 	// Berserk: destroy the creature <Object> at the next end step if it
 	// is still that object and it attacked this turn.
 	berserkDestroyIfAttackedBody = game.DelayedBody("berserk/destroy-if-attacked", berserkDestroyIfAttacked)
+
+	// Destroy the permanent <Object> names, if it is still that object
+	// on the battlefield: "Destroy it at the beginning of the next end
+	// step" (Glyph of Destruction, #2027).
+	destroyTheObjectBody = game.DelayedBody("destroy/the-object", destroyTheObject)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

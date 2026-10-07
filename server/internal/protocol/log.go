@@ -289,6 +289,14 @@ const (
 	// the LogZone line for the discard that paid the cost, which is
 	// the same motion in words that do not say "cycled".
 	LogCycle LogKind = "cycle"
+	// LogAutoAnswer — the server answered a prompt with its chooser's
+	// standing answer (ADR 0127 §6): "Bob paid {1} for Rhystic Study
+	// (automatic)". `Call` is the answer ("pay", "dont_pay", "yes",
+	// "no"), public as the answer is in paper; `Label` is the cost paid
+	// on a pay, or the trigger's stack label on an optional trigger,
+	// redacted with the card's name. "(automatic)" is public too: CR
+	// 732.1a asks that the table understand each player's shortcut.
+	LogAutoAnswer LogKind = "auto_answer"
 	// LogCounters — the count of one counter kind on one card
 	// changed (CR 122). `Label` is the kind ("+1/+1") and `Amount`
 	// the count AFTER the change, which is what the engine's event
@@ -311,6 +319,12 @@ const (
 	// the walk found nothing. The line comes when the card is settled:
 	// after the cast that used the grant, or once it is in a hand.
 	LogDiscover LogKind = "discover"
+	// LogManifestDread — a player manifested dread (CR 701.62a, ADR
+	// 0082's 2026-10-07 amendment). NEVER a card, for anyone: the
+	// manifested card is face down and known only to its controller, and
+	// the card that went to the graveyard is already on the table's
+	// zone-move line.
+	LogManifestDread LogKind = "manifest_dread"
 	// LogSagaChapter — a lore counter advanced a Saga onto a chapter
 	// (CR 714.2b); `Amount` is the chapter number.
 	LogSagaChapter LogKind = "saga_chapter"
@@ -1447,6 +1461,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventAutoAnswer:
+		// ADR 0127 §6. Every automatic answer is a line for the whole
+		// table: the answer, the card, and that it was a standing one.
+		base.Kind = LogAutoAnswer
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Call = ev.Call
+		base.Label = ev.Label
+		// An optional trigger's label names the card the way a
+		// LogTrigger's does, and is redacted off the source's knower set
+		// the same way (#1257).
+		base.ability = ev.Call == game.AutoAnswerCallYes || ev.Call == game.AutoAnswerCallNo
+		return base, true
+
 	case game.EventCycle:
 		// CR 702.29b. The cost's discard already produced a LogZone
 		// line for the same motion; publicLogOf REPLACES it with this
@@ -1513,6 +1540,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogDiscover
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventManifestDread:
+		// CR 701.62a. Carries no card reference on purpose: the
+		// manifested card is hidden from every seat but its controller
+		// (CR 708.5) and the line must not be the leak.
+		base.Kind = LogManifestDread
 		return base, true
 
 	case game.EventSagaChapter:
@@ -2191,6 +2225,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s activated %s's %s", actor, target, card)
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
+	case LogAutoAnswer:
+		return renderAutoAnswerText(e, actor, cardName)
 	case LogTrigger:
 		line := fmt.Sprintf("%s's trigger: %s", actor, abilityName(e.Label, cardName))
 		if e.Label == "" && cardName == "" {
@@ -2212,6 +2248,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s discovered %d and found nothing", actor, e.Amount)
 		}
 		return fmt.Sprintf("%s discovered %d — %s", actor, e.Amount, card)
+	case LogManifestDread:
+		return fmt.Sprintf("%s manifested dread", actor)
 	case LogSagaChapter:
 		if e.Amount <= 0 {
 			return fmt.Sprintf("%s advanced a chapter", card)
@@ -2733,4 +2771,35 @@ func logNameOf(c CardView) string {
 		return c.Name
 	}
 	return c.Faces[0].Name + " // " + c.Faces[1].Name
+}
+
+// renderAutoAnswerText writes a LogAutoAnswer line (ADR 0127 §6, owner
+// decision 11): the answer, what it was about, and "(automatic)".
+//
+//	Bob paid {1} for Rhystic Study (automatic)
+//	Bob didn't pay for Rhystic Study (automatic)
+//	Alice answered Yes to Consecrated Sphinx — draw two cards (automatic)
+//
+// A redacted entry has lost the card's name and the label with it, and
+// says only that a standing answer was given.
+func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
+	card := nameOr(cardName, "a card")
+	switch e.Call {
+	case game.AutoAnswerCallPay:
+		if e.Label == "" {
+			return fmt.Sprintf("%s paid for %s (automatic)", actor, card)
+		}
+		return fmt.Sprintf("%s paid %s for %s (automatic)", actor, e.Label, card)
+	case game.AutoAnswerCallDontPay:
+		return fmt.Sprintf("%s didn't pay for %s (automatic)", actor, card)
+	}
+	answer := "No"
+	if e.Call == game.AutoAnswerCallYes {
+		answer = "Yes"
+	}
+	subject := card
+	if e.Label != "" {
+		subject = abilityName(e.Label, cardName)
+	}
+	return fmt.Sprintf("%s answered %s to %s (automatic)", actor, answer, subject)
 }

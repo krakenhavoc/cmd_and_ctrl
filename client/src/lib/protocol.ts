@@ -905,6 +905,8 @@ export type LogKind =
   // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
   // `card_id` the discovered card, absent when nothing was found.
   | "discover"
+  // ADR 0082 amendment (#2570): a player manifested dread. Carries no card.
+  | "manifest_dread"
   | "saga_chapter"
   | "class_level"
   // ADR 0103: a Room's door was unlocked or locked (CR 709.5c/g);
@@ -2562,6 +2564,10 @@ export interface ActivatedAbilityView {
   // Chains, Shigeki). Advisory like `exile_self`: the source is the
   // payment, so nothing is picked and nothing is sent.
   return_self?: boolean;
+  // ADR 0130 §4: "Exert this creature" — the source won't untap during
+  // the activator's next untap step. Always payable, so it never greys
+  // the row, and nothing is sent.
+  exert?: boolean;
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
@@ -2705,6 +2711,13 @@ export interface ActivatedAbilityView {
   // live for the viewer right now is still the digest's answer
   // (`legal_actions`), never the row's. Absent on every other row.
   any_player?: boolean;
+  // ADR 0106 §1 amendment 2026-10-07 (#1947): "Only your opponents may
+  // activate this ability" (Clergy of the Holy Nimbus) and "Only this
+  // creature's owner may activate this ability" (Personal Incarnation).
+  // Read with the card's `controller` and `owner` to say who the row is
+  // open to; the controller's own opponents-only row is greyed.
+  opponents_only?: boolean;
+  owner_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
@@ -3724,6 +3737,10 @@ export interface ManaAbilityView {
   // ADR 0129 §5: a "Pay N {E}" component — Aether Hub's "{T}, Pay
   // {E}:". When the controller is short, cant_activate says so.
   energy_cost?: number;
+  // ADR 0130 §4: "Exert this land" / "Exert this creature" (Arena of
+  // Glory, Oasis Ritualist). The auto-tapper never pays such a row; the
+  // player activates it from this menu.
+  exert?: boolean;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with

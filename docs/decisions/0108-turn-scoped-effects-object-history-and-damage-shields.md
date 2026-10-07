@@ -545,3 +545,37 @@ All twelve ship Full: Blinding Fog, Chameleon Blur, Commencement of Festivities,
 ### What is still out
 
 Nothing on the row. The seam is closed.
+
+---
+
+## Amendment 2026-10-07 — §7: durations of "this combat", "until end of combat" and "while this Saga remains" (#2027)
+
+Delivery PR 7b left five cards whose shield or pump does not last "this turn": Sewers of Estark, Suppressor Skyguard and Winter's Chill prevent combat damage "this combat", Glyph of Destruction's +10/+0 lasts until end of combat, and Old Fat Spider Can't See Me's chapter II lasts "for as long as this Saga remains on the battlefield". With an additional combat phase "this combat" and "this turn" differ, so none of them could ship as "this turn".
+
+### The rules
+
+- **CR 611.2a, 611.2b:** a continuous effect from a resolved spell or ability lasts as long as it says. An effect whose duration is already over as it would begin never begins.
+- **CR 511.3:** as the end of combat step ends, creatures are removed from combat, and effects that last "until end of combat" expire. **CR 724.2d** says the same for an effect that ends the combat phase.
+- **CR 506.1** and the turn plan (ADR 0059 Decision 3): a turn can hold more than one combat phase, and each is its own phase instance.
+
+### Decision
+
+1. **A seventh duration kind, `UntilEndOfCombat`.** It names the combat phase INSTANCE it was made in, by the turn's identity and the phase instance (`Duration.CombatTurn` is `Turn.Seq`, `Duration.CombatPhase` is `Turn.PhaseID`), both stamped by `Game.UntilEndOfCombatDuration`. Appended after `UntilYourNextEndStep`, so every stored kind keeps its meaning.
+2. **One expiry rule, a pure read of the cursor.** `durationExpiredLocked` says the effect is over when the cursor is not inside that combat phase. There is no flag to clear. `advanceCursorLocked` runs the ordinary sweep after every move out of a combat step, which is the one seam every step transition takes, `EndCombatPhaseForEffect` included (it walks the cursor out step by step), and any later cleanup or turn start would catch a turn that ended early.
+3. **No combat, no effect.** `UntilEndOfCombatDuration` returns false outside a combat phase. A card registers nothing then, which is CR 611.2b's reading of an effect that has already ended as it begins.
+4. **"While this Saga remains" needed no new duration.** `ForAsLongAs` with `WhileSourceOnBattlefield` (ADR 0063) already says it, keyed on the Saga as the object it is now (CR 400.7). What the damage shield lacked was a way to take either duration: `DamageShield.Duration`, a non-zero `Duration`, replaces the default. It is refused beside `UntilYourNextTurn` and when `Duration.Problem` names anything. On the card side, `effects.PreventDamageFromSource.Lasts` is `ShieldThisTurn` (the default), `ShieldThisCombat` or `ShieldWhileSourceRemains`. `effects.DurationUntilEndOfCombat` builds the duration for a `ScopedEffectFor` (Glyph of Destruction's +10/+0).
+5. **Validation.** `Duration.Problem` refuses the two combat fields on any other kind, so a binary that ignores them cannot read a duration differently from the one that wrote it.
+
+### Snapshot impact
+
+- New `Duration` keys `CombatTurn` and `CombatPhase`, omitted when zero, so every stored duration reads the same. Additive under v7 (`-update-shape`); the shape file gains the two keys at every route to a `Duration`.
+- The new kind is an integer one past the last. A binary from before this amendment refuses a file carrying it (`Duration.Known`, ADR 0041 P4) rather than restoring an effect that never ends. No closure route: the duration is plain data.
+- No fixture changes.
+
+### Cards
+
+Four ship `full`: Glyph of Destruction (a CR 603.7 delayed trigger destroys the Wall as the object it is now, via the new `destroy/the-object` body), Old Fat Spider Can't See Me, Sewers of Estark and Suppressor Skyguard (its "another opponent who isn't being attacked" is an intervening if, checked on trigger and again on resolution, CR 603.4).
+
+### What is still out
+
+- **Winter's Chill** moves to a new row, `x-capped-by-a-count` (#2581). Its "this combat" prevention is expressible now. "X can't be greater than the number of snow lands you control" is not: the engine bounds X only through a cost, so the card would cast for any X, stronger than printed.

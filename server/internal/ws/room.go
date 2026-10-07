@@ -209,6 +209,13 @@ type undoEntry struct {
 	// than the lazy one (let it stand) — backwards for a feature
 	// whose entire safety argument is that it is reversible.
 	freeUndo bool
+
+	// autoAnswered is the prompt this entry's commit answered for its
+	// chooser with their standing answer (ADR 0127 §4), or uuid.Nil.
+	// Undoing such an entry reopens the prompt, and the room marks it
+	// asked by hand so the next commit does not answer it again (§6).
+	// Room state, never persisted.
+	autoAnswered uuid.UUID
 }
 
 // undoStackCap bounds the per-room undo ring. 32 is a casual-game-
@@ -302,12 +309,63 @@ func (r *Room) apply(caller uuid.UUID, fn func() error, st *commitStat) (protoco
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
-	r.undoStack = append(r.undoStack, undoEntry{pre: pre, caller: caller})
+	r.pushUndoLocked(undoEntry{pre: pre, caller: caller})
+	return r.autoAnswerThenCaptureLocked()
+}
+
+// pushUndoLocked pushes one entry onto the undo ring. Caller MUST hold
+// r.mu.
+func (r *Room) pushUndoLocked(e undoEntry) {
+	r.undoStack = append(r.undoStack, e)
 	if len(r.undoStack) > undoStackCap {
 		// Drop the oldest entry. Trim by reslicing forward — the
 		// underlying array's first slot is now unreachable, GC'd on
 		// next allocation. Keeping the cap small bounds the leak.
 		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
+	}
+}
+
+// maxAutoAnswersPerCommit bounds the automatic answers one commit can
+// set off. Each answer is one prompt leaving the queue, and a prompt is
+// asked only by a resolution or an answer, so a real table never gets
+// near it; it is a backstop against a card whose answer queues the same
+// question again.
+const maxAutoAnswersPerCommit = 64
+
+// autoAnswerThenCaptureLocked answers, one commit each, every prompt a
+// seat has a standing answer for (ADR 0127 §4), then captures the
+// frame the caller returns. Each automatic answer is its own commit:
+// the frame of the commit before it is captured first (a replay line
+// and a dump each), then the game is cloned for the undo entry,
+// answered, and the entry pushed — stamped with the CHOOSER, so they
+// can take it back, and free (owner decision 8), since they did not
+// click it. The last frame is returned as the caller's.
+//
+// It runs under the room lock with no goroutine, timer or subscriber,
+// so a prompt raised by any commit — a human's, a bot's, the admin's,
+// a lobby step — is answered the same way, also when no socket is
+// connected, and a lockstep arena replays the same answers in the same
+// order. Caller MUST hold r.mu.
+func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) {
+	for i := 0; i < maxAutoAnswersPerCommit; i++ {
+		choiceID, chooser, ok := r.Game.NextAutoAnswer()
+		if !ok {
+			break
+		}
+		if _, _, err := r.captureLocked(true); err != nil {
+			return protocol.GameView{}, 0, err
+		}
+		pre := r.Game.Clone()
+		if err := r.Game.AutoAnswer(choiceID); err != nil {
+			// Should not happen: NextAutoAnswer just named it under the
+			// same lock. Put the game back and ask the player instead,
+			// so the loop cannot spin on it.
+			r.log.Warn("automatic answer failed", "choice", choiceID, "err", err)
+			r.rollbackLocked(pre)
+			r.Game.MarkAskedByHand(choiceID, game.AskedByHandUndone)
+			continue
+		}
+		r.pushUndoLocked(undoEntry{pre: pre, caller: chooser, freeUndo: true, autoAnswered: choiceID})
 	}
 	return r.captureLocked(true)
 }
@@ -398,12 +456,9 @@ func (r *Room) applyBundle(b Bundle, st *commitStat) (protocol.GameView, uint64,
 	}
 
 	st.applied = true
-	r.undoStack = append(r.undoStack, undoEntry{pre: pre, caller: b.Caller, freeUndo: b.FreeUndo})
-	if len(r.undoStack) > undoStackCap {
-		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
-	}
+	r.pushUndoLocked(undoEntry{pre: pre, caller: b.Caller, freeUndo: b.FreeUndo})
 	r.pendingAnnotation = b.Annotation
-	return r.captureLocked(true)
+	return r.autoAnswerThenCaptureLocked()
 }
 
 // rollbackLocked restores the game to a pre-mutation clone. Caller
@@ -453,7 +508,7 @@ func (r *Room) applyExternal(fn func() error, st *commitStat) (protocol.GameView
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
-	return r.captureLocked(true)
+	return r.autoAnswerThenCaptureLocked()
 }
 
 // Subscribe registers a commit observer and returns its wake channel
@@ -567,6 +622,12 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	r.Game.WithWriteLock(func() {
 		r.Game.RestoreFrom(top.pre)
 	})
+	// ADR 0127 §6: an undone automatic answer reopens its prompt, and
+	// the player answers it by hand. Without the mark the next commit
+	// would answer it again.
+	if top.autoAnswered != uuid.Nil {
+		r.Game.MarkAskedByHand(top.autoAnswered, game.AskedByHandUndone)
+	}
 
 	// Spend the budget AFTER restore — the restore reset the budget
 	// to its pre-action value (which had not yet been spent), so the

@@ -52,6 +52,8 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			CostModifiers: a.CostModifiers,
 			Uncopyable:    a.Uncopyable,
 			AnyPlayer:     a.AnyPlayer,
+			OpponentsOnly: a.OpponentsOnly,
+			OwnerOnly:     a.OwnerOnly,
 			Purpose:       a.Purpose,
 			Effect:        a.Effect,
 		}
@@ -78,6 +80,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			TapOthers:                 a.Cost.TapOthers,
 			LifeCost:                  a.Cost.Life,
 			EnergyCost:                a.Cost.Energy,
+			ExertCost:                 a.Cost.Exert,
 			ManaCost:                  a.Cost.Mana,
 			RemoveCounters:            a.Cost.RemoveCounters,
 			AddCounter:                a.Cost.AddCounter,

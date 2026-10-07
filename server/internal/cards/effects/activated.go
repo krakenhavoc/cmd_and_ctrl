@@ -204,6 +204,14 @@ func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
 // waived; only mana is.
 func PayEnergy(n int) game.AbilityCost { return game.AbilityCost{Energy: n} }
 
+// ExertThis is "Exert this creature" as a cost (ADR 0130 §4, CR
+// 701.43a): the source won't untap during the activator's next untap
+// step. Compose it with the rest — Plus(ManaCost("{W}"), TapCost(),
+// ExertThis()) is Pride Sovereign's "{W}, {T}, Exert this creature".
+// Always payable, again after an earlier exert this turn (CR 701.43b);
+// a "whenever you exert a creature" payoff sees it.
+func ExertThis() game.AbilityCost { return game.AbilityCost{Exert: true} }
+
 // PayXEnergy is "Pay X {E}" (CR 107.3a): the activator announces X,
 // which may not exceed their energy, and the effect reads it back with
 // ctx.X() or item.X.
@@ -368,6 +376,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// than printed, the #259 direction.
 		if c.ReturnSelf {
 			out.ReturnSelf = true
+		}
+		// ADR 0130 §4: and the exert component. A composed "{T}, Exert
+		// this creature" that dropped it would untap next turn — stronger
+		// than printed, the #259 direction.
+		if c.Exert {
+			out.Exert = true
 		}
 	}
 	return out

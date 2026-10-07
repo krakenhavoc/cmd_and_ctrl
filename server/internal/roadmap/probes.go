@@ -49,6 +49,18 @@ func declaresAnyPlayerActivation(s effects.Spec) bool {
 	return false
 }
 
+// declaresNamedActivator reports whether the spec prints an "Only your
+// opponents may activate" or "Only this creature's owner may activate"
+// row (ADR 0106 §1 amendment 2026-10-07, #1947).
+func declaresNamedActivator(s effects.Spec) bool {
+	for _, a := range s.Activated {
+		if a.OpponentsOnly || a.OwnerOnly {
+			return true
+		}
+	}
+	return false
+}
+
 // hasKeyword reports whether the spec declares one of the canonical
 // keyword tokens in PrintedKeywords. A token ending in a space is a
 // prefix ("protection from ").

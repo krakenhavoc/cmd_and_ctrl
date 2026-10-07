@@ -301,6 +301,29 @@ type MoveCost struct {
 	// {E}" as free. Always positive when present: the enumerator has
 	// already checked the seat has the energy.
 	Energy int `json:"energy,omitempty"`
+
+	// Exert is true when the move exerts its own source as part of the
+	// cost (ADR 0130 §4, CR 701.43a): Steward of Solidarity's "{T},
+	// Exert this creature:", Arena of Glory's "Exert this land". The
+	// source won't untap during the seat's next untap step. The params
+	// name nothing for it, so without this a policy would price the
+	// activation as a plain {T}. An exert cost is always payable, so the
+	// enumerator gates nothing on it.
+	Exert bool `json:"exert,omitempty"`
+}
+
+// withExert marks a (possibly nil) MoveCost as exerting the move's
+// source (ADR 0130 §4). Nil stays nil when the cost does not exert.
+func withExert(c *MoveCost, exert bool) *MoveCost {
+	if !exert {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Exert = true
+	return &out
 }
 
 // withHandDiscard adds a "Discard your hand" count to a (possibly nil)
