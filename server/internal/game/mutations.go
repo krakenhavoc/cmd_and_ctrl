@@ -4710,6 +4710,9 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	}
 	p.Eliminated = true
 	p.AttemptedEmptyDraw = false
+	// #2450: a player leaving the game is loop progress (ADR 0055's
+	// 2026-10-07 amendment, option B, owner decision 3a).
+	g.noteLoopProgressLocked()
 	// #2275: the departure takes their spells and abilities off the
 	// stack (CR 800.4a), so what the other seats passed over may not
 	// be what is on top now. The succession starts again from whoever

@@ -231,6 +231,10 @@ func (g *Game) emitPlayerCounterDeltaLocked(playerID uuid.UUID, name string, bef
 	if after == before {
 		return
 	}
+	if name == CounterPoison && after > before {
+		// #2450: a new highest poison count is loop progress.
+		g.noteLoopPoisonHighLocked(playerID, after)
+	}
 	g.EmitEvent(Event{
 		Kind:   EventPlayerCounterPlaced,
 		Target: playerID,

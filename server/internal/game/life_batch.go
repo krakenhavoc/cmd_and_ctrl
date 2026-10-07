@@ -75,6 +75,9 @@ func (g *Game) noteLifeLostLocked(player uuid.UUID, n int) {
 		g.batchLifeLost = batchLifeLossTotals{Batch: b, Lost: map[uuid.UUID]int{}}
 	}
 	g.batchLifeLost.Lost[player] += n
+	// #2450: the one place every life loss passes after the total has
+	// moved, so it is where the loop breaker's progress mark is taken.
+	g.noteLoopLifeLowLocked(player)
 }
 
 // lifeLostInBatchLocked is the total life player has lost in the live

@@ -4412,6 +4412,7 @@ turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int
 turnTally.loopLow	number:int
 turnTally.loopLowSet	bool
+turnTally.loopProgressed	bool
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
 turnTally.modesChosen	map:string
@@ -4432,8 +4433,11 @@ turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
+turnTally.players{}.lifeLow	number:int
+turnTally.players{}.lifeLowSet	bool
 turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
+turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int
