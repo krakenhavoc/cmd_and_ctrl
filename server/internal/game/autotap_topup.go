@@ -349,3 +349,38 @@ func (g *Game) AutoTapPlanToppingUp(
 	})
 	return out, ok
 }
+
+// planFundsLocked reports whether carrying out `plan` would leave
+// `p`'s pool able to pay `cost` under `ctx` (#2461). It carries the
+// plan out on a throwaway clone of the game (cloneLocked, the undo
+// stack's deep copy) and asks the clone's pool, so the live game is
+// untouched whatever the answer.
+//
+// Every auto-tap payer asks it between planning and materialising, so
+// a payment the plan cannot fund is refused BEFORE anything is tapped:
+// CastSpellParams.AutoTap's all-or-nothing promise. The planner and
+// the executor are two halves that have to agree on which slot pays
+// which pip, and when they did not (#2461: a bounce land's {U} booked
+// twice) the cast tapped the land, floated its mana and then refused.
+// The planner is fixed; this keeps the next disagreement from
+// stranding a board.
+//
+// The clone runs the real executor, so it sees what the live run will
+// see: the CR 614 window on the production, the triggered mana
+// abilities, a sacrifice, a pain rider. An effect error raised inside
+// it is logged and counted for the clone as well; nothing else leaves
+// the clone.
+//
+// An empty plan is not cloned for. Caller must hold g.mu.
+func (g *Game) planFundsLocked(p *Player, plan tapPlan, short, cost ParsedCost, xValue int, ctx ManaSpendContext) bool {
+	if len(plan) == 0 {
+		return p.ManaPool.CanPayFor(cost, xValue, ctx)
+	}
+	trial := g.cloneLocked()
+	tp := trial.playerByIDLocked(p.ID)
+	if tp == nil {
+		return false
+	}
+	trial.materializePlanLocked(tp, plan, short)
+	return tp.ManaPool.CanPayFor(cost, xValue, ctx)
+}

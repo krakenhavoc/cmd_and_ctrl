@@ -381,6 +381,12 @@ func (g *Game) cloneLocked() *Game {
 		out.BuiltinReplacements = make([]ReplacementEffect, len(g.BuiltinReplacements))
 		copy(out.BuiltinReplacements, g.BuiltinReplacements)
 	}
+	// #2461: a test's registered replacements ride along, so a trial
+	// run on a clone (planFundsLocked) sees the same CR 614 window the
+	// live game would. Empty outside tests.
+	if len(g.testReplacements) > 0 {
+		out.testReplacements = append([]ReplacementEffect(nil), g.testReplacements...)
+	}
 	// Scoped effects (ADR 0041 phase 3) — the data twin of the slice
 	// above (and, since tier 3b, of the until-end-of-turn block rules
 	// too — #750): a record is written once at registration and never
