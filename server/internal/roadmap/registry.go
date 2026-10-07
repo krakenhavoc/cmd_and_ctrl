@@ -2010,7 +2010,7 @@ var items = []Item{
 		Rules:       []string{"107.14", "602.2b"},
 		Issue:       1995,
 		Tracked:     "#1995 (found landing ADR 0108 PR 6, #1904)",
-		Waiting:     []string{"Consulate Surveillance", "Gonti's Aether Heart"},
+		Waiting:     []string{"Consulate Surveillance", "Gonti's Aether Heart", "Chthonian Nightmare"},
 		EngineNotes: "cost component: `game.AbilityCost` removes counters from permanents (`RemoveCounters`) but has no component that removes counters from the activating PLAYER. CR 107.14: \"To pay {E}, a player removes one energy counter from themselves.\" 40 Commander-legal cards print \"Pay {E}…:\" as an activation cost, none catalogued; Decoction Module already gives energy. Consulate Surveillance's shield shipped with ADR 0108 PR 6 (#1904). Gonti's Aether Heart's \"Pay eight {E}, Exile Gonti's Aether Heart: Take an extra turn after this one\" waits here (S58 deck requests, #2077); its energy trigger and the extra turn exist.",
 	},
 	{
@@ -2055,14 +2055,13 @@ var items = []Item{
 		EngineNotes: "duration: `game.Duration` has \"this turn\", \"until your next turn\", object pins and \"for as long as you control\"-style links, but no end-of-combat kind (CR 500.5a, 511.2: \"until end of combat\" expires at the end of the combat phase) and no \"while the source remains\" kind for a scoped prevention shield. With an additional combat phase \"this combat\" and \"this turn\" differ, so these can't ship as \"this turn\". Sewers of Estark, Suppressor Skyguard and Winter's Chill prevent combat damage \"this combat\"; Glyph of Destruction's +10/+0 lasts until end of combat; Old Fat Spider Can't See Me's chapter II lasts for as long as the Saga remains. Found landing ADR 0108 Delivery PR 7 (#1904).",
 	},
 	{
-		Slug: "return-this-to-hand-cost", Name: "Returning the permanent itself to hand as a cost", Kind: KindSeam, Status: StatusMissing,
+		Slug: "return-this-to-hand-cost", Name: "Returning the permanent itself to hand as a cost", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Activated abilities whose cost returns the permanent itself to its owner's hand, such as Gossamer Chains' \"Return this enchantment to its owner's hand\".",
-		Missing:     "A cost can return a permanent you control that matches a description, but can't name the permanent the ability is on.",
-		Rules:       []string{"602.2b"},
+		Rules:       []string{"602.2b", "601.2h", "118.3", "400.7", "608.2h", "903.9b"},
 		Issue:       2028,
 		Tracked:     "#2028 (found landing ADR 0108 PR 7b, #1904)",
-		Waiting:     []string{"Gossamer Chains", "Shigeki, Jukai Visionary"},
-		EngineNotes: "cost component: `game.AbilityCost.ReturnToHand` (`effects.ReturnAPermanentToHand`) returns a permanent the activator controls matching a filter, and a `CardPredicate` can't name the ability's source, so \"this enchantment\" can't be told from another copy of the same card. `ExileSelf`, `SacrificeSelf` and `DiscardSelf` exist; a return-self component does not. About 11 Commander-legal cards print a \"Return this … to its owner's hand:\" cost, none catalogued. Gossamer Chains' shield is ADR 0108 Delivery PR 7b's (#1904) and is buildable. Shigeki, Jukai Visionary's \"{1}{G}, {T}, Return Shigeki to its owner's hand\" waits here (S58 deck requests, #2077); its channel ability with X targets is expressible.",
+		Examples:    []string{"Gossamer Chains", "Shigeki, Jukai Visionary", "Attunement"},
+		EngineNotes: "`game.AbilityCost.ReturnSelf` (`effects.ReturnThis`) is `SacrificeSelf`'s and `ExileSelf`'s sibling: it names the source, which a `ReturnToHand` filter cannot. It is paid at announce with the other returns, through `payReturnToHandCostLocked`, to the OWNER's hand; the item's `SourceObject` is stamped before the payment, so the effect reads the returned permanent's last-known information (CR 400.7, 608.2h). A commander that returns itself is asked CR 903.9b before anything is paid (ADR 0115). Battlefield only (`AbilityNeedsPermanentSource`), never beside a sacrifice-this or exile-this cost, and never a sacrifice, return or exile pick of the same activation (CR 118.3). The wire carries it as `return_self`; the legal enumerator keeps the source out of the other components' picks and the auto-tapper's plan; the heuristic charges `selfReturnCost` (half the permanent, all of a token). **Cards:** Gossamer Chains, Shigeki, Jukai Visionary, Attunement, Broken Fall, Molting Skin, Steelshaper Apprentice and Rootha, Mercurial Artist. Not covered here: a MANA ability with the cost (Grinning Ignus), and cards that wait on other shapes (Chthonian Nightmare on paying energy, #1995; Maze's End, Cycle of Life and Ovinomancer).",
 	},
 	{
 		Slug: "doesnt-untap-next-two-untap-steps", Name: "Doesn't untap during the next two untap steps", Kind: KindSeam, Status: StatusMissing,

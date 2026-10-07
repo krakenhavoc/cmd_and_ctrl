@@ -53,8 +53,8 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 }
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's
-// mana component: the source when the cost taps, sacrifices or exiles
-// it, and
+// mana component: the source when the cost taps, sacrifices, exiles
+// or returns it (#2028), and
 // the permanents and cards named to its TapOthers, sacrifice, discard
 // and exile-N-cards components. Nil when empty.
 //
@@ -76,7 +76,7 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 // graveyard it is the list being right in advance, as above.
 func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacrificeIDs, discardIDs, exileIDs []uuid.UUID) map[uuid.UUID]bool {
 	var self []uuid.UUID
-	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf {
+	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf {
 		self = []uuid.UUID{sourceID}
 	}
 	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs, exileIDs)
