@@ -396,6 +396,34 @@ type AbilityCost struct {
 	// where the cost has just put it.
 	ExileSelf bool
 
+	// ReturnSelf returns the SOURCE PERMANENT to its owner's hand as
+	// part of the cost (#2028) — Gossamer Chains' "Return this
+	// enchantment to its owner's hand:", Shigeki, Jukai Visionary's
+	// "{1}{G}, {T}, Return Shigeki to its owner's hand:". CR 602.2b
+	// runs CR 601.2h for an ability, so the return is paid at announce
+	// with the rest of the cost, and the permanent is in its owner's
+	// hand before anyone can respond.
+	//
+	// SacrificeSelf's and ExileSelf's sibling, and NOT ReturnToHand
+	// with a filter: a CardPredicate cannot name the ability's source,
+	// so "this enchantment" could not be told from another copy of the
+	// same card. Nothing is chosen, so it rides no params and no wire
+	// pick, exactly as ExileSelf rides none.
+	//
+	// Battlefield only: AbilityNeedsPermanentSource names it, so
+	// effects.Register refuses it on an ability that functions from
+	// any other zone. The source pays one component (CR 118.3), so
+	// the activation refuses it as a sacrifice, return or exile pick
+	// as well. Paid with ReturnToHand, through the same payer and the
+	// same CR 903.9b question asked before the payment (ADR 0115): a
+	// commander that returns itself is offered the command zone. The
+	// permanent leaves the battlefield, so leaves-the-battlefield
+	// triggers see it and its last-known information is recorded
+	// (CR 608.2h); in the hand it is a new object (CR 400.7), so the
+	// effect reads "this permanent" through the item's SourceObject,
+	// which is stamped before the payment.
+	ReturnSelf bool
+
 	// ExileCards is "Exile N <kind> cards from your graveyard" or
 	// "… from your hand" as a cost (#1297) — Grim Lavamancer's
 	// "Exile two cards from your graveyard", Moorland Haunt's "a
@@ -1315,7 +1343,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// cost exiles it — because one permanent pays one component
 	// (CR 118.3).
 	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.Cost.ExilePermanents, params.ExilePermanentIDs,
-		movedSourceAlso(cardID, ab.Cost.ExileSelf, sacrifices, params.ReturnIDs)); err != nil {
+		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf, sacrifices, params.ReturnIDs)); err != nil {
+		return err
+	}
+	// #2028: "Return this enchantment to its owner's hand". Nothing to
+	// choose — the source IS the payment — so this is the zone check and
+	// the one-permanent-one-component check (CR 118.3) against the
+	// components that move permanents, made here with the rest so a
+	// refusal costs nothing.
+	if err := validateReturnSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
 	// #1310, CR 701.67: the waterbend taps. The budget is measured
@@ -1493,7 +1529,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
 	moving = append(append(append(moving, tops...), libraryExiles...), randoms...)
-	if ab.Cost.ExileSelf {
+	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf {
 		moving = append(moving, cardID)
 	}
 	// #1427: every permanent the payment TAPS — the {T}, the crew,
@@ -1520,6 +1556,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// any other card and offered the command zone afterwards by the
 	// CR 903.9a state-based action.
 	asking := append(append([]uuid.UUID(nil), params.ReturnIDs...), tops...)
+	// #2028: and the source a return-this cost puts into its owner's
+	// hand. A commander that returns itself is asked CR 903.9b here,
+	// before anything is paid, like any other returned commander.
+	if ab.Cost.ReturnSelf {
+		asking = append(asking, cardID)
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
@@ -1697,6 +1739,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// carries no combat state. Ninjutsu's entry reads it back through
 	// Context.ReturnedAttacking(); see PaidCost.ReturnedAttacking.
 	paid.ReturnedAttacking = returnedAttacking
+	// #2028: the return-this half, beside the other returns and through
+	// the same payer. The source leaves the battlefield here; the stack
+	// item's SourceObject was stamped above, before any cost was paid, so
+	// the effect still names the permanent that paid (CR 400.7) and reads
+	// it through its last-known information (CR 608.2h).
+	if err := g.payReturnSelfCostLocked(playerID, cardID, ab.Cost, params.commanderAnswers); err != nil {
+		return err
+	}
 	// #1600: the exile-a-permanent component, beside the returns and for
 	// the same reasons — it moves permanents, so it goes after every
 	// component that needs the source where it was, and before the stack

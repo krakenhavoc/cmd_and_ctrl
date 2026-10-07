@@ -304,6 +304,13 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.EnergyX {
 			out.EnergyX = true
 		}
+		// #2028: and the return-this component. A composed "{1}{G},
+		// {T}, Return Shigeki to its owner's hand" that dropped it would
+		// dig for a land every turn and keep the creature — stronger
+		// than printed, the #259 direction.
+		if c.ReturnSelf {
+			out.ReturnSelf = true
+		}
 	}
 	return out
 }
@@ -453,6 +460,24 @@ func ExileACreatureYouControl() game.AbilityCost {
 // Register refuses it on an ability that functions from any other
 // zone (game.ExileSelfZoneSupported).
 func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
+
+// ReturnThis is the "Return this <permanent> to its owner's hand" cost
+// component (#2028) — Gossamer Chains' "Return this enchantment to its
+// owner's hand:", Shigeki, Jukai Visionary's "Return Shigeki to its
+// owner's hand". It names the SOURCE, which a ReturnAPermanentToHand
+// filter cannot: that clause is "a permanent you control", and another
+// copy of the same card would match it.
+//
+// The permanent goes to its OWNER's hand, which is not its
+// controller's when it was gained from an opponent. The return is paid
+// at announce (CR 602.2b), so the ability resolves with the permanent
+// already gone; an effect that reads "this permanent" reads its
+// last-known information through the item's source object.
+//
+// Battlefield only: Register refuses it on an ability that functions
+// from any other zone, and beside a sacrifice-this or exile-this cost.
+// Compose it with Plus like any other component.
+func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
 
 // DiscardThis is cycling's "Discard this card" cost component
 // (CR 702.29a). It only means anything on an ability that functions

@@ -966,6 +966,15 @@ type Spec struct {
 	// Issue #1200, ADR 0085.
 	PlayerLifeTotalLocked bool
 
+	// DamageStaysThroughCleanup declares the printed static "Damage
+	// isn't removed from this creature during cleanup steps" (CR 514.2 —
+	// Ancient Adamantoise). Judged on the battlefield through
+	// CatalogAbilityKey, so a permanent that lost its abilities is
+	// cleaned as usual; a phased-out one is always cleaned (CR 702.26b).
+	// Regeneration and leaving the battlefield still clear the damage.
+	// Issue #2058.
+	DamageStaysThroughCleanup bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//

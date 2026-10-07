@@ -387,7 +387,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		}
 		sacrificeSets := [][]uuid.UUID{nil}
 		if ab.Cost.SacrificeOther != nil {
-			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf, ab.Cost.SacrificeOther)
+			// #2028: a return-this cost spends the source as surely as a
+			// sacrifice-this one, so it is no sacrifice pick either.
+			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf || ab.Cost.ReturnSelf, ab.Cost.SacrificeOther)
 			// #1213: a VARIABLE count is an announcement, so the
 			// enumerator offers a bounded ladder of counts rather
 			// than one payment — see variableSacrificePayments.
@@ -1052,7 +1054,9 @@ type permanentCostPair struct {
 // payments (#1600), dropping every pair the engine refuses
 // (validateExilePermanentsCostLocked): an exiled permanent that is also
 // returned, also sacrificed, or is the source when the cost already
-// sacrifices or exiles it — one permanent pays one component (CR 118.3).
+// sacrifices, exiles or returns it — one permanent pays one component
+// (CR 118.3). A return pick that is the source of a return-this cost
+// (#2028) is dropped the same way.
 // Each list is [nil] when the ability has no such component, so an
 // ability with neither yields the one empty pair and the loop it feeds
 // runs exactly as it did before.
@@ -1061,11 +1065,17 @@ func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, s
 	for _, id := range sacs {
 		spent[id] = true
 	}
-	if cost.SacrificeSelf || cost.ExileSelf {
+	if cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf {
 		spent[sourceID] = true
 	}
 	var out []permanentCostPair
 	for _, rets := range returnSets {
+		// #2028: a return-this cost already returns the source, so a
+		// "return a permanent you control" pick may not name it again
+		// (validateReturnSelfCostLocked).
+		if cost.ReturnSelf && overlapsAny(rets, nil, map[uuid.UUID]bool{sourceID: true}) {
+			continue
+		}
 		for _, exs := range exileSets {
 			if overlapsAny(exs, rets, spent) {
 				continue

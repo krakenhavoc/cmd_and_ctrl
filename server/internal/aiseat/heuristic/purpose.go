@@ -183,6 +183,21 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 // (CR 111.7), so a bounce takes all of it.
 const bounceShare = 0.5
 
+// selfReturnCost is what returning permanent c to its owner's hand as a
+// cost gives up (#2028): bounceShare of it, because the card comes back
+// and can be cast again, and all of a token, which ceases to exist in the
+// hand (CR 111.7). The sweep reading of a bounce, priced on the bot's own
+// permanent.
+func (st *state) selfReturnCost(c *protocol.CardView) float64 {
+	if c == nil {
+		return 0
+	}
+	if c.IsToken {
+		return st.permanentValue(c)
+	}
+	return bounceShare * st.permanentValue(c)
+}
+
 // partialShare is how much of a matched permanent a `partial` sweep is
 // presumed to take. Partial says the class is an upper bound — a
 // nonwhite Doom Blade sweep, "without flying" — and the view does not
