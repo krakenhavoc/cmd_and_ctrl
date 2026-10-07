@@ -53,6 +53,7 @@ battlefield.cards[].chosenName	string
 battlefield.cards[].chosenOption	string
 battlefield.cards[].chosenPlayer	custom(uuid.UUID)
 battlefield.cards[].classLevel	number:int
+battlefield.cards[].colorCDADropped	bool
 battlefield.cards[].colorIdentity	array
 battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
@@ -68,6 +69,7 @@ battlefield.cards[].damageMarked	number:int
 battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
+battlefield.cards[].durationCopyBase.ColorCDADropped	bool
 battlefield.cards[].durationCopyBase.ColorIdentity	array
 battlefield.cards[].durationCopyBase.ColorIdentity[]	string
 battlefield.cards[].durationCopyBase.Colors	array
@@ -196,6 +198,7 @@ battlefield.cards[].preparedBy.id	custom(uuid.UUID)
 battlefield.cards[].printedPTKnown	bool
 battlefield.cards[].printedSelf	object
 battlefield.cards[].printedSelf.ActiveFace	number:int
+battlefield.cards[].printedSelf.ColorCDADropped	bool
 battlefield.cards[].printedSelf.ColorIdentity	array
 battlefield.cards[].printedSelf.ColorIdentity[]	string
 battlefield.cards[].printedSelf.Colors	array
@@ -473,6 +476,7 @@ exile.cards[].chosenName	string
 exile.cards[].chosenOption	string
 exile.cards[].chosenPlayer	custom(uuid.UUID)
 exile.cards[].classLevel	number:int
+exile.cards[].colorCDADropped	bool
 exile.cards[].colorIdentity	array
 exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
@@ -488,6 +492,7 @@ exile.cards[].damageMarked	number:int
 exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
+exile.cards[].durationCopyBase.ColorCDADropped	bool
 exile.cards[].durationCopyBase.ColorIdentity	array
 exile.cards[].durationCopyBase.ColorIdentity[]	string
 exile.cards[].durationCopyBase.Colors	array
@@ -616,6 +621,7 @@ exile.cards[].preparedBy.id	custom(uuid.UUID)
 exile.cards[].printedPTKnown	bool
 exile.cards[].printedSelf	object
 exile.cards[].printedSelf.ActiveFace	number:int
+exile.cards[].printedSelf.ColorCDADropped	bool
 exile.cards[].printedSelf.ColorIdentity	array
 exile.cards[].printedSelf.ColorIdentity[]	string
 exile.cards[].printedSelf.Colors	array
@@ -951,6 +957,7 @@ lastKnownStack[].card.chosenName	string
 lastKnownStack[].card.chosenOption	string
 lastKnownStack[].card.chosenPlayer	custom(uuid.UUID)
 lastKnownStack[].card.classLevel	number:int
+lastKnownStack[].card.colorCDADropped	bool
 lastKnownStack[].card.colorIdentity	array
 lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
@@ -966,6 +973,7 @@ lastKnownStack[].card.damageMarked	number:int
 lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
+lastKnownStack[].card.durationCopyBase.ColorCDADropped	bool
 lastKnownStack[].card.durationCopyBase.ColorIdentity	array
 lastKnownStack[].card.durationCopyBase.ColorIdentity[]	string
 lastKnownStack[].card.durationCopyBase.Colors	array
@@ -1094,6 +1102,7 @@ lastKnownStack[].card.preparedBy.id	custom(uuid.UUID)
 lastKnownStack[].card.printedPTKnown	bool
 lastKnownStack[].card.printedSelf	object
 lastKnownStack[].card.printedSelf.ActiveFace	number:int
+lastKnownStack[].card.printedSelf.ColorCDADropped	bool
 lastKnownStack[].card.printedSelf.ColorIdentity	array
 lastKnownStack[].card.printedSelf.ColorIdentity[]	string
 lastKnownStack[].card.printedSelf.Colors	array
@@ -1871,6 +1880,7 @@ phasedOut.cards[].chosenName	string
 phasedOut.cards[].chosenOption	string
 phasedOut.cards[].chosenPlayer	custom(uuid.UUID)
 phasedOut.cards[].classLevel	number:int
+phasedOut.cards[].colorCDADropped	bool
 phasedOut.cards[].colorIdentity	array
 phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
@@ -1886,6 +1896,7 @@ phasedOut.cards[].damageMarked	number:int
 phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
+phasedOut.cards[].durationCopyBase.ColorCDADropped	bool
 phasedOut.cards[].durationCopyBase.ColorIdentity	array
 phasedOut.cards[].durationCopyBase.ColorIdentity[]	string
 phasedOut.cards[].durationCopyBase.Colors	array
@@ -2014,6 +2025,7 @@ phasedOut.cards[].preparedBy.id	custom(uuid.UUID)
 phasedOut.cards[].printedPTKnown	bool
 phasedOut.cards[].printedSelf	object
 phasedOut.cards[].printedSelf.ActiveFace	number:int
+phasedOut.cards[].printedSelf.ColorCDADropped	bool
 phasedOut.cards[].printedSelf.ColorIdentity	array
 phasedOut.cards[].printedSelf.ColorIdentity[]	string
 phasedOut.cards[].printedSelf.Colors	array
@@ -2183,6 +2195,7 @@ scopedEffects[].mods[].combatOnly	bool
 scopedEffects[].mods[].copy	array
 scopedEffects[].mods[].copy[]	object
 scopedEffects[].mods[].copy[].ActiveFace	number:int
+scopedEffects[].mods[].copy[].ColorCDADropped	bool
 scopedEffects[].mods[].copy[].ColorIdentity	array
 scopedEffects[].mods[].copy[].ColorIdentity[]	string
 scopedEffects[].mods[].copy[].Colors	array
@@ -2416,6 +2429,7 @@ seats[].command.cards[].chosenName	string
 seats[].command.cards[].chosenOption	string
 seats[].command.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].command.cards[].classLevel	number:int
+seats[].command.cards[].colorCDADropped	bool
 seats[].command.cards[].colorIdentity	array
 seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
@@ -2431,6 +2445,7 @@ seats[].command.cards[].damageMarked	number:int
 seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
+seats[].command.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].command.cards[].durationCopyBase.ColorIdentity	array
 seats[].command.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].command.cards[].durationCopyBase.Colors	array
@@ -2559,6 +2574,7 @@ seats[].command.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].command.cards[].printedPTKnown	bool
 seats[].command.cards[].printedSelf	object
 seats[].command.cards[].printedSelf.ActiveFace	number:int
+seats[].command.cards[].printedSelf.ColorCDADropped	bool
 seats[].command.cards[].printedSelf.ColorIdentity	array
 seats[].command.cards[].printedSelf.ColorIdentity[]	string
 seats[].command.cards[].printedSelf.Colors	array
@@ -2692,6 +2708,7 @@ seats[].emblems.cards[].chosenName	string
 seats[].emblems.cards[].chosenOption	string
 seats[].emblems.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].emblems.cards[].classLevel	number:int
+seats[].emblems.cards[].colorCDADropped	bool
 seats[].emblems.cards[].colorIdentity	array
 seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
@@ -2707,6 +2724,7 @@ seats[].emblems.cards[].damageMarked	number:int
 seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
+seats[].emblems.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].emblems.cards[].durationCopyBase.ColorIdentity	array
 seats[].emblems.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].emblems.cards[].durationCopyBase.Colors	array
@@ -2835,6 +2853,7 @@ seats[].emblems.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].emblems.cards[].printedPTKnown	bool
 seats[].emblems.cards[].printedSelf	object
 seats[].emblems.cards[].printedSelf.ActiveFace	number:int
+seats[].emblems.cards[].printedSelf.ColorCDADropped	bool
 seats[].emblems.cards[].printedSelf.ColorIdentity	array
 seats[].emblems.cards[].printedSelf.ColorIdentity[]	string
 seats[].emblems.cards[].printedSelf.Colors	array
@@ -2959,6 +2978,7 @@ seats[].graveyard.cards[].chosenName	string
 seats[].graveyard.cards[].chosenOption	string
 seats[].graveyard.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].graveyard.cards[].classLevel	number:int
+seats[].graveyard.cards[].colorCDADropped	bool
 seats[].graveyard.cards[].colorIdentity	array
 seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
@@ -2974,6 +2994,7 @@ seats[].graveyard.cards[].damageMarked	number:int
 seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
+seats[].graveyard.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].graveyard.cards[].durationCopyBase.ColorIdentity	array
 seats[].graveyard.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].graveyard.cards[].durationCopyBase.Colors	array
@@ -3102,6 +3123,7 @@ seats[].graveyard.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].graveyard.cards[].printedPTKnown	bool
 seats[].graveyard.cards[].printedSelf	object
 seats[].graveyard.cards[].printedSelf.ActiveFace	number:int
+seats[].graveyard.cards[].printedSelf.ColorCDADropped	bool
 seats[].graveyard.cards[].printedSelf.ColorIdentity	array
 seats[].graveyard.cards[].printedSelf.ColorIdentity[]	string
 seats[].graveyard.cards[].printedSelf.Colors	array
@@ -3224,6 +3246,7 @@ seats[].hand.cards[].chosenName	string
 seats[].hand.cards[].chosenOption	string
 seats[].hand.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].hand.cards[].classLevel	number:int
+seats[].hand.cards[].colorCDADropped	bool
 seats[].hand.cards[].colorIdentity	array
 seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
@@ -3239,6 +3262,7 @@ seats[].hand.cards[].damageMarked	number:int
 seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
+seats[].hand.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].hand.cards[].durationCopyBase.ColorIdentity	array
 seats[].hand.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].hand.cards[].durationCopyBase.Colors	array
@@ -3367,6 +3391,7 @@ seats[].hand.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].hand.cards[].printedPTKnown	bool
 seats[].hand.cards[].printedSelf	object
 seats[].hand.cards[].printedSelf.ActiveFace	number:int
+seats[].hand.cards[].printedSelf.ColorCDADropped	bool
 seats[].hand.cards[].printedSelf.ColorIdentity	array
 seats[].hand.cards[].printedSelf.ColorIdentity[]	string
 seats[].hand.cards[].printedSelf.Colors	array
@@ -3500,6 +3525,7 @@ seats[].library.cards[].chosenName	string
 seats[].library.cards[].chosenOption	string
 seats[].library.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].library.cards[].classLevel	number:int
+seats[].library.cards[].colorCDADropped	bool
 seats[].library.cards[].colorIdentity	array
 seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
@@ -3515,6 +3541,7 @@ seats[].library.cards[].damageMarked	number:int
 seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
+seats[].library.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].library.cards[].durationCopyBase.ColorIdentity	array
 seats[].library.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].library.cards[].durationCopyBase.Colors	array
@@ -3643,6 +3670,7 @@ seats[].library.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].library.cards[].printedPTKnown	bool
 seats[].library.cards[].printedSelf	object
 seats[].library.cards[].printedSelf.ActiveFace	number:int
+seats[].library.cards[].printedSelf.ColorCDADropped	bool
 seats[].library.cards[].printedSelf.ColorIdentity	array
 seats[].library.cards[].printedSelf.ColorIdentity[]	string
 seats[].library.cards[].printedSelf.Colors	array
@@ -3927,6 +3955,7 @@ stack.cards[].chosenName	string
 stack.cards[].chosenOption	string
 stack.cards[].chosenPlayer	custom(uuid.UUID)
 stack.cards[].classLevel	number:int
+stack.cards[].colorCDADropped	bool
 stack.cards[].colorIdentity	array
 stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
@@ -3942,6 +3971,7 @@ stack.cards[].damageMarked	number:int
 stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
+stack.cards[].durationCopyBase.ColorCDADropped	bool
 stack.cards[].durationCopyBase.ColorIdentity	array
 stack.cards[].durationCopyBase.ColorIdentity[]	string
 stack.cards[].durationCopyBase.Colors	array
@@ -4070,6 +4100,7 @@ stack.cards[].preparedBy.id	custom(uuid.UUID)
 stack.cards[].printedPTKnown	bool
 stack.cards[].printedSelf	object
 stack.cards[].printedSelf.ActiveFace	number:int
+stack.cards[].printedSelf.ColorCDADropped	bool
 stack.cards[].printedSelf.ColorIdentity	array
 stack.cards[].printedSelf.ColorIdentity[]	string
 stack.cards[].printedSelf.Colors	array

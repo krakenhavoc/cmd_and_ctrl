@@ -83,6 +83,9 @@ const KeywordDevoid = "devoid"
 // that is printed on the card (or set by a copy's copiable values, which
 // write Keywords). A keyword granted by an effect is not one.
 func (c *Card) printsDevoid() bool {
+	if c.ColorCDADropped {
+		return false
+	}
 	if containsKeyword(c.Keywords, KeywordDevoid) {
 		return true
 	}
@@ -91,4 +94,50 @@ func (c *Card) printsDevoid() bool {
 	}
 	key := catalogKeyOf(c)
 	return key != "" && containsKeyword(CatalogPrintedKeywords(key), KeywordDevoid)
+}
+
+// SetCopyExceptionColors is the one helper every colour-setting copy
+// exception calls ("except it's a 4/4 black Zombie", embalm's white,
+// Sauron's black). CR 707.9d: when a copy effect provides a value for a
+// characteristic, the copied object's characteristic-defining ability
+// that would define it is not copied — so a devoid creature copied with
+// a colour exception is not devoid, and shows no devoid badge (#2322).
+//
+// It sets the colours, strips devoid from the import road (Keywords),
+// and marks the object (ColorCDADropped) so the catalog road, where the
+// keyword comes from the copied oracle ID's PrintedKeywords, stops
+// merging it in. Writing t.Colors directly in an exception is the bug.
+func (c *Card) SetCopyExceptionColors(colors ...string) {
+	c.Colors = append([]string(nil), colors...)
+	c.Keywords = withoutKeyword(c.Keywords, KeywordDevoid)
+	c.ColorCDADropped = true
+	c.effective = nil
+}
+
+// PrintedKeywordsHonouringCopy filters a catalog printed-keyword list
+// through the object's CR 707.9d mark: a copy whose colour exception
+// dropped the colour-defining ability does not have devoid, whatever
+// its copied oracle ID's entry declares. Every reader that merges
+// Spec.PrintedKeywords into an object's abilities calls this, so the
+// catalog road cannot disagree with the baseline (#2322).
+func (c *Card) PrintedKeywordsHonouringCopy(kws []string) []string {
+	if c == nil || !c.ColorCDADropped {
+		return kws
+	}
+	return withoutKeyword(kws, KeywordDevoid)
+}
+
+// withoutKeyword returns list minus every occurrence of kw, as a new
+// slice (the input is never written through).
+func withoutKeyword(list []string, kw string) []string {
+	if !containsKeyword(list, kw) {
+		return list
+	}
+	out := make([]string, 0, len(list))
+	for _, k := range list {
+		if k != kw {
+			out = append(out, k)
+		}
+	}
+	return out
 }

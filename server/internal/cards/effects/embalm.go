@@ -92,7 +92,7 @@ func zombieTokenCopyOfSource(g *game.Game, item *game.StackItem, except func(*ga
 //
 // The P/T is untouched: an embalm token is the creature's own size.
 func embalmException(t *game.Card) {
-	t.Colors = []string{"W"}
+	t.SetCopyExceptionColors("W")
 	t.ManaCost = ""
 	t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Zombie")
 }
@@ -106,7 +106,7 @@ func eternalizeException(t *game.Card) {
 	// Tarmogoyf is a 4/4 and its toughness is a real number.
 	t.VariableToughness = false
 	t.PrintedPTKnown = true
-	t.Colors = []string{"B"}
+	t.SetCopyExceptionColors("B")
 	t.ManaCost = ""
 	t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Zombie")
 }

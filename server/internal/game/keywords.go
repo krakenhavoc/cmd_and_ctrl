@@ -615,7 +615,7 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 	if key == "" {
 		return
 	}
-	for _, a := range CatalogPrintedKeywords(key) {
+	for _, a := range c.PrintedKeywordsHonouringCopy(CatalogPrintedKeywords(key)) {
 		if !fn(a) {
 			return
 		}
