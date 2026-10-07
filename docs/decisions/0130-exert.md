@@ -260,7 +260,37 @@ PR 3 found two gaps in §9 before any code was written, and the owner answered b
 
 None of these existed on `Purpose` under another name. `DiscardPayoff.DamageEachOpponent` is the same amount per discarded card, on a discard payoff only, so it is not reused; the top-level field takes its name. The registration guard refuses `pump` and `prevent_combat_damage_to_self` off a triggered or activated row (each is about the ability's own source), a `pump` that gives nothing, and a negative amount. Rejected: (b) `pump` and `extra_combat` only, and (c) `pump` alone.
 
-The pricing sits behind `Config.PriceExert`, which is off in `BaselineConfig()`, so `heuristic-baseline` stays frozen (ADR 0126 §9). The arena gains a second arena-only contestant, `heuristic-noexert` (today's heuristic with `PriceExert` off), so the exert pricing can be measured alone, and a synthetic deck, `exert-battle`, because no curated deck holds an exert card (ADR 0126 §8). The measurements are in PR 3.
+The pricing sits behind `Config.PriceExert`, which is off in `BaselineConfig()`, so `heuristic-baseline` stays frozen (ADR 0126 §9). The arena gains a second arena-only contestant, `heuristic-noexert` (today's heuristic with `PriceExert` off), so the exert pricing can be measured alone, and a synthetic deck, `exert-battle`, because no curated deck holds an exert card (ADR 0126 §8). The numbers are under [Measurements](#measurements).
+
+## Measurements
+
+### PR 3: pricing an exert (2026-10-07)
+
+`DefaultConfig()` gains `PriceExert` on and `ExertCostWeight` 1.00; `BaselineConfig()` turns both off. No other weight moved.
+
+**Arena.** No curated deck holds an exert card, so the run uses the synthetic `exert-battle` deck: `BattleDeck`'s curve in red and white with 4 Oketra's Avenger, 4 Combat Celebrant, 3 Glorybringer and 4 Resolute Survivors. Two `heuristic` seats against two `heuristic-noexert` seats (today's heuristic with `PriceExert` off), every seat on `exert-battle`: `boteval arena --seats heuristic,heuristic,heuristic-noexert,heuristic-noexert --decks exert-battle,exert-battle,exert-battle,exert-battle --games 96 --rotate --seed N`, for seeds 1, 97 and 193. 288 games, 0 stalls, 0 rejected moves, turns p50 14.
+
+| Seeds | `heuristic` | Wilson 95% interval | `heuristic-noexert` | Wilson 95% interval |
+|---|---|---|---|---|
+| 1–96 | 45 of 192, 23.4% | 18.0%–29.9% | 51 of 192, 26.6% | 20.8%–33.2% |
+| 97–192 | 54 of 192, 28.1% | 22.2%–34.9% | 42 of 192, 21.9% | 16.6%–28.2% |
+| 193–288 | 57 of 192, 29.7% | 23.7%–36.5% | 39 of 192, 20.3% | 15.2%–26.6% |
+| pooled | 156 of 576, 27.1% | 23.6%–30.9% | 132 of 576, 22.9% | 19.7%–26.5% |
+
+The pricing does not lose to the heuristic without it. Each block's `heuristic` upper bound stays above 25%, the bar ADR 0126 §8 sets for a sub-PR, and two of the three blocks point clearly its way. Pooled, it does not clear 25% on its own.
+
+Exert attacks (the Cards section's new `exert` action), pooled:
+
+| Card | `heuristic`: games used of offered | windows taken of offered | `heuristic-noexert` |
+|---|---|---|---|
+| Glorybringer | 219 of 318 | 423 of 1678 | never |
+| Resolute Survivors | 124 of 255 | 201 of 1733 | never |
+| Oketra's Avenger | 114 of 272 | 171 of 1923 | never |
+| Combat Celebrant | 62 of 275 | 84 of 1219 | never |
+
+**Curated decks.** None holds an exert card, so no attack there has an exert twin. `exertTwin` finds nothing, and `decideAttack` and `raceAttack` choose exactly as before. The S66 runs are not repeated.
+
+**Suite.** `boteval suite run --policy heuristic`: 37 of 37 agree, every tag at 100%. No position was added.
 
 ## Questions for the owner (answered)
 
