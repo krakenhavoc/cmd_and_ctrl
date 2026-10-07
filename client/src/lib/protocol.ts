@@ -1349,6 +1349,11 @@ export interface PendingChoiceView {
   count: number;
   source?: string;
   reason?: string;
+  // ADR 0133: the prompt's words name a card in the chooser's hidden
+  // hand (an opening-hand action's question). Only the chooser gets
+  // `source`, the question and the branch labels; everyone else gets the
+  // prompt, its kind and its chooser, with a neutral `reason`.
+  private_text?: boolean;
   options?: CardView[];
   // ADR 0116: for "discard_from_hand", the instance IDs among
   // `options` the chooser may pick ("you choose a nonland card from

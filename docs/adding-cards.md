@@ -7136,6 +7136,46 @@ declaration is the WRONG shape for either and was retired on #659: it
 opens exile for every copy of the card, at any time, however the copy
 got there — so a Path to Exile'd Rift Bolt would be castable.
 
+### Opening-hand actions (ADR 0133, #2190, CR 103.6a)
+
+"If this card is in your opening hand, you may begin the game with it on
+the battlefield" (every Leyline, Leyline Axe) is `Spec.OpeningHand`, built
+with `BeginTheGameOnTheBattlefield`:
+
+```go
+OpeningHand: BeginTheGameOnTheBattlefield(),
+
+// Gemstone Caverns — "and you're not the starting player", "with a luck
+// counter on it", "if you do, exile a card from your hand":
+OpeningHand: BeginTheGameOnTheBattlefield(
+    NotTheStartingPlayer(),
+    WithCounter("luck", 1),
+    ThenExileFromHand(1),
+),
+```
+
+The engine asks when the mulligan window closes (`settleMulliganLocked`),
+each seat in turn order from the starting player, once per qualifying card
+in hand: a yes puts the card onto the battlefield through the ordinary
+hand door, then places the counters and queues the exile pick. A card file
+declares only what the card prints; it never queues a prompt. The riders
+are plain data on `game.OpeningHandAction`, so a fourth rider is a fourth
+field, not a closure.
+
+Three things to know:
+
+- **Not a reveal.** "You may reveal this card from your opening hand. If you
+  do, at the beginning of the first upkeep, …" (the Chancellors) is a
+  different shape — it arms a delayed trigger — and has no slot yet.
+- **The question is private.** It names a card in a hidden zone, so the
+  view strips its words from every viewer but the chooser
+  (`PendingChoice.private`, wire `private_text`). The table sees who the
+  game is waiting on and nothing else.
+- **Test with a window that is still open.** `newCatalogGame` has already
+  kept every hand. Use `openingTable`, `handWith` and `keepAll` in
+  [opening_hand_actions_test.go](../server/internal/cards/effects/opening_hand_actions_test.go),
+  which stop before the first keep so the hands can be stocked.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

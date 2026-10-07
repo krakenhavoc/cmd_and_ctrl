@@ -1270,6 +1270,20 @@ type Spec struct {
 	// takes commander tax and cost modifiers on top (CR 118.9d).
 	GrantedAlternativeCosts []game.GrantedAlternativeCost
 
+	// OpeningHand declares the CR 103.6 action this card offers from its
+	// owner's opening hand (ADR 0133): "If this card is in your opening
+	// hand, you may begin the game with it on the battlefield" — every
+	// Leyline — and Gemstone Caverns' version with its two riders.
+	// Build one with BeginTheGameOnTheBattlefield (opening_hand.go).
+	//
+	// Asked once, when the mulligan window closes, of the seat holding
+	// the card, in turn order from the starting player. Nothing about it
+	// is read once the game has begun, so a card that is cast, drawn or
+	// returned to a hand later is an ordinary card. Chancellor-style
+	// "you may reveal this card from your opening hand" is a different
+	// shape and has no slot yet.
+	OpeningHand *game.OpeningHandAction
+
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —
 	// game.LibraryTopOwner for "you may look at the top card of your

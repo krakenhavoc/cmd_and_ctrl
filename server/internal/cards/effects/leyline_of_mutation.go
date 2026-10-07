@@ -10,18 +10,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 spells you cast."
 //
 // Fist of Suns' static on an enchantment (ADR 0118 §3, #2163). The
-// opening-hand clause (CR 103.6a) is the one every Leyline in this
-// catalog leaves out: there is no pre-game window, so it is cast for
-// {2}{G}{G}. That is weaker than printed, which is the only direction a
-// simplification may go.
+// opening-hand clause (CR 103.6a) is Spec.OpeningHand (ADR 0133): the
+// seat holding it is asked as the mulligan window closes.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "caab67eb-65e7-4755-b116-6977e97f0844",
-		Name:         "Leyline of Mutation",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You can't begin the game with it on the battlefield from your opening hand — it has to be cast.",
-		},
+		OracleID:                "caab67eb-65e7-4755-b116-6977e97f0844",
+		Name:                    "Leyline of Mutation",
+		Completeness:            CompletenessFull,
+		OpeningHand:             BeginTheGameOnTheBattlefield(),
 		GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast()},
 	})
 }

@@ -415,6 +415,13 @@ type CardDef struct {
 	// reason CastPermissions gives.
 	GrantedAlternativeCosts []GrantedAlternativeCost
 
+	// OpeningHand is the CR 103.6 action this card offers from its
+	// owner's opening hand (ADR 0133) — "you may begin the game with
+	// this on the battlefield" on a Leyline, with Gemstone Caverns'
+	// riders. Read through CatalogOpeningHand when the mulligan window
+	// closes; see opening_hand.go. Nil for every other card.
+	OpeningHand *OpeningHandAction
+
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
 	// at the top card of your library any time" is LibraryTopOwner,
@@ -871,6 +878,12 @@ func init() {
 	CatalogGrantedAlternativeCosts = func(key string) []GrantedAlternativeCost {
 		if d := catalogDef(key); d != nil {
 			return d.GrantedAlternativeCosts
+		}
+		return nil
+	}
+	CatalogOpeningHand = func(key string) *OpeningHandAction {
+		if d := catalogDef(key); d != nil {
+			return d.OpeningHand
 		}
 		return nil
 	}
