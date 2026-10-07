@@ -425,3 +425,11 @@ The snapshot carries the promise on `seats[].statics[].nextSpell` and the mark o
 Not shipped: Martyrdom's granted "Only you may activate this ability". Its activator is whoever cast the granting spell, which is not the creature's controller once the creature has changed hands, and an `AbilityGrant` bundle is registered by key with no per-grant player. Shipping it on the creature's controller would let a creature stolen after Martyrdom resolved hand its new controller the ability, which is stronger than printed. It stays on the seam row's `Waiting` list until a grant can carry the granting player.
 
 Cards: Clergy of the Holy Nimbus, Knight of the Holy Nimbus, Personal Incarnation.
+
+---
+
+## Amendment (2026-10-07): §5's held cards, one released (#1807)
+
+§5 shipped with four cards of the "from a single graveyard" family held for their other text. One of those holds has lapsed without any change to this ADR's machinery: Qutrub Forayer waited on "target creature that was dealt damage this turn", and the engine has recorded that since Covert Cutpurse (#1855, `DealtDamageThisTurn`, which reads the turn's damage events and treats a creature that entered afterwards as a new object, CR 400.7). The card is built on the two halves that exist: a modal enters trigger (CR 700.2) whose first bullet targets a damaged creature and whose second bullet is the `Same` clause (`upToNCardsFromASingleGraveyard(2)`). Each bullet reads its own target group by occurrence (`ModeTargets`), so the second bullet's `exileTheModesTargetCards` re-checks each pick at resolution (CR 608.2b) and the sameness rule is judged at announce exactly as for a spell. A bullet with no legal target cannot be chosen (CR 603.3c), so with no damaged creature on the table only the graveyard bullet is offered; the enumerator and the bot take the mode through the existing mode-pick path, so no new choice exists. Full, no caveat.
+
+Still held, each for text outside this ADR: Martyr of Bones (a "reveal X black cards" activation cost), Feral Deathgorger // Dusk Sight (Omen, CR 720.3d) and Spellweaver Helix (casting a copy of an exiled card).
