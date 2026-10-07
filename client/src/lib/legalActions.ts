@@ -93,6 +93,12 @@ export interface LegalActions {
   canAttack(cardID: string): boolean;
   /** Whom the creature may attack: players, planeswalkers, battles. */
   attackTargets(cardID: string): readonly string[];
+  /**
+   * ADR 0130 §5: the creature may be exerted as it attacks right now
+   * (CR 701.43d) — the server offers its attacks with `exert: true`
+   * beside the plain ones. Read off the digest, never oracle text.
+   */
+  canExertOnAttack(cardID: string): boolean;
   /** The attackers this creature may block, alone or in a group. */
   blockableAttackers(cardID: string): readonly string[];
   /**
@@ -271,6 +277,7 @@ function lookup(
     readySpecialActions: (id) => get(id)?.special_actions ?? NONE,
     canAttack: (id) => get(id)?.kinds.includes("attack") ?? false,
     attackTargets: (id) => get(id)?.attack_targets ?? NONE,
+    canExertOnAttack: (id) => get(id)?.exert_on_attack === true,
     blockableAttackers: (id) => get(id)?.blocks ?? NONE,
     readyCount(zone, seatID) {
       if (!view || sources.size === 0) return 0;
@@ -380,6 +387,7 @@ export function acrossActions(
     readySpecialActions: () => NONE,
     canAttack: () => false,
     attackTargets: () => NONE,
+    canExertOnAttack: () => false,
     blockableAttackers: () => NONE,
     readyCount: () => 0,
   };

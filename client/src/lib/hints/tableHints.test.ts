@@ -11,7 +11,7 @@ import { HINTS } from "./index";
 import { anchorOf, emptyContext, holds, type Hint, type HintContext } from "./hint";
 import { createHintEngine } from "./queue";
 import { TABLE_GAP_MS, TABLE_SETTLE_MS, notQuietReason } from "./tableMoment";
-import { atViewersSecondTurn, firstOpponent } from "./tableWhen";
+import { EXERT_ROW, atViewersSecondTurn, firstOpponent } from "./tableWhen";
 import { COPY_CONTEXTS } from "./rules";
 import { copyText } from "../tutorial";
 import { L } from "../labels";
@@ -86,12 +86,13 @@ const withStack = (controller: string): GameView => {
 };
 
 describe("the table's hints", () => {
-  it("are the nine the ADR names, at version 1, under the ids the tutorial will teach", () => {
+  it("are the nine the ADR names and ADR 0130's exert, at version 1, under the ids the tutorial will teach", () => {
     expect(TABLE.map((h) => h.id).sort()).toEqual(
       [
         "table.attention",
         "table.commander",
         "table.dock",
+        "table.exert",
         "table.expand",
         "table.more",
         "table.opening-roll",
@@ -182,6 +183,19 @@ describe("each hint's own condition", () => {
     expect(when("table.right-click", board({ mine: [forest()] }))).toBe(false);
     const theirs = board({ theirs: [withAbility()] });
     expect(when("table.right-click", theirs)).toBe(false);
+  });
+
+  it("table.exert needs a creature of the viewer's that may be exerted as it attacks", () => {
+    const exerter = (controller: string): CardView =>
+      elves({
+        instance_id: `ex-${controller}`,
+        controller,
+        ability_rows: [{ kind: "static", label: EXERT_ROW }],
+      } as Partial<CardView>);
+    expect(when("table.exert", fullView())).toBe(false);
+    expect(when("table.exert", board({ mine: [exerter(ME)] }))).toBe(true);
+    expect(when("table.exert", board({ theirs: [exerter(BOT)] }))).toBe(false);
+    expect(anchorOf(byID("table.exert"), ctxFor(fullView()))).toEqual({ label: L.actions });
   });
 
   it("table.commander needs a commander in the zone", () => {
