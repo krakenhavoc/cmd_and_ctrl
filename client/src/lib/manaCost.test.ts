@@ -71,6 +71,15 @@ describe("costWords", () => {
     expect(costWords("{W/U}")).toBe("1 white or blue");
     expect(costWords("{G/P}")).toBe("1 green or 2 life");
   });
+
+  // ADR 0129 §8: {E} is an energy pip, said as energy.
+  it("says energy", () => {
+    expect(costWords("{E}{E}")).toBe("2 energy");
+    expect(costPips("{E}{E}")).toEqual([
+      { symbol: "E", kind: "energy" },
+      { symbol: "E", kind: "energy" },
+    ]);
+  });
 });
 
 const card = (name: string, mana_cost: string): CardView =>

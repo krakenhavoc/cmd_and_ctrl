@@ -137,7 +137,7 @@ func (p *Policy) instantSpeed(st *state, m legal.Move) bool {
 // all of it on the wire (ADR 0033 §3).
 func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 	if c := m.Cost; c != nil {
-		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 {
+		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 || c.Energy > 0 {
 			return false
 		}
 	}

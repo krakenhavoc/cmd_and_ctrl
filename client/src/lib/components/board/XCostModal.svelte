@@ -44,6 +44,11 @@
     abilityIndex?: number;
     costLabel?: string;
     minX?: number;
+    // ADR 0129 §8: the largest X the activator can pay for, set for a
+    // "Pay X {E}" ability (Sphinx of the Revelation) to the seat's
+    // energy. The server refuses more (CR 118.3), so the input does
+    // too. Undefined is no ceiling.
+    maxX?: number;
     // #696: the rest of the announcement the preview prices against —
     // source zone, alternative cost, optional costs, face. All of them
     // are chosen before X, so the affordable / missing readout can be
@@ -63,6 +68,7 @@
     abilityIndex = undefined,
     costLabel = undefined,
     minX = 0,
+    maxX = undefined,
     castParams = {},
     confirmVerb = "Cast",
     onConfirm,
@@ -86,7 +92,7 @@
     const key = card ? `${card.instance_id}:${abilityIndex ?? "cast"}` : null;
     if (key !== lastKey) {
       lastKey = key;
-      x = Math.max(floor, suggestedMax);
+      x = capX(Math.max(floor, suggestedMax));
       preview = null;
     }
   });
@@ -113,9 +119,14 @@
       });
   });
 
+  // capX holds X under the energy ceiling, when there is one.
+  function capX(n: number): number {
+    return maxX !== undefined && n > maxX ? Math.max(floor, maxX) : n;
+  }
+
   function clampX(raw: string): void {
     const n = Math.floor(Number(raw));
-    x = Number.isFinite(n) && n >= floor ? n : floor;
+    x = capX(Number.isFinite(n) && n >= floor ? n : floor);
   }
 
   function confirm(): void {
@@ -171,11 +182,16 @@
         can pay for it.
       </p>
     {/if}
+    {#if maxX !== undefined}
+      <!-- ADR 0129 §8: "Pay X {E}" — X energy, at most what the seat has. -->
+      <p class="prompt-hint">You'll pay {x} energy (you can pay up to {maxX}).</p>
+    {/if}
     <label class="x-row">
       <span class="x-label">X =</span>
       <input
         type="number"
         min={floor}
+        max={maxX}
         step="1"
         value={x}
         oninput={(e) => clampX((e.currentTarget as HTMLInputElement).value)}

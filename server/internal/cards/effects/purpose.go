@@ -58,7 +58,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose that %s (ADR 0126 §6)", name, where, why))
 	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
-		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Sweep.Amount < 0 {
+		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 {
 		fail("has a negative amount")
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
