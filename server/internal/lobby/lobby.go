@@ -257,6 +257,9 @@ type Lobby struct {
 	mu    sync.Mutex
 	games map[uuid.UUID]*gameEntry
 	mgr   *ws.RoomManager
+	// playmatOf reads a user's playmat for their seats (ADR 0128,
+	// playmat.go). Nil: no seat carries one.
+	playmatOf PlaymatLookup
 	// broadcast, when non-nil, receives the post-mutation view of
 	// every HTTP-side game mutation (join / deck upload / start) so
 	// clients already on the game page see it without waiting for
@@ -720,6 +723,8 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	if playerName == "" {
 		return GameMeta{}, uuid.Nil, ErrEmptyName
 	}
+	// ADR 0128: read before l.mu, since it reads the database.
+	matPath, matWash := l.userPlaymat(userID)
 
 	// Registered BEFORE the lock defer so it runs after l.mu is
 	// released (deferred calls run LIFO) — see applyLocked.
@@ -804,6 +809,11 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 				// won't see the avatar until a future link flow.
 				_ = setErr
 			}
+		}
+		if matPath != "" {
+			// ADR 0128: in the same commit, so the first broadcast
+			// of the seat already carries the playmat.
+			_ = entry.room.Game.SetPlaymat(p.ID, matPath, matWash)
 		}
 		return nil
 	})

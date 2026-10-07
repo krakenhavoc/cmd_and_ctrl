@@ -96,6 +96,9 @@ describe("service worker routing", () => {
     "/admin/games",
     "/auth/discord/callback",
     "/avatars/123.png",
+    // ADR 0128: behind a session, and a replaced playmat's old URL
+    // must not live on in the cache.
+    "/playmats/0123456789abcdef0123456789abcdef.webp",
     "/bugreport",
     "/bugreport/upload",
     // S31 bot seats: the Add-bot picker's options probe.

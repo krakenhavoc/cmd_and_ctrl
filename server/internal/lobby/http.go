@@ -30,6 +30,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -206,6 +207,14 @@ type Config struct {
 	// answer 403 before they reach it.
 	UserSettings usersettings.Store
 
+	// Playmats is each signed-in person's playmat row (ADR 0128,
+	// migration 0011), behind /me/playmat. Nil behaves as
+	// playmats.NoStore. PlaymatFiles holds the images, under
+	// $CMDCTRL_DATA_DIR/playmats; nil or one with no directory refuses
+	// uploads with 503 and serves nothing.
+	Playmats     playmats.Store
+	PlaymatFiles *playmats.Files
+
 	// TableSetups is each person's last table setup (ADR 0110 section
 	// 5, migration 0008's table_setups): written when a table starts
 	// (startGame), read by GET /me/setup, applied by POST
@@ -307,6 +316,11 @@ type GameEvictor interface {
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
+//	GET  /me/playmat        — signed in: the caller's playmat (ADR 0128)
+//	PUT  /me/playmat        — signed in: upload it, multipart "image" + "wash"
+//	PATCH /me/playmat       — signed in: change its wash
+//	DELETE /me/playmat      — signed in: remove it
+//	GET  /playmats/{file}   — authenticated: a playmat image
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	GET  /me/setup          — signed in: the caller's last table setup
 //	GET  /me/last-deck      — signed in: the deck the caller last seated
@@ -604,6 +618,20 @@ func Handler(c Config) http.Handler {
 	settingsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// The playmat (ADR 0128). An upload is up to 4 MiB written to
+	// disk, so it gets its own bucket: one per 10 seconds with a burst
+	// of 3. Changing the wash is a slider's worth of small writes, so
+	// it shares the settings bucket's rate.
+	playmatUploadLimit := newLimiter(0.1, 3)
+	playmatWashLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/playmat", auth.Middleware(c.Auth)(handlerFunc(c, myPlaymat)))
+	mux.Handle("PUT /me/playmat", auth.Middleware(c.Auth)(handlerFunc(c, putMyPlaymat(playmatUploadLimit))))
+	mux.Handle("PATCH /me/playmat", auth.Middleware(c.Auth)(handlerFunc(c, patchMyPlaymat(playmatWashLimit))))
+	mux.Handle("DELETE /me/playmat", auth.Middleware(c.Auth)(handlerFunc(c, deleteMyPlaymat)))
+	// Any session: every player and spectator sees every seat's
+	// playmat. The image is served from disk, never fetched elsewhere,
+	// so it shares the avatar bucket rather than having a costlier one.
+	mux.Handle("GET /playmats/{file}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, playmatImage))))
 	// The last setup and the last deck (ADR 0110 section 5). Same
 	// caller rule as the rest of /me/*: a signed-in person, else 403.
 	// Applying a setup seats bot decks, so it rides the deck bucket,

@@ -94,6 +94,8 @@ export default defineConfig({
       // tries to render HTML as a PNG — onerror fires and the
       // PlayerHeader latches the failed-avatar state.
       "/avatars": { target: "http://localhost:8080", changeOrigin: true },
+      // ADR 0128: playmat images, served by the Go side like avatars.
+      "/playmats": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
 });

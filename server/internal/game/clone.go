@@ -614,6 +614,8 @@ func clonePlayer(p *Player) *Player {
 		DiscordID:             p.DiscordID,
 		DiscordAvatarHash:     p.DiscordAvatarHash,
 		DisplayName:           p.DisplayName,
+		PlaymatPath:           p.PlaymatPath,
+		PlaymatWash:           p.PlaymatWash,
 		IsBot:                 p.IsBot,
 		BotTier:               p.BotTier,
 		BotDeck:               p.BotDeck,

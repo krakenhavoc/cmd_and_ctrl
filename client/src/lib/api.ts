@@ -720,6 +720,62 @@ export async function putAccountSettings(
   return (await res.json()) as AccountSettings;
 }
 
+// A signed-in person's playmat (ADR 0128): the image behind their part
+// of the board, which everyone at the table sees, and the dark wash over
+// it in percent. {} when they have none.
+export interface MyPlaymat {
+  path?: string;
+  wash?: number;
+}
+
+// The wash's range and default, the server's (internal/playmats).
+export const PLAYMAT_MIN_WASH = 30;
+export const PLAYMAT_MAX_WASH = 90;
+export const PLAYMAT_DEFAULT_WASH = 60;
+// The largest image the server keeps.
+export const PLAYMAT_MAX_BYTES = 4 << 20;
+
+// fetchMyPlaymat is GET /me/playmat. A 403 means a guest, who cannot
+// keep one.
+export async function fetchMyPlaymat(): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat", { cache: "no-store" });
+  return (await res.json()) as MyPlaymat;
+}
+
+// uploadPlaymat is PUT /me/playmat: the image as multipart "image",
+// with its wash.
+export async function uploadPlaymat(image: Blob, wash: number): Promise<MyPlaymat> {
+  const form = new FormData();
+  form.append("wash", String(wash));
+  form.append("image", image);
+  const res = await authFetch("/me/playmat", { method: "PUT", body: form });
+  return (await res.json()) as MyPlaymat;
+}
+
+// setPlaymatWash is PATCH /me/playmat.
+export async function setPlaymatWash(wash: number): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat", { method: "PATCH", body: JSON.stringify({ wash }) });
+  return (await res.json()) as MyPlaymat;
+}
+
+// deletePlaymat is DELETE /me/playmat.
+export async function deletePlaymat(): Promise<void> {
+  await authFetch("/me/playmat", { method: "DELETE" });
+}
+
+// The only paths the server writes (internal/playmats' fileNamePattern).
+const PLAYMAT_PATH = /^\/playmats\/[0-9a-f]{32}\.(png|jpg|gif|webp)$/;
+
+// playmatURL is a playmat path with the session token on it, as
+// avatarURL does: an <img> or a CSS url() cannot send an Authorization
+// header. null for no path, and for anything that is not exactly a path
+// the server writes: it goes inside a CSS url("…"), so nothing else may.
+export function playmatURL(path?: string): string | null {
+  if (!path || !PLAYMAT_PATH.test(path)) return null;
+  const token = currentSession()?.token;
+  return token ? `${path}?token=${encodeURIComponent(token)}` : path;
+}
+
 // seatLibraryDeck installs a deck already in the caller's library
 // (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
 // unlike uploadDeck/installPrebuiltDeck, a player session already

@@ -145,6 +145,10 @@ export interface Settings {
     // behaviour is always-on; this lets a viewer who finds it
     // distracting hide it.
     showOpponentHandCount: boolean;
+    // ADR 0128: draw other players' playmats. Your own always shows.
+    // On by default; off is for a viewer who finds busy art hard to
+    // read cards over.
+    showPlaymats: boolean;
     // #2209 (was #1954's single `artOnlyCards`). Where a card is drawn
     // as an art tile — Scryfall's art_crop with a name strip, its P/T
     // or loyalty, counters, status marks and keyword chips — instead
@@ -420,6 +424,7 @@ export function defaultSettings(): Settings {
       expandStyle: "overlay",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
+      showPlaymats: true,
       // v16 defaults (#2209): art tiles on the battlefield, full cards
       // in the hand.
       battlefieldArt: true,
@@ -566,6 +571,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     expandStyle: "device",
     hoverDelayMs: "synced",
     showOpponentHandCount: "synced",
+    showPlaymats: "synced",
     // #1954 / #2209: a taste, not a screen size (ADR 0110 owner
     // answer 5).
     battlefieldArt: "synced",

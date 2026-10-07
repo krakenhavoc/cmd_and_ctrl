@@ -631,6 +631,8 @@ type playerSnapshot struct {
 	DiscordID             string            `json:"discordId,omitempty"`
 	DiscordAvatarHash     string            `json:"discordAvatarHash,omitempty"`
 	DisplayName           string            `json:"displayName,omitempty"`
+	PlaymatPath           string            `json:"playmatPath,omitempty"`
+	PlaymatWash           int               `json:"playmatWash,omitempty"`
 	IsBot                 bool              `json:"isBot,omitempty"`
 	BotTier               string            `json:"botTier,omitempty"`
 	BotDeck               string            `json:"botDeck,omitempty"`
@@ -2026,6 +2028,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		DiscordID:             p.DiscordID,
 		DiscordAvatarHash:     p.DiscordAvatarHash,
 		DisplayName:           p.DisplayName,
+		PlaymatPath:           p.PlaymatPath,
+		PlaymatWash:           p.PlaymatWash,
 		IsBot:                 p.IsBot,
 		BotTier:               p.BotTier,
 		BotDeck:               p.BotDeck,
@@ -2889,6 +2893,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		DiscordID:             p.DiscordID,
 		DiscordAvatarHash:     p.DiscordAvatarHash,
 		DisplayName:           p.DisplayName,
+		PlaymatPath:           p.PlaymatPath,
+		PlaymatWash:           p.PlaymatWash,
 		IsBot:                 p.IsBot,
 		BotTier:               p.BotTier,
 		BotDeck:               p.BotDeck,

@@ -231,6 +231,9 @@ func (l *Lobby) LinkSeat(gameID, playerID uuid.UUID, identity DiscordIdentity, u
 	if !identity.Populated() {
 		return GameMeta{}, SeatInfo{}, ErrEmptyName
 	}
+	// ADR 0128: read before l.mu. "" for a guest also clears a
+	// playmat the seat's previous owner left on it.
+	matPath, matWash := l.userPlaymat(userID)
 	var broadcast func()
 	defer func() {
 		if broadcast != nil {
@@ -270,7 +273,10 @@ func (l *Lobby) LinkSeat(gameID, playerID uuid.UUID, identity DiscordIdentity, u
 	name := identity.DisplayName()
 	var err error
 	if broadcast, err = l.applyLocked(gameID, entry, func() error {
-		return entry.room.Game.SetDiscordIdentity(playerID, identity.ID, identity.AvatarHash, name)
+		if err := entry.room.Game.SetDiscordIdentity(playerID, identity.ID, identity.AvatarHash, name); err != nil {
+			return err
+		}
+		return entry.room.Game.SetPlaymat(playerID, matPath, matWash)
 	}); err != nil {
 		return GameMeta{}, SeatInfo{}, err
 	}

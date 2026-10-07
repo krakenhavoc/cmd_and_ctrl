@@ -76,6 +76,8 @@
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import { seatColor } from "../../colors";
+  import { playmatURL } from "../../api";
+  import { settings } from "../../settings";
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
@@ -241,6 +243,13 @@
   // ADR 0120 §3: the expanded copy is upright, and leaves the dock's
   // and the coach card's cells to the table's panel.
   const flipped = $derived(flippedProp && !expanded);
+  // ADR 0128: the seat's playmat, behind its part of the board. Your
+  // own always shows; other players' follow display.showPlaymats.
+  const playmat = $derived.by(() => {
+    const url = playmatURL(seat.playmat?.path);
+    if (!url || (!isSelf && !$settings.display.showPlaymats)) return null;
+    return { image: `url("${url}")`, wash: `${seat.playmat?.wash ?? 60}%` };
+  });
   const docked = $derived(dockedProp && !expanded);
   const coached = $derived(coachedProp && !expanded);
   // The surface this panel's cards are drawn on, for the ability
@@ -709,7 +718,10 @@
   class:docked
   class:expanded
   class:seat-turn={isActive}
+  class:has-playmat={!!playmat}
   style:--seat-color={seatColor(seat.seat)}
+  style:--playmat={playmat?.image}
+  style:--playmat-wash={playmat?.wash}
   role={expanded ? "group" : "region"}
   aria-label={expanded ? undefined : isSelf ? L.yourBoard : L.seatBoard(seat.name)}
 >

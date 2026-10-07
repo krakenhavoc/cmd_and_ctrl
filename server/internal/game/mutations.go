@@ -9603,6 +9603,27 @@ func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, dis
 	return nil
 }
 
+// SetPlaymat sets the seat's playmat (ADR 0128): the URL path of the
+// owner's image and its wash, or an empty path for none. The lobby
+// calls it when a signed-in person takes or reclaims the seat, and on
+// every table they sit at when they change their playmat. Valid in
+// any state: it is cosmetic and changes nothing a rule reads. Unknown
+// player → ErrPlayerNotFound.
+func (g *Game) SetPlaymat(playerID uuid.UUID, path string, wash int) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if path == "" {
+		wash = 0
+	}
+	p.PlaymatPath = path
+	p.PlaymatWash = wash
+	return nil
+}
+
 // SetBot marks a seat as bot-driven with the named policy tier and
 // the curated deck it was seated with (deckID may be empty when the
 // caller supplied a raw decklist). Lobby state only — a seat cannot

@@ -549,6 +549,9 @@ var playerFields = plan(
 	"DiscordID", carried, "",
 	"DiscordAvatarHash", carried, "",
 	"DisplayName", carried, "",
+	// ADR 0128: the owner's playmat, copied onto the seat.
+	"PlaymatPath", carried, "",
+	"PlaymatWash", carried, "",
 	// S31 bot seats. Carried, not rebuilt: which seat is a bot and
 	// at what tier is not derivable from the board, and a restore
 	// that dropped it would silently turn a bot into an empty chair

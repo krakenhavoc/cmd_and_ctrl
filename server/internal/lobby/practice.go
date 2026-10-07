@@ -152,6 +152,8 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 	if len(human.Cards) == 0 || len(bot.Cards) == 0 {
 		return GameMeta{}, uuid.Nil, ErrDeckNotUploaded
 	}
+	// ADR 0128: read before l.mu, since it reads the database.
+	matPath, matWash := l.userPlaymat(human.UserID)
 
 	// Everything that must not run under l.mu — stopping a replaced
 	// table's runner, closing its sockets, and starting this one's
@@ -198,6 +200,11 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 		}
 		if human.Identity.Populated() {
 			if err = g.SetDiscordIdentity(humanP.ID, human.Identity.ID, human.Identity.AvatarHash, human.Identity.DisplayName()); err != nil {
+				return err
+			}
+		}
+		if matPath != "" {
+			if err = g.SetPlaymat(humanP.ID, matPath, matWash); err != nil {
 				return err
 			}
 		}

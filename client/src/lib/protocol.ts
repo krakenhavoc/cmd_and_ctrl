@@ -1793,6 +1793,10 @@ export interface PlayerView {
   discord_id?: string;
   discord_avatar_hash?: string;
   display_name?: string;
+  // Playmat (ADR 0128): the image behind this seat's part of the
+  // board, which every viewer sees, and the dark wash over it in
+  // percent. Absent: none. Load it through api.playmatURL.
+  playmat?: { path: string; wash: number };
   // Bot seat (S31, ADR 0033). is_bot marks a seat driven by a
   // server-side policy runner rather than a WebSocket client;
   // bot_tier is its difficulty tier ("random", "heuristic", …) and

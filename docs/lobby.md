@@ -2519,6 +2519,46 @@ always a 412.
 - A failed write never blocks the UI. It is retried with a backoff, and
   again when the browser comes back online.
 
+### `/me/playmat` and `GET /playmats/{file}` (ADR 0128)
+
+The caller's **playmat**: an image behind their part of the board,
+which everyone at the table sees, under a dark wash so cards stay
+readable ([ADR 0128](decisions/0128-playmats.md)). Signed-in people
+only, like the rest of `/me/*`: a guest, the admin token and a server
+with no database get `403`.
+
+| Route | Body | Answer |
+|---|---|---|
+| `GET /me/playmat` | none | `200 {path, wash}`, or `{}` for none |
+| `PUT /me/playmat` | multipart: `image` (required), `wash` (optional, default 60) | `200 {path, wash}` |
+| `PATCH /me/playmat` | `{"wash": n}` | `200 {path, wash}`; `404` with no playmat |
+| `DELETE /me/playmat` | none | `200 {}`, also when there was none |
+
+- `wash` is a whole percentage from 30 to 90: how strongly the image is
+  darkened under the cards. Out of range is `400`.
+- The image's type is **sniffed from its bytes**, never taken from the
+  part's headers or name: PNG, JPEG, GIF or WebP, else `400`. SVG is
+  refused: it is a document that can run script. Over 4 MiB is `413`.
+  Nothing is decoded or resized.
+- An upload is stored as `$CMDCTRL_DATA_DIR/playmats/<32 hex>.<ext>`, a
+  new random name each time, and the previous image is deleted. No data
+  directory or no database: `PUT` answers `503`.
+- Uploads are limited to one per 10 seconds per person with a burst of
+  3; `PATCH` to one a second with a burst of 5. Past either, `429`.
+- **Every write reaches the table at once.** The new playmat (or none)
+  is put on each seat the person holds at a table that is not archived,
+  as an ordinary state broadcast (`PlayerView.playmat`,
+  [docs/protocol.md](protocol.md)). A seat also takes its owner's
+  playmat when they join, reclaim it or open a practice table.
+
+`GET /playmats/{file}` serves an image to **any session** (players and
+spectators see every seat's playmat), with `?token=` accepted as for
+`/avatars`, under the avatar rate limit. The name must be one the server
+writes; the bytes are sniffed again on the way out; the answer carries
+`X-Content-Type-Options: nosniff`, a sandboxing CSP, and
+`Cache-Control: private, max-age=31536000, immutable` (a name is never
+reused). `404` for any other name.
+
 ### `POST /deck-requests`
 
 Ask for a deck's missing cards to be added to the engine

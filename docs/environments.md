@@ -758,6 +758,26 @@ Rolling forward again recreates the column empty, with no backfill.
 `TestMigration0010RollbackByHand` runs exactly this sequence and then
 rolls forward.
 
+Migration 0011 (ADR 0128, playmats) adds one table, `user_playmats`:
+each signed-in person's playmat image and its wash. The images
+themselves are files under `$CMDCTRL_DATA_DIR/playmats/`, which the
+off-site backup includes (it skips only the caches). An older binary
+refuses the v11 schema. Drop the table by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE user_playmats; DELETE FROM schema_migrations WHERE version = 11;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every playmat setting; the image files stay on disk, unused.
+Seats keep showing the playmat their restore point carries until their
+owner sets one again. Rolling forward again recreates the table empty.
+`TestMigration0011RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,

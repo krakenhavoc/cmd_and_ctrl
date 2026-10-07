@@ -3755,6 +3755,8 @@ seats[].maxHandSizeAt	number:int64
 seats[].mulliganDecided	bool
 seats[].mulligansTaken	number:int
 seats[].name	string
+seats[].playmatPath	string
+seats[].playmatWash	number:int
 seats[].poison	number:int
 seats[].seat	number:int
 seats[].statics	array

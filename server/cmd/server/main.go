@@ -162,6 +162,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -481,6 +482,12 @@ func main() {
 	}
 	avatarCache := discord.NewAvatarCache(avatarDir, nil)
 
+	// Playmats (ADR 0128): the images under the data dir, the rows in
+	// the database. Either missing means no uploads (503) and no seat
+	// ever carries a playmat.
+	playmatStore, playmatFiles := newPlaymats(log, cfg.DataDir, database)
+	l.SetPlaymatLookup(playmatLookup(log, playmatStore))
+
 	// Bug reporting (in-app "report a bug" button → GitHub issue).
 	// Token unset = feature off; the client hides the button via
 	// GET /bugreport/config. The token should be a fine-grained PAT
@@ -575,6 +582,8 @@ func main() {
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
+		Playmats:          playmatStore,
+		PlaymatFiles:      playmatFiles,
 		TableSetups:       newTableSetupStore(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
@@ -1093,6 +1102,48 @@ func newUserSettingsStore(database *db.DB) usersettings.Store {
 		return usersettings.NoStore{}
 	}
 	return usersettings.NewSQLStore(database)
+}
+
+// newPlaymats builds ADR 0128's playmat store and image files. No
+// database: playmats.NoStore, since no principal has a user to own one.
+// No data dir, or one the server cannot write: a Files that refuses
+// uploads, logged once.
+func newPlaymats(log *slog.Logger, dataDir string, database *db.DB) (playmats.Store, *playmats.Files) {
+	var store playmats.Store = playmats.NoStore{}
+	if database != nil {
+		store = playmats.NewSQLStore(database)
+	}
+	dir := ""
+	if dataDir != "" && database != nil {
+		dir = filepath.Join(dataDir, "playmats")
+	}
+	files, err := playmats.NewFiles(dir)
+	if err != nil {
+		log.Error("playmat uploads disabled: cannot create the playmats directory", "err", err)
+		files, _ = playmats.NewFiles("")
+	}
+	if !files.Enabled() {
+		log.Info("playmats disabled — needs CMDCTRL_DATA_DIR and the database; PUT /me/playmat returns 503")
+	}
+	return store, files
+}
+
+// playmatLookup is the lobby's read of a user's playmat for their
+// seats. A failed read is logged and treated as no playmat: it is
+// cosmetic, and must never keep anyone out of a seat.
+func playmatLookup(log *slog.Logger, store playmats.Store) lobby.PlaymatLookup {
+	return func(user uuid.UUID) (string, int) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		p, err := store.Get(ctx, user)
+		if err != nil {
+			if !errors.Is(err, playmats.ErrNotFound) {
+				log.Warn("reading a playmat for a seat failed", "err", err)
+			}
+			return "", 0
+		}
+		return p.Path(), p.Wash
+	}
 }
 
 // newTableSetupStore builds the last-setup store (ADR 0110 section 5,

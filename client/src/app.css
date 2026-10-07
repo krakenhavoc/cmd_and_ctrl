@@ -808,6 +808,26 @@ textarea::placeholder {
     border-color 240ms var(--ease),
     box-shadow 240ms var(--ease);
 }
+/* ADR 0128: a seat's playmat. The image fills the patch, cropped to
+   fit, under a flat wash of the page background at the owner's
+   --playmat-wash (30% to 90%), so cards, labels and counters read over
+   any art; the seat colour still comes in from the corner on top. The
+   surface colour is last, so an image that is slow or gone leaves the
+   patch as it would be without one. */
+.seat-panel.has-playmat {
+  background:
+    radial-gradient(
+      90% 70% at 100% 0%,
+      color-mix(in srgb, var(--seat-color, var(--fg-dim)) 12%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--bg) var(--playmat-wash, 60%), transparent),
+      color-mix(in srgb, var(--bg) var(--playmat-wash, 60%), transparent)
+    ),
+    var(--playmat) center / cover no-repeat,
+    var(--surface);
+}
 .seat-panel.seat-self {
   border-color: color-mix(in srgb, var(--seat-color, var(--accent)) 40%, var(--border));
 }

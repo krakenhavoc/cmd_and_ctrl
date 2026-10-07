@@ -1557,6 +1557,12 @@ type PlayerView struct {
 	DiscordAvatarHash string `json:"discord_avatar_hash,omitempty"`
 	DisplayName       string `json:"display_name,omitempty"`
 
+	// Playmat (ADR 0128): the image behind this seat's part of the
+	// board, which every viewer sees, and the dark wash over it in
+	// percent. Absent: no playmat. The client adds its session token
+	// to the path, as it does for /avatars.
+	Playmat *PlaymatView `json:"playmat,omitempty"`
+
 	// Bot seat (S31 sub-PR 4). IsBot marks a seat driven by an
 	// aiseat runner; BotTier is its policy tier and BotDeck the
 	// curated deck it was seated with. The client renders a BOT chip
@@ -7615,7 +7621,25 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
 		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
+		Playmat:             viewOfPlaymat(p),
 	}
+}
+
+// PlaymatView is a seat's playmat on the wire (ADR 0128).
+type PlaymatView struct {
+	// Path is the image's URL path, /playmats/<file>.
+	Path string `json:"path"`
+	// Wash is the dark wash over the image, in percent.
+	Wash int `json:"wash"`
+}
+
+// viewOfPlaymat is nil for a seat with no playmat, so omitempty drops
+// the field.
+func viewOfPlaymat(p *game.Player) *PlaymatView {
+	if p.PlaymatPath == "" {
+		return nil
+	}
+	return &PlaymatView{Path: p.PlaymatPath, Wash: p.PlaymatWash}
 }
 
 // viewOfCounterShields projects a seat's live "can't be countered"

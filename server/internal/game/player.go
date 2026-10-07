@@ -250,6 +250,14 @@ type Player struct {
 	DiscordAvatarHash string
 	DisplayName       string
 
+	// The seat's playmat (ADR 0128): the image behind this seat's part
+	// of the board, which every viewer sees, and the dark wash over it
+	// in percent. Copied from the signed-in owner's user_playmats row
+	// when they take or reclaim the seat, and again whenever they
+	// change it. Empty path: no playmat.
+	PlaymatPath string
+	PlaymatWash int
+
 	// IsBot marks a seat driven by an aiseat runner rather than a
 	// WebSocket client; BotTier names its policy tier ("random",
 	// "heuristic", …) and BotDeck the curated deck it was seated

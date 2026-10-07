@@ -37,6 +37,7 @@
   } from "../shortcuts";
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
+  import PlaymatSettings from "./PlaymatSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
@@ -730,6 +731,18 @@
               />
               Show opponent hand count
               {#if isFresh("display.showOpponentHandCount")}<span class="saved">✓ saved</span>{/if}
+            </label>
+
+            <PlaymatSettings />
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.showPlaymats}
+                onchange={(e) => change("display", "showPlaymats", e.currentTarget.checked)}
+              />
+              Show other players' playmats
+              {#if isFresh("display.showPlaymats")}<span class="saved">✓ saved</span>{/if}
             </label>
 
             <label>
