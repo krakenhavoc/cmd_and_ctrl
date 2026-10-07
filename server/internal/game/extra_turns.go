@@ -143,9 +143,59 @@ func (g *Game) popExtraTurnLocked() (ExtraTurn, bool) {
 			g.noteTurnBegunLocked(et.Seat)
 			continue
 		}
+		if g.extraTurnSkippedLocked(et) {
+			continue
+		}
 		return et, true
 	}
 	return ExtraTurn{}, false
+}
+
+// extraTurnSkippedLocked opens the CR 614 window over a queued extra
+// turn that is about to begin and reports whether it settled on a skip
+// (CR 614.10): "if an opponent would begin an extra turn, that player
+// skips that turn instead" (Trouble in Pairs, #2529).
+//
+// A skipped turn never begins. It is already off the queue, so nothing
+// bound to it can fire — sweepUnreachableBoundTriggersLocked drops a
+// delayed trigger tied to its Ref as the next turn starts (CR 614.10a:
+// "anything scheduled for a skipped turn won't happen", which is why
+// Final Fortune's lose-the-game never comes) — and it does not count
+// toward the seat's TurnsBegun, the same call ADR 0059 Decision 1 makes
+// for every turn skipped by an effect: that count is the turns that
+// BEGAN. A seat that has left the game is dropped before this runs
+// (CR 800.4k), and the window never sees it.
+//
+// The window cannot pause (mustSettleNow): the rotation seam is where
+// the next turn is chosen and has no resume. See RepEventExtraTurn.
+//
+// Caller must hold g.mu.
+func (g *Game) extraTurnSkippedLocked(et ExtraTurn) bool {
+	ev := &ReplacementEvent{
+		Kind:          RepEventExtraTurn,
+		Actor:         g.Seats[et.Seat].ID,
+		Source:        et.Source,
+		ExtraTurnSeat: et.Seat,
+		ExtraTurnRef:  et.Ref,
+		mustSettleNow: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	defer g.clearReplacementEventLocked(ev.ID)
+	// A cancelled event comes back as (nil, nil) — the signal
+	// runStepEntryHooksLocked reads the same way. An error is a broken
+	// pipeline (mustSettleNow forecloses a pause), and the turn is then
+	// taken: weaker than printed for the skipper, never a turn that
+	// silently vanishes.
+	if err != nil || (out != nil && !out.Canceled) {
+		return false
+	}
+	g.EmitEvent(Event{
+		Kind:   EventExtraTurnSkipped,
+		Actor:  ev.Actor,
+		Source: et.Source,
+		Amount: et.Ref,
+	})
+	return true
 }
 
 // extraTurnPendingLocked reports whether `ref` names the turn now in
