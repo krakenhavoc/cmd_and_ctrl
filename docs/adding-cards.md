@@ -1029,14 +1029,21 @@ touch it:
   Phyrexian symbol uses, on a cast, an activation or an attack
   declaration. The view reports `phyrexian_symbols` (the ceiling) and
   `phyrexian_granted` (how many are the grant's) for the viewer.
-- The enumerator and the bot need no new code: the life loops in
+- The enumerator and the bot need no new code for a card: the life loops in
   `legal/cast.go`, `legal/abilities.go` and `legal/combat.go` call
   `LifeGrantedCostForEffect` before they count symbols.
+- Every mana payment is covered. A mana ability's own mana component
+  (`ManaAbilityParams.PhyrexianLife`, wire `phyrexian_life` on
+  `activate_mana_ability`; a filter land's "{W/B}, {T}: Add …") and a mana
+  `pay_unless` (`ResolvePayUnlessWithLife`, `phyrexian_life` on
+  `resolve_choice`; ward {B}, "unless that player pays {B}") take the same
+  claim through the same helper pair, so a card with such a cost needs no
+  caveat for them.
 - A grant for another colour is data: `YouMayPayLifeForMana("G")`.
 
-**Not yet (ADR 0131 PR 2):** a mana ability's mana cost and the payments
-made while a spell or ability resolves (ward, "unless its controller
-pays") have no life answer, so a card that needs them keeps a caveat.
+A caveat that says "pays 2 life instead of {B}" goes stale the day a card
+declares `LifeForMana`; the `paying 2 life instead of black mana`
+coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
 ### Adding a replacement effect (S17+)
 

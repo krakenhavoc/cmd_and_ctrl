@@ -354,6 +354,15 @@ func moveCost(life, loyalty int) *MoveCost {
 
 }
 
+// phyrexianLifeLabel is the label suffix of a payment that spends life
+// on `symbols` symbols of a mana cost. It says "instead of mana" and not
+// "for Phyrexian mana": the life may buy a printed {B/P} or a {B} a
+// life-for-mana grant (K'rrik, ADR 0131) lets its controller pay for, and
+// the move does not say which.
+func phyrexianLifeLabel(symbols int) string {
+	return fmt.Sprintf(" paying %d life instead of mana", symbols*game.PhyrexianLifePerSymbol)
+}
+
 // withPhyrexianLife adds `symbols` Phyrexian symbols paid with life
 // to a (possibly nil) MoveCost — to Life, because that is what the
 // controller pays at announce, and to PhyrexianLife, because that

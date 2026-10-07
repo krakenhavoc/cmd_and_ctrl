@@ -9,9 +9,9 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// krrik_son_of_yawgmoth_test.go — ADR 0131 (#2531), PR 1: the third
+// krrik_son_of_yawgmoth_test.go — ADR 0131 (#2531), PRs 1 and 2: the third
 // ability, "for each {B} in a cost, you may pay 2 life rather than pay
-// that mana", for casts, activations and attack taxes, on the real
+// that mana", for casts, activations, attack taxes and a mana ability, on the real
 // catalog card. The engine's cases are game/life_for_mana_test.go.
 
 const (
@@ -159,14 +159,62 @@ func TestWithoutKrrikABlackSymbolRefusesLife(t *testing.T) {
 	}
 }
 
-// The caveat is narrowed to what PR 2 still owes, and says so in player
-// words.
-func TestKrrikCaveatNamesWhatIsStillOwed(t *testing.T) {
+// PR 2 closed the last gap: no caveat is left, and the card says it is
+// complete.
+func TestKrrikIsCompleteWithNoCaveat(t *testing.T) {
 	spec, ok := Lookup(krrikOracle)
 	if !ok {
 		t.Fatal("K'rrik is not in the catalog")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("completeness %v, caveats %v; want one caveat while PR 2 is open", spec.Completeness, spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("completeness %v, caveats %v; want Full with none", spec.Completeness, spec.Caveats)
+	}
+}
+
+// A mana ability's own cost (ADR 0131 §2): Fetid Heath's "{W/B}, {T}: Add
+// {W}{W}, {W}{B}, or {B}{B}" is paid with 2 life for the {B} half of its
+// hybrid symbol, with the real catalog card and the real K'rrik.
+func TestKrrikPaysFetidHeathsFilterCostWithLife(t *testing.T) {
+	g, me, _, _ := krrikTable(t)
+	heath := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Fetid Heath", OracleID: "42bf259d-4bb9-49c3-b4ec-223dca62f4d6",
+		TypeLine: "Land", Owner: me.ID, Controller: me.ID,
+	})
+	life := me.Life
+	if err := g.ActivateManaAbility(me.ID, heath, 1, game.ManaAbilityParams{
+		Colors: []string{"B", "B"}, PhyrexianLife: 1,
+	}); err != nil {
+		t.Fatalf("Fetid Heath's filter paid with 2 life: %v", err)
+	}
+	if me.Life != life-game.PhyrexianLifePerSymbol {
+		t.Errorf("life = %d, want %d", me.Life, life-game.PhyrexianLifePerSymbol)
+	}
+	black := 0
+	for _, tok := range me.ManaPool {
+		if tok.Color == "B" {
+			black++
+		}
+	}
+	if black != 2 {
+		t.Errorf("pool = %v, want {B}{B}", me.ManaPool)
+	}
+}
+
+// Without a claim the filter still needs its mana — the auto-tapper never
+// pays life (ADR 0131 §3).
+func TestKrrikFetidHeathWithoutAClaimNeedsTheMana(t *testing.T) {
+	g, me, _, _ := krrikTable(t)
+	heath := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Fetid Heath", OracleID: "42bf259d-4bb9-49c3-b4ec-223dca62f4d6",
+		TypeLine: "Land", Owner: me.ID, Controller: me.ID,
+	})
+	life := me.Life
+	err := g.ActivateManaAbility(me.ID, heath, 1, game.ManaAbilityParams{Colors: []string{"B", "B"}, AutoTap: true})
+	var short *game.InsufficientManaError
+	if !errors.As(err, &short) {
+		t.Fatalf("filter with nothing to pay it: %v, want insufficient mana", err)
+	}
+	if me.Life != life {
+		t.Errorf("a refused activation cost %d life", life-me.Life)
 	}
 }

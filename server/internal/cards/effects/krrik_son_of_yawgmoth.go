@@ -21,16 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // mana or {C}. The player claims it at announcement through
 // `phyrexian_life` (CR 601.2b), auto-tap never pays it, and the price
 // shown, the mana value and K'rrik's own cast trigger are unchanged.
-// Casts, activated abilities and attack taxes are covered.
+// Every mana payment its controller makes is covered: casts (alternative
+// and additional costs included), activated abilities, attack taxes, a
+// mana ability's own mana component (a filter land's "{B}, {T}: Add
+// ..."; ManaAbilityParams.PhyrexianLife) and the payments made while a
+// spell or ability resolves (ward {B}, Rhystic Study's tax;
+// ResolvePayUnlessWithLife), the last two added by PR 2.
 //
 // K'rrik's OWN {B/P}{B/P}{B/P} was always payable with life, so a
 // six-mana commander can be cast for {4} and 6 life on turn four.
-//
-// STILL OWED (ADR 0131 PR 2, #2531): a MANA ability's {B} cost (a filter
-// land's "{B}, {T}: Add ...") and the payments made while a spell or
-// ability resolves (ward {B}, "counter unless its controller pays {B}")
-// have no way to carry the life answer yet. Those still take mana only,
-// which is weaker than printed and the only acceptable direction.
 //
 // The cast trigger fires once per black spell, checked on the spell's
 // COLOUR rather than on a black pip in its cost — a colour-indicator
@@ -38,12 +37,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // its cost does not.
 func init() {
 	Register(Spec{
-		OracleID:     "cbe3a4e7-5dbe-4f58-8ee6-a1762b65acfd",
-		Name:         "K'rrik, Son of Yawgmoth",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"K'rrik's ability to pay 2 life instead of {B} doesn't reach mana abilities or costs paid while a spell or ability resolves (such as ward) — those still need mana.",
-		},
+		OracleID:        "cbe3a4e7-5dbe-4f58-8ee6-a1762b65acfd",
+		Name:            "K'rrik, Son of Yawgmoth",
+		Completeness:    CompletenessFull,
 		LifeForMana:     YouMayPayLifeForMana("B"),
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{

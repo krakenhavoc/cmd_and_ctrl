@@ -6343,6 +6343,21 @@ type ManaAbilityParams struct {
 	// on every one with a mana component.
 	AutoTap bool
 
+	// PhyrexianLife is how many of the mana component's symbols the
+	// activator pays 2 life each for instead of the mana (CR 107.4f,
+	// CR 602.2b, ADR 0131 §2): a printed {B/P} on a mana ability's
+	// cost, or a {B} that K'rrik, Son of Yawgmoth lets its controller
+	// pay with life — a filter land's "{B}, {T}: Add {B}{B}". The same
+	// field and wire name (`phyrexian_life`) as
+	// CastSpellParams.PhyrexianLife and ActivateAbilityParams.PhyrexianLife,
+	// through the same strike-and-pay helper pair, so the ceiling, the
+	// CR 119.4 / 119.8 gate and the choice of which symbols to strike
+	// are one piece of code. Claiming one against a mana ability with no
+	// mana component, or more than the cost has symbols for, is refused
+	// before anything is paid. Zero pays the symbols with mana, as ever;
+	// the auto-tap never claims it (CR 601.2b).
+	PhyrexianLife int
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -6632,7 +6647,17 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		manaCost  ParsedCost
 		manaPlan  tapPlan
 		manaShort ParsedCost
+		// manaLife is the life the announced PhyrexianLife claim costs
+		// (ADR 0131 §2); paid below, after the fallible mana half is
+		// known payable.
+		manaLife int
 	)
+	// A claim against a mana ability with no mana component is a client
+	// firing the wrong ability, so it is refused rather than dropped —
+	// the check activated.go makes for a CR 602 ability.
+	if params.PhyrexianLife != 0 && ab.ManaCost == "" {
+		return ErrInvalidParam
+	}
 	if ab.ManaCost != "" {
 		priced, perr := g.ManaAbilityManaCostForEffect(playerID, *card, ab)
 		if perr != nil {
@@ -6647,6 +6672,21 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// with colourless — the same widening the pay step below
 		// spends under, because it spends this manaCost.
 		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, 0)
+		// CR 107.4f / CR 602.2b (ADR 0131 §2): the symbols the activator
+		// announced they pay with life leave the mana cost here, through
+		// the helper the cast and CR 602 paths run, BEFORE the auto-tap
+		// plan below is made — tapping a land for a pip the player said
+		// they would pay 2 life for strands it. A mana ability's own
+		// "Pay N life" component is checked on top (CR 119.4 is about
+		// the total).
+		var serr error
+		manaCost, manaLife, serr = g.strikePhyrexianLifeLocked(p, card.Name, manaCost, spendCtx, params.PhyrexianLife, nil)
+		if serr != nil {
+			return serr
+		}
+		if manaLife > 0 && !g.CanPayLifeLocked(p, manaLife+ab.LifeCost) {
+			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
+		}
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
 			if !params.AutoTap {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
@@ -6771,6 +6811,18 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		paid.Mana = spent
 		g.EmitEvent(manaSpentEvent(playerID, cardID, spent))
 	}
+	// ADR 0131 §2: the announced Phyrexian life, paid with the mana
+	// component it replaces (CR 602.2b pays every cost together). The
+	// total was checked above; PayLifeForEffect can still refuse a
+	// CR 119.8 lock that appeared in between, so the error is returned
+	// rather than swallowed.
+	if manaLife > 0 {
+		if err := g.payPhyrexianLifeLocked(cardID, playerID, manaLife); err != nil {
+			return err
+		}
+		paid.LifePaid += manaLife
+		needStateChecks = true
+	}
 	// #763 / ADR 0074: the permanent as it was at the moment it was
 	// tapped for mana (CR 106.12a), copied because the same cost may
 	// still sacrifice it (Lotus Petal) and a triggered mana ability's
@@ -6807,7 +6859,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if err := g.PayLifeForEffect(cardID, playerID, ab.LifeCost); err != nil {
 			return err
 		}
-		paid.LifePaid = ab.LifeCost
+		paid.LifePaid += ab.LifeCost
 		needStateChecks = true
 	}
 	// ADR 0129 §5: the energy, after the life, through the one path

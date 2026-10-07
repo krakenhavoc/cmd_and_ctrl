@@ -18,7 +18,7 @@ import (
 
 const (
 	dismemberMana = "Cast Dismember → Big Threat"
-	dismemberLife = "Cast Dismember paying 4 life for Phyrexian mana → Big Threat"
+	dismemberLife = "Cast Dismember paying 4 life instead of mana → Big Threat"
 )
 
 // phyrexianCast is a cast move shaped the way legal/cast.go emits one
