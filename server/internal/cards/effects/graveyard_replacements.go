@@ -90,6 +90,14 @@ type GraveyardBecomesExile struct {
 	// card discarded from a hand goes to the graveyard as usual.
 	SelfOnly bool
 
+	// LinkExiled makes the exiled card "exiled with" the source
+	// (CR 607.2a): Valgavoth, Terror Eater's "you may play cards exiled
+	// with Valgavoth". The link is Card.ExiledWith, naming the source
+	// as the object it is now, stamped once the card has landed in
+	// exile. Leave it unset for every other member of the family,
+	// whose cards are simply gone (Rest in Peace, Leyline of the Void).
+	LinkExiled bool
+
 	// Label is the CR 616 prompt header, shown when this and another
 	// replacement both apply to the same move.
 	Label string
@@ -131,9 +139,12 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 			}
 			return true
 		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 			ev.NewZone = game.ZoneExile
 			ev.NewZoneOwner = uuid.Nil
+			if r.LinkExiled && src != nil {
+				ev.ExiledWith = game.PermissionCardRef{ID: src.InstanceID, Epoch: src.ObjectEpoch}
+			}
 			return nil
 		},
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
