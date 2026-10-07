@@ -184,32 +184,7 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 // restores a different *Game, and a closure holding the old one would
 // reanimate into a game nobody is looking at.
 func helmReanimateOneOfThem(ctx *Context, item *game.StackItem, victim uuid.UUID, creatures []uuid.UUID) error {
-	if len(creatures) == 1 {
-		return ReturnFromGraveyard{
-			Target:     creatures[0],
-			Dest:       game.ZoneBattlefield,
-			Controller: item.Controller,
-		}.Apply(ctx)
-	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:    item.Controller,
-		FromPlayer: victim,
-		Source:     item.SourceCardID,
-		Question:   "Helm of Obedience — put one of the milled creature cards onto the battlefield under your control",
-		Cards:      creatures,
-		Min:        1,
-		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromGraveyard{
-				Target:     picked[0],
-				Dest:       game.ZoneBattlefield,
-				Controller: item.Controller,
-			}.Apply(NewContext(g, item))
-		},
-	})
-	return nil
+	return b17ReanimateOneMilled(ctx.Game, item, victim,
+		"Helm of Obedience — put one of the milled creature cards onto the battlefield under your control",
+		creatures)
 }
