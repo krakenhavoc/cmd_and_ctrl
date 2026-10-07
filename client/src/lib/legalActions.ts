@@ -124,6 +124,7 @@ interface Acc {
   attack_targets: string[];
   blocks: string[];
   cast_idle_hint?: string;
+  exert_on_attack?: boolean;
 }
 
 function push<T>(list: T[], v: T | undefined | null): void {
@@ -195,6 +196,8 @@ function fromMoves(moves: readonly LegalMoveView[]): Map<string, LegalSourceView
         break;
       case "attack":
         push(e.attack_targets, str(p.target));
+        // ADR 0130 §5: the twin move that exerts it as it attacks.
+        if (p.exert === true) e.exert_on_attack = true;
         break;
       case "block": {
         // declare_blockers names a group (the two creatures a menace

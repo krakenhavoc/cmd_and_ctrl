@@ -306,6 +306,12 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// Exerts is every exert this turn, in order (ADR 0130 §1, CR
+	// 701.43): one record per exert, so a creature exerted in two
+	// combats has two. Written only by exertLocked; read through
+	// ExertedThisTurn (Combat Celebrant's "if this creature hasn't
+	// been exerted this turn"). Additive within v7: omitted when empty.
+	Exerts []ExertRecord `json:"exerts,omitempty"`
 	// StepsBegun and PhasesBegun count the steps and phase families
 	// that have begun this turn; PhaseStarted is the PhaseID of the
 	// phase the last count opened. They are what Turn.StepOrdinal and
@@ -955,6 +961,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
+	}
+	if len(t.Exerts) > 0 {
+		out.Exerts = append([]ExertRecord(nil), t.Exerts...)
 	}
 	if len(t.StepsBegun) > 0 {
 		out.StepsBegun = make(map[Step]int, len(t.StepsBegun))
