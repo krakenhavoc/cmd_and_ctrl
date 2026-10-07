@@ -21,22 +21,33 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a card drawn in response shrinks the draw). The {C}{C} in the cost
 // wants colorless mana, which the cost engine enforces.
 //
-// Sandbox simplification, declared — one whole ability omitted, the
-// Stoneforge Mystic posture: the counter ability is NOT implemented.
-// "Discard a card with mana value X" is a discard-a-card component in
-// an activated ability's cost, and AbilityCost has no such component
-// (tap, sacrifice, mana, life, loyalty and crew are the whole set).
-// Shipping the ability without its cost would be a free Counterspell
-// on a stick — stronger than printed, the #259 direction — so the
-// ability is left off entirely, which is weaker, and the caveat says
-// so.
+// The counter ability is "Discard a card with mana value X" paired
+// with a spell target clause bounded by the same X (#2190, ADR 0113's
+// 2026-10-07 amendment). X is announced with the activation (CR
+// 602.2b) but is not paid for: it is the mana value the discarded
+// card must have (DiscardCardWithManaValueX) and the mana value the
+// target must have (WithManaValueEqualsX), so the engine refuses a
+// card and a target that disagree at announce, and the target is
+// re-checked as the ability resolves (CR 608.2b). A spell on the
+// stack counts {X} as the value chosen for it (CR 202.3e) and a card
+// in hand counts it as zero, so Kozilek answers a Fireball cast for
+// X=3 with a card of mana value four. There is no mana cost: the
+// ability is free to activate whenever Kozilek is on the battlefield,
+// as printed.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "4c1c1537-e519-4e2f-9bc2-d34b289d4487",
 		Name:            "Kozilek, the Great Distortion",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The discard-to-counter ability isn't implemented — Kozilek can't counter spells."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
+		Activated: []ActivatedAbility{{
+			Label:   "Discard a card with mana value X: Counter target spell with mana value X.",
+			Cost:    DiscardCardWithManaValueX("a card with mana value X"),
+			Targets: TargetSpell("target spell with mana value X").WithManaValueEqualsX(),
+			Effect:  counterTheChosenSpell,
+		}},
 		Triggered: []game.TriggeredAbility{{
 			FromStack: true,
 			Watches:   []game.EventKind{game.EventCast},

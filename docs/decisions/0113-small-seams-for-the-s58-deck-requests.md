@@ -362,3 +362,48 @@ None. `DiscardCost` is catalog data, not game state, and the announced X rides `
 
 - "Discard X cards" as a cast's additional cost or as a mana ability's cost (no printed card). `Register` refuses the mana-ability form; the additional-cost form has no constructor.
 - Teaching the heuristic what a good X is for Gix. It prices the discards and the activation base like any other cost-paying move.
+
+---
+
+## Amendment 2026-10-07 (second) — "Discard a card with mana value X" as a cost (#2190)
+
+**Why it lands here.** Kozilek, the Great Distortion is on the Sami Whammy deck request (S58). Its second ability needs the one thing the previous amendment's component cannot say: a discard whose CARD is constrained by the same number the target is. This is the same family (a discard component that feeds the announced X), so it lands beside "Discard X cards" and changes no earlier decision.
+
+### What exists, what is missing
+
+- **The target bound exists.** `TargetSpec.ManaValueEqualsX` ("with mana value X", #1723) is bound at announce from the activation's X and re-checked from `StackItem.XValue` as the ability resolves (CR 608.2b). Lazav, the Multifarious and Helios One use it with an `{X}` or an energy X.
+- **The discard exists, with no say about the card.** `DiscardCost.Match` is a predicate on one card, and X is not an input to it. Nothing lets the discarded card's mana value be the announced X, and X is not paid for here: there is no `{X}`, no count, no energy.
+- **A stack spell's mana value was read without its X.** `boundStatValue` took `Card.ParsedManaValue`, which counts {X} as zero, so a clause bounding a spell on the stack by mana value would have judged a Fireball cast for X=3 as mana value 1.
+
+### The rules
+
+- **CR 602.2b:** the choices an activation makes are made as it is activated, before costs are paid. Kozilek's text mentions X in the cost and in the target, and the two are one X because they are one ability's. The engine models that one number as the activation's announced X (the slot every other X cost uses), chosen by picking the card. This is a modelling choice, not a quoted rule: no rule text here says how a bare "X" in a cost with no `{X}` symbol is chosen.
+- **CR 202.3e:** a spell on the stack has the mana value its announced X gives it; anywhere else {X} is zero. The discarded card is in a hand, so its {X} is zero.
+- **CR 118.3 / 602.2b:** a cost is paid in full or not at all, and a refused activation pays nothing.
+
+### Decision
+
+1. **The component.** `DiscardCost.ManaValueX bool` with `DiscardManaValueX(*DiscardCost)`. `N` is 1. `Match`, `Random`, `Hand` and `CountFromX` are refused beside it. Built with `effects.DiscardCardWithManaValueX(label)`.
+2. **The announcement.** `AbilityCost.DemandsX` is also true for it. `validateDiscardCostLocked` demands one hand card whose `ParsedManaValue` equals the announced X; a card whose cost cannot be read (a joined split-card cost) does not match, so it cannot pay. `XSlots` is not widened, so the ability's mana component, if it ever had one, is the printed one.
+3. **The target side.** No change to the clause: `TargetSpell(...).WithManaValueEqualsX()`. `boundStatValue` now reads `Game.ManaValueForEffect` (CR 202.3e), through a new `xBoundAdmitsIn(g, c)`; for a card in any other zone it is the same answer as before, so the existing clauses (Agadeem's Awakening, Lazav, Chthonian Nightmare, Helios One, The Mycosynth Gardens) are unchanged. The view's `mana_values` for a stack spell counts its X the same way.
+4. **Boot-time guards** (`effects.Register`): one announced X cannot pay two clauses, so `{X}` in the mana cost, X energy, a sacrifice-X or tap-X clause beside it panics, as does another component that spends a card out of the hand. A mana ability cannot carry it (CR 605.3b).
+5. **The wire.** `ActivatedAbilityView.DiscardCostManaValueX` (`discard_cost_mana_value_x`), public. `discard_cost_n` is 1, `demands_x` is set, and `discard_cost_options` is the controller's readable hand cards (controller-only, #1369). The client does not open the X stepper: the card picked is the announcement, so it sends that card's mana value as `x_value` and narrows the target clause by it. It reads the mana value off the printed cost the wire already carries (`discardedManaValue`), which now counts a monocoloured hybrid `{2/W}` as 2 as the engine does.
+6. **The bot.** No new prompt. The enumerator offers one payment per distinct mana value in the hand (`manaValueDiscardPayments`), the card the seat would miss least (`cheapestFuelFirst`) standing for its value, because two cards of one value announce the same X and admit the same spells. The announcement's X is that value; the unbound target sets are judged against it by `TargetsWithinBoundForEffect`, so the move list holds only (card, spell) pairs the engine accepts (#544), and an empty stack or a hand with no matching value offers nothing.
+
+### Cards
+
+- **Kozilek, the Great Distortion: Full** (its caveat is gone).
+- The Commander-legal pool printing this cost is this card alone, counted from the local Scryfall dump on 2026-10-07.
+
+### Tests
+
+The engine contract is `cards/effects/kozilek_discard_mana_value_test.go` (the counter, every disagreement between card, X and target refused with nothing paid, an X spell on the stack, X = 0, an unreadable cost, an empty stack, completeness, and the boot-time guards), the move list in `legal/discard_mana_value_cost_test.go`, the wire in `protocol/discard_mana_value_view_test.go` and the client's X in `client/src/lib/discardCostX.test.ts`.
+
+### Snapshot impact
+
+None. `DiscardCost` is catalog data and the announced X rides `StackItem.XValue`.
+
+### Out of scope
+
+- The form as a cast's additional cost or a mana ability's cost (no printed card).
+- Teaching the heuristic when to spend a card to counter a spell. It prices the discard and the activation base like any other cost-paying move.

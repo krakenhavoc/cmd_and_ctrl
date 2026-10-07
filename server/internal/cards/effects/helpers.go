@@ -774,6 +774,19 @@ func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
 	return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
 }
 
+// counterTheChosenSpell is the Effect of an ACTIVATED ability that
+// reads "Counter target spell" — Tidal Control's, Kozilek, the Great
+// Distortion's. The first target still legal as the ability resolves
+// (CR 608.2b) is countered; counterTheTargetSpell is the same body for
+// a spell's OnResolve, which is handed the item instead.
+func counterTheChosenSpell(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		return CounterTarget{StackID: t.ID}.Apply(ctx)
+	}
+	return nil
+}
+
 // destroyTheTargetPermanent is the whole OnResolve of "Destroy target
 // [permanent]." — Bedevil's body, named for the same reason.
 func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {

@@ -17,6 +17,19 @@ func declaresDiscardX(s effects.Spec) bool {
 	return false
 }
 
+// declaresDiscardManaValueX is the "Discard a card with mana value X"
+// cost probe (#2190): an activated ability whose discard component
+// announces the discarded card's mana value as X
+// (game.DiscardCost.ManaValueX).
+func declaresDiscardManaValueX(s effects.Spec) bool {
+	for _, a := range s.Activated {
+		if game.DiscardManaValueX(a.Cost.DiscardCards) {
+			return true
+		}
+	}
+	return false
+}
+
 // declaresDiscardYourHand is the "Discard your hand" cost probe
 // (#1600): an activated or mana ability whose cost carries the hand
 // form of the discard component (game.DiscardCost.Hand). Kept out of

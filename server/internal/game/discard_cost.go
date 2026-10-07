@@ -120,11 +120,44 @@ type DiscardCost struct {
 	// has its own fixed-width plan, so Register refuses the component
 	// on both. Build it with effects.DiscardX, never by hand.
 	CountFromX bool
+
+	// ManaValueX is "Discard a card with mana value X" (#2190, ADR
+	// 0113's 2026-10-07 amendment) — Kozilek, the Great Distortion's
+	// "Discard a card with mana value X: Counter target spell with mana
+	// value X." X is the number the activator announces with the
+	// activation (CR 602.2b), and here it is not paid for: it is the
+	// mana value the discarded card must have. The effect and the target
+	// clause read the same number (the clause bounds itself with
+	// TargetSpec.WithManaValueEqualsX; the effect may read ctx.X()).
+	//
+	//   - N is 1, set by effects.DiscardCardWithManaValueX. One card is
+	//     named in `discard_ids`; the engine refuses an activation whose
+	//     card does not have exactly the announced X as its mana value
+	//     (a card in a hand has no {X} to count: CR 202.3e is a stack
+	//     rule, so {X} is zero there) or whose cost it cannot read (a
+	//     joined split-card cost), with nothing paid.
+	//   - Match, Random, Hand and CountFromX are meaningless beside it,
+	//     and Register refuses them.
+	//   - Because X is announced rather than paid, the client does not
+	//     ask for it: the card picked IS the announcement, so it sends
+	//     that card's mana value as x_value and narrows the target clause
+	//     by it. The enumerator offers one move per distinct mana value
+	//     in the hand.
+	//
+	// An ACTIVATED ability only, for the reason CountFromX gives: a mana
+	// ability has no stack item to carry the announced X (CR 605.3b).
+	ManaValueX bool
 }
 
 // DiscardCountFromX reports the "Discard X cards" form. Nil-safe.
 func DiscardCountFromX(d *DiscardCost) bool {
 	return d != nil && d.CountFromX
+}
+
+// DiscardManaValueX reports the "Discard a card with mana value X"
+// form. Nil-safe.
+func DiscardManaValueX(d *DiscardCost) bool {
+	return d != nil && d.ManaValueX
 }
 
 // DiscardsHand reports whether this is the "Discard your hand" form.
@@ -141,6 +174,12 @@ func (d *DiscardCost) DiscardsHand() bool {
 func (d *DiscardCost) Matches(c Card) bool {
 	if d == nil || d.Random || d.Hand {
 		return false
+	}
+	if d.ManaValueX {
+		// A card whose cost the engine cannot read (a joined split-card
+		// cost) has no mana value to announce, so it cannot pay.
+		_, ok := c.ParsedManaValue()
+		return ok
 	}
 	if d.Match == nil {
 		return true
@@ -293,6 +332,14 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 		c := g.findHandCardLocked(p, id)
 		if c == nil || !cost.DiscardCards.Matches(*c) {
 			return nil, ErrInvalidParam
+		}
+		// #2190: "Discard a card with mana value X" — the card's mana
+		// value IS the announcement, so a card of any other value is
+		// the client announcing one number and discarding another.
+		if cost.DiscardCards.ManaValueX {
+			if mv, ok := c.ParsedManaValue(); !ok || mv != x {
+				return nil, ErrInvalidParam
+			}
 		}
 	}
 	return append(out, chosen...), nil

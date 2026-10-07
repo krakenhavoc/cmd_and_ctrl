@@ -2430,6 +2430,18 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2527, ADR 0113's 2026-10-07 amendment): `game.DiscardCost.CountFromX`, built by `effects.DiscardX()`, the discard twin of `SacrificeX` and `TapXUntapped`. The count is the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, `validateDiscardCostLocked` demands exactly X distinct cards from the activator's hand, and `XSlots` is untouched, so the mana cost is the printed one whatever X is. `effects.Register` refuses it beside `{X}` in the mana cost, a sacrifice-X or tap-X clause, another hand-spending component, or on a mana ability. The wire carries `discard_cost_count_from_x` (public; the options stay controller-only) and the client asks how many with its discard picker, sending the picks as `discard_ids` and their number as `x_value`. The enumerator offers the cheapest 1, 2 and 3 cards (`variableDiscardPayments`) and never the X = 0 no-op for a card that declares `XMatters`. `ExileTopWithPermission.Free` is the free play (`Cost: \"{0}\"`). Not covered: the form as a cast's additional cost or a mana ability's cost, which no printed card uses.",
 	},
 	{
+		// #2190 (ADR 0113's second 2026-10-07 amendment). Closed;
+		// history in Closed seams.
+		Slug: "discard-mana-value-cost", Name: "Discarding a card with mana value X as a cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that discard a card whose mana value is the X of the ability, such as Kozilek, the Great Distortion's \"Discard a card with mana value X: Counter target spell with mana value X\". X is not paid for; the card picked is the announcement.",
+		Rules:       []string{"202.3e", "602.2b"},
+		Issue:       2190,
+		ADR:         "0113-small-seams-for-the-s58-deck-requests.md",
+		Probe:       declaresDiscardManaValueX,
+		Examples:    []string{"Kozilek, the Great Distortion"},
+		EngineNotes: "**Shipped** (#2190, ADR 0113's second 2026-10-07 amendment): `game.DiscardCost.ManaValueX`, built by `effects.DiscardCardWithManaValueX()`. `AbilityCost.DemandsX` is true for it, `validateDiscardCostLocked` demands one hand card whose mana value equals the announced X, and the spell clause bounds itself with `WithManaValueEqualsX`, so the card and the target must agree at announce and the target is re-checked at resolution. A spell on the stack counts {X} as the value chosen for it (`boundStatValue` now reads `Game.ManaValueForEffect`, CR 202.3e); a card in a hand counts it as zero. `effects.Register` refuses it beside `{X}` in the mana cost, another claim on the announced X, a predicate, another hand-spending component, or on a mana ability. The wire carries `discard_cost_mana_value_x` (public); the client does not ask for X, it sends the picked card's mana value as `x_value` and narrows the target picker by it. The enumerator offers one payment per distinct mana value in the hand (`manaValueDiscardPayments`), each judged against the spells of that value. Not covered: the form as a cast's additional cost or a mana ability's cost, which no printed card uses.",
+	},
+	{
 		Slug: "costs-only-some-mana-can-pay", Name: "Costs that only some mana can pay", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Costs that say which mana may pay them, such as Crypt Rats' \"Spend only black mana on X\" and Throne of Eldraine's \"Spend only mana of the chosen color to activate this ability\", and mana that may be spent only on spells of exactly one color, or of two or more.",
 		Missing:     "Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" can't be cast with that limit yet: no cost can say that each mana must be a different color.",

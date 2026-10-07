@@ -40,6 +40,17 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 	// never read; a fixed count, "at random" or the hand form beside it
 	// is a card file that has mixed the forms up. An ABILITY only is
 	// checked by checkDiscardXClause, which knows the owner.
+	// #2190: "Discard a card with mana value X" names exactly one card,
+	// whose mana value is the announced X; a predicate, "at random", the
+	// hand form or the count-from-X form beside it is a card file that
+	// has mixed the forms up.
+	if dc.ManaValueX {
+		if dc.N != 1 || dc.Match != nil || dc.Random || dc.Hand || dc.CountFromX {
+			panic(fmt.Sprintf("effects.Register: %q %s discards a card with mana value X and also declares another count, a predicate, \"at random\", your hand or X cards — build it with DiscardCardWithManaValueX",
+				name, where))
+		}
+		return
+	}
 	if dc.CountFromX {
 		if dc.N != 0 || dc.Random || dc.Hand {
 			panic(fmt.Sprintf("effects.Register: %q %s discards X cards and also declares a count, \"at random\" or your hand — build it with DiscardX",
@@ -76,9 +87,11 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 //     assumes it, so a card file that does is refused rather than
 //     offered moves the engine bounces.
 func checkDiscardXBesideOtherCosts(name, where string, cost game.AbilityCost) {
-	if !game.DiscardCountFromX(cost.DiscardCards) {
+	if !game.DiscardCountFromX(cost.DiscardCards) && !game.DiscardManaValueX(cost.DiscardCards) {
 		return
 	}
+	// #2190: "Discard a card with mana value X" announces its X the
+	// same way and is refused beside the same claimants.
 	if cost.EnergyX {
 		panic(fmt.Sprintf("effects.Register: %q %s pays X energy AND discards X cards — one announced X cannot pay both",
 			name, where))

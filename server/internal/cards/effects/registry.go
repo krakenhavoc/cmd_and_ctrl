@@ -656,6 +656,11 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards X cards — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
+		// #2190: and neither can "Discard a card with mana value X".
+		if game.DiscardManaValueX(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards a card with mana value X — a mana ability announces no X (CR 605.3b)",
+				spec.Name, i))
+		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		if ma.Cost.Mana != "" {

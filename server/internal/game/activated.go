@@ -521,7 +521,7 @@ type AbilityCost struct {
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
 	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
-		DiscardCountFromX(c.DiscardCards)
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually

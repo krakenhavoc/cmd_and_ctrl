@@ -24,12 +24,14 @@ export function priceLabel(cost: string): string {
 
 // manaValueOf is a cost string's mana value — {2}{U} is 3, "" is 0 —
 // used only to ORDER prices cheapest first. Hybrid and Phyrexian
-// symbols count one each (CR 202.3); X counts zero.
+// symbols count one each (CR 202.3) — except a two-brid symbol like
+// {2/W}, which counts its number — and X counts zero.
 export function manaValueOf(cost: string): number {
   let n = 0;
   for (const m of cost.matchAll(/\{([^}]*)\}/g)) {
     const sym = m[1];
     if (/^\d+$/.test(sym)) n += Number(sym);
+    else if (/^\d+\/[A-Z]$/.test(sym)) n += Number(sym.split("/")[0]);
     else if (sym !== "X") n += 1;
   }
   return n;

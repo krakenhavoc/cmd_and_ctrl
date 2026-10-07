@@ -2569,6 +2569,12 @@ export interface ActivatedAbilityView {
   // sends the picks as `discard_ids` and their number as `x_value`, and
   // skips the X stepper. `demands_x` is set beside it.
   discard_cost_count_from_x?: boolean;
+  // #2190: "Discard a card with mana value X" (Kozilek, the Great
+  // Distortion). `discard_cost_n` is 1 and `demands_x` is set, but X is
+  // not asked for: the card picked IS the announcement, so the client
+  // sends its mana value as `x_value` (the engine refuses any other) and
+  // narrows the ability's target clause by it (`mana_value_equals_x`).
+  discard_cost_mana_value_x?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride
