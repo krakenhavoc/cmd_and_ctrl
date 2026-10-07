@@ -842,6 +842,8 @@ lastKnownPermanents{}[].attachedTo.Kind	string
 lastKnownPermanents{}[].attachedTo.Mode	number:int
 lastKnownPermanents{}[].attachedTo.Slot	number:int
 lastKnownPermanents{}[].attacking	bool
+lastKnownPermanents{}[].blocking	array
+lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic	object
 lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
