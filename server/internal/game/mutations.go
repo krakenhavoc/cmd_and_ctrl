@@ -5248,7 +5248,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.ExiledWith)
 	tailErr := g.runRouteTailLocked(ev.zoneRoute)
 	if moveErr != nil {
 		return moveErr
@@ -5278,8 +5278,14 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // genuine shuffle-in (Blightsteel Colossus, the Eldrazi titans)
 // rather than a placement; every other caller passes false.
 //
+// exiledWith is ReplacementEvent.ExiledWith carried down the same way
+// (#2530): stamped onto the card as Card.ExiledWith once it has landed
+// in exile, and ignored for any other destination. The zero ref —
+// every caller but a replacement that declared the link — stamps
+// nothing.
+//
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith PermissionCardRef) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -5364,6 +5370,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	if shuffleAfter && dest == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
 	}
+	stampExiledWithLocked(destZone, cardID, exiledWith)
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,
@@ -6528,7 +6535,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// (effects.ManaAbilityCost has no such field to set).
 	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, AbilityCost{
 		DiscardCards: ab.DiscardCards,
-	}, params.DiscardIDs)
+	}, params.DiscardIDs, 0)
 	if err != nil {
 		return err
 	}

@@ -502,7 +502,8 @@ type AbilityCost struct {
 // ADR 0129 §2: "Pay X {E}" (EnergyX) is a third such owner — Sphinx of
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
+		DiscardCountFromX(c.DiscardCards)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -1392,7 +1393,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #660: the discard components. Validated here with everything
 	// else and paid last (a discard moves the source out of hand,
 	// which invalidates `source` exactly as a sacrifice does).
-	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs)
+	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs, params.XValue)
 	if err != nil {
 		return err
 	}

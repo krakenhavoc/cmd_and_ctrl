@@ -1370,6 +1370,7 @@
       abilityExilePermanentIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
+      abilityDiscardX = undefined;
       abilityTapX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
@@ -1506,6 +1507,9 @@
   // the X stepper is skipped for such an ability — asking twice could
   // only produce an announcement the server refuses.
   let abilitySacrificeX: number | undefined;
+  // #2527: and the count picked for "Discard X cards" (Gix), the same
+  // way: the number of cards the player discards IS the announcement.
+  let abilityDiscardX: number | undefined;
   // #1421: the count picked for "Tap X" is the announcement, just
   // as the sacrifice picker supplies X for "Sacrifice X".
   let abilityTapX: number | undefined;
@@ -1667,6 +1671,7 @@
     // along with this one.
     abilityWaterbendIDs = undefined;
     abilitySacrificeX = undefined;
+    abilityDiscardX = undefined;
     abilityTapX = undefined;
     // #660: the discard payment is asked FIRST, as the cast flow asks
     // its own — it is the cost most likely to make a player back out.
@@ -1675,6 +1680,18 @@
     // no modal.
     // ADR 0109 §7: a random discard names nothing — it is confirmed
     // below, with the library exile, rather than picked here.
+    // #2527: "Discard X cards" always asks — how many is the question,
+    // so there is no hand size at which the answer is forced. An empty
+    // hand pays it at X=0 with nothing to pick.
+    if (ability.discard_cost_count_from_x) {
+      const options = ability.discard_cost_options ?? [];
+      if (options.length > 0) {
+        abilityDiscardPrompt = { card, ability };
+        return;
+      }
+      afterAbilityDiscardCost(card, ability, []);
+      return;
+    }
     if (ability.discard_cost_n && !ability.discard_cost_random) {
       const options = ability.discard_cost_options ?? [];
       if (options.length > ability.discard_cost_n) {
@@ -1696,6 +1713,9 @@
     discardIDs: string[],
   ): void {
     abilityDiscardIDs = discardIDs;
+    // #2527: the cards picked for "Discard X cards" are the announced
+    // X, so the X stepper has nothing left to ask.
+    abilityDiscardX = ability.discard_cost_count_from_x ? discardIDs.length : undefined;
     // #1297: the exile pick next — the same card-shaped question one
     // component over, skipped the same way when the pile holds exactly
     // what the clause demands.
@@ -2231,6 +2251,8 @@
         xValue = abilitySacrificeX;
       } else if (abilityTapX !== undefined) {
         xValue = abilityTapX;
+      } else if (abilityDiscardX !== undefined) {
+        xValue = abilityDiscardX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -2329,6 +2351,7 @@
     abilityExilePermanentIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
+    abilityDiscardX = undefined;
     abilityTapX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
@@ -3197,6 +3220,7 @@
     options={abilityDiscardOptions}
     need={abilityDiscardPrompt?.ability.discard_cost_n}
     label={abilityDiscardPrompt?.ability.discard_cost_label}
+    variable={abilityDiscardPrompt?.ability.discard_cost_count_from_x}
     onConfirm={confirmAbilityDiscardCost}
     onCancel={() => {
       abilityDiscardPrompt = null;

@@ -901,7 +901,13 @@ type cardSnapshot struct {
 	// exiled this card face down. Carried because nothing else records
 	// it — a restore that dropped it would leave the card unplayable by
 	// the land that hid it and unreadable by that land's controller.
-	HiddenBy          PermissionCardRef `json:"hiddenBy"`
+	HiddenBy PermissionCardRef `json:"hiddenBy"`
+	// ExiledWith is the CR 607.2a link from an exiled card to the
+	// permanent object whose replacement exiled it (#2530, Valgavoth,
+	// Terror Eater). Carried: a restore that dropped it would leave the
+	// card in exile that nobody may play. An older file decodes as the
+	// zero ref, "exiled with nothing", which is every game before it.
+	ExiledWith        PermissionCardRef `json:"exiledWith"`
 	StartingDefense   int               `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
@@ -1987,6 +1993,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
+		ExiledWith:               c.ExiledWith,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -2822,6 +2829,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
+		ExiledWith:               c.ExiledWith,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,

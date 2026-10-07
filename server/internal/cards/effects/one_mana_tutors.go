@@ -33,7 +33,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // knowledge is re-granted on the way onto the top. Imperial Seal does
 // NOT say reveal — it pays 2 life for the privacy instead.
 //
-// No simplifications.
+// No simplifications. All four were audited clause by clause against the
+// printed text (#2522, #2537): the type each search allows, who sees the
+// reveal, shuffle-then-place ordering, and Imperial Seal's 2 life.
 func init() {
 	Register(Spec{
 		OracleID:     "c5229c17-b7be-4b05-b683-f2277edc4849",
@@ -46,8 +48,9 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID: "e8863518-0bfa-49c3-8c6e-6c9116a81051",
-		Name:     "Worldly Tutor",
+		OracleID:     "e8863518-0bfa-49c3-8c6e-6c9116a81051",
+		Name:         "Worldly Tutor",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return tutorToTop(ctx, "Worldly Tutor — a creature card", true,
 				func(c game.Card) bool { return c.IsCreature() })
@@ -55,8 +58,9 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID: "fb81f95c-70f8-4eb7-8d15-15d0ae23ec03",
-		Name:     "Mystical Tutor",
+		OracleID:     "fb81f95c-70f8-4eb7-8d15-15d0ae23ec03",
+		Name:         "Mystical Tutor",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return tutorToTop(ctx, "Mystical Tutor — an instant or sorcery card", true,
 				func(c game.Card) bool { return c.IsInstant() || c.IsSorcery() })
@@ -64,8 +68,9 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID: "16cd0b90-f70c-4efa-b252-8de8784ef9a3",
-		Name:     "Imperial Seal",
+		OracleID:     "16cd0b90-f70c-4efa-b252-8de8784ef9a3",
+		Name:         "Imperial Seal",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			// "Search your library for a card, then shuffle and put
 			// that card on top. You lose 2 life." No reveal, any

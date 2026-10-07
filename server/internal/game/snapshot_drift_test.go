@@ -487,6 +487,9 @@ var cardFields = plan(
 	// a legal state ("not hidden by anything"), so a restore that
 	// dropped it would say nothing and leave the card orphaned.
 	"HiddenBy", carried, "",
+	// #2530: the "exiled with" link, one field over from HiddenBy and
+	// for the same reason — the zero value is a legal state.
+	"ExiledWith", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's

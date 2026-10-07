@@ -95,6 +95,36 @@ type DiscardCost struct {
 	//
 	// Build it with effects.DiscardYourHand, never by hand.
 	Hand bool
+
+	// CountFromX is "Discard X cards" (#2527, ADR 0113's 2026-10-07
+	// amendment) — Gix, Yawgmoth Praetor's "{4}{B}{B}{B}, Discard X
+	// cards". The discard twin of a CountFromX sacrifice clause
+	// (SacrificeX, ADR 0100) and of "Tap X untapped" (TapXUntapped):
+	//
+	//   - the count IS the X announced at CR 602.2b, so N is 0 and is
+	//     never read, and the activator names exactly that many cards
+	//     in `discard_ids`; the effect reads the same number with
+	//     ctx.X(). There is no {X} symbol and so no extra mana demand,
+	//     which is why Register refuses a cost that ALSO has {X} in its
+	//     mana component, or sacrifices or taps X: one announced
+	//     number cannot pay two clauses.
+	//   - Match narrows which cards may be discarded ("X creature
+	//     cards"), as it does for a fixed count. Random and Hand are
+	//     meaningless beside it, and Register refuses both.
+	//   - X may be zero: discarding no cards is paying "X cards" at
+	//     X=0 (CR 107.3a), exactly as a cost with an {X} in it may be
+	//     paid at zero. A card that prints a floor sets AbilityCost.MinX.
+	//
+	// An ACTIVATED ability only. A mana ability has no stack item to
+	// carry the announced X (CR 605.3b) and a cast's additional cost
+	// has its own fixed-width plan, so Register refuses the component
+	// on both. Build it with effects.DiscardX, never by hand.
+	CountFromX bool
+}
+
+// DiscardCountFromX reports the "Discard X cards" form. Nil-safe.
+func DiscardCountFromX(d *DiscardCost) bool {
+	return d != nil && d.CountFromX
 }
 
 // DiscardsHand reports whether this is the "Discard your hand" form.
@@ -135,7 +165,7 @@ func (d *DiscardCost) Matches(c Card) bool {
 func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *DiscardCost) []uuid.UUID {
 	// A random clause and a "Discard your hand" clause (#1600) offer
 	// nothing to pick: the engine chooses the cards in both.
-	if cost == nil || cost.N <= 0 || cost.Random || cost.Hand {
+	if cost == nil || (cost.N <= 0 && !cost.CountFromX) || cost.Random || cost.Hand {
 		return nil
 	}
 	p := g.playerByIDLocked(playerID)
@@ -169,9 +199,10 @@ func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *D
 //     "discard this" cost on a battlefield ability would have nothing
 //     to discard. srcZone is the zone the activation was validated
 //     against, so this is a free check rather than a second lookup.
-//   - Exactly cost.N ids for a DiscardCards clause, each distinct,
-//     each in the activator's hand, each matching the clause, and
-//     none of them the source of a hand activation.
+//   - Exactly cost.N ids for a DiscardCards clause (the announced X
+//     for a CountFromX clause, #2527), each distinct, each in the
+//     activator's hand, each matching the clause, and none of them
+//     the source of a hand activation.
 //   - No ids for a "Discard your hand" clause (#1600): the answer is
 //     the whole hand, read here, and an empty hand is a payment of
 //     nothing rather than a refusal.
@@ -181,7 +212,7 @@ func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *D
 //     firing, and dropping the field silently hides that.
 //
 // Caller must hold g.mu.
-func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone ZoneKind, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
+func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone ZoneKind, cost AbilityCost, chosen []uuid.UUID, x int) ([]uuid.UUID, error) {
 	var out []uuid.UUID
 	if cost.DiscardSelf {
 		if srcZone != ZoneHand {
@@ -230,7 +261,14 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 		}
 		return out, nil
 	}
-	if len(chosen) != cost.DiscardCards.N {
+	want := cost.DiscardCards.N
+	if cost.DiscardCards.CountFromX {
+		// #2527: the count is the announced X. A negative X never
+		// reaches here (the announce path refuses it first), so the
+		// comparison is a plain length check.
+		want = x
+	}
+	if len(chosen) != want {
 		return nil, ErrInvalidParam
 	}
 	seen := make(map[uuid.UUID]bool, len(chosen))
