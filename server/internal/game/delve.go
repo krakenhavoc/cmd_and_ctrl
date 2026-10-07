@@ -146,11 +146,11 @@ func (g *Game) DelvedCardsForEffect(refs []ObjectRef) []Card {
 
 // delveBudget is how many cards delve may exile against `cost`: the
 // generic mana in it, with X folded in at the announced value, and
-// WITHOUT the coloured symbols a "spend mana as though it were mana of
-// any colour" fold moved into Generic (ParsedCost.FoldedColored). Those
-// are still coloured symbols in the rules, and CR 702.66a lets delve
-// pay only generic mana — a Breeches-granted Murktide must not delve
-// away its {U}{U}. Never negative.
+// WITHOUT any coloured symbol: a "spend mana as though it were mana of
+// any colour" grant widens those symbols (ColorRequirement.AnyMana)
+// and leaves them out of Generic, and CR 702.66a lets delve pay only
+// generic mana — a Breeches-granted Murktide must not delve away its
+// {U}{U}. Never negative.
 //
 // Pure. `cost` is the cost AFTER the modifiers and the taps, because
 // the budget is measured against what the cast still owes.
@@ -158,7 +158,7 @@ func delveBudget(cost ParsedCost, xValue int) int {
 	if xValue < 0 {
 		xValue = 0
 	}
-	n := cost.Generic + cost.XSlots*xValue - cost.FoldedColored
+	n := cost.Generic + cost.XSlots*xValue
 	if n < 0 {
 		return 0
 	}

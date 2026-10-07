@@ -5486,9 +5486,9 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		// #2202: and no commander tax. Base already carries the tax
 		// (CR 903.8 is part of the 601.2f total, before the
 		// modifiers), so "Total == Base" alone called a taxed
-		// commander's price printed. Asked of the command zone only:
-		// Base also folds a grant's "spend mana as though any colour"
-		// into generic, and in exile that has never moved the badge.
+		// commander's price printed. Asked of the command zone only.
+		// A grant's "spend mana as though any colour" widening (#1928)
+		// leaves both strings as printed, so it never moves the badge.
 		v.Printed = price.Paid == price.Printed && v.Life == 0 &&
 			price.Total.String() == price.Base.String() &&
 			(kind != game.ZoneCommand || untaxed(price))

@@ -53,10 +53,11 @@ func TestSpendGrantsKeepPhyrexianSymbols(t *testing.T) {
 		widened  int
 		colorles int
 	}{
-		// {1}+{R} fold; {C} stays (CR 106.1b); both Phyrexian stay.
-		{"any color", &CastPermission{AnyColor: true}, 2, "{2}{C}{B/P}{W/U/P}", 2, 1},
-		// {1}+{C}+{R} fold; both Phyrexian stay.
-		{"any type", &CastPermission{AnyType: true}, 3, "{3}{B/P}{W/U/P}", 2, 0},
+		// Every coloured slot widens; {C} stays unwidened (CR 106.1b),
+		// and the widened slots follow it.
+		{"any color", &CastPermission{AnyColor: true}, 1, "{1}{C}{B/P}{W/U/P}{R}", 3, 1},
+		// Every slot widens, {C} included.
+		{"any type", &CastPermission{AnyType: true}, 1, "{1}{B/P}{C}{W/U/P}{R}", 4, 1},
 		// No grant: the parse, untouched.
 		{"no grant", nil, 1, "{1}{B/P}{C}{W/U/P}{R}", 0, 1},
 	} {
@@ -72,9 +73,6 @@ func TestSpendGrantsKeepPhyrexianSymbols(t *testing.T) {
 			for i, r := range got.Required {
 				if r.AnyMana {
 					widened++
-					if !r.Phyrexian {
-						t.Errorf("slot %d (%s) widened but not Phyrexian", i, r)
-					}
 				} else if widened > 0 {
 					t.Errorf("slot %d (%s) follows a widened slot; widened slots go last", i, r)
 				}

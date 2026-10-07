@@ -116,10 +116,6 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			total++
 		}
 	}
-	// The coloured symbols a cast permission folded into Generic may
-	// take no-generic mana too; everything else of the generic demand
-	// may not.
-	foldedCap := min(cost.FoldedColored, cost.Generic)
 	unpaid := make([]bool, len(cost.Required))
 	var flexible []int
 	for i, req := range cost.Required {
@@ -142,7 +138,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			return
 		}
 		if k == len(flexible) {
-			out = append(out, shortfallCost(cost, unpaid, need-total-min(ngTotal, foldedCap)))
+			out = append(out, shortfallCost(cost, unpaid, need-total))
 			return
 		}
 		i := flexible[k]

@@ -457,8 +457,8 @@ func b17WheelToGreatestDiscard(g *game.Game, item *game.StackItem) error {
 // exile `cardID` from its owner's graveyard — if it is still there —
 // and let `player` play it this turn. The grant is "play", so a land
 // discarded to a looter can be played off it.
-func b17ExileFromGraveyardAndMayPlay(g *game.Game, player, cardID uuid.UUID) error {
-	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
+func b17ExileFromGraveyardAndMayPlay(g *game.Game, item *game.StackItem, player, cardID uuid.UUID) error {
+	if !discardedCardStillInGraveyard(g, item, cardID) {
 		return nil
 	}
 	return g.ExileCardWithPermissionForEffect(cardID, game.CastPermission{

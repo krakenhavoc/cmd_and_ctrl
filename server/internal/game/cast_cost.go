@@ -122,7 +122,7 @@ func (c CastCost) LocksXAtZero() bool {
 // the price from the card. A mirrored copy of the commander tax and
 // the cost modifiers knows nothing about the alternative cost claimed
 // at announce, a granted permission's flat override, the "spend mana
-// as though any colour" fold or the mana half of an optional
+// as though any colour" widening or the mana half of an optional
 // additional cost, so every non-hand and alternative-cost cast
 // disagreed with the engine in one direction or the other: a preview
 // that disabled a cast the engine would have allowed, or planned taps
@@ -148,7 +148,7 @@ type CastPrice struct {
 	// modifiers and before convoke or waterbend spends anything
 	// against it: the chosen cost string, plus the commander tax (CR
 	// 903.8), plus the mana half of the announced optional additional
-	// costs, with a grant's "spend mana as though any colour" fold
+	// costs, with a grant's "spend mana as though any colour" widening
 	// applied.
 	//
 	// The number the announce-time tap budget is measured against —
@@ -170,8 +170,8 @@ type CastPrice struct {
 	// exile to delve (CR 702.66a, ADR 0100 §1): the GENERIC mana in the
 	// total cost, after the cost modifiers and after what the announced
 	// convoke / waterbend taps pay, with X at the announced value and
-	// without the coloured symbols a "spend as though any colour" fold
-	// moved into Generic. 0 for a card with no delve.
+	// without the coloured symbols a "spend as though any colour" grant
+	// widened (they stay out of Generic). 0 for a card with no delve.
 	//
 	// It is measured with the announcement's DelveIDs set aside, so it
 	// is the same number whether or not the caller has picked yet —

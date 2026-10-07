@@ -42,8 +42,9 @@ func TestAFaceDownPermittedCardIsReadableAndCastableOnlyByItsHolder(t *testing.T
 	if !mine.CastableHere {
 		t.Error("the holder may cast it in their main phase")
 	}
-	// Any type folds the {C} into generic, and the badge says so.
-	assertPrice(t, "permitted/holder", mine, "{3}", true, "")
+	// Any type widens the {C} to any mana; the badge keeps the printed
+	// price, because the grant changes how it is paid (CR 609.4b).
+	assertPrice(t, "permitted/holder", mine, "{2}{C}", true, "")
 
 	for _, seat := range []*game.Player{opp, third} {
 		label := "permitted/" + seat.Name
@@ -76,7 +77,7 @@ func TestAFaceDownPermittedCardIsReadableAndCastableOnlyByItsHolder(t *testing.T
 }
 
 // An any-type grant over a face-up card: the wire carries the label for
-// the holder, and the price is the folded one.
+// the holder, and the price is the printed one.
 func TestAnAnyTypeGrantIsLabelledOnTheWire(t *testing.T) {
 	g, me, opp := stripTable(t)
 	id := exileWithGrant(t, g, exiledSpell(opp.ID, "Wire Reality Smasher", "Creature — Eldrazi", "{4}{C}"),
@@ -85,7 +86,7 @@ func TestAnAnyTypeGrantIsLabelledOnTheWire(t *testing.T) {
 	if c.ExilePlay == nil || !c.ExilePlay.AnyType || !c.ExilePlay.AnyColor {
 		t.Fatalf("exile_play = %+v, want any_type and any_color", c.ExilePlay)
 	}
-	assertPrice(t, "any type", c, "{5}", true, "")
+	assertPrice(t, "any type", c, "{4}{C}", true, "")
 
 	colourOnly := exileWithGrant(t, g, exiledSpell(opp.ID, "Wire Thought-Knot", "Creature — Eldrazi", "{3}{C}"),
 		game.CastPermission{Player: me.ID, AnyColor: true})
