@@ -3321,6 +3321,13 @@ type ActivatedAbilityView struct {
 	// renderer of its own today — it is here so a client that wants
 	// to mark the row does not have to parse the label for it.
 	ExileSelf bool `json:"exile_self,omitempty"`
+	// ReturnSelf is the "Return this enchantment to its owner's hand"
+	// cost component (#2028): Gossamer Chains, Shigeki, Jukai
+	// Visionary. Advisory, like `exile_self`: the source IS the
+	// payment, so nothing is collected and nothing rides the payload.
+	// It is here so a client or a bot can tell that activating the row
+	// returns the permanent without parsing the label.
+	ReturnSelf bool `json:"return_self,omitempty"`
 	// DiscardCostN / Label / Options describe a "Discard N cards"
 	// cost component (#660): Fauna Shaman's "Discard a creature
 	// card", Cryptbreaker's "Discard a card". DiscardCostN is the
@@ -9364,6 +9371,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			SacrificeSelf: a.Cost.SacrificeSelf,
 			DiscardSelf:   a.Cost.DiscardSelf,
 			ExileSelf:     a.Cost.ExileSelf,
+			ReturnSelf:    a.Cost.ReturnSelf,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
@@ -9418,7 +9426,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf)
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew

@@ -308,6 +308,16 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				}
 			}
 		}
+		// #2028: a row that returns its own source to hand pays for the
+		// part of the permanent it gives up (selfReturnCost), purposed or
+		// not. It is a cost the row prints, like a tap, and an unpriced
+		// one would bounce Gossamer Chains at any unblocked creature for
+		// the flat ActivateBase.
+		if !across {
+			if row := rowAt(src, cp.AbilityIndex); row != nil && row.ReturnSelf {
+				v -= st.selfReturnCost(src)
+			}
+		}
 		v += st.targetsValue(p.cfg, cp.Targets)
 		// ADR 0126 §7: priced by the chance the bot would have kept
 		// each permanent, less its death payoffs (sacrifice.go).
