@@ -167,7 +167,23 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Kind == "optional_replacement" && ch.PlayableFromZone {
 			b.WriteString(" (if you say no it goes to your hand, where you can cast it without the commander tax)")
 		}
-		if ch.Count > 0 {
+		// ADR 0129 §3: what an energy payment asks, beside the energy
+		// the seat line already shows.
+		if ch.PayEnergy != nil {
+			fmt.Fprintf(&b, " (pay %d energy)", *ch.PayEnergy)
+		}
+		if pa := ch.PayAmount; pa != nil {
+			lo := pa.Min
+			if lo < 1 {
+				lo = 1
+			}
+			fmt.Fprintf(&b, " (pay nothing, or %d to %d energy", lo, pa.Max)
+			if pa.Goal > 0 {
+				fmt.Fprintf(&b, "; %d reaches the card's threshold", pa.Goal)
+			}
+			fmt.Fprintf(&b, "; one energy is one point of %s)", pa.Unit)
+		}
+		if ch.Count > 0 && ch.PayAmount == nil {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}
 		b.WriteByte('\n')

@@ -587,6 +587,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// exactly the branch that happens when it is not. The drop runs
 	// the decline (#961).
 	PendingChoicePayUnless: {onDrop: dropDecline},
+	// pay_amount (ADR 0129 §3) is the same CR 800.4f cost, never
+	// reassigned: nobody else pays a departed player's energy. The drop
+	// runs the rest of the card with nothing paid, through the
+	// chooseValueResume frame's "no choice" (dropDefault), which is what
+	// "the amount of {E} paid this way" is when none was.
+	PendingChoicePayAmount: {onDrop: dropDefault},
 	// entry_pay_life is 800.4f too, and its "unless" branch — the
 	// permanent enters tapped — is about the departed player's OWN
 	// permanent, which CR 800.4a takes out of the game in the same
