@@ -84,6 +84,11 @@ export interface AttackAllPlan {
   // Absent for a creature on a frame that carries no list, which then
   // counts at every seat, as it always did.
   targets: Record<string, readonly string[]>;
+  // ADR 0130 §5, §7: the eligible creatures the server says may be
+  // exerted as they attack (the digest's exert_on_attack). An attack
+  // with all at a seat one of them can attack is never sent blind: it
+  // opens the picker, whose Exert toggle asks (owner decision 1).
+  exertable: string[];
 }
 
 // attackBlocker names, from the row fields, why a creature can't
@@ -148,6 +153,7 @@ export function planAttackAll(
     blocked: [],
     defenders: [],
     targets: {},
+    exertable: [],
   };
   if (!view || !viewerID) return plan;
 
@@ -169,6 +175,7 @@ export function planAttackAll(
     }
     plan.eligible.push(card);
     if (gate.known) plan.targets[card.instance_id] = gate.attackTargets(card.instance_id);
+    if (gate.canExertOnAttack(card.instance_id)) plan.exertable.push(card.instance_id);
   }
   return plan;
 }
@@ -185,6 +192,15 @@ export function eligibleAt(plan: AttackAllPlan, defenderSeatID: string): CardVie
   });
 }
 
+// exertChoiceAt reports whether an attack with all at ONE seat would
+// include a creature that may be exerted as it attacks (ADR 0130 §7,
+// owner decision 1). Then the player is asked, in the picker, rather
+// than the bulk verb choosing "no" for them (CR 508.1g).
+export function exertChoiceAt(plan: AttackAllPlan, defenderSeatID: string): boolean {
+  if (plan.exertable.length === 0) return false;
+  return eligibleAt(plan, defenderSeatID).some((c) => plan.exertable.includes(c.instance_id));
+}
+
 // AttackAllParams is the wire shape of the bulk declare_attackers
 // action. Mirrors the params struct in
 // server/internal/actions/actions.go.
@@ -192,7 +208,9 @@ export function eligibleAt(plan: AttackAllPlan, defenderSeatID: string): CardVie
 // implicit index signature and drops straight into the context menu's
 // `Record<string, unknown>` params slot without a cast.
 export type AttackAllParams = {
-  attackers: { attacker: string; target: string }[];
+  // `exert`: ADR 0130 §5, the choice to exert that attacker as it
+  // attacks. Sent only as true; absent means no.
+  attackers: { attacker: string; target: string; exert?: true }[];
   // ADR 0080 (#1063): let the server tap lands for the CR 508.1a
   // attack tax when the mana pool alone cannot cover it. Always sent,
   // for the reason the cast chain sends it after its preview — a
@@ -225,6 +243,11 @@ export interface AttackAllOptions {
   // #1162: locked sources for the same declaration, carried straight
   // through to AttackAllParams.locked_sources.
   lockedSources?: readonly string[];
+  // ADR 0130 §7: the attackers the player chose to exert as they attack
+  // (the picker's Exert toggles). An ID the plan does not list as
+  // exertable is dropped: the server refuses the whole declaration for
+  // an exert it can't honour.
+  exert?: readonly string[];
 }
 
 // attackAllParams builds the action payload aiming every eligible
@@ -241,10 +264,11 @@ export function attackAllParams(
   const attackers = opts.only ? here.filter((c) => opts.only!.includes(c.instance_id)) : here;
   if (attackers.length === 0) return null;
   const params: AttackAllParams = {
-    attackers: attackers.map((c) => ({
-      attacker: c.instance_id,
-      target: defenderSeatID,
-    })),
+    attackers: attackers.map((c) =>
+      opts.exert?.includes(c.instance_id) && plan.exertable.includes(c.instance_id)
+        ? { attacker: c.instance_id, target: defenderSeatID, exert: true as const }
+        : { attacker: c.instance_id, target: defenderSeatID },
+    ),
     auto_tap: true,
   };
   if (opts.lockedSources && opts.lockedSources.length > 0) {
@@ -385,6 +409,9 @@ export function offersAttackPicker(
 ): boolean {
   if (attackTaxOn(view, defenderSeatID)) return true;
   if (attackLimitOn(view, defenderSeatID) === 0) return false;
+  // ADR 0130 §7: a creature that may be exerted is a choice to make,
+  // even when it is the only attacker.
+  if (exertChoiceAt(plan, defenderSeatID)) return true;
   return eligibleAt(plan, defenderSeatID).length > 1;
 }
 
