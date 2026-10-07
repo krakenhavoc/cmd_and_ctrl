@@ -188,6 +188,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
 	{field: "BlockRules", fallback: "Blocking restriction"},
 	{field: "AttackLimits", fallback: "Limits how many creatures can attack"},
+	{field: "ExertOnAttack", fallback: "You may exert this creature as it attacks."},
 	{field: "HexproofBypasses", fallback: "Ignores hexproof"},
 	{field: "WardSuppressions", fallback: "Stops ward from triggering"},
 	{field: "TargetingRestrictions", fallback: "Targeting restriction", ownLabel: true},

@@ -506,6 +506,21 @@ const (
 	// state. Added in S22.
 	EventAttack EventKind = "attack"
 
+	// EventExert — a permanent was exerted (CR 701.43a, ADR 0130 §1).
+	// Actor is the player who exerted it, whose next untap step it
+	// won't untap during; CardID and Source are the permanent. Target
+	// is the attack target when it was exerted as it attacked
+	// (CR 701.43d), and uuid.Nil when it was exerted to pay a cost —
+	// which is how a linked "when you do" trigger (CR 607.2h) tells
+	// the two apart.
+	//
+	// Emitted only by exertLocked. An exert as it attacks is paid by
+	// commitAttackDeclarationLocked as the declaration locks in, ahead
+	// of the EventAttacks of the same declaration and in the same
+	// event batch, so its triggers go on the stack with the attack
+	// triggers (CR 508.1j, 508.1m).
+	EventExert EventKind = "exert"
+
 	// EventBecomesTarget — an object or player became the target of
 	// a spell or ability (CR 115.3). Actor is the controller of the
 	// spell / ability, Source is its source card, Target is the

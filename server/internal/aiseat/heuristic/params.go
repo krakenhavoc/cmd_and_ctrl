@@ -82,6 +82,11 @@ type specialActionParams struct {
 type attackParams struct {
 	Attacker string `json:"attacker"`
 	Target   string `json:"target"`
+	// Exert marks the twin move that also exerts the attacker (ADR 0130
+	// §6). The heuristic never picks one yet: pricing an exert is ADR
+	// 0130 PR 3 (§9), so until then plainAttack filters them out and the
+	// bot attacks exactly as it did before exert existed.
+	Exert bool `json:"exert"`
 }
 
 type blockParams struct {
