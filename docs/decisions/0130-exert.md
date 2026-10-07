@@ -1,8 +1,8 @@
 # ADR 0130 — Exert: an optional cost to attack, a skipped untap, and the triggers that watch it
 
-**Status:** Proposed · 2026-10-07 · S68 — Cost components and alternative costs
+**Status:** Accepted (owner answers 2026-10-07) · 2026-10-07 · S68 — Cost components and alternative costs
 **Issues:** [#2048](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2048) (seam: exert, CR 701.43; Oketra's Avenger). Related: [#2061](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2061) (Combat Celebrant, an S58 deck request that waits on this row), [#2029](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2029) (Telekinesis: "next two untap steps", the duplicate-skip limit), [#2441](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2441) / PR [#2478](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2478) ("Choose attackers…").
-**Owner decisions:** none yet. The questions are under [Questions for the owner](#questions-for-the-owner). Each decision below names its recommended option, which is the most CR-faithful one.
+**Owner decisions:** the owner's answers to this ADR's five questions on 2026-10-07, each the recommended option. All five are quoted under [Owner decisions](#owner-decisions-2026-10-07) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** 0128 (`0128-playmats.md`) is the highest number on any remote head (`origin/develop`, `origin/main`, `origin/docs/issue-audit`, `origin/feat/2515-playmats-three-slots-fit`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/playmats`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default`, `pr/2326`). 0129 is being written at the same time for energy (#1995), so this ADR takes **0130**.
 **Builds on:** [ADR 0058](0058-doesnt-untap.md) (the next-untap marker, `UntapSkip`, and its 2026-09-23 amendment), [ADR 0059](0059-turn-machinery.md) Decision 8 (`TurnTally.Attacks`), [ADR 0080](0080-attack-taxes.md) (a cost paid by the declaration verb), [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md) §7 (`preventFromSource`, Oketra's Avenger's shield), [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md) (cost components), [ADR 0111](0111-action-dock.md) (small prompts in the dock), [ADR 0125](0125-a-walkthrough-that-keeps-up.md) §2 (labels), [ADR 0126](0126-bots-that-play-their-decks.md) §6 (the declared `purpose`).
 
@@ -15,6 +15,16 @@ This ADR was written plan-first. No code changed with it. The changes land in th
 Exert is printed on 36 Commander-legal cards, and none is catalogued. Two are waiting on this row: Oketra's Avenger ("You may exert this creature as it attacks. When you do, prevent all combat damage that would be dealt to it this turn") and Combat Celebrant, from the S58 deck requests ("If this creature hasn't been exerted this turn, you may exert it as it attacks. When you do, untap all other creatures you control and after this phase, there is an additional combat phase").
 
 Every claim below was checked on `origin/develop` at `0e20f52b1`. Every rule was checked against the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`). Exert has not moved: it is still CR 701.43 in that edition.
+
+### Owner decisions (2026-10-07)
+
+The owner answered this ADR's five questions on 2026-10-07, each with the recommended option:
+
+1. **Every path asks** (question 1, §7). A click on an exert creature offers "Attack" and "Attack and exert" in the dock, the context menu has both rows, "Choose attackers…" has an Exert toggle on each row, and "Attack with all" opens that picker when an exert creature could attack. There is no ADR 0127 preference for the question yet.
+2. **Chosen at the declaration, paid at the lock-in** (question 2, §2). The exert is paid when the declaration locks in, in the same event batch as the attacks.
+3. **Exert as an activation cost is in scope** (question 3, §4). The cost component lands in PR 4 with its 8 cards.
+4. **The heuristic prices exerting** (question 4, §9). The gain comes from declared purposes plus a new `pump` field. The cost is the creature's next-turn attack and block value, and zero when exerting is free. It is measured with the arena report.
+5. **Every exert card the engine can fully support** (question 5, §11). A card that needs another seam goes on that seam's `Waiting` list.
 
 ### The rules
 
@@ -83,7 +93,7 @@ One engine function, `exertLocked(card, player, how)`, is the only way a permane
 3. appends an `ExertRecord{Object, Epoch, Player, PhaseID}` to a new `TurnTally.Exerts`;
 4. emits `EventExert{Actor: player, CardID: card, Source: card, Target: defender}`. `Target` is the attack target when the creature was exerted as it attacked, and nil when it was exerted to pay an activation cost.
 
-**Reuse ADR 0058's marker (recommended, and the only option considered).** The marker already has the right key, the right expiry and the right duplicate rule. A second exert before the untap step adds nothing (CR 701.43b). An exerted creature with vigilance, or one already held tapped, still records the marker and it expires harmlessly (ruling 2). Seedborn Muse untaps an exerted creature during another player's untap step, correctly, because the marker names only the exerter's step.
+**Reuse ADR 0058's marker (the only option considered).** The marker already has the right key, the right expiry and the right duplicate rule. A second exert before the untap step adds nothing (CR 701.43b). An exerted creature with vigilance, or one already held tapped, still records the marker and it expires harmlessly (ruling 2). Seedborn Muse untaps an exerted creature during another player's untap step, correctly, because the marker names only the exerter's step.
 
 **#2029's warning.** Whoever fixes #2029 must not make the marker count. Two exerts are one skip, while Telekinesis's "next two untap steps" is two. #2029's fix should add a count to its own entries (or a second kind of entry) and leave the plain marker, which exert uses, idempotent. A test in PR 1 pins it: exert the same creature twice, and it untaps at the exerter's second untap step.
 
@@ -93,7 +103,7 @@ One engine function, `exertLocked(card, player, how)`, is the only way a permane
 
 **The engine records the choice at the declaration and pays it at the lock-in.**
 
-- **(a) Recommended.** Both verbs take `exert: true` per attacker. The verb validates it (the creature has the ability now, and `Unless` is false) and stages it on `Card.ExertOnAttack`, beside `AttackingTarget`. `commitAttackDeclarationLocked` pays every staged exert (§1), then emits the `EventAttack`s, in one event batch. So the exerts are paid before the creatures become attacking (CR 508.1j before 508.1k), the triggers they cause are harvested with the attack triggers (CR 508.1m), and they go on the stack together at CR 508.2, before blockers (ruling 4). A creature re-pointed before the lock-in keeps its choice. A staged attack cleared before the lock-in (`clear_combat`, undo) never exerted anything. Once the declaration is locked in, the exert is paid, like the tap.
+- **(a) Chosen (owner decision 2).** Both verbs take `exert: true` per attacker. The verb validates it (the creature has the ability now, and `Unless` is false) and stages it on `Card.ExertOnAttack`, beside `AttackingTarget`. `commitAttackDeclarationLocked` pays every staged exert (§1), then emits the `EventAttack`s, in one event batch. So the exerts are paid before the creatures become attacking (CR 508.1j before 508.1k), the triggers they cause are harvested with the attack triggers (CR 508.1m), and they go on the stack together at CR 508.2, before blockers (ruling 4). A creature re-pointed before the lock-in keeps its choice. A staged attack cleared before the lock-in (`clear_combat`, undo) never exerted anything. Once the declaration is locked in, the exert is paid, like the tap.
 - (b) Pay at the verb, as ADR 0080 pays the tax. It is smaller. But the exert event would be emitted before the declaration finishes, so its triggers would not share the attack batch (the #859 bug, again), and clearing a staged attack would have to undo an exert.
 
 **A refusal names its reason.** `exert: true` on a creature that can't be exerted refuses the whole action with `ErrCantExert`, also in the bulk verb. The bulk verb skips an *ineligible attacker* silently (#318), but an exert flag the creature doesn't have is a client bug, and silently dropping it would attack without the cost the player chose.
@@ -112,7 +122,7 @@ One engine function, `exertLocked(card, player, how)`, is the only way a permane
 
 ### 4. Exert as an activation cost
 
-- **(a) Recommended.** A cost component, `Exert bool`, on `game.AbilityCost` and on `effects.ManaAbilityCost`, following ADR 0109's cost components. It is paid with the other costs (CR 602.2b, 601.2h) by calling `exertLocked(source, activator, cost)`. For Arena of Glory and Oasis Ritualist it is paid inside a mana ability (CR 605.3b), and any "whenever you exert" trigger waits for the next priority, as every trigger from a mana ability does. A creature already exerted can pay it again (ruling 7). The ability row on the wire says "Exert" in its cost, and the auto-tapper never activates an exert mana ability on its own, because an exert is a cost the player chooses. PR 4 flags such a source in the planner's `tapSource`, as `Sacrifices` flags a Treasure, so that only the player picks it. The 8 cards land in PR 4.
+- **(a) Chosen (owner decision 3).** A cost component, `Exert bool`, on `game.AbilityCost` and on `effects.ManaAbilityCost`, following ADR 0109's cost components. It is paid with the other costs (CR 602.2b, 601.2h) by calling `exertLocked(source, activator, cost)`. For Arena of Glory and Oasis Ritualist it is paid inside a mana ability (CR 605.3b), and any "whenever you exert" trigger waits for the next priority, as every trigger from a mana ability does. A creature already exerted can pay it again (ruling 7). The ability row on the wire says "Exert" in its cost, and the auto-tapper never activates an exert mana ability on its own, because an exert is a cost the player chooses. PR 4 flags such a source in the planner's `tapSource`, as `Sacrifices` flags a Treasure, so that only the player picks it. The 8 cards land in PR 4.
 - (b) Exert as it attacks only. The 8 cards get their own registry row and wait.
 
 ### 5. The wire
@@ -124,7 +134,7 @@ One engine function, `exertLocked(card, player, how)`, is the only way a permane
 
 ### 6. The legal enumerator
 
-- **(a) Recommended.** For an attacker with `exert_on_attack`, `combatMoves` offers two moves per target: the plain attack and the same attack with `exert: true`, labelled "Attack <target> with <card> and exert it (it won't untap during your next untap step)". A `Move`'s `Params` stays exactly the payload that performs it. The exert move is not gated on the linked trigger having a target (ruling 5).
+- **(a) Chosen.** For an attacker with `exert_on_attack`, `combatMoves` offers two moves per target: the plain attack and the same attack with `exert: true`, labelled "Attack <target> with <card> and exert it (it won't untap during your next untap step)". A `Move`'s `Params` stays exactly the payload that performs it. The exert move is not gated on the linked trigger having a target (ruling 5).
 - (b) One move with a follow-up choice. It would be the only attack move that needs a second round trip, and a policy that composes a declaration one move at a time would have to handle a choice in the middle of it.
 
 The MCP seat and the model tiers see the twin move through the same list, and `boardtext` already renders `no_untap`.
@@ -133,7 +143,7 @@ The MCP seat and the model tiers see the twin move through the same list, and `b
 
 The choice is the player's (CR 508.1g), so no click path makes it for them.
 
-- **(a) Recommended.** Every path asks.
+- **(a) Chosen (owner decision 1).** Every path asks.
   - **A click on an exert creature** (ADR 0117's click to act) opens a two-button choice in the dock: "Attack" and "Attack and exert", with the linked trigger's text as the hint.
   - **The context menu** gets "Declare attacker and exert" beside "Declare attacker".
   - **"Choose attackers…"** gets an Exert toggle on each row whose creature has `exert_on_attack`, off by default.
@@ -156,7 +166,7 @@ The marker itself is the existing `nextUntapSkips` entry. An older v7 binary rea
 
 In PR 1 the heuristic never picks an exert move, so nothing changes for bots until PR 3 prices it. The `random` policy may pick one, which is legal.
 
-- **(a) Recommended.** Price it. Exert when `gain > cost`:
+- **(a) Chosen (owner decision 4).** Price it. Exert when `gain > cost`:
   - **gain**: the linked row's declared `purpose` (ADR 0126 §6), plus the purpose of every "whenever you exert a creature" row the bot controls. A self pump is priced by evaluating the attack again with the pumped stats. For that, `PurposeView` gains one additive field, `pump: {power, toughness, keywords}`, declared on the linked row. A trigger with no legal target is worth nothing.
   - **cost**: zero when the exert is free: the creature has vigilance, already won't untap during the bot's next untap step, or the attack is a lethal push. Otherwise the creature's attack value next turn plus its blocking value across the opponents' turns, since it stays tapped through them.
   - Combat Celebrant is priced by the extra combat: the bot's other untapped creatures' attack value in a second combat.
@@ -174,8 +184,8 @@ In PR 1 the heuristic never picks an exert move, so nothing changes for bots unt
 ### 11. The catalog
 
 - **PR 1** (with the engine): **Oketra's Avenger** and **Combat Celebrant** (the two waiting cards), **Glorybringer** (a targeted linked trigger, ruling 5) and **Resolute Survivors** (a "whenever you exert" payoff with no linked trigger). Together they cover every engine shape. Each lands `Full` if its full text is met.
-- **PR 4**: the 8 activation-cost cards (§4, if the owner chooses (a)).
-- **PR 5**: the other 24 attack-exert cards. Each is checked against its full text at that PR. A card whose "when you do" needs a seam that doesn't exist yet (likely candidates: Rohirrim Chargers' reveal until an Equipment and attach it, Sandstorm Crasher's attacking token copy, Hydra Trainer's count of counters) goes on that seam's `Waiting` list, never shipped without it.
+- **PR 4**: the 8 activation-cost cards (§4, owner decision 3).
+- **PR 5**: the other 24 attack-exert cards (owner decision 5). Each is checked against its full text at that PR. A card whose "when you do" needs a seam that doesn't exist yet (likely candidates: Rohirrim Chargers' reveal until an Equipment and attach it, Sandstorm Crasher's attacking token copy, Hydra Trainer's count of counters) goes on that seam's `Waiting` list, never shipped without it.
 
 The `exert` registry row closes with PR 1, with a fragment in `docs/engine-seams/closed/`. `docs/adding-cards.md` gets an "Exert" subsection (both helpers, the `Unless` hook and the cost component) with a link in AGENTS.md §7.
 
@@ -220,17 +230,19 @@ PRs 1 and 2 should reach `main` in the same promotion, so a human player at a pr
 - Exert is one primitive. The attack path and the cost path differ only in when they call it.
 - The attack declaration can carry an optional cost (CR 508.1g). Exert is the only one printed, so `ExertOnAttack` is a specific field rather than a general "optional attack cost" list. If another one is printed, it is a sibling field and one more branch at the lock-in.
 - The untap marker's duplicate rule is now load-bearing for a rule (CR 701.43b), and #2029's fix must not change it.
-- "Attack with all" is one click more for a player with an exert creature on the board, under §7 (a).
+- "Attack with all" is one click more for a player with an exert creature on the board (owner decision 1).
 
 ## Out of scope
 
 - Granting exert to a creature that doesn't print it. No card does.
 - Exerting outside combat or outside an activation cost. No card does (ruling 1).
-- An ADR 0127 preference for the exert question (§7 (c)). It can follow.
+- An ADR 0127 preference for the exert question (§7 (c)). Not now (owner decision 1); it can follow.
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
+
+These are the questions as asked. The owner chose the recommended option, (a), for each one on 2026-10-07; see [Owner decisions](#owner-decisions-2026-10-07).
 
 1. **How a player chooses to exert (§7; CR 508.1g).**
    - **(a) Recommended:** every path asks. A click opens "Attack" / "Attack and exert" in the dock, the context menu has both rows, "Choose attackers…" has an Exert toggle per row, and "Attack with all" opens the picker when an exert creature could attack. Nothing chooses for the player, at the price of one more click for an alpha strike with an exert creature on the board.
