@@ -127,6 +127,7 @@ const LOG_TONE: Record<LogKind, string> = {
   scry: "tone-quiet",
   surveil: "tone-quiet",
   discover: "tone-zone",
+  manifest_dread: "tone-zone",
   saga_chapter: "tone-resolve",
   class_level: "tone-resolve",
   // ADR 0103. A door opening is a Room switching its text on, which

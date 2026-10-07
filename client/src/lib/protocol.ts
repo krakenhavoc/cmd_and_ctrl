@@ -905,6 +905,8 @@ export type LogKind =
   // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
   // `card_id` the discovered card, absent when nothing was found.
   | "discover"
+  // ADR 0082 amendment (#2570): a player manifested dread. Carries no card.
+  | "manifest_dread"
   | "saga_chapter"
   | "class_level"
   // ADR 0103: a Room's door was unlocked or locked (CR 709.5c/g);

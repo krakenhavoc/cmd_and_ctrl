@@ -1153,17 +1153,34 @@ var items = []Item{
 		EngineNotes: "**Nearly all of this row has shipped** — see Closed seams for #1194 (morph, megamorph, manifest, disguise, cloak), #1209 (turning a permanent face down), #1270 / #1271 (listed characteristics, CR 613.7f), #658 (foretell) and #1331 (hideaway); the object model is [ADR 0069](decisions/0069-face-down-objects.md). Re-checked 2026-09-24, two gaps are left. (1) `ManifestForEffect` (`game/battlefield_put.go`) manifests the top card of a LIBRARY and nothing else, so \"each manifest two cards from their hands\" (Kozilek, the Broken Reality) has no primitive. (2) The double offer for a manifested card that also has morph: `TurnFaceUpOffer` offers the manifest's mana-cost route and not the card's own morph cost. Voidmage Apprentice was listed here and is not waiting on anything any more — morph and the turned-face-up trigger both exist — so it is off the row. The audit's 26 only-blocker cards were the morph / manifest / disguise families that have since shipped, so Unblocks is 0.",
 	},
 	{
+		Slug: "manifest-dread", Name: "Manifest dread", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "Manifest dread looks at the top two cards of your library, lets you pick one to put onto the battlefield face down as a 2/2, and puts the other into your graveyard. Only you see the two cards.",
+		Missing:     "Four cards that print manifest dread wait on something else: turning a permanent face up for free (Hauntwoods Shrieker, Zimone, Mystery Unraveler), a trigger at the start of the second main phase (Defiant Survivor), and an extra cost of exiling cards from your graveyard (Abhorrent Oculus).",
+		Rules:       []string{"701.62"},
+		Issue:       2570,
+		ADR:         "0082-casting-face-down-and-turning-face-up.md",
+		Tracked:     "#2570 (under #886, the S43 tracker)",
+		Waiting:     []string{"Hauntwoods Shrieker", "Zimone, Mystery Unraveler", "Defiant Survivor", "Abhorrent Oculus"},
+		Printed:     `(?i)\bmanifest dread\b`,
+		Examples:    []string{"Manifest Dread", "Paranormal Analyst", "Unsettling Twins"},
+		Phrases:     []string{"manifest dread"},
+		EngineNotes: "**The keyword action shipped** (ADR 0082 amendment 2026-10-07, #2570; see Closed seams): `Game.ManifestDreadThenForEffect` (`game/manifest_dread.go`) looks at the top two cards (controller-only knowledge), asks a `choose_cards` prompt (hideaway's, so the enumerator and both bots already answer it), manifests the chosen card through the CR 614 face-down entry and puts the other into its owner's graveyard. The continuation is told `ManifestDreadResult{Manifested, Graveyarded}`, and `EventManifestDread` carries both for \"whenever you manifest dread\". Three gaps keep four of the 26 printing cards out. (1) There is no `TurnFaceUpForEffect`: face up is a special action with a cost (`turnFaceUpLocked` inside `PerformSpecialAction`), so Hauntwoods Shrieker's \"reveal target face-down permanent, you may turn it face up\", Zimone's \"otherwise, you may turn a permanent you control face up\" and Staff Room's \"turn that creature face up\" have no door; Zimone also wants a per-object \"first time this ability has resolved this turn\" tally. (2) Defiant Survivor's survival triggers at the beginning of the second main phase and `EventBeginPrecombatMain` is the only main-phase event. (3) Abhorrent Oculus's \"as an additional cost to cast this spell, exile six cards from your graveyard\" has no `AdditionalCost` component. Unblocks is 0: each of the four waits on one of those, not on this row.",
+	},
+	{
 		Slug: "rooms", Name: "Rooms", Kind: KindSeam, Status: StatusPartial,
 		Summary: "Rooms work: cast either half, the other door starts locked, and you can pay a locked door's cost to unlock it. Every split card can be cast as either half, with fuse and aftermath.",
 		Rules:   []string{"709.3", "709.4", "709.5", "702.102", "702.127"},
 		Issue:   1756,
 		ADR:     "0103-rooms.md",
-		Missing: "Eight Rooms play only part of their text, because one door does something the engine can't do yet: manifest dread (Ticket Booth, Experimental Lab, Moldering Gym, Underwater Tunnel), a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade). Experimental Lab's Staff Room also can't turn a creature face up for free.",
+		Missing: "Five Rooms play only part of their text, because one door does something the engine can't do yet: a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade). Experimental Lab's Staff Room also can't turn a creature face up for free.",
 		Tracked: "#1756",
 		// Walk-In Closet // Forgotten Cellar landed with
 		// exile-instead-of-graveyard-this-turn (#1823, ADR 0108 §4), the
 		// seam its door waited on. The last eight Rooms were catalogued
 		// with caveats on their blocked doors (#2555).
+		// The four manifest-dread doors (Weight Room, Ticket Booth, Slimy
+		// Aquarium, Experimental Lab) landed with manifest dread (#2570,
+		// ADR 0082 amendment 2026-10-07).
 		Examples:    []string{"Roaring Furnace // Steaming Sauna"},
 		EngineNotes: "**Built by [ADR 0103](decisions/0103-rooms.md)** (#1756), on ADR 0071's designation gate. `Card.Unlocked` holds a Room's two CR 709.5c designations; `materialiseSplit` keeps a split card's name, cost and colours right in every zone (the whole card off the stack, the cast half on it, the unlocked doors on the battlefield); a Room spell enters with its cast door unlocked (CR 709.5d) and `EventDoorUnlocked` fires after the ETB (CR 709.5h); the `unlock` special action (CR 709.5e) is derived from the card, so an uncatalogued Room can be unlocked too; `UnlockDoorForEffect` / `LockDoorForEffect` are the instructions (CR 709.5f-g) and `EventRoomFullyUnlocked` the full unlock (CR 709.5i). `effects.Room` builds a Room's Spec with every ability gated on its door, and Register refuses an ungated one. Every split card casts either half (CR 709.3); aftermath's half only from a graveyard (CR 702.127a); fuse from hand (CR 702.102). The cards themselves are catalogued separately (ADR 0103 PRs 3 and 4).",
 	},

@@ -6014,6 +6014,42 @@ hid. The link is an object reference, so a triggered payoff captures
 re-reading the source at resolution. The three Lorwyn lands are a table
 in `hideaway_lands.go`; a new land of the same shape is a row.
 
+### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
+
+Manifest dread (CR 701.62a) is the choice manifest does not have: look
+at the top two cards, put the one YOU pick onto the battlefield face
+down as a 2/2 and the other into your graveyard. A card file says it
+with the words in
+[manifest_dread_primitive.go](../server/internal/cards/effects/manifest_dread_primitive.go):
+
+```go
+Do(ManifestDread{})                                              // "Manifest dread."
+Do(ManifestDread{Then: PutCountersOnManifested(                  // "..., then put two +1/+1 counters
+    CounterAmount{Kind: game.CounterPlusOne, N: 2})})            //    and a trample counter on that creature."
+Do(ManifestDreadTimes{N: 2})                                     // "Manifest dread twice."
+ManifestDread{Then: AttachSourceToManifested(ctx)}.Apply(ctx)    // "..., then attach this Equipment to that creature."
+On(game.EventManifestDread, WheneverYouManifestDread, ...)       // "Whenever you manifest dread" (ev.CardID = the
+                                                                 //  permanent, ev.Target = the card put into the graveyard)
+```
+
+Everything after "then" is the `Then` continuation, which is told
+`game.ManifestDreadResult{Manifested, Graveyarded}`. Never write it as
+the next line of the effect: the controller's pick is a prompt, so the
+rest of the sentence runs when it is answered, and it must capture only
+scalars. An empty library runs `Then` with a zero result, so guard on
+`Manifested != uuid.Nil` (the ready-made continuations already do).
+
+"X times" is `ManifestDreadTimes` (Valgavoth's Onslaught): each
+repetition is its own look and its own prompt, and `Then` gets every
+result. "When it dies this turn, manifest dread" (Turn Inside Out) is
+`ManifestDreadWhenItDiesThisTurn`, an event-delayed trigger. A
+replacement that cares about a face-down entry reads
+`ReplacementEvent.FaceDown`: the library card is not yet the 2/2
+colorless creature it will be (Curator Beastie).
+
+Not here: turning a permanent face up as an EFFECT (no cost) has no
+door yet, so cards that say "you may turn it face up" wait on it.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in
