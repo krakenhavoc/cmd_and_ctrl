@@ -233,6 +233,13 @@ type AdditionalCost struct {
 	// It lives in the MANDATORY slot, Spec.AdditionalCost, because the
 	// cost is mandatory: CR 601.2b asks only which branch.
 	Either []AdditionalCost
+
+	// Reveal is "reveal a <type> card from your hand" or "behold a
+	// <type>" (CR 701.20, ADR 0100 amendment 2026-10-07): the caster
+	// names one card on CastSpellParams.RevealIDs and paying shows it to
+	// the table. Only as a branch of an either/or cost, beside a mana
+	// branch — every printed card pairs it with mana.
+	Reveal *RevealCost
 }
 
 // Branched reports whether this is an either/or cost (ADR 0100 §2).
@@ -309,7 +316,8 @@ func (c *AdditionalCost) MaxPayments() int {
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
-		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.TapCreatures == 0 && len(c.Either) == 0)
+		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
+		c.Reveal == nil)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -321,7 +329,7 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -807,6 +815,8 @@ func AdditionalCostMana(cost ParsedCost, mandatory *AdditionalCost, optional []A
 //     clause (CR 701.21a), counted by the engine's own candidate walk.
 //   - Life: CR 119.4, through CanPayLifeLocked.
 //   - Blight: a creature to put the counters on (CR 701.68b).
+//   - Reveal / behold: a matching card in hand (or, to behold, a matching
+//     permanent) other than the spell itself.
 //
 // MANA IS DELIBERATELY NOT ASKED, for the reason the alternative cost
 // gives: CR 601.2g lets the caster activate mana abilities after the
@@ -875,6 +885,9 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		}
 	}
 	if cost.Blight > 0 && len(g.BlightOptionsForEffect(playerID)) == 0 {
+		return false
+	}
+	if cost.Reveal != nil && len(g.RevealCostOptionsForEffect(playerID, castID, cost.Reveal)) == 0 {
 		return false
 	}
 	return true

@@ -2,6 +2,7 @@
 
 **Status:** Implemented · 2026-09-11 · Branch `fix/planeswalkers-274`
 **Amended:** 2026-09-11 · Branch `feat/loyalty-abilities` — §8 below
+**Amended:** 2026-10-07 · Branch `feat/2046-pw-creature` — the final amendment below (#2046)
 **Issue:** [#274](https://github.com/krakenhavoc/cmd_and_ctrl/issues/274),
 [#329](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329),
 [#334](https://github.com/krakenhavoc/cmd_and_ctrl/issues/334)
@@ -547,3 +548,91 @@ per-object shape. `TurnTally`'s per-ability counts deliberately do not
 move: they are per object as well, but clearing them on exit would let
 a blink loop reset ADR 0055's `LoopRun` every iteration and never trip
 the breaker.
+
+## Amendment (2026-10-07, #2046): a planeswalker that is also a creature takes both damage results and answers to both state-based actions
+
+*Branch `feat/2046-pw-creature`. Closes [#2046](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2046).
+Supersedes the "Damage removing loyalty (CR 120.3c)" item under *Absent* in §7, which
+[#406](https://github.com/krakenhavoc/cmd_and_ctrl/issues/406) and
+[S27's `permanent_damage.go`](../../server/internal/game/permanent_damage.go) closed long ago, and adds
+the case §7 predicted in passing: "a Gideon animated into a creature takes BOTH".*
+
+**The question.** Gideon of the Trials, Gideon Jura and the other Gideons make themselves creatures
+"that's still a planeswalker" until end of turn and "prevent all damage that would be dealt to him
+this turn". The prevention is ADR 0108 §7's `ModPreventFromSource` pinned to the permanent, and it
+shipped with Delivery PR 7. What the permanent *is* once it is both was never exercised, because no
+catalog card made a planeswalker a creature. Gideon of the Trials landed Full on the strength of the
+shield alone, and the gap shows only under damage that can't be prevented (CR 615.12).
+
+**What was already right.** The damage split. `applyDamageToPermanentLocked` reads what the
+permanent *currently is* and applies every clause that fits: marked damage on a creature
+(CR 120.3e), loyalty counters off a planeswalker (CR 120.3c), defense counters off a battle
+(CR 120.3h). Its header said so ("a Gideon animated into a creature takes BOTH") and it was written
+as additive on purpose. Combat damage (`markCombatDamageOnCardLocked`) and effect damage reach it by
+the same road, and infect or wither on a creature planeswalker gives -1/-1 counters *and* takes
+loyalty. `TestCreatureWalkerTakesBothDamageResults` and
+`TestCombatDamageToAnAnimatedWalkerRemovesLoyaltyAndMarksDamage` pin it.
+
+**What was wrong, in one place.** `stateBasedActionsLocked` collected its doomed set with an
+`if c.IsCreature() { …; continue }` followed by `if c.IsPlaneswalker()` and `if c.IsBattle()`. A
+creature never reached the other two, so a creature planeswalker whose last loyalty counter was
+removed stayed on the battlefield for as long as it stayed a creature, and was *stronger than
+printed* the moment it was dealt damage that wasn't prevented.
+
+**Decisions.**
+
+1. **A permanent is judged against every rule its current types call for.** Creature (CR 704.5f
+   toughness 0 or less, 704.5g lethal damage, 704.5h deathtouch), planeswalker (CR 704.5i no loyalty
+   counters) and battle (CR 704.5v/w no defense counters) are three independent checks over one
+   permanent, with no `continue` between them. They are performed simultaneously (CR 704.3), so a
+   permanent doomed by two of them leaves the battlefield once, in one move, and
+   `TestCreatureWalkerDoomedByBothRulesLeavesOnce` pins that.
+
+2. **It is *destroyed* only if every rule that doomed it destroys.** CR 704.5g and 704.5h destroy, so
+   indestructible switches them off (CR 702.12b); CR 704.5f, 704.5i and 704.5v/w put the permanent
+   into a graveyard, which indestructible does nothing about, and neither does a regeneration shield
+   (`doomedPermanent.destruction`, #667). An indestructible Gideon survives lethal damage
+   with loyalty left (`TestIndestructibleCreatureWalkerSurvivesLethalDamageWithLoyaltyLeft`) and still
+   goes at no loyalty (`TestIndestructibleCreatureWalkerStillDiesAtNoLoyalty`). The 5/5 indestructible
+   Gideons are the cards where this matters.
+
+3. **An unknown toughness skips the creature rules and nothing else.** `Card.ToughnessIsKnown` exists
+   so a `*` placeholder or a body-less fixture isn't killed by CR 704.5f. It used to skip the whole
+   permanent; it now skips the creature half, so a creature planeswalker with no loyalty counters is
+   still taken by CR 704.5i (`TestCreatureWalkerWithNoLoyaltyDiesEvenWhenToughnessIsUnknown`).
+
+4. **The card half is one helper, not one hand-copy per Gideon.** `effects.animateGideon`
+   (`gideon_animate.go`) registers the becoming as a single `ScopedEffectFor` pinned to the ability's
+   source until end of turn (layer 4 adds Creature and the creature subtypes, layer 5 sets the colour
+   where the card prints one, layer 7b sets base power and toughness, layer 6 adds indestructible where
+   printed), then the source shield protecting him this turn. The planeswalker type is never removed,
+   so decisions 1 to 3 apply. A Gideon that left in response is a new object (CR 400.7) and nothing
+   happens. Gideon Blackblade declares the same three layers as *statics* conditional on "it is your
+   turn", and his prevention as a standing CR 615 replacement conditional on the same.
+
+5. **Unpreventable damage is the test.** CR 615.12 lets damage that can't be prevented through a
+   prevention effect, shield or replacement alike, so the shield protects against ordinary damage and
+   none of the above is observable until something says "can't be prevented". The card tests deal
+   marked damage with `CantBePrevented` to each Gideon, including the already-shipped Gideon of the
+   Trials (`TestGideonOfTheTrialsUnpreventableDamageRemovesLoyaltyAndMarks`), which needs no caveat:
+   with this change he is exactly as printed.
+
+6. **The client shows both numbers.** A creature planeswalker rendered only its loyalty (the badge
+   branch was `isPlaneswalker ? loyalty : power/toughness`), so a player could not read a Gideon's
+   power. Both badges now show, loyalty stacked above power/toughness.
+
+**What this deliberately does not do.**
+
+- **"Attacks Gideon Jura if able".** Gideon Jura's and Kytheon's back face's `+2` are a requirement to
+  attack one particular permanent during one particular player's next turn. That is three pieces of
+  attack-requirement machinery, none of them a planeswalker rule
+  ([#2567](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2567)); both cards stay on the seams table
+  under their own row.
+- **Gideon, Champion of Justice's size.** "Power and toughness each equal to the number of loyalty
+  counters on him" needs a Mod that reads a count at every layer pass, and an owner answer to whether the
+  count is live or locked when the ability resolves
+  ([#2569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2569)).
+- **Attacking and being attacked.** An animated Gideon attacks like any creature (summoning sickness is
+  CR 302.6 and applies to him, which is why "He can't attack if he was cast this turn" on the Oathsworn
+  is reminder text), and is a legal attack target while he is a planeswalker (CR 506.4); nothing about
+  combat needed to change.

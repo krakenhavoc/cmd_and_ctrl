@@ -1015,6 +1015,16 @@ type AdditionalCostView struct {
 	// announcement). The server refuses a larger X.
 	BlightX    bool `json:"blight_x,omitempty"`
 	BlightXMax int  `json:"blight_x_max,omitempty"`
+	// Reveal marks a branch that reveals a card from the viewer's hand
+	// ("reveal an Elf card from your hand") and Behold one that may
+	// instead choose a permanent they control (CR 701.20, ADR 0100
+	// amendment 2026-10-07). RevealOptions lists the cards that could
+	// pay it — hand cards first, then, to behold, permanents — and the
+	// one pick rides cast_spell as `reveal_ids`. Present-and-empty means
+	// the branch cannot be paid right now.
+	Reveal        bool              `json:"reveal,omitempty"`
+	Behold        bool              `json:"behold,omitempty"`
+	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
 	// Payable marks a branch the viewer could pay right now:
 	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
 	// the bot enumerator ask. Absent means the branch cannot be taken
@@ -5257,13 +5267,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 		stampEscalate(g, caster, castID, out.Modes, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
-		out.AdditionalCost = viewOfAdditionalCost(g, caster, ac)
+		castUUID, _ := uuid.Parse(c.InstanceID)
+		out.AdditionalCost = viewOfAdditionalCost(g, caster, castUUID, ac)
 		// ADR 0100 §2: an either/or cost ships each branch in the same
 		// shape, stamped with whether the viewer could pay it — the
 		// predicate CastSpell and the enumerator ask, so a branch shown
 		// payable is one the server accepts.
 		for i := range ac.Either {
-			b := viewOfAdditionalCost(g, caster, &ac.Either[i])
+			b := viewOfAdditionalCost(g, caster, castUUID, &ac.Either[i])
 			b.Key = ac.Either[i].Key
 			b.Payable = haveLive && g.AdditionalCostBranchPayableLocked(caster, live, i)
 			out.AdditionalCost.Branches = append(out.AdditionalCost.Branches, *b)
@@ -6053,7 +6064,7 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 // cost, or of one branch of an either/or cost (ADR 0100 §2) — the same
 // components in the same shape, so the client's pickers read a branch
 // exactly as they read the card's cost. Caller must hold g.mu.
-func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
+func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
 	out := &AdditionalCostView{
 		DiscardCards: ac.DiscardCards,
 		DemandsX:     ac.PayLifeX || ac.BlightX,
@@ -6079,6 +6090,13 @@ func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCos
 		// The engine's own walk (#1703), as for an optional blight.
 		out.Blight = ac.Blight
 		out.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
+	}
+	if ac.Reveal != nil {
+		// The engine's own walk, so the picker offers exactly the cards
+		// the validator accepts (#544). The spell itself is excluded.
+		out.Reveal = true
+		out.Behold = ac.Reveal.Behold
+		out.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, ac.Reveal))}
 	}
 	return out
 }

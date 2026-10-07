@@ -628,6 +628,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 701.68a). Absent unless optional_costs names one.
 			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 			BlightIDs   []string `json:"blight_ids,omitempty"`
+			// ADR 0100 amendment 2026-10-07 — the one card an
+			// announced reveal / behold branch shows ("reveal an Elf
+			// card from your hand or pay {3}"). Absent unless the
+			// chosen cost_branch reveals.
+			RevealIDs []string `json:"reveal_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -750,6 +755,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
