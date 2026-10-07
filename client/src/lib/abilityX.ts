@@ -71,7 +71,10 @@ export function suggestedAbilityX(
 // abilityEnergyMaxX is the largest X a "Pay X {E}" ability lets the
 // seat announce: its energy less any printed energy beside the X
 // (CR 118.3). Undefined for an ability with no energy X.
-export function abilityEnergyMaxX(ability: ActivatedAbilityView, energy: number): number | undefined {
+export function abilityEnergyMaxX(
+  ability: ActivatedAbilityView,
+  energy: number,
+): number | undefined {
   if (!ability.energy_cost_x) return undefined;
   return Math.max(0, energy - (ability.energy_cost ?? 0));
 }

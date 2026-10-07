@@ -348,9 +348,7 @@
 
   // ADR 0129 §8: the viewer's energy, the ceiling on a "Pay X {E}"
   // ability's X (CR 118.3).
-  const viewerEnergy = $derived(
-    view.seats.find((s) => s.id === viewerID)?.counters?.energy ?? 0,
-  );
+  const viewerEnergy = $derived(view.seats.find((s) => s.id === viewerID)?.counters?.energy ?? 0);
 
   // #916: the viewer's life total, which is CR 119.4's cap on a
   // Phyrexian life payment. Read off the live snapshot so a life loss
