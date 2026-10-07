@@ -770,6 +770,10 @@ export interface MoveCost {
   // whole hand reads as free. Absent for an empty hand, which pays
   // the cost.
   hand?: number;
+  // ADR 0129 §7: the energy counters the move removes from the seat
+  // (CR 107.14) — "Pay N {E}", or N + X for "Pay X {E}" at the move's
+  // X. Always positive when present, and payable.
+  energy?: number;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
@@ -2377,6 +2381,13 @@ export interface ActivatedAbilityView {
   // chosen. See targetPrices.ts.
   target_charged_mana_costs?: Record<string, string>;
   life_cost?: number;
+  // ADR 0129 §8: "Pay N {E}" — the energy counters an activation
+  // removes from the activator (CR 107.14). energy_cost_x marks "Pay X
+  // {E}": the announced X is added, and demands_x is set. When the
+  // controller is short, cant_activate carries the server's refusal
+  // ("Not enough energy (have 2, need 3)").
+  energy_cost?: number;
+  energy_cost_x?: boolean;
   sorcery_speed?: boolean;
   // #1208: true when the engine will refuse this activation RIGHT NOW
   // for timing (CR 602.5d, CR 606.3), as modified by any per-player
@@ -2632,6 +2643,8 @@ export interface PurposeView {
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
+  // ADR 0129 §7: energy counters it gives its controller.
+  energy?: number;
   sweep?: SweepView;
   death_payoff?: boolean;
 }

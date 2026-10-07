@@ -140,6 +140,17 @@ func MinX(n int) game.AbilityCost { return game.AbilityCost{MinX: n} }
 // PayLife is a life component (CR 119.4).
 func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
 
+// PayEnergy is "Pay N {E}" (CR 107.14, ADR 0129 §2): remove N energy
+// counters from the activator. Compose it with the rest of the cost —
+// Plus(TapCost(), PayEnergy(2)) is "{T}, Pay {E}{E}". Energy is never
+// waived; only mana is.
+func PayEnergy(n int) game.AbilityCost { return game.AbilityCost{Energy: n} }
+
+// PayXEnergy is "Pay X {E}" (CR 107.3a): the activator announces X,
+// which may not exceed their energy, and the effect reads it back with
+// ctx.X() or item.X.
+func PayXEnergy() game.AbilityCost { return game.AbilityCost{EnergyX: true} }
+
 // LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
 // "−3" printed to the left of the ability. Positive adds counters,
 // negative removes them, zero does neither and still spends the
@@ -283,6 +294,15 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// mana — stronger than printed, the #259 direction.
 		if c.SpendOnly != nil {
 			out.SpendOnly = c.SpendOnly
+		}
+		// ADR 0129 §2: and the energy component. A composed "{T}, Pay
+		// {E}{E}" that dropped its energy would be a free activation
+		// every turn — stronger than printed, the #259 direction.
+		if c.Energy != 0 {
+			out.Energy = c.Energy
+		}
+		if c.EnergyX {
+			out.EnergyX = true
 		}
 	}
 	return out

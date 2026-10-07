@@ -29,6 +29,7 @@ import (
 //     − DiscardWeight × discards
 //     + ManaSource × lands + the ramp premium for those lands
 //     + TokenWeight × tokens
+//     + Weights.Energy × energy (ADR 0129 §7)
 //
 //     The lands get PR 3's ramp premium (rampPremium's deficit), so a
 //     Rampant Growth is worth most while the bot cannot cast what it
@@ -45,8 +46,8 @@ import (
 // modes it chose, or the card itself. Amounts add; sweeps are kept
 // apart, because two modes that each remove a class remove their union.
 type purposeSet struct {
-	draws, discards, lands, tutors, selfMill, tokens int
-	sweeps                                           []protocol.SweepView
+	draws, discards, lands, tutors, selfMill, tokens, energy int
+	sweeps                                                   []protocol.SweepView
 }
 
 // add folds one declared purpose in.
@@ -60,6 +61,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.tutors += p.Tutors
 	ps.selfMill += p.SelfMillTutor
 	ps.tokens += p.Tokens
+	ps.energy += p.Energy
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}
@@ -68,7 +70,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 // hasAmounts reports whether any §6 amount is declared.
 func (ps purposeSet) hasAmounts() bool {
 	return ps.draws != 0 || ps.discards != 0 || ps.lands != 0 || ps.tutors != 0 ||
-		ps.selfMill != 0 || ps.tokens != 0
+		ps.selfMill != 0 || ps.tokens != 0 || ps.energy != 0
 }
 
 // cardPurpose is the purpose the card itself declares: what the spell
@@ -158,6 +160,9 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 		// makes a Treasure.
 		v += st.resolutionDiscardPayoff(p.cfg, ps.discards, self)
 		v += p.cfg.TokenWeight * float64(ps.tokens)
+		// ADR 0129 §7: energy the effect gives, at the flat weight a
+		// move spending it is charged.
+		v += st.w.Energy * float64(ps.energy)
 		if ps.lands > 0 {
 			v += st.w.ManaSource * float64(ps.lands)
 			v += p.rampFor(st, self, ps.lands)

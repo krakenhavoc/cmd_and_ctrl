@@ -48,8 +48,30 @@ export function abilityXSlots(ability: ActivatedAbilityView): number {
 // is the real check, and the server's cost gate is the real answer —
 // the guess exists so the common case is one keystroke of confirming
 // rather than several of typing.
-export function suggestedAbilityX(ability: ActivatedAbilityView, availableMana: number): number {
+//
+// ADR 0129 §8: for "Pay X {E}" the guess is also held under the energy
+// the seat can pay, and with no {X} in the mana (Sphinx of the
+// Revelation's "{W}{U}{U}, {T}, Pay X {E}") the energy alone is the
+// guess.
+export function suggestedAbilityX(
+  ability: ActivatedAbilityView,
+  availableMana: number,
+  energy = 0,
+): number {
   const floor = abilityMinX(ability);
-  const affordable = Math.floor(Math.max(0, availableMana) / abilityXSlots(ability));
+  const energyMax = abilityEnergyMaxX(ability, energy);
+  if (energyMax !== undefined && ability.x_slots === undefined) {
+    return Math.max(floor, energyMax);
+  }
+  let affordable = Math.floor(Math.max(0, availableMana) / abilityXSlots(ability));
+  if (energyMax !== undefined) affordable = Math.min(affordable, energyMax);
   return Math.max(floor, affordable);
+}
+
+// abilityEnergyMaxX is the largest X a "Pay X {E}" ability lets the
+// seat announce: its energy less any printed energy beside the X
+// (CR 118.3). Undefined for an ability with no energy X.
+export function abilityEnergyMaxX(ability: ActivatedAbilityView, energy: number): number | undefined {
+  if (!ability.energy_cost_x) return undefined;
+  return Math.max(0, energy - (ability.energy_cost ?? 0));
 }

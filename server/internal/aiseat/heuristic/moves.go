@@ -139,6 +139,12 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	if c.Hand > 0 {
 		v -= st.w.Hand * float64(c.Hand)
 	}
+	// ADR 0129 §7: the energy the move spends, at the flat per-counter
+	// weight. A sink is used when what it buys is worth more than its
+	// counters.
+	if c.Energy > 0 {
+		v -= st.w.Energy * float64(c.Energy)
+	}
 	return v, false
 }
 

@@ -62,6 +62,10 @@ const TREE =
 // Colourless: a hollow diamond.
 const DIAMOND = "M16 5.5L26 16L16 26.5L6 16ZM16 10L21.7 16L16 22L10.3 16Z";
 
+// Energy (ADR 0129 §8, CR 107.14): a lightning bolt, on the energy
+// counter's own colour (counterTypes.ts).
+const BOLT = "M18.5 4.5L8.5 18H15L13 27.5L23.5 13.5H17L18.5 4.5Z";
+
 export const MANA_SYMBOL_META: Readonly<Record<string, ManaSymbolMeta>> = {
   W: { name: "White", fill: "#f8f6d8", glyph: sun() },
   U: { name: "Blue", fill: "#c1d7e9", glyph: DROP },
@@ -69,6 +73,9 @@ export const MANA_SYMBOL_META: Readonly<Record<string, ManaSymbolMeta>> = {
   R: { name: "Red", fill: "#e49977", glyph: FLAME },
   G: { name: "Green", fill: "#a3c095", glyph: TREE },
   C: { name: "Colorless", fill: "#cbc2bf", glyph: DIAMOND },
+  // Not mana: {E} is one energy counter (CR 107.14). Drawn with the
+  // mana symbols because a cost prints it among them.
+  E: { name: "Energy", fill: "#e0c050", glyph: BOLT },
 };
 
 /** A generic, X, hybrid or snow symbol: grey disc, text on top. */
@@ -85,7 +92,15 @@ export function manaSymbols(cost: string): string[] {
 }
 
 /** What a symbol is, for drawing and for speaking. */
-export type PipKind = "generic" | "colour" | "colourless" | "x" | "hybrid" | "phyrexian" | "snow";
+export type PipKind =
+  | "generic"
+  | "colour"
+  | "colourless"
+  | "x"
+  | "hybrid"
+  | "phyrexian"
+  | "snow"
+  | "energy";
 
 export interface ManaPip {
   /** The symbol with braces stripped, upper-cased: "U", "2", "W/U", "U/P". */
@@ -100,6 +115,7 @@ function pipKind(sym: string): PipKind {
   if (sym === "X" || sym === "Y" || sym === "Z") return "x";
   if (sym === "C") return "colourless";
   if (sym === "S") return "snow";
+  if (sym === "E") return "energy";
   if (COLOUR_LETTERS.includes(sym)) return "colour";
   if (/\/P$/.test(sym)) return "phyrexian";
   if (sym.includes("/")) return "hybrid";
@@ -159,6 +175,8 @@ export function pipWords(p: ManaPip): string {
       return p.symbol;
     case "snow":
       return "snow";
+    case "energy":
+      return "energy";
     case "phyrexian":
       return `${colourName(p.symbol.split("/")[0])} or 2 life`;
     default:

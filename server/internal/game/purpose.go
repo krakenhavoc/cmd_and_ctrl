@@ -58,6 +58,10 @@ type Purpose struct {
 	// Score's 2 Treasures. Tokens it gives to another player (Generous
 	// Gift's Elephant) are not counted.
 	Tokens int
+	// Energy is how many energy counters it gives its controller ("you
+	// get {E}{E}" is 2; ADR 0129 §7). An amount counted at resolution
+	// ("you get {E} for each creature you control") is not declared.
+	Energy int
 	// Sweep marks a board wipe and says which permanents it removes
 	// (ADR 0126 §4). The zero Sweep is "not a wipe".
 	Sweep Sweep
@@ -215,6 +219,7 @@ func (p Purpose) plus(o Purpose) Purpose {
 		Tutors:              p.Tutors + o.Tutors,
 		SelfMillTutor:       p.SelfMillTutor + o.SelfMillTutor,
 		Tokens:              p.Tokens + o.Tokens,
+		Energy:              p.Energy + o.Energy,
 		Sweep:               p.Sweep,
 		DeathPayoff:         p.DeathPayoff || o.DeathPayoff,
 		DiscardPayoff:       p.DiscardPayoff,
