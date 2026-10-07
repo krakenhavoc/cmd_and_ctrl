@@ -320,6 +320,7 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	checkSpellSpendOnly(spec)
 	// ADR 0073 §7: a cast condition with no printed clause produces a
 	// refusal the client cannot explain, and a clause with no
 	// condition refuses nothing while claiming to. Same for a

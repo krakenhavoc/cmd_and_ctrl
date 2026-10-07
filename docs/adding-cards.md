@@ -636,11 +636,22 @@ The price shown stays printed; the engine folds the clause into coloured
 symbols wherever a payment or an affordability check reads the cost, so the
 auto-tapper, the bot and the view all agree with the payment. Under
 Chromatic Orrery any mana pays such a COST (CR 609.4b), while a mana
-RESTRICTION still binds. The clause works on activated abilities only:
-"Spend only black mana on X" on a SPELL (Drain Life), "Spend only mana
-produced by basic lands" (Imperiosaur) and Emblazoned Golem's
-one-of-each-colour cap have no shape yet. See ADR 0040's 2026-10-03
-amendment.
+RESTRICTION still binds. The same sentences on a SPELL are two `Spec`
+fields (#2556, ADR 0040's 2026-10-07 amendment):
+
+```go
+SpendOnly:        SpellSpendOnlyOnX("B"),       // Drain Life: "Spend only black mana on X"
+SpendOnly:        SpellSpendOnlyOnX("B", "R"),  // Soul Burn: "black and/or red"
+SpendOnlySources: game.ManaSourceBasicLand,     // Imperiosaur: "…produced by basic lands"
+SpendOnlySources: game.ManaSourceCreature,      // Myr Superion: "…produced by creatures"
+```
+
+The colour clause is stamped on the cast's price and folded like an
+ability's; the source clause is read from the cast's spend context by the
+pool and by the auto-tapper's planner. A spell's clause is the "on X" form
+only, and `Register` refuses it beside delve or convoke / waterbend.
+Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
+2026-10-03 and 2026-10-07 amendments.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
@@ -1029,14 +1040,21 @@ touch it:
   Phyrexian symbol uses, on a cast, an activation or an attack
   declaration. The view reports `phyrexian_symbols` (the ceiling) and
   `phyrexian_granted` (how many are the grant's) for the viewer.
-- The enumerator and the bot need no new code: the life loops in
+- The enumerator and the bot need no new code for a card: the life loops in
   `legal/cast.go`, `legal/abilities.go` and `legal/combat.go` call
   `LifeGrantedCostForEffect` before they count symbols.
+- Every mana payment is covered. A mana ability's own mana component
+  (`ManaAbilityParams.PhyrexianLife`, wire `phyrexian_life` on
+  `activate_mana_ability`; a filter land's "{W/B}, {T}: Add …") and a mana
+  `pay_unless` (`ResolvePayUnlessWithLife`, `phyrexian_life` on
+  `resolve_choice`; ward {B}, "unless that player pays {B}") take the same
+  claim through the same helper pair, so a card with such a cost needs no
+  caveat for them.
 - A grant for another colour is data: `YouMayPayLifeForMana("G")`.
 
-**Not yet (ADR 0131 PR 2):** a mana ability's mana cost and the payments
-made while a spell or ability resolves (ward, "unless its controller
-pays") have no life answer, so a card that needs them keeps a caveat.
+A caveat that says "pays 2 life instead of {B}" goes stale the day a card
+declares `LifeForMana`; the `paying 2 life instead of black mana`
+coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
 ### Adding a replacement effect (S17+)
 
@@ -5995,6 +6013,42 @@ hid. The link is an object reference, so a triggered payoff captures
 `game.ObjectRefOf(*source)` in its `Build` (Rabble Rousing) rather than
 re-reading the source at resolution. The three Lorwyn lands are a table
 in `hideaway_lands.go`; a new land of the same shape is a row.
+
+### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
+
+Manifest dread (CR 701.62a) is the choice manifest does not have: look
+at the top two cards, put the one YOU pick onto the battlefield face
+down as a 2/2 and the other into your graveyard. A card file says it
+with the words in
+[manifest_dread_primitive.go](../server/internal/cards/effects/manifest_dread_primitive.go):
+
+```go
+Do(ManifestDread{})                                              // "Manifest dread."
+Do(ManifestDread{Then: PutCountersOnManifested(                  // "..., then put two +1/+1 counters
+    CounterAmount{Kind: game.CounterPlusOne, N: 2})})            //    and a trample counter on that creature."
+Do(ManifestDreadTimes{N: 2})                                     // "Manifest dread twice."
+ManifestDread{Then: AttachSourceToManifested(ctx)}.Apply(ctx)    // "..., then attach this Equipment to that creature."
+On(game.EventManifestDread, WheneverYouManifestDread, ...)       // "Whenever you manifest dread" (ev.CardID = the
+                                                                 //  permanent, ev.Target = the card put into the graveyard)
+```
+
+Everything after "then" is the `Then` continuation, which is told
+`game.ManifestDreadResult{Manifested, Graveyarded}`. Never write it as
+the next line of the effect: the controller's pick is a prompt, so the
+rest of the sentence runs when it is answered, and it must capture only
+scalars. An empty library runs `Then` with a zero result, so guard on
+`Manifested != uuid.Nil` (the ready-made continuations already do).
+
+"X times" is `ManifestDreadTimes` (Valgavoth's Onslaught): each
+repetition is its own look and its own prompt, and `Then` gets every
+result. "When it dies this turn, manifest dread" (Turn Inside Out) is
+`ManifestDreadWhenItDiesThisTurn`, an event-delayed trigger. A
+replacement that cares about a face-down entry reads
+`ReplacementEvent.FaceDown`: the library card is not yet the 2/2
+colorless creature it will be (Curator Beastie).
+
+Not here: turning a permanent face up as an EFFECT (no cost) has no
+door yet, so cards that say "you may turn it face up" wait on it.
 
 ### Adding a creature-type card (S26+)
 

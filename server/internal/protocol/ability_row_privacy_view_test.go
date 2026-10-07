@@ -131,7 +131,7 @@ var manaRowScopes = map[string]rowScope{
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
-	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
+	"ChargedManaCost": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
 	// #1443: the commander identity it is narrowed and ordered by is
 	// public (the command zone, and CR 903.4a fixes it before the game).

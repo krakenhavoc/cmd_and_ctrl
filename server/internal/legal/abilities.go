@@ -754,8 +754,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								label += fmt.Sprintf(" for X=%d", tapXValue)
 							}
 							if phyrexianLife > 0 {
-								label += fmt.Sprintf(" paying %d life for Phyrexian mana",
-									phyrexianLife*game.PhyrexianLifePerSymbol)
+								label += phyrexianLifeLabel(phyrexianLife)
 							}
 							if len(waterbendIDs) > 0 {
 								label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
@@ -1741,6 +1740,9 @@ type manaParams struct {
 	// #2215: the activation tops up a mana component of its cost from
 	// the seat's other sources. Set on every move whose ability has one.
 	AutoTap bool `json:"auto_tap,omitempty"`
+	// ADR 0131 §2: how many symbols of the mana component are paid with
+	// 2 life each — ManaAbilityParams.PhyrexianLife.
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents and —
@@ -1904,6 +1906,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		var (
 			manaCostAsPaid game.ParsedCost
 			manaSpend      game.ManaSpendContext
+			// manaLife is how many symbols of the mana component the
+			// move pays with life (ADR 0131 §2): the fewest that make
+			// it affordable, and none when mana pays.
+			manaLife int
 		)
 		if ab.ManaCost != "" {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
@@ -1913,9 +1919,31 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			// #1600: widened as ActivateManaAbility widens it.
 			manaSpend = game.ManaSpendForAbility(*source)
 			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, 0)
-			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
-				game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{})) {
-				continue
+			sourceOnly := game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{})
+			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend, sourceOnly) {
+				// ADR 0131 §2: a printed {B/P} on the cost, or a {B} a
+				// life-for-mana grant (K'rrik) makes payable with life,
+				// may pay what the board cannot. Mana first, then the
+				// fewest symbols paid with life; the strike is the
+				// engine's own (game.PhyrexianLifePlan) and the bound
+				// is its life predicate with the ability's printed life
+				// held back, so an offered payment is one
+				// ActivateManaAbility accepts (#544).
+				lifeCost := g.LifeGrantedCostForEffect(e.seat, manaCostAsPaid)
+				found := false
+				for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
+					reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, manaSpend, n)
+					if !g.CanPayLifeLocked(e.p, ab.LifeCost+life) {
+						break
+					}
+					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, 0, manaSpend, sourceOnly) {
+						manaCostAsPaid, manaLife, found = reduced, n, true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
 			}
 		}
 		sacrificeSets := [][]uuid.UUID{nil}
@@ -2030,6 +2058,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						cost := withEnergy(moveCost(ab.LifeCost, 0), ab.EnergyCost)
 						// ADR 0130 §4: Arena of Glory's "Exert this land".
 						cost = withExert(cost, ab.ExertCost)
+						cost = withPhyrexianLife(cost, manaLife)
+						if manaLife > 0 {
+							label += phyrexianLifeLabel(manaLife)
+						}
 						for _, price := range cc.prices() {
 							cost = withCounterPrice(cost, price)
 						}
@@ -2055,6 +2087,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								ExileIDs:          idStrings(manaExileIDs),
 								ExilePermanentIDs: idStrings(exiles),
 								AutoTap:           ab.ManaCost != "",
+								PhyrexianLife:     manaLife,
 							}),
 						})
 					}

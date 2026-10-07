@@ -48,6 +48,59 @@ func SpendOnlyOnX(colors ...string) game.AbilityCost {
 	return game.AbilityCost{SpendOnly: &game.ManaSpendOnly{Colors: colors, XOnly: true}}
 }
 
+// SpellSpendOnlyOnX is a SPELL's "Spend only <colour> mana on X" (#2556)
+// — Drain Life and Consume Spirit's SpellSpendOnlyOnX("B"), Soul Burn's
+// SpellSpendOnlyOnX("B", "R"). The mana paid for the spell's {X} must be
+// one of `colors` (uppercase WUBRG); the rest of the cost is paid as
+// usual. The spell-side twin of SpendOnlyOnX, which builds the same
+// restriction as an ability cost component.
+func SpellSpendOnlyOnX(colors ...string) *game.ManaSpendOnly {
+	return &game.ManaSpendOnly{Colors: colors, XOnly: true}
+}
+
+// checkSpellSpendOnly holds a spell's own spend-only declarations to the
+// shapes the cast pricer can pay, at boot:
+//
+//   - the colour clause is the "on X" form with real colours — the
+//     whole-cost form and "the chosen color" read an ability source's
+//     state a spell does not have;
+//   - not beside delve or a tap cost (convoke / waterbend): both settle
+//     {X} into generic mana before anyone pays it, and which part of a
+//     restricted cost a tapped creature or an exiled card covers is a
+//     question no printed card asks. Refused rather than guessed.
+//
+// Whether the spell's printed cost HAS an {X} is checked against the
+// Scryfall dump by the card's own test (a Spec carries no mana cost).
+func checkSpellSpendOnly(spec Spec) {
+	if spec.SpendOnly == nil && spec.SpendOnlySources == 0 {
+		return
+	}
+	fail := func(why string) {
+		panic(fmt.Sprintf("effects.Register: %q declares a spend-only clause on the spell %s", spec.Name, why))
+	}
+	if s := spec.SpendOnly; s != nil {
+		if !s.XOnly {
+			fail("that is not the \"on X\" form")
+		}
+		if s.ChosenColor {
+			fail("naming \"the chosen color\", which a spell has no source to read")
+		}
+		if len(s.Colors) == 0 {
+			fail("that names no colour — no mana could pay it")
+		}
+		for _, col := range s.Colors {
+			switch col {
+			case "W", "U", "B", "R", "G":
+			default:
+				fail(fmt.Sprintf("naming %q, which is not one of W U B R G", col))
+			}
+		}
+		if spec.Delve || spec.TapCost != nil {
+			fail("beside delve or a tap cost — which part of a restricted cost they pay is not modelled")
+		}
+	}
+}
+
 // MonocoloredSpellsOfTheChosenColor is the RestrictionsFunc for "Spend
 // this mana only to cast monocolored spells of that color": a cast, of
 // a spell that is exactly one colour, and that colour the one stored on

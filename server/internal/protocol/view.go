@@ -467,6 +467,16 @@ type PendingChoiceView struct {
 	// Added in S19 sub-PR 6.
 	PayCost string `json:"pay_cost,omitempty"`
 
+	// PhyrexianSymbols / PhyrexianGranted are the "or 2 life" half of a
+	// mana "pay_unless" (ADR 0131 §2): how many symbols of PayCost the
+	// CHOOSER could pay with life — a printed {B/P}, or a {B} under
+	// K'rrik, Son of Yawgmoth — and how many of those are the grant's.
+	// `{apply: true, phyrexian_life: n}` pays n of them with 2 life each
+	// and the rest with mana. Both omitted at zero, and for every
+	// non-mana payment.
+	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+	PhyrexianGranted int `json:"phyrexian_granted,omitempty"`
+
 	// TapCost is the waterbend clause of a "pay_unless" whose payment
 	// is a waterbend cost (#1311, "Ward—Waterbend {4}"): the untapped
 	// artifacts and creatures the CHOOSER could tap, each paying {1}
@@ -3793,6 +3803,15 @@ type ManaAbilityView struct {
 	// without it the mana has to be floating already.
 	// Added in the S32 mana-pipeline pass (#352).
 	ManaCost string `json:"mana_cost,omitempty"`
+	// PhyrexianSymbols / PhyrexianGranted are ActivatedAbilityView's
+	// pair for a mana ability's mana component (ADR 0131 §2): how many
+	// of its symbols the VIEWER could pay 2 life for — a printed {B/P},
+	// or a {B} under K'rrik, Son of Yawgmoth — and how many of those
+	// are the grant's. The client's "Pay life for {B}…" entry sends the
+	// answer as `phyrexian_life`. Both omitted at zero. Stamped by
+	// stampManaChargedCost, the pass with a game handle.
+	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+	PhyrexianGranted int `json:"phyrexian_granted,omitempty"`
 	// ChargedManaCost is ActivatedAbilityView.ChargedManaCost for a
 	// mana ability (#1191, #1190): CR 605.1a makes a mana ability an
 	// activated ability, so Boom Scholar's discount reaches Loot, the
@@ -6729,6 +6748,7 @@ func stampManaChargedCost(g *game.Game, card game.Card, controller uuid.UUID, vi
 		if i >= len(raw) || raw[i].ManaCost == "" {
 			continue
 		}
+		views[i].PhyrexianSymbols, views[i].PhyrexianGranted = phyrexianSymbolsIn(g, controller, raw[i].ManaCost)
 		if charged, err := g.ManaAbilityManaCostForEffect(controller, card, raw[i]); err == nil {
 			s := charged.String()
 			views[i].ChargedManaCost = &s
@@ -7077,6 +7097,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
 			PayCost:       c.PayCost,
+		}
+		// ADR 0131 §2: the life half of a mana payment.
+		if c.Kind == game.PendingChoicePayUnless && c.PayAction() == nil {
+			v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, c.Chooser, c.PayCost)
 		}
 		// #1311: the waterbend half of a pay-unless, sized against the
 		// prompt's own cost — the budget ResolvePayUnlessWithTaps

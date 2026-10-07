@@ -905,6 +905,8 @@ export type LogKind =
   // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
   // `card_id` the discovered card, absent when nothing was found.
   | "discover"
+  // ADR 0082 amendment (#2570): a player manifested dread. Carries no card.
+  | "manifest_dread"
   | "saga_chapter"
   | "class_level"
   // ADR 0103: a Room's door was unlocked or locked (CR 709.5c/g);
@@ -1446,6 +1448,13 @@ export interface PendingChoiceView {
   // "unless" consequence fires. Also carries the life payment ("2
   // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // ADR 0131 §2 (#2531): the "or 2 life" half of a mana "pay_unless".
+  // `phyrexian_symbols` is how many symbols of `pay_cost` the chooser
+  // could pay 2 life each for (a printed {B/P}, or a {B} under K'rrik);
+  // `phyrexian_granted` how many of those are the grant's. The answer
+  // is {apply: true, phyrexian_life: n}. Absent at zero.
+  phyrexian_symbols?: number;
+  phyrexian_granted?: number;
   // #1311: populated for a "pay_unless" whose payment is a WATERBEND
   // cost ("Ward—Waterbend {4}", The Unagi of Kyoshi Island): the
   // chooser's untapped artifacts and creatures that may each pay {1}
@@ -3631,6 +3640,12 @@ export interface ProtectionView {
 export interface ManaAbilityView {
   index: number;
   label?: string;
+  // ADR 0131 §2 (#2531): ActivatedAbilityView's pair for this mana
+  // ability's own mana component — how many symbols the viewer could pay
+  // 2 life each for, and how many of them are a grant's. The answer
+  // rides activate_mana_ability as `phyrexian_life`. Absent at zero.
+  phyrexian_symbols?: number;
+  phyrexian_granted?: number;
   // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
   // "land:<colour>", "grant:<bundle>:<i>:<n>"), sent back as
   // activate_mana_ability's `ref`. See ActivatedAbilityView.ref.

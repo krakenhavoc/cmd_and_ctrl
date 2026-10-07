@@ -10,8 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 damage to a player, turn that creature face up or put a +1/+1
 //	 counter on it."
 //
-// Experimental Lab is NOT implemented: manifest dread (CR 701.62a) has
-// no keyword action in the engine, so the door is empty.
+// Experimental Lab is manifest dread (CR 701.62a, ADR 0082's
+// 2026-10-07 amendment) with its counters as the continuation: two
+// +1/+1 counters and a trample counter on the creature that entered.
 //
 // Staff Room offers only its second option. No effect can turn a
 // permanent face up for free (face up is a special action with a cost,
@@ -25,9 +26,15 @@ func init() {
 		Name:         "Experimental Lab // Staff Room",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"Experimental Lab's manifest dread isn't implemented, so unlocking it does nothing.",
 			"Staff Room can't turn a face-down creature face up; it always puts the +1/+1 counter.",
 		},
+		Left: Door{Triggered: []game.TriggeredAbility{
+			WhenYouUnlockThisDoor(game.DoorLeft, "Experimental Lab — manifest dread, then put two +1/+1 counters and a trample counter on that creature",
+				Do(ManifestDread{Then: PutCountersOnManifested(
+					CounterAmount{Kind: game.CounterPlusOne, N: 2},
+					CounterAmount{Kind: game.CounterTrample, N: 1},
+				)})),
+		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g)

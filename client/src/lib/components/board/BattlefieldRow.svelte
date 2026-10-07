@@ -40,7 +40,15 @@
     // battlefield permanent the viewer controls. Routed down to
     // Card.svelte so the right-click / context menu can hit it.
     // Undefined suppresses the menu entirely (opponent panels).
-    onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
+    // ADR 0131 §2: `phyrexianLife` is the "Pay life for {B}…" row's claim,
+    // sent as `phyrexian_life`; the third slot is the colours named up
+    // front, which that row never names.
+    onActivateManaAbility?: (
+      card: CardView,
+      abilityIndex: number,
+      colors?: string[],
+      phyrexianLife?: number,
+    ) => void;
     // ADR 0117 §3: the popover's Sandbox row (Tap / Untap; "Tap (no
     // mana)" on a mana source, #1438). Wired on the viewer's own panel.
     onRawTap?: (card: CardView) => void;
@@ -314,7 +322,7 @@
                     cantAttack={cantAttack[a.instance_id]}
                     onClick={onCardClick}
                     onActivateManaAbility={onActivateManaAbility
-                      ? (idx) => onActivateManaAbility(a, idx)
+                      ? (idx, life) => onActivateManaAbility(a, idx, undefined, life)
                       : undefined}
                     onRawTap={onRawTap ? () => onRawTap(a) : undefined}
                     onMenuAction={onSpecialAction}
@@ -354,7 +362,7 @@
                     ? () => onGroupClick(p.group!.groupKey)
                     : onCardClick}
                   onActivateManaAbility={onActivateManaAbility
-                    ? (idx) => onActivateManaAbility(c, idx)
+                    ? (idx, life) => onActivateManaAbility(c, idx, undefined, life)
                     : undefined}
                   onRawTap={onRawTap ? () => onRawTap(c) : undefined}
                   onMenuAction={onSpecialAction}
