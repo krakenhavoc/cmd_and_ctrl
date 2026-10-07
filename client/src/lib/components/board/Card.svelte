@@ -162,7 +162,8 @@
     // (CR 113.6) and rides `zone_mana_abilities`. Undefined
     // suppresses the menu entirely (opponent permanents, zones where
     // activations aren't meaningful).
-    onActivateManaAbility?: (abilityIndex: number) => void;
+    // ADR 0131 §2: `phyrexianLife` is the "Pay life for {B}…" row's claim.
+    onActivateManaAbility?: (abilityIndex: number, phyrexianLife?: number) => void;
     // ADR 0117 §3: the popover's Sandbox row, Tap or Untap, on every
     // permanent the viewer controls ("Tap (no mana)" on a mana source,
     // #1438). Set by BattlefieldRow on the viewer's own panel; undefined
@@ -657,8 +658,15 @@
   // once per slot. A permanent's own `mana_abilities` only: the picker
   // is a battlefield picker, and a hand card's mana ability (a Spirit
   // Guide) has no colour choice.
-  function activateManaRow(index: number): void {
+  function activateManaRow(index: number, phyrexianLife?: number): void {
     const a = (card.mana_abilities ?? []).find((m) => m.index === index);
+    // ADR 0131 §2: a life payment names no colours here — a filter land's
+    // picking slots are asked as the server's usual mana_pick prompts —
+    // so it skips the picker and carries the claim.
+    if (phyrexianLife) {
+      onActivateManaAbility?.(index, phyrexianLife);
+      return;
+    }
     if (a && manaRowNeedsPicker(a) && cardEl) {
       const r = cardEl.getBoundingClientRect();
       openManaSourcePicker({

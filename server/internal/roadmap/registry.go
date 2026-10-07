@@ -423,17 +423,15 @@ var items = []Item{
 		NoCatalogExample: "Its only catalogued card hasn't been reviewed yet, so none is listed as fully automated.",
 	},
 	{
-		// ADR 0131 (#2531). PR 1 shipped casts, activations and attack
-		// taxes; PR 2 adds mana abilities and pay-unless payments, flips
-		// this row and adds its closed-seam fragment.
-		Slug: "pay-life-for-mana", Name: "Paying life for black mana", Kind: KindMechanic, Status: StatusPartial,
-		Summary:          "A permanent like K'rrik, Son of Yawgmoth lets you pay 2 life for each {B} in a cost instead of paying that mana.",
-		Missing:          "It works for spells, activated abilities and attack costs, but not yet for mana abilities or costs paid while a spell or ability resolves, such as ward.",
-		Rules:            []string{"107.4f", "601.2b"},
-		Issue:            2531,
-		ADR:              "0131-krrik-pay-life-for-black-mana.md",
-		Waiting:          []string{"K'rrik, Son of Yawgmoth"},
-		NoCatalogExample: "Its only catalogued card still carries a caveat, so none is listed as fully automated.",
+		// ADR 0131 (#2531). Casts, activations and attack taxes shipped
+		// in PR 1; PR 2 added mana abilities and pay-unless payments.
+		Slug: "pay-life-for-mana", Name: "Paying life for black mana", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "A permanent like K'rrik, Son of Yawgmoth lets you pay 2 life for each {B} in a cost instead of paying that mana. It reaches spells, abilities, attack costs, mana abilities and costs paid while a spell or ability resolves, such as ward.",
+		Rules:    []string{"107.4f", "601.2b"},
+		Issue:    2531,
+		ADR:      "0131-krrik-pay-life-for-black-mana.md",
+		Mechanic: "paying 2 life instead of black mana",
+		Examples: []string{"K'rrik, Son of Yawgmoth"},
 	},
 	{
 		Slug: "computed-life-cost", Name: "Life costs that are counted", Kind: KindMechanic, Status: StatusImplemented,

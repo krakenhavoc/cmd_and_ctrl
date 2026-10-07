@@ -148,6 +148,16 @@ func (g *Game) LifeGrantedCostForEffect(payer uuid.UUID, cost ParsedCost) Parsed
 	return g.grantLifeForManaLocked(payer, cost)
 }
 
+// cardNameLocked is the name of the card `id` names, in whatever zone
+// holds it, or "the cost" when it is nowhere. For an error message only
+// (strikePhyrexianLifeLocked's source name). Caller must hold g.mu.
+func (g *Game) cardNameLocked(id uuid.UUID) string {
+	if c, _ := g.findCardAndZoneLocked(id); c != nil && c.Name != "" {
+		return c.Name
+	}
+	return "the cost"
+}
+
 // LifeGrantedSymbols is how many of `c`'s symbols can be paid with life
 // only because of a grant, not because they print a Phyrexian symbol.
 // The view's `phyrexian_granted`. Pure.

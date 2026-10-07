@@ -2533,7 +2533,7 @@ is offered once per card out of the budget the targets left over. The
 counts in between are the same trade paid partly, so they are not
 offered. Every count is bounded by the engine's own life predicate
 (CR 119.4, and CR 119.8's locked life total). The move label says
-`paying 4 life for Phyrexian mana`, and `Move.Cost` carries the life
+`paying 4 life instead of mana`, and `Move.Cost` carries the life
 twice: in `life`, with the rest of what the move charges, and in
 `phyrexian_life`, the part that buys nothing extra.
 
@@ -2545,6 +2545,15 @@ mana payment scores higher. The heuristic also never pays Phyrexian
 life that would leave it below 10 (`phyrexianLifeFloor`, the default
 `DangerLife`). The random tier picks among the legal moves like any
 other.
+
+The same payment is offered for a `{B}` under K'rrik, Son of Yawgmoth
+([ADR 0131](decisions/0131-krrik-pay-life-for-black-mana.md)), and for
+the two payments that are not casts: a mana ability's own mana cost (the
+move carries `phyrexian_life`) and a mana `pay_unless` such as ward
+(the "pay" answer carries it). The enumerator offers the fewest symbols
+paid with life that make the move payable, after mana. The heuristic
+prices a life-paid ward like a Phyrexian cast: declined below the floor
+of 10, and below the all-mana answer above it.
 
 **"Discard your hand" is priced by the hand it throws away.** Lion's
 Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry

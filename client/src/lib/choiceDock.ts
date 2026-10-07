@@ -35,6 +35,7 @@ import type { DockAction, DockRequest } from "./dock";
 import type { PendingChoiceView, PlayerView, VoteView } from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
+import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
 import { doubledTriggerLabel } from "./triggerDoubling";
 
 // "Short" for an option_pick / entry_controller (ADR 0111 §2: "Inline
@@ -105,11 +106,16 @@ export interface ChoiceDockContext {
   body?: Snippet;
   // The server's refusal of the last answer to this prompt (#624).
   rejection?: string | null;
+  // The viewer's life total: a mana pay_unless offers "pay with life" for
+  // the symbols the chooser could pay 2 life each for (ADR 0131 §2),
+  // bounded by CR 119.4. Undefined offers none.
+  life?: number;
 }
 
 export interface ChoiceDockHandlers {
-  // The yes/no family and pay_unless: { apply }.
-  onAnswer: (apply: boolean) => void;
+  // The yes/no family and pay_unless: { apply }. `phyrexianLife` rides a
+  // pay_unless "pay" that spends 2 life on that many symbols.
+  onAnswer: (apply: boolean, phyrexianLife?: number) => void;
   onCoin: (call: "heads" | "tails" | "stop") => void;
   onOption: (index: number) => void;
   onLoop: (iterations: number) => void;
@@ -128,6 +134,24 @@ interface Copy {
   hint?: string;
   hintWarn?: boolean;
   detail?: string;
+}
+
+// payLifeMax is how many of a mana pay_unless's symbols the viewer can
+// claim for 2 life each: the server's ceiling, capped by CR 119.4. Zero
+// for every other prompt, and when the life total is unknown.
+function payLifeMax(c: PendingChoiceView, ctx: ChoiceDockContext): number {
+  if (c.kind !== "pay_unless" || ctx.life === undefined) return 0;
+  return maxPhyrexianLife(c.phyrexian_symbols ?? 0, ctx.life);
+}
+
+// payLifeWords names what the life pays for in the hint: a granted {B}
+// (K'rrik), or a printed Phyrexian symbol.
+function payLifeWords(c: PendingChoiceView): string {
+  const symbols = c.phyrexian_symbols ?? 0;
+  if ((c.phyrexian_granted ?? 0) >= symbols) {
+    return symbols === 1 ? "The {B}" : "Each {B}";
+  }
+  return symbols === 1 ? "The Phyrexian symbol" : "Each Phyrexian symbol";
 }
 
 function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
@@ -200,7 +224,11 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
       return {
         title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
         tag: "pay unless",
-        hint: `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't and let ${ctx.sourceName} do its thing.`,
+        hint:
+          `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't and let ${ctx.sourceName} do its thing.` +
+          (payLifeMax(c, ctx) > 0
+            ? ` ${payLifeWords(c)} can instead be paid with ${PhyrexianLifePerSymbol} life each.`
+            : ""),
       };
     case "coin_call": {
       const coins = c.coins ?? 1;
@@ -289,11 +317,24 @@ function answersFor(
         primary: yes(c.accept_label || "Yes"),
         secondary: [no(c.decline_label || "No")],
       };
-    case "pay_unless":
+    case "pay_unless": {
+      // ADR 0131 §2: one "pay with life" answer per count the chooser may
+      // claim, after the all-mana "Pay" and before "Don't pay". Mana is
+      // never spent on a symbol the life pays for, and auto-tap never
+      // claims it, so it is always the player's click.
+      const lifeAnswers: DockAction[] = [];
+      for (let k = 1; k <= payLifeMax(c, ctx); k++) {
+        lifeAnswers.push({
+          id: `pay-life-${k}`,
+          label: `Pay with ${phyrexianLifeCost(k)} life`,
+          onPress: () => h.onAnswer(true, k),
+        });
+      }
       return {
         primary: yes(`Pay ${c.pay_cost ?? ""}`.trim()),
-        secondary: [no("Don't pay")],
+        secondary: [...lifeAnswers, no("Don't pay")],
       };
+    }
     case "coin_call":
       return {
         primary: keyed("tails", "Tails", "T", () => h.onCoin("tails")),
