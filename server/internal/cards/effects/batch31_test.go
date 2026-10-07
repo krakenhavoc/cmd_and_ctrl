@@ -520,8 +520,8 @@ func TestB31WeaponsManufacturingArmsEveryRealArtifact(t *testing.T) {
 	if dealt.Source != munitions {
 		t.Errorf("the damage is dealt by the token, got source %s", dealt.Source)
 	}
-	if spec, _ := Lookup(b31WeaponsManufacturingOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the carried-trigger gap must be declared")
+	if spec, _ := Lookup(b31WeaponsManufacturingOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token carries its own ability now: the card is complete")
 	}
 }
 
@@ -530,7 +530,7 @@ func TestB31WeaponsManufacturingMunitionsBouncedStillShoots(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	b31Push(g, me.ID, "Weapons Manufacturing", "Enchantment", b31WeaponsManufacturingOracle, "{1}{R}", 0, 0, "R")
 	bear := b31Push(g, opp.ID, "Their Bear", "Creature — Bear", "", "{1}{G}", 2, 2, "G")
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("Munitions"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, MunitionsToken(), 1) })
 	munitions := findBattlefieldByName(g, "Munitions")
 	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(munitions) })
 	b04WaitForPick(t, g, me.ID)
@@ -538,6 +538,50 @@ func TestB31WeaponsManufacturingMunitionsBouncedStillShoots(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(bear) {
 		t.Error("2 damage to a 2/2: it dies")
+	}
+}
+
+// The ability is the token's own, so it outlives the enchantment that
+// made it (the caveat this card shipped with).
+func TestB31MunitionsShootsAfterWeaponsManufacturingIsGone(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	wm := b31Push(g, me.ID, "Weapons Manufacturing", "Enchantment", b31WeaponsManufacturingOracle, "{1}{R}", 0, 0, "R")
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, MunitionsToken(), 1) })
+	munitions := findBattlefieldByName(g, "Munitions")
+	b27Kill(g, wm)
+	if g.Battlefield.Contains(wm) {
+		t.Fatal("setup: the enchantment should be gone")
+	}
+	before := opp.Life
+	b27Kill(g, munitions)
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("a Munitions with no Manufacturing: life %d, want %d", opp.Life, before-2)
+	}
+}
+
+// A stolen Munitions shoots for whoever controls it as it leaves.
+func TestB31MunitionsShootsForItsNewController(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b31Push(g, me.ID, "Weapons Manufacturing", "Enchantment", b31WeaponsManufacturingOracle, "{1}{R}", 0, 0, "R")
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, MunitionsToken(), 1) })
+	munitions := findBattlefieldByName(g, "Munitions")
+	g.WithWriteLock(func() {
+		if !g.GainControlForEffect(uuid.New(), munitions, opp.ID, game.IndefiniteDuration(), "test — steal") {
+			t.Fatal("setup: control change refused")
+		}
+	})
+	before := me.Life
+	b27Kill(g, munitions)
+	b04WaitForPick(t, g, opp.ID)
+	pickPlayer(t, g, opp.ID, me.ID)
+	passPriorityAroundTable(t, g)
+	if me.Life != before-2 {
+		t.Errorf("the thief's Munitions: life %d, want %d", me.Life, before-2)
 	}
 }
 
