@@ -316,6 +316,20 @@ type ManaAbilityShape struct {
 	// spends no energy and before the pain tier (owner decision 2).
 	EnergyCost int
 
+	// ExertCost is "Exert this land" / "Exert this creature" in a mana
+	// ability's cost (ADR 0130 §4, owner decision 3; CR 701.43a) —
+	// Arena of Glory's "{R}, {T}, Exert this land: Add {R}{R}", Oasis
+	// Ritualist's "{T}, Exert this creature: Add two mana of any one
+	// color". Still a mana ability (CR 605.1a): it is paid with the
+	// other components and resolves at once (CR 605.3b), through
+	// exertLocked, keyed to the activator's next untap step. A "whenever
+	// you exert" trigger it causes waits for the next time a player
+	// would receive priority, like every trigger from a mana ability.
+	// Always payable on the battlefield (CR 701.43b). The auto-tapper
+	// never plans it: an exert is a cost the player chooses, so such a
+	// row is paid only when the player activates it.
+	ExertCost bool
+
 	// ManaCost is a mana component in the activation cost — the
 	// Signet cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2},
 	// {T}". Scryfall brace grammar, parsed with ParseCost.

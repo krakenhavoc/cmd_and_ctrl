@@ -1887,6 +1887,12 @@ type ManaAbilityCost struct {
 	// plans it in the energy tier, before the pain tier.
 	Energy int
 
+	// Exert is "Exert this land" / "Exert this creature" (ADR 0130 §4):
+	// Arena of Glory's "{R}, {T}, Exert this land: Add {R}{R}". Still a
+	// mana ability (CR 605.1a). The auto-tapper never pays it on its
+	// own; the player activates the row.
+	Exert bool
+
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",
 	// the filter lands' "{W/U}, {T}". Scryfall brace grammar.

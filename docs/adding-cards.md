@@ -5840,8 +5840,8 @@ For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
 names that player's next untap step. Markers expire at that actual step,
 even on an untapped permanent, survive skipped steps, and disappear on
 zone changes. They are data on `Card`, not turn-scoped closures, so undo
-and persisted snapshots retain them. Exert's action/cost remains separate
-work. See [ADR 0058](decisions/0058-doesnt-untap.md) and
+and persisted snapshots retain them. Exert, as it attacks and as a
+cost, has its own section below ([ADR 0130](decisions/0130-exert.md)). See [ADR 0058](decisions/0058-doesnt-untap.md) and
 [ADR 0070](decisions/0070-untap-step-choices.md).
 
 For "it doesn't untap during its controller's untap step **for as long
@@ -6499,9 +6499,20 @@ Triggered: []game.TriggeredAbility{
   ```
 
   A row with no purpose is an exert the bot takes only when it is free.
-- **Exert as an activation cost** ("Exert this creature: …", Arena of
-  Glory) is ADR 0130 PR 4, a cost component on `AbilityCost` and
-  `ManaAbilityCost`. Until it lands, those cards wait.
+- **Exert as an activation cost** ("{T}, Exert this creature: …", ADR
+  0130 §4) is a cost component. On an activated ability compose
+  `ExertThis()`: `Plus(ManaCost("{W}"), TapCost(), ExertThis())` is Pride
+  Sovereign's "{W}, {T}, Exert this creature". On a mana ability set
+  `ManaAbilityCost{Tap: true, Exert: true}` (Oasis Ritualist; Arena of
+  Glory adds `Mana: "{R}"`). The engine pays it beside the {T} through
+  `exertLocked`, keyed to the activator, with no attack target, so a
+  `WhenExerted` row never fires for it and a `WheneverYouExert` row does
+  (for a creature). It is always payable, again after an earlier exert
+  this turn (CR 701.43b), and battlefield only (Register refuses it in
+  another zone, beside a cost that moves the source, and on an
+  any-player row). The auto-tapper never pays an exert mana row: the
+  player activates it from the mana menu, and a plain "{T}: Add …" row
+  on the same permanent is still planned.
 
 ### When NOT to add a catalog entry
 

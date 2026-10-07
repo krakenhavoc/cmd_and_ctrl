@@ -6750,6 +6750,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		tappedForMana = *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
+	// ADR 0130 §4: "Exert this land" (Arena of Glory), beside the {T}
+	// as the CR 602 path pays it, keyed to the activator's untap step
+	// (CR 701.43a). Always payable on the battlefield (CR 701.43b).
+	if ab.ExertCost {
+		g.exertLocked(cardID, playerID, uuid.Nil)
+	}
 	// #758: the tap-another half, after the source's own {T} and
 	// before the life and the sacrifices — the same component order
 	// the CR 602 path pays in, and before the sacrifices for the

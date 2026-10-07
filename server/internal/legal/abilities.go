@@ -779,6 +779,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
 							// ADR 0129 §7: the energy this move removes.
 							cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
+							// ADR 0130 §4: and whether it exerts its source.
+							cost = withExert(cost, ab.Cost.Exert)
 							for _, price := range cc.prices() {
 								cost = withCounterPrice(cost, price)
 							}
@@ -2026,6 +2028,8 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						// permanent but never the price. #1600: and so is
 						// Lion's Eye Diamond's hand.
 						cost := withEnergy(moveCost(ab.LifeCost, 0), ab.EnergyCost)
+						// ADR 0130 §4: Arena of Glory's "Exert this land".
+						cost = withExert(cost, ab.ExertCost)
 						for _, price := range cc.prices() {
 							cost = withCounterPrice(cost, price)
 						}

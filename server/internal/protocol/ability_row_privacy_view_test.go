@@ -68,7 +68,7 @@ var activatedRowScopes = map[string]rowScope{
 	// public, so the shortfall it greys the row with is too.
 	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
@@ -125,8 +125,8 @@ var manaRowScopes = map[string]rowScope{
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §5: the printed energy component (a player's energy is
 	// public).
-	"EnergyCost": rowPublic,
-	"ManaCost":   rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
+	"EnergyCost": rowPublic, "Exert": rowPublic,
+	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.

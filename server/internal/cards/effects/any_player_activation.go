@@ -33,7 +33,7 @@ import (
 // Each failure is a card file that is wrong in a way no game would show
 // until somebody tried it:
 //
-//   - A {T}, loyalty, crew or sacrifice-this component on an any-player
+//   - A {T}, loyalty, crew, sacrifice-this or exert component on an any-player
 //     row. No printed card has one, and who may tap or sacrifice
 //     another player's permanent is a rule nobody has tested.
 //   - A zone other than the battlefield. MayActivate keeps the CR 108.4a
@@ -55,6 +55,8 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player crew ability — not modelled (ADR 0106 §1)", name, where))
 	case ab.Cost.SacrificeSelf:
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that sacrifices its source — not modelled (ADR 0106 §1)", name, where))
+	case ab.Cost.Exert:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that exerts its source — not modelled (ADR 0106 §1, ADR 0130 §4)", name, where))
 	}
 	for _, z := range ab.Zones {
 		if z != game.ZoneBattlefield {
