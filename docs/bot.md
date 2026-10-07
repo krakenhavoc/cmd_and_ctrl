@@ -792,6 +792,7 @@ Hand × (draws + TutorWeight × tutors + SelfMillWeight × self_mill_tutor)
 − DiscardWeight × discards
 + (ManaSource + the ramp premium) × lands
 + TokenWeight × tokens
++ Weights.Energy × energy
 ```
 
 `TutorWeight` is 1.00. `SelfMillWeight` is 0.50, because Entomb finds a
@@ -2023,6 +2024,26 @@ that quietly stops happening. The runtime half is
 tier through the factory and asks it everything the runner and the
 enumerator will ask it.
 
+## Proliferating (#2525)
+
+A proliferate (CR 701.34a) asks the proliferating seat which permanents
+and players with counters get another counter of each kind. The
+enumerator offers the empty answer (always legal), the engine's
+suggested set as ONE whole move, first, and then the subsets its walk
+reaches. The suggested set is the beneficial pick: every permanent or
+player of the seat's own that a counter helps, and every opponent's one
+it hurts (a -1/-1 or stun counter, poison, rad), where a single unwanted
+kind rules a permanent out. It is offered whole on purpose: on a board
+wider than the expansion cap the walk never builds the large set, and a
+bot that could only name small ones would strand the rest.
+
+The heuristic scores an answer by its overlap with the suggestion (+1 a
+member, -1.5 anything else), so the exact suggestion wins, a strict
+subset ranks below it, and with nothing suggested it chooses nothing.
+The same table of harmful counters serves the client's pre-selection and
+the bot, so they cannot drift. The model tiers get the same move list and
+the same labels (`proliferate <name> …`, seats by name).
+
 ## Choosing a Ring-bearer (ADR 0114 §7)
 
 When the Ring tempts a bot seat that controls two or more creatures, it
@@ -2539,6 +2560,19 @@ empty hand costs nothing. Lion's Eye Diamond and Diamond Lion are only
 offered while the seat could cast an instant: holding priority, owing
 no prompt, with no prompt stopping the table. The auto-tapper never
 cracks one to pay for a cast.
+
+**Energy is priced at a flat amount per counter** ([ADR
+0129](decisions/0129-energy-getting-and-paying-it.md) §7, owner decision
+5). An activation that pays energy is only offered when the seat has it,
+through the predicate the engine refuses with, and `Move.Cost.Energy`
+names the counters it removes: "Pay N {E}", or N + X for "Pay X {E}",
+whose X the enumerator bounds by the seat's energy. The heuristic charges
+`Weights.Energy` (0.30, a quarter of a card in hand) per counter spent,
+and credits the same per counter a declared `energy` purpose gives, so a
+sink is used when what it buys is worth more than its counters. The
+baseline prices energy at nothing. The model tiers and the MCP seat read
+each seat's energy and other player counters on its board-text line
+("4 energy, 2 poison").
 
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X

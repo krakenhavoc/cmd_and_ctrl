@@ -142,6 +142,23 @@ type AbilityCost struct {
 	// charged is on PaidCost.LifePaid; nothing re-reads the count.
 	LifeFrom LifeCostCount
 
+	// Energy is "Pay N {E}" (CR 107.14): remove N energy counters from
+	// the activating player (CR 602.1a). Zero means no such component.
+	// ADR 0129 §2. Checked with the other costs before anything is
+	// paid, so a player short of energy pays nothing (CR 118.3,
+	// CR 601.2h), and paid through payEnergyLocked (energy_cost.go).
+	// Energy is never waived: strict, permissive and force_cast decide
+	// only whether the MANA is charged (ADR 0129 §4).
+	Energy int
+
+	// EnergyX is "Pay X {E}": the announced X (CR 107.3a) is the
+	// amount, added to Energy (normally zero). DemandsX counts it, so
+	// the view, the enumerator and the client ask for X exactly as for
+	// an {X} in Mana, and X may not exceed the player's energy
+	// (CR 118.3). effects.Register refuses it on an ability with no use
+	// for X.
+	EnergyX bool
+
 	// Loyalty is the loyalty-counter component of a planeswalker's
 	// loyalty ability (CR 606.4): +N adds N counters to the source,
 	// −N removes N, and [0] neither. Nil means "this is not a
@@ -481,8 +498,12 @@ type AbilityCost struct {
 // XSlots is deliberately NOT widened with them: a sacrifice or tap
 // clause's X buys permanents, not generic mana, so the mana component
 // stays the same at every announced X.
+//
+// ADR 0129 §2: "Pay X {E}" (EnergyX) is a third such owner — Sphinx of
+// the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers)
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
+		DiscardCountFromX(c.DiscardCards)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -1372,7 +1393,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #660: the discard components. Validated here with everything
 	// else and paid last (a discard moves the source out of hand,
 	// which invalidates `source` exactly as a sacrifice does).
-	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs)
+	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs, params.XValue)
 	if err != nil {
 		return err
 	}
@@ -1424,6 +1445,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// after. CR 119.8 forbids it outright while the player's life
 		// total can't change (#1200, life_lock.go).
 		return ErrInvalidParam
+	}
+	// ADR 0129 §2, CR 107.14 / 118.3: the energy component, the printed
+	// amount plus the announced X for "Pay X {E}". Checked here with
+	// life, so a player short of energy taps nothing and loses nothing.
+	energyCost := AbilityEnergyCost(ab.Cost, params.XValue)
+	if err := EnergyShortfall(p, energyCost); err != nil {
+		return err
 	}
 	// CR 602.2b / 700.2: the modes are announced with the targets, in
 	// that order — the chosen bullets are what decide which target
@@ -1638,6 +1666,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return err
 		}
 		paid.LifePaid += lifeCost
+	}
+	// ADR 0129 §2: the energy, beside the life (CR 601.2h lets these be
+	// paid in any order). Never waived by the permissive posture or
+	// force_cast, which decide only the mana (ADR 0129 §4).
+	if err := g.payEnergyLocked(playerID, energyCost, cardID); err != nil {
+		return err
 	}
 	if ab.Cost.Loyalty != nil {
 		// payCostCounterLocked (counter_cost.go), not applyCounterLocked:
@@ -2101,6 +2135,13 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		if cost.SacrificeOther.ExcludeSource && id == sourceID {
 			return nil, ErrIllegalTarget
 		}
+	}
+	// #2526: "Sacrifice a Swamp and a Forest" — each pick passed the
+	// clause's union predicate above; the SET must still fill every
+	// entry, one permanent each. Two Swamps are not a Swamp and a
+	// Forest.
+	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, ErrIllegalTarget
 	}
 	return append(out, chosen...), nil
 }

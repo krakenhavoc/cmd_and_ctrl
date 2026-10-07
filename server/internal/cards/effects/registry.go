@@ -157,7 +157,7 @@ func Register(spec Spec) {
 		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
 		// three black creatures" is life plus ONE.
 		if n := altCostCardComponents(ac); n > 1 {
-			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard and Sacrifice",
+			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice and DiscardFromHand",
 				spec.Name, ac.Key, n))
 		}
 		// The sacrifice component is the additional cost's clause and
@@ -426,6 +426,10 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// ADR 0129 §5: zero is "no energy component".
+		if ma.Cost.Energy < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative energy cost %d", spec.Name, i, ma.Cost.Energy))
+		}
 		for _, r := range ma.SpendRiders {
 			if err := validateManaSpendRider(r); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d: %v", spec.Name, i, err))
@@ -513,9 +517,11 @@ func Register(spec Spec) {
 		// it is "Discard your hand" (#1600), whose count is the hand.
 		checkDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
 		checkDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
+		checkDiscardXBesideOtherCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// ADR 0109 §7: the random discard and the two library
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
+		checkEnergyCost(spec.Name, i, ab.Cost)
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
@@ -630,6 +636,12 @@ func Register(spec Spec) {
 		// never draws one, so the ability would be free.
 		if dc := ma.Cost.DiscardCards; dc != nil && dc.Random {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards at random — only an activated ability's cost can",
+				spec.Name, i))
+		}
+		// #2527: and "Discard X cards" needs an announced X, which a
+		// mana ability (CR 605.3b) has no stack item to carry.
+		if game.DiscardCountFromX(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards X cards — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
@@ -1010,6 +1022,31 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
 	}
+	checkSacrificeSetRule(card, where, spec)
+}
+
+// checkSacrificeSetRule is #2526's guard for TargetSpec.EachOf on a
+// sacrifice clause ("a Swamp and a Forest"). The rule is a one-to-one
+// matching of picks to entries, so it only means something on a FIXED
+// count equal to the entry count, with at least two entries (one entry
+// is an ordinary clause) that each name something to match. Anything else would register a cost the
+// validator and the picker read differently.
+func checkSacrificeSetRule(card, where string, spec *game.TargetSpec) {
+	if len(spec.EachOf) == 0 {
+		return
+	}
+	if len(spec.EachOf) < 2 {
+		panic(fmt.Sprintf("effects.Register: %q %s has a one-entry set rule — that is an ordinary sacrifice clause (SacrificeN), not EachOf", card, where))
+	}
+	if spec.CountFromX || game.SacrificeCostVariable(spec) || spec.Min != len(spec.EachOf) || spec.Max != len(spec.EachOf) {
+		panic(fmt.Sprintf("effects.Register: %q %s has a set rule over %d entries but sacrifices %d to %d permanents — the count must be exactly the entry count (SacrificeEach)",
+			card, where, len(spec.EachOf), spec.Min, spec.Max))
+	}
+	for i, k := range spec.EachOf {
+		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s set-rule entry %d names no subtype or card type — it would match nothing", card, where, i))
+		}
+	}
 }
 
 // checkReturnClause is #1213's registration guard for the
@@ -1142,7 +1179,7 @@ func checkCastsFace(spec Spec, ac game.AlternativeCost) {
 // payments (#1727) — the ones whose cards ride alt_cost_ids.
 func altCostCardComponents(ac game.AlternativeCost) int {
 	n := 0
-	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice} {
+	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
 		if spec != nil {
 			n++
 		}
@@ -1524,6 +1561,26 @@ func checkAbilityWaterbend(name string, i int, cost game.AbilityCost) {
 	if err != nil || cost.Mana == "" || clause.Generic > mana.Generic || clause.XSlots > mana.XSlots {
 		panic(fmt.Sprintf("effects.Register: %q ability %d waterbends %q but its mana component %q does not contain it — CR 701.67b lets the taps pay only mana the ability charges",
 			name, i, wb.Extra, cost.Mana))
+	}
+}
+
+// checkEnergyCost is the boot-time refusal for ADR 0129 §2's energy
+// component:
+//
+//   - a negative Energy is a card-file mistake (zero is "no such
+//     component");
+//   - "Pay X {E}" beside another component that claims the announced X
+//     as a count (sacrifice X, tap X) is refused, the same rule #1213
+//     makes for {X} in the mana: one announced X cannot be a count of
+//     permanents and an amount of energy, and no printed card asks it to
+//     be.
+func checkEnergyCost(name string, i int, cost game.AbilityCost) {
+	if cost.Energy < 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares a negative energy cost %d", name, i, cost.Energy))
+	}
+	if cost.EnergyX && (game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
+			name, i))
 	}
 }
 

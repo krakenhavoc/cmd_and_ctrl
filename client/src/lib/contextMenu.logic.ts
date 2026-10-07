@@ -25,9 +25,11 @@ import {
   attackAllParams,
   attackAllTaxLabel,
   attackTaxOn,
+  exertChoiceAt,
   planAttackAll,
   seatLabel,
 } from "./attackAll";
+import { L } from "./labels";
 import { grantedFromLabel } from "./abilityRef";
 import { CAST_ANYWAY_LABEL, CAST_ANYWAY_TITLE } from "./castAnyway";
 import {
@@ -613,6 +615,10 @@ export interface AbilityCost {
   // activated abilities under the same wire name
   // (ActivatedAbilityView.LifeCost / ManaAbilityView.LifeCost).
   life_cost?: number;
+  // ADR 0129 §8: a "Pay N {E}" component, and "Pay X {E}". The
+  // server's cant_activate already says when the seat is short.
+  energy_cost?: number;
+  energy_cost_x?: boolean;
   // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
@@ -724,6 +730,24 @@ export function chargedManaCostNote(a: AbilityCost): string {
 export function chargedManaCostLabel(a: AbilityCost): string {
   if (a.charged_mana_cost === undefined) return a.mana_cost ?? "";
   return a.charged_mana_cost || "free";
+}
+
+// energyCostSymbols is an ability's energy component in brace notation,
+// for ManaCost to draw as {E} pips (ADR 0129 §8): "{E}{E}" for "Pay
+// {E}{E}", "{X}{E}" for "Pay X {E}" (and "{X}{E}{E}" for a printed part
+// beside the X, which no card has). "" when the ability pays no energy.
+export function energyCostSymbols(a: AbilityCost): string {
+  const fixed = "{E}".repeat(Math.max(0, a.energy_cost ?? 0));
+  if (a.energy_cost_x) return `{X}${fixed || "{E}"}`;
+  return fixed;
+}
+
+// energyCostWords says the same thing aloud: "pay 2 energy", "pay X
+// energy".
+export function energyCostWords(a: AbilityCost): string {
+  const n = a.energy_cost ?? 0;
+  if (a.energy_cost_x) return n > 0 ? `pay X plus ${n} energy` : "pay X energy";
+  return n > 0 ? `pay ${n} energy` : "";
 }
 
 // ReturnOptionsShape is the part of a LegalTargetsView a return-to-hand
@@ -1531,16 +1555,24 @@ function damageItems(card: CardView): MenuItem[] {
   ];
 }
 
-function combatItems(view: GameView, card: CardView): MenuItem[] {
+// combatItems is the card menu's combat section. `gate` is the frame's
+// FULL lookup when the viewer controls the card (the digest is per
+// seat), and the lookup that knows nothing otherwise.
+function combatItems(view: GameView, card: CardView, gate: LegalActions): MenuItem[] {
   const items: MenuItem[] = [];
   const defenders = view.seats.filter((s) => s.id !== card.controller && !s.eliminated);
   if (defenders.length > 0) {
-    items.push({
-      id: "combat-attack",
-      label: card.attacking_target ? "Re-declare attacker" : "Declare attacker",
-      items: [
+    // The defenders, as one declaration each. `exert` sends ADR 0130's
+    // choice to exert the attacker as it attacks.
+    const targetItems = (exert: boolean): MenuItem[] => {
+      const prefix = exert ? "combat-attack-exert" : "combat-attack";
+      const params = (target: string) =>
+        exert
+          ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
+          : { attacker: card.instance_id, target, auto_tap: true };
+      return [
         ...defenders.map((s) => ({
-          id: `combat-attack-${s.id}`,
+          id: `${prefix}-${s.id}`,
           label: s.display_name || s.name,
           // ADR 0080 (#1063): the seat's CR 508.1a attack tax, stated
           // on the control that charges it. Read off the server's
@@ -1550,7 +1582,7 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
             type: "declare_attacker" as ActionType,
             // auto_tap: the tax may need lands tapped for it. Inert
             // at a table with no attack tax on it.
-            params: { attacker: card.instance_id, target: s.id, auto_tap: true },
+            params: params(s.id),
           },
         })),
         // S27: planeswalkers and battles are attackable too
@@ -1558,16 +1590,33 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         // which is what makes the polymorphic target cheap on this
         // side. The set is the server's; see attackTargets.ts.
         ...permanentAttackTargets(view, card.controller).map((t) => ({
-          id: `combat-attack-${t.id}`,
+          id: `${prefix}-${t.id}`,
           label: t.label,
           hint: attackTargetHint(view, t),
           action: {
             type: "declare_attacker" as ActionType,
-            params: { attacker: card.instance_id, target: t.id, auto_tap: true },
+            params: params(t.id),
           },
         })),
-      ],
+      ];
+    };
+    items.push({
+      id: "combat-attack",
+      label: card.attacking_target ? "Re-declare attacker" : "Declare attacker",
+      items: targetItems(false),
     });
+    // ADR 0130 §7 (owner decision 1): beside it, the same declaration
+    // with the creature exerted, for a creature the server says may be
+    // exerted as it attacks. A declared attacker is not listed by the
+    // server, so a re-point is offered no exert (it keeps one staged).
+    if (!card.attacking_target && gate.canExertOnAttack(card.instance_id)) {
+      items.push({
+        id: "combat-attack-exert",
+        label: L.declareAttackerAndExert,
+        hint: "an exerted creature won't untap during your next untap step",
+        items: targetItems(true),
+      });
+    }
     // #318: the board-wide sibling of the row above. Same "pick a
     // defender" submenu shape, so the bulk affordance reads as a
     // wider version of the per-card one rather than a new idea — and
@@ -1575,7 +1624,7 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
     // board-wide verb parked in this section. Rendered from the
     // card's controller so an admin driving another seat gets that
     // seat's board, not their own.
-    const plan = planAttackAll(view, card.controller);
+    const plan = planAttackAll(view, card.controller, gate);
     const n = plan.eligible.length;
     if (n === 0) {
       items.push({
@@ -1589,9 +1638,22 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         id: "combat-attack-all",
         label: `Attack with all ${n}`,
         hint: `declares ${n} creature${n === 1 ? "" : "s"} in one action — one undo takes it all back`,
-        items: plan.defenders.flatMap((s) => {
+        items: plan.defenders.flatMap((s): MenuItem[] => {
           const params = attackAllParams(plan, s.id);
           if (!params) return [];
+          // ADR 0130 §7: a creature that may be exerted is never sent
+          // without asking. This menu has no toggles, so the row points
+          // at the dock's picker, which does.
+          if (exertChoiceAt(plan, s.id)) {
+            return [
+              {
+                id: `combat-attack-all-${s.id}`,
+                label: seatLabel(s),
+                hint: "a creature here may be exerted — choose in the dock's Attack with all",
+                disabled: true,
+              },
+            ];
+          }
           return [
             {
               id: `combat-attack-all-${s.id}`,
@@ -1879,7 +1941,15 @@ export function buildMenuSections(
     sections.push({ id: "counters", label: "counters", items: counterItems(card) });
     sections.push({ id: "damage", label: "damage", items: damageItems(card) });
     if (COMBAT_STEPS.has(view.turn?.step ?? "")) {
-      sections.push({ id: "combat", label: "combat", items: combatItems(view, card) });
+      // ADR 0130 §7: the viewer's own lookup for their own creature only
+      // (the digest is per seat); an admin driving another seat gets
+      // no exert rows and the plain attack-all.
+      const combatGate = viewerID && card.controller === viewerID ? gate : NO_LEGAL_ACTIONS;
+      sections.push({
+        id: "combat",
+        label: "combat",
+        items: combatItems(view, card, combatGate),
+      });
     }
   }
 

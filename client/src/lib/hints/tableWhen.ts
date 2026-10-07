@@ -48,6 +48,23 @@ export function controlsAbility(c: HintContext): boolean {
   );
 }
 
+/**
+ * EXERT_ROW is the static ability row the server draws for "You may
+ * exert this creature as it attacks" (server/internal/game
+ * ability_rows.go). The server's own words, not oracle text.
+ */
+export const EXERT_ROW = "You may exert this creature as it attacks.";
+
+/** controlsExertCreature reports whether the viewer controls a creature that may be exerted as it attacks (ADR 0130). */
+export function controlsExertCreature(c: HintContext): boolean {
+  const cards: CardView[] = c.view?.battlefield.cards ?? [];
+  return cards.some(
+    (card) =>
+      card.controller === c.viewerID &&
+      (card.ability_rows ?? []).some((r) => r.kind === "static" && r.label === EXERT_ROW),
+  );
+}
+
 /** hasHoverPointer reports a fine pointer that can rest on things (a mouse, a trackpad). */
 export function hasHoverPointer(): boolean {
   if (typeof matchMedia !== "function") return false;

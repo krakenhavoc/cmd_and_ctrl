@@ -745,7 +745,12 @@ type cardSnapshot struct {
 	// an older file has none, which is what every game before it was.
 	CommanderReturnDue bool      `json:"commanderReturnDue,omitempty"`
 	AttackingTarget    uuid.UUID `json:"attackingTarget"`
-	BlockingTarget     uuid.UUID `json:"blockingTarget"`
+	// ExertOnAttack is Card.ExertOnAttack (ADR 0130 §8): a choice to
+	// exert this attacker, staged and not yet paid. A restore point can
+	// be written between the verb and the lock-in. Additive within v7;
+	// omitted when false.
+	ExertOnAttack  bool      `json:"exertOnAttack,omitempty"`
+	BlockingTarget uuid.UUID `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -1366,6 +1371,12 @@ type pendingChoiceSnapshot struct {
 	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
 	ChooseCards     []uuid.UUID `json:"chooseCards,omitempty"`
 	ChooseMin       int         `json:"chooseMin,omitempty"`
+	// #2525: a proliferate's seats on offer and the engine's suggested
+	// answer. Carried for ChooseCards' reason — the prompt is its
+	// options — even though the prompt's continuation frame keeps a
+	// game with one open from being restorable until it is answered.
+	ChoosePlayers   []uuid.UUID `json:"choosePlayers,omitempty"`
+	ChooseSuggested []uuid.UUID `json:"chooseSuggested,omitempty"`
 	// #568: the branches of an option pick. Carried for the reason
 	// ChooseCards is — the prompt is the options, and a restored game
 	// that forgot them would render a question with no answers.
@@ -1939,6 +1950,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
+		ExertOnAttack:            c.ExertOnAttack,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		GoadedBy:                 c.LatestGoader(),
@@ -2317,6 +2329,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
@@ -2773,6 +2787,7 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
+		ExertOnAttack:            c.ExertOnAttack,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
@@ -3134,6 +3149,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),

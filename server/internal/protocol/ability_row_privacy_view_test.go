@@ -64,6 +64,9 @@ var activatedRowScopes = map[string]rowScope{
 	// battlefield for every viewer to see.
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeSelf": rowPublic, "ManaCost": rowPublic, "LifeCost": rowPublic,
+	// ADR 0129 §8: the printed energy component; a player's energy is
+	// public, so the shortfall it greys the row with is too.
+	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
 	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,
@@ -105,7 +108,7 @@ var activatedRowScopes = map[string]rowScope{
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	// ADR 0109 §7: the printed random flag, the printed counts of the
 	// two library components and the put's words.
-	"DiscardCostRandom": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
+	"DiscardCostRandom": rowPublic, "DiscardCostCountFromX": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
 	"LibraryExileCostN": rowPublic,
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
@@ -120,7 +123,10 @@ var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
-	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
+	// ADR 0129 §5: the printed energy component (a player's energy is
+	// public).
+	"EnergyCost": rowPublic,
+	"ManaCost":   rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.

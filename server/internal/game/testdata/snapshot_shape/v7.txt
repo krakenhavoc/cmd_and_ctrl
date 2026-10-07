@@ -109,6 +109,7 @@ battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
+battlefield.cards[].exertOnAttack	bool
 battlefield.cards[].exiledWith	object
 battlefield.cards[].exiledWith.epoch	number:int
 battlefield.cards[].exiledWith.id	custom(uuid.UUID)
@@ -535,6 +536,7 @@ exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
+exile.cards[].exertOnAttack	bool
 exile.cards[].exiledWith	object
 exile.cards[].exiledWith.epoch	number:int
 exile.cards[].exiledWith.id	custom(uuid.UUID)
@@ -1019,6 +1021,7 @@ lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
+lastKnownStack[].card.exertOnAttack	bool
 lastKnownStack[].card.exiledWith	object
 lastKnownStack[].card.exiledWith.epoch	number:int
 lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
@@ -1449,6 +1452,10 @@ pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseMax	number:int
 pendingChoices[].chooseMin	number:int
+pendingChoices[].choosePlayers	array
+pendingChoices[].choosePlayers[]	custom(uuid.UUID)
+pendingChoices[].chooseSuggested	array
+pendingChoices[].chooseSuggested[]	custom(uuid.UUID)
 pendingChoices[].chooser	custom(uuid.UUID)
 pendingChoices[].coinAllowStop	bool
 pendingChoices[].coinCount	number:int
@@ -1945,6 +1952,7 @@ phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
+phasedOut.cards[].exertOnAttack	bool
 phasedOut.cards[].exiledWith	object
 phasedOut.cards[].exiledWith.epoch	number:int
 phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
@@ -2358,6 +2366,7 @@ seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
 seats[].castPermissions[].discover.source	custom(uuid.UUID)
@@ -2393,6 +2402,7 @@ seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
+seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
@@ -2501,6 +2511,7 @@ seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
+seats[].command.cards[].exertOnAttack	bool
 seats[].command.cards[].exiledWith	object
 seats[].command.cards[].exiledWith.epoch	number:int
 seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
@@ -2783,6 +2794,7 @@ seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
+seats[].emblems.cards[].exertOnAttack	bool
 seats[].emblems.cards[].exiledWith	object
 seats[].emblems.cards[].exiledWith.epoch	number:int
 seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
@@ -3056,6 +3068,7 @@ seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
+seats[].graveyard.cards[].exertOnAttack	bool
 seats[].graveyard.cards[].exiledWith	object
 seats[].graveyard.cards[].exiledWith.epoch	number:int
 seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -3327,6 +3340,7 @@ seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
+seats[].hand.cards[].exertOnAttack	bool
 seats[].hand.cards[].exiledWith	object
 seats[].hand.cards[].exiledWith.epoch	number:int
 seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
@@ -3609,6 +3623,7 @@ seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
+seats[].library.cards[].exertOnAttack	bool
 seats[].library.cards[].exiledWith	object
 seats[].library.cards[].exiledWith.epoch	number:int
 seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
@@ -3849,6 +3864,7 @@ seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
+seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
@@ -3870,6 +3886,7 @@ seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.nonLandOnly	bool
+seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
@@ -3921,6 +3938,7 @@ seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.landsOnly	bool
 seats[].statics[].nextSpell.filter.nonLandOnly	bool
+seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
 seats[].statics[].nextSpell.filter.sorceryOnly	bool
@@ -3944,6 +3962,7 @@ seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.nonLandOnly	bool
+seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.notOwnedByHolder	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
@@ -4058,6 +4077,7 @@ stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
+stack.cards[].exertOnAttack	bool
 stack.cards[].exiledWith	object
 stack.cards[].exiledWith.epoch	number:int
 stack.cards[].exiledWith.id	custom(uuid.UUID)
@@ -4487,6 +4507,12 @@ turnTally.entered	map:array
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int
+turnTally.exerts	array
+turnTally.exerts[]	object
+turnTally.exerts[].epoch	number:int
+turnTally.exerts[].object	custom(uuid.UUID)
+turnTally.exerts[].phaseId	number:int
+turnTally.exerts[].player	custom(uuid.UUID)
 turnTally.firstEvent	number:int
 turnTally.loopActivated	string
 turnTally.loopAllowance	map:string

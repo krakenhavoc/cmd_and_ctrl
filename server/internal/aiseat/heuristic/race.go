@@ -155,7 +155,7 @@ func raceSwing(st *state, moves []legal.Move, def *SeatEval) (committed, joinabl
 	// and every unpayable attack tax the enumerator applied is honoured.
 	seen := map[string]bool{}
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		ap := decode[attackParams](moves[i].Params)
@@ -747,7 +747,7 @@ func (p *Policy) raceAttack(moves []legal.Move, plan *racePlan) (aiseat.Decision
 	}
 	best, bestRank := -1, 0
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		ap := decode[attackParams](moves[i].Params)

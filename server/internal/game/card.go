@@ -1304,6 +1304,14 @@ type Card struct {
 	// art stamp. See ADR 0078, "Two predicates that read
 	// ScryfallID != ''".
 	TokenArtOnly bool
+
+	// ExertOnAttack is a staged choice to exert this creature as it
+	// attacks (CR 701.43d, 508.1g; ADR 0130 §2): set by a declaration
+	// verb beside AttackingTarget, paid and cleared by
+	// commitAttackDeclarationLocked as the declaration locks in, and
+	// cleared with AttackingTarget wherever the creature leaves combat
+	// before that. True only between the verb and the lock-in.
+	ExertOnAttack bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

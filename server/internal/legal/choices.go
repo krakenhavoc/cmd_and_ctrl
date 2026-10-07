@@ -640,7 +640,8 @@ func (e *enumerator) choiceMoves() bool {
 			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
 			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
 			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents,
-			game.PendingChoiceChooseSource, game.PendingChoiceRingBearer:
+			game.PendingChoiceChooseSource, game.PendingChoiceRingBearer,
+			game.PendingChoiceProliferate:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -729,11 +730,20 @@ func (e *enumerator) choiceMoves() bool {
 				// it always has an answer.
 				verb = ": choose Ring-bearer"
 			}
+			if c.Kind == game.PendingChoiceProliferate {
+				sets = withSuggestedFirst(g, c, sets)
+				verb = ": proliferate"
+			}
 			for _, set := range sets {
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + verb
 				for _, id := range set {
+					if playerByID(g, id) != nil {
+						// A proliferate names seats too (CR 701.34a).
+						label += " " + choiceSeatName(g, id)
+						continue
+					}
 					// cardNameFor, not cardName: the candidates are
 					// as often cards in a hand as cards on the
 					// battlefield, and only a seat the effect made a
@@ -1796,8 +1806,73 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		// ADR 0114 §7: the seat's own creatures, best Ring-bearer
 		// first — the opposite end from own_permanents'.
 		return e.bestRingBearerFirst(c.ChooseCards)
+	case game.PendingChoiceProliferate:
+		// #2525: permanents AND seats, the engine's suggestion first so
+		// its members survive MaxExpansionPerSource (and withSuggestedFirst
+		// offers the whole suggested set regardless).
+		return proliferatePool(c)
 	}
 	return c.ChooseCards
+}
+
+// proliferatePool is a proliferate prompt's candidates, permanents then
+// seats, with the engine's suggested members leading each group.
+func proliferatePool(c *game.PendingChoice) []uuid.UUID {
+	suggested := make(map[uuid.UUID]bool, len(c.ChooseSuggested))
+	for _, id := range c.ChooseSuggested {
+		suggested[id] = true
+	}
+	out := make([]uuid.UUID, 0, len(c.ChooseCards)+len(c.ChoosePlayers))
+	for _, want := range []bool{true, false} {
+		for _, group := range [][]uuid.UUID{c.ChooseCards, c.ChoosePlayers} {
+			for _, id := range group {
+				if suggested[id] == want {
+					out = append(out, id)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// withSuggestedFirst puts a proliferate prompt's suggested set at the
+// head of its offered sets, whatever the subset walk reached (#2525).
+//
+// Every subset of the candidates is an acceptable answer, so what the
+// move list has to guarantee is not legality but REACH: on a board with
+// a dozen countered permanents the walk stops at the expansion cap
+// long before it builds the large set a policy wants, and a bot that
+// cannot name the suggested pick would be choosing between a handful of
+// small ones. The set is run past the engine's own acceptance check
+// like any other, and an empty suggestion offers nothing here (the
+// empty answer is already the AlwaysLegal move above).
+func withSuggestedFirst(g *game.Game, c *game.PendingChoice, sets [][]uuid.UUID) [][]uuid.UUID {
+	if len(c.ChooseSuggested) == 0 || !g.ChooseCardsPickLegalLocked(c, c.ChooseSuggested) {
+		return sets
+	}
+	same := func(a, b []uuid.UUID) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		in := make(map[uuid.UUID]bool, len(a))
+		for _, id := range a {
+			in[id] = true
+		}
+		for _, id := range b {
+			if !in[id] {
+				return false
+			}
+		}
+		return true
+	}
+	out := make([][]uuid.UUID, 0, len(sets)+1)
+	out = append(out, append([]uuid.UUID(nil), c.ChooseSuggested...))
+	for _, set := range sets {
+		if !same(set, c.ChooseSuggested) {
+			out = append(out, set)
+		}
+	}
+	return out
 }
 
 // bestRingBearerFirst orders a ring_bearer prompt's candidates by the

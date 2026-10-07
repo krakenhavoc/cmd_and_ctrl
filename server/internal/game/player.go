@@ -92,8 +92,10 @@ type Player struct {
 	// is a state-based action evaluated in S13+ rules work.
 	Life int
 
-	// Poison counters (10 = loss). Energy is tracked but has no rules
-	// effect until mechanics referencing it are implemented.
+	// Poison counters (10 = loss) and energy counters, mirrored from
+	// Counters["poison"] / Counters["energy"], which are the source of
+	// truth (ADR 0008 §2). Energy is spent by "Pay {E}" costs
+	// (CR 107.14, ADR 0129), paid through payEnergyLocked.
 	Poison int
 	Energy int
 

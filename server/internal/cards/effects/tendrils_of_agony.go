@@ -33,14 +33,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
 		Triggered:    []game.TriggeredAbility{Storm()},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			if err := (GainLife{Player: item.Targets[0].ID, Amount: -2}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-		},
+		OnResolve:    targetPlayerLosesLifeYouGain(2),
 	})
 }

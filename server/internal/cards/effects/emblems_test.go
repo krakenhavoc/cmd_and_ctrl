@@ -215,32 +215,73 @@ func TestTeferiHerosEmblemIgnoresAnOpponentsDraw(t *testing.T) {
 	}
 }
 
-// TestWrennsUltimateStaysOmittedAndNamesItsBlocker is ADR 0064
-// Decision 10. Emblems exist; retrace does not, and Wrenn's emblem
-// grants nothing else, so the −7 stays unregistered and the caveat
-// names #652 rather than emblems.
-func TestWrennsUltimateStaysOmittedAndNamesItsBlocker(t *testing.T) {
+// TestWrennsUltimateMakesAnEmblemThatGrantsRetrace is #2528. The −7
+// resolves, an emblem appears whose whole text is a retrace grant, and
+// from then on the owner's instants and sorceries in the graveyard —
+// and only theirs — can be cast again for their printed cost plus a
+// discarded land card, on any turn. Driven through the real loyalty path
+// (ADR 0064 Decision 10 closed: the caveat is gone with the omission).
+func TestWrennsUltimateMakesAnEmblemThatGrantsRetrace(t *testing.T) {
 	spec, ok := Lookup(wrennAndSixOracle)
 	if !ok {
 		t.Fatal("Wrenn and Six is not registered")
 	}
-	if spec.Emblem != nil {
-		t.Error("Wrenn declares an Emblem — its only text is a retrace grant nothing can honour yet")
+	if len(spec.Activated) != 3 || spec.Emblem == nil {
+		t.Fatalf("Wrenn declares %d abilities and emblem %v, want 3 (+1, −1, −7) and the emblem", len(spec.Activated), spec.Emblem)
 	}
-	if len(spec.Activated) != 2 {
-		t.Errorf("Wrenn declares %d abilities, want 2 (+1 and −1)", len(spec.Activated))
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Wrenn is %v with caveats %v, want Full", spec.Completeness, spec.Caveats)
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("Completeness = %v, want CompletenessCaveats", spec.Completeness)
+
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	owner := g.Seats[seat]
+	opp := g.Seats[(seat+1)%len(g.Seats)]
+	pw := pushWalkerForTest(g, owner.ID, "Wrenn and Six", wrennAndSixOracle, 7)
+	advanceToMainOf(t, g, seat)
+	bolt := graveyardCardOf(g, owner, "Spent Bolt", "Instant", "{R}", "")
+	theirs := graveyardCardOf(g, opp, "Their Bolt", "Instant", "{R}", "")
+	creature := graveyardCardOf(g, owner, "Spent Bear", "Creature — Bear", "{1}{G}", "")
+	land := uuid.New()
+	owner.Hand.PushTop(game.Card{InstanceID: land, Name: "Hand Mountain", TypeLine: "Basic Land — Mountain",
+		Owner: owner.ID, Controller: owner.ID, KnownBy: map[uuid.UUID]bool{owner.ID: true}})
+
+	// Before the ultimate: nothing is castable from the graveyard.
+	payMana(t, g, owner, "{R}")
+	if err := retraceCast(g, owner, bolt, land); err == nil {
+		t.Fatal("retrace was castable before the emblem existed")
 	}
-	if len(spec.Caveats) != 1 {
-		t.Fatalf("Caveats = %v, want exactly one", spec.Caveats)
+
+	if err := g.ActivateCatalogAbility(owner.ID, pw, 2, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("−7: %v", err)
 	}
-	if !strings.Contains(spec.Caveats[0], "#652") {
-		t.Errorf("the caveat does not name the blocking seam: %q", spec.Caveats[0])
+	passPriorityAroundTable(t, g)
+	emblems := emblemsOf(g, owner.ID)
+	if len(emblems) != 1 || emblems[0].Text != "Instant and sorcery cards in your graveyard have retrace." {
+		t.Fatalf("emblems after the −7 = %+v", emblems)
 	}
-	if strings.Contains(spec.Caveats[0], "emblem") && !strings.Contains(spec.Caveats[0], "retrace") {
-		t.Errorf("the caveat still blames emblems: %q", spec.Caveats[0])
+	advanceToMainOf(t, g, seat)
+
+	// A permanent card is not covered; an opponent's graveyard is not mine.
+	if err := retraceCast(g, owner, creature, land); err == nil {
+		t.Error("the emblem granted retrace to a creature card")
+	}
+	if err := g.CastSpell(owner.ID, theirs, game.CastSpellParams{
+		FromZone: "graveyard", AlternativeCost: "retrace", AltCostIDs: []uuid.UUID{land}, Strict: true,
+	}); err == nil {
+		t.Error("the emblem opened an opponent's graveyard")
+	}
+
+	// The reference cast: a spent Bolt is cast again for {R} and a land.
+	payMana(t, g, owner, "{R}")
+	if err := g.CastSpell(owner.ID, bolt, game.CastSpellParams{
+		FromZone: "graveyard", AlternativeCost: "retrace", AltCostIDs: []uuid.UUID{land}, Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+	}); err != nil {
+		t.Fatalf("retrace under the emblem: %v", err)
+	}
+	if !owner.Graveyard.Contains(land) {
+		t.Error("the retrace land was not discarded")
 	}
 }
 
@@ -257,7 +298,7 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 			len(spec.Emblem.UntapStep) == 0 && len(spec.Emblem.DrawStep) == 0 &&
 			len(spec.Emblem.ActivationTimings) == 0 && len(spec.Emblem.CastRestrictions) == 0 &&
 			len(spec.Emblem.LandPlayRestrictions) == 0 && len(spec.Emblem.GameEndGates) == 0 &&
-			len(spec.Emblem.UntapCaps) == 0 {
+			len(spec.Emblem.UntapCaps) == 0 && len(spec.Emblem.CastPermissions) == 0 {
 			t.Errorf("%s declares an emblem with no abilities", spec.Name)
 		}
 		if spec.Emblem.Label == "" || spec.Emblem.Text == "" {
@@ -285,7 +326,8 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 			len(game.CatalogCastRestrictions(key)) == 0 &&
 			len(game.CatalogLandPlayRestrictions(key)) == 0 &&
 			len(game.CatalogGameEndGates(key)) == 0 &&
-			len(game.CatalogUntapCaps(key)) == 0 {
+			len(game.CatalogUntapCaps(key)) == 0 &&
+			len(game.CatalogCastPermissions(key)) == 0 {
 			t.Errorf("%s's emblem is not registered under %q", spec.Name, key)
 		}
 	}

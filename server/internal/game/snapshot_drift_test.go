@@ -327,6 +327,9 @@ var cardFields = plan(
 	// owner's question.
 	"CommanderReturnDue", carried, "",
 	"AttackingTarget", carried, "",
+	// ADR 0130 §8: a staged exert not yet paid. Carried: a restore
+	// point written between the verb and the lock-in must still pay it.
+	"ExertOnAttack", carried, "",
 	"BlockingTarget", carried, "",
 	// #1706: a multi-blocker's further attackers.
 	"AlsoBlocking", carried, "",
@@ -894,6 +897,8 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"ChooseMax", carried, "",
+	"ChoosePlayers", carried, "",
+	"ChooseSuggested", carried, "",
 	// #568's option pick: the branches of "choose one of the
 	// following", carried for the same reason ChooseCards is — the
 	// options ARE the prompt, and a restored game that forgot them

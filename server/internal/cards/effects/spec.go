@@ -741,6 +741,13 @@ type Spec struct {
 	// NoMoreThanNCanBlockEachCombat. Nil for nearly every card.
 	AttackLimits []game.AttackLimit
 
+	// ExertOnAttack is the static ability "You may exert this creature
+	// as it attacks" (CR 701.43d, ADR 0130 §2). Build it with
+	// ExertAsItAttacks or ExertAsItAttacksUnless in exert.go, and put
+	// any linked "when you do" trigger in Triggered with WhenExerted.
+	// Nil for nearly every card.
+	ExertOnAttack *game.ExertOnAttack
+
 	// HexproofBypasses are this permanent's printed "<these> can be
 	// the targets of spells and abilities [you control] as though
 	// they didn't have hexproof" statics (CR 702.11, #1560) —
@@ -1860,6 +1867,11 @@ type ManaAbilityCost struct {
 	// the source does not tap. "Add {R}. This land deals 1 damage to
 	// you" is the other thing — see ManaAbility.Rider.
 	Life int
+
+	// Energy is "Pay N {E}" (ADR 0129 §5): Aether Hub's "{T}, Pay {E}:
+	// Add one mana of any color". Paid after the life; the auto-tapper
+	// plans it in the energy tier, before the pain tier.
+	Energy int
 
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",

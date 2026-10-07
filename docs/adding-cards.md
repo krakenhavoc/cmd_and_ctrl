@@ -417,6 +417,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
 | Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
 | Sacrifice N permanents | `ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther}` | (none yet; #747) |
+| Sacrifice one of each kind | `ManaAbilityCost{SacrificeOther: SacrificeEach("a Swamp and a Forest", SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest", "Forest")).SacrificeOther}` | (an activated ability today: Jarad, Golgari Lich Lord; #2526) |
 | Pay N life | `ManaAbilityCost{Life: 1}` | Mana Confluence |
 | A mana cost | `ManaAbilityCost{Mana: "{1}"}` | the Signet cycle |
 | Remove N counters | `ManaAbilityCost{RemoveCounters: RemoveCountersFromThis("charge", 1).RemoveCounters}` | Vivid Creek, Ramos |
@@ -949,6 +950,55 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
   names why.
 
+### Paying energy (ADR 0129, #1995)
+
+Energy is a counter on the player (CR 107.14, CR 122.1):
+`Player.Counters["energy"]`, mirrored on `Player.Energy`. Nothing new is
+stored for it.
+
+**Getting it.** "You get {E}{E}" is the `GetEnergy{N: 2}` primitive
+(`effects/energy.go`), which puts the counters on through ADR 0056's
+window, so a replacement on getting energy and a trigger on
+`EventPlayerCounterPlaced` both see it. The common line "When this
+creature enters, you get {E}{E}" is `WhenThisEntersYouGetEnergy(name, 2)`.
+Declare the energy a card gives in its purpose (`game.Purpose{Energy: 2}`
+on the Spec for a spell or an enters effect, on the row for an activated
+"you get"), the printed amount only, as for draws.
+
+**Paying it as an activation cost.** "Pay {E}{E}" is `PayEnergy(2)`,
+composed like every other component:
+
+```go
+Cost: Plus(TapCost(), PayEnergy(2)),           // "{T}, Pay {E}{E}:"
+Cost: PayEnergy(8),                             // "Pay eight {E}:"
+Cost: Plus(ManaCost("{W}{U}{U}"), TapCost(), PayXEnergy()), // "Pay X {E}:", X read with ctx.X()
+```
+
+The engine checks the activator's energy with the other costs, before
+anything is paid (CR 118.3, CR 601.2h), refuses with
+`game.ErrInsufficientEnergy` ("Not enough energy (have 2, need 3)"), and
+pays through `payEnergyLocked`, the one path that pays energy. Energy is
+never waived: strict, permissive and Cast anyway decide only the mana
+(ADR 0129 §4). "Pay X {E}" makes the ability demand X, X may not exceed
+the activator's energy, and the enumerator bounds X by it. The view
+stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
+short for.
+
+**A mana ability that pays energy** (PR 2) declares it on its cost:
+`ManaAbilityCost{Tap: true, Energy: 1}` is Aether Hub's "{T}, Pay {E}:"
+(`anyColorForEnergyRow` in `effects/energy_mana.go` is the whole row).
+It stays a mana ability (CR 605.1a). The auto-tapper plans it in the
+energy tier: only when no plan that spends no energy pays, before the
+pain tier, and never for more energy than the controller has across the
+whole plan (ADR 0129 owner decision 2).
+
+**Not yet:** energy paid while an ability resolves ("you may pay {E}{E}.
+If you do", "unless you pay {E}", "pay any amount of {E}") waits on
+ADR 0129 PR 3; energy as an alternative cost, replicate or a keyword's cost on PR 4;
+"whenever you get one or more {E}" and "{E} you've paid or lost this
+turn" on PR 5. Put such a card on the matching registry row's `Waiting`
+list.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,
@@ -1286,6 +1336,19 @@ queued no prompt when the entry point returns;
 after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
+
+**Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
+asks: once the window above has settled it queues a
+`PendingChoiceProliferate` offering every permanent and player with a
+counter, with the beneficial pick suggested (and pre-selected, and what
+a bot answers with). It PAUSES the effect that asked, so anything the
+card says after "proliferate" goes in `Proliferate{Then: func(g
+*game.Game) error {…}}` and not on the next line — Steady Progress draws
+from its `Then`. Capture scalars, never the `*Context`. Explicit lists
+(`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
+proliferates is `CompletenessFull`; there is no caveat to write. In a
+test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+`answerProliferate(t, g, picks…)` takes a chosen one.
 
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an
@@ -2908,10 +2971,25 @@ much mana is around at resolution.
 
 X lives in the MANA component, or in a cost with a variable COUNT:
 Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
-0100) and Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
-(#1421). The count the activator names IS the announced X, read with
+0100), Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
+(#1421) and Gix, Yawgmoth Praetor's "Discard X cards" is `DiscardX`
+(#2527, ADR 0113's 2026-10-07 amendment). The count the activator
+names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
 puts X in two places.
+
+**A sacrifice of different kinds (#2526):** "Sacrifice a Swamp and a Forest"
+(Jarad, Golgari Lich Lord) is `SacrificeEach("a Swamp and a Forest",
+SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest",
+"Forest"))` (`SacrificeCardType` for "a creature"), not `SacrificeN(2, …)`
+with a union predicate —
+that would accept two Swamps. The picks must fill every part with a
+different permanent; a dual land fills one part, never two. The enumerator
+searches for a set and prefers the permanent that fits fewest parts, and
+the picker holds confirm until the parts are filled
+(`game.TargetSpec.EachOf`, ADR 0020 amendment 2026-10-07). The rule is "one
+of each KIND" (a subtype or a card type, as data); a rule over an attribute of the picks ("different names")
+is not this and still waits.
 
 **A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
 hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
@@ -4271,6 +4349,33 @@ is a *price* rather than a permission:
   other, and escapes again next time. Copying flashback's constructor
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
+
+**Retrace (#2528, CR 702.81, [ADR 0066 amendment 2026-10-07](decisions/0066-granted-cast-and-play-permissions.md))**
+is "cast this from your graveyard by discarding a land card in addition
+to paying its other costs". The card file is escape's two lines, with
+the card's own printed mana cost spelled out (hybrid symbols included),
+because retrace never replaces the mana:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+AlternativeCosts: []game.AlternativeCost{Retrace("{R}")},   // Flame Jab
+```
+
+Retrace is an **additional** cost, and the engine carries it on a
+graveyard-bound priced offer (`AlternativeCost.DiscardFromHand`, a land
+card from hand discarded **as a cost**, so a discard payoff sees it and a
+countered spell does not give the land back). That makes the claim the
+thing that opens the graveyard, so the discard is owed on exactly the
+graveyard cast and never on the hand cast. The one thing the model gives
+up is combining retrace with another alternative cost on one cast; no
+catalog card can. A card that GRANTS retrace to others declares a
+`CastPermission` with `AltCostKey: game.AltCostKeyRetrace` and
+`DiscardLandCard: true` — on `Spec.CastPermissions` for a permanent (Six,
+with `Filter: PermissionFilter{NonLandPermanentOnly: true}` and
+`Timing: game.TimingYourTurnOnly`), or on `EmblemSpec.CastPermissions`
+for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). Standing
+permissions are derived from the battlefield or the owner's emblems on
+every query, so they end when the source does.
 
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
@@ -6308,6 +6413,44 @@ Not built yet: Day's Undoing's "if it's your turn" is buildable on the
 same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
 cost reduction with no shape, so it stays out.
 
+### Exert (ADR 0130, #2048, CR 701.43)
+
+"You may exert this creature as it attacks" is an optional cost to
+attack (CR 701.43d, 508.1g). Declare it on the Spec, and put a linked
+"when you do" trigger (CR 607.2h) in `Triggered`:
+
+```go
+ExertOnAttack: ExertAsItAttacks(),
+Triggered: []game.TriggeredAbility{
+    WhenExerted("Oketra's Avenger — prevent all combat damage that would be dealt to it this turn", effect),
+},
+```
+
+- **`ExertAsItAttacks()`** is the static ability. The engine reads it off
+  the creature's effective abilities, offers each attack twice (plain
+  and exerting), pays a chosen exert as the declaration locks in, in the
+  attacks' event batch, and emits `game.EventExert`. A card file never
+  exerts anything itself.
+- **`ExertAsItAttacksUnless(cond)`** adds a condition under which it may
+  NOT be exerted. Combat Celebrant's "If this creature hasn't been
+  exerted this turn" is `ExertAsItAttacksUnless(ExertedThisTurn)`, which
+  reads `Game.ExertedThisTurn` (per object, CR 400.7).
+- **`WhenExerted(label, effect)`** is the linked "When you do". It fires
+  only when this permanent is exerted as it attacks (the event names an
+  attack target). Wrap it in `Targeting` for a targeted one (Glorybringer):
+  the creature may be exerted with no legal target, and the trigger is
+  then removed (CR 603.3d).
+- **`WheneverYouExert(label, effect)`** is "Whenever you exert a
+  creature" (Resolute Survivors, Battlefield Scavenger). It sees the
+  source itself, any other creature its controller exerts, and a
+  creature exerted to pay a cost, but not a land.
+- **The skip is ADR 0058's next-untap marker**, keyed to the exerting
+  player's untap step (CR 701.43a). A second exert before that step adds
+  no second marker (CR 701.43b); don't make the plain marker count.
+- **Exert as an activation cost** ("Exert this creature: …", Arena of
+  Glory) is ADR 0130 PR 4, a cost component on `AbilityCost` and
+  `ManaAbilityCost`. Until it lands, those cards wait.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on
@@ -6584,8 +6727,8 @@ Three things to know:
 - **`Register` panics** on an `EmblemSpec` with no `Label`, no `Text`,
   or no abilities at all. An emblem whose printed ability the engine
   cannot express yet is NOT declared with an empty `Static` — leave
-  the ultimate omitted and say why in `Caveats`, as Wrenn and Six does
-  for retrace (#652). ADR 0032 still holds: a −7 that costs seven
+  the ultimate omitted and say why in `Caveats`, as Wrenn and Six did
+  for retrace until #2528. ADR 0032 still holds: a −7 that costs seven
   loyalty and delivers a chip that does nothing is the lie the
   omission exists to avoid.
 - **Nothing removes an emblem**, and nothing can name one. It is not a

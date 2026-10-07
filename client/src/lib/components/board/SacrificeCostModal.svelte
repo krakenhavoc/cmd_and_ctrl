@@ -21,11 +21,14 @@
   // ADR 0111 PR 6: a sheet in the action dock; Sacrifice and Cancel are
   // the dock's action bar (Enter / Escape through its one key handler).
 
-  import type { CardView } from "../../protocol";
+  import type { CardView, SacrificeGroupView } from "../../protocol";
   import {
     canConfirmSacrificeRange,
+    canFillEachOf,
     chooseForMeState,
     chooseSacrificeForMe,
+    chooseSacrificeSetForMe,
+    fillsEachOf,
     keepAvailablePicks,
     sacrificeCeiling,
     toggleSacrificePickInRange,
@@ -57,6 +60,10 @@
     // ADR 0100 §3: the number picked is the spell's X ("sacrifice X
     // lands"), which the caller sends as the x_value.
     countIsX?: boolean;
+    // #2526: the clause's set rule ("a Swamp and a Forest") — the picks
+    // must fill every part with a different permanent. Confirm stays
+    // shut until they do, and "Choose for me" fills a set that does.
+    eachOf?: SacrificeGroupView[];
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
@@ -69,6 +76,7 @@
     min,
     verb = "Sacrifice",
     countIsX = false,
+    eachOf,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -101,8 +109,10 @@
     if (kept !== chosen) chosen = kept;
   });
 
-  const ready = $derived(canConfirmSacrificeRange(chosen, range, options.length));
-  const short = $derived(options.length < range.min);
+  const ready = $derived(
+    canConfirmSacrificeRange(chosen, range, options.length) && fillsEachOf(chosen, eachOf),
+  );
+  const short = $derived(options.length < range.min || !canFillEachOf(eachOf));
   const chooseForMeButton = $derived(chooseForMeState(range.min, options.length));
 
   function pick(id: string): void {
@@ -110,10 +120,11 @@
   }
 
   function chooseForMe(): void {
-    chosen = chooseSacrificeForMe(
-      options.map((c) => c.instance_id),
-      range.min,
-    );
+    const ids = options.map((c) => c.instance_id);
+    chosen =
+      eachOf && eachOf.length > 0
+        ? chooseSacrificeSetForMe(ids, eachOf)
+        : chooseSacrificeForMe(ids, range.min);
   }
 
   function confirm(): void {
@@ -150,6 +161,11 @@
     {secondary}
   >
     <p class="prompt-hint">{verb} {label} to pay for this ability.</p>
+    {#if eachOf && eachOf.length > 0}
+      <p class="prompt-hint">
+        One permanent for each part: {eachOf.map((g) => g.label).join(", ")}.
+      </p>
+    {/if}
     {#if countIsX}
       <p class="prompt-hint">The number you pick is X.</p>
     {:else if range.min === 0 && options.length > 0}
@@ -160,7 +176,11 @@
     {:else}
       {#if short}
         <p class="prompt-hint error">
-          You control {options.length} of the {range.min} permanents this cost needs.
+          {#if options.length < range.min}
+            You control {options.length} of the {range.min} permanents this cost needs.
+          {:else}
+            You don't control a different permanent for every part of this cost.
+          {/if}
         </p>
       {/if}
       <ul class="prompt-options">

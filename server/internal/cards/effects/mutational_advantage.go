@@ -18,14 +18,12 @@ import (
 // from the proliferate that follows gains nothing. The shield is one
 // not-one-use record protecting all of them (ShieldObjects).
 //
-// Declared caveat, the catalog's proliferate one (Contagion Clasp,
-// Karn's Bastion): the game chooses what to proliferate.
+// The proliferate asks the player what to proliferate (#2525).
 func init() {
 	Register(Spec{
 		OracleID:     "2daa5b89-e772-4a2b-ad52-bbbf148c7b2f",
 		Name:         "Mutational Advantage",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var those []uuid.UUID
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {

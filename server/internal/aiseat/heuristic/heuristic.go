@@ -463,6 +463,8 @@ func BaselineConfig() Config {
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0
 	c.TokenWeight = 0
+	// ADR 0129 §7: energy, priced at nothing before it.
+	c.Weights.Energy = 0
 	c.PriceSweeps = false
 	c.DiscardCostByCard = false
 	c.LastLandDiscard = 0

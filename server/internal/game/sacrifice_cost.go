@@ -303,3 +303,202 @@ func (g *Game) SacrificePaymentOrderForEffect(ids []uuid.UUID, sourceID uuid.UUI
 	}
 	return out
 }
+
+// --- #2526: a sacrifice clause that names different kinds ------------
+//
+// "Sacrifice a Swamp and a Forest" (Jarad, Golgari Lich Lord) is two
+// permanents with DIFFERENT predicates in one clause. TargetSpec.EachOf
+// carries the entries; the head spec's own predicate is their union, so
+// every per-permanent walk keeps working unchanged and the three
+// functions below are the only places that know a set rule exists.
+
+// SacrificeSetGroup is one entry of a sacrifice clause's EachOf rule
+// with the candidates that could fill it — what the protocol view ships
+// and the client's picker reads.
+type SacrificeSetGroup struct {
+	// Label is the entry as printed ("a Swamp").
+	Label string
+	// Candidates are the permanents that pass this entry's predicate, in
+	// the order the caller passed them (payment order from the view).
+	Candidates []uuid.UUID
+}
+
+// SacrificeKind is one entry of a sacrifice clause's EachOf rule: a
+// KIND of permanent, as data. A permanent is of the kind when it has any
+// of the named subtypes or any of the named card types, read after
+// continuous effects (a land something turned into a Swamp counts, and a
+// changeling is every creature type — Card.HasSubtype). It carries no
+// func, so the clause that holds it adds no route from Game to a closure.
+type SacrificeKind struct {
+	// Label is the entry as printed ("a Swamp"), for the picker.
+	Label string
+	// Subtypes, any of: "Swamp", "Treasure". Case as printed.
+	Subtypes []string
+	// CardTypes, any of, lower-case as Card.HasCardType reads them:
+	// "creature", "land", "artifact".
+	CardTypes []string
+}
+
+// Matches reports whether c is of this kind.
+func (k SacrificeKind) Matches(c Card) bool {
+	for _, st := range k.Subtypes {
+		if c.HasSubtype(st) {
+			return true
+		}
+	}
+	for _, ct := range k.CardTypes {
+		if c.HasCardType(ct) {
+			return true
+		}
+	}
+	return false
+}
+
+// SacrificeSetKinds is the EachOf entries of a sacrifice clause, or nil
+// when the clause has no set rule. Nil-safe.
+func SacrificeSetKinds(spec *TargetSpec) []SacrificeKind {
+	if spec == nil {
+		return nil
+	}
+	return spec.EachOf
+}
+
+// sacrificeSetFitsLocked answers, for each entry and each candidate,
+// whether the candidate is of the entry's kind. A candidate that is not
+// on the battlefield fits nothing. Caller must hold g.mu.
+func (g *Game) sacrificeSetFitsLocked(entries []SacrificeKind, ids []uuid.UUID) [][]bool {
+	fits := make([][]bool, len(entries))
+	for i := range entries {
+		fits[i] = make([]bool, len(ids))
+		for j, id := range ids {
+			if c := findBattlefieldCard(g, id); c != nil {
+				fits[i][j] = entries[i].Matches(*c)
+			}
+		}
+	}
+	return fits
+}
+
+// assignSacrificeSet finds one pick per entry such that no pick is used
+// twice, preferring earlier candidates for earlier entries. `order` is
+// the order candidates are tried in (indexes into fits' columns). It
+// returns the chosen column per entry, or nil when no assignment
+// exists. A backtracking search: the entry count is the card's printed
+// "a X and a Y", two in every card that exists.
+func assignSacrificeSet(fits [][]bool, order []int) []int {
+	out := make([]int, len(fits))
+	taken := map[int]bool{}
+	var walk func(i int) bool
+	walk = func(i int) bool {
+		if i == len(fits) {
+			return true
+		}
+		for _, j := range order {
+			if taken[j] || !fits[i][j] {
+				continue
+			}
+			taken[j] = true
+			out[i] = j
+			if walk(i + 1) {
+				return true
+			}
+			delete(taken, j)
+		}
+		return false
+	}
+	if !walk(0) {
+		return nil
+	}
+	return out
+}
+
+// sacrificeSetSatisfiedLocked reports whether `picks` can fill every
+// EachOf entry of `spec` one-to-one. A clause with no set rule is
+// satisfied by anything (its per-permanent check already ran). The
+// count is checked by the caller (SacrificeCountLegal); this judges the
+// kinds. Caller must hold g.mu.
+func (g *Game) sacrificeSetSatisfiedLocked(spec *TargetSpec, picks []uuid.UUID) bool {
+	entries := SacrificeSetKinds(spec)
+	if len(entries) == 0 {
+		return true
+	}
+	if len(picks) != len(entries) {
+		return false
+	}
+	order := make([]int, len(picks))
+	for i := range order {
+		order[i] = i
+	}
+	return assignSacrificeSet(g.sacrificeSetFitsLocked(entries, picks), order) != nil
+}
+
+// SacrificeSetSatisfiedForEffect is sacrificeSetSatisfiedLocked for a
+// reader outside the package (the legal enumerator's tests, the view).
+// Caller must hold g.mu (read or write).
+func (g *Game) SacrificeSetSatisfiedForEffect(spec *TargetSpec, picks []uuid.UUID) bool {
+	return g.sacrificeSetSatisfiedLocked(spec, picks)
+}
+
+// SacrificeSetPaymentForEffect searches `candidates` (already in
+// payment order) for ONE set that fills every entry of spec's EachOf
+// rule, or nil when the board cannot pay it. It is what replaces "the
+// first N of the payment order" for a clause with a set rule: the first
+// N may be two Swamps.
+//
+// A candidate that fits only some entries is tried before one that fits
+// them all, so a seat holding a Swamp, a Forest and an Overgrown Tomb
+// pays the basics and keeps the dual — payment order alone would have
+// eaten whichever came first. Ties keep the order given.
+//
+// The result is in entry order. Caller must hold g.mu (read or write).
+func (g *Game) SacrificeSetPaymentForEffect(spec *TargetSpec, candidates []uuid.UUID) []uuid.UUID {
+	entries := SacrificeSetKinds(spec)
+	if len(entries) == 0 {
+		return nil
+	}
+	fits := g.sacrificeSetFitsLocked(entries, candidates)
+	versatility := make([]int, len(candidates))
+	for j := range candidates {
+		for i := range entries {
+			if fits[i][j] {
+				versatility[j]++
+			}
+		}
+	}
+	order := make([]int, len(candidates))
+	for j := range order {
+		order[j] = j
+	}
+	sort.SliceStable(order, func(a, b int) bool { return versatility[order[a]] < versatility[order[b]] })
+	cols := assignSacrificeSet(fits, order)
+	if cols == nil {
+		return nil
+	}
+	out := make([]uuid.UUID, len(cols))
+	for i, j := range cols {
+		out[i] = candidates[j]
+	}
+	return out
+}
+
+// SacrificeSetGroupsForEffect splits `candidates` by the EachOf entry
+// each could fill, for the protocol view. A candidate that fits two
+// entries (a Swamp Forest) appears under both. Nil without a set rule.
+// Caller must hold g.mu (read or write).
+func (g *Game) SacrificeSetGroupsForEffect(spec *TargetSpec, candidates []uuid.UUID) []SacrificeSetGroup {
+	entries := SacrificeSetKinds(spec)
+	if len(entries) == 0 {
+		return nil
+	}
+	fits := g.sacrificeSetFitsLocked(entries, candidates)
+	out := make([]SacrificeSetGroup, len(entries))
+	for i := range entries {
+		out[i].Label = entries[i].Label
+		for j, id := range candidates {
+			if fits[i][j] {
+				out[i].Candidates = append(out[i].Candidates, id)
+			}
+		}
+	}
+	return out
+}

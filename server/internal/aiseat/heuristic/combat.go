@@ -232,6 +232,15 @@ func (st *state) losses(atk *protocol.CardView, blockers []*protocol.CardView) [
 
 // --- attacks -------------------------------------------------------
 
+// plainAttack reports whether m is an attack move the heuristic plans
+// with: an attack declaration that doesn't exert. The twin move that
+// exerts the attacker (ADR 0130 §6) is never picked until ADR 0130
+// PR 3 prices an exert (§9), so the bot attacks exactly as it did
+// before exert existed.
+func plainAttack(m legal.Move) bool {
+	return m.Kind == legal.KindAttack && !decode[attackParams](m.Params).Exert
+}
+
 // decideAttack picks one attacker to declare, or reports that the bot
 // is done attacking this turn.
 func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, bool) {
@@ -244,7 +253,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 	seen := map[string]bool{}
 	var available []*protocol.CardView
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		id := decode[attackParams](moves[i].Params).Attacker
@@ -296,7 +305,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 
 	best, bestVal, bestReason := -1, 0.0, ""
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		ap := decode[attackParams](moves[i].Params)
