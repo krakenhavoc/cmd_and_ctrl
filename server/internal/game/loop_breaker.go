@@ -283,6 +283,7 @@ func (g *Game) notePlayerDecisionLocked() {
 	// activation whose run a draining batch leaves alone.
 	g.TurnTally.LoopLow, g.TurnTally.LoopLowSet = 0, false
 	g.TurnTally.LoopActivated = ""
+	g.TurnTally.LoopProgressed = false
 	// #804: a real decision ends any CR 732 shortcut too. The
 	// controller agreed to K more iterations of a loop that nobody was
 	// doing anything about; somebody has now done something, so the
@@ -398,6 +399,16 @@ func (g *Game) noteLoopWorkLocked(ev Event) {
 	}
 	work := g.loopWorkLocked()
 	t := &g.TurnTally
+	if t.LoopProgressed {
+		// Option B: a life total or a poison count moved toward a
+		// loss since the last triggered resolution.
+		t.LoopProgressed = false
+		if !t.LoopLowSet || work < t.LoopLow {
+			t.LoopLow, t.LoopLowSet = work, true
+		}
+		g.noteLoopProgressLocked()
+		return
+	}
 	if !t.LoopLowSet {
 		t.LoopLow, t.LoopLowSet = work, true
 		return
@@ -407,6 +418,73 @@ func (g *Game) noteLoopWorkLocked(ev Event) {
 	}
 	t.LoopLow = work
 	g.noteLoopProgressLocked()
+}
+
+// ---------------------------------------------------------------
+// A loop that is ending the game keeps stepping (#2450, option B)
+// ---------------------------------------------------------------
+//
+// CR 704.5a: "If a player has 0 or less life, that player loses the
+// game." CR 104.2a: "A player still in the game wins the game if that
+// player's opponents have all left the game." Exquisite Blood with
+// Marauding Blight-Priest is a mandatory loop, and every iteration takes
+// life from each opponent until they are dead: it ends, so it is not
+// CR 104.4b's loop "with no way to stop", and CR 732.4's draw is not
+// its answer. Option A does not see it, because the loop adds more
+// triggers than it resolves.
+//
+// So a run also restarts on progress that can only happen finitely
+// often (owner decision 3): a player leaving the game, a player
+// reaching a new lowest life total this turn, or a new highest poison
+// count this turn. A life total makes only so many new lows before
+// CR 704.5a takes its player; poison stops at ten (CR 122.1f). A player
+// who can't lose to that cause (ADR 0057's gate, owner decision 4)
+// makes no progress that way, or a drain into a Platinum Angel would
+// run for ever. A player's first loss of a turn counts as a new low:
+// one per player per turn, which keeps the bound.
+//
+// A new low or a new high is marked (TurnTally.LoopProgressed) and
+// applied as the next triggered ability begins to resolve, where
+// option A measures too: a loss in the middle of a resolution is part
+// of that iteration, and the runs restart before the next one is
+// counted. A player leaving restarts them at once (leaveGameLocked).
+
+// noteLoopLifeLowLocked records player's life total after a loss, and
+// restarts the loop runs when it is the lowest this turn. Caller must
+// hold g.mu.
+func (g *Game) noteLoopLifeLowLocked(player uuid.UUID) {
+	p := g.playerByIDLocked(player)
+	if p == nil || p.Eliminated || !g.canLoseLocked(p, LossLife) {
+		return
+	}
+	progress := false
+	g.bumpPlayerTally(player, func(t *PlayerTurnTally) {
+		if !t.LifeLowSet || p.Life < t.LifeLow {
+			t.LifeLow, t.LifeLowSet, progress = p.Life, true, true
+		}
+	})
+	if progress {
+		g.TurnTally.LoopProgressed = true
+	}
+}
+
+// noteLoopPoisonHighLocked records player's poison count after it
+// rose, and restarts the loop runs when it is the highest this turn.
+// Caller must hold g.mu.
+func (g *Game) noteLoopPoisonHighLocked(player uuid.UUID, poison int) {
+	p := g.playerByIDLocked(player)
+	if p == nil || p.Eliminated || !g.canLoseLocked(p, LossPoison) {
+		return
+	}
+	progress := false
+	g.bumpPlayerTally(player, func(t *PlayerTurnTally) {
+		if poison > t.PoisonHigh {
+			t.PoisonHigh, progress = poison, true
+		}
+	})
+	if progress {
+		g.TurnTally.LoopProgressed = true
+	}
 }
 
 // noteLoopProgressLocked restarts the runs because the table showed

@@ -5602,6 +5602,14 @@ Three things to know if you touch priority, prompts or the tally:
   Spells and activated abilities are not measured, and the run of the
   last activation (`TurnTally.LoopActivated`) survives a new low, so
   #810's activation loops still trip.
+- **A loop that is ending the game is progress** (option B of the same
+  amendment). A new lowest life total this turn or a new highest poison
+  count (`PlayerTurnTally.LifeLow` / `PoisonHigh`, marked in
+  `noteLifeLostLocked` and `emitPlayerCounterDeltaLocked`) sets
+  `TurnTally.LoopProgressed`, which the next triggered resolution
+  applies as a restart. A player leaving restarts at once
+  (`leaveGameLocked`). A player ADR 0057 says can't lose to that cause
+  is skipped.
 
 **The shortcut prompt (#804).** Raising the notice also asks the
 repeating ability's controller "resolve it K more times, then stop?" —

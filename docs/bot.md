@@ -2597,3 +2597,15 @@ the end, and a loop, which replaces what it resolves, trips the breaker
 as before. It is engine-wide, so a human's autopass plays through a
 batch too. (Sanguine Bond with Exquisite Blood never tripped it: each
 Bond trigger asks for a target, and answering is a decision.)
+
+**A loop that is ending the game plays out.** Exquisite Blood with
+Marauding Blight-Priest is a real mandatory loop, and it grows the
+stack rather than draining it, but every iteration takes each opponent
+to a new low. A life total makes only so many lows before its player
+loses, so the engine counts a new lowest life total this turn, a new
+highest poison count this turn, or a player leaving the game as
+progress, and progress restarts the runs (ADR 0055's amendment of
+2026-10-07, option B). The loop steps on until its controller wins. A
+player who can't lose the game that way (ADR 0057) makes no progress
+that way. A loop that makes no progress, such as gaining life forever,
+still trips the breaker, and still stops a bot-only table.

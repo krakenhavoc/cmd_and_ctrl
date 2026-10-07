@@ -85,6 +85,16 @@ type PlayerTurnTally struct {
 	// (CR 603.10a), not the card's field afterwards. Read through
 	// Game.PermanentLeftThisTurn.
 	PermanentsLeft int `json:"permanentsLeft,omitempty"`
+	// LifeLow / LifeLowSet are this player's lowest life total this
+	// turn, and PoisonHigh their highest poison count: the CR 732 loop
+	// breaker's progress marks (#2450, ADR 0055's 2026-10-07 amendment,
+	// option B). A new low or a new high restarts the loop runs, because
+	// it can happen only so many times before CR 704.5a or CR 122.1f
+	// takes the player out. Written by noteLoopLifeLowLocked and
+	// noteLoopPoisonHighLocked and read by nothing else.
+	LifeLow    int  `json:"lifeLow,omitempty"`
+	LifeLowSet bool `json:"lifeLowSet,omitempty"`
+	PoisonHigh int  `json:"poisonHigh,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -236,6 +246,11 @@ type TurnTally struct {
 	// well drain between activations. Empty when the last decision was
 	// not an activation.
 	LoopActivated string `json:"loopActivated,omitempty"`
+	// LoopProgressed marks a new lowest life total or a new highest
+	// poison count since the last triggered resolution (#2450, option
+	// B). noteLoopWorkLocked applies it as the next triggered ability
+	// begins to resolve, and clears it.
+	LoopProgressed bool `json:"loopProgressed,omitempty"`
 	// Casts is every spell cast this turn, TABLE-WIDE, in cast order:
 	// the instance ID of each spell as it went on the stack. Read
 	// through Game.SpellsCastBeforeThisTurn.
@@ -936,6 +951,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
 	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
+	out.LoopProgressed = t.LoopProgressed
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
