@@ -3088,3 +3088,69 @@ Bone Offering**, all `full`.
 - **Curie, Emergent Intelligence**: "another nontoken artifact creature" needs
   a nontoken field, and its effect ("becomes a copy of the exiled creature")
   needs a seam of its own.
+
+## Amendment (2026-10-07, [#2526](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2526)): "Sacrifice a Swamp and a Forest" — a set rule on a sacrifice clause
+
+**Sprint:** S58 — Deck requests, October batch. Tracker [#2532](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2532) (the Betor deck).
+Decisions 49–54 are the amendments above; this one starts at 55. No new ADR number: the clause it extends is
+this ADR's (#747), and ADR 0021 reads the same struct for a cast.
+
+### Context
+
+```
+Jarad, Golgari Lich Lord   Sacrifice a Swamp and a Forest: Return this card from your
+                           graveyard to your hand.
+```
+
+Abilities that function from the graveyard have existed since #660, so the zone was never the gap. The cost is: a
+sacrifice clause is ONE predicate with a count (#747, `Min == Max == N`), and every permanent is judged against it
+alone. "Two permanents of DIFFERENT kinds" is a rule about the SET — two Swamps pass a per-permanent check for "a
+Swamp or a Forest" and are not what the card prints. The card shipped with a caveat for it, and the roadmap row
+(`set-level-sacrifice-cost`) named the likely shape: a rule over the set, with the enumerator's "first N" turned
+into a search.
+
+### Decision 55: `TargetSpec.EachOf` — the entries, as data, beside a union predicate
+
+A sacrifice clause may carry `EachOf []SacrificeKind`. The picks (count `Min == Max == len(EachOf)`) must be
+matchable ONE-TO-ONE against the entries: every entry is filled by a distinct pick that is of that kind. The head spec's own predicate is the UNION of the entries, built by `effects.SacrificeEach`, so every
+walk that lists candidates (`validateSacrificeCostLocked`, `legal.sacrificePool`, the protocol view) keeps judging
+one permanent at a time and needed no new idea of "candidate".
+
+It is DATA rather than a predicate over the picks, for the reason `Different` is (ADR 0019 amendment 2026-09-24):
+three readers answer it and only one is Go. The validator and the enumerator are; the client's picker is not.
+`SacrificeKind` is a subtype or a card type (`Card.HasSubtype` / `HasCardType`, so a land something turned into a
+Swamp counts and a changeling is every creature type), not a `TargetClause`: a clause there would have been a
+second route from `Game` to a func, which ADR 0041's closure ratchet (`closure_fields.txt`) counts and which may
+only fall, for a rule that only ever asks "is it a Swamp". A matching rather than a per-entry "does some pick fit"
+because a Swamp Forest fills either entry but not both (one permanent pays one sacrifice).
+
+`effects.Register` refuses the shapes the three readers would read differently: one entry (that is `SacrificeN`),
+an open or X count, a count that is not the entry count, an entry that names no subtype or card type.
+
+### Decision 56: the enumerator searches, and prefers the card that fits fewest entries
+
+`legal.sacrificePayments` took "the first N of the payment order", which for this clause can be two Swamps.
+A clause with `EachOf` is one payment found by `game.SacrificeSetPaymentForEffect`: a backtracking walk that
+tries, for each entry in turn, the candidates that fit FEWER entries first. A seat holding a Swamp, a Forest and an
+Overgrown Tomb therefore pays the basics and keeps the dual, which is what a player would do and what the bot
+should. No board that can fill every entry means no move (#544). It is one payment, not a choose-N expansion,
+for the reason #747 gives for any N ≥ 2.
+
+### Decision 57: the wire says which part each candidate could fill
+
+`LegalTargetsView.each_of` (`[{label, cards}]`) rides on a sacrifice clause's `sacrifice_options` in all three
+places it appears. `cards` and `min` / `max` are unchanged: the union, and `2 / 2`. A client that ignores
+`each_of` still sends a legal-looking pick and the server refuses a wrong one with nothing paid.
+`SacrificeCostModal` holds its confirm button until the picks fill every part, `Choose for me` fills a set that
+does (the same fewest-fits preference), and a row whose board cannot fill every part greys the way a short row does.
+
+### Cards
+
+**Jarad, Golgari Lich Lord** loses its caveat and ships `full`.
+
+### Still out of scope
+
+- **A set rule that is not "one of each kind"** — Transmutation Font's "three artifact tokens with different
+  names" is a rule over an attribute of the picks, not a matching against entries. It is `TargetSpec.Different`'s
+  shape (#1559) on a sacrifice clause, and still waits.
+- **A variable count with a set rule.** `EachOf` is a fixed count by construction.
