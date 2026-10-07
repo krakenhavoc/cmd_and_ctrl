@@ -2575,18 +2575,25 @@ as it holds on a pass. The table comes to rest at the threshold with
 the notice naming the ability, which is [ADR 0055
 §5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
 
-**A real loop stops a bot-only table outright, and the curated decks
-can now reach one.** When a trigger or activation loop's shortcuts run
-out (the second ask offers only "stop here"), autopass stays suspended
-and no bot seat has a move that keeps the loop going. The room's
-commit sequence stops with the notice naming the ability and count
-still in the game state. The table does not finish, and it does not
-spin forever ([ADR 0055](decisions/0055-loop-breaker.md) §5). Since
-S66 the heuristic casts mono-black-aristocrats' Sanguine Bond and
-Exquisite Blood, and that pair is a drain loop that ends the game. A
-bot table that assembles it stalls at the loop breaker with the black
-seat far ahead
-([#2450](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2450)). It
-was seen twice in ADR 0126's measurement runs. A loop that makes
-progress is not the kind CR 732 exists for, and #2450 needs an ADR 0055
-decision.
+**A real loop stops a bot-only table outright; a batch of triggers
+does not.** When a trigger or activation loop's shortcuts run out (the
+second ask offers only "stop here"), autopass stays suspended and no
+bot seat has a move that keeps the loop going. The room's commit
+sequence stops with the notice naming the ability and count still in
+the game state. The table does not finish, and it does not spin forever
+([ADR 0055](decisions/0055-loop-breaker.md) §5).
+
+A batch is different. Three of ADR 0126's measurement tables stopped
+at the breaker after a wrath killed about thirty creatures with
+mono-black-aristocrats' Syr Konrad and Exquisite Blood out: each Konrad
+trigger pinged three opponents, each ping triggered Exquisite Blood, and
+Blood's count passed 25 with nobody deciding anything
+([#2450](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2450)).
+That is a finite number of triggers from one event (CR 603.2c), not a
+loop. Since ADR 0055's amendment of 2026-10-07 the engine measures the
+work left on the stack as each triggered ability begins to resolve, and
+a new low restarts every run: a batch keeps making new lows and runs to
+the end, and a loop, which replaces what it resolves, trips the breaker
+as before. It is engine-wide, so a human's autopass plays through a
+batch too. (Sanguine Bond with Exquisite Blood never tripped it: each
+Bond trigger asks for a target, and answering is a decision.)

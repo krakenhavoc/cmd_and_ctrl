@@ -71,6 +71,12 @@ import "github.com/google/uuid"
 // the same ability on the stack twenty-five times without its
 // controller casting or activating something in between. A loop, by
 // contrast, passes it on the second or third second of wall clock.
+//
+// #2450 found the exception: one event can trigger an ability dozens
+// of times (CR 603.2c), and a wrath across a token board under Syr
+// Konrad and Exquisite Blood got there in about nine deaths. That is
+// handled by telling a draining batch from a loop (noteLoopWorkLocked),
+// not by raising this number; the owner kept it at 25.
 const DefaultLoopThreshold = 25
 
 // LoopNotice is the engine's "this looks like a loop" flag: which
@@ -125,6 +131,10 @@ func (g *Game) loopSuspectedLocked(key string) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
+	// #2450: a batch of triggers that is draining is not a loop.
+	// Measured before this resolution is counted, so a key that
+	// resolves at a new low starts its run again at one.
+	g.noteLoopWorkLocked(ev)
 	if g.TurnTally.LoopRun == nil {
 		g.TurnTally.LoopRun = map[string]int{}
 	}
@@ -269,6 +279,10 @@ func (g *Game) grantLoopShortcutLocked(key string, at, iterations int) {
 // Caller must hold g.mu.
 func (g *Game) notePlayerDecisionLocked() {
 	g.TurnTally.LoopRun = nil
+	// #2450: the low is "since the last decision", and so is the
+	// activation whose run a draining batch leaves alone.
+	g.TurnTally.LoopLow, g.TurnTally.LoopLowSet = 0, false
+	g.TurnTally.LoopActivated = ""
 	// #804: a real decision ends any CR 732 shortcut too. The
 	// controller agreed to K more iterations of a loop that nobody was
 	// doing anything about; somebody has now done something, so the
@@ -324,6 +338,102 @@ func (g *Game) notePlayerActivationLocked(key string) {
 	}
 	if granted {
 		g.TurnTally.LoopAllowance = map[string]int{key: allowance}
+	}
+	g.TurnTally.LoopActivated = key
+}
+
+// ---------------------------------------------------------------
+// A batch is not a loop (#2450, ADR 0055's 2026-10-07 amendment, A)
+// ---------------------------------------------------------------
+//
+// CR 603.2c: "An ability triggers only once each time its trigger
+// event occurs. However, it can trigger repeatedly if one event
+// contains multiple occurrences." A wrath across a token board with
+// Syr Konrad out puts thirty Konrad triggers on the stack at once,
+// and with Exquisite Blood beside it each of those triggers three
+// more. Nothing in that is a set of actions that "could be repeated
+// indefinitely" (CR 732.1b), but it is twenty-five resolutions of one
+// ability with no decision in between, which is all
+// loopSuspectedLocked asks. Three bot-only tables stopped on it.
+//
+// A loop refills the stack and a batch empties it. So as each
+// TRIGGERED ability begins to resolve, the engine counts the work
+// still waiting (noteLoopWorkLocked) and keeps the lowest count since
+// the last decision. A count strictly below that low means the table
+// is working through something finite, and every run restarts
+// (noteLoopProgressLocked). A real loop replaces what it resolves, so
+// it never makes a new low and trips at the threshold as before. The
+// lows are whole numbers that only fall between decisions, so the
+// restarts are finite too: an endless trigger sequence still trips.
+//
+// Only triggered resolutions are measured. A spell that resolves
+// leaves an empty stack behind it (the wrath itself), which would set
+// a low no batch it causes could ever beat. An activated ability is
+// #810's shape, fed one activation at a time, and its run is kept
+// across a draining batch (TurnTally.LoopActivated).
+
+// loopWorkLocked counts the stack items still to resolve and the
+// triggers waiting to join them. Caller must hold g.mu.
+func (g *Game) loopWorkLocked() int {
+	n := len(g.PendingTriggers)
+	for _, item := range g.StackMeta {
+		if item != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// noteLoopWorkLocked measures the work left as a triggered ability
+// begins to resolve, and restarts the runs when it is a new low.
+// `ev` is the EventResolve; the resolving item has already left
+// StackMeta. Caller must hold g.mu.
+func (g *Game) noteLoopWorkLocked(ev Event) {
+	if g.resolving == nil || g.resolving.item == nil {
+		return
+	}
+	item := g.resolving.item
+	if item.Kind != StackItemTriggered || item.ID != ev.ResolvedStackItemID {
+		return
+	}
+	work := g.loopWorkLocked()
+	t := &g.TurnTally
+	if !t.LoopLowSet {
+		t.LoopLow, t.LoopLowSet = work, true
+		return
+	}
+	if work >= t.LoopLow {
+		return
+	}
+	t.LoopLow = work
+	g.noteLoopProgressLocked()
+}
+
+// noteLoopProgressLocked restarts the runs because the table showed
+// it is not looping. Owner decision 5 of the 2026-10-07 amendment: it
+// clears the notice and withdraws a standing shortcut prompt as a
+// decision does, and counts as a decision for nothing else. The low,
+// the activation key and the run of that activation are kept: a
+// batch draining between two activations is not a reason to stop
+// counting the activations. A notice that names that activation
+// stays up for the same reason.
+//
+// Caller must hold g.mu.
+func (g *Game) noteLoopProgressLocked() {
+	t := &g.TurnTally
+	keep := t.LoopActivated
+	run := t.LoopRun[keep]
+	allowance, granted := t.LoopAllowance[keep]
+	t.LoopRun, t.LoopAllowance = nil, nil
+	if keep != "" && run > 0 {
+		t.LoopRun = map[string]int{keep: run}
+	}
+	if keep != "" && granted {
+		t.LoopAllowance = map[string]int{keep: allowance}
+	}
+	if n := g.LoopNotice; n != nil && (keep == "" || TallyKey(n.Source, n.Label) != keep) {
+		g.LoopNotice = nil
+		g.dropLoopShortcutPromptsLocked()
 	}
 }
 

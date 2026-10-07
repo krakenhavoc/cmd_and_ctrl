@@ -4407,8 +4407,11 @@ turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int
 turnTally.firstEvent	number:int
+turnTally.loopActivated	string
 turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int
+turnTally.loopLow	number:int
+turnTally.loopLowSet	bool
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
 turnTally.modesChosen	map:string

@@ -5583,6 +5583,16 @@ Three things to know if you touch priority, prompts or the tally:
 - **A bare `pass_priority` is not a decision**, on purpose: if it were,
   the first manual "next" would clear the notice and four autopassing
   clients would spin the loop straight back up.
+- **A batch that drains is not a loop** (#2450, ADR 0055's amendment of
+  2026-10-07). As each TRIGGERED ability begins to resolve,
+  `noteLoopWorkLocked` counts the work left (`StackMeta` plus
+  `PendingTriggers`) and keeps the lowest count since the last decision
+  (`TurnTally.LoopLow`). A new low restarts every run, clears the
+  notice and withdraws a shortcut prompt (`noteLoopProgressLocked`).
+  That is what lets thirty Syr Konrad triggers from one wrath resolve.
+  Spells and activated abilities are not measured, and the run of the
+  last activation (`TurnTally.LoopActivated`) survives a new low, so
+  #810's activation loops still trip.
 
 **The shortcut prompt (#804).** Raising the notice also asks the
 repeating ability's controller "resolve it K more times, then stop?" —
