@@ -548,6 +548,11 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 		if m.Cost.Energy > 0 {
 			notes = append(notes, fmt.Sprintf("costs %d energy", m.Cost.Energy))
 		}
+		// ADR 0130 §4: an exert cost keeps the source tapped through the
+		// seat's next untap step.
+		if m.Cost.Exert {
+			notes = append(notes, "exerts it: it won't untap during your next untap step")
+		}
 	}
 	if m.IdleHint != "" {
 		notes = append(notes, m.IdleHint)

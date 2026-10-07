@@ -345,6 +345,8 @@ Every paper Room in the dump. "PR 3" means the card is expected to need nothing 
 
 **20 ship in PR 3. 8 wait**: four on manifest dread, two on standing alternative-cost grants, one on granting convoke to spells, and one to be verified. The 8 are still playable after PR 1, because the unlock offer is derived: they can be cast from either half and unlocked, and only their door abilities are manual.
 
+*Update 2026-10-07 (#2570):* the four manifest-dread doors shipped with manifest dread itself ([ADR 0082's amendment of the same date](0082-casting-face-down-and-turning-face-up.md)). Moldering Gym, Ticket Booth and Underwater Tunnel are complete; Experimental Lab keeps only its Staff Room caveat.
+
 ---
 
 ## Consequences

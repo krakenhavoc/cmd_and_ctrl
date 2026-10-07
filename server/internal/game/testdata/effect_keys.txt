@@ -127,6 +127,8 @@ pick revealed-pick/revealing-eye-draw
 pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 body protean-hydra/two-counters
+body dies/manifest-dread
+body destroy/the-object
 body behemoth-of-vault-0/destroy
 body cyclops-superconductor/damage
 body guide-of-souls/angel

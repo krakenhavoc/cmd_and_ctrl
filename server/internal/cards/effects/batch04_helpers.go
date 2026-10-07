@@ -110,6 +110,10 @@ func b04CreatureIDsControlledBy(g *game.Game, controller uuid.UUID) []uuid.UUID 
 // because the damage paths write the life total directly and emit
 // no EventChangeLife of their own. Neither kind is emitted for the
 // other's loss, so nothing is counted twice.
+//
+// A damage event counts the life it COST (game.Event.DamageLifeLoss,
+// #2105), not the damage: infect damage, and damage to a player whose
+// life total can't change, is dealt without any life being lost.
 func b04OpponentLostLife(ev game.Event, controller uuid.UUID, g *game.Game) (int, bool) {
 	if ev.Target == uuid.Nil || ev.Target == controller || g.PlayerByIDForEffect(ev.Target) == nil {
 		return 0, false
@@ -120,8 +124,8 @@ func b04OpponentLostLife(ev game.Event, controller uuid.UUID, g *game.Game) (int
 			return -ev.Amount, true
 		}
 	case game.EventDealDamage:
-		if ev.Amount > 0 {
-			return ev.Amount, true
+		if lost := ev.DamageLifeLoss(); lost > 0 {
+			return lost, true
 		}
 	}
 	return 0, false

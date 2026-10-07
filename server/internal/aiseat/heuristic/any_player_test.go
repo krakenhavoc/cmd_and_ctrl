@@ -53,3 +53,24 @@ func TestBotReachesAcrossOnlyForADeclaredPurpose(t *testing.T) {
 		}
 	})
 }
+
+// ADR 0106 §1 amendment 2026-10-07 (#1947): an "Only your opponents may
+// activate" row on an opponent's permanent (Clergy of the Holy Nimbus) is
+// a legal move for this seat, and the bot still never takes it: it is not
+// an any-player row that declares a purpose.
+func TestBotNeverTakesAnOpponentsOnlyRow(t *testing.T) {
+	const clergyMove = "Clergy of the Holy Nimbus (controlled by Seat1): {1}: This creature can't be regenerated this turn."
+	clergy := creature(cardID(3), 1, "Clergy of the Holy Nimbus", 1, 1)
+	clergy.Tapped = true
+	clergy.ActivatedAbilities = []protocol.ActivatedAbilityView{{
+		Index: 0, Ref: "own:0", Label: "{1}: This creature can't be regenerated this turn.",
+		ManaCost: "{1}", OpponentsOnly: true,
+	}}
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(clergy, land(cardID(10), 0)),
+		withTurn(3, 0, "postcombat_main"))
+	in := input(0, v, passMove(0), activateMove(t, 0, cardID(3), clergyMove, nil))
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got == clergyMove {
+		t.Errorf("activated an opponent's opponents-only row with no declared purpose")
+	}
+}

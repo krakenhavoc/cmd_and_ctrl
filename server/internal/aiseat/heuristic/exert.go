@@ -256,3 +256,25 @@ func pumps(rows []*protocol.PurposeView) bool {
 	}
 	return false
 }
+
+// costExertCost is what exerting `src` to pay an activation's cost gives
+// up (ADR 0130 §4): nothing when it won't untap during the bot's next
+// untap step anyway; for a creature, its next-turn attack and its blocks
+// across the opponents' turns (exertCost); for any other permanent (Arena
+// of Glory), one turn of a mana source, the evaluator's own difference
+// between a tapped source and one that stays tapped.
+//
+// Vigilance does not make it free, unlike on the attack: every printed
+// exert cost also taps the source, so it stays tapped either way.
+func (p *Policy) costExertCost(st *state, src *protocol.CardView) float64 {
+	if src.Counters["stun"] > 0 {
+		return 0
+	}
+	if n := src.NoUntap; n != nil && (n.Static || slices.Contains(n.Next, st.me)) {
+		return 0
+	}
+	if isCreature(src) {
+		return p.exertCost(st, src)
+	}
+	return p.cfg.ExertCostWeight * (st.w.TappedManaSource - st.w.FrozenManaSource)
+}

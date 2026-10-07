@@ -38,7 +38,13 @@ import "github.com/google/uuid"
 // live — an activation the engine refuses (#544).
 //
 // On the battlefield: the permanent's controller, or anyone when the
-// row says "Any player may activate this ability". Off the battlefield
+// row says "Any player may activate this ability". Two more named
+// activators ride the same predicate (ADR 0106 §1 amendment 2026-10-07,
+// #1947): "Only your opponents may activate this ability" (Clergy of
+// the Holy Nimbus) is every player BUT the controller, and "Only this
+// creature's owner may activate this ability" (Personal Incarnation) is
+// the owner alone, so the controller of a stolen one cannot. Off the
+// battlefield
 // the CR 108.4a owner rule is unchanged: no printed any-player ability
 // functions from a hidden zone, and Register refuses one that declares
 // a zone (checkAnyPlayerAbility in the effects package).
@@ -48,18 +54,35 @@ import "github.com/google/uuid"
 // they apply to every player and are asked by each caller beside this.
 func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape) bool {
 	if zone == ZoneBattlefield {
-		return source.Controller == player || ab.AnyPlayer
+		switch {
+		case ab.AnyPlayer:
+			return true
+		case ab.OpponentsOnly:
+			return source.Controller != player
+		case ab.OwnerOnly:
+			return source.Owner == player
+		}
+		return source.Controller == player
 	}
 	return source.Owner == player
 }
 
+// ReachesAcross reports whether the row names an activator other than
+// the plain controller: any player, only the controller's opponents, or
+// only the owner.
+func (ab ActivatedAbilityShape) ReachesAcross() bool {
+	return ab.AnyPlayer || ab.OpponentsOnly || ab.OwnerOnly
+}
+
 // HasAnyPlayerAbility reports whether any activated ability `c` offers
-// right now declares AnyPlayer. The enumerator's and the view's fast
+// right now names an activator other than its controller (AnyPlayer,
+// OpponentsOnly or OwnerOnly). The enumerator's and the view's fast
 // negative for a permanent the seat does not control: almost no
-// permanent has one, and the answer is "skip it".
+// permanent has one, and the answer is "skip it". The row actually
+// named is still held to MayActivate.
 func HasAnyPlayerAbility(c Card) bool {
 	for _, ab := range ActivatedAbilitiesForCard(c) {
-		if ab.AnyPlayer {
+		if ab.ReachesAcross() {
 			return true
 		}
 	}

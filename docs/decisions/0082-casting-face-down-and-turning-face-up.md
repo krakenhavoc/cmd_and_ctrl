@@ -760,3 +760,129 @@ is now 1/1. Before this change it stayed 4/4.
 - **A copy of a face-down SPELL** is CR 708.2's copiable values like any other
   copy. What the copy then does on resolution is not revisited here.
 - **CR 701.40c** and hideaway: decision 10 still holds for both.
+
+## Amendment (2026-10-07, #2570): manifest dread (CR 701.62a) · Accepted · S43
+
+**Status:** Accepted · 2026-10-07 · S43 · [#2570](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2570),
+tracker [#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886),
+home tracker [#2555](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2555)
+**Proof cards:** the four Room doors that shipped empty in PR #2565 (Weight
+Room, Ticket Booth, Slimy Aquarium, Experimental Lab) and twenty-two cards
+printing manifest dread.
+**Numbering:** an amendment to this ADR; no new number is taken.
+
+Manifest (decisions 1 to 10 and `ManifestForEffect`) takes the TOP card of a
+library. Manifest dread (CR 701.62a) does not: "look at the top two cards of
+your library, put one of them onto the battlefield face down as a 2/2 creature
+and the other into your graveyard." What was missing was the choice, and the
+cards that read what the choice produced.
+
+### C1. Composed from doors that already exist
+
+`Game.ManifestDreadThenForEffect(player, source, then)` is a new file
+(`game/manifest_dread.go`) and owns only the order the existing doors run in:
+
+1. `LookAtTopOfLibraryForEffect(player, 2)`. "Look at", not reveal: only the
+   looker becomes a knower, the rule scry, surveil and hideaway already follow.
+2. A `choose_cards` prompt over the pair (floor 1, ceiling 1, zone library),
+   chooser the looker. It is the prompt hideaway queues, so the wire already
+   hides its options from every other seat and the enumerator and both bot
+   policies already answer it. No new prompt kind, no new action, no new wire
+   shape.
+3. The chosen card enters through the CR 614 face-down entry manifest uses
+   (`PutCardsFromLibraryOntoBattlefieldThenForEffect` with
+   `FaceDownManifested`), so a question the entry asks pauses the action and
+   the rest waits behind it.
+4. The other card goes to its owner's graveyard through the shared exit route
+   (`routeAllThenLocked`), so a commander is offered the command zone
+   (CR 903.9). It is a plain zone move: it is not a mill (CR 701.17a counts
+   cards off the top) and not a discard, so no mill or discard payoff sees it.
+
+A library of one card asks nothing and manifests it. An empty library does
+nothing: no event is emitted, and the continuation still runs with an empty
+result so a "then put counters on that creature" can find it has none.
+
+### C2. What the continuation is told
+
+`ManifestDreadResult{Player, Manifested, Graveyarded}`: the permanent that
+entered, and the card put into the graveyard "this way". Both are `uuid.Nil`
+when they did not happen. Every card that says "that creature" or "a card you
+put into your graveyard this way" reads these, and nothing reads the library
+top. The continuation runs once, after the last leg settles, and captures only
+scalars: it is held in a `chooseCardsFrame`, the same census category hideaway's
+is, so an open manifest-dread prompt is as much a restore point as an open
+hideaway prompt and no more.
+
+The manifested card enters FIRST and the other card goes to the graveyard from
+the entry's continuation. The rule text puts them in one sentence and no card
+reads the graveyard between the two.
+
+### C3. The event and the log
+
+`EventManifestDread` (Actor, Source, `CardID` = the permanent that entered,
+`Target` = the card put into the graveyard) is emitted once, after both moves.
+It is its own kind rather than a flag on a manifest, for the reason
+`EventSurveil` is not a flag on `EventScry`: a card that cares about manifest
+dread must not fire on a Cloak or a plain manifest. The public log gets one
+line, `manifest_dread` ("Alice manifested dread"), that carries no card: the
+manifested card is hidden (CR 708.5) and the graveyard card already has its
+zone line. The client's `LogKind` union gains the kind and nothing else.
+
+### C4. The readers
+
+- `effects.ManifestDread{Player, Then}` and `effects.ManifestDreadTimes{N, Then}`
+  ("twice", "X times"; each repetition is its own look, its own prompt and its
+  own entry window, and `Then` is told every result).
+- `PutCountersOnManifested(...)`, `AttachSourceToManifested(ctx)` and the
+  `WheneverYouManifestDread` predicate. The counter and attach continuations
+  skip a creature that left before they ran, and attach is skipped quietly when
+  the Equipment is no longer the permanent that asked (CR 400.7, CR 701.3b).
+- `ManifestDreadWhenItDiesThisTurn`, for Turn Inside Out's "when it dies this
+  turn": an event-delayed trigger pinned to the object, the shape Whippoorwill's
+  exile uses. Its body is keyed `dies/manifest-dread` in `delayed_bodies.go` and
+  the ledger, so a table with one waiting is still a restore point.
+- Curator Beastie's "colorless creatures you control enter with two additional
+  counters" reads the entering permanent AS IT WILL ENTER (CR 614.12): a card
+  put onto the battlefield face down is a colorless creature whatever it is in
+  the library, so the replacement reads `ReplacementEvent.FaceDown`, and the
+  manifest Beastie itself makes arrives as a 4/4.
+
+### C5. Bot and enumerator coverage
+
+No new prompt, so the enumerator needed nothing. `internal/aiseat/manifest_dread_test.go`
+drives both the heuristic and the random policy through the real engine and
+fails on the two wedges (#544): a seat owed a question that is offered nothing,
+and an enumerated answer the engine refuses. The heuristic scores a library
+`choose_cards` by what it takes (`valueTakenFromLibrary`), so it manifests the
+card it values more and the other one goes to the graveyard. That is a
+reasonable preference rather than an optimal one: it does not yet weigh that
+only a creature card can be turned face up, and a policy that did could do
+better. It is declared here, not hidden.
+
+### C6. Cards, and what stayed out
+
+Shipped complete: Manifest Dread, Unsettling Twins, Innocuous Rat, Bashful
+Beastie, Unnerving Grasp, Under the Skin, Paranormal Analyst, They Came from the
+Pipes, Growing Dread, Threats Around Every Corner, Killer's Mask, Cursed
+Windbreaker, Conductive Machete, Dissection Tools, Break Down the Door, Twist
+Reality, Valgavoth's Onslaught, Turn Inside Out, Glitch Interpreter, Curator
+Beastie, Disturbing Mirth, Stay Hidden, Stay Silent. Four Rooms lose the caveat
+the manifest dread door carried: Moldering Gym // Weight Room, Ticket Booth //
+Tunnel of Hate and Underwater Tunnel // Slimy Aquarium are complete;
+Experimental Lab // Staff Room keeps only the Staff Room caveat.
+
+Left on the roadmap row, each with its blocker:
+
+- **Hauntwoods Shrieker, Zimone, Mystery Unraveler** (and Staff Room's other
+  option): "turn it face up" as an EFFECT, with no cost. Face up is a special
+  action with a cost (`turnFaceUpLocked` runs inside `PerformSpecialAction`);
+  there is no `TurnFaceUpForEffect`. Zimone also needs "the first time this
+  ability has resolved this turn", a per-object per-turn tally.
+- **Defiant Survivor**: survival triggers at the beginning of the second main
+  phase, and there is no event for it (`EventBeginPrecombatMain` is the only
+  main-phase event).
+- **Abhorrent Oculus**: "as an additional cost to cast this spell, exile six
+  cards from your graveyard". `AdditionalCost` has no exile-from-graveyard
+  component.
+
+Nothing ships stronger than printed (#259).

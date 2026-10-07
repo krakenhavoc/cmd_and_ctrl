@@ -41,9 +41,11 @@ import (
 type PlayerTurnTally struct {
 	// LifeGained is the sum of positive life changes.
 	LifeGained int `json:"lifeGained,omitempty"`
-	// LifeLost is the sum of negative life changes plus damage dealt
-	// to the player — the CR 119.3 reading every "lost life this
-	// turn" card in the catalog already used.
+	// LifeLost is the sum of negative life changes plus the life that
+	// damage dealt to the player cost them (CR 119.2, CR 120.3a):
+	// damage from a source with infect, or to a player whose life
+	// total can't change, is dealt but loses no life and is not
+	// counted (#2105, Event.DamageLifeLoss).
 	LifeLost int `json:"lifeLost,omitempty"`
 	// CardsDrawn counts draws (one event per card).
 	CardsDrawn int `json:"cardsDrawn,omitempty"`
@@ -1014,7 +1016,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Amount <= 0 || g.playerByIDLocked(ev.Target) == nil {
 			return
 		}
-		g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += ev.Amount })
+		// #2105: the life the damage COST, not the damage — infect
+		// damage and damage to a locked life total lose no life.
+		if lost := ev.DamageLifeLoss(); lost > 0 {
+			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += lost })
+		}
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".
 		g.recordDamageDealerLocked(g.findCardByIDLocked(ev.Source), ev.Target, ev.Combat)

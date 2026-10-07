@@ -82,8 +82,9 @@ func masterOfLakeTownLoss(ev game.Event, g *game.Game) (who uuid.UUID, amount in
 			return ev.Target, -ev.Amount, true
 		}
 	case game.EventDealDamage:
-		if ev.Amount > 0 {
-			return ev.Target, ev.Amount, true
+		// #2105: the life the damage cost, not the damage.
+		if lost := ev.DamageLifeLoss(); lost > 0 {
+			return ev.Target, lost, true
 		}
 	}
 	return uuid.Nil, 0, false

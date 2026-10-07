@@ -73,6 +73,16 @@ surface tiny.
    resolution against the source's effective power, or its last-known
    power once it has left (#2146). Don't read `source.CurrentPower()` in
    a `TargetsFrom`: that freezes the bound when the trigger is built.
+   "Target creature it's blocking" / "blocked by this creature" /
+   "blocking equipped creature" is the same idea for combat: wrap the
+   clause in `BlockedBySource(spec)`, `BlockingSource(spec)`,
+   `BlockingEquipped(spec)` or `BlockedByEquipped(spec)` and keep the
+   candidate's own type and keywords in the predicates
+   (`BlockedBySource(TargetCreature("…", HasKeyword("flying")))`). It is
+   `game.TargetSpec.CombatWithSource`, judged at announce and at
+   resolution; a creature removed from combat in response is illegal,
+   and a source that has left is read from its last-known blocks
+   (#1863, ADR 0019 amendment 2026-10-07).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -727,7 +737,10 @@ func init() {
 | "until end of turn" | `DurationUntilEndOfTurn(ctx)` | that turn's cleanup step (CR 514.2) |
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
+| "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
+
+A damage shield takes the last two rows through `PreventDamageFromSource{Lasts: ShieldThisCombat}` ("prevent all combat damage that would be dealt this combat", Sewers of Estark) and `Lasts: ShieldWhileSourceRemains` ("for as long as this Saga remains on the battlefield", Old Fat Spider Can't See Me); the default is this turn.
 
 Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell that changes characteristics or control must pin its affected set at resolution (CR 611.2c). A mass restriction changes neither and reads a live set instead (`RestrictUntilEOT{Scope}`, #1650). `ScopedEffectFor` does the pinning itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](decisions/0063-durations-and-control.md) and [ADR 0035](decisions/0035-until-end-of-turn-effects.md).
 
@@ -907,6 +920,15 @@ activation path, the enumerator and the view share; every seat's copy of
 the row is stamped with that seat as the activator; the client opens the
 ability popover on another player's permanent for its `any_player` rows;
 and smart autopass does not stop for them.
+
+**Only some players may activate (ADR 0106 §1 amendment, #1947).**
+"Only your opponents may activate this ability" (Clergy of the Holy
+Nimbus) is `OpponentsOnly: true` on the row, and "Only this creature's
+owner may activate this ability" (Personal Incarnation) is
+`OwnerOnly: true`. Same predicate (`game.MayActivate`), same "you is the
+activator" reading, same registration limits as `AnyPlayer`; set at most
+one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
+activator is the granting spell's controller (Martyrdom) has no shape yet.
 
 ### Declaring what a card does: Purpose (ADR 0126 §6)
 
@@ -5885,8 +5907,8 @@ For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
 names that player's next untap step. Markers expire at that actual step,
 even on an untapped permanent, survive skipped steps, and disappear on
 zone changes. They are data on `Card`, not turn-scoped closures, so undo
-and persisted snapshots retain them. Exert's action/cost remains separate
-work. See [ADR 0058](decisions/0058-doesnt-untap.md) and
+and persisted snapshots retain them. Exert, as it attacks and as a
+cost, has its own section below ([ADR 0130](decisions/0130-exert.md)). See [ADR 0058](decisions/0058-doesnt-untap.md) and
 [ADR 0070](decisions/0070-untap-step-choices.md).
 
 For "it doesn't untap during its controller's untap step **for as long
@@ -6040,6 +6062,42 @@ hid. The link is an object reference, so a triggered payoff captures
 `game.ObjectRefOf(*source)` in its `Build` (Rabble Rousing) rather than
 re-reading the source at resolution. The three Lorwyn lands are a table
 in `hideaway_lands.go`; a new land of the same shape is a row.
+
+### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
+
+Manifest dread (CR 701.62a) is the choice manifest does not have: look
+at the top two cards, put the one YOU pick onto the battlefield face
+down as a 2/2 and the other into your graveyard. A card file says it
+with the words in
+[manifest_dread_primitive.go](../server/internal/cards/effects/manifest_dread_primitive.go):
+
+```go
+Do(ManifestDread{})                                              // "Manifest dread."
+Do(ManifestDread{Then: PutCountersOnManifested(                  // "..., then put two +1/+1 counters
+    CounterAmount{Kind: game.CounterPlusOne, N: 2})})            //    and a trample counter on that creature."
+Do(ManifestDreadTimes{N: 2})                                     // "Manifest dread twice."
+ManifestDread{Then: AttachSourceToManifested(ctx)}.Apply(ctx)    // "..., then attach this Equipment to that creature."
+On(game.EventManifestDread, WheneverYouManifestDread, ...)       // "Whenever you manifest dread" (ev.CardID = the
+                                                                 //  permanent, ev.Target = the card put into the graveyard)
+```
+
+Everything after "then" is the `Then` continuation, which is told
+`game.ManifestDreadResult{Manifested, Graveyarded}`. Never write it as
+the next line of the effect: the controller's pick is a prompt, so the
+rest of the sentence runs when it is answered, and it must capture only
+scalars. An empty library runs `Then` with a zero result, so guard on
+`Manifested != uuid.Nil` (the ready-made continuations already do).
+
+"X times" is `ManifestDreadTimes` (Valgavoth's Onslaught): each
+repetition is its own look and its own prompt, and `Then` gets every
+result. "When it dies this turn, manifest dread" (Turn Inside Out) is
+`ManifestDreadWhenItDiesThisTurn`, an event-delayed trigger. A
+replacement that cares about a face-down entry reads
+`ReplacementEvent.FaceDown`: the library card is not yet the 2/2
+colorless creature it will be (Curator Beastie).
+
+Not here: turning a permanent face up as an EFFECT (no cost) has no
+door yet, so cards that say "you may turn it face up" wait on it.
 
 ### Adding a creature-type card (S26+)
 
@@ -6544,9 +6602,20 @@ Triggered: []game.TriggeredAbility{
   ```
 
   A row with no purpose is an exert the bot takes only when it is free.
-- **Exert as an activation cost** ("Exert this creature: …", Arena of
-  Glory) is ADR 0130 PR 4, a cost component on `AbilityCost` and
-  `ManaAbilityCost`. Until it lands, those cards wait.
+- **Exert as an activation cost** ("{T}, Exert this creature: …", ADR
+  0130 §4) is a cost component. On an activated ability compose
+  `ExertThis()`: `Plus(ManaCost("{W}"), TapCost(), ExertThis())` is Pride
+  Sovereign's "{W}, {T}, Exert this creature". On a mana ability set
+  `ManaAbilityCost{Tap: true, Exert: true}` (Oasis Ritualist; Arena of
+  Glory adds `Mana: "{R}"`). The engine pays it beside the {T} through
+  `exertLocked`, keyed to the activator, with no attack target, so a
+  `WhenExerted` row never fires for it and a `WheneverYouExert` row does
+  (for a creature). It is always payable, again after an earlier exert
+  this turn (CR 701.43b), and battlefield only (Register refuses it in
+  another zone, beside a cost that moves the source, and on an
+  any-player row). The auto-tapper never pays an exert mana row: the
+  player activates it from the mana menu, and a plain "{T}: Add …" row
+  on the same permanent is still planned.
 
 ### When NOT to add a catalog entry
 

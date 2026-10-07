@@ -424,6 +424,24 @@ type AbilityCost struct {
 	// which is stamped before the payment.
 	ReturnSelf bool
 
+	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
+	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
+	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
+	// creature:". CR 602.2b runs CR 601.2h for an ability, so it is paid
+	// at announce with the rest of the cost, through exertLocked, the one
+	// path that exerts: the source won't untap during the ACTIVATOR's
+	// next untap step, the turn's tally records it, and EventExert fires
+	// with no attack target, so a "whenever you exert a creature" payoff
+	// sees it and a "when you do" linked to an attack never does.
+	//
+	// It can always be paid while the source is on the battlefield: a
+	// permanent can be exerted untapped, tapped, or already exerted this
+	// turn (CR 701.43b, ruling 7), and every exert before the activator's
+	// next untap step expires at that one step. Nothing is chosen, so it
+	// rides no params. Battlefield only (CR 701.43c):
+	// AbilityNeedsPermanentSource names it.
+	Exert bool
+
 	// ExileCards is "Exile N <kind> cards from your graveyard" or
 	// "… from your hand" as a cost (#1297) — Grim Lavamancer's
 	// "Exile two cards from your graveyard", Moorland Haunt's "a
@@ -768,6 +786,18 @@ type ActivatedAbilityShape struct {
 	// one, and who may tap somebody else's permanent is a rule nobody
 	// has tested.
 	AnyPlayer bool
+
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (CR 602.2, CR 602.1b; Clergy of the Holy Nimbus): every player but
+	// the permanent's controller, and not the controller. OwnerOnly is
+	// "Only this creature's owner may activate this ability" (Personal
+	// Incarnation): the owner alone, which is not the controller once the
+	// card has been stolen. Both are read in MayActivate beside AnyPlayer
+	// (ADR 0106 §1 amendment 2026-10-07, #1947), so the engine, the
+	// enumerator and the view agree, and the activator is "you" in the
+	// effect exactly as for AnyPlayer. At most one of the three is set.
+	OpponentsOnly bool
+	OwnerOnly     bool
 
 	// Purpose is what the ability does, as printed amounts (ADR 0126
 	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
@@ -1355,6 +1385,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := validateReturnSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
+	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
+	// else to check: an exert cost can be paid tapped or untapped, and
+	// again after an earlier exert this turn (CR 701.43b).
+	if ab.Cost.Exert && srcZone != ZoneBattlefield {
+		return ErrInvalidParam
+	}
 	// #1310, CR 701.67: the waterbend taps. The budget is measured
 	// against the PRICED mana — the same number the payment below
 	// charges — so a discount that has already removed generic mana
@@ -1648,6 +1684,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.Tap {
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// ADR 0130 §4: "Exert this creature", beside the {T} and while the
+	// source is certainly on the battlefield (CR 701.43c), keyed to the
+	// activator's untap step (CR 701.43a). Always payable (CR 701.43b,
+	// ruling 7); a "whenever you exert" trigger it causes is put on the
+	// stack above this ability by the closing pass (CR 603.3b).
+	if ab.Cost.Exert {
+		g.exertLocked(cardID, playerID, uuid.Nil)
 	}
 	for _, id := range crew {
 		// The crewing creatures tap, the Vehicle does not (CR
