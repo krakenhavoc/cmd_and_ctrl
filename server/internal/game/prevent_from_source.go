@@ -157,6 +157,16 @@ type DamageShield struct {
 	// 514.2), which every other printed member says.
 	UntilYourNextTurn bool
 
+	// Duration is how long the shield lasts when it is neither "this
+	// turn" nor UntilYourNextTurn (ADR 0108 amendment 2026-10-07,
+	// #2027): "this combat" (UntilEndOfCombat) and "for as long as this
+	// Saga remains on the battlefield" (ForAsLongAs). The zero value
+	// means unset, so "this turn" stays the default. Refused beside
+	// UntilYourNextTurn, and when it fails Duration.Problem. Build it
+	// with UntilEndOfCombatDuration or ForAsLongAsOnBattlefieldDuration,
+	// which also say when the effect never begins.
+	Duration Duration
+
 	// Label is the record's label.
 	Label string
 }
@@ -226,6 +236,12 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 	d := g.UntilEndOfTurnDuration()
 	if s.UntilYourNextTurn {
 		d = g.UntilYourNextTurnDuration(s.Controller)
+	}
+	if !s.Duration.IsZero() {
+		if s.UntilYourNextTurn || s.Duration.Problem() != "" {
+			return false
+		}
+		d = s.Duration
 	}
 	if len(protected) > 0 {
 		affected := g.PinnedObjectsLocked(protected...)

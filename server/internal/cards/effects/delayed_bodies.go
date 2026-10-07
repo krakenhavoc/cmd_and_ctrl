@@ -159,6 +159,11 @@ var (
 	// Berserk: destroy the creature <Object> at the next end step if it
 	// is still that object and it attacked this turn.
 	berserkDestroyIfAttackedBody = game.DelayedBody("berserk/destroy-if-attacked", berserkDestroyIfAttacked)
+
+	// Destroy the permanent <Object> names, if it is still that object
+	// on the battlefield: "Destroy it at the beginning of the next end
+	// step" (Glyph of Destruction, #2027).
+	destroyTheObjectBody = game.DelayedBody("destroy/the-object", destroyTheObject)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

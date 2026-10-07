@@ -602,6 +602,15 @@ func scopedKindPrevents(kind ModKind) bool {
 // it met several events of one damage instance (divide_shield.go).
 // Caller must hold g.mu.
 func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) bool {
+	// ADR 0108 amendment 2026-10-07 (#2027): a replacement whose duration
+	// is a condition or a combat is over the moment that stops being
+	// true (CR 611.2b), not at the next layer pass that would sweep the
+	// record. A Saga that has just left, or an end of combat step that
+	// has just ended, must not shield one more event in between. The
+	// other kinds are swept at their own boundaries, as before.
+	if (e.Duration.Kind == ForAsLongAs || e.Duration.Kind == UntilEndOfCombat) && g.durationExpiredLocked(e.Duration, false) {
+		return false
+	}
 	if !scopedReplacementMeetsLocked(g, e, m, ev) {
 		return false
 	}

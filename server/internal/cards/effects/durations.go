@@ -79,3 +79,15 @@ func DurationWhileYouControlSource(ctx *Context, source, player uuid.UUID) (game
 	}
 	return ctx.Game.ForAsLongAsYouControlDuration(source, player)
 }
+
+// DurationUntilEndOfCombat is "this combat" / "until end of combat"
+// (CR 511.3, 724.2d; ADR 0108 amendment 2026-10-07, #2027): the effect
+// ends with the combat PHASE it was made in, so an additional combat
+// phase is a different combat.
+//
+// The second return is false outside a combat phase. There is no combat
+// for the effect to last through, so it never begins (CR 611.2b's
+// reading) and the caller registers nothing.
+func DurationUntilEndOfCombat(ctx *Context) (game.Duration, bool) {
+	return ctx.Game.UntilEndOfCombatDuration()
+}

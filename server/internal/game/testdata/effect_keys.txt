@@ -128,3 +128,4 @@ pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 body protean-hydra/two-counters
 body dies/manifest-dread
+body destroy/the-object
