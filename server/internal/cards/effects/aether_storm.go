@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (CR 701.19c).
 //
 // No purpose for the bot: the effect helps whoever wants creatures
-// cast again, which no ActivationPurpose field describes, so a bot
+// cast again, which no Purpose field describes, so a bot
 // never pays life to destroy another player's Aether Storm.
 //
 // No simplification.

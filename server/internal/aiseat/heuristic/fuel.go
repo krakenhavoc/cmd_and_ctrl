@@ -92,6 +92,12 @@ func (p *Policy) fuelValue(st *state, id string) float64 {
 	if c := st.mine[id]; c != nil {
 		// A card in hand, or in the command zone: a resource AND a
 		// spell. Force of Will's pitch and Daze's alternative to one.
+		if isLand(c) {
+			// #2016: a land in hand is worth what the seat's own mana
+			// makes it — dear while it is short, cheap once it has
+			// enough — the price a discard cost charges (cardValue).
+			return st.w.Hand + st.cardValue(p.cfg, c)
+		}
 		return st.w.Hand + p.resolvedValue(st, c, 0)
 	}
 	if c := st.bf[id]; c != nil {
@@ -152,7 +158,26 @@ func castableFromHere(c *protocol.CardView) bool {
 // Lifted out of valueOfCast by #1013 so the fuel price and the cast
 // price agree about what a card is worth by construction. `x` is the
 // announced X, which is zero for a card nobody is casting yet.
+//
+// This is the price of a card being SPENT (a pitch, an escape's fuel):
+// it reads the card's own purpose, and a sweep in it counts for no less
+// than nothing (purposeValue's clampSweep). A cast prices the purpose
+// of the slot it names through resolvedValueFor.
 func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
+	return p.resolvedValueFor(st, c, x, cardPurpose(c), true, false)
+}
+
+// resolvedValueFor is resolvedValue with the purpose to price passed in
+// (ADR 0126 §6, purpose.go): the card's own for a card being spent, the
+// cost's or the chosen modes' for a cast. A declared purpose the Config
+// prices replaces an instant's or a sorcery's mana-value proxy, and is
+// added to a permanent's body as its enters effect.
+//
+// `targeted` is a cast that names targets. A targeted cast gets no
+// SpellFloor: what it is worth is what it points at, which valueOfCast
+// adds, and a floor under it would fire removal at smaller creatures
+// outside ADR 0126 §5's windows, which the ADR leaves alone.
+func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps purposeSet, spent, targeted bool) float64 {
 	if c == nil {
 		return 0
 	}
@@ -168,13 +193,33 @@ func (p *Policy) resolvedValue(st *state, c *protocol.CardView, x int) float64 {
 			pv *= st.w.SickCreature
 		}
 		v = pv
+		if p.purposePriced(ps) {
+			// Its enters effect: Wood Elves' land, Mulldrifter's two
+			// cards.
+			v += p.purposeValue(st, ps, x, c, spent)
+		}
 	default:
 		// An instant or sorcery: no body, so its value is a mana-value
 		// proxy for whatever it does that the wire does not describe.
 		// (valueOfCast adds the TARGETS on top; the fuel price does
 		// not, because a card being pitched is not being pointed at
 		// anything.)
-		v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+		if p.purposePriced(ps) {
+			// ADR 0126 §6: what it is declared to do, in place of the
+			// proxy. A sweep is priced by what it removes (§4).
+			v = p.purposeValue(st, ps, x, c, spent)
+		} else {
+			v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+		}
+		// ADR 0126 §5: an untargeted spell the engine runs is worth at
+		// least a card that replaces itself and does a little more. The
+		// floor stays under a declared purpose (a tutor, Entomb), and is
+		// not put under a priced sweep: §4 exists to price a bad wipe
+		// below zero.
+		sweep := p.cfg.PriceSweeps && len(ps.sweeps) > 0
+		if v < p.cfg.SpellFloor && !sweep && !targeted && !c.Unimplemented && untargetedSpell(c) {
+			v = p.cfg.SpellFloor
+		}
 	}
 	if c.IsCommander {
 		v += p.cfg.CommanderBonus

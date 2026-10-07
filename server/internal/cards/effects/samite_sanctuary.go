@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // object and ends at cleanup (CR 514.2).
 //
 // No purpose for the bot: it shields a creature for whoever chose it,
-// which no ActivationPurpose field describes.
+// which no Purpose field describes.
 //
 // No simplification.
 func init() {

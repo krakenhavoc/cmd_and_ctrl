@@ -720,11 +720,12 @@ type ActivatedAbilityShape struct {
 	// has tested.
 	AnyPlayer bool
 
-	// Purpose is what the ability does for an activator who does not
-	// control its source (ADR 0106 §1 decision 8). The engine never
-	// reads it; see ActivationPurpose. Meaningful only with AnyPlayer,
-	// and effects.Register refuses it without.
-	Purpose ActivationPurpose
+	// Purpose is what the ability does, as printed amounts (ADR 0126
+	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
+	// also what the row buys an activator who does not control the
+	// source (ADR 0106 §1 decision 8), and ControllerLosesLife is
+	// declared there alone. The engine never reads it; see Purpose.
+	Purpose Purpose
 
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
@@ -2138,7 +2139,9 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
 		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, x, spendCtx, excluded, 0)
-		if !ok {
+		// #2461: a plan that would not fund the cost is refused before
+		// anything taps.
+		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
 			return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
 		g.materializePlanLocked(p, plan, short)

@@ -15,7 +15,7 @@ import (
 //	    Label:     "{3}: Xantcha's controller loses 2 life and you draw a card. Any player may activate this ability.",
 //	    Cost:      game.AbilityCost{Mana: "{3}"},
 //	    AnyPlayer: true,
-//	    Purpose:   game.ActivationPurpose{Draws: 1, ControllerLosesLife: 2},
+//	    Purpose:   game.Purpose{Draws: 1, ControllerLosesLife: 2},
 //	    Effect:    ...,
 //	}},
 //
@@ -23,10 +23,11 @@ import (
 // ctx.Controller is the player who activated it, and
 // ctx.SourcePermanent().Controller is "this permanent's controller".
 //
-// Purpose is optional and is for the bot alone (owner decision 2). Set
-// it only when the printed effect plainly helps a player who does not
-// control the permanent; a row without one is never chosen by a bot
-// reaching across the table.
+// Purpose is optional and is for the bot alone (owner decision 2). On
+// an any-player row, set it only when the printed effect plainly helps
+// a player who does not control the permanent: a row without one is
+// never chosen by a bot reaching across the table, and the bot prices
+// another player's row by its Draws and ControllerLosesLife alone.
 
 // checkAnyPlayerAbility is ADR 0106 §1 decision 1's registration guard.
 // Each failure is a card file that is wrong in a way no game would show
@@ -38,13 +39,11 @@ import (
 //   - A zone other than the battlefield. MayActivate keeps the CR 108.4a
 //     owner rule off the battlefield, so the permission would be
 //     silently ignored there.
-//   - A Purpose on a row that is not AnyPlayer, which nothing reads.
+//
+// What the row's Purpose may say is checkActivatedPurpose's (purpose.go):
+// ControllerLosesLife only here, on an any-player row.
 func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	if !ab.AnyPlayer {
-		if !ab.Purpose.IsZero() {
-			panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose but not AnyPlayer — a purpose is for a player who does not control the permanent",
-				name, where))
-		}
 		return
 	}
 	switch {
@@ -62,8 +61,5 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 			panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that functions from the %s — only the battlefield is modelled (ADR 0106 §1)",
 				name, where, z))
 		}
-	}
-	if ab.Purpose.Draws < 0 || ab.Purpose.ControllerLosesLife < 0 {
-		panic(fmt.Sprintf("effects.Register: %q %s declares a negative Purpose amount", name, where))
 	}
 }

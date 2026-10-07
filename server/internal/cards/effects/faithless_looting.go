@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "3d6fa57a-aa53-4b5c-b8af-a7612c823117",
 		Name:             "Faithless Looting",
+		Purpose:          game.Purpose{Draws: 2, Discards: 2},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},

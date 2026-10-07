@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (CR 608.2b). Countering it is CR 701.6a.
 //
 // No purpose for the bot: who wants a red or green spell countered is
-// a judgement no ActivationPurpose field makes.
+// a judgement no Purpose field makes.
 //
 // No simplification.
 func init() {

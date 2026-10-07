@@ -1,5 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { MAX_OVERLAP, MIN_CARD_H, fitOverlap, fitScale } from "./rowFit";
+import { readFileSync } from "node:fs";
+import { MAX_OVERLAP, MIN_CARD_H, fitOverlap, fitScale, tappedRoom } from "./rowFit";
+
+// #2442: a tapped card takes the width of its 90 degree turn.
+describe("tappedRoom", () => {
+  it("is half of what the turned card overhangs its box, per side", () => {
+    expect(tappedRoom(88, 123)).toBe(17.5);
+    expect(tappedRoom(100, 100)).toBe(0);
+    expect(tappedRoom(120, 80)).toBe(0);
+  });
+
+  it("scales with the card, so a shrunk row keeps the same proportion", () => {
+    expect(tappedRoom(88 * 0.5, 123 * 0.5)).toBeCloseTo(tappedRoom(88, 123) * 0.5, 9);
+  });
+
+  it("is counted by the fit: a row of tapped piles overlaps or shrinks sooner", () => {
+    const w = 88;
+    const h = 123;
+    const upright = Array(5).fill(w);
+    const turned = Array(5).fill(w + 2 * tappedRoom(w, h));
+    // 5 x 88 + 4 x 8 = 472 fits in 480; five turned piles (123 each) do not.
+    expect(fitOverlap(upright, 8, 480, w)).toBe(0);
+    expect(fitOverlap(turned, 8, 480, w)).toBeGreaterThan(0);
+    expect(
+      fitScale(
+        turned.reduce((a, b) => a + b, 0),
+        32,
+        480,
+        0.4,
+      ),
+    ).toBeLessThan(1);
+  });
+
+  it("is the padding BattlefieldRow gives a tapped pile outside the strip", () => {
+    const src = readFileSync("src/lib/components/board/BattlefieldRow.svelte", "utf8");
+    expect(src).toMatch(
+      /\.row:not\(\.strip\) \.pile\.tapped \{\s*padding-inline: calc\(\(var\(--card-h, 123px\) - var\(--card-w, 88px\)\) \/ 2\);/,
+    );
+  });
+});
 
 describe("fitOverlap", () => {
   it("is 0 when the row fits, or has fewer than two piles", () => {

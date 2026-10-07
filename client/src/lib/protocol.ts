@@ -2179,6 +2179,9 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // ADR 0126 §6: what the spell does when cast for this cost, where
+  // that differs from the card's own purpose (overload). Bot data.
+  purpose?: PurposeView;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -2599,17 +2602,41 @@ export interface ActivatedAbilityView {
   // live for the viewer right now is still the digest's answer
   // (`legal_actions`), never the row's. Absent on every other row.
   any_player?: boolean;
-  // ADR 0106 §1 decision 8: what the row buys an activator who does
-  // not control the permanent. Bot data; the client does not read it.
-  purpose?: ActivationPurposeView;
+  // #2449: a CR 702.6 equip ability. Bot data; the client does not
+  // read it.
+  equip?: boolean;
+  // ADR 0126 §6 (and ADR 0106 §1 decision 8 on an any-player row):
+  // what the row does. Bot data; the client does not read it.
+  purpose?: PurposeView;
 }
 
-// ActivationPurposeView is the printed amounts an any-player row buys
-// its activator (ADR 0106 §1 decision 8): the cards they draw and the
-// life the permanent's controller loses.
-export interface ActivationPurposeView {
+// PurposeView is what a card, a mode, an alternative cost or an
+// ability does, as printed amounts the catalog declares (ADR 0126 §6;
+// docs/protocol.md "Declared purpose"). Bot data; the client does not
+// read it. Every field is absent when zero.
+export interface PurposeView {
   draws?: number;
   controller_loses_life?: number;
+  discards?: number;
+  lands?: number;
+  tutors?: number;
+  self_mill_tutor?: number;
+  tokens?: number;
+  sweep?: SweepView;
+  death_payoff?: boolean;
+}
+
+// ActivationPurposeView is ADR 0106's name for PurposeView.
+export type ActivationPurposeView = PurposeView;
+
+// SweepView is a board wipe's description (ADR 0126 §4, §6).
+export interface SweepView {
+  matches: string;
+  how: string;
+  amount?: number;
+  amount_is_x?: boolean;
+  opponents_only?: boolean;
+  partial?: boolean;
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -2638,6 +2665,8 @@ export interface ModeOptionView {
   // bullet, so it cannot be chosen again (this turn, or ever — see
   // ModeSpecView.not_chosen). The server refuses it.
   used?: boolean;
+  // ADR 0126 §6: what this bullet does. Bot data.
+  purpose?: PurposeView;
 }
 
 // LegalTargetsView is a clause's legal set right now plus its
@@ -3351,6 +3380,10 @@ export interface CardView extends CastSurfaceView {
   // for an uncatalogued card, a keyword-only card and a face-down
   // permanent. The client never reads oracle text for these.
   ability_rows?: AbilityRowView[];
+  // ADR 0126 §6: what the card does, as the catalog declares it. Hand,
+  // battlefield and stack; cleared with ability_rows for a viewer who
+  // cannot see the card. Bot data; the client does not read it.
+  purpose?: PurposeView;
   // #662 — this permanent's CR 702.16 protections, already PARSED by
   // the server. The raw "protection from red" tokens are in
   // `abilities` like every other keyword; this is the same list with
@@ -3432,6 +3465,8 @@ export type AbilityRowKind = "triggered" | "static" | "activated";
 export interface AbilityRowView {
   kind: AbilityRowKind;
   label: string;
+  // ADR 0126 §6: the row's declared purpose (death_payoff). Bot data.
+  purpose?: PurposeView;
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may

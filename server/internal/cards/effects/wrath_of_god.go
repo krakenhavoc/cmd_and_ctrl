@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "34515b16-c9a4-4f98-8c77-416a7a523407",
 		Name:         "Wrath of God",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve:    wrathDestroyAllCreaturesNoRegen,
 	})

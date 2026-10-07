@@ -64,6 +64,42 @@ type Config struct {
 	// the classic rule-based-AI tell.
 	InstantThreshold float64
 
+	// LeftoverWindows turns on ADR 0126 §5's two windows: the bot's
+	// own last main phase and the end step of the seat whose turn
+	// comes just before the bot's, each with an empty stack. Mana
+	// empties between steps and a tapped permanent untaps in its
+	// controller's untap step, so in those windows a move that costs
+	// only mana and taps spends nothing the bot would otherwise keep,
+	// and it needs to clear only LeftoverThreshold. Off (the zero
+	// value) is the pre-S66 heuristic.
+	LeftoverWindows bool
+	// LeftoverThreshold is the bar a mana-and-taps move clears in one
+	// of the two windows (ADR 0126 §5), in place of PassThreshold or
+	// InstantThreshold. A move that also costs life, a sacrifice, a
+	// discard, another card or a counter keeps the normal bar. Read
+	// only while LeftoverWindows is on, and only when it is LOWER than
+	// the normal bar.
+	LeftoverThreshold float64
+	// SpellFloor is the least an untargeted instant or sorcery is worth
+	// once it resolves (ADR 0126 §5): a spell whose effect the wire does
+	// not carry is priced as a card that replaces itself and does a
+	// little more. Just above Weights.Hand, so the cast clears
+	// LeftoverThreshold and stays below PassThreshold: cheap spells fill
+	// the leftover windows and never crowd out development in the first
+	// main phase. A targeted spell is priced by its targets instead
+	// (InstantThreshold's "hold it" is unchanged outside the windows,
+	// ADR 0126 Out of scope), and an unimplemented card gets no floor.
+	// Zero is off, the pre-S66 heuristic.
+	SpellFloor float64
+	// TapByTiming prices tapping one of the bot's untapped creatures by
+	// when it happens (ADR 0126 §5): nothing in the end step just before
+	// the bot's turn, because the creature untaps before any opponent
+	// attacks; the blocker plus the attack it gives up in the bot's own
+	// first main phase, for a creature that could attack, priced as
+	// station already prices it; and the flat blocker price elsewhere.
+	// Off (the zero value) is the pre-S66 flat price everywhere.
+	TapByTiming bool
+
 	// LandValue prices the once-a-turn land drop. Above every
 	// ordinary cast on purpose — land first, then spend.
 	LandValue float64
@@ -75,6 +111,74 @@ type Config struct {
 	CommanderBonus float64
 	// ActivateBase is the flat value of using an activated ability.
 	ActivateBase float64
+
+	// SacrificeDyingAnyway prices a permanent sacrificed to pay a cost
+	// by the chance the bot would have kept it (ADR 0126 §7,
+	// sacrifice.go): a target of an opponent's spell or ability on the
+	// stack is kept with 1 − RemovalConfidence, one a declared sweep on
+	// the stack would remove is not kept, and so is a creature losing
+	// its combat once blockers are declared. A move whose only non-mana
+	// cost is such a sacrifice clears LeftoverThreshold, because it
+	// spends nothing the bot would otherwise keep. Off (the zero value)
+	// charges the whole board value, the pre-S66 price.
+	SacrificeDyingAnyway bool
+	// DeathPayoff is what each `death_payoff` row on a permanent the bot
+	// controls (Blood Artist, Zulaport Cutthroat, Bastion of
+	// Remembrance) adds to every creature it sacrifices (ADR 0126 §7).
+	// Zero is the pre-S66 price.
+	DeathPayoff float64
+
+	// RampPerMana is the cast-time premium per mana a new repeatable
+	// mana source closes of the bot's mana deficit (ADR 0126 §2,
+	// rampPremium): large while the bot cannot cast what it holds, and
+	// nothing once it can, so the premium fades as the game goes on
+	// without a turn counter. Zero is the pre-S66 price, and
+	// BaselineConfig zeroes it.
+	RampPerMana float64
+	// RampWantCap caps the mana the deficit aims at: past seven mana,
+	// one more source is not what stands between a Commander deck and
+	// its hand.
+	RampWantCap int
+
+	// PricePurposes turns on ADR 0126 §6's prices (purpose.go): a
+	// spell, mode, alternative cost or own activated row that declares
+	// what it does is priced by that, in place of the mana-value proxy
+	// or ActivateBase, and a permanent's declared enters effect is added
+	// to its body. Off (the zero value) is the pre-S66 heuristic.
+	PricePurposes bool
+	// TutorWeight is a card searched out to hand or the top of the
+	// library, in cards drawn: above one, because the bot picks it.
+	TutorWeight float64
+	// SelfMillWeight is a card searched out into the graveyard (Entomb),
+	// in cards drawn: below one, because only a graveyard plan the
+	// policy cannot see makes it a card.
+	SelfMillWeight float64
+	// DiscardWeight is one card discarded on resolution (a loot's
+	// second half). Below Weights.Hand: the bot discards its worst card.
+	DiscardWeight float64
+	// TokenWeight is one token the purpose makes (a Treasure, a Clue).
+	TokenWeight float64
+	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
+	// the change in ScoreEval with the permanents it removes taken off
+	// the board (sweepValue), so the bot stops casting a wipe onto its
+	// own winning board. Off (the zero value) is the pre-S66 proxy.
+	PriceSweeps bool
+	// DiscardCostByCard turns on the discard half of ADR 0126 §7: a
+	// card discarded to pay a spell's additional cost costs what it is
+	// worth to the bot (cardValue), not a flat Weights.Hand. Off (the
+	// zero value) is the pre-S66 flat price.
+	DiscardCostByCard bool
+	// LastLandDiscard is what discarding the last land in hand costs on
+	// top of its cardValue while the bot is short of LandsWanted: the
+	// land drop it may miss (discardCost).
+	LastLandDiscard float64
+	// PriceDiscardPayoffs turns on ADR 0126's amendment of 2026-10-06:
+	// discarding a card that one of the bot's own triggered rows
+	// declares a discard_payoff for (Mary Read's Treasure for an
+	// Island, Marauding Mako's counter for any card) costs what that
+	// payoff pays less (discard_payoff.go). Off (the zero value) prices
+	// a discard by the card alone.
+	PriceDiscardPayoffs bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -250,16 +354,35 @@ func DefaultConfig() Config {
 		PassThreshold:    0.25,
 		InstantThreshold: 1.50,
 
+		LeftoverWindows:   true,
+		LeftoverThreshold: 0.00,
+		SpellFloor:        1.30,
+		TapByTiming:       true,
+
 		LandValue:      8.00,
 		SpellPerMana:   0.60,
 		CommanderBonus: 1.50,
 		ActivateBase:   0.50,
-		FuelFloor:      0.05,
-		FuelIdle:       0.30,
-		FuelRecast:     0.55,
-		LifePayoff:     0.35,
-		LifeFloor:      1,
-		ManaFloat:      -0.50,
+		RampPerMana:    1.00,
+		RampWantCap:    7,
+
+		PricePurposes:     true,
+		TutorWeight:       1.00,
+		SelfMillWeight:    0.50,
+		DiscardWeight:     0.60,
+		TokenWeight:       0.50,
+		PriceSweeps:       true,
+		DiscardCostByCard: true,
+		LastLandDiscard:   1.00,
+
+		PriceDiscardPayoffs: true,
+
+		FuelFloor:  0.05,
+		FuelIdle:   0.30,
+		FuelRecast: 0.55,
+		LifePayoff: 0.35,
+		LifeFloor:  1,
+		ManaFloat:  -0.50,
 
 		SpecialActionValue: 1.00,
 
@@ -275,6 +398,9 @@ func DefaultConfig() Config {
 		DredgeLibraryFloor: 10,
 		DevourCommander:    10.0,
 		DevourPermanent:    0.25,
+
+		SacrificeDyingAnyway: true,
+		DeathPayoff:          0.60,
 
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
@@ -299,6 +425,53 @@ func DefaultConfig() Config {
 		ConcedeLife:  3,
 		ConcedeTurns: 3,
 	}
+}
+
+// BaselineConfig is the heuristic as it priced cards before S66: the
+// frozen reference the arena's `heuristic-baseline` contestant plays
+// (ADR 0126 §1 and §9).
+//
+// ADR 0126 adds its new pricing terms as Config and Weights fields
+// whose zero value is the old behaviour. This returns DefaultConfig
+// with every one of them zeroed, so a run of `heuristic` against
+// `heuristic-baseline` measures exactly what those terms changed.
+// Each PR that adds a term zeroes it here in the same change.
+//
+// TestBaselineConfigRanksTheSuiteAsBefore (aiseat/suite) holds it to
+// the rankings the policy gave every suite position before S66,
+// whatever DefaultConfig becomes.
+func BaselineConfig() Config {
+	c := DefaultConfig()
+	// §2, mana sources (PR 3).
+	c.Weights.ManaPerExtra = 0
+	c.RampPerMana = 0
+	c.RampWantCap = 0
+	// §3, permanents by what they do (PR 4).
+	c.Weights.PermanentPerMana = 0
+	c.Weights.RowTriggered = 0
+	c.Weights.RowStatic = 0
+	c.Weights.RowActivated = 0
+	c.Weights.RowCap = 0
+	// §5, the two windows (PR 5).
+	c.LeftoverWindows = false
+	c.LeftoverThreshold = 0
+	c.SpellFloor = 0
+	c.TapByTiming = false
+	// §4, §6's prices and §7's discard half (PR 7).
+	c.PricePurposes = false
+	c.TutorWeight = 0
+	c.SelfMillWeight = 0
+	c.DiscardWeight = 0
+	c.TokenWeight = 0
+	c.PriceSweeps = false
+	c.DiscardCostByCard = false
+	c.LastLandDiscard = 0
+	// §7, sacrifice outlets (PR 8).
+	c.SacrificeDyingAnyway = false
+	c.DeathPayoff = 0
+	// ADR 0126's amendment of 2026-10-06: discard payoffs.
+	c.PriceDiscardPayoffs = false
+	return c
 }
 
 // Policy is the heuristic aiseat.Policy. Construct one per bot seat:
@@ -390,6 +563,17 @@ type state struct {
 	step         string
 	myTurn       bool
 	sorcerySpeed bool
+	// beforeMyUntap is the end step of a turn after which the bot's
+	// own turn comes next (ADR 0126 §5): the last window before every
+	// permanent the bot controls untaps. Stack or no stack.
+	beforeMyUntap bool
+	// leftover is ADR 0126 §5's window: the bot's own last main phase
+	// or beforeMyUntap, with an empty stack. Computed whatever the
+	// Config says; Config.LeftoverWindows decides whether it is read.
+	leftover bool
+	// dying caches dyingAnyway per permanent for this decision (ADR
+	// 0126 §7, sacrifice.go).
+	dying map[string]float64
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {
@@ -464,7 +648,46 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	// in stack_items (#1352).
 	st.sorcerySpeed = st.myTurn && len(v.Stack.Cards) == 0 && len(v.StackItems) == 0 &&
 		(st.step == "precombat_main" || st.step == "postcombat_main")
+	stackEmpty := len(v.Stack.Cards) == 0 && len(v.StackItems) == 0
+	st.beforeMyUntap = st.step == "end" && nextTurnSeat(v) >= 0 && v.Seats[nextTurnSeat(v)].ID == st.me
+	st.leftover = stackEmpty &&
+		(st.beforeMyUntap || (st.myTurn && st.step == "postcombat_main" && !mainPhaseUpcoming(v)))
 	return st
+}
+
+// nextTurnSeat is the index into v.Seats of the player whose turn comes
+// after this one: the first queued extra turn (CR 500.7), or else the
+// next seat in turn order that is still in the game. -1 when the view
+// cannot say.
+func nextTurnSeat(v *protocol.GameView) int {
+	if len(v.Turn.ExtraTurns) > 0 {
+		if i := v.Turn.ExtraTurns[0]; i >= 0 && i < len(v.Seats) {
+			return i
+		}
+		return -1
+	}
+	n, as := len(v.Seats), v.Turn.ActiveSeat
+	if as < 0 || as >= n {
+		return -1
+	}
+	for k := 1; k <= n; k++ {
+		if i := (as + k) % n; !v.Seats[i].Eliminated {
+			return i
+		}
+	}
+	return -1
+}
+
+// mainPhaseUpcoming reports whether this turn's plan still holds a main
+// phase — an extra combat's postcombat main (CR 505.1a) — so the current
+// one is not the turn's last sorcery-speed window.
+func mainPhaseUpcoming(v *protocol.GameView) bool {
+	for _, u := range v.Turn.Upcoming {
+		if u.Step == "precombat_main" || u.Step == "postcombat_main" {
+			return true
+		}
+	}
+	return false
 }
 
 // permanentValue is boardValue against this decision's battlefield:
@@ -527,7 +750,17 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 // lands rather than blowing through it (ADR 0033 §10 — the table
 // never waits on a bot).
 func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Move) aiseat.Decision {
+	threshold := p.cfg.PassThreshold
+	if !st.sorcerySpeed {
+		threshold = p.cfg.InstantThreshold
+	}
+	leftover := p.cfg.LeftoverWindows && st.leftover && p.cfg.LeftoverThreshold < threshold
+	// best is the highest-priced move, the fallback when no pass is on
+	// offer. take is the highest-priced move that clears its OWN bar:
+	// with every bar equal (no leftover window) the two are one move
+	// whenever take exists, which is the pre-S66 rule exactly.
 	best, bestVal, bestReason := -1, 0.0, ""
+	take, takeVal, takeReason := -1, 0.0, ""
 	for i := range moves {
 		if i%16 == 0 && ctx.Err() != nil {
 			break
@@ -539,10 +772,19 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
 		}
-	}
-	threshold := p.cfg.PassThreshold
-	if !st.sorcerySpeed {
-		threshold = p.cfg.InstantThreshold
+		bar := threshold
+		if leftover && v <= threshold && p.leftoverEligible(st, moves[i]) {
+			bar = p.cfg.LeftoverThreshold
+			reason += ", leftover mana"
+		} else if p.cfg.LeftoverThreshold < threshold && v <= threshold && p.dyingAnywayEligible(st, moves[i]) {
+			// ADR 0126 §7: a sacrifice of what the bot is about to lose
+			// spends nothing it would keep, §5's premise, in any window.
+			bar = p.cfg.LeftoverThreshold
+			reason += ", dying anyway"
+		}
+		if v > bar && (take < 0 || v > takeVal) {
+			take, takeVal, takeReason = i, v, reason
+		}
 	}
 	passIdx := indexOfKind(moves, legal.KindPass)
 	if passIdx < 0 {
@@ -551,8 +793,8 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		// the pass it stands in for.
 		passIdx = indexOfKind(moves, legal.KindFinishBlocks)
 	}
-	if best >= 0 && bestVal > threshold {
-		return aiseat.Decision{Index: best, Reason: fmt.Sprintf("%s (+%.2f)", bestReason, bestVal)}
+	if take >= 0 {
+		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}
 	}
 	if passIdx >= 0 {
 		return aiseat.Decision{Index: passIdx, Reason: "nothing worth doing"}

@@ -156,9 +156,10 @@ func castPriceCases() []castPriceCase {
 			want: "generic=2 x=0 colors=[]",
 		},
 		{
-			// S21 sub-PR 6: the colour demand folds into generic, so
-			// a preview that kept the pips would report {G}{G}
-			// missing on a board with two Mountains.
+			// S21 sub-PR 6, #1928: the pips stay in the price, widened
+			// to any mana (the shown price is the printed one), so the
+			// preview must solve them as any mana or it would report
+			// {G}{G} missing on a board with two Mountains.
 			name: "granted exile cast that spends mana as any colour",
 			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
 				g := newActiveGame(t)
@@ -174,7 +175,7 @@ func castPriceCases() []castPriceCase {
 				})
 				return g, me, id, CastSpellParams{FromZone: "exile"}
 			},
-			want: "generic=3 x=0 colors=[]",
+			want: "generic=1 x=0 colors=[G G]",
 		},
 		{
 			// ADR 0073 §3, CR 601.2f.

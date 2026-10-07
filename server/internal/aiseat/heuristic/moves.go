@@ -283,12 +283,35 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			}
 			v, reason = pv, "activate another player's ability"
 		}
-		v += st.targetsValue(p.cfg, cp.Targets)
-		for _, id := range cp.SacrificeIDs {
-			if c := st.bf[id]; c != nil {
-				v -= st.permanentValue(c)
+		// #2449: moving an Equipment between the bot's own creatures
+		// buys only what the new host gains (equip_move.go). Priced
+		// flat, a free equip beat passing from either side for ever.
+		if !across && src != nil && st.idleEquip(src, cp) {
+			return idleEquipMove, "re-equip for no gain"
+		}
+		// ADR 0126 §6: a row of the bot's own that declares what it
+		// does — a loot, a land search, a sweep — is priced by that, in
+		// place of the flat ActivateBase, and a row that sacrifices its
+		// own source pays for the source. A row with no purpose keeps
+		// ActivateBase (owner decision 6).
+		purposed := false
+		if !across {
+			var ps purposeSet
+			ps.add(rowPurpose(src, cp.AbilityIndex))
+			if p.purposePriced(ps) {
+				v, reason, purposed = p.purposeValue(st, ps, cp.XValue, nil, false), "activate (declared purpose)", true
+				// A row that taps a creature pays for it below, by when the
+				// tap happens (tapCreatureCost): a loot before combat
+				// costs the attack it replaces.
+				if row := rowAt(src, cp.AbilityIndex); row != nil && row.SacrificeSelf {
+					v -= st.permanentValue(src)
+				}
 			}
 		}
+		v += st.targetsValue(p.cfg, cp.Targets)
+		// ADR 0126 §7: priced by the chance the bot would have kept
+		// each permanent, less its death payoffs (sacrifice.go).
+		v -= p.sacrificeCost(st, cp.SacrificeIDs)
 		// #1600: a permanent exiled to pay the cost leaves the board as
 		// surely as a sacrificed one, so it costs the same.
 		for _, id := range cp.ExilePermanentIDs {
@@ -305,6 +328,17 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		for _, id := range cp.ExileIDs {
 			v -= p.fuelValue(st, id)
 		}
+		// #2016: the cards a "Discard N cards" cost throws away, priced
+		// as a cast's additional-cost discard is (discardCost: what each
+		// is worth to the bot, a late land cheap, the last land dear),
+		// less any discard payoff the bot's own permanents pay.
+		v -= p.discardsCost(st, cp.SourceCardID, cp.DiscardIDs)
+		// #2016: a keyword counter the source already has the keyword
+		// for buys nothing (CR 122.1b), so the price paid is all loss.
+		if src != nil && !across && redundantKeywordCounter(src, cp.AbilityIndex) {
+			v += redundantCounterPenalty
+			reason = "activate (redundant counter)"
+		}
 		// An {X} ability does more the bigger X is, and the
 		// enumerator has already picked the largest X the seat can
 		// actually pay (legal/abilities.go) — so the policy never
@@ -313,18 +347,25 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// valueOfCast uses, for the same reason: with no oracle text
 		// on the wire, what the ability cost is the best available
 		// signal for what it does.
-		if cp.XValue > 0 {
+		if cp.XValue > 0 && !purposed {
 			v += p.cfg.SpellPerMana * float64(cp.XValue)
 		}
 		if src != nil && !across && isCreature(src) && !src.Tapped {
-			// Tapping a creature for an ability costs us a blocker.
-			v -= 0.3
+			// Tapping a creature for an ability costs us a blocker,
+			// priced by when it happens (ADR 0126 §5) when the row's
+			// cost really taps it. A row that does not tap keeps the
+			// flat price it always had.
+			if row := activatedRow(src, cp.AbilityIndex); row != nil && row.TapCost {
+				v -= p.tapCreatureCost(st, src)
+			} else {
+				v -= tappedBlocker
+			}
 		}
 		// Crewing taps creatures that would otherwise block, and the
 		// enumerator names them, so the cost is visible here.
 		for _, id := range cp.CrewIDs {
 			if c := st.bf[id]; c != nil && !c.Tapped {
-				v -= 0.3
+				v -= p.tapCreatureCost(st, c)
 			}
 		}
 		// #1310: a waterbend payment taps artifacts and creatures the
@@ -333,7 +374,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// can see, which is why the enumerator taps those first.
 		for _, id := range cp.WaterbendIDs {
 			if c := st.bf[id]; c != nil && !c.Tapped && isCreature(c) {
-				v -= 0.3
+				v -= p.tapCreatureCost(st, c)
 			}
 		}
 		// #759: a tap-another cost (station) taps a creature the
@@ -357,10 +398,16 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			if c == nil || c.Tapped {
 				continue
 			}
-			v -= 0.3
 			if c.Power > 0 {
 				v += stationPowerPayoff * float64(c.Power)
 			}
+			if p.cfg.TapByTiming {
+				// ADR 0126 §5 generalised this branch's attack price to
+				// every tapped creature; tapCreatureCost carries it.
+				v -= p.tapCreatureCost(st, c)
+				continue
+			}
+			v -= tappedBlocker
 			if st.myTurn && st.step == "precombat_main" && !c.SummoningSick && c.Power > 0 {
 				v -= st.w.Power * float64(c.Power)
 			}
@@ -416,12 +463,28 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// escape buys" cannot disagree about one card (#1013, fuel.go).
 		// The targets are added below; a card being pitched points at
 		// nothing, which is the one difference.
-		v += p.resolvedValue(st, card, cp.XValue)
+		// ADR 0126 §6: priced by the purpose of the cost or the modes
+		// this cast names, so an overloaded Rift is a sweep and a
+		// hard-cast one is not.
+		ps := castPurpose(card, cp)
+		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(cp.Targets) > 0)
+		// ADR 0126 §2: the ramp premium is a CAST price only. It is
+		// what one more source is worth to a seat that is short of
+		// mana now, which a card being pitched to a cost is not.
+		if r := p.rampPremium(st, card); r > 0 {
+			v += r
+			reason = "cast mana source"
+		}
 		switch {
 		case card.Unimplemented:
 			reason = "cast (unimplemented)"
+		case reason == "cast mana source":
 		case isCreature(card) || isPermanentSpell(card):
 			reason = "cast permanent"
+		case p.cfg.PriceSweeps && len(ps.sweeps) > 0:
+			reason = "cast wipe"
+		case p.purposePriced(ps):
+			reason = "cast spell (declared purpose)"
 		default:
 			reason = "cast spell"
 		}
@@ -456,12 +519,24 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v -= p.fuelValue(st, id)
 	}
 	// Additional costs are paid out of the same pool of resources.
-	v -= st.w.Hand * float64(len(cp.DiscardIDs))
-	for _, id := range cp.SacrificeIDs {
-		if c := st.bf[id]; c != nil {
-			v -= st.permanentValue(c)
+	// ADR 0126 §7: a discarded card costs what IT is worth to the bot,
+	// so the enumerator's one payment per discard combination lets the
+	// bot pitch the spare land rather than the last one.
+	if p.cfg.DiscardCostByCard {
+		for _, id := range cp.DiscardIDs {
+			v -= p.discardCost(st, id, cp.InstanceID, cp.DiscardIDs)
 		}
+	} else {
+		v -= st.w.Hand * float64(len(cp.DiscardIDs))
 	}
+	// ADR 0126's amendment of 2026-10-06: a discard the bot's own
+	// permanents pay for (Mary Read's Treasure for an Island) costs
+	// that much less, so the enumerator's cheapest payment is the one
+	// that triggers them.
+	for _, id := range cp.DiscardIDs {
+		v += st.discardPayoff(p.cfg, st.mine[id])
+	}
+	v -= p.sacrificeCost(st, cp.SacrificeIDs)
 	v += st.targetsValue(p.cfg, cp.Targets)
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
@@ -470,6 +545,68 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v -= st.w.CommanderTax * 0.5
 	}
 	return v, reason
+}
+
+// rampPremium is ADR 0126 §2's cast-time premium for a new repeatable
+// mana source: RampPerMana for each mana it makes, up to how short the
+// bot is of casting what it holds.
+//
+//	want    = the largest mana value among the other cards in hand and
+//	          the commander in the command zone (with its tax), capped
+//	          at RampWantCap
+//	sources = the mana the bot's own sources make, tapped or not
+//	deficit = max(0, want − sources)
+//
+// The card being cast is left out of `want`: once it resolves the bot
+// no longer holds it, so a Signet in a hand of one-drops closes no gap.
+// The premium needs no turn decay, because sources grow and the
+// deficit closes on its own. A land is never cast, and a one-shot
+// source (a Treasure, a ritual) is not repeatable, so neither gets it.
+func (p *Policy) rampPremium(st *state, card *protocol.CardView) float64 {
+	if card == nil || isLand(card) {
+		return 0
+	}
+	return p.rampFor(st, card, repeatableMana(card))
+}
+
+// rampFor is the ramp premium for `amount` more mana a turn, with the
+// card `card` (nil for none) left out of `want`: a new mana source's,
+// or the lands a ramp spell puts onto the battlefield (ADR 0126 §6,
+// purposeValue).
+func (p *Policy) rampFor(st *state, card *protocol.CardView, amount int) float64 {
+	if p.cfg.RampPerMana == 0 || amount <= 0 || st.seat == nil {
+		return 0
+	}
+	want := 0
+	consider := func(c *protocol.CardView, tax int) {
+		if (card != nil && c.InstanceID == card.InstanceID) || isLand(c) {
+			return
+		}
+		if mv := manaValue(c.ManaCost, 0) + tax; mv > want {
+			want = mv
+		}
+	}
+	for i := range st.seat.Hand.Cards {
+		consider(&st.seat.Hand.Cards[i], 0)
+	}
+	for i := range st.seat.Command.Cards {
+		c := &st.seat.Command.Cards[i]
+		consider(c, 2*st.seat.CommanderCasts[c.InstanceID])
+	}
+	if want > p.cfg.RampWantCap {
+		want = p.cfg.RampWantCap
+	}
+	sources := 0
+	for _, c := range st.bf {
+		if c.Controller == st.me {
+			sources += repeatableMana(c)
+		}
+	}
+	deficit := want - sources
+	if deficit <= 0 {
+		return 0
+	}
+	return p.cfg.RampPerMana * float64(min(amount, deficit))
 }
 
 // castSource finds the card a cast move names, in any zone a cast can
@@ -533,6 +670,10 @@ func isPermanentSpell(c *protocol.CardView) bool {
 // purpose for it (ADR 0106 §1 decision 8): below passing, so the
 // policy never takes it.
 const anyPlayerDeclined = -1.0
+
+// redundantCounterPenalty sinks "put an indestructible counter on this"
+// below passing when the source is already indestructible (#2016).
+const redundantCounterPenalty = -1.0
 
 // anyPlayerPurposeValue prices an "Any player may activate this
 // ability" row on a permanent this seat does not control, from the

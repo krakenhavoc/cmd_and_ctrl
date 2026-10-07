@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     main phase with an empty stack (CR 307.1), and the Assembly deals
 //     the damage.
 //
-// No purpose for the bot: no ActivationPurpose field describes "1
+// No purpose for the bot: no Purpose field describes "1
 // damage to a creature of your choice", so a bot never pays for another
 // player's Assembly.
 //

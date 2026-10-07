@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "65a64759-3a93-4542-84fc-3af5ccb741f4",
 		Name:         "Avenge",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(2, "This spell costs {2} less to cast if a player attacked you during their last turn.", APlayerAttackedYouDuringTheirLastTurn()),

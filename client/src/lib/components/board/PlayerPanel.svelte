@@ -1037,9 +1037,11 @@
   .panel.opponent.flipped {
     /* Across-table seats: one more size down (the top row is the
        short one), rows reversed so the hand hugs the top edge and
-       creatures face the centre of the table. */
+       creatures face the centre of the table. #2491: the top row is
+       the tucked commander, half a card, so H = 2h + ~72px and
+       h ≈ 50cqh - 36px. */
     --card-h-max: 168px;
-    --card-h: clamp(70px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
+    --card-h: clamp(70px, calc((50cqh - 36px) * var(--card-scale-opponent, 1)), var(--card-h-max));
     --card-h-sm: clamp(48px, calc(var(--card-h) * 0.5), 90px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
@@ -1222,22 +1224,59 @@
       display: none;
     }
   }
-  /* #2438: an across-table opponent is your board's mirror, flipped top
-     to bottom across the table's centre line: their hand and commander
-     along the top edge, the back row under it with the piles in its
-     left corner (yours are in the same corner of your back row), and
-     the creatures facing yours, with their identity at the bottom of
-     the rail beside them, where yours is at the top of your rail beside
-     your creatures. The rail is `display: contents`, as on yours, so
-     the piles leave it and the creatures keep its full height. */
+  /* #2438, #2483: an across-table opponent sits across from you. Their
+     board is yours turned 180° about the table's centre, with the cards
+     themselves left upright to read: their hand along the top edge with
+     their commander on its left (yours is on your hand's right), the
+     back row under it reading enchantments/artifacts then lands, the
+     piles in the top right corner (yours are bottom left),
+     and the creatures facing yours, with their identity at the bottom
+     of the rail on the left, where yours is at the top of your rail on
+     the right. The rail is `display: contents`, as on yours, so the
+     piles leave it and the creatures keep its full height. */
   @media (min-width: 600px) {
     .panel.opponent.flipped {
-      grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
       grid-template-rows: auto auto minmax(0, 1fr);
+      /* #2491: the piles sit in the hand's row, against the top edge
+         like the hand, not in the back row under it. */
       grid-template-areas:
-        "bottom    bottom    bottom"
-        "piles     middle    rail"
-        "creatures creatures rail";
+        "bottom bottom    piles"
+        "rail   middle    middle"
+        "rail   creatures creatures";
+    }
+    /* #2491: their commander is tucked behind the top edge as yours is
+       behind the bottom one: a hand-size card in a box half its height,
+       aligned to the box's foot, so the panel's edge cuts off the half
+       away from the table and the half that faces you shows. The tax
+       goes to the edge you can see. */
+    .panel.opponent.flipped :global(.command-strip) {
+      --strip-h: var(--card-h);
+      height: calc(var(--card-h) * 0.5);
+      align-self: flex-start;
+      align-items: flex-end;
+      padding: 0;
+    }
+    .panel.opponent.flipped :global(.command-strip .slot) {
+      flex: none;
+    }
+    .panel.opponent.flipped :global(.command-strip .tax-badge) {
+      top: auto;
+      bottom: 3px;
+    }
+    .panel.opponent.flipped .grid-bottom,
+    .panel.opponent.flipped .grid-middle {
+      flex-direction: row-reverse;
+    }
+    /* #2486: and what they hold faces them, as it would across a real
+       table. Their hand, their piles' top cards and their commander are
+       turned 180°, so the fan arcs down toward you and each card's top
+       points at the table's centre. What you read stays upright: the
+       pile counts, the commander's tax, and their battlefield. */
+    .panel.opponent.flipped .hand-zone > :global(.hand),
+    .panel.opponent.flipped .rail :global(.pile .thumb),
+    .panel.opponent.flipped :global(.command-strip .slot .card) {
+      transform: rotate(180deg);
     }
     .panel.opponent.flipped .rail {
       display: contents;
@@ -1261,8 +1300,10 @@
     .panel.opponent.flipped .grid-middle {
       gap: 12px;
     }
+    /* Room for "Enchant / artifact 3" when the panel has it; under that
+       the label ends in "…" rather than scrolling the row. */
     .panel.opponent.flipped .grid-middle > :global(.row) {
-      min-width: 96px;
+      min-width: min(124px, 44%);
     }
   }
   /* A narrow self panel (the quadrant's bottom right): the dock is

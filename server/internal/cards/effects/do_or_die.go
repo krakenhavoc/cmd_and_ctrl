@@ -33,8 +33,10 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "f25af42d-f1bf-4bd3-aded-ecadafdbf6e6",
-		Name:         "Do or Die",
+		OracleID: "f25af42d-f1bf-4bd3-aded-ecadafdbf6e6",
+		Name:     "Do or Die",
+		// ADR 0126 §6: one pile of the target player's creatures.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true}},
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

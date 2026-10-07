@@ -270,8 +270,10 @@
   </span>
   <!-- #2438: the row's own card size, which fitRow shrinks the list's
        cards from. It sits outside the list, so the list's override never
-       reaches it. -->
-  <span class="fit-probe" aria-hidden="true"></span>
+       reaches it. The outer box fills the row and clips, so a probe
+       taller or wider than the row (an empty row is one label high) is
+       never scroll overflow. -->
+  <span class="fit-probe" aria-hidden="true"><span class="fit-probe-card"></span></span>
   <div class="row-cards" role="list" aria-label={label} use:fitRow={strip}>
     {#each piles as p (p.key)}
       <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
@@ -404,12 +406,17 @@
   }
   .fit-probe {
     position: absolute;
+    inset: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .fit-probe-card {
+    position: absolute;
     top: 0;
     left: 0;
     width: var(--card-w, 88px);
     height: var(--card-h, 123px);
-    visibility: hidden;
-    pointer-events: none;
   }
   .row-label {
     position: absolute;
@@ -425,11 +432,18 @@
     pointer-events: none;
     font-weight: 600;
     white-space: nowrap;
+    /* Never wider than the row: an absolute label past the row's edge
+       is scroll overflow, which gave a narrow row a scrollbar and could
+       scroll its own label out of view. A long name ends in "…". */
+    max-width: calc(100% - 12px);
   }
   /* Sentence case from the lower-case zone names ("creatures",
      "enchant / artifact"), which stay the rows' accessible names. */
   .row-name {
     display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .row-name::first-letter {
     text-transform: uppercase;
@@ -513,6 +527,24 @@
   }
   .row:not(.strip) .pile:hover {
     z-index: 6;
+  }
+  /* #2442: a tapped card turns 90 degrees about its centre, so it
+     overhangs its box by (h - w) / 2 on each side while its box keeps
+     the upright width, and the turned card painted over its
+     neighbours. The room is padding, not margin, so it is part of the
+     pile's width: fitRow measures it, scales it with the card and
+     counts it in the overlap (lib/rowFit.ts tappedRoom). It eases in
+     over the turn (animations.ts TAP_DURATION). */
+  .row:not(.strip) .pile {
+    transition: padding-inline 180ms var(--ease);
+  }
+  .row:not(.strip) .pile.tapped {
+    padding-inline: calc((var(--card-h, 123px) - var(--card-w, 88px)) / 2);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .row:not(.strip) .pile {
+      transition: none;
+    }
   }
   /* Outside the strip a pile is one card and nothing more; the
      wrapper exists so the markup has one shape. */

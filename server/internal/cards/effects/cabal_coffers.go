@@ -22,8 +22,9 @@ package effects
 // activatable: it costs {2}, taps the land, and adds nothing. That is
 // the printed card.
 //
-// Not auto-tappable, like every ability with a mana component — the
-// player floats the {2} and clicks. See signets.go for the reasoning.
+// Not auto-tappable: the planner funds a mana component only for a
+// static output (#2455), and this one is computed. The player floats
+// the {2} and clicks.
 //
 // No simplification.
 func init() {

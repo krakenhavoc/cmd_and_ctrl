@@ -398,7 +398,7 @@ sites for verbs the server already accepts.
 | `choose_starting_player` | yes | `{ "seat": <int> }` | The winner of the opening roll chooses who takes the first turn (CR 103.1, [ADR 0121](decisions/0121-animated-dice.md) §2): `player` must be `opening_roll.chooser` (or the admin acting for that seat); `seat` is any seat still in the game, the chooser's own included. Then every library is shuffled and every opening hand dealt (CR 103.3, 103.5, 903.7), the starting seat takes turn 1, `opening_roll` disappears and the mulligan proceeds as before. Writes a `starting_player` line. **Final**: it mints no undo entry. Added in S61. |
 | `roll_table_die` | yes | `{ "die": "d6" \| "d20" \| "coin" }` | "Roll a die" ([ADR 0121](decisions/0121-animated-dice.md) §5): rolls a d6 or a d20, or flips a coin, at the table, for the calling player. **Not a game roll**: no effect instructed it (CR 706.1), so it is never a `roll` or `flip` and no "whenever you roll" or "whenever you win a coin flip" ability sees it; it changes nothing but the log, where it writes one `table_roll` line. Legal at any time while the game is active, the opening roll and the mulligan included; refused for an eliminated seat, and with `bad_request` ("a table roll is a d6, a d20 or a coin") for any other `die`. Drawn from its own keyed stream outside the turn counters, so it moves no card's draw, and never replayed by an undo. **One per seat per 2 s**: the next inside that is refused with `bad_request` ("wait for your last roll to land"), so a held-down button cannot push the game's history out of the 200-entry log. Mints no undo entry, and an undo of another action does not erase its line (see `table_roll` below). Bots are never offered it. Added in S61. |
 | `set_trigger_order_preference` | yes | `{ "always_ask": boolean }` (required) | "Always ask me to order my triggers" (#1530, [ADR 0018](decisions/0018-triggers-on-the-stack.md) 2026-10-05 amendment). Sets the calling seat's own preference (default off); the admin may set any seat's. When on, a batch of two or more of that seat's triggers raises the CR 603.3b `trigger_order` prompt even when every item commutes (an all-prowess batch, #1511) or is identical. Only that seat is affected. A setting, not a play: mints no undo entry, an undo of another action does not revert it, it is legal during the opening roll, and it is refused with `bad_request` once the game is not active. A missing `always_ask` is `bad_request`. The value rides the engine snapshot, so it survives a restart. The client re-sends it whenever its own seat's `trigger_order_always_ask` disagrees with the local setting. Bots are never offered it. |
-| `declare_attacker` | no | `{ "attacker": "<uuid>", "target": "<uuid>" }` | Marks a battlefield card as attacking the target player. Step-gated to `declare_attackers`; rejects with `bad_request` outside that step. Attacker must be a creature (`type_line` contains "Creature"); rejects with `bad_request` otherwise. Re-declaring the same attacker against a different target overwrites. Caller must control the attacker (admin sessions bypass) — see "controller-only card actions" below. Added in S08; controller gate added in S08.5. Since [ADR 0080](decisions/0080-attack-taxes.md) it also carries the CR 508.1a payment trio — see the attack-tax paragraph below the table. Since #1507 it is refused with `illegal_attack` / `attack_limit` when one more attacker would break a CR 508.1c count limit (Silent Arbiter, Crawlspace). Since #1571 it is refused with `illegal_attack` / `attack_requirement` when it would make a CR 508.1d requirement unobeyable (a goaded creature at its goader while another opponent is open). |
+| `declare_attacker` | no | `{ "attacker": "<uuid>", "target": "<uuid>" }` | Marks a battlefield card as attacking the target player. Step-gated to `declare_attackers`; rejects with `bad_request` outside that step. Attacker must be a creature (`type_line` contains "Creature"); rejects with `bad_request` otherwise. Re-declaring the same attacker against a different target overwrites. Caller must control the attacker (admin sessions bypass) — see "controller-only card actions" below. Added in S08; controller gate added in S08.5. Since [ADR 0080](decisions/0080-attack-taxes.md) it also carries the CR 508.1a payment trio — see the attack-tax paragraph below the table. Since #1507 it is refused with `illegal_attack` / `attack_limit` when one more attacker would break a CR 508.1c count limit (Silent Arbiter, Crawlspace). Since #1571 it is refused with `illegal_attack` / `attack_requirement` when it would make a CR 508.1d requirement unobeyable (a goaded creature at its goader while another opponent is open). Since #2462 `legal_moves` offers it only while the active player holds priority: their `pass_priority` ends the declaration, so after it no attack is offered (the verb itself still checks only the step). |
 | `declare_attackers` | no | `{ "attackers": [{ "attacker": "<uuid>", "target": "<uuid>" }, ...] }` | Declares a whole attacking set in ONE action — the wire verb behind the client's "attack with all" cluster (#318). Step-gated to `declare_attackers`. Each entry is checked independently and **skipped silently** when the creature is unknown, is not a creature, is tapped, is summoning-sick (CR 302.6), has `defender` (CR 702.3), is already declared this combat, or names a seat that is the creature's own controller / eliminated / nonexistent — one ineligible creature must never sink a wide declaration. Rejects with `bad_request` when the batch is empty, exceeds 256 entries, contains a malformed UUID, or when EVERY entry was skipped. Caller must control every listed creature; a foreign creature rejects the whole batch (authorization is not part of the skip contract). Declared creatures tap unless they have `vigilance` (CR 508.1f / 702.20), emit one `EventAttack` each, and drain through a single state-check pass so simultaneous attack triggers reach the stack together (CR 508.1 / 508.2). Prefer this over looping `declare_attacker`: each action is one undo entry and one broadcast snapshot, so N creatures would otherwise cost N of both against a per-turn undo budget of 1. Added in S31. Since [ADR 0080](decisions/0080-attack-taxes.md) there is ONE exception to the silent-skip contract — the CR 508.1a attack tax is all or nothing; see below. #1507 adds the second: a CR 508.1c count limit (Silent Arbiter, Crawlspace) refuses the whole eligible set with `illegal_attack` rather than choosing which creatures to drop. #1571 adds the third, for the same reason: a set that makes a CR 508.1d requirement unobeyable is refused whole with `illegal_attack` / `attack_requirement`.
 | `declare_blocker` | no | `{ "blocker": "<uuid>", "attacker": "<uuid>" }` | Marks a battlefield card as blocking the named attacker. Step-gated to `declare_blockers`. Blocker must be a creature; attacker must exist on the battlefield. Caller must control the blocker. Exactly a one-entry `declare_blockers`, so since #750 it can also be refused for a block COUNT: one creature is not a legal block on a menace attacker and comes back as `illegal_block` / `too_few_blockers` with nothing stored. Send `declare_blockers` for a block that needs several creatures. Added in S08; controller gate added in S08.5; count refusal in S37. |
 | `declare_blockers` | no | `{ "blocks": [{ "blocker": "<uuid>", "attacker": "<uuid>" }, ...] }` | Declares a whole block in ONE action (#750, [ADR 0045](decisions/0045-combat-restrictions.md) addendum Decision 13). Step-gated to `declare_blockers`. Exists for a RULES reason, not as a batching convenience: a block COUNT (menace's minimum of two, Hungering Hydra's maximum of one) is a property of the whole declaration, so a two-creature menace block is legal only as a pair and **cannot** be sent as two `declare_blocker` actions — the first would be refused with `too_few_blockers`. **All or nothing**, unlike `declare_attackers`: the set is validated as it will be after the action (each entry's pair legality, then the count bounds for every attacker whose blocker set the action changes, including one that LOSES a re-pointed blocker), and if anything is refused nothing is stored, nothing is announced and the first refusal comes back as `illegal_block`. Rejects with `bad_request` when the batch is empty, exceeds 256 entries, or contains a malformed UUID. Caller must control every listed blocker; a foreign creature rejects the whole batch. An entry naming a creature that is already blocking RE-POINTS it — unless the creature can block more than one attacker (#1706; `block_capacity` / `blocks_any_number` on its card), when it ADDS the attacker while there is room and is refused with `blocker_capacity` once there is none. Like `declare_blocker` the verb only STAGES the pairings — nothing is announced until the declaration is locked in (#830), which since #1279 is when the blocking seat's declaration COMPLETES (see `finish_blocks`). Added in S37. |
@@ -1073,6 +1073,11 @@ canonical type definition. High-level shape:
 - **CardView.token_text** (S46, [ADR 0083](decisions/0083-token-abilities.md), omitempty): a TOKEN's printed ability text, verbatim — `"When this token dies, you gain 1 life."`, with `\n` between printed lines. Absent for every printed card and for a vanilla token, which is what makes it additive: a pre-ADR-0083 client ignores the unknown key harmlessly. **It exists for the tokens ADR 0078's resolver still can't place.** [ADR 0078](decisions/0078-token-art.md) resolves most tokens to a Scryfall token printing at creation and stamps it onto `scryfall_id`; a token that resolves to nothing (no matching printing, or the dump the process loaded doesn't have one) keeps `scryfall_id` empty and renders through `Card.svelte`'s `.name-fallback` branch — the name on a grey rectangle. A mana or activated ability escapes that either way, because it reaches the player as a row in the right-click menu; a token's own TRIGGER ("when this token dies, create a 2/2 red Dragon") or STATIC has no control to hang text off, so without this field the words are nowhere on the client at all for a token that has no art. `EmblemView.text` is the same field for the same reason, one object over. **Derived on every read** from the token template's catalog entry (`game.TokenTextForCard`), never stored, so a wording fix reaches a game already in progress. Keyed on `CatalogKey` and not `CatalogAbilityKey`: a token silenced by Dress Down still shows what it PRINTS, exactly as the client keeps rendering a silenced card's oracle text. CR 707.2 rides along — a token that is a copy of a printed card has that card's oracle ID, answers empty here, and renders that card's own printing instead. Cleared on the non-knower redaction with the other catalog reads, though a token is known to every seat so the cell never fires in a real game.
 
 - **CardView.ability_rows** (#2219, omitempty): `[{ kind, label }]`, the card's non-keyword abilities for the art tile's chips. `kind` is `"triggered"`, `"static"` or `"activated"`; the list is in that order. `label` is written by the server: a triggered row's `Key` and an activated row's `Label` (the names a stack item carries, ADR 0041 P9), a static slot's own label, each with the card's own name dropped from the front (`"Inferno Titan — 3 damage divided…"` reads `"3 damage divided…"`; a granted row keeps its grantor's name); a row the catalog gives no words is described by what it is (`"Replacement effect"`, `"Power/toughness effect"`). The client draws one chip per kind present with a count (⚡ ◆ ↻) after the keyword chips and lists the labels on hover or focus; **it never reads oracle text for them**. Built by `game.AbilityRowsOf` from the catalog through the same accessors the engine uses, so it is the card's **current** abilities: a CR 613.1f "loses all abilities" effect empties it, a layer-6 grant the layer pass let survive is in it (beside `granted_abilities`' text), an ADR 0071 designation gate decides a gated row, and a face-down permanent has none (CR 708.2). Off the battlefield it is what the card prints. Left out: keyword abilities (a trigger with a `Keyword`, the static synthesised from `PrintedKeywords`, and activated keyword abilities such as equip, crew and cycling — the keyword chips and the type line carry those) and mana abilities (ADR 0105's drop pip). An ability that only wears a keyword's frame around its own effect (`"Exhaust — {4}: Earthbend 4."`) is counted. Static rows come from `Static` and every other `CardDef` slot that holds a static ability of the object (cost modifiers, replacement effects, "can't gain life" and the rest); `game.TestEveryCardDefSlotIsClassifiedForAbilityRows` fails on a new slot until it is placed. Stamped only on the **battlefield and the hand**, the zones a tile is drawn in; absent for an uncatalogued card, which keeps `unimplemented`. Public on a card the viewer can see and cleared with the ability rows on the non-knower redaction. Additive: a client that ignores it shows no chips.
+- **CardView.purpose** (ADR 0126 §6, omitempty): what the card does, as
+  the catalog declares it. See
+  [Declared purpose](#declared-purpose-what-a-spell-or-an-ability-does-adr-0126-6-2026-10-06).
+  Hand, battlefield and stack; cleared with `ability_rows` on the
+  non-knower redaction.
 
 - **CardView.prepared** (#1328, [ADR 0090](decisions/0090-preparation-cards.md), omitempty): a permanent's CR 722.3a PREPARED designation. While it is set, the permanent's controller may cast the copy of its prepare spell that sits in exile — and that copy needs no new field: it is an ordinary card in `exile` whose `name` / `type_line` / `mana_cost` are the prepare spell's (face `1` active), carrying the `exile_play` stamp the client's exile button already reads, with `faces: [1]` and `player` naming the prepared permanent's controller. The stamp is DERIVED from the live permanent on every frame, so it disappears the moment the permanent leaves, is unprepared or its copy is cast; the copy itself leaves the `exile` zone view at the next state check. Public (the prepared creature and its copy are both visible across the table) and absent rather than `false` for every permanent that is not prepared; cleared on the non-knower redaction with `class_level` and `solved`. The client renders it through the same designation badge ("PREPARED").
 - **CardView.doors** ([ADR 0103](decisions/0103-rooms.md), omitempty): a Room's two CR 709.5c designations, `{ "left": bool, "right": bool }` — `true` is an unlocked door. Present only for a face-up Room on the battlefield, so `false` inside it is a locked door and its absence means "not a Room on the battlefield". A locked half has no name, mana cost or rules text (CR 709.5), so a fully locked Room's `name` and `mana_cost` are empty: the client labels it from `faces`, which carries both halves. Public; cleared on the non-knower redaction with `class_level`. Each locked door's unlock is a `special_actions` row with `kind: "unlock"` and `door: "left"` or `"right"`, priced at that half's cost, with the server's own `available` timing answer.
@@ -2616,7 +2621,9 @@ Feral Hydra, Excavation) says everyone.
 - **`purpose: {draws?, controller_loses_life?}` on such a row.** What the
   row buys an activator who does not control the permanent, declared by
   the catalog (ADR 0106 §1 decision 8). The bot reads it; a client may
-  ignore it.
+  ignore it. Since ADR 0126 the field is the one `purpose` object below,
+  and may appear on any row; `controller_loses_life` is still declared
+  on `any_player` rows alone.
 - **The digest.** `legal_actions.sources` (ADR 0105) is built from the
   viewer's own move list, so another player's permanent appears there,
   for the viewer alone, exactly when the viewer may activate one of its
@@ -2627,6 +2634,117 @@ Feral Hydra, Excavation) says everyone.
   Alice's Xantcha, Sleeper Agent", with `target_seat` the controller.
   An activation by the permanent's own controller is not narrated, as
   before.
+
+## Declared purpose: what a spell or an ability does (ADR 0126 §6, 2026-10-06)
+
+Additive, `v` unmoved, no snapshot change. A `purpose` object says what
+a card, a mode, an alternative cost or an ability does, as printed
+amounts. It is declared by hand on the card file in the catalog, like
+the completeness mark, and never derived from oracle text at run time.
+The engine never reads it: it is there for the heuristic bot, which
+reads the view and nothing else (ADR 0033 §3), and could not otherwise
+tell Wrath of God from Divination. A client may ignore it. A card or
+row that declares nothing has no `purpose` key at all.
+
+```json
+"purpose": {
+  "draws": 2, "controller_loses_life": 2, "discards": 1, "lands": 2,
+  "tutors": 1, "self_mill_tutor": 1, "tokens": 2,
+  "sweep": {"matches": "creatures", "how": "destroy", "amount": 3,
+            "amount_is_x": true, "opponents_only": true, "partial": true},
+  "death_payoff": true,
+  "discard_payoff": {"types": ["island", "pirate", "vehicle"],
+                     "tokens": 1, "counters": 1, "damage_each_opponent": 1}
+}
+```
+
+Every field is omitted when zero.
+
+| Field | Meaning | Example |
+|---|---|---|
+| `draws` | cards its controller draws (on an `any_player` row, the activator) | Night's Whisper 2 |
+| `controller_loses_life` | life the source's controller loses; `any_player` activated rows only (ADR 0106) | Xantcha 2 |
+| `discards` | cards its controller discards on resolution (a discard paid as a cost is `additional_cost`'s) | Faithless Looting 2 |
+| `lands` | land cards it puts onto the battlefield | Harrow 2 |
+| `tutors` | cards it searches out to hand or to the top of the library | Demonic Tutor 1 |
+| `self_mill_tutor` | cards it searches out into the graveyard | Entomb 1 |
+| `tokens` | tokens it creates for its controller | Big Score 2 |
+| `sweep` | present on a board wipe; see below | Wrath of God |
+| `death_payoff` | on a triggered row: it pays out whenever a creature its controller controls dies | Blood Artist |
+| `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
+
+An amount is the printed number. A card whose amount is X, or is
+counted at resolution ("draw a card for each creature you control"),
+does not declare it.
+
+`sweep` describes the permanents a wipe removes:
+
+- `matches`: `creatures`, `nonland_permanents`, `artifacts`,
+  `enchantments`, `artifacts_and_enchantments`, `all_permanents`,
+  `creatures_mana_value_3_or_less`, `creatures_mana_value_4_or_greater`.
+- `how`: `destroy`, `exile`, `bounce` (to the owners' hands), `damage`,
+  `minus` (−N/−N) or `sacrifice`.
+- `amount`: the damage or the N, for `damage` and `minus`. Absent with
+  `amount_is_x`, when the amount is the spell's or ability's X.
+- `opponents_only`: only permanents its controller's opponents control
+  ("creatures your opponents control", "target player controls").
+- `partial`: some permanents of the class are spared by a condition
+  `matches` does not name (nonwhite, without flying, power 4 or
+  greater), so `matches` is an upper bound.
+
+`discard_payoff` (ADR 0126's amendment of 2026-10-06) says which
+discarded cards a triggered row pays on, and what it pays for each one:
+
+- `any`: every card its controller discards ("a card", "one or more
+  cards"). Otherwise `types` lists the card types and subtypes it pays
+  on, lowercase as printed (`["island", "pirate", "vehicle"]`); a card
+  with any one of them on its type line matches. A payoff has one of the
+  two, never both.
+- `tokens`: tokens it creates for its controller per card (Mary Read's
+  tapped Treasure).
+- `counters`: +1/+1 counters it puts on its source per card (Marauding
+  Mako).
+- `damage_each_opponent`: damage its source deals to each opponent per
+  card (Glint-Horn Buccaneer).
+
+It rides on `ability_rows[i].purpose` with the rest of the row, so a
+hidden hand card and a face-down permanent never carry one.
+
+Where it rides:
+
+- **`CardView.purpose`**: the spell's resolution, or a permanent's
+  enters effect. On the hand, the battlefield and the stack. Public on a
+  card the viewer can see, and cleared with `ability_rows` for a viewer
+  who cannot, so an opponent's hand card and a face-down object never
+  carry one.
+- **`modes.options[i].purpose`**: one bullet of a modal spell or
+  ability (Farewell's "Exile all creatures."). A modal card declares its
+  purposes here rather than on the card.
+- **`alternative_costs[i].purpose`**: what the spell does when cast for
+  that cost, where that differs from the card's own (overload turns
+  Cyclonic Rift into a bounce sweep).
+- **`activated_abilities[i].purpose`**: an activated row's own (a loot,
+  Nevinyrral's Disk). It is no longer only on `any_player` rows.
+- **`ability_rows[i].purpose`**: a triggered or activated row's, on the
+  tile's row list (`death_payoff` on Blood Artist's trigger,
+  `discard_payoff` on Mary Read and Anne Bonny's).
+
+The modes and the offers are public with their labels, which say the
+same thing in words, and hidden exactly when those are.
+
+## An equip row says it is one (#2449, 2026-10-07)
+
+Additive, `v` unmoved.
+
+- **`equip: true` on an `activated_abilities[i]` row** that is a CR
+  702.6 equip ability: the row `effects.EquipAbility` builds, the same
+  bit Leonin Shikari reads (#1208). Absent on every other row.
+
+It is bot data. A bot's policy reads it to tell an equip from any other
+"target creature you control" row, because moving an Equipment between
+two of its own creatures buys only what the new host gains, and a free
+equip priced like a pump was moved back and forth forever (#2449). The
+client does not read it. Public with the row.
 
 ## Schema evolution rules
 

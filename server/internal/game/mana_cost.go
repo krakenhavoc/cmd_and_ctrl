@@ -72,17 +72,6 @@ type ParsedCost struct {
 	// informational for S17's snow-routing work.
 	HasSnow bool
 
-	// FoldedColored is how many of the symbols in Generic are really
-	// COLOURED (or colourless) symbols that a "spend mana as though it
-	// were mana of any colour / type" grant folded into the generic
-	// demand (asAnyColorCost, asAnyTypeCost). The fold is right for
-	// the mana solver, which may now pay them with anything, and wrong
-	// for delve, which pays only generic mana (CR 702.66a): a
-	// Breeches-granted Murktide Regent must not delve away its {U}{U}.
-	// delveBudget subtracts it. Zero for every cost no grant touched.
-	// ADR 0100 §1.
-	FoldedColored int
-
 	// SpendOnly is a COST-side spend restriction, resolved: "Spend
 	// only mana of the chosen color to activate this ability" (Throne
 	// of Eldraine), "Spend only black mana on X" (Crypt Rats). Nil for
@@ -137,13 +126,16 @@ type ColorRequirement struct {
 	// Snow marks a requirement parsed from {S} rather than {C}. See
 	// the type doc above.
 	Snow bool
-	// AnyMana marks a Phyrexian slot whose MANA half a "spend mana as
-	// though it were mana of any color / any type" grant has widened
-	// to any mana (#1589, CR 107.4f). Never set by ParseCost: only
-	// spendAsThoughAny sets it, on a Phyrexian requirement it keeps
-	// rather than folding into generic, so the "or 2 life" half
-	// survives the grant. Options, Phyrexian and String still describe
-	// the printed symbol; what changes is Admits.
+	// AnyMana marks a slot whose MANA half a "spend mana as though it
+	// were mana of any color / any type" grant has widened to any mana:
+	// a cast permission's (spendAsThoughAny, #1928), or a player static
+	// read at the payment (widenForAnyColorSpend, #1600). Never set by
+	// ParseCost. Options, Phyrexian and String still describe the
+	// printed symbol, so the price still renders as printed, a
+	// Phyrexian slot keeps its "or 2 life" half (#1589), and convoke
+	// still pays the slot by the printed colour rule, because a
+	// creature is not mana (CR 702.51a, payerCoversRequirement). What
+	// changes is Admits.
 	AnyMana bool
 }
 

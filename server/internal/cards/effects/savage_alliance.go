@@ -41,7 +41,7 @@ func init() {
 			ModeDoing("Savage Alliance deals 2 damage to target creature.",
 				TargetCreature("target creature"),
 				DealFixedDamageToModesTarget(2)),
-			ModeDoing("Savage Alliance deals 1 damage to each creature target opponent controls.",
+			ModeWithPurpose(ModeDoing("Savage Alliance deals 1 damage to each creature target opponent controls.",
 				TargetPlayer("target opponent", Opponent()),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -64,7 +64,7 @@ func init() {
 						}
 						return nil
 					})
-				}),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, OpponentsOnly: true}}),
 		), EscalateMana("{1}")),
 	})
 }

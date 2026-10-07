@@ -58,12 +58,25 @@ export function fitOverlap(
 }
 
 /**
+ * tappedRoom is the extra width, in px, a tapped card needs on EACH side
+ * of its box (#2442). A card turns 90 degrees about its centre, so its
+ * box keeps the upright width `cardW` while the painted card is `cardH`
+ * wide: it overhangs by (cardH - cardW) / 2 per side. BattlefieldRow
+ * gives a tapped pile that much padding (the same expression in CSS), so
+ * the row's measured widths, fitScale and fitOverlap already include it.
+ * A card wider than tall has no overhang.
+ */
+export function tappedRoom(cardW: number, cardH: number): number {
+  return Math.max(0, (cardH - cardW) / 2);
+}
+
+/**
  * fitRow is the action on a row's card list. Whenever the row, a pile,
  * the set of piles or the row's own card size changes, it shrinks the
  * cards to fit (publishing `--card-w` / `--card-h` on the list) and then
  * publishes the overlap that is still needed as `--fit-overlap`.
  *
- * The row's own card size is read from a `.fit-probe` beside the list,
+ * The row's own card size is read from a `.fit-probe-card` beside the list,
  * which is sized by the inherited `--card-w` / `--card-h` and so never
  * sees the list's override. With `strip`, the piles overlap each other
  * by design (the land strip), so the row's natural width is its
@@ -77,7 +90,8 @@ export function fitRow(
   if (typeof ResizeObserver === "undefined") return { update() {}, destroy() {} };
   let frame = 0;
   let scale = 1;
-  const probe = node.parentElement?.querySelector<HTMLElement>(":scope > .fit-probe") ?? null;
+  const probe =
+    node.parentElement?.querySelector<HTMLElement>(":scope > .fit-probe > .fit-probe-card") ?? null;
   const measure = (): void => {
     frame = 0;
     const piles = [...node.children].filter((c): c is HTMLElement => c instanceof HTMLElement);

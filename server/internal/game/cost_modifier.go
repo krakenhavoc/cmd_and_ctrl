@@ -586,6 +586,11 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	if q.SpecialAction != nil {
 		return out
 	}
+	// #1852: "the next <kind> spell you cast this turn costs {N} less",
+	// held on the caster and spent by the cast (next_spell_promise.go).
+	// Read here, in the one place every cast is priced, so the payment
+	// path, the auto-tap preview and the legal-move enumerator agree.
+	out = append(out, g.nextSpellCostModifiersLocked(q.Controller, q.Card)...)
 	if self := SelfCostModifiersFor(q.Card); len(self) > 0 {
 		src := q.Card
 		src.Controller = q.Controller

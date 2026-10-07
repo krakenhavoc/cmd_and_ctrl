@@ -135,7 +135,7 @@ func composeAbilityKey(own string, grants []GrantedAbility) string {
 func AbilityKeyFromLKI(identity Card, lki Characteristic) string {
 	own := ""
 	if !lki.AbilitiesRemoved {
-		own = CatalogKey(identity)
+		own = withRemovedRows(CatalogKey(identity), lki.RemovedOwnAbilities)
 	}
 	return composeAbilityKey(own, lki.GrantedAbilities)
 }
@@ -276,9 +276,15 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 			if key := catalogKeyOf(c); key != "" {
 				// ADR 0071: an ability gated on a designation the
 				// permanent does not have is not on the permanent.
+				removedRows := ownActivatedRemovals(c)
 				own, ownIdx = activeOnlyIndexed(c, CatalogActivatedAbilities(key), func(a ActivatedAbilityShape) Designation {
 					return a.ActiveWhen
-				}, wantOrigins)
+				}, wantOrigins || removedRows)
+				// #1859: a row switched off one at a time. The survivors
+				// keep their declared-list index, so their refs hold.
+				if removedRows {
+					own, ownIdx = dropRemovedActivated(c, own, ownIdx)
+				}
 			}
 		}
 	}

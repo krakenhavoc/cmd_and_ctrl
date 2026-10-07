@@ -28,8 +28,9 @@ import "github.com/google/uuid"
 // row's charged cost, the preview's `cost` — stays the printed one,
 // which is what CR 609.4b says it is.
 //
-// WIDENED, NOT FOLDED. The permission fold moves a coloured symbol into
-// the generic demand. That throws away which colour the card printed,
+// WIDENED, NOT FOLDED. A cast permission's grant used to fold a coloured
+// symbol into the generic demand (#1928 made it widen too, ADR 0066's
+// 2026-10-06 amendment). A fold throws away which colour the card printed,
 // and the solvers' colourless-first generic order would then pay a
 // Firespout's {R/G} with the Orrery's colourless and lose its red mode.
 // "You MAY spend" never makes a card worse, so this fold marks each
@@ -43,7 +44,7 @@ import "github.com/google/uuid"
 // not mana, and a green creature still cannot convoke a {U} under an
 // Orrery. Every payment site calls this after the tap subtraction and
 // the delve reduction, so the widening reaches only what is left for
-// mana to pay. Before the Phyrexian strike, as the permission fold is,
+// mana to pay. Before the Phyrexian strike, as the permission widening is,
 // so a widened {B/P} keeps its "or 2 life" half (#1589).
 
 // AnyColorSpendWhose is which players a printed "spend mana as though

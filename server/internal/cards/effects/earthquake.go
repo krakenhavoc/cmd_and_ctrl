@@ -19,8 +19,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "9a40614b-50a3-422c-849e-53c8b7d3d204",
-		Name:         "Earthquake",
+		OracleID: "9a40614b-50a3-422c-849e-53c8b7d3d204",
+		Name:     "Earthquake",
+		// ADR 0126 §6: a creature with flying is spared.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, Partial: true}},
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

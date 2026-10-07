@@ -25,14 +25,14 @@ func init() {
 		Name:         "Caught in the Crossfire",
 		Completeness: CompletenessFull,
 		Modes: Spree(
-			SpreeModeDoing("Caught in the Crossfire deals 2 damage to each outlaw creature.", "{1}", nil,
+			ModeWithPurpose(SpreeModeDoing("Caught in the Crossfire deals 2 damage to each outlaw creature.", "{1}", nil,
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					return damageEachMatching(ctx, And(Creature(), b40Outlaw()), 2)
-				}),
-			SpreeModeDoing("Caught in the Crossfire deals 2 damage to each non-outlaw creature.", "{1}", nil,
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2, Partial: true}}),
+			ModeWithPurpose(SpreeModeDoing("Caught in the Crossfire deals 2 damage to each non-outlaw creature.", "{1}", nil,
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					return damageEachMatching(ctx, And(Creature(), Not(b40Outlaw())), 2)
-				}),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2, Partial: true}}),
 		),
 	})
 }

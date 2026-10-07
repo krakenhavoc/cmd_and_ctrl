@@ -16,8 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "c7ca25f3-7a22-477b-8546-4c2597d5d1ff",
-		Name:         "Extinguish All Hope",
+		OracleID: "c7ca25f3-7a22-477b-8546-4c2597d5d1ff",
+		Name:     "Extinguish All Hope",
+		// ADR 0126 §6: an enchantment creature stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{Match: And(Creature(), Not(Enchantment()))}.Apply(ctx)

@@ -1003,11 +1003,13 @@
   });
 
   // Step-based gating mirrors the server's MTG-rules check. Attackers
-  // can only be declared during declare_attackers and only by the
-  // active player; blockers only during declare_blockers and only
-  // when the viewer is being attacked.
+  // can only be declared during declare_attackers, only by the active
+  // player, and only while they hold priority: their pass ends the
+  // declaration (#1571), and the server offers no attack after it
+  // (#2462). Blockers only during declare_blockers and only when the
+  // viewer is being attacked.
   const canDeclareAttackers = $derived(
-    !!turn && turn.step === "declare_attackers" && viewerIsActive,
+    !!turn && turn.step === "declare_attackers" && viewerIsActive && viewerHasPriority,
   );
   const canDeclareBlockers = $derived(
     !!turn && turn.step === "declare_blockers" && incomingAttackers.length > 0,

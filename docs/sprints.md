@@ -109,7 +109,7 @@ planned just-in-time from the S12 pain-point triage.
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
 | S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
-| S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | planned     |
+| S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | **done**    |
 
 ### How to read the status column
 
@@ -3583,15 +3583,16 @@ Opened 2026-10-06, after a precon evaluation (52 arena games with decision logs)
 
 The members are ADR 0126's Delivery PRs.
 
-- [ ] ADR 0126: the heuristic prices what a card does (PR 1, with this section)
-- [ ] PR 2: measurement. The arena's per-deck Play table and Cards section (offered, taken, `never`), the `heuristic-baseline` contestant and `BaselineConfig()`, and the baseline runs recorded in the ADR. No price changes.
-- [ ] PR 3: mana sources. A source is worth the mana it makes, and a ramp premium applies while the bot is short of mana for its hand and commander.
-- [ ] PR 4: permanents by what they do. A mana-value floor for non-creature permanents, and utility from `ability_rows` for them and for creatures.
-- [ ] PR 5: the two windows. The bot's own second main and the end step before its turn: spend leftover mana and free taps, a floor under instants and sorceries, and a tapped-blocker price that depends on timing.
-- [ ] PR 6: the purpose signal. `PurposeView` on the wire and `Spec.Purpose` in the catalog, declared for the curated decks and every board wipe, with `TestCuratedDeckPurposes` and a manual dump audit.
-- [ ] PR 7: wipes priced by the change in score, ramp spells by the lands they fetch, and discard costs net of the cards drawn.
-- [ ] PR 8: sacrifice outlets. A creature that is dying anyway, and death payoffs.
-- [ ] PR 9: the exit run against ADR 0126's acceptance bar, the Measurements, `docs/bot.md`, and the evidence on #2435.
+- [x] ADR 0126: the heuristic prices what a card does (PR 1, with this section)
+- [x] PR 2: measurement. The arena's per-deck Play table and Cards section (offered, taken, `never`), the `heuristic-baseline` contestant and `BaselineConfig()`, and the baseline runs recorded in the ADR. No price changes.
+- [x] PR 3: mana sources. A source is worth the mana it makes, and a ramp premium applies while the bot is short of mana for its hand and commander.
+- [x] PR 4: permanents by what they do. A mana-value floor for non-creature permanents, and utility from `ability_rows` for them and for creatures.
+- [x] PR 5: the two windows. The bot's own second main and the end step before its turn: spend leftover mana and free taps, a floor under instants and sorceries, and a tapped-blocker price that depends on timing.
+- [x] PR 6: the purpose signal. `PurposeView` on the wire and `Spec.Purpose` in the catalog, declared for the curated decks and every board wipe, with `TestCuratedDeckPurposes` and a manual dump audit.
+- [x] PR 7: wipes priced by the change in score, ramp spells by the lands they fetch, and discard costs net of the cards drawn.
+- [x] ADR 0126 amendment (2026-10-06): discard payoffs. A `discard_payoff` purpose on a triggered row (Mary Read and Anne Bonny, Marauding Mako and four more), and a discard the bot's own payoffs pay for priced that much cheaper.
+- [x] PR 8: sacrifice outlets. A creature that is dying anyway, and death payoffs.
+- [x] PR 9: the exit run against ADR 0126's acceptance bar, the Measurements, `docs/bot.md`, and the evidence on #2435.
 - [ ] [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436): rebalance the curated decks, measured with the new pricing. Starts after PR 9.
 - [ ] Stretch, or the next sprint: [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck (Gruul or Boros creature combat).
 
@@ -3599,15 +3600,30 @@ The members are ADR 0126's Delivery PRs.
 
 From [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) and ADR 0126 §8:
 
-1. ADR 0126 is accepted, and every PR in its Delivery table has merged into `develop`.
-2. On today's four decks, a 64-game four-deck rotation shows at most 5 `never` cards per deck, every mana rock and dork used in at least 80% of the games it was offered in, and each of the six canaries (Sol Ring, Rhystic Study, Mary Read's loot, Entomb, Harrow, Viscera Seer) used in at least 50%.
-3. In 96 games of the new heuristic against `heuristic-baseline`, with the decks split evenly, the new heuristic's Wilson interval lies above the 25% null. No deck's interval in the rotation lies entirely above 50%.
-4. Every gated suite position passes, including the new ones for each card class, and no tag's agreement falls. The `bot-games`, `bot-soak` and `catalog-soak` nightly jobs are green on `develop`.
-5. The evidence is posted on #2435. #2436 can then start.
+- [x] 1. ADR 0126 is accepted, and every PR in its Delivery table has merged into `develop`.
+- [x] 2. On today's four decks, a 64-game four-deck rotation shows at most 5 `never` cards per deck, every mana rock and dork used in at least 80% of the games it was offered in, and each of the six canaries (Sol Ring, Rhystic Study, Mary Read's loot, Entomb, Harrow, Viscera Seer) used in at least 50%. *Met with the owner's exit decisions of 2026-10-07 (ADR 0126, [Exit decisions](decisions/0126-bots-that-play-their-decks.md#exit-decisions-2026-10-07)). The `never` counts pass. The rock and dork bar is amended for S66: a rock offered while the bot is short must lose its window to a land or another spell, never to a pass, which run 1 meets. Harrow (30%) is accepted, with the follow-up [#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469).*
+- [x] 3. In 96 games of the new heuristic against `heuristic-baseline`, with the decks split evenly, the new heuristic's Wilson interval lies above the 25% null. No deck's interval in the rotation lies entirely above 50%. *Met with the owner's exit decisions: the strength bar is accepted on 288 games (28.7%, 25.2%–32.6%), and black's lead, which passes narrowly on the named run, goes to [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436) with no retune in S66.*
+- [x] 4. Every gated suite position passes, including the new ones for each card class, and no tag's agreement falls. The `bot-games`, `bot-soak` and `catalog-soak` nightly jobs are green on `develop`. *37 of 37 positions; nightly run 37551649387 green on `develop`'s code.*
+- [x] 5. The evidence is posted on #2435. #2436 can then start.
 
 ### Status
 
-**Planned** (2026-10-06). ADR 0126 is accepted. The owner answered its eight open questions on 2026-10-06, all as recommended, and they are recorded in the ADR. PR 2 (measurement) is next.
+**Done** (2026-10-07). Every Delivery PR has merged. PR 9 measured ADR 0126's acceptance bar on `develop` `e84f04622`, and the numbers and run IDs are in the ADR's [Measurements](decisions/0126-bots-that-play-their-decks.md#pr-9-the-exit-2026-10-06) and on #2435. A1, A4, A6 and A7 passed. On 2026-10-07 the owner decided the four that did not ([Exit decisions](decisions/0126-bots-that-play-their-decks.md#exit-decisions-2026-10-07)):
+
+- A2 is amended for S66. The fix is a turn-mana lookahead.
+- A3's Harrow is a follow-up.
+- A5 is accepted on 288 games.
+- A8's rejections are accepted as known.
+- Black's lead (A6) goes to the deck rebalance, with no retune in S66.
+
+What comes next:
+
+- [#2461](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2461): auto-tap counts a bounce land's two mana as two of one colour. Fixed before #2436 is measured.
+- [#2462](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2462): bots attack after passing priority in declare attackers. Fixed before #2436 is measured.
+- [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436): the curated deck rebalance, which takes mono-black's lead.
+- [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458): draw before deploying, a turn-mana lookahead. It is also the real fix for A2.
+- [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457): cycling cards as cheap discards, and the draw step as a spend window.
+- [#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469): Harrow's land sacrifice as net mana in the leftover windows.
 
 ---
 

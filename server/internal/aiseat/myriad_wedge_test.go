@@ -41,7 +41,8 @@
 //     was no third pair to fall back on.
 //
 // Real Commander manabases run few basics. The curated simic-ramp
-// deck ships 7 Forest and 5 Island in 99 cards, so the pool is under
+// deck shipped 7 Forest and 5 Island in 99 cards when this was found
+// (8 and 5 since #2436), so the pool was under
 // the cap from the opening hand and the wedge landed on the FIRST
 // Myriad Landscape activation of the game — turn 2, full library.
 // That is exactly what the field replay

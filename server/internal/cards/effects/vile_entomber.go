@@ -21,6 +21,7 @@ func init() {
 		OracleID:        "556dd333-4066-41f7-98f6-41794754de71",
 		Name:            "Vile Entomber",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{SelfMillTutor: 1},
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Vile Entomber — search for a card, put it into your graveyard", func(g *game.Game, item *game.StackItem) error {

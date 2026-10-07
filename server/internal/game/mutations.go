@@ -1702,6 +1702,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// countered" is decided. Every live promise of the caster's that
 	// this spell matches is spent on it and becomes a mark on its item.
 	g.spendCounterShieldPromisesLocked(playerID, cardID)
+	// #1852: the same moment decides "the next <kind> spell you cast"
+	// promises about flash, price, an extra counter and uncounterability.
+	promiseFollowUps := g.spendNextSpellPromisesLocked(playerID, cardID)
 	// S22 airbend: OldZone stamps where the spell was cast FROM.
 	// CR 601.2a moves the card to the stack and nothing on the card
 	// remembers the zone it left, so "whenever you cast a spell from
@@ -1739,6 +1742,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+	}
+	for _, key := range promiseFollowUps {
+		if err := g.runCastFollowUpLocked(key, CastFollowUp{Player: playerID, Spell: cardID}); err != nil {
+			return err
+		}
 	}
 	if followUp != "" {
 		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID}
@@ -1975,7 +1983,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// missing, so mana already in the pool is spent first, and it is
 	// colour-picked against that shortfall (autotap_topup.go).
 	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
-	if !ok {
+	// #2461: and the plan, carried out, must fund the cost — asked on a
+	// clone before anything here is tapped, so a refusal leaves no land
+	// tapped and no mana floating.
+	if !ok || !g.planFundsLocked(p, plan, short, cost, params.XValue, spendCtx) {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	g.materializePlanLocked(p, plan, short)
@@ -2059,7 +2070,9 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card.Controller != p.ID {
 			continue
 		}
-		ab := g.autoTapAbilityForRef(p.ID, *card, planned.Ref)
+		// #2455: a Costed entry re-finds its ability through the costed
+		// picker, every other through autoTapAbilityForRef.
+		ab := g.plannedAbilityLocked(p.ID, *card, planned)
 		if ab == nil {
 			continue
 		}
@@ -2184,6 +2197,20 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor) {
 			continue
 		}
+		// #2455: a Costed entry's mana cost (a Signet's {1}), paid FIRST
+		// — ActivateManaAbility's component order, mana before the tap —
+		// out of the tokens the plan named for it, which earlier entries
+		// made. A cost the pool can no longer pay drops the entry before
+		// anything of it is paid.
+		if planned.Costed {
+			spent, ok := g.payPlannedManaCostLocked(p, *card, ab, planned.FundedBy)
+			if !ok {
+				continue
+			}
+			if len(spent) > 0 {
+				g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
+			}
+		}
 		// #789: the counters come off as part of the same payment as
 		// the tap, and first, so a refusal leaves the land untapped.
 		// applyCounterLocked for the same reason the activation path
@@ -2300,6 +2327,13 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				// rule applied to a multi-token pick.
 				color = planned.OneColor
 				for k := 0; k < slot.AmountFor(color); k++ {
+					bookColorRequirement(color, &pending)
+				}
+			} else if ps, ok := plannedSlotColor(planned, si, len(slots), slot.Options); ok {
+				// #2455: an explicit plan's colour. Mana that funds a
+				// Costed entry books none of the cost being paid.
+				color = ps.Color
+				if !ps.Funds {
 					bookColorRequirement(color, &pending)
 				}
 			} else {
@@ -2878,12 +2912,16 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 		return ParsedCost{}, chosen, err
 	}
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
-	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
-	// the colored slots into the generic demand, which is exactly
-	// equivalent for the solver. #1573: "mana of any TYPE" (Hostage
-	// Taker) folds the {C} slots too — colorless is a type, not a
+	// color to cast those spells" (Breeches, Brazen Plunderer). Widens
+	// the colored slots to any mana. #1573: "mana of any TYPE" (Hostage
+	// Taker) widens the {C} slots too — colorless is a type, not a
 	// color (CR 106.1b). Here, in the one pricer, so the payment, the
-	// auto-tapper, the preview and the view all read the same fold.
+	// auto-tapper, the preview and the view all read the same widening.
+	// #1928: a WIDENING, not a fold into Generic — the grant changes
+	// how MANA may pay (CR 609.4b), and convoke (CR 702.51a) and delve
+	// (CR 702.66a) are not mana, so a stolen Stoke the Flames still
+	// needs red creatures for its {R}{R}, exactly as the player static
+	// (costAsPaidByLocked) is read after the taps.
 	cost = spendAsThoughAny(grant, cost)
 	return cost, chosen, nil
 }
@@ -6561,7 +6599,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			}
 			plan, short, ok := g.autoTapTopUpLocked(playerID, manaCost, 0, spendCtx,
 				ManaActivationAutoTapExclusions(cardID, params), 0)
-			if !ok {
+			// #2461: refused here, before the activation begins, when the
+			// plan carried out would not fund the cost.
+			if !ok || !g.planFundsLocked(p, plan, short, manaCost, 0, spendCtx) {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 			}
 			manaPlan, manaShort = plan, short

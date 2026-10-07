@@ -64,7 +64,10 @@ const localDefaultMaxThink = 20 * time.Second
 // fallbacks, the local think default, deck/seat arity) are testable
 // without a model endpoint or a 600 MiB dump.
 type arenaFlags struct {
-	seats    []tiers.Tier
+	// seats are the contestants, one per chair: a tier, or the
+	// arena-only heuristic-baseline (ADR 0126 §1). Deck and Name are
+	// filled in by config.
+	seats    []botarena.SeatSpec
 	decks    []string
 	names    []string
 	games    int
@@ -107,7 +110,7 @@ type arenaFlags struct {
 func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	fs := flag.NewFlagSet("arena", flag.ContinueOnError)
 	fs.SetOutput(out)
-	seats := fs.String("seats", "", "comma-separated tiers, one per chair (e.g. assisted,heuristic,heuristic,heuristic)")
+	seats := fs.String("seats", "", "comma-separated contestants, one per chair: a tier, or heuristic-baseline (the heuristic frozen before S66) (e.g. assisted,heuristic,heuristic,heuristic)")
 	decks := fs.String("decks", "", "comma-separated curated deck ids, one per chair; empty deals the synthetic battle deck")
 	names := fs.String("names", "", "comma-separated tally names, one per chair; empty tallies each chair under its tier")
 	games := fs.Int("games", 10, "how many games to play")
@@ -153,7 +156,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 		return nil, err
 	}
 	for _, t := range a.seats {
-		if t.NeedsModel() {
+		if t.Tier.NeedsModel() {
 			a.needsModel = true
 		}
 	}
@@ -214,18 +217,18 @@ func (a *arenaFlags) resolveThinking() error {
 	return nil
 }
 
-func parseSeats(s string) ([]tiers.Tier, error) {
+func parseSeats(s string) ([]botarena.SeatSpec, error) {
 	fields := splitList(s)
 	if len(fields) == 0 {
 		return nil, errors.New("--seats is required (e.g. --seats heuristic,heuristic)")
 	}
-	out := make([]tiers.Tier, 0, len(fields))
+	out := make([]botarena.SeatSpec, 0, len(fields))
 	for _, f := range fields {
-		t, err := tiers.Parse(f)
+		spec, err := botarena.ParseContestant(f)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, t)
+		out = append(out, spec)
 	}
 	return out, nil
 }
@@ -300,8 +303,9 @@ func firstNonEmpty(vals ...string) string {
 // tests.
 func (a *arenaFlags) config(idx *cards.Index, client model.Client, dl *decisionlog.Logger, runDir string, log *slog.Logger) botarena.Config {
 	seats := make([]botarena.SeatSpec, 0, len(a.seats))
-	for i, t := range a.seats {
-		seats = append(seats, botarena.SeatSpec{Tier: t, Deck: a.decks[i], Name: a.names[i]})
+	for i, spec := range a.seats {
+		spec.Deck, spec.Name = a.decks[i], a.names[i]
+		seats = append(seats, spec)
 	}
 	cfg := botarena.Config{
 		Seats: seats, Games: a.games, Seed: a.seed, Rotate: a.rotate, Lockstep: a.lockstep,
@@ -428,7 +432,7 @@ func runArena(args []string) int {
 	}
 
 	say(progress, "arena: %d games, seats [%s], seed %d, rotation %s, schedule %s\n",
-		a.games, strings.Join(tierNames(a.seats), ", "), a.seed, onOff(a.rotate), botarena.Schedule(a.lockstep))
+		a.games, strings.Join(contestantNames(a.seats), ", "), a.seed, onOff(a.rotate), botarena.Schedule(a.lockstep))
 	// The operator's --games is never changed for them; the run says
 	// what the seating will actually be, and the report keeps the
 	// histogram.
@@ -546,10 +550,10 @@ func createArenaRunDir(root string, started time.Time) (string, error) {
 	}
 }
 
-func tierNames(t []tiers.Tier) []string {
-	out := make([]string, 0, len(t))
-	for _, v := range t {
-		out = append(out, string(v))
+func contestantNames(seats []botarena.SeatSpec) []string {
+	out := make([]string, 0, len(seats))
+	for _, s := range seats {
+		out = append(out, s.Contestant())
 	}
 	return out
 }

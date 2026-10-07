@@ -28,6 +28,7 @@ func init() {
 			},
 			Targets: TargetPlayer("target player"),
 			Key:     "Blood Artist — drain 1",
+			Purpose: game.Purpose{DeathPayoff: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {

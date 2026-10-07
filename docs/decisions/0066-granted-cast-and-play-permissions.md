@@ -2674,3 +2674,40 @@ Proof cards: Chromatic Orrery and Oath of Nissa (full), Mycosynth Lattice
 > into coloured symbols, then widens. So the grant reaches those symbols as it
 > reaches a printed `{W}` — CR 609.4b, and the Celestial Dawn rulings — and the
 > sites listed in Decision 2 read both in one call.
+
+## Amendment — 2026-10-06 (#1928): a permission's spend grant widens, it no longer folds
+
+`spendAsThoughAny` used to fold a cast permission's "spend mana as though it
+were mana of any color / any type" into the generic demand inside
+`printedCostLocked`. That ran BEFORE convoke, so a stolen convoke spell's
+coloured symbols could be paid by tapping any creature: a stolen Stoke the
+Flames ({2}{R}{R}) could be convoked entirely with green creatures. CR 609.4b
+changes how MANA may pay a cost, and a creature is not mana (CR 702.51a: it
+pays {1} or one mana of its own colour).
+
+**Decision.** `asAnyColorCost` and `asAnyTypeCost` now WIDEN instead of fold,
+the way the player static (`widenForAnyColorSpend`) and the Phyrexian slots
+(#1589) already did: each affected slot keeps its printed options and gains
+`ColorRequirement.AnyMana`, and `{C}` stays unwidened under the any-colour
+grant. The widened slots are ordered after the ones kept as printed. The
+function stays in the one pricer, so the payment, the auto-tapper, the
+preview, the bot enumerator and the view still read one answer, and the
+convoke subtraction that follows reads `payerCoversRequirement` by the PRINTED
+colours (`matchColor(color, req.Options)`, never `Admits`), so a creature pays
+a coloured symbol only if it shares the colour, and otherwise only generic.
+
+**Consequences.**
+
+- `ParsedCost.FoldedColored` is gone. Delve (ADR 0100 §1) still cannot pay a
+  coloured symbol, because the symbol is no longer in `Generic`; its budget is
+  `Generic` plus X, no subtraction. The no-generic mana tag (#2170) reads the
+  widened slots through the `deferred` count it already had.
+- The price shown is the printed one. `cast_prices` and the auto-tap preview
+  render `{2}{C}` rather than `{3}`, which is what CR 609.4b says the cost is.
+  `Printed` on the badge now holds for a granted cast from the command zone
+  too.
+- The same convoke gap closes for Phyrexian slots, the narrower form #1589
+  recorded.
+
+Out of scope, unchanged: an any-colour grant on a spell with waterbend (the
+extra cost is generic and the grant does not touch it).

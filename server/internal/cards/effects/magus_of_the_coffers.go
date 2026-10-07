@@ -8,8 +8,9 @@ package effects
 // effective-subtype Swamp count (so Urborg, Tomb of Yawgmoth grows
 // it), the same {2} mana component. The {T} makes it subject to
 // summoning sickness, which the engine applies to a creature's own
-// tap-cost abilities. Not auto-tappable, like every ability with a
-// mana component.
+// tap-cost abilities. Not auto-tappable: the planner funds a mana
+// component only for a static output (#2455), and this one is
+// computed.
 //
 // No simplification.
 func init() {

@@ -111,10 +111,12 @@ const (
 	// Dosan leaves you every instant-speed window on your own turn
 	// and takes away the rest, so the two cannot share a value.
 	//
-	// No CastPermission declares it — it is the per-PLAYER
-	// restriction's spelling (cast_timing.go), carried on this enum
-	// rather than on a second one so the engine has ONE timing
-	// vocabulary. Exactly the posture TimingFlash was added under.
+	// It is the per-PLAYER restriction's spelling (cast_timing.go),
+	// carried on this enum rather than on a second one so the engine
+	// has ONE timing vocabulary. A CastPermission may also declare it
+	// (#2179, Tinybones, Bauble Burglar's "during your turn, you may
+	// play…"): CastTimingOpenLocked refuses the cast off the holder's
+	// own turn and leaves the card's own timing in force on it.
 	TimingYourTurnOnly GrantTiming = "your_turn"
 
 	// TimingPlot is a plotted card's window (CR 702.170d, #1318): its
@@ -192,6 +194,20 @@ type PermissionFilter struct {
 	// by the derivation for FromChosenType; a catalog card may also
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
+
+	// NotOwnedByHolder is Tinybones, Bauble Burglar's "cards YOU DON'T
+	// OWN": a card whose owner is the permission's holder does not
+	// qualify. The holder is not known to the pure-data Matches, so the
+	// clause is read in permissionReachesPileLocked beside the other
+	// ownership rule.
+	NotOwnedByHolder bool `json:"notOwnedByHolder,omitempty"`
+
+	// WithCounter is the name of a counter the card must carry — the
+	// "stash" counter on Tinybones' exiled cards. Counters on a card in
+	// exile are per object (CR 122.2, 400.7) and MoveCard clears them
+	// when the card leaves exile, so the marker survives exactly as long
+	// as the card stays there.
+	WithCounter string `json:"withCounter,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -219,6 +235,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
+		return false
+	}
+	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
 		return false
 	}
 	return true
@@ -1177,6 +1196,12 @@ func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Ca
 	if perm.Scope != ScopeStanding {
 		return true
 	}
+	// "Cards you don't own" (Tinybones, Bauble Burglar): the owner is the
+	// card's, the holder is the permission's, and exile is shared, so
+	// this is the one place both are known.
+	if perm.Filter.NotOwnedByHolder && card.Owner == holder {
+		return false
+	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {
 		return true
 	}
@@ -1585,7 +1610,42 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			}
 		}
 	}
+	if fallback == nil || zone == ZoneExile {
+		// #2179: exile is the one SHARED pile, so a derived standing
+		// permission can reach a card in it for a holder who does not
+		// own it (Tinybones, Bauble Burglar). Every other pile is its
+		// owner's, which is why only a stored permission could name a
+		// foreign holder and the walk above was exact.
+		if derived := g.standingExilePermissionOnLocked(card, zone); derived != nil {
+			return derived
+		}
+	}
 	return fallback
+}
+
+// standingExilePermissionOnLocked is the derived half of
+// CastPermissionOnCardForEffect: the first seat's standing permission
+// that opens this EXILED card for that seat, or nil. The same three
+// questions castPermissionLocked asks of a derived permission.
+//
+// Caller must hold g.mu.
+func (g *Game) standingExilePermissionOnLocked(card Card, zone ZoneKind) *CastPermission {
+	if zone != ZoneExile {
+		return nil
+	}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		for _, perm := range g.standingCastPermissionsLocked(p) {
+			if perm.CoversCard(card, zone) && permissionReachesPileLocked(p.ID, &perm, card, zone) &&
+				g.permissionPositionOKLocked(p.ID, &perm, card) {
+				out := perm
+				return &out
+			}
+		}
+	}
+	return nil
 }
 
 // cardHasCreatureType reports whether a card in a non-battlefield
@@ -1640,78 +1700,53 @@ func countWord(n int) string {
 }
 
 // asAnyColorCost rewrites a cost so every colored requirement is
-// payable by any mana — "you may spend mana as though it were mana
-// of any color" (Breeches). Folding the colored slots into the
-// generic demand is exactly equivalent for the pool solver: a
-// requirement any token can satisfy IS a generic requirement.
+// payable by any MANA — "you may spend mana as though it were mana
+// of any color" (Breeches). It WIDENS the slot (ColorRequirement.AnyMana)
+// rather than folding it into the generic demand, because the grant
+// changes how mana may pay (CR 609.4b), not the cost (#1928): a
+// creature tapped for convoke is not mana (CR 702.51a) and still needs
+// the symbol's colour, and delve still pays generic only (CR 702.66a).
+// The price shown stays the printed one.
 //
 // Colorless {C} requirements are left alone. "Mana of any color"
 // does not include colorless (CR 106.1b), so a {C} slot still needs
 // real colorless mana.
 //
-// Phyrexian slots are not folded either (#1589). A Phyrexian symbol
-// is "one mana of its colour, or 2 life" (CR 107.4f, plain and
-// hybrid alike), and the grant widens only the mana
-// half — so the slot stays a Phyrexian requirement the caster may
-// strike for life, marked AnyMana so any mana pays it otherwise. See
-// widenPhyrexian.
+// A Phyrexian slot is widened the same way and keeps its "or 2 life"
+// half (CR 107.4f, #1589).
+//
+// The widened slots go AFTER every slot kept as printed. The pool
+// solver pays requirements greedily in order, and a slot that admits
+// anything must not take the only colorless mana a {C} behind it
+// needed.
 func asAnyColorCost(cost ParsedCost) ParsedCost {
-	out := cost
-	out.Required = nil
-	var widened []ColorRequirement
-	for _, req := range cost.Required {
-		switch {
-		case requiresColorless(req):
-			out.Required = append(out.Required, req)
-		case req.Phyrexian:
-			widened = append(widened, widenPhyrexian(req))
-		default:
-			out.Generic++
-			out.FoldedColored++
-		}
-	}
-	out.Required = append(out.Required, widened...)
-	return out
+	return widenSlots(cost, requiresColorless)
 }
 
 // asAnyTypeCost is asAnyColorCost without the {C} exception — "mana
 // of any TYPE can be spent" (Hostage Taker). Every requirement,
-// colorless included, folds into the generic demand, because any mana
-// in the pool can now pay any symbol. A hybrid or two-for-one hybrid
-// slot folds to one generic, the cheapest way to pay it when any mana
-// counts as its colour.
-//
-// A Phyrexian slot does not fold (#1589): it keeps its "or 2 life"
-// half and is widened to any mana, exactly as under asAnyColorCost.
+// colorless included, is widened to any mana. A hybrid or
+// two-for-one hybrid slot is one slot, paid by one mana of any type.
 func asAnyTypeCost(cost ParsedCost) ParsedCost {
-	out := cost
-	out.Required = nil
-	for _, req := range cost.Required {
-		if req.Phyrexian {
-			out.Required = append(out.Required, widenPhyrexian(req))
-			continue
-		}
-		out.Generic++
-		out.FoldedColored++
-	}
-	return out
+	return widenSlots(cost, func(ColorRequirement) bool { return false })
 }
 
-// widenPhyrexian is a Phyrexian requirement under a spend-as-though
-// grant: still Phyrexian, so PhyrexianSymbols counts it and
-// strikePhyrexianLifeLocked may strike it for 2 life, and AnyMana, so
-// any one mana pays it when the caster does not. Options is kept as
-// printed so the price still renders "{B/P}" and the missing-mana
-// breakdown still names the symbol.
-//
-// The folds put widened slots AFTER every slot they keep as printed.
-// The pool solver pays requirements greedily in order, and a slot that
-// admits anything must not take the only colorless mana a {C} behind
-// it needed; ManaPool.attemptSpend orders them last too, for the slots
-// a cost modifier appends after the fold.
-func widenPhyrexian(req ColorRequirement) ColorRequirement {
-	req.AnyMana = true
-	return req
+// widenSlots marks every requirement `keep` does not name AnyMana and
+// orders those after the ones it keeps.
+func widenSlots(cost ParsedCost, keep func(ColorRequirement) bool) ParsedCost {
+	out := cost
+	out.Required = make([]ColorRequirement, 0, len(cost.Required))
+	var widened []ColorRequirement
+	for _, req := range cost.Required {
+		if keep(req) {
+			out.Required = append(out.Required, req)
+			continue
+		}
+		req.AnyMana = true
+		widened = append(widened, req)
+	}
+	out.Required = append(out.Required, widened...)
+	return out
 }
 
 // spendAsThoughAny applies a permission's "spend mana as though"

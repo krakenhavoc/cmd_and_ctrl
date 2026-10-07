@@ -68,8 +68,8 @@ func TestDelveCannotPayMoreThanTheGeneric(t *testing.T) {
 // Breeches-granted Murktide Regent keeps its {U}{U}.
 func TestDelveBudgetExcludesTheAnyColorFold(t *testing.T) {
 	folded := asAnyColorCost(parseForDelveTest(t, "{5}{U}{U}"))
-	if folded.Generic != 7 || folded.FoldedColored != 2 {
-		t.Fatalf("fold = %d generic, %d folded, want 7 and 2", folded.Generic, folded.FoldedColored)
+	if folded.Generic != 5 || len(folded.Required) != 2 {
+		t.Fatalf("widening = %d generic, %d slots, want 5 and 2", folded.Generic, len(folded.Required))
 	}
 	if got := delveBudget(folded, 0); got != 5 {
 		t.Fatalf("budget under the fold = %d, want 5", got)

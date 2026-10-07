@@ -8,6 +8,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "273b339c-964b-4a18-8eb5-ceb8abcdfd9e",
 		Name:         "Divination",
+		Purpose:      game.Purpose{Draws: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Final Act — Sorcery {4}{B}{B} (EDHREC rank 3746):
 //
 //	"Choose one or more —
@@ -27,7 +29,7 @@ func init() {
 		Name:         "Final Act",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose one or more", 1, 5,
-			Mode("Destroy all creatures."),
+			ModeWithPurpose(Mode("Destroy all creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}}),
 			Mode("Destroy all planeswalkers."),
 			Mode("Destroy all battles."),
 			Mode("Exile all graveyards."),

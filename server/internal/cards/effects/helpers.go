@@ -270,10 +270,30 @@ func discardedByYou(ev game.Event, source *game.Card) bool {
 // caller's own (source, label) pair, not on anything this function
 // does.
 func exileFromGraveyardIfStillThere(g *game.Game, item *game.StackItem, cardID uuid.UUID) error {
-	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
+	if !discardedCardStillInGraveyard(g, item, cardID) {
 		return nil
 	}
 	return ExileTarget{Target: cardID}.Apply(NewContext(g, item))
+}
+
+// discardedCardStillInGraveyard reports whether the card a discard
+// trigger names is still the object that was discarded: it is in a
+// graveyard AND its object epoch is the one the trigger stamped when it
+// fired (TriggerContext.Object, taken after the discard landed). A card
+// that left the graveyard and came back is a new object (CR 400.7), so
+// "exile that card" does nothing to it (#2453). An item with no stamp
+// keeps the plain "is it in a graveyard" answer.
+func discardedCardStillInGraveyard(g *game.Game, item *game.StackItem, cardID uuid.UUID) bool {
+	if cardID == uuid.Nil {
+		return false
+	}
+	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return false
+	}
+	if item != nil && item.Trigger != nil && item.Trigger.Object != nil && item.Trigger.Object.ID == cardID {
+		return g.ObjectEpochForEffect(cardID) == item.Trigger.Object.Epoch
+	}
+	return true
 }
 
 // eventCardHasType reports whether the card just discarded has

@@ -294,7 +294,12 @@ func matchPayersToRequirements(reqs []ColorRequirement, payers []Card) []int {
 // Options, so either colour covers them.
 func payerCoversRequirement(c Card, req ColorRequirement) bool {
 	for _, color := range c.EffectiveColors() {
-		if req.Admits(color) {
+		// The PRINTED colours, never Admits: a "spend mana as though it
+		// were mana of any color" grant (ColorRequirement.AnyMana)
+		// changes what MANA may pay a symbol, and a tapped creature is
+		// not mana (CR 702.51a, CR 609.4b). A stolen Stoke the Flames
+		// still needs red creatures for its {R}{R} (#1928).
+		if matchColor(color, req.Options) {
 			return true
 		}
 	}

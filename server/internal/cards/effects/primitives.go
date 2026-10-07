@@ -668,16 +668,35 @@ func (t TapTarget) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(t.Target) { // #1432
 		return nil
 	}
+	if !onBattlefield(ctx.Game, t.Target) {
+		// Gone by resolution: a target that left (CR 608.2b), or the
+		// source of a "tap this creature" ability that has died. There
+		// is nothing to tap, so the instruction does nothing.
+		return nil
+	}
 	return ctx.Game.TapTargetForEffect(t.Target)
 }
 
-// UntapTarget untaps a battlefield card.
+// UntapTarget untaps a battlefield card. No effect if the card is not
+// on the battlefield.
 type UntapTarget struct {
 	Target uuid.UUID
 }
 
 func (u UntapTarget) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(u.Target) { // #1432
+		return nil
+	}
+	// "Untap this" after this permanent has left the battlefield: the
+	// card in its new zone is a new object (CR 400.7) and nothing can
+	// be untapped, so the instruction does nothing. Goblin
+	// Sharpshooter's own death fires its "whenever a creature dies,
+	// untap this creature" (the trigger looks back, CR 603.10a), and
+	// the untap resolved into an effect error (ADR 0126's catalog
+	// soak). A chosen target that left is already illegal (CR 608.2b);
+	// the same guard covers any other caller that hands this an ID no
+	// longer on the battlefield. TapTarget has the same guard.
+	if !onBattlefield(ctx.Game, u.Target) {
 		return nil
 	}
 	return ctx.Game.UntapTargetForEffect(u.Target)

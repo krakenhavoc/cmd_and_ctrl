@@ -1172,6 +1172,13 @@ type stackItemSnapshot struct {
 	// stack-item key), which is the designed rollback case.
 	CantBeCountered []CounterShieldMark `json:"cantBeCountered,omitempty"`
 
+	// PromisedCounters is StackItem.PromisedCounters (#1852): the extra
+	// "enters with" counters a spent next-spell promise marked on this
+	// spell. Carried, because a restore that lost it would put the
+	// creature onto the battlefield without the counter Savage Summoning
+	// promised. A binary from before the field refuses the file.
+	PromisedCounters []PromisedCounter `json:"promisedCounters,omitempty"`
+
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
 	// and a "for each counter removed this way" ability for nothing,
@@ -2098,6 +2105,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Params:         effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
+	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
 	// ONCE, whatever it holds, because the question is one question —
@@ -2978,6 +2986,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// the snapshot from being a restore point.
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
+	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	if _, ok := catalogBodySlot(s.Body); ok {
 		// A stamped activated or triggered ability (P9): the row gives

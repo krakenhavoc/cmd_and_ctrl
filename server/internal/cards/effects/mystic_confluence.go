@@ -44,10 +44,10 @@ func init() {
 			ModeDoing("Return target creature to its owner's hand.",
 				TargetCreature("target creature"),
 				BounceTheModesTarget),
-			ModeDoing("Draw a card.", nil,
+			ModeWithPurpose(ModeDoing("Draw a card.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				}),
+				}), game.Purpose{Draws: 1}),
 		),
 	})
 }

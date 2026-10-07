@@ -70,8 +70,9 @@ func init() {
 				},
 			},
 			{
-				Label: "−12: Exile each nonland permanent your opponents control.",
-				Cost:  LoyaltyCost(-12),
+				Label:   "−12: Exile each nonland permanent your opponents control.",
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepExile, OpponentsOnly: true}},
+				Cost:    LoyaltyCost(-12),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return ExileAllMatching{Match: And(Nonland(), OpponentControls())}.Apply(NewContext(g, item))
 				},

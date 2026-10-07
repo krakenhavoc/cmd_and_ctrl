@@ -59,6 +59,12 @@ const (
 	ModAddKeywords      ModKind = "addKeywords"      // layer 6
 	ModRemoveKeywords   ModKind = "removeKeywords"   // layer 6
 	ModLoseAllAbilities ModKind = "loseAllAbilities" // layer 6
+	// ModLoseOwnAbility is "loses '<one of its own printed abilities>'"
+	// (#1859, own_ability_removal.go): one replacement, triggered or
+	// activated row of the object's definition, named by Slot and Row.
+	// Layer 6, in the record's timestamp slot; a later grant of the
+	// same text is a different row and survives.
+	ModLoseOwnAbility   ModKind = "loseOwnAbility"   // layer 6
 	ModAddRestrictions  ModKind = "addRestrictions"  // layer 6
 	ModSetBasePower     ModKind = "setBasePower"     // layer 7b
 	ModSetBaseToughness ModKind = "setBaseToughness" // layer 7b
@@ -409,11 +415,16 @@ func KnownAffectedScope(s AffectedScope) bool {
 // Never a func, an interface, a pointer, a Card or a CardPredicate —
 // TestScopedEffectIsPureData holds the line.
 type Mod struct {
-	Kind         ModKind     `json:"kind"`
-	Types        []string    `json:"types,omitempty"`
-	Subtypes     []string    `json:"subtypes,omitempty"`
-	Colors       []string    `json:"colors,omitempty"`
-	Keywords     []string    `json:"keywords,omitempty"`
+	Kind     ModKind  `json:"kind"`
+	Types    []string `json:"types,omitempty"`
+	Subtypes []string `json:"subtypes,omitempty"`
+	Colors   []string `json:"colors,omitempty"`
+	Keywords []string `json:"keywords,omitempty"`
+	// Slot and Row are ModLoseOwnAbility's: the definition slot
+	// ("replacement", "triggered", "activated") and the row's index in
+	// its full declared list. Refused on every other kind.
+	Slot         string      `json:"slot,omitempty"`
+	Row          int         `json:"row,omitempty"`
 	Restrictions Restriction `json:"restrictions,omitempty"`
 	Power        int         `json:"power,omitempty"`
 	Toughness    int         `json:"toughness,omitempty"`
@@ -747,6 +758,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddKeywords:      {layer: Layer6Ability},
 	ModRemoveKeywords:   {layer: Layer6Ability},
 	ModLoseAllAbilities: {layer: Layer6Ability, removes: true},
+	// #1859: one own row, not every ability, so it is not `removes`.
+	ModLoseOwnAbility:   {layer: Layer6Ability},
 	ModAddRestrictions:  {layer: Layer6Ability},
 	ModSetBasePower:     {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModSetBaseToughness: {layer: Layer7PT, subLayer: SubLayer7B_Set},
@@ -1172,6 +1185,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := redirectDamageModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := loseOwnAbilityModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
@@ -1638,6 +1654,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
 			}
 		}
+	case ModLoseOwnAbility:
+		return loseOwnAbilityApply(m)
 	case ModRemoveKeywords:
 		keywords := m.Keywords
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {

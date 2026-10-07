@@ -32,7 +32,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventTokenCreated, game.EventSacrifice}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(OnAny([]game.EventKind{game.EventTokenCreated, game.EventSacrifice}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
@@ -46,7 +46,7 @@ func init() {
 				return false
 			}, "Mirkwood Bats — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
 				return eachOpponentLosesLife(g, item, 1)
-			}),
+			}), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

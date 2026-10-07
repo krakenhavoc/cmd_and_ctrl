@@ -1,6 +1,7 @@
 package heuristic
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -72,6 +73,27 @@ type Weights struct {
 	Planeswalker float64
 	Loyalty      float64
 
+	// PermanentPerMana is ADR 0126 §3's mana-value floor for a
+	// permanent that is neither a creature, a mana source, a land nor a
+	// planeswalker: such a permanent is worth at least this much per
+	// point of its mana value, and never less than Permanent. A card's
+	// mana value is what its designers charged for what it does, which
+	// is the only evidence of size the wire carries. Zero is the
+	// pre-S66 flat Permanent.
+	PermanentPerMana float64
+	// RowTriggered, RowStatic and RowActivated are what one of a
+	// permanent's non-keyword ability rows (CardView.AbilityRows, #2219)
+	// adds to its value, by the row's kind, counting at most RowCap rows
+	// (ADR 0126 §3). A row is a sign that the card does something, not
+	// of how much: a drawback reads as a positive, which is accepted
+	// because the alternative is reading oracle text. Keyword and mana
+	// abilities are not rows, so a flier and a mana elf are not paid
+	// twice. All zero, or RowCap zero, is the pre-S66 evaluation.
+	RowTriggered float64
+	RowStatic    float64
+	RowActivated float64
+	RowCap       int
+
 	// AttachedAura and AttachedEquipment are what an attached BUFF is
 	// worth on its OWN line, once its host already carries the boost
 	// (#727 — see AttachmentRole). An Aura is worth nearly nothing
@@ -88,6 +110,15 @@ type Weights struct {
 	ManaSource       float64
 	TappedManaSource float64
 	FrozenManaSource float64
+	// ManaPerExtra is what each FURTHER mana a non-land, non-creature
+	// mana source makes is worth, over the ManaSource its first mana is
+	// worth (ADR 0126 §2): Sol Ring's {C}{C} is ManaSource +
+	// ManaPerExtra. It reads the source's best repeatable ability
+	// (repeatableMana), net of that ability's own mana cost, so a
+	// Signet's "{1}, {T}: Add {W}{U}" is one mana, not two. A tapped or
+	// frozen source keeps the same ratio to its untapped price. Zero is
+	// the pre-S66 price, and BaselineConfig zeroes it.
+	ManaPerExtra float64
 
 	// CommanderTax is the penalty per commander cast already made —
 	// the {2} surcharge compounds and a seat that has recast its
@@ -145,12 +176,19 @@ func DefaultWeights() Weights {
 		Planeswalker: 3.00,
 		Loyalty:      0.40,
 
+		PermanentPerMana: 0.50,
+		RowTriggered:     0.60,
+		RowStatic:        0.50,
+		RowActivated:     0.40,
+		RowCap:           3,
+
 		AttachedAura:      0.10,
 		AttachedEquipment: 0.60,
 
 		ManaSource:       1.00,
 		TappedManaSource: 0.55,
 		FrozenManaSource: 0.25,
+		ManaPerExtra:     1.00,
 
 		CommanderTax: 1.00,
 		Unknown:      1.50,
@@ -299,6 +337,11 @@ func (w Weights) creatureValue(c *protocol.CardView, restricted float64) float64
 		// zero or the blocker logic stops caring whether it dies.
 		v = 0.25
 	}
+	// ADR 0126 §3: what its ability rows say it does, before the
+	// multipliers, so a summoning-sick Blood Artist is discounted like
+	// any other sick creature. CombatValue does not add it (owner
+	// decision 3): the combat planner trades bodies.
+	v += w.rowUtility(c)
 	v *= restricted
 	if c.Tapped {
 		v *= w.TappedCreature
@@ -438,16 +481,77 @@ func (w Weights) permanentValue(c *protocol.CardView) float64 {
 	case isType(c, "planeswalker"):
 		return w.Permanent + w.Planeswalker + w.Loyalty*float64(c.Counters["loyalty"])
 	case len(c.ManaAbilities) > 0 || isLand(c):
+		// ADR 0126 §2: a rock is priced by the mana it makes. A land is
+		// left alone (the land drop is priced on its own terms, and a
+		// land's value is what every other number here was tuned
+		// against); a creature never reaches this arm.
+		scale := 1.0
+		if !isLand(c) && w.ManaPerExtra != 0 && w.ManaSource > 0 {
+			if extra := repeatableMana(c) - 1; extra > 0 {
+				scale = (w.ManaSource + w.ManaPerExtra*float64(extra)) / w.ManaSource
+			}
+		}
 		if c.Tapped {
 			if WontUntap(c) {
-				return w.FrozenManaSource
+				return w.FrozenManaSource * scale
 			}
-			return w.TappedManaSource
+			return w.TappedManaSource * scale
 		}
-		return w.ManaSource
+		return w.ManaSource * scale
 	default:
+		return w.utilityPermanentValue(c)
+	}
+}
+
+// utilityPermanentValue is ADR 0126 §3's price for a permanent that is
+// neither a creature, a planeswalker, a land nor a mana source — an
+// enchantment or artifact engine, an Equipment, a Vehicle, an Altar:
+// the larger of the flat Permanent and its mana-value floor, plus what
+// its ability rows say it does.
+//
+// An unimplemented card (ADR 0037) keeps the flat Permanent: the engine
+// runs none of its rules, so neither its cost nor its rows say anything
+// about what it will do, and the bot must be no keener to cast it than
+// it was.
+func (w Weights) utilityPermanentValue(c *protocol.CardView) float64 {
+	if c.Unimplemented {
 		return w.Permanent
 	}
+	v := w.Permanent
+	if floor := w.PermanentPerMana * float64(manaValue(c.ManaCost, 0)); floor > v {
+		v = floor
+	}
+	return v + w.rowUtility(c)
+}
+
+// rowUtility is what a permanent's ability rows add to its value (ADR
+// 0126 §3): RowTriggered, RowStatic or RowActivated per row, by kind,
+// for at most RowCap rows in the order the wire lists them. Zero for an
+// unimplemented card, which has no rows to read and keeps ADR 0037's
+// penalty instead.
+func (w Weights) rowUtility(c *protocol.CardView) float64 {
+	if c == nil || c.Unimplemented {
+		return 0
+	}
+	var v float64
+	n := 0
+	for _, r := range c.AbilityRows {
+		if n >= w.RowCap {
+			break
+		}
+		switch r.Kind {
+		case "triggered":
+			v += w.RowTriggered
+		case "static":
+			v += w.RowStatic
+		case "activated":
+			v += w.RowActivated
+		default:
+			continue
+		}
+		n++
+	}
+	return v
 }
 
 // AttachRole is what an attached permanent is DOING to the board, and
@@ -638,6 +742,76 @@ func WontUntap(c *protocol.CardView) bool {
 		}
 	}
 	return false
+}
+
+// repeatableMana is how much mana a source makes per turn, as far as the
+// view can say (ADR 0126 §2): the most any ONE of its repeatable mana
+// abilities nets per activation. Repeatable means a {T} ability that
+// costs no sacrifice and no exile (a Treasure, a Lotus Petal and a
+// Spirit Guide make their mana once). Net means less the ability's own
+// mana cost, so a Signet's "{1}, {T}: Add {W}{U}" makes one, the
+// mana it adds on top of the mana it eats.
+//
+// A land with no ability rows on the view counts one. Zero means the
+// card is not a repeatable source.
+func repeatableMana(c *protocol.CardView) int {
+	if c == nil {
+		return 0
+	}
+	best := 0
+	for i := range c.ManaAbilities {
+		ab := &c.ManaAbilities[i]
+		if !ab.TapCost || ab.SacrificeCost || ab.ExileSelf || ab.AddsNoMana {
+			continue
+		}
+		if n := manaAmount(ab.Produced) - manaValue(ab.ManaCost, 0); n > best {
+			best = n
+		}
+	}
+	if best == 0 && len(c.ManaAbilities) == 0 && isLand(c) {
+		return 1
+	}
+	return best
+}
+
+// manaAmount counts the mana one activation of a mana ability adds,
+// from its `produced` string. Each brace is one mana: "{C}{C}" is two,
+// and a choice "{W|U|B|R|G}" is one. A choice of N of one colour is
+// written with the count on each option ("{W3|U3|B3|R3|G3}",
+// effects.OneColorOfAmount) and is N. An empty string is a derived
+// output the view cannot size (Cabal Coffers, Gaea's Cradle), counted
+// as one.
+func manaAmount(produced string) int {
+	if produced == "" {
+		return 1
+	}
+	total := 0
+	for {
+		i := strings.IndexByte(produced, '{')
+		if i < 0 {
+			break
+		}
+		j := strings.IndexByte(produced[i:], '}')
+		if j < 0 {
+			break
+		}
+		sym := produced[i+1 : i+j]
+		produced = produced[i+j+1:]
+		if k := strings.IndexByte(sym, '|'); k >= 0 {
+			sym = sym[:k]
+		}
+		n := 1
+		if k := strings.IndexAny(sym, "0123456789"); k > 0 {
+			if m, err := strconv.Atoi(sym[k:]); err == nil && m > 0 {
+				n = m
+			}
+		}
+		total += n
+	}
+	if total == 0 {
+		return 1
+	}
+	return total
 }
 
 // producesMana reports whether a permanent can be tapped for mana

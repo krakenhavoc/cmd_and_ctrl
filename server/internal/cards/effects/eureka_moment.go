@@ -25,6 +25,7 @@ func init() {
 		OracleID:     "0e2c11b2-d95f-4402-9a4a-afd3f7ffb8be",
 		Name:         "Eureka Moment",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Draws: 2},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
 				return err

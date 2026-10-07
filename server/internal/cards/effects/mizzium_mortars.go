@@ -28,7 +28,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you don't control", OpponentControls()),
 		AlternativeCosts: []game.AlternativeCost{
-			Overload("{3}{R}{R}{R}"),
+			CostWithPurpose(Overload("{3}{R}{R}{R}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 4, OpponentsOnly: true}}),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if ctx.PaidAltCost("overload") {

@@ -365,6 +365,9 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 	// same place and for the same reason as the card's own clause, so
 	// the two compose and Doubling Season sees both.
 	g.riderEntryCountersLocked(ev, item)
+	// #1852: "that creature enters with an additional +1/+1 counter"
+	// from a spent next-spell promise (Savage Summoning).
+	g.promisedEntryCountersLocked(ev, item)
 	// ADR 0109 §11 decision 2 and owner decision 1: sunburst is a
 	// keyword, counted on the permanent the entry look-ahead says this
 	// would be, so a granted instance counts like a printed one, each

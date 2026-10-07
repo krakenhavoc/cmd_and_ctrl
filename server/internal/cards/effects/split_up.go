@@ -24,8 +24,8 @@ func init() {
 		Name:         "Split Up",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Destroy all tapped creatures."),
-			Mode("Destroy all untapped creatures."),
+			ModeWithPurpose(Mode("Destroy all tapped creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
+			ModeWithPurpose(Mode("Destroy all untapped creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			sweeps := []CardPredicate{

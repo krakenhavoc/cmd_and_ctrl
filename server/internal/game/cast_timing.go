@@ -278,6 +278,12 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 		// same reason — the sweep is hygiene at known moments and
 		// this read has to be right between them.
 		for _, st := range p.Statics {
+			// #1852: a one-use "the next <kind> spell you cast can be
+			// cast as though it had flash" promise. Spent by the cast it
+			// permits (spendNextSpellPromisesLocked), never here.
+			if st.NextSpell.Flash && g.livePromise(st) && st.NextSpell.Filter.Matches(card) {
+				v.Flash = true
+			}
 			if st.Timing.Timing == TimingNormal {
 				continue
 			}
@@ -390,6 +396,13 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	// and Teferi's "only as a sorcery" are both already true of it.
 	if perm != nil && perm.Timing == TimingPlot {
 		return g.SorcerySpeedOpenLocked(playerID)
+	}
+	// 0b. A permission's own "during your turn" (Tinybones, Bauble
+	// Burglar): a gate on whose turn it is, nothing else — the card's
+	// own timing still applies on top, so a creature is still a
+	// sorcery-speed cast on that turn.
+	if perm != nil && perm.Timing == TimingYourTurnOnly && g.activeSeatIDLocked() != playerID {
+		return false
 	}
 	// 1. The card's own timing.
 	instantSpeed := card.IsInstant() || HasKeyword(&card, "flash")

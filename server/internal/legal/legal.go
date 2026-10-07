@@ -652,7 +652,9 @@ func (e *enumerator) run() {
 	// (declare_attacker / declare_blocker / finish_blocks only check the
 	// step and the card's controller), and a defender declares while
 	// nobody holds priority — it is parked until the declaration is
-	// over (#1501) — see ADR 0033 §2.
+	// over (#1501) — see ADR 0033 §2. Attacks are the exception:
+	// combatMoves offers them only while the active seat holds
+	// priority, because its pass ends the declaration (#2462).
 	e.combatMoves()
 }
 

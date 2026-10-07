@@ -37,13 +37,13 @@ func TestCastPricesKeepPhyrexianSymbolsUnderSpendGrants(t *testing.T) {
 			}
 		})
 	}
-	// A {C} beside it still reads as {C} under any colour, and folds
-	// under any type.
+	// A {C} beside it reads as {C} under either grant: any type widens
+	// it, and the badge keeps the printed price.
 	g, me, opp := stripTable(t)
 	colour := exileWithGrant(t, g, exiledSpell(opp.ID, "Wire Colorless Phyrexian", "Sorcery", "{C}{B/P}"),
 		game.CastPermission{Player: me.ID, AnyColor: true})
 	assertPrice(t, "any color {C}", stripCard(t, g, me.ID.String(), colour), "{C}{B/P}", true, "")
 	anyType := exileWithGrant(t, g, exiledSpell(opp.ID, "Wire Colorless Phyrexian 2", "Sorcery", "{C}{B/P}"),
 		game.CastPermission{Player: me.ID, AnyType: true})
-	assertPrice(t, "any type {C}", stripCard(t, g, me.ID.String(), anyType), "{1}{B/P}", true, "")
+	assertPrice(t, "any type {C}", stripCard(t, g, me.ID.String(), anyType), "{C}{B/P}", true, "")
 }

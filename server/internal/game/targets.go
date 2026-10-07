@@ -67,6 +67,33 @@ type TargetSource struct {
 	// Snapshot is a value copy of the source's characteristics, for
 	// a caller whose source may have left by the time the check runs.
 	Snapshot *Characteristic
+
+	// Power and Toughness are the source's power and toughness WITH
+	// its counters, read from the last-known record of a source that
+	// has left the battlefield (CR 608.2h). PTKnown says they are set;
+	// the Snapshot's own Power / Toughness leave the counters out.
+	// Read through PowerToughness (#2146).
+	Power, Toughness int
+	PTKnown          bool
+}
+
+// PowerToughness is the source's power and toughness as a
+// "with lesser power" clause compares them: unclamped (a negative
+// power is a real value to compare), with counters, and
+// layer-computed. A live source is read now; a departed one from its
+// last-known record (CR 608.2h). ok is false when the walk has no
+// source at all (SourceChooser, a cost payment), in which case a
+// relative clause admits nothing rather than everything.
+func (s TargetSource) PowerToughness() (power, toughness int, ok bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.PowerForComparison(), s.Object.CurrentToughness(), true
+	case s.PTKnown:
+		return s.Power, s.Toughness, true
+	case s.Snapshot != nil:
+		return s.Snapshot.Power, s.Snapshot.Toughness, true
+	}
+	return 0, 0, false
 }
 
 // SourceObject is the ordinary case: a live spell or ability source.
@@ -138,7 +165,9 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 	if item.SourceCardID != uuid.Nil {
 		if item.Kind != StackItemSpell {
 			if rec, ok := g.departedAbilitySourceLocked(item); ok {
-				return SourceSnapshot(item.Controller, lastKnownSourceCharacteristics(rec))
+				src := SourceSnapshot(item.Controller, lastKnownSourceCharacteristics(rec))
+				src.Power, src.Toughness, src.PTKnown = rec.Power, rec.Toughness, true
+				return src
 			}
 		}
 		if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
@@ -273,6 +302,26 @@ type TargetSpec struct {
 	// Runs under g.mu (read or write). MUST NOT call public locking
 	// mutators; read-only *ForEffect accessors are fine.
 	CardOK func(g *Game, caster uuid.UUID, c Card, zone ZoneKind) bool
+
+	// RelativeToSource is the clause described RELATIVE TO ITS SOURCE:
+	// "target creature with lesser power", "with power less than or
+	// equal to this creature's power" (#2146). CardOK cannot say it: it
+	// is handed the caster, not the object whose ability this is. Every
+	// comparison must hold. They are applied wherever CardOK is, so the
+	// legal set, the announce check (CR 601.2c), the resolution re-check
+	// (CR 608.2b) and the client's and the bot's candidate lists are one
+	// answer. Reading the source's power in a TargetsFrom instead fixes
+	// the bound when the trigger is built, and a source pumped in
+	// response leaves a stale clause.
+	//
+	// It is DATA, not a closure, on purpose: a spec rides a paused
+	// prompt and a stack item, and a func there is a restore-point
+	// blocker (closure_fields.txt). The source is src.PowerToughness():
+	// the live object while it stands, its last-known information once
+	// it has left (CR 608.2h). With no source at all every candidate is
+	// refused, so a walk that cannot say what it is relative to never
+	// admits more than printed. Build one with effects.RelativeToSource.
+	RelativeToSource []SourceComparison
 
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
@@ -758,6 +807,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
 					continue
 				}
+				if !spec.sourceAdmits(src, c) {
+					continue
+				}
 				if !spec.xBoundAdmits(c) {
 					continue
 				}
@@ -1015,10 +1067,75 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 			if spec.excludesSource(src, c.InstanceID) {
 				return false
 			}
-			return spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)
+			return (spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)) &&
+				spec.sourceAdmits(src, c)
 		}
 	}
 	return false
+}
+
+// SourceStat is the characteristic a SourceComparison reads.
+type SourceStat string
+
+const (
+	SourcePower     SourceStat = "power"
+	SourceToughness SourceStat = "toughness"
+)
+
+// SourceCmp is how the candidate's stat compares with the source's.
+type SourceCmp string
+
+const (
+	CmpLess      SourceCmp = "less"       // "lesser", "less than this creature's"
+	CmpLessEq    SourceCmp = "less_eq"    // "less than or equal to"
+	CmpGreater   SourceCmp = "greater"    // "greater"
+	CmpGreaterEq SourceCmp = "greater_eq" // "greater than or equal to"
+)
+
+// SourceComparison is one "candidate's <Stat> is <Cmp> the source's".
+// Power is compared unclamped, with counters and layers (a negative
+// power is a real value), as is toughness.
+type SourceComparison struct {
+	Stat SourceStat `json:"stat"`
+	Cmp  SourceCmp  `json:"cmp"`
+}
+
+// holds reports whether candidate c satisfies the comparison against
+// the source's power and toughness.
+func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
+	cand, src := c.PowerForComparison(), srcPower
+	if sc.Stat == SourceToughness {
+		cand, src = c.CurrentToughness(), srcToughness
+	}
+	switch sc.Cmp {
+	case CmpLess:
+		return cand < src
+	case CmpLessEq:
+		return cand <= src
+	case CmpGreater:
+		return cand > src
+	case CmpGreaterEq:
+		return cand >= src
+	}
+	return false
+}
+
+// sourceAdmits is RelativeToSource's gate: true with no comparison,
+// false when there is one and the walk has no source to be relative to.
+func (s *TargetSpec) sourceAdmits(src TargetSource, c Card) bool {
+	if len(s.RelativeToSource) == 0 {
+		return true
+	}
+	p, t, ok := src.PowerToughness()
+	if !ok {
+		return false
+	}
+	for _, sc := range s.RelativeToSource {
+		if !sc.holds(c, p, t) {
+			return false
+		}
+	}
+	return true
 }
 
 // validateTargetsLocked is the announce-time gate (CR 601.2c) for a

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Hour of Promise — Sorcery {4}{G} (EDHREC rank 3228):
 //
 //	"Search your library for up to two land cards, put them onto the
@@ -25,6 +27,7 @@ func init() {
 		OracleID:     "51ff3e53-90bb-41bf-80e4-bb3fd51d574a",
 		Name:         "Hour of Promise",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Lands: 2},
 		OnResolve:    b30SearchUpToTwoLandsTappedThenZombies,
 	})
 }

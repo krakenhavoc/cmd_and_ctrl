@@ -648,6 +648,252 @@ a reading of the card's own printed text against public counts, it has
 to be identical for a bot and for a human because both read it off the
 same prompt, and `legal` is the layer both already go through.
 
+## How the heuristic prices a card
+
+[ADR 0126](decisions/0126-bots-that-play-their-decks.md) (S66) rebuilt
+this. Before it, every non-creature permanent was worth exactly what a
+card in hand is worth (`Weights.Permanent` 1.20 against `Weights.Hand`
+1.20), a small creature or a cheap spell was worth less, and the
+heuristic never cast about a third of each curated deck: every mana
+rock, every enchantment engine, the tutors, the loots and the
+sacrifice outlets.
+
+The heuristic still reads no oracle text ([ADR 0033
+§3](decisions/0033-ai-bot-seat.md)). Every price below comes from a
+field the seat's own view carries: `mana_abilities`, `ability_rows`,
+`activated_abilities`, `additional_cost`, and the catalog-declared
+`purpose` ([docs/protocol.md](protocol.md)).
+
+### The bar a move has to clear
+
+A cast is priced as what the card is worth once it resolves, less
+`Weights.Hand` (1.20) for the card leaving the hand (`valueOfCast`,
+`resolvedValue`). The bot takes the best move that scores above its bar:
+
+| Where | Bar |
+|---|---|
+| Its own main phase, empty stack | `PassThreshold`, 0.25 |
+| Anywhere else | `InstantThreshold`, 1.50: holding an instant is a real option |
+| One of the two leftover windows (below), for a move that costs only mana and taps | `LeftoverThreshold`, 0.00 |
+| Any window, for a move whose only non-mana cost is sacrificing permanents that are dying anyway | `LeftoverThreshold`, 0.00 |
+
+### Mana sources
+
+**On the battlefield** (`permanentValue`), a non-land mana source is
+worth `ManaSource` (1.00) for its first mana and `ManaPerExtra` (1.00)
+for each further mana its best repeatable ability makes. Repeatable
+means a tap ability with no sacrifice or exile-itself cost. The amount
+is the number of symbols in `produced`, net of the ability's own mana
+cost: Sol Ring makes two and is worth 2.00, and a Signet's "{1}, {T}:
+Add two" makes one. A land is priced as before. A mana creature is
+priced as a creature.
+
+**At cast time only**, a ramp premium (`rampPremium`): `RampPerMana`
+(1.00) times the smaller of the mana the source makes and the bot's
+mana deficit.
+
+```
+want    = the largest mana value among the other cards in hand and the
+          commander (with its tax), capped at RampWantCap (7)
+sources = the mana the bot's own repeatable sources make, tapped or not
+deficit = max(0, want − sources)
+```
+
+The premium is large while the bot cannot cast what it holds, and it
+falls to nothing as the bot catches up, with no turn counter:
+
+| Card, situation | Price |
+|---|---:|
+| Sol Ring, turn 1, a five-drop in hand | 2.00 + 2 × 1.00 − 1.20 = **+2.80** |
+| Arcane Signet, deficit 3 | 1.00 + 1.00 − 1.20 = **+0.80** |
+| Arcane Signet, deficit 0 | 1.00 − 1.20 = **−0.20**: not cast |
+
+Rituals, Lotus Petal, Treasures and the Altars are not priced as mana
+sources. Their mana is one-shot, and what it is worth is the spell it
+lets the bot cast this turn, which needs a plan the heuristic does not
+make.
+
+### Other permanents, by role
+
+A permanent that is not a creature, a planeswalker, a land or a mana
+source (an enchantment or artifact engine, an Equipment, a Vehicle, an
+Altar) is worth:
+
+```
+max(Permanent 1.20, PermanentPerMana 0.50 × mana value) + rowUtility
+```
+
+`rowUtility` adds `RowTriggered` (0.60) for each triggered row in
+`ability_rows`, `RowStatic` (0.50) for each static row and
+`RowActivated` (0.40) for each activated row, counting at most `RowCap`
+(3) rows. A creature gets the same `rowUtility` on top of its body,
+before the tapped, summoning-sick and restriction multipliers.
+Keywords and mana abilities are not rows, so a flier is not paid twice
+and a mana elf is priced as a mana source.
+
+Rhystic Study (mana value 3, one triggered row) is 1.50 + 0.60 − 1.20 =
++0.90. Viscera Seer (a 1/1 with one activated row) is
+0.90 × (1.45 + 0.40) − 1.20 = +0.47.
+
+The rows say that a card does something, not how much. A drawback row
+(Sulfuric Vortex's damage to its own controller) counts as a plus. A
+card the engine does not implement has no rows, and keeps the flat
+`Permanent` and [ADR 0037](decisions/0037-unimplemented-card-signal.md)'s
+penalty.
+
+This is the same `permanentValue` the board evaluation uses, so an
+opponent's Rhystic Study is now worth removing, and a Blood Artist is
+worth more than a vanilla 1/1 when the bot chooses what to sacrifice.
+`CombatValue`, which the combat planner compares attackers and blockers
+with, is still the body alone.
+
+### The two leftover windows
+
+Mana empties between steps, and a tapped permanent untaps in its
+controller's untap step. So in two windows, with the stack empty, a
+move that spends only mana and taps costs nothing the bot would
+otherwise keep, and it needs to clear only `LeftoverThreshold`
+(`LeftoverWindows`, `windows.go`):
+
+- **The bot's own second main phase**, for sorcery-speed moves that tap
+  no creature. An instant, a flash spell or an instant-speed ability
+  waits for the next window instead, keeping the mana up meanwhile.
+- **The end step of the seat whose turn comes just before the bot's.**
+  This is the end-of-turn Entomb, Vampiric Tutor or loot.
+
+Two prices go with the windows:
+
+- `SpellFloor` (1.30): an untargeted instant or sorcery the engine
+  implements is worth at least a card that replaces itself and does a
+  little more. That is 0.10 above the card it costs, so it clears
+  `LeftoverThreshold` and stays under `PassThreshold`: cheap spells fill
+  the leftover windows and do not crowd out development. A targeted
+  spell is priced by its targets instead.
+- `TapByTiming`: tapping one of the bot's untapped creatures to pay a
+  cost is free in the end step before its turn. In the bot's own first
+  main phase it costs the blocker and the attack it gives up. Elsewhere
+  it costs a flat 0.30 for the blocker.
+
+### Purposes: what a spell or an ability does
+
+The catalog declares a `purpose` on a card, a mode, an alternative cost
+or an activated row (`effects.Spec.Purpose`, [ADR 0126
+§6](decisions/0126-bots-that-play-their-decks.md)). It is declared by
+hand, like `Completeness`. In S66, every card in the four curated decks
+in the priced classes declares one, and so does every catalog board
+wipe. A card with no purpose is priced as before: an instant or sorcery
+at `SpellPerMana` (0.60) times its mana value, with `SpellFloor` under
+it.
+
+With `PricePurposes` on, a purpose replaces that proxy (`purposeValue`):
+
+```
+Hand × (draws + TutorWeight × tutors + SelfMillWeight × self_mill_tutor)
+− DiscardWeight × discards
++ (ManaSource + the ramp premium) × lands
++ TokenWeight × tokens
+```
+
+`TutorWeight` is 1.00. `SelfMillWeight` is 0.50, because Entomb finds a
+card for a graveyard plan the policy cannot see. `DiscardWeight` is
+0.60 and `TokenWeight` 0.50. `SpellFloor` stays under the result.
+
+On a permanent, the purpose is its enters effect, added to its body:
+Wood Elves' land, Mulldrifter's two cards. On the bot's own activated
+row, it replaces `ActivateBase`, so a loot is priced by the card it
+draws and a land sacrifice by the land it fetches. A row with no
+purpose keeps the flat `ActivateBase` (0.50).
+
+### Board wipes
+
+A purpose's `sweep` names what it removes (`matches`), how (`destroy`,
+`exile`, `bounce`, `damage`, `minus`, `sacrifice`) and, for damage and
+−N/−N, how much. With `PriceSweeps` on, a wipe is worth the change it
+makes to the bot's own score (`sweepValue`):
+
+```
+ScoreEval(with the swept permanents removed) − ScoreEval(now) − Hand
+```
+
+`ScoreEval` weighs the opposition by `OpponentMean` and `OpponentMax`,
+so a wipe into the table's leader is worth a lot, and a wipe into the
+bot's own winning board is worth less than nothing.
+
+- A destroy sweep spares an indestructible permanent.
+- Damage and −N/−N spare a creature whose toughness is above the amount.
+- A bounce takes half a permanent's value, because it comes back, and
+  all of a token's.
+- A sweep marked `partial` takes half of each permanent it matches,
+  because the view does not say which ones it spares.
+- `opponents_only` spares the bot's own permanents.
+
+A wipe gets no `SpellFloor`.
+
+### Discards and discard payoffs
+
+With `DiscardCostByCard` on, a card discarded to pay a spell's cost
+costs what that card is worth to the bot (`cardValue`, the price the
+cleanup discard already uses), not a flat 1.20. A spare land late in
+the game costs about 0.30. The bot's last land in hand, while it has
+fewer than `LandsWanted` (5) sources, costs `LastLandDiscard` (1.00)
+more. The enumerator offers one payment per combination of cards, so
+the bot pays with the cheapest. Unexpected Windfall discarding a spare
+land is cast. Discarding the only land in hand early, it is not.
+
+A triggered row can declare a `discard_payoff`. Mary Read and Anne
+Bonny makes a Treasure for each Island, Pirate or Vehicle discarded,
+and Marauding Mako takes a +1/+1 counter for any card. With
+`PriceDiscardPayoffs` on, every discard of the bot's own card, whether
+it pays a cost, answers a loot or happens at cleanup, costs `cardValue`
+less what its payoffs pay:
+
+```
+TokenWeight × tokens
++ (Weights.Power + Weights.Toughness) × counters
++ DamageToOpponent × damage_each_opponent × live opponents
+```
+
+So with Mary Read out, the bot loots away the Island rather than the
+Mountain.
+
+### Sacrifices
+
+With `SacrificeDyingAnyway` on, a permanent sacrificed to pay a cost
+costs its value times the chance the bot would have kept it
+(`sacrifice.go`):
+
+- A target of an opponent's spell or ability on the stack is kept with
+  a chance of 1 − `RemovalConfidence` (0.80).
+- A permanent that a declared sweep on the stack would remove is not
+  kept.
+- After blockers are declared, a creature in a combat it loses without
+  taking anything with it is not kept.
+
+A move whose only non-mana cost is sacrificing such permanents clears
+`LeftoverThreshold` in any window, so "sacrifice it in response" is the
+bot's play.
+
+Each `death_payoff` row on a permanent the bot controls (Blood Artist,
+Zulaport Cutthroat, Bastion of Remembrance) takes `DeathPayoff` (0.60)
+off the cost of every creature it sacrifices. A payoff's own row does
+not count towards its own sacrifice. Sacrificing a commander or a big
+creature for the payoffs is still not worth it.
+
+The Altars' mana abilities sacrifice a creature, so the bot does not
+activate them for floating mana. The auto-tapper uses them when a cast
+needs the mana, as it always did.
+
+### The old prices, kept runnable
+
+Every term above is a `Config` or `Weights` field whose zero value is
+the heuristic as it was before S66. `heuristic.BaselineConfig()` zeroes
+all of them, and the arena's `heuristic-baseline` contestant plays it.
+So two `heuristic` seats against two `heuristic-baseline` seats measure
+exactly what S66 changed. `TestBaselineConfigRanksTheSuiteAsBefore`
+holds the baseline to the rankings the policy gave every suite position
+before S66. The measured effect is in ADR 0126's
+[Measurements](decisions/0126-bots-that-play-their-decks.md#measurements).
+
 ## An attached permanent is priced once, by its role (#727)
 
 An Equipment's +2/+2 arrives on the wire as its host's `power` and
@@ -715,10 +961,21 @@ time a spec was refactored.
 
 | ID | Name | Commander | Archetype |
 |---|---|---|---|
-| `izzet-aggro` | Raid and Ransack | Mary Read and Anne Bonny | Aggro (UR) — cheap creatures that turn artifacts and discards into damage, backed by burn and a thin counterspell suite |
-| `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — mana creatures and land ramp into large green threats, drawing a card on every land drop |
-| `esper-control` | The Long Answer | Hashaton, Scarab's Fist | Control (WUB) — counterspells, one-for-one removal and six board wipes, with just enough creatures to close |
-| `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — free sacrifice outlets, drain-on-death payoffs, and a graveyard full of things to sacrifice again |
+| `izzet-aggro` | Raid and Ransack | Mary Read and Anne Bonny | Aggro (UR) — Pirates and Islands: loot and rummage away the cards you don't need, and every Island, Pirate or Vehicle you discard becomes a Treasure |
+| `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — landfall: extra land drops every turn, a card off each with Tatyova, and landfall payoffs that turn the lands into mana, tokens and threats |
+| `esper-control` | The Long Answer | Y'shtola, Night's Blessed | Control (WUB) — big spells: every noncreature spell of mana value 3 or more drains each opponent, so the answers also win the game |
+| `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — death triggers: sacrifice creatures for value, drain the table each time one dies, then reanimate the best of them |
+
+The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
+fetchlands and dual lands, but few tutors and little fast mana (Sol
+Ring everywhere, Ancient Tomb only in mono-black), and each one
+teaches the single mechanic in its row above.
+Every non-basic card is graded `full` in the catalog, apart from a
+short list of minor caveats named in `internal/decks/full_test.go`
+(Path of Ancestry, Delighted Halfling, Cultivate, Tireless Provisioner,
+the two partner Pirates, Ragavan and the two Artillerists), and that
+test fails the build when a card falls below it. A saved table setup
+names a deck by ID, so it seats the current list.
 
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
@@ -1098,7 +1355,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one tier per chair, comma-separated. 2–4 chairs. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, or `heuristic-baseline`: the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). That one is an arena name only; the lobby and `GET /bot/options` never offer it. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
@@ -1248,6 +1505,29 @@ game.
   them as independent, which makes it **conservative** — it will not
   manufacture a `beats null` — but `seat-games` is not a count of
   independent trials.
+- **Play by contestant** — the same columns again, one row per
+  policy *and deck* ([ADR 0126](decisions/0126-bots-that-play-their-decks.md)
+  §1). Four `heuristic` seats on the four curated decks are one Play
+  row, which wins 25% by construction, and four rows here, which is
+  where the deck balance shows. Name the chairs with `--names` or not;
+  the deck column says which is which either way.
+- **Cards** — for each contestant, every non-land card of its own it
+  was offered: a `cast` or `activate` move naming it. Per card: the
+  windows it was offered in, the windows it was taken in, and the
+  seat-games in which it was offered and in which it was used at least
+  once. A window counts a card once however many ways it is offered
+  (two targets, two abilities). A card offered in five or more windows
+  and never taken is `never`, and the summary table lists each
+  contestant's `never` cards. Below it, ADR 0126's acceptance-bar cards:
+  every mana rock and dork (A2: a repeatable tap mana ability, so not
+  Lotus Petal or an Altar), and the six A3 canaries (Sol Ring, Rhystic
+  Study, Mary Read and Anne Bonny's loot, Entomb, Harrow, Viscera Seer),
+  each with the share of games it was used in and the bar it is held
+  to. A canary nobody was dealt says `not offered`. The full per-card
+  tables are folded under `<details>`. The tally is the runner's
+  observer, so it needs no decision log; `summary.json` carries it as
+  `cards` and `canaries`, and each game's per-seat counts are in
+  `games.jsonl`.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a
@@ -2017,6 +2297,84 @@ several thousand catalogued cards, a bot is a competent player of a
 deliberately small format. A better model does not move this ceiling;
 more cards do. This is the honest expectation to set.
 
+**The heuristic plays most of its deck, but not all of it.** S66 taught
+it to price what a card does ([above](#how-the-heuristic-prices-a-card)).
+At the S66 exit, in 64 four-deck games, each curated deck had at most
+four non-land cards offered in five or more windows and never used:
+
+- mono-black-aristocrats: Ashnod's Altar, Phyrexian Altar, Blood Artist,
+  and Burnished Hart's activation;
+- izzet-aggro: Lotus Petal, and Glint-Horn Buccaneer's and Professional
+  Face-Breaker's activations;
+- simic-ramp: Tarmogoyf, and Sakura-Tribe Elder's sacrifice;
+- esper-control: Commander's Sphere.
+
+The reasons are in the pricing:
+
+- The Altars' mana abilities sacrifice a creature, so they are neither
+  repeatable mana sources nor activated for floating mana. Lotus Petal's
+  mana is one-shot, so it is not a mana source either.
+- Blood Artist's 0/1 body and one triggered row are worth less than the
+  card. A death payoff is priced while it is on the battlefield, when
+  the bot chooses what to sacrifice, and not when it is cast.
+- A one-mana rock drawn after the bot can already cast everything it
+  holds is priced below zero on purpose. While the bot is short of mana,
+  the rock often loses its window to the land drop or a bigger spell,
+  and by the next window the deficit has closed. The exit run measured
+  rocks and dorks cast in 210 of the 311 games in which they were
+  offered while the bot was short, 68%.
+- Harrow sacrifices a land as an additional cost. That is not a
+  mana-and-taps cost, so it keeps the normal bar in the leftover
+  windows, and two lands for one land and a card rarely clears it late
+  in a game. It was cast in 8 of the 27 games it was offered in.
+
+**A non-tap activated ability with no declared purpose is a flat
++0.50.** That is `ActivateBase`, and S66 left it alone (ADR 0126 owner
+decision 6). Syr Konrad's `{1}{B}` mill is the visible case.
+Mono-black-aristocrats still wins about 60% of four-deck games, but an
+experiment that lowered `ActivateBase` cut Konrad's mills by a third
+and left black's win rate where it was. The deck, not this price, is
+what [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)
+rebalances.
+
+**No plan for the turn.** The heuristic prices one move at a time. It
+does not cast a cantrip first to see what it draws before deploying
+([#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458)), it
+does not treat a cycling card as a cheap discard or its own draw step
+as a spend window
+([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), and
+it does not cast a ritual or crack a Treasure for a specific spell.
+
+**Purposes are declared for the curated decks and for board wipes
+only.** Any other instant or sorcery is priced by its mana value, with
+`SpellFloor` under it, so it is cast when mana is spare and not for
+what it does. A permanent's ability rows say that it does something,
+not how much, so a drawback row counts as a plus. The combat planner
+compares bodies only (`CombatValue`), so a Blood Artist blocks like a
+vanilla 0/1.
+
+**A few moves are refused on a busy table.** Each seat decides on the
+board it saw, and another seat can commit in between. Two refusals in
+the arena reports are races of that kind and cost nothing: the runner
+decides again on the new board.
+
+- **A pass while a prompt is unanswered.** Rhystic Study's "pay {1}?"
+  does not stop the table ([ADR 0018](decisions/0018-triggers-on-the-stack.md)
+  §6), so the other seats keep passing. When the payer declines, the
+  Rhystic Study player's "draw a card?" opens, and that prompt does stop
+  the table. A pass decided just before it opened is refused. Sun
+  Titan's and other triggers' prompts race the same way.
+- **An attack after the step moved on.** This one is a real defect,
+  [#2462](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2462): the
+  enumerator offers the active seat attacks after it has passed
+  priority in declare attackers, and the runner takes one as its only
+  move. Usually the attack lands, on a creature the policy had kept
+  home; when the last seat passes first, the engine refuses it.
+
+A cast refused for "insufficient mana" is also a defect, not a race:
+the auto-tapper counts a bounce land's two mana as two of one colour
+([#2461](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2461)).
+
 **No politics, no deal-making, no bluffing, no table talk.** Bots
 speak only to disclose an improvisation and, behind the setting
 above, to explain a move. Commander is a political format and a bot
@@ -2104,6 +2462,26 @@ always takes the largest X the seat can pay. Which cards are which is
 the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
 still makes X=0 a legal announcement and the engine still accepts one;
 this is about what is worth putting in front of a player.
+
+**A bot does not move an Equipment between its own creatures for
+nothing.** Every equip used to be priced like a pump on the bot's own
+creature, whatever the Equipment was already on, so a free one
+(Lightning Greaves' Equip {0}) beat passing from either side. A
+heuristic seat moved its Greaves back and forth until the CR 732
+breaker named it, and the runner's hold on that permanent then stopped
+the table
+([#2449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2449)).
+Now an equip row says it is one on the wire (`equip`), and the
+heuristic prices a move between two of its own creatures below passing
+unless the new host, as it stands, is worth more than the current host
+is with the Equipment on it. Re-equipping the creature it is already on
+does nothing (CR 701.3b) and is never taken. The first equip of an
+unattached Equipment keeps its old price. Comparing the new host
+without the Equipment against the old one with it is what makes the
+Equipment come to rest: the move back can never also look better.
+Choosing the best host, such as moving Greaves onto a summoning-sick
+creature for haste, is still out of scope ([ADR
+0126](decisions/0126-bots-that-play-their-decks.md)).
 
 **An X paid in LIFE is priced the same way, one short of the life
 total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is
@@ -2197,14 +2575,18 @@ as it holds on a pass. The table comes to rest at the threshold with
 the notice naming the ability, which is [ADR 0055
 §5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
 
-**A real loop stops a bot-only table outright — and that is unreachable
-today.** When a trigger or activation loop's shortcuts run out (the
-second ask offers only "stop here"), autopass stays suspended and no
-bot seat has a move that keeps the loop going, so the room's commit
-sequence simply stops with the notice naming the ability and count
-still in the game state — the table does not finish and it does not
-spin forever ([ADR 0055](decisions/0055-loop-breaker.md) §5). No pair
-of abilities in the catalog loops today, so no whole-game bot test
-exercises this path; it stays on this list because it is what the
-engine does the day a looping pair is added, and that is where it
-will first show up.
+**A real loop stops a bot-only table outright, and the curated decks
+can now reach one.** When a trigger or activation loop's shortcuts run
+out (the second ask offers only "stop here"), autopass stays suspended
+and no bot seat has a move that keeps the loop going. The room's
+commit sequence stops with the notice naming the ability and count
+still in the game state. The table does not finish, and it does not
+spin forever ([ADR 0055](decisions/0055-loop-breaker.md) §5). Since
+S66 the heuristic casts mono-black-aristocrats' Sanguine Bond and
+Exquisite Blood, and that pair is a drain loop that ends the game. A
+bot table that assembles it stalls at the loop breaker with the black
+seat far ahead
+([#2450](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2450)). It
+was seen twice in ADR 0126's measurement runs. A loop that makes
+progress is not the kind CR 732 exists for, and #2450 needs an ADR 0055
+decision.

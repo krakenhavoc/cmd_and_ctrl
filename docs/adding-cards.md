@@ -64,6 +64,15 @@ surface tiny.
    "sacrifice another" cost, and `RemoveCountersAmongOthers` for "from
    among other permanents". `game.TargetSpec.ExcludeSource` is what they
    set (#1738). "Up to X targets" is `CountFromX` plus `UpToX`.
+   "With lesser power" / "with power less than this creature's power"
+   compares the target with the SOURCE, which a predicate never sees:
+   wrap the clause in `RelativeToSource(spec, LesserPower())` (siblings
+   `PowerNoGreater`, `GreaterPower`, `LesserToughness`,
+   `GreaterToughness`) and use `Mentor(key)` for mentor. It is data on
+   `game.TargetSpec.RelativeToSource`, judged at announce and at
+   resolution against the source's effective power, or its last-known
+   power once it has left (#2146). Don't read `source.CurrentPower()` in
+   a `TargetsFrom`: that freezes the bound when the trigger is built.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -478,6 +487,24 @@ permanent, in order
 ([ADR 0011](decisions/0011-mana-pool-and-auto-tapper.md)
 amendments 2026-09-22, 2026-09-23 and 2026-09-30).
 
+**A mana cost (#2455).** When nothing that owes no mana can pay, the
+planner funds an ability's `Mana` component from the plan's other
+sources and the floating pool (`server/internal/game/autotap_costed.go`):
+a Plains pays an Orzhov Signet's `{1}` and the Signet's `{W}{B}` pays the
+spell, and one land can pay a Signet whose mana pays a second Signet. A
+source's own mana never pays its own cost, and two Signets never pay for
+each other. It plans an ability whose output is a static `Produced`
+string, with a cost of plain coloured, hybrid and generic symbols, that
+makes at least as much mana as it costs: the Signets, the Shadowmoor and
+Eventide filter lands, the `{1}, {T}: Add {A}{B}` lands (Skycloud
+Expanse, Darkwater Catacombs and their cycle), the `{1}, {T}: Add one
+mana of any color` filters (Prismatic Lens, Hall of Oracles, Talon
+Gates), Crystal Quarry, Cascading Cataracts, Loot's exhaust `{G}`, and
+Chromatic Star in the sacrifice tier. An output computed by `ProducedFunc` (Cabal Coffers, Nykthos,
+Doubling Cube, which reads the pool the plan is filling), a spend rider
+(Opal Palace) and a board with a mana-production replacement on it stay
+hand-activated.
+
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one
 component with two owners — so build it with the same constructors and
@@ -824,7 +851,7 @@ Activated: []ActivatedAbility{{
 	Label:     "{3}: Xantcha's controller loses 2 life and you draw a card. Any player may activate this ability.",
 	Cost:      game.AbilityCost{Mana: "{3}"},
 	AnyPlayer: true,
-	Purpose:   game.ActivationPurpose{Draws: 1, ControllerLosesLife: 2},
+	Purpose:   game.Purpose{Draws: 1, ControllerLosesLife: 2},
 	Effect: func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if info, ok := ctx.SourcePermanent(); ok { // "Xantcha's controller", last-known if gone
@@ -849,23 +876,78 @@ Activated: []ActivatedAbility{{
   their draw step"** are activation instructions (CR 602.1b): a
   `Condition` (whose `controller` argument is the activator) or
   `SorcerySpeed`, as on any row.
-- **`Purpose` is for the bot only** (owner decision 2). Set it when the
-  effect plainly helps a player who does not control the permanent, in
-  the printed amounts: `{Draws: 1}` for Excavation and Well of Knowledge.
-  Leave it zero for a pump, a shrink, a "loses flying" or anything
-  symmetric: a bot never activates another player's row that declares
-  none.
+- **`Purpose` is for the bot only** (owner decision 2). Across the
+  table the bot reads its `Draws` and `ControllerLosesLife` alone: set
+  them when the effect plainly helps a player who does not control the
+  permanent, in the printed amounts (`{Draws: 1}` for Excavation and Well
+  of Knowledge). Leave them zero for a pump, a shrink, a "loses flying"
+  or anything symmetric: a bot never activates another player's row that
+  declares neither. A sweep on the row (Warmonger) is declared as on any
+  row; see [Declaring what a card does](#declaring-what-a-card-does-purpose-adr-0126-6).
 - `effects.Register` refuses `AnyPlayer` beside a `{T}`, loyalty, crew or
-  sacrifice-this component and on a non-battlefield zone, and refuses a
-  `Purpose` without `AnyPlayer`. An any-player MANA ability (Mana Cache)
-  and an ability of a spell on the stack (Lightning Storm) are not
-  modelled.
+  sacrifice-this component and on a non-battlefield zone, and refuses
+  `ControllerLosesLife` on a row that is not `AnyPlayer`. An any-player
+  MANA ability (Mana Cache) and an ability of a spell on the stack
+  (Lightning Storm) are not modelled.
 
 The rest is the engine's: `game.MayActivate` is the one gate the
 activation path, the enumerator and the view share; every seat's copy of
 the row is stamped with that seat as the activator; the client opens the
 ability popover on another player's permanent for its `any_player` rows;
 and smart autopass does not stop for them.
+
+### Declaring what a card does: Purpose (ADR 0126 §6)
+
+The heuristic bot reads the seat's view and nothing else, and the view
+cannot tell Wrath of God from Divination: both are untargeted sorceries
+with a mana value. `game.Purpose` is the catalog's answer, declared by
+hand like `Completeness` and never derived. The engine never reads it;
+it rides the wire as `purpose` (docs/protocol.md, "Declared purpose").
+
+Declare it in the slot that does the thing, in the printed amounts:
+
+```go
+Purpose: game.Purpose{Draws: 2},                         // Night's Whisper, on the Spec
+Purpose: game.Purpose{Lands: 1, Tutors: 1},              // Cultivate: one land to play, one to hand
+Purpose: game.Purpose{Sweep: game.Sweep{                 // Wrath of God
+	Matches: game.SweepCreatures, How: game.SweepDestroy}},
+ModeWithPurpose(Mode("Exile all creatures."), game.Purpose{Sweep: ...})        // a modal bullet
+CostWithPurpose(Overload("{6}{U}"), game.Purpose{Sweep: ...})                   // an overload
+TriggerWithPurpose(WheneverACreatureYouControlDies(...), game.Purpose{DeathPayoff: true})
+```
+
+and on an activated row as `Purpose:` beside its `Label` (a loot is
+`{Draws: 1, Discards: 1}`).
+
+- **The Spec's own `Purpose`** is the spell's resolution, or a
+  permanent's enters effect (Mulldrifter's `{Draws: 2}`, Wood Elves'
+  `{Lands: 1}`). A modal spell declares per bullet, an overload on its
+  offer, a split card on each half's Spec.
+- **A board wipe always declares its `Sweep`** (ADR 0126 owner decision
+  2): `Matches` (the class), `How` (destroy, exile, bounce, damage,
+  minus, sacrifice), `Amount` for damage and minus, or `AmountIsX` when
+  it is X. Set `OpponentsOnly` for "creatures your opponents control"
+  and "target player controls", and `Partial` when the sweep spares some
+  of its class by a condition the class does not name (nonwhite, without
+  flying, power 4 or greater). `Matches` is the smallest listed class
+  that holds everything the card removes, leaving out kinds no class
+  names (planeswalkers, battles, lands): Nevinyrral's Disk is
+  `nonland_permanents`, partial; In Garruk's Wake is `creatures`; a
+  bullet that destroys only planeswalkers declares nothing. A new
+  `SweepMatch` is added only for a curated deck's card.
+- **Draws, lands, tutors and tokens** are declared for the curated decks'
+  cards (`TestCuratedDeckPurposes` in `internal/decks`). An amount that
+  is X or counted at resolution is not declared.
+- **`DeathPayoff`** goes on the triggered row that pays out when a
+  creature its controller controls dies (Blood Artist, Grave Pact).
+- `effects.Register` refuses a negative amount, `ControllerLosesLife` off
+  an any-player row, `DeathPayoff` off a triggered row, and a malformed
+  `Sweep`.
+- After declaring a wipe, run the manual dump audit
+  (`go test ./internal/decks/ -run RealDumpPurpose -v` with
+  `CMDCTRL_SCRYFALL_DUMP` set). It fails on a catalog card whose text
+  reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
+  names why.
 
 ### Adding a replacement effect (S17+)
 

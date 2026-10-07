@@ -25,8 +25,8 @@ func init() {
 		Name:         "Cleansing Nova",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Destroy all creatures."),
-			Mode("Destroy all artifacts and enchantments."),
+			ModeWithPurpose(Mode("Destroy all creatures."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}}),
+			ModeWithPurpose(Mode("Destroy all artifacts and enchantments."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifactsAndEnchantments, How: game.SweepDestroy}}),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			sweeps := []CardPredicate{

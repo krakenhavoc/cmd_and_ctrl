@@ -10,6 +10,7 @@ func init() {
 		OracleID:     "7eff84f1-f772-497a-b350-bbc93d0230f7",
 		Name:         "Harmonize",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Draws: 3},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return DrawCards{Player: ctx.Controller(), N: 3}.Apply(ctx)
 		},

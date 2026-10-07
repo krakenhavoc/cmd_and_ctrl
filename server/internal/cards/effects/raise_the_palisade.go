@@ -14,8 +14,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "f55a3781-fe33-4301-9bb5-6a54b9c13c4f",
-		Name:         "Raise the Palisade",
+		OracleID: "f55a3781-fe33-4301-9bb5-6a54b9c13c4f",
+		Name:     "Raise the Palisade",
+		// ADR 0126 §6: creatures of the chosen type stay.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Raise the Palisade — choose a creature type",

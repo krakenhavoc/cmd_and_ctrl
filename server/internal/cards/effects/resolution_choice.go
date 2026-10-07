@@ -125,6 +125,14 @@ type PileSplit struct {
 	// Then receives the pile the chooser TOOK and the pile they left,
 	// in that order. Runs with g.mu held.
 	Then func(ctx *Context, taken, left []uuid.UUID) error
+
+	// FaceDown is the "face-down pile and a face-up pile" split
+	// (#2147): the cards were LOOKED at, not revealed, so the caller
+	// must have made the splitter the only knower
+	// (LookAtTopOfPlayersLibraryForEffect). The splitter's picked cards
+	// are the face-down pile; the rest are revealed when the split is
+	// answered. See game.PileSplitPrompt.FaceDown.
+	FaceDown bool
 }
 
 func (p PileSplit) Apply(ctx *Context) error {
@@ -142,6 +150,7 @@ func (p PileSplit) Apply(ctx *Context) error {
 		SplitQuestion: p.SplitQuestion,
 		PickQuestion:  p.PickQuestion,
 		Cards:         p.Cards,
+		FaceDown:      p.FaceDown,
 		Then: func(g *game.Game, taken, left []uuid.UUID) error {
 			if then == nil {
 				return nil

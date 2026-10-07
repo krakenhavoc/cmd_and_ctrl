@@ -283,8 +283,8 @@ func TestAsAnyColorCostFoldsColorsButNotColorless(t *testing.T) {
 		t.Fatal(err)
 	}
 	any := asAnyColorCost(cost)
-	if any.Generic != 4 || len(any.Required) != 0 {
-		t.Errorf("{2}{W}{U} → generic %d, required %d; want 4 and 0", any.Generic, len(any.Required))
+	if any.Generic != 2 || len(any.Required) != 2 || !any.Required[0].AnyMana || !any.Required[1].AnyMana {
+		t.Errorf("{2}{W}{U} → generic %d, required %+v; want 2 and two widened slots", any.Generic, any.Required)
 	}
 	// A mono-red pool can now pay a white-blue spell.
 	pool := ManaPool{{Color: "R"}, {Color: "R"}, {Color: "R"}, {Color: "R"}}
@@ -301,8 +301,8 @@ func TestAsAnyColorCostFoldsColorsButNotColorless(t *testing.T) {
 		t.Fatal(err)
 	}
 	folded := asAnyColorCost(c)
-	if len(folded.Required) != 1 {
-		t.Errorf("{C} should survive the fold, got %+v", folded)
+	if len(folded.Required) != 1 || folded.Required[0].AnyMana {
+		t.Errorf("{C} should survive the widening unwidened, got %+v", folded)
 	}
 	if (ManaPool{{Color: "R"}, {Color: "R"}}).CanPay(folded, 0) {
 		t.Errorf("two red should not pay {1}{C} even under any-color")

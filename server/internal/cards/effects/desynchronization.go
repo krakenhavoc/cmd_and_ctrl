@@ -18,8 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "dab64d0f-1246-4a4d-9a79-6db2ca0c8882",
-		Name:         "Desynchronization",
+		OracleID: "dab64d0f-1246-4a4d-9a79-6db2ca0c8882",
+		Name:     "Desynchronization",
+		// ADR 0126 §6: a historic permanent stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BounceAllMatching{Match: And(Nonland(), Not(b14Historic()))}.Apply(ctx)

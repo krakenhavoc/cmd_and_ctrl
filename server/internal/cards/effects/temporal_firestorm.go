@@ -28,8 +28,10 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:      "a0f25ffa-0e53-4e38-8001-d595fd2c2045",
-		Name:          "Temporal Firestorm",
+		OracleID: "a0f25ffa-0e53-4e38-8001-d595fd2c2045",
+		Name:     "Temporal Firestorm",
+		// ADR 0126 §6: the permanents phased out by the kicker are spared.
+		Purpose:       game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 5, Partial: true}},
 		Completeness:  CompletenessFull,
 		OptionalCosts: Kickers("{1}{W}", "{1}{U}"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -35,20 +35,24 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Draw a card, then discard a card",
-			Cost:  TapCost(),
+			Label:   "{T}: Draw a card, then discard a card",
+			Purpose: game.Purpose{Draws: 1, Discards: 1},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return lootOne(g, item, 1)
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return discardedByYou(ev, source) &&
 					eventCardHasType(ev, g, "island", "pirate", "vehicle")
 			}, "Mary Read and Anne Bonny — create a tapped Treasure", Do(CreateToken{
 				Template: tappedTreasureToken(),
 				N:        1,
-			})),
+			})), game.Purpose{DiscardPayoff: &game.DiscardPayoff{
+				Types:  []string{"island", "pirate", "vehicle"},
+				Tokens: 1,
+			}}),
 		},
 	})
 }

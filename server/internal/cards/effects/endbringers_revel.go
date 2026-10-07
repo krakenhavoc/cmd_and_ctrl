@@ -14,7 +14,7 @@ package effects
 // body, b27ReturnChosenGraveyardCardToHand). A target that has left
 // the graveyard by resolution is illegal and nothing moves (CR 608.2b).
 //
-// No Purpose: ActivationPurpose has no "return a card" field, so the bot
+// No Purpose: Purpose has no "return a card" field, so the bot
 // does not reach across the table for it (ADR 0106 owner decision 2).
 //
 // No simplification.

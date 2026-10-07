@@ -384,6 +384,34 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// PerCounter is "whenever a [kind] counter is put on ~": the
+	// counter kind whose placement this ability triggers on ONCE PER
+	// COUNTER (#1841, CR 603.2c and the Fathom Mage rulings). The
+	// engine emits one EventCounterPlaced per placement, and a
+	// replacement (Doubling Season, Hardened Scales) has already
+	// settled the count by then, so the number of counters the event
+	// put is the number of occurrences: two counters are two triggers,
+	// each its own stack object and each its own "you may". A removal
+	// or another kind is zero occurrences. Counters a permanent enters
+	// with are placed after it arrives, so they count too (CR 122.6).
+	// Empty — every other ability — is one occurrence per event. Plain
+	// data, not a func. See counterPlacedDeltaLocked.
+	PerCounter string
+
+	// PerCounterRemoved is the removal twin of PerCounter (#2466):
+	// "whenever a [kind] counter is removed from ~" triggers ONCE PER
+	// COUNTER removed (CR 603.2c, Protean Hydra's ruling). The same
+	// EventCounterPlaced carries a removal as a lower post-change
+	// total, so the number of counters it took off is the number of
+	// occurrences. Removal by any cause counts — a cost, an effect, the
+	// CR 704.5q cancel, prevented damage — and a placement or another
+	// kind is zero occurrences. Counters that go away because the
+	// permanent LEFT the battlefield are not removed at all (CR 122.2,
+	// the permanent no longer exists): the engine clears them with the
+	// card and emits no event, so nothing fires. Plain data, not a
+	// func. See counterRemovedDeltaLocked.
+	PerCounterRemoved string
+
 	// BatchKey is the SECOND dimension of the OncePerBatch key: the
 	// distinct object the printed clause quantifies over, read off
 	// the event (#784).
@@ -456,6 +484,13 @@ type TriggeredAbility struct {
 	// about a Saga rather than a condition. See designations.go and
 	// ADR 0071.
 	ActiveWhen Designation
+
+	// Purpose is what the row does, as printed amounts (ADR 0126 §6):
+	// DeathPayoff on Blood Artist's "whenever a creature dies", a
+	// Sweep on a saga chapter that destroys all creatures. Catalog data
+	// projected onto the row's `ability_rows` entry; the engine never
+	// reads it.
+	Purpose Purpose
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
@@ -708,10 +743,22 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {
 		return
 	}
+	occurrences := 1
+	if t.PerCounter != "" {
+		occurrences = g.counterPlacedDeltaLocked(pass.ev, t.PerCounter)
+	}
+	if t.PerCounterRemoved != "" {
+		occurrences = g.counterRemovedDeltaLocked(pass.ev, t.PerCounterRemoved)
+	}
+	if occurrences < 1 {
+		return
+	}
 	extra := g.triggerDoublersLocked(pass, source, lki, t, origin == triggerOfSpell)
-	g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
-	for _, d := range extra {
-		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
+	for n := 0; n < occurrences; n++ {
+		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
+		for _, d := range extra {
+			g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
+		}
 	}
 }
 
@@ -1060,4 +1107,71 @@ func triggerWatches(kinds []EventKind, kind EventKind) bool {
 		}
 	}
 	return false
+}
+
+// counterPlacedDeltaLocked is how many `kind` counters the
+// EventCounterPlaced `ev` PUT on its target, or zero for a removal, a
+// different kind or a different event. The event carries only the
+// post-change total, so the previous total is the most recent
+// EventCounterPlaced for the same card and kind, or zero when the card
+// arrived on the battlefield (or as a token) more recently than that
+// (CR 400.7: it came with no counters). The effects package's
+// b33CountersPlacedDelta is the same walk for a card's own predicate.
+//
+// Caller must hold g.mu.
+func (g *Game) counterPlacedDeltaLocked(ev Event, kind string) int {
+	if ev.Kind != EventCounterPlaced || ev.Label != kind {
+		return 0
+	}
+	before := 0
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		prev := g.Events[i]
+		if prev.Seq >= ev.Seq {
+			continue
+		}
+		if (prev.Kind == EventETB || prev.Kind == EventTokenCreated) && prev.CardID == ev.Target {
+			break
+		}
+		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
+			before = prev.Amount
+			break
+		}
+	}
+	if ev.Amount <= before {
+		return 0
+	}
+	return ev.Amount - before
+}
+
+// counterRemovedDeltaLocked is how many `kind` counters the
+// EventCounterPlaced `ev` TOOK OFF its target, or zero for a placement,
+// a different kind or a different event — counterPlacedDeltaLocked's
+// mirror (#2466). The previous total is read the same way: the most
+// recent EventCounterPlaced for the card and kind, stopping at the
+// card's arrival (CR 400.7: a new object has no counters, so nothing
+// can have been removed from it before its first placement).
+//
+// Caller must hold g.mu.
+func (g *Game) counterRemovedDeltaLocked(ev Event, kind string) int {
+	if ev.Kind != EventCounterPlaced || ev.Label != kind {
+		return 0
+	}
+	before := 0
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		prev := g.Events[i]
+		if prev.Seq >= ev.Seq {
+			continue
+		}
+		if (prev.Kind == EventETB || prev.Kind == EventTokenCreated) && prev.CardID == ev.Target {
+			break
+		}
+		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
+			before = prev.Amount
+			break
+		}
+	}
+	if ev.Amount >= before {
+		return 0
+	}
+	return before - ev.Amount
 }

@@ -86,6 +86,12 @@ type ModeOption struct {
 	// what the future PR would do. Added by ADR 0065's 2026-09-23
 	// amendment.
 	Cost string
+
+	// Purpose is what this bullet does, as printed amounts (ADR 0126
+	// §6): Farewell's "Exile all creatures" is a creature sweep, Izzet
+	// Charm's third bullet draws two and discards two. Catalog data for
+	// the view; the engine never reads it.
+	Purpose Purpose
 }
 
 // ModeSpec declares a modal spell's or ability's choice.
