@@ -214,22 +214,33 @@ func TestAsAnyTypeCostFoldsColorlessToo(t *testing.T) {
 		t.Fatal(err)
 	}
 	folded := asAnyTypeCost(cost)
-	if folded.Generic != 4 || len(folded.Required) != 0 {
-		t.Errorf("{1}{C}{W/U}{B} → generic %d, required %d; want 4 and 0", folded.Generic, len(folded.Required))
+	if folded.Generic != 1 || unwidened(folded) != 0 || len(folded.Required) != 3 {
+		t.Errorf("{1}{C}{W/U}{B} → generic %d, required %+v; want 1 and three widened slots", folded.Generic, folded.Required)
 	}
 	if !(ManaPool{{Color: "R"}, {Color: "R"}, {Color: "R"}, {Color: "R"}}).CanPay(folded, 0) {
 		t.Error("four red should pay it as any-type")
 	}
 	// spendAsThoughAny reads the wider clause first.
-	if got := spendAsThoughAny(&CastPermission{AnyColor: true, AnyType: true}, cost); len(got.Required) != 0 {
-		t.Errorf("AnyType+AnyColor left %d requirements, want the any-type fold", len(got.Required))
+	if got := spendAsThoughAny(&CastPermission{AnyColor: true, AnyType: true}, cost); unwidened(got) != 0 {
+		t.Errorf("AnyType+AnyColor left %d unwidened requirements, want the any-type widening", unwidened(got))
 	}
-	if got := spendAsThoughAny(&CastPermission{AnyColor: true}, cost); len(got.Required) != 1 {
-		t.Errorf("AnyColor alone left %d requirements, want the {C}", len(got.Required))
+	if got := spendAsThoughAny(&CastPermission{AnyColor: true}, cost); unwidened(got) != 1 {
+		t.Errorf("AnyColor alone left %d unwidened requirements, want the {C}", unwidened(got))
 	}
-	if got := spendAsThoughAny(nil, cost); len(got.Required) != 3 {
-		t.Errorf("no grant left %d requirements, want all three", len(got.Required))
+	if got := spendAsThoughAny(nil, cost); unwidened(got) != 3 {
+		t.Errorf("no grant left %d unwidened requirements, want all three", unwidened(got))
 	}
+}
+
+// unwidened counts the requirements a spend grant did not widen.
+func unwidened(c ParsedCost) int {
+	n := 0
+	for _, r := range c.Required {
+		if !r.AnyMana {
+			n++
+		}
+	}
+	return n
 }
 
 // anyTypeCastFixture exiles a {2}{C} creature off the opponent's

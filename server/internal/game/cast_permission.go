@@ -1700,78 +1700,53 @@ func countWord(n int) string {
 }
 
 // asAnyColorCost rewrites a cost so every colored requirement is
-// payable by any mana — "you may spend mana as though it were mana
-// of any color" (Breeches). Folding the colored slots into the
-// generic demand is exactly equivalent for the pool solver: a
-// requirement any token can satisfy IS a generic requirement.
+// payable by any MANA — "you may spend mana as though it were mana
+// of any color" (Breeches). It WIDENS the slot (ColorRequirement.AnyMana)
+// rather than folding it into the generic demand, because the grant
+// changes how mana may pay (CR 609.4b), not the cost (#1928): a
+// creature tapped for convoke is not mana (CR 702.51a) and still needs
+// the symbol's colour, and delve still pays generic only (CR 702.66a).
+// The price shown stays the printed one.
 //
 // Colorless {C} requirements are left alone. "Mana of any color"
 // does not include colorless (CR 106.1b), so a {C} slot still needs
 // real colorless mana.
 //
-// Phyrexian slots are not folded either (#1589). A Phyrexian symbol
-// is "one mana of its colour, or 2 life" (CR 107.4f, plain and
-// hybrid alike), and the grant widens only the mana
-// half — so the slot stays a Phyrexian requirement the caster may
-// strike for life, marked AnyMana so any mana pays it otherwise. See
-// widenPhyrexian.
+// A Phyrexian slot is widened the same way and keeps its "or 2 life"
+// half (CR 107.4f, #1589).
+//
+// The widened slots go AFTER every slot kept as printed. The pool
+// solver pays requirements greedily in order, and a slot that admits
+// anything must not take the only colorless mana a {C} behind it
+// needed.
 func asAnyColorCost(cost ParsedCost) ParsedCost {
-	out := cost
-	out.Required = nil
-	var widened []ColorRequirement
-	for _, req := range cost.Required {
-		switch {
-		case requiresColorless(req):
-			out.Required = append(out.Required, req)
-		case req.Phyrexian:
-			widened = append(widened, widenPhyrexian(req))
-		default:
-			out.Generic++
-			out.FoldedColored++
-		}
-	}
-	out.Required = append(out.Required, widened...)
-	return out
+	return widenSlots(cost, requiresColorless)
 }
 
 // asAnyTypeCost is asAnyColorCost without the {C} exception — "mana
 // of any TYPE can be spent" (Hostage Taker). Every requirement,
-// colorless included, folds into the generic demand, because any mana
-// in the pool can now pay any symbol. A hybrid or two-for-one hybrid
-// slot folds to one generic, the cheapest way to pay it when any mana
-// counts as its colour.
-//
-// A Phyrexian slot does not fold (#1589): it keeps its "or 2 life"
-// half and is widened to any mana, exactly as under asAnyColorCost.
+// colorless included, is widened to any mana. A hybrid or
+// two-for-one hybrid slot is one slot, paid by one mana of any type.
 func asAnyTypeCost(cost ParsedCost) ParsedCost {
-	out := cost
-	out.Required = nil
-	for _, req := range cost.Required {
-		if req.Phyrexian {
-			out.Required = append(out.Required, widenPhyrexian(req))
-			continue
-		}
-		out.Generic++
-		out.FoldedColored++
-	}
-	return out
+	return widenSlots(cost, func(ColorRequirement) bool { return false })
 }
 
-// widenPhyrexian is a Phyrexian requirement under a spend-as-though
-// grant: still Phyrexian, so PhyrexianSymbols counts it and
-// strikePhyrexianLifeLocked may strike it for 2 life, and AnyMana, so
-// any one mana pays it when the caster does not. Options is kept as
-// printed so the price still renders "{B/P}" and the missing-mana
-// breakdown still names the symbol.
-//
-// The folds put widened slots AFTER every slot they keep as printed.
-// The pool solver pays requirements greedily in order, and a slot that
-// admits anything must not take the only colorless mana a {C} behind
-// it needed; ManaPool.attemptSpend orders them last too, for the slots
-// a cost modifier appends after the fold.
-func widenPhyrexian(req ColorRequirement) ColorRequirement {
-	req.AnyMana = true
-	return req
+// widenSlots marks every requirement `keep` does not name AnyMana and
+// orders those after the ones it keeps.
+func widenSlots(cost ParsedCost, keep func(ColorRequirement) bool) ParsedCost {
+	out := cost
+	out.Required = make([]ColorRequirement, 0, len(cost.Required))
+	var widened []ColorRequirement
+	for _, req := range cost.Required {
+		if keep(req) {
+			out.Required = append(out.Required, req)
+			continue
+		}
+		req.AnyMana = true
+		widened = append(widened, req)
+	}
+	out.Required = append(out.Required, widened...)
+	return out
 }
 
 // spendAsThoughAny applies a permission's "spend mana as though"

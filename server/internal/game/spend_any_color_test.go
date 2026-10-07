@@ -338,8 +338,8 @@ func TestWidenForAnyColorSpend(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := widenForAnyColorSpend(cost)
-	if got.Generic != 2 || got.FoldedColored != 0 {
-		t.Errorf("generic %d folded %d, want 2 and 0 — the grant widens, it does not fold", got.Generic, got.FoldedColored)
+	if got.Generic != 2 {
+		t.Errorf("generic %d, want 2 — the grant widens, it does not fold", got.Generic)
 	}
 	if got.String() != cost.String() {
 		t.Errorf("String() = %q, want the printed %q", got.String(), cost.String())

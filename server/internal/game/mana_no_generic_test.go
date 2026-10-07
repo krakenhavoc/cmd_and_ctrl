@@ -193,11 +193,14 @@ func TestNoGenericManaUnderAnAnyColorGrant(t *testing.T) {
 	}
 }
 
-// A coloured symbol a cast permission folded into the generic demand
-// (FoldedColored) is still a coloured symbol; the rest of the generic
-// demand is not.
-func TestNoGenericManaPaysFoldedColoredSymbolsOnly(t *testing.T) {
-	folded := ParsedCost{Generic: 3, FoldedColored: 2}
+// A coloured symbol a cast permission widened (#1928) is still a
+// coloured symbol; the rest of the generic demand is not.
+func TestNoGenericManaPaysWidenedColoredSymbolsOnly(t *testing.T) {
+	cost, err := ParseCost("{1}{W}{U}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	folded := asAnyColorCost(cost)
 	pool := ManaPool{
 		{Color: "W", Restrictions: noGen}, {Color: "U", Restrictions: noGen},
 		{Color: "B", Restrictions: noGen},

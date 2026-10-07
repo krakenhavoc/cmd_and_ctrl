@@ -334,12 +334,12 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 
 // noGenericSlots is how many of a cost's "generic" demand a mana that
 // can't pay generic costs may still pay (#2170): the widened coloured
-// symbols that no printed colour paid (`deferred`) and the coloured
-// symbols a spend-as-any-colour cast permission folded into Generic.
-// Both are coloured symbols in the rules (CR 107.4e, 609.4b), only
-// represented as generic demand here.
-func noGenericSlots(cost ParsedCost, deferred int) int {
-	return deferred + min(cost.FoldedColored, cost.Generic)
+// symbols that no printed colour paid (`deferred`) — whether the grant
+// is a player's static or a cast permission's (#1928). They are
+// coloured symbols in the rules (CR 107.4e, 609.4b), only represented
+// as generic demand here.
+func noGenericSlots(_ ParsedCost, deferred int) int {
+	return deferred
 }
 
 // spendNoGenericSlots marks up to n unused no-generic tokens (in
