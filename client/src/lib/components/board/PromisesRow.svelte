@@ -42,28 +42,49 @@
 </script>
 
 {#if viewerID && viewerID !== opponentID}
-  <div class="promises" aria-label="promise tokens">
-    <span class="seg owed">
-      <span class="label" title="they owe you">←</span>
-      <span class="count">{owedToViewer}</span>
-    </span>
-    <span class="seg owe">
+  {#if owedToViewer === 0 && owedToOpponent === 0}
+    <!-- #2483: nothing owed either way, so nothing on the table. The one
+         control shows while this board is hovered or focused, and
+         records a promise you make them. -->
+    <div class="promises idle" aria-label="promise tokens">
       <button
         type="button"
-        title="-1 you owe"
-        aria-label="decrement promise"
-        onclick={() => bump(-1)}>−</button
-      >
-      <span class="label" title="you owe them">→</span>
-      <span class="count">{owedToOpponent}</span>
-      <button
-        type="button"
-        title="+1 you owe"
+        class="add"
+        title="Record a promise you made this player (a deal, such as not attacking them)"
         aria-label="increment promise"
-        onclick={() => bump(1)}>+</button
+        onclick={() => bump(1)}>+ Promise</button
       >
-    </span>
-  </div>
+    </div>
+  {:else}
+    <div
+      class="promises"
+      aria-label="promise tokens"
+      title="Promise tokens: deals between you and this player"
+    >
+      {#if owedToViewer > 0}
+        <span class="seg owed" title="Promises this player has made you; they change it">
+          <span class="label">Owes you</span>
+          <span class="count">{owedToViewer}</span>
+        </span>
+      {/if}
+      <span class="seg owe">
+        <span class="label">You owe</span>
+        <button
+          type="button"
+          title="One fewer promise you owe them"
+          aria-label="decrement promise"
+          onclick={() => bump(-1)}>−</button
+        >
+        <span class="count">{owedToOpponent}</span>
+        <button
+          type="button"
+          title="One more promise you owe them"
+          aria-label="increment promise"
+          onclick={() => bump(1)}>+</button
+        >
+      </span>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -113,6 +134,29 @@
       border-color 120ms var(--ease),
       color 120ms var(--ease),
       background 120ms var(--ease);
+  }
+  /* Idle: invisible but still in the tab order, so a keyboard user who
+     reaches it sees it (:focus-within on the board) like a pointer
+     user hovering the board does. */
+  .promises.idle .add {
+    opacity: 0;
+    padding: 2px 8px;
+    border: 1px dashed var(--overlay-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--fg-dim);
+    font: inherit;
+    font-size: 10px;
+    cursor: pointer;
+    box-shadow: none;
+    transition: opacity 120ms var(--ease);
+  }
+  :global(.seat-panel:is(:hover, :focus-within)) .promises.idle .add {
+    opacity: 1;
+  }
+  .promises.idle .add:hover {
+    color: var(--accent);
+    border-color: var(--accent);
   }
   .seg.owe button:hover {
     background: rgba(255, 208, 122, 0.12);

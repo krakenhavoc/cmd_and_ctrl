@@ -1222,22 +1222,28 @@
       display: none;
     }
   }
-  /* #2438: an across-table opponent is your board's mirror, flipped top
-     to bottom across the table's centre line: their hand and commander
-     along the top edge, the back row under it with the piles in its
-     left corner (yours are in the same corner of your back row), and
-     the creatures facing yours, with their identity at the bottom of
-     the rail beside them, where yours is at the top of your rail beside
-     your creatures. The rail is `display: contents`, as on yours, so
-     the piles leave it and the creatures keep its full height. */
+  /* #2438, #2483: an across-table opponent sits across from you. Their
+     board is yours turned 180° about the table's centre, with the cards
+     themselves left upright to read: their hand along the top edge with
+     their commander on its left (yours is on your hand's right), the
+     back row under it reading enchantments/artifacts then lands with
+     the piles in its right corner (yours are in your back row's left),
+     and the creatures facing yours, with their identity at the bottom
+     of the rail on the left, where yours is at the top of your rail on
+     the right. The rail is `display: contents`, as on yours, so the
+     piles leave it and the creatures keep its full height. */
   @media (min-width: 600px) {
     .panel.opponent.flipped {
-      grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
       grid-template-rows: auto auto minmax(0, 1fr);
       grid-template-areas:
-        "bottom    bottom    bottom"
-        "piles     middle    rail"
-        "creatures creatures rail";
+        "bottom bottom    bottom"
+        "rail   middle    piles"
+        "rail   creatures creatures";
+    }
+    .panel.opponent.flipped .grid-bottom,
+    .panel.opponent.flipped .grid-middle {
+      flex-direction: row-reverse;
     }
     .panel.opponent.flipped .rail {
       display: contents;
