@@ -730,6 +730,21 @@ export interface MyPlaymat {
   url?: string;
   width?: number;
   height?: number;
+  // The owner-set darkness over the image, in percent (ADR 0128
+  // amendment): sent whenever enabled, image or not.
+  wash?: number;
+}
+
+// The wash's range and default, the server's (internal/playmat).
+export const PLAYMAT_MIN_WASH = 30;
+export const PLAYMAT_MAX_WASH = 90;
+export const PLAYMAT_DEFAULT_WASH = 58;
+
+// setMyPlaymatWash is PATCH /me/playmat: the owner-set wash, which every
+// player at the table sees. It may be set before any image is uploaded.
+export async function setMyPlaymatWash(wash: number): Promise<MyPlaymat> {
+  const res = await authFetch("/me/playmat", { method: "PATCH", body: JSON.stringify({ wash }) });
+  return (await res.json()) as MyPlaymat;
 }
 
 // fetchMyPlaymat is GET /me/playmat. A 403 (a guest, the admin token, a

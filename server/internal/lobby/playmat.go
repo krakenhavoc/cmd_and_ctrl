@@ -43,6 +43,7 @@ func (l *Lobby) bindPlaymat(room *ws.Room, playerID, userID uuid.UUID) {
 		return
 	}
 	room.SetPlaymat(playerID, l.playmats.URL(userID))
+	l.bindPlaymatWash(room, playerID, userID)
 }
 
 // PlaymatChanged moves a person's new playmat onto every table they
@@ -73,6 +74,7 @@ func (l *Lobby) PlaymatChanged(userID uuid.UUID, url string) {
 			pid := s.PlayerID
 			b, err := l.applyLocked(id, entry, func() error {
 				entry.room.SetPlaymat(pid, url)
+				l.bindPlaymatWash(entry.room, pid, userID)
 				return nil
 			})
 			if err != nil {

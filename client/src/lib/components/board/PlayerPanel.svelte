@@ -728,7 +728,11 @@
   {#if playmat}
     <!-- ADR 0128: the owner's playmat, under everything. An <img> and
          not a CSS background so a failed load is detectable. -->
-    <div class="playmat" aria-hidden="true">
+    <div
+      class="playmat"
+      aria-hidden="true"
+      style:--playmat-wash={seat.playmat_wash ? `${seat.playmat_wash}%` : undefined}
+    >
       <img
         src={playmat}
         alt=""
@@ -1011,7 +1015,9 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--bg) 58%, transparent);
+    /* The owner sets the strength (ADR 0128 amendment); 58% when they
+       have not, or the server sent none. */
+    background: color-mix(in srgb, var(--bg) var(--playmat-wash, 58%), transparent);
   }
   /* An across-table opponent's board is yours turned 180° about the
      table's centre (#2438, below), so their mat is turned with it: the

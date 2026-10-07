@@ -106,6 +106,9 @@ type Room struct {
 	// as host. See playmat.go.
 	playmatMu sync.Mutex
 	playmats  map[uuid.UUID]string
+	// playmatWashes is each seat's owner-set wash, stamped beside its
+	// URL (ADR 0128 amendment). Same guard.
+	playmatWashes map[uuid.UUID]int
 
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
