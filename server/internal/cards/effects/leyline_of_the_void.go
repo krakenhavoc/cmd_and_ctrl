@@ -24,20 +24,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // If a card ever reads "exiled by Leyline", this is the line to
 // revisit.
 //
-// One declared deviation: the leyline clause itself. There is no
-// "begin the game with it on the battlefield" step in this sandbox;
-// the enchantment is cast for {2}{B}{B} like any other.
+// The leyline clause (CR 103.6a) is Spec.OpeningHand (ADR 0133): the
+// seat holding it is asked as the mulligan window closes.
 //
 // An opponent's COMMANDER is exiled like any other card, and its owner
 // is offered the command zone afterwards (CR 903.9a, ADR 0115).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "f4e32fc1-1b8d-441e-8e76-71f19f98e925",
 		Name:         "Leyline of the Void",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You can't begin the game with it on the battlefield from your opening hand — it has to be cast.",
-		},
+		Completeness: CompletenessFull,
+		OpeningHand:  BeginTheGameOnTheBattlefield(),
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			OpponentsOnly: true,
 			Label:         "Leyline of the Void: exile instead of an opponent's graveyard",

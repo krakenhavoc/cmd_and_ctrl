@@ -864,7 +864,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 				if !spec.sourceAdmits(g, src, c) {
 					continue
 				}
-				if !spec.xBoundAdmits(c) {
+				if !spec.xBoundAdmitsIn(g, c) {
 					continue
 				}
 				out.Cards = append(out.Cards, c.InstanceID)
@@ -1115,7 +1115,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 			if targeting && !g.canBeTargetedByLocked(&c, z.Kind, src) {
 				return false
 			}
-			if !spec.xBoundAdmits(c) {
+			if !spec.xBoundAdmitsIn(g, c) {
 				return false
 			}
 			if spec.excludesSource(src, c.InstanceID) {

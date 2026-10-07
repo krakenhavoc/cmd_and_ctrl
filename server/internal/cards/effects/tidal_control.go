@@ -32,13 +32,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	counter := func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			return CounterTarget{StackID: t.ID}.Apply(ctx)
-		}
-		return nil
-	}
 	target := func() *game.TargetSpec {
 		return TargetSpell("target red or green spell", Or(OfColor("R"), OfColor("G")))
 	}
@@ -55,14 +48,14 @@ func init() {
 				Cost:      game.AbilityCost{Life: 2},
 				Targets:   target(),
 				AnyPlayer: true,
-				Effect:    counter,
+				Effect:    counterTheChosenSpell,
 			},
 			{
 				Label:     "{2}: Counter target red or green spell. Any player may activate this ability.",
 				Cost:      game.AbilityCost{Mana: "{2}"},
 				Targets:   target(),
 				AnyPlayer: true,
-				Effect:    counter,
+				Effect:    counterTheChosenSpell,
 			},
 		},
 	})

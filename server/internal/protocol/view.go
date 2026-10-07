@@ -322,14 +322,21 @@ type LegalMoveView = legal.Move
 // discard_from_hand targeting an opponent's hand) or the raw
 // IDs plus redacted characteristics.
 type PendingChoiceView struct {
-	ID         string     `json:"id"`
-	Kind       string     `json:"kind"`
-	Chooser    string     `json:"chooser"`
-	FromPlayer string     `json:"from_player"`
-	Count      int        `json:"count"`
-	Source     string     `json:"source,omitempty"`
-	Reason     string     `json:"reason,omitempty"`
-	Options    []CardView `json:"options,omitempty"`
+	ID         string `json:"id"`
+	Kind       string `json:"kind"`
+	Chooser    string `json:"chooser"`
+	FromPlayer string `json:"from_player"`
+	Count      int    `json:"count"`
+	Source     string `json:"source,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+	// PrivateText marks a prompt whose words name a card in a hidden
+	// zone (ADR 0133: an opening-hand action's question names the card
+	// in the chooser's hand). The chooser gets source, reason and
+	// branch labels; every other viewer gets the prompt, its kind and
+	// its chooser — the table has to see who the game is waiting on —
+	// with the words replaced by a neutral line.
+	PrivateText bool       `json:"private_text,omitempty"`
+	Options     []CardView `json:"options,omitempty"`
 	// Eligible is, for a discard_from_hand, the instance IDs among
 	// Options the chooser may pick (ADR 0116 §7): "you choose a
 	// nonland card from it". Options stays the whole revealed hand.
@@ -3492,6 +3499,14 @@ type ActivatedAbilityView struct {
 	// lists), sends the picks as `discard_ids` and the count as
 	// `x_value`, and skips the X stepper. `demands_x` is set beside it.
 	DiscardCostCountFromX bool `json:"discard_cost_count_from_x,omitempty"`
+	// DiscardCostManaValueX marks the "Discard a card with mana value X"
+	// form (#2190, ADR 0113's 2026-10-07 amendment) — Kozilek, the Great
+	// Distortion. `discard_cost_n` is 1 and `demands_x` is set, but X is
+	// not asked for: the card picked IS the announcement, so the client
+	// sends its mana value as `x_value` (the engine refuses any other)
+	// and narrows the ability's target clause by it before targets are
+	// chosen (`mana_value_equals_x`).
+	DiscardCostManaValueX bool `json:"discard_cost_mana_value_x,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -7170,6 +7185,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			AutoAnswerCard:   c.AutoAnswerCard,
 			AutoAnswerPrompt: c.AutoAnswerPrompt,
 			AskedByHand:      string(c.AskedByHand),
+			PrivateText:      c.PrivateText(),
 		}
 		// ADR 0131 §2: the life half of a mana payment.
 		if c.Kind == game.PendingChoicePayUnless && c.PayAction() == nil {
@@ -8386,6 +8402,16 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].SearchMax = 0
+			continue
+		}
+		// ADR 0133: an opening-hand action's question names a card in the
+		// chooser's hand. Everyone else is told who the game is waiting on
+		// and nothing about what is in that hand.
+		if c.PrivateText && c.Chooser != viewerID {
+			out[i].Source = ""
+			out[i].Reason = "Deciding on an opening-hand action"
+			out[i].AcceptLabel = ""
+			out[i].DeclineLabel = ""
 			continue
 		}
 		// choose_cards candidates are usually cards in a hand. The
@@ -9723,6 +9749,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if dc := a.Cost.DiscardCards; dc != nil && (dc.N > 0 || dc.CountFromX) {
 			v.DiscardCostN = dc.N
 			v.DiscardCostCountFromX = dc.CountFromX
+			v.DiscardCostManaValueX = dc.ManaValueX
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.

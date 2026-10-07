@@ -182,10 +182,10 @@ func BoundStatisticForEffect(s *TargetSpec) string { return boundStatistic(s) }
 // unreadable cost meets no mana-value bound (Card.ParsedManaValue's
 // rule). Power and toughness are CR 208.1's: layers and every P/T
 // counter, not clamped, the numbers PowerLE and ToughnessLE read.
-func boundStatValue(s *TargetSpec, c Card) (int, bool) {
+func boundStatValue(g *Game, s *TargetSpec, c Card) (int, bool) {
 	switch boundStatistic(s) {
 	case BoundStatManaValue:
-		return c.ParsedManaValue()
+		return g.ManaValueForEffect(c)
 	case BoundStatPower:
 		return c.PowerForComparison(), true
 	case BoundStatToughness:
@@ -196,8 +196,8 @@ func boundStatValue(s *TargetSpec, c Card) (int, bool) {
 
 // boundAdmitsAt applies the clause's bound at `bound` to a candidate:
 // at most `bound`, or exactly it for ManaValueEqualsX.
-func boundAdmitsAt(s *TargetSpec, c Card, bound int) bool {
-	v, ok := boundStatValue(s, c)
+func boundAdmitsAt(g *Game, s *TargetSpec, c Card, bound int) bool {
+	v, ok := boundStatValue(g, s, c)
 	if !ok {
 		return false
 	}
@@ -210,12 +210,21 @@ func boundAdmitsAt(s *TargetSpec, c Card, bound int) bool {
 // xBoundAdmits applies the clause's X bound to a candidate card: true
 // when the clause has no bound, or the bound is not yet known (a hand
 // snapshot, built before X is announced or the counters are chosen),
-// or the card's statistic meets it.
-func (s *TargetSpec) xBoundAdmits(c Card) bool {
+// or the card's statistic meets it. It reads the card with no game, so
+// a spell on the stack counts {X} as zero; every engine path uses
+// xBoundAdmitsIn, which counts it as the value chosen (CR 202.3e).
+func (s *TargetSpec) xBoundAdmits(c Card) bool { return s.xBoundAdmitsIn(nil, c) }
+
+// xBoundAdmitsIn is xBoundAdmits read through the game: a spell on the
+// stack has the mana value its announced X gives it (CR 202.3e), which
+// is what a "counter target spell with mana value X" bound (Kozilek,
+// the Great Distortion) has to compare. For a card in any other zone
+// the answer is the same as without the game.
+func (s *TargetSpec) xBoundAdmitsIn(g *Game, c Card) bool {
 	if s == nil || !hasXBound(s) || !s.xBoundSet {
 		return true
 	}
-	return boundAdmitsAt(s, c, s.xBound)
+	return boundAdmitsAt(g, s, c, s.xBound)
 }
 
 // bindStepsBound writes the announcement's bound onto every
@@ -364,7 +373,7 @@ func (g *Game) BoundValuesForEffect(spec *TargetSpec, ids []uuid.UUID) map[uuid.
 		if c == nil {
 			continue
 		}
-		if v, ok := boundStatValue(spec, *c); ok {
+		if v, ok := boundStatValue(g, spec, *c); ok {
 			out[id] = v
 		}
 	}
@@ -644,7 +653,7 @@ func (g *Game) TargetsWithinBoundForEffect(steps []AnnouncedClause, targets []Ta
 				continue
 			}
 			c := g.findCardByIDLocked(t.ID)
-			if c == nil || !boundAdmitsAt(clause, *c, b.valueFor(clause)) {
+			if c == nil || !boundAdmitsAt(g, clause, *c, b.valueFor(clause)) {
 				return false
 			}
 		}

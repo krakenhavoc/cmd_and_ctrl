@@ -174,6 +174,7 @@
     manaTapPayment,
   } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
+  import { discardedManaValue } from "../../discardCostX";
   import {
     costConfirmLines,
     costConfirmNote,
@@ -1803,6 +1804,15 @@
     // #2527: the cards picked for "Discard X cards" are the announced
     // X, so the X stepper has nothing left to ask.
     abilityDiscardX = ability.discard_cost_count_from_x ? discardIDs.length : undefined;
+    // #2190: and the card picked for "Discard a card with mana value X"
+    // IS the announcement: its mana value is X, for the target clause
+    // that follows as much as for the engine.
+    if (ability.discard_cost_mana_value_x) {
+      abilityDiscardX = discardedManaValue(
+        view.seats.find((s) => s.id === viewerID)?.hand.cards,
+        discardIDs,
+      );
+    }
     // #1297: the exile pick next — the same card-shaped question one
     // component over, skipped the same way when the pile holds exactly
     // what the clause demands.

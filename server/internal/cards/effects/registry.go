@@ -381,6 +381,7 @@ func Register(spec Spec) {
 		}
 	}
 	checkGrantedAlternativeCosts(spec.Name, spec.GrantedAlternativeCosts)
+	checkOpeningHand(spec.Name, spec.OpeningHand)
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
 	// cost, and an untested kind should not be declarable. A mana Unit
 	// belongs on an increase only (open question 3), and carries only
@@ -654,6 +655,11 @@ func Register(spec Spec) {
 		// mana ability (CR 605.3b) has no stack item to carry.
 		if game.DiscardCountFromX(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards X cards — a mana ability announces no X (CR 605.3b)",
+				spec.Name, i))
+		}
+		// #2190: and neither can "Discard a card with mana value X".
+		if game.DiscardManaValueX(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards a card with mana value X — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)

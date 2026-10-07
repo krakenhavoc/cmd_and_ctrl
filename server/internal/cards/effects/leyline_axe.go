@@ -15,21 +15,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // composed the way every other keyword-granting Equipment in the
 // catalog is.
 //
-// The "leyline" opening-hand clause does NOT ship. There is no
-// opening-hand / mulligan-time hook anywhere in the engine — deck
-// setup puts every card in the library, full stop — so a card that
-// starts a game already on the battlefield is not a thing any spec
-// can ask for today. Leaving the clause off is the correct direction
-// per #259: it makes the card strictly weaker (it is drawn and cast
-// like any other Equipment, never free), never stronger.
+// The "leyline" opening-hand clause (CR 103.6a) is Spec.OpeningHand
+// (ADR 0133): the seat holding it is asked as the mulligan window
+// closes, and a yes puts the Equipment onto the battlefield unattached.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "4f597675-0f6d-438c-990c-337171927a5e",
 		Name:         "Leyline Axe",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Starting the game with this on the battlefield for free isn't implemented — you always draw and cast it like an ordinary Equipment.",
-		},
+		Completeness: CompletenessFull,
+		OpeningHand:  BeginTheGameOnTheBattlefield(),
 		Static: []game.StaticAbility{
 			PumpAttached(1, 1),
 			GrantToAttached("double strike", "trample"),

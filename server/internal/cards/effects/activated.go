@@ -602,6 +602,28 @@ func DiscardX(label string, match ...func(game.Card) bool) game.AbilityCost {
 	return game.AbilityCost{DiscardCards: dc}
 }
 
+// DiscardCardWithManaValueX is "Discard a card with mana value X" as a
+// cost (#2190, ADR 0113's 2026-10-07 amendment) — Kozilek, the Great
+// Distortion's
+//
+//	Cost: DiscardCardWithManaValueX("a card with mana value X")
+//
+// paired with a spell target clause bounded by the same X:
+//
+//	Targets: TargetSpell("target spell with mana value X").WithManaValueEqualsX()
+//
+// X is announced with the activation (CR 602.2b) but not paid for: it
+// is the mana value the discarded card must have, and the number the
+// target clause compares against. The activator names one card in
+// `discard_ids` and sends its mana value as `x_value`; the engine
+// refuses a card of any other value. Register refuses it beside {X} in
+// the mana cost or another claim on the announced X, beside another
+// hand-spending component, and on a mana ability (CR 605.3b). The
+// label is the clause as printed, without the verb.
+func DiscardCardWithManaValueX(label string) game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: 1, Label: label, ManaValueX: true}}
+}
+
 // DiscardAtRandom is "Discard N cards at random" as a cost (ADR 0109
 // §7, owner decision 3; CR 701.9b) — Pyromancy's "{3}, Discard a card
 // at random:", Meteor Storm's "Discard two cards at random". The
