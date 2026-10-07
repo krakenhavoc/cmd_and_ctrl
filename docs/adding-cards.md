@@ -984,10 +984,17 @@ the activator's energy, and the enumerator bounds X by it. The view
 stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
 short for.
 
+**A mana ability that pays energy** (PR 2) declares it on its cost:
+`ManaAbilityCost{Tap: true, Energy: 1}` is Aether Hub's "{T}, Pay {E}:"
+(`anyColorForEnergyRow` in `effects/energy_mana.go` is the whole row).
+It stays a mana ability (CR 605.1a). The auto-tapper plans it in the
+energy tier: only when no plan that spends no energy pays, before the
+pain tier, and never for more energy than the controller has across the
+whole plan (ADR 0129 owner decision 2).
+
 **Not yet:** energy paid while an ability resolves ("you may pay {E}{E}.
 If you do", "unless you pay {E}", "pay any amount of {E}") waits on
-ADR 0129 PR 3; a mana ability with an energy cost (Aether Hub) on PR 2;
-energy as an alternative cost, replicate or a keyword's cost on PR 4;
+ADR 0129 PR 3; energy as an alternative cost, replicate or a keyword's cost on PR 4;
 "whenever you get one or more {E}" and "{E} you've paid or lost this
 turn" on PR 5. Put such a card on the matching registry row's `Waiting`
 list.

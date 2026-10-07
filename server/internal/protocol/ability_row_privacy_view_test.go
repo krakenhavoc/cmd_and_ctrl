@@ -123,7 +123,10 @@ var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
-	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
+	// ADR 0129 §5: the printed energy component (a player's energy is
+	// public).
+	"EnergyCost": rowPublic,
+	"ManaCost":   rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.

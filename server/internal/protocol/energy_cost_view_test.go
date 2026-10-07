@@ -53,3 +53,30 @@ func TestViewStampsEnergyCostAndShortfall(t *testing.T) {
 		t.Errorf("with 3 energy the row says %q, want nothing", r.CantActivate)
 	}
 }
+
+// ADR 0129 §5, §8: a mana row stamps its energy component and, short of
+// energy, the engine's refusal.
+func TestViewStampsManaRowEnergyCost(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	var src uuid.UUID
+	g.WithWriteLock(func() {
+		src = uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: src, Name: "Energy Hub", TypeLine: "Land",
+			OracleID: "00000000-0000-0000-0000-000000001996",
+			Owner:    me.ID, Controller: me.ID,
+			ManaAbilities: []game.ManaAbilityShape{
+				{TapCost: true, EnergyCost: 1, Produced: "{W|U|B|R|G}", Label: "{T}, Pay {E}: Add one mana of any color."},
+			},
+		})
+	})
+	g.BumpLayerVersionForTest()
+	rows := frameCard(t, g, me.ID.String(), src).ManaAbilities
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d, want 1", len(rows))
+	}
+	if r := rows[0]; r.EnergyCost != 1 || r.CantActivate != "Not enough energy (have 0, need 1)" {
+		t.Errorf("row = energy %d cant %q, want 1 and the shortfall", r.EnergyCost, r.CantActivate)
+	}
+}
