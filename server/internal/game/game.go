@@ -1485,6 +1485,15 @@ func (g *Game) driveStepToEndLocked() driveResult {
 // caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
 // every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
+	// ADR 0108 amendment 2026-10-07 (#2027): "until end of combat"
+	// effects expire as the combat phase ends (CR 511.3, 724.2d). The
+	// kind is a pure read of the cursor, so it only needs a sweep once
+	// the cursor has moved; any step of a combat phase can be the last
+	// one this call leaves (a phase an effect ended walks through here
+	// step by step), so every move out of one sweeps.
+	if PhaseOf(g.Turn.Step) == PhaseCombat {
+		defer g.ClearExpiredScopedStaticsLocked()
+	}
 	// CR 511.3: "as soon as the end of combat step ends, all
 	// creatures, battles and planeswalkers are removed from combat."
 	// This is where that step ends — the one seam every step
