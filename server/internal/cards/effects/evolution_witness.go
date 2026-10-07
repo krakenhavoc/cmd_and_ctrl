@@ -22,15 +22,9 @@ func init() {
 		Name:         "Evolution Witness",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}{G}: Adapt 2",
-			Cost:  ManaCost("{1}{G}"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				src, ok := g.LookupCardForEffect(item.SourceCardID)
-				if !ok || src.Counters[game.CounterPlusOne] > 0 {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(NewContext(g, item))
-			},
+			Label:  "{1}{G}: Adapt 2",
+			Cost:   ManaCost("{1}{G}"),
+			Effect: adaptTwo,
 		}},
 		Triggered: []game.TriggeredAbility{
 			Targeting(On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

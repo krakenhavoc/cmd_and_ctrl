@@ -106,3 +106,50 @@ func untapAllOtherCreaturesYouControl(g *game.Game, item *game.StackItem) error 
 		return c.IsCreature() && c.InstanceID != self
 	})
 }
+
+// ExertedGets is the linked "When you do, it gets +P/+T [and gains
+// <keywords>] until end of turn" of the self-pump exert cards (Gust
+// Walker, Bitterblade Warrior, Hooded Brawler …), with the pump
+// declared as the row's Purpose so the bot prices the exert by it (ADR
+// 0130's amendment of 2026-10-07). Power and toughness are the printed
+// numbers, and keywords are lowercase tokens.
+//
+// "It" is this creature as the exert made it an object: a creature
+// that left the battlefield and came back before the trigger resolved
+// is a new object and gets nothing (CR 400.7).
+func ExertedGets(label string, power, toughness int, keywords ...string) game.TriggeredAbility {
+	effect := func(g *game.Game, item *game.StackItem) error {
+		var mods []game.Mod
+		if power != 0 || toughness != 0 {
+			mods = append(mods, game.ModifyPTMod(power, toughness))
+		}
+		if len(keywords) > 0 {
+			mods = append(mods, game.AddKeywordsMod(keywords...))
+		}
+		ctx := NewContext(g, item)
+		return ScopedEffectFor{
+			Target:   item.SourceCardID,
+			Mods:     mods,
+			Duration: DurationUntilEndOfTurn(ctx),
+			Label:    label,
+		}.Apply(ctx)
+	}
+	return TriggerWithPurpose(WhenExerted(label, effect),
+		game.Purpose{Pump: &game.Pump{Power: power, Toughness: toughness, Keywords: keywords}})
+}
+
+// whenYouExertBuild is the Build of a "whenever you exert a creature"
+// payoff that refers to "that creature" (Rohirrim Chargers): it records
+// the exerted object, instance and epoch, in Params.Object, so the
+// effect can tell whether it is still the same permanent (CR 400.7).
+func whenYouExertBuild(label string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label)
+		ref := game.ObjectRef{ID: ev.CardID}
+		if c, ok := g.LookupCardForEffect(ev.CardID); ok {
+			ref.Epoch = c.ObjectEpoch
+		}
+		item.Params.Object = ref
+		return item
+	}
+}
