@@ -200,19 +200,6 @@ func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Gam
 	return false
 }
 
-// b31MunitionsYouControlLeft is the condition of the trigger Weapons
-// Manufacturing carries for its tokens: a Munitions token the
-// source's controller controls left the battlefield, by any route.
-// The token is read post-move (it persists in the graveyard until
-// the next state check, and in exile or a hand indefinitely).
-func b31MunitionsYouControlLeft(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventLTB || ev.CardID == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && IsToken(c) && c.Name == "Munitions" && leftUnderControlOf(ev, c) == source.Controller
-}
-
 // --- effect bodies -----------------------------------------------
 
 // b31TillerEngineLabel is the stack label both declarations of
@@ -280,21 +267,6 @@ func b31ChosenOpponentLosesLife(g *game.Game, item *game.StackItem) error {
 			continue
 		}
 		return g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -amount)
-	}
-	return nil
-}
-
-// b31MunitionsDamageChosenTarget is the body of the trigger Weapons
-// Manufacturing carries for a Munitions token: 2 damage to the
-// target chosen when the trigger went on the stack, dealt by the
-// token that left — read off the item's triggering event
-// (item.Trigger.Event.CardID, ADR 0041 P9) rather than captured —
-// rather than by the Manufacturing — a colorless source, as
-// printed, so a red-damage payoff does not see it.
-func b31MunitionsDamageChosenTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		return DealDamage{Source: item.Trigger.Event.CardID, Target: t.ID, Amount: 2}.Apply(ctx)
 	}
 	return nil
 }

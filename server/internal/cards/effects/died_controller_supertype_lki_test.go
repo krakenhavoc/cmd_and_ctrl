@@ -266,7 +266,6 @@ func controllerDiesChecks(t *testing.T) []controllerDiesCheck {
 		{"deathTyrantCombatDeath — a blocker an opponent controls", subjectBlocking, true, when(deathTyrantCombatDeath)},
 		{"creatureYouControlLeftWithoutDying (Aang, Dour Port-Mage)", subjectBounced, false, creatureYouControlLeftWithoutDying},
 		{"b10LandYouControlDied (Titania)", subjectLand, false, b10LandYouControlDied},
-		{"b31MunitionsYouControlLeft", subjectMunitions, false, b31MunitionsYouControlLeft},
 		{"Nadier's Nightblade", subjectMunitions, false, inline("391978f6-0bbc-41e8-9246-f7d0e21c7900")},
 	}
 }

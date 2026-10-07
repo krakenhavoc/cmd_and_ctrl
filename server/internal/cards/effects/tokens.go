@@ -435,3 +435,28 @@ func printedSmaugToken() tokenTemplate {
 		Text: "Flying, haste\nWhen this creature dies, create fourteen Treasure tokens.",
 	}
 }
+
+// MunitionsToken is Weapons Manufacturing's colorless artifact token
+// named Munitions, with "When this token leaves the battlefield, it
+// deals 2 damage to any target."
+//
+// The ability lives on the token (ADR 0083) and not on the enchantment
+// that made it: the Manufacturing can be destroyed or bounced in the
+// meantime, and a Munitions an opponent steals still shoots for its
+// new controller. "Leaves the battlefield" is any exit, so a sacrifice,
+// a bounce and a destroy all fire it, and the 2 damage is dealt BY the
+// token (a colorless source), which is item.SourceCardID.
+func MunitionsToken() game.Card { return tokenFromCatalog(printedMunitionsToken) }
+
+// printedMunitionsToken is the Munitions as PRINTED.
+func printedMunitionsToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "munitions",
+		Card: game.Card{Name: "Munitions", TypeLine: "Token Artifact"},
+		Triggered: []game.TriggeredAbility{
+			Targeting(WhenThisLeaves("Munitions — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2)),
+				TargetAny()),
+		},
+		Text: "When this token leaves the battlefield, it deals 2 damage to any target.",
+	}
+}
