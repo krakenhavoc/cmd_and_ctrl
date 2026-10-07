@@ -219,6 +219,14 @@ type PlayerStatic struct {
 	// No `omitzero`, for Timing's reason above (#1492).
 	CantBeCountered CounterShieldGrant `json:"cantBeCountered"`
 
+	// NextSpell is a one-use "the next <kind> spell you cast <this turn>
+	// <does X>" promise: flash, a cost reduction, an extra counter, can't
+	// be countered. #1852, next_spell_promise.go. The EIGHTH payload,
+	// told apart by NextSpellPromise.Active; it carries no Keyword. Its
+	// READERS are the timing verdict (flash), the cost pass (reduction)
+	// and the cast (the spend). No `omitzero`, for Timing's reason above.
+	NextSpell NextSpellPromise `json:"nextSpell"`
+
 	// KeepManaColors is a granted "you don't lose unspent <colour>
 	// mana as steps and phases end" for a duration (The Last Agni Kai's
 	// "until end of turn, you don't lose unspent red mana"). #2166,

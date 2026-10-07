@@ -476,6 +476,14 @@ type StackItem struct {
 	// cloned the item before the mark keeps the item as it was.
 	CantBeCountered []CounterShieldMark
 
+	// PromisedCounters is the "enters with an additional counter" marks
+	// a spent next-spell promise (Savage Summoning) wrote onto this
+	// SPELL as it became cast (#1852, CR 601.2i). Read by
+	// applyCastEntryCountersLocked, so the counters ride the entry
+	// pipeline. Object-scoped like CantBeCountered: a copy never has
+	// them, and they end with the item. Never mutated in place.
+	PromisedCounters []PromisedCounter
+
 	// SplitSecond marks an item as having split second (CR 702.61).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special

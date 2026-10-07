@@ -1702,6 +1702,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// countered" is decided. Every live promise of the caster's that
 	// this spell matches is spent on it and becomes a mark on its item.
 	g.spendCounterShieldPromisesLocked(playerID, cardID)
+	// #1852: the same moment decides "the next <kind> spell you cast"
+	// promises about flash, price, an extra counter and uncounterability.
+	promiseFollowUps := g.spendNextSpellPromisesLocked(playerID, cardID)
 	// S22 airbend: OldZone stamps where the spell was cast FROM.
 	// CR 601.2a moves the card to the stack and nothing on the card
 	// remembers the zone it left, so "whenever you cast a spell from
@@ -1739,6 +1742,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+	}
+	for _, key := range promiseFollowUps {
+		if err := g.runCastFollowUpLocked(key, CastFollowUp{Player: playerID, Spell: cardID}); err != nil {
+			return err
+		}
 	}
 	if followUp != "" {
 		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID}
