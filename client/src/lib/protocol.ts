@@ -811,6 +811,10 @@ export type LogKind =
   // ADR 0130 §5: a player exerted a permanent (CR 701.43a). `seat` is
   // the player, `card_id` the permanent; server-rendered `text`.
   | "exert"
+  // ADR 0127 §6: the server answered a prompt with its chooser's
+  // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
+  // Server-rendered `text`.
+  | "auto_answer"
   // A player left the game. `cause` says why ("life", "empty_draw",
   // "poison", "commander_damage", "effect", "concede"); `card_id` is
   // the source of an effect loss. One line per departure (ADR 0057).
