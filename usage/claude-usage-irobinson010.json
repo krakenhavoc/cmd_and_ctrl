@@ -1,0 +1,502 @@
+{
+ "days": {
+  "2026-09-11": {
+   "claude-fable-5-1": {
+    "cache_read": 70991810,
+    "cache_write_1h": 489005,
+    "cache_write_5m": 1508891,
+    "input": 4762,
+    "output": 283712,
+    "requests": 170,
+    "subagent_requests": 88
+   }
+  },
+  "2026-09-12": {
+   "claude-opus-5": {
+    "cache_read": 78528801,
+    "cache_write_1h": 437154,
+    "cache_write_5m": 828180,
+    "input": 800,
+    "output": 269188,
+    "requests": 394,
+    "subagent_requests": 363
+   }
+  },
+  "2026-09-13": {
+   "claude-opus-5": {
+    "cache_read": 1026122027,
+    "cache_write_1h": 1533624,
+    "cache_write_5m": 7432253,
+    "input": 7838,
+    "output": 2727658,
+    "requests": 3888,
+    "subagent_requests": 3773
+   }
+  },
+  "2026-09-14": {
+   "claude-fable-5-1": {
+    "cache_read": 2895298,
+    "cache_write_1h": 249855,
+    "cache_write_5m": 0,
+    "input": 482,
+    "output": 79615,
+    "requests": 16
+   },
+   "claude-opus-5": {
+    "cache_read": 671803115,
+    "cache_write_1h": 713245,
+    "cache_write_5m": 5221001,
+    "input": 5492,
+    "output": 1927410,
+    "requests": 2721,
+    "subagent_requests": 2645
+   }
+  },
+  "2026-09-15": {
+   "claude-fable-5-1": {
+    "cache_read": 36822653,
+    "cache_write_1h": 698214,
+    "cache_write_5m": 0,
+    "input": 1938,
+    "output": 290615,
+    "requests": 69
+   },
+   "claude-sonnet-5": {
+    "cache_read": 2104532,
+    "cache_write_1h": 0,
+    "cache_write_5m": 366634,
+    "input": 48,
+    "output": 94639,
+    "requests": 24,
+    "subagent_requests": 24
+   }
+  },
+  "2026-09-16": {
+   "claude-fable-5-1": {
+    "cache_read": 71152517,
+    "cache_write_1h": 1715438,
+    "cache_write_5m": 0,
+    "input": 2082,
+    "output": 134698,
+    "requests": 86
+   },
+   "claude-opus-5": {
+    "cache_read": 118896075,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1447989,
+    "input": 1238,
+    "output": 378076,
+    "requests": 619,
+    "subagent_requests": 619
+   }
+  },
+  "2026-09-17": {
+   "claude-fable-5-1": {
+    "cache_read": 19835227,
+    "cache_write_1h": 1457390,
+    "cache_write_5m": 0,
+    "input": 2002,
+    "output": 132436,
+    "requests": 91
+   },
+   "claude-opus-5": {
+    "cache_read": 488028743,
+    "cache_write_1h": 0,
+    "cache_write_5m": 6841412,
+    "input": 5030,
+    "output": 1786381,
+    "requests": 2515,
+    "subagent_requests": 2515
+   },
+   "claude-sonnet-5": {
+    "cache_read": 4761337,
+    "cache_write_1h": 0,
+    "cache_write_5m": 186523,
+    "input": 140,
+    "output": 37695,
+    "requests": 70,
+    "subagent_requests": 70
+   }
+  },
+  "2026-09-18": {
+   "claude-fable-5-1": {
+    "cache_read": 135241421,
+    "cache_write_1h": 1633474,
+    "cache_write_5m": 0,
+    "input": 4940,
+    "output": 332733,
+    "requests": 262
+   },
+   "claude-opus-5": {
+    "cache_read": 3095709601,
+    "cache_write_1h": 0,
+    "cache_write_5m": 44184577,
+    "input": 20548,
+    "output": 6718009,
+    "requests": 10274,
+    "subagent_requests": 10274
+   },
+   "claude-sonnet-5": {
+    "cache_read": 2507506,
+    "cache_write_1h": 0,
+    "cache_write_5m": 82034,
+    "input": 92,
+    "output": 20933,
+    "requests": 46,
+    "subagent_requests": 46
+   }
+  },
+  "2026-09-19": {
+   "claude-fable-5-1": {
+    "cache_read": 190938795,
+    "cache_write_1h": 1343302,
+    "cache_write_5m": 0,
+    "input": 9486,
+    "output": 375764,
+    "requests": 435
+   },
+   "claude-opus-5": {
+    "cache_read": 3711415397,
+    "cache_write_1h": 0,
+    "cache_write_5m": 69225493,
+    "input": 23884,
+    "output": 7354080,
+    "requests": 11942,
+    "subagent_requests": 11942
+   },
+   "claude-sonnet-5": {
+    "cache_read": 3528724,
+    "cache_write_1h": 0,
+    "cache_write_5m": 197755,
+    "input": 106,
+    "output": 39506,
+    "requests": 53,
+    "subagent_requests": 53
+   }
+  },
+  "2026-09-21": {
+   "claude-fable-5-1": {
+    "cache_read": 41156975,
+    "cache_write_1h": 4595872,
+    "cache_write_5m": 0,
+    "input": 1420,
+    "output": 68585,
+    "requests": 66
+   },
+   "claude-opus-5": {
+    "cache_read": 408295105,
+    "cache_write_1h": 0,
+    "cache_write_5m": 5661812,
+    "input": 3006,
+    "output": 1056775,
+    "requests": 1503,
+    "subagent_requests": 1503
+   },
+   "claude-sonnet-5": {
+    "cache_read": 106776227,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1275160,
+    "input": 706,
+    "output": 259089,
+    "requests": 353,
+    "subagent_requests": 353
+   }
+  },
+  "2026-09-22": {
+   "claude-fable-5-1": {
+    "cache_read": 127052470,
+    "cache_write_1h": 6554693,
+    "cache_write_5m": 0,
+    "input": 4870,
+    "output": 220586,
+    "requests": 285
+   },
+   "claude-opus-5": {
+    "cache_read": 2027762304,
+    "cache_write_1h": 0,
+    "cache_write_5m": 32631801,
+    "input": 12288,
+    "output": 3618714,
+    "requests": 6144,
+    "subagent_requests": 6144
+   },
+   "claude-sonnet-5": {
+    "cache_read": 732960787,
+    "cache_write_1h": 0,
+    "cache_write_5m": 9358704,
+    "input": 5570,
+    "output": 1504262,
+    "requests": 2785,
+    "subagent_requests": 2785
+   }
+  },
+  "2026-09-23": {
+   "claude-fable-5-1": {
+    "cache_read": 62985925,
+    "cache_write_1h": 2877661,
+    "cache_write_5m": 0,
+    "input": 2804,
+    "output": 104528,
+    "requests": 170
+   },
+   "claude-opus-5": {
+    "cache_read": 1132794056,
+    "cache_write_1h": 0,
+    "cache_write_5m": 21172240,
+    "input": 7488,
+    "output": 2206059,
+    "requests": 3744,
+    "subagent_requests": 3744
+   },
+   "claude-opus-5-5": {
+    "cache_read": 1209111018,
+    "cache_write_1h": 815453,
+    "cache_write_5m": 28148777,
+    "input": 8926,
+    "output": 458561,
+    "requests": 4153,
+    "subagent_requests": 3805
+   },
+   "claude-sonnet-5": {
+    "cache_read": 1909982601,
+    "cache_write_1h": 0,
+    "cache_write_5m": 31620416,
+    "input": 11818,
+    "output": 1302124,
+    "requests": 5909,
+    "subagent_requests": 5909
+   }
+  },
+  "2026-09-24": {
+   "claude-haiku-4-5-20251001": {
+    "cache_read": 4448400,
+    "cache_write_1h": 0,
+    "cache_write_5m": 100859,
+    "input": 520,
+    "output": 1317,
+    "requests": 64,
+    "subagent_requests": 64
+   },
+   "claude-opus-5-5": {
+    "cache_read": 2856731789,
+    "cache_write_1h": 2139606,
+    "cache_write_5m": 63141003,
+    "input": 22910,
+    "output": 1227870,
+    "requests": 10731,
+    "subagent_requests": 9785
+   },
+   "claude-sonnet-5": {
+    "cache_read": 3346571472,
+    "cache_write_1h": 0,
+    "cache_write_5m": 61792867,
+    "input": 19762,
+    "output": 1023588,
+    "requests": 9881,
+    "subagent_requests": 9881
+   }
+  },
+  "2026-09-25": {
+   "claude-opus-5-5": {
+    "cache_read": 1704348,
+    "cache_write_1h": 148055,
+    "cache_write_5m": 0,
+    "input": 22,
+    "output": 5260,
+    "requests": 11
+   }
+  },
+  "2026-09-28": {
+   "claude-opus-5-5": {
+    "cache_read": 1148509471,
+    "cache_write_1h": 1425264,
+    "cache_write_5m": 20127106,
+    "input": 9562,
+    "output": 631524,
+    "requests": 4616,
+    "subagent_requests": 4242
+   },
+   "claude-sonnet-5": {
+    "cache_read": 695501616,
+    "cache_write_1h": 0,
+    "cache_write_5m": 8140788,
+    "input": 6350,
+    "output": 548318,
+    "requests": 3175,
+    "subagent_requests": 3175
+   }
+  },
+  "2026-09-29": {
+   "claude-opus-5-5": {
+    "cache_read": 23622204,
+    "cache_write_1h": 2605268,
+    "cache_write_5m": 0,
+    "input": 120,
+    "output": 12229,
+    "requests": 39
+   },
+   "claude-sonnet-5": {
+    "cache_read": 238828561,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1922095,
+    "input": 1744,
+    "output": 164959,
+    "requests": 872,
+    "subagent_requests": 872
+   }
+  },
+  "2026-09-30": {
+   "claude-opus-5-5": {
+    "cache_read": 44377421,
+    "cache_write_1h": 4983640,
+    "cache_write_5m": 0,
+    "input": 174,
+    "output": 34186,
+    "requests": 67
+   },
+   "claude-sonnet-5": {
+    "cache_read": 335160187,
+    "cache_write_1h": 0,
+    "cache_write_5m": 3827799,
+    "input": 2474,
+    "output": 224949,
+    "requests": 1237,
+    "subagent_requests": 1237
+   }
+  },
+  "2026-10-01": {
+   "claude-opus-5-5": {
+    "cache_read": 147853165,
+    "cache_write_1h": 385917,
+    "cache_write_5m": 2489822,
+    "input": 1170,
+    "output": 91900,
+    "requests": 580,
+    "subagent_requests": 546
+   }
+  },
+  "2026-10-02": {
+   "claude-opus-5-5": {
+    "cache_read": 184550269,
+    "cache_write_1h": 542965,
+    "cache_write_5m": 2824994,
+    "input": 1306,
+    "output": 82868,
+    "requests": 642,
+    "subagent_requests": 611
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 6240819,
+    "cache_write_1h": 0,
+    "cache_write_5m": 431885,
+    "input": 116,
+    "output": 7988,
+    "requests": 58,
+    "subagent_requests": 58
+   }
+  },
+  "2026-10-03": {
+   "claude-opus-5-5": {
+    "cache_read": 444419410,
+    "cache_write_1h": 730862,
+    "cache_write_5m": 7163385,
+    "input": 2392,
+    "output": 146730,
+    "requests": 1176,
+    "subagent_requests": 1137
+   }
+  },
+  "2026-10-04": {
+   "claude-opus-5-5": {
+    "cache_read": 129527901,
+    "cache_write_1h": 443159,
+    "cache_write_5m": 3718233,
+    "input": 922,
+    "output": 80441,
+    "requests": 450,
+    "subagent_requests": 414
+   }
+  },
+  "2026-10-05": {
+   "claude-haiku-4-5-20251001": {
+    "cache_read": 2539302,
+    "cache_write_1h": 0,
+    "cache_write_5m": 89112,
+    "input": 308,
+    "output": 855,
+    "requests": 38,
+    "subagent_requests": 38
+   },
+   "claude-opus-5-5": {
+    "cache_read": 469171534,
+    "cache_write_1h": 647470,
+    "cache_write_5m": 12566779,
+    "input": 3096,
+    "output": 301784,
+    "requests": 1460,
+    "subagent_requests": 1174
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 458091249,
+    "cache_write_1h": 0,
+    "cache_write_5m": 22464574,
+    "input": 6002,
+    "output": 319291,
+    "requests": 2985,
+    "subagent_requests": 2985
+   }
+  },
+  "2026-10-06": {
+   "claude-opus-5-5": {
+    "cache_read": 123735277,
+    "cache_write_1h": 2217080,
+    "cache_write_5m": 3414115,
+    "input": 692,
+    "output": 66297,
+    "requests": 322,
+    "subagent_requests": 254
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 65324698,
+    "cache_write_1h": 0,
+    "cache_write_5m": 3216744,
+    "input": 980,
+    "output": 56524,
+    "requests": 481,
+    "subagent_requests": 481
+   }
+  },
+  "2026-10-07": {
+   "claude-haiku-4-5-20251001": {
+    "cache_read": 7495924,
+    "cache_write_1h": 0,
+    "cache_write_5m": 165507,
+    "input": 636,
+    "output": 9007,
+    "requests": 79,
+    "subagent_requests": 79
+   },
+   "claude-opus-5-5": {
+    "cache_read": 94119658,
+    "cache_write_1h": 3730858,
+    "cache_write_5m": 0,
+    "input": 746,
+    "output": 262605,
+    "requests": 322
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 661444297,
+    "cache_write_1h": 0,
+    "cache_write_5m": 18196468,
+    "input": 6756,
+    "output": 358014,
+    "requests": 3370,
+    "subagent_requests": 3370
+   }
+  }
+ },
+ "person": "irobinson010",
+ "schema": 1,
+ "transcripts_cover_from": "2026-09-11",
+ "updated": "2026-10-07T21:37:59+00:00"
+}
