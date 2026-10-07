@@ -318,6 +318,8 @@ export interface AdminAccountResponse {
   generated_at: number;
   account: AdminAccount;
   sign_in: AdminSignIn;
+  /** The account's playmat path, absent for none (ADR 0124 amendment). */
+  playmat_url?: string;
   games: AdminGame[];
   games_truncated: boolean;
   decks: AdminDeck[];
@@ -545,6 +547,11 @@ export function archiveConfirm(g: Pick<AdminGame, "name" | "state">): string {
 /** revokeConfirm is the question before Revoke sessions, naming the person. */
 export function revokeConfirm(name: string): string {
   return `Sign ${name} out everywhere? Every session they hold stops working now, and they stay signed out until they sign in with Discord again. Their account, games and decks are kept.`;
+}
+
+/** playmatRemoveConfirm is the question before Remove playmat, naming the person. */
+export function playmatRemoveConfirm(name: string): string {
+  return `Remove ${name}'s playmat? It disappears from every table they sit at now. They can upload another, and their account, games and decks are kept.`;
 }
 
 /** canArchive, canUnarchive and canReplay say which action a table row offers. */

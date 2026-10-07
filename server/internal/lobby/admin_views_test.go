@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -158,12 +160,17 @@ func newAdminViewsWorld(t *testing.T) *adminViewsWorld {
 		{GameID: w.live.ID, Admin: true, ConnectedAt: connected.Add(3 * time.Second)},
 		{GameID: w.practice.ID, ReadOnly: true, ConnectedAt: connected},
 	}
+	svc := playmat.NewService(playmat.NewFileStore(filepath.Join(dir, "playmats")), d.DB, nil)
 	w.s = newAdminStackIn(t, "", nil, func(c *Config) {
 		c.Lobby = l
 		c.AdminViews = adminview.NewSQLStore(d)
 		c.LiveSockets = sockets
+		c.Playmats = svc
 	})
 	w.token = w.s.adminToken(t)
+	if _, err := svc.SetFromBytes(ctx, w.ann, pngOf(t, 64, 48)); err != nil {
+		t.Fatal(err)
+	}
 	w.secrets = []string{
 		w.live.InviteToken, w.live.SpectatorInvite, ticket.Token, deckListMarker, refreshMarker,
 		"discord:" + annSnowflake, pendingSnowflake, "DEADBEEF", "deadbeef",
@@ -265,13 +272,13 @@ func TestAdminViewsServeOnlyTheirFields(t *testing.T) {
 			[]string{"accounts[].avatar_url", "accounts[].playing_now", "accounts[].games_played"}},
 		{"/admin/users/" + w.ann.String(), fieldSet(
 			[]string{"generated_at", "games_truncated", "deck_requests_truncated",
-				"sign_in.last_sign_in_at", "sign_in.discord_linked_at", "sign_in.sessions_invalid_before", "sign_in.revoke_path",
+				"playmat_url", "sign_in.last_sign_in_at", "sign_in.discord_linked_at", "sign_in.sessions_invalid_before", "sign_in.revoke_path",
 				"decks", "decks[].id", "decks[].name", "decks[].format", "decks[].source_url", "decks[].commanders", "decks[].commanders[]",
 				"decks[].card_count", "decks[].created_at", "decks[].updated_at",
 				"deck_requests", "deck_requests[].deck_key", "deck_requests[].asked_at", "deck_requests[].issue_number", "deck_requests[].issue_url",
 				"games", "games[].their_seat"},
 			accountFields("account."), gameRowFields("games[].")),
-			[]string{"sign_in.sessions_invalid_before", "decks[].commanders[]", "deck_requests[].issue_url", "games[].their_seat",
+			[]string{"playmat_url", "sign_in.sessions_invalid_before", "decks[].commanders[]", "deck_requests[].issue_url", "games[].their_seat",
 				"games[].seats[].agent_client", "games[].seats[].discord_pending", "games[].creator.name"}},
 		{"/admin/games?practice=include", fieldSet([]string{"generated_at", "next_cursor", "games"}, gameRowFields("games[].")),
 			[]string{"games[].practice", "games[].seats[].agent_client", "games[].seats[].bot_tier", "games[].seats[].account.avatar_url",
@@ -539,5 +546,36 @@ func TestAdminViewsLogNoQueryString(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("no admin action line for GET /admin/games:\n%s", s.log.String())
+	}
+}
+
+// The account view names the playmat the admin could remove, and stops
+// naming it once DELETE /admin/users/{id}/playmat has run.
+func TestAdminAccountViewShowsPlaymatUntilRemoved(t *testing.T) {
+	w := newAdminViewsWorld(t)
+	path := "/admin/users/" + w.ann.String()
+	read := func() string {
+		code, raw := w.get(t, path)
+		if code != http.StatusOK {
+			t.Fatalf("GET %s: %d %s", path, code, raw)
+		}
+		var body struct {
+			PlaymatURL string `json:"playmat_url"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			t.Fatal(err)
+		}
+		return body.PlaymatURL
+	}
+	if u := read(); !strings.HasPrefix(u, "/playmats/") {
+		t.Fatalf("playmat_url = %q, want a /playmats/ path", u)
+	}
+	resp := do(t, w.s.srv, "DELETE", path+"/playmat", w.token, nil)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("DELETE playmat = %d", resp.StatusCode)
+	}
+	if u := read(); u != "" {
+		t.Errorf("playmat_url = %q after removal, want none", u)
 	}
 }

@@ -6,7 +6,7 @@
   // time, and links the existing revoke (POST /admin/users/{id}/
   // revoke-sessions) behind a confirmation that names the person.
   import { onMount } from "svelte";
-  import { fetchAdminAccount, revokeUserSessions } from "../../api";
+  import { fetchAdminAccount, removeUserPlaymat, revokeUserSessions } from "../../api";
   import {
     accountsHash,
     avatarSrc,
@@ -14,11 +14,13 @@
     gameHash,
     gamesHash,
     outcomeLine,
+    playmatRemoveConfirm,
     revokeConfirm,
     seatNumber,
     stateLabel,
     type AdminAccountResponse,
   } from "../../adminViews";
+  import { playmatSrc } from "../../playmat";
   import { LobbyApiError, session } from "../../session";
   import Icon from "../Icon.svelte";
   import RelTime from "./RelTime.svelte";
@@ -35,6 +37,8 @@
   let confirming = $state(false);
   let busy = $state(false);
   let done = $state("");
+  let confirmingMat = $state(false);
+  let matDone = $state("");
 
   async function load(): Promise<void> {
     loading = true;
@@ -83,7 +87,29 @@
     }
   }
 
+  async function removeMat(): Promise<void> {
+    if (!d) return;
+    busy = true;
+    error = "";
+    matDone = "";
+    try {
+      await removeUserPlaymat(d.account.id);
+      confirmingMat = false;
+      matDone = "Playmat removed.";
+      await load();
+    } catch (err) {
+      if (err instanceof LobbyApiError && err.status === 403) {
+        onforbidden();
+        return;
+      }
+      error = err instanceof LobbyApiError ? `remove failed: ${err.message}` : "remove failed";
+    } finally {
+      busy = false;
+    }
+  }
+
   const now = $derived(d?.generated_at ?? Date.now());
+  const mat = $derived(playmatSrc(d?.playmat_url));
   const avatar = $derived(d ? avatarSrc(d.account.avatar_url, $session?.token) : null);
 </script>
 
@@ -166,6 +192,44 @@
       {/if}
       {#if done}
         <p class="notice ok" role="status">{done}</p>
+      {/if}
+    </div>
+
+    <div class="card">
+      <h3>Playmat</h3>
+      {#if mat}
+        <img class="mat" src={mat} alt="{a.name}'s playmat" loading="lazy" />
+        <div class="actions">
+          <button
+            type="button"
+            class="ghost"
+            disabled={busy}
+            onclick={() => (confirmingMat = true)}
+          >
+            Remove playmat
+          </button>
+        </div>
+        {#if confirmingMat}
+          <div class="confirm" role="alert">
+            <p>{playmatRemoveConfirm(a.name)}</p>
+            <div class="confirm-actions">
+              <button type="button" class="primary" disabled={busy} onclick={removeMat}>
+                remove their playmat
+              </button>
+              <button
+                type="button"
+                class="ghost"
+                disabled={busy}
+                onclick={() => (confirmingMat = false)}>cancel</button
+              >
+            </div>
+          </div>
+        {/if}
+      {:else}
+        <p class="none">No playmat.</p>
+      {/if}
+      {#if matDone}
+        <p class="notice ok" role="status">{matDone}</p>
       {/if}
     </div>
 
@@ -301,6 +365,14 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
+    background: var(--surface-raised);
+  }
+  .mat {
+    display: block;
+    max-width: 160px;
+    max-height: 100px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
     background: var(--surface-raised);
   }
   .actions {
