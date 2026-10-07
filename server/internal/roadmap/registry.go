@@ -1163,15 +1163,12 @@ var items = []Item{
 		Rules:   []string{"709.3", "709.4", "709.5", "702.102", "702.127"},
 		Issue:   1756,
 		ADR:     "0103-rooms.md",
-		Missing: "Eight Rooms are not in the catalog, because one of their doors does something the engine can't do yet. The engine plays all of them, so they can be cast and unlocked and only the door text is manual.",
+		Missing: "Eight Rooms play only part of their text, because one door does something the engine can't do yet: manifest dread (Ticket Booth, Experimental Lab, Moldering Gym, Underwater Tunnel), a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade). Experimental Lab's Staff Room also can't turn a creature face up for free.",
 		Tracked: "#1756",
 		// Walk-In Closet // Forgotten Cellar landed with
 		// exile-instead-of-graveyard-this-turn (#1823, ADR 0108 §4), the
-		// seam its door waited on.
-		Waiting: []string{
-			"Experimental Lab // Staff Room", "Moldering Gym // Weight Room", "Ticket Booth // Tunnel of Hate", "Underwater Tunnel // Slimy Aquarium",
-			"Charred Foyer // Warped Space", "Cramped Vents // Access Maze", "Dazzling Theater // Prop Room", "Secret Arcade // Dusty Parlor",
-		},
+		// seam its door waited on. The last eight Rooms were catalogued
+		// with caveats on their blocked doors (#2555).
 		Examples:    []string{"Roaring Furnace // Steaming Sauna"},
 		EngineNotes: "**Built by [ADR 0103](decisions/0103-rooms.md)** (#1756), on ADR 0071's designation gate. `Card.Unlocked` holds a Room's two CR 709.5c designations; `materialiseSplit` keeps a split card's name, cost and colours right in every zone (the whole card off the stack, the cast half on it, the unlocked doors on the battlefield); a Room spell enters with its cast door unlocked (CR 709.5d) and `EventDoorUnlocked` fires after the ETB (CR 709.5h); the `unlock` special action (CR 709.5e) is derived from the card, so an uncatalogued Room can be unlocked too; `UnlockDoorForEffect` / `LockDoorForEffect` are the instructions (CR 709.5f-g) and `EventRoomFullyUnlocked` the full unlock (CR 709.5i). `effects.Room` builds a Room's Spec with every ability gated on its door, and Register refuses an ungated one. Every split card casts either half (CR 709.3); aftermath's half only from a graveyard (CR 702.127a); fuse from hand (CR 702.102). The cards themselves are catalogued separately (ADR 0103 PRs 3 and 4).",
 	},
