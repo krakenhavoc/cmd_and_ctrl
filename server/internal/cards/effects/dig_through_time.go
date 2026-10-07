@@ -14,11 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Impulse's shape with seven and two: a private look, a mandatory
 // take of two (fewer if the library holds fewer), and the ordered
 // bottom (ADR 0088). No simplification.
+//
+// Its purpose (ADR 0126 §6) is Tutors: 2. Taking two of seven is not
+// a draw, and the bot should price it as two chosen cards in hand,
+// which is what a tutor's purpose says.
 func init() {
 	Register(Spec{
 		OracleID:     "f8b17b89-26ce-4208-874a-9e1d66514640",
 		Name:         "Dig Through Time",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Tutors: 2},
 		Delve:        true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			player := ctx.Controller()

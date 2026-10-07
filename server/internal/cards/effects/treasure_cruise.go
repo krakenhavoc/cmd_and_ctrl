@@ -17,6 +17,7 @@ func init() {
 		OracleID:     "5b6bdf5a-2742-4851-92cd-a857a3852836",
 		Name:         "Treasure Cruise",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Draws: 3},
 		Delve:        true,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DrawCards{Player: ctx.Controller(), N: 3}.Apply(ctx)

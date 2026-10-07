@@ -18,6 +18,7 @@ func init() {
 		OracleID:     "30afacd9-4680-4aac-8c22-584f9418822d",
 		Name:         "Circuitous Route",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Lands: 2},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player: item.Controller,

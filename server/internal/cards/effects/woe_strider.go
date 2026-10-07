@@ -27,6 +27,7 @@ func init() {
 		OracleID:      "3adbd963-e85d-4569-963a-4472594f06f9",
 		Name:          "Woe Strider",
 		Completeness:  CompletenessFull,
+		Purpose:       game.Purpose{Tokens: 1},
 		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{
 			EscapeWithCounters("{3}{B}{B}", 4, 2),

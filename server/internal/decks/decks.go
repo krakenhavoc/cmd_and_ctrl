@@ -66,38 +66,39 @@
 // # Registered is not the same as fully implemented
 //
 // The coverage test is a floor, not a guarantee. Many catalog cards
-// ship with a declared simplification — a clause the engine does not
-// model, named in a comment on the card's file. A card whose RELEVANT
-// clause is unimplemented is a bad pick even though it registers, so
-// every card here was read before it was picked. Two were rejected on
-// exactly that test:
+// ship with a declared simplification, graded `caveats` in the
+// catalog. A card whose RELEVANT clause is unimplemented is a bad pick
+// even though it registers, so since #2436 full_test.go holds every
+// card here to the catalog's `full` grade, except a short list the
+// owner named, each a caveat on a clause its deck does not lean on:
 //
-//   - Gemcutter Buccaneer. "The second half is not modelled" — turning
-//     Treasures into Equipment, which is most of why you play it.
-//   - Teferi, Time Raveler. Its +1's continuous effect and its static
-//     both need machinery the engine does not have, leaving loyalty
-//     gain and a bounce.
+//   - Path of Ancestry and Delighted Halfling — with strict mana off,
+//     the scry rider and "can't be countered" are inert. Both are here
+//     for their mana.
+//   - Cultivate — the hand-or-battlefield choice is lost only with one
+//     basic left in the library.
+//   - Tireless Provisioner — landfall always makes the Treasure.
+//   - Breeches, Brazen Plunderer and Malcolm, Keen-Eyed Navigator —
+//     partner is not modelled; both are mainboard Pirates here.
+//   - Ragavan, Nimble Pilferer — no dash.
+//   - Magmakin Artillerist and Ingenious Artillerist — several
+//     simultaneous triggers deal separate hits.
 //
-// The simplifications that were accepted are all either cosmetic or
-// weaker-than-printed on a clause the deck does not lean on:
+// Before #2436 the decks also carried cards nobody had graded, and
+// cards like Victimize whose simplification made them STRONGER than
+// printed. Neither is allowed any more.
 //
-//   - Farseek — fetches a basic that isn't a Forest rather than any
-//     land with those subtypes. The Simic deck runs Islands, so it
-//     still ramps.
-//   - Filigree Familiar — the sacrifice-for-mana ability is missing;
-//     the ETB life and the dies-draw are what it is here for.
-//   - Path of Ancestry, Raffine's Tower — scry rider and cycling
-//     missing. Both still tap for the colours.
-//   - Exotic Orchard, Reflecting Pool — one colour short when chained
-//     into each other. Weaker than printed, never illegal.
-//   - Delighted Halfling — "can't be countered" is inert; it is in the
-//     Simic deck as a mana creature.
-//   - Rhystic Study — the optional draw is taken automatically, which
-//     saves a prompt the bot would always answer the same way.
-//   - Victimize — the returned creatures enter untapped, which is
-//     STRONGER than printed. The only accepted simplification in that
-//     direction, and it favours whichever seat is playing the deck
-//     rather than the bot specifically.
+// # Power level
+//
+// The decks are "upgraded precons" (#2436): fetchlands and dual lands
+// stay, but most tutors and fast mana (Vampiric Tutor, Dark Ritual,
+// Lotus Petal, Gaea's Cradle, and Ancient Tomb outside mono-black) are
+// cut, and each deck's Summary names the one mechanic it teaches.
+// Mono-black keeps Demonic Tutor, Ancient Tomb and Cabal Coffers with
+// Urborg: the issue named them as the next trims if the deck still
+// dominated, and on the rebalanced lists it did not. A saved table
+// setup names a deck by ID, so it seats the current list, whatever it
+// held when saved.
 //
 // # Adding a deck
 //

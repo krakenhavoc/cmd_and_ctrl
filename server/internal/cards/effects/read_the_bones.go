@@ -22,6 +22,7 @@ func init() {
 		OracleID:     "5bf4d8d9-a2b2-4dba-ac05-9d4470a89db2",
 		Name:         "Read the Bones",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Draws: 2},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			c := ctx.Controller()
 			if err := (Scry{Player: c, N: 2, Then: func(g *game.Game) error {

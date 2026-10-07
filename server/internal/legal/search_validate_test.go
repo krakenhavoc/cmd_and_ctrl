@@ -192,7 +192,8 @@ func TestSearchEnumerationNeverOffersAPickTheEngineRejects(t *testing.T) {
 //
 // The sizes below bracket the cap, and include the field shape (the
 // curated simic-ramp deck's 7 Forest / 5 Island in 99 cards, one
-// Forest played).
+// Forest played) and the deck's split since #2436, 8 Forest / 5
+// Island.
 func TestSearchForUpToTwoReachesValidPairsAtEveryLibrarySize(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
@@ -200,6 +201,7 @@ func TestSearchForUpToTwoReachesValidPairsAtEveryLibrarySize(t *testing.T) {
 	}{
 		{"field-shape_6F_5I", 6, 5},
 		{"simic-ramp_7F_5I", 7, 5},
+		{"simic-ramp_8F_5I", 8, 5},
 		{"at-the-cap_6F_6I", 6, 6},
 		{"over-the-cap_20F_20I", 20, 20},
 	} {
