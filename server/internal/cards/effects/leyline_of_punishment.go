@@ -12,18 +12,16 @@ package effects
 // CR 119.7's "can't gain life" for every player, and CR 615.12's
 // "damage can't be prevented" for every damage event.
 //
-// ONE SIMPLIFICATION, the one every Leyline in the catalog carries
-// (leyline_of_sanctity.go): there is no pre-game window in which a card
-// in an opening hand can be put onto the battlefield, so it is cast for
-// its four mana. Strictly weaker than printed.
+// The opening-hand clause (CR 103.6a) is Spec.OpeningHand (ADR 0133):
+// the seat holding it is asked as the mulligan window closes.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "2608df54-dfbe-417d-aef5-49afbdfb03da",
-		Name:         "Leyline of Punishment",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Starting the game with this on the battlefield from your opening hand isn't implemented — you cast it for {2}{R}{R} like an ordinary enchantment.",
-		},
+		OracleID:              "2608df54-dfbe-417d-aef5-49afbdfb03da",
+		Name:                  "Leyline of Punishment",
+		Completeness:          CompletenessFull,
+		OpeningHand:           BeginTheGameOnTheBattlefield(),
 		CantGainLife:          PlayersCantGainLife(),
 		DamageCantBePrevented: DamageCantBePreventedStatic(),
 	})

@@ -2734,6 +2734,17 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0118 §3): `Spec.GrantedAlternativeCosts` declares a static that offers its controller one more alternative cost for each spell they cast, read through `game.CatalogGrantedAlternativeCosts`. `grantedAlternativeCostsLocked` derives the offers from the battlefield on every query, so nothing is stored and the offer lasts exactly as long as the source is under its controller; a permanent that has lost its abilities grants nothing. `CastOffersForLocked` appends them last (each a copy with `AlternativeCost.Granted`, never serialised, labelled with the source's name) and drops one priced like an offer already listed; `resolveAlternativeCostLocked` tries them last, and `validateCastPathLocked` claims one only where the printed mana cost could be paid (CR 118.9a), so a flashback card in a graveyard, a Snapcaster or Citadel cast and a cascade hit get none. Timing is the spell's own, X is 0 (CR 107.3b), commander tax lands on top (CR 118.9d). Helpers in `effects/granted_alternative_cost.go`: `PayWUBRGForSpellsYouCast` (key `granted-wubrg`) and `CastFromHandWithoutPayingManaCost` (key `granted-free`, hand only), on-disk identities that land on `StackItem.AltCost` and are never renamed. Fist of Suns, Jodah, Archmage Eternal and Omniscience ship in full; Leyline of Mutation ships with the other Leylines' opening-hand caveat. Hunting Velociraptor's granted prowl stays on `ability-cost-modification`: it needs a spell filter and prowl's condition, which `GrantedAlternativeCost` can grow additively.",
 	},
 	{
+		// #2190 (ADR 0133). Closed; history in Closed seams.
+		Slug: "opening-hand-actions", Name: "Beginning the game with a card on the battlefield", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Cards that let you begin the game with them on the battlefield from your opening hand, such as the Leylines, Leyline Axe and Gemstone Caverns (which adds a luck counter, a not-the-starting-player condition and an exile from your hand).",
+		Rules:       []string{"103.6", "103.6a"},
+		Issue:       2190,
+		ADR:         "0133-opening-hand-actions.md",
+		Probe:       declaresOpeningHand,
+		Examples:    []string{"Leyline of Sanctity", "Gemstone Caverns"},
+		EngineNotes: "**Shipped** (#2190, ADR 0133): `Spec.OpeningHand`, built by `effects.BeginTheGameOnTheBattlefield` with the riders `NotTheStartingPlayer`, `WithCounter` and `ThenExileFromHand`, is plain data on `game.OpeningHandAction`. `settleMulliganLocked` asks once as the window closes (`offerOpeningHandActionsLocked`): a `confirm` to each seat in turn order from the starting seat, per qualifying card in hand order. Yes puts the card in through `PutFromHandOntoBattlefieldThenForEffect`, then places the counters and queues a one-card `choose_cards` exile pick. The prompts park the table like any open choice; the first step's entry hooks are not held. The prompt is `PendingChoice.private`, and the wire's `private_text` strips its words from every viewer but the chooser. Not covered: the Chancellors' \"reveal this card from your opening hand\" (a delayed trigger, no slot yet).",
+	},
+	{
 		Slug: "control-another-player", Name: "Controlling another player", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Effects that let you control another player for a while and make their decisions for them, such as Emrakul, the Promised End's cast trigger and Word of Command.",
 		Missing:     "One player can't yet control another player, so these cards can't be added.",

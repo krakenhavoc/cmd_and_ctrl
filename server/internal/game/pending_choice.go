@@ -803,6 +803,15 @@ type PendingChoice struct {
 	confirmResume  *confirmFrame
 	coinFlipResume *coinFlipFrame
 
+	// private marks a prompt whose WORDS name a card in a hidden zone
+	// (ADR 0133: the question an opening-hand action asks names the
+	// card in the chooser's hand). The wire keeps the prompt — the
+	// table has to see that a seat owes an answer — and strips what it
+	// says from every viewer but the chooser (PrivateText, view.go).
+	// Not serialised: every prompt that sets it carries a continuation
+	// frame, and a choice with one is never written to a restore point.
+	private bool
+
 	// OwedInStep is the step THIS prompt has to be answered in: the
 	// upkeep of "at the beginning of your upkeep, sacrifice this
 	// unless you pay" (Stasis, Pact of Negation, every cumulative
@@ -980,6 +989,11 @@ type payUnlessFrame struct {
 	// the payment's printed words.
 	action *PayAction
 }
+
+// PrivateText reports whether the prompt's words name a card in a
+// hidden zone (ADR 0133), so the protocol view strips them from every
+// viewer but the chooser.
+func (c *PendingChoice) PrivateText() bool { return c != nil && c.private }
 
 // PayTapCost is the waterbend clause of a PendingChoicePayUnless —
 // the permanents the chooser may tap instead of paying some of the

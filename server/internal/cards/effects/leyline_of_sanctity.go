@@ -26,24 +26,20 @@ package effects
 // board wipe, an edict, a "each player sacrifices", or anything else
 // that does not use the word "target". Hexproof is a targeting rule.
 //
-// ONE SIMPLIFICATION, the Gemstone Caverns one. "If this card is in
-// your opening hand, you may begin the game with it on the
-// battlefield" has no shape: there is no pre-game window in which a
-// card in an opening hand can be put onto the battlefield, and the
-// mulligan flow (Game.KeepHand) has no hook for one. So the Leyline
-// is cast for its four mana like any other enchantment. That is
-// strictly WEAKER than printed — you pay for it and you pay a turn
-// for it — which is the only direction a simplification may go
-// (#259), and it is the same gap gemstone_caverns.go already carries
-// a caveat for.
+// The opening-hand clause (CR 103.6a) is Spec.OpeningHand (ADR 0133):
+// "If this card is in your opening hand, you may begin the game with
+// it on the battlefield." The seat holding it is asked as the mulligan
+// window closes, and a yes puts the Leyline onto the battlefield
+// through the ordinary hand door, so its hexproof is in force before
+// anyone has acted.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "492e0e6c-8c27-4376-938b-f8a8b6205810",
-		Name:         "Leyline of Sanctity",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Starting the game with this on the battlefield from your opening hand isn't implemented — you cast it for {2}{W}{W} like an ordinary enchantment.",
-		},
+		OracleID:       "492e0e6c-8c27-4376-938b-f8a8b6205810",
+		Name:           "Leyline of Sanctity",
+		Completeness:   CompletenessFull,
+		OpeningHand:    BeginTheGameOnTheBattlefield(),
 		PlayerKeywords: []string{KeywordHexproof},
 	})
 }

@@ -214,6 +214,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GatedCastPermissions:       gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                spec.CastTimings,
 		GrantedAlternativeCosts:    spec.GrantedAlternativeCosts,
+		OpeningHand:                spec.OpeningHand,
 		LibraryTopVisible:          spec.LibraryTopVisible,
 		CastCondition:              spec.CastCondition,
 		CastConditionLabel:         spec.CastConditionLabel,

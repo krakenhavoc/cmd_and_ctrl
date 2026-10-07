@@ -82,6 +82,11 @@ func (g *Game) settleMulliganLocked() {
 		return
 	}
 	g.MulligansOpen = false
+	// CR 103.6: the starting hands are final, so the seats holding a
+	// card that lets them begin the game with it on the battlefield are
+	// asked, in turn order from the starting player (ADR 0133). The
+	// prompts hold the table the way any open choice does.
+	g.offerOpeningHandActionsLocked()
 	// First-step entry happens here, not at Start: the cursor has been
 	// parked on Untap with NoPriority since Start, waiting for everyone
 	// to commit. Run the hook now so the starting seat's auto-untap

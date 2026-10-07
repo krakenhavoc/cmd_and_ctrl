@@ -381,6 +381,7 @@ func Register(spec Spec) {
 		}
 	}
 	checkGrantedAlternativeCosts(spec.Name, spec.GrantedAlternativeCosts)
+	checkOpeningHand(spec.Name, spec.OpeningHand)
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
 	// cost, and an untested kind should not be declarable. A mana Unit
 	// belongs on an increase only (open question 3), and carries only
