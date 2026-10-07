@@ -601,6 +601,64 @@ describe("loop_shortcut, inline (CR 732)", () => {
   });
 });
 
+// ADR 0129 §3: energy paid while a spell or ability resolves.
+describe("energy payments, inline", () => {
+  const withEnergy = (n: number): Partial<GameView> => ({
+    seats: [
+      { ...(seat(ME, "Me", 0) as unknown as Record<string, unknown>), energy: n },
+      seat(OPP, "Opp", 1),
+    ] as unknown as PlayerView[],
+  });
+
+  it("pay_amount: the stepper opens on the threshold, steps, and Pay sends the amount", async () => {
+    const c = await mountGame(
+      withChoice(
+        {
+          kind: "pay_amount",
+          reason: "Harnessed Lightning — pay any amount of {E}",
+          pay_amount: { min: 0, max: 5, goal: 3, unit: "damage" },
+        },
+        withEnergy(5),
+      ),
+    );
+    const dlg = expectInDock(c, "Harnessed Lightning — pay any amount of {E}");
+    const group = dlg.querySelector('[role="group"][aria-label="energy to pay"]');
+    expect(group).not.toBeNull();
+    const field = dlg.querySelector<HTMLInputElement>('input[type="number"]')!;
+    expect(field.value).toBe("3");
+    click(buttons(dlg, "One more energy")[0]);
+    click(buttons(dlg, "Pay 4 {E}")[0]);
+    click(buttons(dlg, "Pay nothing")[0]);
+    // Enter and Escape outside the field answer nothing.
+    keydown("Enter");
+    keydown("Escape");
+    expect(answers()).toEqual([
+      { choice_id: "choice-1", amount: 4 },
+      { choice_id: "choice-1", amount: 0 },
+    ]);
+  });
+
+  it("an energy pay_unless greys Pay when the seat is short, and Y does not pay", async () => {
+    const c = await mountGame(
+      withChoice(
+        {
+          kind: "pay_unless",
+          reason: "Lathnu Hellion — pay {E}{E}?",
+          pay_cost: "{E}{E}",
+          pay_energy: 2,
+        },
+        withEnergy(1),
+      ),
+    );
+    const dlg = expectInDock(c, "Lathnu Hellion — pay {E}{E}?");
+    const pay = buttons(dlg, "Pay {E}{E}")[0];
+    expect(pay.disabled).toBe(true);
+    keydown("y");
+    keydown("n");
+    expect(answers()).toEqual([{ choice_id: "choice-1", apply: false }]);
+  });
+});
+
 describe("mana_pick and choose_color, inline", () => {
   it("mana_pick: the symbols in the dock, answered by click or 1-9, no bar", async () => {
     const c = await mountGame(

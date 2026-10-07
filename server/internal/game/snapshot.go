@@ -304,6 +304,12 @@ type GameSnapshot struct {
 	OpeningRoll *OpeningRoll `json:"openingRoll,omitempty"`
 	Monarch     uuid.UUID    `json:"monarch"`
 	Initiative  uuid.UUID    `json:"initiative"`
+	// DayNight is the day/night designation and the previous turn's
+	// spell count (CR 731, ADR 0132). Additive within the current
+	// schema, like OpeningRoll: absent on every file written before it
+	// and on every game that never had a designation, which restores
+	// as neither day nor night.
+	DayNight *DayNightState `json:"dayNight,omitempty"`
 	// UndoLimit is the pre-v4 home of the undo budget. Read only when
 	// migrating an older file (migrateLegacySettings); a v4 capture
 	// leaves it zero and it is omitted.
@@ -1668,6 +1674,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		OpeningRoll:           cloneOpeningRoll(g.OpeningRoll),
 		Monarch:               g.Monarch,
 		Initiative:            g.Initiative,
+		DayNight:              snapshotDayNight(g.DayNight),
 		Settings:              g.Settings,
 		StartingSeat:          g.StartingSeat,
 		SplitSecondActive:     g.SplitSecondActive,
@@ -2516,6 +2523,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.OpeningRoll = cloneOpeningRoll(s.OpeningRoll)
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
+	g.DayNight = s.DayNight.valueOrZero()
 	g.Settings = s.Settings
 	if s.Schema < settingsSchemaVersion {
 		g.Settings = migrateLegacySettings(s.State, s.UndoLimit)

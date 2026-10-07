@@ -465,6 +465,13 @@ type PendingChoice struct {
 	// carries a confirmResume frame.
 	DivideShield *DivideShieldPrompt
 
+	// PayAmount is the payload of a PendingChoicePayAmount (ADR 0129 §3,
+	// energy_payment.go): the bounds of the answer, the card's own
+	// threshold and what each counter buys. Wire-serialised via
+	// PendingChoiceView.PayAmount. Never captured: the prompt always
+	// carries a chooseValueResume frame.
+	PayAmount *PayAmountPrompt
+
 	// NoLegalTarget marks a PendingChoiceTriggerPrompt whose effect
 	// has no legal target / will pass without effect if the chooser
 	// answers "Yes" (e.g. Reclamation Sage with no opponent artifact,
@@ -3937,7 +3944,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if frame != nil {
 		action = frame.action
 	}
-	if len(cardIDs) > 0 && (!apply || action == nil) {
+	if len(cardIDs) > 0 && (!apply || action == nil || action.Kind == PayActionEnergy) {
 		return ErrInvalidParam
 	}
 	// ADR 0131 §2: the life half of a mana payment, announced beside the
@@ -3956,7 +3963,11 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		}
 	}
 	payable := false
-	if apply && action != nil {
+	if apply && action != nil && action.Kind == PayActionEnergy {
+		// ADR 0129 §3: an energy payment names nothing. "Pay" is a
+		// payment exactly when the energy is there (CR 118.3).
+		payable = g.energyPaymentPayableLocked(chooserID, action)
+	} else if apply && action != nil {
 		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, action)) >= action.Count {
 			if err := g.validatePayActionLocked(chooserID, action, cardIDs); err != nil {
 				return err

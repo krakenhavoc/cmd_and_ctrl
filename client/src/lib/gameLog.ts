@@ -123,6 +123,9 @@ const LOG_TONE: Record<LogKind, string> = {
   trigger: "tone-cast",
   activate: "tone-cast",
   cycle: "tone-zone",
+  // ADR 0127 §6: a prompt the server answered with its chooser's
+  // standing answer. A decision, so toned like a cast.
+  auto_answer: "tone-cast",
   counters: "tone-quiet",
   scry: "tone-quiet",
   surveil: "tone-quiet",
@@ -167,6 +170,9 @@ const LOG_TONE: Record<LogKind, string> = {
   transform: "tone-zone",
   phase_out: "tone-zone",
   phase_in: "tone-zone",
+  // The game becoming day or night turns permanents over with no card
+  // behind it, so it is toned like the turn-over it causes.
+  day_night: "tone-zone",
   turn_face_down: "tone-zone",
 };
 

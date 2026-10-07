@@ -275,6 +275,7 @@ func enrich(t *testing.T, g *Game) {
 		}
 		g.Monarch = p0.ID
 		g.Initiative = p1.ID
+		g.DayNight = DayNightState{Designation: DesignationNight, PrevTurnSpells: 2, PrevTurnKnown: true}
 
 		// --- per-turn bookkeeping --------------------------------
 		g.LoyaltyActivatedThisTurn = map[uuid.UUID]bool{spellID: true}

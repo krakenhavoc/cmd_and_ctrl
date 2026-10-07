@@ -58,6 +58,14 @@
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
   import {
+    energyShortBy,
+    payAmountAnswerable,
+    payAmountClamp,
+    payAmountFloor,
+    payAmountStart,
+  } from "../../payEnergy";
+  import { L } from "../../labels";
+  import {
     canPayCards,
     payCardsOptions,
     payCardsReady,
@@ -613,7 +621,13 @@
       snap.seats?.find((s) => s.id === viewerID),
     );
   });
-  const payBlocked = $derived(payCards !== null && !payCardsReady(payCards, payCardPicks));
+  // ADR 0129 §3: the viewer's energy, for an energy payment's Pay (and
+  // the pay_amount stepper's ceiling, which the server sends as max).
+  const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
+  const payBlocked = $derived(
+    (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
+      (isPayUnless && energyShortBy(active, viewerEnergy) > 0),
+  );
   const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
   const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
   const payTapOptions = $derived.by((): CardView[] => {
@@ -790,6 +804,36 @@
   const loopAnswerable = $derived(
     Number.isFinite(loopIterations) && loopIterations >= 0 && loopIterations <= loopMax,
   );
+
+  // ADR 0129 §3 pay_amount (owner decision 3): "you may pay any amount
+  // of {E}". A stepper from the smallest payment to the seat's energy,
+  // opening on the card's own threshold; Pay sends it and the decline
+  // sends 0.
+  const isPayAmount = $derived(active?.kind === "pay_amount");
+  const payAmountView = $derived(isPayAmount ? (active?.pay_amount ?? null) : null);
+  let payAmountValue = $state(0);
+  let lastPayAmountID: string | null = null;
+  $effect(() => {
+    if (!isPayAmount || !active || !payAmountView) {
+      lastPayAmountID = null;
+      return;
+    }
+    if (active.id === lastPayAmountID) return;
+    lastPayAmountID = active.id;
+    payAmountValue = payAmountStart(payAmountView);
+  });
+  const payAmountOK = $derived(
+    payAmountView !== null && payAmountAnswerable(payAmountView, payAmountValue),
+  );
+  function stepPayAmount(delta: number): void {
+    if (!payAmountView) return;
+    payAmountValue = payAmountClamp(payAmountView, payAmountValue + delta);
+  }
+  function submitPayAmount(amount: number): void {
+    if (!active || !viewerID || !payAmountView) return;
+    if (!payAmountAnswerable(payAmountView, amount)) return;
+    answer({ amount });
+  }
 
   function submitLoopShortcut(iterations: number): void {
     if (!active || !viewerID) return;
@@ -1070,6 +1114,9 @@
             mayCastCardName: mayCastCard?.name || undefined,
             loopIterations,
             loopAnswerable,
+            energy: viewerEnergy,
+            payAmount: payAmountValue,
+            payAmountAnswerable: payAmountOK,
             life: snap.seats?.find((s) => s.id === viewerID)?.life,
             body: isManaPick
               ? manaBody
@@ -1077,9 +1124,11 @@
                 ? colorBody
                 : isLoopShortcut
                   ? loopBody
-                  : commanderCard
-                    ? commanderBody
-                    : undefined,
+                  : isPayAmount
+                    ? payAmountBody
+                    : commanderCard
+                      ? commanderBody
+                      : undefined,
             rejection: rejection?.message ?? null,
           },
           {
@@ -1087,6 +1136,7 @@
             onCoin: answerCoin,
             onOption: answerOptionPick,
             onLoop: submitLoopShortcut,
+            onAmount: submitPayAmount,
           },
         )
       : null,
@@ -1582,6 +1632,42 @@
       }}
     />
   </label>
+{/snippet}
+
+{#snippet payAmountBody()}
+  {#if payAmountView}
+    <div class="pay-amount" role="group" aria-label={L.energyToPay}>
+      <button
+        type="button"
+        class="pay-amount-step"
+        aria-label="One less energy"
+        disabled={payAmountValue <= payAmountFloor(payAmountView)}
+        onclick={() => stepPayAmount(-1)}>−</button
+      >
+      <input
+        type="number"
+        min={payAmountFloor(payAmountView)}
+        max={payAmountView.max}
+        step="1"
+        bind:value={payAmountValue}
+        aria-label="Amount of energy"
+        onkeydown={(e) => {
+          // The number typed is the answer: Enter in the field pays it.
+          if (e.key !== "Enter" || !payAmountOK || payAmountValue <= 0) return;
+          e.preventDefault();
+          submitPayAmount(payAmountValue);
+        }}
+      />
+      <button
+        type="button"
+        class="pay-amount-step"
+        aria-label="One more energy"
+        disabled={payAmountValue >= payAmountView.max}
+        onclick={() => stepPayAmount(1)}>+</button
+      >
+      <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
+    </div>
+  {/if}
 {/snippet}
 
 {#if open && active && inline}
@@ -2398,6 +2484,22 @@
     margin-right: auto;
     font-size: 13px;
     opacity: 0.85;
+  }
+  .pay-amount {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .pay-amount input {
+    width: 4.5rem;
+    text-align: center;
+  }
+  .pay-amount-step {
+    min-width: 2rem;
+  }
+  .pay-amount-of {
+    color: var(--fg-muted);
+    font-size: 13px;
   }
   .loop-iterations input {
     width: 88px;
