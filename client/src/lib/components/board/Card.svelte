@@ -921,10 +921,19 @@
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
-        <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
+        <!-- #2046: a planeswalker that is also a creature (a Gideon
+             until end of turn) shows BOTH numbers, loyalty stacked
+             above its power/toughness. -->
+        <span
+          class="badge loyalty"
+          class:with-pt={isCreature}
+          title={`loyalty ${loyaltyValue}`}
+          aria-label="loyalty"
+        >
           {loyaltyValue}
         </span>
-      {:else}
+      {/if}
+      {#if isCreature}
         <span
           class="badge pt"
           title={`power/toughness ${card.power ?? 0}/${card.toughness ?? 0}`}
@@ -1064,10 +1073,19 @@
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
-        <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
+        <!-- #2046: a planeswalker that is also a creature (a Gideon
+             until end of turn) shows BOTH numbers, loyalty stacked
+             above its power/toughness. -->
+        <span
+          class="badge loyalty"
+          class:with-pt={isCreature}
+          title={`loyalty ${loyaltyValue}`}
+          aria-label="loyalty"
+        >
           {loyaltyValue}
         </span>
-      {:else}
+      {/if}
+      {#if isCreature}
         <span
           class="badge pt"
           title={`power/toughness ${card.power ?? 0}/${card.toughness ?? 0}`}
@@ -1703,6 +1721,10 @@
     color: #b8e0b8;
     background: rgba(20, 40, 20, 0.92);
     border-color: rgba(150, 200, 150, 0.5);
+  }
+  .badge.loyalty.with-pt {
+    /* A creature planeswalker (#2046): loyalty rides above P/T. */
+    bottom: 24px;
   }
   .card.menu-open {
     /* When the mana-ability menu is open, let the popover extend

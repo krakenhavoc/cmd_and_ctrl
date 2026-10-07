@@ -4303,58 +4303,70 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		if g.zoneChangePausedLocked(c.InstanceID) {
 			continue
 		}
+		// The rules below are independent: a permanent is checked against
+		// EVERY one its current types call for, and is doomed if any
+		// applies (CR 704.3). A planeswalker that is also a creature (a
+		// Gideon until end of turn) answers to the creature rules and to
+		// 704.5i, so no arm may `continue` past the others. It is
+		// DESTROYED only if every rule that doomed it destroys; one
+		// "put into a graveyard" rule (704.5f, 704.5i, 704.5v/w) is
+		// something indestructible and a regeneration shield do nothing
+		// about, whatever else applies (ADR 0032 amendment of 2026-10-07).
+		var (
+			doom        bool
+			destruction = true
+		)
 		if c.IsCreature() {
 			// Whether the toughness is KNOWN is judged as if this
 			// check's CR 704.5q cancel had already happened: a `*`
 			// placeholder whose counters cancel to nothing is as
 			// unknown as one that never had any (the cancel itself
-			// runs after the sweep, below).
-			if !afterPlusMinusCancel(c).ToughnessIsKnown() {
-				continue
+			// runs after the sweep, below). Only the CREATURE rules
+			// are skipped for it: an object with no toughness has no
+			// lethal-damage threshold, but its loyalty is still read.
+			if afterPlusMinusCancel(c).ToughnessIsKnown() {
+				curT := c.CurrentToughness()
+				// CR 704.5f — toughness 0 or less PUTS the creature into
+				// its owner's graveyard; it does not destroy it, so
+				// indestructible deliberately does not save it here. A
+				// 2/2 with indestructible under two -1/-1 counters dies.
+				if curT <= 0 {
+					doom, destruction = true, false
+				} else {
+					// S25 (#77): the two damage-driven creature SBAs
+					// below are both DESTRUCTION (CR 704.5g, CR 704.5h),
+					// so indestructible switches both off (CR 702.12b).
+					// The damage stays marked either way — see
+					// indestructible.go.
+					indestructible := IsIndestructible(&c)
+					if c.DamageMarked >= curT && !indestructible {
+						doom = true
+					}
+					// S18 sub-PR 3: CR 702.2c — a creature hit by any
+					// nonzero damage from a deathtouch source is
+					// destroyed at the next SBA regardless of
+					// toughness. The flag is consumed by the pass that
+					// reads it (consumeDeathtouchMarksLocked, #2319):
+					// CR 704.5h only counts damage dealt since the last
+					// check, so a creature that was indestructible for
+					// that check is not destroyed by the mark at a later
+					// one.
+					if c.MarkedLethalByDeathtouch && !indestructible {
+						doom = true
+					}
+				}
 			}
-			curT := c.CurrentToughness()
-			// CR 704.5f — toughness 0 or less PUTS the creature into
-			// its owner's graveyard; it does not destroy it, so
-			// indestructible deliberately does not save it here. A
-			// 2/2 with indestructible under two -1/-1 counters dies.
-			if curT <= 0 {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
-				continue
-			}
-			// S25 (#77): the two damage-driven creature SBAs below
-			// are both DESTRUCTION (CR 704.5g, CR 704.5h), so
-			// indestructible switches both off (CR 702.12b). The
-			// damage stays marked either way — see indestructible.go.
-			indestructible := IsIndestructible(&c)
-			if c.DamageMarked >= curT && !indestructible {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
-				continue
-			}
-			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
-			// damage from a deathtouch source is destroyed at the
-			// next SBA regardless of toughness. The flag is consumed by
-			// the pass that reads it (consumeDeathtouchMarksLocked, #2319):
-			// CR 704.5h only counts damage dealt since the last check, so a
-			// creature that was indestructible for that check is not
-			// destroyed by the mark at a later one.
-			if c.MarkedLethalByDeathtouch && !indestructible {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
-			}
-			continue
 		}
 		// 704.5i — planeswalker with 0 loyalty counters.
-		if c.IsPlaneswalker() {
-			if c.Counters == nil || c.Counters[CounterLoyalty] <= 0 {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
-			}
-			continue
+		if c.IsPlaneswalker() && (c.Counters == nil || c.Counters[CounterLoyalty] <= 0) {
+			doom, destruction = true, false
 		}
 		// 704.5v/w — battle with 0 defense counters.
-		if c.IsBattle() {
-			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
-			}
-			continue
+		if c.IsBattle() && (c.Counters == nil || c.Counters[CounterDefense] <= 0) {
+			doom, destruction = true, false
+		}
+		if doom {
+			doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: destruction})
 		}
 	}
 	// 704.5k (ADR 0109 §8) — the world rule. Not a choice, so it joins

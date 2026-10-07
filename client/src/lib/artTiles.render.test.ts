@@ -141,6 +141,22 @@ describe("art tiles by default (#2209)", () => {
     expect(strip(land)?.textContent).toBe("Island");
   });
 
+  it("a planeswalker that is also a creature shows loyalty and power/toughness together (#2046)", () => {
+    const gideon = row([
+      bear({
+        instance_id: "gideon",
+        name: "Gideon, Ally of Zendikar",
+        type_line: "Legendary Creature Planeswalker — Gideon Human Soldier Ally",
+        power: 5,
+        toughness: 5,
+        counters: { loyalty: 5 },
+      }),
+    ]).container;
+    expect(gideon.querySelector(".badge.loyalty")?.textContent?.trim()).toBe("5");
+    expect(gideon.querySelector(".badge.loyalty")?.classList.contains("with-pt")).toBe(true);
+    expect(gideon.querySelector(".badge.pt")?.textContent?.trim()).toBe("5/5");
+  });
+
   it("keeps role=button and the card's name as its accessible name", () => {
     const el = row([bear()]).container.querySelector(".card") as HTMLElement;
     expect(el.getAttribute("role")).toBe("button");
