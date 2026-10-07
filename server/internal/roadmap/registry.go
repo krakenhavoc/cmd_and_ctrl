@@ -2126,14 +2126,13 @@ var items = []Item{
 		EngineNotes: "delayed trigger: `ExileWhenItDiesThisTurn` (Whippoorwill) is untargeted. Heroic Sacrifice's needs \"up to one target creature you control\", chosen as it triggers, and the counters the creature had as it last existed on the battlefield. Its redirection is ADR 0108 §9's `effects.RedirectDamage`.",
 	},
 	{
-		Slug: "damage-not-removed-at-cleanup", Name: "\"Damage isn't removed from this creature during cleanup steps\"", Kind: KindSeam, Status: StatusMissing,
+		Slug: "damage-not-removed-at-cleanup", Name: "\"Damage isn't removed from this creature during cleanup steps\"", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "A creature that keeps its damage from turn to turn, as Ancient Adamantoise does.",
-		Missing:     "Damage is removed from every permanent in the cleanup step.",
-		Rules:       []string{"514.2"},
+		Rules:       []string{"514.2", "702.26b"},
 		Issue:       2058,
+		Examples:    []string{"Ancient Adamantoise"},
 		Tracked:     "#2058 (found landing ADR 0108 PR 9, #1905)",
-		Waiting:     []string{"Ancient Adamantoise"},
-		EngineNotes: "cleanup: CR 514.2's damage removal reads no static. Ancient Adamantoise's redirection is ADR 0108 §9's `effects.staticRedirection`, Palisade Giant's shape. 1 Commander-legal card prints it.",
+		EngineNotes: "cleanup: `Spec.DamageStaysThroughCleanup` is read by `sweepTurnEndLocked` through `CatalogAbilityKey` (`game/cleanup_damage.go`), so a permanent that lost its abilities is cleaned as usual; the sweep also clears phased-out permanents. Ancient Adamantoise's redirection is ADR 0108 §9's `effects.staticRedirection`.",
 	},
 	{
 		Slug: "static-prevention-follow-up", Name: "Prevention that does something with what it prevented", Kind: KindSeam, Status: StatusImplemented,
