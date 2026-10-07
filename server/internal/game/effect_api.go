@@ -406,6 +406,14 @@ func (g *Game) FindCardZoneForEffect(cardID uuid.UUID) *Zone {
 	return g.findCardZoneLocked(cardID)
 }
 
+// ObjectEpochForEffect reads Card.ObjectEpoch (CR 400.7) off whichever
+// zone holds the card, or -1 when none does. A trigger that stamped the
+// epoch when it fired compares it here at resolution to learn whether
+// "that card" is still the same object. Caller must hold g.mu.
+func (g *Game) ObjectEpochForEffect(cardID uuid.UUID) int {
+	return g.cardObjectEpochLocked(cardID)
+}
+
 // BattlefieldCardsForEffect returns the current battlefield card
 // slice (by value — mutating it has no effect on the game). Used
 // by iterated primitives such as Wrath-of-God's "for each creature

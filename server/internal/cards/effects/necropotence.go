@@ -69,7 +69,7 @@ func init() {
 			},
 			Key: "Necropotence — exile the discarded card",
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return necropotenceExileDiscarded(g, item.Controller, item.Trigger.Event.CardID)
+				return necropotenceExileDiscarded(g, item, item.Controller, item.Trigger.Event.CardID)
 			},
 		}},
 		Activated: []ActivatedAbility{{
@@ -114,12 +114,11 @@ func init() {
 // whose card ended up in some other player's graveyard (a
 // control-changed card returning to its owner) is not the clause's
 // business.
-func necropotenceExileDiscarded(g *game.Game, controller, cardID uuid.UUID) error {
-	if cardID == uuid.Nil {
+func necropotenceExileDiscarded(g *game.Game, item *game.StackItem, controller, cardID uuid.UUID) error {
+	if !discardedCardStillInGraveyard(g, item, cardID) {
 		return nil
 	}
-	z := g.FindCardZoneForEffect(cardID)
-	if z == nil || z.Kind != game.ZoneGraveyard || z.Owner != controller {
+	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Owner != controller {
 		return nil
 	}
 	return g.ExileCardForEffect(cardID)

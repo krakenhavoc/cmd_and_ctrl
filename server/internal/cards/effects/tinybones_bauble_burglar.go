@@ -33,8 +33,9 @@ import (
 // (CastOnly is not set).
 //
 // The discard trigger exiles the card only if it is still in a graveyard
-// when the trigger resolves (a madness card or a card that was returned
-// in response is not "it" any more).
+// when the trigger resolves AND it is the same object (a madness card, or
+// a card that was returned in response and came back, is not "it" any
+// more — CR 400.7, #2453).
 //
 // No simplification.
 func init() {
@@ -80,7 +81,7 @@ func tinybonesStashDiscarded(g *game.Game, item *game.StackItem) error {
 	if id == uuid.Nil {
 		return nil
 	}
-	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+	if !discardedCardStillInGraveyard(g, item, id) {
 		return nil
 	}
 	return ExileTarget{
