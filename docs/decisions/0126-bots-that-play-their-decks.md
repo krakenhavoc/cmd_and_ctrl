@@ -1015,3 +1015,27 @@ Every block points the same way, and pooled over 288 games the `heuristic` inter
 - A cast refused for insufficient mana. The auto-tapper books one slot of a bounce land twice (Simic Growth Chamber's `{G}{U}` as `{U}{U}`), and a refused strict cast leaves the land tapped and its mana floating. Filed as #2461, with a reproduction.
 
 **For the owner.** A1, A4 and A7 pass. A6 passes on the run §8 names, but not robustly. A2, A3, A5 and A8 fail, with the evidence above. A5 passes on the 288 pooled games. The owner decided them on 2026-10-07: see [Exit decisions](#exit-decisions-2026-10-07).
+
+### #2436: the rebalanced decks (2026-10-07)
+
+Not an S66 sub-PR: the A6 follow-up the owner left to #2436. `develop` at `5e4bb1dca` (with #2461's and #2462's fixes) plus the rebalanced lists, Y'shtola, Night's Blessed for Esper, and the purposes the incoming cards declare. `DefaultConfig()` and `BaselineConfig()` are PR 9's; no weight moved. Concurrent schedule, turn budget 60.
+
+**Run 1:** the command in §8, seed 1. Run ID `2026-10-07T11:33:23.994475731Z`. 64 games, 0 stalls, 2 rejected moves (both a pass racing Rhystic Study's "draw a card?"), turns p50 15.
+
+| Deck | Wins of 64 | Win rate | Wilson 95% interval | PR 9 | `never` (PR 9) | `never` cards |
+|---|---:|---:|---|---:|---:|---|
+| esper-control | 29 | 45.3% | 33.7%–57.4% | 5 | 0 (1) | — |
+| izzet-aggro | 6 | 9.4% | 4.4%–19.0% | 6 | 3 (3) | Professional Face-Breaker's, Scrounging Skyray's and Solphim's activations |
+| mono-black-aristocrats | 21 | 32.8% | 22.6%–45.0% | 38 | 4 (4) | Ashnod's Altar, Blood Artist, Commander's Sphere; Burnished Hart's activation |
+| simic-ramp | 8 | 12.5% | 6.5%–22.8% | 15 | 2 (2) | Burnished Hart's and Mind Stone's activations |
+
+A6 passes with room: no deck's interval lies above 50%, and mono-black's no longer lies above 25%. The issue's further mono-black trims (Demonic Tutor, Ancient Tomb, Cabal Coffers with Urborg, Sheoldred) were not made. Izzet's and Simic's intervals lie entirely below 25%.
+
+**Run 2:** §8's shape, seeds 1 to 48 in both halves. Run IDs `2026-10-07T11:33:23.987898191Z` (half A: `heuristic` on esper and izzet) and `2026-10-07T11:33:24.033165755Z` (half B). 96 games, 0 stalls, 1 rejected move (`heuristic`, the same Rhystic Study race), turns p50 14 and 13.
+
+| Policy | Seat-games | Wins | Win rate | Wilson 95% interval | PR 9 |
+|---|---:|---:|---:|---|---|
+| heuristic | 192 | 58 | 30.2% | 24.2%–37.0% | 54, 28.1% |
+| heuristic-baseline | 192 | 38 | 19.8% | 14.8%–26.0% | 42, 21.9% |
+
+By half, `heuristic` won 18 of 96 seat-games on esper and izzet (esper 17, izzet 1) and 40 of 96 on black and simic (black 23, simic 17).

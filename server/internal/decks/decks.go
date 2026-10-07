@@ -91,10 +91,14 @@
 // # Power level
 //
 // The decks are "upgraded precons" (#2436): fetchlands and dual lands
-// stay, but tutors and fast mana (Vampiric Tutor, Dark Ritual, Ancient
-// Tomb, Lotus Petal, Gaea's Cradle) are cut, and each deck's Summary
-// names the one mechanic it teaches. A saved table setup names a deck
-// by ID, so it seats the current list, whatever it held when saved.
+// stay, but most tutors and fast mana (Vampiric Tutor, Dark Ritual,
+// Lotus Petal, Gaea's Cradle, and Ancient Tomb outside mono-black) are
+// cut, and each deck's Summary names the one mechanic it teaches.
+// Mono-black keeps Demonic Tutor, Ancient Tomb and Cabal Coffers with
+// Urborg: the issue named them as the next trims if the deck still
+// dominated, and on the rebalanced lists it did not. A saved table
+// setup names a deck by ID, so it seats the current list, whatever it
+// held when saved.
 //
 // # Adding a deck
 //

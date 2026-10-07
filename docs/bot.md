@@ -967,8 +967,9 @@ time a spec was refactored.
 | `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — death triggers: sacrifice creatures for value, drain the table each time one dies, then reanimate the best of them |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
-fetchlands and dual lands, but no fast mana beyond Sol Ring and few
-tutors, and each one teaches the single mechanic in its row above.
+fetchlands and dual lands, but few tutors and little fast mana (Sol
+Ring everywhere, Ancient Tomb only in mono-black), and each one
+teaches the single mechanic in its row above.
 Every non-basic card is graded `full` in the catalog, apart from a
 short list of minor caveats named in `internal/decks/full_test.go`
 (Path of Ancestry, Delighted Halfling, Cultivate, Tireless Provisioner,
