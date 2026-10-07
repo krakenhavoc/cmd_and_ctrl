@@ -1482,6 +1482,12 @@ type Event struct {
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
 
+	// AnswerKey is the standing-answer key an EventAutoAnswer answered
+	// under (ADR 0127 §6). The log carries it to the chooser alone, so
+	// the notice's "Ask me next time" can remove the rule. Empty on
+	// every other kind.
+	AnswerKey string `json:"answer_key,omitempty"`
+
 	// RevealSeq groups the per-card EventRevealCards events of ONE
 	// reveal, and is the Seq the first of them was stamped with.
 	// "Reveal the top five cards of your library" is five events —

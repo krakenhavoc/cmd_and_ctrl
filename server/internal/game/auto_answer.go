@@ -396,23 +396,26 @@ func (g *Game) MarkAskedByHand(choiceID uuid.UUID, reason AskedByHand) {
 // writes the EventAutoAnswer line, and answers through the kind's own
 // resolver body — except that the prompt leaves the queue without
 // counting as a player decision, so the CR 732 loop run is not
-// restarted (§7). Takes the write lock.
-func (g *Game) AutoAnswer(choiceID uuid.UUID) error {
+// restarted (§7). It returns the Seq of the EventAutoAnswer it wrote,
+// which the room stamps on the chooser's view while that answer is the
+// top undo entry (the owner's 2026-10-07 amendment). Takes the write
+// lock.
+func (g *Game) AutoAnswer(choiceID uuid.UUID) (uint64, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
-		return ErrGameNotActive
+		return 0, ErrGameNotActive
 	}
 	idx, c := g.findChoiceLocked(choiceID)
 	if idx < 0 {
-		return ErrPendingChoiceNotFound
+		return 0, ErrPendingChoiceNotFound
 	}
 	answer, live := g.autoAnswerRuleLocked(c)
 	if !live || g.autoAnswerHandReasonLocked(c, answer) != "" {
-		return ErrNotAutoAnswerable
+		return 0, ErrNotAutoAnswerable
 	}
 	yes := answer == AutoAnswerAlways
-	ev := Event{Kind: EventAutoAnswer, Actor: c.Chooser, Source: c.Source}
+	ev := Event{Kind: EventAutoAnswer, Actor: c.Chooser, Source: c.Source, AnswerKey: c.AutoAnswerKey}
 	switch c.Kind {
 	case PendingChoicePayUnless:
 		ev.Call = AutoAnswerCallDontPay
@@ -434,9 +437,10 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) error {
 			ev.Call = AutoAnswerCallYes
 		}
 	default:
-		return ErrNotAutoAnswerable
+		return 0, ErrNotAutoAnswerable
 	}
 	g.EmitEvent(ev)
+	seq := g.eventSeq
 	switch c.Kind {
 	case PendingChoicePayUnless:
 		g.answerPayUnlessLocked(idx, c, c.Chooser, yes, nil, nil, 0, false, true)
@@ -445,7 +449,7 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) error {
 	case PendingChoiceConfirm:
 		g.answerConfirmLocked(idx, c, c.Chooser, yes, true)
 	}
-	return nil
+	return seq, nil
 }
 
 // The four answers an EventAutoAnswer records, in Event.Call.

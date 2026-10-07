@@ -110,6 +110,7 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0114 §9: the Ring tempting a player is a play the table watches,
   // toned like the cast that caused it.
   ring_tempted: "tone-cast",
+  auto_answer: "tone-quiet",
   // #1021. A control change is a swing in the game and reads like a
   // removal spell; the rest are beats of a turn a player narrates
   // without raising their voice.

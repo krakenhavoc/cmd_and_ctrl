@@ -8,7 +8,68 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
+
+// The owner's 2026-10-07 amendment: the chooser's own view says which
+// automatic answer an undo would take back, and only while it is the
+// top undo entry. Their notice greys its Undo from exactly that.
+func TestRoomStampsTheTopAutomaticAnswerOnTheChoosersView(t *testing.T) {
+	room, g := newAutoAnswerRoom(t)
+	payer, other := g.Seats[0], g.Seats[1]
+	if err := g.SetAutoAnswers(payer.ID, map[string]game.AutoAnswer{"tax": game.AutoAnswerNever}); err != nil {
+		t.Fatal(err)
+	}
+	var declined int
+	view, _, err := room.Apply(other.ID, queueTax(g, payer.ID, "tax", &declined))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamp := view.Seats[0].UndoAutoAnswer
+	if stamp == 0 {
+		t.Fatal("no undo_auto_answer on the chooser's seat")
+	}
+	var line *protocol.LogEvent
+	for i := range view.Log {
+		if view.Log[i].Kind == protocol.LogAutoAnswer {
+			line = &view.Log[i]
+		}
+	}
+	if line == nil || line.Seq != stamp {
+		t.Fatalf("stamp %d does not name the auto_answer line %+v", stamp, line)
+	}
+	mine := protocol.FilterViewFor(view, payer.ID.String())
+	theirs := protocol.FilterViewFor(view, other.ID.String())
+	if mine.Seats[0].UndoAutoAnswer != stamp || theirs.Seats[0].UndoAutoAnswer != 0 {
+		t.Error("the stamp is not private to the chooser")
+	}
+	keyOf := func(v protocol.GameView) string {
+		for _, e := range v.Log {
+			if e.Kind == protocol.LogAutoAnswer {
+				return e.AutoAnswerKey
+			}
+		}
+		return ""
+	}
+	if keyOf(mine) != "tax" || keyOf(theirs) != "" {
+		t.Errorf("log key: chooser %q, other %q; want tax and none", keyOf(mine), keyOf(theirs))
+	}
+	// Another commit on top: the answer can no longer be undone alone.
+	view, _, err = room.Apply(other.ID, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Seats[0].UndoAutoAnswer != 0 {
+		t.Error("the stamp outlived its place at the top of the undo stack")
+	}
+	// Undo that commit: the answer is on top again.
+	if view, _, err = room.Undo(other.ID); err != nil {
+		t.Fatal(err)
+	}
+	if view.Seats[0].UndoAutoAnswer != stamp {
+		t.Error("the stamp did not come back with the answer on top")
+	}
+}
 
 // auto_answer_test.go — ADR 0127 §4 and §6 at the room: a covered
 // prompt a commit raises is answered as a commit of its own, stamped

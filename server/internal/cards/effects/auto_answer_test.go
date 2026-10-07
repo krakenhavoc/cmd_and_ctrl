@@ -40,7 +40,7 @@ func autoAnswerAll(t *testing.T, g *game.Game) int {
 		if !ok {
 			return n
 		}
-		if err := g.AutoAnswer(id); err != nil {
+		if _, err := g.AutoAnswer(id); err != nil {
 			t.Fatalf("AutoAnswer: %v", err)
 		}
 	}

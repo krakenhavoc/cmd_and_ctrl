@@ -311,3 +311,20 @@ Each question lists the most CR-faithful option first, then the others. The owne
    - (b) No marker. The answer is public either way.
 
    **Answered: (a), as recommended (owner decision 11).** CR 732.1a's shortcuts are acceptable when everyone understands them, and a marker is how the table learns that a player has one.
+
+## Amendment 2026-10-07 — the notice's Undo, and what the server PR settled (#1961)
+
+**Owner decision (2026-10-07).** The room stamps the viewer's own top-of-undo automatic answer on their view, the way it stamps `is_host`, and the stamp is present only while that answer is still the top undo entry. The client greys the notice's Undo exactly from that. §6 said Undo is greyed "once another commit sits on top", and nothing on the wire said which commit was on top; inferring it from frame numbers fails when two automatic answers land in one commit. The stamp is `PlayerView.undo_auto_answer`: the seq of the answer's `auto_answer` log line, on the chooser's own view only. It is room state, never persisted, like `undoEntry.autoAnswered`.
+
+**What the client PR (delivery PR 3) adds on the server for it:**
+
+- `Event.AnswerKey` (snapshot `answer_key`, additive in schema 7) records the rule's key on `EventAutoAnswer`. The `auto_answer` log line carries it as `auto_answer_key` on the chooser's view only, so the notice's **Ask me next time** can remove the rule.
+- `Game.AutoAnswer` returns the event's seq, which the room keeps on the undo entry and stamps while that entry is on top.
+
+**Settled in the server PR (#2589), recorded here because §8 did not spell them out:**
+
+- `AskedByHand` holds the reason, not a flag: `no_mana`, `empty_library`, `loop` or `undone`. It is on the chooser's view as `asked_by_hand`, and the dock's line says why the prompt is asked.
+- The card name and the question are stored on the prompt when it is keyed (`AutoAnswerCard`, `AutoAnswerPrompt`), since the card may have moved before the client reads them.
+- A `pay_unless` with a Phyrexian symbol or a waterbend clause is not covered: both are a choice beyond yes or no. An automatic "Always pay" pays mana only, never life under K'rrik (ADR 0131).
+
+**Delivery PR 3's e2e spec** uses Smothering Tithe, the S19 decks' pay-unless card, in place of Rhystic Study: the prompt is the same shape, and the decks already carry it.

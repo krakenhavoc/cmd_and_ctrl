@@ -38,6 +38,7 @@
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
   import PlaymatSettings from "./PlaymatSettings.svelte";
+  import AutoAnswersSettings from "./AutoAnswersSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
@@ -821,6 +822,8 @@
               this on to be asked every time, so you choose which resolves first while your
               opponents can still respond between them.
             </p>
+
+            <AutoAnswersSettings />
 
             <label>
               <input

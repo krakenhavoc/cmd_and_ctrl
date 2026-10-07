@@ -51,6 +51,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
@@ -128,6 +129,7 @@
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import { newTriggerOrderPrefState, triggerOrderPrefToSend } from "../lib/triggerOrderPref";
+  import { autoAnswersToSend, newAutoAnswersPrefState } from "../lib/autoAnswerPref";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import {
     openShortcutsHelp,
@@ -816,6 +818,25 @@
     );
     if (want !== null && viewerID) {
       client.sendAction("set_trigger_order_preference", viewerID, { always_ask: want });
+    }
+  });
+
+  // ADR 0127 §3: the same for the standing answers. The server answers
+  // with its copy of the seat's rules (so it works with this tab
+  // closed); this sends the synced setting whenever the seat's view
+  // disagrees — a change in Settings or on a prompt, a reconnect, a
+  // second device, a server restored from an older snapshot.
+  const autoAnswersPrefState = newAutoAnswersPrefState();
+  $effect(() => {
+    if (replaying) return;
+    const rules = autoAnswersToSend(
+      autoAnswersPrefState,
+      $snapshot,
+      viewerID,
+      $settings.gameplay.autoAnswers,
+    );
+    if (rules !== null && viewerID) {
+      client.sendAction("set_auto_answers", viewerID, { rules });
     }
   });
 
@@ -2352,6 +2373,7 @@
         lastError={$lastError}
         docked={dockShown}
       />
+      <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
       <AutoTapPreviewModal
         {gameID}
         snap={view}

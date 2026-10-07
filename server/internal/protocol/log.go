@@ -638,6 +638,11 @@ type LogEvent struct {
 	// lets anyone at a preview table spawn), is left false — which is
 	// the honest answer, not a missing one.
 	ActorIsHost bool `json:"actor_is_host,omitempty"`
+	// AutoAnswerKey is, on a LogAutoAnswer entry, the standing-answer
+	// key the server answered under (ADR 0127 §6). The chooser's alone:
+	// FilterViewFor clears it for every other viewer. The client's
+	// notice uses it for "Ask me next time".
+	AutoAnswerKey string `json:"auto_answer_key,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -1468,6 +1473,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Call = ev.Call
 		base.Label = ev.Label
+		base.AutoAnswerKey = ev.AnswerKey
 		// An optional trigger's label names the card the way a
 		// LogTrigger's does, and is redacted off the source's knower set
 		// the same way (#1257).

@@ -404,6 +404,7 @@ events	array
 events[]	object
 events[].actor	custom(uuid.UUID)
 events[].amount	number:int
+events[].answer_key	string
 events[].attacking_target	custom(uuid.UUID)
 events[].batch	number:uint64
 events[].batch_seq	number:uint64
@@ -1343,6 +1344,7 @@ lastKnownStack[].item.trigger	object
 lastKnownStack[].item.trigger.Event	object
 lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.amount	number:int
+lastKnownStack[].item.trigger.Event.answer_key	string
 lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
@@ -1811,6 +1813,7 @@ pendingTriggers[].trigger	object
 pendingTriggers[].trigger.Event	object
 pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.amount	number:int
+pendingTriggers[].trigger.Event.answer_key	string
 pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
@@ -4430,6 +4433,7 @@ stackMeta[].trigger	object
 stackMeta[].trigger.Event	object
 stackMeta[].trigger.Event.actor	custom(uuid.UUID)
 stackMeta[].trigger.Event.amount	number:int
+stackMeta[].trigger.Event.answer_key	string
 stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)
 stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
