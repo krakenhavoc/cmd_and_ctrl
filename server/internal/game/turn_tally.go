@@ -220,6 +220,22 @@ type TurnTally struct {
 	// loopSuspectedLocked over LoopRun; this says whether the answer
 	// it gives is news. See loop_breaker.go (#804).
 	LoopAllowance map[string]int `json:"loopAllowance,omitempty"`
+	// LoopLow and LoopLowSet are the lowest count of work left on the
+	// stack (StackMeta plus PendingTriggers) seen as a TRIGGERED
+	// ability began to resolve, since the last player decision (#2450,
+	// ADR 0055's 2026-10-07 amendment, option A). A resolution that
+	// finds the count strictly below the low is a batch draining, not a
+	// loop, and restarts the runs (noteLoopProgressLocked). Cleared by
+	// notePlayerDecisionLocked with everything else.
+	LoopLow    int  `json:"loopLow,omitempty"`
+	LoopLowSet bool `json:"loopLowSet,omitempty"`
+	// LoopActivated is the key of the activated ability the last
+	// decision activated (#810's notePlayerActivationLocked), whose run
+	// a draining batch does NOT restart: an activation loop is fed one
+	// activation at a time, and the triggers each activation causes may
+	// well drain between activations. Empty when the last decision was
+	// not an activation.
+	LoopActivated string `json:"loopActivated,omitempty"`
 	// Casts is every spell cast this turn, TABLE-WIDE, in cast order:
 	// the instance ID of each spell as it went on the stack. Read
 	// through Game.SpellsCastBeforeThisTurn.
@@ -919,6 +935,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
+	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
