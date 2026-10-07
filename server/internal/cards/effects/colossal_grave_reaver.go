@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 const b17GraveReaverReturnLabel = "Colossal Grave-Reaver — put a milled creature card onto the battlefield"
 
@@ -23,21 +27,19 @@ const b17GraveReaverReturnLabel = "Colossal Grave-Reaver — put a milled creatu
 // the controller's graveyard and is still there — and one of them
 // comes back under the controller's control.
 //
-// Sandbox simplification, declared: "put ONE OF THEM" is a choice,
-// and the engine has no resolution-time pick-a-card prompt for a
-// trigger (the pick_target prompt freezes its legal set when the
-// trigger fires, which is after the FIRST card of the mill and
-// before the rest), so the engine picks the creature card with the
-// greatest mana value, the first milled on a tie. Never stronger
-// than printed — every pick is one the printed card allows — only
-// less controllable. Two mills in one resolution that are not one
-// batch fire once, not twice: weaker, never stronger.
+// "Put ONE OF THEM" is the controller's choice (#2523): with more than
+// one creature card in the batch the trigger's resolution queues a
+// choose-cards prompt over the batch (exactly one, from the graveyard,
+// re-checked on submit), and a lone creature card just comes back with
+// nothing to decide. The batch is read at RESOLUTION, so a milled
+// creature card that has left the graveyard since is no candidate.
+// Two mills in one resolution that are not one batch fire once, not
+// twice: weaker, never stronger.
 func init() {
 	Register(Spec{
 		OracleID:        "df8e0d1b-b47c-4807-9c9b-84dcec835254",
 		Name:            "Colossal Grave-Reaver",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"When creature cards are milled, the one with the greatest mana value comes back automatically rather than one you choose."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Colossal Grave-Reaver — mill three cards", Do(MillCards{N: 3})),
@@ -56,17 +58,49 @@ func init() {
 				},
 				Key: b17GraveReaverReturnLabel,
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					pick, ok := b17GreatestManaValue(g, b17MilledCreatureCards(g, item.Controller, item.Trigger.Event.Seq))
-					if !ok {
-						return nil
-					}
-					return ReturnFromGraveyard{
-						Target:     pick,
-						Dest:       game.ZoneBattlefield,
-						Controller: item.Controller,
-					}.Apply(NewContext(g, item))
+					return b17ReanimateOneMilled(g, item, item.Controller,
+						"Colossal Grave-Reaver — put one of the milled creature cards onto the battlefield",
+						b17MilledCreatureCards(g, item.Controller, item.Trigger.Event.Seq))
 				},
 			},
 		},
 	})
+}
+
+// b17ReanimateOneMilled is "put one of them onto the battlefield": a
+// lone candidate returns outright, several are offered to the
+// controller as an exactly-one pick. `from` is the graveyard's owner
+// (Helm of Obedience reanimates out of somebody else's).
+func b17ReanimateOneMilled(g *game.Game, item *game.StackItem, from uuid.UUID, question string, creatures []uuid.UUID) error {
+	switch len(creatures) {
+	case 0:
+		return nil
+	case 1:
+		return ReturnFromGraveyard{
+			Target:     creatures[0],
+			Dest:       game.ZoneBattlefield,
+			Controller: item.Controller,
+		}.Apply(NewContext(g, item))
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    item.Controller,
+		FromPlayer: from,
+		Source:     item.SourceCardID,
+		Question:   question,
+		Cards:      creatures,
+		Min:        1,
+		Max:        1,
+		Zone:       game.ZoneGraveyard,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) == 0 {
+				return nil
+			}
+			return ReturnFromGraveyard{
+				Target:     picked[0],
+				Dest:       game.ZoneBattlefield,
+				Controller: item.Controller,
+			}.Apply(NewContext(g, item))
+		},
+	})
+	return nil
 }

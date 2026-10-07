@@ -310,6 +310,9 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if v, ok := st.valueTakenFromLibrary(p.cfg, ch, cp.CardIDs); ok {
 			return v, "take the best from the library"
 		}
+		if v, ok := st.valueTakenFromGraveyard(p.cfg, ch, cp.CardIDs); ok {
+			return v, "take the best from the graveyard"
+		}
 		return 0.5, "choose cards"
 
 	case choiceUntapChoice:
@@ -659,6 +662,45 @@ func (st *state) valueTakenFromLibrary(cfg Config, ch *protocol.PendingChoiceVie
 	for i := range ch.Options {
 		id := ch.Options[i].InstanceID
 		if !inLibrary[id] {
+			return 0, false
+		}
+		opts[id] = &ch.Options[i]
+	}
+	var v float64
+	for _, id := range named {
+		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
+	}
+	return v, true
+}
+
+// valueTakenFromGraveyard scores one choose_cards answer over the bot's
+// own graveyard by the total cardValue of the candidates it NAMES, the
+// same sign as valueTakenFromLibrary (#2523, #2524). Every choose_cards
+// prompt in the catalog whose candidates sit in the chooser's own
+// graveyard returns or recovers the named cards — Colossal Grave-Reaver
+// and Eerie Ultimatum onto the battlefield, Bound // Determined and the
+// dredge family to hand, Stillness in Motion back to the library top —
+// so a named card is a card the bot gets. Without this the prompt
+// scored a flat 0.5 and the enumerator's first answer, "choose
+// nothing", won an "any number" pick.
+//
+// False for any prompt with a candidate outside the bot's own
+// graveyard. Min, Max and the set rule (Eerie Ultimatum's different
+// names) are the enumerator's: every answer reaching here is one the
+// engine accepts, so "any number" takes the largest legal set.
+func (st *state) valueTakenFromGraveyard(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
+	if ch == nil || len(ch.Options) == 0 || st.seat == nil {
+		return 0, false
+	}
+	yard := st.seat.Graveyard.Cards
+	inYard := make(map[string]bool, len(yard))
+	for i := range yard {
+		inYard[yard[i].InstanceID] = true
+	}
+	opts := make(map[string]*protocol.CardView, len(ch.Options))
+	for i := range ch.Options {
+		id := ch.Options[i].InstanceID
+		if !inYard[id] {
 			return 0, false
 		}
 		opts[id] = &ch.Options[i]
