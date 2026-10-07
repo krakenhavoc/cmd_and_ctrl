@@ -55,6 +55,27 @@ func TestRenderPrintsPlayerCounters(t *testing.T) {
 	}
 }
 
+// ADR 0129 §3: an energy payment the seat owes says how much, and a
+// pay_amount prompt its bounds, the card's threshold and the unit.
+func TestRenderEnergyPrompts(t *testing.T) {
+	v := view()
+	two := 2
+	v.PendingChoices = []protocol.PendingChoiceView{
+		{ID: "p1", Kind: "pay_unless", Chooser: "a", Reason: "Thriving Rhino — pay {E}{E}?", Count: 1, PayEnergy: &two},
+		{ID: "p2", Kind: "pay_amount", Chooser: "a", Reason: "Harnessed Lightning", Count: 1,
+			PayAmount: &protocol.PayAmountView{Min: 0, Max: 5, Goal: 3, Unit: "damage"}},
+	}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	for _, want := range []string{
+		"YOU OWE A CHOICE: pay_unless — Thriving Rhino — pay {E}{E}? (pay 2 energy) (choose 1)\n",
+		"YOU OWE A CHOICE: pay_amount — Harnessed Lightning (pay nothing, or 1 to 5 energy; 3 reaches the card's threshold; one energy is one point of damage)\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+}
+
 func TestRenderNoteUnimplementedForTheAgent(t *testing.T) {
 	got := boardtext.Render(view(), "a", boardtext.Options{NoteUnimplemented: true})
 	for _, want := range []string{

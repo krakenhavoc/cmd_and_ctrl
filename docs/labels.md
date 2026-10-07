@@ -58,6 +58,9 @@ registered, or when this file is stale.
 | `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it unpaid |
 | `cancel` | `Cancel` | button | text | `lib/targetingDock.ts`<br>`lib/dock.ts` | Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included |
 | `castAnyway` | `Cast anyway (don't pay)` | menuitem | text | `lib/castAnyway.ts` | the card menu's row that casts without paying (ADR 0118 §2) |
+| `energyToPay` | `energy to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper (ADR 0129 §3): how much energy to pay, from its floor to the seat's energy |
+| `payEnergy` | `Pay <N> {E}` (ends with ` {E}`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary: pays the stepper's amount |
+| `payNothing` | `Pay nothing` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more |
 | `payLifeForMana` | `Pay life for {B}…` | menuitem | text | `lib/payLifeForMana.ts` | the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4) |
 | `rollForFirstTurn` | `roll for the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the opening roll's request; the tutorial's roll step anchors here while the viewer owes a die |
 | `roll` | `Roll` | button | text | `lib/components/board/OpeningRollDock.svelte` | the opening roll's primary |

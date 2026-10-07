@@ -65,6 +65,10 @@ type choiceParams struct {
 	// absent, and an index list of zeroes is a perfectly ordinary
 	// answer ([0, 0, 0] is Mystic Confluence drawing three cards).
 	Modes []int `json:"modes"`
+	// Amount answers a pay_amount prompt (ADR 0129 §3): the energy
+	// paid. A pointer, for OptionIndex's reason: paying nothing is
+	// zero. Routed by KIND.
+	Amount *int `json:"amount,omitempty"`
 	// CreatureType answers a choose_creature_type prompt (CR 614.12).
 	// omitempty because the dispatcher routes on its PRESENCE: an
 	// empty string sent on every other kind would be read as "this is
@@ -262,6 +266,32 @@ func (e *enumerator) choiceMoves() bool {
 			// move naming the cards it pays with; there is none when
 			// the seat cannot pay (CR 118.3), and the decline is
 			// always there.
+			// ADR 0129 §3: an energy payment names nothing. "Pay" is
+			// a move only when the seat has the energy (CR 118.3),
+			// through the predicate the engine pays with, and it
+			// carries the energy it spends; the decline is always
+			// there.
+			if action := c.PayAction(); action != nil && action.Kind == game.PayActionEnergy {
+				if game.EnergyShortfall(playerByID(g, c.Chooser), action.Count) == nil {
+					a := true
+					p := base()
+					p.Apply = &a
+					e.add(Move{
+						Type:   TypeResolveChoice,
+						Player: e.seat,
+						Kind:   KindChoice,
+						Label:  reason + ": pay " + c.PayCost,
+						Source: c.Source,
+						Params: mustJSON(p),
+						Cost:   withEnergy(nil, action.Count),
+					})
+				}
+				a := false
+				p := base()
+				p.Apply = &a
+				e.addChoice(c, reason+": decline", p)
+				continue
+			}
 			if action := c.PayAction(); action != nil {
 				pool := g.PayActionOptionsForEffect(c.Chooser, action)
 				for _, set := range e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
@@ -345,6 +375,38 @@ func (e *enumerator) choiceMoves() bool {
 					price = withPhyrexianLife(nil, payLife)
 				}
 				e.addChoiceCost(c, reason+": "+verb, p, price)
+			}
+
+		case game.PendingChoicePayAmount:
+			// ADR 0129 §3 (owner decision 3): nothing, the smallest
+			// payment, the card's own threshold and the ceiling, so a
+			// 50-energy prompt is at most four moves and not 51. Every one is within the bounds
+			// the engine validates against.
+			pa := c.PayAmount
+			if pa == nil {
+				continue
+			}
+			for _, n := range payAmountOffers(pa) {
+				amount := n
+				p := base()
+				p.Amount = &amount
+				label := fmt.Sprintf("%s: pay %d {E}", reason, amount)
+				if amount == 0 {
+					label = reason + ": pay nothing"
+				}
+				m := Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  label,
+					Source: c.Source,
+					Params: mustJSON(p),
+					Cost:   withEnergy(nil, amount),
+					// Paying nothing is the one answer the engine
+					// can never refuse.
+					AlwaysLegal: amount == 0,
+				}
+				e.add(m)
 			}
 
 		case game.PendingChoiceDamageAssignment:

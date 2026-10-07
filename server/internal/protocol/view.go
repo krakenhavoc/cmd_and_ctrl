@@ -66,6 +66,11 @@ type GameView struct {
 	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
 	// Monarch. Added in S10.
 	Initiative string `json:"initiative,omitempty"`
+	// DayNight is the game's day/night designation (CR 731, ADR 0132):
+	// "day" or "night", omitted while the game has neither. Public and
+	// identical for every viewer — it belongs to the game, not to a
+	// seat. The client shows it beside the turn line.
+	DayNight string `json:"day_night,omitempty"`
 	// Promises is the per-pair "I owe you" token tally as
 	// "{from}->{to}" string keys → count. Zero entries are dropped on
 	// the wire so the map stays small. Added in S10.
@@ -505,6 +510,19 @@ type PendingChoiceView struct {
 	// hand for a discard, so they are sent to the chooser only. Absent
 	// for a mana payment.
 	PayCards *PayCardsView `json:"pay_cards,omitempty"`
+
+	// PayEnergy is the energy payment of a "pay_unless" (ADR 0129 §3):
+	// "you may pay {E}{E}", "sacrifice it unless you pay {E}". PayCost
+	// carries the symbols. `{apply: true}` pays when the chooser has
+	// that much energy (their seat's `energy`); with less, "Pay" is a
+	// decline. A pointer, because paying 0 {E} is a payment too.
+	// Absent for every other pay-unless.
+	PayEnergy *int `json:"pay_energy,omitempty"`
+
+	// PayAmount populates the "pay_amount" kind (ADR 0129 §3): "you may
+	// pay any amount of {E}". The chooser answers `{amount: n}` with
+	// min <= n <= max. Absent for other kinds.
+	PayAmount *PayAmountView `json:"pay_amount,omitempty"`
 
 	// AcceptLabel / DeclineLabel populate the "confirm" kind: the
 	// card's own words for the two branches ("Pay 4 life" / "Put it on
@@ -1324,6 +1342,22 @@ type PayCardsView struct {
 	// for a sacrifice (in the payment order "Choose for me" uses).
 	// Present-and-empty when there is nothing to pay with.
 	Options []string `json:"options"`
+}
+
+// PayAmountView is the wire shape of a "pay_amount" prompt (ADR 0129
+// §3): how much energy the chooser may pay.
+type PayAmountView struct {
+	// Min is 0 for "any amount" and 1 for "one or more".
+	Min int `json:"min"`
+	// Max is the chooser's energy when the prompt was asked.
+	Max int `json:"max"`
+	// Goal is the smallest amount that reaches the card's own threshold
+	// (Harnessed Lightning: the target's toughness), or 0 for none. The
+	// stepper starts there.
+	Goal int `json:"goal,omitempty"`
+	// Unit says what each counter paid buys: "damage", "counters",
+	// "cards", "power", "tax" or "other".
+	Unit string `json:"unit"`
 }
 
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
@@ -4177,6 +4211,7 @@ func ViewOfGame(g *game.Game) GameView {
 			MulligansOpen:         g.MulligansOpen,
 			Monarch:               uuidStringOrEmpty(g.Monarch),
 			Initiative:            uuidStringOrEmpty(g.Initiative),
+			DayNight:              string(g.DayNight.Designation),
 			Promises:              viewOfPromises(g.Promises),
 			Vote:                  viewOfVote(g.Vote),
 			UndoLimit:             g.Settings.UndoLimit,
@@ -7160,8 +7195,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 			v.TapCost = viewOfWaterbend(g, c.Chooser, uuid.Nil, tc, budget)
 		}
-		// ADR 0108 §5: the discard or sacrifice half of a pay-unless.
-		if a := c.PayAction(); a != nil {
+		// ADR 0108 §5: the discard or sacrifice half of a pay-unless;
+		// ADR 0129 §3: or its energy.
+		if a := c.PayAction(); a != nil && a.Kind == game.PayActionEnergy {
+			n := a.Count
+			v.PayEnergy = &n
+		} else if a != nil {
 			v.PayCards = &PayCardsView{
 				Action:  string(a.Kind),
 				Count:   a.Count,
@@ -7170,6 +7209,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if v.PayCards.Options == nil {
 				v.PayCards.Options = []string{}
 			}
+		}
+		if pa := c.PayAmount; pa != nil {
+			v.PayAmount = &PayAmountView{Min: pa.Min, Max: pa.Max, Goal: pa.Goal, Unit: pa.Unit}
 		}
 		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
 			doubledBy, doubledByName := c.TriggerDoubler()
@@ -8229,6 +8271,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		MulligansOpen: v.MulligansOpen,
 		Monarch:       v.Monarch,
 		Initiative:    v.Initiative,
+		DayNight:      v.DayNight,
 		Promises:      v.Promises,
 		Vote:          v.Vote,
 		UndoLimit:     v.UndoLimit,

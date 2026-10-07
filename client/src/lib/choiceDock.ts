@@ -8,7 +8,7 @@
 // INLINE is a question plus at most about six short buttons, or a
 // single number (§2): the yes/no family (trigger_prompt,
 // optional_replacement, commander_return, confirm, may_cast, entry_pay_life,
-// entry_riot), pay_unless
+// entry_riot), pay_amount's single number (ADR 0129 §3), pay_unless
 // without card or tap picks, coin_call, loop_shortcut, mana_pick,
 // choose_color, option_pick and entry_controller when every option is
 // a short label, and an open vote. Everything else is a sheet (PR 6)
@@ -39,6 +39,7 @@ import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./p
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { askedByHandText, canRemember } from "./autoAnswerPref";
 import { L } from "./labels";
+import { energyShortBy, energyShortReason, payAmountHint } from "./payEnergy";
 
 // "Short" for an option_pick / entry_controller (ADR 0111 §2: "Inline
 // when every option is a short label; a sheet when an option embeds
@@ -85,6 +86,7 @@ export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean
     case "loop_shortcut":
     case "mana_pick":
     case "choose_color":
+    case "pay_amount":
       return true;
     case "option_pick":
     case "entry_controller":
@@ -108,6 +110,11 @@ export interface ChoiceDockContext {
   body?: Snippet;
   // The server's refusal of the last answer to this prompt (#624).
   rejection?: string | null;
+  // ADR 0129 §3: the viewer's energy, for an energy payment's Pay.
+  energy?: number;
+  // pay_amount: the stepper's value, and whether the server takes it.
+  payAmount?: number;
+  payAmountAnswerable?: boolean;
   // The viewer's life total: a mana pay_unless offers "pay with life" for
   // the symbols the chooser could pay 2 life each for (ADR 0131 §2),
   // bounded by CR 119.4. Undefined offers none.
@@ -126,6 +133,8 @@ export interface ChoiceDockHandlers {
   onCoin: (call: "heads" | "tails" | "stop") => void;
   onOption: (index: number) => void;
   onLoop: (iterations: number) => void;
+  // pay_amount (ADR 0129 §3): { amount }.
+  onAmount?: (amount: number) => void;
 }
 
 // A key the inline prompt answers by itself (ChoicePromptModal's
@@ -227,7 +236,21 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         tag: "choose",
         hint: "Both answers are legal — a choice between two things the card does. There may be another question after it.",
       };
-    case "pay_unless":
+    case "pay_unless": {
+      if (c.pay_energy !== undefined && c.pay_energy !== null) {
+        // ADR 0129 §3: an energy payment. Nothing taps; the counters
+        // come off the seat.
+        const have = ctx.energy ?? 0;
+        const short = energyShortBy(c, have) > 0;
+        return {
+          title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
+          tag: "pay energy",
+          hint: short
+            ? `${energyShortReason(have, c.pay_energy)}: you can't pay, so ${ctx.sourceName} goes on as if you don't.`
+            : `Pay ${c.pay_cost ?? "the energy"} from your ${have} energy, or don't.`,
+          hintWarn: short,
+        };
+      }
       return {
         title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
         tag: "pay unless",
@@ -237,6 +260,15 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
             ? ` ${payLifeWords(c)} can instead be paid with ${PhyrexianLifePerSymbol} life each.`
             : ""),
       };
+    }
+    case "pay_amount": {
+      const pa = c.pay_amount;
+      return {
+        title: reason || `${ctx.sourceName} — pay energy?`,
+        tag: "pay energy",
+        hint: pa ? payAmountHint(pa, ctx.sourceName) : undefined,
+      };
+    }
     case "coin_call": {
       const coins = c.coins ?? 1;
       const wins = c.wins ?? 0;
@@ -325,6 +357,14 @@ function answersFor(
         secondary: [no(c.decline_label || "No")],
       };
     case "pay_unless": {
+      const pay = yes(`Pay ${c.pay_cost ?? ""}`.trim());
+      // ADR 0129 §8: greyed with the reason when the seat is short, so
+      // the button, the key and the server agree (a short "Pay" would
+      // be read as Don't pay).
+      if (energyShortBy(c, ctx.energy ?? 0) > 0) {
+        pay.disabled = true;
+        pay.title = energyShortReason(ctx.energy ?? 0, c.pay_energy ?? 0);
+      }
       // ADR 0131 §2: one "pay with life" answer per count the chooser may
       // claim, after the all-mana "Pay" and before "Don't pay". Mana is
       // never spent on a symbol the life pays for, and auto-tap never
@@ -337,9 +377,29 @@ function answersFor(
           onPress: () => h.onAnswer(true, k),
         });
       }
+      return { primary: pay, secondary: [...lifeAnswers, no("Don't pay")] };
+    }
+    case "pay_amount": {
+      // ADR 0129 §3 (owner decision 3): the stepper in the body sets the
+      // amount; Pay sends it, and the decline sends 0. No keys: the
+      // stepper's field takes digits, and Enter in it pays.
+      const n = ctx.payAmount ?? 0;
+      const onAmount = h.onAmount ?? (() => {});
+      const min = c.pay_amount?.min ?? 0;
       return {
-        primary: yes(`Pay ${c.pay_cost ?? ""}`.trim()),
-        secondary: [...lifeAnswers, no("Don't pay")],
+        primary: {
+          id: "pay",
+          label: L.payEnergy(n),
+          disabled: n <= 0 || ctx.payAmountAnswerable === false,
+          onPress: () => onAmount(n),
+        },
+        secondary: [
+          {
+            id: "none",
+            label: min > 0 ? "Don't pay" : L.payNothing,
+            onPress: () => onAmount(0),
+          },
+        ],
       };
     }
     case "coin_call":

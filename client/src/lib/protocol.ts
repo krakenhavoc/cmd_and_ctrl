@@ -375,6 +375,10 @@ export interface GameView {
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
   initiative?: string;
+  // The game's day/night designation (CR 731, ADR 0132): "day" or
+  // "night", omitted while the game has neither. Public and the same
+  // for every viewer; the action dock shows it beside the turn line.
+  day_night?: "day" | "night";
   // Per-pair "I owe you" promise tally as "{from}->{to}" string keys
   // → count. Sparse: zero entries are dropped server-side. Added in
   // S10.
@@ -961,6 +965,10 @@ export type LogKind =
   // the log says which.
   | "phase_out"
   | "phase_in"
+  // ADR 0132 (#2561): the game became day or night (CR 731.1). `label`
+  // is the new designation. Narrated because the untap-step check
+  // changes it with no spell or ability behind it.
+  | "day_night"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
@@ -1491,6 +1499,14 @@ export interface PendingChoiceView {
   // discard's options are the chooser's hand and reach the chooser
   // only. Absent for a mana payment.
   pay_cards?: PayCardsView;
+  // ADR 0129 §3: the energy a "pay_unless" asks for ("you may pay
+  // {E}{E}", "unless you pay {E}"). pay_cost carries the symbols. Paying
+  // 0 {E} is a payment too, so 0 is present. A "Pay" from a seat with
+  // less energy is a decline.
+  pay_energy?: number;
+  // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
+  // {E}". Answered with { amount }: 0, or min..max.
+  pay_amount?: PayAmountView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
@@ -2298,6 +2314,15 @@ export interface DelveView {
 // instance IDs (the chooser's hand for a discard, the permanents of
 // the clause's kind they control for a sacrifice); one payment names
 // exactly `count` of them.
+// ADR 0129 §3: the bounds of a pay_amount prompt. goal is the card's
+// own threshold (the stepper starts there); unit is what one energy buys.
+export interface PayAmountView {
+  min: number;
+  max: number;
+  goal?: number;
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
+}
+
 export interface PayCardsView {
   action: "discard" | "sacrifice";
   count: number;

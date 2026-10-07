@@ -170,6 +170,9 @@ const LOG_TONE: Record<LogKind, string> = {
   transform: "tone-zone",
   phase_out: "tone-zone",
   phase_in: "tone-zone",
+  // The game becoming day or night turns permanents over with no card
+  // behind it, so it is toned like the turn-over it causes.
+  day_night: "tone-zone",
   turn_face_down: "tone-zone",
 };
 
