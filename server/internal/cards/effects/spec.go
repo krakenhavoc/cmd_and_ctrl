@@ -1861,6 +1861,11 @@ type ManaAbilityCost struct {
 	// you" is the other thing — see ManaAbility.Rider.
 	Life int
 
+	// Energy is "Pay N {E}" (ADR 0129 §5): Aether Hub's "{T}, Pay {E}:
+	// Add one mana of any color". Paid after the life; the auto-tapper
+	// plans it in the energy tier, before the pain tier.
+	Energy int
+
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",
 	// the filter lands' "{W/U}, {T}". Scryfall brace grammar.

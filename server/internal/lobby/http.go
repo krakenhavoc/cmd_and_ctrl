@@ -2323,6 +2323,9 @@ func writeAutoTapPreview(
 		// mana (a painland's coloured half, Ancient Tomb).
 		Life   int `json:"life,omitempty"`
 		Damage int `json:"damage,omitempty"`
+		// ADR 0129 §5: energy the payment pays as part of the cost
+		// (Aether Hub's "Pay {E}"), listed before the player confirms.
+		Energy int `json:"energy,omitempty"`
 	}
 	type response struct {
 		OK      bool     `json:"ok"`
@@ -2351,6 +2354,7 @@ func writeAutoTapPreview(
 				OncePerTurn: e.OncePerTurn,
 				Life:        e.Life,
 				Damage:      e.Damage,
+				Energy:      e.Energy,
 			}
 		}
 	} else {

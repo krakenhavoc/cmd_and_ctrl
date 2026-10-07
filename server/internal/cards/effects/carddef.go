@@ -77,6 +77,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			SacrificeOther:            a.Cost.SacrificeOther,
 			TapOthers:                 a.Cost.TapOthers,
 			LifeCost:                  a.Cost.Life,
+			EnergyCost:                a.Cost.Energy,
 			ManaCost:                  a.Cost.Mana,
 			RemoveCounters:            a.Cost.RemoveCounters,
 			AddCounter:                a.Cost.AddCounter,

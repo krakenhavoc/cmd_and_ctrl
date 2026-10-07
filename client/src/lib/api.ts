@@ -1171,6 +1171,9 @@ export interface AutoTapPreviewSource {
   // painland's coloured half, Ancient Tomb).
   life?: number;
   damage?: number;
+  // ADR 0129 §5: energy the payment pays as part of the cost (Aether
+  // Hub's "Pay {E}").
+  energy?: number;
 }
 
 // fetchAutoTapPreview asks the server which permanents the auto-

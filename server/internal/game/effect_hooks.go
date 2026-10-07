@@ -306,6 +306,16 @@ type ManaAbilityShape struct {
 	// Added in the S22 mana-ability-rider pass.
 	LifeCost int
 
+	// EnergyCost is "Pay N {E}" in a mana ability's cost (ADR 0129 §5,
+	// CR 107.14) — Aether Hub's "{T}, Pay {E}: Add one mana of any
+	// color". Such an ability is still a mana ability (CR 605.1a).
+	// Validated with the other components before anything is paid
+	// (CR 118.3) and paid through payEnergyLocked after the life. No
+	// mana ability prints "Pay X {E}", so there is no X form. The
+	// auto-tapper plans it in the energy tier, after every plan that
+	// spends no energy and before the pain tier (owner decision 2).
+	EnergyCost int
+
 	// ManaCost is a mana component in the activation cost — the
 	// Signet cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2},
 	// {T}". Scryfall brace grammar, parsed with ParseCost.

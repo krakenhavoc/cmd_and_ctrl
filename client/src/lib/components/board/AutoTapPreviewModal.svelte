@@ -23,7 +23,8 @@
   // disables the confirm button.
 
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
-  import { paymentVerb, planRows, planSummary } from "../../autoTapPlan";
+  import { energyBadge, paymentVerb, planRows, planSummary } from "../../autoTapPlan";
+  import ManaCost from "./ManaCost.svelte";
   import type { AutoTapCastParams } from "../../castPreview";
   import type { CardView, GameView } from "../../protocol";
   import { cancelAction, confirmAction } from "../../dock";
@@ -171,6 +172,16 @@
               <span class="pay-verb" class:gone={row.gone} data-payment={row.payment}
                 >{paymentVerb(row.payment)}</span
               >
+              {#if row.energy > 0}
+                <!-- ADR 0129 §5: the energy this source's ability pays. -->
+                <span class="pay-energy" data-energy={row.energy}>
+                  Pay <ManaCost
+                    cost={energyBadge(row)}
+                    size={12}
+                    label={`pay ${row.energy} energy`}
+                  />
+                </span>
+              {/if}
               <button
                 type="button"
                 class="ghost lock-btn"
@@ -236,6 +247,17 @@
   .pay-verb.gone {
     color: var(--danger);
     font-weight: 700;
+  }
+  /* ADR 0129 §5: "Pay {E}" against an energy-tier source. */
+  .pay-energy {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-right: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--fg-dim);
   }
   .lock-btn {
     height: 26px;

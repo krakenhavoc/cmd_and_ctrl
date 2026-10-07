@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AutoTapPreview } from "./api";
-import { paymentOf, planRows, planSummary } from "./autoTapPlan";
+import { energyBadge, paymentOf, planRows, planSummary } from "./autoTapPlan";
 
 // #1285: the preview must show every source the payment spends — a
 // Spirit Guide out of the hand included — and say what paying with
@@ -127,5 +127,25 @@ describe("planSummary", () => {
     );
     expect(rows.map((r) => r.life)).toEqual([1, 1]);
     expect(planSummary(rows)).toBe("Taps 2 permanents and costs you 2 life.");
+  });
+
+  // ADR 0129 §5: an energy-tier source shows "Pay {E}" and the summary
+  // totals the energy.
+  it("lists the energy an Aether Hub pays", () => {
+    const rows = planRows(
+      {
+        ok: true,
+        cost: "{U}{R}",
+        plan: ["hub", "m1"],
+        sources: [
+          { card_id: "hub", name: "Aether Hub", zone: "battlefield", tap: true, energy: 1 },
+          { card_id: "m1", name: "Mountain", zone: "battlefield", tap: true },
+        ],
+      },
+      nameOf,
+    );
+    expect(rows.map((r) => r.energy)).toEqual([1, 0]);
+    expect(rows.map(energyBadge)).toEqual(["{E}", ""]);
+    expect(planSummary(rows)).toBe("Taps 2 permanents and pays 1 energy.");
   });
 });
