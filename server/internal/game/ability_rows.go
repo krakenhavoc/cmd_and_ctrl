@@ -212,6 +212,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
 	{field: "DamageAsThough", fallback: "Changes how damage is dealt"},
 	{field: "AnyColorSpend", fallback: "Spend mana as though it were any color"},
+	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
 	{field: "LegendRuleExemptions", fallback: "The legend rule doesn't apply"},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice"},
 	{field: "GameEndGates", fallback: "Changes who can win or lose"},

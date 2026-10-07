@@ -99,6 +99,8 @@
   import DockRequest from "./DockRequest.svelte";
   import { castAnywayConfirmRequest } from "../../targetingDock";
   import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
+  import { payLifeRequest } from "../../payLifeForMana";
+  import { fetchAutoTapPreview } from "../../api";
   import {
     targeting,
     begin as beginTargeting,
@@ -190,6 +192,9 @@
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { L } from "../../labels";
   import {
+    onlyGrantedSymbols,
+    phyrexianGrantedForAbility,
+    phyrexianGrantedForCast,
     phyrexianSymbolsForAbility,
     phyrexianSymbolsForCast,
     shouldAskPhyrexianLife,
@@ -872,9 +877,41 @@
     // prints no Phyrexian symbol, and when CR 119.4 leaves the
     // caster unable to buy even one — a prompt whose only answer is
     // 0 is a click, not a choice.
+    //
+    // ADR 0131 (owner decision 4): when EVERY symbol is one a grant
+    // (K'rrik) lets life pay, the stepper would open on nearly every
+    // black spell, so it opens only when the mana falls short — asked of
+    // the auto-tap preview with nothing claimed — or when the player
+    // chose "Pay life for {B}…" from the card's menu. A printed
+    // Phyrexian symbol still always asks.
     const symbols = phyrexianSymbolsForCast(card, choices.altCost);
-    if (shouldAskPhyrexianLife(symbols, viewerLife)) {
-      phyrexianPrompt = { card, symbols, choices };
+    const granted = phyrexianGrantedForCast(card, choices.altCost);
+    const asked = choices.askPhyrexianLife === true;
+    if (onlyGrantedSymbols(symbols, granted) && !asked) {
+      // A confirmed Cast anyway pays no mana, so mana is never short;
+      // with strict payment off the engine charges none either.
+      if (choices.forceCast || !$settings.gameplay.strictMana) {
+        afterPhyrexianLife(card, choices);
+        return;
+      }
+      fetchAutoTapPreview(view.id, card.instance_id, {
+        xValue: choices.xValue,
+        cast: castPreviewParams(choices),
+      })
+        .then((p) => {
+          if (shouldAskPhyrexianLife(symbols, viewerLife, granted, !p.ok)) {
+            phyrexianPrompt = { card, symbols, granted, suggest: true, choices };
+          } else {
+            afterPhyrexianLife(card, choices);
+          }
+        })
+        // A preview that failed says nothing: cast on, and the server,
+        // the only real answer, refuses a short strict cast.
+        .catch(() => afterPhyrexianLife(card, choices));
+      return;
+    }
+    if (shouldAskPhyrexianLife(symbols, viewerLife, granted, true, asked)) {
+      phyrexianPrompt = { card, symbols, granted, suggest: false, choices };
       return;
     }
     afterPhyrexianLife(card, choices);
@@ -897,6 +934,10 @@
   let phyrexianPrompt = $state<{
     card: CardView;
     symbols: number;
+    // ADR 0131: how many of `symbols` are a grant's, not printed.
+    granted: number;
+    // Open at the smallest count that makes the mana half payable.
+    suggest: boolean;
     choices: CastChoices;
   } | null>(null);
 
@@ -1016,8 +1057,9 @@
     face?: number,
     viaDrag = false,
     forceCast = false,
+    askPhyrexianLife = false,
   ): void {
-    const base = castChoicesBase(fromZone, viaDrag, forceCast);
+    const base = castChoicesBase(fromZone, viaDrag, forceCast, askPhyrexianLife);
     if (face !== undefined) {
       afterFace(cardAsFace(card, face), { ...base, face });
       return;
@@ -1074,6 +1116,18 @@
     const p = $castAnywayPending;
     if (!p) return;
     if (locateCard(view, p.card.instance_id)?.zone !== p.zone) clearCastAnyway();
+  });
+
+  // ADR 0131 §4: the card menu's "Pay life for {B}…" row only sets
+  // payLifeRequest; the Board starts the ordinary cast chain with the
+  // Phyrexian stepper forced open, so a player whose mana is there can
+  // still choose to pay life.
+  $effect(() => {
+    const card = $payLifeRequest;
+    if (!card) return;
+    payLifeRequest.set(null);
+    const live = findCard(view, card.instance_id) ?? card;
+    handlePlayCard(live, undefined, undefined, false, false, true);
   });
 
   // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
@@ -2262,12 +2316,58 @@
     // symbols. Same question the cast chain asks, in the same place —
     // after X, before the modes and the targets — and the same
     // stepper asks it, told to price the ABILITY's cost.
-    if (
-      phyrexianLife === undefined &&
-      shouldAskPhyrexianLife(phyrexianSymbolsForAbility(ability), viewerLife)
-    ) {
-      phyrexianAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, modes };
-      return;
+    //
+    // ADR 0131: the same rule as the cast's. A printed Phyrexian symbol
+    // always asks; when every symbol is a granted one (K'rrik's {B}) it
+    // asks only if the preview, with nothing claimed, says mana is short.
+    if (phyrexianLife === undefined) {
+      const symbols = phyrexianSymbolsForAbility(ability);
+      const granted = phyrexianGrantedForAbility(ability);
+      if (onlyGrantedSymbols(symbols, granted)) {
+        if (
+          !$settings.gameplay.strictMana ||
+          !shouldAskPhyrexianLife(symbols, viewerLife, granted, true)
+        ) {
+          // Nothing to ask: strict payment is off, or CR 119.4 leaves no
+          // symbol to buy. Continue claiming nothing.
+          continueActivation(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes, 0);
+          return;
+        }
+        fetchAutoTapPreview(view.id, card.instance_id, { xValue, abilityIndex: ability.index })
+          .then((p) => {
+            if (p.ok) {
+              continueActivation(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes, 0);
+            } else {
+              phyrexianAbilityPrompt = {
+                card,
+                ability,
+                sacrificeIDs,
+                crewIDs,
+                xValue,
+                counter,
+                modes,
+                suggest: true,
+              };
+            }
+          })
+          .catch(() =>
+            continueActivation(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes, 0),
+          );
+        return;
+      }
+      if (shouldAskPhyrexianLife(symbols, viewerLife, granted, true)) {
+        phyrexianAbilityPrompt = {
+          card,
+          ability,
+          sacrificeIDs,
+          crewIDs,
+          xValue,
+          counter,
+          modes,
+          suggest: false,
+        };
+        return;
+      }
     }
     // #1310, CR 701.67a: "Waterbend {N}:" — which untapped artifacts
     // and creatures pay part of it. After X, because a Waterbend {X}
@@ -2366,6 +2466,8 @@
     xValue?: number;
     counter?: CounterPayment;
     modes?: number[];
+    // ADR 0131: open at the smallest count that makes the mana payable.
+    suggest: boolean;
   } | null>(null);
 
   function confirmAbilityPhyrexianLife(n: number): void {
@@ -3445,6 +3547,8 @@
     gameID={view.id}
     card={phyrexianPrompt?.card ?? null}
     symbols={phyrexianPrompt?.symbols ?? 0}
+    granted={phyrexianPrompt?.granted ?? 0}
+    suggest={phyrexianPrompt?.suggest ?? false}
     life={viewerLife}
     xValue={phyrexianPrompt?.choices.xValue}
     castParams={castPreviewParams(phyrexianPrompt?.choices)}
@@ -3457,6 +3561,10 @@
     gameID={view.id}
     card={phyrexianAbilityPrompt?.card ?? null}
     symbols={phyrexianAbilityPrompt ? (phyrexianAbilityPrompt.ability.phyrexian_symbols ?? 0) : 0}
+    granted={phyrexianAbilityPrompt
+      ? phyrexianGrantedForAbility(phyrexianAbilityPrompt.ability)
+      : 0}
+    suggest={phyrexianAbilityPrompt?.suggest ?? false}
     life={viewerLife}
     xValue={phyrexianAbilityPrompt?.xValue}
     abilityIndex={phyrexianAbilityPrompt?.ability.index}

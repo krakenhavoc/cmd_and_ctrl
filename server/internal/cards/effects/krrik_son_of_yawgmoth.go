@@ -11,29 +11,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 mana.
 //	 Whenever you cast a black spell, put a +1/+1 counter on K'rrik."
 //
-// K'rrik's OWN cost needs no declaration. {B/P} is a parsed symbol
-// (game.ColorRequirement.Phyrexian) and both payment paths — casting
-// a spell and activating an ability (#917 / #971) — already offer the
-// life. A six-mana commander that can be cast for {4} and 6 life on
-// turn four works out of the box.
-//
-// # The static that is not here
+// # The third ability (ADR 0131, #2531)
 //
 // "For each {B} in a cost, you may pay 2 life rather than pay that
-// mana" changes the PAYMENT METHOD of every black pip at the table's
-// costs, K'rrik's own and everything else's. The S28 cost-modifier
-// engine cannot express it: a CostModifier changes the AMOUNT of
-// generic mana, and the Phyrexian flag that unlocks the life option
-// is set once by parsing the printed cost, with no hook that lets a
-// permanent on the battlefield set it on somebody else's symbol.
+// mana" is Spec.LifeForMana. It changes how its controller PAYS, not the
+// cost (the 2019-08-23 ruling): at every mana payment the engine marks
+// each {B} — and the {B} half of a hybrid symbol like {B/G} or {2/B} —
+// as payable with life, exactly like a printed {B/P}, and never generic
+// mana or {C}. The player claims it at announcement through
+// `phyrexian_life` (CR 601.2b), auto-tap never pays it, and the price
+// shown, the mana value and K'rrik's own cast trigger are unchanged.
+// Casts, activated abilities and attack taxes are covered.
 //
-// Left out, K'rrik is a lifelinking 2/2 that grows on black spells
-// and pays for itself with life — weaker than printed, which is the
-// only acceptable direction. Written as a fake alternative cost on
-// K'rrik alone it would be wrong in both directions at once, so the
-// clause waits for a real seam: a payment-method hook beside the
-// cost-modifier walk, which is where Phyrexian, convoke and the
-// delve family will all eventually read from.
+// K'rrik's OWN {B/P}{B/P}{B/P} was always payable with life, so a
+// six-mana commander can be cast for {4} and 6 life on turn four.
+//
+// STILL OWED (ADR 0131 PR 2, #2531): a MANA ability's {B} cost (a filter
+// land's "{B}, {T}: Add ...") and the payments made while a spell or
+// ability resolves (ward {B}, "counter unless its controller pays {B}")
+// have no way to carry the life answer yet. Those still take mana only,
+// which is weaker than printed and the only acceptable direction.
 //
 // The cast trigger fires once per black spell, checked on the spell's
 // COLOUR rather than on a black pip in its cost — a colour-indicator
@@ -45,8 +42,9 @@ func init() {
 		Name:         "K'rrik, Son of Yawgmoth",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"K'rrik's ability to pay 2 life instead of {B} in any cost isn't implemented — only its own printed Phyrexian mana symbols can be paid with life.",
+			"K'rrik's ability to pay 2 life instead of {B} doesn't reach mana abilities or costs paid while a spell or ability resolves (such as ward) — those still need mana.",
 		},
+		LifeForMana:     YouMayPayLifeForMana("B"),
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(OfColor("B"), "K'rrik, Son of Yawgmoth — put a +1/+1 counter on it", putCounterOnSelf),

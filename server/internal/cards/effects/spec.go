@@ -1037,6 +1037,20 @@ type Spec struct {
 	// impulse exile) is CastPermission.AnyColor, not this.
 	AnyColorSpend []game.AnyColorSpendStatic
 
+	// LifeForMana declares this permanent's printed "for each {B} in a
+	// cost, you may pay 2 life rather than pay that mana" static
+	// (CR 107.4f, ADR 0131):
+	//
+	//	LifeForMana: YouMayPayLifeForMana("B"), // K'rrik, Son of Yawgmoth
+	//
+	// Read from the battlefield at every mana payment through
+	// game.CatalogLifeForMana, keyed by CatalogAbilityKey: a {B} (or the
+	// {B} half of a hybrid symbol) in a cost its controller pays becomes
+	// payable with 2 life, claimed at announcement as for a printed
+	// Phyrexian symbol. Never generic mana. The price shown stays
+	// printed.
+	LifeForMana []game.LifeForManaStatic
+
 	// LegendRuleExemptions declares a printed "the legend rule doesn't
 	// apply" static (CR 704.5j):
 	//

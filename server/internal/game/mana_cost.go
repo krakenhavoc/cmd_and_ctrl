@@ -137,6 +137,14 @@ type ColorRequirement struct {
 	// creature is not mana (CR 702.51a, payerCoversRequirement). What
 	// changes is Admits.
 	AnyMana bool
+	// LifeGranted marks a slot whose "or 2 life" half is a GRANT rather
+	// than a printed Phyrexian symbol: K'rrik's "for each {B} in a cost,
+	// you may pay 2 life rather than pay that mana" (ADR 0131,
+	// life_for_mana.go). Never set by ParseCost; set on a copy at the
+	// payment by grantLifeForManaLocked. Options and String still
+	// describe the printed symbol, so the price renders as printed and
+	// the mana value is unchanged (CR 202.3). PaysWithLife reads it.
+	LifeGranted bool
 }
 
 // Admits reports whether one mana of `color` ("W" … "G", or "C") can

@@ -1310,6 +1310,9 @@ func (e *enumerator) payableExcluding(
 	excluded map[uuid.UUID]bool,
 ) bool {
 	if phyrexianLife > 0 {
+		// ADR 0131: the symbols a life-for-mana grant (K'rrik) makes
+		// payable with life count here as they do at the payment.
+		cost = e.g.LifeGrantedCostForEffect(e.seat, cost)
 		cost, _ = game.PhyrexianLifePlan(cost, e.p.ManaPool, spend, phyrexianLife)
 	}
 	return e.canPayExcluding(cost, x, spend, excluded)
@@ -1325,6 +1328,9 @@ func (e *enumerator) affordablePayment(
 	if x, ok := e.affordableXExcluding(cost, spend, floor, excluded); ok {
 		return x, 0, true
 	}
+	// ADR 0131: count the symbols a life-for-mana grant (K'rrik) makes
+	// payable with life, the function the payment marks them with.
+	cost = e.g.LifeGrantedCostForEffect(e.seat, cost)
 	for n := 1; n <= cost.PhyrexianSymbols(); n++ {
 		reduced, life := game.PhyrexianLifePlan(cost, e.p.ManaPool, spend, n)
 		// #1677: the engine's own predicate — CR 119.4's "down to 0"

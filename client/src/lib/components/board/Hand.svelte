@@ -28,6 +28,7 @@
     type Legality,
   } from "../../timing";
   import { requestCastAnyway } from "../../castAnyway";
+  import { grantedLifeOffered, requestPayLife } from "../../payLifeForMana";
   import {
     NO_LEGAL_ACTIONS,
     NO_PIPS,
@@ -765,6 +766,7 @@
               ? onSpecialAction
               : undefined}
             onCastAnyway={castAnywayHere(c) ? () => requestCastAnyway(c, "hand") : undefined}
+            onPayLife={isSelf && grantedLifeOffered(c) ? () => requestPayLife(c) : undefined}
             castAnywayBlocked={castAnywayHere(c)
               ? castAnywayBlocked(c, snap, viewerID, "hand")
               : ""}

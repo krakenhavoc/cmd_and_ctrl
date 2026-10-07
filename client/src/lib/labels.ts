@@ -401,6 +401,13 @@ export const LABEL_SPECS = {
     owners: ["lib/castAnyway.ts"],
     doc: "the card menu's row that casts without paying (ADR 0118 §2)",
   }),
+  payLifeForMana: label({
+    name: "Pay life for {B}…",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/payLifeForMana.ts"],
+    doc: "the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4)",
+  }),
 
   // -- The opening roll (ADR 0121) --
   rollForFirstTurn: label({
