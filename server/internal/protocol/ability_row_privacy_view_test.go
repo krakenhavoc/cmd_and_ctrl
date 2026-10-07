@@ -108,7 +108,7 @@ var activatedRowScopes = map[string]rowScope{
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	// ADR 0109 §7: the printed random flag, the printed counts of the
 	// two library components and the put's words.
-	"DiscardCostRandom": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
+	"DiscardCostRandom": rowPublic, "DiscardCostCountFromX": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
 	"LibraryExileCostN": rowPublic,
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,

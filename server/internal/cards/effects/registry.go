@@ -517,6 +517,7 @@ func Register(spec Spec) {
 		// it is "Discard your hand" (#1600), whose count is the hand.
 		checkDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
 		checkDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
+		checkDiscardXBesideOtherCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// ADR 0109 §7: the random discard and the two library
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
@@ -635,6 +636,12 @@ func Register(spec Spec) {
 		// never draws one, so the ability would be free.
 		if dc := ma.Cost.DiscardCards; dc != nil && dc.Random {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards at random — only an activated ability's cost can",
+				spec.Name, i))
+		}
+		// #2527: and "Discard X cards" needs an announced X, which a
+		// mana ability (CR 605.3b) has no stack item to carry.
+		if game.DiscardCountFromX(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards X cards — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)

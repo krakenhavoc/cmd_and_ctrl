@@ -1,6 +1,21 @@
 package roadmap
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// declaresDiscardX is the "Discard X cards" cost probe (#2527): an
+// activated ability whose discard component counts from the announced
+// X (game.DiscardCost.CountFromX).
+func declaresDiscardX(s effects.Spec) bool {
+	for _, a := range s.Activated {
+		if game.DiscardCountFromX(a.Cost.DiscardCards) {
+			return true
+		}
+	}
+	return false
+}
 
 // declaresDiscardYourHand is the "Discard your hand" cost probe
 // (#1600): an activated or mana ability whose cost carries the hand

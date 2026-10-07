@@ -47,6 +47,11 @@
     // "in your graveyard" for Grim Lavamancer's "Exile two cards from
     // your graveyard". Defaults to the hand, which is every discard.
     where?: string;
+    // #2527: "Discard X cards" (Gix, Yawgmoth Praetor): the count is
+    // the X being announced, so there is no number to reach. Any
+    // number of the offered cards, none included, is a legal answer,
+    // and the confirm names how many.
+    variable?: boolean;
   }
 
   const {
@@ -59,6 +64,7 @@
     verb = "Discard",
     note = "additional cost · CR 601.2f",
     where = "in hand",
+    variable = false,
   }: Props = $props();
 
   const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
@@ -76,15 +82,15 @@
     }
   });
 
-  const ready = $derived(need > 0 && chosen.length === need);
-  const short = $derived(options.length < need);
+  const ready = $derived(variable || (need > 0 && chosen.length === need));
+  const short = $derived(!variable && options.length < need);
 
   function toggle(id: string): void {
     if (chosen.includes(id)) {
       chosen = chosen.filter((c) => c !== id);
       return;
     }
-    if (chosen.length >= need) return;
+    if (!variable && chosen.length >= need) return;
     chosen = [...chosen, id];
   }
 
@@ -100,11 +106,17 @@
     src={note}
     width={560}
     sheetKey={`discardcost:${card.instance_id}:${verb}:${label ?? ""}`}
-    count={need > 1 ? `${chosen.length} / ${need} picked` : undefined}
-    primary={confirmAction(verb, confirm, { disabled: !ready })}
+    count={variable
+      ? `${chosen.length} picked`
+      : need > 1
+        ? `${chosen.length} / ${need} picked`
+        : undefined}
+    primary={confirmAction(variable ? `${verb} ${chosen.length}` : verb, confirm, {
+      disabled: !ready,
+    })}
     secondary={[cancelAction(onCancel)]}
   >
-    <p class="prompt-hint">{label}</p>
+    <p class="prompt-hint">{variable ? `Pick any number — ${label}` : label}</p>
     {#if short}
       <p class="prompt-hint error">
         You need {need} card{need === 1 ? "" : "s"}

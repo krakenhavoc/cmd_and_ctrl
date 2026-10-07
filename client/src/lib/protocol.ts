@@ -2531,6 +2531,12 @@ export interface ActivatedAbilityView {
   // `discard_cost_options` and nothing is sent, so the client confirms
   // the cost instead of opening the picker.
   discard_cost_random?: boolean;
+  // #2527: "Discard X cards" (Gix, Yawgmoth Praetor). The count is the
+  // activation's X, so `discard_cost_n` is absent: the client always
+  // opens the picker (zero up to every card in `discard_cost_options`),
+  // sends the picks as `discard_ids` and their number as `x_value`, and
+  // skips the X stepper. `demands_x` is set beside it.
+  discard_cost_count_from_x?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride

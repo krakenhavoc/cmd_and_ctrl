@@ -31,6 +31,11 @@ import (
 // as game.FaceDownPermitted, and only GrantTo may look at them.
 // WhileExiled makes the grant last for as long as each card stays in
 // exile rather than until end of turn.
+// Free is "without paying its mana cost" (#2527, Gix, Yawgmoth
+// Praetor): the play costs {0} in place of the printed mana cost, the
+// grant Urza, Lord High Artificer's free play and cascade make.
+// Additional costs are still owed (CR 118.9a), and a land is simply
+// played.
 type ExileTopWithPermission struct {
 	// From is whose library is exiled off. Often an opponent's.
 	From uuid.UUID
@@ -43,6 +48,7 @@ type ExileTopWithPermission struct {
 	AnyType     bool
 	FaceDown    bool
 	WhileExiled bool
+	Free        bool
 }
 
 func (e ExileTopWithPermission) Apply(ctx *Context) error {
@@ -59,6 +65,11 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	}
 	if e.WhileExiled {
 		perm.Duration = game.WhileInZoneDuration()
+	}
+	if e.Free {
+		// "{0}", not empty: an empty Cost means "pay the printed
+		// cost", which is the opposite of what this clause grants.
+		perm.Cost = "{0}"
 	}
 	if e.FaceDown {
 		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.GrantTo, n, perm)

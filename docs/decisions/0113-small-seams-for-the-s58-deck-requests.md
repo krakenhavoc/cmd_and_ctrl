@@ -316,3 +316,49 @@ PRs 1 and 2 touch nothing the others touch, so they can go in parallel with ever
 
 1. **Showing a changed maximum hand size (§3): yes.** The seat panel shows a small badge when a player's effective maximum is not seven ("Hand max 0", "No hand max"), from the existing `max_hand_size`. No protocol change. Rejected: no client change.
 2. **How many cards each PR lands: the whole pool.** ADR 0106 owner decision 6 applies as before: each seam PR also lands every other catalog-pool card that the seam alone unblocks, each verified against its full oracle text; anything that needs more goes on a `Waiting` list with the reason. A seam may split into a seam PR plus pool PRs. Rejected: named cards only, the rest in one batch after the four seams.
+
+---
+
+## Amendment 2026-10-07 — "Discard X cards" as a cost, and a free play of what was exiled (#2527)
+
+**Why it lands here.** §1 is this ADR's variable-cost-component section, and the issue names "Discard X cards" as the discard twin of the variable sacrifice. Variable sacrifice (`SacrificeX`) and variable tap (`TapXUntapped`) already exist, from [ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) §3 and #1421, with their guards in [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md) §9. This amendment adds the third owner of the same shape and changes no earlier decision.
+
+### What exists, what is missing
+
+- **X can already come from a cost component.** `AbilityCost.DemandsX` is true for an `{X}` in the mana component, for `SacrificeCountFromX` and for `TapOthersCountFromX`. The activator announces X at CR 602.2b, the engine locks it onto `StackItem.XValue`, and the effect reads it with `ctx.X()`.
+- **A discard component exists, with a fixed count.** `game.DiscardCost` (`discard_cost.go`) has `N`, a `Match` predicate, `Random` and `Hand`. `validateDiscardCostLocked` demands exactly `N` distinct matching cards in the activator's hand, and the payer moves them through the one discard door with `DiscardCauseCost`. Nothing lets the count be the announced X, so Gix's "Discard X cards" could be written only as a fixed number (a different card) or not at all (a free one).
+- **The free play exists.** `ExileTopWithPermission` exiles the top N of a library and grants a `game.CastPermission`; `Cost: "{0}"` is "without paying its mana cost" (Urza, Lord High Artificer, cascade). `WhileExiled` makes the grant last as long as the card stays in exile.
+
+### The rules
+
+- **CR 107.3a / 602.2b:** X is announced as part of activating, before costs are paid, and a cost that mentions X uses that value. A cost of "X cards" at X = 0 is paid by discarding none (CR 118.3: the whole of an empty payment is paid).
+- **CR 601.2h (via 602.2b):** the discards are paid with the ability on the stack, so a discard payoff triggers above it and resolves first.
+- **CR 118.9a:** casting "without paying its mana cost" still owes additional costs.
+- **CR 611.2b / the printed text:** Gix's permission has no "this turn". It lasts for as long as the card stays in exile (compare Urza's "until end of turn").
+
+### Decision
+
+1. **The component.** `DiscardCost.CountFromX bool`, with `DiscardCountFromX(*DiscardCost)` beside `DiscardsHand`. `N` is 0 and is never read. `Match` still narrows the cards ("X creature cards"). `Random` and `Hand` are refused beside it. Built with `effects.DiscardX(label, match...)`.
+2. **The announcement.** `AbilityCost.DemandsX` is also true for `DiscardCountFromX`. `validateDiscardCostLocked` takes the announced X and, for a `CountFromX` clause, demands exactly that many ids, each distinct, in the activator's own hand and matching. `XSlots` is not widened: the X buys cards, not generic mana, so the mana cost is the printed one whatever X is. A mana ability passes 0 and `Register` refuses the component there (CR 605.3b: no stack item to carry X).
+3. **Boot-time guards** (`effects.Register`): one announced X cannot pay two clauses, so `{X}` in the mana cost, a sacrifice-X clause or a tap-X clause beside "Discard X cards" panics. So does another component that spends a card out of the hand (discard this, put a card from the hand on top, exile a card from the hand): no printed cost combines them, and the enumerator's ladder assumes it.
+4. **The wire.** `ActivatedAbilityView.DiscardCostCountFromX` (`discard_cost_count_from_x`), public. `discard_cost_n` is absent, `demands_x` is set, and `discard_cost_options` is the controller's hand as before (controller-only, #1369). The picks come back as `discard_ids` and their number is `x_value`. The client always opens its discard picker (any number of the offered cards, none included, with the confirm naming how many) and skips the X stepper, exactly as it does for "Sacrifice X".
+5. **The bot.** No new prompt: the cost is part of the activation's params. The enumerator offers a ladder, `variableDiscardPayments`: the cheapest 1, 2 and 3 cards by the seat's own opinion (`cheapestFuelFirst`), capped by `maxEnumeratedVariableCounts`. The floor is `enumeratedXFloor`, so a card that declares `XMatters` is never offered at the X = 0 no-op (#810), and an empty hand offers nothing (#544). Every move carries `x_value` equal to the cards named. The ladder shares the sacrifice loop through `sacrificeDiscardPairs` rather than nesting a second loop. The heuristic already prices `discard_ids` (`discardsCost`), so it weighs the cards it would throw away against `ActivateBase`.
+6. **The free play.** `ExileTopWithPermission.Free` sets `Cost: "{0}"` on the grant. Gix passes `Free` and `WhileExiled`. A card is exiled "this way" only if it reached exile, so a commander that takes the command zone (CR 903.9) gets no permission; the primitive stamps the grant from its continuation.
+
+### Cards
+
+- **Gix, Yawgmoth Praetor: Full** (its caveat is gone). `XMatters` is set: everything the ability does scales with X.
+- The Commander-legal pool printing "Discard X cards" or a similar variable discard as an activation cost is this card alone, counted from the local Scryfall dump on 2026-10-07 (the three other matches discard as a trigger, not a cost).
+
+### Tests
+
+The engine contract is pinned in `cards/effects/gix_discard_x_test.go` (count must equal X in both directions, repeats and foreign cards refused with nothing paid, X = 0, a short library, the free play of a spell and a land with strict payment, the permission outlasting the turn, the boot-time guards), the ladder in `legal/discard_x_cost_test.go` and the wire in `protocol/discard_x_view_test.go`.
+
+### Snapshot impact
+
+None. `DiscardCost` is catalog data, not game state, and the announced X rides `StackItem.XValue`, which already exists.
+
+### Out of scope
+
+- "Discard X cards" as a cast's additional cost or as a mana ability's cost (no printed card). `Register` refuses the mana-ability form; the additional-cost form has no constructor.
+- Teaching the heuristic what a good X is for Gix. It prices the discards and the activation base like any other cost-paying move.

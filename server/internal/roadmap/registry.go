@@ -2366,6 +2366,18 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#1600, ADR 0020's 2026-10-02 amendment): `game.DiscardCost.Hand`, built by `effects.DiscardYourHand()`, on both owners of the component (`AbilityCost.DiscardCards`, `ManaAbilityCost.DiscardCards`). `validateDiscardCostLocked` reads the whole hand, refuses `discard_ids` for it, and pays an empty hand as nothing; the cards leave through the one discard door with cause cost. No options are stamped, so the client opens no picker and the enumerator sends no ids. A mana ability's \"Activate only as an instant\" is `effects.OnlyAsAnInstant()` over `Game.InstantWindowOpenForEffect`; the auto-tapper refuses every discard component. Not covered: \"As an additional cost to cast this spell, … discard your hand\" (Kaervek's Spite, which also sacrifices every permanent). Bomat Courier, Kyren Archive, Connecting the Dots, Reverberating Summons, Subira, Tulzidi Caravanner, Tarrian's Journal and Flamewar print the cost beside something else and are not catalogued.",
 	},
 	{
+		// #2527 (ADR 0113's 2026-10-07 amendment). Closed; history in
+		// Closed seams.
+		Slug: "variable-discard-cost", Name: "Discarding X cards as a cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that discard a number of cards the activator announces, such as Gix, Yawgmoth Praetor's \"Discard X cards\". The count is the X of the ability.",
+		Rules:       []string{"107.3a", "118.3", "602.2b"},
+		Issue:       2527,
+		ADR:         "0113-small-seams-for-the-s58-deck-requests.md",
+		Probe:       declaresDiscardX,
+		Examples:    []string{"Gix, Yawgmoth Praetor"},
+		EngineNotes: "**Shipped** (#2527, ADR 0113's 2026-10-07 amendment): `game.DiscardCost.CountFromX`, built by `effects.DiscardX()`, the discard twin of `SacrificeX` and `TapXUntapped`. The count is the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, `validateDiscardCostLocked` demands exactly X distinct cards from the activator's hand, and `XSlots` is untouched, so the mana cost is the printed one whatever X is. `effects.Register` refuses it beside `{X}` in the mana cost, a sacrifice-X or tap-X clause, another hand-spending component, or on a mana ability. The wire carries `discard_cost_count_from_x` (public; the options stay controller-only) and the client asks how many with its discard picker, sending the picks as `discard_ids` and their number as `x_value`. The enumerator offers the cheapest 1, 2 and 3 cards (`variableDiscardPayments`) and never the X = 0 no-op for a card that declares `XMatters`. `ExileTopWithPermission.Free` is the free play (`Cost: \"{0}\"`). Not covered: the form as a cast's additional cost or a mana ability's cost, which no printed card uses.",
+	},
+	{
 		Slug: "costs-only-some-mana-can-pay", Name: "Costs that only some mana can pay", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Costs that say which mana may pay them, such as Crypt Rats' \"Spend only black mana on X\" and Throne of Eldraine's \"Spend only mana of the chosen color to activate this ability\", and mana that may be spent only on spells of exactly one color, or of two or more.",
 		Missing:     "Spells that say which mana may pay for them, such as Drain Life's \"Spend only black mana on X\" or Imperiosaur's \"Spend only mana produced by basic lands to cast this spell\", can't be cast with that limit yet.",
