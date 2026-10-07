@@ -483,7 +483,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// degenerates to.
 		discardSets := [][]uuid.UUID{nil}
 		// ADR 0109 §7: a random clause names nothing; its gate is below.
-		if dc := ab.Cost.DiscardCards; dc != nil && !dc.Random && !dc.CountFromX {
+		if dc := ab.Cost.DiscardCards; dc != nil && !dc.Random && !dc.CountFromX && !dc.ManaValueX {
 			opts := g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, dc)
 			if len(opts) < dc.N {
 				continue
@@ -494,6 +494,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		} else if game.DiscardCountFromX(ab.Cost.DiscardCards) {
 			discardSets = e.variableDiscardPayments(g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.DiscardCards),
 				enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()))
+			if len(discardSets) == 0 {
+				continue
+			}
+		} else if game.DiscardManaValueX(ab.Cost.DiscardCards) {
+			// #2190: "Discard a card with mana value X" announces the
+			// discarded card's mana value as X, so which card is
+			// discarded decides which targets are legal: one payment per
+			// distinct mana value in the hand (manaValueDiscardPayments).
+			discardSets = e.manaValueDiscardPayments(g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.DiscardCards))
 			if len(discardSets) == 0 {
 				continue
 			}
@@ -608,7 +617,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if game.StepsBoundByCountersRemoved(steps) || ab.Cost.XSlots() == 0 {
 					if !game.StepsBoundByCountersRemoved(steps) &&
 						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) &&
-						!game.DiscardCountFromX(ab.Cost.DiscardCards) {
+						!game.DiscardCountFromX(ab.Cost.DiscardCards) && !game.DiscardManaValueX(ab.Cost.DiscardCards) {
 						continue
 					}
 					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
@@ -696,6 +705,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// other two claimants.
 				if game.DiscardCountFromX(ab.Cost.DiscardCards) {
 					xValue = len(discardIDs)
+				}
+				// #2190: and "Discard a card with mana value X" announces
+				// the discarded card's mana value.
+				if game.DiscardManaValueX(ab.Cost.DiscardCards) && len(discardIDs) == 1 {
+					if dc, ok := g.LookupCardForEffect(discardIDs[0]); ok {
+						xValue, _ = dc.ParsedManaValue()
+					}
 				}
 				// #1242: the engine's auto-tap will not spend what this
 				// payment names (AbilityAutoTapExclusions), so the
@@ -1012,6 +1028,33 @@ func (e *enumerator) variableDiscardPayments(pool []uuid.UUID, lo int) [][]uuid.
 		return nil
 	}
 	return e.variableCountPayments(e.cheapestFuelFirst(pool), lo, func(int) bool { return true })
+}
+
+// manaValueDiscardPayments turns a "Discard a card with mana value X"
+// clause's candidate hand cards into the payments the enumerator
+// offers (#2190): one single-card payment per DISTINCT mana value, the
+// card the seat would miss least (cheapestFuelFirst) standing for its
+// value, because two cards of one value announce the same X and admit
+// the same targets. The values are in the order the fuel ranking first
+// reaches them. A card whose cost cannot be read has no value to
+// announce and is skipped. Nil when none can pay, so the ability is
+// not offered at all (#544).
+func (e *enumerator) manaValueDiscardPayments(pool []uuid.UUID) [][]uuid.UUID {
+	seen := map[int]bool{}
+	var out [][]uuid.UUID
+	for _, id := range e.cheapestFuelFirst(pool) {
+		c, ok := e.g.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		mv, ok := c.ParsedManaValue()
+		if !ok || seen[mv] {
+			continue
+		}
+		seen[mv] = true
+		out = append(out, []uuid.UUID{id})
+	}
+	return out
 }
 
 // sacrificePair is one (sacrifice payment, discard payment) the

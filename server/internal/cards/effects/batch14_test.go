@@ -1011,8 +1011,8 @@ func TestB14KozilekDrawsUpToSevenOnCast(t *testing.T) {
 	if me.Hand.Size() != 7 {
 		t.Errorf("draws the difference: hand %d, want 7", me.Hand.Size())
 	}
-	if n := len(game.ActivatedAbilitiesForCard(game.Card{OracleID: b14KozilekOracle})); n != 0 {
-		t.Errorf("the counter ability is declared missing; found %d activated abilities", n)
+	if n := len(game.ActivatedAbilitiesForCard(game.Card{OracleID: b14KozilekOracle})); n != 1 {
+		t.Errorf("the discard-to-counter ability is registered; found %d activated abilities", n)
 	}
 
 	// With seven or more in hand the trigger never fires.

@@ -3492,6 +3492,14 @@ type ActivatedAbilityView struct {
 	// lists), sends the picks as `discard_ids` and the count as
 	// `x_value`, and skips the X stepper. `demands_x` is set beside it.
 	DiscardCostCountFromX bool `json:"discard_cost_count_from_x,omitempty"`
+	// DiscardCostManaValueX marks the "Discard a card with mana value X"
+	// form (#2190, ADR 0113's 2026-10-07 amendment) — Kozilek, the Great
+	// Distortion. `discard_cost_n` is 1 and `demands_x` is set, but X is
+	// not asked for: the card picked IS the announcement, so the client
+	// sends its mana value as `x_value` (the engine refuses any other)
+	// and narrows the ability's target clause by it before targets are
+	// chosen (`mana_value_equals_x`).
+	DiscardCostManaValueX bool `json:"discard_cost_mana_value_x,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -9723,6 +9731,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if dc := a.Cost.DiscardCards; dc != nil && (dc.N > 0 || dc.CountFromX) {
 			v.DiscardCostN = dc.N
 			v.DiscardCostCountFromX = dc.CountFromX
+			v.DiscardCostManaValueX = dc.ManaValueX
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.

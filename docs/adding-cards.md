@@ -3084,6 +3084,17 @@ names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
 puts X in two places.
 
+**X read off a card (#2190):** Kozilek, the Great Distortion's "Discard a
+card with mana value X: Counter target spell with mana value X" is
+`Cost: DiscardCardWithManaValueX("a card with mana value X")` with
+`Targets: TargetSpell("target spell with mana value X").WithManaValueEqualsX()`.
+Nothing pays for X; it is the mana value the discarded card must have and
+the one the target must have, so the engine refuses a card and a target
+that disagree, and checks the target again as the ability resolves. A spell
+on the stack counts {X} as the value chosen for it; a card in a hand counts
+it as zero. The client sends the picked card's mana value as `x_value`
+rather than asking for X (ADR 0113's second 2026-10-07 amendment).
+
 **A sacrifice of different kinds (#2526):** "Sacrifice a Swamp and a Forest"
 (Jarad, Golgari Lich Lord) is `SacrificeEach("a Swamp and a Forest",
 SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest",
