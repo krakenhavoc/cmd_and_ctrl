@@ -322,6 +322,17 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		for _, id := range cp.ExileIDs {
 			v -= p.fuelValue(st, id)
 		}
+		// #2016: the cards a "Discard N cards" cost throws away, priced
+		// as a cast's additional-cost discard is (discardCost: what each
+		// is worth to the bot, a late land cheap, the last land dear),
+		// less any discard payoff the bot's own permanents pay.
+		v -= p.discardsCost(st, cp.SourceCardID, cp.DiscardIDs)
+		// #2016: a keyword counter the source already has the keyword
+		// for buys nothing (CR 122.1b), so the price paid is all loss.
+		if src != nil && !across && redundantKeywordCounter(src, cp.AbilityIndex) {
+			v += redundantCounterPenalty
+			reason = "activate (redundant counter)"
+		}
 		// An {X} ability does more the bigger X is, and the
 		// enumerator has already picked the largest X the seat can
 		// actually pay (legal/abilities.go) — so the policy never
@@ -653,6 +664,10 @@ func isPermanentSpell(c *protocol.CardView) bool {
 // purpose for it (ADR 0106 §1 decision 8): below passing, so the
 // policy never takes it.
 const anyPlayerDeclined = -1.0
+
+// redundantCounterPenalty sinks "put an indestructible counter on this"
+// below passing when the source is already indestructible (#2016).
+const redundantCounterPenalty = -1.0
 
 // anyPlayerPurposeValue prices an "Any player may activate this
 // ability" row on a permanent this seat does not control, from the
