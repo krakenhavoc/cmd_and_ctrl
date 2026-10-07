@@ -2667,6 +2667,16 @@ Feral Hydra, Excavation) says everyone.
   not control this card`. The activator pays the cost from their own
   pool, hand and board (CR 602.1a), the ability on the stack is theirs
   (CR 602.2a, 113.8), and "you" in its text is the activator (CR 109.5).
+- **`opponents_only: true` / `owner_only: true` on the row** (2026-10-07,
+  #1947). "Only your opponents may activate this ability" (Clergy of the
+  Holy Nimbus) and "Only this creature's owner may activate this ability"
+  (Personal Incarnation). Additive, absent on every other row. The
+  server refuses the controller on an opponents-only row, and anyone but
+  the owner on an owner-only one, with `game: caller does not control
+  this card`. The row rides the per-seat copy below exactly as an
+  `any_player` row does; the controller's own opponents-only row, and a
+  thief's owner-only row, are the client's to grey from the card's
+  `controller` and `owner`. `purpose` is never declared on these rows.
 - **Each seat's copy is stamped for that seat.** For a seat that does
   not control the permanent, every `any_player` row is computed with that
   seat as the activator: `charged_mana_cost`, `life_cost`,

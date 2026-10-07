@@ -43,10 +43,20 @@ import (
 // What the row's Purpose may say is checkActivatedPurpose's (purpose.go):
 // ControllerLosesLife only here, on an any-player row.
 func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
-	if !ab.AnyPlayer {
+	named := 0
+	for _, b := range []bool{ab.AnyPlayer, ab.OpponentsOnly, ab.OwnerOnly} {
+		if b {
+			named++
+		}
+	}
+	if named == 0 {
 		return
 	}
 	switch {
+	case named > 1:
+		panic(fmt.Sprintf("effects.Register: %q %s names more than one of AnyPlayer, OpponentsOnly and OwnerOnly (ADR 0106 §1)", name, where))
+	case ab.OpponentsOnly && ab.Purpose != (game.Purpose{}):
+		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose on an opponents-only row; the bot never reads one there (ADR 0106 §1 amendment 2026-10-07)", name, where))
 	case ab.Cost.Tap:
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability with a {T} cost — not modelled (ADR 0106 §1)", name, where))
 	case ab.Cost.Loyalty != nil:

@@ -769,6 +769,18 @@ type ActivatedAbilityShape struct {
 	// has tested.
 	AnyPlayer bool
 
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (CR 602.2, CR 602.1b; Clergy of the Holy Nimbus): every player but
+	// the permanent's controller, and not the controller. OwnerOnly is
+	// "Only this creature's owner may activate this ability" (Personal
+	// Incarnation): the owner alone, which is not the controller once the
+	// card has been stolen. Both are read in MayActivate beside AnyPlayer
+	// (ADR 0106 §1 amendment 2026-10-07, #1947), so the engine, the
+	// enumerator and the view agree, and the activator is "you" in the
+	// effect exactly as for AnyPlayer. At most one of the three is set.
+	OpponentsOnly bool
+	OwnerOnly     bool
+
 	// Purpose is what the ability does, as printed amounts (ADR 0126
 	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
 	// also what the row buys an activator who does not control the

@@ -908,6 +908,15 @@ the row is stamped with that seat as the activator; the client opens the
 ability popover on another player's permanent for its `any_player` rows;
 and smart autopass does not stop for them.
 
+**Only some players may activate (ADR 0106 §1 amendment, #1947).**
+"Only your opponents may activate this ability" (Clergy of the Holy
+Nimbus) is `OpponentsOnly: true` on the row, and "Only this creature's
+owner may activate this ability" (Personal Incarnation) is
+`OwnerOnly: true`. Same predicate (`game.MayActivate`), same "you is the
+activator" reading, same registration limits as `AnyPlayer`; set at most
+one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
+activator is the granting spell's controller (Martyrdom) has no shape yet.
+
 ### Declaring what a card does: Purpose (ADR 0126 §6)
 
 The heuristic bot reads the seat's view and nothing else, and the view

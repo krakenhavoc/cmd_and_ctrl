@@ -73,7 +73,7 @@ var activatedRowScopes = map[string]rowScope{
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.
-	"AnyPlayer": rowPublic, "Purpose": rowPublic,
+	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "Purpose": rowPublic,
 	// #2449: the printed equip keyword (CR 702.6).
 	"Equip": rowPublic,
 	// The printed discard clause: the count in "Discard two cards"

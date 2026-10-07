@@ -1539,6 +1539,15 @@ type ActivatedAbility struct {
 	// component and on an ability with a non-battlefield zone. See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (Clergy of the Holy Nimbus); OwnerOnly is "Only this creature's
+	// owner may activate this ability" (Personal Incarnation). The
+	// activator is "you" in the effect. Register refuses them beside each
+	// other or AnyPlayer, with the components and zones AnyPlayer refuses,
+	// and with a Purpose (the bot never reads one on these rows). See
+	// game.ActivatedAbilityShape.OpponentsOnly.
+	OpponentsOnly bool
+	OwnerOnly     bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does

@@ -3618,6 +3618,16 @@ type ActivatedAbilityView struct {
 	// CR 109.5). Whether the row is live for the viewer right now is
 	// still the digest's answer (`legal_actions`), never the row's.
 	AnyPlayer bool `json:"any_player,omitempty"`
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (Clergy of the Holy Nimbus) and OwnerOnly is "Only this creature's
+	// owner may activate this ability" (Personal Incarnation), ADR 0106
+	// §1 amendment 2026-10-07, #1947. Absent on every other row. The
+	// client reads them with the permanent's controller and owner to say
+	// who the row is open to: the controller's own opponents-only row is
+	// greyed, and a non-controller sees the rows open to it (they ride
+	// the same per-seat copy as any_player rows).
+	OpponentsOnly bool `json:"opponents_only,omitempty"`
+	OwnerOnly     bool `json:"owner_only,omitempty"`
 	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
 	// set by effects.EquipAbility and nothing else, #1208). Absent on
 	// every other row. Bot data (#2449): an equip that moves an
@@ -6369,6 +6379,12 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	}
 }
 
+// reachesAcross reports whether the row names an activator other than
+// the plain controller (any player, only opponents, only the owner).
+func (a ActivatedAbilityView) reachesAcross() bool {
+	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly
+}
+
 // stampAnyPlayerOffers files, for every seat that does not control the
 // permanent, its own copy of the permanent's "Any player may activate
 // this ability" rows (ADR 0106 §1 decision 5, #1793).
@@ -6393,7 +6409,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller uuid.UUID, restricted bool) {
 	anyRow := false
 	for _, a := range c.ActivatedAbilities {
-		if a.AnyPlayer {
+		if a.reachesAcross() {
 			anyRow = true
 			break
 		}
@@ -6408,13 +6424,13 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 		mine := viewOfActivatedAbilities(g, card, p.ID, game.ZoneBattlefield, restricted)
 		byIndex := make(map[int]ActivatedAbilityView, len(mine))
 		for _, a := range mine {
-			if a.AnyPlayer {
+			if a.reachesAcross() {
 				byIndex[a.Index] = a
 			}
 		}
 		rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
 		for i, a := range c.ActivatedAbilities {
-			if own, ok := byIndex[a.Index]; ok && a.AnyPlayer {
+			if own, ok := byIndex[a.Index]; ok && a.reachesAcross() {
 				// The grantor's name rides the exported row only
 				// (stampGrantedAbilities); keep it on this copy too.
 				own.GrantedBy = a.GrantedBy
@@ -9526,6 +9542,8 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
 			AnyPlayer:     a.AnyPlayer,
+			OpponentsOnly: a.OpponentsOnly,
+			OwnerOnly:     a.OwnerOnly,
 			Equip:         a.Equip,
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
