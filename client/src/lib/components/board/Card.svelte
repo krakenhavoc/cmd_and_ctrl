@@ -37,6 +37,7 @@
   import { damageBadge } from "../../damageBadge";
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openCardMenu } from "../../contextMenu";
+  import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
   import {
     acrossFor,
     castAnywayItem,
@@ -45,6 +46,7 @@
     menuManaRows,
     specialActionItems,
     type MenuAction,
+    type MenuItem,
   } from "../../contextMenu.logic";
   import {
     abilityPopover,
@@ -160,7 +162,8 @@
     // (CR 113.6) and rides `zone_mana_abilities`. Undefined
     // suppresses the menu entirely (opponent permanents, zones where
     // activations aren't meaningful).
-    onActivateManaAbility?: (abilityIndex: number) => void;
+    // ADR 0131 §2: `phyrexianLife` is the "Pay life for {B}…" row's claim.
+    onActivateManaAbility?: (abilityIndex: number, phyrexianLife?: number) => void;
     // ADR 0117 §3: the popover's Sandbox row, Tap or Untap, on every
     // permanent the viewer controls ("Tap (no mana)" on a mana source,
     // #1438). Set by BattlefieldRow on the viewer's own panel; undefined
@@ -176,6 +179,11 @@
     // popover. It draws no pip and does not light the ready ring.
     // Undefined: no row.
     onCastAnyway?: () => void;
+    // ADR 0131 §4: the popover's "Pay life for {B}…" row, on a hand card
+    // whose cost has a symbol K'rrik lets life pay. It starts the cast
+    // with the life stepper open. Counts toward `hasMenu`. Undefined: no
+    // row.
+    onPayLife?: () => void;
     // Why that row is greyed (timing.ts castAnywayBlocked), or "" when it
     // is live.
     castAnywayBlocked?: string;
@@ -298,6 +306,7 @@
     onActivateManaAbility,
     onRawTap,
     onCastAnyway,
+    onPayLife,
     castAnywayBlocked = "",
     onMenuAction,
     view,
@@ -370,6 +379,10 @@
   // ADR 0118 §2: the Sandbox section's Cast anyway row, one builder with
   // the admin menu's (contextMenu.logic.ts castAnywayItem).
   const castAnywayRow = $derived(onCastAnyway ? castAnywayItem(castAnywayBlocked) : undefined);
+  // ADR 0131 §4: the Payment group's row, a label contract.
+  const payLifeRow = $derived<MenuItem | undefined>(
+    onPayLife ? { id: "pay-life", label: PAY_LIFE_LABEL, hint: PAY_LIFE_TITLE } : undefined,
+  );
   // hasMenu: the popover has at least one row to show. Since ADR 0117
   // §3 that is every permanent the viewer controls (its Sandbox row),
   // so a right-click on a vanilla creature opens the popover with Tap.
@@ -379,7 +392,8 @@
       specialRows.length > 0 ||
       loyaltyRows.length > 0 ||
       sandbox ||
-      !!castAnywayRow,
+      !!castAnywayRow ||
+      !!payLifeRow,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
@@ -644,8 +658,15 @@
   // once per slot. A permanent's own `mana_abilities` only: the picker
   // is a battlefield picker, and a hand card's mana ability (a Spirit
   // Guide) has no colour choice.
-  function activateManaRow(index: number): void {
+  function activateManaRow(index: number, phyrexianLife?: number): void {
     const a = (card.mana_abilities ?? []).find((m) => m.index === index);
+    // ADR 0131 §2: a life payment names no colours here — a filter land's
+    // picking slots are asked as the server's usual mana_pick prompts —
+    // so it skips the picker and carries the claim.
+    if (phyrexianLife) {
+      onActivateManaAbility?.(index, phyrexianLife);
+      return;
+    }
     if (a && manaRowNeedsPicker(a) && cardEl) {
       const r = cardEl.getBoundingClientRect();
       openManaSourcePicker({
@@ -908,10 +929,19 @@
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
-        <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
+        <!-- #2046: a planeswalker that is also a creature (a Gideon
+             until end of turn) shows BOTH numbers, loyalty stacked
+             above its power/toughness. -->
+        <span
+          class="badge loyalty"
+          class:with-pt={isCreature}
+          title={`loyalty ${loyaltyValue}`}
+          aria-label="loyalty"
+        >
           {loyaltyValue}
         </span>
-      {:else}
+      {/if}
+      {#if isCreature}
         <span
           class="badge pt"
           title={`power/toughness ${card.power ?? 0}/${card.toughness ?? 0}`}
@@ -1051,10 +1081,19 @@
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
-        <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
+        <!-- #2046: a planeswalker that is also a creature (a Gideon
+             until end of turn) shows BOTH numbers, loyalty stacked
+             above its power/toughness. -->
+        <span
+          class="badge loyalty"
+          class:with-pt={isCreature}
+          title={`loyalty ${loyaltyValue}`}
+          aria-label="loyalty"
+        >
           {loyaltyValue}
         </span>
-      {:else}
+      {/if}
+      {#if isCreature}
         <span
           class="badge pt"
           title={`power/toughness ${card.power ?? 0}/${card.toughness ?? 0}`}
@@ -1204,6 +1243,8 @@
         onRawTap={sandbox ? onRawTap : undefined}
         castAnyway={castAnywayRow}
         {onCastAnyway}
+        payLife={payLifeRow}
+        {onPayLife}
         onClose={closeAbilityPopover}
       />
     </div>
@@ -1688,6 +1729,10 @@
     color: #b8e0b8;
     background: rgba(20, 40, 20, 0.92);
     border-color: rgba(150, 200, 150, 0.5);
+  }
+  .badge.loyalty.with-pt {
+    /* A creature planeswalker (#2046): loyalty rides above P/T. */
+    bottom: 24px;
   }
   .card.menu-open {
     /* When the mana-ability menu is open, let the popover extend

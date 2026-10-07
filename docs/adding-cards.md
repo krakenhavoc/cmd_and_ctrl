@@ -636,11 +636,22 @@ The price shown stays printed; the engine folds the clause into coloured
 symbols wherever a payment or an affordability check reads the cost, so the
 auto-tapper, the bot and the view all agree with the payment. Under
 Chromatic Orrery any mana pays such a COST (CR 609.4b), while a mana
-RESTRICTION still binds. The clause works on activated abilities only:
-"Spend only black mana on X" on a SPELL (Drain Life), "Spend only mana
-produced by basic lands" (Imperiosaur) and Emblazoned Golem's
-one-of-each-colour cap have no shape yet. See ADR 0040's 2026-10-03
-amendment.
+RESTRICTION still binds. The same sentences on a SPELL are two `Spec`
+fields (#2556, ADR 0040's 2026-10-07 amendment):
+
+```go
+SpendOnly:        SpellSpendOnlyOnX("B"),       // Drain Life: "Spend only black mana on X"
+SpendOnly:        SpellSpendOnlyOnX("B", "R"),  // Soul Burn: "black and/or red"
+SpendOnlySources: game.ManaSourceBasicLand,     // Imperiosaur: "…produced by basic lands"
+SpendOnlySources: game.ManaSourceCreature,      // Myr Superion: "…produced by creatures"
+```
+
+The colour clause is stamped on the cast's price and folded like an
+ability's; the source clause is read from the cast's spend context by the
+pool and by the auto-tapper's planner. A spell's clause is the "on X" form
+only, and `Register` refuses it beside delve or convoke / waterbend.
+Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
+2026-10-03 and 2026-10-07 amendments.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
@@ -1025,6 +1036,52 @@ the bot pays it and the stepper opens on it. A reflexive "When you do,
 "whenever you get one or more {E}" and "{E} you've paid or lost this
 turn" on PR 5. Put such a card on the matching registry row's `Waiting`
 list.
+
+### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
+
+"For each {B} in a cost, you may pay 2 life rather than pay that mana"
+(K'rrik, Son of Yawgmoth) is a player static, declared on
+`Spec.LifeForMana` with the card-side sentence in
+`effects/life_for_mana.go`:
+
+```go
+LifeForMana: YouMayPayLifeForMana("B"), // K'rrik, Son of Yawgmoth
+```
+
+It changes how the controller PAYS, not the cost, so it is read at the
+payment, never in a pricer. `costAsPaidByLocked` (`game/spend_any_color.go`)
+calls `grantLifeForManaLocked` first, which marks each requirement whose
+options include the granted colour `ColorRequirement.LifeGranted`;
+`PaysWithLife()` is then true for it exactly as for a printed `{B/P}`, and
+the one strike-and-pay helper (`PhyrexianLifePlan`,
+`strikePhyrexianLifeLocked`) pays it. Consequences worth knowing before you
+touch it:
+
+- It reaches `{B}` and the `{B}` half of a hybrid symbol (`{B/G}`, `{2/B}`),
+  never generic mana, `{C}`, or the black requirements a "spend only black
+  mana on X" clause folds in (the mark runs before the fold).
+- The price shown, the mana value and the card's colour are unchanged: the
+  flag lives on the copy made at payment.
+- **Auto-tap never pays life.** The life is paid only when the action
+  claims it with `phyrexian_life` (CR 601.2b), the same field a printed
+  Phyrexian symbol uses, on a cast, an activation or an attack
+  declaration. The view reports `phyrexian_symbols` (the ceiling) and
+  `phyrexian_granted` (how many are the grant's) for the viewer.
+- The enumerator and the bot need no new code for a card: the life loops in
+  `legal/cast.go`, `legal/abilities.go` and `legal/combat.go` call
+  `LifeGrantedCostForEffect` before they count symbols.
+- Every mana payment is covered. A mana ability's own mana component
+  (`ManaAbilityParams.PhyrexianLife`, wire `phyrexian_life` on
+  `activate_mana_ability`; a filter land's "{W/B}, {T}: Add …") and a mana
+  `pay_unless` (`ResolvePayUnlessWithLife`, `phyrexian_life` on
+  `resolve_choice`; ward {B}, "unless that player pays {B}") take the same
+  claim through the same helper pair, so a card with such a cost needs no
+  caveat for them.
+- A grant for another colour is data: `YouMayPayLifeForMana("G")`.
+
+A caveat that says "pays 2 life instead of {B}" goes stale the day a card
+declares `LifeForMana`; the `paying 2 life instead of black mana`
+coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
 ### Adding a replacement effect (S17+)
 
@@ -6474,6 +6531,19 @@ Triggered: []game.TriggeredAbility{
 - **The skip is ADR 0058's next-untap marker**, keyed to the exerting
   player's untap step (CR 701.43a). A second exert before that step adds
   no second marker (CR 701.43b); don't make the plain marker count.
+- **Declare what the exert does** (ADR 0130's amendment of 2026-10-07).
+  The bot prices an exert by the purposes of the rows the two helpers
+  stamp (`exert: "linked"` and `"payoff"` on the wire), so wrap each in
+  `TriggerWithPurpose` with the printed amounts: `Pump` for "this
+  creature gets +N/+N and gains …", `PreventCombatDamageToSelf`,
+  `DamageToCreature`, `DamageEachOpponent`, `LifeGain`, `ExtraCombat`,
+  or the ADR 0126 §6 fields (`Draws`, `Tokens`, …). Oketra's Avenger:
+
+  ```go
+  TriggerWithPurpose(WhenExerted("…", effect), game.Purpose{PreventCombatDamageToSelf: true}),
+  ```
+
+  A row with no purpose is an exert the bot takes only when it is free.
 - **Exert as an activation cost** ("Exert this creature: …", Arena of
   Glory) is ADR 0130 PR 4, a cost component on `AbilityCost` and
   `ManaAbilityCost`. Until it lands, those cards wait.

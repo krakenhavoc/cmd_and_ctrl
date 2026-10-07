@@ -150,6 +150,18 @@ All test-first. Each file name is a new file unless stated.
 
 Each PR regenerates only K'rrik's oracle fixture (`-update-oracle -oracle-ids=cbe3a4e7-5dbe-4f58-8ee6-a1762b65acfd`). PR 1 adds a `pay-life-for-mana` row to `roadmap/registry.go` as partial, through `go test ./internal/roadmap/ -update`. PR 2 flips the row and adds its fragment under `docs/engine-seams/closed/`. PR 1 also adds a short "Paying life for coloured mana" recipe to `docs/adding-cards.md`. PR 2 follows PR 1.
 
+## Amendment 2026-10-07: what PR 2 shipped
+
+PR 2 ([#2531](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2531)) delivers §2's two paths and closes the issue. The decisions are unchanged. These are the details the Delivery table left open:
+
+- **Mana abilities.** `ManaAbilityParams.PhyrexianLife`, wire `phyrexian_life` on `activate_mana_ability`. The claim is struck in the pricing step through `strikePhyrexianLifeLocked`, before the auto-tap plan is made, so a land is never tapped for a pip the player said they would pay 2 life for. The life is paid with the mana component, before the tap and the other costs, and it adds to `PaidCost.LifePaid`. The ability's own printed "Pay N life" and the claim are one CR 119.4 total. A claim on an ability with no mana component is refused, like the same claim on a CR 602 ability.
+- **Pay-unless.** `ResolvePayUnlessWithLife`, wire `phyrexian_life` on the `resolve_choice` answer. A malformed claim (past the ceiling, negative, below 2 life, under a life lock, on a decline or on a non-mana payment) is refused with the prompt left in place, the posture the tap and card lists take. A well-formed claim whose remaining mana cannot be funded is a decline and pays no life. The life is paid after the plan is known to fund the cost and before any land taps.
+- **The view** carries `phyrexian_symbols` / `phyrexian_granted` on `mana_abilities[i]` and on a `pay_unless` entry of `pending_choices`, counted for the viewer (the chooser, for a prompt).
+- **The enumerator** offers, after mana, the fewest symbols paid with life that make a mana ability or a pay-unless payable, bounded by the engine's life predicate. The heuristic prices a life-paid ward like a Phyrexian cast: the floor of 10, and below the all-mana answer.
+- **Move labels** now read "paying N life instead of mana". The old "for Phyrexian mana" was wrong when the life paid a granted `{B}`.
+- **The client.** The mana-ability popover gains one "Pay life for {B}…" row per count, under the ability's row (§4's always-available entry). The pay-unless prompt gains one "Pay with N life" answer per count. Neither opens a stepper, and neither asks when mana is short: auto-tap never claims life, and the entry is the player's click. The drag-to-cast preview (`previewDecidesMana`) stays as PR 1 left it, with granted symbols counted in `phyrexian_symbols`, because the owner did not answer PR 1's question about it.
+- **The coverage probe.** The `paying 2 life instead of black mana` mechanic in `cards/coverage/caveats.go` fails the build when a card that declares `LifeForMana` carries a caveat naming it.
+
 ## Consequences
 
 - K'rrik plays as printed, and a black spell or ability its controller can't pay with mana stays castable.

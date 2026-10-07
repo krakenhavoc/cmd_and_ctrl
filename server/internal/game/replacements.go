@@ -444,6 +444,26 @@ type ReplacementEvent struct {
 	// nothing. See ADR 0013 §5ah.
 	ShuffleDestinationLibrary bool
 
+	// ExiledWith is a replacement's declaration that a card it sent to
+	// EXILE is "exiled with" the replacement's source (CR 607.2a):
+	// Valgavoth, Terror Eater's "if a card you didn't control would be
+	// put into an opponent's graveyard from anywhere, exile it instead.
+	// ... you may play cards exiled with Valgavoth" (#2530).
+	//
+	// A replacement runs BEFORE the card moves, so it cannot write to
+	// the card that lands; it leaves the link here, on the event, and
+	// the two functions that perform every replaced move's physical
+	// landing (executeZoneRouteLocked and executeBattlefieldLeaveLocked,
+	// where ShuffleDestinationLibrary is consumed too) stamp it onto the
+	// card as Card.ExiledWith, and only when the card really did land
+	// in exile. A move a later replacement redirected to the command
+	// zone, a library or a hand stamps nothing.
+	//
+	// Set by the SAME `Replace` that rewrites NewZone, as a source
+	// OBJECT {instance, epoch} so the link names this incarnation of
+	// the permanent (CR 400.7).
+	ExiledWith PermissionCardRef
+
 	// Destruction says this battlefield exit is a DESTRUCTION
 	// (CR 701.7a), as opposed to the other things that take the same
 	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally

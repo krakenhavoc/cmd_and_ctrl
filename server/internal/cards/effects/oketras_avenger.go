@@ -21,10 +21,12 @@ func init() {
 		Completeness:  CompletenessFull,
 		ExertOnAttack: ExertAsItAttacks(),
 		Triggered: []game.TriggeredAbility{
-			WhenExerted("Oketra's Avenger — prevent all combat damage that would be dealt to it this turn",
-				func(g *game.Game, item *game.StackItem) error {
-					return shieldThis(g, item, PreventDamageFromSource{CombatOnly: true})
-				}),
+			TriggerWithPurpose(
+				WhenExerted("Oketra's Avenger — prevent all combat damage that would be dealt to it this turn",
+					func(g *game.Game, item *game.StackItem) error {
+						return shieldThis(g, item, PreventDamageFromSource{CombatOnly: true})
+					}),
+				game.Purpose{PreventCombatDamageToSelf: true}),
 		},
 	})
 }

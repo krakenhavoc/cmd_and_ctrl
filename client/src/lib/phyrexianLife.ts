@@ -46,6 +46,28 @@ export function phyrexianSymbolsForCast(card: CardView, altCost: string | undefi
   return card.phyrexian_symbols ?? 0;
 }
 
+// phyrexianGrantedForCast is how many of those symbols are payable with
+// life only because the viewer controls a grant (ADR 0131: K'rrik's "for
+// each {B} in a cost, you may pay 2 life rather than pay that mana"),
+// for the cost the caster is actually paying. A subset of the ceiling,
+// never more than it.
+export function phyrexianGrantedForCast(card: CardView, altCost: string | undefined): number {
+  const symbols = phyrexianSymbolsForCast(card, altCost);
+  if (altCost !== undefined) {
+    const offer = (card.alternative_costs ?? []).find(
+      (o: AlternativeCostView) => o.key === altCost,
+    );
+    return Math.min(symbols, offer?.phyrexian_granted ?? 0);
+  }
+  return Math.min(symbols, card.phyrexian_granted ?? 0);
+}
+
+// phyrexianGrantedForAbility is phyrexianGrantedForCast for a CR 602
+// activated ability's mana component.
+export function phyrexianGrantedForAbility(ability: ActivatedAbilityView): number {
+  return Math.min(phyrexianSymbolsForAbility(ability), ability.phyrexian_granted ?? 0);
+}
+
 // phyrexianSymbolsForAbility is the same ceiling for a CR 602
 // activated ability's mana component.
 export function phyrexianSymbolsForAbility(ability: ActivatedAbilityView): number {
@@ -92,6 +114,28 @@ export function phyrexianLifeCost(n: number): number {
 // symbol, and nothing to ask when CR 119.4 leaves the player unable
 // to buy even one — a modal whose only answer is 0 is a click, not a
 // choice, so the announcement goes out claiming nothing.
-export function shouldAskPhyrexianLife(symbols: number, life: number | undefined): boolean {
-  return maxPhyrexianLife(symbols, life) > 0;
+//
+// ADR 0131 (owner decision 4): a printed Phyrexian symbol still always
+// asks, as it did before. When EVERY symbol is a granted one (K'rrik's
+// {B}), the prompt would be a click on almost every black spell, so it
+// opens only if mana falls short, which the caller learns from the
+// auto-tap preview and passes as `manaShort`, or if the player asked for
+// it from the card menu (`asked`).
+export function shouldAskPhyrexianLife(
+  symbols: number,
+  life: number | undefined,
+  granted = 0,
+  manaShort = false,
+  asked = false,
+): boolean {
+  if (maxPhyrexianLife(symbols, life) <= 0) return false;
+  if (symbols - granted > 0) return true;
+  return manaShort || asked;
+}
+
+// onlyGrantedSymbols is the question the caller asks BEFORE it fetches
+// the preview: is every life-payable symbol a granted one, so that
+// whether to ask depends on the mana?
+export function onlyGrantedSymbols(symbols: number, granted: number): boolean {
+  return symbols > 0 && granted >= symbols;
 }

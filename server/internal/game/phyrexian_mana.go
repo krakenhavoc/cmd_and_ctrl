@@ -59,7 +59,9 @@ import (
 const PhyrexianLifePerSymbol = 2
 
 // PhyrexianSymbols counts the symbols in the cost that carry the
-// Phyrexian "or 2 life" option — {W/P} and {W/U/P} alike. It is the
+// Phyrexian "or 2 life" option — {W/P} and {W/U/P} alike, plus the
+// symbols a life-for-mana grant marked at payment (K'rrik, ADR 0131:
+// ColorRequirement.LifeGranted). It is the
 // ceiling on CastSpellParams.PhyrexianLife and on
 // ActivateAbilityParams.PhyrexianLife, and the count the view ships
 // to the client as `phyrexian_symbols` so no client parses a mana
@@ -67,7 +69,7 @@ const PhyrexianLifePerSymbol = 2
 func (c ParsedCost) PhyrexianSymbols() int {
 	n := 0
 	for _, req := range c.Required {
-		if req.Phyrexian {
+		if req.PaysWithLife() {
 			n++
 		}
 	}
@@ -104,7 +106,7 @@ func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n i
 			if len(struck) == n {
 				break
 			}
-			if !req.Phyrexian || struck[i] {
+			if !req.PaysWithLife() || struck[i] {
 				continue
 			}
 			payable := false
@@ -164,7 +166,7 @@ func (g *Game) strikePhyrexianLifeLocked(p *Player, sourceName string, cost Pars
 		return cost, 0, fmt.Errorf("%w: phyrexian_life must not be negative", ErrInvalidParam)
 	}
 	if have := cost.PhyrexianSymbols(); claimed > have {
-		return cost, 0, fmt.Errorf("%w: phyrexian_life %d, but %s prints %d Phyrexian symbol(s)", ErrInvalidParam, claimed, sourceName, have)
+		return cost, 0, fmt.Errorf("%w: phyrexian_life %d, but %s has %d symbol(s) payable with life (Phyrexian mana, or {B} under a life-for-mana grant)", ErrInvalidParam, claimed, sourceName, have)
 	}
 	reduced, life := PhyrexianLifePlan(cost, p.ManaPool, spendCtx, claimed)
 	// CR 119.4: a player may pay life only down to 0. Checked before

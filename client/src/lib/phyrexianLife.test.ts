@@ -3,12 +3,16 @@ import {
   PhyrexianLifePerSymbol,
   clampPhyrexianLife,
   maxPhyrexianLife,
+  onlyGrantedSymbols,
+  phyrexianGrantedForAbility,
+  phyrexianGrantedForCast,
   phyrexianLifeCost,
   phyrexianSymbolsForAbility,
   phyrexianSymbolsForCast,
   shouldAskPhyrexianLife,
 } from "./phyrexianLife";
-import { applyCastChoices } from "./targeting";
+import { PAY_LIFE_LABEL, grantedLifeOffered } from "./payLifeForMana";
+import { applyCastChoices, castChoicesBase } from "./targeting";
 import type { ActivatedAbilityView, CardView } from "./protocol";
 
 // phyrexianLife.test.ts — #916. The board had no way to pay a
@@ -160,5 +164,84 @@ describe("applyCastChoices", () => {
     applyCastChoices(params, { xValue: 3 });
     expect(params).not.toHaveProperty("phyrexian_life");
     expect(params.x_value).toBe(3);
+  });
+});
+
+// ADR 0131 (#2531): K'rrik makes every {B} payable with life, and the
+// server counts those symbols in `phyrexian_symbols` and says how many
+// are the grant's in `phyrexian_granted`. A printed symbol still always
+// asks; a cost whose symbols are ALL granted asks only when mana falls
+// short, or when the player asked from the card menu.
+describe("granted Phyrexian symbols (ADR 0131)", () => {
+  it("reads the granted count off the cast, capped by the symbols", () => {
+    expect(
+      phyrexianGrantedForCast(card({ phyrexian_symbols: 2, phyrexian_granted: 2 }), undefined),
+    ).toBe(2);
+    expect(
+      phyrexianGrantedForCast(card({ phyrexian_symbols: 1, phyrexian_granted: 3 }), undefined),
+    ).toBe(1);
+    expect(phyrexianGrantedForCast(card({ phyrexian_symbols: 2 }), undefined)).toBe(0);
+  });
+
+  it("reads an alternative cost's own granted count", () => {
+    const c = card({
+      phyrexian_symbols: 3,
+      phyrexian_granted: 3,
+      alternative_costs: [
+        { key: "evoke", label: "Evoke", phyrexian_symbols: 2, phyrexian_granted: 1 },
+      ],
+    } as Partial<CardView>);
+    expect(phyrexianGrantedForCast(c, "evoke")).toBe(1);
+    expect(phyrexianGrantedForCast(c, undefined)).toBe(3);
+  });
+
+  it("reads an ability's granted count", () => {
+    const a = { phyrexian_symbols: 2, phyrexian_granted: 1 } as ActivatedAbilityView;
+    expect(phyrexianGrantedForAbility(a)).toBe(1);
+  });
+
+  it("still always asks about a printed symbol", () => {
+    // {B/P} beside nothing granted, and a printed one beside a granted one.
+    expect(shouldAskPhyrexianLife(1, 20, 0, false)).toBe(true);
+    expect(shouldAskPhyrexianLife(2, 20, 1, false)).toBe(true);
+  });
+
+  it("asks about all-granted symbols only when mana is short or the player asked", () => {
+    expect(shouldAskPhyrexianLife(2, 20, 2, false)).toBe(false);
+    expect(shouldAskPhyrexianLife(2, 20, 2, true)).toBe(true);
+    expect(shouldAskPhyrexianLife(2, 20, 2, false, true)).toBe(true);
+  });
+
+  it("never asks when CR 119.4 leaves no symbol to buy", () => {
+    expect(shouldAskPhyrexianLife(2, 1, 2, true)).toBe(false);
+    expect(shouldAskPhyrexianLife(2, 20, 2, true, true)).toBe(true);
+    expect(shouldAskPhyrexianLife(2, 0, 2, true, true)).toBe(false);
+  });
+
+  it("knows when the mana decides", () => {
+    expect(onlyGrantedSymbols(2, 2)).toBe(true);
+    expect(onlyGrantedSymbols(2, 1)).toBe(false);
+    expect(onlyGrantedSymbols(0, 0)).toBe(false);
+  });
+});
+
+describe("the card menu's pay-life row (ADR 0131 §4)", () => {
+  it("is offered on a card with a granted symbol only", () => {
+    expect(grantedLifeOffered(card({ phyrexian_symbols: 1, phyrexian_granted: 1 }))).toBe(true);
+    expect(grantedLifeOffered(card({ phyrexian_symbols: 1 }))).toBe(false);
+    expect(grantedLifeOffered(card())).toBe(false);
+  });
+
+  it("starts a cast that asks, and sends nothing itself", () => {
+    expect(castChoicesBase(undefined, false, false, true)).toEqual({ askPhyrexianLife: true });
+    expect(castChoicesBase()).toEqual({});
+    const params: Record<string, unknown> = {};
+    applyCastChoices(params, { askPhyrexianLife: true });
+    expect(params).not.toHaveProperty("phyrexian_life");
+    expect(params).not.toHaveProperty("askPhyrexianLife");
+  });
+
+  it("uses the registered label", () => {
+    expect(PAY_LIFE_LABEL).toBe("Pay life for {B}…");
   });
 });

@@ -917,6 +917,28 @@ type Card struct {
 	// names nothing ever again. Carried by the snapshot.
 	HiddenBy PermissionCardRef
 
+	// ExiledWith is CR 607.2a's link from a card in exile to the
+	// permanent OBJECT {instance, epoch} whose replacement effect put
+	// it there: Valgavoth, Terror Eater's "if a card you didn't control
+	// would be put into an opponent's graveyard from anywhere, exile it
+	// instead ... you may play cards EXILED WITH Valgavoth" (#2530, ADR
+	// 0066's 2026-10-07 amendment).
+	//
+	// Stamped by the exit finishers from ReplacementEvent.ExiledWith,
+	// AFTER the move, because a replacement runs before the card has
+	// moved and so cannot write to the card that lands (the #1117
+	// triage). Read by PermissionFilter.ExiledWithSource, which a
+	// STANDING cast permission carries; the epoch pins the incarnation,
+	// so a Valgavoth that leaves and returns is a new object with no
+	// claim on what the old one exiled (CR 400.7).
+	//
+	// Cleared by MoveCard on every move, so a card that leaves exile
+	// and comes back by another route was not exiled with anything.
+	// Carried by the snapshot. An ability-resolution exile (Duplicant,
+	// Angel of Serenity) keeps the effects package's event-log record
+	// (b27ExiledWith) and does not write this.
+	ExiledWith PermissionCardRef
+
 	// Solved, Prepared and PrepareCopy live in the bool block at the
 	// end of Card, for alignment.
 

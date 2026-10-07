@@ -1077,14 +1077,16 @@
     }
   }
 
-  function answerOptional(apply: boolean): void {
+  function answerOptional(apply: boolean, phyrexianLife = 0): void {
     if (!active || !viewerID) return;
     // #1311: a waterbend pay-unless names its taps beside the apply.
     if (isPayUnless) {
       // ADR 0108 §5: a discard or sacrifice payment is not a "Pay"
       // until the picks add up to the count.
       if (apply && payBlocked) return;
-      answer(payUnlessAnswer(active, apply, payTaps, payCardPicks));
+      // ADR 0131 §2: and the symbols paid with 2 life each, when the
+      // player chose "Pay with N life".
+      answer(payUnlessAnswer(active, apply, payTaps, payCardPicks, phyrexianLife));
       return;
     }
     // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
@@ -1115,6 +1117,7 @@
             energy: viewerEnergy,
             payAmount: payAmountValue,
             payAmountAnswerable: payAmountOK,
+            life: snap.seats?.find((s) => s.id === viewerID)?.life,
             body: isManaPick
               ? manaBody
               : isColorChoice

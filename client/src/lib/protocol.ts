@@ -1446,6 +1446,13 @@ export interface PendingChoiceView {
   // "unless" consequence fires. Also carries the life payment ("2
   // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // ADR 0131 §2 (#2531): the "or 2 life" half of a mana "pay_unless".
+  // `phyrexian_symbols` is how many symbols of `pay_cost` the chooser
+  // could pay 2 life each for (a printed {B/P}, or a {B} under K'rrik);
+  // `phyrexian_granted` how many of those are the grant's. The answer
+  // is {apply: true, phyrexian_life: n}. Absent at zero.
+  phyrexian_symbols?: number;
+  phyrexian_granted?: number;
   // #1311: populated for a "pay_unless" whose payment is a WATERBEND
   // cost ("Ward—Waterbend {4}", The Unagi of Kyoshi Island): the
   // chooser's untapped artifacts and creatures that may each pay {1}
@@ -2102,6 +2109,13 @@ export interface AdditionalCostView {
   // greatest toughness among your creatures, the most X may be.
   blight_x?: boolean;
   blight_x_max?: number;
+  // ADR 0100 amendment 2026-10-07: a branch that reveals a card from your
+  // hand (`reveal`) or, to behold (`behold`), may choose a permanent you
+  // control instead. `reveal_options` lists the cards that could pay it,
+  // hand cards first; the one pick rides cast_spell as `reveal_ids`.
+  reveal?: boolean;
+  behold?: boolean;
+  reveal_options?: LegalTargetsView;
   payable?: boolean;
 }
 
@@ -2217,6 +2231,14 @@ export interface AlternativeCostView {
   // offer a payment the announce gate rejects. Absent for every offer
   // that prints none, which is all of them today.
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // #1686: the engine will refuse THIS offer right now for timing (CR
   // 307.1) even though its zone and payability both check out. Every
   // S22 keyword here answers to the card's own printed timing (or a
@@ -2652,6 +2674,14 @@ export interface ActivatedAbilityView {
   // menu knows to open the stepper at all. A COUNT rather than
   // something the client derives, for the reason demands_x is one.
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
@@ -2699,6 +2729,13 @@ export interface PurposeView {
   energy?: number;
   sweep?: SweepView;
   death_payoff?: boolean;
+  // ADR 0130 (amendment of 2026-10-07): what an exert row does.
+  pump?: { power?: number; toughness?: number; keywords?: string[] };
+  extra_combat?: number;
+  prevent_combat_damage_to_self?: boolean;
+  damage_to_creature?: number;
+  damage_each_opponent?: number;
+  life_gain?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.
@@ -2958,6 +2995,14 @@ export interface CastSurfaceView {
   // cards and absent everywhere else, so its presence IS the question
   // "is there a life half to offer here".
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its
@@ -3553,6 +3598,9 @@ export interface AbilityRowView {
   label: string;
   // ADR 0126 §6: the row's declared purpose (death_payoff). Bot data.
   purpose?: PurposeView;
+  // ADR 0130 (amendment of 2026-10-07): "linked" on exert's "when you
+  // do" trigger, "payoff" on "Whenever you exert a creature". Bot data.
+  exert?: "linked" | "payoff";
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may
@@ -3603,6 +3651,12 @@ export interface ProtectionView {
 export interface ManaAbilityView {
   index: number;
   label?: string;
+  // ADR 0131 §2 (#2531): ActivatedAbilityView's pair for this mana
+  // ability's own mana component — how many symbols the viewer could pay
+  // 2 life each for, and how many of them are a grant's. The answer
+  // rides activate_mana_ability as `phyrexian_life`. Absent at zero.
+  phyrexian_symbols?: number;
+  phyrexian_granted?: number;
   // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
   // "land:<colour>", "grant:<bundle>:<i>:<n>"), sent back as
   // activate_mana_ability's `ref`. See ActivatedAbilityView.ref.

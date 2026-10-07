@@ -118,6 +118,10 @@ export interface CastChoices {
   // a cast that does not.
   teamworkIDs?: string[];
   blightIDs?: string[];
+  // ADR 0100 amendment 2026-10-07: the one card a chosen reveal / behold
+  // branch shows. Set only after the branch is chosen; the server refuses
+  // it on a cast that does not pay one.
+  revealIDs?: string[];
   // CR 107.4f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
@@ -165,6 +169,11 @@ export interface CastChoices {
   // no mana is spent and the log says so. Life for Phyrexian symbols
   // and every additional cost are still paid.
   forceCast?: boolean;
+  // ADR 0131 (#2531): the cast was started from the card menu's "Pay
+  // life for {B}…" row, so the Phyrexian stepper opens even when every
+  // symbol is a granted one and the mana would have paid. Never sent:
+  // it only decides whether the prompt opens.
+  askPhyrexianLife?: boolean;
 }
 
 // CastSourceZone is the `from_zone` vocabulary the server's
@@ -212,6 +221,8 @@ export function applyCastChoices(
     params.teamwork_ids = choices.teamworkIDs;
   if (choices.blightIDs !== undefined && choices.blightIDs.length > 0)
     params.blight_ids = choices.blightIDs;
+  if (choices.revealIDs !== undefined && choices.revealIDs.length > 0)
+    params.reveal_ids = choices.revealIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
   if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
@@ -250,11 +261,13 @@ export function castChoicesBase(
   fromZone?: CastSourceZone,
   viaDrag = false,
   forceCast = false,
+  askPhyrexianLife = false,
 ): CastChoices {
   const out: CastChoices = {};
   if (fromZone) out.fromZone = fromZone;
   if (viaDrag) out.viaDrag = true;
   if (forceCast) out.forceCast = true;
+  if (askPhyrexianLife) out.askPhyrexianLife = true;
   return out;
 }
 
@@ -1126,6 +1139,30 @@ export function castBlightOffer(
     (o) => o.blight,
     (o) => o.blight_options,
   );
+}
+
+// ClaimedRevealCost is the reveal / behold branch this cast has chosen:
+// what the picker should say and which cards could pay it.
+export interface ClaimedRevealCost {
+  label: string;
+  behold: boolean;
+  options: string[];
+}
+
+// castRevealCost is the reveal / behold cost the chosen either/or branch
+// pays, if any (ADR 0100 amendment 2026-10-07) — the prompt after the
+// branch asks which card to show.
+export function castRevealCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedRevealCost | undefined {
+  const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
+  if (!branch?.reveal) return undefined;
+  return {
+    label: branch.label ?? (branch.behold ? "Behold" : "Reveal a card from your hand"),
+    behold: branch.behold === true,
+    options: branch.reveal_options?.cards ?? [],
+  };
 }
 
 // castIsForbidden reports whether the server's own cast gate has

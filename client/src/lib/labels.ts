@@ -426,6 +426,13 @@ export const LABEL_SPECS = {
     owners: ["lib/choiceDock.ts"],
     doc: "the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more",
   }),
+  payLifeForMana: label({
+    name: "Pay life for {B}…",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/payLifeForMana.ts"],
+    doc: "the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4)",
+  }),
 
   // -- The opening roll (ADR 0121) --
   rollForFirstTurn: label({

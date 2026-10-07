@@ -33,6 +33,9 @@ import (
 //   - a DiscardPayoff anywhere but a triggered row, or one that names
 //     no cards, names them two ways, or pays nothing (ADR 0126's
 //     amendment of 2026-10-06);
+//   - a Pump or PreventCombatDamageToSelf anywhere but a triggered or
+//     activated row, or a Pump that gives nothing (ADR 0130's
+//     amendment of 2026-10-07);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one.
 
@@ -58,7 +61,8 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose that %s (ADR 0126 §6)", name, where, why))
 	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
-		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 {
+		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
+		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 {
 		fail("has a negative amount")
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
@@ -70,8 +74,33 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.DiscardPayoff != nil && slot != purposeOnTriggered {
 		fail("sets DiscardPayoff off a triggered row")
 	}
+	onSource := slot == purposeOnTriggered || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+	if p.Pump != nil && !onSource {
+		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
+	}
+	if p.PreventCombatDamageToSelf && !onSource {
+		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
+	}
+	checkPump(p.Pump, fail)
 	checkDiscardPayoff(p.DiscardPayoff, fail)
 	checkSweep(p.Sweep, fail)
+}
+
+// checkPump is checkPurpose's half for a declared Pump (ADR 0130's
+// amendment of 2026-10-07): it gives something, and each keyword is one
+// lowercase word, as the wire's `abilities` spells it.
+func checkPump(pm *game.Pump, fail func(string)) {
+	if pm == nil {
+		return
+	}
+	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 {
+		fail("is a pump that gives nothing — set Power, Toughness or Keywords")
+	}
+	for _, k := range pm.Keywords {
+		if k == "" || k != strings.ToLower(k) || strings.ContainsAny(k, "\t—") {
+			fail(fmt.Sprintf("names a pump keyword %q that is not lowercase", k))
+		}
+	}
 }
 
 // checkDiscardPayoff is checkPurpose's half for a declared
