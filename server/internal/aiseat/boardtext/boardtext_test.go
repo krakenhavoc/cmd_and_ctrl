@@ -40,6 +40,21 @@ func TestRenderBotFlavourIsTerse(t *testing.T) {
 	}
 }
 
+// ADR 0129 §7: each seat's non-zero player counters follow its pool, in
+// name order, so a model seat sees the energy it can pay.
+func TestRenderPrintsPlayerCounters(t *testing.T) {
+	v := view()
+	v.Seats[0].ManaPool = []string{"{G}"}
+	v.Seats[0].Counters = map[string]int{"poison": 2, "energy": 4, "rad": 0}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if want := "Ann (YOU) — 40 life, 1 cards in hand, 0 in library, mana pool {G}, 4 energy, 2 poison\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+	if !strings.Contains(got, "Bo — 38 life, 0 cards in hand, 0 in library\n") {
+		t.Errorf("a seat with no counters grew a counters phrase:\n%s", got)
+	}
+}
+
 func TestRenderNoteUnimplementedForTheAgent(t *testing.T) {
 	got := boardtext.Render(view(), "a", boardtext.Options{NoteUnimplemented: true})
 	for _, want := range []string{

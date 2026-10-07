@@ -745,6 +745,21 @@ type LegalTargetsView struct {
 	// sent as the action's `distribution`. Absent on every clause that
 	// divides nothing.
 	Divide *DivideView `json:"divide,omitempty"`
+
+	// EachOf is a SACRIFICE clause's set rule (#2526): "Sacrifice a
+	// Swamp and a Forest" is min 2 / max 2 over the union in `cards`,
+	// and the picks must fill every entry here one-to-one. The picker
+	// holds its confirm button until they do, and "Choose for me" fills
+	// it with a set that does. Absent on every clause without one.
+	EachOf []SacrificeGroupView `json:"each_of,omitempty"`
+}
+
+// SacrificeGroupView is one entry of LegalTargetsView.EachOf: the
+// printed words ("a Swamp") and the candidates that could fill it. A
+// candidate that fits two entries (a Swamp Forest) appears in both.
+type SacrificeGroupView struct {
+	Label string   `json:"label"`
+	Cards []string `json:"cards,omitempty"`
 }
 
 // DivideView is the wire shape of game.DivideSpec: the amount a clause
@@ -3215,6 +3230,15 @@ type ActivatedAbilityView struct {
 	// game.AbilityLifeCostLocked, the function the engine charges with.
 	LifeCost     int  `json:"life_cost,omitempty"`
 	SorcerySpeed bool `json:"sorcery_speed,omitempty"`
+	// EnergyCost is the printed "Pay N {E}" component (CR 107.14, ADR
+	// 0129 §8): the energy counters an activation removes from the
+	// activator. Omitted at zero. EnergyCostX marks "Pay X {E}": the
+	// announced X is added to EnergyCost, and DemandsX is set, so the
+	// client caps its X stepper at the seat's energy. When the
+	// controller is short, CantActivate carries the engine's refusal
+	// ("Not enough energy (have 2, need 3)").
+	EnergyCost  int  `json:"energy_cost,omitempty"`
+	EnergyCostX bool `json:"energy_cost_x,omitempty"`
 	// ConditionUnmet is true when the ability carries an activation
 	// condition (CR 602.1b — "Activate only if an opponent controls
 	// four or more lands", "Activate only during your turn") and that
@@ -9446,6 +9470,17 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
 				game.ActivationAbility{Label: a.Label})
 		}
+		// ADR 0129 §8: the energy component, and the refusal's own text
+		// when the controller is short of the printed part (CR 118.3),
+		// from the predicate ActivateCatalogAbility refuses with. An X
+		// row is short only when even X = 0 cannot be paid.
+		v.EnergyCost = a.Cost.Energy
+		v.EnergyCostX = a.Cost.EnergyX
+		if v.CantActivate == "" && a.Cost.Energy > 0 {
+			if short := game.EnergyShortfall(g.PlayerByIDForEffect(caster), a.Cost.Energy); short != nil {
+				v.CantActivate = short.Error()
+			}
+		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf)
@@ -9759,8 +9794,18 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	// the X it is about to announce rather than a number it picks.
 	lo, hi := game.SacrificeCostBounds(spec, 0)
 	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: spec != nil && spec.CountFromX}
-	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+	ordered := g.SacrificePaymentOrderForEffect(ids, sourceID)
+	for _, id := range ordered {
 		out.Cards = append(out.Cards, id.String())
+	}
+	// #2526: a set rule ("a Swamp and a Forest") ships its entries so the
+	// picker can hold confirm until the picks fill them all.
+	for _, grp := range g.SacrificeSetGroupsForEffect(spec, ordered) {
+		gv := SacrificeGroupView{Label: grp.Label}
+		for _, id := range grp.Candidates {
+			gv.Cards = append(gv.Cards, id.String())
+		}
+		out.EachOf = append(out.EachOf, gv)
 	}
 	return out
 }

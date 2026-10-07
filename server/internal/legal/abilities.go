@@ -300,6 +300,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if !lifeOK || !g.CanPayLifeLocked(p, life) {
 			continue
 		}
+		// ADR 0129 §7, CR 118.3: the energy component, through the
+		// predicate the engine refuses with, so a policy is never
+		// offered an activation the seat is short of energy for (#544).
+		// For "Pay X {E}" the printed part is checked here and X is
+		// bounded by what is left (energyXCeiling).
+		if game.EnergyShortfall(p, ab.Cost.Energy) != nil {
+			continue
+		}
+		energyCeiling := energyXCeiling(ab.Cost, game.PlayerEnergy(p), e.opts.MaxX)
 		// CR 602.2b: X is announced with the activation, so the
 		// enumerator has to pick one. It picks the LARGEST
 		// affordable value at or above the cost's printed floor,
@@ -344,6 +353,20 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if basePay, ok = e.abilityManaPayment(source, zone, ab, nil); !ok {
 					continue
 				}
+			}
+		}
+		// ADR 0129 §7: "Pay X {E}" bounds X by the seat's energy as well
+		// as by the mana and Options.MaxX. A price that reads its targets
+		// with an energy X has no printed card, so it is left
+		// unenumerated rather than guessed at.
+		if ab.Cost.EnergyX {
+			if perTarget {
+				continue
+			}
+			var ok bool
+			if basePay, ok = capEnergyX(basePay, ab.Cost, energyCeiling,
+				enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())); !ok {
+				continue
 			}
 		}
 		// Crew (CR 702.122a). The engine rejects a crew
@@ -554,6 +577,22 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// built against the unbound superset and filtered per
 				// payment there. Every such printed bound is "or less",
 				// so the largest payment admits the most.
+				// ADR 0129 §7: "Pay X {E}" with no {X} in the mana
+				// (HELIOS One's "destroy target nonland permanent with
+				// mana value X") tries every X the seat's energy pays
+				// for, floor up, as the mana ladder below does.
+				if ab.Cost.EnergyX && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
+					floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+					for x := floor; x <= energyCeiling; x++ {
+						xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+						game.BindStepsXForEffect(xs, x)
+						for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
+							announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+						}
+					}
+					continue
+				}
 				if game.StepsBoundByCountersRemoved(steps) || ab.Cost.XSlots() == 0 {
 					if !game.StepsBoundByCountersRemoved(steps) &&
 						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) {
@@ -718,6 +757,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// the computed component is `life`, the
 							// amount the engine will charge.
 							cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
+							// ADR 0129 §7: the energy this move removes.
+							cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
 							for _, price := range cc.prices() {
 								cost = withCounterPrice(cost, price)
 							}
@@ -731,7 +772,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// tapped permanents, no waterbend taps, no
 							// division.
 							var xv *MoveValue
-							if ab.Cost.XSlots() > 0 && ann.xValue < 0 && !ann.bounded && dist == nil &&
+							if (ab.Cost.XSlots() > 0 || ab.Cost.EnergyX) && ann.xValue < 0 && !ann.bounded && dist == nil &&
 								len(waterbendIDs) == 0 && !game.SacrificeCountFromX(ab.Cost.SacrificeOther) &&
 								!game.TapOthersCountFromX(ab.Cost.TapOthers) {
 								xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
@@ -1529,7 +1570,22 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 //
 // Nil when the pool has fewer than N candidates, so the ability or
 // spell is not offered at all (#544).
+//
+// #2526: a clause with a SET RULE (TargetSpec.EachOf — "a Swamp and a
+// Forest") is the case where "the first N" is wrong, because the first
+// two of the payment order may both be Swamps. It is one payment found
+// by game.SacrificeSetPaymentForEffect, which searches for a set that
+// fills every entry; nil when the board has none, so the ability is not
+// offered (#544).
 func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
+	if len(spec.EachOf) > 0 {
+		ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
+		pay := e.g.SacrificeSetPaymentForEffect(spec, ordered)
+		if pay == nil {
+			return nil
+		}
+		return [][]uuid.UUID{pay}
+	}
 	n := game.SacrificeCostCount(spec)
 	if n <= 1 {
 		return e.combos(pool, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)

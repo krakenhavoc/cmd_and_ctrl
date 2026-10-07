@@ -144,6 +144,14 @@ type Weights struct {
 	// ThreatHand weights an opponent's hand in the threat ranking —
 	// unknown cards are scarier than known ones.
 	ThreatHand float64
+
+	// Energy is what one energy counter is worth (ADR 0129 §7, owner
+	// decision 5): a flat price per counter, charged when a move spends
+	// it (legal.MoveCost.Energy) and credited when a declared purpose
+	// gives it (purpose `energy`). Starts at a quarter of a card in
+	// hand, to be tuned under ADR 0126 §8. Zero prices energy at
+	// nothing, which is the heuristic before ADR 0129.
+	Energy float64
 }
 
 // StartingLife is the Commander starting total the threat ranking
@@ -198,6 +206,8 @@ func DefaultWeights() Weights {
 
 		ThreatLifeRev: 0.10,
 		ThreatHand:    0.80,
+
+		Energy: 0.30,
 	}
 }
 

@@ -293,6 +293,14 @@ type MoveCost struct {
 	// ids for it), so without this field a policy would read the
 	// whole hand as free. Zero for an empty hand, which pays the cost.
 	Hand int `json:"hand,omitempty"`
+
+	// Energy is the energy counters the move removes from the seat
+	// (CR 107.14, ADR 0129 §7): a "Pay N {E}" activation's N, or N + X
+	// for "Pay X {E}" at the move's X. The params name no amount, so
+	// without it a policy would read Aethertorch Renegade's "Pay eight
+	// {E}" as free. Always positive when present: the enumerator has
+	// already checked the seat has the energy.
+	Energy int `json:"energy,omitempty"`
 }
 
 // withHandDiscard adds a "Discard your hand" count to a (possibly nil)
@@ -306,6 +314,20 @@ func withHandDiscard(c *MoveCost, n int) *MoveCost {
 		out = *c
 	}
 	out.Hand = n
+	return &out
+}
+
+// withEnergy adds an energy payment to a (possibly nil) MoveCost (ADR
+// 0129 §7). Nil stays nil for zero energy.
+func withEnergy(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Energy = n
 	return &out
 }
 

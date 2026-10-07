@@ -613,6 +613,10 @@ export interface AbilityCost {
   // activated abilities under the same wire name
   // (ActivatedAbilityView.LifeCost / ManaAbilityView.LifeCost).
   life_cost?: number;
+  // ADR 0129 §8: a "Pay N {E}" component, and "Pay X {E}". The
+  // server's cant_activate already says when the seat is short.
+  energy_cost?: number;
+  energy_cost_x?: boolean;
   // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
@@ -724,6 +728,24 @@ export function chargedManaCostNote(a: AbilityCost): string {
 export function chargedManaCostLabel(a: AbilityCost): string {
   if (a.charged_mana_cost === undefined) return a.mana_cost ?? "";
   return a.charged_mana_cost || "free";
+}
+
+// energyCostSymbols is an ability's energy component in brace notation,
+// for ManaCost to draw as {E} pips (ADR 0129 §8): "{E}{E}" for "Pay
+// {E}{E}", "{X}{E}" for "Pay X {E}" (and "{X}{E}{E}" for a printed part
+// beside the X, which no card has). "" when the ability pays no energy.
+export function energyCostSymbols(a: AbilityCost): string {
+  const fixed = "{E}".repeat(Math.max(0, a.energy_cost ?? 0));
+  if (a.energy_cost_x) return `{X}${fixed || "{E}"}`;
+  return fixed;
+}
+
+// energyCostWords says the same thing aloud: "pay 2 energy", "pay X
+// energy".
+export function energyCostWords(a: AbilityCost): string {
+  const n = a.energy_cost ?? 0;
+  if (a.energy_cost_x) return n > 0 ? `pay X plus ${n} energy` : "pay X energy";
+  return n > 0 ? `pay ${n} energy` : "";
 }
 
 // ReturnOptionsShape is the part of a LegalTargetsView a return-to-hand

@@ -16,6 +16,8 @@
   import {
     chargedManaCostLabel,
     chargedManaCostNote,
+    energyCostSymbols,
+    energyCostWords,
     judgeAbilityRows,
     type AbilityRowContext,
     type MenuAction,
@@ -325,6 +327,15 @@
                the printed text stale is visible. -->
           <span class="cost" title={costNote || `mana cost ${a.mana_cost}`}>
             <ManaCost cost={chargedManaCostLabel(a)} size={13} />
+          </span>
+        {/if}
+        {#if a.energy_cost || a.energy_cost_x}
+          <!-- ADR 0129 §8: "Pay N {E}" / "Pay X {E}" as energy pips.
+               Advisory; a seat short of energy has the row greyed by
+               the server's cant_activate. -->
+          {@const energy = energyCostSymbols(a)}
+          <span class="cost" title={energyCostWords(a)}>
+            <ManaCost cost={energy} size={13} label={energyCostWords(a)} />
           </span>
         {/if}
       </button>

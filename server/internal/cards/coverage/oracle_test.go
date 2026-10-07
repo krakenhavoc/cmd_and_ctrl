@@ -46,7 +46,6 @@ var knownOracleMismatches = map[string]string{
 	"Tidal Control | printed ability not registered | pay 2 life or {2}": "registered as two rows, one per cost",
 
 	// No cost shape yet (#1381 lists them).
-	"Jarad, Golgari Lich Lord | printed ability not registered | sacrifice a swamp and a forest":                           "two differently-typed sacrifice clauses in one cost",
 	"Kozilek, the Great Distortion | printed ability not registered | discard a card with mana value x":                    "X is read off the discarded card",
 	"Transmutation Font | printed ability not registered | {3}, {t}, sacrifice three artifact tokens with different names": "\"with different names\" has no sacrifice predicate",
 }

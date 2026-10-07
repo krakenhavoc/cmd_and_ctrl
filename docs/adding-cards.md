@@ -417,6 +417,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
 | Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
 | Sacrifice N permanents | `ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther}` | (none yet; #747) |
+| Sacrifice one of each kind | `ManaAbilityCost{SacrificeOther: SacrificeEach("a Swamp and a Forest", SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest", "Forest")).SacrificeOther}` | (an activated ability today: Jarad, Golgari Lich Lord; #2526) |
 | Pay N life | `ManaAbilityCost{Life: 1}` | Mana Confluence |
 | A mana cost | `ManaAbilityCost{Mana: "{1}"}` | the Signet cycle |
 | Remove N counters | `ManaAbilityCost{RemoveCounters: RemoveCountersFromThis("charge", 1).RemoveCounters}` | Vivid Creek, Ramos |
@@ -948,6 +949,48 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   `CMDCTRL_SCRYFALL_DUMP` set). It fails on a catalog card whose text
   reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
   names why.
+
+### Paying energy (ADR 0129, #1995)
+
+Energy is a counter on the player (CR 107.14, CR 122.1):
+`Player.Counters["energy"]`, mirrored on `Player.Energy`. Nothing new is
+stored for it.
+
+**Getting it.** "You get {E}{E}" is the `GetEnergy{N: 2}` primitive
+(`effects/energy.go`), which puts the counters on through ADR 0056's
+window, so a replacement on getting energy and a trigger on
+`EventPlayerCounterPlaced` both see it. The common line "When this
+creature enters, you get {E}{E}" is `WhenThisEntersYouGetEnergy(name, 2)`.
+Declare the energy a card gives in its purpose (`game.Purpose{Energy: 2}`
+on the Spec for a spell or an enters effect, on the row for an activated
+"you get"), the printed amount only, as for draws.
+
+**Paying it as an activation cost.** "Pay {E}{E}" is `PayEnergy(2)`,
+composed like every other component:
+
+```go
+Cost: Plus(TapCost(), PayEnergy(2)),           // "{T}, Pay {E}{E}:"
+Cost: PayEnergy(8),                             // "Pay eight {E}:"
+Cost: Plus(ManaCost("{W}{U}{U}"), TapCost(), PayXEnergy()), // "Pay X {E}:", X read with ctx.X()
+```
+
+The engine checks the activator's energy with the other costs, before
+anything is paid (CR 118.3, CR 601.2h), refuses with
+`game.ErrInsufficientEnergy` ("Not enough energy (have 2, need 3)"), and
+pays through `payEnergyLocked`, the one path that pays energy. Energy is
+never waived: strict, permissive and Cast anyway decide only the mana
+(ADR 0129 §4). "Pay X {E}" makes the ability demand X, X may not exceed
+the activator's energy, and the enumerator bounds X by it. The view
+stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
+short for.
+
+**Not yet:** energy paid while an ability resolves ("you may pay {E}{E}.
+If you do", "unless you pay {E}", "pay any amount of {E}") waits on
+ADR 0129 PR 3; a mana ability with an energy cost (Aether Hub) on PR 2;
+energy as an alternative cost, replicate or a keyword's cost on PR 4;
+"whenever you get one or more {E}" and "{E} you've paid or lost this
+turn" on PR 5. Put such a card on the matching registry row's `Waiting`
+list.
 
 ### Adding a replacement effect (S17+)
 
@@ -2925,6 +2968,19 @@ Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
 (#1421). The count the activator names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
 puts X in two places.
+
+**A sacrifice of different kinds (#2526):** "Sacrifice a Swamp and a Forest"
+(Jarad, Golgari Lich Lord) is `SacrificeEach("a Swamp and a Forest",
+SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest",
+"Forest"))` (`SacrificeCardType` for "a creature"), not `SacrificeN(2, …)`
+with a union predicate —
+that would accept two Swamps. The picks must fill every part with a
+different permanent; a dual land fills one part, never two. The enumerator
+searches for a set and prefers the permanent that fits fewest parts, and
+the picker holds confirm until the parts are filled
+(`game.TargetSpec.EachOf`, ADR 0020 amendment 2026-10-07). The rule is "one
+of each KIND" (a subtype or a card type, as data); a rule over an attribute of the picks ("different names")
+is not this and still waits.
 
 **A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
 hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE

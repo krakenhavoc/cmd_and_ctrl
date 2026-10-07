@@ -503,6 +503,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](docs/adding-cards.md#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](docs/adding-cards.md#abilities-any-player-may-activate-adr-0106-1793)
   - [Declaring what a card does: Purpose (ADR 0126 §6)](docs/adding-cards.md#declaring-what-a-card-does-purpose-adr-0126-6)
+  - [Paying energy (ADR 0129, #1995)](docs/adding-cards.md#paying-energy-adr-0129-1995)
   - [Adding a replacement effect (S17+)](docs/adding-cards.md#adding-a-replacement-effect-s17)
   - [Adding a copy effect (S16.5+)](docs/adding-cards.md#adding-a-copy-effect-s165)
   - [Adding a combat-keyword card (S18+)](docs/adding-cards.md#adding-a-combat-keyword-card-s18)
