@@ -1,6 +1,8 @@
 package heuristic
 
 import (
+	"strings"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -346,6 +348,46 @@ func (p *Policy) discardCost(st *state, id string, castID string, discards []str
 		}
 	}
 	return v
+}
+
+// discardsCost prices the cards an activated ability's discard cost
+// names (#2016): discardCost per card, then each card's discard payoff
+// back. With DiscardCostByCard off it is the flat Weights.Hand the cast
+// branch charges.
+func (p *Policy) discardsCost(st *state, sourceID string, ids []string) float64 {
+	var v float64
+	for _, id := range ids {
+		if p.cfg.DiscardCostByCard {
+			v += p.discardCost(st, id, sourceID, ids)
+		} else {
+			v += st.w.Hand
+		}
+		v -= st.discardPayoff(p.cfg, st.mine[id])
+	}
+	return v
+}
+
+// keywordCounters are the keyword counters (CR 122.1b) whose second
+// copy buys nothing.
+var keywordCounters = []string{"indestructible", "hexproof", "flying", "first strike", "deathtouch", "lifelink", "menace", "reach", "trample", "vigilance", "double strike"}
+
+// redundantKeywordCounter reports whether the row at index puts a
+// keyword counter on its own source that the source already has the
+// keyword for. Read off the row's label ("Put an indestructible counter
+// on Solphim") and the source's wire abilities: the wire declares no
+// structured purpose for it, and CR 122.1b grants the keyword once.
+func redundantKeywordCounter(src *protocol.CardView, index int) bool {
+	row := rowAt(src, index)
+	if row == nil {
+		return false
+	}
+	label := strings.ToLower(row.Label)
+	for _, kw := range keywordCounters {
+		if (strings.Contains(label, "put a "+kw+" counter on") || strings.Contains(label, "put an "+kw+" counter on")) && hasKeyword(src, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func contains(ids []string, id string) bool {

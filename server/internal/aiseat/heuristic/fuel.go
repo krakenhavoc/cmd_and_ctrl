@@ -92,6 +92,12 @@ func (p *Policy) fuelValue(st *state, id string) float64 {
 	if c := st.mine[id]; c != nil {
 		// A card in hand, or in the command zone: a resource AND a
 		// spell. Force of Will's pitch and Daze's alternative to one.
+		if isLand(c) {
+			// #2016: a land in hand is worth what the seat's own mana
+			// makes it — dear while it is short, cheap once it has
+			// enough — the price a discard cost charges (cardValue).
+			return st.w.Hand + st.cardValue(p.cfg, c)
+		}
 		return st.w.Hand + p.resolvedValue(st, c, 0)
 	}
 	if c := st.bf[id]; c != nil {

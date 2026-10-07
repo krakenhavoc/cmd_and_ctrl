@@ -457,7 +457,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			if len(opts) < dc.N {
 				continue
 			}
-			discardIDs = opts[:dc.N]
+			// #2016: the cheapest N in the seat's own opinion (Options.OrderCostFuel);
+			// hand order when it has none.
+			discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
 		}
 		// #1297: an "Exile N cards from your graveyard / hand" cost,
 		// solved as the discard above is — ONE payment, not one move
@@ -1825,7 +1827,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			if len(opts) < dc.N {
 				continue
 			}
-			manaDiscardIDs = opts[:dc.N]
+			manaDiscardIDs = e.cheapestFuelFirst(opts)[:dc.N] // #2016
 		}
 		// #1283: an "Exile a card from your hand" cost (Cadaverous
 		// Bloom), solved exactly as the discard above — ONE payment
