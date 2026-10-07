@@ -286,7 +286,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 		entry := AutoTapPlanEntry{CardID: planned.CardID}
 		if c, ok := g.cardInZoneLocked(g.Battlefield, planned.CardID); ok {
 			entry.Name, entry.Zone = c.Name, ZoneBattlefield
-			if ab := g.autoTapAbilityForRef(controller, c, planned.Ref); ab != nil {
+			if ab := g.plannedAbilityLocked(controller, c, planned); ab != nil {
 				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
 				entry.OncePerTurn = autoTapFreeOncePerTurn(*ab)
 				entry.Life, entry.Damage = ab.LifeCost, ab.RiderSelfDamage
@@ -332,6 +332,41 @@ type plannedTap struct {
 	// plan was built on. Empty is "the first acceptable ability",
 	// every plan's meaning before ADR 0093 and a hand source's now.
 	Ref string
+
+	// Costed marks an entry whose mana ability owes MANA (#2455): a
+	// Signet's "{1}, {T}", a filter land's "{W/U}, {T}". The executor
+	// pays that cost out of the pool, from the tokens FundedBy names,
+	// before it taps the source. Only autoTapCostedLocked makes one,
+	// and always behind every entry whose mana funds it.
+	Costed bool
+
+	// FundedBy names the mana that pays a Costed entry's cost: one
+	// token per mana, by the source that made it and its colour. A
+	// plan entry earlier in the same plan made it, or it was floating
+	// before the plan began. Nil on every other entry.
+	FundedBy []fundToken
+
+	// Slots is the colour the plan booked for each mana this entry
+	// makes, in slot order, and whether that mana funds a Costed
+	// entry rather than the cost being paid (#2455). Only a plan with
+	// a Costed entry carries it; every other plan leaves the executor
+	// to colour-pick greedily, as before.
+	Slots []plannedSlot
+}
+
+// fundToken names one mana of the pool by what made it and its colour
+// (#2455). Two tokens a source made in one colour are interchangeable,
+// so the pair is all the executor needs to find one.
+type fundToken struct {
+	Source uuid.UUID
+	Color  string
+}
+
+// plannedSlot is the colour a plan booked for one mana a source makes,
+// and whether that mana is spent on a Costed entry's cost (#2455).
+type plannedSlot struct {
+	Color string
+	Funds bool
 }
 
 // tapPlan is the auto-tapper's answer: the sources to spend, in the
@@ -428,6 +463,51 @@ func (g *Game) autoTapPreferringLocked(
 	// The solver picks from the front of the slice for each
 	// requirement, so restrictive sources get reserved for the
 	// requirements that need them most.
+	sortTapSources(sources)
+	need := cost.Generic + cost.XSlots*xValue
+	used := make([]bool, len(sources))
+	// #2461: WHICH slots of each source a coloured requirement has
+	// booked, not how many. A count cannot tell a Simic Growth
+	// Chamber's {G} from its {U}: with one {U} booked the next search
+	// started at slot 1 and found that same {U} again, so {U}{U} was
+	// "paid" by one {G}{U} land.
+	consumed := make([][]bool, len(sources))
+	for i := range sources {
+		consumed[i] = make([]bool, len(sources[i].Slots))
+	}
+	plan := make(tapPlan, 0, len(cost.Required))
+	budget := AutoTapBudget
+	// #1589: a Phyrexian slot a spend grant widened to any mana is
+	// solved last, as the pool solver pays it last — the backtracking
+	// would find the answer either way, but a wildcard tried first
+	// spends the search budget on sources a narrower slot needed.
+	//
+	// #1600: and a widened slot no source of a colour it prints can
+	// pay is DEFERRED to the generic recruit, exactly as the pool
+	// solver defers it — so the plan and the payment agree on which
+	// widened slots are paid as generic, and the planner never taps
+	// an Orrery's colourless for a {R} a Mountain was there to pay.
+	deferred := 0
+	// #2392: the life a plan may spend on pain-tier sources, shared by
+	// both passes — see painBudgetFor.
+	pain := painBudgetFor(g, controller)
+	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred, &pain) {
+		return nil, false
+	}
+	if budget <= 0 {
+		return nil, false
+	}
+	if !recruitGeneric(sources, used, consumed, &plan, need+deferred, &pain) {
+		return nil, false
+	}
+	return plan, true
+}
+
+// sortTapSources orders candidates for the coloured pass: the wish
+// first, then the tiers, then restrictiveness. Shared by the ordinary
+// planner and #2455's costed planner, so the two reach for sources in
+// the same order.
+func sortTapSources(sources []tapSource) {
 	sort.SliceStable(sources, func(i, j int) bool {
 		// #1212: a source the spell can read back comes first. Above
 		// restrictiveness rather than below it, because the point is
@@ -490,43 +570,6 @@ func (g *Game) autoTapPreferringLocked(
 		}
 		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
 	})
-	need := cost.Generic + cost.XSlots*xValue
-	used := make([]bool, len(sources))
-	// #2461: WHICH slots of each source a coloured requirement has
-	// booked, not how many. A count cannot tell a Simic Growth
-	// Chamber's {G} from its {U}: with one {U} booked the next search
-	// started at slot 1 and found that same {U} again, so {U}{U} was
-	// "paid" by one {G}{U} land.
-	consumed := make([][]bool, len(sources))
-	for i := range sources {
-		consumed[i] = make([]bool, len(sources[i].Slots))
-	}
-	plan := make(tapPlan, 0, len(cost.Required))
-	budget := AutoTapBudget
-	// #1589: a Phyrexian slot a spend grant widened to any mana is
-	// solved last, as the pool solver pays it last — the backtracking
-	// would find the answer either way, but a wildcard tried first
-	// spends the search budget on sources a narrower slot needed.
-	//
-	// #1600: and a widened slot no source of a colour it prints can
-	// pay is DEFERRED to the generic recruit, exactly as the pool
-	// solver defers it — so the plan and the payment agree on which
-	// widened slots are paid as generic, and the planner never taps
-	// an Orrery's colourless for a {R} a Mountain was there to pay.
-	deferred := 0
-	// #2392: the life a plan may spend on pain-tier sources, shared by
-	// both passes — see painBudgetFor.
-	pain := painBudgetFor(g, controller)
-	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred, &pain) {
-		return nil, false
-	}
-	if budget <= 0 {
-		return nil, false
-	}
-	if !recruitGeneric(sources, used, consumed, &plan, need+deferred, &pain) {
-		return nil, false
-	}
-	return plan, true
 }
 
 // painBudgetFor is how much life an auto-tap plan may spend on pain-tier
@@ -688,6 +731,11 @@ type tapSource struct {
 	// cracks a Treasure. The solver also bounds a plan's total Pain by
 	// painBudgetFor.
 	Pain int
+
+	// Cost is the mana this candidate's ability owes, priced through
+	// the CR 601.2f pass (#2455): a Signet's {1}. Zero on every source
+	// the ordinary solver sees; only gatherCostedSources sets it.
+	Cost ParsedCost
 }
 
 // lastResort is the tier #1215 opened for the sources a plan should
@@ -705,6 +753,16 @@ func (s tapSource) lastResort() bool { return s.Sacrifices || s.GrantedCreature 
 // alternatives — a Forest under Chromatic Lantern is both a {G} source
 // and an any-colour one, and the solver books whichever the cost needs.
 func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds) []tapSource {
+	return gatherSources(g, controller, excluded, prefer, false)
+}
+
+// gatherSources is gatherTapSources with the one switch #2455 added:
+// `costed` gathers the battlefield abilities that owe MANA
+// (autoTapCostedAbilitiesFor, a Signet's "{1}, {T}") instead of the
+// ones that owe none, through every other gate unchanged, and skips
+// the hand: a Spirit Guide owes no mana. Each costed candidate carries
+// its priced cost (tapSource.Cost).
+func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds, costed bool) []tapSource {
 	if g.Battlefield == nil {
 		return nil
 	}
@@ -737,7 +795,11 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// not only the first. The candidates of one permanent are
 		// alternatives — tapPlan.hasCard keeps the solver from booking
 		// two of them — and each carries the ref the executor fires by.
-		for _, cand := range g.autoTapAbilitiesFor(controller, c) {
+		cands := g.autoTapAbilitiesFor
+		if costed {
+			cands = g.autoTapCostedAbilitiesFor
+		}
+		for _, cand := range cands(controller, c) {
 			picked := &cand.ab
 			// #1242: the tapped check lives AFTER the pick and asks only of
 			// an ability that owes a {T}. It used to open the loop, which
@@ -837,8 +899,13 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				FreeOncePerTurn: autoTapFreeOncePerTurn(*picked),
 				// #2392: life the payment spends.
 				Pain: picked.LifeCost + picked.RiderSelfDamage,
+				// #2455: the mana the ability owes; zero unless costed.
+				Cost: cand.cost,
 			}, slots)
 		}
+	}
+	if costed {
+		return out
 	}
 	return gatherManaZoneSources(g, controller, excluded, prefer, identity, priceProduction, out)
 }
@@ -1159,14 +1226,15 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //     does not is a closure the planner cannot read, and it stays out;
 //
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
-//     planner would have to solve a second cost to fund the first,
-//     and the activation path deliberately refuses to auto-tap into a
-//     mana ability anyway. Signets stay hand-activated — unless a
-//     CR 601.2f modifier prices the component away to nothing (#1191:
-//     Boom Scholar's exhaust discount reaches Loot, the Pathfinder's
-//     "{G}, {T}"), in which case there is no second cost left to
-//     solve and the source is plannable exactly as if it had never
-//     printed one;
+//     planner would have to solve a second cost to fund the first, so
+//     the ORDINARY solver leaves such a source out — unless a CR 601.2f
+//     modifier prices the component away to nothing (#1191: Boom
+//     Scholar's exhaust discount reaches Loot, the Pathfinder's
+//     "{G}, {T}"), in which case there is no second cost left to solve
+//     and the source is plannable exactly as if it had never printed
+//     one. #2455: when the ordinary solver finds no plan, the costed
+//     planner (autotap_costed.go) solves the second cost too, funding
+//     a Signet's {1} from the plan's other sources;
 //
 //   - RESTRICTED output is a decision, not a resource (Ancient
 //     Ziggurat, Eldrazi Temple, Delighted Halfling's coloured half).
@@ -1225,6 +1293,9 @@ type autoTapCandidate struct {
 	ab      ManaAbilityShape
 	ref     string
 	granted bool
+	// cost is the priced mana the ability owes (#2455). Zero for every
+	// candidate autoTapAbilitiesFor returns.
+	cost ParsedCost
 }
 
 // autoTapAbilitiesFor is every mana ability of a permanent the
@@ -1280,6 +1351,33 @@ func (g *Game) autoTapAbilityForRef(asker uuid.UUID, source Card, ref string) *M
 //
 // Caller must hold g.mu.
 func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbilityShape) bool {
+	if !g.autoTapAcceptsBesidesManaCost(asker, source, a) {
+		return false
+	}
+	if a.ManaCost != "" {
+		// #1191: priced rather than read off the printed string —
+		// see the file header's MANA-cost bullet. Anything left to
+		// pay after the CR 601.2f pass drops the source from the
+		// ORDINARY planner; #2455's costed planner
+		// (autoTapCostedLocked) is the one that funds it. An
+		// unparseable cost or a modifier error is the same refusal a
+		// printed cost would have given the activation path, so it is
+		// treated as "still owes something" rather than plannable.
+		priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
+		if err != nil || !priced.Empty() {
+			return false
+		}
+	}
+	return true
+}
+
+// autoTapAcceptsBesidesManaCost is autoTapAbilityAccepts without its
+// mana-cost exclusion: the demand and every other exclusion. The
+// ordinary picker adds "and owes no mana"; #2455's costed picker
+// (autoTapCostedCost) adds "and owes mana the plan can fund".
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a ManaAbilityShape) bool {
 	// CR 113.6 (#1228): an ability that functions only from a
 	// HAND is not a battlefield permanent's mana ability, even
 	// when the card somehow reaches the battlefield — a Simian
@@ -1326,21 +1424,6 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 	}
 	if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
 		return false
-	}
-	if a.ManaCost != "" {
-		// #1191: priced rather than read off the printed string —
-		// see the file header's MANA-cost bullet. Spending the
-		// controller's floated mana on THIS activation is still a
-		// decision the planner cannot make, so anything left to
-		// pay after the CR 601.2f pass still drops the source; an
-		// unparseable cost or a modifier error is the same
-		// refusal a printed cost would have given the activation
-		// path, so it is treated as "still owes something" rather
-		// than plannable.
-		priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
-		if err != nil || !priced.Empty() {
-			return false
-		}
 	}
 	// #789: a cost that PUTS a counter on the source spends a
 	// resource the player never agreed to spend, exactly as a

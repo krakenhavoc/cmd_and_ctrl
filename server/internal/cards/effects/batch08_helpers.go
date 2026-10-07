@@ -300,11 +300,12 @@ func b08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.
 //	"{T}: Add {C}.
 //	 {A/B}, {T}: Add {A}{A}, {A}{B}, or {B}{B}."
 //
-// The hybrid cost is paid from the pool as printed (the engine has no
-// auto-tap into it), and the output is two independent {A|B} picks,
-// which is exactly the printed three-way choice. The colorless half
-// sits at index 0 so the auto-tapper reaches for it and never spends
-// floating mana on a filter.
+// The hybrid cost is paid from the pool as printed, and the output is
+// two independent {A|B} picks, which is exactly the printed three-way
+// choice. The colorless half sits at index 0 so the auto-tapper
+// reaches for it first; the filter half is planned (#2455) only when
+// nothing that owes no mana can pay, with its {A/B} funded by the
+// plan's other sources.
 func b08FilterLand(oracleID, name, a, b string) Spec {
 	return Spec{
 		OracleID:     oracleID,

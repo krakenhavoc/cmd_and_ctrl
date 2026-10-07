@@ -299,6 +299,13 @@ func (g *Game) autoTapTopUpLocked(
 			return plan, short, true
 		}
 	}
+	// #2455: no plan from the sources that owe nothing. One that funds a
+	// Signet's {1} (or a filter land's {W/U}) from the plan's other
+	// sources and the floating pool pays the WHOLE cost, so the cost
+	// itself is what the executor colour-picks against.
+	if plan, ok := g.autoTapCostedLocked(p, cost, xValue, excluded, prefer); ok {
+		return plan, cost, true
+	}
 	return nil, ParsedCost{}, false
 }
 

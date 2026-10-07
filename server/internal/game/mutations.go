@@ -2070,7 +2070,9 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card.Controller != p.ID {
 			continue
 		}
-		ab := g.autoTapAbilityForRef(p.ID, *card, planned.Ref)
+		// #2455: a Costed entry re-finds its ability through the costed
+		// picker, every other through autoTapAbilityForRef.
+		ab := g.plannedAbilityLocked(p.ID, *card, planned)
 		if ab == nil {
 			continue
 		}
@@ -2195,6 +2197,20 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor) {
 			continue
 		}
+		// #2455: a Costed entry's mana cost (a Signet's {1}), paid FIRST
+		// — ActivateManaAbility's component order, mana before the tap —
+		// out of the tokens the plan named for it, which earlier entries
+		// made. A cost the pool can no longer pay drops the entry before
+		// anything of it is paid.
+		if planned.Costed {
+			spent, ok := g.payPlannedManaCostLocked(p, *card, ab, planned.FundedBy)
+			if !ok {
+				continue
+			}
+			if len(spent) > 0 {
+				g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
+			}
+		}
 		// #789: the counters come off as part of the same payment as
 		// the tap, and first, so a refusal leaves the land untapped.
 		// applyCounterLocked for the same reason the activation path
@@ -2311,6 +2327,13 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				// rule applied to a multi-token pick.
 				color = planned.OneColor
 				for k := 0; k < slot.AmountFor(color); k++ {
+					bookColorRequirement(color, &pending)
+				}
+			} else if ps, ok := plannedSlotColor(planned, si, len(slots), slot.Options); ok {
+				// #2455: an explicit plan's colour. Mana that funds a
+				// Costed entry books none of the cost being paid.
+				color = ps.Color
+				if !ps.Funds {
 					bookColorRequirement(color, &pending)
 				}
 			} else {

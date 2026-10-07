@@ -17,8 +17,9 @@ package effects
 // Halfling's) is doubled by an unrestricted one, as the printed card
 // does. An empty pool after paying adds nothing.
 //
-// Not auto-tappable, like every ability with a mana component — the
-// player floats the {3} and clicks. See signets.go for the reasoning.
+// Not auto-tappable: the planner funds a mana component only for a
+// static output (#2455), and this one reads the very pool the plan is
+// filling. The player floats the {3} and clicks.
 //
 // No simplification.
 func init() {
