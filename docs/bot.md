@@ -2463,6 +2463,26 @@ the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
 still makes X=0 a legal announcement and the engine still accepts one;
 this is about what is worth putting in front of a player.
 
+**A bot does not move an Equipment between its own creatures for
+nothing.** Every equip used to be priced like a pump on the bot's own
+creature, whatever the Equipment was already on, so a free one
+(Lightning Greaves' Equip {0}) beat passing from either side. A
+heuristic seat moved its Greaves back and forth until the CR 732
+breaker named it, and the runner's hold on that permanent then stopped
+the table
+([#2449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2449)).
+Now an equip row says it is one on the wire (`equip`), and the
+heuristic prices a move between two of its own creatures below passing
+unless the new host, as it stands, is worth more than the current host
+is with the Equipment on it. Re-equipping the creature it is already on
+does nothing (CR 701.3b) and is never taken. The first equip of an
+unattached Equipment keeps its old price. Comparing the new host
+without the Equipment against the old one with it is what makes the
+Equipment come to rest: the move back can never also look better.
+Choosing the best host, such as moving Greaves onto a summoning-sick
+creature for haste, is still out of scope ([ADR
+0126](decisions/0126-bots-that-play-their-decks.md)).
+
 **An X paid in LIFE is priced the same way, one short of the life
 total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is
 announced by paying X life as an additional cost — so the affordable-X

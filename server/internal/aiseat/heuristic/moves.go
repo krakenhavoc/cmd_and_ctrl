@@ -283,6 +283,12 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			}
 			v, reason = pv, "activate another player's ability"
 		}
+		// #2449: moving an Equipment between the bot's own creatures
+		// buys only what the new host gains (equip_move.go). Priced
+		// flat, a free equip beat passing from either side for ever.
+		if !across && src != nil && st.idleEquip(src, cp) {
+			return idleEquipMove, "re-equip for no gain"
+		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
 		// place of the flat ActivateBase, and a row that sacrifices its
