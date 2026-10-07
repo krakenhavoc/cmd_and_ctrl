@@ -792,6 +792,7 @@ Hand × (draws + TutorWeight × tutors + SelfMillWeight × self_mill_tutor)
 − DiscardWeight × discards
 + (ManaSource + the ramp premium) × lands
 + TokenWeight × tokens
++ Weights.Energy × energy
 ```
 
 `TutorWeight` is 1.00. `SelfMillWeight` is 0.50, because Entomb finds a
@@ -2539,6 +2540,19 @@ empty hand costs nothing. Lion's Eye Diamond and Diamond Lion are only
 offered while the seat could cast an instant: holding priority, owing
 no prompt, with no prompt stopping the table. The auto-tapper never
 cracks one to pay for a cast.
+
+**Energy is priced at a flat amount per counter** ([ADR
+0129](decisions/0129-energy-getting-and-paying-it.md) §7, owner decision
+5). An activation that pays energy is only offered when the seat has it,
+through the predicate the engine refuses with, and `Move.Cost.Energy`
+names the counters it removes: "Pay N {E}", or N + X for "Pay X {E}",
+whose X the enumerator bounds by the seat's energy. The heuristic charges
+`Weights.Energy` (0.30, a quarter of a card in hand) per counter spent,
+and credits the same per counter a declared `energy` purpose gives, so a
+sink is used when what it buys is worth more than its counters. The
+baseline prices energy at nothing. The model tiers and the MCP seat read
+each seat's energy and other player counters on its board-text line
+("4 energy, 2 poison").
 
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
