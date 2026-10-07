@@ -190,6 +190,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ManaPool:                   spec.ManaPool,
 		PlayerKeywords:             spec.PlayerKeywords,
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
+		DamageStaysThroughCleanup:  spec.DamageStaysThroughCleanup,
 		DamageCantBePrevented:      spec.DamageCantBePrevented,
 		CantGainLife:               spec.CantGainLife,
 		DamageAsThough:             spec.DamageAsThough,
