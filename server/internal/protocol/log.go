@@ -150,6 +150,10 @@ const (
 	// LogZone entry it replaces, because "sacrificed" and "destroyed"
 	// are different facts to a player reading the table.
 	LogSacrifice LogKind = "sacrifice"
+	// LogExert — a player exerted a permanent (CR 701.43a, ADR 0130
+	// §5): "<player> exerted <card>". The skipped untap it causes is on
+	// the card's no_untap, so the line is the moment, not the state.
+	LogExert LogKind = "exert"
 	// LogEliminated — a player left the game: a concession, a
 	// state-based loss or an effect loss. Cause says which (ADR 0057
 	// Decision 7), and the text says why.
@@ -1137,6 +1141,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
+	case game.EventExert:
+		base.Kind = LogExert
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
 	case game.EventDrawCard:
 		// Never the card — a drawn card is hidden, and the owner's
 		// own hand already shows it. One entry per card, collapsed by
@@ -2052,6 +2061,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderZoneText(e, card)
 	case LogSacrifice:
 		return fmt.Sprintf("%s sacrificed %s", actor, card)
+	case LogExert:
+		return fmt.Sprintf("%s exerted %s", actor, card)
 	case LogDraw:
 		if e.Amount == 1 {
 			return fmt.Sprintf("%s drew a card", actor)

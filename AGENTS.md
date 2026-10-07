@@ -529,6 +529,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a choose-a-color card (#742)](docs/adding-cards.md#adding-a-choose-a-color-card-742)
   - [Shared vocabulary, and the clone gate](docs/adding-cards.md#shared-vocabulary-and-the-clone-gate)
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](docs/adding-cards.md#winning-losing-and-cant-lose-s40-adr-0057)
+  - [Exert (ADR 0130, #2048, CR 701.43)](docs/adding-cards.md#exert-adr-0130-2048-cr-70143)
   - [When NOT to add a catalog entry](docs/adding-cards.md#when-not-to-add-a-catalog-entry)
   - [Adding a trigger doubler (#752)](docs/adding-cards.md#adding-a-trigger-doubler-752)
   - [Emblems (#623)](docs/adding-cards.md#emblems-623)

@@ -129,6 +129,10 @@ type CardDef struct {
 	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
 	// attack_limits.go and ADR 0045 Decision 44 (#1507).
 	AttackLimits []AttackLimit
+	// ExertOnAttack is the static ability "You may exert this creature
+	// as it attacks" (CR 701.43d, ADR 0130 §2). Read through
+	// CatalogExertOnAttack, keyed by CatalogAbilityKey; see exert.go.
+	ExertOnAttack *ExertOnAttack
 	// HexproofBypasses are this permanent's "can be the targets of
 	// spells and abilities as though they didn't have hexproof"
 	// statics (CR 702.11) — Nowhere to Run, Kaya, Bane of the Dead.
@@ -611,6 +615,12 @@ func init() {
 	CatalogAttackLimits = func(key string) []AttackLimit {
 		if d := catalogDef(key); d != nil {
 			return d.AttackLimits
+		}
+		return nil
+	}
+	CatalogExertOnAttack = func(key string) *ExertOnAttack {
+		if d := catalogDef(key); d != nil {
+			return d.ExertOnAttack
 		}
 		return nil
 	}

@@ -327,6 +327,9 @@ var cardFields = plan(
 	// owner's question.
 	"CommanderReturnDue", carried, "",
 	"AttackingTarget", carried, "",
+	// ADR 0130 §8: a staged exert not yet paid. Carried: a restore
+	// point written between the verb and the lock-in must still pay it.
+	"ExertOnAttack", carried, "",
 	"BlockingTarget", carried, "",
 	// #1706: a multi-blocker's further attackers.
 	"AlsoBlocking", carried, "",

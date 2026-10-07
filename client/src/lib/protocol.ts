@@ -640,6 +640,10 @@ export interface LegalSourceView {
   faces?: number[];
   // Players, planeswalkers and battles this creature may attack.
   attack_targets?: string[];
+  // ADR 0130 §5: the creature may be exerted as it attacks right now
+  // (CR 701.43d) — an attack move with `exert: true` is offered beside
+  // the plain one. Absent otherwise.
+  exert_on_attack?: boolean;
   // Attackers this creature may block, alone or in a group.
   blocks?: string[];
   // #1918: present only when EVERY cast move for the card carries an
@@ -796,6 +800,9 @@ export type LogKind =
   | "no_blocks"
   | "token"
   | "sacrifice"
+  // ADR 0130 §5: a player exerted a permanent (CR 701.43a). `seat` is
+  // the player, `card_id` the permanent; server-rendered `text`.
+  | "exert"
   // A player left the game. `cause` says why ("life", "empty_draw",
   // "poison", "commander_damage", "effect", "concede"); `card_id` is
   // the source of an effect loss. One line per departure (ADR 0057).

@@ -745,7 +745,12 @@ type cardSnapshot struct {
 	// an older file has none, which is what every game before it was.
 	CommanderReturnDue bool      `json:"commanderReturnDue,omitempty"`
 	AttackingTarget    uuid.UUID `json:"attackingTarget"`
-	BlockingTarget     uuid.UUID `json:"blockingTarget"`
+	// ExertOnAttack is Card.ExertOnAttack (ADR 0130 §8): a choice to
+	// exert this attacker, staged and not yet paid. A restore point can
+	// be written between the verb and the lock-in. Additive within v7;
+	// omitted when false.
+	ExertOnAttack  bool      `json:"exertOnAttack,omitempty"`
+	BlockingTarget uuid.UUID `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -1933,6 +1938,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
+		ExertOnAttack:            c.ExertOnAttack,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		GoadedBy:                 c.LatestGoader(),
@@ -2766,6 +2772,7 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
+		ExertOnAttack:            c.ExertOnAttack,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		Goads:                    restoreGoads(c.Goads, c.GoadedBy),

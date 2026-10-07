@@ -741,6 +741,13 @@ type Spec struct {
 	// NoMoreThanNCanBlockEachCombat. Nil for nearly every card.
 	AttackLimits []game.AttackLimit
 
+	// ExertOnAttack is the static ability "You may exert this creature
+	// as it attacks" (CR 701.43d, ADR 0130 §2). Build it with
+	// ExertAsItAttacks or ExertAsItAttacksUnless in exert.go, and put
+	// any linked "when you do" trigger in Triggered with WhenExerted.
+	// Nil for nearly every card.
+	ExertOnAttack *game.ExertOnAttack
+
 	// HexproofBypasses are this permanent's printed "<these> can be
 	// the targets of spells and abilities [you control] as though
 	// they didn't have hexproof" statics (CR 702.11, #1560) —
