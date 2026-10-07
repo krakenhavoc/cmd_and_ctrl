@@ -1440,6 +1440,10 @@ pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseMax	number:int
 pendingChoices[].chooseMin	number:int
+pendingChoices[].choosePlayers	array
+pendingChoices[].choosePlayers[]	custom(uuid.UUID)
+pendingChoices[].chooseSuggested	array
+pendingChoices[].chooseSuggested[]	custom(uuid.UUID)
 pendingChoices[].chooser	custom(uuid.UUID)
 pendingChoices[].coinAllowStop	bool
 pendingChoices[].coinCount	number:int

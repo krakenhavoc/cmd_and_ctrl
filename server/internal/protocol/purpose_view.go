@@ -42,6 +42,9 @@ type PurposeView struct {
 	SelfMillTutor int `json:"self_mill_tutor,omitempty"`
 	// Tokens is the tokens it creates for its controller.
 	Tokens int `json:"tokens,omitempty"`
+	// Energy is the energy counters it gives its controller (ADR 0129
+	// §7).
+	Energy int `json:"energy,omitempty"`
 	// Sweep is present on a board wipe.
 	Sweep *SweepView `json:"sweep,omitempty"`
 	// DeathPayoff is set on a triggered row that pays out whenever a
@@ -107,6 +110,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		Tutors:              p.Tutors,
 		SelfMillTutor:       p.SelfMillTutor,
 		Tokens:              p.Tokens,
+		Energy:              p.Energy,
 		DeathPayoff:         p.DeathPayoff,
 	}
 	if d := p.DiscardPayoff; d != nil {

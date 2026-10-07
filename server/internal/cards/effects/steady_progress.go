@@ -12,18 +12,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // catalog: no trigger, no cost, no condition — just the keyword
 // action and a cantrip. It exists to pin the primitive end to end.
 //
-// The choice is made by the auto-pick in proliferate.go rather than
-// prompted; see that file for what the pick takes and where it
-// differs from paper.
+// The player chooses what to proliferate (proliferate.go, #2525), and
+// the draw is the proliferate's Then: it must come AFTER the answer,
+// or the card is drawn while the prompt is still open.
 func init() {
 	Register(Spec{
 		OracleID: "d2145ad3-fe7e-459b-b155-1b3ed089e936",
 		Name:     "Steady Progress",
+		// Every printed clause happens: the choice is the player's
+		// and the draw follows it.
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (Proliferate{}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+			controller := ctx.Controller()
+			return Proliferate{Then: func(g *game.Game) error {
+				return g.DrawNForEffect(controller, 1)
+			}}.Apply(ctx)
 		},
 	})
 }

@@ -178,7 +178,7 @@ func TestBloatedContaminatorProliferatesItsOwnPoison(t *testing.T) {
 	if opp.Life != game.StartingLife-4 || poisonOn(opp) != 1 {
 		t.Fatalf("after damage: %d life, %d poison; want %d and 1", opp.Life, poisonOn(opp), game.StartingLife-4)
 	}
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if poisonOn(opp) != 2 {
 		t.Errorf("after the proliferate: %d poison, want 2", poisonOn(opp))
 	}

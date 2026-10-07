@@ -64,6 +64,9 @@ var activatedRowScopes = map[string]rowScope{
 	// battlefield for every viewer to see.
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeSelf": rowPublic, "ManaCost": rowPublic, "LifeCost": rowPublic,
+	// ADR 0129 §8: the printed energy component; a player's energy is
+	// public, so the shortfall it greys the row with is too.
+	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
 	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,

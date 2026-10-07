@@ -950,6 +950,48 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
   names why.
 
+### Paying energy (ADR 0129, #1995)
+
+Energy is a counter on the player (CR 107.14, CR 122.1):
+`Player.Counters["energy"]`, mirrored on `Player.Energy`. Nothing new is
+stored for it.
+
+**Getting it.** "You get {E}{E}" is the `GetEnergy{N: 2}` primitive
+(`effects/energy.go`), which puts the counters on through ADR 0056's
+window, so a replacement on getting energy and a trigger on
+`EventPlayerCounterPlaced` both see it. The common line "When this
+creature enters, you get {E}{E}" is `WhenThisEntersYouGetEnergy(name, 2)`.
+Declare the energy a card gives in its purpose (`game.Purpose{Energy: 2}`
+on the Spec for a spell or an enters effect, on the row for an activated
+"you get"), the printed amount only, as for draws.
+
+**Paying it as an activation cost.** "Pay {E}{E}" is `PayEnergy(2)`,
+composed like every other component:
+
+```go
+Cost: Plus(TapCost(), PayEnergy(2)),           // "{T}, Pay {E}{E}:"
+Cost: PayEnergy(8),                             // "Pay eight {E}:"
+Cost: Plus(ManaCost("{W}{U}{U}"), TapCost(), PayXEnergy()), // "Pay X {E}:", X read with ctx.X()
+```
+
+The engine checks the activator's energy with the other costs, before
+anything is paid (CR 118.3, CR 601.2h), refuses with
+`game.ErrInsufficientEnergy` ("Not enough energy (have 2, need 3)"), and
+pays through `payEnergyLocked`, the one path that pays energy. Energy is
+never waived: strict, permissive and Cast anyway decide only the mana
+(ADR 0129 §4). "Pay X {E}" makes the ability demand X, X may not exceed
+the activator's energy, and the enumerator bounds X by it. The view
+stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
+short for.
+
+**Not yet:** energy paid while an ability resolves ("you may pay {E}{E}.
+If you do", "unless you pay {E}", "pay any amount of {E}") waits on
+ADR 0129 PR 3; a mana ability with an energy cost (Aether Hub) on PR 2;
+energy as an alternative cost, replicate or a keyword's cost on PR 4;
+"whenever you get one or more {E}" and "{E} you've paid or lost this
+turn" on PR 5. Put such a card on the matching registry row's `Waiting`
+list.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,
@@ -1287,6 +1329,19 @@ queued no prompt when the entry point returns;
 after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
+
+**Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
+asks: once the window above has settled it queues a
+`PendingChoiceProliferate` offering every permanent and player with a
+counter, with the beneficial pick suggested (and pre-selected, and what
+a bot answers with). It PAUSES the effect that asked, so anything the
+card says after "proliferate" goes in `Proliferate{Then: func(g
+*game.Game) error {…}}` and not on the next line — Steady Progress draws
+from its `Then`. Capture scalars, never the `*Context`. Explicit lists
+(`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
+proliferates is `CompletenessFull`; there is no caveat to write. In a
+test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+`answerProliferate(t, g, picks…)` takes a chosen one.
 
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an

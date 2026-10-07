@@ -4540,3 +4540,70 @@ Defiler, Cephalid Coliseum, Mask of Memory, Malcolm and Teferi, Akosa
 of Zhalfir use it. Other "draw, then …" cards whose follow-up is not a
 prompt (a life loss, a token) still sequence after the draw and are not
 converted here.
+
+## Amendment (2026-10-07) — proliferate is the player's choice (#2525)
+
+CR 701.34a: "Choose any number of permanents and/or players with
+counters on them, then give each another counter of each kind already
+there." The catalog picked for the player (`BeneficialProliferateChoice`):
+everything of yours a counter helps and everything of theirs one hurts.
+That is what a player takes nearly every time, and it is not the rule —
+a player could not decline a counter ("put another -1/-1 counter on my
+own persist creature"), and ten cards carried a caveat saying so.
+
+**1. A prompt, after the window.** `PendingChoiceProliferate` (kind
+`proliferate`, `game/proliferate.go`) is a card-set pick: it joins
+`isCardSetPickKind`, so the bounds, candidate and duplicate checks, the
+enumerator's subset walk, the wire's `options` projection and the
+departure table are the card-set picks' own. The player answers with
+`{card_ids}`, floor zero. The prompt is queued only once the CR 614
+window on the keyword action has settled, so a replacement still
+rewrites the COUNT and nothing else.
+
+**2. Each proliferate is its own choice.** `ProliferateChoosingForEffect`
+(`keyword_action.go`) is the asking entry point; the settled count of
+"proliferate twice" queues one prompt, and the second is built from the
+board the first answer left, as in paper. This retires the declared
+simplification in `keywordActionTail`. `ProliferateForEffect`, with
+explicit lists, is unchanged and queues nothing.
+
+**3. Seats ride in the same list.** `PendingChoice.ChoosePlayers` are the
+seats on offer beside `ChooseCards`; a seat is named in `card_ids` by its
+player ID. The candidate check accepts either. No second payload field.
+
+**4. A suggestion, not a rule.** `PendingChoice.ChooseSuggested` is the
+beneficial pick, moved into the engine
+(`Game.ProliferateSuggestionForEffect`; the catalog's
+`BeneficialProliferateChoice` is a wrapper). The client pre-selects it,
+`legal` always offers it as one whole move and puts its members first in
+the pool (so a board past the expansion cap still reaches it), and the
+heuristic scores an answer by its overlap with it (+1 a member, -1.5 a
+non-member), so the exact suggestion wins and the empty answer wins when
+there is none. The model tiers see the same move list. The empty answer is
+the AlwaysLegal move.
+
+**5. The rest of the sentence is a continuation.** A prompt pauses the
+effect that asked, so "Proliferate. Draw a card." (Steady Progress)
+cannot draw on the next line. `Proliferate{Then: …}` and
+`ProliferateChoosingForEffect(…, then)` carry it; it runs once every
+proliferate has been answered, at once when nothing on the board has a
+counter, and on a cancelled action. It is taken off the tail as a value
+(earthbend's #1282 shape) so it runs exactly once.
+
+**6. Departure.** `dropDefault` in the departure table: a chooser who
+leaves gives no counters, a "proliferate twice" does not ask the departed
+seat again, and the rest of the card finishes. Never reassigned.
+
+**7. Cards freed.** The shared caveat ("You don't choose what to
+proliferate") came off Staff of Compleation, Karn's Bastion, Contagion
+Clasp, Evolution Sage, Flux Channeler, Inexorable Tide, Bloated
+Contaminator, Cankerbloom and Mutational Advantage, which are now
+`CompletenessFull`; Steady Progress, which declared nothing, is stamped
+`CompletenessFull`. Yawgmoth, Thran Physician was already Full and is now
+true.
+
+**Not done.** A human answers in the modal grid; the permanents are not
+picked on the board the way a battlefield `choose_cards` is
+(`isBoardPickedCardSetKind`), because a seat has no card to click there.
+The wire's non-chooser view is the same as the chooser's: counters are on
+the table.

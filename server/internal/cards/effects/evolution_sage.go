@@ -15,8 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b45fdeab-00cc-4422-af9f-66f30a880a7c",
 		Name:         "Evolution Sage",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Landfall("Evolution Sage — proliferate (landfall)", Do(Proliferate{})),
 		},

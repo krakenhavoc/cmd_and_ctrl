@@ -672,6 +672,11 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// frame is stranded. A trigger it would cause is controlled by the
 	// player who left, so CR 800.4d keeps it off the stack.
 	PendingChoiceRingBearer: {onDrop: dropDefault},
+	// #2525. A proliferate is the proliferating player's own choice and
+	// is never reassigned. The drop runs the continuation with nothing
+	// chosen: no counters are given, a "proliferate twice" notices the
+	// seat has gone and stops, and the rest of the card finishes.
+	PendingChoiceProliferate: {onDrop: dropDefault},
 	// ADR 0108 §7. A divide_shield is the protected player's, and the
 	// shield was protecting them or their permanents, which CR 800.4a
 	// takes with them: nothing is reassigned. But the instance's other

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { abilityDemandsX, abilityMinX, abilityXSlots, suggestedAbilityX } from "./abilityX";
+import {
+  abilityDemandsX,
+  abilityEnergyMaxX,
+  abilityMinX,
+  abilityXSlots,
+  suggestedAbilityX,
+} from "./abilityX";
+import { energyCostSymbols, energyCostWords } from "./contextMenu.logic";
 import { beginForAbility, targeting, type TargetingState } from "./targeting";
 import type { ActivatedAbilityView, CardView } from "./protocol";
 
@@ -82,6 +89,36 @@ describe("suggestedAbilityX", () => {
 
   it("treats negative mana as none", () => {
     expect(suggestedAbilityX(ability({ demands_x: true }), -3)).toBe(0);
+  });
+});
+
+// ADR 0129 §8: "Pay X {E}" — X is capped at the seat's energy (CR
+// 118.3), and with no {X} in the mana the energy alone is the guess.
+describe("energy X", () => {
+  const sphinx = ability({ mana_cost: "{W}{U}{U}", demands_x: true, energy_cost_x: true });
+
+  it("caps X at the seat's energy", () => {
+    expect(abilityEnergyMaxX(sphinx, 4)).toBe(4);
+    expect(abilityEnergyMaxX(ability({ energy_cost_x: true, energy_cost: 1 }), 4)).toBe(3);
+    expect(abilityEnergyMaxX(ability({ energy_cost: 3 }), 4)).toBeUndefined();
+  });
+
+  it("suggests the energy for an X paid only in energy", () => {
+    expect(suggestedAbilityX(sphinx, 9, 4)).toBe(4);
+  });
+
+  it("keeps a mana X under the energy too", () => {
+    const both = ability({ mana_cost: "{X}", demands_x: true, x_slots: 1, energy_cost_x: true });
+    expect(suggestedAbilityX(both, 9, 4)).toBe(4);
+    expect(suggestedAbilityX(both, 2, 4)).toBe(2);
+  });
+
+  it("draws and says the energy component", () => {
+    expect(energyCostSymbols(ability({ energy_cost: 2 }))).toBe("{E}{E}");
+    expect(energyCostSymbols(sphinx)).toBe("{X}{E}");
+    expect(energyCostSymbols(ability())).toBe("");
+    expect(energyCostWords(ability({ energy_cost: 2 }))).toBe("pay 2 energy");
+    expect(energyCostWords(sphinx)).toBe("pay X energy");
   });
 });
 

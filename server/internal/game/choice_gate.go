@@ -221,6 +221,11 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// the rest of the card's sentence) waits on it: it blocks for
 	// option_pick's reason.
 	PendingChoiceRingBearer: true,
+	// #2525, CR 701.34a. "Choose any number of permanents and/or
+	// players" is asked mid-resolution and the counters are the rest of
+	// the card: it blocks for ring_bearer's reason, a table that could
+	// walk past the question would be answering it by doing.
+	PendingChoiceProliferate: true,
 	// ADR 0108 §7, CR 615.7. "Divide this shield among the damage" holds
 	// an instance's damage events, which are dealt once it is answered:
 	// a table that could walk past the question would be dealing the

@@ -326,7 +326,7 @@ func (p *Policy) dyingAnywayEligible(st *state, m legal.Move) bool {
 	if !p.cfg.SacrificeDyingAnyway {
 		return false
 	}
-	if c := m.Cost; c != nil && (c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0) {
+	if c := m.Cost; c != nil && (c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 || c.Energy > 0) {
 		return false
 	}
 	var ids []string
