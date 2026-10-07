@@ -6613,6 +6613,12 @@ Triggered: []game.TriggeredAbility{
   ```
 
   A row with no purpose is an exert the bot takes only when it is free.
+- **`ExertedGets(label, power, toughness, keywords...)`** is the whole
+  linked row of the self-pump cards ("it gets +1/+1 and gains flying
+  until end of turn"): the pump on this object, with the matching `Pump`
+  purpose declared. A card whose "when you do" refers to "that creature"
+  on a payoff (Rohirrim Chargers) builds its trigger with
+  `whenYouExertBuild`, which records the exerted object and its epoch.
 - **Exert as an activation cost** ("{T}, Exert this creature: …", ADR
   0130 §4) is a cost component. On an activated ability compose
   `ExertThis()`: `Plus(ManaCost("{W}"), TapCost(), ExertThis())` is Pride
