@@ -146,6 +146,26 @@ func costCommanderCases() []costCommanderCase {
 					return g.ActivateCatalogAbility(g.Seats[0].ID, src, 0, ActivateAbilityParams{ReturnIDs: []uuid.UUID{id}})
 				}, oneAbilityOnStack}
 		}},
+		// #2028: "Return this creature to its owner's hand" — the
+		// commander is the ability's own source.
+		{"ability: a commander returns itself to hand", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			advanceTo(t, g, StepPrecombatMain)
+			me := g.Seats[0]
+			id := seedCostCard(g.Battlefield, me.ID, me.ID, cmd, returnSelfAbility)
+			return costCommanderSetup{0, id, battlefieldZone, handOf(0),
+				func(g *Game) error {
+					return g.ActivateCatalogAbility(g.Seats[0].ID, id, 0, ActivateAbilityParams{})
+				}, oneAbilityOnStack}
+		}},
+		{"ability: a STOLEN commander returns itself to its owner's hand", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			advanceTo(t, g, StepPrecombatMain)
+			me, opp := g.Seats[0], g.Seats[1]
+			id := seedCostCard(g.Battlefield, opp.ID, me.ID, cmd, returnSelfAbility)
+			return costCommanderSetup{1, id, battlefieldZone, handOf(1),
+				func(g *Game) error {
+					return g.ActivateCatalogAbility(g.Seats[0].ID, id, 0, ActivateAbilityParams{})
+				}, oneAbilityOnStack}
+		}},
 
 		// --- discard -----------------------------------------------------
 		{"ability: discard a card", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {

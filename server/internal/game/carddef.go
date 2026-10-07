@@ -253,6 +253,11 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// DamageStaysThroughCleanup is this permanent's printed "Damage
+	// isn't removed from this creature during cleanup steps" (CR 514.2 —
+	// Ancient Adamantoise). Read from the battlefield through
+	// CatalogAbilityKey; see cleanup_damage.go.
+	DamageStaysThroughCleanup bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -745,6 +750,10 @@ func init() {
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
+	}
+	CatalogDamageStaysThroughCleanup = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.DamageStaysThroughCleanup
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {

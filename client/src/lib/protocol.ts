@@ -2490,6 +2490,10 @@ export interface ActivatedAbilityView {
   // over, advisory for the same reason and sending nothing for the
   // same reason: the source IS the payment.
   exile_self?: boolean;
+  // #2028: "Return this enchantment to its owner's hand" (Gossamer
+  // Chains, Shigeki). Advisory like `exile_self`: the source is the
+  // payment, so nothing is picked and nothing is sent.
+  return_self?: boolean;
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];

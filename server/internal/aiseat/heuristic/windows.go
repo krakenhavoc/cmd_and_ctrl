@@ -187,7 +187,7 @@ func (p *Policy) tapsACreature(st *state, m legal.Move) bool {
 // rowCostsOnlyManaAndTaps reports whether an activated ability's
 // printed cost has no component but mana and tapping.
 func rowCostsOnlyManaAndTaps(r *protocol.ActivatedAbilityView) bool {
-	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf &&
+	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf &&
 		r.SacrificeLabel == "" && r.LifeCost == 0 && r.LoyaltyCost == nil &&
 		r.DiscardCostN == 0 && r.TopCostN == 0 && r.ExileCostN == 0 &&
 		r.LibraryExileCostN == 0 && r.ReturnLabel == "" && r.ExilePermanentLabel == ""

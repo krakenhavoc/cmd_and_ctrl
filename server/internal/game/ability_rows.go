@@ -207,6 +207,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ManaPool", fallback: "Changes how mana empties"},
 	{field: "PlayerKeywords", label: playerKeywordRows},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
+	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "DamageCantBePrevented", fallback: "Damage can't be prevented"},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
 	{field: "DamageAsThough", fallback: "Changes how damage is dealt"},

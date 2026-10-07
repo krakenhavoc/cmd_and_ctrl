@@ -65,7 +65,7 @@ var activatedRowScopes = map[string]rowScope{
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeSelf": rowPublic, "ManaCost": rowPublic, "LifeCost": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"

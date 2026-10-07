@@ -76,6 +76,10 @@ func AbilityNeedsPermanentSource(cost AbilityCost) string {
 		return "a tap cost"
 	case cost.SacrificeSelf:
 		return "a sacrifice-this cost"
+	case cost.ReturnSelf:
+		// #2028: "Return this enchantment to its owner's hand" returns
+		// a permanent; a card in a hand or a graveyard is not one.
+		return "a return-this-to-hand cost"
 	case cost.Crew > 0:
 		return "a crew cost"
 	case cost.Loyalty != nil:
