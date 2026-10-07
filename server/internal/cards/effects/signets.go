@@ -28,11 +28,13 @@ package effects
 //     of the player's other sources for whatever the floating pool
 //     is missing (CR 605.3a lets a player activate mana abilities
 //     while paying for one). Mana already floating is spent first.
-//   - The auto-tapper still does not plan a Signet as a SOURCE for a
-//     spell (autoTapAbilityAccepts skips any ability with an unpriced
-//     mana cost): that would be a second cost to solve inside the
-//     first. A Signet already tapped for mana pays for the next spell
-//     like any other mana in the pool.
+//   - The auto-tapper plans a Signet as a SOURCE for a spell (#2455)
+//     when nothing that owes no mana can pay: it funds the {1} from
+//     the plan's other sources or the floating pool, activates the
+//     Signet after them, and pays it with exactly the mana it named
+//     (game/autotap_costed.go). A Signet never pays for itself, and
+//     two never pay for each other. A Signet already tapped for mana
+//     pays for the next spell like any other mana in the pool.
 //
 // Net-positive filtering: {1} in, {A}{B} out, so a Signet ramps by
 // one and fixes by two. That is the whole card and it is all here.

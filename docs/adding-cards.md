@@ -487,6 +487,24 @@ permanent, in order
 ([ADR 0011](decisions/0011-mana-pool-and-auto-tapper.md)
 amendments 2026-09-22, 2026-09-23 and 2026-09-30).
 
+**A mana cost (#2455).** When nothing that owes no mana can pay, the
+planner funds an ability's `Mana` component from the plan's other
+sources and the floating pool (`server/internal/game/autotap_costed.go`):
+a Plains pays an Orzhov Signet's `{1}` and the Signet's `{W}{B}` pays the
+spell, and one land can pay a Signet whose mana pays a second Signet. A
+source's own mana never pays its own cost, and two Signets never pay for
+each other. It plans an ability whose output is a static `Produced`
+string, with a cost of plain coloured, hybrid and generic symbols, that
+makes at least as much mana as it costs: the Signets, the Shadowmoor and
+Eventide filter lands, the `{1}, {T}: Add {A}{B}` lands (Skycloud
+Expanse, Darkwater Catacombs and their cycle), the `{1}, {T}: Add one
+mana of any color` filters (Prismatic Lens, Hall of Oracles, Talon
+Gates), Crystal Quarry, Cascading Cataracts, Loot's exhaust `{G}`, and
+Chromatic Star in the sacrifice tier. An output computed by `ProducedFunc` (Cabal Coffers, Nykthos,
+Doubling Cube, which reads the pool the plan is filling), a spend rider
+(Opal Palace) and a board with a mana-production replacement on it stay
+hand-activated.
+
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one
 component with two owners — so build it with the same constructors and
