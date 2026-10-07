@@ -2518,13 +2518,12 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2145): `game.ProtectionQualityRingBearer` (`game/protection.go`) matches a source that is its controller's Ring-bearer when the check is made (CR 701.54e). A Ring-bearer is a designation, not a characteristic, so the source snapshot carries it: `Characteristic.SourceRingBearer`, written by `SourceCharacteristics` and, for a source that has left, by `lastKnownSourceCharacteristics` from `PermanentInfo.RingBearer`. Every protection reader (targeting, attachment, damage, block) already goes through `ProtectionQuality.Matches`, so none changed. Wire: `ProtectionView.kind` `ring_bearer`; the bot reads `CardView.ring_bearer` in `heuristic.protectedFrom`.",
 	},
 	{
-		Slug: "target-relative-to-source", Name: "Targets described relative to the source", Kind: KindSeam, Status: StatusMissing,
+		Slug: "target-relative-to-source", Name: "Targets described relative to the source", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Targets compared with the permanent whose ability it is, such as \"target creature with lesser power\".",
-		Missing:     "A target can't yet be required to have less power than the creature whose ability it is.",
-		Rules:       []string{"115.1", "608.2b"},
+		Rules:       []string{"115.1", "608.2b", "608.2h"},
 		Issue:       2146,
-		Waiting:     []string{"Rangers of Ithilien"},
-		EngineNotes: "target clause: `game.TargetSpec.CardOK` sees the caster but not the source, and a `TargetsFrom` that reads the source's power reads the board, which ADR 0041 P9 forbids for a restorable trigger. Mentor is the same shape. Found landing ADR 0114 PR 5.",
+		Examples:    []string{"Rangers of Ithilien", "Hammer Dropper", "Unliving Psychopath"},
+		EngineNotes: "target clause: `game.TargetSpec.SourceOK` (`game/targets.go`) is handed the `TargetSource` and runs in the shared walk beside `CardOK`, at announce and again at resolution. `TargetSource.PowerToughness` reads the live source's effective power and toughness, or a departed source's last-known record (`PermanentInfo.Power` / `Toughness`, CR 608.2h); a walk with no source admits nothing. Card side: `effects.RelativeToSource` with `LesserPower`, `PowerNoGreater`, `GreaterPower`, `LesserToughness`, `GreaterToughness`, and the shared `effects.Mentor` trigger (`cards/effects/source_relative_targets.go`). No wire change.",
 	},
 	{
 		Slug: "face-down-piles", Name: "Face-down and face-up piles", Kind: KindSeam, Status: StatusImplemented,

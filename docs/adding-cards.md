@@ -64,6 +64,15 @@ surface tiny.
    "sacrifice another" cost, and `RemoveCountersAmongOthers` for "from
    among other permanents". `game.TargetSpec.ExcludeSource` is what they
    set (#1738). "Up to X targets" is `CountFromX` plus `UpToX`.
+   "With lesser power" / "with power less than this creature's power"
+   compares the target with the SOURCE, which a predicate never sees:
+   wrap the clause in `RelativeToSource(spec, LesserPower())` (siblings
+   `PowerNoGreater`, `GreaterPower`, `LesserToughness`,
+   `GreaterToughness`) and use `Mentor(key)` for mentor. It is data on
+   `game.TargetSpec.RelativeToSource`, judged at announce and at
+   resolution against the source's effective power, or its last-known
+   power once it has left (#2146). Don't read `source.CurrentPower()` in
+   a `TargetsFrom`: that freezes the bound when the trigger is built.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact

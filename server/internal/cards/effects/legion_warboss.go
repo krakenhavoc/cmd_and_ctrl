@@ -24,15 +24,14 @@ import (
 // temporary attacker" cards, not this one) — Legion Warboss's tokens
 // stick around.
 //
-// Mentor (CR 702.136) is new machinery for the catalog: a
-// TargetsFrom clause built fresh at trigger time from the mentoring
-// creature's OWN current power (read off the `source` value TargetsFrom
-// is handed, never a captured one), offering only attacking creatures
-// with strictly lesser power — which excludes Legion Warboss itself
-// without an explicit "other" clause, since nothing has less power
-// than its own. CR 603.3d drops the trigger without a prompt when no
-// attacker qualifies (Legion Warboss attacking alone, or every other
-// attacker at least as big).
+// Mentor (CR 702.136) is the shared Mentor() trigger: a clause
+// relative to the mentoring creature (#2146, game.TargetSpec.SourceOK),
+// offering only attacking creatures with strictly lesser power — which
+// excludes Legion Warboss itself without an explicit "other" clause,
+// since nothing has less power than its own. The comparison is made
+// again at resolution against the Warboss's power then. CR 603.3d drops
+// the trigger without a prompt when no attacker qualifies (Legion
+// Warboss attacking alone, or every other attacker at least as big).
 //
 // No simplification.
 func init() {
@@ -41,28 +40,7 @@ func init() {
 		Name:         "Legion Warboss",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches:   []game.EventKind{game.EventAttack},
-				AppliesTo: ThisAttacked,
-				TargetsFrom: func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
-					power := source.CurrentPower()
-					return &game.TargetSpec{
-						Mode: "creature", Label: "target attacking creature with lesser power",
-						Zones: []game.ZoneKind{game.ZoneBattlefield},
-						CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-							return c.IsCreature() && c.AttackingTarget != uuid.Nil && c.CurrentPower() < power
-						},
-						Min: 1, Max: 1,
-					}
-				},
-				Key: "Legion Warboss — mentor",
-				// b36CounterOnChosenAnimal is the shared "+1/+1 counter
-				// on the announced target" body (Animal Sanctuary,
-				// Benevolent Hydra, Hall of Oracles) — Mentor's payoff
-				// is the identical shape, so it is reused rather than
-				// duplicated (TestNoNewExactClonesInTheCatalog).
-				Effect: b36CounterOnChosenAnimal,
-			},
+			Mentor("Legion Warboss — mentor"),
 			AtBeginningOfYourCombat("Legion Warboss — create a 1/1 red Goblin that attacks this combat if able",
 				legionWarbossToken),
 		},
