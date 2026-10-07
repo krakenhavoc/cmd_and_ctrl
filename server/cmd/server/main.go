@@ -1105,7 +1105,7 @@ func newUserSettingsStore(database *db.DB) usersettings.Store {
 // 0011). It needs both a data directory (the images live under
 // <data>/playmats) and a database (the pointer is users.playmat_id);
 // without either it is disabled, which the client reads from GET
-// /me/playmat and hides its Settings section for.
+// /me/playmats and hides its Settings section for.
 func newPlaymatService(log *slog.Logger, dataDir string, database *db.DB) *playmat.Service {
 	if dataDir == "" || database == nil {
 		log.Info("playmats disabled — they need CMDCTRL_DATA_DIR and the user database")

@@ -1,15 +1,20 @@
-// Package playmat is a signed-in person's playmat: one image per
-// account that every player at a table sees behind that person's
-// battlefield, like a mat on a paper table (ADR 0128).
+// Package playmat is a signed-in person's playmats: up to three saved
+// images per account, one of them active, that every player at a table
+// sees behind that person's battlefield, like a mat on a paper table
+// (ADR 0128).
 //
-// The package has four parts, each in its own file:
+// The package has these parts, each in its own file:
 //
 //   - process.go validates and normalises an image. The bytes a client
 //     sends are never stored; what is stored is a fresh JPEG this
 //     package encoded.
 //   - fetch.go downloads a pasted URL once, behind an SSRF guard.
 //   - store.go keeps the files on disk, keyed by uuid.
-//   - service.go ties the file store to users.playmat_id.
+//   - service.go ties the file store to user_playmats (the three slots)
+//     and users.playmat_id (the active one).
+//   - fit.go is the best-size suggestion: what fits, and the crop that
+//     makes an image fit (ADR 0128 §11).
+//   - wash.go is the owner-set darkness under the cards (§10).
 package playmat
 
 import (

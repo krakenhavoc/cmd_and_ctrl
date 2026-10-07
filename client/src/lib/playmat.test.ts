@@ -4,6 +4,13 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  clampCropOrigin,
+  cropAxis,
+  cropBoxStyle,
+  dragCrop,
+  fitPromptText,
+  fitResultText,
+  nudgeCrop,
   DEFAULT_PLAYMATS_MODE,
   PLAYMATS_MODES,
   isPlaymatPath,
@@ -114,5 +121,81 @@ describe("display.playmats in the settings schema", () => {
     prior.display.playmats = "off";
     importSettings(JSON.stringify(prior));
     expect(get(settings).display.playmats).toBe("off");
+  });
+});
+
+// ---- the best-size suggestion's crop window (ADR 0128 §11) ----
+
+describe("the crop window", () => {
+  const tall = { x: 0, y: 125, width: 3000, height: 1750 }; // of a 3000 x 2000 image
+  const wide = { x: 423, y: 0, width: 1714, height: 1000 }; // of a 2560 x 1000 image
+
+  it("slides along the one axis being cropped", () => {
+    expect(cropAxis(3000, 2000, tall)).toBe("y");
+    expect(cropAxis(2560, 1000, wide)).toBe("x");
+    expect(cropAxis(2400, 1400, { x: 0, y: 0, width: 2400, height: 1400 })).toBeNull();
+  });
+
+  it("is kept inside the image and on its axis", () => {
+    expect(clampCropOrigin(3000, 2000, tall, { x: 50, y: -40 })).toEqual({ x: 0, y: 0 });
+    expect(clampCropOrigin(3000, 2000, tall, { x: 50, y: 9999 })).toEqual({ x: 0, y: 250 });
+    expect(clampCropOrigin(3000, 2000, tall, { x: 0, y: 100.4 })).toEqual({ x: 0, y: 100 });
+    expect(clampCropOrigin(2560, 1000, wide, { x: 9999, y: 70 })).toEqual({ x: 846, y: 0 });
+    // Nothing to choose: the server's origin stands.
+    const whole = { x: 0, y: 0, width: 2400, height: 1400 };
+    expect(clampCropOrigin(2400, 1400, whole, { x: 30, y: 30 })).toEqual({ x: 0, y: 0 });
+  });
+
+  it("steps by a fraction of the room, at least one pixel, and jumps to the ends", () => {
+    expect(nudgeCrop(3000, 2000, tall, { x: 0, y: 125 }, 1)).toEqual({ x: 0, y: 138 });
+    expect(nudgeCrop(3000, 2000, tall, { x: 0, y: 125 }, -1, 0.2)).toEqual({ x: 0, y: 75 });
+    expect(nudgeCrop(3000, 2000, tall, { x: 0, y: 125 }, "home")).toEqual({ x: 0, y: 0 });
+    expect(nudgeCrop(3000, 2000, tall, { x: 0, y: 125 }, "end")).toEqual({ x: 0, y: 250 });
+    expect(nudgeCrop(3000, 2000, tall, { x: 0, y: 250 }, 1)).toEqual({ x: 0, y: 250 });
+    // A sliver of room still moves.
+    const sliver = { x: 0, y: 1, width: 100, height: 58 };
+    expect(nudgeCrop(100, 60, sliver, { x: 0, y: 1 }, 1, 0.01)).toEqual({ x: 0, y: 2 });
+  });
+
+  it("turns a drag in screen pixels into image pixels", () => {
+    // 10 px of a 200 px frame over a 2000 px image is 100 px.
+    expect(dragCrop(3000, 2000, tall, { x: 0, y: 125 }, 80, 10, 300, 200)).toEqual({
+      x: 0,
+      y: 225,
+    });
+    expect(dragCrop(3000, 2000, tall, { x: 0, y: 125 }, 0, -999, 300, 200)).toEqual({ x: 0, y: 0 });
+    // A frame with no size yet moves nothing.
+    expect(dragCrop(3000, 2000, tall, { x: 0, y: 125 }, 0, 50, 0, 0)).toEqual({ x: 0, y: 125 });
+  });
+
+  it("is placed over the shown image in percent", () => {
+    expect(cropBoxStyle(3000, 2000, tall, { x: 0, y: 125 })).toEqual({
+      left: "0.000%",
+      top: "6.250%",
+      width: "100.000%",
+      height: "87.500%",
+    });
+  });
+});
+
+describe("the prompt's words", () => {
+  it("says the image's size and the best one, as the owner asked", () => {
+    expect(fitPromptText(3000, 2000, 2400, 1400)).toBe(
+      "This image is 3000\u00d72000. Playmats look best at 2400\u00d71400 (the shape of a paper playmat).",
+    );
+  });
+
+  it("warns only when the result will be smaller than the best size", () => {
+    const big = {
+      target_width: 2400,
+      target_height: 1400,
+      crop: { x: 0, y: 0, width: 3000, height: 1750 },
+      smaller: false,
+    };
+    expect(fitResultText(big)).not.toContain("soft");
+    expect(fitResultText(big)).toContain("2400\u00d71400");
+    expect(
+      fitResultText({ ...big, target_width: 800, target_height: 467, smaller: true }),
+    ).toContain("may look soft");
   });
 });

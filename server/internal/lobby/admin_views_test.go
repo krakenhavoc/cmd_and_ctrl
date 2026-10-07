@@ -70,6 +70,7 @@ type adminViewsWorld struct {
 	s        *adminStack
 	d        *db.DB
 	l        *Lobby
+	svc      *playmat.Service
 	token    string
 	ann      uuid.UUID
 	live     GameMeta
@@ -161,6 +162,7 @@ func newAdminViewsWorld(t *testing.T) *adminViewsWorld {
 		{GameID: w.practice.ID, ReadOnly: true, ConnectedAt: connected},
 	}
 	svc := playmat.NewService(playmat.NewFileStore(filepath.Join(dir, "playmats")), d.DB, nil)
+	w.svc = svc
 	w.s = newAdminStackIn(t, "", nil, func(c *Config) {
 		c.Lobby = l
 		c.AdminViews = adminview.NewSQLStore(d)
@@ -168,7 +170,7 @@ func newAdminViewsWorld(t *testing.T) *adminViewsWorld {
 		c.Playmats = svc
 	})
 	w.token = w.s.adminToken(t)
-	if _, err := svc.SetFromBytes(ctx, w.ann, pngOf(t, 64, 48)); err != nil {
+	if _, err := svc.SetFromBytes(ctx, w.ann, 1, pngOf(t, 64, 48)); err != nil {
 		t.Fatal(err)
 	}
 	w.secrets = []string{
@@ -272,13 +274,13 @@ func TestAdminViewsServeOnlyTheirFields(t *testing.T) {
 			[]string{"accounts[].avatar_url", "accounts[].playing_now", "accounts[].games_played"}},
 		{"/admin/users/" + w.ann.String(), fieldSet(
 			[]string{"generated_at", "games_truncated", "deck_requests_truncated",
-				"playmat_url", "sign_in.last_sign_in_at", "sign_in.discord_linked_at", "sign_in.sessions_invalid_before", "sign_in.revoke_path",
+				"playmats", "playmats[].slot", "playmats[].url", "playmats[].active", "sign_in.last_sign_in_at", "sign_in.discord_linked_at", "sign_in.sessions_invalid_before", "sign_in.revoke_path",
 				"decks", "decks[].id", "decks[].name", "decks[].format", "decks[].source_url", "decks[].commanders", "decks[].commanders[]",
 				"decks[].card_count", "decks[].created_at", "decks[].updated_at",
 				"deck_requests", "deck_requests[].deck_key", "deck_requests[].asked_at", "deck_requests[].issue_number", "deck_requests[].issue_url",
 				"games", "games[].their_seat"},
 			accountFields("account."), gameRowFields("games[].")),
-			[]string{"playmat_url", "sign_in.sessions_invalid_before", "decks[].commanders[]", "deck_requests[].issue_url", "games[].their_seat",
+			[]string{"playmats[].url", "playmats[].active", "sign_in.sessions_invalid_before", "decks[].commanders[]", "deck_requests[].issue_url", "games[].their_seat",
 				"games[].seats[].agent_client", "games[].seats[].discord_pending", "games[].creator.name"}},
 		{"/admin/games?practice=include", fieldSet([]string{"generated_at", "next_cursor", "games"}, gameRowFields("games[].")),
 			[]string{"games[].practice", "games[].seats[].agent_client", "games[].seats[].bot_tier", "games[].seats[].account.avatar_url",
@@ -549,33 +551,57 @@ func TestAdminViewsLogNoQueryString(t *testing.T) {
 	}
 }
 
-// The account view names the playmat the admin could remove, and stops
-// naming it once DELETE /admin/users/{id}/playmat has run.
-func TestAdminAccountViewShowsPlaymatUntilRemoved(t *testing.T) {
+// The account view lists the saved playmats the admin could remove,
+// each with its slot and which one is on show, and drops each one as
+// DELETE /admin/users/{id}/playmats/{slot} (or the remove-all
+// DELETE /admin/users/{id}/playmat) takes it away.
+func TestAdminAccountViewListsPlaymatsUntilRemoved(t *testing.T) {
 	w := newAdminViewsWorld(t)
+	if _, err := w.svc.SetFromBytes(context.Background(), w.ann, 3, pngOf(t, 64, 48)); err != nil {
+		t.Fatal(err)
+	}
 	path := "/admin/users/" + w.ann.String()
-	read := func() string {
+	type slot struct {
+		Slot   int    `json:"slot"`
+		URL    string `json:"url"`
+		Active bool   `json:"active"`
+	}
+	read := func() []slot {
 		code, raw := w.get(t, path)
 		if code != http.StatusOK {
 			t.Fatalf("GET %s: %d %s", path, code, raw)
 		}
 		var body struct {
-			PlaymatURL string `json:"playmat_url"`
+			Playmats []slot `json:"playmats"`
 		}
 		if err := json.Unmarshal(raw, &body); err != nil {
 			t.Fatal(err)
 		}
-		return body.PlaymatURL
+		return body.Playmats
 	}
-	if u := read(); !strings.HasPrefix(u, "/playmats/") {
-		t.Fatalf("playmat_url = %q, want a /playmats/ path", u)
+	got := read()
+	if len(got) != 2 || got[0].Slot != 1 || !got[0].Active || got[1].Slot != 3 || got[1].Active ||
+		!strings.HasPrefix(got[0].URL, "/playmats/") || !strings.HasPrefix(got[1].URL, "/playmats/") {
+		t.Fatalf("playmats = %+v, want slot 1 (active) and slot 3", got)
 	}
-	resp := do(t, w.s.srv, "DELETE", path+"/playmat", w.token, nil)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("DELETE playmat = %d", resp.StatusCode)
+	del := func(p string) int {
+		resp := do(t, w.s.srv, "DELETE", p, w.token, nil)
+		resp.Body.Close()
+		return resp.StatusCode
 	}
-	if u := read(); u != "" {
-		t.Errorf("playmat_url = %q after removal, want none", u)
+	if c := del(path + "/playmats/1"); c != http.StatusNoContent {
+		t.Fatalf("DELETE slot 1 = %d", c)
+	}
+	if got := read(); len(got) != 1 || got[0].Slot != 3 || got[0].Active {
+		t.Errorf("after removing the active slot: %+v, want slot 3, not active", got)
+	}
+	if c := del(path + "/playmats/7"); c != http.StatusBadRequest {
+		t.Errorf("DELETE slot 7 = %d, want 400", c)
+	}
+	if c := del(path + "/playmat"); c != http.StatusNoContent {
+		t.Fatalf("DELETE all = %d", c)
+	}
+	if got := read(); len(got) != 0 {
+		t.Errorf("playmats = %+v after removal, want none", got)
 	}
 }
