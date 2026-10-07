@@ -3215,6 +3215,15 @@ type ActivatedAbilityView struct {
 	// game.AbilityLifeCostLocked, the function the engine charges with.
 	LifeCost     int  `json:"life_cost,omitempty"`
 	SorcerySpeed bool `json:"sorcery_speed,omitempty"`
+	// EnergyCost is the printed "Pay N {E}" component (CR 107.14, ADR
+	// 0129 §8): the energy counters an activation removes from the
+	// activator. Omitted at zero. EnergyCostX marks "Pay X {E}": the
+	// announced X is added to EnergyCost, and DemandsX is set, so the
+	// client caps its X stepper at the seat's energy. When the
+	// controller is short, CantActivate carries the engine's refusal
+	// ("Not enough energy (have 2, need 3)").
+	EnergyCost  int  `json:"energy_cost,omitempty"`
+	EnergyCostX bool `json:"energy_cost_x,omitempty"`
 	// ConditionUnmet is true when the ability carries an activation
 	// condition (CR 602.1b — "Activate only if an opponent controls
 	// four or more lands", "Activate only during your turn") and that
@@ -9445,6 +9454,17 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if restricted {
 			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
 				game.ActivationAbility{Label: a.Label})
+		}
+		// ADR 0129 §8: the energy component, and the refusal's own text
+		// when the controller is short of the printed part (CR 118.3),
+		// from the predicate ActivateCatalogAbility refuses with. An X
+		// row is short only when even X = 0 cannot be paid.
+		v.EnergyCost = a.Cost.Energy
+		v.EnergyCostX = a.Cost.EnergyX
+		if v.CantActivate == "" && a.Cost.Energy > 0 {
+			if short := game.EnergyShortfall(g.PlayerByIDForEffect(caster), a.Cost.Energy); short != nil {
+				v.CantActivate = short.Error()
+			}
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label

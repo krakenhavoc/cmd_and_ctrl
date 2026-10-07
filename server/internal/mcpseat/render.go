@@ -544,6 +544,10 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 		if m.Cost.Loyalty != 0 {
 			notes = append(notes, "loyalty "+signed(m.Cost.Loyalty))
 		}
+		// ADR 0129 §7: the energy the move removes, at its X.
+		if m.Cost.Energy > 0 {
+			notes = append(notes, fmt.Sprintf("costs %d energy", m.Cost.Energy))
+		}
 	}
 	if m.IdleHint != "" {
 		notes = append(notes, m.IdleHint)
