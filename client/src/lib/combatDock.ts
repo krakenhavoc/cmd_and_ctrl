@@ -25,6 +25,7 @@
 import {
   attackAllLabel,
   attackAllTaxLabel,
+  attackLimitOn,
   attackTaxOn,
   eligibleAt,
   offersAttackPicker,
@@ -114,7 +115,9 @@ function attackRow(input: AttackRowInput): { lead?: string; row: DockAction[] } 
         label: "Choose attackers…",
         title: attackTaxOn(view, opp.id)
           ? "pick which attackers to send, and lock a land against the auto-tapper"
-          : "pick which attackers to send — an effect limits how many can attack",
+          : attackLimitOn(view, opp.id) !== null
+            ? "pick which attackers to send — an effect limits how many can attack"
+            : "pick which attackers to send, then confirm",
         onPress: () => input.onChooseAttackers(opp.id),
       });
     }
@@ -142,7 +145,9 @@ function attackRow(input: AttackRowInput): { lead?: string; row: DockAction[] } 
         ariaLabel: `Choose attackers against ${seatLabel(opp)}`,
         title: attackTaxOn(view, opp.id)
           ? `pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`
-          : `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`,
+          : attackLimitOn(view, opp.id) !== null
+            ? `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`
+            : `pick which attackers to send at ${seatLabel(opp)}, then confirm`,
         onPress: () => input.onChooseAttackers(opp.id),
       });
     }

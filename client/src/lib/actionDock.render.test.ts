@@ -408,6 +408,26 @@ describe("the dock's requests", () => {
     expect(dlg.contains(buttonsNamed(d.container, "next")[0]!)).toBe(false);
   });
 
+  it("offers Choose attackers… beside Attack all with two creatures and no tax (#2441)", () => {
+    pushDockRequest(attackRowRequest(attackInput()));
+    const d = mountDock();
+    const group = d.q('[role="group"][aria-label="declare attackers"]')!;
+    const choose = buttonsNamed(group, "Choose attackers…");
+    expect(choose).toHaveLength(1);
+    expect(buttonsNamed(group, "Attack Opp with all 2 creatures")).toHaveLength(1);
+    click(choose[0]!);
+    expect(chosen).toEqual([OPP]);
+  });
+
+  it("does not offer Choose attackers… for a lone attacker (#2441)", () => {
+    pushDockRequest(
+      attackRowRequest(attackInput({ plan: attackPlan({ eligible: [bear("b1")] }) })),
+    );
+    const d = mountDock();
+    const group = d.q('[role="group"][aria-label="declare attackers"]')!;
+    expect(buttonsNamed(group, "Choose attackers…")).toHaveLength(0);
+  });
+
   it("puts one Attack all button per opponent at a wider table, with the picker where it applies", () => {
     const view = gameView({
       seats: [seat(ME, "Me", 0), seat(OPP, "Opp", 1), seat("o2", "Two", 2)],
