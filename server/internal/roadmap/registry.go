@@ -1154,16 +1154,16 @@ var items = []Item{
 	{
 		Slug: "manifest-dread", Name: "Manifest dread", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Manifest dread looks at the top two cards of your library, lets you pick one to put onto the battlefield face down as a 2/2, and puts the other into your graveyard. Only you see the two cards.",
-		Missing:     "Four cards that print manifest dread wait on something else: turning a permanent face up for free (Hauntwoods Shrieker, Zimone, Mystery Unraveler), a trigger at the start of the second main phase (Defiant Survivor), and an extra cost of exiling cards from your graveyard (Abhorrent Oculus).",
+		Missing:     "Two cards that print manifest dread wait on something else: a trigger at the start of the second main phase (Defiant Survivor), and an extra cost of exiling cards from your graveyard (Abhorrent Oculus).",
 		Rules:       []string{"701.62"},
 		Issue:       2570,
 		ADR:         "0082-casting-face-down-and-turning-face-up.md",
 		Tracked:     "#2570 (under #886, the S43 tracker)",
-		Waiting:     []string{"Hauntwoods Shrieker", "Zimone, Mystery Unraveler", "Defiant Survivor", "Abhorrent Oculus"},
+		Waiting:     []string{"Defiant Survivor", "Abhorrent Oculus"},
 		Printed:     `(?i)\bmanifest dread\b`,
 		Examples:    []string{"Manifest Dread", "Paranormal Analyst", "Unsettling Twins"},
 		Phrases:     []string{"manifest dread"},
-		EngineNotes: "**The keyword action shipped** (ADR 0082 amendment 2026-10-07, #2570; see Closed seams): `Game.ManifestDreadThenForEffect` (`game/manifest_dread.go`) looks at the top two cards (controller-only knowledge), asks a `choose_cards` prompt (hideaway's, so the enumerator and both bots already answer it), manifests the chosen card through the CR 614 face-down entry and puts the other into its owner's graveyard. The continuation is told `ManifestDreadResult{Manifested, Graveyarded}`, and `EventManifestDread` carries both for \"whenever you manifest dread\". Three gaps keep four of the 26 printing cards out. (1) There is no `TurnFaceUpForEffect`: face up is a special action with a cost (`turnFaceUpLocked` inside `PerformSpecialAction`), so Hauntwoods Shrieker's \"reveal target face-down permanent, you may turn it face up\", Zimone's \"otherwise, you may turn a permanent you control face up\" and Staff Room's \"turn that creature face up\" have no door; Zimone also wants a per-object \"first time this ability has resolved this turn\" tally. (2) Defiant Survivor's survival triggers at the beginning of the second main phase and `EventBeginPrecombatMain` is the only main-phase event. (3) Abhorrent Oculus's \"as an additional cost to cast this spell, exile six cards from your graveyard\" has no `AdditionalCost` component. Unblocks is 0: each of the four waits on one of those, not on this row.",
+		EngineNotes: "**The keyword action shipped** (ADR 0082 amendment 2026-10-07, #2570; see Closed seams): `Game.ManifestDreadThenForEffect` (`game/manifest_dread.go`) looks at the top two cards (controller-only knowledge), asks a `choose_cards` prompt (hideaway's, so the enumerator and both bots already answer it), manifests the chosen card through the CR 614 face-down entry and puts the other into its owner's graveyard. The continuation is told `ManifestDreadResult{Manifested, Graveyarded}`, and `EventManifestDread` carries both for \"whenever you manifest dread\". Turning a permanent face up as an effect shipped too (ADR 0082 second amendment 2026-10-07, #2590): `Game.TurnFaceUpForEffect` (`game/face_down.go`) shares the special action's tail, pays nothing, and refuses a manifested noncreature card (CR 701.40b); Hauntwoods Shrieker, Zimone, Mystery Unraveler (its \"first time this ability has resolved this turn\" is the existing `Game.ResolvedThisTurn` tally) and Staff Room are complete. Two gaps keep two of the 26 printing cards out. (1) Defiant Survivor's survival triggers at the beginning of the second main phase and `EventBeginPrecombatMain` is the only main-phase event. (2) Abhorrent Oculus's \"as an additional cost to cast this spell, exile six cards from your graveyard\" has no `AdditionalCost` component. Unblocks is 0: each of the two waits on one of those, not on this row.",
 	},
 	{
 		Slug: "rooms", Name: "Rooms", Kind: KindSeam, Status: StatusPartial,
@@ -1171,7 +1171,7 @@ var items = []Item{
 		Rules:   []string{"709.3", "709.4", "709.5", "702.102", "702.127"},
 		Issue:   1756,
 		ADR:     "0103-rooms.md",
-		Missing: "Five Rooms play only part of their text, because one door does something the engine can't do yet: a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade). Experimental Lab's Staff Room also can't turn a creature face up for free.",
+		Missing: "Five Rooms play only part of their text, because one door does something the engine can't do yet: a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade).",
 		Tracked: "#1756",
 		// Walk-In Closet // Forgotten Cellar landed with
 		// exile-instead-of-graveyard-this-turn (#1823, ADR 0108 §4), the

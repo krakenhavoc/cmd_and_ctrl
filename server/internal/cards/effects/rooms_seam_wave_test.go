@@ -28,8 +28,9 @@ const (
 func TestRoomsSeamWaveDeclareTheirGaps(t *testing.T) {
 	// Moldering Gym, Ticket Booth and Underwater Tunnel are not here any
 	// more: their manifest-dread doors shipped with #2570 and they are
-	// complete. Experimental Lab keeps its Staff Room caveat.
-	for _, id := range []string{expLabOracle,
+	// complete. So is Experimental Lab // Staff Room, whose Staff Room
+	// turns a creature face up since #2590.
+	for _, id := range []string{
 		charredFoyerOracle, crampedVentsOracle, dazzlingOracle, secretArcadeOracle} {
 		spec, ok := Lookup(id)
 		if !ok {

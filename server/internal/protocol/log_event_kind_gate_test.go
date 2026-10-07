@@ -109,17 +109,6 @@ var silentEventKinds = map[string]string{
 	// catalog soak, which is exactly the posture the two rows above
 	// take.
 	"EventAttachSkipped": "CR 701.3b's attach that doesn't happen changes nothing a player could observe; the event is a breadcrumb for a stall dump, not a table fact (#812, #1017)",
-	// ADR 0082 / #1194. Turning a permanent face up is loud and the
-	// table is told — by the LogSpecialAction line for the CR 116.2g
-	// action that did it, which carries the card and the price
-	// ("Turn face up {1}{U}") and lands in the same frame as the
-	// permanent's identity. turnFaceUpLocked is the ONE emitter of
-	// this kind and it only ever runs from that action, so the two
-	// are the same moment; a second line would say it twice. If a
-	// second emitter ever appears — an effect that turns permanents
-	// face up without a special action — this row stops being true
-	// and the kind needs an arm.
-	"EventTurnedFaceUp": "the CR 116.2g special action that turns a permanent face up is the only emitter, and its LogSpecialAction line already names the card and the price",
 	// #1382. A card becomes plotted two ways and the table is told
 	// both: the plot special action's LogSpecialAction line names the
 	// card and the price ("Plot {3}{R}"), and an "it becomes plotted"

@@ -417,11 +417,21 @@ const (
 	// still on the entry, so a client can point at the permanent on
 	// the board, which is the half of the identity that IS public.
 	//
-	// The reverse direction has no line at all: EventTurnedFaceUp's
-	// silence row says the CR 116.2g special action's own line
-	// already carries it, and there is no special action here to
-	// carry this one.
+	// The reverse direction is LogTurnFaceUp, below, and only for an
+	// effect's turn: the CR 116.2g special action's own line already
+	// carries that one.
 	LogTurnFaceDown LogKind = "turn_face_down"
+	// LogTurnFaceUp — a face-down permanent was turned face up by an
+	// EFFECT (CR 708.8, CR 701.40b; ADR 0082's 2026-10-07 second
+	// amendment, #2590): Hauntwoods Shrieker, Zimone, Staff Room.
+	// `card_id` is the permanent, which is public again by the time
+	// the line is written (turning it up makes every seat a knower),
+	// and `target` the object that did it. The CR 116.2g special
+	// action has no line of this kind: its own LogSpecialAction line
+	// already names the card and the price, and the two are told
+	// apart by the event's Source (the permanent itself for the
+	// action, the effect's object otherwise).
+	LogTurnFaceUp LogKind = "turn_face_up"
 	// LogExtraTurn — an effect gave a player an extra turn (CR 500.7,
 	// ADR 0059 Decision 11). `seat` is the player who will take it and
 	// `card_id` the card whose effect created it; one entry per turn,
@@ -1593,6 +1603,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventTurnedFaceUp:
+		// CR 708.8, #2590. The special action narrates itself; only
+		// an effect's turn lands here, and it is told apart by the
+		// event's Source, which is the permanent for the action and
+		// the effect's object otherwise.
+		if ev.Source == ev.CardID {
+			return LogEvent{}, false
+		}
+		base.Kind = LogTurnFaceUp
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Target = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventTransform:
 		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
 		// says it — this is the only line the table gets, and without
@@ -2271,6 +2294,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s was turned face down", card)
 		}
 		return fmt.Sprintf("%s turned %s face down", target, card)
+	case LogTurnFaceUp:
+		if e.Target == "" {
+			return fmt.Sprintf("%s was turned face up", card)
+		}
+		return fmt.Sprintf("%s turned %s face up", target, card)
 	case LogExtraTurn:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s will take an extra turn", actor)

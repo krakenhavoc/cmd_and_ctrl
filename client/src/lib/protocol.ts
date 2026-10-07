@@ -979,7 +979,12 @@ export type LogKind =
   // any viewer, its controller included — so `text` reads "a card"
   // and `card_id` is still present for the client to point at the
   // permanent on the board.
-  | "turn_face_down";
+  | "turn_face_down"
+  // #2590, ADR 0082's 2026-10-07 second amendment: a face-down permanent was
+  // turned face up by an EFFECT (CR 708.8). `card_id` is the permanent, public
+  // again by then; `target` is the object that did it. The special action has
+  // no line of this kind (its `special_action` line carries it).
+  | "turn_face_up";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the

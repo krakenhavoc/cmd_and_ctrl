@@ -168,6 +168,7 @@ const LOG_TONE: Record<LogKind, string> = {
   phase_out: "tone-zone",
   phase_in: "tone-zone",
   turn_face_down: "tone-zone",
+  turn_face_up: "tone-zone",
 };
 
 export function logTone(kind: LogKind): string {
