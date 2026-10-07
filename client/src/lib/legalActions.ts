@@ -366,7 +366,9 @@ export function acrossActions(
   for (const c of cards) {
     if ((c.controller || c.owner) === viewerID) continue;
     const own = new Set(
-      (c.activated_abilities ?? []).filter((a) => a.any_player && a.ref).map((a) => a.ref),
+      (c.activated_abilities ?? [])
+        .filter((a) => (a.any_player || a.opponents_only || a.owner_only) && a.ref)
+        .map((a) => a.ref),
     );
     if (own.size === 0) continue;
     const live = actions.readyAbilityRefs(c.instance_id).filter((r) => own.has(r));

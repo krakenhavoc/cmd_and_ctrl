@@ -2681,6 +2681,13 @@ export interface ActivatedAbilityView {
   // live for the viewer right now is still the digest's answer
   // (`legal_actions`), never the row's. Absent on every other row.
   any_player?: boolean;
+  // ADR 0106 §1 amendment 2026-10-07 (#1947): "Only your opponents may
+  // activate this ability" (Clergy of the Holy Nimbus) and "Only this
+  // creature's owner may activate this ability" (Personal Incarnation).
+  // Read with the card's `controller` and `owner` to say who the row is
+  // open to; the controller's own opponents-only row is greyed.
+  opponents_only?: boolean;
+  owner_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;

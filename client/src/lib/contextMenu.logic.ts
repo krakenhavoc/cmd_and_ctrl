@@ -290,6 +290,39 @@ export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
   return (card.activated_abilities ?? []).filter((a) => a.any_player === true);
 }
 
+// reachesAcross says a row names an activator other than the plain
+// controller: any player, only the controller's opponents, or only the
+// owner (CR 602.2, ADR 0106 §1 and its 2026-10-07 amendment).
+export function reachesAcross(a: ActivatedAbilityView): boolean {
+  return a.any_player === true || a.opponents_only === true || a.owner_only === true;
+}
+
+// rowOpenToViewer mirrors game.MayActivate for a permanent on the
+// battlefield: whether the server would let this viewer activate the row.
+// The controller's own opponents-only row is the one a controller sees
+// and cannot use; the owner of a stolen owner-only row is the one a
+// non-controller can.
+export function rowOpenToViewer(
+  a: ActivatedAbilityView,
+  card: CardView,
+  viewerID: string | null | undefined,
+): boolean {
+  if (!viewerID) return false;
+  if (a.any_player === true) return true;
+  const controller = card.controller || card.owner;
+  if (a.opponents_only === true) return viewerID !== controller;
+  if (a.owner_only === true) return viewerID === card.owner;
+  return viewerID === controller;
+}
+
+// openAcrossRows is the rows a viewer who does not control the permanent
+// may activate on it.
+function openAcrossRows(card: CardView, viewerID: string): ActivatedAbilityView[] {
+  return (card.activated_abilities ?? []).filter(
+    (a) => reachesAcross(a) && rowOpenToViewer(a, card, viewerID),
+  );
+}
+
 // mayActivateAcross is CR 602.2's exception for the client: a SEATED
 // viewer who does not control the permanent may still open it for its
 // any-player rows (ADR 0106 §1 decision 6). A spectator never may: a
@@ -298,7 +331,7 @@ export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
 export function mayActivateAcross(card: CardView, viewerID: string | null): boolean {
   if (!viewerID) return false;
   if ((card.controller || card.owner) === viewerID) return false;
-  return anyPlayerRows(card).length > 0;
+  return openAcrossRows(card, viewerID).length > 0;
 }
 
 // menuAbilityRows is the activated-ability rows the ability popover
@@ -317,7 +350,7 @@ export function menuAbilityRows(
   if (viewerID === undefined || !card.activated_abilities) return rows;
   if (viewerID === null) return [];
   if ((card.controller || card.owner) === viewerID) return rows;
-  return rows.filter((a) => a.any_player === true);
+  return rows.filter((a) => reachesAcross(a) && rowOpenToViewer(a, card, viewerID));
 }
 
 // acrossFor says whether `card`'s activated rows are being opened by a
@@ -1064,6 +1097,19 @@ export function abilityRowBlocked(
   ctx: AbilityRowContext,
 ): string {
   const restrictions = ctx.card?.restrictions ?? [];
+  // A named-activator row this viewer's seat may not activate (CR 602.2):
+  // the controller's own opponents-only row, a thief's owner-only one.
+  const viewer = ctx.loyalty?.viewerID;
+  const named = a as Partial<ActivatedAbilityView>;
+  if (
+    kind === "activated" &&
+    ctx.card &&
+    viewer &&
+    (named.opponents_only === true || named.owner_only === true) &&
+    !rowOpenToViewer(named as ActivatedAbilityView, ctx.card, viewer)
+  ) {
+    return ROW_NOT_OPEN_TO_YOU;
+  }
   if (kind === "activated" && restrictions.includes("cant_activate")) {
     return EFFECT_STOPS_ABILITIES;
   }
@@ -1271,6 +1317,12 @@ function abilityItems(
 // any-player row for every seat (ADR 0106 §1 decision 2).
 export const EFFECT_STOPS_ABILITIES = "an effect stops its abilities";
 
+// ROW_NOT_OPEN_TO_YOU is the reason on a named-activator row (ADR 0106 §1
+// amendment 2026-10-07) the viewer's seat may not activate: the
+// controller's own "Only your opponents may activate this ability" row,
+// or an "Only this creature's owner may activate" row on a stolen creature.
+export const ROW_NOT_OPEN_TO_YOU = "you can't activate this ability";
+
 // ABILITY_NOT_RIGHT_NOW is the reason on an any-player row the exact
 // digest leaves out (ADR 0106 §1 decision 6): the server would refuse
 // it, and the row fields say nothing more specific. The same sentence
@@ -1327,7 +1379,7 @@ function anyPlayerAbilityItems(
     across: true,
     loyalty: { card, view, viewerID },
   };
-  const items = anyPlayerRows(card).map((a) => {
+  const items = openAcrossRows(card, viewerID).map((a) => {
     const blocked = abilityRowBlocked(a, "activated", ctx);
     return activatedItem(a, blocked, !blocked && !!a.ref && readyAbilities.includes(a.ref));
   });
