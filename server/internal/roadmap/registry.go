@@ -1315,10 +1315,10 @@ var items = []Item{
 	{
 		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that say \"whenever a counter is put on\" a permanent trigger once for each counter, so two counters at once are two triggers.",
-		Rules:       []string{"603.2c", "122.6"},
+		Rules:       []string{"603.2c", "122.6", "122.2"},
 		Issue:       1841,
-		Examples:    []string{"Fathom Mage", "Bloodcrazed Hoplite", "Flourishing Defenses"},
-		EngineNotes: "**Shipped** (#1841): `TriggeredAbility.PerCounter` names the counter kind, and `harvestMatchLocked` dispatches the ability once per counter the `EventCounterPlaced` put (`counterPlacedDeltaLocked`, the delta read off the log the way `b33CountersPlacedDelta` does). Replacements have already settled the count, so Doubling Season and Hardened Scales change how many triggers fire; each is its own stack object and its own \"you may\"; entry counters are placed after the permanent arrives, so its own ability sees them (CR 122.6). Constructors: `WheneverACounterIsPutOnThis` and `WheneverACounterIsPutOnACreature` in `effects/counter_each.go`. The removal side (Protean Hydra, \"whenever a counter is removed\") is still open as #2466.",
+		Examples:    []string{"Fathom Mage", "Bloodcrazed Hoplite", "Flourishing Defenses", "Protean Hydra", "Dinosaurs on a Spaceship"},
+		EngineNotes: "**Shipped** (#1841): `TriggeredAbility.PerCounter` names the counter kind, and `harvestMatchLocked` dispatches the ability once per counter the `EventCounterPlaced` put (`counterPlacedDeltaLocked`, the delta read off the log the way `b33CountersPlacedDelta` does). Replacements have already settled the count, so Doubling Season and Hardened Scales change how many triggers fire; each is its own stack object and its own \"you may\"; entry counters are placed after the permanent arrives, so its own ability sees them (CR 122.6). Constructors: `WheneverACounterIsPutOnThis` and `WheneverACounterIsPutOnACreature` in `effects/counter_each.go`. The removal side shipped as #2466: `TriggeredAbility.PerCounterRemoved` and `counterRemovedDeltaLocked` read the same event the other way round, `WheneverACounterIsRemovedFromThis` is the constructor (with optional zones for a suspended card's exile trigger), and counters lost because the permanent left the battlefield are not removals (CR 122.2).",
 	},
 	{
 		Slug: "target-bounded-by-counters-removed", Name: "Targets bounded by X or by the counters removed", Kind: KindSeam, Status: StatusImplemented,

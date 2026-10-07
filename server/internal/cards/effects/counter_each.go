@@ -40,3 +40,19 @@ func WheneverACounterIsPutOnACreature(kind, label string, effect Effect) game.Tr
 	t.PerCounter = kind
 	return t
 }
+
+// WheneverACounterIsRemovedFromThis is "whenever a [kind] counter is
+// removed from ~" — the removal twin of WheneverACounterIsPutOnThis
+// (#2466), once per counter (CR 603.2c, Protean Hydra's ruling). Any
+// cause counts: a cost, an effect, prevented damage. Counters that
+// vanish because the permanent left the battlefield do not (CR 122.2).
+// The `zones` are where the ability works — none for the battlefield,
+// ZoneExile for a suspended card's "while it's exiled".
+func WheneverACounterIsRemovedFromThis(kind, label string, effect Effect, zones ...game.ZoneKind) game.TriggeredAbility {
+	t := On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return source != nil && ev.Target == source.InstanceID && ev.Label == kind
+	}, label, effect)
+	t.PerCounterRemoved = kind
+	t.Zones = zones
+	return t
+}

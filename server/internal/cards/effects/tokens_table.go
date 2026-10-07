@@ -230,4 +230,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Toy artifact":        {Name: "Toy", TypeLine: "Token Artifact Creature — Toy", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Glimmer enchantment": {Name: "Glimmer", TypeLine: "Token Enchantment Creature — Glimmer", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"6/6 black Demon with flying":   {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"flying"}},
+
+	// #2466: its own alignment block, so a long key does not re-flow the table above.
+	"2/2 red and white Dinosaur with flying and haste": {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 2, Toughness: 2, Colors: []string{"R", "W"}, Keywords: []string{"flying", "haste"}},
 }
