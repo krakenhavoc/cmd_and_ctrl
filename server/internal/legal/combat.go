@@ -17,6 +17,10 @@ type attackParams struct {
 	// that performs the move, so a move offered on the strength of the
 	// tapper has to carry permission to use it.
 	AutoTap bool `json:"auto_tap,omitempty"`
+
+	// Exert is the choice to exert the attacker as it attacks
+	// (CR 701.43d, ADR 0130 §6). Set only on the twin move.
+	Exert bool `json:"exert,omitempty"`
 }
 
 type blockParams struct {
@@ -178,6 +182,31 @@ func (e *enumerator) combatMoves() {
 						AutoTap:  autoTap,
 					}),
 				})
+				// ADR 0130 §6: "You may exert this creature as it
+				// attacks" is an optional cost to attack (CR 701.43d,
+				// 508.1g), so the same attack is offered again with
+				// `exert: true`, through the function the verb checks
+				// (#544). Not gated on the linked trigger having a
+				// target: the creature may be exerted anyway (the
+				// Glorybringer ruling). Never AlwaysLegal: a
+				// requirement is met without paying an optional cost
+				// (CR 508.1d), so the plain move is the owed answer.
+				if g.CanExertAsItAttacksForEffect(c) {
+					e.add(Move{
+						Type:   TypeDeclareAttacker,
+						Player: e.seat,
+						Kind:   KindAttack,
+						Label:  attackExertMoveLabel(g, t, c.Name, price),
+						Source: c.InstanceID,
+						Cost:   withAttackTax(nil, price.Cost),
+						Params: mustJSON(attackParams{
+							Attacker: c.InstanceID.String(),
+							Target:   t.ID.String(),
+							AutoTap:  autoTap,
+							Exert:    true,
+						}),
+					})
+				}
 			}
 		}
 	case game.StepDeclareBlockers:
@@ -433,6 +462,17 @@ func joinNames(names []string) string {
 // whether it is or not.
 func attackMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, price game.AttackTaxPrice) string {
 	label := "Attack " + attackTargetLabel(g, t) + " with " + attacker
+	if price.IsFree() {
+		return label
+	}
+	return label + " (pays " + price.Cost + ")"
+}
+
+// attackExertMoveLabel is attackMoveLabel for the twin move that also
+// exerts the attacker (ADR 0130 §6).
+func attackExertMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, price game.AttackTaxPrice) string {
+	label := "Attack " + attackTargetLabel(g, t) + " with " + attacker +
+		" and exert it (it won't untap during your next untap step)"
 	if price.IsFree() {
 		return label
 	}

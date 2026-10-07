@@ -8080,6 +8080,18 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 // zero value is also the STRICT posture — pay from the pool, refuse if
 // short — so a caller that forgets the params cannot waive a tax.
 func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params DeclareAttackersParams) error {
+	return g.DeclareAttackerDeclWith(AttackDeclaration{Attacker: attackerID, Target: targetPlayerID}, params)
+}
+
+// DeclareAttackerDeclWith is DeclareAttackerWith taking the whole
+// declaration, so it can carry the choice to exert the attacker as it
+// attacks (ADR 0130 §2): `exert: true` on declare_attacker. The
+// choice is validated before anything is paid or staged
+// (ErrCantExert), staged on Card.ExertOnAttack and paid at the
+// lock-in. A creature re-pointed before the lock-in keeps a choice it
+// already staged.
+func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAttackersParams) error {
+	attackerID, targetPlayerID := one.Attacker, one.Target
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -8166,9 +8178,23 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			if err := g.attackRequirementRefusalLocked(decl); err != nil {
 				return err
 			}
+			// ADR 0130 §2: the choice to exert it as it attacks
+			// (CR 508.1g), checked before the tax so a refusal leaves
+			// the board as it was. The requirement check above ignores
+			// the choice: a requirement never forces an optional cost
+			// (CR 508.1d).
+			if err := g.validateExertChoicesLocked([]AttackDeclaration{one}); err != nil {
+				return err
+			}
 			price := g.priceAttackDeclarationLocked(decl)
 			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
 				return err
+			}
+			// Staged, paid at the lock-in. A re-point keeps a choice
+			// already staged; clear_combat or undo is how it is taken
+			// back.
+			if one.Exert {
+				card.ExertOnAttack = true
 			}
 			// #859: staging, not announcing. A creature is declared
 			// as an attacker once (CR 508.1), and the sandbox lets a
@@ -8206,6 +8232,12 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 type AttackDeclaration struct {
 	Attacker uuid.UUID
 	Target   uuid.UUID
+	// Exert is the player's choice to exert the attacker as it attacks
+	// (CR 701.43d, 508.1g; ADR 0130 §2). Staged on Card.ExertOnAttack
+	// and paid as the declaration locks in. A creature that can't be
+	// exerted as it attacks refuses the whole declaration with
+	// ErrCantExert. False is every declaration made before exert.
+	Exert bool
 }
 
 // DeclareAttackers declares an entire attacking set in ONE mutation.
@@ -8353,6 +8385,15 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.attackRequirementRefusalLocked(eligible); err != nil {
 		return nil, err
 	}
+	// ADR 0130 §2: an exert choice on an eligible attacker that can't
+	// be exerted refuses the whole batch, before any tax is paid. An
+	// INELIGIBLE attacker was skipped silently above (#318) and its
+	// choice with it; an exert flag the creature can't honour is a
+	// client bug, and dropping it would attack without the cost the
+	// player chose.
+	if err := g.validateExertChoicesLocked(eligible); err != nil {
+		return nil, err
+	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
@@ -8385,6 +8426,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			continue
 		}
 		g.setAttackTargetLocked(card, d.Target)
+		// ADR 0130 §2: staged, paid by the lock-in below.
+		if d.Exert {
+			card.ExertOnAttack = true
+		}
 		// CR 508.1f: declaring an attacker taps it unless it has
 		// vigilance (CR 702.20).
 		if !HasKeyword(card, "vigilance") {
@@ -9054,6 +9099,7 @@ func (g *Game) clearCombatLocked() {
 			attackerLeft = true
 		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+		g.Battlefield.Cards[i].ExertOnAttack = false
 		g.Battlefield.Cards[i].clearBlocking()
 	}
 	if attackerLeft {

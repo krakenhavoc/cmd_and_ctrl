@@ -109,6 +109,7 @@ battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
+battlefield.cards[].exertOnAttack	bool
 battlefield.cards[].faceDown	bool
 battlefield.cards[].faceDownKind	string
 battlefield.cards[].faceDownListed	object
@@ -532,6 +533,7 @@ exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
+exile.cards[].exertOnAttack	bool
 exile.cards[].faceDown	bool
 exile.cards[].faceDownKind	string
 exile.cards[].faceDownListed	object
@@ -1013,6 +1015,7 @@ lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
+lastKnownStack[].card.exertOnAttack	bool
 lastKnownStack[].card.faceDown	bool
 lastKnownStack[].card.faceDownKind	string
 lastKnownStack[].card.faceDownListed	object
@@ -1940,6 +1943,7 @@ phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
+phasedOut.cards[].exertOnAttack	bool
 phasedOut.cards[].faceDown	bool
 phasedOut.cards[].faceDownKind	string
 phasedOut.cards[].faceDownListed	object
@@ -2489,6 +2493,7 @@ seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
+seats[].command.cards[].exertOnAttack	bool
 seats[].command.cards[].faceDown	bool
 seats[].command.cards[].faceDownKind	string
 seats[].command.cards[].faceDownListed	object
@@ -2768,6 +2773,7 @@ seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
+seats[].emblems.cards[].exertOnAttack	bool
 seats[].emblems.cards[].faceDown	bool
 seats[].emblems.cards[].faceDownKind	string
 seats[].emblems.cards[].faceDownListed	object
@@ -3038,6 +3044,7 @@ seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
+seats[].graveyard.cards[].exertOnAttack	bool
 seats[].graveyard.cards[].faceDown	bool
 seats[].graveyard.cards[].faceDownKind	string
 seats[].graveyard.cards[].faceDownListed	object
@@ -3306,6 +3313,7 @@ seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
+seats[].hand.cards[].exertOnAttack	bool
 seats[].hand.cards[].faceDown	bool
 seats[].hand.cards[].faceDownKind	string
 seats[].hand.cards[].faceDownListed	object
@@ -3585,6 +3593,7 @@ seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
+seats[].library.cards[].exertOnAttack	bool
 seats[].library.cards[].faceDown	bool
 seats[].library.cards[].faceDownKind	string
 seats[].library.cards[].faceDownListed	object
@@ -4015,6 +4024,7 @@ stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
+stack.cards[].exertOnAttack	bool
 stack.cards[].faceDown	bool
 stack.cards[].faceDownKind	string
 stack.cards[].faceDownListed	object
@@ -4441,6 +4451,12 @@ turnTally.entered	map:array
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int
+turnTally.exerts	array
+turnTally.exerts[]	object
+turnTally.exerts[].epoch	number:int
+turnTally.exerts[].object	custom(uuid.UUID)
+turnTally.exerts[].phaseId	number:int
+turnTally.exerts[].player	custom(uuid.UUID)
 turnTally.firstEvent	number:int
 turnTally.loopActivated	string
 turnTally.loopAllowance	map:string
