@@ -944,6 +944,10 @@ export type LogKind =
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
   | "extra_turn"
+  // #2529 (CR 614.10): a queued extra turn was skipped instead of
+  // beginning (Trouble in Pairs). `seat` is who would have taken it,
+  // `card_id` the card whose effect created it.
+  | "extra_turn_skipped"
   // ADR 0059 Decision 11 (#753): an effect added phases or a step to
   // the current turn (CR 500.8 / 500.9). `seat` is the active player,
   // `card_id` the card whose effect added them, and `label` what was

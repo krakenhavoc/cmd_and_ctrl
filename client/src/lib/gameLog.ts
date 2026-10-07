@@ -139,6 +139,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0059 (#753). An extra turn changes who plays next, which is
   // the turn structure the step spine narrates — toned like it.
   extra_turn: "tone-step",
+  // #2529. A skipped extra turn is the same structure changing back.
+  extra_turn_skipped: "tone-step",
   // Added phases change the turn's structure too — another combat is
   // coming — so they are toned like the step spine as well.
   extra_phase: "tone-step",
