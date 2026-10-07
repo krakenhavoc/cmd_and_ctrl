@@ -1011,6 +1011,31 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
 	}
+	checkSacrificeSetRule(card, where, spec)
+}
+
+// checkSacrificeSetRule is #2526's guard for TargetSpec.EachOf on a
+// sacrifice clause ("a Swamp and a Forest"). The rule is a one-to-one
+// matching of picks to entries, so it only means something on a FIXED
+// count equal to the entry count, with at least two entries (one entry
+// is an ordinary clause) that each name something to match. Anything else would register a cost the
+// validator and the picker read differently.
+func checkSacrificeSetRule(card, where string, spec *game.TargetSpec) {
+	if len(spec.EachOf) == 0 {
+		return
+	}
+	if len(spec.EachOf) < 2 {
+		panic(fmt.Sprintf("effects.Register: %q %s has a one-entry set rule — that is an ordinary sacrifice clause (SacrificeN), not EachOf", card, where))
+	}
+	if spec.CountFromX || game.SacrificeCostVariable(spec) || spec.Min != len(spec.EachOf) || spec.Max != len(spec.EachOf) {
+		panic(fmt.Sprintf("effects.Register: %q %s has a set rule over %d entries but sacrifices %d to %d permanents — the count must be exactly the entry count (SacrificeEach)",
+			card, where, len(spec.EachOf), spec.Min, spec.Max))
+	}
+	for i, k := range spec.EachOf {
+		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s set-rule entry %d names no subtype or card type — it would match nothing", card, where, i))
+		}
+	}
 }
 
 // checkReturnClause is #1213's registration guard for the

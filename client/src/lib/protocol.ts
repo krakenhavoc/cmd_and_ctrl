@@ -2716,7 +2716,18 @@ export interface ModeOptionView {
 
 // LegalTargetsView is a clause's legal set right now plus its
 // target count (S20 sub-PR 5): min..max picks, max 0 = unbounded.
+// #2526: one part of a sacrifice clause's set rule ("a Swamp") and the
+// candidates that could fill it. A candidate that fits two parts (a
+// Swamp Forest) is listed in both.
+export interface SacrificeGroupView {
+  label: string;
+  cards?: string[];
+}
+
 export interface LegalTargetsView {
+  // #2526: a SACRIFICE clause's set rule — the picks must fill every
+  // group with a different permanent. See sacrificeCost.ts.
+  each_of?: SacrificeGroupView[];
   players?: string[];
   cards?: string[];
   min?: number;

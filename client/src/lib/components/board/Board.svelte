@@ -3089,6 +3089,7 @@
     options={sacrificeOptions}
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
+    eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -3168,6 +3169,7 @@
     options={altSacOptions}
     count={altSacBounds.max}
     min={altSacBounds.min}
+    eachOf={altSacPromptClause?.each_of}
     onConfirm={confirmAltSacrifice}
     onCancel={() => {
       altSacPromptCard = null;
@@ -3365,6 +3367,7 @@
     count={castSacrificeBounds.max}
     min={castSacrificeBounds.min}
     countIsX={sacrificePromptClause?.count_from_x === true}
+    eachOf={sacrificePromptClause?.each_of}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;

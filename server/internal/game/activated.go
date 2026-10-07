@@ -2135,6 +2135,13 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 			return nil, ErrIllegalTarget
 		}
 	}
+	// #2526: "Sacrifice a Swamp and a Forest" — each pick passed the
+	// clause's union predicate above; the SET must still fill every
+	// entry, one permanent each. Two Swamps are not a Swamp and a
+	// Forest.
+	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, ErrIllegalTarget
+	}
 	return append(out, chosen...), nil
 }
 

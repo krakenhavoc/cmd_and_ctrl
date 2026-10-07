@@ -26,21 +26,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 608.2h, departedCreaturePower): counters and an anthem's bonus
 // both count.
 //
-// Sandbox simplification, declared and weaker: the third ability is
-// not implemented. Abilities activated from the graveyard exist now
-// (#660), but "sacrifice a Swamp and a Forest" is two permanents with
-// DIFFERENT predicates in one cost, and a sacrifice cost judges each
-// permanent against one clause (seam set-level-sacrifice-cost, #998).
-// Jarad has to be recast from the command zone or reanimated the
-// ordinary way.
+// The third ability is an activated ability that functions from the
+// graveyard (#660, Zones) whose cost is two permanents of DIFFERENT
+// kinds, which is what SacrificeEach (#2526) added: the clause's
+// predicate is "a Swamp or a Forest" and TargetSpec.EachOf makes the
+// SET fill both parts, so two Swamps do not pay it and a Swamp Forest
+// pays one part but not both. The return is
+// returnThisCardFromYourGraveyardToHand, which does nothing when the
+// card left the graveyard in response.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "87e65e36-9483-49fe-b644-2caca092107f",
 		Name:         "Jarad, Golgari Lich Lord",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The last ability isn't implemented — Jarad can't be returned from your graveyard by sacrificing a Swamp and a Forest.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
@@ -69,6 +69,13 @@ func init() {
 				}
 				return eachOpponentLosesLife(g, item, power)
 			},
+		}, {
+			Label: "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand",
+			Cost: SacrificeEach("a Swamp and a Forest",
+				SacrificeSubtype("a Swamp", "Swamp"),
+				SacrificeSubtype("a Forest", "Forest")),
+			Zones:  []game.ZoneKind{game.ZoneGraveyard},
+			Effect: returnThisCardFromYourGraveyardToHand,
 		}},
 	})
 }
