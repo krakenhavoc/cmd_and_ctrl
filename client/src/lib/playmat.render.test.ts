@@ -22,6 +22,7 @@ const api = vi.hoisted(() => ({
   uploadMyPlaymat: vi.fn(),
   linkMyPlaymat: vi.fn(),
   removeMyPlaymat: vi.fn(),
+  setMyPlaymatWash: vi.fn(),
 }));
 vi.mock("./api", async (orig) => ({ ...((await orig()) as object), ...api }));
 
@@ -395,5 +396,57 @@ describe("the Settings Playmat tab", () => {
     expect(r.container.querySelector('[role="alert"]')!.textContent).toContain(
       "not a PNG, JPEG or WebP",
     );
+  });
+});
+
+// ADR 0128 amendment: the owner sets how dark their playmat is, and
+// every viewer draws it at that strength.
+describe("the owner-set wash", () => {
+  const person = (): Session =>
+    ({
+      token: "tok",
+      expiresAt: "2999-01-01T00:00:00Z",
+      principal: { role: "identified", user_id: "u1" },
+    }) as unknown as Session;
+
+  const washOf = (el: HTMLElement | null) => el!.style.getPropertyValue("--playmat-wash");
+
+  it("is drawn on the seat's mat, and the default when the server sends none", () => {
+    const view = gameView(MINE, THEIRS);
+    view.seats[1] = { ...view.seats[1], playmat_wash: 80 };
+    const r = mountPanel(view, false);
+    expect(washOf(r.container.querySelector<HTMLElement>(".playmat"))).toBe("80%");
+    const plain = mountPanel(gameView(MINE, THEIRS), true);
+    expect(washOf(plain.container.querySelector<HTMLElement>(".playmat"))).toBe("");
+    expect(panelSource()).toMatch(/var\(--bg\) var\(--playmat-wash, 58%\)/);
+  });
+
+  it("starts from the account's wash and saves once the slider rests", async () => {
+    vi.useFakeTimers();
+    try {
+      session.set(person());
+      api.fetchMyPlaymat.mockResolvedValue({ enabled: true, url: MINE, wash: 70 });
+      api.setMyPlaymatWash.mockResolvedValue({ enabled: true, url: MINE, wash: 45 });
+      const r = render(PlaymatSettings as never, {} as never);
+      await vi.advanceTimersByTimeAsync(10);
+      flushSync();
+      const slider = r.container.querySelector<HTMLInputElement>(
+        'input[aria-label="Playmat darkness"]',
+      )!;
+      expect(slider.value).toBe("70");
+      expect(washOf(r.container.querySelector<HTMLElement>(".preview"))).toBe("70%");
+      for (const v of ["60", "50", "45"]) {
+        slider.value = v;
+        slider.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      flushSync();
+      expect(washOf(r.container.querySelector<HTMLElement>(".preview"))).toBe("45%");
+      expect(api.setMyPlaymatWash).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(450);
+      expect(api.setMyPlaymatWash).toHaveBeenCalledTimes(1);
+      expect(api.setMyPlaymatWash).toHaveBeenCalledWith(45);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

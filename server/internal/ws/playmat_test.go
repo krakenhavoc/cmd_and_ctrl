@@ -75,3 +75,39 @@ func TestRoomClearsAndReplacesAPlaymat(t *testing.T) {
 		t.Errorf("after clearing: %q", got)
 	}
 }
+
+// ADR 0128 amendment: the owner's wash rides beside the URL, on the
+// same seats, and never without one.
+func TestRoomStampsTheWashOnlyBesideAPlaymat(t *testing.T) {
+	room, human, bot, _ := seatKindsRoom(t)
+	room.SetPlaymatWash(human, 70)
+	room.SetPlaymat(bot, "/playmats/bbbb")
+	room.SetPlaymatWash(bot, 40)
+	wash := func(id uuid.UUID) int {
+		view, _, err := room.Snapshot()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, s := range view.Seats {
+			if s.ID == id.String() {
+				return s.PlaymatWash
+			}
+		}
+		t.Fatalf("no seat %s", id)
+		return 0
+	}
+	if got := wash(human); got != 0 {
+		t.Errorf("a wash with no playmat reached the wire: %d", got)
+	}
+	room.SetPlaymat(human, "/playmats/aaaa")
+	if got := wash(human); got != 70 {
+		t.Errorf("wash = %d, want 70", got)
+	}
+	if got := wash(bot); got != 0 {
+		t.Errorf("a bot seat carries wash %d", got)
+	}
+	room.SetPlaymatWash(human, 0)
+	if got := wash(human); got != 0 {
+		t.Errorf("after clearing the wash: %d", got)
+	}
+}

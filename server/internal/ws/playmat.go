@@ -41,6 +41,25 @@ func (r *Room) SetPlaymat(playerID uuid.UUID, url string) {
 	r.playmats[playerID] = url
 }
 
+// SetPlaymatWash records the owner-set wash of seat playerID's playmat
+// (ADR 0128 amendment). 0 clears it, and the stamp then sends none, so
+// the client uses its default. Same locking as SetPlaymat.
+func (r *Room) SetPlaymatWash(playerID uuid.UUID, wash int) {
+	if playerID == uuid.Nil {
+		return
+	}
+	r.playmatMu.Lock()
+	defer r.playmatMu.Unlock()
+	if wash <= 0 {
+		delete(r.playmatWashes, playerID)
+		return
+	}
+	if r.playmatWashes == nil {
+		r.playmatWashes = map[uuid.UUID]int{}
+	}
+	r.playmatWashes[playerID] = wash
+}
+
 // stampPlaymatsLocked writes each human seat's playmat onto a freshly
 // captured view. Caller holds r.mu. The same URL goes to every viewer:
 // a playmat is public to the table, like the seat's name.
@@ -50,6 +69,7 @@ func (r *Room) stampPlaymatsLocked(view *protocol.GameView) {
 	for i := range view.Seats {
 		s := &view.Seats[i]
 		s.PlaymatURL = ""
+		s.PlaymatWash = 0
 		if len(r.playmats) == 0 || s.IsBot || s.IsAgent {
 			continue
 		}
@@ -58,5 +78,8 @@ func (r *Room) stampPlaymatsLocked(view *protocol.GameView) {
 			continue
 		}
 		s.PlaymatURL = r.playmats[id]
+		if s.PlaymatURL != "" {
+			s.PlaymatWash = r.playmatWashes[id]
+		}
 	}
 }

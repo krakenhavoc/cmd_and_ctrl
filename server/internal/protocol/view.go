@@ -1583,6 +1583,11 @@ type PlayerView struct {
 	// capture from what the lobby set (ws/playmat.go), so a change made
 	// mid-game reaches the table on the next snapshot.
 	PlaymatURL string `json:"playmat_url,omitempty"`
+	// PlaymatWash is how strongly the owner darkens that playmat under
+	// the cards, in percent (30 to 90), set by the owner and the same
+	// for every viewer (ADR 0128 amendment). Present only with
+	// PlaymatURL; a client with none in hand uses 58.
+	PlaymatWash int `json:"playmat_wash,omitempty"`
 
 	// IsHost marks the table host (ADR 0075 §2.1) — the seat that may
 	// change table settings alongside the server admin. Public to

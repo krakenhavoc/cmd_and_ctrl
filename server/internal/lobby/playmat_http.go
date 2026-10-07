@@ -15,6 +15,7 @@ package lobby
 // {"enabled":false} on GET and 503 on a write.
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"mime"
@@ -39,6 +40,10 @@ type playmatResponse struct {
 	URL     string `json:"url,omitempty"`
 	Width   int    `json:"width,omitempty"`
 	Height  int    `json:"height,omitempty"`
+	// Wash is the owner-set darkness over the image, in percent (ADR
+	// 0128 amendment): theirs, or playmat.DefaultWash. Sent whenever
+	// the feature is enabled, image or not.
+	Wash int `json:"wash,omitempty"`
 }
 
 func (c Config) playmatService() *playmat.Service { return c.Playmats }
@@ -52,6 +57,59 @@ func playmatBody(info playmat.Info) playmatResponse {
 func writePlaymat(w http.ResponseWriter, body playmatResponse) error {
 	w.Header().Set("Cache-Control", "no-store")
 	return writeJSON(w, http.StatusOK, body)
+}
+
+// writeOwnPlaymat is writePlaymat with the caller's wash filled in, for
+// every answer the feature gives while it is enabled.
+func writeOwnPlaymat(c Config, w http.ResponseWriter, user uuid.UUID, body playmatResponse) error {
+	if body.Enabled {
+		body.Wash = c.playmatService().Wash(user)
+	}
+	return writePlaymat(w, body)
+}
+
+// patchPlaymatRequest is the body of PATCH /me/playmat.
+type patchPlaymatRequest struct {
+	Wash int `json:"wash"`
+}
+
+// patchMyPlaymat is PATCH /me/playmat: the owner-set wash (ADR 0128
+// amendment), 30 to 90. It may be set before any image is uploaded. The
+// table sees the change at once, through the same push an upload uses.
+func patchMyPlaymat(c Config, w http.ResponseWriter, r *http.Request) error {
+	p, err := signedInUser(r)
+	if err != nil {
+		return err
+	}
+	svc := c.playmatService()
+	if !svc.Enabled() {
+		return playmatError(c, w, playmat.ErrDisabled)
+	}
+	var req patchPlaymatRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 1024)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		return httpError(http.StatusBadRequest, "invalid body: "+err.Error())
+	}
+	if err := svc.SetWash(r.Context(), p.UserID, req.Wash); err != nil {
+		if errors.Is(err, playmat.ErrBadWash) {
+			return httpError(http.StatusBadRequest, err.Error())
+		}
+		return playmatError(c, w, err)
+	}
+	url := svc.URL(p.UserID)
+	if url != "" {
+		c.playmatChanged(p.UserID, url)
+	}
+	info, ok, err := svc.Get(r.Context(), p.UserID)
+	if err != nil {
+		return playmatError(c, w, err)
+	}
+	if !ok {
+		return writeOwnPlaymat(c, w, p.UserID, playmatResponse{Enabled: true})
+	}
+	return writeOwnPlaymat(c, w, p.UserID, playmatBody(info))
 }
 
 // playmatError maps the playmat package's refusals to statuses. Every
@@ -92,9 +150,9 @@ func myPlaymat(c Config, w http.ResponseWriter, r *http.Request) error {
 		return playmatError(c, w, err)
 	}
 	if !ok {
-		return writePlaymat(w, playmatResponse{Enabled: true})
+		return writeOwnPlaymat(c, w, p.UserID, playmatResponse{Enabled: true})
 	}
-	return writePlaymat(w, playmatBody(info))
+	return writeOwnPlaymat(c, w, p.UserID, playmatBody(info))
 }
 
 // putMyPlaymat is PUT /me/playmat: a multipart body whose "file" part is
@@ -122,7 +180,7 @@ func putMyPlaymat(c Config, w http.ResponseWriter, r *http.Request) error {
 		return playmatError(c, w, err)
 	}
 	c.playmatChanged(p.UserID, info.URL)
-	return writePlaymat(w, playmatBody(info))
+	return writeOwnPlaymat(c, w, p.UserID, playmatBody(info))
 }
 
 // readPlaymatPart streams the multipart body to its "file" part and
@@ -190,7 +248,7 @@ func linkMyPlaymat(c Config, w http.ResponseWriter, r *http.Request) error {
 		return playmatError(c, w, err)
 	}
 	c.playmatChanged(p.UserID, info.URL)
-	return writePlaymat(w, playmatBody(info))
+	return writeOwnPlaymat(c, w, p.UserID, playmatBody(info))
 }
 
 // deleteMyPlaymat is DELETE /me/playmat. Removing none is a success.
@@ -207,7 +265,7 @@ func deleteMyPlaymat(c Config, w http.ResponseWriter, r *http.Request) error {
 		return playmatError(c, w, err)
 	}
 	c.playmatChanged(p.UserID, "")
-	return writePlaymat(w, playmatResponse{Enabled: true})
+	return writeOwnPlaymat(c, w, p.UserID, playmatResponse{Enabled: true})
 }
 
 // adminRemovePlaymat is DELETE /admin/users/{id}/playmat: moderation

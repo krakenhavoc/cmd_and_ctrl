@@ -2533,6 +2533,7 @@ The reasons for every choice here are in
 | `PUT /me/playmat` | a signed-in person | upload one: `multipart/form-data`, part `file` |
 | `POST /me/playmat/link` | a signed-in person | `{"url": "https://…"}`: the server fetches it once and stores it |
 | `DELETE /me/playmat` | a signed-in person | remove it |
+| `PATCH /me/playmat` | a signed-in person | `{"wash": 30..90}`: how dark the playmat is under the cards (ADR 0128 amendment) |
 | `GET /playmats/{id}` | any session | the image |
 | `DELETE /admin/users/{id}/playmat` | admin | remove anyone's playmat (moderation) |
 
@@ -2606,6 +2607,17 @@ answer for both.
 **On the wire.** The seat's owner's playmat is `PlayerView.playmat_url`
 ([docs/protocol.md](protocol.md)), stamped by the room on every capture,
 so a change reaches everyone on the next state broadcast.
+
+**The wash** (ADR 0128 amendment) is the owner's: how strongly their
+playmat is darkened under the cards, a whole percentage from 30 to 90,
+58 until they set one. Every `/me/playmat` answer carries it as `wash`
+while the feature is enabled. `PATCH /me/playmat` with `{"wash": n}`
+sets it, image or not; out of range, a non-number or any other field is
+**400**. Its rate is one a second per person with a burst of 5 (a
+slider's worth), apart from the upload bucket. The table sees it as
+`PlayerView.playmat_wash` beside the URL, pushed to every live seat the
+person holds as an upload is. It is stored in `users.playmat_wash`
+(migration 0012).
 
 **`DELETE /admin/users/{id}/playmat`** is `requireAdmin`, so admin mode
 off gets a non-admin's 403. **204**, also for a person with none; **404**

@@ -1814,6 +1814,10 @@ export interface PlayerView {
   // guest, a bot, an agent and a person with none. Use playmatSrc()
   // (lib/playmat.ts) to turn it into something an <img> can load.
   playmat_url?: string;
+  // How strongly the owner darkens that playmat under the cards, in
+  // percent, 30 to 90 (ADR 0128 amendment). The same for every viewer.
+  // Absent with no playmat; draw 58 when absent.
+  playmat_wash?: number;
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;

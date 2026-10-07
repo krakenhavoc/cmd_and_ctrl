@@ -8,13 +8,17 @@
   // enabled:false (no data directory). The per-device choice is always
   // shown, because it is about this screen and a guest has screens too.
 
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { settings, updateSettings } from "../settings";
   import { session, LobbyApiError } from "../session";
   import {
+    PLAYMAT_DEFAULT_WASH,
+    PLAYMAT_MAX_WASH,
+    PLAYMAT_MIN_WASH,
     fetchMyPlaymat,
     linkMyPlaymat,
     removeMyPlaymat,
+    setMyPlaymatWash,
     uploadMyPlaymat,
     type MyPlaymat,
   } from "../api";
@@ -108,6 +112,30 @@
   async function remove(): Promise<void> {
     await run(() => removeMyPlaymat());
   }
+
+  // The owner-set wash (ADR 0128 amendment). The slider moves the
+  // preview at once and saves once it has rested, so a drag is one
+  // write, not one per step.
+  let wash = $state(PLAYMAT_DEFAULT_WASH);
+  let washTimer: ReturnType<typeof setTimeout> | null = null;
+  $effect(() => {
+    // Every answer from the server carries the account's wash.
+    if (mine.wash) wash = mine.wash;
+  });
+  function onWash(value: number): void {
+    wash = value;
+    if (washTimer) clearTimeout(washTimer);
+    washTimer = setTimeout(() => {
+      washTimer = null;
+      void setMyPlaymatWash(wash).then(
+        () => (error = ""),
+        (e: unknown) => (error = e instanceof Error ? e.message : "could not save the darkness"),
+      );
+    }, 400);
+  }
+  onDestroy(() => {
+    if (washTimer) clearTimeout(washTimer);
+  });
 </script>
 
 <h3>Playmat</h3>
@@ -135,7 +163,7 @@
 {#if phase === "ready"}
   <h4>Your playmat</h4>
   {#if preview}
-    <div class="preview">
+    <div class="preview" style:--playmat-wash={`${wash}%`}>
       <img
         src={preview}
         alt="Your playmat"
@@ -146,6 +174,26 @@
   {:else}
     <p class="help none">You have no playmat.</p>
   {/if}
+
+  <!-- ADR 0128 amendment: how dark the playmat is under the cards. The
+       preview follows at once; the server hears once the slider rests. -->
+  <label class="wash">
+    Darken
+    <input
+      type="range"
+      min={PLAYMAT_MIN_WASH}
+      max={PLAYMAT_MAX_WASH}
+      step="1"
+      value={wash}
+      oninput={(e) => onWash(Number(e.currentTarget.value))}
+      aria-label="Playmat darkness"
+    />
+    <span class="wash-value">{wash}%</span>
+  </label>
+  <p class="help">
+    How strongly your playmat is darkened under the cards. Everyone at your table sees it at this
+    strength; darker keeps busy art from getting in the way of the cards.
+  </p>
 
   <div class="actions">
     <input
@@ -272,6 +320,30 @@
     width: 100%;
     max-height: 180px;
     object-fit: cover;
+  }
+  /* The board's own scrim (PlayerPanel's .playmat::after), so the
+     preview shows the darkness the table will see. */
+  .preview {
+    position: relative;
+  }
+  .preview::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) var(--playmat-wash, 58%), transparent);
+    pointer-events: none;
+  }
+  .wash {
+    border-bottom: 0;
+  }
+  .wash input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  .wash-value {
+    min-width: 3.5ch;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-dim);
   }
   .none {
     margin: 0 0 10px;

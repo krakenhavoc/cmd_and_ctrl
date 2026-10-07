@@ -564,3 +564,69 @@ func TestPlaymatSurvivesARestart(t *testing.T) {
 		}
 	}
 }
+
+// ADR 0128 amendment: PATCH /me/playmat sets the owner's wash, the
+// table sees it on the owner's seat, and a seat taken later carries it.
+func TestPlaymatWashReachesTheTable(t *testing.T) {
+	s, _ := playmatStack(t)
+	tok, me := signedInSettingsUser(t, s)
+	patch := func(body string) (int, playmatResponse) {
+		status, resp, _ := sendPlaymat(t, s, http.MethodPatch, "/me/playmat", tok, "application/json", strings.NewReader(body))
+		return status, resp
+	}
+	// Before any image: the default, and a wash may still be chosen.
+	if status, got := getPlaymat(t, s, tok); status != http.StatusOK || got.Wash != playmat.DefaultWash {
+		t.Fatalf("GET before = %d %+v, want wash %d", status, got, playmat.DefaultWash)
+	}
+	if status, got := patch(`{"wash":40}`); status != http.StatusOK || got.Wash != 40 || got.URL != "" {
+		t.Fatalf("PATCH with no image = %d %+v", status, got)
+	}
+	for _, bad := range []string{`{"wash":10}`, `{"wash":95}`, `{"wash":"x"}`, `{"darkness":50}`} {
+		if status, _ := patch(bad); status != http.StatusBadRequest {
+			t.Errorf("PATCH %s = %d, want 400", bad, status)
+		}
+	}
+
+	meta, _ := s.lobby.Create("table")
+	if _, _, err := s.lobby.JoinAs(meta.ID, meta.InviteToken, "Alice", DiscordIdentity{}, me); err != nil {
+		t.Fatal(err)
+	}
+	room := s.lobby.RoomOf(meta.ID)
+	aliceWash := func() (string, int) {
+		view, _, err := room.Snapshot()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range view.Seats {
+			if p.Name == "Alice" {
+				return p.PlaymatURL, p.PlaymatWash
+			}
+		}
+		return "", -1
+	}
+	status, info, _ := upload(t, s, tok, pngOf(t, 40, 40))
+	if status != http.StatusOK || info.Wash != 40 {
+		t.Fatalf("PUT = %d %+v, want the chosen wash back", status, info)
+	}
+	if url, wash := aliceWash(); url != info.URL || wash != 40 {
+		t.Fatalf("after upload the seat has %q %d, want %q 40", url, wash, info.URL)
+	}
+	if status, got := patch(`{"wash":85}`); status != http.StatusOK || got.Wash != 85 || got.URL != info.URL {
+		t.Fatalf("PATCH = %d %+v", status, got)
+	}
+	if _, wash := aliceWash(); wash != 85 {
+		t.Errorf("after PATCH the seat has wash %d, want 85", wash)
+	}
+
+	// A seat taken afterwards carries the wash from the join.
+	meta2, _ := s.lobby.Create("second")
+	if _, _, err := s.lobby.JoinAs(meta2.ID, meta2.InviteToken, "Alice", DiscordIdentity{}, me); err != nil {
+		t.Fatal(err)
+	}
+	view, _, _ := s.lobby.RoomOf(meta2.ID).Snapshot()
+	for _, p := range view.Seats {
+		if p.Name == "Alice" && p.PlaymatWash != 85 {
+			t.Errorf("a new seat has wash %d, want 85", p.PlaymatWash)
+		}
+	}
+}

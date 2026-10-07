@@ -133,6 +133,16 @@ It is **not engine state**. It is stamped the way `is_host` is ([ADR 0075](0075-
 
 A playmat is user-chosen art on a table other people sit at. `DELETE /admin/users/{id}/playmat` removes anyone's, behind `requireAdmin` (so admin mode off gets a non-admin's 403 and the player-mode census, `TestEveryAdminCallSiteIsInTheSameAnswerTable`, covers it). It does what the person's own `DELETE` does, and the table sees it go on the next snapshot. It removes an image; it does not ban the feature, and the person can upload another. **The admin account view ([ADR 0124](0124-admin-views-accounts-games-and-who-is-on-now.md)) has no button for it.** Making one is not cheap: the view is read-only by decision, its account body would need a `playmat` flag and a confirm dialog naming the person, and each is a render test; it is filed as a follow-up. Until then the route is `curl`-able with the admin token.
 
+### 10. Amendment (2026-10-07, owner decision): the owner sets the wash
+
+Owner decision: the playmat is "dimmed, cover-fit" by default, "but allow an adjustment for tint/translucence/dark wash". So the scrim's strength in §8 is no longer fixed at 58%: it is the **owner's** choice, and every viewer draws that seat's mat at it.
+
+- **Stored on the account.** Migration 0012 adds `users.playmat_wash` (nullable `INTEGER`, no default, no backfill). NULL is the default, **58**, the scrim this ADR shipped with, so nobody's table changes until they move the slider. `playmat.Service` reads it through the same per-user cache as `playmat_id` (`Wash`) and writes it with `SetWash`, which takes **30 to 90**: the floor keeps cards readable over busy art on someone else's board, the ceiling still shows the image. A stored value outside the range (a hand edit) reads as the default.
+- **Set by `PATCH /me/playmat`** with `{"wash": n}`, image or not: it is a preference kept for the next upload. Every `/me/playmat` answer carries `wash` while the feature is enabled. Its rate bucket is one a second with a burst of 5, apart from uploads, because a slider writes often.
+- **On the wire as `PlayerView.playmat_wash`**, stamped by the room beside `playmat_url` and only where a URL is (`Room.SetPlaymatWash`, `stampPlaymatsLocked`), so like the URL it is not engine state. The lobby binds it wherever `bindPlaymat` binds the URL, through a small `PlaymatWashSource` interface the service implements, and `PlaymatChanged` re-reads it, so a `PATCH` reaches every live seat the person holds the way an upload does.
+- **Drawn** as `color-mix(in srgb, var(--bg) var(--playmat-wash, 58%), transparent)`: the same theme-aware scrim, with `--playmat-wash` set on the seat's `.playmat` layer from the wire. The Settings tab gains a **Darken** slider under the preview; the preview wears the same scrim, follows the slider at once, and the value is saved once the slider has rested (400 ms), so a drag is one write.
+- **Unchanged:** who sees a playmat (the per-device `all` / `mine` / `off` choice is the viewer's), the image pipeline and every route above.
+
 ## Alternatives considered
 
 - **Hotlink the pasted URL.** Rejected for the four reasons in decision 3.

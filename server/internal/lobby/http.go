@@ -320,6 +320,7 @@ type GameEvictor interface {
 //	PUT  /me/playmat        — signed in: upload one (multipart, part "file")
 //	POST /me/playmat/link   — signed in: fetch one from an https URL, once, and store it
 //	DELETE /me/playmat      — signed in: remove it
+//	PATCH /me/playmat       — signed in: set its wash, {"wash": 30..90}
 //	GET  /playmats/{id}     — any session: a stored playmat image
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	GET  /me/setup          — signed in: the caller's last table setup
@@ -630,6 +631,10 @@ func Handler(c Config) http.Handler {
 	mux.Handle("PUT /me/playmat", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, putMyPlaymat)))))
 	mux.Handle("POST /me/playmat/link", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, linkMyPlaymat)))))
 	mux.Handle("DELETE /me/playmat", auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, deleteMyPlaymat))))
+	// The owner-set wash (ADR 0128 amendment): a slider's worth of small
+	// writes, so the settings bucket's rate rather than the upload one.
+	playmatWash := newLimiter(1, 5)
+	mux.Handle("PATCH /me/playmat", auth.Middleware(c.Auth)(perCallerLimit(playmatWash, handlerFunc(c, patchMyPlaymat))))
 	// NOTE: /playmats is a new top-level prefix; it is in
 	// deploy/Caddyfile's @api matcher, client/vite.config.ts and the
 	// service worker's API_PATH, all of which have to agree or this
