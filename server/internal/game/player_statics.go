@@ -247,6 +247,17 @@ type PlayerStatic struct {
 	// for Timing's reason above (#1492).
 	HandSize HandSizeGrant `json:"handSize"`
 
+	// CantAttack is a granted "this player can't attack <Protected> or
+	// permanents they control during their next turn" (The Second
+	// Doctor's How Civil of You). ADR 0063's amendment of 2026-10-08
+	// (#2109), cant_attack_player.go. The TENTH payload, told apart by
+	// CantAttackGrant.Protected being non-nil; it carries no Keyword.
+	// It is stored on the RESTRICTED player. Its READER is
+	// playerCantAttackRefusalLocked, called from
+	// canAttackTargetWithLocked. No `omitzero`, for Timing's reason
+	// above (#1492).
+	CantAttack CantAttackGrant `json:"cantAttack"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored
