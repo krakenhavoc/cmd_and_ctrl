@@ -372,6 +372,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			// #1727: never set beside pay_options on a real offer, but
 			// the redaction table has to see it filled.
 			SacrificeOptions: lt,
+			Discards:         true,
 			XLockedAtZero:    true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
@@ -882,12 +883,14 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// Printed price: what the offer is called, what it charges, and
 	// the two derived facts about the COST string (CR 107.3b's X lock,
 	// CR 107.4's symbol count).
-	"Key":              surfacePublicPile,
-	"Label":            surfacePublicPile,
-	"ManaCost":         surfacePublicPile,
-	"Life":             surfacePublicPile,
-	"Energy":           surfacePublicPile,
-	"PayLabel":         surfacePublicPile,
+	"Key":      surfacePublicPile,
+	"Label":    surfacePublicPile,
+	"ManaCost": surfacePublicPile,
+	"Life":     surfacePublicPile,
+	"Energy":   surfacePublicPile,
+	"PayLabel": surfacePublicPile,
+	// ADR 0135 §2: whether the price discards its cards is printed.
+	"Discards":         surfacePublicPile,
 	"TargetMode":       surfacePublicPile,
 	"XLockedAtZero":    surfacePublicPile,
 	"PhyrexianSymbols": surfacePublicPile,
