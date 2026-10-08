@@ -310,6 +310,14 @@ const (
 	// the blocker's controller is compared to Player live, so a creature
 	// that changes hands joins or leaves the barred set.
 	ModCantBeBlockedByPlayer ModKind = "cantBeBlockedByPlayer"
+	// ModCantBeBlockedByPower is "<creature> can't be blocked by
+	// creatures with power N or less this turn" (Rhonas's Stalwart,
+	// #2600, CR 509.1b). Reads Amount, N, and Text, the clause as the
+	// refusal sentence reads it. The pinned attacker(s). Pure data: the
+	// blocker's power is read live, as blockers are declared, so a
+	// pump or a shrink on the blocker after the effect is applied
+	// moves it in or out of the barred set.
+	ModCantBeBlockedByPower ModKind = "cantBeBlockedByPower"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -822,6 +830,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
 	ModCantBeBlockedByPlayer:    {reader: readerBlockRule},
+	ModCantBeBlockedByPower:     {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},
