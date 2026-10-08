@@ -209,6 +209,12 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// no permanent moving stands in for. It changes once a game per
 		// player, so there is nothing to gate.
 		g.layerVersion.Add(1)
+	case EventSpeedChanged:
+		// ADR 0136, CR 702.178a: "Max speed — this creature gets +1/+1"
+		// reads its controller's speed, a layer input nothing on the
+		// board moves to announce. At most four changes per player per
+		// game, so no gate.
+		g.layerVersion.Add(1)
 	case EventMonarchChanged:
 		// #1722, ADR 0096: "as long as you're the monarch" (Entourage of
 		// Trest's extra block) is a layer input that no permanent moving

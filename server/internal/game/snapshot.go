@@ -655,6 +655,9 @@ type playerSnapshot struct {
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
 	MaxHandSizeAt int64 `json:"maxHandSizeAt,omitempty"`
+	// Speed is the player's speed (ADR 0136, CR 702.179). Additive
+	// within v7: a file without it restores as no speed.
+	Speed int `json:"speed,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -2099,6 +2102,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,
 		MaxHandSizeAt:         p.MaxHandSizeAt,
+		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
@@ -2976,6 +2980,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,
 		MaxHandSizeAt:         p.MaxHandSizeAt,
+		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no

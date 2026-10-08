@@ -972,6 +972,10 @@ export type LogKind =
   // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
   // `card_id` the ascend permanent or spell whose check granted it.
   | "citys_blessing"
+  // ADR 0136 (#2122): a player's speed changed (CR 702.179). `seat` is
+  // the player and `amount` the new speed. Narrated because the
+  // start-your-engines state-based action has no card behind it.
+  | "speed"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
@@ -1831,6 +1835,9 @@ export interface PlayerView {
   life: number;
   poison?: number;
   energy?: number;
+  // ADR 0136 (CR 702.179): the player's speed, 1 to 4; absent while
+  // they have none. 4 is max speed (CR 702.179e). Public.
+  speed?: number;
   library: ZoneView;
   hand: ZoneView;
   graveyard: ZoneView;

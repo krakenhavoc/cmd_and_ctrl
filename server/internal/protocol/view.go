@@ -1662,12 +1662,16 @@ type VoteView struct {
 // cards, opponent library cards) while preserving the `count` so the
 // UI can still render a placeholder stack.
 type PlayerView struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Seat      int      `json:"seat"`
-	Life      int      `json:"life"`
-	Poison    int      `json:"poison,omitempty"`
-	Energy    int      `json:"energy,omitempty"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Seat   int    `json:"seat"`
+	Life   int    `json:"life"`
+	Poison int    `json:"poison,omitempty"`
+	Energy int    `json:"energy,omitempty"`
+	// Speed is the player's speed (CR 702.179, ADR 0136): omitted
+	// while they have none, then 1 to 4; 4 is max speed (CR 702.178a).
+	// Public: every viewer gets the same number.
+	Speed     int      `json:"speed,omitempty"`
 	Library   ZoneView `json:"library"`
 	Hand      ZoneView `json:"hand"`
 	Graveyard ZoneView `json:"graveyard"`
@@ -8044,6 +8048,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Life:                  p.Life,
 		Poison:                p.Poison,
 		Energy:                p.Energy,
+		Speed:                 p.Speed,
 		Library:               viewOfZone(p.Library),
 		Hand:                  viewOfZone(p.Hand),
 		Graveyard:             viewOfZone(p.Graveyard),

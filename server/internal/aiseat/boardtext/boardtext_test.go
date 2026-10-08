@@ -55,6 +55,25 @@ func TestRenderPrintsPlayerCounters(t *testing.T) {
 	}
 }
 
+// ADR 0136 §8: a seat with speed says so after its counters, and max
+// speed is named; a seat with none says nothing.
+func TestRenderPrintsSpeed(t *testing.T) {
+	v := view()
+	v.Seats[0].Speed = 3
+	v.Seats[1].Speed = 4
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if want := "Ann (YOU) — 40 life, 1 cards in hand, 0 in library, speed 3\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+	if want := "Bo — 38 life, 0 cards in hand, 0 in library, speed 4 (max speed)\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+	v.Seats[0].Speed, v.Seats[1].Speed = 0, 0
+	if got := boardtext.Render(v, "a", boardtext.Options{}); strings.Contains(got, "speed") {
+		t.Errorf("a seat with no speed grew a speed phrase:\n%s", got)
+	}
+}
+
 // ADR 0129 §3: an energy payment the seat owes says how much, and a
 // pay_amount prompt its bounds, the card's threshold and the unit.
 func TestRenderEnergyPrompts(t *testing.T) {
