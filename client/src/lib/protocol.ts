@@ -3602,6 +3602,12 @@ export interface CardView extends CastSurfaceView {
   // while saddled" triggers read. Public, read straight off the card.
   // Absent — not `false` — for everything else.
   saddled?: boolean;
+  // ADR 0071 amendment, #2698 (CR 701.60): this permanent is
+  // suspected — it has menace and can't block for as long as it is.
+  // Public, and kept on a face-down permanent: the designation was
+  // given to the object in public, and it is the reason the creature
+  // cannot block. Absent — not `false` — for everything else.
+  suspected?: boolean;
   // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
   // Ring-bearer. Public, and kept on a face-down permanent: the
   // designation was chosen in public and says nothing about the card.

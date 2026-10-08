@@ -101,6 +101,10 @@ var redactedCardKeys = map[string]bool{
 	// public — the Ring tempted its controller in front of the table,
 	// and the designation says nothing about which card it is.
 	"ring_bearer": true,
+	// ADR 0071 amendment (#2698): that a permanent is suspected is
+	// public — it was suspected in front of the table, and it is the
+	// reason the face-down creature cannot block.
+	"suspected": true,
 }
 
 // assertRedacted fails on any key outside redactedCardKeys and on a
@@ -300,6 +304,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Monstrous:         true,
 		Saddled:           true,
 		RingBearer:        true,
+		Suspected:         true,
 		Prepared:          true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped

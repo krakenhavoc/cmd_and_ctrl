@@ -486,6 +486,11 @@ var cardFields = plan(
 	// Monstrous's reason.
 	"Saddled", carried, "",
 	"SaddledBy", carried, "",
+	// ADR 0071 amendment (#2698): the CR 701.60 suspected designation
+	// and the timestamp its layer-6 menace grant is ordered at, carried
+	// for Monstrous's reason.
+	"Suspected", carried, "",
+	"SuspectedAt", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",

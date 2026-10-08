@@ -150,6 +150,40 @@ describe("the designation badge", () => {
     expect(container.querySelector(".badge.designation")).toBeNull();
   });
 
+  // ADR 0071 amendment, #2698 (CR 701.60): a suspected creature.
+  it("shows a suspected creature", () => {
+    const { container } = mount(
+      permanent({
+        name: "Barbed Servitor",
+        type_line: "Artifact Creature — Construct",
+        suspected: true,
+      }),
+    );
+    expect(badgeText(container)).toBe("SUSPECTED");
+    expect(container.querySelector(".badge.designation")?.getAttribute("title")).toContain(
+      "can't block",
+    );
+  });
+
+  it("is absent on a creature that isn't suspected", () => {
+    const { container } = mount(
+      permanent({ name: "Barbed Servitor", type_line: "Artifact Creature — Construct" }),
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
+  it("wins the slot over a monstrous creature that is also suspected", () => {
+    const { container } = mount(
+      permanent({
+        name: "Stormbreath Dragon",
+        type_line: "Creature — Dragon",
+        monstrous: true,
+        suspected: true,
+      }),
+    );
+    expect(badgeText(container)).toBe("SUSPECTED");
+  });
+
   // The server clears both fields in the non-knower redaction — a
   // level says "Class" and a solved flag says "Case" as loudly as
   // loyalty says "planeswalker" — so a hidden card has nothing to

@@ -767,6 +767,16 @@ var items = []Item{
 		Examples: []string{"Stormbreath Dragon"},
 	},
 	{
+		Slug: "suspect", Name: "Suspect", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "A suspected creature has menace and can't block until it stops being suspected, and nothing can suspect it again while it is.",
+		Rules:   []string{"701.60"},
+		ADR:     "0071-designations-that-switch-abilities-on.md",
+		// A designation of its own rather than a gate on a printed ability, so no
+		// declaration on the Spec says a card uses it; the printed text does.
+		Printed:  `(?i)\bsuspects? (?:it|up to|target|enchanted|this)\b|\bsuspected\b`,
+		Examples: []string{"Person of Interest", "Rune-Brand Juggler", "Agrus Kos, Spirit of Justice"},
+	},
+	{
 		Slug: "hideaway", Name: "Hideaway", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "When a permanent with hideaway enters, you exile one of your top cards face down and may later play it for free.",
 		Rules:    []string{"702.75"},
