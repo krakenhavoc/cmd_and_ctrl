@@ -457,6 +457,12 @@ func corpusBoards() []corpusBoard {
 		// keyword trigger, keyed by its exalted/pump body — waiting on
 		// the stack, carrying the lone attacker in its params.
 		{"exalted_trigger_pending", corpusExaltedTriggerPending},
+		// v7, added by #2539 (ADR 0066's 2026-10-08 amendment) as a new
+		// file: an Unstable Amulet activated twice — the first card's
+		// window ended (duration.Ended) and the second's open, both
+		// UntilSourceExilesAnother naming the Amulet object
+		// (duration.Source, duration.SourceEpoch).
+		{"until_you_exile_another", corpusUntilYouExileAnother},
 	}
 }
 
@@ -480,6 +486,26 @@ func corpusExaltedTriggerPending(t *testing.T) *game.Game {
 	it := corpusSettleTrigger(t, g, hierarch)
 	if it.Body != "exalted/pump" || it.Params.Object.ID != bear {
 		t.Fatalf("setup: the exalted trigger is %+v, want body exalted/pump pinned to the attacker", it)
+	}
+	return g
+}
+
+// corpusUntilYouExileAnother is #2539's stored shape, made by the card
+// that makes it.
+func corpusUntilYouExileAnother(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	amulet := pushCatalogPermanent(g, me.ID, "Unstable Amulet", "Artifact", euaUnstableAmulet, false)
+	setEnergy(t, g, me, 4)
+	first := euaTop(g, me, "Lightning Bolt", "Instant", "{R}")
+	euaActivate(t, g, me, amulet)
+	second := euaTop(g, me, "Mountain", "Basic Land — Mountain", "")
+	euaActivate(t, g, me, amulet)
+	if euaPlayable(g, me, first) || !euaPlayable(g, me, second) {
+		t.Fatal("setup: want the first window ended and the second open")
+	}
+	if n := len(me.CastPermissions); n != 2 {
+		t.Fatalf("setup: %d stored permissions, want the ended one and the open one", n)
 	}
 	return g
 }
