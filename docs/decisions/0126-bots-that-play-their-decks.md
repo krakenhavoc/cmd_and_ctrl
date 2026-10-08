@@ -1449,6 +1449,28 @@ Run 2 is `--seats heuristic-baseline,heuristic-baseline,heuristic,heuristic --de
 
 In run 1, every A3 canary meets its bar after (Harrow 12 / 27 before, 15 / 29 after, now meeting it). A2 rows meeting their bar fell from 6 to 4: Delighted Halfling (85% to 76%) and Ornithopter of Paradise (83% to 64%) in simic-ramp, whose early turns now also hold an Exploration or an Oracle priced above a body. In run 2 the met A2 and A3 rows went from 6 to 11 at seed 1, 8 to 10 at seed 1001 and 9 to 10 at seed 2001. The suite is 41 of 41 before and after, and no position's pick changed.
 
+### #2693: the mulligan checks for something to cast (2026-10-08)
+
+- **`KeepNeedsCast`, `KeepCastReach` (0).** `decideMulligan` counted lands only, so review game 2 kept two lands and five spells of three to seven mana and missed its next two land drops. A hand at `KeepMinLands` is now kept only if it holds a nonland spell whose mana value is at most its lands plus `KeepCastReach`, with its coloured pips made by those lands (a land that names no colour, such as a fetch land or Exotic Orchard, counts as any). Otherwise it takes the mulligan, but only while the mulligan is free (the engine's first redraws seven); a mulligan that costs a card keeps the old land-count rule. A reach of 1, the issue's "lands + 1", would still keep game 2's hand on Chaos Warp, so the default is 0.
+- The arena has a new **Opening hands** section (`botarena/opening.go`): mulligans per keep, kept hands by size, and land drops missed on each seat's own turns 2–4, from the runner's observer.
+
+`BaselineConfig` zeroes both. Before is this branch with `KeepNeedsCast` off, which takes the old code path exactly; every run is `--rotate --lockstep` with the real dump. No run stalled.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | mulligans per keep (all four decks) | 62 / 256, 0.24 | 67 / 256, 0.26 |
+| | kept 7 / 6 | 246 / 10 | 246 / 10 |
+| | land drops missed on own turns 2–4 | 77 / 768, 10.0% | 77 / 768, 10.0% |
+| | turns p50 | 14 | 14 |
+| | wins: esper / izzet / mono-black / simic | 15 / 5 / 23 / 21 | 15 / 4 / 25 / 20 |
+| Run 2, seeds 1, 1001, 2001 pooled | `heuristic` wins | 86 / 288, 29.9% | 84 / 288, 29.2% |
+| | `heuristic-baseline` wins | 58 / 288 | 60 / 288 |
+| | `heuristic` izzet-aggro: wins, mulligans per keep, missed drops | 8 / 144, 0.25, 39 / 432 | 6 / 144, 0.26, 39 / 432 |
+| | `heuristic` simic-ramp: wins, mulligans per keep, missed drops | 78 / 144, 0.23, 49 / 432 | 78 / 144, 0.28, 51 / 432 |
+| | turns p50 | 11 | 11 |
+
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48` per seed. The rule fires rarely: 5 extra mulligans in run 1's 256 seat-games and 9 in run 2's 288 `heuristic` seat-games, changing 5 and 7 games. In run 2's seven changed games the seat that took the new mulligan won two it had lost and lost two it had won. Every difference is inside its interval, and `heuristic` stays ahead of the baseline. In run 1 every A3 canary meets its bar before and after, and A2 rows move by at most two games. The suite is 41 of 41 before and after; it has no mulligan position.
+
 ### #2689 PR 5: target gifts across the catalog (2026-10-08)
 
 Owner answer 5a: every catalog spell, mode or row that gives its target player a draw, a token, life or a loot declares a target entry (`Purpose.Targets`), so `PriceTargetPurposes` prices it as the seat's strength change instead of as a hit. Burn is not in this batch.

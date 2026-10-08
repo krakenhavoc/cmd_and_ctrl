@@ -111,6 +111,7 @@ var reviewedNotAWipe = map[string]string{
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"Crypt Incursion":                          "exiles a graveyard",
+	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",
 	"Glorious End":                             "ends the turn",
 	"Jace, the Mind Sculptor":                  "exiles a library",
