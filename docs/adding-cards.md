@@ -797,6 +797,14 @@ instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
 refuses a grant naming an unregistered bundle or a bundle with a
 `Static` slot.
 
+A TOKEN that grants an ability (a Role: "Enchanted creature has 'Whenever
+this creature attacks, scry 1.'") declares its bundles in
+`tokenTemplate.Grants` instead of `Spec.Grants`, and names them from its own
+`Static` with `GrantAbilitiesToAttached(key)`; see `role_tokens.go`. Namespace
+the key with the token's slug. A granted trigger's source is the enchanted
+creature, so write its `AppliesTo` against `source` as you would for a
+creature's own trigger (ADR 0093 amendment 2026-10-08).
+
 The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
 "All Slivers have …" / "Sliver creatures you control have …", and
 `GrantAbilitiesToAttached(key)` for "Equipped creature has …" /
