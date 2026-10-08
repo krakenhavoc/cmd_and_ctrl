@@ -51,6 +51,8 @@ func init() {
 		Name:         "Compulsive Research",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
+		// The discard is two cards, or one land card: the printed two.
+		Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 3, Discards: 2}),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil

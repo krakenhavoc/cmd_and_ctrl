@@ -18,6 +18,8 @@ func init() {
 		Name:         "Secret Rendezvous",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
+		// You draw three, and so does the opponent you aim it at.
+		Purpose: game.Purpose{Draws: 3, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 3})},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
 				return err

@@ -34,7 +34,7 @@ func init() {
 						Reason:  "Insatiable Avarice — search your library for a card",
 					}.Apply(ctx)
 				}),
-			SpreeModeDoing("Target player draws three cards and loses 3 life.", "{B}{B}",
+			ModeWithPurpose(SpreeModeDoing("Target player draws three cards and loses 3 life.", "{B}{B}",
 				TargetPlayer("target player"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -46,6 +46,7 @@ func init() {
 					}
 					return GainLife{Player: t.ID, Amount: -3}.Apply(ctx)
 				}),
+				ForTargets(game.TargetPurpose{Slot: 0, Draws: 3, LifeLoss: 3})),
 		),
 	})
 }

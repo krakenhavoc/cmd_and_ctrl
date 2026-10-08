@@ -27,7 +27,7 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(4)},
 		Modes: ChooseOne(
-			ModeDoing("Target player creates a 6/5 blue Leviathan creature token with hexproof.",
+			ModeWithPurpose(ModeDoing("Target player creates a 6/5 blue Leviathan creature token with hexproof.",
 				TargetPlayer("target player"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -36,6 +36,7 @@ func init() {
 					}
 					return CreateToken{Controller: t.ID, Template: TokenCard("6/5 blue Leviathan with hexproof"), N: 1}.Apply(ctx)
 				}),
+				ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1})),
 			ModeDoing("Return one or two target nonland permanents to their owners' hands.",
 				TargetPermanent("one or two target nonland permanents", Nonland()).WithCount(1, 2),
 				func(_ *game.StackItem, ctx *Context, occ int) error {

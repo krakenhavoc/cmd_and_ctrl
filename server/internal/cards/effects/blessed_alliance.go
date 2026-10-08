@@ -29,7 +29,7 @@ func init() {
 		Name:         "Blessed Alliance",
 		Completeness: CompletenessFull,
 		Modes: Escalating(ChooseOneOrMore(
-			ModeDoing("Target player gains 4 life.",
+			ModeWithPurpose(ModeDoing("Target player gains 4 life.",
 				TargetPlayer("target player"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -38,6 +38,7 @@ func init() {
 					}
 					return GainLife{Player: t.ID, Amount: 4}.Apply(ctx)
 				}),
+				ForTargets(game.TargetPurpose{Slot: 0, LifeGain: 4})),
 			ModeDoing("Untap up to two target creatures.",
 				TargetCreature("up to two target creatures").WithCount(0, 2),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
