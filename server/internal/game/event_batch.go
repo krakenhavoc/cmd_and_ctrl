@@ -130,6 +130,7 @@ func (g *Game) beginEventBatchLocked() {
 	// ADR 0108 §7: so have the divided shields' instances, unless one is
 	// still waiting on its prompt.
 	g.dropShieldDivisionsLocked(0)
+	g.dropRedirectOrdersLocked(0)
 }
 
 // currentEventBatchLocked is the batch EmitEvent stamps. The counter

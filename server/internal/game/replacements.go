@@ -1763,6 +1763,13 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 				g.applyFirstGatheredLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
+			// #2066: redirections of one damage instance are
+			// ordered once; the answer given for an earlier event
+			// of the instance stands for this one.
+			if sorted, ok := g.rememberedRedirectOrderLocked(ev, applicable); ok {
+				g.applyFirstGatheredLocked(ev, sorted)
+				continue
+			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
 			return ev, errReplacementPending
 		}

@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// Exalted (CR 702.90a) — "Whenever a creature you control attacks
+// Exalted (CR 702.83a) — "Whenever a creature you control attacks
 // alone, that creature gets +1/+1 until end of turn." Ignoble
 // Hierarch's and Noble Hierarch's shared trigger.
 //
@@ -25,7 +25,7 @@ import (
 // exalted source's, since "attacks alone" can be any creature you
 // control and the source itself is very often a mana dork that never
 // attacks. Multiple exalted sources each fire and each add their own
-// +1/+1 (CR 702.90b) — no dedup, because two calls of this
+// +1/+1 (CR 702.83b) — no dedup, because two calls of this
 // constructor are two separate triggered abilities.
 func Exalted() game.TriggeredAbility {
 	return game.TriggeredAbility{

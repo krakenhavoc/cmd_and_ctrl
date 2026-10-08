@@ -43,7 +43,7 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Name:        "name",
-					Description: "Optional display name for the game.",
+					Description: "Display name for the game. Leave out for a surprise.",
 					Type:        discordgo.ApplicationCommandOptionString,
 					Required:    false,
 					MaxLength:   80,
@@ -164,9 +164,8 @@ type Handler struct {
 	cfg    Config
 	client *ServerClient
 	log    *slog.Logger
-	// now is injected so tests can freeze the default-name
-	// timestamp used when /c2-invite is called without an arg, and
-	// the /c2-end confirmation-expiry clock.
+	// now is injected so tests can freeze the /c2-end
+	// confirmation-expiry clock.
 	now func() time.Time
 	// confirmations holds outstanding /c2-end confirm/cancel
 	// buttons. In-memory only — same "no SIGHUP reload" trade-off
@@ -319,10 +318,8 @@ func (h *Handler) handleInvite(ctx context.Context, s *discordgo.Session, i *dis
 // invoking Discord user is passed as host_discord_id: whoever runs
 // /c2-invite hosts the table (ADR 0075 §2.1).
 func (h *Handler) createInviteGame(ctx context.Context, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (string, lobby.GameMeta, error) {
-	name := stringOption(data.Options, "name")
-	if strings.TrimSpace(name) == "" {
-		name = defaultGameName(h.now())
-	}
+	// A blank name is sent as is: the server generates one (#2630).
+	name := strings.TrimSpace(stringOption(data.Options, "name"))
 	meta, err := h.client.CreateGame(ctx, name, invokerID(i))
 	return name, meta, err
 }
@@ -363,13 +360,6 @@ func (h *Handler) handleGames(ctx context.Context, s *discordgo.Session, i *disc
 func buildInviteURL(clientBase string, gameID uuid.UUID, inviteToken string) string {
 	return fmt.Sprintf("%s/#/games/%s/join?t=%s",
 		strings.TrimRight(clientBase, "/"), gameID, inviteToken)
-}
-
-// defaultGameName is used when /c2-invite is called without a
-// name arg. Timestamp lets the playgroup distinguish back-to-
-// back games in the lobby list.
-func defaultGameName(t time.Time) string {
-	return "Discord game · " + t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
 // stringOption reads a named string option from the interaction

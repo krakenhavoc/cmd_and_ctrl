@@ -2133,6 +2133,34 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []ReplacementEffectID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	var inst DamageInstance
+	if c := g.pendingChoiceByIDLocked(choiceID); c != nil && c.replacementResume != nil && c.replacementResume.ev != nil {
+		inst = c.replacementResume.ev.DamageInstance
+	}
+	if err := g.resolveReplacementOrderLocked(choiceID, chooserID, ordered); err != nil {
+		return err
+	}
+	// #2066: the same answer settles the instance's other events.
+	g.settleSiblingRedirectOrdersLocked(inst, chooserID, ordered)
+	return nil
+}
+
+// pendingChoiceByIDLocked is the queued choice with the given ID, or nil.
+//
+// Caller must hold g.mu.
+func (g *Game) pendingChoiceByIDLocked(id uuid.UUID) *PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.ID == id {
+			return c
+		}
+	}
+	return nil
+}
+
+// resolveReplacementOrderLocked is ResolveReplacementOrder under the lock.
+//
+// Caller must hold g.mu (write).
+func (g *Game) resolveReplacementOrderLocked(choiceID, chooserID uuid.UUID, ordered []ReplacementEffectID) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -2192,6 +2220,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 		applicableByID[a.id] = a
 	}
 	ev := frame.ev
+	g.rememberRedirectOrderLocked(ev, frame.applicable, ordered)
 	if g.replacementsAppliedThisEvent == nil {
 		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
 	}

@@ -3,6 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
+  import { beatsPrimeKey as beatsPrimeKeyOf, replayJumpEpoch } from "../lib/combatBeats";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
@@ -61,6 +62,7 @@
   import GameMenu from "../lib/components/board/GameMenu.svelte";
   import { TABLE_ROLL_COOLDOWN_MS, type GameMenuOptions, type TableDie } from "../lib/gameMenu";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
+  import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
@@ -243,6 +245,9 @@
   // read-only inspection tool could do damage.
   let replayFrame = $state<ReplayFrame | null>(null);
   let replayIndex = $state<number | null>(null);
+  // ADR 0134 §6: bumped by every replay move but a one-frame step
+  // forward, so the board primes on what it skipped instead of playing it.
+  let replayEpoch = $state(0);
   const replaying = $derived(replayFrame !== null);
   $effect(() => {
     client.setFrameRecording($showFrameInspector);
@@ -775,8 +780,11 @@
   // without cueing it) on their first frame. The board stays mounted
   // across an automatic reconnect and a replay toggle, so this key
   // changes there too: the frames missed or scrubbed past were never
-  // watched live and must not replay as live beats.
-  const beatsPrimeKey = $derived(`${$status === "connected" ? "live" : "offline"}:${replaying}`);
+  // watched live and must not replay as live beats. ADR 0134 §6: in the
+  // replay scrubber, only a one-frame step forward plays; every other
+  // jump bumps replayEpoch and primes (combatBeats.ts replayJumpEpoch),
+  // which covers the beats, the strikes, the dice and the linger.
+  const beatsPrimeKey = $derived(beatsPrimeKeyOf($status === "connected", replaying, replayEpoch));
   const seats = $derived<PlayerView[]>(view?.seats ?? []);
   const turn = $derived(view?.turn);
   const activeSeat = $derived(turn?.active_seat ?? 0);
@@ -919,6 +927,19 @@
   // seen step and only fire on a real change; the initial snapshot (or
   // a reconnect rebuild) sets the baseline silently.
   let prevStep: string | null = null;
+  // Whether the step change plays combat_resolve itself, or leaves it to
+  // the strike layer: the same gate the cue clock plans the frame with.
+  function combatSoundOnStepChange(): boolean {
+    const st = $settings;
+    return stepChangePlaysCombatSound(
+      combatMotion({
+        enabled: st.animations.enabled,
+        combat: st.animations.combat,
+        reduceMotion: st.accessibility.reduceMotion,
+      }),
+      typeof document === "undefined" ? undefined : document.visibilityState,
+    );
+  }
   $effect(() => {
     if (!turn) return;
     const step = turn.step;
@@ -929,7 +950,11 @@
       } else if (step === "first_strike_damage" || step === "combat_damage") {
         // Both combat damage steps get the cue (CR 510.4): a combat
         // with first strike in it is heard twice, which is what it is.
-        play("combat_resolve");
+        // With combat motion on, the strike layer plays it at the first
+        // contact of each beat instead (ADR 0134 §7). Only when no
+        // strike is scheduled (motion off, reduced motion, a hidden
+        // tab) does it stay on the step change.
+        if (combatSoundOnStepChange()) play("combat_resolve");
       }
     }
     prevStep = step;
@@ -2483,6 +2508,7 @@
     onseatchange={(s) => (devSeat = s)}
     {replayIndex}
     onreplayselect={(f, i) => {
+      replayEpoch = replayJumpEpoch(replayEpoch, replayIndex, i);
       replayFrame = f;
       replayIndex = i;
     }}

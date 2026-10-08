@@ -476,3 +476,35 @@ func TestSamiBSemblanceAnvilDeclinedImprintDiscountsNothing(t *testing.T) {
 		t.Errorf("price = %d, want 4 (nothing imprinted)", got)
 	}
 }
+
+// #2566: a Food ability's {2} is a real cost at a strict table. The
+// engine default (Strict false) is permissive mode: a short pool is
+// waived with a cost warning and recorded OnPaper (activated.go
+// payAbilityManaCostLocked), so the unpaid activation seen while
+// building Sami slice b was the harness's mode, not an engine hole.
+// Strict refuses it with nothing paid.
+func TestSamiBInstantRamenRefusedWithoutMana(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ramen := pushCatalogPermanent(g, me.ID, "Instant Ramen", "Artifact — Food", samiInstantRamen, false)
+	life := me.Life
+	if err := g.ActivateCatalogAbility(me.ID, ramen, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("activating {2} with no mana must be refused")
+	}
+	c := findBattlefieldCardForTest(g, ramen)
+	if c == nil {
+		t.Fatal("a refused activation must not sacrifice the Ramen")
+	}
+	if c.Tapped {
+		t.Error("a refused activation must not tap the Ramen")
+	}
+	passPriorityAroundTable(t, g)
+	if me.Life != life {
+		t.Errorf("life = %d, want %d", me.Life, life)
+	}
+	// Positive control: with {2} in the pool the strict activation works.
+	samiGiveColorless(me, 2)
+	if err := g.ActivateCatalogAbility(me.ID, ramen, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("funded strict activation: %v", err)
+	}
+}

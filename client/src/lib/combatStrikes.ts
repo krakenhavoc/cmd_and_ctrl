@@ -30,12 +30,16 @@
 import { combatKeyer, type BoardSize, type Point } from "./combatBeats";
 import type { LogEvent } from "./protocol";
 import {
+  IMPACT_LETHAL_SHAKE_MS,
   IMPACT_SHAKE_MS,
+  STREAK_DRAW_MS,
+  STREAK_FADE_MS,
   STRIKE_BACK_MS,
-  STRIKE_DEATH_FADE_MS,
+  STRIKE_CRUMBLE_MS,
   STRIKE_HOLD_MS,
   STRIKE_MS,
   STRIKE_OUT_MS,
+  type CrumbleShardMotion,
 } from "./animations";
 
 // At most this many copies fly in one beat (ADR 0134 §3, "Many
@@ -61,17 +65,26 @@ export interface StrikeMover {
   side: "attacker" | "blocker";
   // The copy lunges at the centroid of these.
   aim: StrikeTarget[];
-  // The creature died in this beat: its copy fades on the way back.
+  // The creature died in this beat: its copy crumbles once it is home.
   dies: boolean;
   // Something hit it in this beat: its copy flashes at contact instead
   // of its tile shaking.
   flash: boolean;
+  // That hit killed it: the flash is the lethal one (ADR 0134 PR 2).
+  lethal: boolean;
+  // What else it hit that it does not aim at: trample's excess to a
+  // player, planeswalker or battle (CR 702.19b). A streak runs from its
+  // blockers to each of these at contact (ADR 0134 question 5).
+  through: StrikeTarget[];
 }
 
 export interface StrikeImpact {
   target: StrikeTarget;
-  // A card target that died in this beat: it shakes, then fades.
+  // A card target that died in this beat: it shakes, then crumbles.
   dies: boolean;
+  // The lethal hit (ADR 0134 PR 2): a card that died, or a player the
+  // beat eliminated. It shakes harder and flashes red.
+  lethal: boolean;
 }
 
 export interface StrikePlan {
@@ -118,8 +131,14 @@ export function strikesFor(
   // the battlefield (ADR 0053's beat membership already holds the SBA
   // deaths that followed the damage).
   const died = new Set<string>();
+  // A player the beat eliminated: the state-based actions that follow
+  // the damage (CR 704.3) are in the beat too, so a player who lost to
+  // it (life, commander damage, poison) has an `eliminated` entry here.
+  // A concession is not a hit.
+  const eliminated = new Set<number>();
   for (const e of cue.entries) {
     if (e.kind === "zone" && e.old_zone === "battlefield" && e.card_id) died.add(e.card_id);
+    if (e.kind === "eliminated" && e.cause !== "concede" && e.seat >= 0) eliminated.add(e.seat);
   }
 
   // Who blocked whom, from the same combat's block entries (later wins).
@@ -179,13 +198,33 @@ export function strikesFor(
       const blockers = cards.filter((t) => blockerOf.get(t.cardID) === cardID);
       const seats = s.targets.filter((t) => t.kind === "seat");
       const aim = blockers.length > 0 ? blockers : cards.length > 0 ? cards : seats;
-      if (aim.length > 0) candidates.push({ cardID, side: "attacker", aim, dies, flash });
+      const aimed = new Set(aim.map(targetKey));
+      const through = blockers.length > 0 ? s.targets.filter((t) => !aimed.has(targetKey(t))) : [];
+      if (aim.length > 0) {
+        candidates.push({
+          cardID,
+          side: "attacker",
+          aim,
+          dies,
+          flash,
+          lethal: dies && flash,
+          through,
+        });
+      }
       continue;
     }
     // A blocker braces when what it hit hit it in this beat.
     const braces = s.targets.some((t) => t.kind === "card" && hitBy.get(cardID)?.has(t.cardID));
     if (braces || s.targets.length === 0) continue;
-    candidates.push({ cardID, side: "blocker", aim: s.targets, dies, flash });
+    candidates.push({
+      cardID,
+      side: "blocker",
+      aim: s.targets,
+      dies,
+      flash,
+      lethal: dies && flash,
+      through: [],
+    });
   }
 
   const movers = candidates.slice(0, STRIKE_COPY_CAP);
@@ -194,9 +233,23 @@ export function strikesFor(
   for (const t of targets) {
     // A moving creature that was hit flashes on its copy instead.
     if (t.kind === "card" && moving.has(t.cardID)) continue;
-    impacts.push({ target: t, dies: t.kind === "card" && died.has(t.cardID) });
+    const dies = t.kind === "card" && died.has(t.cardID);
+    impacts.push({ target: t, dies, lethal: lethalHit(t, died, eliminated) });
   }
   return { movers, impacts };
+}
+
+// lethalHit is the lethal-hit choice (ADR 0134 PR 2): a card target
+// is hit lethally when the beat moved it off the battlefield, and a
+// player when the beat eliminated them. A player is read from the
+// elimination, not from a life of 0: a player who cannot lose is not
+// shown a killing blow, and 21 commander damage (or ten poison) is one.
+export function lethalHit(
+  t: StrikeTarget,
+  died: ReadonlySet<string>,
+  eliminated: ReadonlySet<number>,
+): boolean {
+  return t.kind === "card" ? died.has(t.cardID) : eliminated.has(t.seat);
 }
 
 // ---- Geometry ----
@@ -261,7 +314,13 @@ export interface StrikeTimeline {
   contactMs: number;
   totalMs: number;
   shakeMs: number;
-  deathFadeMs: number;
+  // The lethal hit's shake (ADR 0134 PR 2).
+  lethalShakeMs: number;
+  // A creature that died breaking up.
+  crumbleMs: number;
+  // Trample's streak: drawn during the contact hold, then faded.
+  streakDrawMs: number;
+  streakFadeMs: number;
 }
 
 // strikeTimeline is every phase of a strike, scaled by animations.speed
@@ -275,7 +334,168 @@ export function strikeTimeline(speed: number): StrikeTimeline {
     contactMs: STRIKE_OUT_MS * s,
     totalMs: STRIKE_MS * s,
     shakeMs: IMPACT_SHAKE_MS * s,
-    deathFadeMs: STRIKE_DEATH_FADE_MS * s,
+    lethalShakeMs: IMPACT_LETHAL_SHAKE_MS * s,
+    crumbleMs: STRIKE_CRUMBLE_MS * s,
+    streakDrawMs: STREAK_DRAW_MS * s,
+    streakFadeMs: STREAK_FADE_MS * s,
+  };
+}
+
+// crumbleTiming is when a creature that died crumbles, in ms after its
+// beat's cue (ADR 0134 question 7, PR 2). The death plays after the hit
+// (CR 704.3):
+//   - a dead TARGET (a blocker, or an attacker that did not move) takes
+//     the lethal shake at contact, then crumbles in its place;
+//   - a dead MOVER flies home first (its flash at contact is the lethal
+//     one), then crumbles there.
+export function crumbleTiming(
+  tl: StrikeTimeline,
+  role: "target" | "mover",
+): { startMs: number; endMs: number } {
+  const startMs = role === "mover" ? tl.totalMs : tl.contactMs + tl.lethalShakeMs;
+  return { startMs, endMs: startMs + tl.crumbleMs };
+}
+
+// ---- The crumble's shards ----
+
+// The grid a crumble breaks a card into: three across, four down, with
+// the inner corners jittered so the pieces look broken, not cut.
+export const CRUMBLE_COLS = 3;
+export const CRUMBLE_ROWS = 4;
+// How far an inner corner wanders, as a share of a cell.
+const CRUMBLE_JITTER = 0.35;
+// How far a shard falls, at least and at most, for a card 112 px tall;
+// scaled with the card.
+export const CRUMBLE_FALL_MIN = 26;
+export const CRUMBLE_FALL_MAX = 54;
+// The latest a shard lets go, as a share of the crumble: the bottom row
+// first and the top row last, so it reads as giving way from below.
+export const CRUMBLE_MAX_DELAY = 0.3;
+
+// A small deterministic generator (mulberry32 over an FNV-1a hash of
+// the seed), so a card always crumbles the same way.
+function seeded(seed: string): () => number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let a = h >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// faceVector turns a screen-space vector into the face's own pixels. A
+// tapped copy's face is turned rotDeg clockwise, and a shard drawn
+// inside it must still fall down the screen.
+export function faceVector(v: Point, rotDeg: number): Point {
+  const r = (-rotDeg * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  const x = v.x * c - v.y * s;
+  const y = v.x * s + v.y * c;
+  // Keep float dust out of the numbers.
+  return { x: Math.abs(x) < 1e-9 ? 0 : x, y: Math.abs(y) < 1e-9 ? 0 : y };
+}
+
+// A planned shard: its corners in percent of the face, and its motion.
+export interface CrumbleShard extends CrumbleShardMotion {
+  points: Point[];
+}
+
+// crumbleShards plans the crumble of a face `width` × `height` px (at
+// rest) turned `rotDeg`. The shards tile the face exactly, since
+// neighbours share their jittered corners. Each falls down the screen
+// and drifts away from the middle, spins a little, and the lower rows
+// let go first. Seeded by the card's instance ID.
+export function crumbleShards(
+  seed: string,
+  width: number,
+  height: number,
+  rotDeg = 0,
+): CrumbleShard[] {
+  const rnd = seeded(seed);
+  const cols = CRUMBLE_COLS;
+  const rows = CRUMBLE_ROWS;
+  // The lattice of corners, in percent. Edge corners stay on the edge.
+  const corner: Point[][] = [];
+  for (let r = 0; r <= rows; r++) {
+    const row: Point[] = [];
+    for (let c = 0; c <= cols; c++) {
+      let x = (c / cols) * 100;
+      let y = (r / rows) * 100;
+      if (c > 0 && c < cols) x += (rnd() * 2 - 1) * CRUMBLE_JITTER * (100 / cols);
+      if (r > 0 && r < rows) y += (rnd() * 2 - 1) * CRUMBLE_JITTER * (100 / rows);
+      row.push({ x, y });
+    }
+    corner.push(row);
+  }
+  const scale = height > 0 ? height / 112 : 1;
+  const shards: CrumbleShard[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const points = [corner[r][c], corner[r][c + 1], corner[r + 1][c + 1], corner[r + 1][c]];
+      const cx = points.reduce((a, p) => a + p.x, 0) / 4;
+      // On screen: down, and away from the middle.
+      const fall = (CRUMBLE_FALL_MIN + rnd() * (CRUMBLE_FALL_MAX - CRUMBLE_FALL_MIN)) * scale;
+      const drift = ((cx - 50) / 50) * (width * 0.35) + (rnd() * 2 - 1) * 6 * scale;
+      const v = faceVector({ x: drift, y: fall }, rotDeg);
+      shards.push({
+        points,
+        clip: `polygon(${points.map((p) => `${round2(p.x)}% ${round2(p.y)}%`).join(", ")})`,
+        dx: v.x,
+        dy: v.y,
+        rot: (rnd() * 2 - 1) * 28,
+        delay: ((rows - 1 - r) / Math.max(1, rows - 1)) * CRUMBLE_MAX_DELAY * (0.6 + rnd() * 0.4),
+      });
+    }
+  }
+  return shards;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// ---- Trample's streak ----
+
+// A gap shorter than this gets no streak: the target is all but
+// touching the blockers already.
+export const STREAK_MIN_PX = 16;
+
+export interface StreakSegment {
+  // Where it starts, in board pixels, how long it is, and its angle in
+  // degrees (0 is along +x, clockwise on screen, as CSS rotates).
+  x: number;
+  y: number;
+  length: number;
+  angle: number;
+}
+
+// streakSegment is trample's streak from the blockers' aim box to the
+// target that took the excess (ADR 0134 question 5): from the edge of
+// one to the edge of the other, along the line between their centres.
+// Null when the gap is too short to draw.
+export function streakSegment(from: StrikeBox, to: StrikeBox): StreakSegment | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1) return null;
+  const ux = dx / d;
+  const uy = dy / d;
+  const start = halfExtent(from, ux, uy);
+  const length = d - halfExtent(to, ux, uy) - start;
+  if (length < STREAK_MIN_PX) return null;
+  return {
+    x: from.x + ux * start,
+    y: from.y + uy * start,
+    length,
+    angle: (Math.atan2(dy, dx) * 180) / Math.PI,
   };
 }
 
@@ -299,6 +519,18 @@ export function combatMotion(s: {
 // board that has moved on (ADR 0134 §4).
 export function strikesScheduled(motion: boolean, visibility: string | undefined): boolean {
   return motion && (visibility === undefined || visibility === "visible");
+}
+
+// stepChangePlaysCombatSound: whether the step change to a combat damage
+// step plays combat_resolve itself. When strikes are scheduled the strike
+// layer plays it at each beat's first contact instead (ADR 0134 §7), so
+// the step change stays silent. With motion off, reduced motion or a
+// hidden tab no strike plays, and the sound keeps its step-change timing.
+export function stepChangePlaysCombatSound(
+  motion: boolean,
+  visibility: string | undefined,
+): boolean {
+  return !strikesScheduled(motion, visibility);
 }
 
 // strikeLate: a strike whose start comes more than STRIKE_LATE_MS after

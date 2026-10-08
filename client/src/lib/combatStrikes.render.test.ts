@@ -9,20 +9,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushSync } from "svelte";
 import { get } from "svelte/store";
 
-vi.mock("./sounds", () => ({ play: () => {} }));
+vi.mock("./sounds", () => ({ play: vi.fn() }));
 vi.mock("./animations", async (importOriginal) => {
   const real = await importOriginal<typeof import("./animations")>();
   return {
     ...real,
     impactShake: vi.fn(() => Promise.resolve()),
     lunge: vi.fn(() => Promise.resolve()),
-    deathFade: vi.fn(() => Promise.resolve()),
+    crumble: vi.fn(() => Promise.resolve()),
+    streak: vi.fn(() => Promise.resolve()),
   };
 });
 
 import CombatStrikes from "./components/board/CombatStrikes.svelte";
 import CombatCuesCard from "./test/CombatCuesCard.svelte";
-import { impactShake, lunge } from "./animations";
+import { crumble, impactShake, lunge, streak } from "./animations";
+import { play as playSound } from "./sounds";
 import { CombatCues } from "./combatCues.svelte";
 import type { CardView, GameView, LogEvent } from "./protocol";
 import { resetSettings, settings, updateSettings } from "./settings";
@@ -174,6 +176,9 @@ beforeEach(() => {
   updateSettings("accessibility", "reduceMotion", false);
   vi.mocked(impactShake).mockClear();
   vi.mocked(lunge).mockClear();
+  vi.mocked(crumble).mockClear();
+  vi.mocked(streak).mockClear();
+  vi.mocked(playSound).mockClear();
   cues = new CombatCues();
 });
 
@@ -215,11 +220,116 @@ describe("the strike layer", () => {
     advance(179);
     expect(impactShake).not.toHaveBeenCalled();
     advance(1);
-    expect(impactShake).toHaveBeenCalledWith(tiles.avatar);
+    expect(impactShake).toHaveBeenCalledWith(tiles.avatar, { lethal: false });
 
     advance(320);
     expect(copies(r.container)).toHaveLength(0);
     expect(cues.isStriking("ogre")).toBe(false);
+  });
+
+  it("plays combat_resolve once, at contact, not when the beat starts", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(0);
+    expect(playSound).not.toHaveBeenCalled();
+    advance(179);
+    expect(playSound).not.toHaveBeenCalled();
+    advance(1);
+    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(playSound).toHaveBeenCalledWith("combat_resolve");
+    advance(2000);
+    expect(playSound).toHaveBeenCalledTimes(1);
+  });
+
+  it("plays it once per beat: a first strike beat, then the regular beat", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [
+      ...before,
+      stepE(120, "first_strike_damage"),
+      { ...hit(121, 0, "ogre", 1), combat_step: "first_strike" as const },
+      stepE(130, "combat_damage"),
+      { ...hit(131, 1, "bear", 0), combat_step: "regular" as const },
+    ];
+    play(before, next, [ogre, bear], [ogre, bear]);
+    advance(180);
+    expect(playSound).toHaveBeenCalledTimes(1);
+    // The regular beat starts one beat pause (560 ms) after the first.
+    advance(559);
+    expect(playSound).toHaveBeenCalledTimes(1);
+    advance(181);
+    expect(playSound).toHaveBeenCalledTimes(2);
+  });
+
+  it("scales the contact time with the animation speed", () => {
+    updateSettings("animations", "speed", 2);
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(359);
+    expect(playSound).not.toHaveBeenCalled();
+    advance(1);
+    expect(playSound).toHaveBeenCalledTimes(1);
+  });
+
+  it("still plays at contact when the board cannot be measured", () => {
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    const r = render(
+      CombatStrikes as never,
+      { view: viewWith(before, [ogre], "declare_blockers"), boardEl: null, cues } as never,
+    );
+    cues.frame(before, get(settings));
+    r.setProps({ view: viewWith(next, [ogre]) } as never);
+    cues.frame(next, get(settings));
+    advance(180);
+    expect(playSound).toHaveBeenCalledTimes(1);
+  });
+
+  it("plays nothing on a priming frame (a reconnect, a replay jump)", () => {
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    const { board } = makeBoard();
+    render(CombatStrikes as never, { view: viewWith(next, [ogre]), boardEl: board, cues } as never);
+    // The first frame ever primes: a reconnect that arrives mid-combat.
+    cues.frame(next, get(settings));
+    advance(2000);
+    expect(playSound).not.toHaveBeenCalled();
+
+    // A replay jump re-primes: the next frame is folded in silently.
+    cues.requestReprime();
+    cues.frame([...next, stepE(130, "end_combat")], get(settings));
+    advance(2000);
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it("a priming frame cancels the contact sound still coming", () => {
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(100);
+    cues.requestReprime();
+    cues.frame(next, get(settings));
+    advance(2000);
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it("plays nothing here with the combat toggle off: the step change keeps the sound", () => {
+    updateSettings("animations", "combat", false);
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(2000);
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it("plays nothing here under reduced motion", () => {
+    updateSettings("accessibility", "reduceMotion", true);
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(2000);
+    expect(playSound).not.toHaveBeenCalled();
   });
 
   it("is aria-hidden", () => {
@@ -273,7 +383,7 @@ describe("the strike layer", () => {
     expect(impactShake).not.toHaveBeenCalled();
   });
 
-  it("draws a dead blocker from the cache: it shakes, then fades, in its place", () => {
+  it("draws a dead blocker from the cache: the lethal shake, then it crumbles, in its place", async () => {
     const before = [
       stepE(100, "declare_attackers"),
       stepE(110, "declare_blockers"),
@@ -298,8 +408,117 @@ describe("the strike layer", () => {
     expect(dead?.style.top).toBe("256px");
     // A dead copy hides no tile: there is none left.
     expect(cues.isStriking("bear")).toBe(false);
-    advance(160 + 240);
+    // Its face takes the lethal shake, then crumbles into the planned
+    // shards (the mocked shake resolves at once).
+    const face = dead!.querySelector<HTMLElement>(".face")!;
+    expect(impactShake).toHaveBeenCalledWith(face, { lethal: true });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(crumble).toHaveBeenCalledTimes(1);
+    const [crumbled, shards] = vi.mocked(crumble).mock.calls[0];
+    expect(crumbled).toBe(face);
+    expect(shards).toHaveLength(12);
+    // 240 ms of lethal shake and 420 of crumble from contact.
+    advance(659);
+    expect(r.container.querySelector('[data-strike-mode="die"]')).not.toBeNull();
+    advance(1);
     expect(r.container.querySelector('[data-strike-mode="die"]')).toBeNull();
+  });
+
+  it("flies a dead attacker home with a lethal flash, then crumbles it there", async () => {
+    const before = [
+      stepE(100, "declare_attackers"),
+      stepE(110, "declare_blockers"),
+      blockE(111, "bear", "ogre"),
+    ];
+    const next = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", "bear"),
+      hit(122, 1, "bear", "ogre"),
+      died(123, "ogre"),
+    ];
+    const { r, tiles } = play(before, next, [ogre, bear], [bear]);
+    tiles.ogre.remove();
+
+    advance(0);
+    const [copy] = copies(r.container);
+    expect(copy.dataset.strikeCopy).toBe("ogre");
+    const [, , opts] = vi.mocked(lunge).mock.calls[0];
+    expect(opts).toMatchObject({ lethal: true });
+    expect(opts?.flash).toBe(copy.querySelector(".face"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(crumble).toHaveBeenCalledTimes(1);
+    // Home at 500 ms, then 420 ms of crumble.
+    advance(919);
+    expect(copies(r.container).some((c) => c.dataset.strikeCopy === "ogre")).toBe(true);
+    advance(1);
+    expect(copies(r.container).some((c) => c.dataset.strikeCopy === "ogre")).toBe(false);
+  });
+
+  it("does not crumble an attacker that lived", async () => {
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(600);
+    await Promise.resolve();
+    expect(crumble).not.toHaveBeenCalled();
+  });
+
+  it("shakes the avatar with the lethal hit when the beat eliminates its player", () => {
+    const before = [stepE(100, "declare_attackers")];
+    const next: LogEvent[] = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", 1),
+      { seq: 122, kind: "eliminated", turn: 3, seat: 1, cause: "life", text: "" },
+    ];
+    const { tiles } = play(before, next, [ogre], [ogre]);
+    advance(180);
+    expect(impactShake).toHaveBeenCalledWith(tiles.avatar, { lethal: true });
+  });
+
+  it("draws trample's streak from the blocker to the avatar at contact", () => {
+    const before = [
+      stepE(100, "declare_attackers"),
+      stepE(110, "declare_blockers"),
+      blockE(111, "bear", "ogre"),
+    ];
+    const next = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", "bear"),
+      hit(122, 0, "ogre", 1),
+    ];
+    const { r } = play(before, next, [ogre, bear], [ogre, bear]);
+    advance(0);
+    // The lunge aims at the blocker, not the player.
+    expect(r.container.querySelector("[data-strike-streak]")).toBeNull();
+    advance(179);
+    expect(r.container.querySelector("[data-strike-streak]")).toBeNull();
+    advance(1);
+    const el = r.container.querySelector<HTMLElement>("[data-strike-streak]");
+    expect(el).not.toBeNull();
+    // From the bear's top edge (its centre is 560, 256) up toward the
+    // avatar (590, 50).
+    expect(parseFloat(el!.style.top)).toBeLessThan(256);
+    expect(parseFloat(el!.style.top)).toBeGreaterThan(190);
+    expect(parseFloat(el!.style.getPropertyValue("--streak-angle"))).toBeLessThan(-80);
+    expect(streak).toHaveBeenCalledTimes(1);
+    // Drawn in the 60 ms hold, faded over 220.
+    advance(279);
+    expect(r.container.querySelector("[data-strike-streak]")).not.toBeNull();
+    advance(1);
+    expect(r.container.querySelector("[data-strike-streak]")).toBeNull();
+  });
+
+  it("draws no streak for an unblocked attacker", () => {
+    const before = [stepE(100, "declare_attackers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    const { r } = play(before, next, [ogre], [ogre]);
+    advance(200);
+    expect(r.container.querySelector("[data-strike-streak]")).toBeNull();
   });
 
   it("skips a creature whose box was cached on a board of another size", () => {

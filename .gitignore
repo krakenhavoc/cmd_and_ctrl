@@ -27,6 +27,9 @@
 .env.*
 !.env.example
 
+# Python bytecode from scripts/cost (its scripts import each other).
+__pycache__/
+
 # OS / editor
 .DS_Store
 Thumbs.db

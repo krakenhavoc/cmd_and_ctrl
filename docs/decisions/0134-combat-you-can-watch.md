@@ -347,3 +347,32 @@ Each question lists the recommended option first. On 2026-10-07 the owner chose 
     - (a) **Later (PR 3): move `combat_resolve` to the first contact of each beat when combat motion is on, with no new files** (§7). The sound lands with the hit.
     - (b) A new hit sample for each impact. Louder feedback, but a new asset, and many hits at once stack (the 40 ms rate limit only dedupes the same name).
     - (c) Leave sound as it is. No work, but the sound comes about 200 ms before the hit it describes.
+
+---
+
+## Amendments
+
+Dated notes. The decisions above stand as written. This section records where the code departed from them, and why.
+
+### 2026-10-08 · What PR 1 and PR 2 built (#2624, PR 2)
+
+**PR 1 (#2624) departed from the text in four small ways.**
+
+1. **A late start is measured from the strike's scheduled start**, not from the frame's arrival (§4). The scheduled start is the frame's arrival plus the cue's own offset. At speed 2, the same-frame pause before beat 2 is 1120 ms (560 × 2). Measuring from the frame would drop every second beat at that speed, although nothing about it is late. `strikeLate(frameAt, atMs, now)` drops a strike only when it starts more than 1 s after `frameAt + atMs`.
+2. **The impact flash is a white wash, not a brightness filter** (§2). The flash is a pseudo-element over the tile (`Card.svelte`) and over the avatar disc (`PlayerIdentity.svelte`), at `--impact-glow` × 0.5 opacity. A `filter` on the tile would fight the hover and phased-out filters. The strike copy's face has no such filters, so it keeps the brightness filter.
+3. **The avatar disc shakes through the `translate` property**, not a transform. With `--impact-x` unset, which is every moment but a shake, `translate` is `none`. The disc is then not a stacking context, and the damage popup layers as it did before.
+4. **Tiles are measured on every frame during combat**, as the clock folds the frame in, as well as on animation frames. Board's frame effect runs after the DOM has the frame. So a creature that dies in a later frame has already been measured in this one, even when no animation frame ran in between.
+
+**PR 2 built the polish in Delivery, with these calls.**
+
+5. **The lethal hit.** A creature that dies in the beat, and a player the beat eliminates, take a bigger shake: ±8 px over 240 ms instead of ±4 px over 160 ms. The flash is red (`--impact-wash`) instead of white. A mover that a hit back killed gets the red flash on its copy at contact. **A player is lethal when the beat holds their `eliminated` entry** (any cause but `concede`), not when their life reaches 0, as Delivery puts it. The state-based actions that follow the damage (CR 704.3) are in the beat already. So this covers 21 commander damage and ten poison counters, and it does not show a killing blow to a player who can't lose at 0 life.
+6. **The crumble replaces the fade** (question 7's option (c), which the ADR deferred to PR 2). A dead target takes the lethal shake at contact, then breaks into 3 × 4 shards that fall and fade over 420 ms. Before, it faded over 240 ms (`STRIKE_DEATH_FADE_MS` is gone). A dead attacker no longer fades on its way back. It flies home, then crumbles there. At speed 1 a dead target's copy lasts 840 ms after its cue and a dead attacker's 920 ms. Both still play after the hit (CR 704.3). The shards are planned in `combatStrikes.ts` (`crumbleShards`, seeded by the card, so a card always breaks the same way) and made inside the copy, so they go when it does.
+7. **Trample's streak** runs from the edge of the blockers' aim box (their centroid) to the edge of the player, planeswalker or battle that took the excess, one per such target. It draws during the 60 ms contact hold and fades over 220 ms. It is not drawn for a gap under 16 px. It is also not drawn when the block entries have left the 200-entry window: with no block entries, the excess cannot be told apart from a blocker.
+8. **The replay one-step rule** is a jump counter in the prime key: `beatsPrimeKey(connected, replaying, epoch)` in `combatBeats.ts`. `replayJumpEpoch` keeps the epoch only for a one-frame step forward. A jump ahead, a step back, the same frame again, and entering or leaving the replay all bump it, so the next frame primes. The beats, the strikes, the dice and the linger share the key, so all of them follow the rule.
+9. **Tuning is not done.** Delivery asks for the copy cap and the timings to be tuned from a cmd-dev playtest, and no playtest was possible for this PR. The cap stays at 12 and the timings stay as in §2. They are named constants (`STRIKE_*`, `IMPACT_*`, `STREAK_*` in `animations.ts`), so a playtest can change them in one place.
+10. **The after-PR-1 four-seat check** was not run on cmd-dev. In its place, `combat-strike-2614.spec.ts` covers one combat on a two-seat table: a first striker lunges before the regular beat, a trampler double-blocked by two 2/2s lunges once, the excess draws a streak, and both blockers crumble. Its screenshots are in the branch run's Playwright report. Still not seen in a browser: four seats, an expanded board (ADR 0120), a planeswalker or battle target, and a lethal hit on a player.
+
+### 2026-10-08 · What PR 3 built (#2614)
+
+11. **The sound lands with the hit.** `CombatStrikes.svelte` plays `combat_resolve` once per beat, `contactMs` (180 ms × speed) after the beat's cue, the same moment the targets shake. Game.svelte's step-change cue stays only for the cases where no strike is scheduled: the combat toggle or animations off, reduced motion, and a frame that arrives while the tab is hidden (`stepChangePlaysCombatSound`, the inverse of `strikesScheduled`). The two sides read the same gate, so a combat is never heard twice or not at all.
+12. **Edges.** The sound is scheduled whether or not the board can be measured or a copy flies, because the damage still happened. A beat dropped as late (§4) plays no sound, since the board has moved on. A priming frame cancels a contact sound still coming, like the shake. A combat damage step with no combat damage entry has no beat and so no sound with motion on; before, the step change played one regardless. A first strike combat is still heard twice, once per beat. The `damage` popup sound is unchanged. This is the last PR the ADR plans.

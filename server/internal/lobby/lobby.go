@@ -458,9 +458,13 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 // the first human seat hosts. It is stored on the games row
 // (host_discord_id) and never served.
 func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID string) (GameMeta, error) {
-	name = trimToLimit(name, 80)
+	name = trimToLimit(name, maxTableNameLen)
 	if name == "" {
-		return GameMeta{}, ErrEmptyName
+		// A blank name is a request for a surprise (#2630): every create
+		// path converges here, so the site, the admin token and the
+		// Discord bot all get one. A caller that knows the creator's
+		// display name fills it in first, for the personal templates.
+		name = SuggestTableName("")
 	}
 	invite, err := token.Random(16)
 	if err != nil {

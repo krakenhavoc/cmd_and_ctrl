@@ -114,6 +114,32 @@ export function scaledMs(baseMs: number, speed: number): number {
   return baseMs * s;
 }
 
+// ---- The prime key: when the board must not play what it missed ----
+
+// replayJumpEpoch counts the dev replay scrubber's jumps (ADR 0134 §6,
+// question 10). The scrubber plays combat strikes, beats, dice and the
+// stack linger only when it steps EXACTLY one frame forward: that frame
+// is what the table saw next. Any other move (a jump ahead, a step back,
+// the same frame again, entering or leaving the replay) re-primes, so
+// scrubbing past three combats does not fire them all at once. Returns
+// the epoch unchanged for a one-frame step forward and one more for
+// anything else. Indexes are the scrubber's frame indexes; null is live.
+export function replayJumpEpoch(
+  epoch: number,
+  prevIndex: number | null,
+  nextIndex: number | null,
+): number {
+  const stepForward = prevIndex !== null && nextIndex !== null && nextIndex === prevIndex + 1;
+  return stepForward ? epoch : epoch + 1;
+}
+
+// beatsPrimeKey is the key the board's frame layers re-prime on when it
+// changes (Game.svelte): the connection (a reconnect), whether the
+// board shows a replay frame (a toggle), and the replay jump epoch.
+export function beatsPrimeKey(connected: boolean, replaying: boolean, epoch: number): string {
+  return `${connected ? "live" : "offline"}:${replaying}:${epoch}`;
+}
+
 // ---- Tracking: which entries are new ----
 
 export interface BeatTracker {

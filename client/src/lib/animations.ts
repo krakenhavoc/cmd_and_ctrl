@@ -266,8 +266,22 @@ export const IMPACT_SHAKE_MS = 160;
 export const IMPACT_SHAKE_PX = 4;
 // The flash's peak, as brightness above 1 (0.5 is brightness 1.5).
 export const IMPACT_GLOW = 0.5;
-// A blocker that died shakes, then fades in its place over this long.
-export const STRIKE_DEATH_FADE_MS = 240;
+// The lethal hit (ADR 0134 PR 2): what a creature that dies, or a
+// player the hit eliminates, feels. A bigger, longer shake, and the
+// flash is red instead of white.
+export const IMPACT_LETHAL_SHAKE_PX = 8;
+export const IMPACT_LETHAL_SHAKE_MS = 240;
+export const IMPACT_LETHAL_WASH = "#e5484d";
+// A creature that died crumbles (ADR 0134 question 7, PR 2): its copy
+// breaks into shards that fall and fade over this long. A dead blocker
+// crumbles after its lethal shake; a dead attacker once its copy is
+// home.
+export const STRIKE_CRUMBLE_MS = 420;
+// Trample's streak (ADR 0134 question 5, PR 2): from the blockers to
+// the player, planeswalker or battle that took the excess. It draws
+// during the contact hold and fades after.
+export const STREAK_DRAW_MS = STRIKE_HOLD_MS;
+export const STREAK_FADE_MS = 220;
 
 function strikeSpeed(): number {
   return Number.isFinite(cfg.speed) && cfg.speed > 0 ? cfg.speed : 1;
@@ -279,15 +293,17 @@ function strikeAllowed(): boolean {
 
 // lunge flies a strike copy `to` (board pixels, relative to where it is
 // drawn) and back: out with power2.in, a contact hold, back with
-// power3.out. A copy whose creature died fades out on the way back
-// (ADR 0134 §3). `flash` is for an attacker its blocker hit back in the
+// power3.out. `flash` is for an attacker its blocker hit back in the
 // same beat: that element brightens at contact instead of shaking, so
-// the two motions do not fight. With combat motion off it settles at
-// once. Resolves when the copy is home.
+// the two motions do not fight. `lethal` makes that flash the lethal
+// one: red, and as long as the lethal shake. A creature that died no
+// longer fades on the way back: it crumbles once it is home (crumble,
+// below). With combat motion off it settles at once. Resolves when the
+// copy is home.
 export function lunge(
   el: HTMLElement,
   to: { x: number; y: number },
-  opts: { dies?: boolean; flash?: HTMLElement | null } = {},
+  opts: { flash?: HTMLElement | null; lethal?: boolean } = {},
 ): Promise<void> {
   if (!strikeAllowed()) {
     return Promise.resolve();
@@ -297,43 +313,48 @@ export function lunge(
     const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
     tl.to(el, { x: to.x, y: to.y, duration: (STRIKE_OUT_MS * s) / 1000, ease: "power2.in" });
     if (opts.flash) {
+      if (opts.lethal) opts.flash.style.setProperty("--impact-wash", IMPACT_LETHAL_WASH);
       tl.fromTo(
         opts.flash,
         { "--impact-glow": IMPACT_GLOW },
-        { "--impact-glow": 0, duration: (IMPACT_SHAKE_MS * s) / 1000, ease: "power1.out" },
+        {
+          "--impact-glow": 0,
+          duration: ((opts.lethal ? IMPACT_LETHAL_SHAKE_MS : IMPACT_SHAKE_MS) * s) / 1000,
+          ease: "power1.out",
+        },
         // At contact: the end of the out phase.
         (STRIKE_OUT_MS * s) / 1000,
       );
     }
     tl.to(
       el,
-      {
-        x: 0,
-        y: 0,
-        opacity: opts.dies ? 0 : 1,
-        duration: (STRIKE_BACK_MS * s) / 1000,
-        ease: "power3.out",
-      },
+      { x: 0, y: 0, duration: (STRIKE_BACK_MS * s) / 1000, ease: "power3.out" },
       ((STRIKE_OUT_MS + STRIKE_HOLD_MS) * s) / 1000,
     );
   });
 }
 
 // impactShake is the hit landing on a tile or an avatar disc: --impact-x
-// swings ±4 px in three half-cycles and --impact-glow flashes and
-// settles, over IMPACT_SHAKE_MS. Card.svelte and PlayerIdentity.svelte
-// compose both variables with defaults that do nothing, so a tile at
-// rest renders exactly as before. Resolves when it is over.
-export function impactShake(el: HTMLElement): Promise<void> {
+// swings in three half-cycles and --impact-glow flashes and settles.
+// Card.svelte and PlayerIdentity.svelte compose both variables with
+// defaults that do nothing, so a tile at rest renders exactly as
+// before. An ordinary hit is ±IMPACT_SHAKE_PX over IMPACT_SHAKE_MS with
+// a white flash. A lethal hit (a creature that dies, a player it
+// eliminates) is ±IMPACT_LETHAL_SHAKE_PX over IMPACT_LETHAL_SHAKE_MS,
+// and --impact-wash turns its flash red. Resolves when it is over.
+export function impactShake(el: HTMLElement, opts: { lethal?: boolean } = {}): Promise<void> {
   if (!strikeAllowed()) return Promise.resolve();
-  const t = (IMPACT_SHAKE_MS * strikeSpeed()) / 1000;
-  const px = IMPACT_SHAKE_PX;
+  const lethal = opts.lethal === true;
+  const t = ((lethal ? IMPACT_LETHAL_SHAKE_MS : IMPACT_SHAKE_MS) * strikeSpeed()) / 1000;
+  const px = lethal ? IMPACT_LETHAL_SHAKE_PX : IMPACT_SHAKE_PX;
+  if (lethal) el.style.setProperty("--impact-wash", IMPACT_LETHAL_WASH);
   return new Promise((resolve) => {
     // Cleared, not zeroed: an unset --impact-x is what leaves the avatar
     // disc's `translate` at none (PlayerIdentity.svelte).
     const done = () => {
       el.style.removeProperty("--impact-x");
       el.style.removeProperty("--impact-glow");
+      el.style.removeProperty("--impact-wash");
       resolve();
     };
     const tl = gsap.timeline({ onComplete: done, onInterrupt: done });
@@ -354,16 +375,79 @@ export function impactShake(el: HTMLElement): Promise<void> {
   });
 }
 
-// deathFade fades a dead blocker's copy out in place, after its shake.
-export function deathFade(el: HTMLElement): Promise<void> {
+// One shard of a crumble, as combatStrikes.ts crumbleShards plans it.
+export interface CrumbleShardMotion {
+  // The shard's outline: a CSS clip-path polygon over the face.
+  clip: string;
+  // Where it falls to, in the face's own (unrotated) pixels, its spin
+  // in degrees, and when it lets go, as a share of the crumble.
+  dx: number;
+  dy: number;
+  rot: number;
+  delay: number;
+}
+
+// crumble breaks a dead creature's copy into shards that fall and fade
+// (ADR 0134 PR 2). `face` is the copy's face: each shard is the face's
+// image clipped to one piece, and the face's own art and frame are
+// hidden under them (the `crumbling` class). The shards are made here,
+// inside the copy, and go when the copy does. Resolves when they are
+// gone.
+export function crumble(face: HTMLElement, shards: readonly CrumbleShardMotion[]): Promise<void> {
   if (!strikeAllowed()) return Promise.resolve();
+  const total = (STRIKE_CRUMBLE_MS * strikeSpeed()) / 1000;
+  const src = face.querySelector("img")?.getAttribute("src") ?? null;
+  const made: HTMLElement[] = [];
+  for (const sh of shards) {
+    const el = document.createElement("div");
+    el.className = "shard";
+    el.dataset.strikeShard = "";
+    el.style.clipPath = sh.clip;
+    if (src) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "";
+      img.draggable = false;
+      el.appendChild(img);
+    }
+    face.appendChild(el);
+    made.push(el);
+  }
+  face.classList.add("crumbling");
   return new Promise((resolve) => {
-    gsap.to(el, {
-      opacity: 0,
-      duration: (STRIKE_DEATH_FADE_MS * strikeSpeed()) / 1000,
-      ease: "power1.in",
-      onComplete: () => resolve(),
-      onInterrupt: () => resolve(),
+    const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
+    made.forEach((el, i) => {
+      const sh = shards[i];
+      const at = sh.delay * total;
+      tl.to(
+        el,
+        {
+          x: sh.dx,
+          y: sh.dy,
+          rotation: sh.rot,
+          opacity: 0,
+          duration: Math.max(0.001, total - at),
+          ease: "power2.in",
+        },
+        at,
+      );
     });
+  });
+}
+
+// streak draws trample's streak: `el` is a bar laid along the segment,
+// anchored at its start, scaled 0 → 1 along x during the contact hold,
+// then faded. Resolves when it is gone.
+export function streak(el: HTMLElement): Promise<void> {
+  if (!strikeAllowed()) return Promise.resolve();
+  const s = strikeSpeed();
+  return new Promise((resolve) => {
+    const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
+    tl.fromTo(
+      el,
+      { scaleX: 0, opacity: 1 },
+      { scaleX: 1, duration: (STREAK_DRAW_MS * s) / 1000, ease: "power1.out" },
+    );
+    tl.to(el, { opacity: 0, duration: (STREAK_FADE_MS * s) / 1000, ease: "power1.in" });
   });
 }

@@ -281,6 +281,7 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
 - `make client-dev` — run the Vite dev server on :5173
 - `make test` — server tests + client typecheck
 - `make lint` — `go vet` + client ESLint + Prettier check
+- `make cost-report` — what the project has cost: human-team estimate, Claude API list price, subscriptions. `make cost-push` publishes your Claude Code usage for the weekly report; see [scripts/cost/README.md](scripts/cost/README.md)
 
 ### Server (Go, `server/`)
 - `make -C server dev` — run locally on :8080 (seeds a 4-player demo game)

@@ -9,12 +9,22 @@ import {
   STRIKE_CONTACT_OVERLAP_PX,
   STRIKE_COPY_CAP,
   STRIKE_LATE_MS,
+  CRUMBLE_COLS,
+  CRUMBLE_MAX_DELAY,
+  CRUMBLE_ROWS,
+  STREAK_MIN_PX,
   aimBox,
   combatMotion,
+  crumbleShards,
+  crumbleTiming,
+  faceVector,
+  lethalHit,
   lungeVector,
+  streakSegment,
   strikeLate,
   strikeTimeline,
   strikesFor,
+  stepChangePlaysCombatSound,
   strikesScheduled,
   usableTile,
   type CachedTile,
@@ -102,9 +112,13 @@ describe("strikesFor: sides", () => {
         aim: [{ kind: "seat", seat: DEF }],
         dies: false,
         flash: false,
+        lethal: false,
+        through: [],
       },
     ]);
-    expect(plan.impacts).toEqual([{ target: { kind: "seat", seat: DEF }, dies: false }]);
+    expect(plan.impacts).toEqual([
+      { target: { kind: "seat", seat: DEF }, dies: false, lethal: false },
+    ]);
   });
 
   it("reads the sides from the step entry's seat, with the block entries in the window", () => {
@@ -122,7 +136,9 @@ describe("strikesFor: sides", () => {
     expect(plan.movers.map((m) => [m.cardID, m.side, m.flash])).toEqual([
       ["ogre", "attacker", true],
     ]);
-    expect(plan.impacts).toEqual([{ target: { kind: "card", cardID: "wall" }, dies: false }]);
+    expect(plan.impacts).toEqual([
+      { target: { kind: "card", cardID: "wall" }, dies: false, lethal: false },
+    ]);
   });
 
   it("reads the same sides from the step entry's seat when the block entries have left the window", () => {
@@ -194,6 +210,32 @@ describe("strikesFor: trample (CR 702.19b)", () => {
     ]);
   });
 
+  it("names the player its excess hit as the streak's end (ADR 0134 question 5)", () => {
+    const log = [
+      step(110, "declare_blockers"),
+      block(111, "bear1", "wurm"),
+      block(112, "bear2", "wurm"),
+      step(120, "combat_damage"),
+      hitCard(121, ATK, "wurm", "bear1", 2),
+      hitCard(122, ATK, "wurm", "bear2", 2),
+      hitSeat(123, ATK, "wurm", DEF),
+    ];
+    const [wurm] = strikesFor(beat(log), log).movers;
+    expect(wurm.aim).toHaveLength(2);
+    expect(wurm.through).toEqual([{ kind: "seat", seat: DEF }]);
+  });
+
+  it("draws no streak for an unblocked attacker, or with no block entries to tell", () => {
+    const unblocked = [step(120, "combat_damage"), hitSeat(121, ATK, "wurm", DEF)];
+    expect(strikesFor(beat(unblocked), unblocked).movers[0].through).toEqual([]);
+    const noBlocks = [
+      step(120, "combat_damage"),
+      hitCard(121, ATK, "wurm", "bear", 2),
+      hitSeat(122, ATK, "wurm", DEF),
+    ];
+    expect(strikesFor(beat(noBlocks), noBlocks).movers[0].through).toEqual([]);
+  });
+
   it("does not aim at a planeswalker its excess hit, which only shakes", () => {
     const log = [
       step(110, "declare_blockers"),
@@ -204,6 +246,7 @@ describe("strikesFor: trample (CR 702.19b)", () => {
     ];
     const plan = strikesFor(beat(log), log);
     expect(plan.movers[0].aim).toEqual([{ kind: "card", cardID: "bear" }]);
+    expect(plan.movers[0].through).toEqual([{ kind: "card", cardID: "jace" }]);
     expect(plan.impacts.map((i) => i.target)).toContainEqual({ kind: "card", cardID: "jace" });
   });
 });
@@ -224,10 +267,14 @@ describe("strikesFor: blockers (ADR 0134 question 6)", () => {
         aim: [{ kind: "card", cardID: "ogre" }],
         dies: false,
         flash: false,
+        lethal: false,
+        through: [],
       },
     ]);
     // The attacker is not moving in this beat, so it shakes.
-    expect(plan.impacts).toEqual([{ target: { kind: "card", cardID: "ogre" }, dies: false }]);
+    expect(plan.impacts).toEqual([
+      { target: { kind: "card", cardID: "ogre" }, dies: false, lethal: false },
+    ]);
   });
 
   it("a blocker facing a lunging attacker braces: no lunge, it shakes", () => {
@@ -260,7 +307,9 @@ describe("strikesFor: planeswalkers and battles", () => {
     const log = [step(120, "combat_damage"), hitCard(121, ATK, "ogre", "jace", 3)];
     const plan = strikesFor(beat(log), log);
     expect(plan.movers[0].aim).toEqual([{ kind: "card", cardID: "jace" }]);
-    expect(plan.impacts).toEqual([{ target: { kind: "card", cardID: "jace" }, dies: false }]);
+    expect(plan.impacts).toEqual([
+      { target: { kind: "card", cardID: "jace" }, dies: false, lethal: false },
+    ]);
   });
 });
 
@@ -277,9 +326,11 @@ describe("strikesFor: deaths (CR 704.3)", () => {
     ];
     const plan = strikesFor(beat(log), log);
     expect(plan.movers).toEqual([
-      expect.objectContaining({ cardID: "ogre", dies: true, flash: true }),
+      expect.objectContaining({ cardID: "ogre", dies: true, flash: true, lethal: true }),
     ]);
-    expect(plan.impacts).toEqual([{ target: { kind: "card", cardID: "bear" }, dies: true }]);
+    expect(plan.impacts).toEqual([
+      { target: { kind: "card", cardID: "bear" }, dies: true, lethal: true },
+    ]);
   });
 
   it("does not count a zone change from somewhere else", () => {
@@ -289,6 +340,82 @@ describe("strikesFor: deaths (CR 704.3)", () => {
       { ...dies(122, "jace"), old_zone: "hand" },
     ];
     expect(strikesFor(beat(log), log).impacts[0].dies).toBe(false);
+  });
+});
+
+describe("the lethal hit (ADR 0134 PR 2)", () => {
+  function eliminated(seq: number, seat: number, cause: string): LogEvent {
+    return { seq, kind: "eliminated", turn: TURN, seat, cause, text: "" };
+  }
+
+  it("is a card target the beat killed, and only that one", () => {
+    const log = [
+      step(110, "declare_blockers"),
+      block(111, "bear1", "titan"),
+      block(112, "bear2", "titan"),
+      step(120, "combat_damage"),
+      hitCard(121, ATK, "titan", "bear1", 2),
+      hitCard(122, ATK, "titan", "bear2", 1),
+      dies(123, "bear1"),
+    ];
+    const plan = strikesFor(beat(log), log);
+    expect(plan.impacts.map((i) => [i.target, i.lethal])).toEqual([
+      [{ kind: "card", cardID: "bear1" }, true],
+      [{ kind: "card", cardID: "bear2" }, false],
+    ]);
+  });
+
+  it("is a player the beat eliminated: by life, by commander damage, by poison", () => {
+    for (const cause of ["life", "commander_damage", "poison"]) {
+      const log = [
+        step(120, "combat_damage"),
+        hitSeat(121, ATK, "ogre", DEF),
+        eliminated(122, DEF, cause),
+      ];
+      expect(strikesFor(beat(log), log).impacts[0].lethal, cause).toBe(true);
+    }
+  });
+
+  it("is not a player who survived the hit, or one who conceded after it", () => {
+    const hitOnly = [step(120, "combat_damage"), hitSeat(121, ATK, "ogre", DEF)];
+    expect(strikesFor(beat(hitOnly), hitOnly).impacts[0].lethal).toBe(false);
+    const conceded = [...hitOnly, eliminated(122, DEF, "concede")];
+    expect(strikesFor(beat(conceded), conceded).impacts[0].lethal).toBe(false);
+  });
+
+  it("is not a player someone else's hit eliminated", () => {
+    const log = [
+      step(120, "combat_damage"),
+      hitSeat(121, ATK, "ogre", DEF),
+      eliminated(122, 2, "life"),
+    ];
+    expect(strikesFor(beat(log), log).impacts[0].lethal).toBe(false);
+  });
+
+  it("is the flash on a mover only when a hit back killed it", () => {
+    const log = [
+      step(110, "declare_blockers"),
+      block(111, "bear", "ogre"),
+      step(120, "combat_damage"),
+      hitCard(121, ATK, "ogre", "bear", 3),
+      hitCard(122, DEF, "bear", "ogre", 2),
+    ];
+    expect(strikesFor(beat(log), log).movers[0].lethal).toBe(false);
+    const killed = [...log, dies(123, "ogre")];
+    expect(strikesFor(beat(killed), killed).movers[0]).toMatchObject({
+      dies: true,
+      flash: true,
+      lethal: true,
+    });
+  });
+
+  it("lethalHit reads the beat's deaths for a card and its eliminations for a seat", () => {
+    const died = new Set(["bear"]);
+    const out = new Set([1]);
+    expect(lethalHit({ kind: "card", cardID: "bear" }, died, out)).toBe(true);
+    expect(lethalHit({ kind: "card", cardID: "ogre" }, died, out)).toBe(false);
+    expect(lethalHit({ kind: "seat", seat: 1 }, died, out)).toBe(true);
+    expect(lethalHit({ kind: "seat", seat: 2 }, died, out)).toBe(false);
   });
 });
 
@@ -357,20 +484,144 @@ describe("strikeTimeline", () => {
       contactMs: 180,
       totalMs: 500,
       shakeMs: 160,
-      deathFadeMs: 240,
+      lethalShakeMs: 240,
+      crumbleMs: 420,
+      streakDrawMs: 60,
+      streakFadeMs: 220,
     });
   });
 
   it("scales every phase by speed", () => {
     const t = strikeTimeline(2);
-    expect([t.outMs, t.holdMs, t.backMs, t.totalMs, t.shakeMs, t.deathFadeMs]).toEqual([
-      360, 120, 520, 1000, 320, 480,
-    ]);
+    expect([
+      t.outMs,
+      t.holdMs,
+      t.backMs,
+      t.totalMs,
+      t.shakeMs,
+      t.lethalShakeMs,
+      t.crumbleMs,
+      t.streakDrawMs,
+      t.streakFadeMs,
+    ]).toEqual([360, 120, 520, 1000, 320, 480, 840, 120, 440]);
     expect(strikeTimeline(0.5).totalMs).toBe(250);
+  });
+
+  it("draws trample's streak inside the contact hold", () => {
+    const t = strikeTimeline(1);
+    expect(t.streakDrawMs).toBeLessThanOrEqual(t.holdMs);
   });
 
   it("treats a nonsense speed as 1", () => {
     expect(strikeTimeline(0).totalMs).toBe(500);
+  });
+});
+
+describe("crumbleTiming (ADR 0134 question 7, PR 2)", () => {
+  it("crumbles a dead target after its lethal shake at contact", () => {
+    // 180 contact + 240 lethal shake, then 420 of crumble.
+    expect(crumbleTiming(strikeTimeline(1), "target")).toEqual({ startMs: 420, endMs: 840 });
+  });
+
+  it("crumbles a dead mover once its copy is home", () => {
+    expect(crumbleTiming(strikeTimeline(1), "mover")).toEqual({ startMs: 500, endMs: 920 });
+  });
+
+  it("never starts before the hit has landed (CR 704.3), at any speed", () => {
+    for (const speed of [0.5, 1, 1.5, 2]) {
+      const t = strikeTimeline(speed);
+      expect(crumbleTiming(t, "target").startMs).toBeGreaterThan(t.contactMs);
+      expect(crumbleTiming(t, "mover").startMs).toBe(t.totalMs);
+      expect(crumbleTiming(t, "mover").endMs - crumbleTiming(t, "mover").startMs).toBe(t.crumbleMs);
+    }
+  });
+});
+
+describe("crumbleShards", () => {
+  // The area of a polygon, by the shoelace formula, in percent².
+  const area = (pts: { x: number; y: number }[]) =>
+    Math.abs(
+      pts.reduce((a, p, i) => {
+        const q = pts[(i + 1) % pts.length];
+        return a + p.x * q.y - q.x * p.y;
+      }, 0),
+    ) / 2;
+
+  it(`breaks a card into ${CRUMBLE_COLS} × ${CRUMBLE_ROWS} pieces that tile it exactly`, () => {
+    const shards = crumbleShards("bear", 80, 112);
+    expect(shards).toHaveLength(CRUMBLE_COLS * CRUMBLE_ROWS);
+    const total = shards.reduce((a, s) => a + area(s.points), 0);
+    expect(total).toBeCloseTo(100 * 100, 6);
+    for (const s of shards) {
+      for (const p of s.points) {
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.x).toBeLessThanOrEqual(100);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeLessThanOrEqual(100);
+      }
+      expect(s.clip.startsWith("polygon(")).toBe(true);
+    }
+  });
+
+  it("is the same for the same card, and different for another", () => {
+    expect(crumbleShards("bear", 80, 112)).toEqual(crumbleShards("bear", 80, 112));
+    expect(crumbleShards("bear", 80, 112)).not.toEqual(crumbleShards("ogre", 80, 112));
+  });
+
+  it("falls down the screen, and the lowest row lets go first", () => {
+    const shards = crumbleShards("bear", 80, 112);
+    for (const s of shards) {
+      expect(s.dy).toBeGreaterThan(0);
+      expect(s.delay).toBeGreaterThanOrEqual(0);
+      expect(s.delay).toBeLessThanOrEqual(CRUMBLE_MAX_DELAY);
+    }
+    const bottom = shards.slice(-CRUMBLE_COLS);
+    expect(bottom.every((s) => s.delay === 0)).toBe(true);
+  });
+
+  it("still falls down the screen from a tapped face", () => {
+    // The face is turned 90° clockwise. Turned back onto the screen,
+    // every shard still falls down it.
+    const shards = crumbleShards("ogre", 80, 112, 90);
+    for (const s of shards) {
+      const screen = faceVector({ x: s.dx, y: s.dy }, -90);
+      expect(screen.y).toBeGreaterThan(0);
+    }
+  });
+
+  it("faceVector undoes the face's turn", () => {
+    expect(faceVector({ x: 0, y: 10 }, 0)).toEqual({ x: 0, y: 10 });
+    const v = faceVector({ x: 0, y: 10 }, 90);
+    expect(v.x).toBeCloseTo(10);
+    expect(v.y).toBeCloseTo(0);
+  });
+});
+
+describe("streakSegment (trample's streak)", () => {
+  const card = (x: number, y: number): StrikeBox => ({ x, y, w: 80, h: 112 });
+  const avatar = (x: number, y: number): StrikeBox => ({ x, y, w: 60, h: 60 });
+
+  it("runs from the blockers' edge to the avatar's edge along the centres", () => {
+    // Straight up 400 px: the card reaches 56 px, the avatar 30.
+    const seg = streakSegment(card(500, 500), avatar(500, 100))!;
+    expect(seg.x).toBeCloseTo(500);
+    expect(seg.y).toBeCloseTo(444);
+    expect(seg.length).toBeCloseTo(400 - 56 - 30);
+    expect(seg.angle).toBeCloseTo(-90);
+  });
+
+  it("starts at the centroid's edge for several blockers", () => {
+    const from = aimBox([card(400, 500), card(600, 500)])!;
+    const seg = streakSegment(from, avatar(800, 500))!;
+    // Along +x: the centroid at 500 reaches 40 px, the avatar 30.
+    expect(seg.x).toBeCloseTo(540);
+    expect(seg.length).toBeCloseTo(300 - 40 - 30);
+    expect(seg.angle).toBeCloseTo(0);
+  });
+
+  it(`draws nothing for a gap under ${STREAK_MIN_PX} px, or one centre`, () => {
+    expect(streakSegment(card(0, 0), avatar(0, 100))).toBeNull();
+    expect(streakSegment(card(0, 0), card(0, 0))).toBeNull();
   });
 });
 
@@ -387,6 +638,13 @@ describe("gates", () => {
     expect(strikesScheduled(true, "hidden")).toBe(false);
     expect(strikesScheduled(false, "visible")).toBe(false);
     expect(strikesScheduled(true, undefined)).toBe(true);
+  });
+
+  it("the step change plays combat_resolve only when no strike will (ADR 0134 §7)", () => {
+    expect(stepChangePlaysCombatSound(true, "visible")).toBe(false);
+    expect(stepChangePlaysCombatSound(false, "visible")).toBe(true);
+    expect(stepChangePlaysCombatSound(true, "hidden")).toBe(true);
+    expect(stepChangePlaysCombatSound(true, undefined)).toBe(false);
   });
 
   it(`drops a strike that would start more than ${STRIKE_LATE_MS} ms late`, () => {

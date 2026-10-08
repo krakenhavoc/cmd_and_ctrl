@@ -58,3 +58,33 @@ func TestBotsAnswerManifestDread(t *testing.T) {
 		})
 	}
 }
+
+// #2591. A noncreature card can never be turned face up (CR 701.40b),
+// so with a creature and a noncreature on top the heuristic must
+// manifest the creature. This also pins the engine's prompt wording to
+// the prefix the heuristic keys on, since the policy cannot import game.
+func TestHeuristicManifestsTheCreatureCard(t *testing.T) {
+	g := newSettledTable(t, 11)
+	seat := g.Seats[0]
+	bear := game.Card{InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Owner: seat.ID, Controller: seat.ID}
+	rock := game.Card{InstanceID: uuid.New(), Name: "Big Rock", TypeLine: "Artifact", ManaCost: "{6}", Owner: seat.ID, Controller: seat.ID}
+	g.WithWriteLock(func() {
+		seat.Library.PushTop(bear)
+		seat.Library.PushTop(rock)
+		if err := g.ManifestDreadThenForEffect(seat.ID, uuid.Nil, func(*game.Game, game.ManifestDreadResult) error { return nil }); err != nil {
+			t.Fatalf("ManifestDreadThenForEffect: %v", err)
+		}
+	})
+	driveChoices(t, g, heuristic.New(), seat.ID, 4)
+	found := false
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == bear.InstanceID {
+				found = true
+			}
+		}
+	})
+	if !found {
+		t.Fatalf("the creature card was not manifested")
+	}
+}

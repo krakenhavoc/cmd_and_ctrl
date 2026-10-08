@@ -165,6 +165,13 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 	if len(g.simultaneousExit) == 0 || CatalogTriggers == nil {
 		return
 	}
+	// #2621, CR 603.2 / 603.10a: only the exits themselves look back in
+	// time. The batch stays open across the whole wipe, so an entry
+	// (or a cast, or a draw) that lands while it is open is a LATER
+	// event, and a watcher that already left must not see it.
+	if !isBattlefieldExitEvent(ev) {
+		return
+	}
 	// Snapshot the batch header: dispatching a trigger can open a
 	// nested batch (a dies-trigger that sacrifices), and ranging over
 	// a slice the callee may replace is how that becomes a bug.
