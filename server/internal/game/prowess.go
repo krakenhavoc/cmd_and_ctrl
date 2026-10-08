@@ -128,7 +128,8 @@ func resolveProwess(g *Game, item *StackItem) error {
 // one prowess trigger per prowess token in its ability list (CR
 // 702.108b), then one evolve trigger per evolve token (CR 702.100d,
 // evolve.go), then one annihilator trigger per "annihilator N" token
-// (CR 702.86b, annihilator.go).
+// (CR 702.86b, annihilator.go), then one exalted trigger per exalted
+// token (CR 113.2c, exalted.go).
 //
 // It reads the list through forEachAbilityToken, the same walk
 // HasKeyword uses, so the answer follows the layer engine on the
@@ -142,7 +143,7 @@ func resolveProwess(g *Game, item *StackItem) error {
 // abilities and the zone harvesters skip them, exactly as they skip a
 // catalog trigger that did not declare their zone.
 func keywordTriggersFor(c *Card) []TriggeredAbility {
-	prowess, evolve := 0, 0
+	prowess, evolve, exalted := 0, 0, 0
 	var annihilator []int
 	forEachAbilityToken(c, func(a string) bool {
 		switch a {
@@ -150,6 +151,8 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 			prowess++
 		case KeywordEvolve:
 			evolve++
+		case KeywordExalted:
+			exalted++
 		default:
 			// CR 702.86b (#2073, annihilator.go): one trigger per
 			// "annihilator N" instance, each with its own N.
@@ -159,10 +162,10 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 		}
 		return true
 	})
-	if prowess+evolve+len(annihilator) == 0 {
+	if prowess+evolve+exalted+len(annihilator) == 0 {
 		return nil
 	}
-	out := make([]TriggeredAbility, 0, prowess+evolve+len(annihilator))
+	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+len(annihilator))
 	for i := 0; i < prowess; i++ {
 		out = append(out, prowessTrigger)
 	}
@@ -171,6 +174,9 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 	}
 	for _, n := range annihilator {
 		out = append(out, annihilatorTriggerFor(n))
+	}
+	for i := 0; i < exalted; i++ {
+		out = append(out, exaltedTrigger)
 	}
 	return out
 }

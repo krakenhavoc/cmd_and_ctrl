@@ -459,6 +459,11 @@ func restoreCatalogAbility(out *StackItem, s *stackItemSnapshot) bool {
 	case CatalogTriggeredBodyKey:
 		row, ref, outcome := resolveTriggeredAbilityRef(*out.Params.Ability)
 		if outcome == abilityRefLost {
+			// ADR 0101 amendment 2026-10-08, owner answer 3: the
+			// retired exalted row restores as the keyword's own body.
+			if restoreRetiredExaltedRow(out) {
+				return true
+			}
 			return lost()
 		}
 		out.Params.Ability = &ref
@@ -544,6 +549,10 @@ func (s *GameSnapshot) LostStackAbilities() []LostStackAbility {
 			if it.Params != nil && it.Params.Ability != nil {
 				ref = *it.Params.Ability
 				if !abilityRefLostInCatalog(ref) {
+					continue
+				}
+				if _, aliased := retiredExaltedRef(ref, it.Trigger); aliased && it.Body == CatalogTriggeredBodyKey {
+					// Restored through the exalted alias, not lost.
 					continue
 				}
 			}

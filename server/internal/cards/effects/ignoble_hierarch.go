@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creature gets +1/+1 until end of turn.)
 //	 {T}: Add {B}, {R}, or {G}."
 //
-// Exalted rides the shared Exalted() constructor (exalted.go). The
+// Exalted is the canonical keyword (game/exalted.go, #2538). The
 // mana ability is a plain three-colour pipe — no "any color", no
 // commander-identity narrowing, exactly the three colours printed.
 //
@@ -18,7 +18,9 @@ func init() {
 		OracleID:     "c8de43a3-ebd3-4000-b343-a6ffed11d34d",
 		Name:         "Ignoble Hierarch",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Exalted()},
+		// Exalted is a canonical keyword (#2538, game/exalted.go):
+		// the engine derives its trigger from the ability list.
+		PrintedKeywords: []string{game.KeywordExalted},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{B|R|G}",

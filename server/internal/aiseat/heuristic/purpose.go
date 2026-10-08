@@ -388,7 +388,9 @@ func (p *Policy) discardsCost(st *state, sourceID string, ids []string) float64 
 }
 
 // keywordCounters are the keyword counters (CR 122.1b) whose second
-// copy buys nothing.
+// copy buys nothing. Exalted is NOT one of them (#2538): each exalted
+// counter is one more instance of exalted (the Emissary of Soulfire
+// ruling of 2024-06-07), so a second one is a second +1/+1.
 var keywordCounters = []string{"indestructible", "hexproof", "flying", "first strike", "deathtouch", "lifelink", "menace", "reach", "trample", "vigilance", "double strike"}
 
 // redundantKeywordCounter reports whether the row at index puts a

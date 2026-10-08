@@ -13,7 +13,7 @@ import (
 //	 type with it."
 //
 // One trigger per attacking creature (the text is "a creature", not
-// "one or more"), like Exalted: it reads the attacker off the
+// "one or more"). It reads the attacker off the
 // triggering EventAttack (item.Trigger.Event.CardID) and counts at
 // RESOLUTION, so an attacker that has since left combat no longer
 // counts (CR 608.2h). "Other attacking creature" is any attacker

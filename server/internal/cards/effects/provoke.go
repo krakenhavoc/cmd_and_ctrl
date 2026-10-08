@@ -16,11 +16,11 @@ import (
 // able."
 //
 // Not in the closed PrintedKeywords / HasKeyword table
-// (game/keywords.go), for Exalted's reason: that table is for keywords
-// the engine READS as a bare string (a flyer's evasion, a lifelinker's
-// gain), which another permanent can grant. Provoke is a triggered
-// ability like any other, wired up on each source by this constructor,
-// and nothing in the catalog grants it. Two instances trigger
+// (game/keywords.go): that table is for keywords the engine READS as a
+// bare string (a flyer's evasion, a lifelinker's gain, a prowess or
+// exalted trigger it derives), which another permanent can grant.
+// Provoke is a triggered ability like any other, wired up on each
+// source by this constructor, and nothing in the catalog grants it. Two instances trigger
 // separately (CR 702.39b), which two calls of this constructor are.
 //
 // "It" is the object that attacked — the trigger's own event object,
