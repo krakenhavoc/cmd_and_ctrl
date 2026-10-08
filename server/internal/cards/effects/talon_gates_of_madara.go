@@ -62,6 +62,15 @@ func init() {
 			Cost:  ManaCost("{4}"),
 			Zones: []game.ZoneKind{game.ZoneHand},
 			Effect: func(g *game.Game, item *game.StackItem) error {
+				// #2620: the ability's source is a card in hand, and a
+				// discard (or a bounce and re-draw) in response moves it.
+				// It is then no longer the object this ability came from
+				// (CR 400.7; the epoch is the announce-time identity, as
+				// in ninjutsu.go), so the ability does nothing rather than
+				// failing with "card instance not found in zone".
+				if c, ok := g.LookupCardForEffect(item.SourceCardID); !ok || c.ObjectEpoch != item.SourceEpoch {
+					return nil
+				}
 				_, err := g.PutFromHandOntoBattlefieldForEffect(item.SourceCardID,
 					game.HandEntryOptions{Controller: item.Controller})
 				return err
