@@ -396,7 +396,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// Once per (card, face, offer) rather than once per announced set
 	// of optional costs: nothing in ADR 0073's optional half can
 	// change a timing answer.
-	if !e.g.CastTimingOpenLocked(e.seat, card, kind, perm) {
+	if !e.g.CastTimingForOfferOpenLocked(e.seat, card, kind, perm, offer) {
 		return
 	}
 	// ADR 0073 §9: a card with optional additional costs is several
@@ -411,6 +411,12 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// runs exactly once for them and the enumeration is unchanged.
 	optional := game.OptionalCostsFor(game.CatalogKey(card))
 	for _, chosen := range e.optionalCostSets(optional) {
+		// ADR 0129 §5, CR 118.3: a replicate paid more times than the
+		// seat has energy for (with the offer's own, Nissa's eight) is
+		// a cast the engine refuses, so it is never offered.
+		if game.EnergyShortfall(e.p, game.CastEnergyOwed(offer, nil, optional, chosen)) != nil {
+			continue
+		}
 		// ADR 0089: a set that promises a gift is one announcement
 		// per opponent who could receive it — "which opponent" is
 		// part of paying the cost (CR 702.174a), and a bot offered
@@ -911,8 +917,29 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// first combination below is the best payment the policy can
 		// name and the next few are that payment with its last card
 		// swapped for the next-cheapest.
-		pool := e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer))
-		altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+		pool := g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)
+		if offer.TapOthers != nil {
+			// ADR 0135 §1: a tap price spends no card, so the policy
+			// prices each candidate as TAPPED, not as lost — a blocker
+			// it no longer has, and its attack before combat on its own
+			// turn (TargetCandidate.Tap).
+			pool = e.cheapestTapFirst(pool)
+		} else {
+			pool = e.cheapestFuelFirst(pool)
+		}
+		if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
+			// ADR 0135 §2: a set rule (Foil's "an Island card and
+			// another card") — the first N of the pool may be two
+			// non-Islands. One payment from #2526's set search, fed
+			// the pool in the policy's order, as sacrificePayments
+			// does for a sacrifice clause.
+			altCostSets = nil
+			if pay != nil {
+				altCostSets = [][]uuid.UUID{pay}
+			}
+		} else {
+			altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+		}
 		if len(altCostSets) == 0 {
 			// Unreachable through CastOffersForLocked, which already
 			// dropped an offer with too few candidates. Kept because
@@ -1474,7 +1501,10 @@ func (e *enumerator) castMoveEmitter(
 			// #1677: and the Phyrexian symbols this move pays with
 			// life, which Params names only as a count.
 			// ADR 0100: and a branch's fixed "pay 3 life".
-			Cost: withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+			// ADR 0129 §5: and the energy the cast pays — the offer's
+			// and a replicate's, once per payment.
+			Cost: withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+				game.CastEnergyOwed(offer, nil, optional, chosen)),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
@@ -1587,13 +1617,25 @@ func distributionWire(dist map[uuid.UUID]int) map[string]int {
 // move list. The returned slice is fresh: the pool comes from the
 // engine and must not be reordered under it.
 func (e *enumerator) cheapestFuelFirst(pool []uuid.UUID) []uuid.UUID {
+	return e.cheapestByFuel(pool, false)
+}
+
+// cheapestTapFirst is cheapestFuelFirst for a cost that TAPS its
+// permanents rather than spending them (ADR 0135 §1: Orim's Cure's
+// creature, Battle Screech's three): the policy is asked what tapping
+// each costs (TargetCandidate.Tap), and the cheapest is tapped first.
+func (e *enumerator) cheapestTapFirst(pool []uuid.UUID) []uuid.UUID {
+	return e.cheapestByFuel(pool, true)
+}
+
+func (e *enumerator) cheapestByFuel(pool []uuid.UUID, tap bool) []uuid.UUID {
 	if e.opts.OrderCostFuel == nil || len(pool) < 2 {
 		return pool
 	}
 	out := append([]uuid.UUID(nil), pool...)
 	price := make(map[uuid.UUID]float64, len(out))
 	for _, id := range out {
-		price[id] = e.opts.OrderCostFuel(TargetCandidate{ID: id})
+		price[id] = e.opts.OrderCostFuel(TargetCandidate{ID: id, Tap: tap})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return price[out[i]] < price[out[j]] })
 	return out
@@ -2236,8 +2278,11 @@ func altCostLabel(g *game.Game, offer *game.AlternativeCost, paid []uuid.UUID) s
 		// that logged "exiling Island" would be describing a different
 		// card.
 		verb := ", exiling "
-		if offer.ReturnToHand != nil {
+		switch {
+		case offer.ReturnToHand != nil:
 			verb = ", returning "
+		case offer.TapOthers != nil:
+			verb = ", tapping "
 		}
 		label += verb + strings.Join(names, ", ")
 	}

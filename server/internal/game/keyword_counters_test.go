@@ -39,8 +39,8 @@ func TestKeywordCounterKindsAreCR1221b(t *testing.T) {
 // Every kind is a keyword the engine enforces (ADR 0014's closedness
 // rule), and every CR 122.1b keyword the engine enforces IS a kind —
 // so a keyword that joins canonicalKeywords without its counter fails
-// here. Decayed and exalted are the two that are not canonical yet
-// (ADR 0101 owner decision 5).
+// here. Decayed is the one that is not canonical yet (ADR 0101 owner
+// decision 5, #2650); exalted joined with #2538.
 func TestKeywordCounterKindsAreCanonicalKeywords(t *testing.T) {
 	for _, kind := range KeywordCounterKinds() {
 		if !canonicalKeywords[kind] {
@@ -52,7 +52,7 @@ func TestKeywordCounterKindsAreCanonicalKeywords(t *testing.T) {
 			t.Errorf("%q is a canonical keyword and a CR 122.1b keyword counter, but not in keywordCounterKinds", kw)
 		}
 	}
-	for _, out := range []string{"decayed", "exalted", "hexproof from white", "Flying", "+1/+1", "shield", "stun", "protection from red"} {
+	for _, out := range []string{"decayed", "hexproof from white", "Flying", "+1/+1", "shield", "stun", "protection from red"} {
 		if IsKeywordCounter(out) {
 			t.Errorf("IsKeywordCounter(%q) = true, want false", out)
 		}
@@ -439,7 +439,7 @@ func TestKeywordCounterKindsIsSortedAndClosed(t *testing.T) {
 	if IsKeywordCounter("mutated") {
 		t.Error("KeywordCounterKinds must return a copy")
 	}
-	if len(KeywordCounterKinds()) != 13 {
-		t.Errorf("%d kinds, want 13 (CR 122.1b's fifteen less decayed and exalted)", len(KeywordCounterKinds()))
+	if len(KeywordCounterKinds()) != 14 {
+		t.Errorf("%d kinds, want 14 (CR 122.1b's fifteen less decayed)", len(KeywordCounterKinds()))
 	}
 }

@@ -643,6 +643,17 @@ var mechanics = []Mechanic{
 		Adopt:      `Triggered: []game.TriggeredAbility{Storm()}`,
 	},
 	{
+		// ADR 0129 §5: effects.Replicate stamps its trigger with the
+		// keyword, and Register holds the trigger and the replicate
+		// cost together, so the probe is exact.
+		Name:       "replicate",
+		Phrases:    []string{"replicate"},
+		Implements: keywordTrigger(effects.KeywordReplicate),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "replicate"`,
+		Confidence: Exact,
+		Adopt:      `OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(n, max)} with Triggered: []game.TriggeredAbility{Replicate()} — see effects/replicate.go`,
+	},
+	{
 		// ADR 0099: discover is an instruction inside a closure, so the
 		// only machine-readable signal is the Spec's own declaration,
 		// which effects/discover_guard_test.go holds to the source.
@@ -730,6 +741,17 @@ var mechanics = []Mechanic{
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "persist"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{game.KeywordPersist} — the engine does the rest`,
+	},
+	{
+		// #2538 (ADR 0101 amendment 2026-10-08): exalted is a
+		// canonicalKeywords token whose trigger the engine derives from
+		// the ability list (game/exalted.go). Same probe as evolve.
+		Name:       "exalted",
+		Phrases:    []string{"exalted"},
+		Implements: printedKeywordProbe(game.KeywordExalted),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "exalted"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordExalted} — the engine does the rest`,
 	},
 	{
 		// #1519: split second is a canonicalKeywords token read off

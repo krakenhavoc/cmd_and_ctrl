@@ -29,6 +29,7 @@ const (
 	hydraTrainerOracle      = "c428cbe2-17fd-4bd2-9810-de2561519f14"
 	khenraScrapperOracle    = "6ab8958b-10a2-4601-a609-7a372a47f36c"
 	nefCropEntanglerOracle  = "04dc245b-011f-4207-ab5c-1528037200f5"
+	rhonassStalwartOracle   = "8c95230b-7a4a-4293-ab5f-2070d951082b"
 	rhetCropOracle          = "4853bb11-2994-4caf-9981-8a480d472004"
 	rohirrimChargersOracle  = "8e638c52-e7b9-445b-adcf-77b58e06c2ba"
 	sandstormCrasherOracle  = "d1597137-5609-4012-93bb-19c49c9cf2c3"
@@ -66,6 +67,7 @@ var exertAttackCards = []exertCard{
 	{"Khenra Scrapper", khenraScrapperOracle, "Creature — Jackal Warrior", 2, 3, CompletenessFull, 1, 0},
 	{"Nef-Crop Entangler", nefCropEntanglerOracle, "Creature — Human Warrior", 2, 1, CompletenessFull, 1, 0},
 	{"Rhet-Crop Spearmaster", rhetCropOracle, "Creature — Human Warrior", 3, 1, CompletenessFull, 1, 0},
+	{"Rhonas's Stalwart", rhonassStalwartOracle, "Creature — Human Warrior", 2, 2, CompletenessFull, 1, 0},
 	{"Rohirrim Chargers", rohirrimChargersOracle, "Creature — Human Knight", 4, 4, CompletenessFull, 0, 1},
 	{"Sandstorm Crasher", sandstormCrasherOracle, "Creature — Minotaur Berserker Wizard", 3, 4, CompletenessCaveats, 1, 0},
 	{"Tah-Crop Elite", tahCropEliteOracle, "Creature — Bird Warrior", 2, 2, CompletenessFull, 1, 0},
@@ -124,6 +126,7 @@ func TestExertAttackCardsDeclareTheirPurposes(t *testing.T) {
 		khenraScrapperOracle:    pump(2, 0),
 		nefCropEntanglerOracle:  pump(1, 2),
 		rhetCropOracle:          pump(1, 0, "first strike"),
+		rhonassStalwartOracle:   pump(1, 1),
 		themberchaudOracle:      pump(0, 0, "flying"),
 		watchfulNagaOracle:      {Draws: 1},
 	}
@@ -199,6 +202,7 @@ func TestExertSelfPumpCards(t *testing.T) {
 		{"Khenra Scrapper", 2, 0, "", ""},
 		{"Nef-Crop Entangler", 1, 2, "", ""},
 		{"Rhet-Crop Spearmaster", 1, 0, "first strike", ""},
+		{"Rhonas's Stalwart", 1, 1, "", ""},
 		{"Themberchaud", 0, 0, "flying", ""},
 	}
 	for _, tc := range cases {
@@ -716,4 +720,54 @@ func TestThemberchaudEntersDealsDamageForEachMountain(t *testing.T) {
 			t.Errorf("%s at %d, want %d: each player, the controller included", p.Name, p.Life, lives[p.ID]-3)
 		}
 	}
+}
+
+// Rhonas's Stalwart (#2600): exerted, it can't be blocked by creatures
+// with power 2 or less this turn. A blocker of power 3 is allowed; a
+// pump on a blocker after the exert is read live (CR 509.1b); an
+// unexerted attacker is blockable by anything.
+func TestRhonassStalwartBarsLowPowerBlockers(t *testing.T) {
+	setup := func(t *testing.T, exert bool) (g *game.Game, opp *game.Player, id, small, big uuid.UUID) {
+		g = newCatalogGame(t)
+		_, opp, id = pushExertAttacker(t, g, exertCardNamed("Rhonas's Stalwart"))
+		small = pushVanillaCreature(g, opp.ID, "Power Two", 2, 2)
+		big = pushVanillaCreature(g, opp.ID, "Power Three", 3, 3)
+		advanceTo(t, g, game.StepDeclareAttackers)
+		if err := g.DeclareAttackerDeclWith(game.AttackDeclaration{Attacker: id, Target: opp.ID, Exert: exert}, game.DeclareAttackersParams{}); err != nil {
+			t.Fatal(err)
+		}
+		lockInAttacks(t, g)
+		passPriorityAroundTable(t, g)
+		advanceTo(t, g, game.StepDeclareBlockers)
+		return
+	}
+	t.Run("exerted", func(t *testing.T) {
+		g, opp, id, small, big := setup(t, true)
+		if brOffers(brOffered(t, g, opp.ID), small, id) {
+			t.Error("the enumerator offers a power 2 blocker")
+		}
+		if !brOffers(brOffered(t, g, opp.ID), big, id) {
+			t.Error("the enumerator withholds a power 3 blocker")
+		}
+		brRefusal(t, g.DeclareBlocker(small, id), game.BlockReasonCantBeBlockedBy)
+		if err := g.DeclareBlocker(big, id); err != nil {
+			t.Fatalf("a power 3 creature blocks: %v", err)
+		}
+	})
+	t.Run("not exerted", func(t *testing.T) {
+		g, _, id, small, _ := setup(t, false)
+		if err := g.DeclareBlocker(small, id); err != nil {
+			t.Fatalf("an unexerted attacker is blockable by a power 2 creature: %v", err)
+		}
+	})
+	t.Run("the block rule ends with the turn", func(t *testing.T) {
+		g, _, _, _, _ := setup(t, true)
+		if n := scopedBlockRuleCount(g); n != 1 {
+			t.Fatalf("the exert registers one block rule, got %d", n)
+		}
+		advanceToUpkeepOf(t, g, 1)
+		if n := scopedBlockRuleCount(g); n != 0 {
+			t.Errorf("%d block rules outlived the turn", n)
+		}
+	})
 }

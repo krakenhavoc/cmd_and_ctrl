@@ -203,6 +203,22 @@ type PermissionFilter struct {
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
 
+	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
+	// in your graveyard have retrace" (#2550): a card qualifies when it
+	// has AT LEAST ONE of the named creature types — "X and Y cards" is
+	// a union, not a card that is both (a Merfolk Wizard qualifies). It
+	// composes with CreatureType as a further AND, and an all-empty
+	// array constrains nothing. Read through the same CreatureTypesOf
+	// vocabulary as CreatureType, so a changeling in the graveyard
+	// qualifies, which is correct.
+	//
+	// A two-slot ARRAY rather than a slice because PermissionFilter is
+	// compared with == (a slice field makes the struct incomparable and
+	// breaks every `a.Filter != b.Filter` in the engine and its tests);
+	// two is the widest printed union, and a card that needs a third
+	// widens the array.
+	CreatureTypesAny [2]string `json:"creatureTypesAny"`
+
 	// NotOwnedByHolder is Tinybones, Bauble Burglar's "cards YOU DON'T
 	// OWN": a card whose owner is the permission's holder does not
 	// qualify. The holder is not known to the pure-data Matches, so the
@@ -268,6 +284,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
+		return false
+	}
+	if (f.CreatureTypesAny != [2]string{}) && !cardHasAnyCreatureType(c, f.CreatureTypesAny) {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
@@ -391,6 +410,14 @@ type CastPermission struct {
 	// Citadel's clause says "if you cast a spell this way".
 	LifeEqualToManaValue bool `json:"lifeEqualToManaValue,omitempty"`
 
+	// EnergyEqualToManaValue is Amped Raptor's "You may cast that card
+	// by paying an amount of {E} equal to its mana value rather than
+	// paying its mana cost" (ADR 0129 §5): Bolas's Citadel's shape with
+	// energy for life. A COST (CR 107.14, CR 118.3), so it becomes an
+	// AlternativeCost.Energy and a player short of it cannot claim the
+	// offer. Not applied to a land, for LifeEqualToManaValue's reason.
+	EnergyEqualToManaValue bool `json:"energyEqualToManaValue,omitempty"`
+
 	// ExileOtherFromGraveyard is escape's "exile N other cards from
 	// your graveyard" (CR 702.138a) — Underworld Breach's three, The
 	// Grim Captain's Locker's four.
@@ -403,6 +430,13 @@ type CastPermission struct {
 	// discarded — see AlternativeCost.DiscardFromHand for why a
 	// priced offer is the home of an additional cost here.
 	DiscardLandCard bool `json:"discardLandCard,omitempty"`
+
+	// DiscardCard is The Infamous Cruelclaw's "You may cast that card by
+	// discarding a card rather than paying its mana cost" (CR 118.9,
+	// ADR 0135 §2): the synthesised offer charges no mana and one card
+	// from the holder's hand, discarded as a cost (CR 701.9a), so a
+	// discard payoff sees it. Any card but the one being cast.
+	DiscardCard bool `json:"discardCard,omitempty"`
 
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
@@ -447,6 +481,10 @@ type CastPermission struct {
 	//	UntilYourNextTurn       nothing prints it on a cast permission
 	//	                        yet; it costs nothing to accept
 	//	Indefinite              likewise
+	//	UntilSourceExilesAnother Unstable Amulet, Furious Rise,
+	//	                        Superior Foes of Spider-Man (#2539),
+	//	                        granted only by
+	//	                        ExileTopUntilAnotherForEffect
 	//
 	// ForAsLongAs is the one a permission must not carry: its
 	// condition watches a battlefield object, and a permission's
@@ -761,12 +799,25 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		out.ManaCost = ""
 		out.Life = card.ManaValue()
 	}
+	if p.EnergyEqualToManaValue {
+		// The same read for energy (ADR 0129 §5): "rather than paying
+		// its mana cost", so no mana is owed.
+		out.ManaCost = ""
+		out.Energy = card.ManaValue()
+	}
 	if p.ExileOtherFromGraveyard > 0 {
 		out.ExileFromGraveyard = escapeExileSpec(p.ExileOtherFromGraveyard)
 	}
 	if p.DiscardLandCard {
 		out.DiscardFromHand = RetraceDiscardSpec()
 		out.PayLabel = "a land card"
+	}
+	if p.DiscardCard {
+		// ADR 0135 §2: "by discarding a card rather than paying its
+		// mana cost" replaces the mana cost.
+		out.ManaCost = ""
+		out.DiscardFromHand = discardAnyCardSpec()
+		out.PayLabel = "a card"
 	}
 	out.ExileOnLeavingStack = p.ExileOnResolution
 	if out.Label == "" {
@@ -1738,6 +1789,16 @@ func cardHasCreatureType(c Card, want string) bool {
 	return false
 }
 
+// cardHasAnyCreatureType is cardHasCreatureType for a union of types.
+func cardHasAnyCreatureType(c Card, want [2]string) bool {
+	for _, t := range want {
+		if t != "" && cardHasCreatureType(c, t) {
+			return true
+		}
+	}
+	return false
+}
+
 // escapeExileSpec builds the "exile N other cards from your
 // graveyard" component of a GRANTED escape cost (CR 702.138a).
 //
@@ -1779,6 +1840,22 @@ func RetraceDiscardSpec() *TargetSpec {
 		Zones: []ZoneKind{ZoneHand},
 		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
 			return c.Owner == caster && c.IsLand()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// discardAnyCardSpec builds the "discarding a card" component of a
+// granted offer (CastPermission.DiscardCard, ADR 0135 §2): any one card
+// from the caster's own hand. A cost, not a target (CR 601.2h); the
+// Owner check is RetraceDiscardSpec's belt and braces for the picker's
+// SpecCandidatesForEffect, which walks every seat.
+func discardAnyCardSpec() *TargetSpec {
+	return &TargetSpec{
+		Label: "Discard a card",
+		Zones: []ZoneKind{ZoneHand},
+		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.Owner == caster
 		},
 		Min: 1, Max: 1,
 	}

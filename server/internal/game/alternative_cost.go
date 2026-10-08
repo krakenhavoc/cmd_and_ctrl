@@ -106,6 +106,19 @@ type AlternativeCost struct {
 	// #693 renumbering tail.)
 	Life int
 
+	// Energy is a "pay N {E}" component of the alternative cost (CR
+	// 107.14, CR 118.9): Nissa, Worldsoul Speaker's eight, Primal
+	// Prayers' one, and Amped Raptor's "an amount of {E} equal to its
+	// mana value" (ADR 0129 §5, PR 4). Removed from the caster through
+	// payEnergyLocked, the one path that pays energy, with the cast's
+	// other non-mana costs.
+	//
+	// A COST, like Life: AlternativeCostPayableLocked withholds the
+	// offer from a caster short of it (CR 118.3) and the announce
+	// validator refuses the claim. Never waived: Cast anyway and the
+	// permissive posture decide only the mana (ADR 0129 §4).
+	Energy int
+
 	// ExileFromHand is "exile a blue card from your hand" (Force of
 	// Will) or "exile a white card from your hand" (Solitude's evoke
 	// cost), as a spec matched against the caster's hand. The caster
@@ -199,12 +212,36 @@ type AlternativeCost struct {
 	//
 	// The spell being cast is never a legal discard: CR 601.2a has
 	// already moved it to the stack, and it is not in hand anyway.
+	//
+	// ADR 0135 §2 (#2412) also uses it for a true alternative cost:
+	// Snag's "You may discard a Forest card rather than pay this spell's
+	// mana cost" is an offer with an empty ManaCost and this component
+	// (effects.DiscardInstead). Foil's "an Island card and another card"
+	// is two cards under a set rule (TargetSpec.EachOf), which the
+	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
 
+	// TapOthers is "tap N untapped [permanents] you control" as the price
+	// (CR 118.9, ADR 0135 §1, #2030): Orim's Cure's creature, Battle
+	// Screech's three white creatures, Zahid's artifact. The same struct
+	// an activated ability's cost carries (#758), so the options walk,
+	// the validator and the payer are the ones abilities already use:
+	// untapped (CR 118.3, 701.26a), under the caster's control, matched
+	// without targeting, and with no summoning-sickness check (CR 302.6:
+	// tapping a creature to pay a spell's cost is not the {T} symbol).
+	// The permanents ride CastSpellParams.AltCostIDs, which the
+	// auto-tapper already leaves alone (CastAutoTapExclusions), so
+	// Sephara's {W} can't be paid by a creature tapped for her price.
+	//
+	// ExcludeSource and the X count are refused by effects.Register: the
+	// spell is not on the battlefield, and no printed alternative cost
+	// taps X.
+	TapOthers *TapOthersCost
+
 	// PayLabel is the picker's prompt copy for the card component —
-	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand or Sacrifice ("a
-	// blue card", "an Island you control", "three creatures"). Empty
-	// falls back to Label.
+	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand,
+	// Sacrifice or TapOthers ("a blue card", "an Island you control",
+	// "three creatures"). Empty falls back to Label.
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
@@ -364,6 +401,18 @@ type AlternativeCost struct {
 	// query, and a claim reaches the stack as its key alone.
 	Granted bool
 
+	// AsThoughFlash is "if you cast a spell this way, you may cast it as
+	// though it had flash" (Primal Prayers, ADR 0129 §5). CR 601.3c: an
+	// effect that lets a spell be cast as though it had flash only if an
+	// alternative cost is paid lets its caster BEGIN to cast it at
+	// instant speed. So a claim of this offer opens the instant-speed
+	// window and a cast of the same card for its printed cost does not.
+	// Read by CastTimingForOfferOpenLocked, which CastSpell, the bot
+	// enumerator and the view's per-offer timing stamp all call. A
+	// per-player restriction (Teferi, Time Raveler) still closes it, as
+	// for any other flash grant (CR 101.2).
+	AsThoughFlash bool
+
 	// Purpose is what the spell does when cast for this cost, where
 	// that differs from the card's own (ADR 0126 §6): overload turns
 	// Cyclonic Rift into a bounce sweep. Zero for a cost that leaves the
@@ -427,6 +476,11 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		// same clause shape (#747) — Register holds it to a fixed
 		// count, so this is the printed N.
 		return a.Sacrifice, ZoneBattlefield, SacrificeCostCount(a.Sacrifice)
+	case !a.TapOthers.Empty():
+		// ADR 0135 §1: a fixed count (Register refuses the X form), of
+		// permanents on the battlefield; altCostCardOKLocked adds the
+		// untapped check a sacrifice or a return does not need.
+		return a.TapOthers.Filter, ZoneBattlefield, a.TapOthers.Count
 	}
 	return nil, "", 0
 }
@@ -599,14 +653,16 @@ func (g *Game) lifePayableBy(a *AlternativeCost, p *Player) bool {
 // EVERY component of this offer if they claimed it right now — the
 // one predicate behind "is this offer on the table" (#695).
 //
-// Three questions, in the order announce asks them:
+// Four questions, in the order announce asks them:
 //
 //  1. the offer's own Condition (Available) — "if you control a
 //     Swamp", "if you control a commander";
 //  2. the life component (CR 119.4), which is why this function
 //     exists: the view used to ask only (1) and show Snuff Out's
 //     "pay 4 life" to a player at 3;
-//  3. the card component (CR 601.2b) — whether the caster's hand,
+//  3. the energy component (CR 107.14, CR 118.3, ADR 0129 §5) —
+//     Nissa, Worldsoul Speaker's eight {E};
+//  4. the card component (CR 601.2b) — whether the caster's hand,
 //     graveyard or battlefield holds as many cards matching the
 //     clause as the cost demands. Force of Will with no other blue
 //     card in hand, an escape cost with two cards left in the
@@ -639,23 +695,37 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if !g.lifePayableBy(alt, p) {
 		return false
 	}
+	// ADR 0129 §5: the energy component (CR 107.14, CR 118.3), through
+	// the predicate the activation and the payment both read.
+	if EnergyShortfall(p, alt.Energy) != nil {
+		return false
+	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
 		return true
 	}
+	setRule := len(SacrificeSetKinds(spec)) > 0
+	var pool []uuid.UUID
 	have := 0
 	for _, c := range g.zoneForAltCostLocked(p, zone).Cards {
 		if c.InstanceID == castID {
 			continue
 		}
-		if g.altCostCardOKLocked(p, spec, zone, c) {
+		if g.altCostCardOKLocked(p, alt, spec, zone, c) {
+			if setRule {
+				pool = append(pool, c.InstanceID)
+				continue
+			}
 			have++
 			if have >= want {
 				return true
 			}
 		}
 	}
-	return false
+	// ADR 0135 §2: with a set rule, enough cards is not enough — Foil
+	// held beside two non-Island cards can't be paid, so it isn't
+	// offered (#695).
+	return setRule && g.CostSetPaymentForEffect(spec, zone, pool) != nil
 }
 
 // altCostCardOKLocked is the per-card half of an alternative cost's
@@ -677,11 +747,17 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 // the sacrifice component it makes the offer the view stamps and the
 // candidates the enumerator pays from the same rule the announce
 // validator then judges the named permanents by.
-func (g *Game) altCostCardOKLocked(p *Player, spec *TargetSpec, zone ZoneKind, c Card) bool {
+func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *TargetSpec, zone ZoneKind, c Card) bool {
 	if zone == ZoneBattlefield {
 		// CR 701.21a for the sacrifice, "an Island YOU CONTROL" for the
 		// bounce: a cost is paid with your own permanents.
 		if c.Controller != p.ID {
+			return false
+		}
+		// ADR 0135 §1, CR 118.3 and 701.26a: a permanent that is already
+		// tapped can't be tapped to pay a cost. The one check a tap needs
+		// that a sacrifice or a return does not.
+		if alt != nil && alt.TapOthers != nil && c.Tapped {
 			return false
 		}
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
@@ -724,6 +800,11 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	if !g.lifePayableBy(alt, p) {
 		return ErrInvalidParam
 	}
+	// ADR 0129 §5: "Not enough energy (have 2, need 8)", the refusal
+	// an activation gives (CR 118.3).
+	if err := EnergyShortfall(p, alt.Energy); err != nil {
+		return err
+	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
 		if len(ids) > 0 {
@@ -741,6 +822,16 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// among them; there is no X to announce for a fixed clause.
 		_, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{SacrificeOther: alt.Sacrifice}, ids, 0)
 		return err
+	}
+	if alt.TapOthers != nil {
+		// ADR 0135 §1 (owner decision 1): the one tap-others validator
+		// activated abilities use (#758) — exactly Count, each named
+		// once, on the battlefield under the caster's control, untapped
+		// (CR 118.3) and matching the clause without targeting, with no
+		// summoning-sickness check (CR 302.6). The spell is not on the
+		// battlefield, and Register refuses ExcludeSource, so the
+		// "source" the validator is handed excludes nothing.
+		return g.validateTapOthersCostLocked(playerID, castID, alt.TapOthers, ids)
 	}
 	// Exactly `want`, not "at least": escape's five is a price, and
 	// a caster who named four has not paid it while one who named
@@ -765,11 +856,32 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// The same per-card predicate AlternativeCostPayableLocked
 		// counts candidates with, so "the client was offered this"
 		// and "the engine accepts this" are one rule (#695).
-		if !g.altCostCardOKLocked(p, spec, zone, c) {
+		if !g.altCostCardOKLocked(p, alt, spec, zone, c) {
 			return ErrInvalidParam
 		}
 	}
+	// ADR 0135 §2: a set rule over the picks (Foil's "an Island card
+	// and another card"). Each card passed the clause's union predicate
+	// above; the SET must still fill every entry, one card each. Two
+	// non-Island cards are not an Island card and another card.
+	if !g.costSetSatisfiedLocked(spec, zone, ids) {
+		return ErrInvalidParam
+	}
 	return nil
+}
+
+// AltCostSetPaymentLocked searches `candidates` (in the caller's
+// preferred order) for ONE payment of an offer whose card component has
+// a set rule (TargetSpec.EachOf, ADR 0135 §2: Foil's "an Island card
+// and another card"). ok is false when the component has no set rule,
+// and then the caller pays the first N as before; with a rule, a nil
+// payment means the candidates cannot fill it. Caller must hold g.mu.
+func (g *Game) AltCostSetPaymentLocked(alt *AlternativeCost, candidates []uuid.UUID) (pay []uuid.UUID, ok bool) {
+	spec, zone, _ := alt.cardComponent()
+	if len(SacrificeSetKinds(spec)) == 0 {
+		return nil, false
+	}
+	return g.CostSetPaymentForEffect(spec, zone, candidates), true
 }
 
 // zoneForAltCostLocked picks the zone an alternative cost's card
@@ -832,16 +944,18 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 		if c.InstanceID == castID {
 			continue
 		}
-		if !g.altCostCardOKLocked(p, spec, kind, c) {
+		if !g.altCostCardOKLocked(p, alt, spec, kind, c) {
 			continue
 		}
 		out = append(out, c.InstanceID)
 	}
-	if alt.Sacrifice != nil {
+	if alt.Sacrifice != nil || alt.TapOthers != nil {
 		// #1727: a sacrifice payment is offered in the order every
 		// other sacrifice cost is (#747) — tokens first, then the
 		// cheapest — so the bot pays what the client's "Choose for me"
-		// would, before a policy re-sorts it.
+		// would, before a policy re-sorts it. ADR 0135 §1: a tap payment
+		// in the order the tap-others picker lists its options
+		// (tapOthersCostOptions), which is the same order.
 		return g.SacrificePaymentOrderForEffect(out, uuid.Nil)
 	}
 	return out
@@ -861,9 +975,16 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 // would make Force of Will free.
 //
 // Caller must hold g.mu.
-func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if alt == nil {
 		return nil
+	}
+	// ADR 0129 §5: the energy, through the one path that pays it (CR
+	// 107.14), naming the spell as the source so the log reads "pays 8
+	// energy (Craterhoof Behemoth)". No replacement window, as for every
+	// energy payment.
+	if err := g.payEnergyLocked(playerID, alt.Energy, castID); err != nil {
+		return err
 	}
 	// #793: the cost path. Snuff Out's "pay 4 life" is a cost, so it
 	// runs the CR 614 window (CR 119.4 — paying life is losing life)
@@ -935,6 +1056,12 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 		// countered. The CR 903.9 answers ride along as they do for the
 		// moves above (#1397).
 		return g.payCostSacrificesLocked(ids, answers)
+	case alt.TapOthers != nil:
+		// ADR 0135 §1: the ability's tap-others payer (#758), with the
+		// spell already on the stack, so each permanent's EventTapCard
+		// puts a "whenever a creature becomes tapped" trigger above the
+		// spell. Nothing moves, so there is no CR 903.9 answer to carry.
+		g.payTapOthersCostLocked(playerID, ids)
 	}
 	return nil
 }

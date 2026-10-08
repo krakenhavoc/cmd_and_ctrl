@@ -62,4 +62,15 @@ var (
 			Label:  "Brainstorm — put two cards from your hand on top of your library",
 		}.Apply(ctx)
 	})
+
+	// "then put a card from your hand on top of your library" — Enter
+	// the Infinite.
+	drawThenEnterTheInfinitePutBack = game.RegisterDrawThen("enter-the-infinite-put-back", func(g *game.Game, d game.DrawThen) error {
+		ctx := NewContext(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source})
+		return PutFromHandOnTopInAnyOrder{
+			Player: d.Player,
+			N:      d.N,
+			Label:  "Enter the Infinite — put a card from your hand on top of your library",
+		}.Apply(ctx)
+	})
 )

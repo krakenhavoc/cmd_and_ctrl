@@ -137,6 +137,29 @@ const (
 	// is no flag to forget to clear.
 	UntilEndOfCombat
 
+	// UntilSourceExilesAnother is "you may play that card until you
+	// exile another card with this artifact" (ADR 0066 amendment
+	// 2026-10-08, #2539): Unstable Amulet, Furious Rise, Superior Foes
+	// of Spider-Man. The window ends on an EVENT, not a turn boundary
+	// (CR 611.2a): the holder's next exile made by the same linked
+	// ability of the same source OBJECT (CR 607.2a, CR 607.1c).
+	//
+	// The eighth kind, appended after UntilEndOfCombat so every
+	// persisted int keeps its meaning. A binary from before it refuses
+	// a file carrying it through Known, so a rollback never restores the
+	// window as one that does not end.
+	//
+	// The duration names its holder (Player) and the source object
+	// (Source plus SourceEpoch, the shape of StackItem.SourceObject).
+	// ExileTopUntilAnotherForEffect, the one helper that exiles "with
+	// this", sets Ended on every earlier window it closes, and
+	// durationExpiredLocked reads only that flag. Nothing else ends it:
+	// a source that leaves the battlefield leaves the newest card
+	// playable for as long as it stays exiled (the Unstable Amulet and
+	// Furious Rise rulings), and the card leaving exile ends the
+	// permission by object identity (ADR 0066 decision 2).
+	UntilSourceExilesAnother
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -288,6 +311,12 @@ func (d Duration) Problem() string {
 	}
 	if d.Kind != UntilEndOfCombat && (d.CombatTurn != 0 || d.CombatPhase != 0) {
 		return fmt.Sprintf("a combat stamp on a %s duration", d.Kind)
+	}
+	if d.Kind != UntilSourceExilesAnother && (d.SourceEpoch != 0 || d.Ended) {
+		return fmt.Sprintf("a source-exile stamp on a %s duration", d.Kind)
+	}
+	if d.Kind == UntilSourceExilesAnother && d.Source == uuid.Nil {
+		return "an until-you-exile-another duration names no source"
 	}
 	if d.Kind != ForAsLongAs {
 		if len(d.Also) > 0 {
@@ -456,6 +485,18 @@ type Duration struct {
 	// reading a duration differently from the one that wrote it.
 	CombatTurn  int `json:"CombatTurn,omitempty"`
 	CombatPhase int `json:"CombatPhase,omitempty"`
+
+	// SourceEpoch is the Card.ObjectEpoch of the object an
+	// UntilSourceExilesAnother duration names, beside its instance in
+	// Source: together they are StackItem.SourceObject, so CR 400.7 is
+	// checked rather than assumed (an Amulet that left and came back
+	// is a new object, and its exiles close none of the old one's
+	// windows). Ended is set once that object's linked ability has
+	// exiled another card for the same holder (ADR 0066 amendment
+	// 2026-10-08). Both are zero, and omitted, for every other kind;
+	// Problem refuses them there.
+	SourceEpoch int  `json:"SourceEpoch,omitempty"`
+	Ended       bool `json:"Ended,omitempty"`
 
 	// Also is the rest of a conjunction (ADR 0109 §3, CR 611.2b): a
 	// ForAsLongAs duration lasts while Condition AND every condition
@@ -858,6 +899,12 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		return !g.inCombatPhaseLocked(d.CombatTurn, d.CombatPhase)
 	case ForAsLongAs:
 		return !g.durationConditionHoldsLocked(d)
+	case UntilSourceExilesAnother:
+		// Over once the linked exile marked it (#2539). The source
+		// leaving the battlefield does not end it, which is the
+		// ruling; the card leaving exile ends the permission through
+		// its object check, not here.
+		return d.Ended
 	case Indefinite, WhileInZone:
 		// Neither ends on a turn boundary. WhileInZone ends on a ZONE
 		// change, which CR 400.7 answers on the permission itself —
@@ -1056,6 +1103,8 @@ func (k DurationKind) String() string {
 		return "until your next end step"
 	case UntilEndOfCombat:
 		return "until end of combat"
+	case UntilSourceExilesAnother:
+		return "until you exile another card with it"
 	}
 	return "unknown duration"
 }

@@ -82,6 +82,13 @@ The config starts both the Go server (:8080) and the Vite client
 (default outside CI) it'll attach to anything already running on
 those ports, so you can iterate against a long-lived dev stack.
 
+`CMDCTRL_DEV_SERVER_PORT` and `CMDCTRL_DEV_CLIENT_PORT` move the two
+ports (`tests/env.ts`; `client/vite.config.ts` reads the same pair, so
+its proxy follows the server). The nightly sets them per shard: it
+runs the suite as four jobs, `npm test -- --shard=<i>/4`, each with
+its own server and client, because the self-hosted runners share one
+host (#2661). `workers: 1` still holds inside each shard.
+
 ## Design notes
 
 - **Admin token matches `make server-dev`.** Both `playwright.config.ts`

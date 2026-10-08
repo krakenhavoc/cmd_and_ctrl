@@ -203,7 +203,20 @@ export { manaSymbols };
 
 export function priceText(p: CastPriceView): string {
   const life = p.life ? ` + ${p.life} life` : "";
+  // ADR 0129 §5: an energy price with no mana is "2 energy", not "free".
+  if (p.energy) {
+    const mana = p.cost === "{0}" ? "" : `${p.cost} + `;
+    return `${mana}${p.energy} energy${life}`;
+  }
   return `${p.cost === "{0}" ? "free" : p.cost}${life}`;
+}
+
+// priceSymbols is a price's pips: its mana, then one {E} per energy
+// (ADR 0129 §5). A price whose only charge is energy shows no {0}.
+export function priceSymbols(p: CastPriceView): string[] {
+  const energy = Array.from({ length: p.energy ?? 0 }, () => "E");
+  if (energy.length > 0 && p.cost === "{0}") return energy;
+  return [...manaSymbols(p.cost), ...energy];
 }
 
 /**
@@ -234,7 +247,7 @@ export function exileCostBadge(card: CardView): ExileCostBadge | null {
     const fp = f.cast_prices?.[0];
     if (fp) lines.push(`${f.name}: ${priceText(fp)}`);
   }
-  const symbols = manaSymbols(cheapest.cost);
+  const symbols = priceSymbols(cheapest);
   return {
     symbols: symbols.length > 0 ? symbols : ["0"],
     life: cheapest.life,

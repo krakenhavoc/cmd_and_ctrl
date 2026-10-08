@@ -118,6 +118,21 @@ func untapAllOtherCreaturesYouControl(g *game.Game, item *game.StackItem) error 
 // that left the battlefield and came back before the trigger resolved
 // is a new object and gets nothing (CR 400.7).
 func ExertedGets(label string, power, toughness int, keywords ...string) game.TriggeredAbility {
+	return exertedPump(label, power, toughness, keywords, nil)
+}
+
+// ExertedGetsAndCantBeBlockedByPower is Rhonas's Stalwart's linked "When
+// you do, it gets +P/+T until end of turn and can't be blocked by
+// creatures with power N or less this turn" (#2600). The pump and the
+// block rule are one record, both pinned to this creature as the exert
+// made it an object (CR 611.2c, 400.7); the pump is the row's Purpose.
+func ExertedGetsAndCantBeBlockedByPower(label string, power, toughness, atMost int) game.TriggeredAbility {
+	return exertedPump(label, power, toughness, nil, []game.Mod{cantBeBlockedByPowerMod(atMost)})
+}
+
+// exertedPump is the body ExertedGets and its siblings share: the
+// printed pump and keywords, plus any further mods, in one record.
+func exertedPump(label string, power, toughness int, keywords []string, extra []game.Mod) game.TriggeredAbility {
 	effect := func(g *game.Game, item *game.StackItem) error {
 		var mods []game.Mod
 		if power != 0 || toughness != 0 {
@@ -126,6 +141,7 @@ func ExertedGets(label string, power, toughness int, keywords ...string) game.Tr
 		if len(keywords) > 0 {
 			mods = append(mods, game.AddKeywordsMod(keywords...))
 		}
+		mods = append(mods, extra...)
 		ctx := NewContext(g, item)
 		return ScopedEffectFor{
 			Target:   item.SourceCardID,

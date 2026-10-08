@@ -1334,6 +1334,11 @@ type Spec struct {
 	// UntapStepRestrictions declares permanents that stay tapped during
 	// their controller's untap step (Mana Vault, Meekstone, and Auras).
 	UntapStepRestrictions []game.UntapStepRestriction
+	// CounterRemovalLocks declares "<kind> counters can't be removed
+	// from <permanents>" (Fear of Sleep Paralysis, #1824). A
+	// prohibition honoured at the one counter-removal choke point; see
+	// game.CounterRemovalLock and ADR 0058's 2026-10-08 amendment.
+	CounterRemovalLocks []game.CounterRemovalLock
 	// UntapCaps declares "players can't untap more than N <kind>
 	// during their untap steps" — Winter Orb, Static Orb, Winter Moon
 	// (#826, CR 502.3). A ceiling, not a restriction: when more
@@ -1501,6 +1506,10 @@ type ActivatedAbility struct {
 	// instant" (#1208). Set by EquipAbility; no card file sets it
 	// directly, exactly as none sets Cycling.
 	Equip bool
+	// UntapSelf marks a row whose whole effect is untapping its own
+	// source (Basalt and Grim Monolith, #2500). Bot data: the engine
+	// never reads it. See game.ActivatedAbility.UntapSelf.
+	UntapSelf bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
 	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition

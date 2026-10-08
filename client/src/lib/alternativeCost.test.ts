@@ -5,6 +5,7 @@ import {
   altCostPayCount,
   altCostPayOptions,
   altCostSacrificeClause,
+  altCostTapClause,
   alternativeCostByKey,
   alternativeCostsOf,
   applyCastChoices,
@@ -329,5 +330,41 @@ describe("a sacrifice alternative cost", () => {
       alt_cost_ids: ["token", "bear", "wolf"],
     });
     expect(params).not.toHaveProperty("sacrifice_ids");
+  });
+});
+
+// ADR 0135 §1: an offer whose card half TAPS permanents (Orim's Cure)
+// carries `tap_options`, which opens the tap picker — not the card list,
+// not the sacrifice picker. The picks ride alt_cost_ids.
+describe("a tap alternative cost", () => {
+  const cure = card({
+    instance_id: "cure",
+    name: "Orim's Cure",
+    type_line: "Instant",
+    mana_cost: "{1}{W}",
+    castable_here: true,
+    alternative_costs: [
+      {
+        key: "tap",
+        label: "Tap an untapped creature you control rather than pay this spell's mana cost",
+        pay_label: "an untapped creature you control",
+        tap_options: { cards: ["bear"], min: 1, max: 1 },
+      },
+    ],
+  });
+
+  it("reads the tap clause off the offer, and opens neither other picker", () => {
+    const offer = alternativeCostByKey(cure, "tap");
+    expect(altCostTapClause(offer)).toEqual({ cards: ["bear"], min: 1, max: 1 });
+    expect(altCostSacrificeClause(offer)).toBeUndefined();
+    expect(altCostPayOptions(offer)).toBeUndefined();
+    expect(altCostTapClause(alternativeCostByKey(rift, "overload"))).toBeUndefined();
+    expect(altCostTapClause(undefined)).toBeUndefined();
+  });
+
+  it("sends the tapped permanents as alt_cost_ids", () => {
+    const params: Record<string, unknown> = {};
+    applyCastChoices(params, { altCost: "tap", altCostIDs: ["bear"] });
+    expect(params).toEqual({ alternative_cost: "tap", alt_cost_ids: ["bear"] });
   });
 });

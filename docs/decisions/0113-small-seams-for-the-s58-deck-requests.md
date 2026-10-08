@@ -407,3 +407,163 @@ None. `DiscardCost` is catalog data and the announced X rides `StackItem.XValue`
 
 - The form as a cast's additional cost or a mana ability's cost (no printed card).
 - Teaching the heuristic when to spend a card to counter a spell. It prices the discard and the activation base like any other cost-paying move.
+
+---
+
+## Amendment 2026-10-08 — A maximum hand size changed by a spell, or for a while (#2108)
+
+**Why it lands here.** §3 built the maximum hand size as a timestamp-ordered fold and said, in its consequences, that "a future 'your maximum hand size is increased by one' is one more `HandSizeStatic`". Its player-level half was deliberately one value (`Player.MaxHandSize`, stamped by `Player.MaxHandSizeAt`), enough for "no maximum for the rest of the game". This amendment adds the missing half without changing §3's fold or its battlefield declarations.
+
+### What exists, what is missing
+
+- **One player grant.** `SetMaxHandSizeForEffect` writes one number and one timestamp. A second write replaces the first, so it cannot hold a reduction, two reductions, or an effect with a duration.
+- **Durations on a player already exist.** `PlayerStatic` (`player_statics.go`) is the slice of things a player has for a CR 611.2 duration, with a payload per kind, swept by `sweepPlayerStaticsLocked` through `durationExpiredLocked` and carried by the snapshot. It has eight payloads and none is a hand size.
+
+### The rules
+
+- **CR 402.2 / 613.11.** Effects that change a maximum hand size apply "in timestamp order", after all other continuous effects. **CR 613.7b**: a spell's or ability's effect takes the timestamp of its creation. **CR 611.2a / 611.2b**: it lasts for its stated duration ("for the rest of the game", "until your next turn").
+- **Cleave (CR 702.148).** Inspired Idea's reduction is in square brackets, so the cleaved spell does not make it.
+
+### Decision
+
+1. **A ninth `PlayerStatic` payload.** `PlayerStatic.HandSize` is a `game.HandSizeGrant{Active, Kind, N, At}`: the same `HandSizeKind` vocabulary as §3 (no maximum, set, modify), the creation timestamp, and `Active` as the presence bit (the zero kind is "no maximum", so the zero value cannot mean "nothing"). The duration is the entry's own `Duration`.
+2. **One writer.** `Game.GrantHandSizeForEffect(player, kind, n, label, source, duration)` refuses a Set below zero and a Modify by zero, the two declarations `Register` refuses. Any number of grants live at once.
+3. **One reader.** `EffectiveMaxHandSizeLocked` gathers each live grant (testing `durationExpiredLocked` itself, not leaving it to the sweep) as an entry at `HandSize.At`, beside the player's single grant and the battlefield statics, and folds them in the same stable timestamp order. §3's tie-break is unchanged: the player's own grant, then the stored grants in the order made, then the battlefield.
+4. **`SetMaxHandSizeForEffect` and the sandbox action are unchanged.** Finale of Revelation and Sea Gate Restoration keep their single "rest of the game" grant.
+
+Rejected: a list on `Player` next to `MaxHandSize`. It would need its own sweep, clone and snapshot field and a second reading of `Duration`, which is the argument that put the cast ban, the life lock and the rest on `PlayerStatic`.
+
+### Cards
+
+- **Inspired Idea: Full.** Draw three; unless cleaved, a Modify of −3 for the rest of the game. Cleave `{3}{U}{U}` skips it.
+- **Enter the Infinite: Full.** A no-maximum grant until the caster's next turn, then a draw of the library's size and a Brainstorm-style put-back of one card.
+
+### Tests
+
+`game/max_hand_size_grants_test.go` (the reader tests the duration with no sweep; grants stack; a clone owns its own list) and `cards/effects/max_hand_size_grants_test.go` (both cards, cleave, two Ideas, timestamp order against Null Profusion, the duration ending as the caster's turn begins, an empty library).
+
+### Snapshot impact
+
+Additive: `seats[].statics[].handSize.{active,kind,n,at}`, recorded in `snapshot_shape/v7.txt`. No new closure is reachable from `Game`. An older restore point has no such entry, which reads as none.
+
+### Out of scope
+
+- A grant that reaches another player or that a permanent's leaving ends: those are `HandSizeStatic`s on a permanent (§3).
+- Showing a granted change in the seat badge: the badge already reads the effective maximum.
+
+## Amendment 2026-10-08 — "Enters from a graveyard" triggers (#2135)
+
+**Why it lands here.** §4 is the undying and persist section, and the issue was found landing it: a creature returned by undying is the first permanent a card text can name by where it came from. This amendment adds an event field and changes no earlier decision.
+
+### What exists, what is missing
+
+- **`EventCast` already says where a spell was cast from** (`OldZone`, S22). `EventZoneMove` says where a card moved from. `EventETB` named only the new permanent, so a trigger could not tell a creature returned from a graveyard (undying, persist, reanimation) from one that was cast.
+
+### The rules
+
+- **CR 603.6a:** an enters-the-battlefield ability triggers on the event of a permanent entering, and the event knows the zone the object came from (CR 400.7 makes it a new object, but the move is a single event).
+- **CR 603.10a:** it looks at the event, not at the object afterwards, so the origin has to ride on the event.
+
+### Decision
+
+1. **Two fields on `game.Event`, `EnteredFrom` (zone kind) and `EnteredFromOwner` (the zone's owner), stamped on `EventETB`** by the two sites that emit it for a card that moved: `announceEntryLocked` (from `entryLanding.srcKind` / `srcOwner`, read where `landEntryLocked` takes the card out of its zone) and the sandbox `MoveCardByID`. A token and a spawned card come from no zone and leave both empty. They are new fields, not `OldZone` / `NewZone`: the layer listener and the turn tally key on the zones an event names, and an ETB carrying `OldZone` would be counted as a second zone move beside the `EventZoneMove` that already announces it (the snapshot corpus caught exactly that: an extra layer-version bump).
+2. **`effects.EnteredFromAGraveyard` and `EnteredFromYourGraveyard`** are the two `When` conditions. "Your graveyard" compares `EnteredFromOwner` with the trigger source's controller. Both read the event only, so they compose with `Self` and `AllOf`.
+3. **No new prompt, no wire change.** The fields are on the event log (additive, `omitempty`, recorded in `testdata/snapshot_shape/v7.txt`, no schema bump); the public log projection copies named fields and does not carry these.
+4. **Bots.** Nothing to add: these are ordinary triggers, and the existing target prompts (Flayer's "any target", Pit-Dweller's "target opponent") already have enumerator coverage.
+
+### Cards
+
+- **Treacherous Pit-Dweller: Full.** The control change is indefinite (CR 611.2a) and pinned to the object that entered.
+- **Flayer of the Hatebound: Full.** Triggers on itself or another creature entering from the controller's own graveyard; the entering creature is the damage source.
+- **River Kelpie: Full.** Draws on any permanent entering from any graveyard, and on any spell cast from a graveyard (`EventCast.OldZone`).
+
+### Tests
+
+`cards/effects/enters_from_graveyard_test.go`: the event's origin after undying and after a sandbox move, each card's positive and negative case (a cast Pit-Dweller keeps its controller, a cast creature draws nothing, an opponent's graveyard does not trigger Flayer). Back-outs: dropping `EnteredFrom` fails four of them, dropping `EnteredFromOwner` fails two, dropping the sandbox stamp fails the sandbox test.
+
+### Snapshot impact
+
+Additive `entered_from` and `entered_from_owner` on the events inside the snapshot (and the triggers that carry one). A binary without them drops the keys and loses nothing it reads.
+
+### Out of scope
+
+- The evoke sacrifice's synthetic harvest event, which is not an entry.
+
+---
+
+## Amendment 2026-10-08 (third) — A searched-for card that enters with counters (#2098)
+
+**Why it lands here.** §1's sacrifice pool made the sacrificed creature's mana value readable, and Neoform was the one card of that pool still held back, by its put-onto-the-battlefield clause. It is the same family as §1 (a card read off the payment, then fetched), and it changes no earlier decision.
+
+### What exists, what is missing
+
+- **Entry counters exist.** A token's `TokenEntryOptions.Counters` and a mana rider's counters are seeded on the entry event as `ReplacementEvent.EntersWithCounters` (#762). The settled map is applied through the CR 614 counter pipeline before `EventETB` fires, and a paused entry's resume reads it back off the event.
+- **A search to the battlefield had no way to seed them.** `SearchLibrarySpec` carried `TappedOnEntry` for the fetching effect's tapped clause and nothing for counters. The only spelling of Neoform was to add the counter after the creature entered, which is a different event: an ability that triggers as the creature enters and reads its counters would see none, and a Doubling Season would see a counter placed on a permanent instead of one it enters with.
+
+### The rules
+
+- **CR 614.1c:** "enters with counters" is a replacement effect on the entry, not a later instruction.
+- **CR 122.6:** a permanent that enters with counters has them as it enters, so a trigger on its entry sees them.
+- **CR 608.2h:** the sacrificed creature's mana value is the one it last had on the battlefield (§1).
+
+### Decision
+
+1. **One option.** `SearchLibrarySpec.EntersWithCounters map[string]int`, mirrored on the `effects.SearchLibrary` primitive. Meaningful only for `Dest: ZoneBattlefield`.
+2. **Seeded, not stamped.** `searchEnterBattlefieldLocked` copies the map onto the entry event (`copyCounterMap`, so the event owns its map and the spec, which a pending prompt shares, is never mutated), the way it already seeds `EntersTapped`. A resume therefore keeps the counters with no help from the search.
+3. **"Additional".** The fetched card's own enters-with clauses add on top of the seeded ones.
+
+### Wire, client and bot
+
+None. There is no new prompt and no new field on the wire; the counters are on the permanent the snapshot already shows. The enumerator and the bot see the same search prompt as before.
+
+### Cards
+
+- **Neoform: Full.** Sacrifice a creature, search for a creature of mana value exactly one more, and it enters with a +1/+1 counter. A sacrificed token that is no copy is mana value 0, so the search is for mana value 1.
+
+### Tests
+
+`game/search_enters_with_counters_test.go` (the counter is placed before `EventETB`, the spec's map is not consumed, no option means no counters) and `cards/effects/neoform_test.go` (exactly one more, the token case, Doubling Season doubling the counter).
+
+### Snapshot impact
+
+None. The option lives on a spec and the entry event, neither of which is persisted.
+
+### Out of scope
+
+- Counters on a card put into a hand, graveyard or exile by a search: they would be lost on the move (CR 122.2), so the option is ignored for any other destination.
+
+## Amendment 2026-10-08 (fourth) — Mana spendable only on noncreature spells (#2136)
+
+**Why it lands here.** Nardole, Resourceful Cyborg was found landing §4's undying pool. Its amount (one {U} per counter) is a `ProducedFunc`; its spend clause had no tag. This adds the tag and changes nothing in [ADR 0040](0040-mana-pipeline.md)'s production or spend paths.
+
+### What exists, what is missing
+
+`game/mana_restriction.go` reads a closed vocabulary of `ManaToken.Restrictions` tags, all positive ("the object has this type") but one purpose-aware negative, `not:nonartifact-spell`. "Noncreature spell" is the negation of a type and had no spelling. An unknown tag is a deny, so a card that guessed one would have been unspendable, not unrestricted.
+
+### The rules
+
+- **CR 106.6 / 601.2h.** Restricted mana can pay only the cost the restriction names. "Spend this mana only to cast noncreature spells" is about casting: it does not pay an activated ability's cost or an unlock cost, whatever the source.
+- **CR 205.2a.** A spell's card types come from the card; an artifact creature spell is a creature spell.
+
+### Decision
+
+1. **`ManaRestrictNotType(types...)`** builds `nottype:<T1>|<T2>`. `matchesRestriction` admits it only for a cast (`SpendPurposeCast`) whose spend context has none of the named types, case-insensitively. An activation, an unlock and an unknown purpose are refused. Unlike the positive keyed tags, `|` means "none of these", so it is decided before the alternation loop, not inside it.
+2. **Cards still name the purpose.** A card writes `ManaRestrictCast` as well, like every type-keyed restriction (#2059); the nottype tag is also refused for an activation by itself, so a card that forgot cannot ship stronger than printed. `TestRestrictedManaNamingAnObjectPropertyAlsoNamesAPurpose` now counts `nottype:` as an object tag.
+3. **Nothing else changes.** The spend context, the solvers, the auto-tapper and the enumerator already thread `ManaSpendContext`, so they honour the tag with no edit. The spend context reads the spell's effective types, as the positive tags do.
+
+### Cards
+
+- **Nardole, Resourceful Cyborg: Full.** Undying (`PrintedKeywords`), one {U} per counter of any kind, noncreature-only. Doctor's companion is a deck-construction rule that needs nothing on the card (the Partner precedent: Thrasios, Triton Hero); the validator's one-commander limit is the same for every partner pair.
+
+### Tests
+
+`game/mana_restriction_nottype_test.go` (cast admitted, creature and artifact creature refused, activation refused with and without the cast tag, unknown purpose refused, several types) and `cards/effects/nardole_resourceful_cyborg_test.go` (the pool, a creature spell refused, an activation refused, an instant and an artifact paid, no counters adds nothing).
+
+### Snapshot impact
+
+None. The tag is an opaque string already carried on `ManaToken.Restrictions`.
+
+### Out of scope
+
+- Doctor's companion in the deck validator.
+- A positive "noncreature" predicate for targets: those are `Not(Creature())` and already exist.

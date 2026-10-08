@@ -31,7 +31,8 @@ import (
 // (payCounterRemovalLocked). It does emit EventPlayerCounterPlaced with
 // the negative delta, the payer as Actor and the source, so the layer
 // version bumps for a static that reads the total (Razorfield Ripper)
-// and a later "paid or lost this turn" tally (ADR 0129 §6) sees it.
+// and the "paid or lost this turn" tally (ADR 0129 §6,
+// PlayerTurnTally.EnergyPaidOrLost) counts it.
 
 // ErrInsufficientEnergy is the sentinel for an energy component the
 // activating player can't pay (CR 118.3). The error the engine returns

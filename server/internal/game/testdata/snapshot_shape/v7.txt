@@ -170,6 +170,7 @@ battlefield.cards[].namedTribe	string
 battlefield.cards[].needsEffect	bool
 battlefield.cards[].nextUntapSkips	array
 battlefield.cards[].nextUntapSkips[]	object
+battlefield.cards[].nextUntapSkips[].extra	number:int
 battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
 battlefield.cards[].nextUntapSkips[].while.Also	array
@@ -178,6 +179,7 @@ battlefield.cards[].nextUntapSkips[].while.CombatPhase	number:int
 battlefield.cards[].nextUntapSkips[].while.CombatTurn	number:int
 battlefield.cards[].nextUntapSkips[].while.Condition	number:int
 battlefield.cards[].nextUntapSkips[].while.CounterKind	string
+battlefield.cards[].nextUntapSkips[].while.Ended	bool
 battlefield.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 battlefield.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 battlefield.cards[].nextUntapSkips[].while.Kind	number:int
@@ -189,6 +191,7 @@ battlefield.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 battlefield.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+battlefield.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 battlefield.cards[].objectEpoch	number:int
 battlefield.cards[].oracleId	string
 battlefield.cards[].owner	custom(uuid.UUID)
@@ -351,6 +354,7 @@ delayedTriggers[].duration.CombatPhase	number:int
 delayedTriggers[].duration.CombatTurn	number:int
 delayedTriggers[].duration.Condition	number:int
 delayedTriggers[].duration.CounterKind	string
+delayedTriggers[].duration.Ended	bool
 delayedTriggers[].duration.ExpiresAfterTurnsBegun	number:int
 delayedTriggers[].duration.ExpiresAtTurnsBegun	number:int
 delayedTriggers[].duration.Kind	number:int
@@ -362,6 +366,7 @@ delayedTriggers[].duration.PinnedUnstamped	bool
 delayedTriggers[].duration.Player	custom(uuid.UUID)
 delayedTriggers[].duration.Source	custom(uuid.UUID)
 delayedTriggers[].duration.SourceEnteredAt	number:int64
+delayedTriggers[].duration.SourceEpoch	number:int
 delayedTriggers[].hasEffect	bool
 delayedTriggers[].id	custom(uuid.UUID)
 delayedTriggers[].label	string
@@ -425,6 +430,8 @@ events[].combat	bool
 events[].combat_step	string
 events[].damage_not_life_loss	number:int
 events[].discard_cause	string
+events[].entered_from	string
+events[].entered_from_owner	custom(uuid.UUID)
 events[].error_msg	string
 events[].exhaust	bool
 events[].kind	string
@@ -607,6 +614,7 @@ exile.cards[].namedTribe	string
 exile.cards[].needsEffect	bool
 exile.cards[].nextUntapSkips	array
 exile.cards[].nextUntapSkips[]	object
+exile.cards[].nextUntapSkips[].extra	number:int
 exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
 exile.cards[].nextUntapSkips[].while.Also	array
@@ -615,6 +623,7 @@ exile.cards[].nextUntapSkips[].while.CombatPhase	number:int
 exile.cards[].nextUntapSkips[].while.CombatTurn	number:int
 exile.cards[].nextUntapSkips[].while.Condition	number:int
 exile.cards[].nextUntapSkips[].while.CounterKind	string
+exile.cards[].nextUntapSkips[].while.Ended	bool
 exile.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 exile.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 exile.cards[].nextUntapSkips[].while.Kind	number:int
@@ -626,6 +635,7 @@ exile.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 exile.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+exile.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 exile.cards[].objectEpoch	number:int
 exile.cards[].oracleId	string
 exile.cards[].owner	custom(uuid.UUID)
@@ -1096,6 +1106,7 @@ lastKnownStack[].card.namedTribe	string
 lastKnownStack[].card.needsEffect	bool
 lastKnownStack[].card.nextUntapSkips	array
 lastKnownStack[].card.nextUntapSkips[]	object
+lastKnownStack[].card.nextUntapSkips[].extra	number:int
 lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
 lastKnownStack[].card.nextUntapSkips[].while.Also	array
@@ -1104,6 +1115,7 @@ lastKnownStack[].card.nextUntapSkips[].while.CombatPhase	number:int
 lastKnownStack[].card.nextUntapSkips[].while.CombatTurn	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Condition	number:int
 lastKnownStack[].card.nextUntapSkips[].while.CounterKind	string
+lastKnownStack[].card.nextUntapSkips[].while.Ended	bool
 lastKnownStack[].card.nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 lastKnownStack[].card.nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Kind	number:int
@@ -1115,6 +1127,7 @@ lastKnownStack[].card.nextUntapSkips[].while.PinnedUnstamped	bool
 lastKnownStack[].card.nextUntapSkips[].while.Player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while.Source	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while.SourceEnteredAt	number:int64
+lastKnownStack[].card.nextUntapSkips[].while.SourceEpoch	number:int
 lastKnownStack[].card.objectEpoch	number:int
 lastKnownStack[].card.oracleId	string
 lastKnownStack[].card.owner	custom(uuid.UUID)
@@ -1367,6 +1380,8 @@ lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
 lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
+lastKnownStack[].item.trigger.Event.entered_from	string
+lastKnownStack[].item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
 lastKnownStack[].item.trigger.Event.kind	string
@@ -1836,6 +1851,8 @@ pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
 pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
+pendingTriggers[].trigger.Event.entered_from	string
+pendingTriggers[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
 pendingTriggers[].trigger.Event.kind	string
@@ -2037,6 +2054,7 @@ phasedOut.cards[].namedTribe	string
 phasedOut.cards[].needsEffect	bool
 phasedOut.cards[].nextUntapSkips	array
 phasedOut.cards[].nextUntapSkips[]	object
+phasedOut.cards[].nextUntapSkips[].extra	number:int
 phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
 phasedOut.cards[].nextUntapSkips[].while.Also	array
@@ -2045,6 +2063,7 @@ phasedOut.cards[].nextUntapSkips[].while.CombatPhase	number:int
 phasedOut.cards[].nextUntapSkips[].while.CombatTurn	number:int
 phasedOut.cards[].nextUntapSkips[].while.Condition	number:int
 phasedOut.cards[].nextUntapSkips[].while.CounterKind	string
+phasedOut.cards[].nextUntapSkips[].while.Ended	bool
 phasedOut.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 phasedOut.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 phasedOut.cards[].nextUntapSkips[].while.Kind	number:int
@@ -2056,6 +2075,7 @@ phasedOut.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 phasedOut.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+phasedOut.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 phasedOut.cards[].objectEpoch	number:int
 phasedOut.cards[].oracleId	string
 phasedOut.cards[].owner	custom(uuid.UUID)
@@ -2221,6 +2241,7 @@ scopedEffects[].duration.CombatPhase	number:int
 scopedEffects[].duration.CombatTurn	number:int
 scopedEffects[].duration.Condition	number:int
 scopedEffects[].duration.CounterKind	string
+scopedEffects[].duration.Ended	bool
 scopedEffects[].duration.ExpiresAfterTurnsBegun	number:int
 scopedEffects[].duration.ExpiresAtTurnsBegun	number:int
 scopedEffects[].duration.Kind	number:int
@@ -2232,6 +2253,7 @@ scopedEffects[].duration.PinnedUnstamped	bool
 scopedEffects[].duration.Player	custom(uuid.UUID)
 scopedEffects[].duration.Source	custom(uuid.UUID)
 scopedEffects[].duration.SourceEnteredAt	number:int64
+scopedEffects[].duration.SourceEpoch	number:int
 scopedEffects[].label	string
 scopedEffects[].mods	array
 scopedEffects[].mods[]	object
@@ -2396,6 +2418,7 @@ seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
@@ -2407,6 +2430,7 @@ seats[].castPermissions[].duration.CombatPhase	number:int
 seats[].castPermissions[].duration.CombatTurn	number:int
 seats[].castPermissions[].duration.Condition	number:int
 seats[].castPermissions[].duration.CounterKind	string
+seats[].castPermissions[].duration.Ended	bool
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
 seats[].castPermissions[].duration.ExpiresAtTurnsBegun	number:int
 seats[].castPermissions[].duration.Kind	number:int
@@ -2418,6 +2442,8 @@ seats[].castPermissions[].duration.PinnedUnstamped	bool
 seats[].castPermissions[].duration.Player	custom(uuid.UUID)
 seats[].castPermissions[].duration.Source	custom(uuid.UUID)
 seats[].castPermissions[].duration.SourceEnteredAt	number:int64
+seats[].castPermissions[].duration.SourceEpoch	number:int
+seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].exileOnResolution	bool
 seats[].castPermissions[].exileOtherFromGraveyard	number:int
 seats[].castPermissions[].faces	array
@@ -2425,6 +2451,8 @@ seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
+seats[].castPermissions[].filter.creatureTypesAny	array
+seats[].castPermissions[].filter.creatureTypesAny[]	string
 seats[].castPermissions[].filter.exiledWith	object
 seats[].castPermissions[].filter.exiledWith.epoch	number:int
 seats[].castPermissions[].filter.exiledWith.id	custom(uuid.UUID)
@@ -2604,6 +2632,7 @@ seats[].command.cards[].namedTribe	string
 seats[].command.cards[].needsEffect	bool
 seats[].command.cards[].nextUntapSkips	array
 seats[].command.cards[].nextUntapSkips[]	object
+seats[].command.cards[].nextUntapSkips[].extra	number:int
 seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
 seats[].command.cards[].nextUntapSkips[].while.Also	array
@@ -2612,6 +2641,7 @@ seats[].command.cards[].nextUntapSkips[].while.CombatPhase	number:int
 seats[].command.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].command.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].command.cards[].nextUntapSkips[].while.CounterKind	string
+seats[].command.cards[].nextUntapSkips[].while.Ended	bool
 seats[].command.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].command.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].command.cards[].nextUntapSkips[].while.Kind	number:int
@@ -2623,6 +2653,7 @@ seats[].command.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].command.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+seats[].command.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].command.cards[].objectEpoch	number:int
 seats[].command.cards[].oracleId	string
 seats[].command.cards[].owner	custom(uuid.UUID)
@@ -2889,6 +2920,7 @@ seats[].emblems.cards[].namedTribe	string
 seats[].emblems.cards[].needsEffect	bool
 seats[].emblems.cards[].nextUntapSkips	array
 seats[].emblems.cards[].nextUntapSkips[]	object
+seats[].emblems.cards[].nextUntapSkips[].extra	number:int
 seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
 seats[].emblems.cards[].nextUntapSkips[].while.Also	array
@@ -2897,6 +2929,7 @@ seats[].emblems.cards[].nextUntapSkips[].while.CombatPhase	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.CounterKind	string
+seats[].emblems.cards[].nextUntapSkips[].while.Ended	bool
 seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Kind	number:int
@@ -2908,6 +2941,7 @@ seats[].emblems.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].emblems.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+seats[].emblems.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].emblems.cards[].objectEpoch	number:int
 seats[].emblems.cards[].oracleId	string
 seats[].emblems.cards[].owner	custom(uuid.UUID)
@@ -3165,6 +3199,7 @@ seats[].graveyard.cards[].namedTribe	string
 seats[].graveyard.cards[].needsEffect	bool
 seats[].graveyard.cards[].nextUntapSkips	array
 seats[].graveyard.cards[].nextUntapSkips[]	object
+seats[].graveyard.cards[].nextUntapSkips[].extra	number:int
 seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
 seats[].graveyard.cards[].nextUntapSkips[].while.Also	array
@@ -3173,6 +3208,7 @@ seats[].graveyard.cards[].nextUntapSkips[].while.CombatPhase	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.CounterKind	string
+seats[].graveyard.cards[].nextUntapSkips[].while.Ended	bool
 seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Kind	number:int
@@ -3184,6 +3220,7 @@ seats[].graveyard.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].graveyard.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+seats[].graveyard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].graveyard.cards[].objectEpoch	number:int
 seats[].graveyard.cards[].oracleId	string
 seats[].graveyard.cards[].owner	custom(uuid.UUID)
@@ -3439,6 +3476,7 @@ seats[].hand.cards[].namedTribe	string
 seats[].hand.cards[].needsEffect	bool
 seats[].hand.cards[].nextUntapSkips	array
 seats[].hand.cards[].nextUntapSkips[]	object
+seats[].hand.cards[].nextUntapSkips[].extra	number:int
 seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
 seats[].hand.cards[].nextUntapSkips[].while.Also	array
@@ -3447,6 +3485,7 @@ seats[].hand.cards[].nextUntapSkips[].while.CombatPhase	number:int
 seats[].hand.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].hand.cards[].nextUntapSkips[].while.CounterKind	string
+seats[].hand.cards[].nextUntapSkips[].while.Ended	bool
 seats[].hand.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].hand.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Kind	number:int
@@ -3458,6 +3497,7 @@ seats[].hand.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].hand.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+seats[].hand.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].hand.cards[].objectEpoch	number:int
 seats[].hand.cards[].oracleId	string
 seats[].hand.cards[].owner	custom(uuid.UUID)
@@ -3724,6 +3764,7 @@ seats[].library.cards[].namedTribe	string
 seats[].library.cards[].needsEffect	bool
 seats[].library.cards[].nextUntapSkips	array
 seats[].library.cards[].nextUntapSkips[]	object
+seats[].library.cards[].nextUntapSkips[].extra	number:int
 seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
 seats[].library.cards[].nextUntapSkips[].while.Also	array
@@ -3732,6 +3773,7 @@ seats[].library.cards[].nextUntapSkips[].while.CombatPhase	number:int
 seats[].library.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].library.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].library.cards[].nextUntapSkips[].while.CounterKind	string
+seats[].library.cards[].nextUntapSkips[].while.Ended	bool
 seats[].library.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].library.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].library.cards[].nextUntapSkips[].while.Kind	number:int
@@ -3743,6 +3785,7 @@ seats[].library.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].library.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+seats[].library.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].library.cards[].objectEpoch	number:int
 seats[].library.cards[].oracleId	string
 seats[].library.cards[].owner	custom(uuid.UUID)
@@ -3889,6 +3932,9 @@ seats[].poison	number:int
 seats[].seat	number:int
 seats[].statics	array
 seats[].statics[]	object
+seats[].statics[].cantAttack	object
+seats[].statics[].cantAttack.fromTurnsBegun	number:int
+seats[].statics[].cantAttack.protected	custom(uuid.UUID)
 seats[].statics[].cantBeCountered	object
 seats[].statics[].cantBeCountered.active	bool
 seats[].statics[].cantBeCountered.except	object
@@ -3897,6 +3943,8 @@ seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
+seats[].statics[].cantBeCountered.filter.creatureTypesAny	array
+seats[].statics[].cantBeCountered.filter.creatureTypesAny[]	string
 seats[].statics[].cantBeCountered.filter.exiledWith	object
 seats[].statics[].cantBeCountered.filter.exiledWith.epoch	number:int
 seats[].statics[].cantBeCountered.filter.exiledWith.id	custom(uuid.UUID)
@@ -3919,6 +3967,8 @@ seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
+seats[].statics[].castBan.filter.creatureTypesAny	array
+seats[].statics[].castBan.filter.creatureTypesAny[]	string
 seats[].statics[].castBan.filter.exiledWith	object
 seats[].statics[].castBan.filter.exiledWith.epoch	number:int
 seats[].statics[].castBan.filter.exiledWith.id	custom(uuid.UUID)
@@ -3942,6 +3992,7 @@ seats[].statics[].duration.CombatPhase	number:int
 seats[].statics[].duration.CombatTurn	number:int
 seats[].statics[].duration.Condition	number:int
 seats[].statics[].duration.CounterKind	string
+seats[].statics[].duration.Ended	bool
 seats[].statics[].duration.ExpiresAfterTurnsBegun	number:int
 seats[].statics[].duration.ExpiresAtTurnsBegun	number:int
 seats[].statics[].duration.Kind	number:int
@@ -3953,12 +4004,18 @@ seats[].statics[].duration.PinnedUnstamped	bool
 seats[].statics[].duration.Player	custom(uuid.UUID)
 seats[].statics[].duration.Source	custom(uuid.UUID)
 seats[].statics[].duration.SourceEnteredAt	number:int64
+seats[].statics[].duration.SourceEpoch	number:int
 seats[].statics[].gameEnd	object
 seats[].statics[].gameEnd.cantLose	bool
 seats[].statics[].gameEnd.cantWin	bool
 seats[].statics[].gameEnd.causes	array
 seats[].statics[].gameEnd.causes[]	string
 seats[].statics[].gameEnd.scope	number:uint8
+seats[].statics[].handSize	object
+seats[].statics[].handSize.active	bool
+seats[].statics[].handSize.at	number:int64
+seats[].statics[].handSize.kind	number:int
+seats[].statics[].handSize.n	number:int
 seats[].statics[].keepManaColors	array
 seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
@@ -3973,6 +4030,8 @@ seats[].statics[].nextSpell.counters	number:int
 seats[].statics[].nextSpell.filter	object
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
+seats[].statics[].nextSpell.filter.creatureTypesAny	array
+seats[].statics[].nextSpell.filter.creatureTypesAny[]	string
 seats[].statics[].nextSpell.filter.exiledWith	object
 seats[].statics[].nextSpell.filter.exiledWith.epoch	number:int
 seats[].statics[].nextSpell.filter.exiledWith.id	custom(uuid.UUID)
@@ -3997,6 +4056,8 @@ seats[].statics[].timing.affects	string
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
+seats[].statics[].timing.filter.creatureTypesAny	array
+seats[].statics[].timing.filter.creatureTypesAny[]	string
 seats[].statics[].timing.filter.exiledWith	object
 seats[].statics[].timing.filter.exiledWith.epoch	number:int
 seats[].statics[].timing.filter.exiledWith.id	custom(uuid.UUID)
@@ -4182,6 +4243,7 @@ stack.cards[].namedTribe	string
 stack.cards[].needsEffect	bool
 stack.cards[].nextUntapSkips	array
 stack.cards[].nextUntapSkips[]	object
+stack.cards[].nextUntapSkips[].extra	number:int
 stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
 stack.cards[].nextUntapSkips[].while.Also	array
@@ -4190,6 +4252,7 @@ stack.cards[].nextUntapSkips[].while.CombatPhase	number:int
 stack.cards[].nextUntapSkips[].while.CombatTurn	number:int
 stack.cards[].nextUntapSkips[].while.Condition	number:int
 stack.cards[].nextUntapSkips[].while.CounterKind	string
+stack.cards[].nextUntapSkips[].while.Ended	bool
 stack.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 stack.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 stack.cards[].nextUntapSkips[].while.Kind	number:int
@@ -4201,6 +4264,7 @@ stack.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 stack.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
+stack.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 stack.cards[].objectEpoch	number:int
 stack.cards[].oracleId	string
 stack.cards[].owner	custom(uuid.UUID)
@@ -4456,6 +4520,8 @@ stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
 stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
+stackMeta[].trigger.Event.entered_from	string
+stackMeta[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool
 stackMeta[].trigger.Event.kind	string
@@ -4585,6 +4651,7 @@ turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.creaturesDied	number:int
+turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int

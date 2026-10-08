@@ -384,6 +384,25 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission) bool {
+	return g.castTimingOpenLocked(playerID, card, zone, perm, false)
+}
+
+// CastTimingForOfferOpenLocked is CastTimingOpenLocked for a cast that
+// claims `offer` (nil: the printed cost). It differs only for an offer
+// that carries its own "as though it had flash" (AlternativeCost.
+// AsThoughFlash, Primal Prayers): CR 601.3c lets the caster begin that
+// cast at instant speed, and the grant joins step 2, so a per-player
+// restriction still closes it.
+//
+// Callers that know the claim ask this one: CastSpell, the enumerator's
+// per-offer walk and the view's per-offer `timing_closed`.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastTimingForOfferOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost) bool {
+	return g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash)
+}
+
+func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offerFlash bool) bool {
 	// CR 702.61a — no cast begins under split second.
 	if g.SplitSecondActive {
 		return false
@@ -414,6 +433,10 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		case TimingSorcery:
 			instantSpeed = false
 		}
+	}
+	// 2b. The claimed offer's own flash (CR 601.3c).
+	if offerFlash {
+		instantSpeed = true
 	}
 	v := g.castTimingVerdictLocked(playerID, card, zone)
 	// 3. The grants.

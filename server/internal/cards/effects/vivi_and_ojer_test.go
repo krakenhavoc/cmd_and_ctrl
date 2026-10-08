@@ -235,19 +235,23 @@ func TestOjerAxonilLeavesCombatDamageAlone(t *testing.T) {
 	}
 }
 
-// The declared simplification, pinned: no dies trigger, and the card
-// says so where a player reads it. This test flips when the transform
-// verb lands.
-func TestOjerAxonilShipsWithoutItsDiesTrigger(t *testing.T) {
+// The declared simplification, pinned: the dies trigger exists now
+// (#1900); what is left is the back face's transform-back ability, and
+// the card says so where a player reads it. This test flips when the
+// noncombat-damage tally lands.
+func TestOjerAxonilShipsWithoutTheTempleTransformBack(t *testing.T) {
 	spec, ok := Lookup(ojerAxonilOracle)
 	if !ok {
 		t.Fatal("Ojer Axonil is registered")
 	}
-	if len(spec.Triggered) != 0 {
-		t.Errorf("the dies trigger is deferred with the transform verb, got %d triggers", len(spec.Triggered))
+	if len(spec.Triggered) != 1 {
+		t.Errorf("want the dies trigger, got %d triggers", len(spec.Triggered))
 	}
 	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
 		t.Errorf("completeness %v with %d caveats, want caveats with exactly one", spec.Completeness, len(spec.Caveats))
+	}
+	if back, ok := Lookup(ojerAxonilOracle + "#1"); !ok || len(back.Activated) != 0 {
+		t.Error("the Temple's transform ability would be stronger than printed without its condition")
 	}
 	if !hasAbility(spec.PrintedKeywords, "trample") {
 		t.Error("Ojer prints trample")

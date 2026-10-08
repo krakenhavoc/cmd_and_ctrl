@@ -531,3 +531,63 @@ Sephiroth, One-Winged Angel comes off its caveat and ships `full`. Its front
 face's fourth-drain clause now just transforms, and the emblem comes from the
 back face's hook. The tests are in
 `server/internal/cards/effects/gogo_sephiroth_hooks_test.go`.
+
+## Amendment 2026-10-08 (#1900): returning a card from a graveyard transformed
+
+Issue [#1900](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1900), found
+landing ADR 0107 PR 4. Decision 5 built "exile it, then return it transformed"
+for a permanent. The three Ojer gods (Axonil, Pakpatiq, Kaslem) print the
+graveyard form: "When ~ dies, return it to the battlefield tapped and
+transformed under its owner's control" (CR 712.14a). A card in a graveyard has
+no permanent to exile, so decision 5's verb cannot reach it.
+
+### Decision 10. `ReturnFromGraveyardTransformedForEffect`: set the back face in the graveyard, then run the ordinary graveyard entry
+
+- **The verb.** `Game.ReturnFromGraveyardTransformedForEffect(cardID,
+  controller, tapped, counters)` (`game/transform.go`). It checks the card is in
+  a graveyard (`ErrCardNotFound` otherwise, the CR 400.7 answer a "return it"
+  trigger swallows), asks `CanTransform` of the card on its front face, sets the
+  back face on it where it lies, and runs `returnFromGraveyardFaceLocked`, the
+  shared body of every reanimation.
+- **Why the face is set before the entry**, and the width of the oddity. This is
+  decision 5's ordering for the same reason: the CR 614 pipeline resolves the
+  entering card by ID out of its source zone, so a self-replacement on the back
+  face has to be findable under the back face's catalog key. A card sits in a
+  graveyard on its back face for the width of one locked mutation, which CR
+  712.8a says should not happen, and nothing observes it. If the entry settles
+  without entering (cancelled, redirected) and no prompt is open, the face is put
+  back to the front.
+- **Identity.** Unlike the exile return, the graveyard return keeps the card's
+  `InstanceID`: that is how every reanimation works here, and the battlefield
+  entry stamps a fresh CR 613.7 timestamp and summoning-sick state. The card
+  enters transformed, so it never transformed: `AsTransformsInto` (decision 9)
+  does not run, for the reason decision 9 gives.
+- **No permanent back face, no return.** A single-faced card, or one whose back
+  face is an instant or sorcery, stays in the graveyard and the call returns
+  `uuid.Nil` with no error. Returning it front face up would be stronger than
+  printed (#259).
+- **"With three time counters on it"** (Ojer Pakpatiq) rides the entry event as an
+  "enters with" counter (CR 614.1c), through the existing `counters` parameter
+  of `returnFromGraveyardFaceLocked`, so Doubling Season sees them and a paused
+  entry still places them.
+- **Card side.** `effects.ReturnFromGraveyard` gains `Transformed bool` and
+  `Counters map[string]int`. The three gods share
+  `ojerDiesReturnTransformed` (`effects/ojer_gods.go`). The trigger resolves
+  against the card in the graveyard; if it left in response it is a new object
+  and the return does nothing.
+- **Wire, snapshots, undo, bots.** Nothing. No new field, prompt or action. The
+  Kaslem pick is the engine's own choose-cards prompt, with a `Validate` the
+  legal-move enumerator already runs.
+- **Out of scope.** Craft's "return this card to the battlefield transformed"
+  from exile (#2124) is a different source zone. Ojer Axonil's Temple of Power
+  transform-back ("red sources you controlled dealt 4 or more noncombat damage
+  this turn") needs a per-source noncombat damage amount tally the turn tally
+  does not keep; the card ships with that caveat.
+
+### Cards
+
+Ojer Pakpatiq, Deepest Epoch // Temple of Cyclical Time (Full) and Ojer Kaslem,
+Deepest Growth // Temple of Cultivation (Full) ship. Ojer Axonil, Deepest Might
+gains its dies trigger and Temple of Power, and keeps one caveat. Tests:
+`game/transform_test.go`, `cards/effects/ojer_gods_test.go` and
+`ojer_kaslem_test.go`.

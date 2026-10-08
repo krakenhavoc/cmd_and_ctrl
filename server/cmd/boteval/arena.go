@@ -111,7 +111,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	fs := flag.NewFlagSet("arena", flag.ContinueOnError)
 	fs.SetOutput(out)
 	seats := fs.String("seats", "", "comma-separated contestants, one per chair: a tier, heuristic-baseline (the heuristic frozen before S66) or heuristic-noexert (today's heuristic with ADR 0130's exert pricing off) (e.g. assisted,heuristic,heuristic,heuristic)")
-	decks := fs.String("decks", "", "comma-separated curated deck ids, one per chair; empty deals the synthetic battle deck, and exert-battle its exert variant (ADR 0130 §9)")
+	decks := fs.String("decks", "", "comma-separated curated deck ids, one per chair; empty deals the synthetic battle deck, exert-battle its exert variant (ADR 0130 §9), and monolith-battle one with the two Monoliths (#2500)")
 	names := fs.String("names", "", "comma-separated tally names, one per chair; empty tallies each chair under its tier")
 	games := fs.Int("games", 10, "how many games to play")
 	seed := fs.Uint64("seed", 1, "seed of the first game; game i uses seed+i")
@@ -161,7 +161,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 		}
 	}
 	for _, d := range a.decks {
-		if d != "" && d != botarena.ExertDeckID {
+		if !botarena.IsSynthetic(d) {
 			a.needsIndex = true
 		}
 	}
@@ -281,7 +281,7 @@ func splitList(s string) []string {
 
 func anyDeck(d []string) bool {
 	for _, s := range d {
-		if s != "" && s != botarena.ExertDeckID {
+		if !botarena.IsSynthetic(s) {
 			return true
 		}
 	}

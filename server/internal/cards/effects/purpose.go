@@ -36,6 +36,7 @@ import (
 //   - a Pump or PreventCombatDamageToSelf anywhere but a triggered or
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
+//   - AwakenLand anywhere but an alternative cost (ADR 0135 §3);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one.
 
@@ -62,7 +63,8 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
-		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 {
+		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
+		p.AwakenLand < 0 {
 		fail("has a negative amount")
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
@@ -80,6 +82,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
+	}
+	if p.AwakenLand != 0 && slot != purposeOnAltCost {
+		fail("sets AwakenLand off an alternative cost — it is what an awaken offer adds (ADR 0135 §3)")
 	}
 	checkPump(p.Pump, fail)
 	checkDiscardPayoff(p.DiscardPayoff, fail)

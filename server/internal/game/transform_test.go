@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -481,5 +482,81 @@ func TestExileAndReturnTransformedRefusesWhatCannotTransform(t *testing.T) {
 	}
 	if findBattlefieldCard(g, id) == nil {
 		t.Fatal("the permanent was exiled and never came back")
+	}
+}
+
+// graveyardTransformFixture puts a double-faced fixture in the seat's
+// graveyard on its front face (CR 712.8a).
+func graveyardTransformFixture(g *Game, owner *Player) uuid.UUID {
+	c := transformCreatureFixture(owner.ID)
+	owner.Graveyard.PushTop(c)
+	return c.InstanceID
+}
+
+// TestReturnFromGraveyardTransformedComesBackOnItsBackFace is #1900's
+// happy path: tapped, back face up, owner's control, with the counters
+// the clause names, and it entered transformed so it never transformed.
+func TestReturnFromGraveyardTransformedComesBackOnItsBackFace(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	id := graveyardTransformFixture(g, me)
+
+	got, err := g.ReturnFromGraveyardTransformedForEffect(id, uuid.Nil, true, map[string]int{"time": 3})
+	if err != nil {
+		t.Fatalf("ReturnFromGraveyardTransformedForEffect: %v", err)
+	}
+	if got == uuid.Nil {
+		t.Fatal("nothing entered")
+	}
+	back := findBattlefieldCard(g, got)
+	if back == nil {
+		t.Fatal("the card is not on the battlefield")
+	}
+	if back.ActiveFace != 1 || back.Name != "Fixture Werewolf" {
+		t.Errorf("came back as face %d (%q), want the back face", back.ActiveFace, back.Name)
+	}
+	if !back.Tapped {
+		t.Error("it did not enter tapped")
+	}
+	if back.Controller != me.ID {
+		t.Errorf("controller = %v, want its owner", back.Controller)
+	}
+	if back.Counters["time"] != 3 {
+		t.Errorf("time counters = %d, want 3", back.Counters["time"])
+	}
+	if me.Graveyard.Contains(id) {
+		t.Error("the card is still in the graveyard")
+	}
+}
+
+// A card that is not double-faced, or whose back is not a permanent,
+// stays where it is: returning it FRONT face up would be the
+// stronger-than-printed outcome (#259).
+func TestReturnFromGraveyardTransformedRefusesASingleFacedCard(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	c := Card{InstanceID: uuid.New(), Owner: me.ID, Controller: me.ID, Name: "Plain Bear", TypeLine: "Creature — Bear"}
+	me.Graveyard.PushTop(c)
+
+	got, err := g.ReturnFromGraveyardTransformedForEffect(c.InstanceID, uuid.Nil, true, nil)
+	if err != nil || got != uuid.Nil {
+		t.Fatalf("got (%v, %v), want (Nil, nil)", got, err)
+	}
+	if !me.Graveyard.Contains(c.InstanceID) {
+		t.Error("the card left the graveyard")
+	}
+	if findBattlefieldCard(g, c.InstanceID) != nil {
+		t.Error("the card entered the battlefield")
+	}
+}
+
+// A card that is no longer in a graveyard is the CR 400.7 answer.
+func TestReturnFromGraveyardTransformedNotInGraveyard(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	c := transformCreatureFixture(me.ID)
+	me.Hand.PushTop(c)
+	if _, err := g.ReturnFromGraveyardTransformedForEffect(c.InstanceID, uuid.Nil, false, nil); !errors.Is(err, ErrCardNotFound) {
+		t.Fatalf("err = %v, want ErrCardNotFound", err)
 	}
 }

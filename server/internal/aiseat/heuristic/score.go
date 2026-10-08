@@ -240,6 +240,7 @@ var keywordTable = map[string]float64{
 	"evolve":            0.30, // #1805: a creature that may grow later; the counters it already has are in its P/T
 	"undying":           0.80, // #2075: a second body when it dies; cumulative like prowess
 	"persist":           0.70, // #2075: a second, smaller body when it dies
+	"exalted":           0.30, // #2538: only a lone attack collects it, and the table is board-blind; counted per instance (CR 113.2c)
 	"defender":          -1.50,
 	"decayed":           -0.80,
 	"cumulative upkeep": -0.60,

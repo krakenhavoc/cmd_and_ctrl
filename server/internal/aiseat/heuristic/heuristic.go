@@ -146,6 +146,14 @@ type Config struct {
 	// or ActivateBase, and a permanent's declared enters effect is added
 	// to its body. Off (the zero value) is the pre-S66 heuristic.
 	PricePurposes bool
+	// NetLandSwaps prices a cast that sacrifices the bot's own lands
+	// and puts more lands onto the battlefield than it sacrifices
+	// (Harrow) by what it nets (#2469, land_swap.go): the lands it
+	// sacrifices are replaced one for one, untapped, and only the
+	// lands it adds are ramp, with SpellFloor under the net rather
+	// than under the gross. Off (the zero value) prices every land the
+	// purpose declares as ramp and floors before the sacrifice.
+	NetLandSwaps bool
 	// TutorWeight is a card searched out to hand or the top of the
 	// library, in cards drawn: above one, because the bot picks it.
 	TutorWeight float64
@@ -158,6 +166,12 @@ type Config struct {
 	DiscardWeight float64
 	// TokenWeight is one token the purpose makes (a Treasure, a Clue).
 	TokenWeight float64
+	// AwakenLandShare is the share of a hasty N/N creature an awaken
+	// cast's land is worth (ADR 0135 §3, owner decision 6): below one,
+	// because the body is a land, and creature removal that answers it
+	// also takes a mana source. Zero (the baseline) prices awaken at
+	// nothing, so the bot casts an awaken spell for its mana cost.
+	AwakenLandShare float64
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -376,10 +390,12 @@ func DefaultConfig() Config {
 		RampWantCap:    7,
 
 		PricePurposes:     true,
+		NetLandSwaps:      true,
 		TutorWeight:       1.00,
 		SelfMillWeight:    0.50,
 		DiscardWeight:     0.60,
 		TokenWeight:       0.50,
+		AwakenLandShare:   0.75,
 		PriceSweeps:       true,
 		DiscardCostByCard: true,
 		LastLandDiscard:   1.00,
@@ -471,10 +487,14 @@ func BaselineConfig() Config {
 	c.TapByTiming = false
 	// §4, §6's prices and §7's discard half (PR 7).
 	c.PricePurposes = false
+	// #2469: a land swap priced by what it nets.
+	c.NetLandSwaps = false
 	c.TutorWeight = 0
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0
 	c.TokenWeight = 0
+	// ADR 0135 §3: awaken, priced at nothing before it.
+	c.AwakenLandShare = 0
 	// ADR 0129 §7: energy, priced at nothing before it.
 	c.Weights.Energy = 0
 	c.PriceSweeps = false

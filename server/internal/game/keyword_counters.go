@@ -41,6 +41,7 @@ const (
 	CounterFirstStrike    = "first strike"
 	CounterDoubleStrike   = "double strike"
 	CounterDeathtouch     = "deathtouch"
+	CounterExalted        = "exalted"
 	CounterHaste          = "haste"
 	CounterHexproof       = "hexproof"
 	CounterIndestructible = "indestructible"
@@ -55,10 +56,11 @@ const (
 // keywordCounterKinds is CR 122.1b's list INTERSECTED with
 // canonicalKeywords. The table is closed, like the keyword table it is
 // drawn from: a kind joins it in the same change that teaches the
-// engine to honour its keyword. Two of CR 122.1b's fifteen are out for
-// that reason — decayed and exalted are not canonical keywords yet
-// (ADR 0101 owner decision 5) — and so is every "hexproof from
-// [quality]" variant, which ADR 0038 §6 refused as a keyword.
+// engine to honour its keyword. One of CR 122.1b's fifteen is out for
+// that reason — decayed is not a canonical keyword yet (ADR 0101 owner
+// decision 5, #2650) — and so is every "hexproof from [quality]"
+// variant, which ADR 0038 §6 refused as a keyword. Exalted joined with
+// #2538 (ADR 0101 amendment 2026-10-08).
 //
 // TestKeywordCounterKindsAreCR1221b and
 // TestKeywordCounterKindsAreCanonicalKeywords hold it to both halves.
@@ -67,6 +69,7 @@ var keywordCounterKinds = map[string]bool{
 	CounterFirstStrike:    true,
 	CounterDoubleStrike:   true,
 	CounterDeathtouch:     true,
+	CounterExalted:        true,
 	CounterHaste:          true,
 	CounterHexproof:       true,
 	CounterIndestructible: true,
@@ -139,10 +142,14 @@ func (c *Card) keywordCounterTimestamp(kind string) int64 {
 }
 
 // keywordCounterEffect is one keyword counter kind on one permanent, as
-// a CR 613.1f layer-6 continuous effect.
+// a CR 613.1f layer-6 continuous effect. Every counter of the kind
+// shares the one CR 613.7c timestamp, so one effect carries them all.
 type keywordCounterEffect struct {
-	target    uuid.UUID
-	keyword   string
+	target  uuid.UUID
+	keyword string
+	// count is how many instances of the keyword the counters give:
+	// keywordCounterInstances.
+	count     int
 	timestamp int64
 }
 
@@ -152,11 +159,16 @@ func (e keywordCounterEffect) AppliesTo(target *Card, _ *Game) bool {
 	return target != nil && target.InstanceID == e.target
 }
 func (e keywordCounterEffect) Apply(c *Characteristic, _ *Card, _ *Game) {
-	// CR 122.1b's keywords are all redundant when repeated (the Ikoria
-	// release notes), and AppendKeywordAbility dedupes every one of
-	// them: two flying counters, or a flying counter on a creature that
-	// prints flying, are one flying.
-	c.Abilities = AppendKeywordAbility(c.Abilities, e.keyword)
+	// Most of CR 122.1b's keywords are redundant when repeated (the
+	// Ikoria release notes), and AppendKeywordAbility dedupes them: two
+	// flying counters, or a flying counter on a creature that prints
+	// flying, are one flying. Exalted is not: "A creature with multiple
+	// exalted counters will have that many instances of exalted"
+	// (Emissary of Soulfire ruling, 2024-06-07), so a cumulative kind
+	// appends one instance per counter (keywordCounterInstances).
+	for i := 0; i < max(e.count, 1); i++ {
+		c.Abilities = AppendKeywordAbility(c.Abilities, e.keyword)
+	}
 }
 func (e keywordCounterEffect) RemovesAbilities() bool      { return false }
 func (e keywordCounterEffect) ContinuesAfterRemoval() bool { return false }
@@ -184,6 +196,7 @@ func (g *Game) keywordCounterEffectsLocked() []ContinuousEffect {
 			out = append(out, keywordCounterEffect{
 				target:    c.InstanceID,
 				keyword:   kind,
+				count:     keywordCounterInstances(kind, c.Counters[kind]),
 				timestamp: c.keywordCounterTimestamp(kind),
 			})
 		}
@@ -202,11 +215,30 @@ func keywordCounterTokens(c *Card) []string {
 	}
 	var out []string
 	for _, kind := range sortedCounterKinds(c.Counters) {
-		if IsKeywordCounter(kind) && c.Counters[kind] > 0 {
+		if !IsKeywordCounter(kind) || c.Counters[kind] <= 0 {
+			continue
+		}
+		for i := 0; i < keywordCounterInstances(kind, c.Counters[kind]); i++ {
 			out = append(out, kind)
 		}
 	}
 	return out
+}
+
+// keywordCounterInstances is how many instances of its keyword `n`
+// counters of `kind` give: one per counter for a cumulative keyword
+// (exalted, by the Emissary of Soulfire ruling of 2024-06-07), and one
+// however many there are for every other kind (Decision 1). Both the
+// layer pass and the off-battlefield walk read it, so the badge and the
+// rule agree.
+func keywordCounterInstances(kind string, n int) int {
+	if n <= 0 {
+		return 0
+	}
+	if KeywordIsCumulative(kind) {
+		return n
+	}
+	return 1
 }
 
 // KeywordCounterTokens is keywordCounterTokens for the view package.

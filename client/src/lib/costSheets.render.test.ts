@@ -116,6 +116,23 @@ const CASES: Case[] = [
     confirms: [["ox"]],
   },
   {
+    title: "the alternative-cost tap picker",
+    component: SacrificeCostModal as never,
+    props: (c) => ({
+      source: card("cure", "Orim's Cure"),
+      label: "an untapped creature you control",
+      options: [ox],
+      verb: "Tap",
+      castName: "Orim's Cure",
+      onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "Orim's Cure",
+    primary: "Tap",
+    pick: firstOption,
+    confirms: [["ox"]],
+  },
+  {
     title: "the crew picker",
     component: CrewCostModal as never,
     props: (c) => ({
@@ -200,6 +217,27 @@ const CASES: Case[] = [
     primary: "Pay",
     pick: firstOption,
     confirms: [["brainstorm"]],
+  },
+  {
+    title: "the alternative-cost discard picker",
+    component: AltCostPaymentModal as never,
+    props: (c) => ({
+      card: card("snag", "Snag"),
+      offer: {
+        key: "discard",
+        label: "Discard a Forest card rather than pay this spell's mana cost",
+        pay_label: "a Forest card",
+        discards: true,
+        pay_options: { cards: ["forest"], min: 1, max: 1 },
+      },
+      options: [card("forest", "Forest")],
+      onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "Snag",
+    primary: "Discard",
+    pick: firstOption,
+    confirms: [["forest"]],
   },
   {
     title: "the discard-cost picker",
@@ -351,5 +389,85 @@ describe("a cost sheet's keys", () => {
     pressKey("Escape");
     expect(calls.cancelled).toBe(1);
     expect(calls.confirmed).toEqual([]);
+  });
+});
+
+// ADR 0135 §2: Foil's "an Island card and another card" is a discard
+// with a set rule. The confirm stays off until the picks fill both
+// parts one-to-one: two non-Islands do not, an Island and another card
+// do.
+describe("an alternative-cost discard with a set rule", () => {
+  const foil = (c: Calls) => ({
+    card: card("foil", "Foil"),
+    offer: {
+      key: "discard",
+      label: "Discard an Island card and another card rather than pay this spell's mana cost",
+      pay_label: "an Island card and another card",
+      discards: true,
+      pay_options: {
+        cards: ["isl", "mtn", "spell"],
+        min: 2,
+        max: 2,
+        each_of: [
+          { label: "an Island card", cards: ["isl"] },
+          { label: "another card", cards: ["isl", "mtn", "spell"] },
+        ],
+      },
+    },
+    options: [card("isl", "Island"), card("mtn", "Mountain"), card("spell", "Opt")],
+    onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+    onCancel: () => c.cancelled++,
+  });
+  const option = (name: string): HTMLElement =>
+    [...sheetPanel()!.querySelectorAll<HTMLElement>(".prompt-options .prompt-opt")].find((b) =>
+      (b.textContent ?? "").includes(name),
+    )!;
+
+  it("holds confirm on two non-Island cards and opens it on an Island and another card", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      { component: AltCostPaymentModal as never, props: foil(calls) } as never,
+    );
+    flushSync();
+    expect(sheetPanel()!.textContent).toContain(
+      "One card for each part: an Island card, another card.",
+    );
+    click(option("Mountain"));
+    click(option("Opt"));
+    expect(barPrimary()!.disabled).toBe(true);
+    click(option("Opt"));
+    click(option("Island"));
+    expect(barPrimary()!.disabled).toBe(false);
+    click(barPrimary()!);
+    expect(calls.confirmed).toEqual([[["mtn", "isl"]]]);
+  });
+});
+
+// ADR 0135 §1: the tap picker paying a SPELL's alternative cost names the
+// spell, not "this ability", and is shown even when the board offers
+// exactly the one creature the cost needs.
+describe("an alternative-cost tap picker", () => {
+  it("says which spell the tap pays for", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      {
+        component: SacrificeCostModal as never,
+        props: {
+          source: card("cure", "Orim's Cure"),
+          label: "an untapped creature you control",
+          options: [ox],
+          verb: "Tap",
+          castName: "Orim's Cure",
+          onConfirm: (ids: string[]) => calls.confirmed.push([ids]),
+          onCancel: () => calls.cancelled++,
+        },
+      } as never,
+    );
+    flushSync();
+    const text = sheetPanel()!.textContent ?? "";
+    expect(text).toContain("Tap an untapped creature you control to cast Orim's Cure.");
+    expect(text).not.toContain("to pay for this ability");
   });
 });

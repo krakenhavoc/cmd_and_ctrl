@@ -107,6 +107,107 @@ func (g *Game) ExileTopWithPermissionThenForEffect(fromPlayer, grantTo uuid.UUID
 	})
 }
 
+// ExileTopUntilAnotherForEffect is "exile the top card of your library.
+// You may play it until you exile another card with this <permanent>"
+// (ADR 0066 amendment 2026-10-08, #2539): Unstable Amulet, Furious Rise,
+// Superior Foes of Spider-Man. It is the ONE place such a window is
+// opened and the one place one is closed, so only this ability's own
+// exile ends it (CR 607.2a: the exile and the duration are one linked
+// ability, CR 607.1c). No other exile — a Bojuka Bog, a replacement,
+// another ability of the same permanent — can.
+//
+// "You" is the item's controller: the activator of the Amulet, and the
+// controller of a trigger's source as it triggered (CR 603.3a). The
+// source is the item's SourceObject, the object the ability came from
+// as it was put on the stack, so an Amulet sacrificed in response to
+// its own activation still exiles a card "with this artifact" when the
+// ability resolves, and a NEW Amulet object never matches the old
+// one's windows (CR 400.7).
+//
+// Once the exile has landed:
+//
+//  1. Nothing landed (an empty library, or a commander sent to the
+//     command zone instead): nothing changes. No card was exiled, so the
+//     earlier window stays open.
+//  2. Every earlier window the same holder has from the same source
+//     object is marked Ended (owner answer 4: only the holder's own
+//     exile closes it).
+//  3. The landed cards get a new ScopeCards play permission with a fresh
+//     UntilSourceExilesAnother duration naming that object.
+//
+// An item whose source object cannot be named (restored from a file
+// written before #1418, with its source gone) exiles and grants
+// nothing: a window with no source could never be closed, which would
+// be stronger than printed.
+//
+// Card.ExiledWith is not stamped (owner answer 3; #2651).
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileTopUntilAnotherForEffect(item *StackItem, n int) error {
+	if item == nil {
+		return nil
+	}
+	holder := item.Controller
+	ref, ok := g.SourceObjectForEffect(item)
+	plan, err := g.impulseExilePlanLocked(holder, holder, n)
+	if err != nil || len(plan) == 0 {
+		return err
+	}
+	return g.routeAllThenLocked(zoneRoute{Dst: ZoneExile, Actor: holder}, plan, func(g *Game, landed []uuid.UUID) error {
+		if len(landed) == 0 || !ok {
+			return nil
+		}
+		g.endSourceExileWindowsLocked(holder, ref)
+		g.grantImpulseExilePermissionLocked(CastPermission{
+			Duration: Duration{
+				Kind:        UntilSourceExilesAnother,
+				Player:      holder,
+				Source:      ref.ID,
+				SourceEpoch: ref.Epoch,
+			},
+		}, holder, landed)
+		return nil
+	})
+}
+
+// endSourceExileWindowsLocked marks Ended every stored permission
+// `holder` has whose UntilSourceExilesAnother duration names `source`
+// (#2539). A permission already ended, or one from another source
+// object, is left alone.
+//
+// Writes a fresh slice: the backing array is shared with every undo
+// snapshot Clone has taken (sweepCastPermissionsLocked's reason).
+//
+// Caller must hold g.mu (write).
+func (g *Game) endSourceExileWindowsLocked(holder uuid.UUID, source ObjectRef) {
+	p := g.playerByIDLocked(holder)
+	if p == nil || len(p.CastPermissions) == 0 {
+		return
+	}
+	matches := func(d Duration) bool {
+		return d.Kind == UntilSourceExilesAnother && !d.Ended && d.Player == holder &&
+			d.Source == source.ID && d.SourceEpoch == source.Epoch
+	}
+	found := false
+	for _, perm := range p.CastPermissions {
+		if matches(perm.Duration) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return
+	}
+	next := make([]CastPermission, len(p.CastPermissions))
+	for i, perm := range p.CastPermissions {
+		if matches(perm.Duration) {
+			perm.Duration.Ended = true
+		}
+		next[i] = perm
+	}
+	p.CastPermissions = next
+}
+
 // impulseExilePlanLocked chooses the up-to-n cards an impulse exile
 // will move, top of the library first — millPlanLocked's and
 // ExileTopFaceDownWithPermissionForEffect's shape, and for the same

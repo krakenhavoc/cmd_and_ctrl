@@ -1054,10 +1054,51 @@ the bot pays it and the stepper opens on it. A reflexive "When you do,
 `mayPayEnergyThen`, `sacrificeThisUnlessYouPayEnergy`,
 `getEnergyThenPayAnyAmountToDamageTarget`.
 
-**Not yet:** energy as an alternative cost, replicate or a keyword's cost waits on ADR 0129 PR 4;
-"whenever you get one or more {E}" and "{E} you've paid or lost this
-turn" on PR 5. Put such a card on the matching registry row's `Waiting`
-list.
+**Energy in other costs** (PR 4). An alternative cost takes
+`AlternativeCost.Energy`, checked with the offer (a caster short of it is
+not offered it, CR 118.3) and paid through `payEnergyLocked`:
+
+```go
+GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayEightEnergyForPermanentSpellsYouCast()}, // Nissa, Worldsoul Speaker
+GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayEnergyForSmallCreatureSpellsWithFlash()}, // Primal Prayers
+```
+
+A granted offer narrows the spells it reaches with
+`GrantedAlternativeCost.Spells` (a `PermissionFilter`) and `MaxManaValue`;
+"if you cast a spell this way, you may cast it as though it had flash" is
+`AlternativeCost.AsThoughFlash` (CR 601.3c), which opens the window for
+that claim only. A grant of "cast it by paying {E} equal to its mana value"
+is `CastPermission{AltCostKey: …, EnergyEqualToManaValue: true}` (Amped
+Raptor). Replicate is two declarations, refused one without the other:
+
+```go
+OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(3, 10)}, // "Replicate—Pay {E}{E}{E}"
+Triggered:     []game.TriggeredAbility{Replicate()},
+```
+
+Equip and unearth with an energy cost are `EquipPayingAbility("Equip—Pay
+{E}{E}", PayEnergy(2))` and `UnearthPaying("Unearth—Pay eight {E}",
+PayEnergy(8))`. Reconfigure is not implemented (`reconfigure`, #2639).
+
+**Getting it as a trigger, and "paid or lost this turn"** (PR 5).
+"Whenever you get one or more {E}, …" is `WheneverYouGetEnergy(label,
+effect)`: one trigger per placement of energy on the controller (CR
+603.2c), never on a payment. "That much" is `EnergyGotten(item)`, the
+energy that landed after any replacement. Compose `YouGotEnergy` with
+another condition for a narrower clause ("during your turn" is Brotherhood
+Scribe's `IsYourTurn`). The energy a player has paid or lost this turn is
+`g.EnergyPaidOrLostThisTurn(player)`, the turn tally's
+`EnergyPaidOrLost`, which counts every payment and every energy counter an
+effect removes:
+
+```go
+Condition: PaidOrLostEnergyThisTurn(4), // "Activate only if you've paid or lost four or more {E} this turn"
+SelfCostModifiers: []game.CostModifier{CostsLessForEachEnergyPaidOrLost(1, "…")}, // Blaster Hulk
+```
+
+A replacement on getting energy is a `RepEventCounter` with
+`CounterPlayer` set and `CounterName == game.CounterEnergy` (Aether
+Refinery, Izzet Generatorium).
 
 ### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
 
@@ -2075,6 +2116,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
+| `"exalted"` | Exalted (CR 702.83) — #2538, a TRIGGERED keyword built like prowess: one trigger per instance (`game/exalted.go`, CR 113.2c) when exactly one creature is declared as an attacker (CR 506.5) and you control it; the attacker gets +1/+1 until end of turn. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`, and each exalted counter (`game.CounterExalted`) is one more instance. Declare it in `PrintedKeywords`; never write an exalted trigger by hand (the old `effects.Exalted()` constructor is gone, and `TestNoCatalogRowIsAnExaltedConstructor` keeps it gone). A creature whose only text is exalted and other tokens here needs no card file ([ADR 0101 amendment 2026-10-08](decisions/0101-keyword-counters.md)) |
 | `"annihilator N"` | Annihilator (CR 702.86) — #2073, the third TRIGGERED keyword: numbered like toxic and triggered like prowess. One attack trigger per instance (`game/annihilator.go`, CR 702.86b); the defending player (CR 508.5, read per attacker) chooses N permanents they control in one prompt and sacrifices them together. Declare it in `PrintedKeywords` (`"annihilator 4"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.AnnihilatorAmounts`, never `HasKeyword`. "Annihilator X" read at resolution is the catalog row `AnnihilatorCounted(label, count)` (Ulamog, the Defiler). A creature whose only text is annihilator and other tokens here needs no card file ([ADR 0113 §2](decisions/0113-small-seams-for-the-s58-deck-requests.md#2-annihilator-2073)) |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
@@ -2093,16 +2135,18 @@ keyword to "creatures with a flying counter" (the retired
 silenced by the source losing its abilities, and it has the wrong
 timestamp. "Returns … with a hexproof counter on it" rides the entry
 event (`ReturnFromGraveyardWithCountersForEffect`, Perennation). The
-kinds are the thirteen in `game.KeywordCounterKinds()`, spelled as the
-keyword token (`game.CounterFirstStrike` is `"first strike"`). Decayed,
-exalted and "hexproof from" counters are not read yet, because those
+kinds are the fourteen in `game.KeywordCounterKinds()`, spelled as the
+keyword token (`game.CounterFirstStrike` is `"first strike"`). Exalted
+counters are cumulative: each one is one more instance of exalted (the
+Emissary of Soulfire ruling), where two flying counters are one flying.
+Decayed and "hexproof from" counters are not read yet, because those
 keywords are not enforced: a card that places one ships with a caveat.
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess, evolve, undying, persist) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve, exalted, undying, persist) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
@@ -3306,6 +3350,17 @@ shows no button on it. Timing still applies on top — the grant says
 you *may* play the card, not *when*. See
 [ADR 0022](decisions/0022-impulse-exile.md).
 
+**"You may play it until you exile another card with this" (#2539,
+ADR 0066 amendment of 2026-10-08):** Unstable Amulet, Furious Rise,
+Superior Foes of Spider-Man. The resolution is
+`exileTopUntilYouExileAnother` (`effects/exile_until_another.go`), a
+thin wrapper over `g.ExileTopUntilAnotherForEffect(item, 1)`. It reads
+the resolving item, so "you" is the item's controller and "this" is the
+item's `SourceObject`; the card file only says when the exile happens.
+Never build this window by hand with another `Duration`: the helper is
+the only thing that closes it, and it closes only windows the same
+holder got from the same source object.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse
@@ -4490,7 +4545,10 @@ catalog card can. A card that GRANTS retrace to others declares a
 `DiscardLandCard: true` — on `Spec.CastPermissions` for a permanent (Six,
 with `Filter: PermissionFilter{NonLandPermanentOnly: true}` and
 `Timing: game.TimingYourTurnOnly`), or on `EmblemSpec.CastPermissions`
-for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). Standing
+for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). "X and Y
+cards" is a union: Deeproot Historian uses
+`PermissionFilter{CreatureTypesAny: [2]string{"Merfolk", "Druid"}}`
+(#2550). Standing
 permissions are derived from the battlefield or the owner's emblems on
 every query, so they end when the source does.
 

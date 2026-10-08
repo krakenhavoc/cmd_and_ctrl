@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -49,6 +51,20 @@ func Unearth(cost string) ActivatedAbility {
 		SorcerySpeed: true,
 		Effect:       unearthReturn,
 	}
+}
+
+// UnearthPaying is Unearth with a cost that is not only mana — Salvation
+// Colossus's "Unearth—Pay eight {E}" (ADR 0129 §5). `label` is the
+// printed clause before the reminder text ("Unearth—Pay eight {E}").
+// Unearth is an activated ability (CR 702.84a), so the energy is an
+// ordinary AbilityCost component, checked and paid with the rest.
+func UnearthPaying(label string, cost game.AbilityCost) ActivatedAbility {
+	ab := Unearth("")
+	ab.Label = label + " (" + strings.TrimPrefix(strings.TrimPrefix(label, "Unearth—"), "Unearth ") + ": Return this card from your graveyard to the battlefield. " +
+		"It gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield. " +
+		"Activate only as a sorcery.)"
+	ab.Cost = cost
+	return ab
 }
 
 // unearthReturn is the ability body. The source is its own target in

@@ -2187,6 +2187,11 @@ export interface OptionalCostView {
   // and buyback, the multikicker cap above that. 1 renders a
   // checkbox, more renders a stepper.
   max_times?: number;
+  // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
+  // replicate, 3). `max_times` is then capped at what the viewer's energy
+  // pays for, and `energy_short` says it pays for none.
+  energy?: number;
+  energy_short?: boolean;
   // The card-shaped halves, in the same shape and with the same
   // meaning AdditionalCostView gives them: a present-and-empty
   // sacrifice_options means the offer cannot be taken right now.
@@ -2249,6 +2254,11 @@ export interface AlternativeCostView {
   // the server will accept. Exactly N still appears; paying down to
   // zero is legal.
   life?: number;
+  // ADR 0129 §5: the "pay N {E}" half of the cost (Nissa, Worldsoul
+  // Speaker's eight, Primal Prayers' one, Amped Raptor's "equal to its
+  // mana value"). Absent for the costs that charge none. Like `life`, for
+  // the label: an offer the caster is short of energy for is not offered.
+  energy?: number;
   // S28: the cards that can pay the cost's card-shaped half — the
   // blue cards in your hand for Force of Will, the Islands you
   // control for Daze. The chosen instance ID rides back on cast_spell
@@ -2264,8 +2274,22 @@ export interface AlternativeCostView {
   // the cast flow opens SacrificeCostModal for it. The picked IDs
   // still ride `alt_cost_ids`, not `sacrifice_ids`.
   sacrifice_options?: LegalTargetsView;
+  // ADR 0135 §2: the `pay_options` cards are DISCARDED, not exiled or
+  // returned (retrace's land, Snag's Forest card, Foil's two cards). The
+  // picker words its prompt "Discard". A discard with a set rule (Foil's
+  // "an Island card and another card") carries `pay_options.each_of`.
+  discards?: boolean;
+  // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
+  // Orim's Cure's "tap an untapped creature you control", Battle
+  // Screech's three white creatures. The untapped permanents you
+  // control that match, min == max == the count, in the shape an
+  // ability's `tap_others_options` has, so the cast flow opens the tap
+  // picker. Set instead of `pay_options` and `sacrifice_options`; the
+  // picked IDs ride `alt_cost_ids`.
+  tap_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
-  // or for `sacrifice_options` ("three creatures").
+  // for `sacrifice_options` ("three creatures") or for `tap_options`
+  // ("an untapped creature you control").
   pay_label?: string;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow
@@ -2773,6 +2797,9 @@ export interface ActivatedAbilityView {
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
+  // #2500: a row whose whole effect is untapping its own source
+  // (Basalt Monolith). Bot data; the client does not read it.
+  untap_self?: boolean;
   // ADR 0126 §6 (and ADR 0106 §1 decision 8 on an any-player row):
   // what the row does. Bot data; the client does not read it.
   purpose?: PurposeView;
@@ -2801,6 +2828,8 @@ export interface PurposeView {
   damage_to_creature?: number;
   damage_each_opponent?: number;
   life_gain?: number;
+  // ADR 0135 §3: the N of an awaken offer.
+  awaken_land?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.
@@ -3133,6 +3162,9 @@ export interface CastPriceView {
   cost: string;
   // Life charged on top (CR 119.4). Absent for every exile price today.
   life?: number;
+  // ADR 0129 §5: energy charged on top (Amped Raptor's "an amount of {E}
+  // equal to its mana value"). Absent for every price that charges none.
+  energy?: number;
   // True when this price IS the printed mana cost, untouched — the
   // strip draws no badge for it.
   printed?: boolean;

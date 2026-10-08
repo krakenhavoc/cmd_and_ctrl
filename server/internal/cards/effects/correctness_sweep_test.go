@@ -132,7 +132,7 @@ func TestHerdHeirloomManaCastsCreatureSpellsButNeverPaysACreaturesAbility(t *tes
 func TestRestrictedManaNamingAnObjectPropertyAlsoNamesAPurpose(t *testing.T) {
 	castOrActivate := map[string]bool{"Eldrazi Temple": true}
 	objectTag := func(tag string) bool {
-		for _, p := range []string{"type:", "subtype:", "supertype:", "color:"} {
+		for _, p := range []string{"type:", "nottype:", "subtype:", "supertype:", "color:"} {
 			if strings.HasPrefix(tag, p) {
 				return true
 			}

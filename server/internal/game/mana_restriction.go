@@ -137,6 +137,19 @@ func (t ManaToken) noGeneric() bool {
 // ManaRestrictType("Creature") for Ancient Ziggurat.
 func ManaRestrictType(t string) string { return "type:" + t }
 
+// ManaRestrictNotType builds a NEGATED card-type clause — "spend this
+// mana only to cast noncreature spells" (Nardole, Resourceful Cyborg,
+// #2136) is ManaRestrictNotType("Creature"). It is a clause about a
+// SPELL: it admits a cast whose object has none of the named types and
+// refuses an activation, an unlock, and a payment with no stated
+// purpose (which has no object to be "non" anything). Several types
+// mean none of them ("noncreature, nonland"). Tags AND and every
+// keyed tag is positive, so the clause cannot be spelled as two of
+// them.
+func ManaRestrictNotType(types ...string) string {
+	return "nottype:" + strings.Join(types, "|")
+}
+
 // ManaRestrictSubtype builds a "the object has this subtype" tag —
 // ManaRestrictSubtype("Eldrazi") for Eldrazi Temple.
 func ManaRestrictSubtype(t string) string { return "subtype:" + t }
@@ -363,6 +376,20 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 	key, value, ok := strings.Cut(r, ":")
 	if !ok || value == "" || ctx.Purpose == SpendPurposeUnknown {
 		return false
+	}
+	if key == "nottype" {
+		// #2136: a negated type is about a spell being cast. Its `|`
+		// is "none of these", not the OR the positive tags read, so it
+		// is decided here rather than in the alternation loop below.
+		if ctx.Purpose != SpendPurposeCast {
+			return false
+		}
+		for _, alt := range strings.Split(value, "|") {
+			if alt == "" || containsFold(ctx.Types, alt) {
+				return false
+			}
+		}
+		return true
 	}
 	// #1547: a `|` in the value is an alternation — "an instant OR
 	// sorcery spell". Any alternative satisfying the key satisfies the

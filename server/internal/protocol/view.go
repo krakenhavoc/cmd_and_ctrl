@@ -1113,6 +1113,13 @@ type OptionalCostView struct {
 	// 1 for kicker and buyback, the multikicker cap for multikicker.
 	// The client renders a checkbox at 1 and a stepper above it.
 	MaxTimes int `json:"max_times,omitempty"`
+	// Energy is the "pay N {E}" each payment of this cost charges (ADR
+	// 0129 §5): Reiterating Bolt's "Replicate—Pay {E}{E}{E}" is 3. For
+	// such a cost MaxTimes is capped at the payments the viewer's energy
+	// covers (CR 118.3), and EnergyShort is set when it covers none, so
+	// the stepper stops where the engine stops accepting the cast.
+	Energy      int  `json:"energy,omitempty"`
+	EnergyShort bool `json:"energy_short,omitempty"`
 	// DiscardCards and SacrificeOptions are the card-shaped halves,
 	// in the same shape and with the same meaning AdditionalCostView
 	// gives them — present-and-empty SacrificeOptions means this
@@ -1192,11 +1199,25 @@ type AlternativeCostView struct {
 	// and stays public with the rest of the offer.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of that statement when it has more than
+	// one (#764), each with its own legal set: awaken's rewrite is the
+	// spell's own clause followed by "target land you control" (ADR
+	// 0135 §3), and the client walks them in order. Absent for a
+	// single-clause statement, where legal_targets is the whole answer.
+	// Per viewer, like legal_targets.
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 
 	// Life is the "pay N life" half of the cost (Force of Will's 1,
 	// Snuff Out's 4). Zero — absent — for the costs that charge none.
 	// The server enforces the life total; this is for the label.
 	Life int `json:"life,omitempty"`
+
+	// Energy is the "pay N {E}" half of the cost (ADR 0129 §5): Nissa,
+	// Worldsoul Speaker's eight, Primal Prayers' one, Amped Raptor's
+	// "equal to its mana value". Absent for the costs that charge none.
+	// Like Life, for the label: an offer the caster is short of energy
+	// for is not offered at all (CR 118.3).
+	Energy int `json:"energy,omitempty"`
 
 	// PayOptions is the set of cards that can pay the cost's
 	// card-shaped half: the blue cards in the caster's hand for Force
@@ -1240,9 +1261,33 @@ type AlternativeCostView struct {
 	// from the graveyard. Per viewer, like `pay_options` (#1172).
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 
-	// PayLabel is the picker's prompt copy for PayOptions or
-	// SacrificeOptions ("a blue card", "an Island you control", "three
-	// creatures"). Absent when there is nothing to pick.
+	// Discards marks an offer whose `pay_options` are DISCARDED rather
+	// than exiled or returned (ADR 0135 §2): retrace's land card, Snag's
+	// Forest card, Foil's two cards. The client words its prompt
+	// "Discard …", and a policy prices the discard's payoffs (Mary Read's
+	// Treasure for an Island). Absent for every other offer. Public with
+	// the rest of the printed offer.
+	Discards bool `json:"discards,omitempty"`
+
+	// TapOptions is the cost's card-shaped half when that half TAPS
+	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
+	// creature you control", Battle Screech's three white creatures,
+	// Zahid's artifact. The untapped permanents the caster controls that
+	// match the clause, in payment order, with min and max both the
+	// count — the block an activated ability's `tap_others_options`
+	// ships (tapOthersCostOptions), so the client opens the same tap
+	// picker. The picks ride cast_spell as `alt_cost_ids`.
+	//
+	// Set instead of `pay_options` and `sacrifice_options`, never beside
+	// them: an offer has one card component. A cost does not target (CR
+	// 601.2h), so hexproof never narrows it, and a creature that arrived
+	// this turn is listed (CR 302.6). An offer the board can't pay is not
+	// stamped at all (#695). Per viewer, like `pay_options` (#1172).
+	TapOptions *LegalTargetsView `json:"tap_options,omitempty"`
+
+	// PayLabel is the picker's prompt copy for PayOptions,
+	// SacrificeOptions or TapOptions ("a blue card", "an Island you
+	// control", "three creatures"). Absent when there is nothing to pick.
 	PayLabel string `json:"pay_label,omitempty"`
 
 	// XLockedAtZero is CR 107.3b for THIS offer: the card prints an
@@ -3085,6 +3130,10 @@ type CastPriceView struct {
 	// Life is the life a Bolas's-Citadel-shaped price charges on top
 	// (CR 119.4). Absent for every exile price today.
 	Life int `json:"life,omitempty"`
+	// Energy is the energy a price charges on top (ADR 0129 §5): Amped
+	// Raptor's "an amount of {E} equal to its mana value". Absent for
+	// every price that charges none.
+	Energy int `json:"energy,omitempty"`
 	// Printed is true when this price IS the card's printed mana cost,
 	// untouched: no alternative cost, no permission's own price, and
 	// no modifier moved it. The client shows no badge for it.
@@ -3720,6 +3769,13 @@ type ActivatedAbilityView struct {
 	// other "target creature you control" row without it. Public with
 	// the row; the client does not read it.
 	Equip bool `json:"equip,omitempty"`
+	// UntapSelf marks a row whose whole effect is untapping its own
+	// source (game.ActivatedAbility.UntapSelf, #2500): Basalt and Grim
+	// Monolith. Absent on every other row. Bot data: with the source's
+	// mana abilities on the same card view it tells a self-untap that
+	// nets mana from one that only trades it. Public with the row; the
+	// client does not read it.
+	UntapSelf bool `json:"untap_self,omitempty"`
 	// Purpose is what the row does, as the catalog declares it (ADR
 	// 0126 §6, purpose_view.go): a loot's draw and discard, a sweep. On
 	// an any-player row it is also what the row buys an activator who
@@ -4956,9 +5012,12 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 	out := make([]AlternativeCostView, len(offers))
 	for i, o := range offers {
 		o.LegalTargets = nil
+		o.Clauses = nil
 		o.PayOptions = nil
 		// #1727: "the creatures YOU control", one seat's answer.
 		o.SacrificeOptions = nil
+		// ADR 0135 §1: "untapped creatures YOU control", likewise.
+		o.TapOptions = nil
 		out[i] = o
 	}
 	return out
@@ -5503,7 +5562,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 				if o != nil && o.Key == out.AlternativeCosts[i].Key {
 					// ADR 0107 §4: a disturb offer is timed as the back
 					// face it casts, as CastSpell times it.
-					out.AlternativeCosts[i].TimingClosed = !g.CastTimingOpenLocked(caster, o.CastFaceOf(live), kind, grant.ForClaim(o))
+					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, grant.ForClaim(o), o)
 					break
 				}
 			}
@@ -5667,8 +5726,24 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 	// ADR 0100 §2, CR 601.2h: "Unpayable costs can't be paid" — a card
 	// whose every either/or branch is out of reach is not castable here.
 	// True for every card without branches.
-	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant) &&
+	return cantCast == "" && len(offers) > 0 && castTimingOpenForAnyOffer(g, caster, card, kind, grant, offers) &&
 		g.AnyAdditionalCostBranchPayableLocked(caster, card)
+}
+
+// castTimingOpenForAnyOffer is the timing half of castableNow: the
+// window is open for the cast as a whole, or for one of its offers
+// that carries its own "as though it had flash" (CR 601.3c, Primal
+// Prayers), judged as CastSpell would judge that claim.
+func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []*game.AlternativeCost) bool {
+	if g.CastTimingOpenLocked(caster, card, kind, grant) {
+		return true
+	}
+	for _, o := range offers {
+		if o != nil && o.AsThoughFlash && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
+			return true
+		}
+	}
+	return false
 }
 
 // viewOfCastPrices prices every offer a cast out of `kind` may claim —
@@ -5704,6 +5779,7 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 			v.AlternativeCost = o.Key
 			v.Label = o.Label
 			v.Life = o.Life
+			v.Energy = o.Energy
 		}
 		price, err := g.PriceCastForEffect(caster, card, params)
 		if err != nil {
@@ -5726,7 +5802,7 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		// commander's price printed. Asked of the command zone only.
 		// A grant's "spend mana as though any colour" widening (#1928)
 		// leaves both strings as printed, so it never moves the badge.
-		v.Printed = price.Paid == price.Printed && v.Life == 0 &&
+		v.Printed = price.Paid == price.Printed && v.Life == 0 && v.Energy == 0 &&
 			price.Total.String() == price.Base.String() &&
 			(kind != game.ZoneCommand || untaxed(price))
 		rows = append(rows, priced{v: v, mv: price.Total.ManaValue()})
@@ -5735,7 +5811,10 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 		if rows[i].mv != rows[j].mv {
 			return rows[i].mv < rows[j].mv
 		}
-		return rows[i].v.Life < rows[j].v.Life
+		if rows[i].v.Life != rows[j].v.Life {
+			return rows[i].v.Life < rows[j].v.Life
+		}
+		return rows[i].v.Energy < rows[j].v.Energy
 	})
 	var out []CastPriceView
 	for _, r := range rows {
@@ -6087,7 +6166,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// of the filter is exactly the drift #1012 was about.
 		v := AlternativeCostView{
 			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
-			Life: ac.Life, PayLabel: ac.PayLabel,
+			Life: ac.Life, Energy: ac.Energy, PayLabel: ac.PayLabel,
 			// CR 107.3b (#831). An offer is a cost; the rule asks
 			// only whether the printed {X} survives into it, so the
 			// pair of strings IS the whole question here. A grant
@@ -6105,6 +6184,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
+			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		// The card-shaped half. SpecCandidatesForEffect, not
 		// LegalTargetsForEffect, for the same reason the additional
@@ -6122,7 +6202,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
+			// ADR 0135 §2: a set rule (Foil's "an Island card and
+			// another card") ships its entries in the shape the
+			// sacrifice picker reads, so the hand picker can hold
+			// confirm until the picks fill them all.
+			opts.EachOf = costSetGroupsView(g, paySpec, game.ZoneHand, opts.Cards)
 			v.PayOptions = opts
+			v.Discards = true
 		} else if paySpec := ac.ReturnToHand; paySpec != nil {
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = filterToController(g, opts.Cards, caster)
@@ -6143,6 +6229,10 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the caster's own permanents (CR 701.21a), in payment
 			// order, bounded by the clause's count.
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, paySpec, uuid.Nil, false)
+		} else if tc := ac.TapOthers; !tc.Empty() {
+			// ADR 0135 §1: the ability's tap-others block, with no
+			// source — the spell is not on the battlefield.
+			v.TapOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
 		}
 		out = append(out, v)
 	}
@@ -6241,6 +6331,16 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 			ManaCost:     oc.ManaCost,
 			MaxTimes:     oc.MaxPayments(),
 			DiscardCards: oc.DiscardCards,
+		}
+		// ADR 0129 §5: an energy cost is paid only as many times as the
+		// viewer has the energy for (CR 118.3).
+		if oc.Energy > 0 {
+			v.Energy = oc.Energy
+			affordable := game.PlayerEnergy(g.PlayerByIDForEffect(caster)) / oc.Energy
+			if affordable < v.MaxTimes {
+				v.MaxTimes = max(affordable, 1)
+			}
+			v.EnergyShort = affordable == 0
 		}
 		if oc.Sacrifice != nil {
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)
@@ -9671,6 +9771,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,
 			Equip:         a.Equip,
+			UntapSelf:     a.UntapSelf,
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
 		// and the bot's reason to reach across.
@@ -10049,12 +10150,35 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	}
 	// #2526: a set rule ("a Swamp and a Forest") ships its entries so the
 	// picker can hold confirm until the picks fill them all.
-	for _, grp := range g.SacrificeSetGroupsForEffect(spec, ordered) {
+	out.EachOf = setGroupsView(g.SacrificeSetGroupsForEffect(spec, ordered))
+	return out
+}
+
+// costSetGroupsView is the each_of of a non-sacrifice cost clause with a
+// set rule (ADR 0135 §2: a hand discard), over the candidates the view
+// already lists, in their order. Nil without a rule.
+func costSetGroupsView(g *game.Game, spec *game.TargetSpec, zone game.ZoneKind, cards []string) []SacrificeGroupView {
+	if len(game.SacrificeSetKinds(spec)) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, 0, len(cards))
+	for _, s := range cards {
+		if id, err := uuid.Parse(s); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return setGroupsView(g.CostSetGroupsForEffect(spec, zone, ids))
+}
+
+// setGroupsView is the wire shape of a set rule's groups.
+func setGroupsView(groups []game.SacrificeSetGroup) []SacrificeGroupView {
+	var out []SacrificeGroupView
+	for _, grp := range groups {
 		gv := SacrificeGroupView{Label: grp.Label}
 		for _, id := range grp.Candidates {
 			gv.Cards = append(gv.Cards, id.String())
 		}
-		out.EachOf = append(out.EachOf, gv)
+		out = append(out, gv)
 	}
 	return out
 }

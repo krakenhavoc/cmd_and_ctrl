@@ -393,6 +393,18 @@ type TargetSpec struct {
 	// rule as CardOK — MUST NOT call public locking mutators.
 	AbilityOK func(g *Game, chooser uuid.UUID, item *StackItem) bool
 
+	// ResolvesIfIllegal is "this ability still resolves if its target
+	// becomes illegal" (Gilded Drake, #2182, ADR 0019's 2026-10-08
+	// amendment). It exempts the item from the CR 608.2b removal
+	// spellAllTargetsIllegalLocked performs when every target is gone:
+	// the ability goes on resolving, and its Effect must treat an
+	// illegal target as unaffected (Context.IsTargetLegal, which still
+	// answers the per-slot re-check). A clause-level flag, so it rides
+	// the spec every stamped, cloned and restored item already
+	// re-derives; set by TargetSpec.StillResolves. Any clause of a
+	// statement carrying it exempts the whole item.
+	ResolvesIfIllegal bool
+
 	// Min / Max bound the number of targets. Max 0 means unbounded.
 	//
 	// On a SACRIFICE clause (AbilityCost.SacrificeOther,
@@ -604,6 +616,10 @@ type TargetSpec struct {
 	// clause but a handful — means no set rule, and the clause reads
 	// exactly as it did.
 	//
+	// ADR 0135 §2 widened it to a DISCARD clause: an alternative cost's
+	// DiscardFromHand, Foil's "an Island card and another card", whose
+	// picks are cards in hand (SacrificeKind.Any is "another card").
+	//
 	// The head spec's own predicate is the UNION of the entries
 	// (effects.SacrificeEach builds it from them), so the per-permanent
 	// walks that list candidates — the validator, the legal enumerator
@@ -735,6 +751,16 @@ func (s *TargetSpec) WithToughnessAtMostX() *TargetSpec {
 // own With…X call. Mutates and returns the receiver.
 func (s *TargetSpec) BoundByTheCountersRemoved() *TargetSpec {
 	s.BoundByCountersRemoved = true
+	return s
+}
+
+// StillResolves marks the clause "this ability still resolves if its
+// target becomes illegal" (#2182): when every target is illegal at
+// resolution the item is not removed under CR 608.2b, and the effect
+// runs with the illegal target treated as unaffected. Mutates and
+// returns the receiver for chaining.
+func (s *TargetSpec) StillResolves() *TargetSpec {
+	s.ResolvesIfIllegal = true
 	return s
 }
 

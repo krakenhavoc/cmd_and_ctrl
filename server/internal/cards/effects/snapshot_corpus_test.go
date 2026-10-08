@@ -320,6 +320,10 @@ func corpusBoards() []corpusBoard {
 		// Dispute, whose land-play restriction is catalog data and so adds
 		// nothing to the file but the permanent.
 		{"cant_play_lands", corpusCantPlayLands},
+		// v7, added by #2039 (ADR 0096 amendment) as a new file: Jared
+		// Carthalion's cantBecomeMonarch record naming his controller,
+		// beside the opponent he crowned.
+		{"cant_become_monarch", corpusCantBecomeMonarch},
 		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
 		// from a resolved effect as data — setBasicLandTypes records
 		// until end of turn (Tidal Warrior), until the land's controller's
@@ -448,7 +452,62 @@ func corpusBoards() []corpusBoard {
 		{"revealed_hand_pick_optional_then", corpusRevealedHandPickOptional},
 		{"revealed_hand_pick_exile_graveyard", corpusRevealedHandPickExile},
 		{"revealed_hand_pick_measures", corpusRevealedHandPickMeasures},
+		// v7, added by #2538 (ADR 0101 amendment 2026-10-08) as a new
+		// file: a Noble Hierarch's exalted trigger — the fourth engine
+		// keyword trigger, keyed by its exalted/pump body — waiting on
+		// the stack, carrying the lone attacker in its params.
+		{"exalted_trigger_pending", corpusExaltedTriggerPending},
+		// v7, added by #2539 (ADR 0066's 2026-10-08 amendment) as a new
+		// file: an Unstable Amulet activated twice — the first card's
+		// window ended (duration.Ended) and the second's open, both
+		// UntilSourceExilesAnother naming the Amulet object
+		// (duration.Source, duration.SourceEpoch).
+		{"until_you_exile_another", corpusUntilYouExileAnother},
 	}
+}
+
+// corpusExaltedTriggerPending is a real Noble Hierarch's exalted
+// trigger (#2538: an engine trigger with no catalog row) waiting on the
+// stack in the declare attackers step, a lone 2/2 attacking.
+func corpusExaltedTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	hierarch := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Noble Hierarch", TypeLine: "Creature — Human Druid",
+		OracleID: nobleHierarchOracle, Power: 0, Toughness: 1, Keywords: []string{game.KeywordExalted},
+		Owner: me, Controller: me,
+	})
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Grizzly Bears", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me, Controller: me,
+	})
+	declareAttack(t, g, opp, bear)
+	it := corpusSettleTrigger(t, g, hierarch)
+	if it.Body != "exalted/pump" || it.Params.Object.ID != bear {
+		t.Fatalf("setup: the exalted trigger is %+v, want body exalted/pump pinned to the attacker", it)
+	}
+	return g
+}
+
+// corpusUntilYouExileAnother is #2539's stored shape, made by the card
+// that makes it.
+func corpusUntilYouExileAnother(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	amulet := pushCatalogPermanent(g, me.ID, "Unstable Amulet", "Artifact", euaUnstableAmulet, false)
+	setEnergy(t, g, me, 4)
+	first := euaTop(g, me, "Lightning Bolt", "Instant", "{R}")
+	euaActivate(t, g, me, amulet)
+	second := euaTop(g, me, "Mountain", "Basic Land — Mountain", "")
+	euaActivate(t, g, me, amulet)
+	if euaPlayable(g, me, first) || !euaPlayable(g, me, second) {
+		t.Fatal("setup: want the first window ended and the second open")
+	}
+	if n := len(me.CastPermissions); n != 2 {
+		t.Fatalf("setup: %d stored permissions, want the ended one and the open one", n)
+	}
+	return g
 }
 
 // corpusRevealedHandPickHand gives seat 1 a land and two spells, seat 1
@@ -1278,6 +1337,20 @@ func corpusCantPlayLands(t *testing.T) *game.Game {
 	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayLands {
 		t.Fatalf("setup: scoped records = %+v, want one cantPlayLands", g.ScopedEffects)
 	}
+	return g
+}
+
+// corpusCantBecomeMonarch is #2039's one stored shape.
+func corpusCantBecomeMonarch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	g.WithWriteLock(func() {
+		g.CantBecomeMonarchThisTurnForEffect(uuid.Nil, me.ID, "Jared Carthalion — can't become the monarch this turn")
+		if err := g.SetMonarchForEffect(opp.ID); err != nil {
+			t.Fatal(err)
+		}
+	})
 	return g
 }
 

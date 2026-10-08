@@ -103,6 +103,14 @@ type Purpose struct {
 	DamageEachOpponent int
 	// LifeGain is the life its controller gains: Resolute Survivors' 1.
 	LifeGain int
+
+	// AwakenLand is the N of "Awaken N—[cost]" (CR 702.113a, ADR 0135
+	// §3, owner decision 6): the +1/+1 counters the cast puts on a land
+	// its controller controls as it makes it a 0/0 Elemental creature
+	// with haste. Declared only on an awaken offer, by effects.Awaken;
+	// the heuristic prices it as a hasty N/N body that is also a land,
+	// beside the spell's own purpose, which awaken leaves alone.
+	AwakenLand int
 }
 
 // Pump is a self pump until end of turn (Purpose.Pump): the power and
@@ -265,6 +273,7 @@ func (p Purpose) plus(o Purpose) Purpose {
 		DamageToCreature:          p.DamageToCreature + o.DamageToCreature,
 		DamageEachOpponent:        p.DamageEachOpponent + o.DamageEachOpponent,
 		LifeGain:                  p.LifeGain + o.LifeGain,
+		AwakenLand:                p.AwakenLand + o.AwakenLand,
 	}
 	if out.Pump == nil {
 		out.Pump = o.Pump

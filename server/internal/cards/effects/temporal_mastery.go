@@ -21,11 +21,17 @@ func init() {
 		Name:             "Temporal Mastery",
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Miracle("{1}{U}")},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (TakeExtraTurn{}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+		OnResolve:        takeAnExtraTurnThenExileThisSpell,
 	})
+}
+
+// takeAnExtraTurnThenExileThisSpell is "Take an extra turn after this
+// one. Exile <this spell>." — Temporal Mastery and Part the Waterveil. A
+// spell moving itself, not a permanent's ability, so the #1432 new-object
+// question does not arise.
+func takeAnExtraTurnThenExileThisSpell(item *game.StackItem, ctx *Context) error {
+	if err := (TakeExtraTurn{}).Apply(ctx); err != nil {
+		return err
+	}
+	return ctx.Game.ExileCardForEffect(item.SourceCardID)
 }

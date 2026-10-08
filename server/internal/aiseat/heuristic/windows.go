@@ -55,6 +55,34 @@ func (p *Policy) tapCreatureCost(st *state, c *protocol.CardView) float64 {
 	return tappedBlocker
 }
 
+// tapFuelValue prices the bot's permanent with this instance ID as
+// something a cost would TAP (ADR 0135 §1: a tap alternative cost): what
+// tapping it costs (tapCreatureCost), since the permanent stays. A
+// permanent the seat cannot see on the battlefield is Weights.Unknown,
+// as fuelValue prices an unreadable card.
+func (p *Policy) tapFuelValue(st *state, id string) float64 {
+	c := st.bf[id]
+	if c == nil {
+		return st.w.Unknown
+	}
+	return p.tapCreatureCost(st, c)
+}
+
+// altCostTaps reports whether the alternative cost keyed `key` on c taps
+// its permanents rather than spending them: the view stamps such an
+// offer's candidates on `tap_options` (ADR 0135 §1).
+func altCostTaps(c *protocol.CardView, key string) bool {
+	if c == nil || key == "" {
+		return false
+	}
+	for i := range c.AlternativeCosts {
+		if ac := &c.AlternativeCosts[i]; ac.Key == key {
+			return ac.TapOptions != nil
+		}
+	}
+	return false
+}
+
 // couldAttack reports whether c could be declared as an attacker this
 // turn as far as the card itself says: untapped, no summoning sickness
 // (the view's flag already allows for haste), some power to swing
@@ -72,6 +100,18 @@ var nonManaCastKeys = []string{
 	"teamwork_ids", "blight_ids", "reveal_ids", "optional_costs", "cost_branch",
 	"phyrexian_life",
 }
+
+// nonManaCastKeysBesidesSacrifice is nonManaCastKeys without the
+// sacrifice, for landSacrificeIsNetMana (#2469).
+var nonManaCastKeysBesidesSacrifice = func() []string {
+	var out []string
+	for _, k := range nonManaCastKeys {
+		if k != "sacrifice_ids" {
+			out = append(out, k)
+		}
+	}
+	return out
+}()
 
 // nonManaActivateKeys are the activate_ability params that pay a cost
 // with something other than mana and tapping. Crew, waterbend and
@@ -143,7 +183,10 @@ func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 	}
 	switch m.Kind {
 	case legal.KindCast:
-		return !paramsSet(m.Params, nonManaCastKeys)
+		if !paramsSet(m.Params, nonManaCastKeys) {
+			return true
+		}
+		return p.landSacrificeIsNetMana(st, m)
 	case legal.KindActivate:
 		if paramsSet(m.Params, nonManaActivateKeys) {
 			return false
@@ -159,6 +202,31 @@ func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 		return row != nil && rowCostsOnlyManaAndTaps(row)
 	}
 	return false
+}
+
+// landSacrificeIsNetMana reports whether a cast's only non-mana cost is
+// sacrificing lands that the cast's own declared purpose more than
+// replaces (#2469). Harrow sacrifices a land and puts two onto the
+// battlefield untapped: the move ends with more lands than it started
+// with, all of them untapped, so like a move that costs mana and taps
+// it spends nothing the bot would otherwise keep, and it gets the same
+// leftover bar. A sacrifice with no `lands` purpose behind it, or one
+// that does not replace what it sacrifices, keeps the normal bar, as
+// does a sacrifice of anything but a land of the bot's own.
+func (p *Policy) landSacrificeIsNetMana(st *state, m legal.Move) bool {
+	cp := decode[castParams](m.Params)
+	if paramsSet(m.Params, nonManaCastKeysBesidesSacrifice) {
+		return false
+	}
+	n, ok := st.ownLandsSacrificed(cp.SacrificeIDs)
+	if !ok {
+		return false
+	}
+	card := st.castSource(cp.InstanceID)
+	if card == nil {
+		return false
+	}
+	return castPurpose(card, cp).lands > n
 }
 
 // tapsACreature reports whether paying m's cost taps one of the bot's

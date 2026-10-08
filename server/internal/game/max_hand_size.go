@@ -24,6 +24,8 @@ import (
 //     abilities gives nothing, CR 613.1f) and under each entry's
 //     designation gate, at the permanent's own timestamp (CR 613.7a,
 //     Card.layerTimestamp);
+//   - a granted change with a duration (PlayerStatic.HandSize, #2108),
+//     at the time it was made, while its duration lasts;
 //   - the player's own grant (Player.MaxHandSize, written by a resolved
 //     spell or the sandbox action) when it is not the default, at the
 //     time it was written (CR 613.7b, Player.MaxHandSizeAt).
@@ -110,6 +112,50 @@ func (s HandSizeStatic) Reaches(controller, chosen, p uuid.UUID) bool {
 	return false
 }
 
+// HandSizeGrant is a HandSizeStatic as a PlayerStatic stores it (ADR
+// 0113's amendment of 2026-10-08, #2108): what a resolved spell did to
+// a player's maximum hand size, with the CR 613.7b timestamp of when it
+// did it. Plain data, so the snapshot carries it. The duration is the
+// PlayerStatic's own. Active is the presence bit: Kind's zero value is
+// HandSizeNoMaximum, so the zero grant would otherwise be a real one.
+type HandSizeGrant struct {
+	Active bool         `json:"active"`
+	Kind   HandSizeKind `json:"kind"`
+	N      int          `json:"n"`
+	// At is the CR 613.7b timestamp, from the clock Player.MaxHandSizeAt
+	// and Card.EnteredBattlefieldAt use.
+	At int64 `json:"at"`
+}
+
+// GrantHandSizeForEffect is "<player>'s maximum hand size is reduced by
+// N" / "is N" / "<player> has no maximum hand size" for a duration (CR
+// 611.2): Inspired Idea (rest of the game), Enter the Infinite (until
+// your next turn). Unlike SetMaxHandSizeForEffect's single grant, any
+// number of these live at once, each with its own timestamp and
+// duration, so a second Inspired Idea reduces by three again. Caller
+// must hold g.mu (write). A Modify by 0 or a Set below 0 is refused,
+// the same two declarations Register refuses on a Spec. The zero
+// Duration is "until end of turn", the narrowest answer, so a caller
+// that forgets gets a short grant and not a permanent one. Build the
+// duration with the constructors in duration.go (IndefiniteDuration for
+// "for the rest of the game").
+func (g *Game) GrantHandSizeForEffect(player uuid.UUID, kind HandSizeKind, n int, label string, source uuid.UUID, d Duration) error {
+	if (kind == HandSizeSet && n < 0) || (kind == HandSizeModify && n == 0) {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(player)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.Statics = append(p.Statics, PlayerStatic{
+		HandSize: HandSizeGrant{Active: true, Kind: kind, N: n, At: timeNowUnixNano()},
+		Source:   source,
+		Label:    label,
+		Duration: d,
+	})
+	return nil
+}
+
 // CatalogHandSize returns the maximum-hand-size statics a catalog
 // entry declares. A separate slot so game-package tests can stub it
 // without importing the effects package; nil hook ⇒ no catalog wired ⇒
@@ -147,6 +193,16 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 			grant = HandSizeStatic{Kind: HandSizeNoMaximum}
 		}
 		entries = append(entries, handSizeEntry{at: p.MaxHandSizeAt, s: grant})
+	}
+	// Granted entries: a resolved spell's change, live for its Duration.
+	// The duration is tested here, not left to the sweep, so the answer
+	// is right between the moments the sweep runs (castBanForbidsLocked
+	// argues the same).
+	for _, s := range p.Statics {
+		if !s.HandSize.Active || g.durationExpiredLocked(s.Duration, false) {
+			continue
+		}
+		entries = append(entries, handSizeEntry{at: s.HandSize.At, s: HandSizeStatic{Kind: s.HandSize.Kind, N: s.HandSize.N}})
 	}
 	if CatalogHandSize != nil && g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {

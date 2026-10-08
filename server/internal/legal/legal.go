@@ -519,6 +519,10 @@ type TargetCandidate struct {
 	// Player is true when the candidate is a seat rather than an
 	// object.
 	Player bool
+	// Tap is true when a CostFuelOrder is asked about a permanent the
+	// cost would TAP rather than spend (ADR 0135 §1: a tap alternative
+	// cost). The policy prices tapping it, not losing it.
+	Tap bool
 }
 
 // TargetOrder prices one candidate target for the enumerating seat.

@@ -302,6 +302,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && src != nil && st.idleEquip(src, cp) {
 			return idleEquipMove, "re-equip for no gain"
 		}
+		// #2500: an untap of its own source that costs as much mana as
+		// the source makes nets nothing (untap_self.go).
+		if !across && src != nil && st.idleSelfUntap(src, cp) {
+			return idleEquipMove, "untap for no net mana"
+		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
 		// place of the flat ActivateBase, and a row that sacrifices its
@@ -475,6 +480,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
 	card := st.castSource(cp.InstanceID)
+	// ADR 0135 §3: an awaken cast's last target is its own land, which
+	// awakenValue prices as the body it becomes; it is not a pump on a
+	// permanent of the bot's (OwnPermanentTarget), and it does not make
+	// an untargeted spell a targeted one (SpellFloor).
+	targets := spellTargets(card, cp)
 	var v float64
 	reason := "cast"
 	if cp.AlternativeCost != "" {
@@ -490,7 +500,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// this cast names, so an overloaded Rift is a sweep and a
 		// hard-cast one is not.
 		ps := castPurpose(card, cp)
-		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(cp.Targets) > 0)
+		// #2469: a land swap is priced by what it nets. The lands that
+		// replace the sacrificed ones are untapped lands, ManaSource
+		// each, outside the purpose; the rest are the ramp, with the
+		// floor under them.
+		if n := p.landSwap(st, ps, cp.SacrificeIDs); n > 0 {
+			ps.lands -= n
+			v += st.w.ManaSource * float64(n)
+		}
+		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(targets) > 0)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
 		// mana now, which a card being pitched to a cost is not.
@@ -531,8 +549,25 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// offered first is the payment it then prices as cheapest, and the
 	// two cannot disagree. A graveyard card used to be worth nothing
 	// here, which made an escape look free.
+	//
+	// ADR 0135 §1: an offer that TAPS its permanents (Orim's Cure's
+	// creature, Battle Screech's three) spends none of them, so each is
+	// charged what tapping it costs (tapCreatureCost), not its value.
+	taps := altCostTaps(card, cp.AlternativeCost)
 	for _, id := range cp.AltCostIDs {
+		if taps {
+			v -= p.tapFuelValue(st, id)
+			continue
+		}
 		v -= p.fuelValue(st, id)
+	}
+	// ADR 0135 §2: an offer that DISCARDS its cards (Snag's Forest,
+	// retrace's land) pays the discard payoffs, as an additional cost's
+	// discard does below, so Mary Read makes Foil's Island cheaper.
+	if altCostDiscards(card, cp.AlternativeCost) {
+		for _, id := range cp.AltCostIDs {
+			v += st.discardPayoff(p.cfg, st.mine[id])
+		}
 	}
 	// ADR 0100: delve's exiles are graveyard fuel too, priced by the
 	// same function the enumerator ordered the delve pool by, so the
@@ -560,7 +595,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v += st.discardPayoff(p.cfg, st.mine[id])
 	}
 	v -= p.sacrificeCost(st, cp.SacrificeIDs)
-	v += st.targetsValue(p.cfg, cp.Targets)
+	v += st.targetsValue(p.cfg, targets)
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
 		// {2} more (CR 903.8); the tax is already in the score, this

@@ -310,6 +310,139 @@ func Retrace(printedCost string) game.AlternativeCost {
 	}
 }
 
+// DiscardInstead is "You may discard <label> rather than pay this
+// spell's mana cost" (CR 118.9, ADR 0135 §2, #2412): Snag's
+//
+//	DiscardInstead("a Forest card", HasSubtype("Forest"))
+//
+// One card from the caster's own hand, DISCARDED as a cost (CR 701.9a)
+// through the discard helper's cost path, so madness and "whenever you
+// discard" payoffs see it, and paid with the spell already on the stack
+// (CR 601.2a before 601.2h), so a countered Snag does not give the Forest
+// back. The subtype is read from the card in hand, so a nonbasic Forest
+// (Tropical Island) or Dryad Arbor pays it, as Snag's ruling says.
+//
+// The empty ManaCost is "rather than pay this spell's mana cost": an
+// additional cost (commander tax, CR 903.8) is still added to it (CR
+// 118.9d).
+func DiscardInstead(label string, preds ...CardPredicate) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:             "discard",
+		Label:           "Discard " + label + " rather than pay this spell's mana cost",
+		ManaCost:        "",
+		DiscardFromHand: CardInYourHand(label, preds...),
+		PayLabel:        label,
+	}
+}
+
+// DiscardEachInstead is DiscardInstead for a discard of DIFFERENT kinds
+// (ADR 0135 §2, owner decision 2): Foil's "You may discard an Island card
+// and another card rather than pay this spell's mana cost" is
+//
+//	DiscardEachInstead("an Island card and another card",
+//	    SacrificeSubtype("an Island card", "Island"), AnyCard("another card"))
+//
+// The picks must fill the kinds one-to-one (TargetSpec.EachOf, #2526's
+// matching read from the hand), so two Islands pay it and one Island
+// beside nothing else does not. The count is the number of kinds; the
+// head predicate is their union, so the per-card walks (the offer's
+// payability, the picker, the enumerator's pool) list every card that
+// could fill any kind.
+func DiscardEachInstead(label string, kinds ...game.SacrificeKind) game.AlternativeCost {
+	spec := CardInYourHand(label, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return anyKindMatches(kinds, c)
+	}).WithCount(len(kinds), len(kinds))
+	spec.EachOf = append([]game.SacrificeKind(nil), kinds...)
+	return game.AlternativeCost{
+		Key:             "discard",
+		Label:           "Discard " + label + " rather than pay this spell's mana cost",
+		ManaCost:        "",
+		DiscardFromHand: spec,
+		PayLabel:        label,
+	}
+}
+
+// AnyCard is the "another card" kind of a set rule (ADR 0135 §2): every
+// card is of it, so only the one-to-one matching keeps it from counting a
+// card twice.
+func AnyCard(label string) game.SacrificeKind {
+	return game.SacrificeKind{Label: label, Any: true}
+}
+
+// TapInstead is "[If <condition>,] you may tap <label> rather than pay
+// this spell's mana cost" (CR 118.9, ADR 0135 §1, #2030): Orim's Cure's
+//
+//	TapInstead(1, "an untapped creature you control", ControlsA("Plains"), Creature())
+//
+// The permanents are named in alt_cost_ids and tapped as a cost through
+// the activated abilities' tap-others payer (#758), with the spell
+// already on the stack. They must be untapped and yours (CR 118.3, CR
+// 701.26a); they are not targeted, so a hexproof creature pays; and a
+// creature that arrived this turn pays, because this is not the {T}
+// symbol (CR 302.6). `label` is the clause without the verb, as the
+// picker reads it: "Tap <label> to cast <card>". A nil condition is an
+// unconditional offer (The Lady of Otaria).
+//
+// The empty ManaCost is "rather than pay this spell's mana cost": an
+// additional cost (commander tax, CR 903.8) is still added to it (CR
+// 118.9d).
+func TapInstead(n int, label string, condition func(g *game.Game, controller uuid.UUID) bool, preds ...CardPredicate) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "tap",
+		Label:     "Tap " + label + " rather than pay this spell's mana cost",
+		ManaCost:  "",
+		Condition: condition,
+		TapOthers: tapOthersPrice(n, label, preds...),
+		PayLabel:  label,
+	}
+}
+
+// TapInsteadPaying is TapInstead with a mana half (ADR 0135 §1): "You may
+// pay {W} and tap four untapped creatures you control with flying rather
+// than pay this spell's mana cost" (Sephara, Sky's Blade) is
+//
+//	TapInsteadPaying("{W}", 4, "four untapped creatures you control with flying", Creature(), HasKeyword("flying"))
+//
+// The mana is paid like any spell's cost (the auto-tapper, or the pool);
+// the permanents named to the tap are kept away from the auto-tapper
+// (CastAutoTapExclusions), so one creature can't pay both halves.
+func TapInsteadPaying(mana string, n int, label string, preds ...CardPredicate) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "tap",
+		Label:     "Pay " + mana + " and tap " + label + " rather than pay this spell's mana cost",
+		ManaCost:  mana,
+		TapOthers: tapOthersPrice(n, label, preds...),
+		PayLabel:  label,
+	}
+}
+
+// FlashbackTap is "Flashback—Tap <label>" (CR 702.34a, ADR 0135 §1):
+// Prismatic Strands'
+//
+//	FlashbackTap(1, "an untapped white creature you control", OfColor("W"), Creature())
+//
+// Flashback's cast from the graveyard and its exile on leaving the stack,
+// with no mana and the tap as the whole price. The card file still lists
+// ZoneGraveyard in CastableZones, as for Flashback.
+func FlashbackTap(n int, label string, preds ...CardPredicate) game.AlternativeCost {
+	ac := Flashback("")
+	ac.Label = "Flashback—Tap " + label
+	ac.TapOthers = tapOthersPrice(n, label, preds...)
+	ac.PayLabel = label
+	return ac
+}
+
+// tapOthersPrice is the TapOthers component of a tap alternative cost: n
+// permanents matching the predicates, never the spell itself (it is not on
+// the battlefield, so there is no "another" to say).
+func tapOthersPrice(n int, label string, preds ...CardPredicate) *game.TapOthersCost {
+	return &game.TapOthersCost{
+		Count:  n,
+		Filter: TargetPermanent(label, preds...),
+		Label:  label,
+	}
+}
+
 // EscapeWithCounters is Escape plus "this creature escapes with N
 // +1/+1 counters on it" (CR 702.138c) — the rider most escape
 // creatures print, and the reason an escaped Voracious Typhon is a

@@ -68,6 +68,10 @@ type PurposeView struct {
 	DamageEachOpponent int `json:"damage_each_opponent,omitempty"`
 	// LifeGain is the life its controller gains.
 	LifeGain int `json:"life_gain,omitempty"`
+	// AwakenLand is the N of "Awaken N—[cost]": the +1/+1 counters put
+	// on a land its controller controls as it becomes a 0/0 Elemental
+	// creature with haste (ADR 0135 §3). On an awaken offer only.
+	AwakenLand int `json:"awaken_land,omitempty"`
 }
 
 // PumpView is game.Pump on the wire: a self pump until end of turn.
@@ -138,6 +142,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		DamageToCreature:          p.DamageToCreature,
 		DamageEachOpponent:        p.DamageEachOpponent,
 		LifeGain:                  p.LifeGain,
+		AwakenLand:                p.AwakenLand,
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}

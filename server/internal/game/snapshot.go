@@ -1070,6 +1070,10 @@ func abilityShortfallOf(c *cardSnapshot) (AbilityShortfall, bool) {
 	}
 	key := restoreAbilityKey(c)
 	restored := catalogAbilityCounts(key)
+	// #2538: a Hierarch's exalted row became its printed keyword, and
+	// the keyword's trigger is derived, not a row. A capture from
+	// before that counted the row; this one still has the ability.
+	restored.Triggered += retiredExaltedRows(key)
 	entryMissing := hadEntry && !IsAutoCard(key)
 	if !entryMissing && !restored.fewerThan(captured) {
 		return AbilityShortfall{}, false

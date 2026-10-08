@@ -236,6 +236,28 @@ type PlayerStatic struct {
 	// step-boundary sweep. Colours are "W"/"U"/"B"/"R"/"G"/"C".
 	KeepManaColors []string `json:"keepManaColors,omitempty"`
 
+	// HandSize is a granted change to the player's maximum hand size for
+	// a duration: "your maximum hand size is reduced by three for the
+	// rest of the game" (Inspired Idea), "you have no maximum hand size
+	// until your next turn" (Enter the Infinite). ADR 0113's amendment
+	// of 2026-10-08 (#2108), max_hand_size.go. Told apart from the
+	// other payloads by HandSizeGrant.Active; it carries no Keyword. Its
+	// READER is EffectiveMaxHandSizeLocked, which folds it with the
+	// battlefield statics in CR 613.11 timestamp order. No `omitzero`,
+	// for Timing's reason above (#1492).
+	HandSize HandSizeGrant `json:"handSize"`
+
+	// CantAttack is a granted "this player can't attack <Protected> or
+	// permanents they control during their next turn" (The Second
+	// Doctor's How Civil of You). ADR 0063's amendment of 2026-10-08
+	// (#2109), cant_attack_player.go. The TENTH payload, told apart by
+	// CantAttackGrant.Protected being non-nil; it carries no Keyword.
+	// It is stored on the RESTRICTED player. Its READER is
+	// playerCantAttackRefusalLocked, called from
+	// canAttackTargetWithLocked. No `omitzero`, for Timing's reason
+	// above (#1492).
+	CantAttack CantAttackGrant `json:"cantAttack"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored

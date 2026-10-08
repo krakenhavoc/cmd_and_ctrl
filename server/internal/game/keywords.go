@@ -240,6 +240,13 @@ var canonicalKeywords = map[string]bool{
 	// refused. CUMULATIVE (CR 702.86b: each instance triggers
 	// separately).
 	KeywordAnnihilator: true,
+	// exalted (CR 702.83) joins with #2538 (ADR 0101 amendment
+	// 2026-10-08), in the same change that teaches the engine to honour
+	// it. The fourth TRIGGERED keyword, built like prowess
+	// (keywordTriggersFor, exalted.go), replacing the catalog
+	// constructor the Hierarchs carried. CUMULATIVE (CR 113.2c), and an
+	// exalted counter is one instance per counter.
+	KeywordExalted: true,
 	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
 	// change that teaches the engine to honour it. Its consumer is the
 	// stack's graveyard route (routeStackCardToGraveyardLocked, through
