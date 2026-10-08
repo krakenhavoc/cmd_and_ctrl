@@ -275,6 +275,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0109 §4: the land-play gate. Its cases are in
 		// land_play_gate_test.go.
 		ModCantPlayLands: true,
+		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
+		// monarch_test.go and jared_carthalion_test.go.
+		ModCantBecomeMonarch: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
