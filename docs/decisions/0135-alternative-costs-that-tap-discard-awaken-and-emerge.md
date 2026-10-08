@@ -1,7 +1,8 @@
 # ADR 0135 — Alternative costs that tap, discard, awaken and emerge
 
-**Status:** Proposed · 2026-10-08 · S68 — Cost components and alternative costs (milestone 77)
+**Status:** Accepted (owner answers 2026-10-08) · 2026-10-08 · S68 — Cost components and alternative costs (milestone 77)
 **Issues:** [#2030](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2030) (alternative costs that tap untapped creatures you control: Prismatic Strands' flashback, Orim's Cure), [#2412](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2412) (alternative costs that discard cards: Snag, Foil), [#2411](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2411) (awaken, CR 702.113) and [#2416](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2416) (emerge, CR 702.119). The owner picked these four on 2026-10-08. Registry rows: `tap-creatures-alternative-cost`, `discard-alternative-cost` and `awaken`; emerge has no row yet.
+**Owner decisions:** the owner answered this ADR's seven questions on 2026-10-08, each with the recommended option. The answers are listed under [Owner decisions](#owner-decisions-2026-10-08) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-08. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: `origin/develop`, `origin/main`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/playmats`, `origin/fix/2611-marwyn-source-left`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default` and `pr/2326`. The highest number on any of them is 0134 (`0134-combat-you-can-watch.md`, on `origin/develop` and `origin/main`). There are no open pull requests. This ADR takes **0135**.
 **Builds on:** [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) (strict payment, Cast anyway, granted alternative costs), [ADR 0129](0129-energy-getting-and-paying-it.md) (energy; its PR 4 adds `AlternativeCost.Energy` and a type filter on the granted offer, and is being built now), [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md) (cost components, and a payment fact reaching the effect), [ADR 0126](0126-bots-that-play-their-decks.md) (the heuristic's prices and `Purpose`), [ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) §1 (`PaidCost.SacrificedObjects`), [ADR 0065](0065-modal-and-multi-target-clauses.md) (multi-clause target statements, #764) and [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) decision 6 (a PR lands every card its seam unblocks, each checked against its full text).
 
@@ -19,6 +20,18 @@ S68 is about costs. Four of its seams are alternative costs (CR 118.9) that the 
 - **Emerge.** A second price paid by sacrificing a creature, reduced by that creature's mana value.
 
 Every claim below was checked on `origin/develop` at `62fa97c64`. Every rule was checked against the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`, "effective as of September 25, 2026"). The issue numbers for awaken and emerge are right: awaken is **702.113** and emerge is **702.119** in that edition. Card lists come from the Scryfall dump of 2026-09-24, Commander-legal cards only, one per oracle ID. None of the cards below is catalogued.
+
+### Owner decisions (2026-10-08)
+
+The owner chose (a), the recommended option, on every question:
+
+1. **A tap alternative cost reuses `TapOthersCost`** as a card component on `AlternativeCost` (question 1, §1).
+2. **Foil widens `EachOf`** to a hand discard, with an "any card" kind (question 2, §2).
+3. **The auto-tapper may use the `{T}` mana abilities of a permanent named to any sacrifice cost on a cast** (emerge, Dread Return's flashback, Fireblast, Village Rites), and never one that sacrifices or exiles it (question 3, §4).
+4. **Awaken is a game primitive, `AwakenForEffect`**: counters first, then earthbend's one-record animation with the Elemental subtype and no return trigger (question 4, §3).
+5. **The enumerator prices each emerge payment on its own**, ranks candidates by their value minus the generic mana they save, and offers the best affordable ones up to the cap of three (question 5, §4).
+6. **A new `Purpose.AwakenLand`** prices what awaken buys, tuned under ADR 0126 §8 (question 6, §3).
+7. **All six PRs** (question 7, [Delivery](#delivery)).
 
 ### The rules
 
@@ -182,7 +195,7 @@ ReducedBySacrificedManaValue bool
 
 **The price.** CR 702.119c settles the creature at announce, and CR 601.2f totals the cost while it is still on the battlefield. So the reduction is a cost reduction in `costAfterModifiersLocked`, with the other reductions and after the increases and the commander tax. `CostQuery` gains `AltSacrificeManaValue int`, read from the named permanent's current mana value (CR 202.3; a token that isn't a copy is 0, X is 0). The engine subtracts it from the generic part only (CR 118.7a) and never below {0} (CR 601.2f). So Elder Deep-Fiend's {5}{U}{U} with a four-drop is {1}{U}{U}, and with a seven-drop it is {U}{U}. Under an effect that makes creature spells cost {1} more, the increase is added before the reduction is taken off. The price depends on the payment, so the price, the auto-tap preview and the auto-tapper all read `params.AltCostIDs`. That is already true of `effectiveCostLocked`'s inputs.
 
-**Mana from the creature being sacrificed.** The ruling (CR 601.2g before 601.2h) lets the player tap the creature for mana and then sacrifice it. Today `CastAutoTapExclusions` keeps every `AltCostIDs` permanent away from the auto-tapper. This ADR narrows that for a sacrificed permanent: the planner may use its `{T}` mana abilities, and may not use one that sacrifices or exiles it (an Eldrazi Spawn named to emerge can't be cracked first). Question 3 asks whether that narrowing reaches every sacrifice cost on a cast or emerge alone.
+**Mana from the creature being sacrificed.** The ruling (CR 601.2g before 601.2h) lets the player tap the creature for mana and then sacrifice it. Today `CastAutoTapExclusions` keeps every `AltCostIDs` permanent away from the auto-tapper. This ADR narrows that for a sacrificed permanent: the planner may use its `{T}` mana abilities, and may not use one that sacrifices or exiles it (an Eldrazi Spawn named to emerge can't be cracked first). It reaches every sacrifice cost on a cast, not emerge alone (owner decision 3).
 
 **Payment.** Unchanged: the existing sacrifice payer, with the spell on the stack, as one simultaneous exit (dies triggers go above the spell). Then the new record: `PaidCost.AltCostObjects []ObjectRef` (`altCostObjects`, additive in schema 7, deep-copied in `clonePaidCost`, kept by a CR 707.10 copy) lists the objects any alternative cost's card component paid with, in the order named. `Context.AltCostPermanents()` reads them as they last existed (CR 608.2h). Adipose Offspring's "X, where X is the sacrificed creature's toughness" is its first reader. The `SacrificedObjects` comment is corrected.
 
@@ -190,7 +203,7 @@ ReducedBySacrificedManaValue bool
 
 **Client.** An emerge offer sets `sacrifice_options` as Dread Return's does, plus `reduces_by_mana_value: true`. The sacrifice picker shows each creature's mana value and the price after it ("{1}{U}{U}"), from a new per-candidate `price` the view computes through `PriceCastForEffect`. The auto-tap preview then shows the reduced cost.
 
-**Bot.** The enumerator prices each emerge payment on its own: the one-price shortcut (`first.cost`) is skipped for an offer with the flag. It ranks candidates by their value to the policy minus the generic mana they save, and keeps the cap's best affordable payments. Question 5 is about that order. The heuristic charges the sacrifice as it charges Dread Return's.
+**Bot.** The enumerator prices each emerge payment on its own: the one-price shortcut (`first.cost`) is skipped for an offer with the flag. It ranks candidates by their value to the policy minus the generic mana they save, and keeps the cap's best affordable payments. That order is owner decision 5. The heuristic charges the sacrifice as it charges Dread Return's.
 
 ### 5. What does not change
 
@@ -230,45 +243,59 @@ Each PR goes into `develop`, Sprint S68, and lands its engine change and every c
 - **Heirloom Epic** and any convoke-style tap on an activation.
 - **The Infamous Cruelclaw**, unless PR 2 finds the cast permission's discard price cheap (see [The cards](#the-cards)).
 - **Distended Mindbender's two-filter pick** (#2115).
-- **Two card components on one offer** (Lunar Hatchling's escape). Question 2 offers it as the alternative to the `EachOf` widening.
+- **Two card components on one offer** (Lunar Hatchling's escape). Question 2 offered it as the alternative to the `EachOf` widening; the owner chose the widening.
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each question lists the recommended option first. The recommendation is the most CR-faithful option in each case.
+Each question lists the recommended option first. The recommendation is the most CR-faithful option in each case. The owner chose the recommended option for all seven on 2026-10-08 (owner decisions 1–7). The questions are kept with the options not chosen.
 
 1. **How a tap alternative cost is declared (§1; CR 118.3, 302.6, 701.26a).**
    - **(a) Recommended:** reuse `TapOthersCost` as a card component on `AlternativeCost`. The options walk, validator and payer are the ones activated abilities already use, so untapped, "you control", no targeting and no summoning-sickness check are already right and tested.
    - (b) A new `TapPermanents *TargetSpec` field shaped like `Sacrifice`, with its own validator. It looks like its siblings, but it repeats #758's rules in a second place.
    - (c) Generalise teamwork's or escalate's `TapCreatures` count onto the offer. It is the least code, but it can't say "white", "with flying", "artifact" or "Dwarves", so six of the eleven cards wait.
 
+   **Answered: (a), as recommended (owner decision 1).**
+
 2. **Foil's "an Island card and another card" (§2; CR 601.2h, 701.9a).**
    - **(a) Recommended:** widen `EachOf` to a hand discard and add an "any card" kind. It reuses #2526's one-to-one matching, the picker groups and the enumerator's set search, and it is exactly the printed rule.
    - (b) Allow several card components on one offer, each with its own pick list. It also unblocks Lunar Hatchling's two-part escape cost, but it changes the wire (`alt_cost_ids` becomes a list of lists), the view, the enumerator and the client, for one card here.
    - (c) Leave Foil on the `Waiting` list and ship the four one-card discards.
+
+   **Answered: (a), as recommended (owner decision 2).**
 
 3. **Mana from a permanent you are sacrificing (§4; CR 601.2g, 601.2h, the emerge rulings).**
    - **(a) Recommended:** the auto-tapper may use the `{T}` mana abilities of a permanent named to any sacrifice cost on a cast (emerge, Dread Return's flashback, Fireblast, Village Rites), and never one that sacrifices or exiles it. That is what CR 601.2g allows every time, and it fixes the same gap in the costs that exist today.
    - (b) Only for emerge. It is the smallest change, but Dread Return and Village Rites keep refusing a payment a player could make at a real table.
    - (c) Keep today's exclusion. The player taps the creature by hand first and floats the mana. It is safe, but on a strict table the move list dims an emerge cast that only the sacrificed creature's mana can pay for.
 
+   **Answered: (a), as recommended (owner decision 3).**
+
 4. **The awaken animation (§3; CR 702.113a, 608.2c, 611.2a).**
    - **(a) Recommended:** a game primitive, `AwakenForEffect`, that places the counters first and then animates, sharing earthbend's one-record animation with the Elemental subtype added and no return trigger. It follows the printed order, so Doubling Season applies and Hardened Scales doesn't, as at a real table.
    - (b) Reuse `EarthbendForEffect` with a flag that drops the return and adds the subtype. It is less code, but it animates first, so Hardened Scales would add a counter it shouldn't.
    - (c) Compose it on the card side from `AddCounterByForEffect` and `RegisterScopedEffectForEffect`. No new game function, but fifteen cards share a helper that knows about pinning and CR 616 pauses, which is engine knowledge in the effects package.
+
+   **Answered: (a), as recommended (owner decision 4).**
 
 5. **Which creature the bot emerges (§4).**
    - **(a) Recommended:** price each payment on its own, rank candidates by their value to the policy minus the generic mana they save, and offer the best affordable ones up to the cap of three. The bot then sacrifices a spent creature with a high mana value, and never misses a cast that only one creature makes affordable.
    - (b) Keep the cheapest-creature-first order and price each payment on its own. It is simpler, but it offers the 1/1 token first even when a 6-drop would save six mana, and with a cap of three it can miss the one payment that is affordable.
    - (c) Offer every affordable payment, without a cap. It is complete, but the move list grows with the board.
 
+   **Answered: (a), as recommended (owner decision 5).**
+
 6. **How the bot values what awaken buys (§3; ADR 0126 §6).**
    - **(a) Recommended:** a new `Purpose.AwakenLand` (the N), priced as a hasty N/N creature less a fraction for exposing a land to creature removal, tuned under ADR 0126 §8. The bot pays the awaken cost when the body is worth the extra mana.
    - (b) Treat it as one token (`Purpose.Tokens`). No new field, but a 6/6 and a 2/2 are worth the same, and the land's risk is ignored.
    - (c) Leave it unpriced. The bot never sees a reason to pay more, so it casts awaken spells for their mana cost only.
 
+   **Answered: (a), as recommended (owner decision 6).**
+
 7. **What the delivery covers (Delivery; ADR 0106 decision 6).**
    - **(a) Recommended:** all six PRs: discard, tap, awaken and emerge with every card each unblocks, then Herigast after ADR 0129 PR 4. That is 44 cards, plus Herigast.
    - (b) PRs 2–5 only. Herigast stays on the emerge row's `Waiting` list until a later sprint.
    - (c) PRs 2 and 3 only (discard and tap, 16 cards). Awaken and emerge wait for a later sprint.
+
+   **Answered: (a), as recommended (owner decision 7).**
