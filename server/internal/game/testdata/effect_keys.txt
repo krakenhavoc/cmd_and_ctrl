@@ -136,3 +136,4 @@ body riddle-gate-gargoyle/lifelink
 body territorial-aetherkite/damage-each-other
 body blaster-hulk/divided-damage
 body exalted/pump
+body ondu-rising/attacker-gains-lifelink

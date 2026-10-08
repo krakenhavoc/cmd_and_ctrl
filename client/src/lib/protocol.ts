@@ -2828,6 +2828,8 @@ export interface PurposeView {
   damage_to_creature?: number;
   damage_each_opponent?: number;
   life_gain?: number;
+  // ADR 0135 §3: the N of an awaken offer.
+  awaken_land?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.

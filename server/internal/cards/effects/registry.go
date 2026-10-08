@@ -168,6 +168,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostTapOthers(spec.Name, ac)
+		checkAwaken(spec, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
 			continue

@@ -1872,6 +1872,24 @@ or a permanent also named in `tap_ids` or `teamwork_ids` on the same cast
 never taps a named permanent for the offer's mana. An offer whose board
 can't pay the count is not stamped. Per viewer, like `pay_options`.
 
+**Awaken (ADR 0135 §3, #2411, CR 702.113).** An awaken offer is keyed
+`awaken`, labelled as printed ("Awaken 4—{5}{B}{B}"), and adds a target:
+its statement is the spell's own clauses followed by "target land you
+control" (CR 702.113b: the land is a target only when the awaken cost is
+paid). When that statement has more than one clause the offer carries
+`clauses`, one `LegalTargetsView` per clause in printed order with its
+own legal set, exactly as a card's `clauses` does (#764), and the client
+walks them in order; a spell with no target of its own (Coastal
+Discovery) has the land alone, in `legal_targets`. `clauses` is per
+viewer and stripped from a public pile with `legal_targets`. The land
+clause does not require a different object from the spell's own, so
+Earthen Arms may name one land twice (CR 601.2c). `purpose.awaken_land`
+is the N. A cast for the mana cost that names the land is refused as
+`bad_request`, and so is an awaken cast that names no land. On
+resolution the land gets its N +1/+1 counters first and then becomes a
+0/0 Elemental creature with haste that is still a land, with no
+duration.
+
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
 Two additive fields on `CardView` and one on `cast_spell`, both
@@ -2792,6 +2810,7 @@ Every field is omitted when zero.
 | `damage_to_creature` | damage it deals to one target creature | Glorybringer 4 |
 | `damage_each_opponent` | damage it deals to each opponent | Resolute Survivors 1 |
 | `life_gain` | life its controller gains | Resolute Survivors 1 |
+| `awaken_land` | on an alternative cost only: the N of "Awaken N—[cost]", the +1/+1 counters it puts on a land its controller controls as that land becomes a 0/0 Elemental creature with haste ([ADR 0135](decisions/0135-alternative-costs-that-tap-discard-awaken-and-emerge.md) §3). The spell's own `purpose` still applies | Ruinous Path 4 |
 
 An amount is the printed number. A card whose amount is X, or is
 counted at resolution ("draw a card for each creature you control"),

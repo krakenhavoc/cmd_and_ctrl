@@ -182,7 +182,8 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 		return rest(g)
 	}
 	stamp := c.EnteredBattlefieldAt
-	g.animateEarthbentLandLocked(source, land, stamp)
+	g.animateLandLocked(source, land, stamp,
+		earthbendLabel+" — becomes a 0/0 creature with haste that's still a land")
 	g.scheduleEarthbendReturnLocked(actor, source, land, stamp)
 	if n <= 0 {
 		// "Earthbend 0" is a real instruction — Rockalanche with no
@@ -211,8 +212,8 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 // census and a test failure all name the same verb.
 const earthbendLabel = "earthbend"
 
-// animateEarthbentLandLocked registers the continuous effect that
-// makes up "becomes a 0/0 creature with haste that's still a land":
+// animateLandLocked registers the continuous effect that makes up
+// "becomes a 0/0 creature with haste that's still a land":
 // ONE data record (ADR 0041 phase 3, #1497) with a mod in each of
 // three layers — layer 4 (add Creature), layer 6 (haste) and layer 7b
 // (base P/T 0/0).
@@ -255,13 +256,24 @@ const earthbendLabel = "earthbend"
 // with the same result either way.
 //
 // Caller must hold g.mu.
-func (g *Game) animateEarthbentLandLocked(source, land uuid.UUID, stamp int64) {
-	mods := []Mod{AddTypesMod("Creature"), AddKeywordsMod("haste")}
+// Shared by earthbend and awaken (ADR 0135 §3, #2411). Awaken's land
+// "becomes a 0/0 Elemental creature with haste" (CR 702.113a), so it
+// passes "Elemental" in `subtypes`: one more layer-4 mod in the same
+// record, so the subtype has the animation's timestamp and duration and
+// ends with it. Earthbend passes none. `label` is the record's
+// attribution.
+//
+// Caller must hold g.mu.
+func (g *Game) animateLandLocked(source, land uuid.UUID, stamp int64, label string, subtypes ...string) {
+	mods := []Mod{AddTypesMod("Creature")}
+	if len(subtypes) > 0 {
+		mods = append(mods, AddSubtypesMod(subtypes...))
+	}
+	mods = append(mods, AddKeywordsMod("haste"))
 	mods = append(mods, SetBasePTMods(0, 0)...)
 	g.RegisterScopedEffectForEffect(source,
 		[]AffectedObject{PinObject(land, stamp)}, mods,
-		g.PinnedTo(IndefiniteDuration(), land),
-		earthbendLabel+" — becomes a 0/0 creature with haste that's still a land")
+		g.PinnedTo(IndefiniteDuration(), land), label)
 }
 
 // earthbendReturnNamespace seeds the deterministic ID every earthbend

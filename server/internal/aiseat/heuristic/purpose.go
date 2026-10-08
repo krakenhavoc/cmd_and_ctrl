@@ -30,6 +30,7 @@ import (
 //     + ManaSource × lands + the ramp premium for those lands
 //     + TokenWeight × tokens
 //     + Weights.Energy × energy (ADR 0129 §7)
+//     + AwakenLandShare × a hasty N/N creature (ADR 0135 §3)
 //
 //     The lands get PR 3's ramp premium (rampPremium's deficit), so a
 //     Rampant Growth is worth most while the bot cannot cast what it
@@ -47,7 +48,10 @@ import (
 // apart, because two modes that each remove a class remove their union.
 type purposeSet struct {
 	draws, discards, lands, tutors, selfMill, tokens, energy int
-	sweeps                                                   []protocol.SweepView
+	// awaken is the N of an awaken cast (ADR 0135 §3): the counters on
+	// the land it makes a hasty 0/0 creature.
+	awaken int
+	sweeps []protocol.SweepView
 }
 
 // add folds one declared purpose in.
@@ -62,6 +66,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.selfMill += p.SelfMillTutor
 	ps.tokens += p.Tokens
 	ps.energy += p.Energy
+	ps.awaken += p.AwakenLand
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}
@@ -70,7 +75,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 // hasAmounts reports whether any §6 amount is declared.
 func (ps purposeSet) hasAmounts() bool {
 	return ps.draws != 0 || ps.discards != 0 || ps.lands != 0 || ps.tutors != 0 ||
-		ps.selfMill != 0 || ps.tokens != 0 || ps.energy != 0
+		ps.selfMill != 0 || ps.tokens != 0 || ps.energy != 0 || ps.awaken != 0
 }
 
 // cardPurpose is the purpose the card itself declares: what the spell
@@ -99,6 +104,12 @@ func castPurpose(c *protocol.CardView, cp castParams) purposeSet {
 			if ac := &c.AlternativeCosts[i]; ac.Key == cp.AlternativeCost && ac.Purpose != nil {
 				var ps purposeSet
 				ps.add(ac.Purpose)
+				// ADR 0135 §3: awaken ADDS to what the spell does and
+				// leaves the spell's own effect alone, so Coastal
+				// Discovery cast for its awaken cost still draws two.
+				if ac.Purpose.AwakenLand > 0 {
+					ps.add(c.Purpose)
+				}
 				return ps
 			}
 		}
@@ -167,6 +178,7 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 			v += st.w.ManaSource * float64(ps.lands)
 			v += p.rampFor(st, self, ps.lands)
 		}
+		v += p.awakenValue(st, ps.awaken)
 	}
 	if p.cfg.PriceSweeps && len(ps.sweeps) > 0 {
 		s := p.sweepValue(st, ps.sweeps, x)
@@ -176,6 +188,35 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 		v += s
 	}
 	return v
+}
+
+// spellTargets is the cast's targets less the land an awaken cast names
+// (ADR 0135 §3): the awaken clause is the statement's last, so its pick
+// is the last target.
+func spellTargets(c *protocol.CardView, cp castParams) []targetRef {
+	if c == nil || cp.AlternativeCost == "" || len(cp.Targets) == 0 {
+		return cp.Targets
+	}
+	for i := range c.AlternativeCosts {
+		ac := &c.AlternativeCosts[i]
+		if ac.Key == cp.AlternativeCost && ac.Purpose != nil && ac.Purpose.AwakenLand > 0 {
+			return cp.Targets[:len(cp.Targets)-1]
+		}
+	}
+	return cp.Targets
+}
+
+// awakenValue is what an awaken cast's land is worth (ADR 0135 §3,
+// owner decision 6): a hasty N/N creature, priced as the board prices
+// one (CreatureValue, with no summoning-sickness discount, because the
+// land has haste), times AwakenLandShare for putting a land in the way
+// of creature removal. Zero for no awaken.
+func (p *Policy) awakenValue(st *state, n int) float64 {
+	if n <= 0 || p.cfg.AwakenLandShare == 0 {
+		return 0
+	}
+	body := protocol.CardView{Power: n, Toughness: n, Abilities: []string{"haste"}}
+	return p.cfg.AwakenLandShare * st.w.CreatureValue(&body)
 }
 
 // bounceShare is how much of a bounced permanent a sweep takes (ADR
