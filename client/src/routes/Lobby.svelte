@@ -51,6 +51,7 @@
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
+  import { defaultBotTier, tierNote, tierOptionLabel } from "../lib/botTier";
 
   // Lobby is the signed-in home (ADR 0112 §1): every session lands
   // here, under the site header and its account menu. At the top, a
@@ -283,7 +284,7 @@
   function openBotPicker(gameID: string): void {
     botError = "";
     botPickerFor = gameID;
-    botTier = botTiersAvailable[0]?.tier ?? "";
+    botTier = defaultBotTier(botOptions?.tiers ?? []);
     botDeck = botOptions?.decks[0]?.id ?? "";
   }
 
@@ -326,6 +327,7 @@
   // on the page rather than in a title= tooltip — a tooltip is not an
   // answer on a touch device, and picking an archetype is the whole
   // decision this control exists for.
+  const botTierNote = $derived(tierNote(botOptions?.tiers ?? [], botTier));
   const botDeckDescription = $derived(
     botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
   );
@@ -1246,7 +1248,7 @@
                 <select bind:value={botTier} disabled={botBusy}>
                   {#each botOptions?.tiers ?? [] as t (t.tier)}
                     <option value={t.tier} disabled={!t.available} title={t.description}>
-                      {t.label}{t.available ? "" : " — not built yet"}
+                      {tierOptionLabel(t)}
                     </option>
                   {/each}
                 </select>
@@ -1259,6 +1261,11 @@
                   {/each}
                 </select>
               </label>
+              {#if botTierNote}
+                <p class="deck-desc" class:tier-warning={botTierNote.warning}>
+                  {botTierNote.text}
+                </p>
+              {/if}
               {#if botDeckDescription}
                 <p class="deck-desc">{botDeckDescription}</p>
               {/if}
@@ -2019,6 +2026,9 @@
     margin: 0;
     font-size: 12px;
     color: var(--fg-muted);
+  }
+  .deck-desc.tier-warning {
+    color: var(--danger);
   }
   .bot-error {
     color: var(--danger);
