@@ -773,6 +773,18 @@ otherwise keep, and it needs to clear only `LeftoverThreshold`
 - **The end step of the seat whose turn comes just before the bot's.**
   This is the end-of-turn Entomb, Vampiric Tutor or loot.
 
+A land sacrifice counts as mana here when the same cast's declared
+`purpose.lands` more than replaces it
+([#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469),
+`landSacrificeIsNetMana`). Harrow sacrifices a land and puts two onto the
+battlefield untapped, so it ends with a land more than it began with and
+spends nothing the bot would keep; it gets `LeftoverThreshold` like a
+move that costs mana and taps. A land sacrifice with no `lands` purpose
+behind it, one that does not replace what it sacrifices, and a sacrifice
+of anything but the bot's own land keep the normal bar. It does not
+change the price: once the ramp premium has closed, Harrow is priced
+below passing and is still not cast.
+
 Two prices go with the windows:
 
 - `SpellFloor` (1.30): an untargeted instant or sorcery the engine
@@ -2360,6 +2372,8 @@ The reasons are in the pricing:
   mana-and-taps cost, so it keeps the normal bar in the leftover
   windows, and two lands for one land and a card rarely clears it late
   in a game. It was cast in 8 of the 27 games it was offered in.
+  Since #2469 a land sacrifice that the cast's `purpose.lands` more than
+  replaces gets the leftover bar (see "The two leftover windows").
 
 **A non-tap activated ability with no declared purpose is a flat
 +0.50.** That is `ActivateBase`, and S66 left it alone (ADR 0126 owner
