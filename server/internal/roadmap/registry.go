@@ -1525,14 +1525,13 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2135, ADR 0113's 2026-10-08 amendment): `EventETB` now carries `EnteredFrom` and `EnteredFromOwner` at the entry pipeline (`landEntryLocked`) and the sandbox `MoveCard` site; a token or a spawned card has neither. `effects.EnteredFromAGraveyard` and `EnteredFromYourGraveyard` are the `When` conditions. A spell cast from a graveyard was already readable as `EventCast.OldZone`. Not covered: the evoke sacrifice's synthetic harvest event, which is not an entry.",
 	},
 	{
-		Slug: "spend-only-on-noncreature-spells", Name: "Mana spendable only on noncreature spells", Kind: KindSeam, Status: StatusMissing,
+		Slug: "spend-only-on-noncreature-spells", Name: "Mana spendable only on noncreature spells", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Mana abilities whose mana can be spent only to cast noncreature spells, such as Nardole, Resourceful Cyborg's.",
-		Missing:     "Mana can't yet be limited to noncreature spells.",
 		Rules:       []string{"106.6"},
 		Issue:       2136,
-		Tracked:     "#2136 (found landing the undying and persist pool, #2075)",
-		Waiting:     []string{"Nardole, Resourceful Cyborg"},
-		EngineNotes: "mana restriction: the tag vocabulary (`game/mana_restriction.go`) has positive type tags and one negative tag, `not:nonartifact-spell`; there is no negated card-type tag. Nardole's amount is expressible with `ManaAbility.ProducedFunc`; shipping it unrestricted would be stronger than printed.",
+		ADR:         "0113-small-seams-for-the-s58-deck-requests.md",
+		Examples:    []string{"Nardole, Resourceful Cyborg"},
+		EngineNotes: "**Shipped** (ADR 0113 amendment 2026-10-08 (fourth), #2136): `game.ManaRestrictNotType(types...)` is a negated card-type tag. `matchesRestriction` admits it only for a cast whose spell has none of the named types; an activation, an unlock and an unknown purpose are refused. Cards pair it with `ManaRestrictCast`.",
 	},
 	{
 		Slug: "grant-convoke", Name: "Giving spells convoke", Kind: KindSeam, Status: StatusMissing,
