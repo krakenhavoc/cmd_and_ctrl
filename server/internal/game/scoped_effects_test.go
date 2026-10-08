@@ -236,7 +236,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// layer applies either. Their cases are in
 		// scoped_block_rules_test.go here and in cards/effects.
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
-		ModCantBeBlockedByPlayer: true,
+		ModCantBeBlockedByPlayer: true, ModCantBeBlockedByPower: true,
 		// #1651: cantHaveKeywords has a case above; waiveHexproof is read
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.
@@ -275,6 +275,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0109 §4: the land-play gate. Its cases are in
 		// land_play_gate_test.go.
 		ModCantPlayLands: true,
+		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
+		// monarch_test.go and jared_carthalion_test.go.
+		ModCantBecomeMonarch: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

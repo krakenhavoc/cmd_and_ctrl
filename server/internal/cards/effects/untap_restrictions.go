@@ -29,15 +29,19 @@ func doesntUntapDuringTheirControllersUntapSteps(match CardPredicate) game.Untap
 
 // DoesntUntapNextUntapStep records the fixed set from a resolved one-shot
 // effect. Player uuid.Nil means each permanent's current controller.
+//
+// Steps is how many of those untap steps it sits out; zero is one
+// ("next untap step"), two is Telekinesis (#2029).
 type DoesntUntapNextUntapStep struct {
 	Targets []uuid.UUID
 	Player  uuid.UUID
 	Label   string
+	Steps   int
 }
 
 func (d DoesntUntapNextUntapStep) Apply(ctx *Context) error {
 	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
-		if err := ctx.Game.SkipNextUntapForEffect(id, d.Player); err != nil {
+		if err := ctx.Game.SkipNextUntapStepsForEffect(id, d.Player, max(d.Steps, 1)); err != nil {
 			return err
 		}
 	}

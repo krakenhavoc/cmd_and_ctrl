@@ -176,9 +176,16 @@ type UntapStepRestriction struct {
 // "it doesn't last forever". IMMUTABLE after registration: cloneCard
 // shares the pointer with every undo snapshot, exactly as Clone shares
 // ScopedEffect.Duration by value.
+//
+// Extra counts the untap steps the marker still skips AFTER the next
+// one (ADR 0058's 2026-10-08 amendment, #2029): "doesn't untap during
+// its controller's next two untap steps" is Extra 1. Each matching step
+// uses up one; the marker is dropped when it has none left. Zero is the
+// original one-shot marker.
 type UntapSkip struct {
 	Player uuid.UUID
 	While  *Duration
+	Extra  int
 }
 
 type untapSkipSnapshot struct {
@@ -187,6 +194,9 @@ type untapSkipSnapshot struct {
 	// field existed has no key and restores one-shot markers only,
 	// which is all such a file could hold.
 	While *Duration `json:"while,omitempty"`
+	// Extra is the marker's remaining steps beyond the next (#2029).
+	// A file without the key restores one-shot markers.
+	Extra int `json:"extra,omitempty"`
 }
 
 func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
@@ -196,6 +206,7 @@ func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
 	out := make([]untapSkipSnapshot, len(in))
 	for i := range in {
 		out[i].Player = in[i].Player
+		out[i].Extra = in[i].Extra
 		if in[i].While != nil {
 			d := *in[i].While
 			out[i].While = &d
@@ -211,6 +222,7 @@ func restoreUntapSkips(in []untapSkipSnapshot) []UntapSkip {
 	out := make([]UntapSkip, len(in))
 	for i := range in {
 		out[i].Player = in[i].Player
+		out[i].Extra = in[i].Extra
 		if in[i].While != nil {
 			d := *in[i].While
 			out[i].While = &d
@@ -288,7 +300,18 @@ func (g *Game) untapPermanentLocked(c *Card) {
 // SkipNextUntapForEffect adds a deduplicated next-untap marker to a
 // battlefield permanent. Caller already holds g.mu.
 func (g *Game) SkipNextUntapForEffect(cardID, player uuid.UUID) error {
-	if g.Battlefield == nil {
+	return g.SkipNextUntapStepsForEffect(cardID, player, 1)
+}
+
+// SkipNextUntapStepsForEffect is SkipNextUntapForEffect for "doesn't
+// untap during its controller's next N untap steps" (CR 502.3, #2029).
+// Overlapping effects are not additive: a marker already on the
+// permanent for the same player's step is raised to N steps if it has
+// fewer left, never stacked, because the later effect's steps are the
+// same untap steps the earlier one already covers. N below one is a
+// no-op. Caller already holds g.mu.
+func (g *Game) SkipNextUntapStepsForEffect(cardID, player uuid.UUID, n int) error {
+	if n < 1 || g.Battlefield == nil {
 		return nil
 	}
 	for i := range g.Battlefield.Cards {
@@ -296,12 +319,19 @@ func (g *Game) SkipNextUntapForEffect(cardID, player uuid.UUID) error {
 		if c.InstanceID != cardID {
 			continue
 		}
-		for _, skip := range c.NextUntapSkips {
+		for i := range c.NextUntapSkips {
+			skip := &c.NextUntapSkips[i]
 			if skip.While == nil && skip.Player == player {
+				if skip.Extra < n-1 {
+					// A fresh slice: undo snapshots share the old one.
+					next := append([]UntapSkip(nil), c.NextUntapSkips...)
+					next[i].Extra = n - 1
+					c.NextUntapSkips = next
+				}
 				return nil
 			}
 		}
-		c.NextUntapSkips = append(c.NextUntapSkips, UntapSkip{Player: player})
+		c.NextUntapSkips = append(c.NextUntapSkips, UntapSkip{Player: player, Extra: n - 1})
 		return nil
 	}
 	return nil
@@ -500,6 +530,10 @@ func (g *Game) consumeUntapSkipsLocked(activePlayer uuid.UUID) {
 				continue
 			}
 			if untapSkipKeyedTo(c, skip, activePlayer) {
+				if skip.Extra > 0 {
+					skip.Extra--
+					out = append(out, skip)
+				}
 				continue
 			}
 			out = append(out, skip)

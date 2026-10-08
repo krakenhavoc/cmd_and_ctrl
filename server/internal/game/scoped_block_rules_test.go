@@ -22,6 +22,7 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModLimitBlockersPerDefender, Amount: 0},                   // amount below 1
 		{Kind: ModCantBeBlockedByPlayer, Text: "creatures Bob controls"}, // no player
 		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New()},             // no text
+		{Kind: ModCantBeBlockedByPower, Amount: 2},                       // no text
 	}
 	for _, m := range bad {
 		if blockRuleModProblem(m) == "" {
@@ -33,6 +34,8 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModCantBeBlockedExceptBy, Subtypes: []string{"Spirit"}, Text: "Spirits"},
 		{Kind: ModLimitBlockersPerDefender, Amount: 1},
 		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New(), Text: "creatures Bob controls"},
+		{Kind: ModCantBeBlockedByPower, Amount: 2, Text: "creatures with power 2 or less"},
+		{Kind: ModCantBeBlockedByPower, Amount: 0, Text: "creatures with power 0 or less"},
 	}
 	for _, m := range ok {
 		if p := blockRuleModProblem(m); p != "" {
@@ -127,5 +130,63 @@ func TestLimitBlockersPerDefenderCountsOpponentsOnly(t *testing.T) {
 	}
 	if got := limitFor(theirs); got != 1 {
 		t.Errorf("an opponent's creature: limit %d, want 1", got)
+	}
+}
+
+// cantBeBlockedByPower (#2600): a blocker of power N or less is refused,
+// N+1 is allowed, an unpinned attacker is not covered, and the blocker's
+// power is read live: a pump made after the effect moves it out of the
+// barred set, a shrink moves it in.
+func TestCantBeBlockedByPowerReadsTheBlockersPowerLive(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	attacker := pushCombatant(t, g, me, "Attacker", 3, 3)
+	other := pushCombatant(t, g, me, "Other Attacker", 3, 3)
+	small := pushCombatant(t, g, opp, "Power Two", 2, 2)
+	big := pushCombatant(t, g, opp, "Power Three", 3, 3)
+
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(attacker),
+			[]Mod{CantBeBlockedByPowerMod(2, "creatures with power 2 or less")},
+			IndefiniteDuration(), "test") {
+			t.Fatal("setup: registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	refusal := func(att, blocker uuid.UUID) BlockRefusal {
+		var r BlockRefusal
+		g.WithWriteLock(func() {
+			g.RecomputeLayersIfStaleLocked()
+			r = g.blockRuleRefusalLocked(findCard(g, att), findCard(g, blocker))
+		})
+		return r
+	}
+	if r := refusal(attacker, small); r.Legal() {
+		t.Error("a blocker of power N was allowed")
+	} else if r.Reason != BlockReasonCantBeBlockedBy || r.Label != "creatures with power 2 or less" {
+		t.Errorf("refusal = %+v", r)
+	}
+	if r := refusal(attacker, big); !r.Legal() {
+		t.Errorf("a blocker of power N+1 was refused: %+v", r)
+	}
+	if r := refusal(other, small); !r.Legal() {
+		t.Errorf("an attacker the effect is not pinned to was covered: %+v", r)
+	}
+
+	// A pump on the blocker after the effect was applied is read live.
+	g.WithWriteLock(func() {
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(small),
+			[]Mod{ModifyPTMod(1, 0)}, IndefiniteDuration(), "pump")
+	})
+	if r := refusal(attacker, small); !r.Legal() {
+		t.Errorf("a blocker pumped past N after the effect was still refused: %+v", r)
+	}
+	// And a shrink pulls a bigger creature in.
+	g.WithWriteLock(func() {
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(big),
+			[]Mod{ModifyPTMod(-1, 0)}, IndefiniteDuration(), "shrink")
+	})
+	if r := refusal(attacker, big); r.Legal() {
+		t.Error("a blocker shrunk to power N after the effect was still allowed")
 	}
 }

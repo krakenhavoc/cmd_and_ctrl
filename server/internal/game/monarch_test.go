@@ -479,6 +479,23 @@ func TestMonarchCrownPassesToTheNextPlayerWhenTheActiveMonarchLeaves(t *testing.
 	}
 }
 
+// TestMonarchHandOnSkipsAPlayerWhoCantBecomeIt: CR 725.4 hands the
+// crown to the next player "who can become the monarch" (#2039).
+func TestMonarchHandOnSkipsAPlayerWhoCantBecomeIt(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	active, barred, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	crown(t, g, active.ID)
+	g.WithWriteLock(func() {
+		g.CantBecomeMonarchThisTurnForEffect(uuid.Nil, barred.ID, "test")
+	})
+	if err := g.Concede(active.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if g.Monarch != third.ID {
+		t.Fatalf("monarch = %v, want %v (the barred next seat is skipped)", g.Monarch, third.ID)
+	}
+}
+
 // TestMonarchUnmovedWhenSomebodyElseLeaves: CR 725.4 is about the
 // MONARCH leaving.
 func TestMonarchUnmovedWhenSomebodyElseLeaves(t *testing.T) {
