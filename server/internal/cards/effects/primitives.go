@@ -721,11 +721,21 @@ type CounterTarget struct {
 	Dest    game.ZoneRef
 }
 
+// Apply counters the item. A stack object that has already left (countered or resolved in
+// response, #2612) is not an error: there is nothing to counter, so the
+// instruction does nothing (CR 608.2b), as CopySpell does for a spell
+// that has gone.
 func (c CounterTarget) Apply(ctx *Context) error {
+	var err error
 	if c.Dest.Kind == "" {
-		return ctx.Game.CounterTargetForEffect(c.StackID)
+		err = ctx.Game.CounterTargetForEffect(c.StackID)
+	} else {
+		err = ctx.Game.CounterTargetToZoneForEffect(c.StackID, c.Dest)
 	}
-	return ctx.Game.CounterTargetToZoneForEffect(c.StackID, c.Dest)
+	if errors.Is(err, game.ErrCardNotOnStack) {
+		return nil
+	}
+	return err
 }
 
 // ReturnSpellToHand returns a spell on the stack to its owner's hand
