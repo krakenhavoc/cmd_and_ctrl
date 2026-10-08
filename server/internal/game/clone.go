@@ -350,6 +350,7 @@ func (g *Game) cloneLocked() *Game {
 	// ADR 0108 §7: a division rewinds with the shield it divides. Copy
 	// on write, so the slice is shared.
 	out.shieldDivisions = g.shieldDivisions
+	out.redirectOrders = g.redirectOrders
 	out.damageStage = cloneDamageStage(g.damageStage)
 	// #830: the block declaration's announcements rewind with the
 	// declaration. An undo across a re-point that kept them would
@@ -1083,6 +1084,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.combatDamageInstanceBatch = src.combatDamageInstanceBatch
 	g.damageInstanceLives = src.damageInstanceLives
 	g.shieldDivisions = src.shieldDivisions
+	g.redirectOrders = src.redirectOrders
 	g.damageStage = cloneDamageStage(src.damageStage)
 	// #830 / #859: see cloneLocked — the announcements rewind with
 	// the declarations they describe.
