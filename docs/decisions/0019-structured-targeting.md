@@ -931,3 +931,31 @@ announce, resolution and response tests in
   "creature dealt damage by this creature") are different data and are
   not claimed by this field; `AttackingYou` already covers the first as
   a plain predicate because it names the caster, not the source.
+
+## Amendment (2026-10-08, #2182): an ability that still resolves if its target becomes illegal (CR 608.2b)
+
+CR 608.2b removes a spell or ability whose targets are ALL illegal on
+resolution. Gilded Drake prints an exception: "This ability still
+resolves if its target becomes illegal." Without it the Drake's "if you
+don't or can't make an exchange, sacrifice this creature" never ran when
+its only target left, so the card shipped stronger than printed.
+
+**Decision.** `TargetSpec.ResolvesIfIllegal` (set with
+`.StillResolves()` on the card's target clause) exempts an item from the
+all-targets-illegal removal in `spellAllTargetsIllegalLocked`. It is a
+clause-level field, so it rides the spec that every stamped, cloned and
+restored item already re-derives (no new `StackItem` field, no snapshot
+change), and it is read off the announced clauses, so it works for a
+spell, a trigger or a modal option alike. Any flagged clause exempts the
+item.
+
+**The effect's half of the contract.** The engine no longer removes the
+item, so the effect must treat an illegal target as unaffected:
+`Context.IsTargetLegal` still answers the per-slot CR 608.2b re-check.
+`ExchangeControl.ApplyAndReport` says whether an exchange happened
+(CR 701.12b: false when either object is gone), which makes "if you
+don't or can't" a plain branch.
+
+**Out of scope.** Nothing here changes which targets are legal at
+announce (CR 601.2c) or the partial-illegal case, which already resolved.
+Only Gilded Drake prints the sentence in the current Scryfall dump.
