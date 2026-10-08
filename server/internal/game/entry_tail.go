@@ -58,6 +58,14 @@ type entryTail struct {
 	// callers holding that ID expect.
 	newObject bool
 
+	// craftedWith is CR 702.167c's link (ADR 0137), stamped onto the
+	// entering permanent as Card.CraftedWith by the finisher, after the
+	// newObject reset and before EventETB, so the crafted permanent's
+	// own enters trigger can read its materials. Set only by
+	// ReturnCraftedFromExileForEffect. Never written after the tail is
+	// built, so an undo snapshot's copy of the tail may share it.
+	craftedWith []ObjectRef
+
 	// then is the rest of whatever asked for the entry, run once the
 	// entry reaches a TERMINAL outcome — it entered, the window
 	// cancelled or redirected it, it was refused, or its prompt was
@@ -320,6 +328,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Devoured = 0
 		c.ModesChosen = nil
 		c.Provenance = CastProvenance{}
+		c.CraftedWith = nil
 		c.ClassLevel = 0
 		c.Solved = false
 		c.Harnessed = false

@@ -856,6 +856,13 @@ type cardSnapshot struct {
 	// one omitted it (#1492). The frozen fixtures carry the key, so it
 	// is always written; omitzero_tag_guard_test.go holds that.
 	Provenance CastProvenance `json:"provenance"`
+	// CraftedWith is ADR 0137's CR 702.167c link: the objects the craft
+	// ability that put this permanent onto the battlefield exiled as
+	// materials. Carried for Provenance's reason: the ability that wrote
+	// it is gone, so nothing could rebuild it, and a restored Jadeheart
+	// Attendant would gain no life. Additive within the schema; old
+	// files have no key and read as "not crafted".
+	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -2004,6 +2011,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
+		CraftedWith:              cloneObjectRefs(c.CraftedWith),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -2848,6 +2856,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
+		CraftedWith:              cloneObjectRefs(c.CraftedWith),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,

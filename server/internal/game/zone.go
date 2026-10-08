@@ -287,6 +287,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// not kicked, because the spell that returned it was a
 		// different spell and was not even a spell.
 		c.Provenance = CastProvenance{}
+		// ADR 0137 / CR 702.167c: and so is what crafted it. A crafted
+		// permanent that leaves and comes back is a new object no craft
+		// ability put there.
+		c.CraftedWith = nil
 		// ADR 0071 / CR 400.7: the level and solved designations are
 		// battlefield state on a permanent, not characteristics of a
 		// card. A Wizard Class that is bounced and replayed is level 1

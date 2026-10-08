@@ -743,6 +743,28 @@ type Card struct {
 	// Added in S42 (#653, #664).
 	Provenance CastProvenance
 
+	// CraftedWith is CR 702.167c's link (ADR 0137): the objects the
+	// craft ability that put this permanent onto the battlefield exiled
+	// as its materials, as they landed in exile, in the order named.
+	// "The exiled card used to craft it" (Jadeheart Attendant) is one of
+	// these.
+	//
+	// Delve's link one keyword over (CastProvenance.Delved, ADR 0100),
+	// and the same shape for the same reason: refs, not cards, because
+	// a material that has left exile is a new object the permanent no
+	// longer refers to (CR 400.7), and a token material has ceased to
+	// exist. Resolve it with Game.CraftMaterialsForEffect, never by
+	// ranging it against a zone.
+	//
+	// Not on Provenance: crafting is not casting, and nothing about the
+	// craft ability is a spell's cost. Stamped by the entry finisher
+	// (entryTail.craftedWith), after the CR 400.7 reset and before
+	// EventETB, so the new permanent's own enters trigger finds it;
+	// cleared by MoveCard on the way off the battlefield and by that
+	// reset; carried by clone, the snapshot and the CR 608.2h record
+	// (PermanentInfo.CraftedWith). Not a copiable value (CR 707.2).
+	CraftedWith []ObjectRef
+
 	// FaceDownKind is WHY this object is face down (ADR 0069). Empty
 	// exactly when FaceDown is false; the two are written only by
 	// SetFaceDown / ClearFaceDown, so "face down with no rule

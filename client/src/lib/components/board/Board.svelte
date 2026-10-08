@@ -155,7 +155,12 @@
   } from "../../targeting";
   import { abilityEnergyMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
-  import { castSacrificeRange, orderSacrificeOptions, sacrificeRange } from "../../sacrificeCost";
+  import {
+    castSacrificeRange,
+    exilePermanentOptions,
+    orderSacrificeOptions,
+    sacrificeRange,
+  } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import DivideDamageModal from "./DivideDamageModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
@@ -1604,7 +1609,13 @@
   const abilityExilePermanentOptions = $derived.by(() => {
     const p = abilityExilePermanentPrompt;
     if (!p) return [];
-    return orderSacrificeOptions(view.battlefield.cards, p.ability.exile_permanent_options?.cards);
+    // ADR 0137: craft's materials may be cards in your graveyard too.
+    const me = view.seats.find((s) => s.id === viewerID);
+    return exilePermanentOptions(
+      view.battlefield.cards,
+      me?.graveyard.cards,
+      p.ability.exile_permanent_options?.cards,
+    );
   });
 
   // #1600: the same component on a MANA ability (Food Chain).

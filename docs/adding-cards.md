@@ -6183,6 +6183,52 @@ colorless creature it will be (Curator Beastie).
 Not here: turning a permanent face up as an EFFECT (no cost) has no
 door yet, so cards that say "you may turn it face up" wait on it.
 
+### Craft (ADR 0137, #2124, CR 702.167)
+
+A craft card is a transform DFC: the front face's spec carries the
+keyword, the back face registers under `<oracle_id>#1`. The keyword is
+one constructor, and the materials are another:
+
+```go
+Activated: []ActivatedAbility{
+    Craft("Craft with artifact {5}{W}{W}", "{5}{W}{W}", CraftWith("artifact")),  // Clay-Fired Bricks
+    Craft("Craft with two creatures {5}{B}", "{5}{B}", CraftWithN(2, "creature")), // Visage of Dread
+    Craft("Craft with Island {3}{U}", "{3}{U}", CraftWithSubtype("Island")),     // Waterlogged Hulk
+},
+```
+
+The label is the printed keyword line without its reminder text; the
+oracle check matches it. `Craft` builds the whole of CR 702.167a: the
+mana, "Exile this artifact", the materials, "Activate only as a
+sorcery", and the return. Never hand-write any of those halves:
+
+- **Materials come from two zones.** A material named without the word
+  "card" may be a permanent you control or a card in your own graveyard,
+  mixed in one payment (CR 702.167b). `CraftWith*` sets
+  `ExilePermanentsCost.FromGraveyard`; a hand-built
+  `ExileACreatureYouControl()` would accept the battlefield only, which
+  is weaker than printed. The source is never a material (it pays
+  "Exile this artifact").
+- **The return is a new object** (`game.ReturnCraftedFromExileForEffect`):
+  back face up, under its OWNER's control, summoning sick, with every
+  enters ability on the back face firing. Write the back face's "When
+  this enters" as an ordinary `WhenThisEnters` trigger.
+- **"The exiled card(s) used to craft it"** (CR 702.167c) is
+  `CraftMaterials(ctx)`: the materials still in exile, read through the
+  source object, so a trigger that resolves after the permanent has left
+  still finds them. A token material ceased to exist in exile and is not
+  one of them. Jadeheart Attendant is the pattern.
+
+Not yet expressible (the craft row, #2709): "Craft with one or more …",
+a rule over the chosen set ("two that share a card type", "a Dinosaur,
+a Merfolk, a Pirate, and a Vampire"), and graveyard-only materials
+("four or more red instant and/or sorcery cards").
+
+**Tests** build the card through the import road
+(`transformRow` + `deck.ToGameCard`), because a flat fixture has no back
+face; `craft_test.go` has `pushCraftCard` and `activateCraft`, and
+`craft_cards_test.go` has `craftInto`.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in
