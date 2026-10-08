@@ -63,6 +63,7 @@
   } from "../../stackLane";
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
+  import CombatStrikes from "./CombatStrikes.svelte";
   import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
@@ -92,7 +93,9 @@
   import { seatSelector } from "../../boardAnchor";
   import { currentDockRequest, dockKeyFor } from "../../dock";
   import { foreignModalOpen } from "../../modalLayers";
-  import { tick, untrack } from "svelte";
+  import { onDestroy, tick, untrack } from "svelte";
+  import { get } from "svelte/store";
+  import { provideCombatCues } from "../../combatCues.svelte";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
   import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
@@ -238,7 +241,8 @@
     attention?: Snippet;
     // #187 / ADR 0053: changes whenever the combat damage beats should
     // prime again instead of cueing what they missed (reconnect, replay
-    // toggle). Passed straight to CombatArrows.
+    // toggle). Primes the board's combat damage clock (ADR 0134 §1), and
+    // is passed straight to the dice layer and the linger.
     beatsPrimeKey?: string;
     // ADR 0105 (#1789): the frame's legal-action lookup, built once in
     // Game.svelte and already "nothing" while highlights are off or
@@ -283,6 +287,23 @@
     if (disabled) return;
     sendAction(type, params, player);
   };
+
+  // ADR 0134 §1: one combat damage clock for the whole board. The arrows'
+  // beat cues and the strike layer's lunges both listen to it, and every
+  // Card reads its striking set (through the context) to hide while its
+  // copy flies. A prime-key change (reconnect, replay toggle) primes the
+  // next frame; declared before the frame effect so a key and a view
+  // that change together prime that same frame.
+  const combatCues = provideCombatCues();
+  onDestroy(() => combatCues.dispose());
+  $effect(() => {
+    void beatsPrimeKey;
+    untrack(() => combatCues.requestReprime());
+  });
+  $effect(() => {
+    const log = view.log;
+    untrack(() => combatCues.frame(log, get(settings)));
+  });
 
   // Spectators have no perspective — there's no "self" seat to anchor
   // the around-the-table rotation. Use a uniform grid for them with
@@ -3183,12 +3204,15 @@
   <CombatArrows
     {view}
     {boardEl}
-    {beatsPrimeKey}
+    cues={combatCues}
     stackTargets={!(
       laneShowsStack &&
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
     )}
   />
+  <!-- ADR 0134: attackers lunge and hits land. Art-only copies at z 37,
+       aria-hidden, no pointer events, on the same beat clock. -->
+  <CombatStrikes {view} {boardEl} cues={combatCues} />
   <!-- ADR 0121 §7: every die a card rolls and every coin it flips
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->

@@ -533,6 +533,16 @@
                 />
                 Dice and coins: animate rolls and flips
               </label>
+              <!-- ADR 0134 §5. Off, combat damage shows as it did before
+                   (badges, the life popup, the log); only the motion goes. -->
+              <label class="inline">
+                <input
+                  type="checkbox"
+                  checked={$settings.animations.combat}
+                  onchange={(e) => change("animations", "combat", e.currentTarget.checked)}
+                />
+                Combat: attackers lunge and hits land
+              </label>
             </fieldset>
           {:else if activeTab === "display"}
             <h3>Display</h3>

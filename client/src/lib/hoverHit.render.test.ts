@@ -34,8 +34,9 @@ describe("a hovered card's box stays where it rests (#2396)", () => {
     const css = src("src/lib/components/board/Card.svelte");
     const card = rule(css, "  .card");
     // The scale's origin moved to the bottom centre, around the tap turn.
-    expect(card).toContain(
-      "transform: rotate(var(--tap-rot, 0deg)) translateY(50%) scale(var(--hover-scale, 1))",
+    // ADR 0134's impact shake is composed first, a no-op at rest.
+    expect(card.replace(/\s+/g, " ")).toContain(
+      "transform: translateX(var(--impact-x, 0px)) rotate(var(--tap-rot, 0deg)) translateY(50%) scale(var(--hover-scale, 1))",
     );
     expect(card).toContain("translateY(-50%)");
     const hover = rule(css, "  .card.clickable:hover");

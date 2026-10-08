@@ -4,7 +4,9 @@ import {
   BEAT_CUE_HOLD_MS,
   BEAT_EFFECT_MS,
   BEAT_PAUSE_MS,
+  BEAT_STRIKE_PAUSE_MS,
   BeatDirector,
+  beatPauseMs,
   BeatSequencer,
   arrowGeometry,
   arrowIDsFor,
@@ -32,6 +34,7 @@ import {
   type ScheduledCue,
 } from "./combatBeats";
 import type { LogEvent } from "./protocol";
+import { STRIKE_MS } from "./animations";
 
 // ---- Log builders ----
 
@@ -332,27 +335,99 @@ describe("AC5: mixed combat", () => {
 });
 
 describe("AC6: no first strike anywhere", () => {
-  it("schedules nothing for untagged combat damage", () => {
-    const before = [
-      step(100, "declare_attackers"),
-      attack(101, "ogre"),
-      block(111, "wall", "ogre"),
-    ];
-    const after = [
-      ...before,
-      step(120, "combat_damage"),
-      dmgCard(121, "ogre", "wall", 5),
-      dmgCard(122, "wall", "ogre", 2),
-      dies(123, "wall"),
-    ];
+  const before = [step(100, "declare_attackers"), attack(101, "ogre"), block(111, "wall", "ogre")];
+  const after = [
+    ...before,
+    step(120, "combat_damage"),
+    dmgCard(121, "ogre", "wall", 5),
+    dmgCard(122, "wall", "ogre", 2),
+    dies(123, "wall"),
+  ];
+
+  it("with combat motion off, schedules nothing for untagged combat damage", () => {
     expect(plan(primedOn(before), after).cues).toEqual([]);
   });
 
-  it("schedules nothing when the untagged damage lands from a later prompt frame", () => {
+  it("with combat motion off, schedules nothing when the untagged damage lands from a later prompt frame", () => {
     const frameN = [...declaredCombat(), block(112, "bears2", "ace"), step(120, "combat_damage")];
     const frameN1 = [...frameN, dmgCard(121, "ace", "bears", 3), dmgCard(122, "ace", "bears2", 2)];
     const t = plan(primedOn(declaredCombat()), frameN).tracker;
     expect(plan(t, frameN1).cues).toEqual([]);
+  });
+
+  // ADR 0134 §1: ordinary combat gets a beat, for the strikes only.
+  it.each(["full", "still"] as const)(
+    "with combat motion on (%s mode), schedules one regular cue with no label and no pulse",
+    (mode) => {
+      const p = planFrame(primedOn(before), after, { mode, speed: 1, combatMotion: true });
+      expect(p.cues).toHaveLength(1);
+      const [cue] = p.cues;
+      expect(cue).toMatchObject({
+        tag: "regular",
+        label: null,
+        labelled: false,
+        motion: false,
+        strikes: true,
+        atMs: 0,
+      });
+      // The beat holds the damage and the death that followed it.
+      expect(cue.entries.map((e) => e.seq)).toEqual([121, 122, 123]);
+      expect(cue.log).toBe(after);
+    },
+  );
+
+  it("an unlabelled cue arms no hide timer and announces nothing", () => {
+    vi.useFakeTimers();
+    try {
+      const hidden: number[] = [];
+      const seq = new BeatSequencer({ onCue: () => {}, onHide: (s) => hidden.push(s) });
+      seq.play(
+        planFrame(primedOn(before), after, { mode: "full", speed: 1, combatMotion: true }).cues,
+      );
+      vi.runAllTimers();
+      expect(hidden).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a first-strike combat's beats stay labelled with combat motion on", () => {
+    const both = [
+      ...declaredCombat(),
+      step(120, "combat_damage"),
+      dmgCard(121, "ace", "bears", 1, "first_strike"),
+      dmgCard(122, "ace", "bears", 1, "regular"),
+    ];
+    const p = planFrame(primedOn(declaredCombat()), both, {
+      mode: "full",
+      speed: 1,
+      combatMotion: true,
+    });
+    expect(p.cues.map((c) => [c.tag, c.label, c.motion, c.strikes, c.atMs])).toEqual([
+      ["first_strike", "First strike", true, true, 0],
+      ["regular", "Regular damage", true, true, 560],
+    ]);
+  });
+});
+
+describe("beatPauseMs (ADR 0134 §1)", () => {
+  it.each([
+    [false, 1, 400],
+    [false, 2, 800],
+    [false, 0.5, 200],
+    [true, 1, 560],
+    [true, 2, 1120],
+    [true, 0.5, 280],
+  ] as const)("combat motion %s at speed %s → %s ms", (motion, speed, expected) => {
+    expect(beatPauseMs(motion, speed)).toBe(expected);
+  });
+
+  it("fits a whole strike plus 60 ms", () => {
+    expect(BEAT_STRIKE_PAUSE_MS).toBe(STRIKE_MS + 60);
+  });
+
+  it("keeps the arrow effect shorter than the smaller pause", () => {
+    expect(BEAT_EFFECT_MS).toBeLessThan(Math.min(BEAT_PAUSE_MS, BEAT_STRIKE_PAUSE_MS));
   });
 });
 

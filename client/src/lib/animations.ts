@@ -39,6 +39,8 @@ type AnimationConfig = {
   particlesEtb: boolean;
   damagePopups: boolean;
   dice: boolean;
+  // ADR 0134 §5: attackers lunge and hits land.
+  combat: boolean;
 };
 const cfg: AnimationConfig = {
   enabled: true,
@@ -51,6 +53,7 @@ const cfg: AnimationConfig = {
   particlesEtb: true,
   damagePopups: true,
   dice: true,
+  combat: true,
 };
 export function setAnimationConfig(next: Partial<AnimationConfig>): void {
   Object.assign(cfg, next);
@@ -240,6 +243,125 @@ export function flyTo(
       duration: ms / 1000,
       ease: FLIGHT_EASE,
       overwrite: "auto",
+      onComplete: () => resolve(),
+      onInterrupt: () => resolve(),
+    });
+  });
+}
+
+// ---- Combat strikes (ADR 0134 §2) ----
+//
+// An attacker's art-only copy lunges to contact with what it hit, holds
+// there for the impact, and snaps back. The phases are at speed 1 and
+// every one of them is multiplied by animations.speed; nothing here is
+// reading time, so nothing is exempt (ADR 0134 §5).
+export const STRIKE_OUT_MS = 180;
+export const STRIKE_HOLD_MS = 60;
+export const STRIKE_BACK_MS = 260;
+export const STRIKE_MS = STRIKE_OUT_MS + STRIKE_HOLD_MS + STRIKE_BACK_MS;
+// The impact: a horizontal shake of ±IMPACT_SHAKE_PX over
+// IMPACT_SHAKE_MS, with a brightness flash that settles back over the
+// same time.
+export const IMPACT_SHAKE_MS = 160;
+export const IMPACT_SHAKE_PX = 4;
+// The flash's peak, as brightness above 1 (0.5 is brightness 1.5).
+export const IMPACT_GLOW = 0.5;
+// A blocker that died shakes, then fades in its place over this long.
+export const STRIKE_DEATH_FADE_MS = 240;
+
+function strikeSpeed(): number {
+  return Number.isFinite(cfg.speed) && cfg.speed > 0 ? cfg.speed : 1;
+}
+
+function strikeAllowed(): boolean {
+  return cfg.enabled && cfg.combat;
+}
+
+// lunge flies a strike copy `to` (board pixels, relative to where it is
+// drawn) and back: out with power2.in, a contact hold, back with
+// power3.out. A copy whose creature died fades out on the way back
+// (ADR 0134 §3). `flash` is for an attacker its blocker hit back in the
+// same beat: that element brightens at contact instead of shaking, so
+// the two motions do not fight. With combat motion off it settles at
+// once. Resolves when the copy is home.
+export function lunge(
+  el: HTMLElement,
+  to: { x: number; y: number },
+  opts: { dies?: boolean; flash?: HTMLElement | null } = {},
+): Promise<void> {
+  if (!strikeAllowed()) {
+    return Promise.resolve();
+  }
+  const s = strikeSpeed();
+  return new Promise((resolve) => {
+    const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
+    tl.to(el, { x: to.x, y: to.y, duration: (STRIKE_OUT_MS * s) / 1000, ease: "power2.in" });
+    if (opts.flash) {
+      tl.fromTo(
+        opts.flash,
+        { "--impact-glow": IMPACT_GLOW },
+        { "--impact-glow": 0, duration: (IMPACT_SHAKE_MS * s) / 1000, ease: "power1.out" },
+        // At contact: the end of the out phase.
+        (STRIKE_OUT_MS * s) / 1000,
+      );
+    }
+    tl.to(
+      el,
+      {
+        x: 0,
+        y: 0,
+        opacity: opts.dies ? 0 : 1,
+        duration: (STRIKE_BACK_MS * s) / 1000,
+        ease: "power3.out",
+      },
+      ((STRIKE_OUT_MS + STRIKE_HOLD_MS) * s) / 1000,
+    );
+  });
+}
+
+// impactShake is the hit landing on a tile or an avatar disc: --impact-x
+// swings ±4 px in three half-cycles and --impact-glow flashes and
+// settles, over IMPACT_SHAKE_MS. Card.svelte and PlayerIdentity.svelte
+// compose both variables with defaults that do nothing, so a tile at
+// rest renders exactly as before. Resolves when it is over.
+export function impactShake(el: HTMLElement): Promise<void> {
+  if (!strikeAllowed()) return Promise.resolve();
+  const t = (IMPACT_SHAKE_MS * strikeSpeed()) / 1000;
+  const px = IMPACT_SHAKE_PX;
+  return new Promise((resolve) => {
+    // Cleared, not zeroed: an unset --impact-x is what leaves the avatar
+    // disc's `translate` at none (PlayerIdentity.svelte).
+    const done = () => {
+      el.style.removeProperty("--impact-x");
+      el.style.removeProperty("--impact-glow");
+      resolve();
+    };
+    const tl = gsap.timeline({ onComplete: done, onInterrupt: done });
+    tl.fromTo(
+      el,
+      { "--impact-x": "0px" },
+      { "--impact-x": `${px}px`, duration: t / 6, ease: "sine.inOut" },
+    );
+    tl.to(el, { "--impact-x": `${-px}px`, duration: t / 3, ease: "sine.inOut" });
+    tl.to(el, { "--impact-x": `${px}px`, duration: t / 3, ease: "sine.inOut" });
+    tl.to(el, { "--impact-x": "0px", duration: t / 6, ease: "sine.inOut" });
+    tl.fromTo(
+      el,
+      { "--impact-glow": IMPACT_GLOW },
+      { "--impact-glow": 0, duration: t, ease: "power1.out" },
+      0,
+    );
+  });
+}
+
+// deathFade fades a dead blocker's copy out in place, after its shake.
+export function deathFade(el: HTMLElement): Promise<void> {
+  if (!strikeAllowed()) return Promise.resolve();
+  return new Promise((resolve) => {
+    gsap.to(el, {
+      opacity: 0,
+      duration: (STRIKE_DEATH_FADE_MS * strikeSpeed()) / 1000,
+      ease: "power1.in",
       onComplete: () => resolve(),
       onInterrupt: () => resolve(),
     });

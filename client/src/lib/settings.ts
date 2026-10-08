@@ -66,6 +66,10 @@ export interface Settings {
     // the master switch off, or reduced motion) the result still shows,
     // settled, for the same hold; only the motion goes.
     dice: boolean;
+    // ADR 0134 §5: attackers lunge and hits land. Off (or the master
+    // switch off, or reduced motion) combat shows as it did before:
+    // badges, the life popup, the log and the first-strike text cue.
+    combat: boolean;
   };
 
   display: {
@@ -408,6 +412,7 @@ export function defaultSettings(): Settings {
       particlesEtb: true,
       damagePopups: true,
       dice: true,
+      combat: true,
     },
     display: {
       theme: DEFAULT_SKIN,
@@ -573,6 +578,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     particlesEtb: "synced",
     damagePopups: "synced",
     dice: "synced",
+    combat: "synced",
   },
   display: {
     theme: "synced",
@@ -1157,6 +1163,7 @@ settings.subscribe((s) => {
     particlesEtb: s.animations.particlesEtb,
     damagePopups: s.animations.damagePopups,
     dice: s.animations.dice,
+    combat: s.animations.combat,
   });
 });
 

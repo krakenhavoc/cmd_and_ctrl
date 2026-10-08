@@ -29,7 +29,11 @@
 //     non-damage entries that follow the nearest tagged damage entry
 //     among the same frame's new entries (deaths, lifelink). A step
 //     that dealt no damage for a tag has no beat (Decision 3).
-//   - beat 2 waits BEAT_PAUSE_MS × animations.speed only when beat 1's
+//   - ADR 0134 §1: a combat with no first-strike step tags nothing, and
+//     its damage forms an UNLABELLED regular beat: no text cue, no
+//     pulse, only the strike layer's lunges, and only with combat
+//     motion on. With it off the beat is dropped.
+//   - beat 2 waits beatPauseMs × animations.speed only when beat 1's
 //     entries came before it in the SAME frame. Across frames the time
 //     between frames is the pause. A beat already cued in an earlier
 //     frame continues with no pause and no repeated label.
@@ -43,6 +47,7 @@
 // renders the text cue.
 
 import type { LogEvent } from "./protocol";
+import { STRIKE_MS } from "./animations";
 
 export type BeatTag = "first_strike" | "regular";
 
@@ -51,8 +56,19 @@ export type BeatMode = "full" | "still";
 
 // BEAT_PAUSE_MS is the gap between beat 1 and beat 2 when both land in
 // one frame, before the animations.speed multiplier (owner, ADR 0053
-// Decision 2 "Timing").
+// Decision 2 "Timing"), with combat motion off.
 export const BEAT_PAUSE_MS = 400;
+
+// BEAT_STRIKE_PAUSE_MS is that gap with combat motion on (ADR 0134 §1):
+// one whole strike plus 60 ms, so beat 2's attackers never leave before
+// beat 1's are back.
+export const BEAT_STRIKE_PAUSE_MS = STRIKE_MS + 60;
+
+// beatPauseMs is the same-frame gap between beat 1 and beat 2, speed
+// scaled: 400 ms with combat motion off, 560 ms with it on (ADR 0134 §1).
+export function beatPauseMs(combatMotion: boolean, speed: number): number {
+  return scaledMs(combatMotion ? BEAT_STRIKE_PAUSE_MS : BEAT_PAUSE_MS, speed);
+}
 
 // BEAT_EFFECT_MS is one arrow pulse or ghost fade, in and out, before
 // the speed multiplier. It must stay shorter than BEAT_PAUSE_MS, so a
@@ -176,6 +192,10 @@ export function track(
 // ---- Beats: grouping new entries ----
 
 export interface Beat {
+  // False for ordinary combat's beat: a combat with no first-strike step
+  // tags nothing, so its damage joins a "regular" beat that carries no
+  // text cue and no arrow pulse, only strikes (ADR 0134 §1).
+  labelled: boolean;
   // seq of the step entry that keys this beat's combat — the
   // first-strike damage step's when there was one, else the regular
   // combat damage step's.
@@ -199,6 +219,15 @@ export interface Beat {
 function combatTagOf(e: LogEvent): BeatTag | null {
   if (e.kind !== "damage" || !e.combat) return null;
   return e.combat_step === "first_strike" || e.combat_step === "regular" ? e.combat_step : null;
+}
+
+// combatBeatOf is the beat a combat damage entry joins: its tag when
+// the combat had a first-strike step, else an unlabelled "regular"
+// beat (ADR 0134 §1). Null for anything that is not combat damage.
+function combatBeatOf(e: LogEvent): { tag: BeatTag; labelled: boolean } | null {
+  if (e.kind !== "damage" || !e.combat) return null;
+  const tag = combatTagOf(e);
+  return tag === null ? { tag: "regular", labelled: false } : { tag, labelled: true };
 }
 
 // splitBeats groups a frame's fresh entries into beats, per
@@ -239,15 +268,17 @@ export function splitBeats(
     if (!freshSeqs.has(e.seq)) continue;
     // Entries outside a combat damage step belong to no beat.
     if (damageStepSeq === null) continue;
-    const tag = combatTagOf(e);
-    if (tag === null) {
+    const joins = combatBeatOf(e);
+    if (joins === null) {
       current?.entries.push(e);
       continue;
     }
+    const tag = joins.tag;
     const key = `${damageStepSeq}:${tag}`;
     let beat = byKey.get(key);
     if (!beat) {
       beat = {
+        labelled: joins.labelled,
         stepSeq: damageStepSeq,
         tag,
         entries: [],
@@ -329,7 +360,7 @@ const COMBAT_PHASE_STEPS = new Set([
 // step entry fell out of the log, or the entry is outside combat —
 // falls back to its turn, which is what the grouping was before a turn
 // could have two combats.
-function combatKeyer(log: readonly LogEvent[] | undefined): (e: LogEvent) => string {
+export function combatKeyer(log: readonly LogEvent[] | undefined): (e: LogEvent) => string {
   const opens: { seq: number; key: number }[] = [];
   let current = 0;
   let prev: LogEvent | undefined;
@@ -425,6 +456,12 @@ export function arrowIDsFor(
 export interface ScheduledCue {
   // When to cue, in ms after the frame arrived.
   atMs: number;
+  // When the frame that carried this cue arrived (Date.now()), so a
+  // strike that would start late can be dropped (ADR 0134 §4).
+  frameAt: number;
+  // The frame's whole log: a strike reads the step and block entries
+  // that say which side each source was on (ADR 0134 §3).
+  log: readonly LogEvent[];
   stepSeq: number;
   tag: BeatTag;
   // "First strike" / "Regular damage", or null for a continuation of a
@@ -438,6 +475,12 @@ export interface ScheduledCue {
   motion: boolean;
   // Duration of one pulse or ghost fade, speed-scaled.
   effectMs: number;
+  // True when combat motion was on as the frame arrived: the strike
+  // layer lunges this beat's attackers (ADR 0134 §2). An unlabelled
+  // beat exists only for this.
+  strikes: boolean;
+  // False for ordinary combat's unlabelled beat (Beat.labelled).
+  labelled: boolean;
   // When this frame's text cue for the step comes down, in ms after
   // the frame arrived. The same for every cue of one step in a frame,
   // so beat 1's label is still up when beat 2's joins it.
@@ -447,21 +490,39 @@ export interface ScheduledCue {
 // schedule places a frame's beats in time. Beat 2 after beat 1 in the
 // same frame waits one scaled pause, in both modes: "still" holds beat
 // 1's text cue alone for the pause instead of collapsing the two.
-export function schedule(beats: readonly Beat[], mode: BeatMode, speed: number): ScheduledCue[] {
-  const pause = scaledMs(BEAT_PAUSE_MS, speed);
+//
+// ADR 0134 §1: an unlabelled beat (ordinary combat) is cued with no
+// label and no arrow pulse, and only when combat motion is on. With it
+// off the beat is dropped, so ADR 0053's AC6 holds unchanged.
+export function schedule(
+  beats: readonly Beat[],
+  mode: BeatMode,
+  speed: number,
+  combatMotion = false,
+  frame: { frameAt?: number; log?: readonly LogEvent[] } = {},
+): ScheduledCue[] {
+  const pause = beatPauseMs(combatMotion, speed);
   const effectMs = scaledMs(BEAT_EFFECT_MS, speed);
-  const cues: ScheduledCue[] = beats.map((b) => ({
-    atMs: b.pauseBefore ? pause : 0,
-    stepSeq: b.stepSeq,
-    tag: b.tag,
-    label: b.continuation ? null : BEAT_LABELS[b.tag],
-    entries: b.entries,
-    arrows: b.arrows,
-    arrowIDs: b.arrowIDs,
-    motion: mode === "full",
-    effectMs,
-    hideAtMs: 0,
-  }));
+  const frameAt = frame.frameAt ?? Date.now();
+  const log = frame.log ?? [];
+  const cues: ScheduledCue[] = beats
+    .filter((b) => b.labelled || combatMotion)
+    .map((b) => ({
+      atMs: b.pauseBefore ? pause : 0,
+      frameAt,
+      log,
+      stepSeq: b.stepSeq,
+      tag: b.tag,
+      label: b.continuation || !b.labelled ? null : BEAT_LABELS[b.tag],
+      entries: b.entries,
+      arrows: b.arrows,
+      arrowIDs: b.arrowIDs,
+      motion: b.labelled && mode === "full",
+      effectMs,
+      strikes: combatMotion,
+      labelled: b.labelled,
+      hideAtMs: 0,
+    }));
   const lastAt = new Map<number, number>();
   for (const c of cues) lastAt.set(c.stepSeq, Math.max(lastAt.get(c.stepSeq) ?? 0, c.atMs));
   for (const c of cues) c.hideAtMs = (lastAt.get(c.stepSeq) ?? 0) + BEAT_CUE_HOLD_MS;
@@ -475,16 +536,30 @@ export interface FramePlan {
 }
 
 // planFrame is the whole per-frame pipeline: track, split, schedule.
+export interface FrameOptions {
+  mode: BeatMode;
+  speed: number;
+  reprime?: boolean;
+  // ADR 0134 §5: combatMotion(...) as the frame arrived. Off (the
+  // default) is ADR 0053's behaviour exactly.
+  combatMotion?: boolean;
+  // When the frame arrived; defaults to Date.now().
+  now?: number;
+}
+
 export function planFrame(
   prev: BeatTracker,
   log: readonly LogEvent[] | undefined,
-  opts: { mode: BeatMode; speed: number; reprime?: boolean },
+  opts: FrameOptions,
 ): FramePlan {
   const t = track(prev, log, opts.reprime ?? false);
   const split = splitBeats(t.tracker, log, t.fresh);
   return {
     tracker: split.tracker,
-    cues: schedule(split.beats, opts.mode, opts.speed),
+    cues: schedule(split.beats, opts.mode, opts.speed, opts.combatMotion ?? false, {
+      frameAt: opts.now,
+      log: log ?? [],
+    }),
     primed: t.primed,
   };
 }
@@ -494,7 +569,7 @@ export function planFrame(
 // cue region announces on every beat of every combat, and the log panel
 // already carries the full sentences.
 export function cueSummary(cue: Pick<ScheduledCue, "entries" | "tag">): string {
-  const n = cue.entries.filter((e) => combatTagOf(e) === cue.tag).length;
+  const n = cue.entries.filter((e) => combatBeatOf(e)?.tag === cue.tag).length;
   return n === 1 ? "1 hit" : `${n} hits`;
 }
 
@@ -805,10 +880,7 @@ export class BeatDirector {
     this.sequencer = new BeatSequencer(handlers);
   }
 
-  frame(
-    log: readonly LogEvent[] | undefined,
-    opts: { mode: BeatMode; speed: number; reprime?: boolean },
-  ): FramePlan {
+  frame(log: readonly LogEvent[] | undefined, opts: FrameOptions): FramePlan {
     const plan = planFrame(this.tracker, log, opts);
     this.tracker = plan.tracker;
     if (plan.primed) {
