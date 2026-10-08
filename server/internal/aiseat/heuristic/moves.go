@@ -313,9 +313,15 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// own source pays for the source. A row with no purpose keeps
 		// ActivateBase (owner decision 6).
 		purposed := false
+		// ADR 0126's amendment of 2026-10-08: a pick the row's purpose
+		// declares an entry for is priced by what the row does to it.
+		targetV, targetsPriced := p.pricedTargetsValue(st, cp.Targets, func(t targetRef) *protocol.TargetPurposeView {
+			return rowEntryFor(src, cp.AbilityIndex, t)
+		}, nil)
 		if !across {
 			var ps purposeSet
 			ps.add(rowPurpose(src, cp.AbilityIndex))
+			ps.targetsPriced = targetsPriced
 			if p.purposePriced(ps) {
 				v, reason, purposed = p.purposeValue(st, ps, cp.XValue, nil, false), "activate (declared purpose)", true
 				// A row that taps a creature pays for it below, by when the
@@ -336,7 +342,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				v -= st.selfReturnCost(src)
 			}
 		}
-		v += st.targetsValue(p.cfg, cp.Targets)
+		v += targetV
 		// ADR 0126 §7: priced by the chance the bot would have kept
 		// each permanent, less its death payoffs (sacrifice.go).
 		v -= p.sacrificeCost(st, cp.SacrificeIDs)
@@ -489,6 +495,12 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// permanent of the bot's (OwnPermanentTarget), and it does not make
 	// an untargeted spell a targeted one (SpellFloor).
 	targets := spellTargets(card, cp)
+	// ADR 0126's amendment of 2026-10-08: a pick the cast's purpose
+	// declares an entry for is priced by what the spell does to it, and
+	// the cast is then priced by its purpose rather than its mana value.
+	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
+		return castEntryFor(card, cp, t)
+	}, card)
 	var v float64
 	reason := "cast"
 	if cp.AlternativeCost != "" {
@@ -504,6 +516,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// this cast names, so an overloaded Rift is a sweep and a
 		// hard-cast one is not.
 		ps := castPurpose(card, cp)
+		ps.targetsPriced = targetsPriced
 		// #2469: a land swap is priced by what it nets. The lands that
 		// replace the sacrificed ones are untapped lands, ManaSource
 		// each, outside the purpose; the rest are the ramp, with the
@@ -599,7 +612,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v += st.discardPayoff(p.cfg, st.mine[id])
 	}
 	v -= p.sacrificeCost(st, cp.SacrificeIDs)
-	v += st.targetsValue(p.cfg, targets)
+	v += targetV
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
 		// {2} more (CR 903.8); the tax is already in the score, this

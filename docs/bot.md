@@ -852,6 +852,32 @@ whether the lands enter tapped. Harrow's do not; Roiling Regrowth and
 Cycle of Renewal, whose lands do, declare no purpose, and one should not
 be declared for them before the purpose can say so.
 
+**A target is priced by what the purpose does to it**
+([ADR 0126's amendment of 2026-10-08](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills),
+#2689, `PriceTargetPurposes`, `target_purpose.go`). A purpose's
+`targets` entries say what happens to the pick for each target clause:
+cards drawn and discarded, tokens made, life gained and lost. A player
+pick with such an entry is priced by those amounts, not as an attack:
+
+```
+x = Hand × draws − DiscardWeight × discards + TokenWeight × tokens
+    + the life gained and lost, at what Strength counts it
+    (+ the bot's discard payoffs, when the bot is the target)
+```
+
+and the move is worth the change in `ScoreEval` when that seat's
+strength moves by `x`, the way a sweep is priced. Given to the bot it
+is +x. Given to an opponent it costs `OpponentMean + OpponentMax` of
+x at a two-seat table (1.5), a third of `OpponentMean` plus
+`OpponentMax` for the strongest of three opponents, and a third of
+`OpponentMean` for any other. A cast or row with such a pick drops the
+mana-value proxy (or `ActivateBase`), because what it does is declared.
+Prismari Command's loot and Treasure at the bot is then +0.50, and at
+the opponent −3.75. Sign in Blood at the bot beats Sign in Blood at
+an opponent. A pick with no entry, and an entry that only deals
+damage, keep the old price: damage by whether it kills is the
+amendment's PR 4 (`DamageByLethality`).
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,

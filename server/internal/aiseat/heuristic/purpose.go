@@ -52,6 +52,11 @@ type purposeSet struct {
 	// the land it makes a hasty 0/0 creature.
 	awaken int
 	sweeps []protocol.SweepView
+	// targetsPriced is set by a cast or an activation whose targets a
+	// declared entry prices (PriceTargetPurposes, target_purpose.go):
+	// what it does is then declared, so the proxy goes. Never set on a
+	// card being spent, which points at nothing.
+	targetsPriced bool
 }
 
 // add folds one declared purpose in.
@@ -152,7 +157,8 @@ func rowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
 // its amounts under PricePurposes, its sweeps under PriceSweeps. When it
 // does not, the caller keeps the price it had before ADR 0126.
 func (p *Policy) purposePriced(ps purposeSet) bool {
-	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0)
+	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0) ||
+		(p.cfg.PriceTargetPurposes && ps.targetsPriced)
 }
 
 // purposeValue prices a declared purpose for the bot: the §6 amounts
