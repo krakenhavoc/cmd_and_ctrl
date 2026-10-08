@@ -7182,7 +7182,7 @@ real, put an ascend permanent and nine others on the battlefield and call
 blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
 `CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
 
-### Speed: start your engines! and max speed (ADR 0136, #2122, CR 702.178 / 702.179)
+### Speed: start your engines! and max speed (ADR 0138, #2122, CR 702.178 / 702.179)
 
 Speed is the player's, and the engine owns all of it (`game/speed.go`):
 the state-based action that gives a player speed 1 (CR 704.5aa), the
@@ -7208,7 +7208,7 @@ Write the ability exactly as you would without "Max speed —", then wrap
 it. Never write the speed check by hand.
 
 - **It is not an ADR 0071 designation.** That gate reads only the
-  object, and max speed is the player's (ADR 0136 §5). So the wrappers
+  object, and max speed is the player's (ADR 0138 §5). So the wrappers
   put `YouHaveMaxSpeed` in the slot's own predicate: `AppliesTo` for a
   static, trigger, replacement or cost modifier, and `Condition` for an
   activated or mana ability. A max-speed activated ability is therefore

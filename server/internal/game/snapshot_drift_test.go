@@ -592,7 +592,7 @@ var playerFields = plan(
 	"MaxHandSize", carried, "",
 	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.
 	"MaxHandSizeAt", carried, "",
-	// ADR 0136: the player's speed (CR 702.179). Carried: a player
+	// ADR 0138: the player's speed (CR 702.179). Carried: a player
 	// keeps it after the permanent that started it has gone.
 	"Speed", carried, "",
 	"LandDropsPerTurn", carried, "",

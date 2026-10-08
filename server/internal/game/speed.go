@@ -3,7 +3,7 @@ package game
 import "github.com/google/uuid"
 
 // speed.go — Aetherdrift's speed: start your engines! (CR 702.179) and
-// max speed (CR 702.178). ADR 0136, #2122.
+// max speed (CR 702.178). ADR 0138, #2122.
 //
 // Speed belongs to a PLAYER, not to a permanent: a player has none
 // until a rule or effect sets it (CR 702.179b), and nothing in the
@@ -28,7 +28,7 @@ import "github.com/google/uuid"
 //   - CR 702.178a: "Max speed — [ability]" is "as long as your speed is
 //     4, this object has [ability]". HasMaxSpeed is the one read;
 //     the card-side constructors in effects/speed.go put it in each
-//     ability's own predicate (ADR 0136 §5 says why that is not an
+//     ability's own predicate (ADR 0138 §5 says why that is not an
 //     ADR 0071 designation).
 //
 // Speed is not a counter (nothing proliferates, doubles or removes it),
@@ -49,7 +49,7 @@ const KeywordStartYourEngines = "start your engines!"
 // EventSpeedChanged — a player's speed changed. Actor is the player,
 // Amount the NEW speed (1 to MaxSpeed). Emitted by setSpeedLocked only,
 // and only on a real change. A layer input (layerVersionBump), because
-// a "Max speed —" static reads it. ADR 0136.
+// a "Max speed —" static reads it. ADR 0138.
 const EventSpeedChanged EventKind = "speed_changed"
 
 // SpeedOf is player's speed: 0 while they have none, which is also what
@@ -216,7 +216,7 @@ func (g *Game) speedTriggerLocked(loser uuid.UUID) {
 	})
 }
 
-// speedIncreaseBody is "speed/increase" (ADR 0136 §3): Params.Player's
+// speedIncreaseBody is "speed/increase" (ADR 0138 §3): Params.Player's
 // speed increases by 1 if it is still below MaxSpeed — the second half
 // of CR 603.4's intervening if, which increaseSpeedLocked's own cap
 // already is (the trigger only exists for a player with speed, so the

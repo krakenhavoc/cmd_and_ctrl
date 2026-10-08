@@ -118,7 +118,7 @@ type PlayerTurnTally struct {
 	EnergyPaidOrLost int `json:"energyPaidOrLost,omitempty"`
 	// SpeedTriggered is CR 702.179d's "this ability triggers only once
 	// each turn": set as this player's inherent speed trigger is
-	// queued (speedTriggerLocked). ADR 0136. Additive within schema v7.
+	// queued (speedTriggerLocked). ADR 0138. Additive within schema v7.
 	SpeedTriggered bool `json:"speedTriggered,omitempty"`
 }
 

@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Max speed — Whenever you draw a card, each opponent mills two
 //	 cards."
 //
-// ADR 0136 (#2122). The mill is an ordinary draw trigger, one per card
+// ADR 0138 (#2122). The mill is an ordinary draw trigger, one per card
 // drawn (CR 121.2), that triggers only while the Syphon's controller has
 // max speed (CR 702.178a). Every other player is an opponent; one who
 // has left the game is skipped.

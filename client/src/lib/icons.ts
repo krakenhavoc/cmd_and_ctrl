@@ -96,7 +96,7 @@ export const ICONS = {
   sword: [p("M14 4l6 6-9 9-6-6z"), p("M8 16l-5 5"), p("M17 3l4 4")],
   drop: [p("M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z")],
   bolt: [p("M13 2 4 14h7l-1 8 9-12h-7l1-8z")],
-  // A speedometer: the dial's arc and its needle (ADR 0136, a player's
+  // A speedometer: the dial's arc and its needle (ADR 0138, a player's
   // speed).
   gauge: [p("M4 17a8 8 0 1 1 16 0"), p("M12 17l4-5"), c(12, 17, 1.2, true)],
   star: [p("M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z")],

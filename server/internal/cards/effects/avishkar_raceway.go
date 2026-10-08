@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {T}: Add {C}.
 //	 Max speed — {3}, {T}, Discard a card: Draw a card."
 //
-// ADR 0136 (#2122). The rummage is an ordinary activated ability with a
+// ADR 0138 (#2122). The rummage is an ordinary activated ability with a
 // discard cost (paid at activation, CR 602.2b), activatable only while
 // its controller has max speed (CR 702.178a).
 //

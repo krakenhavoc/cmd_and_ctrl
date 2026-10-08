@@ -655,7 +655,7 @@ type playerSnapshot struct {
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
 	MaxHandSizeAt int64 `json:"maxHandSizeAt,omitempty"`
-	// Speed is the player's speed (ADR 0136, CR 702.179). Additive
+	// Speed is the player's speed (ADR 0138, CR 702.179). Additive
 	// within v7: a file without it restores as no speed.
 	Speed int `json:"speed,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance

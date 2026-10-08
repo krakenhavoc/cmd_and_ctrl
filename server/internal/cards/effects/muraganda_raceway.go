@@ -6,7 +6,7 @@ package effects
 //	 {T}: Add {C}.
 //	 Max speed — {T}: Add {C}{C}."
 //
-// ADR 0136 (#2122). Two mana abilities; the second can be activated
+// ADR 0138 (#2122). Two mana abilities; the second can be activated
 // only while its controller has max speed (CR 702.178a), and the
 // auto-tapper plans it only then (it reads the ability's Condition).
 //

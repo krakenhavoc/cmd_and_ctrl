@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// speed_test.go pins ADR 0136 (#2122): start your engines! gives a
+// speed_test.go pins ADR 0138 (#2122): start your engines! gives a
 // player speed 1 as a state-based action (CR 702.179a), the inherent
 // sourceless trigger raises it once on each of their turns when an
 // opponent loses life (CR 702.179d), it stops at 4, and the player

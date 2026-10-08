@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// speed_view_test.go — the wire half of ADR 0136 (#2122): a player's
+// speed_view_test.go — the wire half of ADR 0138 (#2122): a player's
 // speed is public on PlayerView.speed, omitted while they have none,
 // and every change is a narrated `speed` log line.
 

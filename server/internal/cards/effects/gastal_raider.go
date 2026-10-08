@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 that card.
 //	 Max speed — This creature gets +1/+1 and has menace."
 //
-// ADR 0136 (#2122). The keyword gives its controller speed 1 at the
+// ADR 0138 (#2122). The keyword gives its controller speed 1 at the
 // next state-based check (CR 702.179a); the engine raises it from there
 // (CR 702.179d). The enters trigger is ADR 0116's revealed-hand pick,
 // filtered to instants and sorceries. Max speed is a layer 7c pump and

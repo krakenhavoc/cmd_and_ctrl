@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 At the beginning of your end step, you draw X cards and lose X
 //	 life, where X is your speed."
 //
-// ADR 0136 (#2122). X is read as the trigger resolves (CR 608.2h), off
+// ADR 0138 (#2122). X is read as the trigger resolves (CR 608.2h), off
 // the controller's speed; a player with no speed draws nothing and
 // loses nothing.
 //

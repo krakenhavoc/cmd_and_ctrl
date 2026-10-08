@@ -530,7 +530,7 @@
           {/each}
         {/if}
       {/if}
-      <!-- ADR 0136: speed (CR 702.179) is public, so every seat shows
+      <!-- ADR 0138: speed (CR 702.179) is public, so every seat shows
            it, its own included. A display, not a stepper: no rule
            lowers a speed, and the engine is its only writer. -->
       {#if (seat.speed ?? 0) > 0}

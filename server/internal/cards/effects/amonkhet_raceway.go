@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {T}: Add {C}.
 //	 Max speed — {T}: Target creature gains haste until end of turn."
 //
-// ADR 0136 (#2122). The haste ability is an ordinary activated ability
+// ADR 0138 (#2122). The haste ability is an ordinary activated ability
 // that can be activated only while its controller has max speed
 // (CR 702.178a).
 //

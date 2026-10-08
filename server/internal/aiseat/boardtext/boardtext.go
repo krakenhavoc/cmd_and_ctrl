@@ -110,7 +110,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if pc := PlayerCounters(s.Counters); pc != "" {
 			fmt.Fprintf(&b, ", %s", pc)
 		}
-		// ADR 0136 §8: the seat's speed (CR 702.179), so a model seat
+		// ADR 0138 §8: the seat's speed (CR 702.179), so a model seat
 		// sees who is close to switching their max-speed abilities on.
 		if sp := SpeedPhrase(s.Speed); sp != "" {
 			fmt.Fprintf(&b, ", %s", sp)
@@ -482,7 +482,7 @@ func endGateNote(s *protocol.PlayerView) string {
 	return out
 }
 
-// SpeedPhrase is a seat's speed (CR 702.179, ADR 0136) as a phrase:
+// SpeedPhrase is a seat's speed (CR 702.179, ADR 0138) as a phrase:
 // "speed 3", "speed 4 (max speed)", or empty for a seat with none.
 func SpeedPhrase(speed int) string {
 	if speed <= 0 {

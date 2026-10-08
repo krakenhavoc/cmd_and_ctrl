@@ -321,7 +321,7 @@ var canonicalKeywords = map[string]bool{
 	// canonical token, so a werewolf works with no catalog entry.
 	KeywordDaybound:   true,
 	KeywordNightbound: true,
-	// start your engines! (CR 702.179) joins with #2122 (ADR 0136). Its
+	// start your engines! (CR 702.179) joins with #2122 (ADR 0138). Its
 	// consumer is speed.go's state-based action, which gives a player
 	// with no speed who controls a permanent with it speed 1. Stamped
 	// by the deck importer like every other canonical token, so an

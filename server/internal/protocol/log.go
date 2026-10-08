@@ -385,7 +385,7 @@ const (
 	// ability or a clause of a resolving spell), so without a line the
 	// marker beside the player's name would appear unexplained. #2696.
 	LogCitysBlessing LogKind = "citys_blessing"
-	// LogSpeed — a player's speed changed (CR 702.179, ADR 0136).
+	// LogSpeed — a player's speed changed (CR 702.179, ADR 0138).
 	// `Actor` is the player and `Amount` the new speed. Narrated
 	// because the start-your-engines state-based action gives a
 	// player speed 1 with no spell or ability behind it, and because
@@ -1686,7 +1686,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		return base, true
 
 	case game.EventSpeedChanged:
-		// CR 702.179, ADR 0136. Not tied to a card: the state-based
+		// CR 702.179, ADR 0138. Not tied to a card: the state-based
 		// action and the inherent trigger have no source.
 		base.Kind = LogSpeed
 		base.Amount = ev.Amount

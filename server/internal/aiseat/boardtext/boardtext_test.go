@@ -55,7 +55,7 @@ func TestRenderPrintsPlayerCounters(t *testing.T) {
 	}
 }
 
-// ADR 0136 §8: a seat with speed says so after its counters, and max
+// ADR 0138 §8: a seat with speed says so after its counters, and max
 // speed is named; a seat with none says nothing.
 func TestRenderPrintsSpeed(t *testing.T) {
 	v := view()

@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 When this artifact enters, draw two cards, then discard a card.
 //	 Max speed — Spells you cast cost {1} less to cast."
 //
-// ADR 0136 (#2122). The discount is an ordinary board cost modifier
+// ADR 0138 (#2122). The discount is an ordinary board cost modifier
 // that applies only while the Scoreboard's controller has max speed
 // (CR 702.178a); generic only, so it never reduces a coloured pip
 // (CR 601.2f).

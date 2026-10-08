@@ -7,7 +7,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
-// speed_test.go — a "Max speed —" activated ability (ADR 0136, #2122)
+// speed_test.go — a "Max speed —" activated ability (ADR 0138, #2122)
 // in the agreement style: the enumerator offers it only when the
 // engine would accept it, which is only at max speed. Perilous Snare's
 // "Max speed — {T}: Put a +1/+1 counter on target creature or Vehicle

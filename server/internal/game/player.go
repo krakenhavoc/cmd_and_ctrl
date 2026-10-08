@@ -99,7 +99,7 @@ type Player struct {
 	Poison int
 	Energy int
 
-	// Speed is the player's speed (CR 702.179, ADR 0136): 0 for none,
+	// Speed is the player's speed (CR 702.179, ADR 0138): 0 for none,
 	// then 1 to MaxSpeed. Not a counter. Written only by
 	// setSpeedLocked (speed.go): the start-your-engines state-based
 	// action and the inherent once-per-turn trigger.

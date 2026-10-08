@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Max speed — {T}: Put a +1/+1 counter on target creature or Vehicle
 //	 you control. Activate only as a sorcery."
 //
-// ADR 0136 (#2122), for the Sami Whammy deck (#2190). The exile is
+// ADR 0138 (#2122), for the Sami Whammy deck (#2190). The exile is
 // Static Prison's "until this leaves the battlefield" (CR 610.3): one
 // exile, returned as the Snare leaves; a Snare removed before its
 // trigger resolves exiles nothing (CR 610.3b). The max-speed ability is

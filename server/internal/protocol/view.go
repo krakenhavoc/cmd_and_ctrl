@@ -1668,7 +1668,7 @@ type PlayerView struct {
 	Life   int    `json:"life"`
 	Poison int    `json:"poison,omitempty"`
 	Energy int    `json:"energy,omitempty"`
-	// Speed is the player's speed (CR 702.179, ADR 0136): omitted
+	// Speed is the player's speed (CR 702.179, ADR 0138): omitted
 	// while they have none, then 1 to 4; 4 is max speed (CR 702.178a).
 	// Public: every viewer gets the same number.
 	Speed     int      `json:"speed,omitempty"`

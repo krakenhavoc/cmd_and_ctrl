@@ -4578,7 +4578,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.prepareCopySweepSBALocked() {
 		fired = true
 	}
-	// CR 702.179a (ADR 0136): a player with no speed who controls a
+	// CR 702.179a (ADR 0138): a player with no speed who controls a
 	// permanent with start your engines! gets speed 1. See speed.go.
 	if g.startYourEnginesSBALocked() {
 		fired = true

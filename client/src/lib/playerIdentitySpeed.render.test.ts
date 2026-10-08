@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// ADR 0136 (CR 702.179): a player's speed is public, so the seat shows
+// ADR 0138 (CR 702.179): a player's speed is public, so the seat shows
 // it on every seat, its own included, as a small chip beside the other
 // player markers. Nothing while a seat has no speed, and the chip is
 // marked at max speed.

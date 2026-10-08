@@ -210,7 +210,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// player, so there is nothing to gate.
 		g.layerVersion.Add(1)
 	case EventSpeedChanged:
-		// ADR 0136, CR 702.178a: "Max speed — this creature gets +1/+1"
+		// ADR 0138, CR 702.178a: "Max speed — this creature gets +1/+1"
 		// reads its controller's speed, a layer input nothing on the
 		// board moves to announce. At most four changes per player per
 		// game, so no gate.

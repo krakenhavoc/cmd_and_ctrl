@@ -994,7 +994,7 @@ func NewGame() *Game {
 	// PendingTriggers first — CR 603.3b reorders anything that
 	// actually matters. See monarch.go.
 	g.Listeners = append(g.Listeners, monarchTriggers{})
-	// ADR 0136, CR 702.179d: speed's inherent once-per-turn trigger has
+	// ADR 0138, CR 702.179d: speed's inherent once-per-turn trigger has
 	// no source either, so it rides the registry for the monarch's
 	// reason and right after it. See speed.go.
 	g.Listeners = append(g.Listeners, speedTriggers{})

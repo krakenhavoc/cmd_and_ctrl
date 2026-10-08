@@ -9,7 +9,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// speed_cards_test.go — ADR 0136's proof cards (#2122). Each test sets
+// speed_cards_test.go — ADR 0138's proof cards (#2122). Each test sets
 // the controller's speed directly (SetSpeedForTest, through the one
 // write and its event) and checks the card's "Max speed —" ability is
 // off below 4 and on at 4. The speed rules themselves are pinned in

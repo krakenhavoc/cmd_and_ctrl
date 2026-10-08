@@ -1,4 +1,4 @@
-// A player's speed (CR 702.179, ADR 0136): PlayerView.speed, 1 to 4,
+// A player's speed (CR 702.179, ADR 0138): PlayerView.speed, 1 to 4,
 // absent while they have none. The seat chip's hover says the rule in
 // plain words, so a player who has never seen Aetherdrift can read it.
 

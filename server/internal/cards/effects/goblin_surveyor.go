@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Start your engines!
 //	 Max speed — {3}, Exile this card from your graveyard: Draw a card."
 //
-// ADR 0136 (#2122). The ability functions from the graveyard (CR 113.6,
+// ADR 0138 (#2122). The ability functions from the graveyard (CR 113.6,
 // ADR 0062), and so does the max speed ability that grants it
 // (CR 702.178b), so it works there while its owner's speed is 4. The
 // speed comes from any permanent with start your engines!, this one

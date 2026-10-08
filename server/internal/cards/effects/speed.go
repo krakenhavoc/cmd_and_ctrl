@@ -7,7 +7,7 @@ import (
 )
 
 // speed.go — the card-side vocabulary for Aetherdrift's speed
-// (CR 702.178, 702.179). ADR 0136, #2122.
+// (CR 702.178, 702.179). ADR 0138, #2122.
 //
 // The engine owns the mechanic (game/speed.go): the start-your-engines
 // state-based action, the inherent once-per-turn trigger, the cap at 4.
@@ -19,7 +19,7 @@ import (
 // "Max speed — [ability]" means "as long as your speed is 4, this
 // object has [ability]" (CR 702.178a). It is NOT an ADR 0071
 // designation gate: that gate reads the object only, and max speed is
-// the PLAYER's (ADR 0136 §5). So each constructor below puts one
+// the PLAYER's (ADR 0138 §5). So each constructor below puts one
 // predicate, YouHaveMaxSpeed, in the ability's own game-aware hook —
 // AppliesTo for a static, a trigger, a replacement or a cost modifier,
 // Condition for an activated or mana ability. Wrap the ability exactly
@@ -76,7 +76,7 @@ func MaxSpeedCondition() ActivationCondition {
 // printed "Activate only as a sorcery" or "only once each turn" still
 // holds. While the activator is short the view greys the row
 // (condition_unmet), the engine refuses it and the enumerator does not
-// offer it (ADR 0136 §5).
+// offer it (ADR 0138 §5).
 func MaxSpeedActivated(a ActivatedAbility) ActivatedAbility {
 	a.Condition = AllConditions(MaxSpeedCondition(), a.Condition)
 	return a

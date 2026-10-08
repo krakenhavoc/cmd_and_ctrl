@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Max speed — {T}, Sacrifice this artifact: Draw two cards, then
 //	 discard a card."
 //
-// ADR 0136 (#2122). The loot is an ordinary activated ability,
+// ADR 0138 (#2122). The loot is an ordinary activated ability,
 // activatable only while its controller has max speed (CR 702.178a).
 //
 // No simplification.
