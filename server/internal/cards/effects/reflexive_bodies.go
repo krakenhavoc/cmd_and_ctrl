@@ -109,6 +109,18 @@ var (
 		simpleBody(firstTargetGainsUntilEndOfTurn(0, "Riddle Gate Gargoyle — lifelink until end of turn", "lifelink")),
 		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
+	// Spellbook Vendor (#1945): "when you do, create a Sorcerer Role
+	// token attached to target creature you control".
+	spellbookVendorSorcererBody = game.ReflexiveBody("spellbook-vendor/sorcerer-role",
+		simpleBody(createRoleOnFirstTarget(RoleSorcerer)),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+
+	// Merry Bards (#1945): "when you do, create a Young Hero Role token
+	// attached to target creature you control".
+	merryBardsYoungHeroBody = game.ReflexiveBody("merry-bards/young-hero-role",
+		simpleBody(createRoleOnFirstTarget(RoleYoungHero)),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+
 	// Cyclops Superconductor (ADR 0129 §3): "when you do, this creature
 	// deals damage equal to its power to any target". The power is its
 	// last-known power as it died, fixed when the energy was paid, and

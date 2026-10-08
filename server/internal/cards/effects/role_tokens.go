@@ -16,13 +16,22 @@ import (
 // state-based action are engine; this file is the printed token
 // definitions and the CreateRoleToken primitive that makes one.
 //
-// Declared here: Monster, Cursed, Royal and Wicked. Their text is a
-// static (+P/+T, a base-P/T set, trample) or a ward granted to the
-// enchanted creature, plus Wicked's own "put into a graveyard"
-// trigger — every one is an existing shape. Sorcerer, Young Hero,
-// Virtuous, Questing and Chef each GRANT the enchanted creature a
-// triggered ability or count enchantments; none is declared, so a
-// card making one stays off the catalog.
+// Declared here: Monster, Cursed, Royal, Wicked, Sorcerer, Young Hero,
+// Virtuous and Chef. Monster, Cursed, Royal and Wicked are a static
+// (+P/+T, a base-P/T set, trample) or a ward, plus Wicked's own "put
+// into a graveyard" trigger. Sorcerer, Young Hero and Chef give the
+// enchanted creature a TRIGGERED ability whose source is the creature,
+// not the Role ("Whenever this creature attacks, scry 1."): each is a
+// layer-6 grant of a bundle the token template declares in Grants
+// (ADR 0093, amended 2026-10-08), so "this creature" is the host by
+// construction and the trigger is the creature's own, controlled by
+// the creature's controller. Virtuous is a layer 7c count of the
+// enchantments the Role's controller controls.
+//
+// Questing ("has all the abilities of Questing Beast") is not
+// declared: Questing Beast's block restriction and its combat-damage
+// prevention rule are card slots (BlockRules, DamageCantBePrevented),
+// and an ability bundle has neither.
 //
 // # A Role is not created when it has nowhere legal to go
 //
@@ -41,6 +50,11 @@ const (
 	RoleCursed  RoleKind = "cursed"
 	RoleRoyal   RoleKind = "royal"
 	RoleWicked  RoleKind = "wicked"
+
+	RoleSorcerer  RoleKind = "sorcerer"
+	RoleYoungHero RoleKind = "young-hero"
+	RoleVirtuous  RoleKind = "virtuous"
+	RoleChef      RoleKind = "chef"
 )
 
 func roleBuilder(k RoleKind) tokenTemplateBuilder {
@@ -53,6 +67,14 @@ func roleBuilder(k RoleKind) tokenTemplateBuilder {
 		return printedRoyalRoleToken
 	case RoleWicked:
 		return printedWickedRoleToken
+	case RoleSorcerer:
+		return printedSorcererRoleToken
+	case RoleYoungHero:
+		return printedYoungHeroRoleToken
+	case RoleVirtuous:
+		return printedVirtuousRoleToken
+	case RoleChef:
+		return printedChefRoleToken
 	}
 	panic("effects.CreateRoleToken: unknown role " + string(k))
 }
@@ -106,6 +128,88 @@ func printedWickedRoleToken() tokenTemplate {
 			}),
 		},
 		Text: "Enchant creature\nEnchanted creature gets +1/+0.\nWhen this token is put into a graveyard, each opponent loses 1 life.",
+	}
+}
+
+const (
+	sorcererRoleGrant  = "sorcerer-role/scry"
+	youngHeroRoleGrant = "young-hero-role/counter"
+	chefRoleGrant      = "chef-role/food"
+)
+
+func printedSorcererRoleToken() tokenTemplate {
+	return tokenTemplate{
+		Slug:   "sorcerer-role",
+		Card:   roleCard("Sorcerer Role", "U"),
+		Static: []game.StaticAbility{PumpAttached(1, 1), GrantAbilitiesToAttached(sorcererRoleGrant)},
+		Grants: []AbilityGrant{{
+			Key: sorcererRoleGrant,
+			Triggered: []game.TriggeredAbility{
+				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return attackDeclared(ev, source)
+				}, "Sorcerer Role — scry 1", func(g *game.Game, item *game.StackItem) error {
+					return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+				}),
+			},
+			Text: "Whenever this creature attacks, scry 1.",
+		}},
+		Text: "Enchant creature\nEnchanted creature gets +1/+1 and has \"Whenever this creature attacks, scry 1.\"",
+	}
+}
+
+func printedYoungHeroRoleToken() tokenTemplate {
+	return tokenTemplate{
+		Slug:   "young-hero-role",
+		Card:   roleCard("Young Hero Role", "W"),
+		Static: []game.StaticAbility{GrantAbilitiesToAttached(youngHeroRoleGrant)},
+		Grants: []AbilityGrant{{
+			Key: youngHeroRoleGrant,
+			Triggered: []game.TriggeredAbility{
+				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					// Intervening-if, first check (CR 603.4).
+					return attackDeclared(ev, source) && source.CurrentToughness() <= 3
+				}, "Young Hero Role — a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+					// Second check, on resolution: a pump in response
+					// that lifts the toughness past 3 stops the counter.
+					c, ok := g.LookupCardForEffect(item.SourceCardID)
+					if !ok || c.CurrentToughness() > 3 {
+						return nil
+					}
+					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
+				}),
+			},
+			Text: "Whenever this creature attacks, if its toughness is 3 or less, put a +1/+1 counter on it.",
+		}},
+		Text: "Enchant creature\nEnchanted creature has \"Whenever this creature attacks, if its toughness is 3 or less, put a +1/+1 counter on it.\"",
+	}
+}
+
+func printedVirtuousRoleToken() tokenTemplate {
+	return tokenTemplate{
+		Slug:   "virtuous-role",
+		Card:   roleCard("Virtuous Role", "W"),
+		Static: []game.StaticAbility{PumpAttachedPer(1, 1, enchantmentsControlledBy)},
+		Text:   "Enchant creature\nEnchanted creature gets +1/+1 for each enchantment you control.",
+	}
+}
+
+func printedChefRoleToken() tokenTemplate {
+	return tokenTemplate{
+		Slug:   "chef-role",
+		Card:   roleCard("Chef Role", "G"),
+		Static: []game.StaticAbility{PumpAttached(1, 1), GrantAbilitiesToAttached(chefRoleGrant)},
+		Grants: []AbilityGrant{{
+			Key: chefRoleGrant,
+			Triggered: []game.TriggeredAbility{
+				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return attackDeclared(ev, source)
+				}, "Chef Role — create a Food token", func(g *game.Game, item *game.StackItem) error {
+					return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
+				}),
+			},
+			Text: "Whenever this creature attacks, create a Food token.",
+		}},
+		Text: "Enchant creature\nEnchanted creature gets +1/+1 and has \"Whenever this creature attacks, create a Food token.\"",
 	}
 }
 

@@ -684,6 +684,37 @@ is not a `ScopedGrant` registry. It is one more mod kind on ADR 0041 phase 3's `
   `Waiting` list keeps Ultima. Teferi's Talent (granted loyalty abilities) stays out of scope per
   Decision 10.
 
+## Amendment 2026-10-08 — a token template can declare the bundles it grants (#1945)
+
+The Sorcerer, Young Hero and Chef Roles are token Auras that give the enchanted creature a
+TRIGGERED ability ("Whenever this creature attacks, scry 1."), so the question was whether this
+ADR's machinery already grants triggered abilities. It does: a bundle's `Triggered` slot is read
+through `TriggersForCard` with the recipient as the trigger's source, so "this creature" is the
+host by construction (Decision 4) and the ability is controlled by the host's controller, not the
+Role's. Dorothea's Retribution was the first Aura to use it.
+
+What was missing was a place for a TOKEN to declare a bundle. `Spec.Grants` belongs to a card with
+an oracle ID, and a Role has none. The change is one slot:
+
+- `tokenTemplate.Grants []AbilityGrant` (`cards/effects/token_catalog.go`). The token registry
+  runs each bundle through the same boot-time checks as a card's (`checkGrants`: a key, an ability,
+  a `Text`, a catalog-wide unique key, no `ActiveWhen`, no off-battlefield zone) and files it under
+  `game.GrantKey(Key)` in the same `defs` map. `TestEveryGrantKeyResolves` therefore covers token
+  grants with no change.
+- The token's own `Static` names the bundle with `GrantAbilitiesToAttached(key)`. Keys are
+  namespaced with the token's slug (`sorcerer-role/scry`, `young-hero-role/counter`,
+  `chef-role/food`).
+
+The closure rules are unchanged. A granted trigger's `Effect` reads everything off the item
+(`item.SourceCardID` is the enchanted creature, `item.Controller` its controller) and captures
+nothing, and a Young Hero's intervening "if its toughness is 3 or less" is checked in `AppliesTo`
+and again in the effect (CR 603.4). None of the three triggers is optional or targeted, so no
+enumerator or bot change was needed.
+
+**Not covered.** The Questing Role ("has all the abilities of Questing Beast") still waits: two of
+Questing Beast's abilities are card slots rather than bundle abilities (`BlockRules`, and
+`DamageCantBePrevented`), and a granted block rule or damage-prevention rule has no bundle slot.
+
 ## Open questions for the owner
 
 This is a product decision the code and the rules do not settle. The ADR does not answer it.

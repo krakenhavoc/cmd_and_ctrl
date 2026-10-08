@@ -1473,13 +1473,13 @@ var items = []Item{
 	{
 		Slug: "role-tokens", Name: "Role tokens", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Role tokens, the Aura tokens such as the Monster Role that are created attached to a creature.",
-		Missing:     "The Monster, Cursed, Royal and Wicked Roles work; the Sorcerer, Young Hero, Virtuous, Questing and Chef Roles don't exist yet, because they give the enchanted creature a triggered ability or count enchantments.",
+		Missing:     "Every Role except the Questing Role works. The Questing Role gives the enchanted creature all of Questing Beast's abilities, and two of those (it can't be blocked by creatures with power 2 or less, and combat damage from your creatures can't be prevented) are rules a granted ability can't carry yet.",
 		Rules:       []string{"111.10", "303.7a", "704.5z"},
 		Issue:       1945,
 		Tracked:     "#1945 (found landing ADR 0108 PR 1, #1886)",
-		Examples:    []string{"Faunsbane Troll"},
-		Waiting:     []string{"Living Lectern", "Splashy Spellcaster", "Spellbook Vendor", "Unassuming Sage", "Cut In", "Embereth Veteran", "Merry Bards", "Protective Parents", "Return Triumphant", "Ellivere of the Wild Court", "Questing Cosplayer", "Ratatwotwo"},
-		EngineNotes: "tokens: Monster, Cursed, Royal and Wicked are token templates (`role_tokens.go`) made by `CreateRoleToken`, and `attachmentSBALocked` applies CR 704.5z (ADR 0036 amendment 2026-10-08). Faunsbane Troll's \"Sacrifice an Aura attached to this creature\" cost is `TargetSpec.AttachedToSource`. The remaining Roles each GRANT a triggered ability (Sorcerer: scry on attack; Young Hero: a counter on attack; Chef: a Food on attack), count enchantments (Virtuous) or copy another card's abilities (Questing); a token template has no slot for a trigger the enchanted creature, not the Role, is the source of.",
+		Examples:    []string{"Faunsbane Troll", "Living Lectern", "Ellivere of the Wild Court"},
+		Waiting:     []string{"Questing Cosplayer"},
+		EngineNotes: "tokens: the Roles are token templates (`role_tokens.go`) made by `CreateRoleToken`, and `attachmentSBALocked` applies CR 704.5z (ADR 0036 amendment 2026-10-08). Faunsbane Troll's \"Sacrifice an Aura attached to this creature\" cost is `TargetSpec.AttachedToSource`. A Role that gives the enchanted creature a triggered ability (Sorcerer: scry on attack; Young Hero: a counter on attack; Chef: a Food on attack) is a layer-6 grant of an ADR 0093 bundle that the token template declares in `tokenTemplate.Grants` (ADR 0093 amendment 2026-10-08), so the trigger's source is the enchanted creature. Virtuous is a layer 7c count of the Role controller's enchantments. Questing waits on `AbilityGrant` having no slot for a block rule or for `DamageCantBePrevented`, which Questing Beast declares on its own spec.",
 	},
 	{
 		Slug: "dealt-damage-by-this-creature-this-turn", Name: "Creatures dealt damage by one creature this turn", Kind: KindSeam, Status: StatusMissing,
