@@ -54,7 +54,8 @@ func fetchErr(format string, a ...any) error {
 //
 // The zero value is not usable; use NewFetcher.
 type Fetcher struct {
-	client *http.Client
+	client  *http.Client
+	timeout time.Duration
 }
 
 // fetcherHooks are the test seams. Production leaves them nil.
@@ -67,6 +68,8 @@ type fetcherHooks struct {
 	// tlsConfig replaces the transport's TLS configuration, so a test
 	// can trust an httptest certificate.
 	tlsConfig *tls.Config
+	// timeout overrides FetchTimeout for the HTTP client. Zero means use FetchTimeout.
+	timeout time.Duration
 }
 
 // NewFetcher returns the production Fetcher.
@@ -132,23 +135,30 @@ func newFetcher(h fetcherHooks) *Fetcher {
 			return nil, last
 		},
 	}
-	return &Fetcher{client: &http.Client{
-		Transport: tr,
-		Timeout:   FetchTimeout,
-		// No Jar: no cookies are stored or sent.
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) > MaxRedirects {
-				return fetchErr("too many redirects")
-			}
-			if req.URL.Scheme != "https" {
-				return fetchErr("the link redirects to a page that is not https")
-			}
-			// net/http adds the previous URL as a Referer on a redirect.
-			// It would tell the next host which link was pasted.
-			req.Header.Del("Referer")
-			return nil
+	timeout := h.timeout
+	if timeout == 0 {
+		timeout = FetchTimeout
+	}
+	return &Fetcher{
+		client: &http.Client{
+			Transport: tr,
+			Timeout:   timeout,
+			// No Jar: no cookies are stored or sent.
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) > MaxRedirects {
+					return fetchErr("too many redirects")
+				}
+				if req.URL.Scheme != "https" {
+					return fetchErr("the link redirects to a page that is not https")
+				}
+				// net/http adds the previous URL as a Referer on a redirect.
+				// It would tell the next host which link was pasted.
+				req.Header.Del("Referer")
+				return nil
+			},
 		},
-	}}
+		timeout: timeout,
+	}
 }
 
 // ParseURL validates the URL a person pasted before any network is
@@ -183,7 +193,7 @@ func (f *Fetcher) Fetch(ctx context.Context, rawURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, FetchTimeout)
+	ctx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {

@@ -333,23 +333,28 @@ func TestFetchRefusesANon200(t *testing.T) {
 }
 
 func TestFetchTimesOutOnASlowHost(t *testing.T) {
-	release := make(chan struct{})
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-release:
-		case <-r.Context().Done():
-		}
+		// Write response headers claiming a large body, then block until the context is cancelled.
+		// This forces the client to wait for data that never arrives.
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Length", "1000000") // 1MB, will never be written
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		// Block until the request context is cancelled by the timeout.
+		<-r.Context().Done()
 	}))
 	defer srv.Close()
-	defer close(release)
-	f := testFetcher(srv, fetcherHooks{allow: guard})
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	f := testFetcher(srv, fetcherHooks{
+		allow:   guard,
+		timeout: 30 * time.Millisecond,
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	start := time.Now()
 	if _, err := f.Fetch(ctx, srv.URL); !errors.Is(err, ErrFetch) {
 		t.Errorf("err = %v, want ErrFetch", err)
 	}
-	if d := time.Since(start); d > 3*time.Second {
-		t.Errorf("took %v", d)
+	if d := time.Since(start); d > 500*time.Millisecond {
+		t.Errorf("took %v, want < 500ms", d)
 	}
 }
