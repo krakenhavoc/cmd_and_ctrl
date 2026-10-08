@@ -717,3 +717,43 @@ Decision 7 needs nothing new: `StaticForDuration` +
 `game.IndefiniteDuration()` already said this, and the engine-side
 earthbend uses `registerScopedStaticLocked` directly so all three
 halves take one timestamp.
+
+## Amendment (2026-10-08, #2109): a duration on a player's attacks, "during their next turn"
+
+[ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) filled the player-level duration slice's ninth payload; this is the tenth, and the first whose window is "during THEIR next turn" rather than "until YOUR next turn". The Second Doctor's How Civil of You: "Each opponent who does can't attack you or permanents you control during their next turn."
+
+### What exists, what is missing
+
+- Attack restrictions are per CREATURE (`Characteristic.AttackTargetRestrictions`, ADR 0106 §2) and die with it; attack limits and taxes are statics on a permanent. Nothing stops a PLAYER's creatures, including ones that arrive later, from attacking another player.
+- `PlayerStatic` is the slice of things a player has for a CR 611.2 duration, swept through `durationExpiredLocked`, and has no such payload.
+
+### The rules
+
+- **CR 508.1c.** A restriction on which creatures can attack, or whom, is checked on the declaration. **CR 611.2a / 611.2b.** An effect from a resolving ability lasts for its stated duration. **CR 800.4m.** A player who leaves the game takes it with them.
+- "During their next turn" is the restricted player's next turn: from the moment it begins to the end of it.
+
+### Decision
+
+1. **A tenth `PlayerStatic` payload on the RESTRICTED player.** `CantAttack` is a `game.CantAttackGrant{Protected, FromTurnsBegun}`; `Protected == uuid.Nil` is the presence bit. The entry's `Duration` is `UntilEndOfYourNextTurnDuration(attacker)`, the existing constructor from the #945 amendment ("until the end of THEIR next turn", stamped one seat-turn ahead).
+2. **A start floor.** That duration is already live when it is made, which would reach the turn in progress if the grant resolves in the restricted player's own turn. `FromTurnsBegun` is their `TurnsBegun + 1` at creation, and the reader applies the grant only once their count has reached it. Together they are exactly their next turn.
+3. **One writer, one reader.** `Game.GrantCantAttackPlayerForEffect(attacker, protected, label, source)` refuses a missing player or a self-grant. `playerCantAttackRefusalLocked` tests the floor and the duration itself (the sweep is hygiene, not the truth) and is called from `canAttackTargetWithLocked`, so both declaration verbs, the CR 508.1d requirement search and the enumerator's per-attacker list (`AttackTargetsForAttackerForEffect`) follow with no second copy of the rule. The refusal is a `*PlayerCantAttackError` wrapping `ErrIllegalAttackTarget`, so the existing wire mapping applies.
+4. **What it covers.** The protected player, and any permanent they control that can be attacked. A battle is covered by its controller, never its protector: "permanents you control" does not name the protector.
+
+Rejected: a creature-level clause stamped on each of the restricted player's creatures. It would miss creatures that enter later, which the card's text reaches.
+
+### Cards
+
+- **The Second Doctor: Full.** "Players have no maximum hand size" is Price of Knowledge's static; the end-step trigger asks each player in turn order, controller first, "may draw a card?", then everyone who said yes draws and each such opponent gets the grant.
+
+### Tests
+
+`game/cant_attack_player_test.go` (the player, their planeswalker and a creature that arrives after the grant; the window ends with the turn; a grant made in their own turn waits for the next; the reader tests the duration with no sweep; clone isolation), `legal/cant_attack_player_test.go` (offered moves agree with the engine) and `cards/effects/the_second_doctor_test.go`.
+
+### Snapshot impact
+
+Additive: `seats[].statics[].cantAttack.{protected,fromTurnsBegun}`, recorded in `snapshot_shape/v7.txt`. No new closure. A binary that predates it drops the key on restore, which loses the restriction (weaker than printed, never stronger).
+
+### Out of scope
+
+- Showing the restriction on the seat or the creatures as a chip. The refusal sentence and the withheld moves carry it.
+- A restriction that names a creature subset or lasts for another window: a new payload field when a card needs it.

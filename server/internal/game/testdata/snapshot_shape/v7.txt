@@ -3901,6 +3901,9 @@ seats[].poison	number:int
 seats[].seat	number:int
 seats[].statics	array
 seats[].statics[]	object
+seats[].statics[].cantAttack	object
+seats[].statics[].cantAttack.fromTurnsBegun	number:int
+seats[].statics[].cantAttack.protected	custom(uuid.UUID)
 seats[].statics[].cantBeCountered	object
 seats[].statics[].cantBeCountered.active	bool
 seats[].statics[].cantBeCountered.except	object
