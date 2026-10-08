@@ -166,3 +166,28 @@ func TestEvaluateCountsBoardsPerSeat(t *testing.T) {
 			theirs.Creatures, mine.Creatures)
 	}
 }
+
+// #2730: ScoreEval sums the opposition in one fixed order, so the same
+// breakdown scores the same bits on every call. The strengths are
+// chosen so the order matters: (0.1 + 0.2) + 0.3 is
+// 0.6000000000000001 in float64 and (0.2 + 0.3) + 0.1 is 0.6. Go
+// starts a map's iteration at a random point on every range, so a
+// map-ordered sum sees both answers within a few hundred calls. A few
+// ulps is all it is, and it was enough to break a tie between two
+// equally priced wipes one way in one run and the other way in the
+// next.
+func TestScoreEvalDoesNotDependOnMapOrder(t *testing.T) {
+	evals := map[string]*heuristic.SeatEval{
+		"me": {ID: "me"},
+		"a":  {ID: "a", Strength: 0.1},
+		"b":  {ID: "b", Strength: 0.2},
+		"c":  {ID: "c", Strength: 0.3},
+	}
+	w := heuristic.DefaultWeights()
+	first := w.ScoreEval(evals, "me")
+	for i := 0; i < 500; i++ {
+		if got := w.ScoreEval(evals, "me"); got != first {
+			t.Fatalf("call %d scored %v, the first call %v: the sum follows map order", i, got, first)
+		}
+	}
+}

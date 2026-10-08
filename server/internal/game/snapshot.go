@@ -655,6 +655,9 @@ type playerSnapshot struct {
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
 	MaxHandSizeAt int64 `json:"maxHandSizeAt,omitempty"`
+	// Speed is the player's speed (ADR 0138, CR 702.179). Additive
+	// within v7: a file without it restores as no speed.
+	Speed int `json:"speed,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -895,6 +898,14 @@ type cardSnapshot struct {
 	// already been paid for. Additive within v7.
 	Saddled   bool        `json:"saddled,omitempty"`
 	SaddledBy []ObjectRef `json:"saddledBy,omitempty"`
+	// Suspected is the CR 701.60 suspected designation and SuspectedAt
+	// the layer-6 timestamp its menace grant is ordered at (ADR 0071
+	// amendment, #2698), carried for Monstrous's reason: "not
+	// suspected" is a legal zero value, so a restore that dropped it
+	// would hand a suspected Barbed Servitor its blocking back, and say
+	// nothing about it.
+	Suspected   bool  `json:"suspected,omitempty"`
+	SuspectedAt int64 `json:"suspectedAt,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -2025,6 +2036,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Monstrous:                c.Monstrous,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
+		Suspected:                c.Suspected,
+		SuspectedAt:              c.SuspectedAt,
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2099,6 +2112,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,
 		MaxHandSizeAt:         p.MaxHandSizeAt,
+		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
@@ -2871,6 +2885,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Monstrous:                c.Monstrous,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
+		Suspected:                c.Suspected,
+		SuspectedAt:              c.SuspectedAt,
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2976,6 +2992,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,
 		MaxHandSizeAt:         p.MaxHandSizeAt,
+		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no

@@ -23,6 +23,7 @@
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
+  import { speedTitle } from "../../speed";
   import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
@@ -529,6 +530,19 @@
           {/each}
         {/if}
       {/if}
+      <!-- ADR 0138: speed (CR 702.179) is public, so every seat shows
+           it, its own included. A display, not a stepper: no rule
+           lowers a speed, and the engine is its only writer. -->
+      {#if (seat.speed ?? 0) > 0}
+        <span
+          class="marker speed"
+          class:max={(seat.speed ?? 0) >= 4}
+          title={speedTitle(seat.speed ?? 0)}
+          aria-label="speed"
+        >
+          <Icon name="gauge" size={11} />{seat.speed}
+        </span>
+      {/if}
     </div>
   </div>
 
@@ -996,6 +1010,13 @@
   }
   .marker.energy {
     color: var(--accent);
+  }
+  .marker.speed {
+    color: var(--magenta);
+  }
+  .marker.speed.max {
+    border-color: color-mix(in srgb, var(--magenta) 70%, transparent);
+    background: color-mix(in srgb, var(--magenta) 18%, transparent);
   }
   .marker.counter {
     color: #b8c8e8;

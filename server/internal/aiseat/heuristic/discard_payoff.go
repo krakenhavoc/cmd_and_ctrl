@@ -104,7 +104,7 @@ func (st *state) resolutionDiscardPayoff(cfg Config, n int, self *protocol.CardV
 			continue
 		}
 		pay := st.discardPayoff(cfg, c)
-		cands = append(cands, cand{st.cardValue(cfg, c) - pay, pay})
+		cands = append(cands, cand{st.handKeepValue(cfg, c) - pay, pay})
 	}
 	sort.SliceStable(cands, func(i, j int) bool { return cands[i].net < cands[j].net })
 	var v float64

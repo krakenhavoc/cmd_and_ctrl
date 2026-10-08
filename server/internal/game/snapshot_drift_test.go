@@ -486,6 +486,11 @@ var cardFields = plan(
 	// Monstrous's reason.
 	"Saddled", carried, "",
 	"SaddledBy", carried, "",
+	// ADR 0071 amendment (#2698): the CR 701.60 suspected designation
+	// and the timestamp its layer-6 menace grant is ordered at, carried
+	// for Monstrous's reason.
+	"Suspected", carried, "",
+	"SuspectedAt", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",
@@ -592,6 +597,9 @@ var playerFields = plan(
 	"MaxHandSize", carried, "",
 	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.
 	"MaxHandSizeAt", carried, "",
+	// ADR 0138: the player's speed (CR 702.179). Carried: a player
+	// keeps it after the permanent that started it has gone.
+	"Speed", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
 	// ADR 0066 granted cast and play permissions. Carried, not

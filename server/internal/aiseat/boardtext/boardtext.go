@@ -110,6 +110,11 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if pc := PlayerCounters(s.Counters); pc != "" {
 			fmt.Fprintf(&b, ", %s", pc)
 		}
+		// ADR 0138 §8: the seat's speed (CR 702.179), so a model seat
+		// sees who is close to switching their max-speed abilities on.
+		if sp := SpeedPhrase(s.Speed); sp != "" {
+			fmt.Fprintf(&b, ", %s", sp)
+		}
 		// ADR 0057 Decision 6: a seat behind a "can't lose" or "can't
 		// win" gate plays by different arithmetic, and the model is
 		// told so on the seat line, with the sources.
@@ -239,6 +244,11 @@ func PermanentLabel(c *protocol.CardView, opts Options) string {
 	if c.RingBearer {
 		// ADR 0114 §7: whose Ring-bearer it is, is its controller.
 		flags = append(flags, "Ring-bearer")
+	}
+	if c.Suspected {
+		// CR 701.60: the menace and the can't-block are in the ability
+		// list and the restriction, but the word is what the table says.
+		flags = append(flags, "suspected")
 	}
 	if c.Unimplemented {
 		if opts.NoteUnimplemented {
@@ -475,6 +485,18 @@ func endGateNote(s *protocol.PlayerView) string {
 		out += " because of " + strings.Join(names, ", ")
 	}
 	return out
+}
+
+// SpeedPhrase is a seat's speed (CR 702.179, ADR 0138) as a phrase:
+// "speed 3", "speed 4 (max speed)", or empty for a seat with none.
+func SpeedPhrase(speed int) string {
+	if speed <= 0 {
+		return ""
+	}
+	if speed >= 4 {
+		return "speed 4 (max speed)"
+	}
+	return "speed " + strconv.Itoa(speed)
 }
 
 // PlayerCounters is a seat's non-zero player counters as one phrase,

@@ -124,3 +124,45 @@ func TestMonstrousViewIsPublicOnTheBattlefield(t *testing.T) {
 		t.Error("a permanent that is not monstrous projects monstrous")
 	}
 }
+
+// TestSuspectedViewIsPublicOnTheBattlefield — #2698: CardView.suspected
+// is read straight off a battlefield permanent, like monstrous, is
+// absent for one that is not suspected, and survives a face-down
+// permanent: the designation was given to the object in public, and
+// the table needs it to know why the creature cannot block.
+func TestSuspectedViewIsPublicOnTheBattlefield(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	suspectID, plainID, downID := uuid.New(), uuid.New(), uuid.New()
+	now := time.Now().UnixNano()
+	seen := map[uuid.UUID]bool{owner.ID: true, g.Seats[1].ID: true}
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: suspectID, Name: "Barbed Servitor", TypeLine: "Artifact Creature — Construct",
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, Suspected: true, KnownBy: seen,
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: plainID, Name: "Grizzly Bears", TypeLine: "Creature — Bear",
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, KnownBy: seen,
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: downID, Name: "Hidden", TypeLine: "Creature — Bear", FaceDown: true,
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, Suspected: true,
+			KnownBy: map[uuid.UUID]bool{owner.ID: true},
+		})
+	})
+	v := ViewOfGameFor(g, g.Seats[1].ID.String())
+	got := map[string]bool{}
+	for _, c := range v.Battlefield.Cards {
+		got[c.InstanceID] = c.Suspected
+	}
+	if !got[suspectID.String()] {
+		t.Error("a suspected permanent does not project suspected to an opponent")
+	}
+	if got[plainID.String()] {
+		t.Error("a permanent that is not suspected projects suspected")
+	}
+	if !got[downID.String()] {
+		t.Error("a suspected face-down permanent hides its designation from an opponent")
+	}
+}

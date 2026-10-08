@@ -1283,12 +1283,12 @@ this ADR has so far:
 - **The sweep.** `sweepTurnEndLocked` (the CR 514.2 cleanup sweep) calls
   `clearSaddledLocked`, which clears the flag and the saddlers on the
   battlefield and the phased-out zone and bumps the layer version when anything
-  was cleared, so a gated static switches off with the designation. #2695 also
-  says the designation ends when the Mount phases out, so `phaseOutLocked`
-  clears it too, unlike the other designations, which ride through a phase-out
-  (CR 702.26d). The sweep of the phased-out zone is only a backstop. If the
-  pinned rules turn out to let a saddled Mount stay saddled through a phase-out,
-  that one clear is the line to remove; it errs weaker, never stronger.
+  was cleared, so a gated static switches off with the designation. Phasing
+  out does not clear it (#2718): CR 702.171b ends the designation at end of
+  turn or when the permanent leaves the battlefield, and a phased-out
+  permanent has not left (CR 702.26d), so the Mount is still saddled if it
+  phases back in the same turn. The sweep of the phased-out zone is what ends
+  it for a Mount that is still out at cleanup.
 - **`SaddledBy` and `Game.SaddlersOf`** answer "creatures that saddled it this
   turn". The record is the creatures tapped to pay for the saddle ability that
   resolved, as objects (instance ID and `ObjectEpoch`); `SaddlersOf` returns
@@ -1385,3 +1385,124 @@ saddle of a turn (Stubborn Burrowfiend), and "creatures that saddled it"
   Charger, Alacrian Jaguar, Archmage's Newt) and the two support cards
   (Kolodin, Alacrian Armory) need nothing the seam lacks; they are one file
   each.
+## Amendment (2026-10-08): a designation that gives abilities, Suspected (CR 701.60, #2698)
+
+**Status:** Accepted · 2026-10-08 · tracked on
+[#2698](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2698), S58 deck
+requests (Barbed Servitor, Night - Sauron The Slayer,
+[#2062](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2062)).
+No new ADR number: this extends the designation family this ADR owns. The
+rule lettering below (701.60a, c, d) is the issue's; the CR text file is not
+in the repository, so it was not checked against the September 2026
+edition.
+
+### Context
+
+> **701.60a** Some spells and abilities instruct a player to suspect a
+> creature. That creature becomes suspected until it leaves the battlefield or
+> a spell or ability causes it to no longer be suspected.
+> **701.60c** A suspected permanent has menace and "This creature can't
+> block" for as long as it's suspected.
+> **701.60d** A suspected permanent can't become suspected again.
+
+Suspected is a designation, but the six before it all do the same thing: they
+switch a permanent's OWN printed abilities on, and a Spec declares the gate.
+Suspected does the opposite. It gives ANY creature two things its card never
+prints. About nineteen Commander-legal cards suspect creatures or read
+"suspected", and none of them can say what suspected does, because it is not
+on any Spec.
+
+### Decision: Monstrous's lifecycle, a continuous effect of its own
+
+- **`Card.Suspected bool`** (in the bool block) and **`Card.SuspectedAt
+  int64`** (beside the other timestamps; a lone `int64` after the bool run
+  strands padding, `TestCardHasNoInteriorPadding`). Monstrous's lifecycle in
+  every respect except one: not copiable (`CopiableValuesOf` never reads it),
+  cleared at both CR 400.7 sites, carried by clone and the snapshot (additive
+  to the v7 shape, `carried` in `snapshot_drift_test.go`). The one difference:
+  it is **kept through a control change**. Caught Red-Handed steals a
+  creature and suspects it, and the creature goes home still suspected.
+- **No `DesignationKind`.** The gate exists to hang on a printed ability, and a
+  suspected creature's menace is on none. The effect is built where the
+  keyword counters are (`keyword_counters.go`): `suspectContinuousEffectsLocked`
+  adds ONE source-less layer-6 `ContinuousEffect` per suspected permanent to
+  `activeStaticAbilitiesLocked`'s gather. Source-less means CR 613.6's
+  silencing never reaches it: the designation is not an ability of the
+  permanent. Its `Apply` appends `menace` (`AppendKeywordAbility`, so a
+  creature that already has it keeps one) and ORs in `CantBlock`.
+- **The timestamp is the moment it became suspected** (`SuspectedAt`, stamped
+  by `SuspectForEffect`; a restore from before the field falls back to the
+  permanent's own timestamp). A "loses all abilities" that is older leaves the
+  menace; one that is newer takes it away. Both are tested, and both are
+  CR 613.7.
+- **`CantBlock` is a restriction bit, and that is stricter than a literal
+  reading.** Restrictions have no layer and nothing clears them
+  (`restrictions.go`), so a suspected creature that later loses all abilities
+  still cannot block, where the rule's wording makes "can't block" an ability
+  that would go with the rest. Chosen on purpose: it errs toward the
+  restriction, never toward a creature blocking when the table expected it not
+  to, and it lets the block gate, the enumerator and the view stay as they
+  were. Recorded in `game/suspect.go`.
+- **`Game.SuspectForEffect(id)`** reports whether it suspected. It refuses a
+  permanent that is not on the battlefield, one that is not a creature, and
+  one already suspected (CR 701.60d; this is also what keeps `SuspectedAt`
+  from being rewritten), and bumps the layer version itself rather than
+  emitting an event: no shipped card triggers on becoming suspected, and an
+  event kind is a log-gate entry, a wire doc line and a replay surface for
+  nothing yet. The first "whenever a creature becomes suspected" adds
+  `EventSuspected` and moves the bump onto it, as `EventBecameMonstrous` did.
+  **`UnsuspectForEffect`** and **`IsSuspected`** complete the set.
+- **`PermanentInfo.Suspected`** keeps the designation in last-known
+  information. Agency Coroner's "if the sacrificed creature was suspected" is
+  read after the cost has put the creature in a graveyard, where the flag is
+  gone; `Context.SacrificedPermanent()` carries it.
+
+**Wire:** `CardView.suspected` (omitempty), read straight off a battlefield
+permanent. Public, and **kept on a face-down permanent**, unlike Monstrous:
+Monstrous names an ability the hidden card has, and Suspected names something
+that was done to the object in front of the table, and is the reason the
+creature cannot block. The client renders it as `SUSPECTED` in the existing
+designation badge slot, at the head of its priority chain, because it is the
+one designation that changes what the creature may do right now. The bot's
+board text says `suspected` beside the `menace` already in the ability list.
+
+**Catalog side** (`cards/effects/suspect.go`):
+
+| Printed | Constructor |
+|---|---|
+| "suspect it" / "suspect this creature" | `Suspect{Target: ctx.Source()}` |
+| "suspect up to one target creature" | `Targeting(…, UpToOneTargetCreature(…))` with `SuspectEachLegalTarget` |
+| "it's no longer suspected" | `Unsuspect{Target: id}` |
+| "all suspected creatures are no longer suspected" | `UnsuspectAll{}` (`Match` narrows it) |
+| "suspected creatures" in a target clause | `Suspected()` / `NotSuspected()` |
+| "Sacrifice a suspected creature" | `SacrificeASuspectedCreature()` |
+| "suspect enchanted creature" | `suspectEnchantedCreature` |
+
+`Suspect` and `Unsuspect` run `isNewSourceObject` (#1432) like every primitive
+that names a source. A card whose ability source IS the object that came back
+(Presumed Dead's granted dies trigger) calls the game mutator directly.
+
+**Bots.** Nothing new to enumerate: a suspected blocker is not offered a block
+and a suspected attacker needs two blockers, both through `BlockOptionsLocked`
+(`legal/suspect_test.go`). The board text gains the word.
+
+### Cards
+
+Nineteen. Fifteen ship `full` (Person of Interest, Rune-Brand Juggler,
+J. Jonah Jameson, Rubblebelt Braggart, Repeat Offender, Clandestine Meddler,
+Absolving Lammasu, Agrus Kos, Eliminate the Impossible, Caught Red-Handed,
+Convenient Target, Case of the Stashed Skeleton, Reasonable Doubt, Agency
+Coroner, Deadly Complication). Barbed Servitor carries Brash Taunter's
+"damage from two sources is reflected separately" caveat; It Doesn't Add Up and
+Presumed Dead carry "an entry that asks a question comes back unsuspected";
+Incriminating Impetus carries Shiny Impetus's goad caveat.
+
+### Still not covered
+
+- **Frantic Scapegoat** chooses one of the creatures that entered together.
+- **Nelly Borca** needs a batched "one or more creatures an opponent controls
+  deal combat damage to one or more of your opponents".
+- **Hot Pursuit** binds a goad to the one creature it suspected and gates a
+  take-control trigger on two lost players.
+- **Airtight Alibi** says "can't become suspected", which is a restriction on
+  the suspect action that `SuspectForEffect` does not yet read.

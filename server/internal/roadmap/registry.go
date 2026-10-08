@@ -180,6 +180,15 @@ var items = []Item{
 		Printed:  printedKeyword("daybound"),
 	},
 	{
+		Slug: "start-your-engines", Name: "Start your engines!", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A player who controls a permanent with start your engines! gets a speed of 1. It rises by one on each of their turns when an opponent loses life, up to max speed, 4, and they keep it for the rest of the game.",
+		Rules:    []string{"702.179"},
+		ADR:      "0138-speed.md",
+		Keywords: []string{game.KeywordStartYourEngines},
+		Probe:    hasKeyword(game.KeywordStartYourEngines),
+		Printed:  printedKeyword("start your engines"),
+	},
+	{
 		Slug: "landwalk", Name: "Landwalk", Kind: KindKeyword, Status: StatusImplemented,
 		Summary: "A creature with landwalk (islandwalk, forestwalk and the rest) can't be blocked while the defending player controls a land of that kind.",
 		Rules:   []string{"702.14"},
@@ -613,6 +622,22 @@ var items = []Item{
 		Examples: []string{"Gilded Ghoda"},
 	},
 	{
+		Slug: "boast", Name: "Boast", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "An ability a creature can use only if it attacked this turn, and only once each turn; Birgi, God of Storytelling lets your creatures use each one twice.",
+		Rules:   []string{"702.142"},
+		Issue:   2697,
+		ADR:     "0020-activated-abilities.md",
+		Probe: anyOf(
+			activated(func(ab effects.ActivatedAbility) bool { return ab.Boast }),
+			func(s effects.Spec) bool { return len(s.BoastLimits) > 0 },
+		),
+		Printed: printedLine("boast"),
+		// The 2026-10-08 slice ships 15 of the 20 Commander-legal boast
+		// cards; the five left are named in the PR that closed #2697.
+		Examples:    []string{"Birgi, God of Storytelling", "Broadside Bombardiers"},
+		EngineNotes: "**Shipped** (#2697, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-08 amendment): `ActivatedAbilityShape.Boast`, set by `effects.Boast` / `BoastTargeting`, is the whole keyword. `game.Game.BoastBlockLocked` (`game/boast.go`) joins \"attacked this turn\" (`TurnTally.Attacks`) with \"once each turn\" (`Activations.Turn`, announce-time) and answers WHICH half failed; `ActivateCatalogAbility` refuses with `ErrBoastNotAttacked` / `ErrBoastSpent`, `internal/legal` drops the move, and `ActivatedAbilityView.boast_blocked` (`not_attacked` | `used`) greys the row with the client's own sentence. The limit is read through `CardDef.BoastLimits` (`game.BoastLimit`, built with `effects.YourCreaturesBoastTimes`): the largest applicable limit wins, so Birgi's \"twice rather than once\" is a replacement of the number, not an addition, and two of her do not make three. `Event.Boast` is stamped at the announce (Frenzied Raider), and `AbilityCostSubject.Boast` lets a cost modifier price boast abilities (Dragonkin Berserker, `ActivationCostsLessEach`). **Cards** (15): Birgi, Varragoth, Broadside Bombardiers, Eradicator Valkyrie (caveat: hexproof from planeswalkers), Dragonkin Berserker, Fearless Liberator, Usher of the Fallen, Fearless Pup, Duskwielder, Draugr Recruiter, Horizon Seeker, Tuskeri Firewalker, Frenzied Raider, Axgard Braggart, Battershield Warrior. **Still waiting, on card work or a separate seam:** Sigurd, Jarl of Ravensthorpe (a put-or-remove lore counter and a lore-counter trigger), Baron Helmut Zemo (copying a variable set of exiled cards), Arni Brokenbrow (a resolution-time \"you may\" on an activated ability), Goldmaw Champion and Hagi Mob (no blocker, left for the next slice).",
+	},
+	{
 		Slug: "typecycling", Name: "Landcycling and typecycling", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Discard a card with landcycling or another typecycling from your hand to search your library for a card of that type.",
 		Rules:   []string{"702.29"},
@@ -740,6 +765,16 @@ var items = []Item{
 		Probe:    anyOf(activatedAction("Monstrosity"), designation(game.DesignationMonstrous)),
 		Printed:  `(?i):\s*monstrosity\b`, // the keyword action after a cost, not a card named "Monstrosity of the Lake"
 		Examples: []string{"Stormbreath Dragon"},
+	},
+	{
+		Slug: "suspect", Name: "Suspect", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "A suspected creature has menace and can't block until it stops being suspected, and nothing can suspect it again while it is.",
+		Rules:   []string{"701.60"},
+		ADR:     "0071-designations-that-switch-abilities-on.md",
+		// A designation of its own rather than a gate on a printed ability, so no
+		// declaration on the Spec says a card uses it; the printed text does.
+		Printed:  `(?i)\bsuspects? (?:it|up to|target|enchanted|this)\b|\bsuspected\b`,
+		Examples: []string{"Person of Interest", "Rune-Brand Juggler", "Agrus Kos, Spirit of Justice"},
 	},
 	{
 		Slug: "hideaway", Name: "Hideaway", Kind: KindMechanic, Status: StatusImplemented,
@@ -2732,13 +2767,17 @@ var items = []Item{
 		EngineNotes: "zones and setup: there is no Attraction deck (CR 717.2), no junkyard pile in the command zone for a card with the Astrotorium back (CR 717.6), no open action (CR 701.51) and no roll to visit as the precombat main phase begins (CR 717.4, 701.52). Down for Repairs' revealed-hand pick already works (ADR 0116); its \"Destroy up to one target Attraction that player controls\" waits on the rest. Found landing the ADR 0116 pool (#2078).",
 	},
 	{
-		Slug: "speed", Name: "Speed: start your engines! and max speed", Kind: KindSeam, Status: StatusMissing,
+		Slug: "speed", Name: "Speed: start your engines! and max speed", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Aetherdrift's speed: start your engines! gives you a speed that rises when your opponents lose life on your turn, and max speed abilities turn on at speed 4, such as Gastal Raider.",
-		Missing:     "Players don't have a speed yet, so a card with start your engines! or a max speed ability can't be added.",
-		Rules:       []string{"702.178", "702.179"},
-		Issue:       2122,
-		Waiting:     []string{"Gastal Raider", "Perilous Snare"},
-		EngineNotes: "player state: no per-player speed value, no state-based action setting it to 1 for a player who controls a permanent with start your engines! (CR 702.179a), no inherent sourceless trigger raising it once each turn when an opponent loses life during that player's turn (CR 702.179d), and no condition a static grant can read for \"Max speed — [ability]\" (CR 702.178a). Gastal Raider's enters trigger is the revealed-hand pick and already works (ADR 0116). Found landing the ADR 0116 pool (#2078).",
+		Missing:     "Most speed cards aren't automated yet, though the speed rules they share are.",
+		Rules:       []string{"702.178", "702.179", "603.4", "704.3"},
+		Issue:       2711,
+		ADR:         "0138-speed.md",
+		Tracked:     "#2711 (the cards; the rules and 12 cards shipped with #2122)",
+		Examples:    []string{"Gastal Raider", "Perilous Snare", "Muraganda Raceway", "Vnwxt, Verbose Host"},
+		Printed:     `(?i)\bstart your engines\b|\bmax speed\b|\byour speed\b`,
+		Waiting:     []string{"Howlsquad Heavy", "Mendicant Core, Guidelight", "Hazoret, Godseeker", "Momentum Breaker", "Nesting Bot", "Kickoff Celebrations", "Zahur, Glory's Past", "Gas Guzzler", "Endrider Catalyzer", "Far Fortune, End Boss", "Lightwheel Enhancements", "Samut, the Driving Force", "Point the Way", "Hour of Victory", "Gastal Thrillseeker", "Embalmed Ascendant", "Slick Imitator", "Pride of the Road", "Outpace Oblivion", "Risen Necroregent", "Walking Sarcophagus", "Endrider Spikespitter", "Leonin Surveyor", "Streaking Oilgorger", "Mutant Surveyor", "Swiftwing Assailant", "Loxodon Surveyor", "Glitch Ghost Surveyor"},
+		EngineNotes: "rules shipped (#2122, ADR 0138); what is left is cards. `Player.Speed` (`game/speed.go`) is 0 for none, then 1 to `game.MaxSpeed` (4); `setSpeedLocked` is the one write and emits `EventSpeedChanged` (`Amount` the new speed), which bumps the layer version. `startYourEnginesSBALocked` is CR 702.179a, a state-based action reading the canonical keyword `start your engines!` (stamped by the deck importer, so an uncatalogued speed card works too). `speedTriggers` is CR 702.179d, a sourceless listener trigger like the monarch's: an opponent of the active player losing life (`EventChangeLife` below zero, or damage that cost life) queues `speed/increase` for the active player once each turn (`PlayerTurnTally.SpeedTriggered`), checked below 4 as it triggers and as it resolves (CR 603.4). Readers: `Game.SpeedOf`, `Game.HasMaxSpeed`. \"Max speed — [ability]\" (CR 702.178a) is NOT an ADR 0071 designation, because that gate reads the object and speed is the player's: `effects.MaxSpeedStatic` / `MaxSpeedSelfPump` / `MaxSpeedSelfKeywords` / `MaxSpeedTrigger` / `MaxSpeedReplacement` / `MaxSpeedCostModifier` gate `AppliesTo`, and `MaxSpeedActivated` / `MaxSpeedMana` AND a `Condition` (greyed with `condition_unmet` while short, refused by the engine, not offered by the enumerator, skipped by the auto-tapper). `effects.YourSpeed` is \"where X is your speed\". Wire: `PlayerView.speed`, the `speed` log line, a speed chip on every seat; the bot board text prints \"speed N\". **The Waiting cards are not blocked on this row** except where noted: they are the speed cards nobody has built yet (#2711). Lightwheel Enhancements also needs a cast-from-graveyard permission that exists only at max speed (`Spec.CastableZones` has no condition). See Closed seams.",
 	},
 	{
 		Slug: "read-ahead", Name: "Read ahead", Kind: KindSeam, Status: StatusMissing,

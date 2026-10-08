@@ -661,6 +661,7 @@ func clonePlayer(p *Player) *Player {
 	}
 	out.MaxHandSize = p.MaxHandSize
 	out.MaxHandSizeAt = p.MaxHandSizeAt
+	out.Speed = p.Speed
 	out.LandDropsPerTurn = p.LandDropsPerTurn
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))

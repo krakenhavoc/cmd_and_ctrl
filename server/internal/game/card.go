@@ -554,6 +554,15 @@ type Card struct {
 	// battlefield exit, carried by clone and snapshot. Zero means
 	// "never turned since it entered".
 	FaceTurnedAt int64
+
+	// SuspectedAt is the CR 613.7 timestamp the suspected designation's
+	// menace grant is ordered at in layer 6: the moment it BECAME
+	// suspected, so a "loses all abilities" older than the designation
+	// leaves the menace and one newer takes it away. Zero on a card
+	// that is not suspected, and on one restored from a point written
+	// before this field, in which case the grant falls back to the
+	// permanent's own timestamp.
+	SuspectedAt int64
 	// NamedTribe is the creature type chosen for this permanent by an
 	// "as this enters, choose a creature type" instruction (CR
 	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
@@ -1233,6 +1242,25 @@ type Card struct {
 	// SaddledBy sits with the other slices, to keep the struct free of
 	// alignment padding.
 	Saddled bool
+	// Suspected is the CR 701.60 suspected designation (ADR 0071
+	// amendment 2026-10-08, #2698). Unlike the designations above it
+	// switches nothing in the permanent's PRINTED abilities on: what it
+	// does is a continuous effect of its own, "a suspected creature has
+	// menace and can't block" (suspect.go), applied in the layer pass.
+	//
+	// Set by SuspectForEffect and cleared by UnsuspectForEffect and by
+	// nothing else. A permanent that is already suspected cannot become
+	// suspected again (CR 701.60d), which is also what keeps its
+	// SuspectedAt timestamp from being rewritten. Stays on a permanent
+	// through a control change — the new controller's creature is still
+	// suspected — and is cleared when the permanent leaves the
+	// battlefield (CR 400.7). Not copiable (CR 707.2: it is a status,
+	// not a characteristic): CopiableValuesOf never reads it. Carried
+	// by clone and the snapshot.
+	// Suspected lives in the bool block at the end of Card, for alignment.
+
+	// SuspectedAt lives with the other timestamps, after FaceTurnedAt,
+	// for alignment.
 
 	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
 	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by
@@ -1364,6 +1392,10 @@ type Card struct {
 	// cleared with AttackingTarget wherever the creature leaves combat
 	// before that. True only between the verb and the lock-in.
 	ExertOnAttack bool
+
+	// Suspected is the CR 701.60 designation described above
+	// (SuspectedAt). Here for alignment, beside the other bools.
+	Suspected bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

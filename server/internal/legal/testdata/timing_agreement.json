@@ -392,7 +392,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 1",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -411,7 +414,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 2",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -430,7 +436,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Sacrificial Bear",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -443,7 +452,10 @@
           },
           "kind": "cast",
           "label": "Cast Commander 1 from the command zone",
-          "source": "0000000c-0000-4000-8000-000000000000"
+          "source": "0000000c-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{0}"
+          }
         },
         {
           "type": "activate_mana_ability",
@@ -942,7 +954,10 @@
           },
           "kind": "cast",
           "label": "Cast Overrun",
-          "source": "00000017-0000-4000-8000-000000000000"
+          "source": "00000017-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{2}{G}"
+          }
         },
         {
           "type": "cast_spell",
@@ -955,7 +970,10 @@
           },
           "kind": "cast",
           "label": "Cast Grizzly Bears",
-          "source": "00000018-0000-4000-8000-000000000000"
+          "source": "00000018-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{1}{G}"
+          }
         },
         {
           "type": "cast_spell",
@@ -968,7 +986,10 @@
           },
           "kind": "cast",
           "label": "Cast Commander 1 from the command zone",
-          "source": "00000019-0000-4000-8000-000000000000"
+          "source": "00000019-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{0}"
+          }
         },
         {
           "type": "activate_mana_ability",
@@ -1516,7 +1537,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 1",
-          "source": "00000026-0000-4000-8000-000000000000"
+          "source": "00000026-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -1535,7 +1559,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 2",
-          "source": "00000026-0000-4000-8000-000000000000"
+          "source": "00000026-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "activate_mana_ability",
@@ -2092,7 +2119,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 1",
-          "source": "00000035-0000-4000-8000-000000000000"
+          "source": "00000035-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -2111,7 +2141,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 2",
-          "source": "00000035-0000-4000-8000-000000000000"
+          "source": "00000035-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "activate_mana_ability",
@@ -2941,7 +2974,10 @@
           },
           "kind": "cast",
           "label": "Cast Commander 1 from the command zone",
-          "source": "00000053-0000-4000-8000-000000000000"
+          "source": "00000053-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{0}"
+          }
         },
         {
           "type": "activate_mana_ability",
@@ -3339,7 +3375,10 @@
           },
           "kind": "cast",
           "label": "Cast Commander 1 from the command zone",
-          "source": "0000005e-0000-4000-8000-000000000000"
+          "source": "0000005e-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{0}"
+          }
         },
         {
           "type": "activate_mana_ability",
@@ -3759,7 +3798,10 @@
           },
           "kind": "cast",
           "label": "Cast Village Rites",
-          "source": "00000068-0000-4000-8000-000000000000"
+          "source": "00000068-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{B}"
+          }
         },
         {
           "type": "cast_spell",
@@ -3772,7 +3814,10 @@
           },
           "kind": "cast",
           "label": "Cast Commander 1 from the command zone",
-          "source": "0000006a-0000-4000-8000-000000000000"
+          "source": "0000006a-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{0}"
+          }
         },
         {
           "type": "activate_mana_ability",

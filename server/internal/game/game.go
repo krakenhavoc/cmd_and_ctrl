@@ -994,6 +994,10 @@ func NewGame() *Game {
 	// PendingTriggers first — CR 603.3b reorders anything that
 	// actually matters. See monarch.go.
 	g.Listeners = append(g.Listeners, monarchTriggers{})
+	// ADR 0138, CR 702.179d: speed's inherent once-per-turn trigger has
+	// no source either, so it rides the registry for the monarch's
+	// reason and right after it. See speed.go.
+	g.Listeners = append(g.Listeners, speedTriggers{})
 	// #1729, CR 610.3: an exile "until" an event ends when the event
 	// happens, and that is a rule rather than a triggered ability — so
 	// it watches the event log on its own, after the monarch's CR 725.4

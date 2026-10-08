@@ -302,9 +302,11 @@ func TestAMountThatLeavesComesBackUnsaddled(t *testing.T) {
 	}
 }
 
-// The designation also ends when the Mount phases out (#2695), unlike
-// the other designations, which ride through one (CR 702.26d).
-func TestAMountThatPhasesOutIsNoLongerSaddled(t *testing.T) {
+// Phasing out does not end the designation (#2718): CR 702.171b ends it
+// at end of turn or when the permanent leaves the battlefield, and a
+// phased-out permanent has not left (CR 702.26d). The Mount keeps it
+// while out and still has it when it phases back in the same turn.
+func TestAMountThatPhasesOutStaysSaddled(t *testing.T) {
 	g := newCatalogGame(t)
 	toMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -315,10 +317,17 @@ func TestAMountThatPhasesOutIsNoLongerSaddled(t *testing.T) {
 			t.Fatalf("phase out: %v", err)
 		}
 	})
-	for i := range g.PhasedOut.Cards {
-		if c := g.PhasedOut.Cards[i]; c.InstanceID == mount && (c.Saddled || len(c.SaddledBy) != 0) {
-			t.Errorf("a phased-out Mount is still saddled: %+v", c)
+	found := false
+	for _, c := range g.PhasedOut.Cards {
+		if c.InstanceID == mount {
+			found = true
+			if !c.Saddled {
+				t.Errorf("a phased-out Mount lost its saddled designation: %+v", c)
+			}
 		}
+	}
+	if !found {
+		t.Fatal("the Mount did not phase out")
 	}
 }
 

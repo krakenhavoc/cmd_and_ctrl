@@ -141,3 +141,4 @@ body merry-bards/young-hero-role
 body spellbook-vendor/sorcerer-role
 body curse-of-the-werefox/fight
 condition cast/you-next-cast-at-most-mv
+body speed/increase

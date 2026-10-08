@@ -680,6 +680,9 @@ export interface AbilityCost {
   // flag under one name for both ability kinds, which is why this
   // predicate needed no sibling.
   exhausted?: boolean;
+  // #2697: a boast ability that cannot be activated now, and which half
+  // of its instruction fails. ActivatedAbilityView only.
+  boast_blocked?: string;
   // #844: a "in your commander's color identity" mana ability with no
   // identity to narrow to. Mana abilities only.
   adds_no_mana?: boolean;
@@ -723,6 +726,14 @@ export const ACTIVATION_CONDITION_UNMET = "activation condition not met";
 // because the two recover differently — a condition may hold again
 // next turn, an exhaust only if the permanent becomes a new object.
 export const ABILITY_EXHAUSTED = "already activated (exhaust)";
+
+// BOAST_NOT_ATTACKED and BOAST_USED are the hints on a boast ability the
+// server blocked (#2697, CR 702.142a: "Activate only if this creature
+// attacked this turn and only once each turn"). Two strings because the
+// two halves recover differently, and a player owed a reason should get
+// the one that tells them what to do: attack, or wait for next turn.
+export const BOAST_NOT_ATTACKED = "hasn't attacked this turn";
+export const BOAST_USED = "boast already used this turn";
 
 // ADDS_NO_MANA is the hint on a mana row the server marked
 // adds_no_mana: it would add nothing right now. That was #844's case
@@ -957,6 +968,10 @@ export function abilityBlocked(
   // because Bitter Work prints both and "already activated" is the one
   // that will still be true tomorrow.
   if (a.exhausted) return ABILITY_EXHAUSTED;
+  // #2697: a boast ability's own two halves, before the generic
+  // condition (the server checks them in this order too).
+  if (a.boast_blocked === "not_attacked") return BOAST_NOT_ATTACKED;
+  if (a.boast_blocked === "used") return BOAST_USED;
   if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
   // #844 and ADR 0117 §5: the server says this mana ability would add
   // nothing right now. Activating it is legal (CR 605.1a) and

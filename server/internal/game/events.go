@@ -1554,6 +1554,13 @@ type Event struct {
 	// the fact is reliably knowable. Added for #1184.
 	Exhaust bool `json:"exhaust,omitempty"`
 
+	// Boast marks an EventActivateAbility whose ability is a boast
+	// ability (CR 702.142a, #2697): "Whenever you activate a boast
+	// ability" (Frenzied Raider). A bit on the event for Exhaust's
+	// reason — the announcement is the one moment the fact is reliably
+	// knowable. False on every other event.
+	Boast bool `json:"boast,omitempty"`
+
 	// Loyalty marks an EventActivateAbility whose ability is a loyalty
 	// ability — one with a loyalty symbol in its cost (CR 606.2),
 	// printed or granted (ADR 0109 §2). "Whenever you activate a loyalty

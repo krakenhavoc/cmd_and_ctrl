@@ -120,6 +120,11 @@ type CardDef struct {
 	// contributes (#1184) — Elvish Refueler. Read from the
 	// battlefield through ExhaustPermissionsForCard.
 	ExhaustPermissions []ExhaustPermission
+	// BoastLimits are the "creatures you control can boast twice each
+	// turn" statics this permanent contributes (CR 702.142, #2697) —
+	// Birgi, God of Storytelling. Read from the battlefield through
+	// Game.BoastLimitFor.
+	BoastLimits []BoastLimit
 	// AttackTaxes are the "creatures can't attack you unless their
 	// controller pays {N}" statics this permanent contributes
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
@@ -625,6 +630,12 @@ func init() {
 	CatalogExhaustPermissions = func(key string) []ExhaustPermission {
 		if d := catalogDef(key); d != nil {
 			return d.ExhaustPermissions
+		}
+		return nil
+	}
+	CatalogBoastLimits = func(key string) []BoastLimit {
+		if d := catalogDef(key); d != nil {
+			return d.BoastLimits
 		}
 		return nil
 	}

@@ -1662,12 +1662,16 @@ type VoteView struct {
 // cards, opponent library cards) while preserving the `count` so the
 // UI can still render a placeholder stack.
 type PlayerView struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Seat      int      `json:"seat"`
-	Life      int      `json:"life"`
-	Poison    int      `json:"poison,omitempty"`
-	Energy    int      `json:"energy,omitempty"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Seat   int    `json:"seat"`
+	Life   int    `json:"life"`
+	Poison int    `json:"poison,omitempty"`
+	Energy int    `json:"energy,omitempty"`
+	// Speed is the player's speed (CR 702.179, ADR 0138): omitted
+	// while they have none, then 1 to 4; 4 is max speed (CR 702.178a).
+	// Public: every viewer gets the same number.
+	Speed     int      `json:"speed,omitempty"`
 	Library   ZoneView `json:"library"`
 	Hand      ZoneView `json:"hand"`
 	Graveyard ZoneView `json:"graveyard"`
@@ -2604,6 +2608,14 @@ type CardView struct {
 	// card like Monstrous: the table can see the Mount is saddled, which
 	// is what the attack triggers read.
 	Saddled bool `json:"saddled,omitempty"`
+	// Suspected is a permanent's CR 701.60 suspected designation
+	// (ADR 0071 amendment 2026-10-08, #2698): it has menace and can't
+	// block for as long as it is set. Public, and set straight off the
+	// card. Unlike Monstrous it is NOT cleared on a face-down permanent:
+	// the designation was given to the object in public and says nothing
+	// about the hidden card, and the table needs it to know why the
+	// creature cannot block.
+	Suspected bool `json:"suspected,omitempty"`
 	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
 	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
 	// Public, and set straight off the card. Unlike Monstrous it is NOT
@@ -3439,6 +3451,15 @@ type ActivatedAbilityView struct {
 	// untap). The client greys the row the same way; the server
 	// refuses with ErrAbilityExhausted either way.
 	Exhausted bool `json:"exhausted,omitempty"`
+	// BoastBlocked is why a boast ability (CR 702.142a, "Activate only
+	// if this creature attacked this turn and only once each turn")
+	// cannot be activated right now: "not_attacked" or "used". Absent
+	// when the ability is not a boast ability or nothing objects. Two
+	// tokens rather than a bool because the halves recover differently
+	// and the client says which; the sentence is the client's, the
+	// verdict is game.Game.BoastBlockLocked's, which the activation path
+	// and the bot enumerator also read (Birgi's raised limit included).
+	BoastBlocked string `json:"boast_blocked,omitempty"`
 	// CantActivate is the printed clause of a board-wide "can't be
 	// activated" static that refuses THIS ability right now (CR
 	// 602.5, #1210) — "Activated abilities of creatures can't be
@@ -8044,6 +8065,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Life:                  p.Life,
 		Poison:                p.Poison,
 		Energy:                p.Energy,
+		Speed:                 p.Speed,
 		Library:               viewOfZone(p.Library),
 		Hand:                  viewOfZone(p.Hand),
 		Graveyard:             viewOfZone(p.Graveyard),
@@ -9421,6 +9443,7 @@ func viewOfCard(c game.Card) CardView {
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
 		view.Saddled = c.Saddled
+		view.Suspected = c.Suspected
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
 		if game.HasSharedTypeLine(c) {
@@ -9887,6 +9910,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
+		// CR 702.142a (#2697): which half of a boast ability's
+		// instruction fails, from the one gate the engine and the
+		// enumerator read.
+		v.BoastBlocked = g.BoastBlockLocked(&c, a).String()
 		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate's reason, from the one function the engine and the
 		// enumerator call. Behind the fast negative taken once for

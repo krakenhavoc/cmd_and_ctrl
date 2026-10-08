@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // purpose_test.go — ADR 0126 §6: the curated decks' cards declare what
@@ -151,6 +152,49 @@ func targetEntriesIn(s effects.Spec, slot string) int {
 	return 0
 }
 
+// curatedLandsUntapped is every curated card whose lands enter
+// untapped (ADR 0136 §2, owner answer 4), with how many: the card
+// declares Purpose.LandsUntapped on the slot that puts them onto the
+// battlefield. Every other curated card that declares Lands puts them
+// onto the battlefield tapped, and declares none.
+// realdump_purpose_manual_test.go checks the list against the oracle
+// text.
+var curatedLandsUntapped = map[string]int{
+	"Harrow":        2,
+	"Nature's Lore": 1,
+	"Three Visits":  1,
+}
+
+// specPurposes is every purpose a spec declares: on the card, on its
+// modes, on its alternative costs and on its ability rows.
+func specPurposes(s effects.Spec) []game.Purpose {
+	ps := []game.Purpose{s.Purpose}
+	if s.Modes != nil {
+		for _, o := range s.Modes.Options {
+			ps = append(ps, o.Purpose)
+		}
+	}
+	for _, a := range s.AlternativeCosts {
+		ps = append(ps, a.Purpose)
+	}
+	for _, a := range s.Activated {
+		ps = append(ps, a.Purpose)
+	}
+	for _, t := range s.Triggered {
+		ps = append(ps, t.Purpose)
+	}
+	return ps
+}
+
+// landsUntappedIn sums the LandsUntapped a spec declares in every slot.
+func landsUntappedIn(s effects.Spec) int {
+	n := 0
+	for _, p := range specPurposes(s) {
+		n += p.LandsUntapped
+	}
+	return n
+}
+
 // curatedPermanentPurposes is every curated permanent in a class ADR
 // 0126 prices (ramp, draw, loot, tutor, wipe, death payoff, discard
 // payoff) that
@@ -290,6 +334,10 @@ func TestCuratedDeckPurposes(t *testing.T) {
 			if slot, ok := curatedPermanentPurposes[c.Name]; ok && !declaresIn(spec, slot) {
 				t.Errorf("%s (%s) declares no purpose on its %s", c.Name, d.ID, slot)
 			}
+			if got, want := landsUntappedIn(spec), curatedLandsUntapped[c.Name]; got != want {
+				t.Errorf("%s (%s) declares %d land(s) entering untapped, want %d: "+
+					"curatedLandsUntapped and the card's Purpose.LandsUntapped must agree (ADR 0136 §2)", c.Name, d.ID, got, want)
+			}
 			if slot, ok := curatedTargetPurposes[c.Name]; ok && targetEntriesIn(spec, slot) == 0 {
 				t.Errorf("%s (%s) declares no target entry on its %s (ADR 0126's amendment of 2026-10-08)", c.Name, d.ID, slot)
 			}
@@ -312,6 +360,7 @@ func TestCuratedDeckPurposes(t *testing.T) {
 		{"noPrintedAmount", sortedKeys(noPrintedAmount)},
 		{"curatedPermanentPurposes", sortedKeys(curatedPermanentPurposes)},
 		{"curatedTargetPurposes", sortedKeys(curatedTargetPurposes)},
+		{"curatedLandsUntapped", sortedIntKeys(curatedLandsUntapped)},
 	} {
 		for _, n := range list.names {
 			if !inDeck[n] {
@@ -337,6 +386,15 @@ func TestCuratedDeckPurposes(t *testing.T) {
 }
 
 func sortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func sortedIntKeys(m map[string]int) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)

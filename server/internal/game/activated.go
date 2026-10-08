@@ -770,6 +770,27 @@ type ActivatedAbilityShape struct {
 	// are checked in that order.
 	Exhaust bool
 
+	// Boast marks a BOAST ability (CR 702.142a, #2697):
+	//
+	//	Boast — {1}{R}: Create a 2/1 red Dwarf Berserker creature token.
+	//	(Activate only if this creature attacked this turn and only
+	//	once each turn.)
+	//
+	// One declarative bit, built by effects.Boast, for the reason Exhaust
+	// is one: the keyword IS two rules at once and a card file that wrote
+	// them out would be writing a rule the engine enforces in three
+	// places. Game.BoastBlock is the whole gate (boast.go), and
+	// ActivateCatalogAbility, internal/legal and the view all read it.
+	//
+	// It is NOT Condition. A boast ability that cannot be activated is
+	// still printed on the creature and still listed — the view ships
+	// `boast_blocked` so the client can say WHICH half failed (it hasn't
+	// attacked, or the ability has been used) — and the two halves
+	// recover differently: one never until the creature attacks, the
+	// other at the next turn. A card that also prints a true condition
+	// sets both, checked in that order.
+	Boast bool
+
 	// CostModifiers are the ability's OWN cost clauses — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
@@ -1288,6 +1309,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
+	}
+	// CR 702.142a (#2697): a boast ability's two instructions, through
+	// the one gate the enumerator and the view also read. After the
+	// exhaust gate and before the printed condition, as documented on
+	// ActivatedAbilityShape.Boast.
+	if err := boastErr(g.BoastBlockLocked(source, ab)); err != nil {
+		return err
 	}
 	// CR 602.1b / 602.5: the ability's "Activate only if …" and
 	// "Activate only during …" instructions (#743). A player can't
@@ -2063,6 +2091,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		StackItemID: itemID,
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
+		Boast:       ab.Boast,
 		// ADR 0109 §2: "whenever you activate a loyalty ability of
 		// enchanted planeswalker" (Elspeth's and Rowan's Talents). A
 		// loyalty ability is one with a loyalty symbol in its cost
