@@ -927,6 +927,10 @@ var pendingChoiceFields = plan(
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",
+	// #2680: where a choose_cards prompt sends what it names — the
+	// bot prices a put onto the battlefield by it, so a restored
+	// prompt that forgot it would be priced as a discard.
+	"ChooseDestination", carried, "",
 	// #568's option pick: the branches of "choose one of the
 	// following", carried for the same reason ChooseCards is — the
 	// options ARE the prompt, and a restored game that forgot them

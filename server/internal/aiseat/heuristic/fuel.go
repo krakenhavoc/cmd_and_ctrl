@@ -231,6 +231,11 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 			v = p.cfg.SpellFloor
 		}
 	}
+	// #2678: an extra land drop it declares (puts.go). Not on a card
+	// being spent: a pitched Exploration plays no land.
+	if !spent {
+		v += p.extraLandDropValue(st, ps.extraLands, c)
+	}
 	if c.IsCommander {
 		v += p.cfg.CommanderBonus
 	}

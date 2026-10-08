@@ -1414,3 +1414,37 @@ With PR 3 alone it was 6 of 11 and 10 of 16. PR 4 makes the burn and the bodies 
 **Pins.** `TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow` was re-pinned by hand (its fifth exception). The battle deck's Lightning Bolt at a player on 40 life is now held. With the knob off, the old digests still match.
 
 **Real-dump audit.** The branch E2E's `realdump` job fails on `TestRealDumpPurposeAudit` over Eliminate the Impossible, a card from #2734 that reads as a wipe and declares no sweep. `develop` at `8ecec05ba` fails the same way. Arc Trail passes the audit.
+
+### #2680 and #2678: puts from hand, own-permanent picks and extra land drops (2026-10-08)
+
+Three things the 2026-10-08 review games found the heuristic pricing as nothing, or as the opposite of what they are (`puts.go`).
+
+- **#2680, `PricePutsFromHand`.** "You may put a land card from your hand onto the battlefield" is a `choose_cards` over the bot's own hand, which `valueKeptInHand` prices as a discard of the named card, so the bot declined every one. The prompt now carries `choose_destination` (`battlefield`, or `battlefield_tapped`: an additive `PendingChoice.ChooseDestination`, recorded by the shape guard, withheld from non-choosers with the bounds), set by `PutFromHandOntoBattlefield`. A named land adds `ManaSource` (`TappedManaSource` when it enters tapped) and the ramp premium while the bot has fewer than `RampWantCap` sources, 0.3 of that after, plus `landColorFit`; any other permanent adds its resolved value.
+- **#2680, `PriceOwnPermanentPicks`.** An `own_permanents` pick had no branch, so every answer scored 0 and the enumerator's cheapest-fuel-first order chose. A fixed-count pick now gives up what is worth least to keep: `permanentValue`, a land multiplied by the mana it makes and with its ability rows added. A pick whose count is the chooser's (Scapeshift, Tragic Arrogance's own leg) keeps the enumerator's order.
+- **#2678, `PriceExtraLandDrops`, `ExtraLandDropRecurring` (0.50).** `purpose.extra_land_drops` is declared on every catalog card with `AdditionalLandPlays` (Register refuses a number that disagrees; `TestCuratedDeckPurposes` and `TestEveryExtraLandDropIsDeclared` hold the declarations), and on Explore. A cast adds `ManaSource` plus the ramp premium for each extra drop the bot holds a land for and could not otherwise play this turn, and, for a permanent, `ExtraLandDropRecurring` per drop while it has fewer than `RampWantCap` sources.
+
+`BaselineConfig` zeroes all four. Before is `develop` at `c98668a15`, after is this branch; every run is `--rotate --lockstep` with the real dump and `--decision-log`. No run stalled and no move was rejected. The counters come from a scratch script over the decision logs.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | Uro's land put accepted | 0 / 72 | 81 / 81 |
+| | Eureka Moment's land put accepted | 0 / 12 | 11 / 11 |
+| | karoo returned itself | 78 / 96 | 0 / 43 |
+| | karoo returned a tapped land when one was offered | 17 / 17 | 16 / 16 |
+| | Oracle of Mul Daya cast, windows / games used of offered | 22 / 117, 22 / 28 | 25 / 82, 24 / 27 |
+| | Exploration cast, windows / games used of offered | 15 / 92, 15 / 22 | 20 / 89, 18 / 25 |
+| | land drop offered and not taken | 1 turn | 2 turns |
+| | turns p50 | 15 | 14 |
+| | simic-ramp wins | 12 / 64 | 21 / 64 |
+| Run 2, seed 1 | `heuristic` wins | 32 / 96, 33.3% (24.7%–43.2%) | 30 / 96, 31.2% (22.9%–41.1%) |
+| | `heuristic-baseline` wins | 16 / 96 | 18 / 96 |
+| Run 2, seed 1001 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 24 / 96, 25.0% (17.4%–34.5%) |
+| | `heuristic-baseline` wins | 17 / 96 | 24 / 96 |
+| Run 2, seed 2001 | `heuristic` wins | 23 / 96, 24.0% (16.5%–33.4%) | 26 / 96, 27.1% (19.2%–36.7%) |
+| | `heuristic-baseline` wins | 25 / 96 | 22 / 96 |
+| Run 2, pooled | `heuristic` wins | 86 / 288, 29.9% | 80 / 288, 27.8% |
+| | `heuristic-baseline` wins | 58 / 288 | 64 / 288 |
+
+Run 2 is `--seats heuristic-baseline,heuristic-baseline,heuristic,heuristic --decks izzet-aggro,simic-ramp,izzet-aggro,simic-ramp --games 48`, so each policy plays each deck 48 times per seed. The pooled difference is six games of 288, inside the run-to-run spread (seed 1001 moved seven games one way, seed 2001 three the other), and in no run does the baseline win more than `heuristic`. Turns p50 is 12 to 11 at seed 1 and 12 both times at seeds 1001 and 2001. Run 1's karoo returns before were the source itself in 78 of 96, because the enumerator offers the cheapest fuel first and a tapped karoo ties a tapped basic; after, with no other tapped land offered it returns an untapped land (27 times) rather than itself.
+
+In run 1, every A3 canary meets its bar after (Harrow 12 / 27 before, 15 / 29 after, now meeting it). A2 rows meeting their bar fell from 6 to 4: Delighted Halfling (85% to 76%) and Ornithopter of Paradise (83% to 64%) in simic-ramp, whose early turns now also hold an Exploration or an Oracle priced above a body. In run 2 the met A2 and A3 rows went from 6 to 11 at seed 1, 8 to 10 at seed 1001 and 9 to 10 at seed 2001. The suite is 41 of 41 before and after, and no position's pick changed.

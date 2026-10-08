@@ -122,6 +122,16 @@ type Purpose struct {
 	// beside the spell's own purpose, which awaken leaves alone.
 	AwakenLand int
 
+	// ExtraLandDrops is the additional lands its controller may play
+	// (#2678, CR 305.2): on a permanent, "you may play an additional
+	// land on each of your turns" (Oracle of Mul Daya, Exploration 1,
+	// Azusa 2); on an instant or sorcery, "you may play an additional
+	// land this turn" (Explore 1). Declared on the card slot only. On a
+	// permanent it must agree with the Spec's AdditionalLandPlays, the
+	// engine's own field for the static, and effects.Register refuses
+	// one that does not.
+	ExtraLandDrops int
+
 	// Targets is what happens TO each target the statement names, one
 	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
 	// answer 1). Every amount above is its controller's; an entry's are
@@ -362,6 +372,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		DamageEachOpponent:        p.DamageEachOpponent + o.DamageEachOpponent,
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
+		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
 	}
 	if out.Pump == nil {
 		out.Pump = o.Pump

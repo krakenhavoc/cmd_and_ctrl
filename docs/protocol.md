@@ -2846,6 +2846,7 @@ Every field is omitted when zero.
 | `damage_each_opponent` | damage it deals to each opponent | Resolute Survivors 1 |
 | `life_gain` | life its controller gains | Resolute Survivors 1 |
 | `awaken_land` | on an alternative cost only: the N of "Awaken N—[cost]", the +1/+1 counters it puts on a land its controller controls as that land becomes a 0/0 Elemental creature with haste ([ADR 0135](decisions/0135-alternative-costs-that-tap-discard-awaken-and-emerge.md) §3). The spell's own `purpose` still applies | Ruinous Path 4 |
+| `extra_land_drops` | on the card only: the additional lands its controller may play, on each of their turns for a permanent and this turn for an instant or sorcery ([#2678](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2678)). On a permanent it is the same number as the static the engine runs | Oracle of Mul Daya 1 |
 | `targets` | what happens to each target, one entry per target clause; see [Target entries](#target-entries-adr-0126-amendment-of-2026-10-08) | Sign in Blood |
 
 An amount is the printed number. A card whose amount is X, or is
