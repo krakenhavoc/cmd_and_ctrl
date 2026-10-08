@@ -51,9 +51,10 @@ func init() {
 			ModeDoing("Return target creature to its owner's hand.",
 				TargetCreature("target creature"),
 				BounceTheModesTarget),
-			ModeDoing("Target player draws two cards, then discards a card.",
+			ModeWithPurpose(ModeDoing("Target player draws two cards, then discards a card.",
 				TargetPlayer("target player"),
 				depthDefilerDrawThenDiscard),
+				ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, Discards: 1})),
 		).InsteadIf(2, WasKicked),
 	}
 	Register(Spec{

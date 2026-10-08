@@ -55,7 +55,7 @@ func init() {
 			ModeDoing("Create a token that's a copy of target creature you control.",
 				TargetCreature("target creature you control", YouControl()),
 				TokenCopyTheModesTarget),
-			ModeDoing("Target player draws a card.",
+			ModeWithPurpose(ModeDoing("Target player draws a card.",
 				TargetPlayer("target player"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -64,6 +64,7 @@ func init() {
 					}
 					return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
 				}),
+				ForTargets(game.TargetPurpose{Slot: 0, Draws: 1})),
 		),
 	})
 }

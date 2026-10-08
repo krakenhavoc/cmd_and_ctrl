@@ -19,6 +19,7 @@ func init() {
 		Name:         "Blood Pact",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
+		Purpose:      ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return b32TargetPlayerDrawsAndLosesLife(item, ctx, 2, 2)
 		},

@@ -24,6 +24,7 @@ func init() {
 		Name:         "Ancestral Vision",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
+		Purpose:      ForTargets(game.TargetPurpose{Slot: 0, Draws: 3}),
 		SpecialActions: []game.SpecialAction{
 			Suspend(4, "{U}"),
 		},

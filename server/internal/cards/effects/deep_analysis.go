@@ -28,6 +28,7 @@ func init() {
 		Name:             "Deep Analysis",
 		Completeness:     CompletenessFull,
 		Targets:          TargetPlayer("target player"),
+		Purpose:          ForTargets(game.TargetPurpose{Slot: 0, Draws: 2}),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{deepAnalysisFlashback()},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
