@@ -4,7 +4,7 @@
 **Issue:** [#1753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1753). It relates to the Betor deck re-check on #1117, where Perennation is the last seam-blocked card.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then read every `docs/decisions/` file name on every remote branch (41 heads). The highest number on any branch is **0098**. Numbers 0099, 0100 and 0102 are held for ADRs being written at the same time, so this one takes **0101**.
 **Owner decisions:** 2026-09-30. All five recommendations were accepted; see Owner decisions below.
-**Amendments:** 2026-10-08, exalted as a keyword and its counter ([#2538](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2538)). Proposed; see Amendments at the end.
+**Amendments:** 2026-10-08, exalted as a keyword and its counter ([#2538](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2538)). Accepted (owner answers 2026-10-08); see Amendments at the end.
 **Builds on:** [ADR 0014](0014-combat-keywords.md) (the closed keyword table), [ADR 0046](0046-layer-6-authoritative.md) (layer 6 is the one ability list), [ADR 0067](0067-layer-dependency-ordering.md) (CR 613.6 silencing), [ADR 0038](0038-protection-style-keywords.md)'s 2026-09-28 amendment (the "can't have" strip), and [ADR 0041](0041-game-persistence.md) (the snapshot shape rule).
 
 ---
@@ -251,9 +251,9 @@ The owner accepted all five recommendations.
 
 ## Amendments
 
-### 2026-10-08 (#2538): exalted becomes a keyword, and its counter joins the table (Proposed)
+### 2026-10-08 (#2538): exalted becomes a keyword, and its counter joins the table (Accepted)
 
-**Status:** Proposed. No code until the owner accepts it (#2538, comment of 2026-10-08).
+**Status:** Accepted (owner answers 2026-10-08). The owner chose the recommended option on every question; see "Owner answers (2026-10-08)" at the end of this amendment.
 **Reconsiders:** owner decision 5 ("Decayed and exalted wait for a deck that asks for them"), for exalted only. On 2026-10-08 the owner agreed to reconsider it for Emissary of Soulfire, which S68's energy sweep found.
 **Registry row:** `exalted-counters` (`server/internal/roadmap/registry.go:2132`).
 **Line numbers** below are on `develop` at `62fa97c64`.
@@ -424,3 +424,14 @@ One PR holds A1 to A5 (the engine, the migration, the counter and the tests), pl
 6. **Delivery.**
    - (a) Recommended: one PR with the engine change, the Hierarch migration, `CounterExalted` and Emissary of Soulfire, as ADR 0101 shipped Perennation with its seam.
    - (b) Two PRs: the engine and the migration first, then the card.
+
+#### Owner answers (2026-10-08)
+
+The owner chose option (a), the recommended one, on every question.
+
+1. **Canonical keyword: yes.** Exalted joins `canonicalKeywords` as a cumulative keyword with a derived trigger (A1 and A2), and `effects.Exalted()` is deleted.
+2. **One instance per counter: yes.** `keywordCounterEffect` gets a count for cumulative kinds, per the Emissary of Soulfire ruling (A3).
+3. **A one-entry restore alias.** A lost `catalog/triggered` ref named "Exalted — +1/+1 until end of turn" is rewritten to `"exalted/pump"` on restore, and the Hierarch is not flagged.
+4. **Keyword value only.** `keywordTable` gains `exalted` at 0.30 per instance, `redundantKeywordCounter` leaves it out, and the attack planner does not change.
+5. **Decayed stays out.** It has its own seam issue, [#2650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2650), and its counter follows that seam.
+6. **One PR.** It holds the engine change, the Hierarch migration, `CounterExalted` and Emissary of Soulfire.
