@@ -217,12 +217,22 @@ func TestPlanMissesCountOnlyTheModelsOwnMisses(t *testing.T) {
 		w.Observe(ev)
 	}
 
-	got := w.forSeat(f.me)
-	if got.Planned != 7 || got.Checked != 4 || got.Misses != 2 {
-		t.Errorf("planned %d, checked %d, misses %d; want 7, 4, 2", got.Planned, got.Checked, got.Misses)
+	// 9. The rock's resolution asks the seat something (a search, a
+	//    "may"): that prompt offers no pass and no cast, and is not where
+	//    the plan is checked. The window after it is: checked, no miss.
+	planFirst("precombat_main")
+	{
+		v, _ := main("precombat_main", false)
+		w.Observe(f.event(f.me, v, []legal.Move{{Kind: legal.KindChoice, Label: "take a Forest"}}, 0, true))
 	}
-	if got.MissShare() != 2.0/7 {
-		t.Errorf("MissShare = %v, want 2/7", got.MissShare())
+	next("precombat_main", f.spell)
+
+	got := w.forSeat(f.me)
+	if got.Planned != 8 || got.Checked != 5 || got.Misses != 2 {
+		t.Errorf("planned %d, checked %d, misses %d; want 8, 5, 2", got.Planned, got.Checked, got.Misses)
+	}
+	if got.MissShare() != 2.0/8 {
+		t.Errorf("MissShare = %v, want 2/8", got.MissShare())
 	}
 }
 

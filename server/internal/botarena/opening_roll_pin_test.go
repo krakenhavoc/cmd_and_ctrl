@@ -66,6 +66,17 @@ import (
 // #2675, #2690 and #2676 turned off, which still gives the old digest:
 // the first 292 lines are identical.
 //
+// A fifth deliberate exception, re-pinned by hand (ADR 0136 PR 4,
+// 2026-10-08): the turn plan names itself in the reason. The move log
+// records each decision's reason, and in three windows the heuristic
+// now makes the same move for its plan: seed 31's "Cast Drake" (move
+// 204, "plan: Drake → Bear") and "Cast Commander Bear from the command
+// zone" (move 234), and seed 107's first "Cast Lightning Bolt" (move
+// 193). Every move is the same. Checked by playing both seeds with
+// every seat `heuristic-noplan` (the plan off): with the contestant
+// name read as `heuristic`, both logs give the old digests exactly,
+// and they differ from the new logs in those three reasons only.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -107,7 +118,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 398, turns: 9, winner: -1, digest: "129235aeda37908d24fca70df7107f2db7462587d67b40411c3092c04d5cc14a",
+			moves: 398, turns: 9, winner: -1, digest: "07dd5f68bc5f42d1f5993a8faded7b22d387fbdb6957a9466bb930698395ea5c",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -120,7 +131,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 440, digest: "055cb3a9582a4431b6493a4a54c9bb81d222aa16d4acbc1bf8095bb5022a5a6c",
+			opening: true, moves: 440, digest: "ab4bc9eb49592cdfca467a73daac89c6b5f9ec0bfc72a2ca0c421843706e1c2f",
 		},
 	}
 	for _, c := range cases {

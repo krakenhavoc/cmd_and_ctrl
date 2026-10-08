@@ -51,7 +51,10 @@ type purposeSet struct {
 	// awaken is the N of an awaken cast (ADR 0135 §3): the counters on
 	// the land it makes a hasty 0/0 creature.
 	awaken int
-	sweeps []protocol.SweepView
+	// landsUntapped is how many of `lands` enter untapped (ADR 0136 §2):
+	// mana the turn plan may spend this turn. Not priced.
+	landsUntapped int
+	sweeps        []protocol.SweepView
 }
 
 // add folds one declared purpose in.
@@ -62,6 +65,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.draws += p.Draws
 	ps.discards += p.Discards
 	ps.lands += p.Lands
+	ps.landsUntapped += p.LandsUntapped
 	ps.tutors += p.Tutors
 	ps.selfMill += p.SelfMillTutor
 	ps.tokens += p.Tokens

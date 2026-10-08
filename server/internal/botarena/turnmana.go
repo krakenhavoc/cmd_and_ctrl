@@ -24,7 +24,9 @@ import (
 //     with `heuristic-noplan`'s.
 //   - Plan misses. A window in which the previous window's plan
 //     (aiseat.Trace.Plan) named a next member that is not offered now,
-//     though no other seat acted in between. P6 holds them under 5% of
+//     though no other seat acted in between. The next window is the
+//     seat's next one in which it holds priority: a prompt the first
+//     move raised as it resolved is not it. P6 holds them under 5% of
 //     planned windows. It says how good the plan's mana model is: a
 //     miss is a plan that thought a second cast was payable and was
 //     wrong.
@@ -179,7 +181,11 @@ func (w *turnManaWatch) Observe(ev aiseat.DecisionEvent) {
 	s := w.seat(ev.Seat)
 	main := ownMainPhaseEmptyStack(v, ev.Seat)
 
-	if p := s.pending; p != nil && main {
+	// The check waits for a window in which the seat holds priority: a
+	// prompt the plan's first move raised as it resolved (a search, a
+	// "may", a trigger order) is answered first, in the same main phase
+	// with the stack empty, and offers no cast at all (ADR 0136 PR 4).
+	if p := s.pending; p != nil && main && offersPass(ev.Input.Moves) {
 		s.pending = nil
 		if p.turn == v.Turn.Seq && p.phase == v.Turn.PhaseID && p.step == v.Turn.Step && !p.interrupted {
 			s.checked++
@@ -250,6 +256,15 @@ func ownMainPhaseEmptyStack(v *protocol.GameView, seat uuid.UUID) bool {
 		return false
 	}
 	return v.Turn.Step == "precombat_main" || v.Turn.Step == "postcombat_main"
+}
+
+func offersPass(moves []legal.Move) bool {
+	for _, m := range moves {
+		if m.Kind == legal.KindPass {
+			return true
+		}
+	}
+	return false
 }
 
 func offersCast(moves []legal.Move, source uuid.UUID) bool {
@@ -391,5 +406,5 @@ func writeTurnMana(b *strings.Builder, s Summary) {
 	for _, t := range s.PerContestant {
 		row(t.Policy, orDash(t.Deck), t.TurnMana)
 	}
-	fmt.Fprintf(b, "\n*`own turns` are the turns a seat passed in its own main phase with an empty stack; the numbers are read at its last such pass. `stranded` is a turn that ended with %d or more mana it could still make and a cast on offer; `idle` is %d or more mana with or without one; `mean unspent` is the mana left at that pass, averaged over own turns. `planned windows` carried a turn plan of two or more casts; `checked` is the seat's next main-phase window after making a plan's first move with no other seat acting in between, and a `plan miss` is one where the plan's next cast was not offered. No plan is made before ADR 0136 PR 4.*\n", StrandedMana, StrandedMana)
+	fmt.Fprintf(b, "\n*`own turns` are the turns a seat passed in its own main phase with an empty stack; the numbers are read at its last such pass. `stranded` is a turn that ended with %d or more mana it could still make and a cast on offer; `idle` is %d or more mana with or without one; `mean unspent` is the mana left at that pass, averaged over own turns. `planned windows` carried a turn plan of two or more casts; `checked` is the seat's next main-phase window in which it holds priority after making a plan's first move, with no other seat acting in between, and a `plan miss` is one where the plan's next cast was not offered.*\n", StrandedMana, StrandedMana)
 }
