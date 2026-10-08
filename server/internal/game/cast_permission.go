@@ -474,6 +474,10 @@ type CastPermission struct {
 	//	UntilYourNextTurn       nothing prints it on a cast permission
 	//	                        yet; it costs nothing to accept
 	//	Indefinite              likewise
+	//	UntilSourceExilesAnother Unstable Amulet, Furious Rise,
+	//	                        Superior Foes of Spider-Man (#2539),
+	//	                        granted only by
+	//	                        ExileTopUntilAnotherForEffect
 	//
 	// ForAsLongAs is the one a permission must not carry: its
 	// condition watches a battlefield object, and a permission's

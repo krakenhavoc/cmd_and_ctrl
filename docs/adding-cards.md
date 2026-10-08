@@ -3331,6 +3331,17 @@ shows no button on it. Timing still applies on top — the grant says
 you *may* play the card, not *when*. See
 [ADR 0022](decisions/0022-impulse-exile.md).
 
+**"You may play it until you exile another card with this" (#2539,
+ADR 0066 amendment of 2026-10-08):** Unstable Amulet, Furious Rise,
+Superior Foes of Spider-Man. The resolution is
+`exileTopUntilYouExileAnother` (`effects/exile_until_another.go`), a
+thin wrapper over `g.ExileTopUntilAnotherForEffect(item, 1)`. It reads
+the resolving item, so "you" is the item's controller and "this" is the
+item's `SourceObject`; the card file only says when the exile happens.
+Never build this window by hand with another `Duration`: the helper is
+the only thing that closes it, and it closes only windows the same
+holder got from the same source object.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse
