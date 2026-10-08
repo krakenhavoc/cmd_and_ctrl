@@ -158,6 +158,7 @@ var gameFields = plan(
 	// validates against. A restored game is a NEW *Game — zero
 	// generation, empty slot — and its first view refolds the carried
 	// Events from scratch, so there is nothing to serialise.
+	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #1479: the card-location hint table. Every answer it gives is
