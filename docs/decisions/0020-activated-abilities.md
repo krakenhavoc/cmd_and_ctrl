@@ -3230,3 +3230,63 @@ the sacrificed Martyr as it last existed) — all `full`, all `XMatters`.
 - **A quality that is a relation, not a property** — Illuminated Folio's "Reveal two cards from your hand that
   share a color" is a rule over the set, `EachOf`'s neighbourhood (Decision 55), not a colour or a type.
 - **The reveal as a cast's additional cost with a count, or on a mana ability's cost.** No printed card uses either.
+
+## Amendment (2026-10-08, [#2697](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2697)): boast, and a limit that something can raise
+
+### Context
+
+Boast (CR 702.142a) is "[cost]: [effect]. Activate only if this creature attacked this turn and only once each turn."
+The "Out of scope" paragraph above deferred it for want of a per-source activation count, #1213 built the count, and
+`TurnTally.Attacks` already says which creatures attacked. What was left was a join of the two, and a thing to modify
+the "once": Birgi, God of Storytelling prints "Creatures you control can boast twice during each of your turns rather
+than once", and the Sami Whammy deck (#2190) shipped Birgi with a caveat because nothing could carry it.
+
+### Decision 61: one bit, one gate, and a verdict that names the half
+
+`ActivatedAbilityShape.Boast` (set by `effects.Boast` and `effects.BoastTargeting`, which also write the "Boast — "
+label) is the whole keyword, for the reason `Exhaust` is: the keyword IS the rule, and a card file that spelled out
+"attacked this turn" and "once each turn" would be writing a rule the engine enforces in three places.
+`Game.BoastBlockLocked` (`game/boast.go`) is the one gate and returns `BoastClear`, `BoastNotAttacked` or
+`BoastSpent`. `ActivateCatalogAbility` refuses with `ErrBoastNotAttacked` or `ErrBoastSpent` after the exhaust gate
+and before the printed condition, so nothing is paid; `internal/legal` does not enumerate the move; the view stamps
+`boast_blocked` (`"not_attacked"` | `"used"`). It is NOT a `Condition`: a condition greys a row with one generic
+sentence, and the halves recover differently (the creature can still attack this turn; a spent boast waits for the
+next one), so the client says which. The count is the announcement, written at the announce on the one path that pays
+for an activation, so a countered or fizzled boast is spent and a second one cannot be announced above it.
+
+### Decision 62: the limit is a modifier, and the largest wins
+
+`CardDef.BoastLimits` (`game.BoastLimit{Label, Limit, Applies, ActiveWhen}`, built with
+`effects.YourCreaturesBoastTimes`) is read from the battlefield through `Game.BoastLimitFor(boaster)` at the moment a
+boast is announced, announced-time reading being the duration: nothing is stored, so Birgi leaving takes the limit
+with her and a creature that has boasted twice is simply spent. The limit is a MAXIMUM over the applicable entries
+and not a sum, because the text is "twice rather than once" — a replacement of the number, so two Birgis make two.
+`Applies` receives the boasting creature and the permanent granting the limit; Birgi's checks "a creature you control"
+and "during your turn". `Register` panics on a limit below two (the printed one is already one), on a nil `Applies`
+(it would reach every creature at the table) and on a blank label. The count is per boast ability, as the activation
+tally keys it (object plus label); a creature with two boast abilities may use each once.
+
+### Decision 63: the activation is announced as a boast, and priced as one
+
+`Event.Boast` is stamped on `EventActivateAbility` at the announcement (Frenzied Raider's "whenever you activate a
+boast ability": the bit is read there because a `SacrificeSelf` cost has ended the object by the time a watcher
+runs), and `AbilityCostSubject.Boast` lets a board cost modifier price boast abilities only — Dragonkin Berserker's
+"Boast abilities you activate cost {1} less to activate for each Dragon you control", through the new
+`effects.ActivationCostsLessEach` and `ABoastAbilityCost` / `ActivatedByTheModifiersController`. The snapshot gains
+`events[].boast` (additive under v7, omitted when false).
+
+### Cards
+
+Birgi (the caveat cleared), Varragoth, Broadside Bombardiers, Eradicator Valkyrie (a caveat: hexproof from
+planeswalkers), Dragonkin Berserker, Fearless Liberator, Usher of the Fallen, Fearless Pup, Duskwielder, Draugr
+Recruiter, Horizon Seeker, Tuskeri Firewalker, Frenzied Raider, Axgard Braggart and Battershield Warrior. The roadmap
+row is `boast`.
+
+### Still out of scope
+
+- **Sigurd, Jarl of Ravensthorpe, Baron Helmut Zemo, Arni Brokenbrow** — each needs something that is not boast (a
+  put-or-remove lore counter and a trigger on lore counters; copying a variable set of exiled cards; a resolution-time
+  "you may" on an activated ability).
+- **Goldmaw Champion, Hagi Mob** — no blocker; left for a later slice of the same keyword.
+- **Besieged Viking Village** — not Commander-legal; its "all creatures have 'Boast — …'" needs an ability grant
+  carrying the bit, which the grant path would pick up for free once the card is wanted.

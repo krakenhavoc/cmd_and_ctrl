@@ -622,6 +622,22 @@ var items = []Item{
 		Examples: []string{"Gilded Ghoda"},
 	},
 	{
+		Slug: "boast", Name: "Boast", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "An ability a creature can use only if it attacked this turn, and only once each turn; Birgi, God of Storytelling lets your creatures use each one twice.",
+		Rules:   []string{"702.142"},
+		Issue:   2697,
+		ADR:     "0020-activated-abilities.md",
+		Probe: anyOf(
+			activated(func(ab effects.ActivatedAbility) bool { return ab.Boast }),
+			func(s effects.Spec) bool { return len(s.BoastLimits) > 0 },
+		),
+		Printed: printedLine("boast"),
+		// The 2026-10-08 slice ships 15 of the 20 Commander-legal boast
+		// cards; the five left are named in the PR that closed #2697.
+		Examples:    []string{"Birgi, God of Storytelling", "Broadside Bombardiers"},
+		EngineNotes: "**Shipped** (#2697, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-08 amendment): `ActivatedAbilityShape.Boast`, set by `effects.Boast` / `BoastTargeting`, is the whole keyword. `game.Game.BoastBlockLocked` (`game/boast.go`) joins \"attacked this turn\" (`TurnTally.Attacks`) with \"once each turn\" (`Activations.Turn`, announce-time) and answers WHICH half failed; `ActivateCatalogAbility` refuses with `ErrBoastNotAttacked` / `ErrBoastSpent`, `internal/legal` drops the move, and `ActivatedAbilityView.boast_blocked` (`not_attacked` | `used`) greys the row with the client's own sentence. The limit is read through `CardDef.BoastLimits` (`game.BoastLimit`, built with `effects.YourCreaturesBoastTimes`): the largest applicable limit wins, so Birgi's \"twice rather than once\" is a replacement of the number, not an addition, and two of her do not make three. `Event.Boast` is stamped at the announce (Frenzied Raider), and `AbilityCostSubject.Boast` lets a cost modifier price boast abilities (Dragonkin Berserker, `ActivationCostsLessEach`). **Cards** (15): Birgi, Varragoth, Broadside Bombardiers, Eradicator Valkyrie (caveat: hexproof from planeswalkers), Dragonkin Berserker, Fearless Liberator, Usher of the Fallen, Fearless Pup, Duskwielder, Draugr Recruiter, Horizon Seeker, Tuskeri Firewalker, Frenzied Raider, Axgard Braggart, Battershield Warrior. **Still waiting, on card work or a separate seam:** Sigurd, Jarl of Ravensthorpe (a put-or-remove lore counter and a lore-counter trigger), Baron Helmut Zemo (copying a variable set of exiled cards), Arni Brokenbrow (a resolution-time \"you may\" on an activated ability), Goldmaw Champion and Hagi Mob (no blocker, left for the next slice).",
+	},
+	{
 		Slug: "typecycling", Name: "Landcycling and typecycling", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Discard a card with landcycling or another typecycling from your hand to search your library for a card of that type.",
 		Rules:   []string{"702.29"},
