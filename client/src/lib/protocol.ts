@@ -768,12 +768,14 @@ export interface MoveCost {
   // permanent — often not the move's source (Heart of Kiran's crew
   // paid with a planeswalker's loyalty).
   counters?: { card_id: string; counter: string; n: number }[];
-  // ADR 0080 (#1063): a cost string the move charges that `params`
-  // cannot name — today exactly one thing, the CR 508.1a attack tax
-  // on a declare_attacker move ("{2}" for an attack into Propaganda).
-  // A cast's mana is its printed cost and lives on the CardView; an
-  // attack has no printed cost, so without this a consumer prices an
-  // attack under Ghostly Prison exactly like a free one.
+  // A mana cost string the move charges that `params` cannot name.
+  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1a attack
+  // tax ("{2}" for an attack into Propaganda). On every cast_spell move
+  // (ADR 0136 §2): the total mana the cast charges (CR 601.2f), with
+  // the commander tax, X, alternative costs and the board's increases
+  // and reductions in it ("{5}{G}{U}" for a twice-cast Tatyova), which
+  // the printed mana_cost on the CardView is not. "{0}" when the cast
+  // charges no mana.
   mana?: string;
   // #1600: how many cards a "Discard your hand" cost throws away if
   // the move is made now — Lion's Eye Diamond, Null Brooch, Slate of
@@ -2863,6 +2865,9 @@ export interface PurposeView {
   controller_loses_life?: number;
   discards?: number;
   lands?: number;
+  // ADR 0136 §2: how many of `lands` enter untapped (Harrow 2, Nature's
+  // Lore 1). Never more than `lands`; absent when they enter tapped.
+  lands_untapped?: number;
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;

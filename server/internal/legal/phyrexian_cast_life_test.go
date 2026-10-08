@@ -2,6 +2,7 @@ package legal_test
 
 import (
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -59,10 +60,17 @@ func lifeCounts(t *testing.T, moves []legal.Move, card uuid.UUID) []int {
 		out = append(out, n)
 		points := n * game.PhyrexianLifePerSymbol
 		switch {
-		case n == 0 && m.Cost != nil:
-			t.Errorf("mana payment %q declares a cost %+v", m.Label, *m.Cost)
-		case n > 0 && (m.Cost == nil || m.Cost.Life != points || m.Cost.PhyrexianLife != points):
+		case m.Cost == nil:
+			// ADR 0136 §2: every cast states its mana.
+			t.Errorf("%q declares no cost; a cast states its mana", m.Label)
+		case n == 0 && (m.Cost.Life != 0 || m.Cost.PhyrexianLife != 0):
+			t.Errorf("mana payment %q declares a life cost %+v", m.Label, *m.Cost)
+		case n > 0 && (m.Cost.Life != points || m.Cost.PhyrexianLife != points):
 			t.Errorf("%q pays %d symbols with life but declares %+v, want Life = PhyrexianLife = %d", m.Label, n, m.Cost, points)
+		case m.Cost.Mana == "" || strings.Contains(m.Cost.Mana, "/P"):
+			// The symbols left after the strike are paid with mana, so
+			// the stated mana names their colour, never "or 2 life".
+			t.Errorf("%q states mana %q, want the mana it pays", m.Label, m.Cost.Mana)
 		}
 	}
 	sort.Ints(out)
