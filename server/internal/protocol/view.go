@@ -3559,6 +3559,26 @@ type ActivatedAbilityView struct {
 	// and narrows the ability's target clause by it before targets are
 	// chosen (`mana_value_equals_x`).
 	DiscardCostManaValueX bool `json:"discard_cost_mana_value_x,omitempty"`
+	// RevealCostN / Label / Options describe a "Reveal N <quality> cards
+	// from your hand" cost component (#2598, ADR 0020's 2026-10-08
+	// amendment) — Martyr of Bones' "Reveal X black cards". RevealCostN
+	// is the printed count (absent for the X form); RevealCostLabel is
+	// the clause as printed, without the verb ("X black cards").
+	// RevealCostOptions is every matching card in the activator's hand,
+	// in hand order, the source excluded — private to the activator, the
+	// same leak DiscardCostOptions guards. The picks go back as
+	// `reveal_ids`.
+	//
+	// RevealCostCountFromX marks the X form: the count is the X the
+	// activator announces, so RevealCostN is absent and the number of
+	// cards picked IS the announcement — the client opens its picker
+	// (zero to as many as RevealCostOptions lists), sends the picks as
+	// `reveal_ids` and their number as `x_value`, and skips the X
+	// stepper. `demands_x` is set beside it.
+	RevealCostN          int      `json:"reveal_cost_n,omitempty"`
+	RevealCostLabel      string   `json:"reveal_cost_label,omitempty"`
+	RevealCostOptions    []string `json:"reveal_cost_options,omitempty"`
+	RevealCostCountFromX bool     `json:"reveal_cost_count_from_x,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -5144,6 +5164,10 @@ func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView
 	// (Penance) lists the controller's whole hand, the same leak.
 	private = private || len(v.TopCostOptions) > 0
 	v.TopCostOptions = nil
+	// #2598: "Reveal X black cards from your hand" (Martyr of Bones)
+	// lists the controller's matching hand cards, the same leak.
+	private = private || len(v.RevealCostOptions) > 0
+	v.RevealCostOptions = nil
 	// #1297's "Exile N cards from your hand" (Holistic Wisdom): the
 	// same leak one verb over. The graveyard form (Grim Lavamancer,
 	// Moorland Haunt) lists cards in a pile every viewer may read and
@@ -9858,6 +9882,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// stamps the flag and no options.
 			v.DiscardCostRandom = dc.Random
 			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
+		}
+		// #2598: the reveal component, off the walk the engine validates
+		// against (RevealCardsOptionsForEffect).
+		if rc := a.Cost.RevealCards; rc != nil {
+			v.RevealCostN = rc.N
+			v.RevealCostLabel = rc.Label
+			v.RevealCostCountFromX = rc.CountFromX
+			v.RevealCostOptions = cardIDStrings(g.RevealCardsOptionsForEffect(caster, c.InstanceID, rc))
 		}
 		// ADR 0109 §7 (#1902): the two library components, off the
 		// walk the engine validates against.

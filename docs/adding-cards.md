@@ -3126,7 +3126,14 @@ Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
 (#2527, ADR 0113's 2026-10-07 amendment). The count the activator
 names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
-puts X in two places.
+puts X in two places. The Martyr cycle's "Reveal X black cards from
+your hand" is `RevealX("X black cards", "B")` (#2598, ADR 0020's
+2026-10-08 amendment): the same announced-X count, but the cards are
+only shown, never moved, so the picks ride `reveal_ids` and nothing is
+kept out of the auto-tapper. Pair it with `SacrificeThis()` and the mana
+as `Plus(ManaCost("{1}"), RevealX("X black cards", "B"), SacrificeThis())`,
+declare `XMatters: true`, and let a target count that follows the same X
+use `CountFromX` + `UpToX` on the clause (Martyr of Bones).
 
 **X read off a card (#2190):** Kozilek, the Great Distortion's "Discard a
 card with mana value X: Counter target spell with mana value X" is

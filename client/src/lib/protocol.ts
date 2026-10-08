@@ -2658,6 +2658,18 @@ export interface ActivatedAbilityView {
   // sends its mana value as `x_value` (the engine refuses any other) and
   // narrows the ability's target clause by it (`mana_value_equals_x`).
   discard_cost_mana_value_x?: boolean;
+  // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
+  // clause as printed without the verb, the printed count (absent for the
+  // X form) and the matching hand cards — the controller's alone.
+  // `reveal_cost_count_from_x` marks the X form: the number of cards
+  // picked IS the announced X, so the client opens its picker (zero up to
+  // every card in `reveal_cost_options`), sends the picks as `reveal_ids`
+  // and their number as `x_value`, and skips the X stepper. `demands_x`
+  // is set beside it.
+  reveal_cost_n?: number;
+  reveal_cost_label?: string;
+  reveal_cost_options?: string[];
+  reveal_cost_count_from_x?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride
