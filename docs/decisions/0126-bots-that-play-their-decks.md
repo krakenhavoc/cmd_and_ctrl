@@ -1311,6 +1311,109 @@ So the row measures how often black runs out of better plays before the game end
 
 The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 5 turns before and 1 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.
 
+### Amendment PR 3: target purposes priced (2026-10-08)
+
+`PriceTargetPurposes` (`target_purpose.go`), A1 and B1 of the [amendment of 2026-10-08](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills). A player pick whose declared entry gives it cards, tokens or life is priced as that seat's strength change through `ScoreEval`, and the cast drops the mana proxy. Damage entries keep today's price until `DamageByLethality` (PR 4). `BaselineConfig` turns it off.
+
+Before is `develop` at `32886c5cc` (PR 2 merged), after is the branch; every run is `--rotate --lockstep` with the real dump, 0 stalls in every run. Lockstep tie-breaks are not yet fully deterministic (#2730), so read the intervals.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 26, 40.6% (29.5%–52.9%) | 23, 35.9% (25.3%–48.2%) |
+| Run 1 | izzet-aggro | 5, 7.8% (3.4%–17.0%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 18, 28.1% (18.6%–40.1%) | 19, 29.7% (19.9%–41.8%) |
+| Run 1 | simic-ramp | 15, 23.4% (14.7%–35.1%) | 18, 28.1% (18.6%–40.1%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 33 / 96, 34.4% (25.6%–44.3%) | 33 / 96, same |
+| Run 2 | heuristic-baseline | 15 / 96, 15.6% | 15 / 96, same |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 31 / 96, same |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 17 / 96, same |
+| Targeted (izzet and black, 96 games) | heuristic | 64 / 192, 33.3% (27.0%–40.3%) | 64 / 192, same |
+| Targeted | heuristic-baseline | 32 / 192, 16.7% | 32 / 192, same |
+
+Run 1's turns p50 is 14 before and 15 after; run 2's is 12. A2 and A3 rows move by at most three games and none crosses its bar (Harrow stays below A3 at 11 of 26 and 10 of 23).
+
+A head-to-head with the knob alone (today's heuristic against itself with `PriceTargetPurposes` off, a local build, izzet and simic, 48 games each at seeds 1 and 1001): with the knob 44 / 192, 22.9% (17.5%–29.4%); without 52 / 192, 27.1% (21.3%–33.8%). The intervals overlap and both contain the null; the direction is against the knob in both seeds, mostly on izzet at seed 1 (2 against 7 wins).
+
+Who the cards were aimed at in the targeted run (after, from the decision logs; before, every cast aimed at an opponent by construction, as `heuristic-baseline`'s 23 Sign in Blood and 11 of 14 Prismari casts are):
+
+| Contestant | Card | Aimed at | Casts |
+|---|---|---|---:|
+| heuristic | Sign in Blood | itself | 6 |
+| heuristic | Sign in Blood | an opponent on 2 life (3) or 6 | 4 |
+| heuristic | Prismari Command | 2 damage at an opponent, destroy an artifact | 8 |
+| heuristic | Prismari Command | 2 damage at an opponent, loot itself | 3 |
+| heuristic | Prismari Command | loot itself, destroy an artifact | 3 |
+| heuristic | Prismari Command | loot itself, Treasure itself | 2 |
+| heuristic-baseline | Prismari Command | 2 damage and loot, both at an opponent | 11 |
+| heuristic-baseline | Prismari Command | 2 damage at an opponent, destroy an artifact | 3 |
+| heuristic-baseline | Sign in Blood | an opponent | 23 |
+
+`heuristic` cast Sign in Blood in fewer games (14 of 16 to 10 of 16; run 1, 11 of 12 to 6 of 11): at itself it is +0.96, not +2.40, so it loses more main phases to a creature. At seq 248 of review game 2, with PR 2's declarations put on the logged view, the chosen line moves from 2 at Y'shtola and loot Claude (9.12) to 2 at Y'shtola and loot the bot (6.72); the lines that loot Claude fall by 5.40 and those that give Claude the Treasure by 4.35. The cast stays above `InstantThreshold` because 2 damage at a 2/4 is still priced as removal (6.72), which is PR 4's to fix. The suite is 41 of 41 before and after.
+
+### Amendment PR 4: damage priced by whether it kills, measured with PR 3 (2026-10-08)
+
+The owner held PR 3 to measure it together with PR 4. `DamageByLethality` (`target_purpose.go`, `damageKills` shared with `combat.go`'s `kills`), C1 and D1 with owner answers 3, 4 and 6:
+- A declared damage entry at a creature is removal if it kills and `DamageChip` (0.00) of removal if it does not.
+- At a planeswalker it is the share of loyalty removed.
+- At a player it is `DamageToOpponent` per point through the opposition weights, with `LethalBonus` at or above their life.
+
+Arc Trail is now two clauses, 2 damage and 1 to another target, and declares both. This changes its moves: the second pick names slot 1. `BaselineConfig` turns the knob off.
+
+Before is `develop` at `8ecec05ba`, and after is the branch with both knobs (develop merged in). Every run is `--rotate --lockstep` with the real dump, and every run had 0 stalls.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 20, 31.2% (21.2%–43.4%) | 28, 43.8% (32.3%–55.9%) |
+| Run 1 | izzet-aggro | 7, 10.9% (5.4%–20.9%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 25, 39.1% (28.1%–51.3%) | 20, 31.2% (21.2%–43.4%) |
+| Run 1 | simic-ramp | 12, 18.8% (11.1%–30.0%) | 12, 18.8% (11.1%–30.0%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 32 / 96, 33.3% (24.7%–43.2%) | 37 / 96, 38.5% (29.4%–48.5%) |
+| Run 2, seed 1 | heuristic-baseline | 16 / 96, 16.7% | 11 / 96, 11.5% |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 32 / 96, 33.3% (24.7%–43.2%) |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 16 / 96, 16.7% |
+| Targeted (izzet and black, 96 games) | heuristic | 62 / 192, 32.3% (26.1%–39.2%) | 57 / 192, 29.7% (23.7%–36.5%) |
+| Targeted | heuristic-baseline | 34 / 192, 17.7% | 39 / 192, 20.3% |
+
+Izzet-aggro over run 1 and both run 2 seeds: 20 of 160 before and 21 of 160 after. Run 1's turns p50 goes from 15 to 14, and run 2's stays at 12.
+
+A2 and A3 rows move by up to 7 games, all on simic-ramp, which holds no declared target. Bars are crossed both ways:
+- Run 1: Delighted Halfling and Rhystic Study fall below their bars, and Harrow rises above its bar (12 of 27 to 16 of 25).
+- Run 2: Birds of Paradise and Ornithopter rise above their bars.
+- Run 2, seed 1001: Delighted Halfling, Sol Ring and Rhystic Study rise above their bars.
+
+That is a diverged game, not a price.
+
+**Knob-alone head-to-head.** This is today's heuristic against a local build with both knobs off, on izzet and simic, 48 games each:
+- seed 1: 25 against 23 wins
+- seed 1001: 21 against 27 wins
+- pooled: with the knobs 46 / 192, 24.0% (18.5%–30.5%); without 50 / 192, 26.0% (20.3%–32.7%)
+- on izzet: 2 against 2 at seed 1, and 5 against 5 at seed 1001
+
+**What the burn and the gifts were aimed at** (the targeted run's decision logs, after):
+
+| Card | `heuristic` | `heuristic-baseline` |
+|---|---|---|
+| Lightning Bolt | 11 at creatures it killed | 5 killed, 6 at creatures that survived, 4 at players (1 lethal) |
+| Shock | 14 killed | 2 killed, 8 survived, 4 at players |
+| Fiery Temper | 16 killed, 2 survived | 10 killed, 11 survived, 2 at players |
+| Izzet Charm (damage) | 19 killed | 6 killed, 11 survived |
+| Arc Trail | 2 at an opponent with 1 killing a creature: 6; 2 at itself with 1 killing a creature: 4; lethal at an opponent: 1 | 3 killed, 6 survived, 3 at players only |
+| Prismari Command | loot and Treasure at itself 5; loot itself with damage or artifact removal 7; 2 at an opponent with artifact removal 3 | 2 and loot both at an opponent 11 |
+| Sign in Blood | at itself 7; at an opponent on 3 life or less 7 | at an opponent 21 |
+
+Sign in Blood's cast rate (games used of games offered) is close to before:
+- run 1: 11 of 11 before, 8 of 9 after
+- targeted run: 16 of 17 before, 14 of 16 after
+
+With PR 3 alone it was 6 of 11 and 10 of 16. PR 4 makes the burn and the bodies the bot would otherwise cast cheaper to hold, which leaves room in the main phase.
+
+**Arc Trail at itself.** The 4 casts that put Arc Trail's 2 at the bot are the enumerator's doing. `legalStepSets` is a cartesian product capped at 12, in candidate order, and candidates are ordered by threat. So slot 0 takes the top-threat candidate in every offered set, and on some boards that candidate is the bot itself. In one logged window the only Arc Trail move offered was "2 at the bot, 1 at Fleshbag Marauder". This is a follow-up for the enumerator, like #2681. `heuristic-baseline` shows the same shape once.
+
+**Seq 248 of review game 2**, with PR 2's declarations put on the logged view: every Prismari Command line is now below `InstantThreshold`. The best is "2 at Claude, loot the bot" at +0.90, and pass is 0, so the bot passes the draw step, as the amendment predicted. The table is in the PR. The suite is 41 of 41 before and after.
+
+**Pins.** `TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow` was re-pinned by hand (its fifth exception). The battle deck's Lightning Bolt at a player on 40 life is now held. With the knob off, the old digests still match.
+
+**Real-dump audit.** The branch E2E's `realdump` job fails on `TestRealDumpPurposeAudit` over Eliminate the Impossible, a card from #2734 that reads as a wipe and declares no sweep. `develop` at `8ecec05ba` fails the same way. Arc Trail passes the audit.
 
 ### #2680 and #2678: puts from hand, own-permanent picks and extra land drops (2026-10-08)
 

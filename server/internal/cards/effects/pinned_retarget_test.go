@@ -168,7 +168,7 @@ func TestSpellskiteChoosesWhichTargetOfATwoTargetSpell(t *testing.T) {
 	skite := pushSpellskite(g, opp.ID)
 	big := pushCostedPermanentForTest(g, opp.ID, "Big", "Creature — Beast", "{2}{G}")
 	arc := castCatalogSpell(t, g, "Arc Trail", "Sorcery", arcTrailOracle,
-		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetCard, ID: big}})
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetCard, ID: big, Slot: 1}})
 
 	activateSpellskite(t, g, opp.ID, skite, arc)
 	life := opp.Life

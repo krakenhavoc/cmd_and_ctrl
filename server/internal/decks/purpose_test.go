@@ -85,7 +85,6 @@ var valueIsTheirTarget = map[string]string{
 	"Utter End":                 "removal",
 	"Void Rend":                 "removal",
 	"Chaos Warp":                "removal",
-	"Arc Trail":                 "removal or burn; its two picks are one clause of two targets dealt 2 and 1 by position, which a per-clause entry cannot say (ADR 0126's amendment of 2026-10-08)",
 	"Rapid Hybridization":       "removal",
 	"Pongify":                   "removal",
 	"Beast Within":              "removal",
@@ -123,8 +122,7 @@ var noPrintedAmount = map[string]string{
 // answer 5, first half): a gift that is good or bad by whom it is
 // aimed at, and burn, which kills or does not by how much it deals.
 // Each declares a target entry (Purpose.Targets) on the slot named.
-// Arc Trail and Blaze cannot, and say why on valueIsTheirTarget and
-// noPrintedAmount.
+// Blaze cannot, and says why on noPrintedAmount.
 var curatedTargetPurposes = map[string]string{
 	"Prismari Command": "modes",
 	"Sign in Blood":    "card",
@@ -133,6 +131,7 @@ var curatedTargetPurposes = map[string]string{
 	"Fiery Temper":     "card",
 	"Abrade":           "modes",
 	"Izzet Charm":      "modes",
+	"Arc Trail":        "card",
 }
 
 // targetEntriesIn counts the target entries a spell declares in `slot`:

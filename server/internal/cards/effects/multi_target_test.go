@@ -26,12 +26,17 @@ func cardRefs(ids ...uuid.UUID) []game.TargetRef {
 }
 
 func TestMultiTargetSpecsAreWired(t *testing.T) {
-	cases := map[string][2]int{arcTrailOracle: {2, 2}, ashesToAshesOracle: {2, 2}, sylvanReclamationOracle: {0, 2}}
+	cases := map[string][2]int{ashesToAshesOracle: {2, 2}, sylvanReclamationOracle: {0, 2}}
 	for oracle, want := range cases {
 		spec := game.TargetSpecFor(oracle)
 		if spec == nil || spec.Min != want[0] || spec.Max != want[1] {
 			t.Errorf("%s: spec %+v, want count %v", oracle, spec, want)
 		}
+	}
+	// Arc Trail is two one-target clauses, the second distinct (#2689).
+	arc := game.TargetSpecFor(arcTrailOracle)
+	if arc == nil || arc.ClauseCount() != 2 || !arc.Clause(1).Distinct {
+		t.Errorf("Arc Trail: spec %+v, want two clauses, the second distinct", arc)
 	}
 }
 
@@ -43,7 +48,7 @@ func TestArcTrailIsPositional(t *testing.T) {
 	big := pushCostedPermanentForTest(g, opp.ID, "Big", "Creature — Beast", "{2}{G}")
 	before := opp.Life
 	castCatalogSpell(t, g, "Arc Trail", "Sorcery", arcTrailOracle,
-		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetCard, ID: big}})
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetCard, ID: big, Slot: 1}})
 	passPriorityAroundTable(t, g)
 	if opp.Life != before-2 {
 		t.Errorf("first slot: life %d -> %d, want -2", before, opp.Life)
@@ -66,7 +71,7 @@ func TestArcTrailRejectsSameTargetTwice(t *testing.T) {
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Arc Trail", TypeLine: "Sorcery",
 		OracleID: arcTrailOracle, Owner: me.ID, Controller: me.ID})
 	err := g.CastSpell(me.ID, id, game.CastSpellParams{
-		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetPlayer, ID: opp.ID}}})
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetPlayer, ID: opp.ID, Slot: 1}}})
 	if err != game.ErrInvalidParam {
 		t.Fatalf("same player twice: %v, want ErrInvalidParam", err)
 	}
@@ -84,7 +89,7 @@ func TestArcTrailPartialTargetStillResolves(t *testing.T) {
 	bear := pushCostedPermanentForTest(g, opp.ID, "Bear", "Creature — Bear", "{1}{G}")
 	before := opp.Life
 	id := castCatalogSpell(t, g, "Arc Trail", "Sorcery", arcTrailOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}, {Kind: game.TargetPlayer, ID: opp.ID}})
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}, {Kind: game.TargetPlayer, ID: opp.ID, Slot: 1}})
 	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(bear) })
 	passPriorityAroundTable(t, g)
 	if g.Seats[0].Graveyard.Contains(id) == false {
