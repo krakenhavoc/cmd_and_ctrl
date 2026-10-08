@@ -320,6 +320,10 @@ func corpusBoards() []corpusBoard {
 		// Dispute, whose land-play restriction is catalog data and so adds
 		// nothing to the file but the permanent.
 		{"cant_play_lands", corpusCantPlayLands},
+		// v7, added by #2039 (ADR 0096 amendment) as a new file: Jared
+		// Carthalion's cantBecomeMonarch record naming his controller,
+		// beside the opponent he crowned.
+		{"cant_become_monarch", corpusCantBecomeMonarch},
 		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
 		// from a resolved effect as data — setBasicLandTypes records
 		// until end of turn (Tidal Warrior), until the land's controller's
@@ -1278,6 +1282,20 @@ func corpusCantPlayLands(t *testing.T) *game.Game {
 	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayLands {
 		t.Fatalf("setup: scoped records = %+v, want one cantPlayLands", g.ScopedEffects)
 	}
+	return g
+}
+
+// corpusCantBecomeMonarch is #2039's one stored shape.
+func corpusCantBecomeMonarch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	g.WithWriteLock(func() {
+		g.CantBecomeMonarchThisTurnForEffect(uuid.Nil, me.ID, "Jared Carthalion — can't become the monarch this turn")
+		if err := g.SetMonarchForEffect(opp.ID); err != nil {
+			t.Fatal(err)
+		}
+	})
 	return g
 }
 

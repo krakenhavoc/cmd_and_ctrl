@@ -9697,7 +9697,7 @@ func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	// table correcting the crown by hand fires "whenever you become
 	// the monarch" and re-reads every "as long as you're the monarch"
 	// static exactly as the card would have.
-	g.becomeMonarchLocked(playerID)
+	g.writeMonarchLocked(playerID)
 	// #1729: and it ends a Palace Jailer's "until an opponent becomes
 	// the monarch" now (CR 610.3), not at the next priority pass.
 	g.resolveUntilReturnsLocked()

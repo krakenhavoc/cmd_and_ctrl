@@ -61,6 +61,24 @@ func (b BecomeTheMonarch) Apply(ctx *Context) error {
 	return ctx.Game.SetMonarchForEffect(player)
 }
 
+// CantBecomeTheMonarchThisTurn is "<player> can't become the monarch
+// this turn" (Jared Carthalion, True Heir; #2039, ADR 0096 amendment).
+// Player defaults to the resolving item's controller ("You can't
+// become..."). A stored ModCantBecomeMonarch record swept at cleanup
+// (CR 514.2), read by every route that crowns a player.
+type CantBecomeTheMonarchThisTurn struct {
+	Player uuid.UUID
+}
+
+func (c CantBecomeTheMonarchThisTurn) Apply(ctx *Context) error {
+	player := c.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	ctx.Game.CantBecomeMonarchThisTurnForEffect(ctx.Source(), player, "can't become the monarch this turn")
+	return nil
+}
+
 // WhenThisEntersYouBecomeTheMonarch is the line every monarch
 // permanent prints: "When this <permanent> enters, you become the
 // monarch." `name` is the card's name, for the stack label.

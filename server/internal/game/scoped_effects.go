@@ -266,6 +266,13 @@ const (
 	// view ask. A ScopedEffect and not a CastBanRule kind so that an older
 	// binary refuses the file instead of banning nothing. Reads Player.
 	ModCantPlayLands ModKind = "cantPlayLands"
+	// ModCantBecomeMonarch is "<player> can't become the monarch this
+	// turn" (ADR 0096 amendment 2026-10-08, #2039; CR 725): Jared
+	// Carthalion's "You can't become the monarch this turn". Scope
+	// ScopeGame with Player set to the one barred player. Read by
+	// playerCantBecomeMonarchLocked, which becomeMonarchLocked and the
+	// CR 725.4 hand-on ask. Reads Player.
+	ModCantBecomeMonarch ModKind = "cantBecomeMonarch"
 	// ModCantBeRegenerated is "<that permanent> can't be regenerated
 	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
 	// are not applied to it, and are not used up, and neither is a
@@ -807,6 +814,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantGainLife:           {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
+	// ADR 0096 amendment (#2039): the monarch gate.
+	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
