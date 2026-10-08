@@ -430,6 +430,11 @@ func (g *Game) canAttackTargetWithLocked(attacker *Card, target uuid.UUID) error
 	if err := g.canAttackTargetLocked(attacker.Controller, target); err != nil {
 		return err
 	}
+	// #2109: the attacking PLAYER's own "can't attack <player>" grant,
+	// ahead of the creature's list.
+	if err := g.playerCantAttackRefusalLocked(attacker, target); err != nil {
+		return err
+	}
 	return g.attackTargetRestrictionRefusalLocked(attacker, target)
 }
 
@@ -447,12 +452,13 @@ func (g *Game) AttackTargetsForAttackerForEffect(attacker *Card) []AttackTargetR
 		return nil
 	}
 	all := g.AttackTargetsForEffect(attacker.Controller)
-	if len(attacker.Effective().AttackTargetRestrictions) == 0 {
+	if len(attacker.Effective().AttackTargetRestrictions) == 0 && !g.playerHasCantAttackGrantLocked(attacker.Controller) {
 		return all
 	}
 	out := all[:0:0]
 	for _, t := range all {
-		if g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil {
+		if g.playerCantAttackRefusalLocked(attacker, t.ID) == nil &&
+			g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil {
 			out = append(out, t)
 		}
 	}

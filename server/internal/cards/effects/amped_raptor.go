@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Amped Raptor — Creature — Dinosaur {1}{R}, 2/1:
 //
@@ -58,32 +54,15 @@ func ampedRaptorEnters(g *game.Game, item *game.StackItem) error {
 	if !b30CastFromHand(g, item.SourceCardID) {
 		return nil
 	}
-	return MillToZone{
-		Player: ctx.Controller(),
-		To:     game.ZoneExile,
-		Until:  UntilCard(func(c game.Card) bool { return !c.IsLand() }),
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			for _, id := range exiled {
-				c, ok := ctx.Game.LookupCardForEffect(id)
-				z := ctx.Game.FindCardZoneForEffect(id)
-				if !ok || c.IsLand() || z == nil || z.Kind != game.ZoneExile {
-					continue
-				}
-				ctx.Game.GrantCastPermissionToCardsForEffect(game.CastPermission{
-					Player:                 ctx.Controller(),
-					Zone:                   game.ZoneExile,
-					AltCostKey:             ampedRaptorAltCostKey,
-					EnergyEqualToManaValue: true,
-					Timing:                 game.TimingFlash,
-					CastOnly:               true,
-					Duration:               ctx.Game.UntilEndOfTurnDuration(),
-					LapseOnPass:            game.LapseStaysInExile,
-					Source:                 ctx.Source(),
-					SourceName:             "Amped Raptor",
-					Label:                  "Pay {E} equal to its mana value (Amped Raptor)",
-				}, []game.Card{c})
-			}
-			return nil
-		},
-	}.Apply(ctx)
+	return exileUntilNonlandGrantingCast(ctx, game.CastPermission{
+		AltCostKey:             ampedRaptorAltCostKey,
+		EnergyEqualToManaValue: true,
+		Timing:                 game.TimingFlash,
+		CastOnly:               true,
+		Duration:               ctx.Game.UntilEndOfTurnDuration(),
+		LapseOnPass:            game.LapseStaysInExile,
+		Source:                 ctx.Source(),
+		SourceName:             "Amped Raptor",
+		Label:                  "Pay {E} equal to its mana value (Amped Raptor)",
+	})
 }

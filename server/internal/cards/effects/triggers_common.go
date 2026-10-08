@@ -453,6 +453,20 @@ func AllOf(conds ...When) When {
 	}
 }
 
+// EnteredFromAGraveyard — the ETB came out of a graveyard, any player's
+// (CR 603.6a; ADR 0113 amendment 2026-10-08): a creature returned by
+// undying, persist or reanimation. A cast spell that resolves enters from
+// the stack, and a token from nowhere, so neither matches.
+func EnteredFromAGraveyard(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventETB && ev.EnteredFrom == game.ZoneGraveyard
+}
+
+// EnteredFromYourGraveyard — EnteredFromAGraveyard, and the graveyard was
+// the source's controller's own.
+func EnteredFromYourGraveyard(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return EnteredFromAGraveyard(ev, source, lki, g) && ev.EnteredFromOwner == source.Controller
+}
+
 // --- the printed shapes ---------------------------------------------
 
 // WhenThisEnters — "When ~ enters".

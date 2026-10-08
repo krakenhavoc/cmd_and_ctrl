@@ -2274,6 +2274,11 @@ export interface AlternativeCostView {
   // the cast flow opens SacrificeCostModal for it. The picked IDs
   // still ride `alt_cost_ids`, not `sacrifice_ids`.
   sacrifice_options?: LegalTargetsView;
+  // ADR 0135 §2: the `pay_options` cards are DISCARDED, not exiled or
+  // returned (retrace's land, Snag's Forest card, Foil's two cards). The
+  // picker words its prompt "Discard". A discard with a set rule (Foil's
+  // "an Island card and another card") carries `pay_options.each_of`.
+  discards?: boolean;
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
   // or for `sacrifice_options` ("three creatures").
   pay_label?: string;

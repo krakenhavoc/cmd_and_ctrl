@@ -27,8 +27,14 @@
   // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
   // are the dock's action bar (Enter / Escape through its one key
   // handler).
+  //
+  // ADR 0135 §2: a discard offer (`discards`) is worded "Discard", and
+  // one with a set rule (Foil's "an Island card and another card",
+  // `pay_options.each_of`) holds its confirm until the picks fill every
+  // part one-to-one, through the sacrifice picker's own matching.
   import type { AlternativeCostView, CardView } from "../../protocol";
   import { altCostPayCount } from "../../targeting";
+  import { canFillEachOf, fillsEachOf } from "../../sacrificeCost";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
 
@@ -47,8 +53,10 @@
   const { card, offer, options, onConfirm, onCancel }: Props = $props();
 
   const need = $derived(altCostPayCount(offer ?? undefined));
+  const eachOf = $derived(offer?.pay_options?.each_of);
 
   let chosen = $state<string[]>([]);
+  const ready = $derived(chosen.length === need && fillsEachOf(chosen, eachOf));
 
   // Reset when a different cast opens the prompt.
   let lastCardID: string | null = null;
@@ -77,7 +85,7 @@
   }
 
   function confirm(): void {
-    if (chosen.length !== need) return;
+    if (!ready) return;
     onConfirm(chosen);
   }
 </script>
@@ -88,11 +96,13 @@
     src="alternative cost · CR 118.9"
     width={560}
     sheetKey={`altpay:${card.instance_id}:${offer.key}`}
-    primary={confirmAction("Pay", confirm, { disabled: chosen.length !== need })}
+    primary={confirmAction(offer.discards ? "Discard" : "Pay", confirm, { disabled: !ready })}
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">
-      {offer.label ?? offer.key}. Choose {offer.pay_label ?? "a card"}.
+      {offer.label ?? offer.key}. Choose {offer.pay_label ?? "a card"}{offer.discards
+        ? " to discard"
+        : ""}.
       {#if need > 1}
         <span class="tally">{chosen.length} of {need}</span>
       {/if}
@@ -100,7 +110,12 @@
         You also pay {offer.life} life.
       {/if}
     </p>
-    {#if options.length < need}
+    {#if eachOf && eachOf.length > 0}
+      <p class="prompt-hint">
+        One card for each part: {eachOf.map((g) => g.label).join(", ")}.
+      </p>
+    {/if}
+    {#if options.length < need || !canFillEachOf(eachOf)}
       <p class="prompt-hint error">You have nothing that can pay this cost.</p>
     {:else}
       <ul class="prompt-options">

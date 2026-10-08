@@ -234,7 +234,7 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 		if c == nil || c.Controller != playerID {
 			continue
 		}
-		kinds := counterKindsPaying(c, rc.Counter, floor)
+		kinds := g.counterKindsPaying(c, rc.Counter, floor)
 		if len(kinds) == 0 {
 			continue
 		}
@@ -281,19 +281,19 @@ func (g *Game) CounterCostPayable(playerID, sourceID uuid.UUID, rc *CounterRemov
 // counterKindsPaying lists the kinds on c that could contribute at
 // least `floor` counters, most counters first and then by name so
 // the order is deterministic. An empty `kind` is the any-kind form.
-func counterKindsPaying(c *Card, kind string, floor int) []CounterCostKind {
+func (g *Game) counterKindsPaying(c *Card, kind string, floor int) []CounterCostKind {
 	if floor < 1 {
 		floor = 1
 	}
 	if kind != "" {
-		if n := c.Counters[kind]; n >= floor {
+		if n := c.Counters[kind]; n >= floor && !g.counterRemovalLockedLocked(c, kind) {
 			return []CounterCostKind{{Kind: kind, Count: n}}
 		}
 		return nil
 	}
 	var out []CounterCostKind
 	for k, n := range c.Counters {
-		if k == "" || n < floor {
+		if k == "" || n < floor || g.counterRemovalLockedLocked(c, k) {
 			continue
 		}
 		out = append(out, CounterCostKind{Kind: k, Count: n})
@@ -502,7 +502,7 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 		if rc.From != nil && rc.From.ExcludeSource && id == sourceID {
 			return counterPayment{}, ErrIllegalTarget
 		}
-		if c.Counters[kind] < n {
+		if c.Counters[kind] < n || g.counterRemovalLockedLocked(c, kind) {
 			return counterPayment{}, ErrInsufficientCounters
 		}
 		total += n

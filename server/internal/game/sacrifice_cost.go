@@ -323,12 +323,17 @@ type SacrificeSetGroup struct {
 	Candidates []uuid.UUID
 }
 
-// SacrificeKind is one entry of a sacrifice clause's EachOf rule: a
-// KIND of permanent, as data. A permanent is of the kind when it has any
-// of the named subtypes or any of the named card types, read after
-// continuous effects (a land something turned into a Swamp counts, and a
-// changeling is every creature type — Card.HasSubtype). It carries no
-// func, so the clause that holds it adds no route from Game to a closure.
+// SacrificeKind is one entry of a cost clause's EachOf rule: a KIND of
+// object, as data. An object is of the kind when it has any of the named
+// subtypes or any of the named card types, read after continuous effects
+// (a land something turned into a Swamp counts, and a changeling is every
+// creature type — Card.HasSubtype). It carries no func, so the clause
+// that holds it adds no route from Game to a closure.
+//
+// The name is #2526's, from the sacrifice clause it was made for. ADR
+// 0135 §2 widened the rule to a DISCARD clause (Foil's "an Island card
+// and another card"), where the object is a card in hand; the name was
+// kept to keep that diff small.
 type SacrificeKind struct {
 	// Label is the entry as printed ("a Swamp"), for the picker.
 	Label string
@@ -337,10 +342,17 @@ type SacrificeKind struct {
 	// CardTypes, any of, lower-case as Card.HasCardType reads them:
 	// "creature", "land", "artifact".
 	CardTypes []string
+	// Any is "another card" (ADR 0135 §2, Foil): every object is of
+	// this kind. With the one-to-one matching, "an Island card and
+	// another card" is any two cards of which one is an Island card.
+	Any bool
 }
 
 // Matches reports whether c is of this kind.
 func (k SacrificeKind) Matches(c Card) bool {
+	if k.Any {
+		return true
+	}
 	for _, st := range k.Subtypes {
 		if c.HasSubtype(st) {
 			return true
@@ -363,20 +375,43 @@ func SacrificeSetKinds(spec *TargetSpec) []SacrificeKind {
 	return spec.EachOf
 }
 
-// sacrificeSetFitsLocked answers, for each entry and each candidate,
-// whether the candidate is of the entry's kind. A candidate that is not
-// on the battlefield fits nothing. Caller must hold g.mu.
-func (g *Game) sacrificeSetFitsLocked(entries []SacrificeKind, ids []uuid.UUID) [][]bool {
+// costSetFitsLocked answers, for each entry and each candidate, whether
+// the candidate is of the entry's kind. The candidate is read from the
+// zone the cost component names (ADR 0135 §2): the battlefield for a
+// sacrifice, a hand for a discard. A candidate that is not in that zone
+// fits nothing. Caller must hold g.mu.
+func (g *Game) costSetFitsLocked(entries []SacrificeKind, zone ZoneKind, ids []uuid.UUID) [][]bool {
 	fits := make([][]bool, len(entries))
 	for i := range entries {
 		fits[i] = make([]bool, len(ids))
 		for j, id := range ids {
-			if c := findBattlefieldCard(g, id); c != nil {
-				fits[i][j] = entries[i].Matches(*c)
+			if c, ok := g.costSetCardLocked(zone, id); ok {
+				fits[i][j] = entries[i].Matches(c)
 			}
 		}
 	}
 	return fits
+}
+
+// costSetCardLocked finds a set-rule candidate in `zone`: on the
+// battlefield, or in any seat's hand (the caller's own zone walk has
+// already said whose). Caller must hold g.mu.
+func (g *Game) costSetCardLocked(zone ZoneKind, id uuid.UUID) (Card, bool) {
+	if zone == ZoneHand {
+		for _, p := range g.Seats {
+			if p == nil {
+				continue
+			}
+			if c, ok := g.cardInZoneLocked(p.Hand, id); ok {
+				return c, true
+			}
+		}
+		return Card{}, false
+	}
+	if c := findBattlefieldCard(g, id); c != nil {
+		return *c, true
+	}
+	return Card{}, false
 }
 
 // assignSacrificeSet finds one pick per entry such that no pick is used
@@ -418,6 +453,13 @@ func assignSacrificeSet(fits [][]bool, order []int) []int {
 // count is checked by the caller (SacrificeCountLegal); this judges the
 // kinds. Caller must hold g.mu.
 func (g *Game) sacrificeSetSatisfiedLocked(spec *TargetSpec, picks []uuid.UUID) bool {
+	return g.costSetSatisfiedLocked(spec, ZoneBattlefield, picks)
+}
+
+// costSetSatisfiedLocked is sacrificeSetSatisfiedLocked over the zone a
+// cost component names (ADR 0135 §2): a discard's picks are cards in
+// hand. Caller must hold g.mu.
+func (g *Game) costSetSatisfiedLocked(spec *TargetSpec, zone ZoneKind, picks []uuid.UUID) bool {
 	entries := SacrificeSetKinds(spec)
 	if len(entries) == 0 {
 		return true
@@ -429,7 +471,7 @@ func (g *Game) sacrificeSetSatisfiedLocked(spec *TargetSpec, picks []uuid.UUID) 
 	for i := range order {
 		order[i] = i
 	}
-	return assignSacrificeSet(g.sacrificeSetFitsLocked(entries, picks), order) != nil
+	return assignSacrificeSet(g.costSetFitsLocked(entries, zone, picks), order) != nil
 }
 
 // SacrificeSetSatisfiedForEffect is sacrificeSetSatisfiedLocked for a
@@ -452,11 +494,19 @@ func (g *Game) SacrificeSetSatisfiedForEffect(spec *TargetSpec, picks []uuid.UUI
 //
 // The result is in entry order. Caller must hold g.mu (read or write).
 func (g *Game) SacrificeSetPaymentForEffect(spec *TargetSpec, candidates []uuid.UUID) []uuid.UUID {
+	return g.CostSetPaymentForEffect(spec, ZoneBattlefield, candidates)
+}
+
+// CostSetPaymentForEffect is SacrificeSetPaymentForEffect over the zone
+// a cost component names (ADR 0135 §2): ZoneHand searches cards in hand
+// for a discard's set ("an Island card and another card"). Caller must
+// hold g.mu (read or write).
+func (g *Game) CostSetPaymentForEffect(spec *TargetSpec, zone ZoneKind, candidates []uuid.UUID) []uuid.UUID {
 	entries := SacrificeSetKinds(spec)
 	if len(entries) == 0 {
 		return nil
 	}
-	fits := g.sacrificeSetFitsLocked(entries, candidates)
+	fits := g.costSetFitsLocked(entries, zone, candidates)
 	versatility := make([]int, len(candidates))
 	for j := range candidates {
 		for i := range entries {
@@ -486,11 +536,18 @@ func (g *Game) SacrificeSetPaymentForEffect(spec *TargetSpec, candidates []uuid.
 // entries (a Swamp Forest) appears under both. Nil without a set rule.
 // Caller must hold g.mu (read or write).
 func (g *Game) SacrificeSetGroupsForEffect(spec *TargetSpec, candidates []uuid.UUID) []SacrificeSetGroup {
+	return g.CostSetGroupsForEffect(spec, ZoneBattlefield, candidates)
+}
+
+// CostSetGroupsForEffect is SacrificeSetGroupsForEffect over the zone a
+// cost component names (ADR 0135 §2): ZoneHand groups a discard's cards
+// in hand. Caller must hold g.mu (read or write).
+func (g *Game) CostSetGroupsForEffect(spec *TargetSpec, zone ZoneKind, candidates []uuid.UUID) []SacrificeSetGroup {
 	entries := SacrificeSetKinds(spec)
 	if len(entries) == 0 {
 		return nil
 	}
-	fits := g.sacrificeSetFitsLocked(entries, candidates)
+	fits := g.costSetFitsLocked(entries, zone, candidates)
 	out := make([]SacrificeSetGroup, len(entries))
 	for i := range entries {
 		out[i].Label = entries[i].Label

@@ -918,7 +918,19 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// name and the next few are that payment with its last card
 		// swapped for the next-cheapest.
 		pool := e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer))
-		altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+		if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
+			// ADR 0135 §2: a set rule (Foil's "an Island card and
+			// another card") — the first N of the pool may be two
+			// non-Islands. One payment from #2526's set search, fed
+			// the pool in the policy's order, as sacrificePayments
+			// does for a sacrifice clause.
+			altCostSets = nil
+			if pay != nil {
+				altCostSets = [][]uuid.UUID{pay}
+			}
+		} else {
+			altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+		}
 		if len(altCostSets) == 0 {
 			// Unreachable through CastOffersForLocked, which already
 			// dropped an offer with too few candidates. Kept because

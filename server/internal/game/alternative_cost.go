@@ -212,6 +212,13 @@ type AlternativeCost struct {
 	//
 	// The spell being cast is never a legal discard: CR 601.2a has
 	// already moved it to the stack, and it is not in hand anyway.
+	//
+	// ADR 0135 §2 (#2412) also uses it for a true alternative cost:
+	// Snag's "You may discard a Forest card rather than pay this spell's
+	// mana cost" is an offer with an empty ManaCost and this component
+	// (effects.DiscardInstead). Foil's "an Island card and another card"
+	// is two cards under a set rule (TargetSpec.EachOf), which the
+	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
 
 	// PayLabel is the picker's prompt copy for the card component —
@@ -675,19 +682,28 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if spec == nil {
 		return true
 	}
+	setRule := len(SacrificeSetKinds(spec)) > 0
+	var pool []uuid.UUID
 	have := 0
 	for _, c := range g.zoneForAltCostLocked(p, zone).Cards {
 		if c.InstanceID == castID {
 			continue
 		}
 		if g.altCostCardOKLocked(p, spec, zone, c) {
+			if setRule {
+				pool = append(pool, c.InstanceID)
+				continue
+			}
 			have++
 			if have >= want {
 				return true
 			}
 		}
 	}
-	return false
+	// ADR 0135 §2: with a set rule, enough cards is not enough — Foil
+	// held beside two non-Island cards can't be paid, so it isn't
+	// offered (#695).
+	return setRule && g.CostSetPaymentForEffect(spec, zone, pool) != nil
 }
 
 // altCostCardOKLocked is the per-card half of an alternative cost's
@@ -806,7 +822,28 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 			return ErrInvalidParam
 		}
 	}
+	// ADR 0135 §2: a set rule over the picks (Foil's "an Island card
+	// and another card"). Each card passed the clause's union predicate
+	// above; the SET must still fill every entry, one card each. Two
+	// non-Island cards are not an Island card and another card.
+	if !g.costSetSatisfiedLocked(spec, zone, ids) {
+		return ErrInvalidParam
+	}
 	return nil
+}
+
+// AltCostSetPaymentLocked searches `candidates` (in the caller's
+// preferred order) for ONE payment of an offer whose card component has
+// a set rule (TargetSpec.EachOf, ADR 0135 §2: Foil's "an Island card
+// and another card"). ok is false when the component has no set rule,
+// and then the caller pays the first N as before; with a rule, a nil
+// payment means the candidates cannot fill it. Caller must hold g.mu.
+func (g *Game) AltCostSetPaymentLocked(alt *AlternativeCost, candidates []uuid.UUID) (pay []uuid.UUID, ok bool) {
+	spec, zone, _ := alt.cardComponent()
+	if len(SacrificeSetKinds(spec)) == 0 {
+		return nil, false
+	}
+	return g.CostSetPaymentForEffect(spec, zone, candidates), true
 }
 
 // zoneForAltCostLocked picks the zone an alternative cost's card

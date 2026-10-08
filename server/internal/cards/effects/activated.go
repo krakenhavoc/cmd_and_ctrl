@@ -125,15 +125,22 @@ func SacrificeCardType(label string, cardTypes ...string) game.SacrificeKind {
 func sacrificeEachSpec(label string, kinds ...game.SacrificeKind) *game.TargetSpec {
 	spec := sacrificeSpec(label)
 	spec.CardOK = func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-		for _, k := range kinds {
-			if k.Matches(c) {
-				return true
-			}
-		}
-		return false
+		return anyKindMatches(kinds, c)
 	}
 	spec.EachOf = append([]game.SacrificeKind(nil), kinds...)
 	return spec.WithCount(len(kinds), len(kinds))
+}
+
+// anyKindMatches is a set rule's union predicate: whether c is of any of
+// the kinds. Shared by the sacrifice clause (sacrificeEachSpec) and the
+// discard alternative cost (DiscardEachInstead, ADR 0135 §2).
+func anyKindMatches(kinds []game.SacrificeKind, c game.Card) bool {
+	for _, k := range kinds {
+		if k.Matches(c) {
+			return true
+		}
+	}
+	return false
 }
 
 // SacrificeOneOrMore is "Sacrifice one or more <permanents>" —

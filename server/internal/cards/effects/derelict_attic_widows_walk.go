@@ -9,8 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	Widow's Walk {3}{B}: "Whenever a creature you control attacks
 //	alone, it gets +1/+0 and gains deathtouch until end of turn."
 //
-// Widow's Walk reads "alone" the way Exalted does (CR 508.3: the only
-// creature in the whole declaration) and pumps the ATTACKING creature,
+// Widow's Walk reads "alone" the way exalted does (game.AttackedAlone,
+// CR 506.5: the only creature in the whole declaration) and pumps the ATTACKING creature,
 // read off the triggering event.
 func init() {
 	Register(Room(RoomSpec{
@@ -29,7 +29,7 @@ func init() {
 		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) && attackedAlone(g)
+				return attackDeclaredByYou(ev, source.Controller) && game.AttackedAlone(g)
 			}, "Widow's Walk — it gets +1/+0 and gains deathtouch until end of turn", widowsWalkLoneAttacker),
 		}},
 	}))
