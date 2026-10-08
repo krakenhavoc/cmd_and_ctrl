@@ -4,6 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
 This ADR was written plan-first. No code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
@@ -422,6 +423,194 @@ Worked, in the owner's position: late in the game a land in hand has a `cardValu
 - Hashaton, Scarab's Fist: `types` creature, `tokens: 1`. The `{2}{U}` it asks for is not declared. A token is priced well under a 4/4, which leaves room for the mana.
 
 `TestCuratedDeckPurposes` holds each to its declaration.
+
+## Amendment (2026-10-08): purposes that follow a mode's target, and damage priced by whether it kills
+
+**Status:** Accepted (owner answers 2026-10-08). The owner chose the recommended option, (a), on every question; see [Owner answers (2026-10-08)](#owner-answers-2026-10-08) at the end of this amendment. No code changed with it. The changes land in the PRs under its delivery plan.
+**Issue:** [#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689). Related: [#2681](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2681) (Prismari's self loot and Treasure selection is never enumerated) and [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457) (the bot's own draw step as a spend window).
+**Amends:** §6 (what a purpose says, and who it is about) and the target half of the cast price. §4's sweep, §7, and the discard-payoff amendment are unchanged.
+**Line numbers** are on `develop` at `8cda8c86d`. The issue cited `46f6b1e0c`; `aiseat/heuristic/moves.go` has not moved since, and `legal/legal.go`'s cap moved from `:554` to `:562`.
+
+### The problem
+
+**The evidence.** Review game 2 (`06e98afa`, 2026-10-08) was a two-seat table: the heuristic on izzet-aggro (Bot 1, life 34) against a Claude MCP seat on Esper (life 41). At decision-log seq 248, in the bot's turn-6 draw step, the bot had three lands and no creatures. Its hand was Angrath's Marauders, Goldspan Dragon, Solphim, Unexpected Windfall, Captain Lannery Storm, Malcolm and Prismari Command. Claude controlled Y'shtola, Night's Blessed, a 2/4 commander with no damage marked.
+
+Prismari Command reads: "Choose two — • Prismari Command deals 2 damage to any target. • Target player draws two cards, then discards two cards. • Target player creates a Treasure token. • Destroy target artifact." The enumerator offered twelve casts. Every one of them was modes [0,1] or [0,2]; #2681 covers why. The trace priced them as follows:
+
+| Mode 0's target | Mode 1's or 2's target | [0,1] | [0,2] |
+|---|---|---:|---:|
+| Y'shtola | Claude | **9.12** (chosen, index 5) | 9.12 (index 11) |
+| Y'shtola | Bot 1 | 5.82 | 5.82 |
+| Claude | Claude | 4.20 | 4.20 |
+| Claude | Bot 1 | 0.90 | 0.90 |
+| Bot 1 | Claude | 0.90 | 0.90 |
+| Bot 1 | Bot 1 | −2.40 | −2.40 |
+
+Pass was 0. The bot cast the top line: 2 damage to a 2/4, which kills nothing, and "Claude draws two, then discards two", which let Claude pitch two spare lands. It spent all three lands in the draw step, so it cast nothing in its main phase. Mary Read and Anne Bonny (4.17), Malcolm and Lannery Storm were all castable there.
+
+**Why, in the code.** Every price in the table is one sum:
+
+```
+0.60 (3 × SpellPerMana 0.60, less the card's Hand 1.20)
++ a price per target
+```
+
+- **A player target is always priced as an attack.** `targetsValue` (`aiseat/heuristic/moves.go:781`) charges `SelfTargetPenalty` (−1.50, `:787`) for the bot itself, and pays `DamageToPlayer × leaderBoost` (+1.20 × 1.50 = +1.80, `:793`) for anyone else, whatever the mode does to them. Giving Claude two new cards or a Treasure is priced the same as burning Claude.
+- **A creature target is always priced as removal.** `cardTargetValue` (`:820`–`:829`) prices an opponent's creature at `CreatureValue × RemovalConfidence × leaderBoost`, which is 5.60 × 0.80 × 1.50 = 6.72 for Y'shtola. Nothing asks whether 2 damage kills a 4-toughness creature.
+- **The mode never enters the price.** Prismari declares no purpose on any mode (`cards/effects/prismari_command.go`). `castPurpose` (`purpose.go:98`) then falls back to the card, which has none, and `resolvedValueFor` (`fuel.go:217`–`:223`) uses the mana-value proxy. So [0,1] and [0,2] are the same number.
+- **The signal could not say it.** `PurposeView`'s amounts are all the controller's: `draws` is "cards its controller draws" (`protocol/purpose_view.go:28`). Declaring Prismari's loot as `draws: 2, discards: 2` would add +1.20 to every cast whoever it targets, and keep the attack price on Claude. That is why `TestCuratedDeckPurposes` lists Prismari on `valueIsTheirTarget` with the class "its targets decide who draws and who gets the Treasure, by mode" (`internal/decks/purpose_test.go:93`). Sign in Blood is there for the same reason (`:99`).
+- **The damage field exists, but nothing reads it for a spell.** `damage_to_creature` came with [ADR 0130's amendment of 2026-10-07](0130-exert.md#amendment-2026-10-07-exert-rows-and-what-they-declare) for exert rows. Only `exertGain` reads it, through `bestCreatureKill` (`exert.go:99`, `:119`), which checks `effectiveToughness(c) <= dmg`. Two catalog rows declare it (Glorybringer and Fervent Paincaster). No spell or mode does, and the cast price never looks.
+
+**How wide it is.** These are greps, so they are upper bounds:
+
+- 41 card files in `cards/effects` are modal and have a mode that targets a player.
+- 265 files have a player or opponent target clause.
+- About 280 name a damage effect and a creature or any-target clause.
+
+The curated decks put it in play every game:
+
+- izzet-aggro holds Lightning Bolt, Shock, Arc Trail, Fiery Temper, Abrade, Izzet Charm and Prismari Command. Every one of them prices any opposing creature as killed.
+- mono-black-aristocrats holds Sign in Blood ("Target player draws two cards and loses 2 life"). By the same arithmetic, the bot always prefers to cast it at an opponent rather than at itself. That case is from the code, not from a logged game.
+
+The hostile default is right for some effects: a discard (Kolaghan's Command), a mill, a life loss and damage are all bad for their target. It is wrong for a draw, a token, a life gain and a loot.
+
+**What the rules say.** I checked every rule below against the Comprehensive Rules effective September 25, 2026.
+
+- **CR 601.2c:** "if the spell uses the word 'target' in multiple places, the same object or player can be chosen once for each instance of the word 'target'". So Prismari's [1,2] with the bot as both targets, the play the review wanted, is a legal cast.
+- **CR 120.6:** "If the total damage marked on a creature is greater than or equal to its toughness, that creature has been dealt lethal damage and is destroyed as a state-based action". **CR 704.5g** is that state-based action.
+- **CR 514.2:** in the cleanup step, "all damage marked on permanents … is removed". Damage that does not kill is gone at end of turn.
+- **CR 702.12b:** an indestructible permanent is not destroyed by lethal damage.
+- **CR 702.2b:** a creature dealt damage by a source with deathtouch is destroyed.
+- **CR 702.16e:** damage from a source of the protected quality is prevented.
+- **CR 120.3c:** damage to a planeswalker removes that many loyalty counters. **CR 704.5i:** a planeswalker with loyalty 0 goes to the graveyard.
+- **CR 120.3d:** damage from a source with wither or infect is dealt as −1/−1 counters, which stay.
+- **CR 704.5a:** "If a player has 0 or less life, that player loses the game."
+
+### Options considered
+
+**A. How the catalog says who a purpose is about.**
+
+1. **(Recommended) Per target clause.** `game.Purpose` gains a list of target purposes, each keyed by the `slot` of the target clause it describes within its statement: the card's own statement, a mode's, an alternative cost's or an activated row's. Each entry holds what happens *to that target*: `draws`, `discards`, `tokens`, `life_gain`, `life_loss` and `damage`. A move's target already names its clause: `targets[].slot`, and `targets[].mode`, an index into the move's `modes` (`legal/legal.go:962`–`:971`, ADR 0065 §2). So the heuristic can match every pick to its entry without a wire change to moves. This is the only option that can say Arc Trail ("2 damage to any target and 1 damage to another target") truthfully, and it follows CR 601.2c's one-target-per-instance model, which the engine already uses.
+2. **A mode-level flag:** "this mode's amounts apply to its target player". It is smaller, and enough for Prismari and Sign in Blood. It cannot split a statement with two clauses, and it needs a separate damage field anyway.
+3. **Inferring it from the clause kind:** a mode whose only target is a player has its amounts apply to that player. Rejected. §6's rule is "declared on the card, never inferred", and the inference is wrong for "Target opponent sacrifices a creature. You draw a card."
+4. **Resolving the spell on a copy of the game and scoring the result.** Rejected. ADR 0033 §3 rules out cloning a game in a policy.
+
+**B. How a gift to another seat is priced.**
+
+1. **(Recommended) The bot's own formula, through the opposition weights.** For the bot as target, the entry is priced by `purposeValue`'s amount terms, as if the bot had cast an untargeted "you draw two". The discard payoffs and the cards it would discard come with that (`resolutionDiscardPayoff`). For an opponent, the same amounts make a strength change `x` for that seat. It is priced as the change in `ScoreEval` (`score.go:952`): `−(OpponentMean × x / n + OpponentMax × x)` when that seat is the strongest opponent, and only the mean term otherwise. That is how §4 prices a sweep, and it weighs a four-player table without a new constant. At a two-seat table it is −1.5x, which is what `LeaderBoost` (1.50) gives.
+2. **A sign table with `LeaderBoost`**, as the issue proposed: +value on the bot, −value × `leaderBoost` on an opponent. Simpler, but it treats a gift to one of three opponents as costing the bot as much as the same gift to itself.
+
+**C. How damage is priced.**
+
+1. **(Recommended) By whether it kills, else nothing.** A creature target dies if it is not indestructible, the damage is not prevented by protection from the source, and either `damage ≥ toughness − damage_marked` (CR 120.6) or the source has deathtouch and `damage ≥ 1` (CR 702.2b). The combat planner's `kills` (`combat.go:127`) already makes these checks for combat. A creature that dies is priced as removal is today. One that survives is priced at `DamageChip × removal value`, with `DamageChip` 0.00 (Q3). The bot's own creature is priced negatively if it dies and 0 otherwise, rather than `OwnPermanentTarget`'s +0.40 pump guess. A planeswalker loses loyalty for good, so it is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price (Q6).
+2. **In proportion to damage over toughness.** Rejected. Marked damage is removed in cleanup (CR 514.2), so 2 of 4 points is worth nothing after this turn. The one exception is damage combined with a combat this turn, and that is the combat planner's business.
+
+**D. Damage to a player with a declared amount.**
+
+1. **(Recommended) Per point.** The amount is priced at `DamageToOpponent` (0.30, the unit the attack planner uses) per point, through B's opposition weights. It gets `LethalBonus` when the amount is at least the player's life and the player can lose to life (CR 704.5a). That replaces `targetsValue`'s `FinishLife` bet (`moves.go:800`–`:811`) with a reading, for a declared spell only. Damage to the bot itself is priced as the life lost, at `MarginalLife`.
+2. **Today's flat `DamageToPlayer × leaderBoost` per target, whatever the amount.** Smaller, but a 2-damage mode stays worth 1.80 at a player on 41 life. At seq 248 that is enough to cast Prismari in the draw step anyway (see below).
+
+**Undeclared cards keep today's price.** A target with no entry is priced by `targetsValue` exactly as now. Nothing is inferred.
+
+### Recommendation
+
+A1, B1, C1 and D1, in two pricing PRs behind two `Config` switches. `PriceTargetPurposes` covers A and B; `DamageByLethality` covers C and D. Both are on in `DefaultConfig()` and off in `BaselineConfig()` (§9), so each lever is measured alone, as ADR 0052 asks. Then declarations: every curated card in either class, and every catalog card whose spell, mode or row gives its target player something (Q5).
+
+**Worked at seq 248**, with the recommended answers. Claude is the only opponent, so B1's weight is 1.5. Prismari declares mode 0 `damage: 2`, mode 1 `draws: 2, discards: 2` and mode 2 `tokens: 1`, each on slot 0. The cast is then purpose-priced, so the 1.80 mana proxy goes, and the card still costs Hand (1.20).
+
+| Selection | Today | Amended |
+|---|---:|---:|
+| 2 to Y'shtola, loot to Claude | 9.12 | 0 − 1.80 − 1.20 = **−3.00** |
+| 2 to Y'shtola, loot to Bot 1 | 5.82 | 0 + 1.20 − 1.20 = 0.00 |
+| 2 to Claude, loot to Bot 1 | 0.90 | 0.90 + 1.20 − 1.20 = 0.90 |
+| 2 to Claude, Treasure to Bot 1 | 0.90 | 0.90 + 0.50 − 1.20 = 0.20 |
+| loot and Treasure to Bot 1 (after #2681) | not offered | 1.20 + 0.50 − 1.20 = 0.50 |
+
+The bot's loot is 2 × 1.20 − 2 × `DiscardWeight` 0.60 = 1.20; Mary Read is not on the battlefield, so there is no discard payoff. The 2 damage to Claude is 2 × 0.30 × 1.5 = 0.90. Every Prismari cast is now below `InstantThreshold` (1.50), so the bot passes the draw step and casts Mary Read and Anne Bonny (4.17) in its main phase. That is the issue's accepted answer, and it needs no #2457 gate.
+
+Under D2 instead, "2 to Claude, loot to Bot 1" is 1.80 + 1.20 − 1.20 = 1.80, which clears 1.50, and the bot still casts in its draw step. So D matters to the acceptance position.
+
+### Snapshot and wire impact
+
+- **No snapshot change.** A purpose is catalog data projected into the view, as §6 says. Nothing new is captured, `SnapshotSchemaVersion` stays 7, and `testdata/snapshot_shape/v7.txt` does not change.
+- **Wire, additive.** `PurposeView` gains `targets`, omitted when empty: a list of `TargetPurposeView` `{slot, draws, discards, tokens, life_gain, life_loss, damage}`, every amount `omitempty`. It rides wherever `PurposeView` already does (the card, `ModeOptionView`, `AlternativeCostView`, `ActivatedAbilityView`), and it is projected and cleared with it. Clients ignore it. `docs/protocol.md` documents it, and `client/src/lib/protocol.ts` mirrors the type.
+- **No move change.** `targets[].slot` and `targets[].mode` are on the wire already. The heuristic's private `targetRef` (`params.go:20`) gains the two fields it currently drops.
+- **`game.Purpose` stays comparable.** `IsZero` compares it with `==` (`game/purpose.go:148`), so the new field is a pointer, as `DiscardPayoff` and `Pump` are. `plus` (a fused split spell) concatenates the two halves' lists, renumbering the second half's slots past the first's.
+- **`damage_to_creature` stays.** It describes a triggered or activated row whose target is chosen later (exert's Glorybringer), where there is no move target to match. A `targets` entry describes a target the move names.
+- **The registration guard** refuses:
+  - an entry whose `slot` is not a target clause of its statement;
+  - a player amount (`draws`, `discards`, `tokens`, `life_gain`, `life_loss`) on a clause that cannot target a player;
+  - `damage` on a clause that can target nothing damage can be dealt to;
+  - a negative amount;
+  - an entry that says nothing.
+
+### Delivery plan
+
+| # | PR | Depends on | Acceptance |
+|---|---|---|---|
+| 1 | This amendment | — | docsguard |
+| 2 | **The signal.** `game.Purpose`'s target list, `TargetPurposeView`, the projection, the guard, `docs/protocol.md` and `protocol.ts`. Declarations for the curated decks' cards in both classes: Prismari Command, Sign in Blood, Lightning Bolt, Shock, Arc Trail, Fiery Temper, Abrade, Izzet Charm's damage mode, and Blaze if X can be declared (otherwise it goes on `noPrintedAmount`). `TestCuratedDeckPurposes` requires an entry for each and drops their `valueIsTheirTarget` notes. The dump audit lists catalog cards whose text reads "target player draws / creates / gains", or "deals N damage to" a creature or any target, with no entry. **No price change.** Touches `effects`, `game`, `protocol`, `decks` and the client types, and nothing under `aiseat/`. | 1 | Unit tests for the guard and the projection. `TestCuratedDeckPurposes`. §8 run 1 and run 2 identical to `develop` apart from IDs and timings, as PR 6 showed. |
+| 3 | **Target purposes priced** (A1, B1) behind `PriceTargetPurposes`. `targetRef` decodes `slot` and `mode`. A declared entry replaces `targetsValue`'s price for its pick, and a cast whose only declared amounts are target entries counts as purpose-priced, so the mana proxy goes. | 2 | Unit tests: Prismari's loot is worth more on the bot than on an opponent, its Treasure likewise, and Sign in Blood at itself beats an opponent on 30 life. §8 run 1 and run 2 under §8's sub-PR bar: no tag's agreement falls, and `heuristic`'s upper bound stays above 25%. A targeted run, `boteval arena --seats heuristic,heuristic,heuristic-baseline,heuristic-baseline --decks izzet-aggro,mono-black-aristocrats,izzet-aggro,mono-black-aristocrats --games 96 --rotate --lockstep`, reporting Prismari's and Sign in Blood's Cards rows, with who each was aimed at, read from the decision logs. |
+| 4 | **Damage by whether it kills** (C1, D1) behind `DamageByLethality`. `cardTargetValue` takes the declared amount; the kill test is shared with `combat.go`'s. | 2 (3 for the acceptance position) | Unit tests: Shock at a 2/4 is about 0, at a 2/2 it is removal, at an indestructible 2/2 it is 0, at a 3/3 with 1 damage marked it is removal, and at a player on 2 life it gets the lethal bonus. §8 run 1 and run 2 as in PR 3. The izzet-aggro run, reporting burn aimed at creatures it killed, at creatures it did not, and at players. |
+| 5 | **The catalog sweep** (owner answer 5): every catalog spell, mode or row that gives its target player something (a draw, a token, a life gain or a loot), then burn from the dump audit's list, in card batches with no price change. Each batch follows docs/adding-cards.md (its own oracle fixtures only, Completeness unchanged). | 2 | The dump audit's list shrinks. The real-dump audits pass. |
+
+Suite positions are **proposals only**, for the owner to review in the PR that adds them, as every suite position is:
+
+- **`prismari-draw-step-with-a-three-drop`** (PR 4, the issue's position):
+  - Window: the bot's draw step; 3 lands untapped; Prismari Command in hand; the opponent has a 2/4; a castable 3-drop is in hand.
+  - Accept: pass, or Prismari "loot and Treasure, both at the bot" once #2681 offers it.
+  - Reject: any Prismari cast aimed at the 2/4 and the opponent.
+- **`prismari-loot-yourself`** (PR 3):
+  - Window: the bot's own second main phase; the opponent has no creatures; the bot has 3 lands and dead 5- and 7-drops in hand.
+  - Accept: Prismari "loot and Treasure, both at the bot".
+  - Reject: any selection that loots the opponent or gives them the Treasure.
+- **`do-not-shock-the-two-four`** (PR 4):
+  - Window: the bot's main phase; Shock in hand; the opponent's only creature is a 2/4.
+  - Accept: pass, or Shock at the opponent.
+  - Reject: Shock at the 2/4.
+- **`sign-in-blood-yourself`** (PR 3):
+  - Window: the bot's main phase; Sign in Blood in hand; the bot on 30 life; the opponent on 30.
+  - Accept: Sign in Blood at the bot.
+  - Reject: Sign in Blood at the opponent.
+
+**Out of this amendment:** the draw-step gate (#2457), Prismari's missing selection and the labels that don't name the modes (#2681), a trigger whose target is picked later through `choices.go:194` (a follow-up once PR 3 shows the shape), wither and infect sources (CR 120.3d; no curated spell has either, so they keep today's price), and damage priced together with a combat this turn.
+
+### Open questions for the owner (2026-10-08)
+
+Each question lists the recommended option first.
+
+1. **Q1. Where a target's amounts are declared.**
+   - **(a) Recommended:** per target clause, keyed by `slot`, in a `targets` list on `Purpose` and `PurposeView`. Arc Trail's two clauses and Prismari's two modes are each described truthfully, and the move's existing `slot`/`mode` find the entry.
+   - **(b)** A mode-level flag, "these amounts apply to the mode's target player", plus a mode-level `damage`. Smaller. Arc Trail and other two-clause statements stay undeclared at today's price.
+   - **(c)** Inferred from the clause kind. This breaks §6's "declared, never inferred", and it is wrong for "target opponent sacrifices…, you draw".
+2. **Q2. How a gift to an opponent is priced.**
+   - **(a) Recommended:** the bot's own amount formula, turned into a change in that seat's strength and priced through `ScoreEval`'s opposition weights, as §4 prices a sweep. A gift to the strongest of three opponents costs 0.83 of its value, and a gift to another opponent 0.33.
+   - **(b)** A sign flip times `LeaderBoost`: 1.5 for the leader, 1.0 for anyone else, at any table size. It is simpler, and it overcharges gifts at a four-player table. At two seats the two options agree.
+3. **Q3. Damage that does not kill a creature.**
+   - **(a) Recommended:** `DamageChip` 0.00, so it is worth nothing, because marked damage is removed in cleanup (CR 514.2).
+   - **(b)** A small share, `DamageChip` 0.10 of the removal value, as a tie-break toward the bigger creature. Prismari's 2 at Y'shtola would then be 0.67, not 0.
+   - **(c)** In proportion to damage over toughness. 2 at Y'shtola would be 3.36, still enough for a bad cast in a main phase.
+4. **Q4. Declared damage at a player.**
+   - **(a) Recommended:** per point at `DamageToOpponent` (0.30), through Q2's weights, with `LethalBonus` when the amount reaches the player's life (CR 704.5a). This replaces the `FinishLife` bet for declared spells only.
+   - **(b)** Keep the flat `DamageToPlayer × leaderBoost` (1.80 for any amount). At seq 248, "2 to Claude and loot the bot" then prices 1.80, above `InstantThreshold`, and the draw-step cast stays.
+5. **Q5. Which cards declare target purposes.**
+   - **(a) Recommended:** the curated decks' cards in both classes (PR 2), then every catalog spell, mode or row that gives its target player something: a draw, a token, a life gain or a loot. Those are the sign errors (PR 5), about 40 modal files plus the non-modal "target player draws" spells. Burn across the catalog follows in batches from the dump audit. Undeclared burn keeps today's removal price.
+   - **(b)** The curated decks only. Every other card keeps today's price.
+   - **(c)** Every catalog card in both classes now: about 280 damage files and the player-target files, in PR 5's batches before PR 4 is measured.
+6. **Q6. Planeswalker and battle targets of declared damage.**
+   - **(a) Recommended:** a planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
+   - **(b)** Both keep today's price, as removal whatever the amount. Smaller, and 2 damage to a 6-loyalty planeswalker stays priced as killing it.
+
+#### Owner answers (2026-10-08)
+
+The owner chose option (a), the recommended one, on every question. No section above changed. These answers bind the delivery PRs.
+
+1. **Per target clause.** `Purpose` and `PurposeView` gain a `targets` list keyed by the clause's `slot` (A1).
+2. **Through the table's weights.** A gift to an opponent is that seat's strength change, priced through `ScoreEval`'s `OpponentMean` and `OpponentMax` (B1).
+3. **`DamageChip` 0.00.** Damage that does not kill a creature is worth nothing (C1; CR 514.2).
+4. **Per point, plus lethal.** Declared damage at a player is priced at `DamageToOpponent` per point through those weights, with `LethalBonus` when it reaches the player's life (D1; CR 704.5a).
+5. **The curated decks, then gifts.** PR 2 declares the curated decks' cards in both classes. PR 5 then declares every catalog spell, mode or row that gives its target player something, and burn follows from the dump audit. Undeclared burn keeps today's removal price.
+6. **Planeswalkers by loyalty.** A planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
 
 ## Consequences
 
