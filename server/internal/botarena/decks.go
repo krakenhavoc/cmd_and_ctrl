@@ -186,6 +186,59 @@ const (
 	oracleResoluteSurvivors = "3d699db7-cc52-4ee3-947b-0ba291bf037a"
 )
 
+// MonolithDeckID is the arena deck id of MonolithBattleDeck: `--decks
+// monolith-battle`. Synthetic, so it needs no Scryfall dump.
+const MonolithDeckID = "monolith-battle"
+
+// IsSynthetic reports whether a deck id is dealt by this package with no
+// Scryfall dump behind it: the empty id (BattleDeck), exert-battle and
+// monolith-battle.
+func IsSynthetic(id string) bool {
+	return id == "" || id == ExertDeckID || id == MonolithDeckID
+}
+
+// MonolithBattleDeck is BattleDeck with ten of the two Monoliths in it,
+// for #2500's arena measurement: Basalt Monolith ("{T}: Add {C}{C}{C}",
+// "{3}: Untap") and Grim Monolith ("{4}: Untap") are the cards whose
+// self-untap a heuristic seat once repeated for no mana until the CR
+// 732 breaker parked it. No curated deck holds either. Dealt by oracle
+// ID so the catalog gives each its abilities; the printed costs are the
+// cards' own.
+func MonolithBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	dropBears, dropOgres := 6, 4
+	for _, c := range deck {
+		switch {
+		case c.Name == "Bear" && dropBears > 0:
+			dropBears--
+		case c.Name == "Ogre" && dropOgres > 0:
+			dropOgres--
+		default:
+			out = append(out, c)
+		}
+	}
+	mono := func(name, oracle string) game.Card {
+		c := game.NewCard(name, owner)
+		c.OracleID = oracle
+		c.TypeLine, c.ManaCost = "Artifact", "{3}"
+		return c
+	}
+	for i := 0; i < 6; i++ {
+		out = append(out, mono("Basalt Monolith", oracleBasaltMonolith))
+	}
+	for i := 0; i < 4; i++ {
+		out = append(out, mono("Grim Monolith", oracleGrimMonolith))
+	}
+	return out
+}
+
+// The Monoliths' catalog keys.
+const (
+	oracleBasaltMonolith = "6b8cf2a0-b045-4d91-9d91-c602d40c6237"
+	oracleGrimMonolith   = "229d6627-1292-4ae1-8849-b0f956fa6540"
+)
+
 // CuratedDeck deals one of the four pre-built decks (docs/bot.md,
 // "The four curated decks"), which is what the model tiers are
 // actually configured for: the prompt's static block is that deck's

@@ -3738,6 +3738,13 @@ type ActivatedAbilityView struct {
 	// other "target creature you control" row without it. Public with
 	// the row; the client does not read it.
 	Equip bool `json:"equip,omitempty"`
+	// UntapSelf marks a row whose whole effect is untapping its own
+	// source (game.ActivatedAbility.UntapSelf, #2500): Basalt and Grim
+	// Monolith. Absent on every other row. Bot data: with the source's
+	// mana abilities on the same card view it tells a self-untap that
+	// nets mana from one that only trades it. Public with the row; the
+	// client does not read it.
+	UntapSelf bool `json:"untap_self,omitempty"`
 	// Purpose is what the row does, as the catalog declares it (ADR
 	// 0126 §6, purpose_view.go): a loot's draw and discard, a sweep. On
 	// an any-player row it is also what the row buys an activator who
@@ -9719,6 +9726,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,
 			Equip:         a.Equip,
+			UntapSelf:     a.UntapSelf,
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
 		// and the bot's reason to reach across.

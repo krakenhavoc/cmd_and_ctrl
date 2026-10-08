@@ -302,6 +302,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && src != nil && st.idleEquip(src, cp) {
 			return idleEquipMove, "re-equip for no gain"
 		}
+		// #2500: an untap of its own source that costs as much mana as
+		// the source makes nets nothing (untap_self.go).
+		if !across && src != nil && st.idleSelfUntap(src, cp) {
+			return idleEquipMove, "untap for no net mana"
+		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
 		// place of the flat ActivateBase, and a row that sacrifices its

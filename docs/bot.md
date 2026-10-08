@@ -1369,7 +1369,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | Flag | What it does |
 |---|---|
 | `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline` or `heuristic-noexert`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, and `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
@@ -2515,6 +2515,21 @@ Equipment come to rest: the move back can never also look better.
 Choosing the best host, such as moving Greaves onto a summoning-sick
 creature for haste, is still out of scope ([ADR
 0126](decisions/0126-bots-that-play-their-decks.md)).
+
+**A bot does not untap a Monolith for no net mana.** Basalt Monolith
+taps for {C}{C}{C} and untaps for {3}, and priced like any activation of
+the bot's own, "{3}: Untap Basalt Monolith" beat passing every time: tap
+for three, pay three, again. A heuristic seat repeated it until the CR
+732 breaker named it and the runner's hold parked the seat
+([#2500](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2500), the
+same shape as #2449). A row whose whole effect is untapping its own
+source says so on the wire (`untap_self`, declared by hand on the card
+file), and the heuristic prices it below passing unless the source's
+best repeatable mana ability makes more than the untap costs. Basalt
+nets 0 and Grim Monolith (`{4}`) nets -1, so neither is taken. This is
+#2493's "no gain, no move" for an activated row that nets nothing; it
+does not model an untap that enables a spell this window, because the
+mana that spell would spend is the mana the untap costs.
 
 **An X paid in LIFE is priced the same way, one short of the life
 total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is
