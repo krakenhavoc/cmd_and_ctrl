@@ -1057,3 +1057,32 @@ Before is `develop` at `c1391ff97` (#2649 merged), after is the branch; every ru
 Win rates do not move beyond a game. Run 1: esper 27 and 27 of 64, izzet 3 and 2, black 22 and 24, simic 12 and 11. Run 2 half B: `heuristic` 42 of 96 seat-games both times (43.8%, 34.3%–53.7%), `heuristic-baseline` 6 of 96 both times; by deck, black 22 then 21, simic 20 then 21. The simic ×4 runs are at the null by construction. The other A2 and A3 rows are within one game in run 1 and run 2. In the simic ×4 runs, where a changed Harrow decision changes the rest of the game, they move by up to eight games either way along with their offered counts (Ornithopter of Paradise 137 of 168 to 145 of 177, Delighted Halfling 155 of 181 to 152 of 184), and the only row that crosses its bar is Delighted Halfling in the 40-game run, upward (76% to 82%). The suite is 37 of 37.
 
 Run 1 now meets A3's 50% for Harrow, but the 160-game simic ×4 pool, at 34%, does not. A decision log of six games shows why the rest of the windows still pass: Harrow is priced positive in nearly every window it is offered in, and it is refused where the bar is `InstantThreshold`, with a trigger on the stack in the bot's own main phase or in its upkeep and draw steps, or it loses the main phase to a bigger cast that taps the bot out. It is rarely offered in the end step before the bot's turn, because the bot has spent its mana by then. Those are sequencing questions, not Harrow's price.
+
+### #2677 and #2691: land searches by colour, discards by distance (2026-10-08)
+
+Two card choices the 2026-10-08 review games found wrong, both local to the decision they fix (`card_choices.go`); `cardValue`, which the scry, the sacrifice, the fuel pricer and the cast-cost discard read, is unchanged.
+
+- **#2677, `LandColorNeed` (0.30).** A library search scored every land at one flat `cardValue` and took the first. A land now adds `LandColorNeed` × its fit: for each colour its repeatable mana abilities make, 1/(1 + the bot's sources of it) when the hand or commander has a pip of it, and 0.1 when nothing does, so a dual beats a basic that meets the hand equally. The same score answers a `choose_cards` look at the library.
+- **#2691, `DiscardByDistance`, `DistanceDiscount` (0.60), `DiscardSpellPerMana` (1.00), `DiscardLandFloor` (2.50).** A discard from the bot's own hand (cleanup, a discard prompt, a loot's or rummage's named cards, and the discard-payoff estimate that mirrors them) prices a nonland card by `handKeepValue`: an instant or sorcery at `DiscardSpellPerMana` per mana, a permanent at its `permanentValue`, either multiplied by `DistanceDiscount` per mana it is short (its mana value less sources and lands in hand, or its coloured pips less the sources and lands in hand of each colour, whichever is larger). A land is worth what it brings the rest of the hand closer to castable, never less than its `cardValue`, and never less than `DiscardLandFloor` while the bot has fewer than `RampWantCap` sources. The floor came from measurement: without it the bot discarded 243 lands in run 1 where it had discarded 142, and played no land on 27.1% of its own turns against 24.1%.
+
+`BaselineConfig` zeroes all five. Before is `develop` at `da81f844d`, after is the branch; every run is `--rotate --lockstep` with the real dump. No run stalled and no move was rejected. The counters come from a scratch observer on the runner's decision feed, not part of the change: a search counts when every option is a land and some option makes a colour the hand needs and has no source of while another does not; a discard counts when the nonland cards in hand differ in distance and at least one is short.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | search took a colour the hand needs | 27 / 64 | 55 / 55 |
+| | search took a dual over a basic, need equal | 55 / 140 | 133 / 135 |
+| | discard took the card furthest from castable | 0 / 54 | 18 / 45 |
+| | own turns with no land played | 800 / 3319, 24.1% | 856 / 3288, 26.0% |
+| | lands among the cards discarded | 142 / 636 | 207 / 658 |
+| | turns p50 | 15 | 14 |
+| Run 2, izzet and simic, seed 1 | `heuristic` wins | 24 / 96, 25.0% (17.4%–34.5%) | 28 / 96, 29.2% (21.0%–38.9%) |
+| | `heuristic-baseline` wins | 24 / 96, 25.0% | 20 / 96, 20.8% |
+| Run 2, izzet and simic, seed 1001 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 27 / 96, 28.1% (20.1%–37.8%) |
+| | `heuristic-baseline` wins | 17 / 96, 17.7% | 21 / 96, 21.9% |
+| Run 2, pooled | `heuristic` wins | 55 / 192, 28.6% (22.7%–35.4%) | 55 / 192, 28.6% (22.7%–35.4%) |
+
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48`, so each policy plays each deck 48 times; its turns p50 is 11 then 12 at seed 1 and 12 both times at seed 1001. In run 2 `heuristic` took the needed colour in 20 of 20 and 18 of 18 searches (8 of 22 and 6 of 19 before) and played no land on 17.7% and 16.8% of its turns (19.0% and 17.5% before).
+
+Run 1's deck shares moved: esper 27 to 18 of 64, izzet 2 to 6, black 24 to 28, simic 11 to 12. Four copies of one policy are zero-sum, so this measures no strength, and the intermediate builds of this change gave esper 23 and 24 on the same seeds; run 2 is the strength measure, and it is unchanged pooled. `never` counts are esper 0, izzet 2, black 4 to 3, simic 1 to 2. A2 and A3 rows move both ways with their offered counts, as in #2469's runs: 17 of 41 rows met their bar before and 14 after in run 1 (Harrow 15 of 27 to 12 of 28 crosses back under A3's 50%; Worn Powerstone and Delighted Halfling under A2's 80%), 9 to 7 in run 2 at seed 1 and 7 to 7 at seed 1001.
+
+The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 4 turns before and 2 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.

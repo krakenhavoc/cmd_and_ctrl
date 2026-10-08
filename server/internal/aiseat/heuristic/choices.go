@@ -96,7 +96,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range decode[discardSelectionParams](m.Params).CardIDs {
 			c := st.mine[id]
-			v -= st.cardValue(p.cfg, c) - st.discardPayoff(p.cfg, c)
+			v -= st.handKeepValue(p.cfg, c) - st.discardPayoff(p.cfg, c)
 		}
 		return v, "discard to hand size"
 	}
@@ -205,7 +205,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceSearchLibrary:
 		var v float64
 		for _, id := range cp.CardIDs {
-			v += st.cardValue(p.cfg, lookup(id))
+			v += st.searchValue(p.cfg, lookup(id))
 		}
 		return v, "search: take the best"
 
@@ -223,7 +223,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range cp.CardIDs {
 			c := lookup(id)
-			v += sign * st.cardValue(p.cfg, c)
+			if sign > 0 {
+				v += st.cardValue(p.cfg, c)
+			} else {
+				// The bot's own card: what keeping it is worth
+				// (card_choices.go, #2691).
+				v -= st.handKeepValue(p.cfg, c)
+			}
 			if sign < 0 {
 				// A discard the bot's own payoffs pay for
 				// (discard_payoff.go).
@@ -627,7 +633,7 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 			kept += st.discardPayoff(cfg, c)
 			continue
 		}
-		kept += st.cardValue(cfg, c)
+		kept += st.handKeepValue(cfg, c)
 	}
 	return kept, true
 }
@@ -705,7 +711,7 @@ func (st *state) valueTakenFromLibrary(cfg Config, ch *protocol.PendingChoiceVie
 	}
 	var v float64
 	for _, id := range named {
-		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
+		v += libraryTakeFloor + st.searchValue(cfg, opts[id])
 	}
 	return v, true
 }

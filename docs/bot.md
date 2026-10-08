@@ -881,7 +881,7 @@ A wipe gets no `SpellFloor`.
 
 With `DiscardCostByCard` on, a card discarded to pay a spell's cost
 costs what that card is worth to the bot (`cardValue`, the price the
-cleanup discard already uses), not a flat 1.20. A spare land late in
+cleanup discard used before #2691), not a flat 1.20. A spare land late in
 the game costs about 0.30. The bot's last land in hand, while it has
 fewer than `LandsWanted` (5) sources, costs `LastLandDiscard` (1.00)
 more. The enumerator offers one payment per combination of cards, so
@@ -903,6 +903,54 @@ TokenWeight × tokens
 
 So with Mary Read out, the bot loots away the Island rather than the
 Mountain.
+
+### Which card a discard gives up (#2691)
+
+With `DiscardByDistance` on, a card the bot discards from its own hand
+(the cleanup discard, a discard prompt, the cards a loot or a rummage
+names) is priced by `handKeepValue` (`card_choices.go`), not
+`cardValue`:
+
+- **Spells and permanents share a scale.** An instant or sorcery is
+  worth `DiscardSpellPerMana` (1.00) per mana value, about what a
+  creature's body prices per mana. `cardValue` prices it at
+  `SpellPerMana` (0.60), a cast-time proxy, so a cheap answer was always
+  the first card out.
+- **Distance to castable.** The card is multiplied by
+  `DistanceDiscount` (0.60) for each mana it is short: the larger of its
+  mana value less the bot's mana sources and the lands in its hand, and
+  its coloured pips less the sources and lands in hand of each colour.
+  On two lands with none in hand, a seven-drop is five short (×0.08) and
+  a Counterspell with one blue source is one short (×0.60), so the
+  seven-drop goes. `cardValue`'s flat ×0.60 for any card more than one
+  mana away is not applied.
+- **A land is worth what it brings the hand closer to castable**: for
+  each nonland card in hand, its keep value with the land less its keep
+  value without it, and never less than the land's `cardValue`. While
+  the bot has fewer than `RampWantCap` (7) mana sources it is also never
+  less than `DiscardLandFloor` (2.50), the land drop it will want later:
+  that keeps the old order between a land and a spell on the new scale
+  (a land beats a two-mana spell and loses to a three-mana one). Past
+  seven sources, with everything castable or a second land in hand
+  covering the same gap, a land is worth its `cardValue` and is the card
+  to pitch. Without the floor, raising the spells tipped the discard onto
+  lands, and the bot missed more land drops.
+
+The cast-cost discard (`DiscardCostByCard` above), the scry, the
+sacrifice and the fuel pricer still read `cardValue`.
+
+### Which land a search takes (#2677)
+
+A library search scores each answer by `cardValue`, and every land is
+the same flat value, so before `LandColorNeed` the bot took the first
+land offered. A land now adds `LandColorNeed` (0.30) times its fit
+(`landColorFit`, `card_choices.go`): for each colour its repeatable mana
+abilities make (`produced`), 1/(1 + the bot's sources of that colour) if
+the hand or the commander has a pip of it, and 0.1 if nothing asks for
+it. So a G-hungry hand with no G source fetches Breeding Pool over
+Island, a dual beats a basic that meets the hand equally, and a
+missing colour beats a fourth source of one the bot has. The same score
+picks a land out of a `choose_cards` look at the library.
 
 ### Sacrifices
 
