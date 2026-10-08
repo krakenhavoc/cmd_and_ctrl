@@ -242,7 +242,36 @@ PRs 2 and 3 can be built in parallel. The owner's answers leave this plan as it 
 
 ## Measurements
 
-None yet. PR 2 records the baseline here, and PRs 4 and 5 add their rows.
+PRs 4 and 5 add their rows under PR 2's baseline.
+
+### PR 2: the baseline, before any plan (2026-10-08)
+
+On this branch, cut from `develop` at `e2b731dd3`. All runs use `--rotate --lockstep` and the real dump. No plan is made yet, so `planned windows`, `checked` and `plan misses` are 0 in every run, and `heuristic-noplan` plays as `heuristic`. **0 stalls in every run.**
+
+**Run 1:** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --lockstep --seed 1`. 64 games, turns p50 15.
+
+| Deck | Won | Own turns | Stranded | Stranded % | Idle | Mean unspent |
+|---|---:|---:|---:|---:|---:|---:|
+| esper-control | 27 / 64 | 869 | 136 | 15.7% | 306 | 1.73 |
+| izzet-aggro | 2 / 64 | 755 | 39 | 5.2% | 143 | 1.01 |
+| mono-black-aristocrats | 24 / 64 | 872 | 81 | 9.3% | 185 | 1.06 |
+| simic-ramp | 11 / 64 | 794 | 47 | 5.9% | 149 | 0.91 |
+| **all** | | **3,290** | **303** | **9.2%** | **783** | **1.19** |
+
+P1's baseline, A2 in run 1: 7 of the 31 rock and dork rows reach 80% (Sol Ring on all four decks, Worn Powerstone, Birds of Paradise and Delighted Halfling). Pooled, they were used in 267 of 628 seat-games in which they were offered (42.5%). The Signets, Talismans, Mind Stone, Arcane Signet and Commander's Sphere sit at 0% to 38%. Decision p99 is 507 µs.
+
+**Run 2:** two `heuristic` and two `heuristic-noplan`, `--games 48 --rotate --lockstep --seed 1` twice: half A seats `heuristic` on esper-control and izzet-aggro and `heuristic-noplan` on mono-black-aristocrats and simic-ramp, and half B swaps them. 96 games, turns p50 15 in both halves.
+
+| Contestant | Won (pooled) | 95% CI | Own turns | Stranded | Stranded % | Mean unspent | Decision p99, half A / B |
+|---|---:|---|---:|---:|---:|---:|---|
+| heuristic | 49 / 192, 25.5% | 19.9%–32.1% | 2,484 | 240 | 9.7% | 1.20 | 456 µs / 554 µs |
+| heuristic-noplan | 47 / 192, 24.5% | 18.9%–31.0% | 2,480 | 238 | 9.6% | 1.18 | 457 µs / 458 µs |
+
+The two contestants are the same policy here, so the gap is the deck split, which the swap cancels: by deck the two halves agree within one game and a few turns (esper 115 stranded of 670 turns in both halves).
+
+**Run 3:** simic-ramp ×4, `--games 40 --seed 1` and `--games 120 --seed 1000`. 160 games, turns p50 12. Harrow used in 76 of 218 seat-games offered (34.9%). Stranded: 293 of 6,563 own turns (4.5%), mean unspent 0.76.
+
+**Unchanged decisions.** `boteval suite run --policy heuristic` gives 41 of 41 (100%) on this branch and on `develop`, with the same move, layer and reason string at every position. Run 1 on `develop` at `e2b731dd3` gives the same winner and the same turn count in all 64 games. Its Cards table differs from this branch's by one window at a time on a few cards (Day of Judgment against Wrath of God, Sheoldred, Commander's Sphere). A second `develop` run differs from the first in the same way (Damnation against Day of Judgment), so this is run-to-run noise in how lockstep games break ties between equally priced cards, not this PR.
 
 ---
 
