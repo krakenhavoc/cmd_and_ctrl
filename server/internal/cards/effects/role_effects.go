@@ -26,6 +26,19 @@ func createRoleOnFirstTarget(kind RoleKind) Effect {
 	}
 }
 
+// createRoleOnClauseTarget is "create a <Role> token attached to
+// <the creature chosen for clause slot>" as the last sentence of a
+// spell with several target clauses (Eriette's Whisper, Shatter the
+// Oath). Nothing happens when the slot chose nothing ("up to one") or
+// its target is no longer legal (CR 608.2b).
+func createRoleOnClauseTarget(ctx *Context, slot int, kind RoleKind) error {
+	t, ok := ctx.ClauseTarget(slot)
+	if !ok || t.Kind != game.TargetCard {
+		return nil
+	}
+	return CreateRoleToken{Role: kind, Host: t.ID}.Apply(ctx)
+}
+
 // createRoleOnThis is "create a <Role> token attached to it" /
 // "attached to this creature". CreateRoleToken creates nothing for a
 // host that is not a creature on the battlefield.
