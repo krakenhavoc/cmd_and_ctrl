@@ -7246,6 +7246,43 @@ offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
 be written yet (#2704). Read the state a trigger needs when it is BUILT,
 not when it resolves, if the Mount might leave in response
 (`caustic_bronco.go` carries it on `item.Params`).
+### Suspect (CR 701.60, #2698)
+
+Suspected is a designation that **gives** abilities rather than switching
+yours on, so there is no `ActiveWhen` gate and no Spec slot for it: a
+suspected creature has menace and can't block, and the engine applies both
+([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md)
+amendment 2026-10-08). A card file only says who gets suspected:
+
+```go
+Suspect{Target: item.SourceCardID}.Apply(ctx)            // "suspect it" (Barbed Servitor, Person of Interest)
+Targeting(WhenThisEnters("…", SuspectEachLegalTarget),
+    UpToOneTargetCreature("up to one target creature you control", YouControl()))  // "suspect up to one target creature"
+Unsuspect{Target: id}.Apply(ctx)                          // "it's no longer suspected"
+UnsuspectAll{Match: And(Creature(), OpponentControls())}  // "all suspected creatures are no longer suspected"
+```
+
+`Suspected()` and `NotSuspected()` are target predicates ("target suspected
+creature you control" is `Suspected(), YouControl()`), `SacrificeASuspectedCreature()`
+is the cost, and "if it's suspected" on a resolved object is `g.IsSuspected(id)`.
+Write "if it's not suspected, you may suspect it" as an intervening if
+(read `source.Suspected` in `AppliesTo`, re-check `g.IsSuspected` in the
+effect), as Rubblebelt Braggart does. "If the sacrificed creature was
+suspected" reads `ctx.SacrificedPermanent()` and its `Suspected` field, since
+the flag is gone once the creature is in a graveyard.
+
+Three things to get right:
+
+- **Never write `menace` or `cant_block` on the card.** They come from the
+  designation, and a copy of a suspected creature is not suspected.
+- **A permanent that is already suspected can't become suspected again**
+  (CR 701.60d). `SuspectForEffect` enforces it, so `Suspect` over a set is
+  safe, and so is a second Repeat Offender activation in response to the first.
+- **The primitive is guarded by `isNewSourceObject` (#1432).** When the
+  instruction names the object that has just come back from the graveyard
+  and the ability's source is that same card (Presumed Dead's granted
+  trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
+  read it as the old object's ability reaching the new one and do nothing.
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 

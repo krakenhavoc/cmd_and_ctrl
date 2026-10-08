@@ -176,6 +176,13 @@ type PermanentInfo struct {
 	// only this record remembers it.
 	RingBearer bool `json:"ringBearer,omitempty"`
 
+	// Suspected is whether it was suspected (CR 701.60) as it last
+	// existed on the battlefield. Agency Coroner's "if the sacrificed
+	// creature was suspected" reads it after the cost has moved the
+	// creature to a graveyard, where the designation is gone (CR
+	// 400.7); only this record remembers it.
+	Suspected bool `json:"suspected,omitempty"`
+
 	// Attacking is whether it was an attacking creature (CR 508.1k) as
 	// it last existed on the battlefield, and Enchanted whether an Aura
 	// was attached to it (#2026). A damage shield against "attacking
@@ -223,6 +230,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		NamedTribe:     c.NamedTribe,
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
+		Suspected:      c.Suspected,
 		Attacking:      c.AttackingTarget != uuid.Nil,
 		Blocking:       c.BlockedAttackers(),
 	}

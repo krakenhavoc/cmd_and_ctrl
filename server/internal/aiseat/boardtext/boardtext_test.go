@@ -40,6 +40,20 @@ func TestRenderBotFlavourIsTerse(t *testing.T) {
 	}
 }
 
+// #2698 (CR 701.60): a suspected creature says so, beside the menace
+// its ability list carries, so a model seat is told why it cannot block.
+func TestRenderMarksASuspectedCreature(t *testing.T) {
+	v := view()
+	v.Battlefield.Cards = []protocol.CardView{{
+		Name: "Barbed Servitor", Controller: "a", TypeLine: "Artifact Creature", Power: 2, Toughness: 2,
+		Suspected: true, Abilities: []string{"indestructible", "menace"},
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if want := "  battlefield: Barbed Servitor 2/2 (suspected, indestructible menace)\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+}
+
 // ADR 0129 §7: each seat's non-zero player counters follow its pool, in
 // name order, so a model seat sees the energy it can pay.
 func TestRenderPrintsPlayerCounters(t *testing.T) {

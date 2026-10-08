@@ -2604,6 +2604,14 @@ type CardView struct {
 	// card like Monstrous: the table can see the Mount is saddled, which
 	// is what the attack triggers read.
 	Saddled bool `json:"saddled,omitempty"`
+	// Suspected is a permanent's CR 701.60 suspected designation
+	// (ADR 0071 amendment 2026-10-08, #2698): it has menace and can't
+	// block for as long as it is set. Public, and set straight off the
+	// card. Unlike Monstrous it is NOT cleared on a face-down permanent:
+	// the designation was given to the object in public and says nothing
+	// about the hidden card, and the table needs it to know why the
+	// creature cannot block.
+	Suspected bool `json:"suspected,omitempty"`
 	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
 	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
 	// Public, and set straight off the card. Unlike Monstrous it is NOT
@@ -9421,6 +9429,7 @@ func viewOfCard(c game.Card) CardView {
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
 		view.Saddled = c.Saddled
+		view.Suspected = c.Suspected
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
 		if game.HasSharedTypeLine(c) {

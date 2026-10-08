@@ -514,6 +514,9 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// its own CR 613.7c timestamp. One more source list into the same
 	// gather; see keyword_counters.go.
 	out = append(out, g.keywordCounterEffectsLocked()...)
+	// CR 701.60c (#2698): a suspected permanent has menace and can't
+	// block. One more source list into the same gather; see suspect.go.
+	out = append(out, g.suspectContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}

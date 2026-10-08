@@ -240,6 +240,11 @@ func PermanentLabel(c *protocol.CardView, opts Options) string {
 		// ADR 0114 §7: whose Ring-bearer it is, is its controller.
 		flags = append(flags, "Ring-bearer")
 	}
+	if c.Suspected {
+		// CR 701.60: the menace and the can't-block are in the ability
+		// list and the restriction, but the word is what the table says.
+		flags = append(flags, "suspected")
+	}
 	if c.Unimplemented {
 		if opts.NoteUnimplemented {
 			flags = append(flags, UnimplementedNote)
