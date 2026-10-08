@@ -27,6 +27,7 @@
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
+  import { useCombatCues } from "../../combatCues.svelte";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
@@ -700,6 +701,12 @@
   // lives in --hover-scale (CSS-only); composing via custom properties
   // keeps the two effects independent.
   let cardEl: HTMLDivElement | undefined = $state();
+
+  // ADR 0134 §2: while this creature's art-only copy lunges across the
+  // table (CombatStrikes.svelte), the live tile hides, for the flight
+  // only. No board (a hand, a modal, a render test) means no clock.
+  const combatCues = useCombatCues();
+  const striking = $derived(combatCues?.isStriking(card.instance_id) ?? false);
   // Fire the tap SFX only on the untapped→tapped transition, not on
   // initial mount (for cards that arrive already tapped via snapshot)
   // and not on the tapped→untapped direction (the turn-start `untap_all`
@@ -739,6 +746,7 @@
   class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
   data-tapped={card.tapped ? "true" : "false"}
+  style:visibility={striking ? "hidden" : null}
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
@@ -1285,8 +1293,12 @@
        and lifted again, over and over, and the hover zoom flickered
        with it. A grown card still covers every point it covered at
        rest, so a hover anywhere on it holds. */
-    transform: rotate(var(--tap-rot, 0deg)) translateY(50%) scale(var(--hover-scale, 1))
-      translateY(-50%);
+    /* ADR 0134 §2: --impact-x is the shake when a combat hit lands,
+       composed before the rotation so a tapped tile still shakes
+       sideways on screen. 0px at rest, so a tile at rest renders
+       exactly as before. */
+    transform: translateX(var(--impact-x, 0px)) rotate(var(--tap-rot, 0deg)) translateY(50%)
+      scale(var(--hover-scale, 1)) translateY(-50%);
     /* The failed-art pip (#33) sits on the left edge, one badge row
        down. The top-right corner is the busiest on the tile — GOAD,
        the hand's cost chip and a counter column that grows downward
@@ -1342,6 +1354,21 @@
        row from 64px wide up. Hand tiles are never tapped, so the
        hand's peek keeps 22px. */
     --art-error-top: 58%;
+  }
+  /* ADR 0134 §2: the flash when a combat hit lands. --impact-glow is
+     the brightness added over 1 (0.5 is brightness 1.5), tweened back
+     to 0. Drawn as a white wash over the tile rather than a `filter` on
+     it, so it never fights the hover or phased-out filters; at 0 it is
+     fully transparent. */
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    pointer-events: none;
+    background: #fff;
+    opacity: calc(var(--impact-glow, 0) * 0.5);
   }
   .card.clickable {
     cursor: pointer;

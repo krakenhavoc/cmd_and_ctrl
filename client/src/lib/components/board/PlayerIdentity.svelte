@@ -595,6 +595,22 @@
       box-shadow 160ms var(--ease),
       border-color 160ms var(--ease);
     box-sizing: border-box;
+    /* ADR 0134 §2: the disc shakes when a combat hit lands on this
+       player. No fallback on purpose: with --impact-x unset (every
+       moment but a shake) this is `none`, so the disc is not a
+       stacking context and the damage popup layers as before. */
+    translate: var(--impact-x);
+  }
+  /* ADR 0134 §2: the flash with the shake, a white wash at
+     --impact-glow (0 at rest: fully transparent). */
+  .avatar-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: #fff;
+    opacity: calc(var(--impact-glow, 0) * 0.5);
   }
   .avatar {
     width: 100%;
