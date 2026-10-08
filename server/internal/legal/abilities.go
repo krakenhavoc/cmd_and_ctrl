@@ -384,7 +384,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// information to make.
 		var crewIDs []uuid.UUID
 		if ab.Cost.Crew > 0 {
-			crewIDs = e.crewPayment(ab.Cost.Crew)
+			crewIDs = e.crewPayment(ab.Cost.Crew, uuid.Nil)
+			if crewIDs == nil {
+				continue
+			}
+		}
+		// Saddle (CR 702.171a, #2695) is crew's cost over OTHER
+		// creatures: the same cheapest-set answer with the Mount left
+		// out, which the engine would refuse (ErrInvalidParam).
+		if ab.Cost.Saddle > 0 {
+			crewIDs = e.crewPayment(ab.Cost.Saddle, source.InstanceID)
 			if crewIDs == nil {
 				continue
 			}
@@ -583,6 +592,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 		}
 		type announcement struct {
+			// sel is the index of its mode selection in modeSets.
+			sel     int
 			modes   []int
 			targets []game.TargetRef
 			steps   []game.AnnouncedClause
@@ -607,7 +618,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			xCounted []int
 		}
 		var announcements []announcement
-		for _, modes := range modeSets {
+		for si, modes := range modeSets {
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
 			// #1657: a divided amount read off the board, sized as
 			// the activation gate will size it.
@@ -645,7 +656,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 						game.BindStepsXForEffect(xs, x)
 						for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
-							announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+							announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: xs, xValue: x})
 						}
 					}
 					continue
@@ -657,7 +668,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						continue
 					}
 					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
-						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1, bounded: true})
+						announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: steps, xValue: -1, bounded: true})
 					}
 					continue
 				}
@@ -673,7 +684,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 					game.BindStepsXForEffect(xs, x)
 					for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
-						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+						announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: xs, xValue: x})
 					}
 				}
 				continue
@@ -691,11 +702,39 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
-				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1, xCounted: xCounted})
+				announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: steps, xValue: -1, xCounted: xCounted})
 			}
 		}
 		if len(announcements) == 0 {
 			continue
+		}
+		// #2681, ADR 0065 §6: the budget below is spent MODES-outermost,
+		// so the announcements are taken round-robin across the mode
+		// selections: every selection's first target set before any
+		// selection's second.
+		if len(modeSets) > 1 {
+			rank := make([]int, len(announcements))
+			seen := make([]int, len(modeSets))
+			for i, ann := range announcements {
+				rank[i] = seen[ann.sel]
+				seen[ann.sel]++
+			}
+			idx := make([]int, len(announcements))
+			for i := range idx {
+				idx[i] = i
+			}
+			sort.SliceStable(idx, func(a, b int) bool {
+				ia, ib := idx[a], idx[b]
+				if rank[ia] != rank[ib] {
+					return rank[ia] < rank[ib]
+				}
+				return announcements[ia].sel < announcements[ib].sel
+			})
+			ordered := make([]announcement, len(announcements))
+			for i, j := range idx {
+				ordered[i] = announcements[j]
+			}
+			announcements = ordered
 		}
 		// #74: the life and loyalty components ride the Move
 		// rather than the params, because the params are the
@@ -839,6 +878,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								handN := e.handDiscardCount(ab.Cost.DiscardCards, source.InstanceID)
 								label += handDiscardLabel(ab.Cost.DiscardCards, handN)
 								label += cc.label(g)
+								label += modesLabel(ab.Modes, ann.modes)
 								label += targetLabel(g, targets)
 								// #74: the life on the Move is what the
 								// controller pays at announce, so the
@@ -1827,7 +1867,7 @@ func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, 
 // five-power creature crews a Vehicle that says 3 and so does a pair
 // of two-power ones. Enumerating the subsets would be an exponential
 // expansion for a choice the policy has nothing to decide it with.
-func (e *enumerator) crewPayment(crew int) []uuid.UUID {
+func (e *enumerator) crewPayment(crew int, except uuid.UUID) []uuid.UUID {
 	type candidate struct {
 		id    uuid.UUID
 		power int
@@ -1835,7 +1875,7 @@ func (e *enumerator) crewPayment(crew int) []uuid.UUID {
 	var pool []candidate
 	for i := range e.g.Battlefield.Cards {
 		c := &e.g.Battlefield.Cards[i]
-		if c.Controller != e.seat || !c.IsCreature() || c.Tapped {
+		if c.Controller != e.seat || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
 		pool = append(pool, candidate{id: c.InstanceID, power: c.CurrentPower()})

@@ -125,6 +125,17 @@ type tokenTemplate struct {
 	// Spec.BlockRules are, and registered under the same token key.
 	BlockRules []game.BlockRule
 
+	// Grants are the ability bundles the token gives ANOTHER object
+	// (ADR 0093, amended 2026-10-08): a Role token's "Enchanted
+	// creature has 'Whenever this creature attacks, scry 1.'" is a
+	// layer-6 grant in Static (GrantAbilitiesToAttached) naming a
+	// bundle declared here. The bundle's abilities belong to the
+	// RECIPIENT, so "this creature" is the enchanted creature, not the
+	// token. Registered under game.GrantKey(Key) in the same defs map a
+	// card's Spec.Grants file into, with the same boot-time checks, so
+	// the keys are catalog-wide: namespace them with the token's slug.
+	Grants []AbilityGrant
+
 	// Text is the token's printed ability text, verbatim, as it
 	// appears on the printed token card ("When this token dies,
 	// create a 2/2 red Dragon creature token with flying.").
@@ -194,6 +205,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedCursedRoleToken,
 	printedRoyalRoleToken,
 	printedWickedRoleToken,
+	printedSorcererRoleToken,
+	printedYoungHeroRoleToken,
+	printedVirtuousRoleToken,
+	printedChefRoleToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -264,6 +279,10 @@ func init() {
 			panic(fmt.Sprintf("effects: two token templates claim %q", key))
 		}
 		fileDef(key, buildTokenDef(t))
+		checkGrants(t.Slug, t.Grants)
+		for _, gr := range t.Grants {
+			fileDef(game.GrantKey(gr.Key), buildGrantDef(gr))
+		}
 		tokenTemplatesBySlug[t.Slug] = build
 	}
 }

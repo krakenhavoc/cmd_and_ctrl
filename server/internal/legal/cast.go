@@ -1041,12 +1041,23 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		delvePool = e.cheapestFuelFirst(g.DelveOptionsForEffect(e.seat, card.InstanceID))
 	}
 
-	budget := e.opts.MaxExpansionPerSource
+	total := e.opts.MaxExpansionPerSource
 	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
-	for _, modes := range modeSets {
+	// #2681, ADR 0065 §6: the budget is spent MODES-outermost. Each
+	// mode selection is walked on its own, up to the whole budget, into
+	// queued[i]; the moves offered are then taken round-robin across
+	// the selections, so every selection gets one announcement before
+	// any gets a second. Before this the first selection's target
+	// product could spend the whole budget: Mystic Confluence's
+	// [bounce, bounce, bounce] over ten creatures crowded out
+	// [draw, draw, draw].
+	queued := make([][]announcedCast, len(modeSets))
+modeLoop:
+	for si, modes := range modeSets {
+		budget := total
 		// Spree (CR 702.172a): this selection's own mana joins the
 		// base cost at the same point printedCostLocked adds it
 		// (ADR 0073 §3's precedence), so the price this candidate is
@@ -1236,7 +1247,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				for _, sacs := range sacSets {
 					if budget <= 0 {
 						e.budgetSpent()
-						return
+						continue modeLoop
 					}
 					payX, payLife, payCost, payPrinted := setX, setLife, setCost, setPrinted
 					payDelve, payDelveFull := setDelve, setDelveFull
@@ -1316,30 +1327,43 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 {
 						xv = openX(xFloor, payX)
 					}
-					if first == nil {
-						first = &announcedCast{
-							modes:     modes,
-							targets:   targets,
-							x:         payX,
-							life:      payLife,
-							base:      modeCost,
-							cost:      payCost,
-							printed:   payPrinted,
-							dist:      dist,
-							discards:  discards,
-							sacs:      sacs,
-							team:      teamIDs,
-							blight:    blightIDs,
-							alt:       altCostSets[0],
-							delve:     payDelve,
-							delveFull: payDelveFull,
-							xv:        xv,
-							offer:     offer,
-						}
-					}
-					emit(altCostSets[0], modes, targets, payX, payLife, dist, discards, sacs, payDelve, xv)
+					queued[si] = append(queued[si], announcedCast{
+						modes:     modes,
+						targets:   targets,
+						x:         payX,
+						life:      payLife,
+						base:      modeCost,
+						cost:      payCost,
+						printed:   payPrinted,
+						dist:      dist,
+						discards:  discards,
+						sacs:      sacs,
+						team:      teamIDs,
+						blight:    blightIDs,
+						alt:       altCostSets[0],
+						delve:     payDelve,
+						delveFull: payDelveFull,
+						xv:        xv,
+						offer:     offer,
+					})
 				}
 			}
+		}
+	}
+	budget := total
+	take := roundRobin(queued, budget)
+	for si, n := range take {
+		budget -= n
+		if n < len(queued[si]) {
+			// ADR 0122 §6.2: an announcement the budget never offered.
+			e.budgetSpent()
+		}
+		for i := range queued[si][:n] {
+			a := &queued[si][i]
+			if first == nil {
+				first = a
+			}
+			emit(altCostSets[0], a.modes, a.targets, a.x, a.life, a.dist, a.discards, a.sacs, a.delve, a.xv)
 		}
 	}
 	// #1013: the ALTERNATIVE payments, out of whatever expansion budget
@@ -1475,6 +1499,7 @@ func (e *enumerator) castMoveEmitter(
 	// #1918: fixed for the whole expansion — it reads the offer and the
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
+	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		label := "Cast " + card.Name
 		switch from {
@@ -1516,6 +1541,10 @@ func (e *enumerator) castMoveEmitter(
 		if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
 			label += sacrificeLabel(g, sacs)
 		}
+		// #2681: the modes, so two moves with the same targets and
+		// different modes are told apart (Prismari Command's [0,1] and
+		// [0,2] at the same two targets).
+		label += modesLabel(modeSpec, modes)
 		label += targetLabel(g, targets)
 		e.add(Move{
 			Type:   TypeCastSpell,
@@ -1941,10 +1970,14 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 			}
 		}
 	}
+	// Then the rest: distinct combinations, or for a repeatable spec
+	// every multiset (CR 700.2d, #2681) — [bounce, bounce, draw] as
+	// well as [bounce, draw, draw]. The all-one-option ones were
+	// emitted above.
 	var rec func(start int, cur []int) bool
 	rec = func(start int, cur []int) bool {
 		if len(cur) >= lo && len(cur) <= hi {
-			if !(repeatable && len(cur) == 1) && !add(cur) {
+			if !(repeatable && game.SameModeThroughout(cur)) && !add(cur) {
 				return false
 			}
 		}
@@ -1952,7 +1985,11 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 			return true
 		}
 		for i := start; i < len(options); i++ {
-			if !rec(i+1, append(cur, options[i])) {
+			next := i + 1
+			if repeatable {
+				next = i
+			}
+			if !rec(next, append(cur, options[i])) {
 				return false
 			}
 		}
@@ -2346,4 +2383,26 @@ func (e *enumerator) tapCreaturesPayment(n int) []uuid.UUID {
 		return e.g.TeamworkPowerForEffect(pool[i]) < e.g.TeamworkPowerForEffect(pool[j])
 	})
 	return pool[:n]
+}
+
+// roundRobin is how many of each queue's entries a budget offers when
+// it is spent across the queues in turn: one from each queue that has
+// one, then a second from each, and so on (ADR 0065 §6's
+// modes-outermost order, #2681).
+func roundRobin[T any](queues [][]T, budget int) []int {
+	take := make([]int, len(queues))
+	for more := true; more && budget > 0; {
+		more = false
+		for i := range queues {
+			if budget <= 0 {
+				break
+			}
+			if take[i] < len(queues[i]) {
+				take[i]++
+				budget--
+				more = true
+			}
+		}
+	}
+	return take
 }

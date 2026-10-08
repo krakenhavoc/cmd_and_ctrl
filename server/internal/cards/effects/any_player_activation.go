@@ -63,6 +63,8 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player loyalty ability — not modelled (ADR 0106 §1)", name, where))
 	case ab.Cost.Crew > 0:
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player crew ability — not modelled (ADR 0106 §1)", name, where))
+	case ab.Cost.Saddle > 0:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player saddle ability — not modelled (ADR 0106 §1)", name, where))
 	case ab.Cost.SacrificeSelf:
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that sacrifices its source — not modelled (ADR 0106 §1)", name, where))
 	case ab.Cost.Exert:

@@ -293,6 +293,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Crew != 0 {
 			out.Crew = c.Crew
 		}
+		if c.Saddle != 0 {
+			out.Saddle = c.Saddle
+		}
 		// #625: without this a composed "{T}, Remove a +1/+1 counter"
 		// silently loses its counter component and the ability becomes
 		// free to repeat — stronger than printed, the #259 direction.

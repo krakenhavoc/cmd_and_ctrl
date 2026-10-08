@@ -3,6 +3,7 @@ package heuristic
 import (
 	"slices"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -180,26 +181,35 @@ func assignable(atk *protocol.CardView, blockers []*protocol.CardView) int {
 }
 
 // orderedKills is the blockers atk's damage kills when it is assigned
-// the way this bot assigns it: down the blockers in declared order,
-// lethal to each while the damage lasts (legal's canonical assignment,
-// the one split the enumerator offers). It is the attacker's side of
-// losses: losses prices a block for the defender, who has to assume the
-// worst; this is what the bot's own swing will actually kill.
+// the way this bot assigns it: legal's canonical assignment, the one
+// split the enumerator offers, which kills the set of blockers worth
+// most that its damage can buy (#2692). CR 510.1c lets the attacking
+// player divide the damage among the blockers as they choose, so any
+// set whose lethal damage fits in the power can die. A kill is worth
+// one plus the blocker's power and toughness, the price legal puts on
+// it; a blocker the damage cannot destroy is worth nothing. Both pick
+// the set with legal.KillingSet, so the bot plans the combat it is
+// offered. It is the
+// attacker's side of losses: losses prices a block for the defender,
+// who has to assume the worst; this is what the bot's own swing will
+// actually kill.
 func orderedKills(atk *protocol.CardView, blockers []*protocol.CardView) []*protocol.CardView {
-	power := assignable(atk, blockers)
-	var out []*protocol.CardView
-	for _, b := range blockers {
-		// Lethal is assigned whether or not it destroys: an
-		// indestructible or protected blocker soaks its share too.
-		need := 1
+	n := len(blockers)
+	cost := make([]int, n)
+	value := make([]int, n)
+	for i, b := range blockers {
+		cost[i] = 1
 		if !hasKeyword(atk, "deathtouch") {
-			need = max(effectiveToughness(b), 1)
+			cost[i] = max(effectiveToughness(b), 1)
 		}
-		if need > power {
-			break
-		}
-		power -= need
 		if lethalFrom(atk, b) >= 0 {
+			value[i] = 1 + max(b.Power, 0) + max(b.Toughness, 0)
+		}
+	}
+	kill := legal.KillingSet(cost, value, assignable(atk, blockers))
+	var out []*protocol.CardView
+	for i, b := range blockers {
+		if kill[i] {
 			out = append(out, b)
 		}
 	}

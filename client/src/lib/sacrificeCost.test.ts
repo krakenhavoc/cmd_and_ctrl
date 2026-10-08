@@ -10,6 +10,7 @@ import {
   fillsEachOf,
   chooseForMeState,
   chooseSacrificeForMe,
+  exilePermanentOptions,
   keepAvailablePicks,
   orderSacrificeOptions,
   sacrificeCeiling,
@@ -124,6 +125,22 @@ describe("the multi-select picker", () => {
       orderSacrificeOptions(board, ["food", "rock", "gone"]).map((c) => c.instance_id),
     ).toEqual(["food", "rock"]);
     expect(orderSacrificeOptions(board, undefined)).toEqual([]);
+  });
+
+  // ADR 0137: craft's materials come from the battlefield AND the
+  // activator's graveyard, so the exile picker resolves options against
+  // both, still in the server's order.
+  it("finds craft materials in the graveyard as well as on the battlefield", () => {
+    const board = [card("bear"), card("rock")];
+    const graveyard = [card("dead-bear"), card("instant")];
+    expect(
+      exilePermanentOptions(board, graveyard, ["dead-bear", "bear", "gone"]).map(
+        (c) => c.instance_id,
+      ),
+    ).toEqual(["dead-bear", "bear"]);
+    expect(
+      exilePermanentOptions(board, undefined, ["dead-bear", "bear"]).map((c) => c.instance_id),
+    ).toEqual(["bear"]);
   });
 
   it("drops a pick that left the options while the picker was open", () => {

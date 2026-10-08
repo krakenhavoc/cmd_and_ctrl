@@ -797,6 +797,14 @@ instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
 refuses a grant naming an unregistered bundle or a bundle with a
 `Static` slot.
 
+A TOKEN that grants an ability (a Role: "Enchanted creature has 'Whenever
+this creature attacks, scry 1.'") declares its bundles in
+`tokenTemplate.Grants` instead of `Spec.Grants`, and names them from its own
+`Static` with `GrantAbilitiesToAttached(key)`; see `role_tokens.go`. Namespace
+the key with the token's slug. A granted trigger's source is the enchanted
+creature, so write its `AppliesTo` against `source` as you would for a
+creature's own trigger (ADR 0093 amendment 2026-10-08).
+
 The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
 "All Slivers have …" / "Sliver creatures you control have …", and
 `GrantAbilitiesToAttached(key)` for "Equipped creature has …" /
@@ -6175,6 +6183,52 @@ colorless creature it will be (Curator Beastie).
 Not here: turning a permanent face up as an EFFECT (no cost) has no
 door yet, so cards that say "you may turn it face up" wait on it.
 
+### Craft (ADR 0137, #2124, CR 702.167)
+
+A craft card is a transform DFC: the front face's spec carries the
+keyword, the back face registers under `<oracle_id>#1`. The keyword is
+one constructor, and the materials are another:
+
+```go
+Activated: []ActivatedAbility{
+    Craft("Craft with artifact {5}{W}{W}", "{5}{W}{W}", CraftWith("artifact")),  // Clay-Fired Bricks
+    Craft("Craft with two creatures {5}{B}", "{5}{B}", CraftWithN(2, "creature")), // Visage of Dread
+    Craft("Craft with Island {3}{U}", "{3}{U}", CraftWithSubtype("Island")),     // Waterlogged Hulk
+},
+```
+
+The label is the printed keyword line without its reminder text; the
+oracle check matches it. `Craft` builds the whole of CR 702.167a: the
+mana, "Exile this artifact", the materials, "Activate only as a
+sorcery", and the return. Never hand-write any of those halves:
+
+- **Materials come from two zones.** A material named without the word
+  "card" may be a permanent you control or a card in your own graveyard,
+  mixed in one payment (CR 702.167b). `CraftWith*` sets
+  `ExilePermanentsCost.FromGraveyard`; a hand-built
+  `ExileACreatureYouControl()` would accept the battlefield only, which
+  is weaker than printed. The source is never a material (it pays
+  "Exile this artifact").
+- **The return is a new object** (`game.ReturnCraftedFromExileForEffect`):
+  back face up, under its OWNER's control, summoning sick, with every
+  enters ability on the back face firing. Write the back face's "When
+  this enters" as an ordinary `WhenThisEnters` trigger.
+- **"The exiled card(s) used to craft it"** (CR 702.167c) is
+  `CraftMaterials(ctx)`: the materials still in exile, read through the
+  source object, so a trigger that resolves after the permanent has left
+  still finds them. A token material ceased to exist in exile and is not
+  one of them. Jadeheart Attendant is the pattern.
+
+Not yet expressible (the craft row, #2709): "Craft with one or more …",
+a rule over the chosen set ("two that share a card type", "a Dinosaur,
+a Merfolk, a Pirate, and a Vampire"), and graveyard-only materials
+("four or more red instant and/or sorcery cards").
+
+**Tests** build the card through the import road
+(`transformRow` + `deck.ToGameCard`), because a flat fixture has no back
+face; `craft_test.go` has `pushCraftCard` and `activateCraft`, and
+`craft_cards_test.go` has `craftInto`.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in
@@ -7097,6 +7151,37 @@ Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
 
+### Ascend and the city's blessing (ADR 0096 amendment 2026-10-08, #2696, CR 702.131)
+
+The city's blessing is a **player** designation the engine grants and
+keeps (`Player.CitysBlessing`, `game/citys_blessing.go`): a permanent with
+ascend gives it to its controller as soon as they control ten permanents,
+and an instant or sorcery with ascend as it resolves, before its other
+instructions. Nothing takes it away, so **never approximate it with a
+live permanent count** (that is what the four old caveats were). A card
+declares the keyword and reads the designation, with the vocabulary in
+[citys_blessing.go](../server/internal/cards/effects/citys_blessing.go):
+
+```go
+PrintedKeywords: []string{game.KeywordAscend},                          // the badge; the engine reads it
+Static: []game.StaticAbility{SelfPumpWhileCitysBlessing(3, 0)},          // Snubhorn Sentry: +3/+0 as long as you have it
+Static: []game.StaticAbility{SelfKeywordWhileCitysBlessing("flying")},   // Skymarcher Aspirant
+Condition: YouHaveTheCitysBlessingCondition(),                           // "Activate only if you have the city's blessing"
+On(game.EventBeginUpkeep, AllOf(ByYou, YouHaveTheCitysBlessingNow), …)   // intervening "if" (re-check in the effect)
+if YouHaveTheCitysBlessing(ctx.Game, item.Controller) { … }              // "if you have the city's blessing, instead"
+```
+
+An intervening "if" is read at the trigger and again as it resolves
+(CR 603.4); "instead" is a clause of the effect, read as it resolves. A
+catalog card lists `ascend` in `PrintedKeywords`; a deck-imported one gets
+it from Scryfall. In a test, `grantBlessing(g, p)` in
+`citys_blessing_cards_test.go` gives the designation the way the engine
+does (it emits the event that invalidates the layer pass); to earn it for
+real, put an ascend permanent and nine others on the battlefield and call
+`g.RunStateChecksForTest()`. "Can't attack unless you have the city's
+blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
+`CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
+
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
 A **designation** is a marker a permanent has on the battlefield that
@@ -7133,6 +7218,34 @@ proliferates or doubles it, a copy does not take it (CR 716.2c,
 (CR 400.7). A new designation needs a kind, an arm in
 `Designation.Active`, and a layer-version bump on the event that
 changes it — nothing else.
+
+**Saddle (CR 702.171, #2695)** is the one designation that lasts a turn.
+A Mount is written with the vocabulary in
+[saddle.go](../server/internal/cards/effects/saddle.go):
+
+```go
+Activated: []ActivatedAbility{Saddle(2)},                    // "Saddle 2"
+Triggered: []game.TriggeredAbility{
+    AttacksWhileSaddled("Gilded Ghoda — create a Treasure", effect),
+},
+```
+
+`Saddle(n)` is crew's cost over OTHER creatures (`AbilityCost.Saddle`,
+paid through the same validator and `crew_ids` payload; the Mount can
+never tap itself) at sorcery speed. The designation is `Card.Saddled`,
+set by `Game.SaddleForEffect` and swept at end of turn, so "attacks while
+saddled" is read when the attack is declared and "as long as it's saddled"
+is the gate `Saddled()` (`SaddledKeywords(kw…)` is the keyword shape).
+"Becomes saddled" is `WhenBecomesSaddled`, which fires only on the first
+saddle of a turn, so "for the first time each turn" needs no counting. A
+card that says "[target Mount] becomes saddled" uses `BecomeSaddled{}`,
+which does nothing to a permanent that is not a Mount. "Creatures that
+saddled it this turn" is `SaddlersOf(ctx, mount)` (survivors only; a
+creature that left is a new object): a card-set prompt at resolution can
+offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
+be written yet (#2704). Read the state a trigger needs when it is BUILT,
+not when it resolves, if the Mount might leave in response
+(`caustic_bronco.go` carries it on `item.Params`).
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 

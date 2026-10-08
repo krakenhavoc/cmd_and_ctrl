@@ -10,16 +10,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {2}, {T}: Target Vehicle you control becomes an artifact creature
 //	 until end of turn."
 //
-// The saddle ability is left out: the engine has no saddled state
-// (CR 702.171) and no Mount in the catalog could use one, so the
-// ability would be a button that does nothing. The Vehicle animation is
-// BecomeCreatureUntilEOT on the chosen Vehicle.
+// The saddle ability is BecomeSaddled on the chosen Mount (CR 702.171,
+// ADR 0071 amendment 2026-10-08, #2695): the designation with no
+// saddlers, so "creatures that saddled it" stays empty. It is sorcery
+// speed, as printed. The Vehicle animation is BecomeCreatureUntilEOT on
+// the chosen Vehicle.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "98005890-d566-4a27-906f-625513171e85",
 		Name:         "Guidelight Matrix",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Saddle isn't implemented — the ability that saddles a Mount is not offered."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
@@ -29,6 +31,20 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
+			Label:        "{2}, {T}: Target Mount you control becomes saddled until end of turn. Activate only as a sorcery.",
+			Cost:         Plus(ManaCost("{2}"), TapCost()),
+			SorcerySpeed: true,
+			Targets:      TargetPermanent("target Mount you control", OfSubtype("Mount"), YouControl()),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetCard {
+						return BecomeSaddled{Target: t.ID}.Apply(ctx)
+					}
+				}
+				return nil
+			},
+		}, {
 			Label:   "{2}, {T}: Target Vehicle you control becomes an artifact creature until end of turn.",
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetPermanent("target Vehicle you control", OfSubtype("Vehicle"), YouControl()),

@@ -120,6 +120,18 @@ type Weights struct {
 	// the pre-S66 price, and BaselineConfig zeroes it.
 	ManaPerExtra float64
 
+	// BlockOnlyBody is what a creature whose only use is blocking is
+	// worth in combat, per point of toughness (#2676): a token with no
+	// power and no abilities of any kind, such as a 0/1 Plant. It cannot
+	// deal damage, so a block is all it will ever do, and a chump block
+	// spends it on exactly that. Priced by the body (Power and Toughness)
+	// it is a 0/1 at 0.45, more than saving three damage is worth at 23
+	// life, and the bot takes the hit with six Plants untapped. Only
+	// CombatValue reads it; the board evaluation is unchanged. A nontoken
+	// creature keeps its body price, so a real creature still does not
+	// chump at a healthy life total. Zero (the baseline) is off.
+	BlockOnlyBody float64
+
 	// CommanderTax is the penalty per commander cast already made —
 	// the {2} surcharge compounds and a seat that has recast its
 	// commander three times is genuinely worse off.
@@ -197,6 +209,8 @@ func DefaultWeights() Weights {
 		TappedManaSource: 0.55,
 		FrozenManaSource: 0.25,
 		ManaPerExtra:     1.00,
+
+		BlockOnlyBody: 0.10,
 
 		CommanderTax: 1.00,
 		Unknown:      1.50,
@@ -423,12 +437,29 @@ func (w Weights) neutralisedValue(host *protocol.CardView) float64 {
 // moment it is declared — against an untapped blocker, and the board
 // evaluation's "a tapped creature is worth less" discount would make
 // every attacker look cheap and the bot would never block.
+//
+// A creature whose only use is blocking (blockOnly) is worth
+// BlockOnlyBody per point of toughness instead, when that is lower.
 func (w Weights) CombatValue(c *protocol.CardView) float64 {
 	v := w.Power*float64(c.Power) + w.Toughness*float64(c.Toughness) + w.Keyword*keywordBonus(c)
 	if v < 0.25 {
 		v = 0.25
 	}
+	if w.BlockOnlyBody > 0 && blockOnly(c) {
+		v = min(v, w.BlockOnlyBody*float64(max(c.Toughness, 1)))
+	}
 	return v
+}
+
+// blockOnly reports whether a creature's only use is blocking (#2676):
+// a token with no power and no abilities of any kind on the wire, no
+// keyword, protection, ability row, activated or mana ability. A 0/1
+// Plant is one. A nontoken creature never is: a card can matter in
+// ways its body does not show.
+func blockOnly(c *protocol.CardView) bool {
+	return c != nil && c.IsToken && c.Power <= 0 && !c.IsCommander &&
+		len(c.Abilities) == 0 && len(c.Protection) == 0 && len(c.AbilityRows) == 0 &&
+		len(c.ActivatedAbilities) == 0 && len(c.ManaAbilities) == 0
 }
 
 // MarginalLife is what ONE more point of life is worth to a seat at

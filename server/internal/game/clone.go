@@ -586,6 +586,8 @@ func cloneCard(c Card) Card {
 	// permanent was cast for. Its one slice would alias the live
 	// record into every undo snapshot under a value copy.
 	out.Provenance = c.Provenance.Clone()
+	// ADR 0137: the craft link is a slice, aliased by a value copy.
+	out.CraftedWith = cloneObjectRefs(c.CraftedWith)
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -628,6 +630,7 @@ func clonePlayer(p *Player) *Player {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)

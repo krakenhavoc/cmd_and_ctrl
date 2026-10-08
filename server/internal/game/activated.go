@@ -217,6 +217,26 @@ type AbilityCost struct {
 	// exact amount.
 	Crew int
 
+	// Saddle is the saddle number of a Mount's saddle ability (CR
+	// 702.171a): "Tap any number of other untapped creatures you
+	// control with total power N or more". Zero means "not a saddle
+	// cost". Crew's cost with one difference, which is the whole
+	// reason it is a field of its own and not a flag on Crew: the
+	// creatures are OTHER than the source, so a Mount can never tap
+	// itself to saddle itself. Everything else is Crew's, verbatim,
+	// and shares its validator: the source stays untapped (Tap must
+	// stay false), summoning sickness does not apply to the creatures
+	// tapped, power is read at payment time from the post-layer value,
+	// and the printed number is a floor. The creatures ride in the
+	// same ActivateAbilityParams.CrewIDs, and what they were is
+	// written onto the item's payment record (PaidCost.TappedOthers)
+	// for "creatures that saddled it this turn" (CR 702.171c).
+	//
+	// Crew and Saddle on one ability is refused at effects.Register.
+	// Sorcery timing is the ability's SorcerySpeed, which the Saddle
+	// constructor sets; it is not part of the cost.
+	Saddle int
+
 	// RemoveCounters is a "remove N counters" component (#625): from
 	// the source ("Remove a gold counter from this artifact"), from
 	// another permanent the activator controls ("remove a loyalty
@@ -1365,7 +1385,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
-	crew, err := g.validateCrewCostLocked(playerID, ab.Cost, params.CrewIDs)
+	crew, err := g.validateCrewCostLocked(playerID, cardID, ab.Cost, params.CrewIDs)
 	if err != nil {
 		return err
 	}
@@ -1729,6 +1749,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.Exert {
 		g.exertLocked(cardID, playerID, uuid.Nil)
 	}
+	var saddlers []Card
 	for _, id := range crew {
 		// The crewing creatures tap, the Vehicle does not (CR
 		// 702.122b) — which is the whole point, since a Vehicle that
@@ -1736,6 +1757,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if c := findBattlefieldCard(g, id); c != nil {
 			c.Tapped = true
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
+			if ab.Cost.Saddle > 0 {
+				// #2695: who saddled it, as the objects they were, for
+				// CR 702.171c.
+				saddlers = append(saddlers, *c)
+			}
 		}
 	}
 	// #793: the cost path — CR 602.2b activates an ability in one
@@ -2067,6 +2093,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taps are paid — so station's effect can read the tapped
 	// creature back at resolution (CR 702.184a). See PaidTap.
 	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	// #2695: a saddle ability's tapped creatures are the "creatures
+	// that saddled it" (CR 702.171c); the effect hands them to
+	// SaddleForEffect from this record. No printed cost has both a
+	// tap-another component and a saddle one.
+	if len(saddlers) > 0 {
+		item.Paid.TappedOthers = paidTapsFrom(saddlers)
+	}
 	// #1310: the waterbend taps, paid here for the same reason and
 	// through the same payer the cast path's convoke / waterbend taps
 	// use. Validated above with every other component; the mana they
@@ -2105,8 +2138,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 // rather than an illegal one.
 //
 // Caller must hold g.mu.
-func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
-	if cost.Crew <= 0 {
+//
+// A Saddle cost (CR 702.171a) runs through the same walk with one extra
+// rule: "other" creatures, so the source itself is refused
+// (ErrInvalidParam) wherever it is named.
+func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
+	need, saddle := cost.Crew, false
+	if cost.Saddle > 0 {
+		need, saddle = cost.Saddle, true
+	}
+	if need <= 0 {
 		if len(chosen) > 0 {
 			return nil, ErrInvalidParam
 		}
@@ -2127,6 +2168,9 @@ func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chos
 			return nil, ErrInvalidParam
 		}
 		seen[id] = true
+		if saddle && id == sourceID {
+			return nil, ErrInvalidParam
+		}
 		c := findBattlefieldCard(g, id)
 		if c == nil {
 			return nil, ErrCardNotFound
@@ -2143,7 +2187,7 @@ func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chos
 		total += c.CurrentPower()
 		out = append(out, id)
 	}
-	if total < cost.Crew {
+	if total < need {
 		return nil, ErrInsufficientCrew
 	}
 	return out, nil

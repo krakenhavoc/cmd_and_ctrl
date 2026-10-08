@@ -1742,7 +1742,16 @@ decided:
   every selection gets at least one target set before any selection
   gets a second. Without that, one charm's first bullet with twelve
   targets would be the whole move list and the other three bullets
-  would never be offered.
+  would never be offered. Each selection is walked on its own and the
+  moves are then taken round-robin across them (#2681).
+- **Every multiset for a repeatable spec.** After the all-one
+  selections come the mixed ones: Mystic Confluence offers [bounce,
+  bounce, draw] and [bounce, draw, draw] as well (#2681).
+- **The label names the modes.** A modal cast or activation reads
+  "Cast Prismari Command (Target player draws two cards, then
+  discards two cards; Target player creates a Treasure token)
+  targeting …", so two moves with the same targets and different
+  modes are told apart.
 
 A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
 every legal multiset of the bullets the prompt carries, capped by the
@@ -2284,6 +2293,36 @@ attacker when the kill is worth what they cost, and the joiners soak up
 a trampler's overflow as they go. A blocked attacker of the bot's lives
 into next turn only when its blockers plus every spare blocker that
 could join them cannot kill it.
+
+### Combat priced by what combat does (#2675, #2690, #2676)
+
+Three fixes from the 2026-10-08 review games, each a knob that
+`BaselineConfig` turns off:
+
+- **The focus bonus needs an attack worth making** (`FocusNeedsValue`,
+  [#2675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2675)).
+  `FocusBonus` (1.00) is added only to an attack whose own value is
+  positive. A creature with no power deals nothing, so a 0/1 Plant no
+  longer attacks into a 2/4 for the bonus, and an attacker with no power
+  already declared is not a blocker the defender has to spend.
+- **An attack is priced against every block**
+  (`GangAwareAttacks`,
+  [#2690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2690)). The
+  defender may block with any group of its free blockers, and does when
+  the group kills the attacker for less than it is worth (the gang
+  block planner's own `gangJoin`). A commander that dies also costs
+  `CommanderTax`, the next cast's surcharge. Tapping a creature that
+  could attack, in the bot's own first main phase, costs that attack at
+  its `attackValue` rather than at `Weights.Power` per point, so a loot
+  is not charged 3.0 for an attack priced below zero.
+- **A token whose only use is blocking is priced by that use**
+  (`Weights.BlockOnlyBody`, 0.10 per point of toughness,
+  [#2676](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2676)). A
+  token with no power and no abilities of any kind is worth that much in
+  combat instead of its body price (0.45 for a 0/1), so the bot chumps
+  a 3/3 with a Plant at 23 life rather than take the hit. A creature
+  card keeps its body price, so a real creature still does not chump at
+  a healthy life total.
 
 ### The attrition horizon (#1548)
 

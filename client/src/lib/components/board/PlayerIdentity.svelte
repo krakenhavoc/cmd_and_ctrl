@@ -411,6 +411,16 @@
          push the panel taller; each row is the same height as a
          single chip. -->
     <div class="side right">
+      <!-- The city's blessing (CR 702.131c, #2696): a designation ascend
+           gives and nothing takes away, so there is no toggle. Shown on
+           every seat, self and opponent alike. -->
+      {#if seat.citys_blessing}
+        <span
+          class="marker citys-blessing active"
+          title="the city's blessing"
+          aria-label="the city's blessing"><Icon name="flag" size={12} /></span
+        >
+      {/if}
       {#if isSelf}
         <div class="crown-row">
           <button
@@ -974,6 +984,12 @@
     border-color: color-mix(in srgb, var(--magenta) 70%, transparent);
     background: color-mix(in srgb, var(--magenta) 18%, transparent);
     box-shadow: 0 0 10px color-mix(in srgb, var(--magenta) 35%, transparent);
+  }
+  .marker.active.citys-blessing {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
   }
   .marker.poison {
     color: var(--mint);

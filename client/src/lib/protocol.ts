@@ -969,6 +969,9 @@ export type LogKind =
   // is the new designation. Narrated because the untap-step check
   // changes it with no spell or ability behind it.
   | "day_night"
+  // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
+  // `card_id` the ascend permanent or spell whose check granted it.
+  | "citys_blessing"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
@@ -1900,6 +1903,10 @@ export interface PlayerView {
   // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
   is_agent?: boolean;
   agent_client?: string;
+  // #2696 (CR 702.131c): the city's blessing, a player designation
+  // ascend gives and nothing takes away. Public, identical for every
+  // viewer; absent until the seat has it.
+  citys_blessing?: boolean;
   // The playmat the seat's signed-in owner chose (ADR 0128): a
   // same-origin path, /playmats/<uuid>, drawn behind that seat's
   // battlefield. Public and identical for every viewer. Absent for a
@@ -2597,6 +2604,8 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `exile_permanent_ids` — NOT
   // `exile_ids`, which names cards in a hand or a graveyard. An absent
   // or short list means the cost cannot be paid (CR 118.3).
+  // ADR 0137: on a craft ability the options also include cards in
+  // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
@@ -2710,6 +2719,13 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // #2695: a Mount's saddle ability (CR 702.171a) rides the two crew
+  // fields above — the same many-pick, floor-on-total-power prompt and
+  // the same `crew_ids` payload — and sets this flag so the prompt says
+  // "Saddle" rather than "Crew". crew_options then leaves out the Mount
+  // itself: the cost taps OTHER creatures. Absent — not `false` — for
+  // every other ability.
+  saddle?: boolean;
   // #625: a "remove N counters" cost component. counter_cost_n is how
   // many, and its presence marks the component.
   //
@@ -3548,6 +3564,12 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0071 amendment 2026-10-08, #2695 (CR 702.171): this Mount is
+  // saddled — until end of turn, or until it leaves the battlefield.
+  // Switches on its "while saddled" lines and is what its "attacks
+  // while saddled" triggers read. Public, read straight off the card.
+  // Absent — not `false` — for everything else.
+  saddled?: boolean;
   // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
   // Ring-bearer. Public, and kept on a face-down permanent: the
   // designation was chosen in public and says nothing about the card.

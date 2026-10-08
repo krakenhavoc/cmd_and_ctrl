@@ -411,6 +411,15 @@ type Player struct {
 	// duration has run out is already refused by the reader.
 	// See player_statics.go.
 	Statics []PlayerStatic
+
+	// CitysBlessing is the city's blessing (CR 702.131c): a player
+	// designation, earned by ascend and kept for the rest of the game.
+	// Nothing clears it; not the ascend permanent leaving, not the
+	// permanent count falling below ten. Written only by
+	// grantCitysBlessingLocked (citys_blessing.go, ADR 0096's 2026-10-08
+	// amendment, #2696). Carried by Clone, the snapshot and undo, and
+	// public on the wire.
+	CitysBlessing bool
 }
 
 // newPlayer constructs a player with empty zones and their starting

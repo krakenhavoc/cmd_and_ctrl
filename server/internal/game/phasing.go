@@ -238,6 +238,12 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 		// necessarily Controller by then — CR 702.26f lets a
 		// control-changing continuous effect expire while it is out.
 		c.PhasedOutBy = c.Controller
+		// #2695: "becomes saddled until end of turn" ends if the Mount
+		// phases out as well as if it leaves — the other designations
+		// ride through a phase-out (CR 702.26d), this one is a turn-long
+		// marker and does not survive it.
+		c.Saddled = false
+		c.SaddledBy = nil
 		c.PhasedOutIndirect = indirect[id]
 		c.PhaseInLockedBy = opts.LockedBy
 		c.TapOnPhaseIn = opts.TapOnPhaseIn

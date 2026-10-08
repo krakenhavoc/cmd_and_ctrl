@@ -274,6 +274,7 @@ func enrich(t *testing.T, g *Game) {
 			Ballots:   map[uuid.UUID]int{p0.ID: 0, p1.ID: 1},
 		}
 		g.Monarch = p0.ID
+		p1.CitysBlessing = true // CR 702.131c, #2696
 		g.Initiative = p1.ID
 		g.DayNight = DayNightState{Designation: DesignationNight, PrevTurnSpells: 2, PrevTurnKnown: true}
 

@@ -456,6 +456,15 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 			moved.InstanceID = newID
 		}
 	}
+	// ADR 0137 / CR 702.167c: what a craft ability exiled to put this
+	// permanent here. After the reset above, which clears it, and well
+	// before EventETB, so Jadeheart Attendant's enters trigger finds it.
+	if ev.entryTail != nil && len(ev.entryTail.craftedWith) > 0 {
+		if c := findBattlefieldCard(g, entered); c != nil {
+			c.CraftedWith = cloneObjectRefs(ev.entryTail.craftedWith)
+			moved.CraftedWith = cloneObjectRefs(ev.entryTail.craftedWith)
+		}
+	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID != entered {
 			continue

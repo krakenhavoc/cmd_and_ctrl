@@ -63,6 +63,16 @@ type ObjectRef struct {
 	Epoch int       `json:"epoch"`
 }
 
+// cloneObjectRefs copies a list of refs onto its own backing array, so
+// an undo snapshot or a restore point never shares one with the live
+// game. Nil in, nil out.
+func cloneObjectRefs(refs []ObjectRef) []ObjectRef {
+	if len(refs) == 0 {
+		return nil
+	}
+	return append([]ObjectRef(nil), refs...)
+}
+
 // stamped is the ref as a snapshot field: nil for the zero ref, so an
 // unstamped item writes nothing and an old snapshot reads back as
 // unstamped (#1418). The ID is the "stamped" bit; epoch zero is real.
@@ -133,6 +143,14 @@ type PermanentInfo struct {
 	// nothing.
 	Delved []ObjectRef `json:"delved,omitempty"`
 
+	// CraftedWith is the permanent's CR 702.167c link to the materials
+	// its craft ability exiled (Card.CraftedWith, ADR 0137), as it last
+	// existed: a crafted permanent's own trigger that resolves after it
+	// has left still finds "the exiled cards used to craft it". Resolve
+	// it with Game.CraftMaterialsForEffect. Nil for a permanent no
+	// craft ability put onto the battlefield.
+	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
+
 	// ChosenColor and NamedTribe are the colour and creature type chosen
 	// for it as it entered (Card.ChosenColor, Card.NamedTribe), as it last
 	// existed: Story Circle's and Circle of Solace's "of the chosen
@@ -200,6 +218,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		AttachedTo:     c.AttachedTo,
 		Tapped:         c.Tapped,
 		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
+		CraftedWith:    cloneObjectRefs(c.CraftedWith),
 		ChosenColor:    c.ChosenColor,
 		NamedTribe:     c.NamedTribe,
 		ManaValue:      permanentManaValue(c),
