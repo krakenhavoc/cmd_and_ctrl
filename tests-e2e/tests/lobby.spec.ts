@@ -4,6 +4,21 @@ import { adminLogin, createGame, joinViaAPI } from "./lobby-api";
 
 test.describe("lobby — admin flow", () => {
   test.beforeEach(async ({ page }) => {
+    // Tips off: on an empty lobby the admin token is offered the
+    // site.help tip, and its card sits over the create button. The
+    // serial suite only passed because earlier specs had left tables in
+    // the lobby; as the first spec of a shard (#2661) every test here
+    // timed out on that card. Tips are hints.spec's subject, not this
+    // one's. Written only when absent, so the app's own saves stand.
+    await page.context().addInitScript(() => {
+      try {
+        if (localStorage.getItem("cmdctrl.settings.v1") === null) {
+          localStorage.setItem("cmdctrl.settings.v1", JSON.stringify({ help: { tipsOff: true } }));
+        }
+      } catch {
+        // storage unavailable: fall back to the defaults
+      }
+    });
     await page.goto("/");
     await page.evaluate(() => localStorage.removeItem("cmdctrl.session"));
     // The token form lives on #/admin only (ADR 0112 §2 item 8).

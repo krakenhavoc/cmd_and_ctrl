@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLIENT_ORIGIN, CLIENT_PORT, SERVER_ORIGIN, SERVER_PORT } from "./tests/env";
 
 // Resolve repo-root-relative paths from this config file's location.
 // The tests-e2e package lives one level below the repo root; the
@@ -12,6 +13,10 @@ const repoRoot = path.resolve(here, "..");
 // Admin token matches `server/Makefile`'s `dev` default so the test
 // stack reuses whatever already-running `make server-dev` instance is
 // on :8080. Tests import this from ./tests/env.ts too.
+//
+// The ports come from CMDCTRL_DEV_SERVER_PORT / CMDCTRL_DEV_CLIENT_PORT
+// (./tests/env.ts), defaulting to 8080 and 5173. The nightly's shards
+// each set their own pair (#2661).
 export const ADMIN_TOKEN = "dev-admin-token-not-for-production";
 
 // Data dir mirrors `make server-dev` so the Scryfall index at
@@ -38,7 +43,7 @@ export default defineConfig({
   // #2253.)
   expect: { timeout: 10_000 },
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: CLIENT_ORIGIN,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -58,7 +63,7 @@ export default defineConfig({
       // e2e leftovers land in data/games and data/replays.
       command: "go run ./cmd/server",
       cwd: path.join(repoRoot, "server"),
-      url: "http://localhost:8080/healthz",
+      url: `${SERVER_ORIGIN}/healthz`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       stdout: "pipe",
@@ -66,7 +71,7 @@ export default defineConfig({
       env: {
         CMDCTRL_ADMIN_TOKEN: ADMIN_TOKEN,
         CMDCTRL_DATA_DIR: serverDataDir,
-        CMDCTRL_ADDR: ":8080",
+        CMDCTRL_ADDR: `:${SERVER_PORT}`,
         // Lift the lobby join/login rate limits so serial suites that
         // mint many sessions (S19 spins up a fresh 2-player game per
         // test) don't have to sleep between tests. Dev/test only.
@@ -75,10 +80,12 @@ export default defineConfig({
     },
     {
       // Vite dev server; proxies /ws, /admin, /games, /cards, /me,
-      // /healthz to :8080 (see client/vite.config.ts).
-      command: "npm run dev -- --strictPort",
+      // /healthz to the Go server (see client/vite.config.ts, which
+      // reads the same two port variables from the environment this
+      // process inherits).
+      command: `npm run dev -- --strictPort --port ${CLIENT_PORT}`,
       cwd: path.join(repoRoot, "client"),
-      url: "http://localhost:5173",
+      url: CLIENT_ORIGIN,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       stdout: "pipe",

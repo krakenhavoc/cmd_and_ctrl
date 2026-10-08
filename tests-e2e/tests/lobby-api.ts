@@ -1,5 +1,5 @@
 import type { APIRequestContext } from "@playwright/test";
-import { ADMIN_TOKEN } from "./env";
+import { ADMIN_TOKEN, SERVER_WS_ORIGIN } from "./env";
 
 // Thin wrapper over the lobby's HTTP surface. The UI already covers
 // most happy paths in lobby.spec.ts; this helper is for tests that
@@ -131,7 +131,7 @@ export async function finishOpeningRollAsAdmin(
       `global WebSocket is unavailable (Node ${process.version}); tests-e2e requires Node >= 22`,
     );
   }
-  const url = `ws://localhost:8080/ws?game=${gameID}&token=${encodeURIComponent(adminToken)}`;
+  const url = `${SERVER_WS_ORIGIN}/ws?game=${gameID}&token=${encodeURIComponent(adminToken)}`;
   const ws = new WebSocket(url);
   let latest: RollView | null = null;
   let failure: string | null = null;
