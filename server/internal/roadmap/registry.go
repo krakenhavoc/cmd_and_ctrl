@@ -2217,16 +2217,6 @@ var items = []Item{
 		EngineNotes: "cast ceiling: the legal-move enumerator bounds X through a cost (`xCeilingFromCost`, `BlightXCeilingForEffect`) and nothing in a `Spec` names a ceiling, so Winter's Chill (\"X can't be greater than the number of snow lands you control\") would cast for any X, stronger than printed (#259). Its \"this combat\" prevention is expressible since #2027 (`PreventDamageFromSource{Lasts: ShieldThisCombat}`). The rest of its text has not been built or checked: the per-creature \"may pay {1} or {2}\" choice, the destroy-at-end-of-combat delayed trigger (`ScheduleDelayedTrigger{At: StepEndCombat}`) and \"cast only during combat before blockers are declared\".",
 	},
 	{
-		Slug: "doesnt-untap-next-two-untap-steps", Name: "Doesn't untap during the next two untap steps", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Effects that keep a permanent tapped through its controller's next two untap steps, such as Telekinesis.",
-		Missing:     "A permanent can skip its controller's next untap step, but not the next two.",
-		Rules:       []string{"502.3"},
-		Issue:       2029,
-		Tracked:     "#2029 (found landing ADR 0108 PR 7b, #1904)",
-		Waiting:     []string{"Telekinesis"},
-		EngineNotes: "untap skip: `Game.SkipNextUntapForEffect` records one `UntapSkip` on the permanent and drops a second identical one as a duplicate, so the engine counts one skipped untap step. Telekinesis's ruling: the controller isn't locked in, and the creature doesn't untap during its controller's untap step until it has not done so twice. Its tap and its combat-damage shield (ADR 0108 Delivery PR 7b, #1904) are buildable.",
-	},
-	{
 		Slug: "tap-creatures-alternative-cost", Name: "Alternative costs that tap creatures you control", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Spells you may cast by tapping creatures you control instead of paying mana, such as Prismatic Strands' \"Flashback—Tap an untapped white creature you control\" and Orim's Cure.",
 		Missing:     "An alternative cost can charge life, exile cards, return a permanent or sacrifice permanents, but can't tap creatures.",
