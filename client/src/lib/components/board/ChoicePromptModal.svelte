@@ -47,6 +47,9 @@
   import { confirmAction, type DockAction } from "../../dock";
   import { onDestroy } from "svelte";
   import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
+  import { get } from "svelte/store";
+  import { settings, updateSettings } from "../../settings";
+  import { rememberedRule, ruleRefusalText, withRule } from "../../autoAnswerPref";
   import {
     rejectionForPrompt,
     type ChoiceRejection,
@@ -146,6 +149,12 @@
   // it if one came back. See the effect below the reset.
   let submission: ChoiceSubmission | null = null;
   let rejection = $state<ChoiceRejection | null>(null);
+  // ADR 0127 §6: "Remember this answer" — off each time a prompt
+  // appears. `rememberRefusal` is the message when the rule cannot be
+  // added (a 101st, or the account's settings are full); the answer is
+  // then not sent, so the player can untick and answer.
+  let remember = $state(false);
+  let rememberRefusal = $state<string | null>(null);
 
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
@@ -175,6 +184,8 @@
             : new Set();
       ordered = [];
       rejection = null;
+      remember = false;
+      rememberRefusal = null;
       submission = null;
       lastChoiceID = nextID;
       inlineRefusal.set(null);
@@ -1077,8 +1088,27 @@
     }
   }
 
+  // rememberAnswer sets the standing answer the pressed button implies
+  // (ADR 0127 §6): Yes / Pay is Always, No / Don't pay is Never. A
+  // "Pay with life" answer sets none: an automatic answer pays mana
+  // only. Returns false when the rule was refused, and says why.
+  function rememberAnswer(apply: boolean, phyrexianLife: number): boolean {
+    if (!remember || !active || phyrexianLife > 0) return true;
+    const rule = rememberedRule(active, apply);
+    if (!rule) return true;
+    const current = get(settings);
+    const next = withRule(current.gameplay.autoAnswers, rule, current);
+    if (typeof next === "string") {
+      rememberRefusal = ruleRefusalText(next);
+      return false;
+    }
+    updateSettings("gameplay", "autoAnswers", next);
+    return true;
+  }
+
   function answerOptional(apply: boolean, phyrexianLife = 0): void {
     if (!active || !viewerID) return;
+    if (!rememberAnswer(apply, phyrexianLife)) return;
     // #1311: a waterbend pay-unless names its taps beside the apply.
     if (isPayUnless) {
       // ADR 0108 §5: a discard or sacrifice payment is not a "Pay"
@@ -1129,7 +1159,14 @@
                     : commanderCard
                       ? commanderBody
                       : undefined,
-            rejection: rejection?.message ?? null,
+            rejection: rememberRefusal ?? rejection?.message ?? null,
+            remember: {
+              on: remember,
+              onToggle: () => {
+                remember = !remember;
+                rememberRefusal = null;
+              },
+            },
           },
           {
             onAnswer: answerOptional,

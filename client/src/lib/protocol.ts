@@ -218,6 +218,10 @@ export type ActionType =
   // #1530: `{always_ask: boolean}` — the seat's own "always ask me to
   // order my triggers" preference. A setting, not a play: never undoable.
   | "set_trigger_order_preference"
+  // ADR 0127 §3: `{rules: [{key, answer}]}` — the seat's standing
+  // answers to repeated prompts, replacing the list ("always" or
+  // "never"; Ask is no rule). A setting, not a play: never undoable.
+  | "set_auto_answers"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -1082,6 +1086,9 @@ export interface LogEvent {
   // route lets anyone at a preview table spawn) and on one by the
   // admin, who has no seat.
   actor_is_host?: boolean;
+  // ADR 0127 §6: on an `auto_answer` entry, the key of the rule that
+  // answered. Present only on the chooser's own view.
+  auto_answer_key?: string;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
@@ -1090,7 +1097,8 @@ export interface LogEvent {
   sides?: number;
   results?: number[];
   faces?: string[];
-  call?: "heads" | "tails";
+  // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer.
+  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
   // that tied, or the seats the host rolled for.
@@ -1477,6 +1485,15 @@ export interface PendingChoiceView {
   // is {apply: true, phyrexian_life: n}. Absent at zero.
   phyrexian_symbols?: number;
   phyrexian_granted?: number;
+  // ADR 0127 §2, §8: the key a standing answer to this prompt is filed
+  // under (absent when it can take none), and its display copies — the
+  // card's name and the question — which Settings shows beside the rule.
+  // `asked_by_hand` says why a prompt that has a rule is asked anyway.
+  // All four are on the chooser's own view only.
+  auto_answer_key?: string;
+  auto_answer_card?: string;
+  auto_answer_prompt?: string;
+  asked_by_hand?: AskedByHand;
   // #1311: populated for a "pay_unless" whose payment is a WATERBEND
   // cost ("Ward—Waterbend {4}", The Unagi of Kyoshi Island): the
   // chooser's untapped artifacts and creatures that may each pay {1}
@@ -1840,6 +1857,13 @@ export interface PlayerView {
   // Present (true) only in the seat's OWN view; the server blanks it for
   // everyone else. Omitempty: absent means off.
   trigger_order_always_ask?: boolean;
+  // ADR 0127 §3: this seat's standing answers, sorted by key. Own view
+  // only; the client reconciles it with gameplay.autoAnswers.
+  auto_answers?: AutoAnswerRuleView[];
+  // ADR 0127 §6 (owner amendment 2026-10-07): the seq of this seat's
+  // automatic answer while it is the top undo entry, so `undo` takes it
+  // back. Own view only; absent once anything else sits on top.
+  undo_auto_answer?: number;
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.
@@ -3974,4 +3998,13 @@ export interface TableSettingsView {
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).
   allow_spawn: boolean;
+}
+
+// ADR 0127: why a prompt with a standing answer is asked by hand.
+export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
+
+// ADR 0127 §3: one of a seat's standing answers, as the server holds it.
+export interface AutoAnswerRuleView {
+  key: string;
+  answer: "always" | "never";
 }

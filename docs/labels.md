@@ -102,3 +102,9 @@ registered, or when this file is stale.
 | `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts` | the lobby.practice tip's action, to #/practice; the tip's Got it reads Not now beside it |
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
+| `rememberThisAnswer` | `Remember this answer` | button | text | `lib/choiceDock.ts` | the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never) |
+| `automaticAnswer` | `automatic answer` | dialog | aria | `lib/autoAnswerPref.ts` | the dock's notice after the server answered a prompt for you ("Rhystic Study: paid {1} for you"), for about six seconds |
+| `undoAutomaticAnswer` | `Undo` | button | text | `lib/autoAnswerPref.ts` | the automatic-answer notice's undo; greyed once anything else is the top undo entry |
+| `askMeNextTime` | `Ask me next time` | button | text | `lib/autoAnswerPref.ts` | the automatic-answer notice's button that removes the rule (sets Ask); the answer just given stands |
+| `automaticAnswers` | `automatic answers` | region | aria | `lib/components/AutoAnswersSettings.svelte` | Settings → Gameplay's list of standing answers; the settings.auto-answers hint points at it |
+| `forgetAutoAnswer` | `Forget` | button | text | `lib/components/AutoAnswersSettings.svelte` | removes one standing answer in Settings → Gameplay, so its prompt is asked again |

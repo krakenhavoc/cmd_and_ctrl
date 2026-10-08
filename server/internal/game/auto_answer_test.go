@@ -210,7 +210,7 @@ func TestAutoAnswerNeverDeclinesAndRunsTheBranch(t *testing.T) {
 	if !ok || id != tax.ID || chooser != payer.ID {
 		t.Fatalf("NextAutoAnswer = %v %v %v, want the tax for the payer", id, chooser, ok)
 	}
-	if err := g.AutoAnswer(id); err != nil {
+	if _, err := g.AutoAnswer(id); err != nil {
 		t.Fatal(err)
 	}
 	if choiceByID(g, tax.ID) != nil {
@@ -263,7 +263,7 @@ func TestAutoAnswerAlwaysPaysFromRealManaOrAsks(t *testing.T) {
 	if !ok || id != again.ID {
 		t.Fatalf("Always pay with {1} floating was not answered: %v %v", id, ok)
 	}
-	if err := g.AutoAnswer(id); err != nil {
+	if _, err := g.AutoAnswer(id); err != nil {
 		t.Fatal(err)
 	}
 	if len(payer.ManaPool) != 0 {
@@ -320,7 +320,7 @@ func TestAutoAnswerIsNotAPlayerDecision(t *testing.T) {
 		t.Fatal(err)
 	}
 	g.TurnTally.LoopRun = map[string]int{"some loop": 7}
-	if err := g.AutoAnswer(tax.ID); err != nil {
+	if _, err := g.AutoAnswer(tax.ID); err != nil {
 		t.Fatal(err)
 	}
 	if g.TurnTally.LoopRun["some loop"] != 7 {
@@ -351,7 +351,7 @@ func TestAutoAnswerNeverAnswersForABot(t *testing.T) {
 	if tax.AskedByHand != "" {
 		t.Errorf("a bot seat's prompt was marked %q", tax.AskedByHand)
 	}
-	if err := g.AutoAnswer(tax.ID); err == nil {
+	if _, err := g.AutoAnswer(tax.ID); err == nil {
 		t.Error("AutoAnswer accepted a bot seat's prompt")
 	}
 	if err := g.SetAutoAnswers(payer.ID, map[string]AutoAnswer{"k": AutoAnswerNever}); err == nil {

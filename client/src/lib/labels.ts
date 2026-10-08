@@ -734,6 +734,50 @@ export const LABEL_SPECS = {
     owners: ["lib/components/ShortcutsOverlay.svelte"],
     doc: "the keymap overlay (?), named by its heading",
   }),
+
+  // -- Automatic answers (ADR 0127) --
+  rememberThisAnswer: label({
+    name: "Remember this answer",
+    kind: "text",
+    role: "button",
+    owners: ["lib/choiceDock.ts"],
+    doc: "the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never)",
+  }),
+  automaticAnswer: label({
+    name: "automatic answer",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/autoAnswerPref.ts"],
+    doc: 'the dock\'s notice after the server answered a prompt for you ("Rhystic Study: paid {1} for you"), for about six seconds',
+  }),
+  undoAutomaticAnswer: label({
+    name: "Undo",
+    kind: "text",
+    role: "button",
+    owners: ["lib/autoAnswerPref.ts"],
+    doc: "the automatic-answer notice's undo; greyed once anything else is the top undo entry",
+  }),
+  askMeNextTime: label({
+    name: "Ask me next time",
+    kind: "text",
+    role: "button",
+    owners: ["lib/autoAnswerPref.ts"],
+    doc: "the automatic-answer notice's button that removes the rule (sets Ask); the answer just given stands",
+  }),
+  automaticAnswers: label({
+    name: "automatic answers",
+    kind: "aria",
+    role: "region",
+    owners: ["lib/components/AutoAnswersSettings.svelte"],
+    doc: "Settings → Gameplay's list of standing answers; the settings.auto-answers hint points at it",
+  }),
+  forgetAutoAnswer: label({
+    name: "Forget",
+    kind: "text",
+    role: "button",
+    owners: ["lib/components/AutoAnswersSettings.svelte"],
+    doc: "removes one standing answer in Settings → Gameplay, so its prompt is asked again",
+  }),
 } satisfies Record<string, LabelSpec>;
 
 export type LabelKey = keyof typeof LABEL_SPECS;

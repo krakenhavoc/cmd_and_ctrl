@@ -216,6 +216,10 @@ type undoEntry struct {
 	// asked by hand so the next commit does not answer it again (§6).
 	// Room state, never persisted.
 	autoAnswered uuid.UUID
+	// autoAnswerSeq is that answer's EventAutoAnswer seq, which the
+	// room stamps on the chooser's view while this entry is the top of
+	// the stack (stampUndoAutoAnswerLocked).
+	autoAnswerSeq uint64
 }
 
 // undoStackCap bounds the per-room undo ring. 32 is a casual-game-
@@ -356,7 +360,8 @@ func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) 
 			return protocol.GameView{}, 0, err
 		}
 		pre := r.Game.Clone()
-		if err := r.Game.AutoAnswer(choiceID); err != nil {
+		seq, err := r.Game.AutoAnswer(choiceID)
+		if err != nil {
 			// Should not happen: NextAutoAnswer just named it under the
 			// same lock. Put the game back and ask the player instead,
 			// so the loop cannot spin on it.
@@ -365,7 +370,7 @@ func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) 
 			r.Game.MarkAskedByHand(choiceID, game.AskedByHandUndone)
 			continue
 		}
-		r.pushUndoLocked(undoEntry{pre: pre, caller: chooser, freeUndo: true, autoAnswered: choiceID})
+		r.pushUndoLocked(undoEntry{pre: pre, caller: chooser, freeUndo: true, autoAnswered: choiceID, autoAnswerSeq: seq})
 	}
 	return r.captureLocked(true)
 }
@@ -706,6 +711,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	}
 	view := protocol.ViewOfGame(r.Game)
 	r.stampHostLocked(&view)
+	r.stampUndoAutoAnswerLocked(&view)
 	r.stampPlaymatsLocked(&view)
 
 	// Consume any annotation the committing caller left for this
@@ -878,4 +884,25 @@ func (r *Room) dumpSnapshotLocked(payload []byte) error {
 		return fmt.Errorf("rename tmp: %w", err)
 	}
 	return nil
+}
+
+// stampUndoAutoAnswerLocked marks the chooser's seat with the seq of
+// their automatic answer while it is the top undo entry (ADR 0127 §6,
+// the owner's 2026-10-07 amendment), so the client knows exactly when
+// its notice's Undo would take that answer back. Room state, like the
+// host: the engine does not know the undo stack. Caller MUST hold r.mu.
+func (r *Room) stampUndoAutoAnswerLocked(view *protocol.GameView) {
+	if len(r.undoStack) == 0 {
+		return
+	}
+	top := r.undoStack[len(r.undoStack)-1]
+	if top.autoAnswered == uuid.Nil || top.autoAnswerSeq == 0 {
+		return
+	}
+	id := top.caller.String()
+	for i := range view.Seats {
+		if view.Seats[i].ID == id {
+			view.Seats[i].UndoAutoAnswer = top.autoAnswerSeq
+		}
+	}
 }

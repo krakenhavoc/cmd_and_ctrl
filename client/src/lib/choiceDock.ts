@@ -37,6 +37,7 @@ import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
 import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
 import { doubledTriggerLabel } from "./triggerDoubling";
+import { askedByHandText, canRemember } from "./autoAnswerPref";
 import { L } from "./labels";
 import { energyShortBy, energyShortReason, payAmountHint } from "./payEnergy";
 
@@ -118,6 +119,11 @@ export interface ChoiceDockContext {
   // the symbols the chooser could pay 2 life each for (ADR 0131 §2),
   // bounded by CR 119.4. Undefined offers none.
   life?: number;
+  // ADR 0127 §6: "Remember this answer", on a prompt that can take a
+  // standing answer. `on` is the toggle's state (off each time a prompt
+  // appears); the button pressed next also sets the rule. Undefined
+  // draws no toggle.
+  remember?: { on: boolean; onToggle: () => void };
 }
 
 export interface ChoiceDockHandlers {
@@ -435,6 +441,39 @@ function answersFor(
   }
 }
 
+// rememberTitle names the card and the question the toggle remembers an
+// answer for: "Remember for Rhystic Study — pay {1}?".
+function rememberTitle(c: PendingChoiceView): string {
+  const card = c.auto_answer_card ?? "";
+  const prompt = c.auto_answer_prompt ?? "";
+  if (!prompt) return `Remember for ${card || "this card"}`;
+  if (!card || prompt.startsWith(card)) return `Remember for ${prompt}`;
+  return `Remember for ${card} — ${prompt}`;
+}
+
+// rememberRow is the "Remember this answer" toggle (ADR 0127 §6), as
+// the request's row: a toggle button, drawn with aria-pressed. Absent
+// on a prompt with no key.
+function rememberRow(
+  c: PendingChoiceView,
+  ctx: ChoiceDockContext,
+): Pick<DockRequest, "row" | "rowLayout"> {
+  if (!ctx.remember || !canRemember(c)) return {};
+  const remember = ctx.remember;
+  return {
+    row: [
+      {
+        id: "remember",
+        label: L.rememberThisAnswer,
+        title: rememberTitle(c),
+        pressed: remember.on,
+        alignEnd: true,
+        onPress: () => remember.onToggle(),
+      },
+    ],
+  };
+}
+
 // choiceRequest is the dock request for an inline pending choice.
 export function choiceRequest(
   c: PendingChoiceView,
@@ -442,6 +481,11 @@ export function choiceRequest(
   handlers: ChoiceDockHandlers,
 ): DockRequest {
   const copy = copyFor(c, ctx);
+  // ADR 0127 §4: a prompt with a rule that is asked anyway says why.
+  const asked = askedByHandText(c);
+  if (asked) {
+    copy.hint = copy.hint ? `${asked} ${copy.hint}` : asked;
+  }
   return {
     rank: "choice",
     // The modal's name: its heading, which was the reason (plus a
@@ -458,6 +502,7 @@ export function choiceRequest(
       ? { tag: "Not accepted", text: ctx.rejection, actions: [], tone: "danger" }
       : null,
     focus: "dialog",
+    ...rememberRow(c, ctx),
     ...answersFor(c, ctx, handlers),
   };
 }

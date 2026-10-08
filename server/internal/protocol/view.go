@@ -1706,6 +1706,16 @@ type PlayerView struct {
 	// each capture from the host the lobby designated (ws/host.go).
 	IsHost bool `json:"is_host,omitempty"`
 
+	// UndoAutoAnswer is the seq of this seat's automatic answer (its
+	// LogAutoAnswer entry) while that answer is the TOP undo entry, so
+	// an `undo` from this seat takes it back (ADR 0127 §6, the owner's
+	// 2026-10-07 amendment). Absent once any other commit sits on top.
+	// The client greys its notice's Undo from exactly this. Not read
+	// from the engine: the room stamps it on each capture, like
+	// IsHost. Private to its seat: FilterViewFor clears it for every
+	// other viewer.
+	UndoAutoAnswer uint64 `json:"undo_auto_answer,omitempty"`
+
 	// CommanderCasts is the per-commander cast count from the
 	// command zone (S13.1, CR 903.8). Keyed by commander instance
 	// UUID string. Drives the "+N tax" indicator next to the
@@ -8187,6 +8197,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			out.TriggerOrderAlwaysAsk = false
 			// ADR 0127 §8: and so are its standing answers.
 			out.AutoAnswers = nil
+			out.UndoAutoAnswer = 0
 		}
 		// S13.5: redact every visible card based on KnownBy.
 		// Hand + library still get their wholesale-hide (S04
@@ -8305,7 +8316,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// as every zone above it. Not a parallel visibility model —
 		// literally the same predicate, applied to the card each entry
 		// names.
-		Log: redactLogForViewer(v.Log, isKnower),
+		Log: autoAnswerKeysFor(redactLogForViewer(v.Log, isKnower), v.Seats, viewerID),
 		// S22: the reveal window is the one field here that is NOT
 		// projected through isKnower, and the omission is the feature.
 		// A reveal is public by construction — every seat saw the same
@@ -10416,4 +10427,23 @@ func viewOfAutoAnswers(rules map[string]game.AutoAnswer) []AutoAnswerRuleView {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
 	return out
+}
+
+// autoAnswerKeysFor clears every LogAutoAnswer entry's key but the
+// viewer's own (ADR 0127 §6): the key is what the chooser's notice needs
+// for "Ask me next time", and nobody else needs it. The log slice is the
+// viewer's own copy (redactLogForViewer allocates it).
+func autoAnswerKeysFor(log []LogEvent, seats []PlayerView, viewerID string) []LogEvent {
+	mine := NoSeat
+	for _, p := range seats {
+		if p.ID != "" && p.ID == viewerID {
+			mine = p.Seat
+		}
+	}
+	for i := range log {
+		if log[i].AutoAnswerKey != "" && (mine == NoSeat || log[i].Seat != mine) {
+			log[i].AutoAnswerKey = ""
+		}
+	}
+	return log
 }
