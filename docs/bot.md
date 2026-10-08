@@ -781,9 +781,8 @@ battlefield untapped, so it ends with a land more than it began with and
 spends nothing the bot would keep; it gets `LeftoverThreshold` like a
 move that costs mana and taps. A land sacrifice with no `lands` purpose
 behind it, one that does not replace what it sacrifices, and a sacrifice
-of anything but the bot's own land keep the normal bar. It does not
-change the price: once the ramp premium has closed, Harrow is priced
-below passing and is still not cast.
+of anything but the bot's own land keep the normal bar. Its price is
+the land it nets (see "Purposes" below).
 
 Two prices go with the windows:
 
@@ -828,6 +827,30 @@ Wood Elves' land, Mulldrifter's two cards. On the bot's own activated
 row, it replaces `ActivateBase`, so a loot is priced by the card it
 draws and a land sacrifice by the land it fetches. A row with no
 purpose keeps the flat `ActivateBase` (0.50).
+
+**A land swap is priced by what it nets**
+([#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469),
+`NetLandSwaps`, `land_swap.go`). A cast that sacrifices lands of the
+bot's own and whose purpose puts more lands onto the battlefield than it
+sacrifices (Harrow: one land for two basics, untapped) is priced as a
+swap plus a ramp spell:
+
+- each sacrificed land is replaced one for one: it costs its own value
+  (0.55 tapped, 1.00 untapped) and gives back an untapped land at
+  `ManaSource`;
+- only the lands beyond those are ramp, at `ManaSource` plus the ramp
+  premium, with `SpellFloor` under that net amount.
+
+Late in a game, with nothing in hand the bot cannot cast, Harrow is then
++0.10 sacrificing an untapped land and +0.55 sacrificing a tapped one,
+at or above a Rampant Growth (+0.10). Priced gross, as two lands of ramp
+floored before the sacrifice was charged, it was −0.20. Early, the ramp
+premium is paid on the one land Harrow adds, not on both. A sacrifice of
+anything but the bot's own lands, one land for one land, and a sacrifice
+with no `lands` purpose are priced as before. The purpose does not say
+whether the lands enter tapped. Harrow's do not; Roiling Regrowth and
+Cycle of Renewal, whose lands do, declare no purpose, and one should not
+be declared for them before the purpose can say so.
 
 ### Board wipes
 
@@ -2373,7 +2396,8 @@ The reasons are in the pricing:
   windows, and two lands for one land and a card rarely clears it late
   in a game. It was cast in 8 of the 27 games it was offered in.
   Since #2469 a land sacrifice that the cast's `purpose.lands` more than
-  replaces gets the leftover bar (see "The two leftover windows").
+  replaces gets the leftover bar (see "The two leftover windows"), and
+  is priced by the land it nets (see "Purposes").
 
 **A non-tap activated ability with no declared purpose is a flat
 +0.50.** That is `ActivateBase`, and S66 left it alone (ADR 0126 owner

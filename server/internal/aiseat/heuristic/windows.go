@@ -187,20 +187,18 @@ func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 // does a sacrifice of anything but a land of the bot's own.
 func (p *Policy) landSacrificeIsNetMana(st *state, m legal.Move) bool {
 	cp := decode[castParams](m.Params)
-	if len(cp.SacrificeIDs) == 0 || paramsSet(m.Params, nonManaCastKeysBesidesSacrifice) {
+	if paramsSet(m.Params, nonManaCastKeysBesidesSacrifice) {
 		return false
 	}
-	for _, id := range cp.SacrificeIDs {
-		c := st.bf[id]
-		if c == nil || c.Controller != st.me || !isLand(c) {
-			return false
-		}
+	n, ok := st.ownLandsSacrificed(cp.SacrificeIDs)
+	if !ok {
+		return false
 	}
 	card := st.castSource(cp.InstanceID)
 	if card == nil {
 		return false
 	}
-	return castPurpose(card, cp).lands > len(cp.SacrificeIDs)
+	return castPurpose(card, cp).lands > n
 }
 
 // tapsACreature reports whether paying m's cost taps one of the bot's

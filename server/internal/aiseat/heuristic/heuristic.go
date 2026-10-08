@@ -146,6 +146,14 @@ type Config struct {
 	// or ActivateBase, and a permanent's declared enters effect is added
 	// to its body. Off (the zero value) is the pre-S66 heuristic.
 	PricePurposes bool
+	// NetLandSwaps prices a cast that sacrifices the bot's own lands
+	// and puts more lands onto the battlefield than it sacrifices
+	// (Harrow) by what it nets (#2469, land_swap.go): the lands it
+	// sacrifices are replaced one for one, untapped, and only the
+	// lands it adds are ramp, with SpellFloor under the net rather
+	// than under the gross. Off (the zero value) prices every land the
+	// purpose declares as ramp and floors before the sacrifice.
+	NetLandSwaps bool
 	// TutorWeight is a card searched out to hand or the top of the
 	// library, in cards drawn: above one, because the bot picks it.
 	TutorWeight float64
@@ -376,6 +384,7 @@ func DefaultConfig() Config {
 		RampWantCap:    7,
 
 		PricePurposes:     true,
+		NetLandSwaps:      true,
 		TutorWeight:       1.00,
 		SelfMillWeight:    0.50,
 		DiscardWeight:     0.60,
@@ -471,6 +480,8 @@ func BaselineConfig() Config {
 	c.TapByTiming = false
 	// §4, §6's prices and §7's discard half (PR 7).
 	c.PricePurposes = false
+	// #2469: a land swap priced by what it nets.
+	c.NetLandSwaps = false
 	c.TutorWeight = 0
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0

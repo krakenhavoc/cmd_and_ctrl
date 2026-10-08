@@ -1039,3 +1039,21 @@ A6 passes with room: no deck's interval lies above 50%, and mono-black's no long
 | heuristic-baseline | 192 | 38 | 19.8% | 14.8%–26.0% | 42, 21.9% |
 
 By half, `heuristic` won 18 of 96 seat-games on esper and izzet (esper 17, izzet 1) and 40 of 96 on black and simic (black 23, simic 17).
+
+### #2469: a land swap priced by what it nets (2026-10-08)
+
+The owner chose, on 2026-10-08, a §6 price change for Harrow after #2649 gave its land sacrifice the leftover-window bar. A cast that sacrifices lands of the bot's own and whose `purpose.lands` is larger than the number sacrificed is priced as a swap plus a ramp spell (`NetLandSwaps`, `land_swap.go`): each sacrificed land costs its own value and is given back as an untapped land at `ManaSource`, and only the lands beyond those are ramp, with the ramp premium and `SpellFloor` under that net amount. Late in a game Harrow goes from −0.20 to +0.10 (an untapped land sacrificed) or +0.55 (a tapped one), at or above a Rampant Growth's +0.10. `BaselineConfig` turns it off. In the catalog only Harrow declares that shape: Roiling Regrowth, Cycle of Renewal and Entish Restoration declare no purpose (their lands enter tapped, which a purpose cannot yet say), and Crop Rotation swaps one land for one.
+
+Before is `develop` at `c1391ff97` (#2649 merged), after is the branch; every run is `--rotate --lockstep` with the real dump, so a seed replays the same game until the price changes it. No run stalled.
+
+| Run | Harrow before | Harrow after |
+|---|---|---|
+| simic-ramp ×4, seeds 1–40 | 19 / 49, 38.8% (26.4%–52.8%) | 20 / 49, 40.8% (28.2%–54.8%) |
+| simic-ramp ×4, seeds 1000–1119 | 43 / 166, 25.9% (19.8%–33.1%) | 53 / 164, 32.3% (25.6%–39.8%) |
+| simic-ramp ×4, pooled | 62 / 215, 28.8% (23.2%–35.2%) | 73 / 213, 34.3% (28.2%–40.9%) |
+| Run 1 (§8, 64 games, seed 1) | 12 / 27, 44.4% (27.6%–62.7%) | 15 / 27, 55.6% (37.3%–72.4%) |
+| Run 2 half B (`heuristic` on black and simic, 48 games) | 6 / 17, 35.3% | 7 / 17, 41.2% |
+
+Win rates do not move beyond a game. Run 1: esper 27 and 27 of 64, izzet 3 and 2, black 22 and 24, simic 12 and 11. Run 2 half B: `heuristic` 42 of 96 seat-games both times (43.8%, 34.3%–53.7%), `heuristic-baseline` 6 of 96 both times; by deck, black 22 then 21, simic 20 then 21. The simic ×4 runs are at the null by construction. The other A2 and A3 rows are within one game in run 1 and run 2. In the simic ×4 runs, where a changed Harrow decision changes the rest of the game, they move by up to eight games either way along with their offered counts (Ornithopter of Paradise 137 of 168 to 145 of 177, Delighted Halfling 155 of 181 to 152 of 184), and the only row that crosses its bar is Delighted Halfling in the 40-game run, upward (76% to 82%). The suite is 37 of 37.
+
+Run 1 now meets A3's 50% for Harrow, but the 160-game simic ×4 pool, at 34%, does not. A decision log of six games shows why the rest of the windows still pass: Harrow is priced positive in nearly every window it is offered in, and it is refused where the bar is `InstantThreshold`, with a trigger on the stack in the bot's own main phase or in its upkeep and draw steps, or it loses the main phase to a bigger cast that taps the bot out. It is rarely offered in the end step before the bot's turn, because the bot has spent its mana by then. Those are sequencing questions, not Harrow's price.

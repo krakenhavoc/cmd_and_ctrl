@@ -495,6 +495,14 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// this cast names, so an overloaded Rift is a sweep and a
 		// hard-cast one is not.
 		ps := castPurpose(card, cp)
+		// #2469: a land swap is priced by what it nets. The lands that
+		// replace the sacrificed ones are untapped lands, ManaSource
+		// each, outside the purpose; the rest are the ramp, with the
+		// floor under them.
+		if n := p.landSwap(st, ps, cp.SacrificeIDs); n > 0 {
+			ps.lands -= n
+			v += st.w.ManaSource * float64(n)
+		}
 		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(cp.Targets) > 0)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
