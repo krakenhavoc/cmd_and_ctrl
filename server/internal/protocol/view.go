@@ -10121,6 +10121,9 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
+		if !g.AttachedToSourceOKForEffect(spec, sourceID, id) {
+			continue
+		}
 		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
 			ids = append(ids, id)
 		}

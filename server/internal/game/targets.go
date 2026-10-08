@@ -443,6 +443,15 @@ type TargetSpec struct {
 	// and ReturnCost.ExcludeSource. Build it with effects.Another.
 	ExcludeSource bool
 
+	// AttachedToSource limits a SACRIFICE clause to permanents attached
+	// to the object paying the cost: "Sacrifice an Aura attached to this
+	// creature" (Faunsbane Troll, #1945). Read by the payment validator,
+	// the legal enumerator and the protocol view through
+	// Game.AttachedToSourceOKForEffect, so none of the three can offer
+	// or accept a pick the others refuse. Build it with
+	// effects.AttachedToThis.
+	AttachedToSource bool
+
 	// AllowSame permits the same player / card in more than one
 	// slot. Off for every ordinary clause; reserved for effects
 	// whose wording uses separate "target" words that may coincide.

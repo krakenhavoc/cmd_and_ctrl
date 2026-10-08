@@ -188,6 +188,12 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Weapons Manufacturing's Munitions.
 	printedMunitionsToken,
+
+	// #1945: the Role tokens.
+	printedMonsterRoleToken,
+	printedCursedRoleToken,
+	printedRoyalRoleToken,
+	printedWickedRoleToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
