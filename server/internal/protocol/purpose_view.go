@@ -35,6 +35,10 @@ type PurposeView struct {
 	Discards int `json:"discards,omitempty"`
 	// Lands is the land cards it puts onto the battlefield.
 	Lands int `json:"lands,omitempty"`
+	// LandsUntapped is how many of those lands enter untapped, so their
+	// mana is there the turn it resolves (ADR 0136 §2). Never more than
+	// Lands.
+	LandsUntapped int `json:"lands_untapped,omitempty"`
 	// Tutors is the cards it searches out to hand or to the top of the
 	// library.
 	Tutors int `json:"tutors,omitempty"`
@@ -156,6 +160,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		ControllerLosesLife:       p.ControllerLosesLife,
 		Discards:                  p.Discards,
 		Lands:                     p.Lands,
+		LandsUntapped:             p.LandsUntapped,
 		Tutors:                    p.Tutors,
 		SelfMillTutor:             p.SelfMillTutor,
 		Tokens:                    p.Tokens,

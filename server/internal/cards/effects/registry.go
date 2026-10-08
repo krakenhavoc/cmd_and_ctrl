@@ -66,6 +66,7 @@ func Register(spec Spec) {
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
+	checkBoast(spec)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
@@ -1593,6 +1594,45 @@ func checkExhaustAbilities(spec Spec) {
 		}
 		if p.Label == "" {
 			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+	}
+}
+
+// checkBoast is the boot-time contract of CR 702.142 (#2697). The
+// ability label and the bit must agree in both directions, for the same
+// reason checkExhaustAbilities holds them to: a label that prints
+// "Boast —" with no bit is repeatable every turn and attackless, and a
+// bit with no printed keyword puts a rule on the card the player cannot
+// read. And a boast limit without Applies reaches every creature.
+func checkBoast(spec Spec) {
+	seen := map[string]bool{}
+	for i, a := range spec.Activated {
+		if a.Boast {
+			if seen[a.Label] {
+				panic(fmt.Sprintf("effects.Register: %q has two boast abilities labelled %q — the activation record is keyed by the label, so they would share one use", spec.Name, a.Label))
+			}
+			seen[a.Label] = true
+		}
+		printed := strings.HasPrefix(a.Label, "Boast — ")
+		if a.Boast && !printed {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets Boast but its label does not start with \"Boast — \" — build it with effects.Boast", spec.Name, i))
+		}
+		if printed && !a.Boast {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints \"Boast —\" and does not set Boast: true — without the bit it needs no attack and can be activated every turn", spec.Name, i))
+		}
+		if a.Boast && (a.Cost.Loyalty != nil || a.Equip || a.Cycling) {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d is a boast ability with a loyalty, equip or cycling shape — boast is its own ability", spec.Name, i))
+		}
+	}
+	for i, l := range spec.BoastLimits {
+		if l.Applies == nil {
+			panic(fmt.Sprintf("effects.Register: %q boast limit %d has no Applies — it would reach every creature of every player, always", spec.Name, i))
+		}
+		if l.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q boast limit %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+		if l.Limit < 2 {
+			panic(fmt.Sprintf("effects.Register: %q boast limit %d is %d — the printed limit is already 1, so a limit below 2 changes nothing", spec.Name, i, l.Limit))
 		}
 	}
 }

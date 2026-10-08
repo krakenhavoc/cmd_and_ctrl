@@ -309,6 +309,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.Monstrous = false
 		c.Saddled = false
 		c.SaddledBy = nil
+		// ADR 0071 amendment (#2698) / CR 400.7 + CR 701.60: and so is
+		// the suspected designation — a suspected creature that is
+		// flickered or bounced comes back a new, unsuspected object.
+		c.Suspected = false
+		c.SuspectedAt = 0
 		// ADR 0114 §3 / CR 400.7 + CR 701.54a: and so is the
 		// Ring-bearer designation — a Ring-bearer that leaves and comes
 		// back is a new object and is nobody's Ring-bearer.

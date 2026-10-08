@@ -768,12 +768,14 @@ export interface MoveCost {
   // permanent — often not the move's source (Heart of Kiran's crew
   // paid with a planeswalker's loyalty).
   counters?: { card_id: string; counter: string; n: number }[];
-  // ADR 0080 (#1063): a cost string the move charges that `params`
-  // cannot name — today exactly one thing, the CR 508.1a attack tax
-  // on a declare_attacker move ("{2}" for an attack into Propaganda).
-  // A cast's mana is its printed cost and lives on the CardView; an
-  // attack has no printed cost, so without this a consumer prices an
-  // attack under Ghostly Prison exactly like a free one.
+  // A mana cost string the move charges that `params` cannot name.
+  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1a attack
+  // tax ("{2}" for an attack into Propaganda). On every cast_spell move
+  // (ADR 0136 §2): the total mana the cast charges (CR 601.2f), with
+  // the commander tax, X, alternative costs and the board's increases
+  // and reductions in it ("{5}{G}{U}" for a twice-cast Tatyova), which
+  // the printed mana_cost on the CardView is not. "{0}" when the cast
+  // charges no mana.
   mana?: string;
   // #1600: how many cards a "Discard your hand" cost throws away if
   // the move is made now — Lion's Eye Diamond, Null Brooch, Slate of
@@ -2572,6 +2574,13 @@ export interface ActivatedAbilityView {
   // come back: only a new object (CR 400.7 — a flicker, not an untap)
   // clears it, which is why the menu says something different.
   exhausted?: boolean;
+  // #2697, CR 702.142a: why a boast ability ("Activate only if this
+  // creature attacked this turn and only once each turn") cannot be
+  // activated right now. "not_attacked" recovers when the creature
+  // attacks; "used" at the next turn (Birgi, God of Storytelling raises
+  // the number of uses the server counts). Absent when the ability is not
+  // a boast ability or nothing objects.
+  boast_blocked?: "not_attacked" | "used";
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is
@@ -2856,6 +2865,9 @@ export interface PurposeView {
   controller_loses_life?: number;
   discards?: number;
   lands?: number;
+  // ADR 0136 §2: how many of `lands` enter untapped (Harrow 2, Nature's
+  // Lore 1). Never more than `lands`; absent when they enter tapped.
+  lands_untapped?: number;
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
@@ -3595,6 +3607,12 @@ export interface CardView extends CastSurfaceView {
   // while saddled" triggers read. Public, read straight off the card.
   // Absent — not `false` — for everything else.
   saddled?: boolean;
+  // ADR 0071 amendment, #2698 (CR 701.60): this permanent is
+  // suspected — it has menace and can't block for as long as it is.
+  // Public, and kept on a face-down permanent: the designation was
+  // given to the object in public, and it is the reason the creature
+  // cannot block. Absent — not `false` — for everything else.
+  suspected?: boolean;
   // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
   // Ring-bearer. Public, and kept on a face-down permanent: the
   // designation was chosen in public and says nothing about the card.

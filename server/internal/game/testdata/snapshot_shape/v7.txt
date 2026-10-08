@@ -303,6 +303,8 @@ battlefield.cards[].solved	bool
 battlefield.cards[].startingDefense	number:int
 battlefield.cards[].startingLoyalty	number:int
 battlefield.cards[].summonedThisTurn	bool
+battlefield.cards[].suspected	bool
+battlefield.cards[].suspectedAt	number:int64
 battlefield.cards[].tapOnPhaseIn	bool
 battlefield.cards[].tapped	bool
 battlefield.cards[].tokenArtOnly	bool
@@ -432,6 +434,7 @@ events[].batch	number:uint64
 events[].batch_seq	number:uint64
 events[].blocked	bool
 events[].blocking_target	custom(uuid.UUID)
+events[].boast	bool
 events[].call	string
 events[].card_id	custom(uuid.UUID)
 events[].cause	string
@@ -760,6 +763,8 @@ exile.cards[].solved	bool
 exile.cards[].startingDefense	number:int
 exile.cards[].startingLoyalty	number:int
 exile.cards[].summonedThisTurn	bool
+exile.cards[].suspected	bool
+exile.cards[].suspectedAt	number:int64
 exile.cards[].tapOnPhaseIn	bool
 exile.cards[].tapped	bool
 exile.cards[].tokenArtOnly	bool
@@ -991,6 +996,7 @@ lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
 lastKnownPermanents{}[].ringBearer	bool
+lastKnownPermanents{}[].suspected	bool
 lastKnownPermanents{}[].tapped	bool
 lastKnownPermanents{}[].toughness	number:int
 lastKnownStack	array
@@ -1273,6 +1279,8 @@ lastKnownStack[].card.solved	bool
 lastKnownStack[].card.startingDefense	number:int
 lastKnownStack[].card.startingLoyalty	number:int
 lastKnownStack[].card.summonedThisTurn	bool
+lastKnownStack[].card.suspected	bool
+lastKnownStack[].card.suspectedAt	number:int64
 lastKnownStack[].card.tapOnPhaseIn	bool
 lastKnownStack[].card.tapped	bool
 lastKnownStack[].card.tokenArtOnly	bool
@@ -1420,6 +1428,7 @@ lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
 lastKnownStack[].item.trigger.Event.blocked	bool
 lastKnownStack[].item.trigger.Event.blocking_target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.boast	bool
 lastKnownStack[].item.trigger.Event.call	string
 lastKnownStack[].item.trigger.Event.card_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.cause	string
@@ -1903,6 +1912,7 @@ pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
 pendingTriggers[].trigger.Event.blocked	bool
 pendingTriggers[].trigger.Event.blocking_target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.boast	bool
 pendingTriggers[].trigger.Event.call	string
 pendingTriggers[].trigger.Event.card_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.cause	string
@@ -2255,6 +2265,8 @@ phasedOut.cards[].solved	bool
 phasedOut.cards[].startingDefense	number:int
 phasedOut.cards[].startingLoyalty	number:int
 phasedOut.cards[].summonedThisTurn	bool
+phasedOut.cards[].suspected	bool
+phasedOut.cards[].suspectedAt	number:int64
 phasedOut.cards[].tapOnPhaseIn	bool
 phasedOut.cards[].tapped	bool
 phasedOut.cards[].tokenArtOnly	bool
@@ -2847,6 +2859,8 @@ seats[].command.cards[].solved	bool
 seats[].command.cards[].startingDefense	number:int
 seats[].command.cards[].startingLoyalty	number:int
 seats[].command.cards[].summonedThisTurn	bool
+seats[].command.cards[].suspected	bool
+seats[].command.cards[].suspectedAt	number:int64
 seats[].command.cards[].tapOnPhaseIn	bool
 seats[].command.cards[].tapped	bool
 seats[].command.cards[].tokenArtOnly	bool
@@ -3148,6 +3162,8 @@ seats[].emblems.cards[].solved	bool
 seats[].emblems.cards[].startingDefense	number:int
 seats[].emblems.cards[].startingLoyalty	number:int
 seats[].emblems.cards[].summonedThisTurn	bool
+seats[].emblems.cards[].suspected	bool
+seats[].emblems.cards[].suspectedAt	number:int64
 seats[].emblems.cards[].tapOnPhaseIn	bool
 seats[].emblems.cards[].tapped	bool
 seats[].emblems.cards[].tokenArtOnly	bool
@@ -3440,6 +3456,8 @@ seats[].graveyard.cards[].solved	bool
 seats[].graveyard.cards[].startingDefense	number:int
 seats[].graveyard.cards[].startingLoyalty	number:int
 seats[].graveyard.cards[].summonedThisTurn	bool
+seats[].graveyard.cards[].suspected	bool
+seats[].graveyard.cards[].suspectedAt	number:int64
 seats[].graveyard.cards[].tapOnPhaseIn	bool
 seats[].graveyard.cards[].tapped	bool
 seats[].graveyard.cards[].tokenArtOnly	bool
@@ -3730,6 +3748,8 @@ seats[].hand.cards[].solved	bool
 seats[].hand.cards[].startingDefense	number:int
 seats[].hand.cards[].startingLoyalty	number:int
 seats[].hand.cards[].summonedThisTurn	bool
+seats[].hand.cards[].suspected	bool
+seats[].hand.cards[].suspectedAt	number:int64
 seats[].hand.cards[].tapOnPhaseIn	bool
 seats[].hand.cards[].tapped	bool
 seats[].hand.cards[].tokenArtOnly	bool
@@ -4031,6 +4051,8 @@ seats[].library.cards[].solved	bool
 seats[].library.cards[].startingDefense	number:int
 seats[].library.cards[].startingLoyalty	number:int
 seats[].library.cards[].summonedThisTurn	bool
+seats[].library.cards[].suspected	bool
+seats[].library.cards[].suspectedAt	number:int64
 seats[].library.cards[].tapOnPhaseIn	bool
 seats[].library.cards[].tapped	bool
 seats[].library.cards[].tokenArtOnly	bool
@@ -4524,6 +4546,8 @@ stack.cards[].solved	bool
 stack.cards[].startingDefense	number:int
 stack.cards[].startingLoyalty	number:int
 stack.cards[].summonedThisTurn	bool
+stack.cards[].suspected	bool
+stack.cards[].suspectedAt	number:int64
 stack.cards[].tapOnPhaseIn	bool
 stack.cards[].tapped	bool
 stack.cards[].tokenArtOnly	bool
@@ -4674,6 +4698,7 @@ stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
 stackMeta[].trigger.Event.blocked	bool
 stackMeta[].trigger.Event.blocking_target	custom(uuid.UUID)
+stackMeta[].trigger.Event.boast	bool
 stackMeta[].trigger.Event.call	string
 stackMeta[].trigger.Event.card_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.cause	string

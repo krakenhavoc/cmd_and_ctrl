@@ -27,6 +27,7 @@ import (
 // each at boot rather than as a bot that quietly misprices a card:
 //
 //   - a negative amount;
+//   - more LandsUntapped than Lands (ADR 0136 §2);
 //   - ControllerLosesLife anywhere but an any-player activated row,
 //     where the activator and the controller differ (ADR 0106);
 //   - DeathPayoff anywhere but a triggered row;
@@ -70,8 +71,11 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 {
 		fail("has a negative amount")
+	}
+	if p.LandsUntapped > p.Lands {
+		fail("says more lands enter untapped (LandsUntapped) than it puts onto the battlefield (Lands) (ADR 0136 §2)")
 	}
 	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")

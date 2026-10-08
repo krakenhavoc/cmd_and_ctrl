@@ -613,7 +613,16 @@ func TestActivatedAbilityCarriesItsLifeCost(t *testing.T) {
 		if m.Source != nec {
 			// Everything else on this table is free, and has to stay
 			// free on the wire: a nil Cost serialises no key at all,
-			// which is what keeps the frame budget where it was.
+			// which is what keeps the frame budget where it was. A cast
+			// states its mana and nothing more (ADR 0136 §2).
+			if m.Kind == legal.KindCast && m.Cost != nil {
+				c := *m.Cost
+				if c.Mana == "" || c.Life != 0 || c.PhyrexianLife != 0 || c.Loyalty != 0 || len(c.Counters) > 0 ||
+					c.Hand != 0 || c.Energy != 0 || c.Exert {
+					t.Errorf("cast %q declares a cost beyond its mana: %+v", m.Label, m.Cost)
+				}
+				continue
+			}
 			if m.Cost != nil {
 				t.Errorf("move %q declares a cost it does not have: %+v", m.Label, m.Cost)
 			}

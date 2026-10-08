@@ -2131,6 +2131,8 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
+| `"ascend"` | Ascend (CR 702.131) — #2696, read by the engine, never by a card file: a permanent with ascend gives its controller the city's blessing as soon as they control ten permanents, and an instant or sorcery with ascend gives it as the spell resolves (`game/citys_blessing.go`). Declare it as `game.KeywordAscend`; the card reads the designation, not the keyword. See "Ascend and the city's blessing" below ([ADR 0096 amendment 2026-10-08](decisions/0096-the-monarch-from-a-card-effect.md)) |
+| `"start your engines!"` | Start your engines! (CR 702.179) — #2122, the state-based action that gives a player with no speed a speed of 1 while they control a permanent with it (`game/speed.go`, CR 704.5aa). Declare it as `game.KeywordStartYourEngines`. The deck importer stamps it from Scryfall, so a speed card with no catalog entry still sets its controller's speed; its "Max speed —" ability still needs one. "Max speed — …" is NOT a keyword token: it is the `effects.MaxSpeed…` wrappers. See "Speed" below ([ADR 0138](decisions/0138-speed.md)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
 "Put a flying counter on it" is `AddCounter{Target: id, Kind:
@@ -3205,8 +3207,32 @@ locking accessor), and reads only public information, because every
 viewer receives the flag. Never drop a condition you can't express,
 and never move it into `Effect`: the first is stronger than printed
 (#259), the second charges the cost for nothing. "Activate only once
-each turn" and boast still have no shape (the per-source activation
-count in `docs/engine-seams.md`).
+each turn" is `OncePerTurnActivation(label)` (Quirion Ranger).
+
+**Boast (CR 702.142, #2697):** never spell "attacked this turn" and
+"only once each turn" by hand. `Boast(text, cost, effect)` and
+`BoastTargeting(text, cost, targets, effect)` in
+[boast.go](../server/internal/cards/effects/boast.go) write the label
+("Boast — " + the printed line after the dash) and set the bit; the
+engine does the rest in one gate, `Game.BoastBlockLocked`, which the
+activation path, the bot enumerator and the view (`boast_blocked`) all
+read:
+
+```go
+Activated: []ActivatedAbility{
+    Boast("{2}{R}: Create a 2/1 red Dwarf Berserker creature token.",
+        ManaCost("{2}{R}"), createTheToken("2/1 red Dwarf Berserker")),
+},
+```
+
+A card that changes the limit (Birgi: "can boast twice … rather than
+once") declares `BoastLimits: []game.BoastLimit{YourCreaturesBoastTimes(label, 2)}`;
+the largest applicable limit wins, it is not a sum. A card that talks
+ABOUT boast abilities reads the bits the engine stamps: `ABoastAbility`
+on the activation event ("whenever you activate a boast ability",
+Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
+Berserker, with `ActivationCostsLessEach`). `Register` panics when the
+label prints "Boast —" without the bit or the bit without the label.
 
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
@@ -7151,6 +7177,49 @@ Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
 
+### Role tokens (ADR 0036 and ADR 0093 amendments 2026-10-08, #1945, CR 111.10 / 303.7a / 704.5z)
+
+A Role is a token Aura ("Token Enchantment — Aura Role") created
+already attached to a creature, so it is never cast and never targets
+on entry (CR 303.7a). The definitions live in
+[role_tokens.go](../server/internal/cards/effects/role_tokens.go), one
+`RoleKind` each: `RoleMonster`, `RoleCursed`, `RoleRoyal`,
+`RoleWicked`, `RoleSorcerer`, `RoleYoungHero`, `RoleVirtuous` and
+`RoleChef`. A card never builds a Role by hand:
+
+```go
+CreateRoleToken{Role: RoleMonster, Host: id}.Apply(ctx)   // "create a Monster Role token attached to it"
+Effect: createRoleOnFirstTarget(RoleWicked),              // a trigger or ability whose whole body is the Role
+createRoleOnClauseTarget(ctx, 1, RoleCursed)              // the Role on the creature chosen for clause slot 1
+Effect: createRoleOnThis(RoleRoyal),                      // "…attached to this creature"
+```
+
+The shared bodies are in
+[role_effects.go](../server/internal/cards/effects/role_effects.go).
+`CreateRoleToken` creates nothing for a host that is no longer a
+creature on the battlefield, so a target that left in response needs no
+special case (CR 608.2b).
+
+Two rules the engine already enforces, so a card file never repeats
+them:
+
+- **One Role per controller per creature (CR 704.5z).** When a player
+  controls two or more Roles on one permanent, all but the newest go to
+  the graveyard as a state-based action (`attachmentSBALocked`). A
+  second Role REPLACES the first; it doesn't stack.
+- **A Role that gives the creature a triggered ability** (Sorcerer's
+  scry, Young Hero's counter, Chef's Food) grants it through the token
+  template's `Grants` field (`tokenTemplate.Grants` in
+  [token_catalog.go](../server/internal/cards/effects/token_catalog.go)),
+  the same ADR 0093 bundle a `Spec.Grants` card uses. The enchanted
+  creature is the trigger's source and its controller controls it, not
+  the Role's. Don't write the trigger on the Role itself.
+
+The Questing Role ("has all the abilities of Questing Beast") does not
+exist yet: a grant bundle has no slot for Questing Beast's block
+restriction or its damage-prevention rule. Questing Cosplayer waits on
+it (#1945).
+
 ### Ascend and the city's blessing (ADR 0096 amendment 2026-10-08, #2696, CR 702.131)
 
 The city's blessing is a **player** designation the engine grants and
@@ -7292,6 +7361,43 @@ offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
 be written yet (#2704). Read the state a trigger needs when it is BUILT,
 not when it resolves, if the Mount might leave in response
 (`caustic_bronco.go` carries it on `item.Params`).
+### Suspect (CR 701.60, #2698)
+
+Suspected is a designation that **gives** abilities rather than switching
+yours on, so there is no `ActiveWhen` gate and no Spec slot for it: a
+suspected creature has menace and can't block, and the engine applies both
+([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md)
+amendment 2026-10-08). A card file only says who gets suspected:
+
+```go
+Suspect{Target: item.SourceCardID}.Apply(ctx)            // "suspect it" (Barbed Servitor, Person of Interest)
+Targeting(WhenThisEnters("…", SuspectEachLegalTarget),
+    UpToOneTargetCreature("up to one target creature you control", YouControl()))  // "suspect up to one target creature"
+Unsuspect{Target: id}.Apply(ctx)                          // "it's no longer suspected"
+UnsuspectAll{Match: And(Creature(), OpponentControls())}  // "all suspected creatures are no longer suspected"
+```
+
+`Suspected()` and `NotSuspected()` are target predicates ("target suspected
+creature you control" is `Suspected(), YouControl()`), `SacrificeASuspectedCreature()`
+is the cost, and "if it's suspected" on a resolved object is `g.IsSuspected(id)`.
+Write "if it's not suspected, you may suspect it" as an intervening if
+(read `source.Suspected` in `AppliesTo`, re-check `g.IsSuspected` in the
+effect), as Rubblebelt Braggart does. "If the sacrificed creature was
+suspected" reads `ctx.SacrificedPermanent()` and its `Suspected` field, since
+the flag is gone once the creature is in a graveyard.
+
+Three things to get right:
+
+- **Never write `menace` or `cant_block` on the card.** They come from the
+  designation, and a copy of a suspected creature is not suspected.
+- **A permanent that is already suspected can't become suspected again**
+  (CR 701.60d). `SuspectForEffect` enforces it, so `Suspect` over a set is
+  safe, and so is a second Repeat Offender activation in response to the first.
+- **The primitive is guarded by `isNewSourceObject` (#1432).** When the
+  instruction names the object that has just come back from the graveyard
+  and the ability's source is that same card (Presumed Dead's granted
+  trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
+  read it as the old object's ability reaching the new one and do nothing.
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 

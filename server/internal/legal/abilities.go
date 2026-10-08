@@ -267,6 +267,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if g.AbilityExhausted(e.seat, source.InstanceID, ab) {
 			continue
 		}
+		// CR 702.142a (#2697): "Activate only if this creature
+		// attacked this turn and only once each turn" — the boast
+		// gate ActivateCatalogAbility refuses on, including Birgi's
+		// raised limit, so a policy is never offered a boast the
+		// engine bounces (#544).
+		if g.BoastBlockLocked(source, ab) != game.BoastClear {
+			continue
+		}
 		// CR 606.3 / 606.5: a loyalty ability of a PERMANENT you
 		// control, one activation per turn, and enough counters to
 		// pay a −N. Mirrors ActivateCatalogAbility so a policy never

@@ -13,7 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1b882a0e-0ede-4d1a-bd1a-9b7cffbcde8e",
 		Name:         "Three Visits",
-		Purpose:      game.Purpose{Lands: 1},
+		Purpose:      game.Purpose{Lands: 1, LandsUntapped: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{

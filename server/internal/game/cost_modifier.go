@@ -269,6 +269,11 @@ type AbilityCostSubject struct {
 	// exhaust ability only once".
 	Exhaust bool
 
+	// Boast is the boast keyword bit (CR 702.142a, #2697): "Boast
+	// abilities you activate cost {1} less to activate" (Dragonkin
+	// Berserker).
+	Boast bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation. Always false today — the mana path prices its cost
 	// without this pass at all — and present so that a predicate
@@ -753,6 +758,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 		Ability: &AbilityCostSubject{
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
+			Boast:   ab.Boast,
 			own:     ab.CostModifiers,
 		},
 		Targets: targets,

@@ -1363,7 +1363,7 @@ modeLoop:
 			if first == nil {
 				first = a
 			}
-			emit(altCostSets[0], a.modes, a.targets, a.x, a.life, a.dist, a.discards, a.sacs, a.delve, a.xv)
+			emit(altCostSets[0], a.modes, a.targets, a.x, a.life, a.cost, a.dist, a.discards, a.sacs, a.delve, a.xv)
 		}
 	}
 	// #1013: the ALTERNATIVE payments, out of whatever expansion budget
@@ -1386,14 +1386,14 @@ modeLoop:
 	// must not displace a target set. See castPayment for why this is
 	// the one extra count offered.
 	if (budget > 0 || e.report) && lifeAllowed {
-		if n, ok := e.allLifePayment(first, spend, lifeReserved); ok {
+		if n, reduced, ok := e.allLifePayment(first, spend, lifeReserved); ok {
 			if budget <= 0 {
 				// ADR 0122 §6.2: offered out of the leftover budget,
 				// and there was none.
 				e.budgetSpent()
 			} else {
 				budget--
-				emit(altCostSets[0], first.modes, first.targets, first.x, n, first.dist, first.discards, first.sacs, first.delve, first.xv)
+				emit(altCostSets[0], first.modes, first.targets, first.x, n, reduced, first.dist, first.discards, first.sacs, first.delve, first.xv)
 			}
 		}
 	}
@@ -1408,7 +1408,7 @@ modeLoop:
 			e.budgetSpent()
 		} else {
 			budget--
-			emit(altCostSets[0], first.modes, first.targets, first.delveFull.x, first.life, first.dist, first.discards, first.sacs, first.delveFull.ids, nil)
+			emit(altCostSets[0], first.modes, first.targets, first.delveFull.x, first.life, first.delveFull.cost, first.dist, first.discards, first.sacs, first.delveFull.ids, nil)
 		}
 	}
 	for _, altPaid := range altCostSets[1:] {
@@ -1428,7 +1428,7 @@ modeLoop:
 			continue
 		}
 		budget--
-		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs, first.delve, first.xv)
+		emit(altPaid, first.modes, first.targets, first.x, first.life, payCost, first.dist, first.discards, first.sacs, first.delve, first.xv)
 	}
 }
 
@@ -1479,7 +1479,11 @@ type announcedCast struct {
 // label and the params — the #815 / #866 lesson at the move layer: two
 // writers of one move shape drift, and the one that drifts is the one
 // nobody reads.
-type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue)
+//
+// `mana` is the cost the move's affordability check paid, with its {X}
+// slot still open: what the move charges once setX is announced (ADR
+// 0136 §2, castManaCost).
+type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue)
 
 // castMoveEmitter builds that writer for one (card, zone, offer,
 // optional-cost) announcement. Everything it closes over is fixed for
@@ -1500,7 +1504,7 @@ func (e *enumerator) castMoveEmitter(
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
-	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
+	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
@@ -1560,8 +1564,11 @@ func (e *enumerator) castMoveEmitter(
 			// ADR 0100: and a branch's fixed "pay 3 life".
 			// ADR 0129 §5: and the energy the cast pays — the offer's
 			// and a replicate's, once per payment.
-			Cost: withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
-				game.CastEnergyOwed(offer, nil, optional, chosen)),
+			// ADR 0136 §2: and the mana it charges in all, which the
+			// printed cost on the CardView is not (castManaCost), so a
+			// cast always carries a Cost.
+			Cost: withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
@@ -1866,21 +1873,22 @@ func (e *enumerator) castPayment(
 // every symbol with life, when the seat cannot pay that much life, or
 // when the mana left over is somehow unaffordable — striking more
 // symbols only removes requirements, so the last is a belt, but the
-// enumerator offers nothing it has not priced.
-func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendContext, reserved int) (int, bool) {
+// enumerator offers nothing it has not priced. The cost it returns is
+// the mana left once those symbols are struck (ADR 0136 §2).
+func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendContext, reserved int) (int, game.ParsedCost, bool) {
 	printed := e.g.LifeGrantedCostForEffect(e.seat, first.printed)
 	n := printed.PhyrexianSymbols()
 	if n == 0 || n <= first.life {
-		return 0, false
+		return 0, game.ParsedCost{}, false
 	}
 	reduced, life := game.PhyrexianLifePlan(printed, e.p.ManaPool, spend, n)
 	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
-		return 0, false
+		return 0, game.ParsedCost{}, false
 	}
 	if !e.canPayExcluding(reduced, first.x, spend, first.autoTapExclusions(first.alt)) {
-		return 0, false
+		return 0, game.ParsedCost{}, false
 	}
-	return n, true
+	return n, reduced, true
 }
 
 // autoTapExclusions is what CastSpell's auto-tap will not spend on this

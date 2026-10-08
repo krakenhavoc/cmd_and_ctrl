@@ -717,6 +717,13 @@ type Spec struct {
 	// (CR 113.6). Nil for every other card.
 	ExhaustPermissions []game.ExhaustPermission
 
+	// BoastLimits is "creatures you control can boast twice each turn"
+	// (CR 702.142, #2697) — Birgi, God of Storytelling. Build the entries
+	// with YourCreaturesBoastTimes in boast.go. The printed limit is 1;
+	// the largest applicable entry wins. Read from the battlefield only
+	// (CR 113.6). Nil for every other card.
+	BoastLimits []game.BoastLimit
+
 	// AttackTaxes is the CR 508.1a attack tax: "creatures can't attack
 	// you unless their controller pays {2} for each creature they
 	// control that's attacking you" — Propaganda, Ghostly Prison,
@@ -1536,6 +1543,13 @@ type ActivatedAbility struct {
 	// path does not write the activation record, so the combination
 	// is unspellable rather than silently ignored.
 	Exhaust bool
+	// Boast marks a boast ability — "Boast — {1}{R}: … (Activate only
+	// if this creature attacked this turn and only once each turn.)"
+	// (CR 702.142a, #2697). One bit, no card logic: the engine reads the
+	// attack record and the activation tally itself (game.Game.BoastBlockLocked).
+	// Set it through the Boast constructor (boast.go), which also
+	// writes the label, so a card file never spells the keyword by hand.
+	Boast bool
 	// CostModifiers is the ability's OWN cost clause — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (the channel lands), "…for each color of the creature

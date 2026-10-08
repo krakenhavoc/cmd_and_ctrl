@@ -47,6 +47,16 @@ type Purpose struct {
 	// its controller's control: Rampant Growth 1, Harrow 2. A land put
 	// into the hand (Cultivate's second) is a Tutor, not a Land.
 	Lands int
+	// LandsUntapped is how many of those Lands enter UNTAPPED, so their
+	// mana can be spent the turn the spell resolves (ADR 0136 §2, owner
+	// answer 4): Harrow 2, Nature's Lore 1, Three Visits 1; Rampant
+	// Growth's "onto the battlefield tapped" is 0. Never more than
+	// Lands; effects.Register refuses one that is. A land's OWN
+	// enters-tapped replacement is not counted against it: the printed
+	// spell puts the land onto the battlefield untapped, and a tapland
+	// it fetches still enters tapped, which the reader cannot know
+	// before the search.
+	LandsUntapped int
 	// Tutors is how many cards it searches out to its controller's
 	// hand or to the top of their library: Demonic Tutor 1, Vampiric
 	// Tutor 1, Cultivate's land to hand 1.
