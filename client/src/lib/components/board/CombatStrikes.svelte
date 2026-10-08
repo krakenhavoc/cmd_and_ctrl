@@ -41,6 +41,7 @@
   import { cardImageURL } from "../../cardImage";
   import { showsCardBack } from "../../cardBack";
   import { crumble, impactShake, lunge, streak } from "../../animations";
+  import { play } from "../../sounds";
   import { keepArrowCache, type ScheduledCue } from "../../combatBeats";
   import type { CombatCues } from "../../combatCues.svelte";
   import {
@@ -234,7 +235,7 @@
   }
 
   function playCue(cue: ScheduledCue): void {
-    if (!cue.strikes || !boardEl) return;
+    if (!cue.strikes) return;
     // Decided again at cue time, so turning reduced motion on mid-combat
     // starts no further strike (ADR 0134 §5).
     const s = get(settings);
@@ -248,11 +249,18 @@
       return;
     }
     if (strikeLate(cue.frameAt, cue.atMs, Date.now())) return;
-    const b = boardSize();
+    const tl = strikeTimeline(s.animations.speed);
+
+    // The hit is heard as it lands: once per beat, at first contact
+    // (ADR 0134 §7). With strikes on, Game.svelte leaves combat_resolve
+    // to this, so it plays even when the board cannot be measured and
+    // no copy flies. A late beat plays neither: the board has moved on.
+    later(() => play("combat_resolve"), tl.contactMs);
+
+    const b = boardEl ? boardSize() : null;
     if (!b) return;
     measure();
     const plan = strikesFor(cue, cue.log);
-    const tl = strikeTimeline(s.animations.speed);
 
     // Trample's streaks, drawn at contact: from the blockers' centroid
     // to each player, planeswalker or battle that took the excess.
