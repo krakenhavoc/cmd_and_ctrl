@@ -79,8 +79,8 @@ func TestBirgiAddsKeptRedManaWhenYouCast(t *testing.T) {
 	if !ok || len(spec.Triggered) != 1 {
 		t.Fatal("Birgi is not registered with its cast trigger")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("Birgi's boast clause is not implemented; it must say so")
+	if spec.Completeness != CompletenessFull || len(spec.BoastLimits) != 1 {
+		t.Error("Birgi's boast clause is a BoastLimit (#2697) and the card is complete")
 	}
 	g.WithWriteLock(func() {
 		item := &game.StackItem{Controller: me.ID}

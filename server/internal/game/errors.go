@@ -352,6 +352,17 @@ var (
 	// before the printed condition, so nothing is paid.
 	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
 
+	// ErrBoastNotAttacked and ErrBoastSpent are the two halves of a
+	// boast ability's activation instruction (CR 702.142a, #2697):
+	// "Activate only if this creature attacked this turn" and "only once
+	// each turn". Two errors and not ErrConditionNotMet, because the two
+	// recover differently (a creature can attack later this turn; a spent
+	// boast waits for the next one) and the client says which. Checked
+	// after the exhaust gate and before the printed condition, so nothing
+	// is paid.
+	ErrBoastNotAttacked = errors.New("game: this creature hasn't attacked this turn, so its boast ability can't be activated")
+	ErrBoastSpent       = errors.New("game: this boast ability has already been activated as many times as it can be this turn")
+
 	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
 	// ActivateManaAbility when the announcement names an ability by a
 	// ref (ADR 0093 Decision 5) and the row at its index is no longer

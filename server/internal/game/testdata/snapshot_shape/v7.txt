@@ -432,6 +432,7 @@ events[].batch	number:uint64
 events[].batch_seq	number:uint64
 events[].blocked	bool
 events[].blocking_target	custom(uuid.UUID)
+events[].boast	bool
 events[].call	string
 events[].card_id	custom(uuid.UUID)
 events[].cause	string
@@ -1420,6 +1421,7 @@ lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
 lastKnownStack[].item.trigger.Event.blocked	bool
 lastKnownStack[].item.trigger.Event.blocking_target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.boast	bool
 lastKnownStack[].item.trigger.Event.call	string
 lastKnownStack[].item.trigger.Event.card_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.cause	string
@@ -1902,6 +1904,7 @@ pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
 pendingTriggers[].trigger.Event.blocked	bool
 pendingTriggers[].trigger.Event.blocking_target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.boast	bool
 pendingTriggers[].trigger.Event.call	string
 pendingTriggers[].trigger.Event.card_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.cause	string
@@ -4672,6 +4675,7 @@ stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
 stackMeta[].trigger.Event.blocked	bool
 stackMeta[].trigger.Event.blocking_target	custom(uuid.UUID)
+stackMeta[].trigger.Event.boast	bool
 stackMeta[].trigger.Event.call	string
 stackMeta[].trigger.Event.card_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.cause	string

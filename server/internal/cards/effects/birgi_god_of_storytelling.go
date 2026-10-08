@@ -16,9 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // same one Savage Ventmaw uses. The trigger goes on the stack above the
 // spell, so the {R} arrives before the spell resolves, as printed.
 //
-// Boast (CR 702.142) is not an ability the catalog can declare: nothing
-// in it prints a boast, so the second clause has nothing to double and
-// is left off, and the card says so as a caveat.
+// "Creatures you control can boast twice during each of your turns
+// rather than once" is a BoastLimit (#2697, CR 702.142): a per-controller
+// replacement of the printed limit of one, read from the battlefield at
+// the moment a boast is activated, so it covers every creature the
+// controller has, ends when Birgi leaves, and reaches only that
+// player's own turn. It is a limit and not an extra activation: a
+// creature that has not attacked still cannot boast at all, and two
+// Birgis do not make three (the engine takes the largest limit). Each
+// boast ability is counted separately, as the activation tally keys it.
 //
 // Back, Legendary Artifact (registered under "<oracle_id>#1", ADR
 // 0034), below:
@@ -31,8 +37,10 @@ func init() {
 	Register(Spec{
 		OracleID:     "fb81e4d3-1d8c-4779-be62-87cf49277e51",
 		Name:         "Birgi, God of Storytelling",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Boast isn't implemented — the second boast activation is not offered."},
+		Completeness: CompletenessFull,
+		BoastLimits: []game.BoastLimit{
+			YourCreaturesBoastTimes("Creatures you control can boast twice during each of your turns rather than once.", 2),
+		},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(nil, "Birgi — add {R}, kept until end of turn",
 				Do(AddMana{

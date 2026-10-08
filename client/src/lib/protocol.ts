@@ -2565,6 +2565,13 @@ export interface ActivatedAbilityView {
   // come back: only a new object (CR 400.7 — a flicker, not an untap)
   // clears it, which is why the menu says something different.
   exhausted?: boolean;
+  // #2697, CR 702.142a: why a boast ability ("Activate only if this
+  // creature attacked this turn and only once each turn") cannot be
+  // activated right now. "not_attacked" recovers when the creature
+  // attacks; "used" at the next turn (Birgi, God of Storytelling raises
+  // the number of uses the server counts). Absent when the ability is not
+  // a boast ability or nothing objects.
+  boast_blocked?: "not_attacked" | "used";
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is

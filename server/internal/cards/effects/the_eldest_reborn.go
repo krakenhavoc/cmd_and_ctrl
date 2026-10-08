@@ -27,7 +27,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "The Eldest Reborn — I: each opponent sacrifices a creature or planeswalker",
-				eldestRebornSacrifice),
+				eachOpponentSacrificesACreatureOrPlaneswalker),
 			ChapterTrigger(2, "The Eldest Reborn — II: each opponent discards a card",
 				eachOpponentDiscardsOne),
 			ChapterTriggerTargeting(3, "The Eldest Reborn — III: reanimate under your control",
@@ -38,7 +38,7 @@ func init() {
 	})
 }
 
-func eldestRebornSacrifice(g *game.Game, item *game.StackItem) error {
+func eachOpponentSacrificesACreatureOrPlaneswalker(g *game.Game, item *game.StackItem) error {
 	return EachPlayerSacrifices{
 		ExceptController: true,
 		Match:            Or(Creature(), Planeswalker()),
