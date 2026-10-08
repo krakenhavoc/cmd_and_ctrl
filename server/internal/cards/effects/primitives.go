@@ -921,9 +921,25 @@ type ReturnFromGraveyard struct {
 	// battlefield tapped." Matches SearchLibrary.TappedOnEntry's
 	// shape one primitive over. Meaningless for any other Dest.
 	Tapped bool
+
+	// Transformed returns a double-faced card with its back face up —
+	// "return it to the battlefield tapped and transformed under its
+	// owner's control" (the Ojer gods, CR 712.14a, #1900). Only
+	// meaningful for Dest == ZoneBattlefield. A card with no permanent
+	// back face is left where it is, never returned front face up.
+	Transformed bool
+
+	// Counters is the "with three time counters on it" clause: counters
+	// the permanent enters with (CR 614.1c). Only read when Transformed
+	// is set; a plain return names none today.
+	Counters map[string]int
 }
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
+	if r.Transformed {
+		_, err := ctx.Game.ReturnFromGraveyardTransformedForEffect(r.Target, r.Controller, r.Tapped, r.Counters)
+		return nothingIfGone(err)
+	}
 	if r.Tapped {
 		return nothingIfGone(ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true))
 	}

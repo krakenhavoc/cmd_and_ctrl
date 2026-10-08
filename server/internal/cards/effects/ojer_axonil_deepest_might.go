@@ -46,25 +46,31 @@ import (
 // and with counters folded in, so an anthem or a +1/+1 counter makes
 // every ping bigger at once.
 //
-// ONE DECLARED SIMPLIFICATION: the dies trigger is not implemented.
-// Nothing in the engine turns a permanent to its other face on the
-// battlefield (the transform seam, #343), so the honest options were
-// to return Ojer as itself — a recurring 4/4 God, strictly STRONGER
-// than the land it is printed to come back as, which is the #259
-// rule — or to leave the trigger out and say so. It is left out:
-// Ojer dies like any other creature and stays in the graveyard, and
-// the Temple of Power face is unreachable, so its mana ability and
-// its transform-back ability are not registered either. The trigger
-// and the back face land together when the transform verb does.
+// The dies trigger is "return it to the battlefield tapped and
+// transformed under its owner's control" (CR 712.14a), built on
+// ReturnFromGraveyard{Transformed: true} (#1900, ADR 0079 amendment
+// of 2026-10-08). The card comes back as Temple of Power, tapped, a
+// new object that never transformed.
+//
+// ONE DECLARED SIMPLIFICATION: Temple of Power's second ability,
+// "{2}{R}, {T}: Transform this land. Activate only if red sources you
+// controlled dealt 4 or more noncombat damage this turn and only as a
+// sorcery", is not registered. The turn tally keeps no per-source
+// amount of noncombat damage by colour (DamageDealtRecord is a
+// once-per-creature flag), and an activation with its condition
+// dropped would be STRONGER than printed (#259). The land taps for
+// {R} and stays a land, which is weaker; the condition lands with
+// that tally.
 func init() {
 	Register(Spec{
-		OracleID:        "d3b7b541-6f05-46c1-8031-c848c4bd4635",
+		OracleID:        ojerAxonilOracleID,
 		Name:            "Ojer Axonil, Deepest Might",
 		Completeness:    CompletenessCaveats,
 		PrintedKeywords: []string{"trample"},
 		Caveats: []string{
-			"When Ojer Axonil dies it stays in the graveyard — coming back tapped as Temple of Power isn't implemented yet, so the land half of the card can't be reached.",
+			"Temple of Power's ability to transform back into Ojer Axonil isn't implemented — once the God dies and returns as the land, it stays a land.",
 		},
+		Triggered: []game.TriggeredAbility{ojerDiesReturnTransformed("Ojer Axonil", nil)},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			// It only ever raises the amount ("deals damage equal to
@@ -118,3 +124,31 @@ func ojerDamageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, control
 	p := g.PlayerByIDForEffect(ev.DamageTarget)
 	return p != nil && !p.Eliminated
 }
+
+// Temple of Power — Land, the back face of Ojer Axonil, Deepest Might:
+//
+//	"(Transforms from Ojer Axonil, Deepest Might.)
+//	 {T}: Add {R}.
+//	 {2}{R}, {T}: Transform this land. Activate only if red sources you
+//	 controlled dealt 4 or more noncombat damage this turn and only as
+//	 a sorcery."
+//
+// Only the mana ability is registered; see the declared simplification
+// on the front face.
+func init() {
+	Register(Spec{
+		OracleID:     ojerAxonilOracleID + "#1",
+		Name:         "Temple of Power",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"The {2}{R}, {T} ability to transform back into Ojer Axonil isn't implemented — the land only taps for {R}.",
+		},
+		ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{R}",
+			Label:    "{T}: Add {R}",
+		}},
+	})
+}
+
+const ojerAxonilOracleID = "d3b7b541-6f05-46c1-8031-c848c4bd4635"
