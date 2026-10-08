@@ -148,6 +148,23 @@ const CASES: Case[] = [
     confirms: [["ox"]],
   },
   {
+    // #2695 (CR 702.171a): a Mount's saddle ability is crew's picker with
+    // its own word, over the other creatures the server lists.
+    title: "the saddle picker",
+    component: CrewCostModal as never,
+    props: (c) => ({
+      card: card("mount", "Gilded Ghoda"),
+      ability: { index: 0, crew_cost: 1, saddle: true },
+      options: [ox],
+      onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "Gilded Ghoda",
+    primary: "Saddle",
+    pick: firstOption,
+    confirms: [["ox"]],
+  },
+  {
     title: "the counter-cost picker",
     component: CounterCostModal as never,
     props: (c) => ({

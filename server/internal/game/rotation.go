@@ -96,6 +96,8 @@ func (g *Game) sweepTurnEndLocked() {
 	// that outlived its turn would save a creature next turn from a
 	// destruction nobody paid for.
 	g.clearRegenerationShieldsLocked()
+	// #2695 / CR 702.171: "becomes saddled until end of turn" ends here.
+	g.clearSaddledLocked()
 	// S17 sub-PR 5's "until end of turn" REPLACEMENT effects (Fog's
 	// prevent-all-combat-damage, a prevention shield) and #750's
 	// until-end-of-turn BLOCK rules ("this creature can't block this

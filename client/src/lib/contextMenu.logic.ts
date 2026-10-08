@@ -687,6 +687,8 @@ export interface AbilityCost {
   // it. Mana abilities never carry either.
   crew_cost?: number;
   crew_options?: { players?: string[]; cards?: string[] };
+  // #2695: the crew fields above are a saddle ability's too (CR 702.171a).
+  saddle?: boolean;
   // #625, then #789: the counter components — a "remove N counters"
   // cost's shape and what can pay it right now, and a cost that puts
   // one on. Mirrors ActivatedAbilityView in protocol.ts, and since
@@ -905,7 +907,9 @@ export function abilityBlocked(
   // and duplicating the sum in the menu row would put two answers on
   // screen at once.
   if (a.crew_cost && (a.crew_options?.cards?.length ?? 0) === 0) {
-    return "no untapped creatures to crew with";
+    return a.saddle
+      ? "no other untapped creatures to saddle with"
+      : "no untapped creatures to crew with";
   }
   // #625: a counter-removal cost nothing can pay — Heart of Kiran's
   // alternative crew with no planeswalker holding a loyalty counter,

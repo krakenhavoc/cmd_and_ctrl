@@ -497,8 +497,8 @@ func TestGuidelightMatrixDrawsAndAnimatesAVehicle(t *testing.T) {
 	toMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
 	spec, ok := Lookup(guidelightOracle)
-	if !ok || spec.Completeness != CompletenessCaveats {
-		t.Fatal("Guidelight Matrix is not registered with its saddle caveat")
+	if !ok || spec.Completeness != CompletenessFull {
+		t.Fatal("Guidelight Matrix is not registered as complete (its saddle ability is implemented, #2695)")
 	}
 	before := me.Hand.Size()
 	castCatalogSpell(t, g, "Guidelight Matrix", "Artifact", guidelightOracle, nil)
@@ -513,7 +513,8 @@ func TestGuidelightMatrixDrawsAndAnimatesAVehicle(t *testing.T) {
 	})
 	matrix := pushCatalogPermanent(g, me.ID, "Guidelight Matrix", "Artifact", guidelightOracle, false)
 	mkAdd(t, g, me, "{C}{C}", game.AddManaOptions{})
-	if err := g.ActivateCatalogAbility(me.ID, matrix, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: vehicle}}}); err != nil {
+	// Index 0 is the saddle ability, 1 the Vehicle animation (printed order).
+	if err := g.ActivateCatalogAbility(me.ID, matrix, 1, game.ActivateAbilityParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: vehicle}}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)

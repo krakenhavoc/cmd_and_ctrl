@@ -7142,6 +7142,34 @@ proliferates or doubles it, a copy does not take it (CR 716.2c,
 `Designation.Active`, and a layer-version bump on the event that
 changes it — nothing else.
 
+**Saddle (CR 702.171, #2695)** is the one designation that lasts a turn.
+A Mount is written with the vocabulary in
+[saddle.go](../server/internal/cards/effects/saddle.go):
+
+```go
+Activated: []ActivatedAbility{Saddle(2)},                    // "Saddle 2"
+Triggered: []game.TriggeredAbility{
+    AttacksWhileSaddled("Gilded Ghoda — create a Treasure", effect),
+},
+```
+
+`Saddle(n)` is crew's cost over OTHER creatures (`AbilityCost.Saddle`,
+paid through the same validator and `crew_ids` payload; the Mount can
+never tap itself) at sorcery speed. The designation is `Card.Saddled`,
+set by `Game.SaddleForEffect` and swept at end of turn, so "attacks while
+saddled" is read when the attack is declared and "as long as it's saddled"
+is the gate `Saddled()` (`SaddledKeywords(kw…)` is the keyword shape).
+"Becomes saddled" is `WhenBecomesSaddled`, which fires only on the first
+saddle of a turn, so "for the first time each turn" needs no counting. A
+card that says "[target Mount] becomes saddled" uses `BecomeSaddled{}`,
+which does nothing to a permanent that is not a Mount. "Creatures that
+saddled it this turn" is `SaddlersOf(ctx, mount)` (survivors only; a
+creature that left is a new object): a card-set prompt at resolution can
+offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
+be written yet (#2704). Read the state a trigger needs when it is BUILT,
+not when it resolves, if the Mount might leave in response
+(`caustic_bronco.go` carries it on `item.Params`).
+
 ### Adding a Room or a split card (ADR 0103, #1756)
 
 A **Room** (CR 709.5) is one catalog entry for both doors, keyed on the

@@ -2710,6 +2710,13 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // #2695: a Mount's saddle ability (CR 702.171a) rides the two crew
+  // fields above — the same many-pick, floor-on-total-power prompt and
+  // the same `crew_ids` payload — and sets this flag so the prompt says
+  // "Saddle" rather than "Crew". crew_options then leaves out the Mount
+  // itself: the cost taps OTHER creatures. Absent — not `false` — for
+  // every other ability.
+  saddle?: boolean;
   // #625: a "remove N counters" cost component. counter_cost_n is how
   // many, and its presence marks the component.
   //
@@ -3548,6 +3555,12 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0071 amendment 2026-10-08, #2695 (CR 702.171): this Mount is
+  // saddled — until end of turn, or until it leaves the battlefield.
+  // Switches on its "while saddled" lines and is what its "attacks
+  // while saddled" triggers read. Public, read straight off the card.
+  // Absent — not `false` — for everything else.
+  saddled?: boolean;
   // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
   // Ring-bearer. Public, and kept on a face-down permanent: the
   // designation was chosen in public and says nothing about the card.

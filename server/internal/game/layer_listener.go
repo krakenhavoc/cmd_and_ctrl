@@ -313,7 +313,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// second pass produces no further delta and so no further
 		// bump.
 		g.layerVersion.Add(1)
-	case EventClassLevel, EventCaseSolved, EventHarnessed, EventBecameMonstrous, EventOptionChosen,
+	case EventClassLevel, EventCaseSolved, EventHarnessed, EventBecameMonstrous, EventBecameSaddled, EventOptionChosen,
 		EventDoorUnlocked, EventDoorLocked, EventRingTempted:
 		// ADR 0071: a designation switches printed statics on and off,
 		// so a level-up or a solve changes which continuous effects

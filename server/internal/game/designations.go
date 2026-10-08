@@ -144,6 +144,15 @@ const (
 	// count lives on the emblem: the gate stays an object-only
 	// question. Appended so no existing kind's value moves.
 	DesignationRingTempted
+
+	// DesignationSaddled is CR 702.171's "saddled" designation:
+	// "As long as this Mount is saddled, it has …". Set by
+	// SaddleForEffect (a Mount's saddle ability, or a spell or
+	// ability that makes it saddled) and kept only until the turn
+	// ends or the Mount leaves the battlefield — the one gate whose
+	// designation is turn-scoped (ADR 0071 amendment 2026-10-08,
+	// #2695). Appended so no existing kind's value moves.
+	DesignationSaddled
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -206,6 +215,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Harnessed
 	case DesignationMonstrous:
 		return c.Monstrous
+	case DesignationSaddled:
+		return c.Saddled
 	case DesignationRingTempted:
 		return c.RingTemptations >= d.N
 	case DesignationChosenOption:
@@ -258,6 +269,11 @@ func DoorUnlocked(door DoorSide) Designation {
 // Monstrous builds a CR 701.37b gate: the ability exists while the
 // permanent is monstrous (#1700).
 func Monstrous() Designation { return Designation{Kind: DesignationMonstrous} }
+
+// SaddledGate builds a CR 702.171 gate: the ability exists while the
+// Mount is saddled (#2695). Named for its kind rather than Saddled,
+// which is the Card field.
+func SaddledGate() Designation { return Designation{Kind: DesignationSaddled} }
 
 // ChosenOptionIs builds a CR 614.12 anchor-word gate: the ability
 // exists while `option` is the permanent's chosen option (#1572).
@@ -646,4 +662,111 @@ func (g *Game) MonstrosityForEffect(cardID uuid.UUID, n int) error {
 func (g *Game) IsMonstrous(cardID uuid.UUID) bool {
 	card := findBattlefieldCard(g, cardID)
 	return card != nil && card.Monstrous
+}
+
+// MountSubtype is the creature type that can be saddled (CR 702.171).
+const MountSubtype = "Mount"
+
+// SaddleForEffect makes a Mount saddled until end of turn (CR
+// 702.171) — the resolution of a Mount's own saddle ability and of
+// every card that says "target Mount … becomes saddled" (Guidelight
+// Matrix, Alacrian Armory, Kolodin). ADR 0071 amendment 2026-10-08,
+// #2695. The one writer of Card.Saddled outside the snapshot restore.
+//
+// saddlers are the creatures tapped to pay for the saddle ability, each
+// as the object it was when it tapped; nil for a Mount that a spell or
+// ability saddled. They are appended to any already recorded this turn,
+// because CR 702.171c asks about "creatures that saddled it this
+// turn", and a Mount can be saddled twice.
+//
+// Three rules, each a line below:
+//
+//   - Only a Mount on the battlefield can become saddled (CR
+//     702.171b). Anything else is a quiet no-op, not an error: the
+//     ability's source left in response, or the card says "if it's a
+//     Mount" and it is not (Alacrian Armory on a Vehicle).
+//   - The event fires only when the Mount was NOT already saddled, so a
+//     "whenever this becomes saddled" trigger (Stubborn Burrowfiend:
+//     "for the first time each turn") cannot see a second saddle.
+//     The saddlers are still recorded on the second.
+//   - EventBecameSaddled bumps the layer version (layer_listener.go),
+//     so "as long as it's saddled" statics switch on.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) SaddleForEffect(cardID uuid.UUID, saddlers []ObjectRef) {
+	c := findBattlefieldCard(g, cardID)
+	if c == nil || !c.HasSubtype(MountSubtype) {
+		return
+	}
+	if len(saddlers) > 0 {
+		c.SaddledBy = append(append([]ObjectRef(nil), c.SaddledBy...), saddlers...)
+	}
+	if c.Saddled {
+		return
+	}
+	c.Saddled = true
+	g.EmitEvent(Event{
+		Kind:   EventBecameSaddled,
+		Actor:  c.Controller,
+		Source: cardID,
+		CardID: cardID,
+		Target: cardID,
+	})
+}
+
+// IsSaddled reports whether the named battlefield permanent is
+// saddled. False for anything off the battlefield — CR 400.7.
+//
+// Caller must hold g.mu.
+func (g *Game) IsSaddled(cardID uuid.UUID) bool {
+	c := findBattlefieldCard(g, cardID)
+	return c != nil && c.Saddled
+}
+
+// SaddlersOf is "the creatures that saddled it this turn" (CR
+// 702.171c): the creatures tapped to pay for the saddle abilities that
+// made this Mount saddled, still on the battlefield as the same
+// objects. A creature that left, or left and came back, is a new
+// object and is dropped. Empty when the Mount is not saddled, or was
+// saddled by a spell or ability. Order is the order they tapped in.
+//
+// Caller must hold g.mu.
+func (g *Game) SaddlersOf(mountID uuid.UUID) []uuid.UUID {
+	m := findBattlefieldCard(g, mountID)
+	if m == nil || !m.Saddled {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, r := range m.SaddledBy {
+		if c := findBattlefieldCard(g, r.ID); c != nil && c.ObjectEpoch == r.Epoch {
+			out = append(out, r.ID)
+		}
+	}
+	return out
+}
+
+// clearSaddledLocked ends every saddled designation (CR 514.2: "until
+// end of turn" ends in the cleanup step). A phase-out already clears
+// the designation (phaseOutLocked), so the phased-out zone is swept only
+// as a backstop for a restore point written before that rule.
+//
+// Caller must hold g.mu.
+func (g *Game) clearSaddledLocked() {
+	cleared := false
+	for _, z := range []*Zone{g.Battlefield, g.PhasedOut} {
+		if z == nil {
+			continue
+		}
+		for i := range z.Cards {
+			if c := &z.Cards[i]; c.Saddled || len(c.SaddledBy) > 0 {
+				c.Saddled = false
+				c.SaddledBy = nil
+				cleared = true
+			}
+		}
+	}
+	if cleared {
+		// A gated static (a Mount's "while saddled") just switched off.
+		g.layerVersion.Add(1)
+	}
 }
