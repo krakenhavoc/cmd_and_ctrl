@@ -2902,3 +2902,53 @@ bump.
   this link would be a second change; the two coexist because they answer
   different questions (an ability's window versus a replacement's event).
 - No wire change: `Card.ExiledWith` is engine state, like `HiddenBy`.
+
+## Amendment — 2026-10-08 (#2550): a grant filter over a union of creature types
+
+Deeproot Historian ("Merfolk and Druid cards in your graveyard have retrace")
+is Six's grant with a different filter. `PermissionFilter.CreatureType` names
+one subtype, and "Merfolk and Druid cards" is a UNION, not a card that is both:
+a Merfolk Wizard and an Elf Druid both qualify.
+
+### Decision: `CreatureTypesAny [2]string`, read through the existing vocabulary
+
+A card qualifies when it has at least one of the named creature types. The
+check is `cardHasCreatureType` applied to each non-empty slot, the same
+`CreatureTypesOf` read `CreatureType` already uses, so a changeling in the
+graveyard qualifies. It composes with `CreatureType` as a further AND, and the
+zero array constrains nothing, so a filter written before it matches exactly
+what it did.
+
+It is a two-slot ARRAY rather than a slice because `PermissionFilter` is
+compared with `==` throughout the engine and its tests (`NextSpell`, the
+statics, permission de-duplication); a slice field makes the struct
+incomparable and fails the build in several places. Two is the widest printed
+union this seam has met; a card that needs a third widens the array.
+
+### Snapshot
+
+One additive key, `creatureTypesAny`, under every `PermissionFilter`. A file
+written before it decodes as the zero array, which is "no union constraint". A
+binary before it that drops the key could only matter for a STORED permission
+carrying it, and none exists: Deeproot Historian's is a catalog standing
+permission, derived on every query and never stored. `snapshot_shape/v7.txt` is
+regenerated; no schema bump.
+
+### Cards
+
+Deeproot Historian ships Full on it. The four retrace token makers (Cenn's
+Enlistment, Call the Skybreaker, Worm Harvest, Formless Genesis) need no engine
+change, only token-table rows and, for Formless Genesis, a hand-built X/X
+template (its size is the land cards in the graveyard at resolution, which
+includes the land discarded to pay for retrace). Cackling Counterpart's caveat,
+that a token copy skipped a copied card's as-enters clause, was stale since
+#762 and is cleared; `TestATokenCopyRunsTheCopiedCardsAsEnters` pins the
+behaviour.
+
+### Out of scope, stated
+
+- Glamerdye (change the text of a spell or permanent: a colour-word rewrite) and
+  Reality Scramble (reveal until a card shares a card type with the put-back
+  permanent) print retrace but each needs a card-specific effect with no
+  primitive yet. Left on their own.
+- Jund 'Em Out is not Commander-legal and is skipped.

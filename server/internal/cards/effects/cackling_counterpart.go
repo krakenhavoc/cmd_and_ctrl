@@ -18,16 +18,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the original are not copied, and the copy carries the original's
 // oracle ID so every catalog hook keyed on it comes along.
 //
-// Sandbox simplification, inherited from CreateTokenCopy and stated
-// here because it is invisible otherwise: the token's ETB *triggered*
-// abilities fire, but a copied card whose ETB lives in Spec.AsEnters
-// rather than Spec.Triggered does not get that clause.
+// The caveat this card used to carry (a copied card's on-enter hook was
+// skipped) closed with #762, when token creation became a replaceable
+// event with a real entry: the token's CR 614.12 Spec.AsEnters clause
+// and its ETB triggers both fire. Relm's Sketching, which shares this
+// TokenCopyOfSingleTarget body, has shipped Full on that basis (#2550).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:         "9e2adca5-f39c-4a09-bcce-8238ebac2c4a",
 		Name:             "Cackling Counterpart",
-		Completeness:     CompletenessCaveats,
-		Caveats:          []string{"The token copy skips the enters-the-battlefield effect of a card whose entry is an on-enter hook rather than a trigger."},
+		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{5}{U}{U}")},
 		Targets:          TargetCreature("target creature you control", YouControl()),

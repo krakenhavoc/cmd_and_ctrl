@@ -4515,7 +4515,10 @@ catalog card can. A card that GRANTS retrace to others declares a
 `DiscardLandCard: true` — on `Spec.CastPermissions` for a permanent (Six,
 with `Filter: PermissionFilter{NonLandPermanentOnly: true}` and
 `Timing: game.TimingYourTurnOnly`), or on `EmblemSpec.CastPermissions`
-for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). Standing
+for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). "X and Y
+cards" is a union: Deeproot Historian uses
+`PermissionFilter{CreatureTypesAny: [2]string{"Merfolk", "Druid"}}`
+(#2550). Standing
 permissions are derived from the battlefield or the owner's emblems on
 every query, so they end when the source does.
 
