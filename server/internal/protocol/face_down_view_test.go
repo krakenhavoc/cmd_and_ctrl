@@ -374,8 +374,11 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			// #1727: never set beside pay_options on a real offer, but
 			// the redaction table has to see it filled.
 			SacrificeOptions: lt,
-			Discards:         true,
-			XLockedAtZero:    true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			// ADR 0135 §4: an emerge offer's flag and prices.
+			ReducesByManaValue: true,
+			SacrificePrices:    map[string]AltCostPriceView{"x": {ManaValue: 4, Price: "{1}{U}{U}"}},
+			Discards:           true,
+			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// ADR 0126 §6.
@@ -914,6 +917,10 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// ADR 0135 §1: "the untapped creatures YOU control" for a tap price,
 	// in the tap picker's shape.
 	"TapOptions": surfacePrivate,
+	// ADR 0135 §4: that an offer is emerge is printed on the card; the
+	// price per creature YOU control is one seat's.
+	"ReducesByManaValue": surfacePublicPile,
+	"SacrificePrices":    surfacePrivate,
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,

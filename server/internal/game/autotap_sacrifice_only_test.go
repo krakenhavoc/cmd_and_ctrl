@@ -310,7 +310,7 @@ func TestCastAutoTapDoesNotCrackTheSpawnNamedToTheSacrifice(t *testing.T) {
 	params := CastSpellParams{SacrificeIDs: []uuid.UUID{spawn}}
 	var ok bool
 	g.ReadSnapshot(func() {
-		_, ok = g.autoTapLocked(me.ID, costFor(t, "{1}"), 0, CastAutoTapExclusions(params))
+		_, ok = g.autoTapLocked(me.ID, costFor(t, "{1}"), 0, CastAutoTapExclusions(params, nil))
 	})
 	if ok {
 		t.Fatal("the planner spent the Spawn the cast already named to its sacrifice")
@@ -319,7 +319,7 @@ func TestCastAutoTapDoesNotCrackTheSpawnNamedToTheSacrifice(t *testing.T) {
 	other := pushSpawn(g, me)
 	var plan tapPlan
 	g.ReadSnapshot(func() {
-		plan, ok = g.autoTapLocked(me.ID, costFor(t, "{1}"), 0, CastAutoTapExclusions(params))
+		plan, ok = g.autoTapLocked(me.ID, costFor(t, "{1}"), 0, CastAutoTapExclusions(params, nil))
 	})
 	if !ok || len(plan) != 1 || plan[0].CardID != other {
 		t.Fatalf("plan = %v ok=%v, want the other Spawn", plan.cardIDs(), ok)

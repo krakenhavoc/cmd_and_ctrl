@@ -1594,9 +1594,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// ADR 0100 §2: and which either/or branch was paid and which
 		// cards the additional cost discarded — Grab the Prize's "if
 		// the discarded card wasn't a land card".
-		Paid: paidWithBranchAndDiscards(
+		//
+		// ADR 0135 §4: and the objects the alternative cost's card
+		// component pays with, named while they are still where they were
+		// — Adipose Offspring's "the sacrificed creature's toughness".
+		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
 			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.GiftOpponent),
-			params.CostBranch, params.DiscardIDs),
+			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
@@ -2033,7 +2037,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// offered to Village Rites and leave the sacrifice nothing to pay
 	// with, after the mana was made. One list, shared with the
 	// legal-move enumerator: see CastAutoTapExclusions.
-	excluded := CastAutoTapExclusions(params)
+	excluded := g.castAutoTapExclusionsLocked(p.ID, card, params)
 	// #1212: the spell's own source wish. A card whose text reads
 	// which mana paid for it ("if mana from a Treasure was spent to
 	// cast it") prefers a source it can read back — a tiebreak in the
@@ -2833,6 +2837,10 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// settles before 601.2f totals the cost (Torgaar's "{2} less
 		// for each creature sacrificed this way").
 		Sacrificing: len(params.SacrificeIDs),
+		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
+		// permanent the claimed offer names while it is still on the
+		// battlefield.
+		AltSacrificeManaValue: g.altSacrificeManaValueLocked(p.ID, card, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err

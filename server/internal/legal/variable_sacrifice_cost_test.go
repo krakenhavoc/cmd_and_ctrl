@@ -135,8 +135,11 @@ func TestSacrificeXFollowsTheTargets(t *testing.T) {
 }
 
 // Devastating Summons: no targets, so the X is the sacrifice count on
-// the ladder, starting at one (X = 0 makes two 0/0s, #810). The Mountain
-// that pays {R} is never also sacrificed (#1242).
+// the ladder, starting at one (X = 0 makes two 0/0s, #810). A Mountain
+// named to the sacrifice may still tap for the {R} first (CR 601.2g
+// before 601.2h, ADR 0135 §4 owner decision 3), so all three can be
+// sacrificed; the auto-tapper never CRACKS a permanent named to it
+// (#1242).
 func TestSacrificeXLadderWithoutTargets(t *testing.T) {
 	g := newTable(t)
 	seat := g.Seats[g.Turn.ActiveSeat]
@@ -147,8 +150,8 @@ func TestSacrificeXLadderWithoutTargets(t *testing.T) {
 	moves := legal.EnumerateFor(g, seat.ID)
 	got := varSacMovesOf(t, moves, ds)
 	counts := sacCounts(got)
-	if counts[0] || !counts[1] || !counts[2] || counts[3] {
-		t.Fatalf("counts offered = %v, want 1 and 2 (X = 0 is a no-op; X = 3 leaves no Mountain for {R})", counts)
+	if counts[0] || !counts[1] || !counts[2] || !counts[3] {
+		t.Fatalf("counts offered = %v, want 1, 2 and 3 (X = 0 is a no-op; a sacrificed Mountain taps for {R} first)", counts)
 	}
 	for _, p := range got {
 		if p.XValue != len(p.SacrificeIDs) {

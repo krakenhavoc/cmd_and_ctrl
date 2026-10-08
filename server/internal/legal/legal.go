@@ -523,6 +523,14 @@ type TargetCandidate struct {
 	// cost would TAP rather than spend (ADR 0135 §1: a tap alternative
 	// cost). The policy prices tapping it, not losing it.
 	Tap bool
+	// Saves is how much generic mana spending this candidate saves the
+	// cast (ADR 0135 §4, owner decision 5): an emerge payment's
+	// reduction, the sacrificed permanent's mana value as the pricer
+	// takes it off. The policy prices the saving in its own units and
+	// subtracts it from what the candidate is worth to keep, so a spent
+	// six-drop can rank ahead of a token that saves nothing. Zero for
+	// every other cost.
+	Saves int
 }
 
 // TargetOrder prices one candidate target for the enumerating seat.

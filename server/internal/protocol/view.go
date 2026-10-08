@@ -1285,6 +1285,22 @@ type AlternativeCostView struct {
 	// stamped at all (#695). Per viewer, like `pay_options` (#1172).
 	TapOptions *LegalTargetsView `json:"tap_options,omitempty"`
 
+	// ReducesByManaValue marks an emerge offer (ADR 0135 §4, CR
+	// 702.119a): the permanent picked from `sacrifice_options` reduces
+	// the cost by its mana value, so the picker shows each candidate's
+	// price (`sacrifice_prices`) and the auto-tap preview is asked with
+	// the pick. Absent for every other offer.
+	ReducesByManaValue bool `json:"reduces_by_mana_value,omitempty"`
+
+	// SacrificePrices is an emerge offer's price per candidate, keyed by
+	// the instance IDs in `sacrifice_options`: the candidate's mana value
+	// and the mana the cast pays with it sacrificed ("{1}{U}{U}" for
+	// Elder Deep-Fiend over a four-drop), priced by the engine's one
+	// pricer — commander tax and the board's cost modifiers included,
+	// before convoke or delve. Absent for every other offer. Per viewer,
+	// like `sacrifice_options`.
+	SacrificePrices map[string]AltCostPriceView `json:"sacrifice_prices,omitempty"`
+
 	// PayLabel is the picker's prompt copy for PayOptions,
 	// SacrificeOptions or TapOptions ("a blue card", "an Island you
 	// control", "three creatures"). Absent when there is nothing to pick.
@@ -5018,6 +5034,8 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.SacrificeOptions = nil
 		// ADR 0135 §1: "untapped creatures YOU control", likewise.
 		o.TapOptions = nil
+		// ADR 0135 §4: an emerge price per creature YOU control.
+		o.SacrificePrices = nil
 		out[i] = o
 	}
 	return out
@@ -5531,7 +5549,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if haveLive {
 		faced = &live
 	}
-	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, offers)
+	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, kind, offers)
 	// #1012: and the wire says so when the printed cost is not one of
 	// them. `castable_here` is one bit and means "you may cast this
 	// from here", never "you may cast this from here for the cost in
@@ -6134,7 +6152,11 @@ func viewOfWaterbend(g *game.Game, player, exclude uuid.UUID, wb *game.TapPerman
 // one looks on the wire. The nil entry in that list is the printed
 // mana cost, which is not an alternative cost and is projected as
 // `alternative_cost_required` instead.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, offers []*game.AlternativeCost) []AlternativeCostView {
+//
+// `zone` is where the card sits, the zone a cast of it comes out of: an
+// emerge offer's per-candidate price (ADR 0135 §4) is priced for a cast
+// from there, commander tax included.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, zone game.ZoneKind, offers []*game.AlternativeCost) []AlternativeCostView {
 	// A nil result rather than a present-and-empty one: `absent`
 	// is what the field means for a card with no offers, and every
 	// card in every cast surface reaches this function since #1012.
@@ -6229,6 +6251,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the caster's own permanents (CR 701.21a), in payment
 			// order, bounded by the clause's count.
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, paySpec, uuid.Nil, false)
+			if ac.ReducedBySacrificedManaValue && live != nil {
+				// ADR 0135 §4: emerge — each candidate's mana value and
+				// the price the cast pays with it named, from the pricer
+				// the payment is charged with.
+				v.ReducesByManaValue = true
+				v.SacrificePrices = emergePricesView(g, caster, *live, zone, ac.Key, v.SacrificeOptions)
+			}
 		} else if tc := ac.TapOthers; !tc.Empty() {
 			// ADR 0135 §1: the ability's tap-others block, with no
 			// source — the spell is not on the battlefield.
@@ -10570,4 +10599,43 @@ func autoAnswerKeysFor(log []LogEvent, seats []PlayerView, viewerID string) []Lo
 		}
 	}
 	return log
+}
+
+// AltCostPriceView is one emerge candidate's price (ADR 0135 §4): the
+// permanent's mana value, and the cast's mana cost with it sacrificed.
+type AltCostPriceView struct {
+	ManaValue int    `json:"mana_value"`
+	Price     string `json:"price"`
+}
+
+// emergePricesView prices an emerge cast once per sacrifice candidate,
+// through game.PriceCastForEffect — the pricer CastSpell charges with —
+// so the price the picker shows beside a creature is the price the
+// payment takes. A candidate the pricer refuses is left out of the map.
+// Caller must hold g.mu.
+func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.ZoneKind, key string, opts *LegalTargetsView) map[string]AltCostPriceView {
+	if opts == nil || len(opts.Cards) == 0 {
+		return nil
+	}
+	out := make(map[string]AltCostPriceView, len(opts.Cards))
+	for _, raw := range opts.Cards {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			continue
+		}
+		price, err := g.PriceCastForEffect(caster, card, game.CastSpellParams{
+			FromZone:        delveZoneWire(zone),
+			AlternativeCost: key,
+			AltCostIDs:      []uuid.UUID{id},
+			Face:            card.ActiveFace,
+		})
+		if err != nil {
+			continue
+		}
+		out[raw] = AltCostPriceView{ManaValue: g.AltSacrificeManaValueForEffect(id), Price: price.Total.String()}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

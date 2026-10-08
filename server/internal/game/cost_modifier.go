@@ -187,6 +187,22 @@ type CostQuery struct {
 	// clause's payment. Zero for an activation or special action.
 	Sacrificing int
 
+	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
+	// §4): the mana value of the permanent the claimed alternative cost
+	// sacrifices, when that offer is ReducedBySacrificedManaValue, read
+	// while the permanent is still on the battlefield (CR 601.2f, CR
+	// 202.3: a token that isn't a copy is 0, and X is 0). Zero for every
+	// other cast.
+	//
+	// Not a modifier's input but a reduction of its own:
+	// applyCostModifiersLocked takes it off the generic part (CR 118.7a)
+	// with the board's reductions, after every increase and before a
+	// CostFloor, so Elder Deep-Fiend's {5}{U}{U} over a four-drop is
+	// {1}{U}{U}, and an extra {1} from a Thalia is added before it comes
+	// off. Filled by the one pricer (costAfterModifiersLocked) and, per
+	// payment, by the enumerator, so the two agree (#544).
+	AltSacrificeManaValue int
+
 	// Cost is the cost as it stands at the moment this modifier is
 	// consulted: after the alternative-cost swap and the commander
 	// tax, after every increase for a reduction, after everything
@@ -652,7 +668,9 @@ func RealTargetCount(targets []TargetRef) int {
 func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCost, error) {
 	mods := g.activeCostModifiersLocked(q)
 	if len(mods) == 0 {
-		return base, nil
+		// ADR 0135 §4: emerge's reduction is the one reduction that
+		// needs no modifier on the board.
+		return reduceGeneric(base, q.AltSacrificeManaValue), nil
 	}
 	cost := base
 	// CR 601.2f step 3: every increase, in any order. Additive, so
@@ -685,6 +703,10 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 			cost = reduceGeneric(cost, n)
 		}
 	}
+	// ADR 0135 §4, CR 702.119a: emerge's reduction by the sacrificed
+	// permanent's mana value, with the other reductions (CR 601.2f) and
+	// clamped the same way, so it is taken after every increase.
+	cost = reduceGeneric(cost, q.AltSacrificeManaValue)
 	// Trinisphere last. A second floor on top of the first is a
 	// no-op by construction — the cost already clears the higher
 	// minimum — so two Trinispheres behave like one, as printed.

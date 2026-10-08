@@ -155,6 +155,20 @@ type ObjectSnapshot struct {
 	// reads it here, because a token that has left the battlefield
 	// has ceased to exist and there is nothing to ask.
 	Token bool
+
+	// AltCost and AltCostObjects are the object's cast record (CR
+	// 400.7d) as it was: the key of the alternative cost its spell was
+	// cast for, and the objects that cost's card component paid with
+	// (CastProvenance.AltCost / AltCostObjects, ADR 0135 §4). An enters
+	// trigger is harvested while the permanent is still there, so they
+	// are read off it then, and the trigger can still answer "if this
+	// creature's emerge cost was paid, … X is the sacrificed creature's
+	// toughness" (Adipose Offspring) after the permanent has left in
+	// response, when the card's own record is gone. Empty for every
+	// object whose spell claimed no alternative cost, and for one that
+	// was not on the battlefield when the event was harvested.
+	AltCost        string      `json:",omitempty"`
+	AltCostObjects []ObjectRef `json:",omitempty"`
 }
 
 // Ref names the object the snapshot describes, for PermanentForEffect.
@@ -349,6 +363,12 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 		Owner:      card.Owner,
 		Controller: card.Controller,
 		Token:      card.IsToken(),
+		// ADR 0135 §4: the cast record, for the enters trigger that
+		// reads it after the permanent has gone.
+		AltCost: card.Provenance.AltCost,
+	}
+	if len(card.Provenance.AltCostObjects) > 0 {
+		out.AltCostObjects = append([]ObjectRef(nil), card.Provenance.AltCostObjects...)
 	}
 	ch, ok := g.lastKnownBattlefield[cardID]
 	if !ok {
@@ -392,6 +412,9 @@ func cloneTriggerContext(tc *TriggerContext) *TriggerContext {
 		obj.Subtypes = copyStrings(tc.Object.Subtypes)
 		obj.Supertypes = copyStrings(tc.Object.Supertypes)
 		obj.Colors = copyStrings(tc.Object.Colors)
+		if len(tc.Object.AltCostObjects) > 0 {
+			obj.AltCostObjects = append([]ObjectRef(nil), tc.Object.AltCostObjects...)
+		}
 		out.Object = &obj
 	}
 	return &out

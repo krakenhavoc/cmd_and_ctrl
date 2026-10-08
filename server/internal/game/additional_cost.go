@@ -635,6 +635,14 @@ func paidWithBranchAndDiscards(paid PaidCost, branch *int, discards []uuid.UUID)
 	return paid
 }
 
+// paidWithAltCostObjects folds the objects the alternative cost's card
+// component named into the record (ADR 0135 §4) — refs read before the
+// payment moves them, for the reason paidWithSacrifices' refs are.
+func paidWithAltCostObjects(paid PaidCost, refs []ObjectRef) PaidCost {
+	paid.AltCostObjects = refs
+	return paid
+}
+
 // validateOptionalCostChoice checks the ANNOUNCEMENT itself (CR
 // 601.2b) before anything is priced or paid: every index names a cost
 // the card offers, and no cost is named more times than it may be

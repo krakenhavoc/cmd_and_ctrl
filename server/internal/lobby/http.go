@@ -2089,9 +2089,10 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// so the preview shows the payment the cast will make: without it
 	// a preview could crack the very Eldrazi Spawn the cast offers to
 	// Village Rites and read "ok" for a cast the engine then refuses.
-	for eid := range game.CastAutoTapExclusions(params) {
-		excluded[eid] = true
-	}
+	//
+	// ADR 0135 §4: a permanent named to a sacrifice cost may still tap
+	// for mana first, so the merge keeps that entry's meaning.
+	game.MergeAutoTapExclusions(excluded, g.CastAutoTapExclusionsFor(p.PlayerID, card, params))
 	price, err := g.PriceCast(p.PlayerID, card, params)
 	if err != nil {
 		return httpError(http.StatusBadRequest, "this cast cannot be priced: "+err.Error())
@@ -2189,6 +2190,13 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		return params, err
 	}
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
+		return params, err
+	}
+	// ADR 0135 §4: the alternative cost's named payment. An emerge
+	// creature changes the PRICE (its mana value comes off), and every
+	// payment changes what the auto-tapper may spend: a creature named to
+	// a sacrifice may still tap for mana first, nothing else named may.
+	if params.AltCostIDs, err = uuidListParam(q.Get("alt_cost_ids"), "alt_cost_ids"); err != nil {
 		return params, err
 	}
 	// ADR 0100: the graveyard cards named to delve. They DO change the

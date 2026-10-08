@@ -918,27 +918,35 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// name and the next few are that payment with its last card
 		// swapped for the next-cheapest.
 		pool := g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)
-		if offer.TapOthers != nil {
-			// ADR 0135 §1: a tap price spends no card, so the policy
-			// prices each candidate as TAPPED, not as lost — a blocker
-			// it no longer has, and its attack before combat on its own
-			// turn (TargetCandidate.Tap).
-			pool = e.cheapestTapFirst(pool)
+		if offer.ReducedBySacrificedManaValue {
+			// ADR 0135 §4 (owner decision 5): an emerge payment is priced
+			// on its own, because what it saves is the sacrificed
+			// permanent's mana value — and offered best first, up to the
+			// cap, among the payments the seat can afford.
+			altCostSets = e.emergePayments(card, offer, pool, cost, fromZone, spend, xFloor)
 		} else {
-			pool = e.cheapestFuelFirst(pool)
-		}
-		if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
-			// ADR 0135 §2: a set rule (Foil's "an Island card and
-			// another card") — the first N of the pool may be two
-			// non-Islands. One payment from #2526's set search, fed
-			// the pool in the policy's order, as sacrificePayments
-			// does for a sacrifice clause.
-			altCostSets = nil
-			if pay != nil {
-				altCostSets = [][]uuid.UUID{pay}
+			if offer.TapOthers != nil {
+				// ADR 0135 §1: a tap price spends no card, so the policy
+				// prices each candidate as TAPPED, not as lost — a blocker
+				// it no longer has, and its attack before combat on its
+				// own turn (TargetCandidate.Tap).
+				pool = e.cheapestTapFirst(pool)
+			} else {
+				pool = e.cheapestFuelFirst(pool)
 			}
-		} else {
-			altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+			if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
+				// ADR 0135 §2: a set rule (Foil's "an Island card and
+				// another card") — the first N of the pool may be two
+				// non-Islands. One payment from #2526's set search, fed
+				// the pool in the policy's order, as sacrificePayments
+				// does for a sacrifice clause.
+				altCostSets = nil
+				if pay != nil {
+					altCostSets = [][]uuid.UUID{pay}
+				}
+			} else {
+				altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+			}
 		}
 		if len(altCostSets) == 0 {
 			// Unreachable through CastOffersForLocked, which already
@@ -949,6 +957,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 	}
+	// ADR 0135 §4: the reduction the FIRST payment buys, priced into
+	// every announcement below; the other payments are repriced on their
+	// own when they are offered against it (first.base).
+	altMV := emergeManaValue(g, offer, altCostSets[0])
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
 	// ADR 0100 §6: a VARIABLE sacrifice clause on a cast — "sacrifice X
@@ -1071,9 +1083,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// sacrificed.
 		if !perTarget && !varSac {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
-				Card:       card,
-				Controller: e.seat,
-				FromZone:   fromZone,
+				Card:                  card,
+				Controller:            e.seat,
+				FromZone:              fromZone,
+				AltSacrificeManaValue: altMV,
 			})
 			if err != nil {
 				continue
@@ -1166,10 +1179,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				// a Fireball the seat can pay for at one target is not
 				// crowded out by the three-target sets it cannot.
 				priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
-					Card:       card,
-					Controller: e.seat,
-					FromZone:   fromZone,
-					Targets:    targets,
+					Card:                  card,
+					Controller:            e.seat,
+					FromZone:              fromZone,
+					Targets:               targets,
+					AltSacrificeManaValue: altMV,
 				})
 				if err != nil {
 					continue
@@ -1239,12 +1253,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							tgts = targets
 						}
 						priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
-							Card:        card,
-							Controller:  e.seat,
-							FromZone:    fromZone,
-							XValue:      payX,
-							Targets:     tgts,
-							Sacrificing: len(sacs),
+							Card:                  card,
+							Controller:            e.seat,
+							FromZone:              fromZone,
+							XValue:                payX,
+							Targets:               tgts,
+							Sacrificing:           len(sacs),
+							AltSacrificeManaValue: altMV,
 						})
 						if err != nil {
 							continue
@@ -1286,7 +1301,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							TeamworkIDs:  teamIDs,
 							BlightIDs:    blightIDs,
 							AltCostIDs:   altCostSets[0],
-						})) {
+						}, offer)) {
 						continue
 					}
 					budget--
@@ -1307,6 +1322,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							targets:   targets,
 							x:         payX,
 							life:      payLife,
+							base:      modeCost,
 							cost:      payCost,
 							printed:   payPrinted,
 							dist:      dist,
@@ -1318,6 +1334,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							delve:     payDelve,
 							delveFull: payDelveFull,
 							xv:        xv,
+							offer:     offer,
 						}
 					}
 					emit(altCostSets[0], modes, targets, payX, payLife, dist, discards, sacs, payDelve, xv)
@@ -1379,7 +1396,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// kept away from the auto-tapper (game.CastAutoTapExclusions) —
 		// a different three creatures may include the Spawn the first
 		// payment left free to make the mana.
-		if !e.canPayExcluding(first.cost, first.x, spend, first.autoTapExclusions(altPaid)) {
+		//
+		// ADR 0135 §4: and an emerge payment at ITS price, which is the
+		// first announcement's less this permanent's mana value.
+		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac)
+		if !ok || !e.canPayExcluding(payCost, first.x, spend, first.autoTapExclusions(altPaid)) {
 			continue
 		}
 		budget--
@@ -1396,7 +1417,11 @@ type announcedCast struct {
 	// life is how many Phyrexian symbols the announcement pays with
 	// life (#1677); printed is its cost before that strike, and cost
 	// the mana it pays after it.
-	life     int
+	life int
+	// base is the announcement's cost before the board's modifiers (its
+	// modes' mana included), the cost an emerge payment is repriced
+	// from (ADR 0135 §4).
+	base     game.ParsedCost
 	cost     game.ParsedCost
 	printed  game.ParsedCost
 	dist     map[uuid.UUID]int
@@ -1418,6 +1443,9 @@ type announcedCast struct {
 	// xv is the announcement's open X (ADR 0122 §6.2), nil when its X is
 	// fixed by something else in the move.
 	xv *MoveValue
+	// offer is the alternative cost the announcement claims, nil for
+	// none: what its payments are excluded from the auto-tap plan by.
+	offer *game.AlternativeCost
 }
 
 // castEmitter writes one concrete cast move.
@@ -1837,7 +1865,7 @@ func (a *announcedCast) autoTapExclusions(alt []uuid.UUID) map[uuid.UUID]bool {
 		TeamworkIDs:  a.team,
 		BlightIDs:    a.blight,
 		AltCostIDs:   alt,
-	})
+	}, a.offer)
 }
 
 // legalModeSets lists every distinct mode selection of size lo..hi,

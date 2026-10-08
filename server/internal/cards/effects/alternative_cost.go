@@ -2,6 +2,7 @@ package effects
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -440,6 +441,55 @@ func tapOthersPrice(n int, label string, preds ...CardPredicate) *game.TapOthers
 		Count:  n,
 		Filter: TargetPermanent(label, preds...),
 		Label:  label,
+	}
+}
+
+// AltCostKeyEmerge is emerge's offer key: on the wire as
+// `alternative_cost`, on StackItem.AltCost, and on the permanent's
+// CastProvenance.AltCost, where "if this creature's emerge cost was
+// paid" (Adipose Offspring) reads it.
+const AltCostKeyEmerge = "emerge"
+
+// Emerge is "Emerge [cost] (You may cast this spell by sacrificing a
+// creature and paying the emerge cost reduced by that creature's mana
+// value.)" — CR 702.119a, ADR 0135 §4 (#2416):
+//
+//	AlternativeCosts: []game.AlternativeCost{Emerge("{5}{U}{U}")},
+//
+// A sacrifice offer (the component Dread Return's flashback and
+// Fireblast pay with, #1727) of exactly one creature, flagged
+// ReducedBySacrificedManaValue: the pricer takes the named creature's
+// mana value off the emerge cost's generic part, after any increase and
+// never below {0} (CR 601.2f, 118.7a). The creature is chosen with the
+// cost (CR 702.119c), may tap for mana before it is sacrificed (owner
+// decision 3), and is sacrificed with the spell already on the stack, so
+// its dies trigger resolves first.
+func Emerge(cost string) game.AlternativeCost {
+	return EmergeFrom("creature", cost, Creature())
+}
+
+// EmergeFrom is "Emerge from [quality] [cost]" (CR 702.119b): the
+// sacrificed permanent is "a [quality] permanent" rather than a creature.
+// Crabomination's "Emerge from artifact {5}{B}{B}" is
+// EmergeFrom("artifact", "{5}{B}{B}", Artifact()). `quality` is the
+// printed word, used in the label and the picker prompt; the predicates
+// are what the permanent must match.
+func EmergeFrom(quality, cost string, preds ...CardPredicate) game.AlternativeCost {
+	label := "Emerge " + cost
+	if quality != "creature" {
+		label = "Emerge from " + quality + " " + cost
+	}
+	what := "a " + quality
+	if strings.ContainsRune("aeiou", rune(quality[0])) {
+		what = "an " + quality
+	}
+	return game.AlternativeCost{
+		Key:                          AltCostKeyEmerge,
+		Label:                        label,
+		ManaCost:                     cost,
+		Sacrifice:                    sacrificeSpec(what, preds...).WithCount(1, 1),
+		ReducedBySacrificedManaValue: true,
+		PayLabel:                     what,
 	}
 }
 
