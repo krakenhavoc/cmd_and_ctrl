@@ -1149,6 +1149,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
+	// ADR 0129 §5, CR 118.3: the energy the whole cast pays — a claimed
+	// alternative cost's and the plan's (replicate, once per payment) —
+	// against the caster's total, summed so the two cannot each pass
+	// against all of it. The alternative cost's own share was checked
+	// with its offer above. Never waived (ADR 0129 §4).
+	energyOwed := planEnergy(costPlan)
+	if alt != nil {
+		energyOwed += alt.Energy
+	}
+	if err := EnergyShortfall(p, energyOwed); err != nil {
+		slog.Warn("cast_spell rejected: not enough energy",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"energy_owed", energyOwed,
+			"err", err,
+		)
+		return err
+	}
 	// #1703: the two components whose payment names creatures on
 	// the board — teamwork's taps (CR 702.194a) and blight's one
 	// creature (CR 701.68a). Same plan, same validate-all-then-pay.
@@ -1243,7 +1261,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if !g.SorcerySpeedOpenLocked(playerID) {
 			return ErrSorcerySpeedRequired
 		}
-	} else if !g.CastTimingOpenLocked(playerID, card, src.Kind, grant) {
+	} else if !g.CastTimingForOfferOpenLocked(playerID, card, src.Kind, grant, alt) {
 		return ErrSorcerySpeedRequired
 	}
 	// Lands skip the stack entirely (CR 305). Move the card to the
@@ -1612,12 +1630,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0129 §5: the plan's energy (replicate, once per payment),
+	// through the one path that pays energy, checked above with the
+	// alternative cost's against the caster's total.
+	if err := g.payEnergyLocked(playerID, planEnergy(costPlan), cardID); err != nil {
+		slog.Error("cast_spell: additional cost energy failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// S28: the alternative cost's own non-mana components, in the
 	// same window and for the same reason — pitching a Force of Will
 	// is a card leaving hand while the counterspell is on the stack,
 	// and a Daze returns its Island before the spell it is answering
 	// has resolved.
-	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
+	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

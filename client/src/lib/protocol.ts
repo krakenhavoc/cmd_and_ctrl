@@ -2187,6 +2187,11 @@ export interface OptionalCostView {
   // and buyback, the multikicker cap above that. 1 renders a
   // checkbox, more renders a stepper.
   max_times?: number;
+  // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
+  // replicate, 3). `max_times` is then capped at what the viewer's energy
+  // pays for, and `energy_short` says it pays for none.
+  energy?: number;
+  energy_short?: boolean;
   // The card-shaped halves, in the same shape and with the same
   // meaning AdditionalCostView gives them: a present-and-empty
   // sacrifice_options means the offer cannot be taken right now.
@@ -2249,6 +2254,11 @@ export interface AlternativeCostView {
   // the server will accept. Exactly N still appears; paying down to
   // zero is legal.
   life?: number;
+  // ADR 0129 §5: the "pay N {E}" half of the cost (Nissa, Worldsoul
+  // Speaker's eight, Primal Prayers' one, Amped Raptor's "equal to its
+  // mana value"). Absent for the costs that charge none. Like `life`, for
+  // the label: an offer the caster is short of energy for is not offered.
+  energy?: number;
   // S28: the cards that can pay the cost's card-shaped half — the
   // blue cards in your hand for Force of Will, the Islands you
   // control for Daze. The chosen instance ID rides back on cast_spell
@@ -3133,6 +3143,9 @@ export interface CastPriceView {
   cost: string;
   // Life charged on top (CR 119.4). Absent for every exile price today.
   life?: number;
+  // ADR 0129 §5: energy charged on top (Amped Raptor's "an amount of {E}
+  // equal to its mana value"). Absent for every price that charges none.
+  energy?: number;
   // True when this price IS the printed mana cost, untouched — the
   // strip draws no badge for it.
   printed?: boolean;

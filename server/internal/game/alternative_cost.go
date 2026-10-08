@@ -106,6 +106,19 @@ type AlternativeCost struct {
 	// #693 renumbering tail.)
 	Life int
 
+	// Energy is a "pay N {E}" component of the alternative cost (CR
+	// 107.14, CR 118.9): Nissa, Worldsoul Speaker's eight, Primal
+	// Prayers' one, and Amped Raptor's "an amount of {E} equal to its
+	// mana value" (ADR 0129 §5, PR 4). Removed from the caster through
+	// payEnergyLocked, the one path that pays energy, with the cast's
+	// other non-mana costs.
+	//
+	// A COST, like Life: AlternativeCostPayableLocked withholds the
+	// offer from a caster short of it (CR 118.3) and the announce
+	// validator refuses the claim. Never waived: Cast anyway and the
+	// permissive posture decide only the mana (ADR 0129 §4).
+	Energy int
+
 	// ExileFromHand is "exile a blue card from your hand" (Force of
 	// Will) or "exile a white card from your hand" (Solitude's evoke
 	// cost), as a spec matched against the caster's hand. The caster
@@ -364,6 +377,18 @@ type AlternativeCost struct {
 	// query, and a claim reaches the stack as its key alone.
 	Granted bool
 
+	// AsThoughFlash is "if you cast a spell this way, you may cast it as
+	// though it had flash" (Primal Prayers, ADR 0129 §5). CR 601.3c: an
+	// effect that lets a spell be cast as though it had flash only if an
+	// alternative cost is paid lets its caster BEGIN to cast it at
+	// instant speed. So a claim of this offer opens the instant-speed
+	// window and a cast of the same card for its printed cost does not.
+	// Read by CastTimingForOfferOpenLocked, which CastSpell, the bot
+	// enumerator and the view's per-offer timing stamp all call. A
+	// per-player restriction (Teferi, Time Raveler) still closes it, as
+	// for any other flash grant (CR 101.2).
+	AsThoughFlash bool
+
 	// Purpose is what the spell does when cast for this cost, where
 	// that differs from the card's own (ADR 0126 §6): overload turns
 	// Cyclonic Rift into a bounce sweep. Zero for a cost that leaves the
@@ -599,14 +624,16 @@ func (g *Game) lifePayableBy(a *AlternativeCost, p *Player) bool {
 // EVERY component of this offer if they claimed it right now — the
 // one predicate behind "is this offer on the table" (#695).
 //
-// Three questions, in the order announce asks them:
+// Four questions, in the order announce asks them:
 //
 //  1. the offer's own Condition (Available) — "if you control a
 //     Swamp", "if you control a commander";
 //  2. the life component (CR 119.4), which is why this function
 //     exists: the view used to ask only (1) and show Snuff Out's
 //     "pay 4 life" to a player at 3;
-//  3. the card component (CR 601.2b) — whether the caster's hand,
+//  3. the energy component (CR 107.14, CR 118.3, ADR 0129 §5) —
+//     Nissa, Worldsoul Speaker's eight {E};
+//  4. the card component (CR 601.2b) — whether the caster's hand,
 //     graveyard or battlefield holds as many cards matching the
 //     clause as the cost demands. Force of Will with no other blue
 //     card in hand, an escape cost with two cards left in the
@@ -637,6 +664,11 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 		return false
 	}
 	if !g.lifePayableBy(alt, p) {
+		return false
+	}
+	// ADR 0129 §5: the energy component (CR 107.14, CR 118.3), through
+	// the predicate the activation and the payment both read.
+	if EnergyShortfall(p, alt.Energy) != nil {
 		return false
 	}
 	spec, zone, want := alt.cardComponent()
@@ -723,6 +755,11 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	// offer the client can see is one this validator will accept.
 	if !g.lifePayableBy(alt, p) {
 		return ErrInvalidParam
+	}
+	// ADR 0129 §5: "Not enough energy (have 2, need 8)", the refusal
+	// an activation gives (CR 118.3).
+	if err := EnergyShortfall(p, alt.Energy); err != nil {
+		return err
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -861,9 +898,16 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 // would make Force of Will free.
 //
 // Caller must hold g.mu.
-func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if alt == nil {
 		return nil
+	}
+	// ADR 0129 §5: the energy, through the one path that pays it (CR
+	// 107.14), naming the spell as the source so the log reads "pays 8
+	// energy (Craterhoof Behemoth)". No replacement window, as for every
+	// energy payment.
+	if err := g.payEnergyLocked(playerID, alt.Energy, castID); err != nil {
+		return err
 	}
 	// #793: the cost path. Snuff Out's "pay 4 life" is a cost, so it
 	// runs the CR 614 window (CR 119.4 — paying life is losing life)

@@ -55,15 +55,39 @@ import (
 // cost for spells you cast" static, as a catalog declaration
 // (Spec.GrantedAlternativeCosts).
 type GrantedAlternativeCost struct {
-	// Offer is the price. Key, Label and ManaCost are read; Life and
-	// the card components stay unused (no printed card grants one, and
-	// Register refuses them). An empty ManaCost is free — "without
-	// paying its mana cost" — as for any AlternativeCost.
+	// Offer is the price. Key, Label, ManaCost, Energy (Nissa,
+	// Worldsoul Speaker's eight {E}, ADR 0129 §5) and AsThoughFlash
+	// (Primal Prayers) are read; Life and the card components stay
+	// unused (no printed card grants one, and Register refuses them). An
+	// empty ManaCost is free — "without paying its mana cost" — as for
+	// any AlternativeCost.
 	Offer AlternativeCost
 
 	// Zones are the zones the offer reaches: Omniscience's "from your
 	// hand". Nil means every zone a spell is cast from.
 	Zones []ZoneKind
+
+	// Spells narrows which spells the offer reaches (ADR 0129 §5):
+	// Nissa, Worldsoul Speaker's "permanent spells you cast"
+	// (NonLandPermanentOnly), Primal Prayers' "creature spells"
+	// (CreatureOnly). Judged against the face being cast. The zero
+	// filter is every spell, which is Jodah's and Omniscience's.
+	Spells PermissionFilter
+
+	// MaxManaValue caps the mana value of the spell the offer reaches:
+	// Primal Prayers' "with mana value 3 or less". Nil means no cap.
+	// The mana value is the card's as it is cast for this offer, which
+	// replaces the mana cost, so an {X} in it counts as 0 (CR 107.3b,
+	// CR 202.3).
+	MaxManaValue *int
+}
+
+// covers reports whether this static's offer reaches a cast of `card`.
+func (gr GrantedAlternativeCost) covers(card Card) bool {
+	if !gr.Spells.Matches(card) {
+		return false
+	}
+	return gr.MaxManaValue == nil || card.ManaValue() <= *gr.MaxManaValue
 }
 
 // reaches reports whether this static covers a cast out of `zone`.
@@ -116,7 +140,7 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			continue
 		}
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
-			if gr.Offer.Key == "" || !gr.reaches(zone) || seen[gr.Offer.Key] {
+			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(card) || seen[gr.Offer.Key] {
 				continue
 			}
 			if seen == nil {
@@ -199,6 +223,12 @@ func (g *Game) grantedOfferClaimableLocked(card Card, zone ZoneKind, alt *Altern
 // A card with no mana cost (CR 118.6, Ancestral Vision) has no printed
 // price to repeat, so Omniscience's free offer is never dropped for it.
 func duplicatesListedPrice(card Card, listed []*AlternativeCost, granted *AlternativeCost) bool {
+	// ADR 0129 §5: an offer that charges more than mana is never a
+	// repeat. Primal Prayers' "pay {E}" has no mana at all, and an
+	// Ornithopter's printed {0} is not the same price.
+	if !granted.onlyMana() {
+		return false
+	}
 	for _, ac := range listed {
 		if ac == nil {
 			if !HasNoManaCost(card) && sameManaPrice(card.ManaCost, granted.ManaCost) {
@@ -218,7 +248,7 @@ func duplicatesListedPrice(card Card, listed []*AlternativeCost, granted *Altern
 // and no rider that changes the spell (a target rewrite, a face, an
 // entry clause, an exile on leaving the stack).
 func (a *AlternativeCost) onlyMana() bool {
-	return a != nil && a.Condition == nil && a.Life == 0 && !a.PaysCards() &&
+	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && !a.PaysCards() &&
 		a.Targets == nil && !a.ClearsTargets && !a.SacrificeOnEntry &&
 		!a.ExileOnLeavingStack && !a.WarpExile && a.EntersWithCounterName == "" &&
 		a.FaceDown == nil && !a.RequiresGrant && a.CastsFace == 0
