@@ -1601,42 +1601,103 @@ func shieldDivisionLabel(p *game.DivideShieldPrompt, dist map[uuid.UUID]int) str
 	return "prevent " + strings.Join(parts, ", ")
 }
 
-// canonicalDamageAssignment builds the one split the prefix-lethal
-// rule always accepts: walk the blockers in declared order, give each
-// lethal (1 with deathtouch, else remaining toughness) until power
-// runs out, dump the remainder on the last blocker — or, with
-// trample, on the defending player.
+// canonicalDamageAssignment builds the one split the enumerator offers
+// for a damage-assignment prompt: the one that kills the most the
+// attacker's power can buy (#2692).
+//
+// CR 510.1c divides a blocked creature's damage among its blockers "as
+// its controller chooses among them", and CR 510.1d does the same for
+// a blocker dividing among the attackers it blocks. Neither has an
+// order, so which of them die is the chooser's pick: any set whose
+// lethal damage (1 from deathtouch, CR 702.2c, else toughness less the
+// damage already marked) adds up to no more than the power.
+// KillingSet picks that set. A trampler with power enough to assign
+// lethal to every blocker does so and puts the rest on the player it
+// is attacking (CR 702.19b).
+//
+// The killed blockers come first, then the survivor that takes what is
+// left over, then the rest at 0, so the answer is also lethal down its
+// own order.
 func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choiceParams) (choiceParams, bool) {
 	f := c.DamageAssignment
 	if f == nil {
 		return p, false
 	}
-	remaining := f.AttackerPower
-	assigns := make([]assignParam, 0, len(f.BlockerIDs))
-	for _, id := range f.BlockerIDs {
-		lethal := 1
+	n := len(f.BlockerIDs)
+	attacker := findBattlefield(e.g, f.AttackerID)
+	cost := make([]int, n)
+	value := make([]int, n)
+	for i, id := range f.BlockerIDs {
+		cost[i] = 1
+		b := findBattlefield(e.g, id)
+		if b == nil {
+			continue
+		}
 		if !f.HasDeathtouch {
-			if b := findBattlefield(e.g, id); b != nil {
-				lethal = b.CurrentToughness() - b.DamageMarked
-				if lethal < 1 {
-					lethal = 1
-				}
+			cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
+		}
+		value[i] = killValue(b, attacker)
+	}
+	kill := KillingSet(cost, value, f.AttackerPower)
+	trample := f.AllowTrample && !f.BlockerDivides
+	if trample {
+		need := 0
+		for _, x := range cost {
+			need += x
+		}
+		if need <= f.AttackerPower {
+			for i := range kill {
+				kill[i] = true
 			}
 		}
-		give := lethal
-		if give > remaining {
-			give = remaining
+	}
+	remaining := f.AttackerPower
+	amount := make([]int, n)
+	allLethal := true
+	for i := range f.BlockerIDs {
+		if kill[i] {
+			amount[i] = cost[i]
+			remaining -= cost[i]
+		} else {
+			allLethal = false
 		}
-		assigns = append(assigns, assignParam{BlockerID: id.String(), Amount: give})
-		remaining -= give
+	}
+	// sink takes whatever is left: the survivor worth most, else the
+	// last blocker killed.
+	sink := -1
+	for i := range f.BlockerIDs {
+		if !kill[i] && (sink < 0 || value[i] > value[sink]) {
+			sink = i
+		}
+	}
+	if sink < 0 {
+		sink = n - 1
 	}
 	if remaining > 0 {
-		if f.AllowTrample {
+		switch {
+		case trample && allLethal:
 			p.TrampleTo = remaining
-		} else if len(assigns) > 0 {
-			assigns[len(assigns)-1].Amount += remaining
-		} else {
+		case n > 0:
+			amount[sink] += remaining
+		default:
 			return p, false
+		}
+	}
+	assigns := make([]assignParam, 0, n)
+	add := func(i int) {
+		assigns = append(assigns, assignParam{BlockerID: f.BlockerIDs[i].String(), Amount: amount[i]})
+	}
+	for i := range f.BlockerIDs {
+		if kill[i] {
+			add(i)
+		}
+	}
+	if sink >= 0 && !kill[sink] {
+		add(sink)
+	}
+	for i := range f.BlockerIDs {
+		if !kill[i] && i != sink {
+			add(i)
 		}
 	}
 	if len(assigns) == 0 && p.TrampleTo == 0 && f.AttackerPower > 0 {
@@ -1644,6 +1705,69 @@ func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choicePa
 	}
 	p.Assignments = assigns
 	return p, true
+}
+
+// killValue is what destroying blocker b is worth to the attacker's
+// controller when deciding which blockers to kill: one for the kill,
+// plus its power and toughness. Zero when the damage cannot destroy
+// it: an indestructible creature, or one with protection from the
+// attacker, whose damage is prevented (CR 702.16e).
+// heuristic.orderedKills prices a kill the same way from the view, so
+// a bot's combat plan and the split it is offered agree.
+func killValue(b, attacker *game.Card) int {
+	if game.IsIndestructible(b) {
+		return 0
+	}
+	if attacker != nil && game.HasProtection(b) && game.ProtectedFrom(b, game.SourceCharacteristics(attacker)) {
+		return 0
+	}
+	return 1 + b.CurrentPower() + max(b.CurrentToughness(), 0)
+}
+
+// killingSetExact is the most blockers KillingSet searches exactly;
+// past it, it falls back to the declared order.
+const killingSetExact = 16
+
+// KillingSet is the 0/1 knapsack behind a damage assignment: the set
+// of blockers, by index, whose costs fit in power with the most total
+// value. Ties go to the cheaper set, then to the one that kills the
+// earlier-declared blockers, so the answer is deterministic. A blocker
+// worth nothing is never in it. Past killingSetExact blockers it
+// kills down the declared order while the power lasts. Exported for
+// heuristic.orderedKills, which must predict the same kills.
+func KillingSet(cost, value []int, power int) []bool {
+	n := len(cost)
+	out := make([]bool, n)
+	if n > killingSetExact {
+		for i := range cost {
+			if value[i] > 0 && cost[i] <= power {
+				out[i] = true
+				power -= cost[i]
+			}
+		}
+		return out
+	}
+	best, bestValue, bestCost, bestKey := 0, 0, 0, 0
+	for mask := 1; mask < 1<<n; mask++ {
+		v, c, key := 0, 0, 0
+		for i := 0; i < n; i++ {
+			if mask&(1<<i) != 0 {
+				v += value[i]
+				c += cost[i]
+				key |= 1 << (n - 1 - i)
+			}
+		}
+		if c > power || v == 0 {
+			continue
+		}
+		if v > bestValue || (v == bestValue && (c < bestCost || (c == bestCost && key > bestKey))) {
+			best, bestValue, bestCost, bestKey = mask, v, c, key
+		}
+	}
+	for i := 0; i < n; i++ {
+		out[i] = best&(1<<i) != 0
+	}
+	return out
 }
 
 // combinationsRefs is combinations over TargetRefs, including the
