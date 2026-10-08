@@ -4,7 +4,7 @@
 **Date:** 2026-09-18
 **Sprint:** S42 — Casting from non-hand zones: granted permissions and alternative costs
 **Issues:** [#652](https://github.com/krakenhavoc/cmd_and_ctrl/issues/652) (granted cast permissions), [#765](https://github.com/krakenhavoc/cmd_and_ctrl/issues/765) (play and cast from the top of your library). Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).
-**Proposed amendment:** 2026-10-08, a permission that lasts "until you exile another card with this" ([#2539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2539)); see Amendments at the end.
+**Accepted amendment:** 2026-10-08, a permission that lasts "until you exile another card with this" ([#2539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2539)), with owner answers of 2026-10-08; see Amendments at the end.
 
 **Numbering:** every remote branch was swept with the AGENTS.md §4 loop on
 2026-09-18 (`git ls-remote --heads origin`, 266 heads; `git log --all
@@ -2910,9 +2910,9 @@ bump.
 
 The dated amendments above each have a section of their own. From 2026-10-08 new ones go under this heading.
 
-### 2026-10-08 (#2539): a permission that lasts "until you exile another card with this" (Proposed)
+### 2026-10-08 (#2539): a permission that lasts "until you exile another card with this" (Accepted)
 
-**Status:** Proposed. No code until the owner accepts it (#2539, comment of 2026-10-08).
+**Status:** Accepted (owner answers 2026-10-08). The owner chose the recommended option on every question; see "Owner answers (2026-10-08)" at the end of this amendment.
 **Registry row:** `play-until-you-exile-another` (`server/internal/roadmap/registry.go:2143`).
 **Line numbers** below are on `develop` at `62fa97c64`.
 
@@ -3062,3 +3062,13 @@ The PR touches stored permissions and the restore check, so it runs the branch E
 5. **Delivery.**
    - (a) Recommended: one PR with the engine change and Unstable Amulet, plus Furious Rise and Superior Foes of Spider-Man if their other clauses check out.
    - (b) The engine with Unstable Amulet only, with the other two in a later card batch.
+
+#### Owner answers (2026-10-08)
+
+The owner chose option (a), the recommended one, on every question.
+
+1. **Design (a).** A new `DurationKind`, `UntilSourceExilesAnother`, carrying `Source`, `SourceEpoch` and `Ended`. The linked exile marks the earlier window ended, and `durationExpiredLocked` reads that.
+2. **Both behaviours are accepted when the source leaves.** The most recently exiled card stays playable for as long as it remains exiled. An ability already on the stack still closes the old window when it resolves.
+3. **Do not stamp `Card.ExiledWith` in the new helper.** The general move of ability-resolution exiles onto the link, with an ability ref, is [#2651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2651).
+4. **Only the holder closes the window.** It closes only when the permission's holder exiles another card with the same source object.
+5. **One PR with all three cards.** It holds the engine change plus Unstable Amulet, Furious Rise and Superior Foes of Spider-Man.
