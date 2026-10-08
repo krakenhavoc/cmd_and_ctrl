@@ -2,6 +2,8 @@ package legal
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -578,8 +580,16 @@ func (e *enumerator) blockOptions() []game.BlockOption {
 		return opts
 	}
 	offered := groupsPerAttacker(opts)
-	for atk, n := range groupsPerAttacker(e.g.BlockOptionsLocked(e.seat, limit+1)) {
-		if n > offered[atk] {
+	wider := groupsPerAttacker(e.g.BlockOptionsLocked(e.seat, limit+1))
+	// #2730: in attacker order, not map order, so the report lists its
+	// cuts in the same order on every call.
+	atks := make([]uuid.UUID, 0, len(wider))
+	for atk := range wider {
+		atks = append(atks, atk)
+	}
+	slices.SortFunc(atks, func(a, b uuid.UUID) int { return strings.Compare(a.String(), b.String()) })
+	for _, atk := range atks {
+		if n := wider[atk]; n > offered[atk] {
 			e.enter(scope{source: atk})
 			e.noteCut(CapPerSource, n-offered[atk], true)
 		}

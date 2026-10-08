@@ -1,6 +1,7 @@
 package heuristic
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -985,9 +986,24 @@ func (w Weights) ScoreEval(evals map[string]*SeatEval, perspective string) float
 	if me == nil {
 		return 0
 	}
+	// #2730: the opponents are summed in seat-ID order, never in map
+	// order. Float addition is not associative, so a map-ordered sum
+	// differs in its last bits from one call to the next, and two
+	// moves priced the same (Damnation and Austere Command's two
+	// creature modes) came out a few ulps apart in an order the
+	// runtime picked: --lockstep stopped replaying a seed. The sum is
+	// the same number either way; only its rounding is now fixed. The
+	// buffer holds a Commander table without allocating.
+	var buf [8]string
+	ids := buf[:0]
+	for id := range evals {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
 	var sum, max float64
 	n := 0
-	for id, e := range evals {
+	for _, id := range ids {
+		e := evals[id]
 		if id == perspective || e.Eliminated {
 			continue
 		}
