@@ -2279,8 +2279,17 @@ export interface AlternativeCostView {
   // picker words its prompt "Discard". A discard with a set rule (Foil's
   // "an Island card and another card") carries `pay_options.each_of`.
   discards?: boolean;
+  // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
+  // Orim's Cure's "tap an untapped creature you control", Battle
+  // Screech's three white creatures. The untapped permanents you
+  // control that match, min == max == the count, in the shape an
+  // ability's `tap_others_options` has, so the cast flow opens the tap
+  // picker. Set instead of `pay_options` and `sacrifice_options`; the
+  // picked IDs ride `alt_cost_ids`.
+  tap_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
-  // or for `sacrifice_options` ("three creatures").
+  // for `sacrifice_options` ("three creatures") or for `tap_options`
+  // ("an untapped creature you control").
   pay_label?: string;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow

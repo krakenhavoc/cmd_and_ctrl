@@ -544,7 +544,16 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// offered first is the payment it then prices as cheapest, and the
 	// two cannot disagree. A graveyard card used to be worth nothing
 	// here, which made an escape look free.
+	//
+	// ADR 0135 §1: an offer that TAPS its permanents (Orim's Cure's
+	// creature, Battle Screech's three) spends none of them, so each is
+	// charged what tapping it costs (tapCreatureCost), not its value.
+	taps := altCostTaps(card, cp.AlternativeCost)
 	for _, id := range cp.AltCostIDs {
+		if taps {
+			v -= p.tapFuelValue(st, id)
+			continue
+		}
 		v -= p.fuelValue(st, id)
 	}
 	// ADR 0135 §2: an offer that DISCARDS its cards (Snag's Forest,

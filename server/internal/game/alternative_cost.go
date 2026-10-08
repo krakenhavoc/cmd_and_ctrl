@@ -221,10 +221,27 @@ type AlternativeCost struct {
 	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
 
+	// TapOthers is "tap N untapped [permanents] you control" as the price
+	// (CR 118.9, ADR 0135 §1, #2030): Orim's Cure's creature, Battle
+	// Screech's three white creatures, Zahid's artifact. The same struct
+	// an activated ability's cost carries (#758), so the options walk,
+	// the validator and the payer are the ones abilities already use:
+	// untapped (CR 118.3, 701.26a), under the caster's control, matched
+	// without targeting, and with no summoning-sickness check (CR 302.6:
+	// tapping a creature to pay a spell's cost is not the {T} symbol).
+	// The permanents ride CastSpellParams.AltCostIDs, which the
+	// auto-tapper already leaves alone (CastAutoTapExclusions), so
+	// Sephara's {W} can't be paid by a creature tapped for her price.
+	//
+	// ExcludeSource and the X count are refused by effects.Register: the
+	// spell is not on the battlefield, and no printed alternative cost
+	// taps X.
+	TapOthers *TapOthersCost
+
 	// PayLabel is the picker's prompt copy for the card component —
-	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand or Sacrifice ("a
-	// blue card", "an Island you control", "three creatures"). Empty
-	// falls back to Label.
+	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand,
+	// Sacrifice or TapOthers ("a blue card", "an Island you control",
+	// "three creatures"). Empty falls back to Label.
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
@@ -459,6 +476,11 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		// same clause shape (#747) — Register holds it to a fixed
 		// count, so this is the printed N.
 		return a.Sacrifice, ZoneBattlefield, SacrificeCostCount(a.Sacrifice)
+	case !a.TapOthers.Empty():
+		// ADR 0135 §1: a fixed count (Register refuses the X form), of
+		// permanents on the battlefield; altCostCardOKLocked adds the
+		// untapped check a sacrifice or a return does not need.
+		return a.TapOthers.Filter, ZoneBattlefield, a.TapOthers.Count
 	}
 	return nil, "", 0
 }
@@ -689,7 +711,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 		if c.InstanceID == castID {
 			continue
 		}
-		if g.altCostCardOKLocked(p, spec, zone, c) {
+		if g.altCostCardOKLocked(p, alt, spec, zone, c) {
 			if setRule {
 				pool = append(pool, c.InstanceID)
 				continue
@@ -725,11 +747,17 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 // the sacrifice component it makes the offer the view stamps and the
 // candidates the enumerator pays from the same rule the announce
 // validator then judges the named permanents by.
-func (g *Game) altCostCardOKLocked(p *Player, spec *TargetSpec, zone ZoneKind, c Card) bool {
+func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *TargetSpec, zone ZoneKind, c Card) bool {
 	if zone == ZoneBattlefield {
 		// CR 701.21a for the sacrifice, "an Island YOU CONTROL" for the
 		// bounce: a cost is paid with your own permanents.
 		if c.Controller != p.ID {
+			return false
+		}
+		// ADR 0135 §1, CR 118.3 and 701.26a: a permanent that is already
+		// tapped can't be tapped to pay a cost. The one check a tap needs
+		// that a sacrifice or a return does not.
+		if alt != nil && alt.TapOthers != nil && c.Tapped {
 			return false
 		}
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
@@ -795,6 +823,16 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		_, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{SacrificeOther: alt.Sacrifice}, ids, 0)
 		return err
 	}
+	if alt.TapOthers != nil {
+		// ADR 0135 §1 (owner decision 1): the one tap-others validator
+		// activated abilities use (#758) — exactly Count, each named
+		// once, on the battlefield under the caster's control, untapped
+		// (CR 118.3) and matching the clause without targeting, with no
+		// summoning-sickness check (CR 302.6). The spell is not on the
+		// battlefield, and Register refuses ExcludeSource, so the
+		// "source" the validator is handed excludes nothing.
+		return g.validateTapOthersCostLocked(playerID, castID, alt.TapOthers, ids)
+	}
 	// Exactly `want`, not "at least": escape's five is a price, and
 	// a caster who named four has not paid it while one who named
 	// six has overpaid by a card the cost never asked for.
@@ -818,7 +856,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// The same per-card predicate AlternativeCostPayableLocked
 		// counts candidates with, so "the client was offered this"
 		// and "the engine accepts this" are one rule (#695).
-		if !g.altCostCardOKLocked(p, spec, zone, c) {
+		if !g.altCostCardOKLocked(p, alt, spec, zone, c) {
 			return ErrInvalidParam
 		}
 	}
@@ -906,16 +944,18 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 		if c.InstanceID == castID {
 			continue
 		}
-		if !g.altCostCardOKLocked(p, spec, kind, c) {
+		if !g.altCostCardOKLocked(p, alt, spec, kind, c) {
 			continue
 		}
 		out = append(out, c.InstanceID)
 	}
-	if alt.Sacrifice != nil {
+	if alt.Sacrifice != nil || alt.TapOthers != nil {
 		// #1727: a sacrifice payment is offered in the order every
 		// other sacrifice cost is (#747) — tokens first, then the
 		// cheapest — so the bot pays what the client's "Choose for me"
-		// would, before a policy re-sorts it.
+		// would, before a policy re-sorts it. ADR 0135 §1: a tap payment
+		// in the order the tap-others picker lists its options
+		// (tapOthersCostOptions), which is the same order.
 		return g.SacrificePaymentOrderForEffect(out, uuid.Nil)
 	}
 	return out
@@ -1016,6 +1056,12 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		// countered. The CR 903.9 answers ride along as they do for the
 		// moves above (#1397).
 		return g.payCostSacrificesLocked(ids, answers)
+	case alt.TapOthers != nil:
+		// ADR 0135 §1: the ability's tap-others payer (#758), with the
+		// spell already on the stack, so each permanent's EventTapCard
+		// puts a "whenever a creature becomes tapped" trigger above the
+		// spell. Nothing moves, so there is no CR 903.9 answer to carry.
+		g.payTapOthersCostLocked(playerID, ids)
 	}
 	return nil
 }

@@ -64,6 +64,11 @@
     // must fill every part with a different permanent. Confirm stays
     // shut until they do, and "Choose for me" fills a set that does.
     eachOf?: SacrificeGroupView[];
+    // ADR 0135 §1: the spell this pays for, when the picker pays a
+    // spell's alternative cost rather than an ability's cost. The hint
+    // then reads "Tap an untapped creature you control to cast Orim's
+    // Cure."
+    castName?: string;
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
@@ -77,6 +82,7 @@
     verb = "Sacrifice",
     countIsX = false,
     eachOf,
+    castName,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -84,6 +90,10 @@
   // The bounds this picker enforces. A caller that passes only
   // `count` gets N..N, which is exactly what it got before #1213.
   const range = $derived<SacrificeRange>({ min: min ?? count, max: count });
+  // ADR 0135 §1: a spell's alternative cost names the spell it pays for.
+  const hint = $derived(
+    `${verb} ${label} ${castName ? `to cast ${castName}.` : "to pay for this ability."}`,
+  );
   const ceiling = $derived(sacrificeCeiling(range, options.length));
 
   let chosen = $state<string[]>([]);
@@ -151,7 +161,7 @@
 {#if source}
   <DockSheet
     label={source.name}
-    src="additional cost"
+    src={castName ? "alternative cost" : "additional cost"}
     width={560}
     sheetKey={`sac:${source.instance_id}:${verb}:${label}`}
     count={chooseForMeButton.shown
@@ -160,7 +170,7 @@
     primary={confirmAction(verb, confirm, { disabled: !ready })}
     {secondary}
   >
-    <p class="prompt-hint">{verb} {label} to pay for this ability.</p>
+    <p class="prompt-hint">{hint}</p>
     {#if eachOf && eachOf.length > 0}
       <p class="prompt-hint">
         One permanent for each part: {eachOf.map((g) => g.label).join(", ")}.
