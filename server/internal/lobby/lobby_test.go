@@ -44,10 +44,14 @@ func TestCreateGame(t *testing.T) {
 	}
 }
 
-func TestCreateRejectsEmptyName(t *testing.T) {
+func TestCreateNamesABlankName(t *testing.T) {
 	l := newTestLobby(t)
-	if _, err := l.Create("   "); err != ErrEmptyName {
-		t.Errorf("Create empty name: got %v, want ErrEmptyName", err)
+	meta, err := l.Create("   ")
+	if err != nil {
+		t.Fatalf("Create blank name: %v", err)
+	}
+	if meta.Name == "" || len(meta.Name) > maxTableNameLen {
+		t.Errorf("generated name = %q", meta.Name)
 	}
 }
 

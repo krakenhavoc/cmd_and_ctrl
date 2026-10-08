@@ -33,13 +33,22 @@ test.describe("lobby — admin flow", () => {
     await expect(gameRow.getByRole("button", { name: "open" })).toBeVisible();
   });
 
-  test("empty game name keeps the create button disabled", async ({ page }) => {
-    await expect(page.getByRole("button", { name: "create" })).toBeDisabled();
-    await page.getByPlaceholder("game name").fill("   ");
-    // Trim-only input should still leave the button disabled.
-    await expect(page.getByRole("button", { name: "create" })).toBeDisabled();
-    await page.getByPlaceholder("game name").fill("Valid Name");
+  test("a blank game name creates a table with a generated name (#2630)", async ({ page }) => {
     await expect(page.getByRole("button", { name: "create" })).toBeEnabled();
+    await page.getByPlaceholder("game name").fill("   ");
+    // Trim-only input is a blank name too: the server picks one.
+    await expect(page.getByRole("button", { name: "create" })).toBeEnabled();
+    const rows = page.locator("ul.games > li");
+    const before = await rows.count();
+    await page.getByRole("button", { name: "create" }).click();
+    await expect(rows).toHaveCount(before + 1);
+  });
+
+  test("the dice fills the name box with a suggestion (#2630)", async ({ page }) => {
+    const box = page.getByPlaceholder("game name");
+    await expect(box).toHaveValue("");
+    await page.getByRole("button", { name: "suggest a name" }).click();
+    await expect(box).not.toHaveValue("");
   });
 
   test("refresh button re-fetches the games list", async ({ page }) => {

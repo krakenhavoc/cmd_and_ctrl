@@ -610,6 +610,13 @@ export const LABEL_SPECS = {
     owners: ["routes/Lobby.svelte"],
     doc: "the Lobby's create-a-table form; the lobby.create hint points at it",
   }),
+  suggestTableName: label({
+    name: "suggest a name",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/components/NewTableRow.svelte"],
+    doc: "the dice next to the Lobby's game-name box: fills it with a generated table name (#2630)",
+  }),
   deckLink: label({
     name: "deck link",
     kind: "aria",

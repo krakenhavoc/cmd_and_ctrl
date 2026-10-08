@@ -87,9 +87,6 @@ func (l *Lobby) CreateCapped(name string, createdBy uuid.UUID, hostDiscordID str
 	if createdBy == uuid.Nil {
 		return GameMeta{}, errors.New("lobby: a capped create needs a creator")
 	}
-	if strings.TrimSpace(name) == "" {
-		return GameMeta{}, ErrEmptyName
-	}
 	l.createMu.Lock()
 	defer l.createMu.Unlock()
 	if open := l.OpenTablesCreatedBy(createdBy); len(open) >= max {

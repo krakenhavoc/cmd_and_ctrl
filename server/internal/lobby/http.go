@@ -431,6 +431,11 @@ func Handler(c Config) http.Handler {
 	// because applying a setup seats decks.
 	createLimit := newLimiter(1.0/30, 3)
 	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit)))))
+	// A suggested table name for the create form's dice button (#2630).
+	// The same gate as POST /games; a light route, so it rides its own
+	// generous per-caller bucket.
+	nameLimit := newLimiter(1, 10)
+	mux.Handle("GET /games/name-suggestion", nameLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, nameSuggestion))))
 	mux.Handle("DELETE /games/{id}", requireAdmin(c, handlerFunc(c, deleteGame)))
 	// Archive / unarchive: the reversible half of DELETE. Admin-only
 	// on the same gate, because hiding somebody else's table from the
@@ -1007,6 +1012,13 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown setup %q (want %q)", body.Setup, setupFromLast))
 		}
 
+		if strings.TrimSpace(body.Name) == "" && !server {
+			// A blank name is a surprise (#2630); the creator's own name
+			// lets some templates be personal. The admin token has no
+			// display name, and CreateWith picks a random one.
+			body.Name = SuggestTableName(p.Name)
+		}
+
 		var (
 			meta GameMeta
 			err  error
@@ -1044,6 +1056,31 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
 		return writeJSON(w, http.StatusCreated, out)
 	}
+}
+
+// nameSuggestionResponse is the body of GET /games/name-suggestion.
+type nameSuggestionResponse struct {
+	Name string `json:"name"`
+}
+
+// nameSuggestion handles GET /games/name-suggestion (#2630): a fresh
+// generated table name, personalised with the caller's display name
+// when they are signed in. Whoever may create a table may ask; nothing
+// is stored.
+func nameSuggestion(c Config, w http.ResponseWriter, r *http.Request) error {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	server := isServerCredential(p)
+	if !server && !isSignedInPerson(p) {
+		return httpError(http.StatusForbidden, "sign in with Discord to create a table")
+	}
+	display := ""
+	if !server {
+		display = p.Name
+	}
+	return writeJSON(w, http.StatusOK, nameSuggestionResponse{Name: SuggestTableName(display)})
 }
 
 // transferHost handles POST /games/{id}/host: hand the table to
