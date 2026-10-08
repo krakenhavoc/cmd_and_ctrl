@@ -14,5 +14,6 @@ import (
 // stack trace.
 func TestMain(m *testing.M) {
 	SetCardIndexCrossCheck(func(msg string) { panic(msg) })
+	SetHarvestInvariantHook(func(msg string) { panic(msg) })
 	os.Exit(m.Run())
 }

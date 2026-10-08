@@ -76,6 +76,14 @@ type Game struct {
 	// Plain data, carried by Clone and the snapshot.
 	TurnEndPending bool
 
+	// harvestDepth counts the trigger-harvest passes in progress
+	// (triggerHarvester.OnEvent). While it is non-zero the battlefield
+	// is being walked, so nothing reached from a harvest may move a
+	// permanent: a state-based-action sweep run from inside the walk
+	// removed a whole departed player's cards under it (#2608). Not
+	// part of a snapshot: a clone is only ever taken between passes.
+	harvestDepth int
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
