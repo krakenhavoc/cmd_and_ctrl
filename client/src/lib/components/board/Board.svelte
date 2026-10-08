@@ -1499,6 +1499,8 @@
       if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
       // ADR 0109 §7: the card put on top of the library, likewise.
       if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
+      // #2598: the cards revealed to pay "Reveal X black cards".
+      if (abilityRevealIDs.length > 0) params.reveal_ids = abilityRevealIDs;
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
       // #916, CR 107.4f: announced with the rest of the cost, before
       // these targets, and sent in the same message.
@@ -1512,6 +1514,8 @@
         params.waterbend_ids = abilityWaterbendIDs;
       }
       abilityWaterbendIDs = undefined;
+      abilityRevealIDs = [];
+      abilityRevealX = undefined;
       abilityDiscardIDs = [];
       abilityExileIDs = [];
       abilityTopIDs = [];
@@ -1721,6 +1725,26 @@
   } | null>(null);
   let abilityDiscardIDs: string[] = [];
 
+  // #2598: the "Reveal X black cards from your hand" component of an
+  // activated ability's cost (Martyr of Bones), asked first — before the
+  // discard pick — because revealing is the cost nothing else depends on.
+  // The cards picked are the announced X for the X form. Carried on the
+  // side for the reason the discard picks are.
+  let abilityRevealPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityRevealIDs: string[] = [];
+  let abilityRevealX: number | undefined;
+
+  const abilityRevealOptions = $derived.by(() => {
+    const p = abilityRevealPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.reveal_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
   // The cards the clause admits, resolved out of the seat's hand. The
   // server already filtered them — a cost does not target, so nothing
   // narrows them further here.
@@ -1822,6 +1846,55 @@
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
     abilityTapX = undefined;
+    abilityRevealIDs = [];
+    abilityRevealX = undefined;
+    // #2598: "Reveal X black cards from your hand" is asked before the
+    // rest. The X form always asks — how many is the question — and an
+    // empty set of matching cards pays it at X=0 with nothing to pick; a
+    // fixed count skips the picker when the hand holds exactly that many.
+    if (ability.reveal_cost_count_from_x) {
+      const options = ability.reveal_cost_options ?? [];
+      if (options.length > 0) {
+        abilityRevealPrompt = { card, ability };
+        return;
+      }
+      afterAbilityRevealCost(card, ability, []);
+      return;
+    }
+    if (ability.reveal_cost_n) {
+      const options = ability.reveal_cost_options ?? [];
+      if (options.length > ability.reveal_cost_n) {
+        abilityRevealPrompt = { card, ability };
+        return;
+      }
+      afterAbilityRevealCost(card, ability, options);
+      return;
+    }
+    askAbilityDiscardCost(card, ability);
+  }
+
+  function confirmAbilityRevealCost(ids: string[]): void {
+    const p = abilityRevealPrompt;
+    abilityRevealPrompt = null;
+    if (!p) return;
+    afterAbilityRevealCost(p.card, p.ability, ids);
+  }
+
+  // afterAbilityRevealCost records the reveal picks and goes on to the
+  // discard question. For the X form the number revealed IS the
+  // announced X, so the X stepper has nothing left to ask.
+  function afterAbilityRevealCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    revealIDs: string[],
+  ): void {
+    abilityRevealIDs = revealIDs;
+    abilityRevealX = ability.reveal_cost_count_from_x ? revealIDs.length : undefined;
+    askAbilityDiscardCost(card, ability);
+  }
+
+  // askAbilityDiscardCost is the head of the card-cost chain.
+  function askAbilityDiscardCost(card: CardView, ability: ActivatedAbilityView): void {
     // #660: the discard payment is asked FIRST, as the cast flow asks
     // its own — it is the cost most likely to make a player back out.
     // Skipped when the hand holds exactly the cards the clause
@@ -2411,6 +2484,8 @@
         xValue = abilityTapX;
       } else if (abilityDiscardX !== undefined) {
         xValue = abilityDiscardX;
+      } else if (abilityRevealX !== undefined) {
+        xValue = abilityRevealX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -2547,7 +2622,11 @@
     }
     // ADR 0109 §7: the card put on top of the library, likewise.
     if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
+    // #2598: the cards revealed to pay "Reveal X black cards".
+    if (abilityRevealIDs.length > 0) params.reveal_ids = abilityRevealIDs;
     abilityWaterbendIDs = undefined;
+    abilityRevealIDs = [];
+    abilityRevealX = undefined;
     abilityDiscardIDs = [];
     abilityExileIDs = [];
     abilityTopIDs = [];
@@ -3451,6 +3530,24 @@
     onCancel={() => {
       discardPromptCard = null;
       discardPromptChoices = {};
+    }}
+  />
+  <!-- #2598: "Reveal X black cards from your hand" (Martyr of Bones),
+       the same picker with the verb changed. Revealing moves nothing, so
+       the confirm names how many are shown; the number IS the X. -->
+  <DiscardCostModal
+    card={abilityRevealPrompt?.card ?? null}
+    options={abilityRevealOptions}
+    need={abilityRevealPrompt?.ability.reveal_cost_n}
+    label={abilityRevealPrompt?.ability.reveal_cost_label}
+    variable={abilityRevealPrompt?.ability.reveal_cost_count_from_x}
+    verb="Reveal"
+    note="cost · CR 602.2b"
+    onConfirm={confirmAbilityRevealCost}
+    onCancel={() => {
+      abilityRevealPrompt = null;
+      abilityRevealIDs = [];
+      abilityRevealX = undefined;
     }}
   />
   <!-- #660: the same picker, one cost site over — an activated

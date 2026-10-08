@@ -1717,16 +1717,16 @@ var items = []Item{
 	{
 		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Spells and abilities that target several cards \"from a single graveyard\" make you pick them all from one player's graveyard, like Digsite Conservator and Decompose.",
-		Missing:  "A few of these cards also do something that isn't supported yet: revealing cards from your hand as a cost, targeting a creature that was dealt damage this turn, an Omen that shuffles itself away, and casting a copy of a card in exile.",
+		Missing:  "A few of these cards also do something that isn't supported yet: an Omen that shuffles itself away, and casting a copy of a card in exile.",
 		Rules:    []string{"601.2c", "608.2b"},
 		Issue:    1807,
 		ADR:      "0106-five-small-seams-from-the-s50-rechecks.md",
 		Printed:  printedWords("from a single graveyard"),
 		Examples: []string{"Digsite Conservator", "Decompose"},
 		Waiting: []string{
-			"Martyr of Bones", "Feral Deathgorger", "Spellweaver Helix",
+			"Feral Deathgorger", "Spellweaver Helix",
 		},
-		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. Qutrub Forayer shipped afterwards (its \"dealt damage this turn\" half arrived with Covert Cutpurse). **Still open:** three cards of the family are held for their OTHER text, each with no seam row of its own yet: Martyr of Bones (\"Reveal X black cards from your hand\" as an activation cost — `AbilityCost` has no reveal component), Feral Deathgorger // Dusk Sight (an Omen, CR 720 — Scryfall lays it out as an Adventure, the Adventure path always exiles the resolved half, and CR 720.3d shuffles an Omen into its owner's library instead) and Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
+		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. Qutrub Forayer shipped afterwards (its \"dealt damage this turn\" half arrived with Covert Cutpurse). **Still open:** two cards of the family are held for their OTHER text, each with no seam row of its own yet: Feral Deathgorger // Dusk Sight (an Omen, CR 720 — Scryfall lays it out as an Adventure, the Adventure path always exiles the resolved half, and CR 720.3d shuffles an Omen into its owner's library instead) and Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
 	},
 	{
 		Slug: "keyword-counters", Name: "Keyword counters", Kind: KindSeam, Status: StatusImplemented,
@@ -2498,6 +2498,18 @@ var items = []Item{
 		Probe:       declaresDiscardYourHand,
 		Examples:    []string{"Lion's Eye Diamond", "Null Brooch"},
 		EngineNotes: "**Shipped** (#1600, ADR 0020's 2026-10-02 amendment): `game.DiscardCost.Hand`, built by `effects.DiscardYourHand()`, on both owners of the component (`AbilityCost.DiscardCards`, `ManaAbilityCost.DiscardCards`). `validateDiscardCostLocked` reads the whole hand, refuses `discard_ids` for it, and pays an empty hand as nothing; the cards leave through the one discard door with cause cost. No options are stamped, so the client opens no picker and the enumerator sends no ids. A mana ability's \"Activate only as an instant\" is `effects.OnlyAsAnInstant()` over `Game.InstantWindowOpenForEffect`; the auto-tapper refuses every discard component. Not covered: \"As an additional cost to cast this spell, … discard your hand\" (Kaervek's Spite, which also sacrifices every permanent). Bomat Courier, Kyren Archive, Connecting the Dots, Reverberating Summons, Subira, Tulzidi Caravanner, Tarrian's Journal and Flamewar print the cost beside something else and are not catalogued.",
+	},
+	{
+		// #2598 (ADR 0020's 2026-10-08 amendment). Closed; history in
+		// Closed seams.
+		Slug: "reveal-cards-cost", Name: "Revealing cards from your hand as an ability's cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that reveal a number of cards of one colour from your hand, such as the Martyr cycle's \"Reveal X black cards from your hand\". The count is the X of the ability, and the cards stay in your hand.",
+		Rules:       []string{"107.3a", "602.2b", "701.20"},
+		Issue:       2598,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresRevealCards,
+		Examples:    []string{"Martyr of Bones", "Martyr of Sands"},
+		EngineNotes: "**Shipped** (#2598, ADR 0020's 2026-10-08 amendment, Decisions 58-60): `game.AbilityCost.RevealCards` (`RevealCardsCost{RevealCost, N, CountFromX, Label}`), built by `effects.RevealX` / `effects.RevealN`. It embeds the either/or branch's `RevealCost`, so the candidate walk and the quality test are shared, and `RevealCost` gained a `Color`. The count is a printed N or the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, the mana cost stays the printed one, and X may be zero. The cards are named in `reveal_ids`, shown to the table and left in the hand (CR 701.20b), so no other component's pick excludes them. `effects.Register` refuses it beside another claim on the announced X, a zero count, an unknown colour, no label and behold. The wire carries `reveal_cost_label` / `reveal_cost_n` / `reveal_cost_count_from_x` (public) and `reveal_cost_options` (controller only); the client reuses its discard picker with the verb Reveal. The enumerator offers the first 1, 2 and 3 matching cards, holds an \"up to X\" target count to each payment's X, and never the X = 0 no-op for a card that declares `XMatters`. 5 cards shipped: the Martyr cycle. **Still open:** \"Reveal this card from your hand\" (forecast, augment, Tetzimoc) and Illuminated Folio's \"two cards that share a color\".",
 	},
 	{
 		// #2527 (ADR 0113's 2026-10-07 amendment). Closed; history in

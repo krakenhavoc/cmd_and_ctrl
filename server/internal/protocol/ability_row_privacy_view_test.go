@@ -116,6 +116,10 @@ var activatedRowScopes = map[string]rowScope{
 	// ADR 0109 §7: the hand again, for "Put a card from your hand on
 	// top of your library".
 	"TopCostOptions": rowHiddenZone,
+	// #2598: the reveal component — its printed count, its words and
+	// the X flag are public; the matching HAND cards are not.
+	"RevealCostN": rowPublic, "RevealCostLabel": rowPublic, "RevealCostCountFromX": rowPublic,
+	"RevealCostOptions": rowHiddenZone,
 }
 
 // manaRowScopes is activatedRowScopes for ManaAbilityView.

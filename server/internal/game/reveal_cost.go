@@ -27,6 +27,26 @@ type RevealCost struct {
 	// action behold, "choose a [quality] you control or reveal a
 	// [quality] card from your hand").
 	Behold bool
+	// Color narrows the candidates to one colour ("B", "W", …), read
+	// with Card.HasColor — Martyr of Bones' "black cards". Empty means
+	// any colour. Combines with Subtype by AND; an additional cost's
+	// branch (RevealCardCost) still names a Subtype and no colour.
+	// ADR 0020's 2026-10-08 amendment (#2598).
+	Color string
+}
+
+// matches reports whether `c` satisfies the clause's quality: the
+// creature type when one is named, the colour when one is named. ONE
+// predicate for the cast path's candidate walk and the activation
+// path's, so "who can pay" is not written twice (#544).
+func (rc *RevealCost) matches(c *Card) bool {
+	if rc.Subtype != "" && !c.HasSubtype(rc.Subtype) {
+		return false
+	}
+	if rc.Color != "" && !c.HasColor(rc.Color) {
+		return false
+	}
+	return true
 }
 
 // planReveal is the reveal component the announced plan demands, or
@@ -61,7 +81,7 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 	var out []uuid.UUID
 	for i := range p.Hand.Cards {
 		c := &p.Hand.Cards[i]
-		if c.InstanceID != castID && c.HasSubtype(rc.Subtype) {
+		if c.InstanceID != castID && rc.matches(c) {
 			out = append(out, c.InstanceID)
 		}
 	}
@@ -69,7 +89,7 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 		g.RecomputeLayersIfStaleLocked()
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
-			if c.Controller == playerID && c.HasSubtype(rc.Subtype) {
+			if c.Controller == playerID && rc.matches(c) {
 				out = append(out, c.InstanceID)
 			}
 		}

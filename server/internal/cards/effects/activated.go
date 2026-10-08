@@ -317,6 +317,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.DiscardCards != nil {
 			out.DiscardCards = c.DiscardCards
 		}
+		// #2598: and the reveal component — a composed "{1}, Reveal X
+		// black cards, Sacrifice this" that dropped its reveal would
+		// exile for free at any X, stronger than printed (#259).
+		if c.RevealCards != nil {
+			out.RevealCards = c.RevealCards
+		}
 		// #1213: the same reasoning again — a composed "{1}, Return a
 		// land you control to its owner's hand" that dropped the
 		// return would be a free token every turn, which is Meloku

@@ -3154,3 +3154,79 @@ does (the same fewest-fits preference), and a row whose board cannot fill every 
   names" is a rule over an attribute of the picks, not a matching against entries. It is `TargetSpec.Different`'s
   shape (#1559) on a sacrifice clause, and still waits.
 - **A variable count with a set rule.** `EachOf` is a fixed count by construction.
+
+## Amendment (2026-10-08, [#2598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2598)): "Reveal X black cards from your hand" as a cost
+
+**Sprint:** the issue names none (it was filed from #1807's work, S50), and none of the trackers #879–#892 covers a
+reveal cost (S44's "Mana and cost components", #887, is the nearest). The active sprint, S58 — Deck requests, October
+batch, is the one the commit trailer uses.
+Decisions 55–57 are the amendment above; this one starts at 58. No new ADR number: the struct it extends is this
+ADR's `AbilityCost`, and the either/or reveal branch it shares a walk with is ADR 0100's amendment of 2026-10-07.
+
+### Context
+
+```
+Martyr of Bones   {1}, Reveal X black cards from your hand, Sacrifice this creature:
+                  Exile up to X target cards from a single graveyard.
+```
+
+The Martyr cycle (Sands, Frost, Spores, Ashes, Bones) is the one printed family that pays a reveal to ACTIVATE.
+The only reveal cost the engine had was `AdditionalCost.Reveal = RevealCost{Subtype, Behold}`, a branch of a
+spell's either/or cost (ADR 0100): exactly one card, named on `cast_spell.reveal_ids`. `AbilityCost` had no reveal
+component at all, so Martyr of Bones sat on the single-graveyard row's Waiting list (#1807) and the other four
+could not be written.
+
+### Decision 58: `AbilityCost.RevealCards` — the branch's walk, with a count
+
+`game.RevealCardsCost{RevealCost, N, CountFromX, Label}` embeds the spell branch's `RevealCost`, so the candidate
+walk (`RevealCostOptionsForEffect`: matching cards in the activator's hand, the source excluded) and the quality
+test (`RevealCost.matches`) are written once and the validator, the view and the enumerator read the same set
+(#544). `RevealCost` gained one field, `Color` ("W", "U", "B", "R", "G", read with `Card.HasColor`), which
+combines with `Subtype` by AND. A cast's branch still names a creature type only: `effects.Register` refuses a
+colour there.
+
+What the ability adds is the COUNT. A fixed `N` is the printed number; `CountFromX` makes the count the X
+announced with the activation (CR 602.2b), exactly as `DiscardCost.CountFromX` does (ADR 0113's 2026-10-07
+amendment): `AbilityCost.DemandsX` is true for it, there is no `{X}` symbol so the mana cost is the printed one
+whatever X is, X may be zero (CR 107.3a), and the effect reads the same number with `ctx.X()`. `effects.Register`
+refuses it beside any other claim on the announced X (`{X}` in the mana cost, pay-X-energy, sacrifice X, tap X,
+discard X), a zero fixed count, a fixed count beside `CountFromX`, an unknown colour, a clause with no `Label`, and
+behold. A mana ability has no field for it (it announces no X, CR 605.3b), so that refusal is the compiler's.
+
+### Decision 59: revealing moves nothing, so nothing is excluded and nothing is kept out of the auto-tapper
+
+The pick rides `activate_ability.reveal_ids` (`ActivateAbilityParams.RevealIDs`). Revealing is CR 701.20: the cards
+stay in the hand (CR 701.20b) and the whole table sees them (`RevealForEffect`, which marks every seat a knower and
+emits `EventRevealCards`). So, unlike a discard or an exile, no other component's pick is excluded from it, the
+auto-tapper has nothing to keep away from (`AbilityAutoTapExclusions` is untouched), and the cards are not recorded
+on `PaidCost`. Ids sent to an ability with no reveal component are refused, as a stray `discard_ids` is. The
+reveal is paid after the mana and before the sacrifices, validate-all-then-pay, so a refused activation reveals
+nothing, and a revealed card is shown while the Martyr is still on the battlefield.
+
+### Decision 60: the wire, the picker and the bot
+
+`ActivatedAbilityView` gains `reveal_cost_n`, `reveal_cost_label`, `reveal_cost_count_from_x` and
+`reveal_cost_options`. The options are the activator's hand cards, so they are stripped from every other viewer's
+copy of the row (`publicActivatedAbilityRow`, placed `rowHiddenZone` in the privacy test); the rest is the printed
+clause and stays public. The client reuses `DiscardCostModal` with the verb "Reveal" (the variable-count picker
+"Discard X cards" opens), asked FIRST, before the discard question; the number picked is the announced X, so the X
+stepper is skipped and the target picker's "up to X" ceiling reads it. The enumerator offers a bounded ladder of
+reveals (the first 1, 2 and 3 matching cards in hand order — nothing leaves the hand, so there is no fuel to rank),
+never the X = 0 no-op for a card that declares `XMatters`, and nothing when the hand holds no matching card. A
+target count defined by that X ("up to X target cards", `TargetSpec.CountFromX` + `UpToX`) is held to each
+payment's own X in the innermost loop, mirroring the engine's `xCountMismatch`, so no offered move bounces.
+`reveal_ids` joins the heuristic's non-mana activation keys.
+
+### Cards
+
+**Martyr of Bones**, **Martyr of Sands** (three times X life), **Martyr of Spores** (+X/+X), **Martyr of Frost**
+(counter unless its controller pays {X}) and **Martyr of Ashes** (X damage to each creature without flying, dealt by
+the sacrificed Martyr as it last existed) — all `full`, all `XMatters`.
+
+### Still out of scope
+
+- **"Reveal this card from your hand" as a cost** — the forecast, augment and Tetzimoc family reveal the SOURCE, a
+  different component (the card is the payment, nothing is picked) with its own timing rules.
+- **A quality that is a relation, not a property** — Illuminated Folio's "Reveal two cards from your hand that
+  share a color" is a rule over the set, `EachOf`'s neighbourhood (Decision 55), not a colour or a type.
+- **The reveal as a cast's additional cost with a count, or on a mana ability's cost.** No printed card uses either.

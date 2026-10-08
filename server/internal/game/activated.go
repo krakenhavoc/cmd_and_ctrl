@@ -327,6 +327,20 @@ type AbilityCost struct {
 	// not stop to ask the server a question mid-announce.
 	DiscardCards *DiscardCost
 
+	// RevealCards is "Reveal N <quality> cards from your hand" as a
+	// cost (#2598, ADR 0020's 2026-10-08 amendment) — Martyr of Bones'
+	// "{1}, Reveal X black cards from your hand, Sacrifice this
+	// creature:". Nil means no such component. See RevealCardsCost in
+	// reveal_cards_cost.go, which shares RevealCost's candidate walk
+	// with the either/or branch a spell's additional cost carries.
+	//
+	// The activator names the cards in ActivateAbilityParams.RevealIDs
+	// at announce, beside the discard and sacrifice picks. Revealing
+	// moves nothing (CR 701.20b), so the cards stay in the hand and
+	// are not kept out of any other component's reach. With
+	// CountFromX the count IS the announced X, and DemandsX counts it.
+	RevealCards *RevealCardsCost
+
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
 	// "Return a Forest you control to its owner's hand", Master
@@ -521,7 +535,7 @@ type AbilityCost struct {
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
 	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
-		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards)
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -938,6 +952,14 @@ type ActivateAbilityParams struct {
 	// (CR 602.2b), on the wire as `discard_ids`, exactly as a cast's
 	// additional discard cost rides CastSpellParams.DiscardIDs.
 	DiscardIDs []uuid.UUID
+
+	// RevealIDs names the cards revealed to pay a RevealCards cost
+	// (#2598): exactly the clause's N, or exactly XValue when it says
+	// CountFromX; each once, each in the activator's hand and each
+	// matching the clause's quality. Revealing moves nothing, so a
+	// card here may also be named in DiscardIDs. On the wire as
+	// `reveal_ids`, the name a cast's reveal pick already rides.
+	RevealIDs []uuid.UUID
 
 	// ExileIDs names the cards paid to an ExileCards cost (#1297):
 	// exactly the clause's count, each once, each in the activator's
@@ -1441,6 +1463,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #2598: "Reveal X black cards from your hand" (Martyr of Bones).
+	// Validated with the rest and paid before the sacrifices; nothing
+	// moves, so no other component's pick is excluded.
+	if err := g.validateRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs, params.XValue); err != nil {
+		return err
+	}
 	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
 	// and "Exile a card from your hand" (Holistic Wisdom). The SAME
 	// validator the mana ability's owner uses (#1283), against the
@@ -1766,6 +1794,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// One payment is one simultaneous exit (#747, CR 603.10a).
 	// ADR 0113 §1: which objects they were, named before they move.
 	sacrificedRefs := g.sacrificeRefsLocked(sacrifices)
+	// #2598: the reveal component, before anything leaves the table — a
+	// revealed card is shown while the source is still on the
+	// battlefield, and nothing it shows moves.
+	g.payRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs)
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
