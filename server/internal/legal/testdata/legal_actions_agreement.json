@@ -447,7 +447,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 1",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -466,7 +469,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Seat 2",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -485,7 +491,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Sacrificial Bear",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -504,7 +513,10 @@
           },
           "kind": "cast",
           "label": "Cast Lightning Bolt targeting Vivi Ornitier",
-          "source": "00000007-0000-4000-8000-000000000000"
+          "source": "00000007-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{R}"
+          }
         },
         {
           "type": "cast_spell",
@@ -517,7 +529,10 @@
           },
           "kind": "cast",
           "label": "Cast Commander 1 from the command zone",
-          "source": "0000000c-0000-4000-8000-000000000000"
+          "source": "0000000c-0000-4000-8000-000000000000",
+          "cost": {
+            "mana": "{0}"
+          }
         },
         {
           "type": "activate_ability",
