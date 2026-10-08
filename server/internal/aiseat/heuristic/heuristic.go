@@ -235,6 +235,16 @@ type Config struct {
 	// to a three-mana one (1.5 against 0.6 per mana before, 2.5 against
 	// 1.0 now).
 	DiscardLandFloor float64
+	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
+	// with an empty stack, the bot picks the set of casts this turn's
+	// mana buys the most with, and makes that set's first move. Off (the
+	// zero value, and BaselineConfig) decides one move at a time.
+	//
+	// Nothing reads it yet: the plan lands in ADR 0136 PR 4. It exists
+	// now so the arena's `heuristic-noplan` contestant (DefaultConfig
+	// with it off) is in place for PR 2's baseline, and plays exactly as
+	// `heuristic` until then.
+	PlanTurnMana bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -461,6 +471,7 @@ func DefaultConfig() Config {
 		DistanceDiscount:    0.60,
 		DiscardSpellPerMana: 1.00,
 		DiscardLandFloor:    2.50,
+		PlanTurnMana:        true,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -577,6 +588,8 @@ func BaselineConfig() Config {
 	c.DistanceDiscount = 0
 	c.DiscardSpellPerMana = 0
 	c.DiscardLandFloor = 0
+	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
+	c.PlanTurnMana = false
 	return c
 }
 

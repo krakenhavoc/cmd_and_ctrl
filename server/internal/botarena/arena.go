@@ -98,18 +98,31 @@ const VariantNoExert = "noexert"
 // NoExertContestant is VariantNoExert's contestant name.
 const NoExertContestant = string(tiers.Heuristic) + "-" + VariantNoExert
 
+// VariantNoPlan is today's heuristic with ADR 0136's turn plan off
+// (Config.PlanTurnMana false), seated as `heuristic-noplan` (ADR 0136
+// §8, owner answer 8): a run of `heuristic` against it measures the
+// plan alone. Until ADR 0136 PR 4 nothing reads PlanTurnMana, so it
+// plays exactly as `heuristic`. An arena name only, like
+// heuristic-baseline.
+const VariantNoPlan = "noplan"
+
+// NoPlanContestant is VariantNoPlan's contestant name.
+const NoPlanContestant = string(tiers.Heuristic) + "-" + VariantNoPlan
+
 // ParseContestant reads one `--seats` entry: a tier,
-// `heuristic-baseline` or `heuristic-noexert`.
+// `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantBaseline}, nil
 	case NoExertContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoExert}, nil
+	case NoPlanContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoPlan}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q", err, BaselineContestant, NoExertContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -274,8 +287,8 @@ func (c Config) Validate() error {
 		if _, err := tiers.Parse(string(s.Tier)); err != nil {
 			return fmt.Errorf("botarena: seat %d: %w", i, err)
 		}
-		if s.Variant != "" && ((s.Variant != VariantBaseline && s.Variant != VariantNoExert) || s.Tier != tiers.Heuristic) {
-			return fmt.Errorf("botarena: seat %d: %q is not a contestant (the arena variants are %q and %q)", i, s.Contestant(), BaselineContestant, NoExertContestant)
+		if s.Variant != "" && (!knownVariant(s.Variant) || s.Tier != tiers.Heuristic) {
+			return fmt.Errorf("botarena: seat %d: %q is not a contestant (the arena variants are %q, %q and %q)", i, s.Contestant(), BaselineContestant, NoExertContestant, NoPlanContestant)
 		}
 		// A model tier with no client is the one misconfiguration
 		// that would silently corrupt the measurement rather than
@@ -292,6 +305,16 @@ func (c Config) Validate() error {
 		}
 	}
 	return nil
+}
+
+// knownVariant reports whether v is one of the arena's heuristic
+// variants.
+func knownVariant(v string) bool {
+	switch v {
+	case VariantBaseline, VariantNoExert, VariantNoPlan:
+		return true
+	}
+	return false
 }
 
 // Order is the seating for game i: Order(n, i, rotate)[p] is the
@@ -397,6 +420,9 @@ type SeatResult struct {
 	// §1 item 2): every non-land card of its own it was offered, in how
 	// many windows, and how often it took it.
 	Cards []CardUse `json:"cards,omitempty"`
+	// TurnMana is this seat's ADR 0136 §8 numbers for this game:
+	// stranded mana and plan misses (turnmana.go).
+	TurnMana TurnMana `json:"turn_mana"`
 
 	// raw carries the samples the two distributions above were
 	// computed from, so that Run can take a run-wide percentile
@@ -563,6 +589,10 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	seats := make([]SeatResult, 0, n)
 	metersAndFunnels := make([]seatInstruments, 0, n)
 	tallies := make([]*cardTally, 0, n)
+	// One for the whole table: a plan miss needs to see the other
+	// seats' moves (turnmana.go).
+	manaWatch := newTurnManaWatch()
+	seatIDs := make([]uuid.UUID, 0, n)
 	for pos, p := range g.Seats {
 		spec := cfg.Seats[order[pos]]
 		pol, inst, err := newSeat(cfg, spec, seed, pos)
@@ -582,7 +612,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		// *decisionlog.GameLog in an interface slot is a non-nil
 		// interface holding a nil pointer, and calling Observe on it
 		// panics on the runner's own goroutine.
-		obs := fanOut{raw, tally}
+		obs := fanOut{raw, tally, manaWatch}
 		if gameLog != nil {
 			obs = append(obs, gameLog)
 		}
@@ -601,6 +631,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 			runners = append(runners, aiseat.Start(ctx, room, p.ID, pol, rc, nil, cfg.Log))
 		}
 		seats = append(seats, SeatResult{Spec: spec, Position: pos, Policy: pol.Name(), raw: raw})
+		seatIDs = append(seatIDs, p.ID)
 		tallies = append(tallies, tally)
 		metersAndFunnels = append(metersAndFunnels, inst)
 	}
@@ -659,6 +690,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		seats[i].PromptBytesP50 = medianInt(raw.promptBytes)
 		raw.mu.Unlock()
 		seats[i].Cards = tallies[i].list()
+		seats[i].TurnMana = manaWatch.forSeat(seatIDs[i])
 	}
 	res.Seats = seats
 	return res, nil
@@ -720,6 +752,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantNoExert:
 		h := heuristic.DefaultConfig()
 		h.PriceExert = false
+		opt.Heuristic = &h
+	case VariantNoPlan:
+		h := heuristic.DefaultConfig()
+		h.PlanTurnMana = false
 		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {

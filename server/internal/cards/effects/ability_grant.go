@@ -217,8 +217,7 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		if offBattlefield(t.Zones) {
 			panic(where("trigger", i) + " watches from outside the battlefield — a granted ability is a permanent's")
 		}
-		checkPurpose(name, fmt.Sprintf("ability grant %s trigger %d", gr.Key, i), purposeOnTriggered, t.Purpose)
-		checkModePurposes(name, fmt.Sprintf("ability grant %s trigger %d", gr.Key, i), t.Modes)
+		checkTriggeredPurpose(name, fmt.Sprintf("ability grant %s trigger %d", gr.Key, i), t)
 	}
 	for i, s := range gr.Static {
 		if s.ActiveWhen.IsGate() {

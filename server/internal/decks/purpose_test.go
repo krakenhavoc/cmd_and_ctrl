@@ -84,19 +84,12 @@ var valueIsTheirTarget = map[string]string{
 	"Utter End":                 "removal",
 	"Void Rend":                 "removal",
 	"Chaos Warp":                "removal",
-	"Lightning Bolt":            "removal or burn",
-	"Shock":                     "removal or burn",
-	"Abrade":                    "removal, by mode",
-	"Arc Trail":                 "removal or burn",
-	"Blaze":                     "removal or burn",
-	"Fiery Temper":              "removal or burn",
-	"Prismari Command":          "removal or burn, and its targets decide who draws and who gets the Treasure, by mode",
+	"Arc Trail":                 "removal or burn; its two picks are one clause of two targets dealt 2 and 1 by position, which a per-clause entry cannot say (ADR 0126's amendment of 2026-10-08)",
 	"Rapid Hybridization":       "removal",
 	"Pongify":                   "removal",
 	"Beast Within":              "removal",
 	"Krosan Grip":               "removal",
 	"Ashes to Ashes":            "removal",
-	"Sign in Blood":             "its target decides whether it draws or drains",
 	"Reanimate":                 "reanimation of the target",
 	"Zombify":                   "reanimation of the target",
 	"Dread Return":              "reanimation of the target",
@@ -116,11 +109,47 @@ var noPrintedAmount = map[string]string{
 	"Windfall":                  "each player discards a hand and draws as many as the largest; no fixed amount",
 	"Wheel of Fortune":          "each player discards a hand and draws seven; its value is the hands, which no amount says",
 	"Exsanguinate":              "drains X",
+	"Blaze":                     "deals X damage to any target",
 	"Living Death":              "a symmetric mass reanimation: a sweep purpose would price the sacrifice and miss the return",
 	"Rise of the Dark Realms":   "mass reanimation from every graveyard",
 	"Overrun":                   "a combat pump: its value is the attack (ADR 0126 Out of scope)",
 	"Return of the Wildspeaker": "draws as many as the greatest power, or a pump",
 	"Shamanic Revelation":       "draws one per creature, counted at resolution",
+}
+
+// curatedTargetPurposes is every curated spell whose value depends on
+// what it does to its target (ADR 0126's amendment of 2026-10-08, owner
+// answer 5, first half): a gift that is good or bad by whom it is
+// aimed at, and burn, which kills or does not by how much it deals.
+// Each declares a target entry (Purpose.Targets) on the slot named.
+// Arc Trail and Blaze cannot, and say why on valueIsTheirTarget and
+// noPrintedAmount.
+var curatedTargetPurposes = map[string]string{
+	"Prismari Command": "modes",
+	"Sign in Blood":    "card",
+	"Lightning Bolt":   "card",
+	"Shock":            "card",
+	"Fiery Temper":     "card",
+	"Abrade":           "modes",
+	"Izzet Charm":      "modes",
+}
+
+// targetEntriesIn counts the target entries a spell declares in `slot`:
+// "card" for the spell's own statement, "modes" for its bullets'.
+func targetEntriesIn(s effects.Spec, slot string) int {
+	switch slot {
+	case "card":
+		return len(s.Purpose.Targets.List())
+	case "modes":
+		n := 0
+		if s.Modes != nil {
+			for _, o := range s.Modes.Options {
+				n += len(o.Purpose.Targets.List())
+			}
+		}
+		return n
+	}
+	return 0
 }
 
 // curatedPermanentPurposes is every curated permanent in a class ADR
@@ -262,6 +291,9 @@ func TestCuratedDeckPurposes(t *testing.T) {
 			if slot, ok := curatedPermanentPurposes[c.Name]; ok && !declaresIn(spec, slot) {
 				t.Errorf("%s (%s) declares no purpose on its %s", c.Name, d.ID, slot)
 			}
+			if slot, ok := curatedTargetPurposes[c.Name]; ok && targetEntriesIn(spec, slot) == 0 {
+				t.Errorf("%s (%s) declares no target entry on its %s (ADR 0126's amendment of 2026-10-08)", c.Name, d.ID, slot)
+			}
 		}
 	}
 	if len(missing) > 0 {
@@ -280,6 +312,7 @@ func TestCuratedDeckPurposes(t *testing.T) {
 		{"valueIsTheirTarget", sortedKeys(valueIsTheirTarget)},
 		{"noPrintedAmount", sortedKeys(noPrintedAmount)},
 		{"curatedPermanentPurposes", sortedKeys(curatedPermanentPurposes)},
+		{"curatedTargetPurposes", sortedKeys(curatedTargetPurposes)},
 	} {
 		for _, n := range list.names {
 			if !inDeck[n] {
@@ -290,6 +323,11 @@ func TestCuratedDeckPurposes(t *testing.T) {
 	for n := range valueIsTheirTarget {
 		if !spells[n] {
 			t.Errorf("valueIsTheirTarget lists %q, which is not in curatedInstantsAndSorceries", n)
+		}
+	}
+	for n := range curatedTargetPurposes {
+		if _, listed := valueIsTheirTarget[n]; listed {
+			t.Errorf("%s declares its target entries and is also on valueIsTheirTarget: take it off", n)
 		}
 	}
 	for n := range noPrintedAmount {
