@@ -39,7 +39,7 @@ func init() {
 func adiposeOffspringAliens(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := 1
-	if obj := ctx.Trigger().Object; obj != nil && obj.AltCost == AltCostKeyEmerge {
+	if obj := ctx.Trigger().Object; obj != nil && PaidEmerge(obj.AltCost) {
 		n = 0
 		if sacrificed := g.AltCostPermanentsForEffect(obj.AltCostObjects); len(sacrificed) > 0 {
 			n = max(sacrificed[0].Toughness, 0)

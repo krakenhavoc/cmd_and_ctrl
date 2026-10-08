@@ -80,6 +80,18 @@ type GrantedAlternativeCost struct {
 	// replaces the mana cost, so an {X} in it counts as 0 (CR 107.3b,
 	// CR 202.3).
 	MaxManaValue *int
+
+	// PricedAtManaCost is Herigast, Erupting Nullkite's "The emerge
+	// cost is equal to its mana cost" (ADR 0135 §4 and PR 6, CR
+	// 702.119a): the offer's ManaCost is the mana cost of the spell
+	// being cast, read off the face being cast as each offer is
+	// derived, so a creature with {X} in its mana cost keeps that {X}
+	// in its emerge cost and the caster chooses X as for its mana cost
+	// (CR 107.3). Offer.ManaCost must be empty; the derived offer's
+	// label gets the price appended. A spell with no mana cost (CR
+	// 118.6), or one whose cost does not parse, gets no offer: there is
+	// no mana cost for the price to equal.
+	PricedAtManaCost bool
 }
 
 // covers reports whether this static's offer reaches a cast of `card`.
@@ -143,6 +155,9 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(card) || seen[gr.Offer.Key] {
 				continue
 			}
+			if gr.PricedAtManaCost && !pricedAtManaCostOK(card) {
+				continue
+			}
 			if seen == nil {
 				seen = make(map[string]bool, 2)
 			}
@@ -152,6 +167,12 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			if offer.Label == "" {
 				offer.Label = offer.Key
 			}
+			if gr.PricedAtManaCost {
+				// ADR 0135 PR 6: the price is the spell's own mana cost,
+				// shown in the label ("Emerge {4}{G}{G}").
+				offer.ManaCost = card.ManaCost
+				offer.Label += " " + card.ManaCost
+			}
 			if src.Name != "" {
 				offer.Label += " (" + src.Name + ")"
 			}
@@ -159,6 +180,17 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 		}
 	}
 	return out
+}
+
+// pricedAtManaCostOK reports whether `card` has a mana cost a
+// PricedAtManaCost offer can equal: one printed (CR 118.6: an object
+// with no mana cost has none to pay) and parseable as a single cost.
+func pricedAtManaCostOK(card Card) bool {
+	if HasNoManaCost(card) || card.ManaCost == "" {
+		return false
+	}
+	_, err := ParseCost(card.ManaCost)
+	return err == nil
 }
 
 // grantedAlternativeCostByKeyLocked is the claim half: the granted

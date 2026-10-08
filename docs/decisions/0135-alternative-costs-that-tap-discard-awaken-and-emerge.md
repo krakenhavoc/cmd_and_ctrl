@@ -230,6 +230,8 @@ Each PR goes into `develop`, Sprint S68, and lands its engine change and every c
 
 **Order.** PRs 2–5 can run in parallel after this ADR. PRs 2 and 3 both touch `cardComponent` and the view's offer stamp, and PRs 3 and 5 both touch the cast pricing; the second to merge resolves a mechanical conflict. PR 6 waits on PR 5 and ADR 0129 PR 4.
 
+**PR 6 note (2026-10-08).** Herigast landed as planned: `GrantedAlternativeCost.PricedAtManaCost` sets the granted offer's price to the mana cost of the face being cast, and `checkGrantedAlternativeCosts` allows emerge's one-creature sacrifice on a granted offer. One gap is not Herigast's: the engine takes every generic cost reduction off the printed generic part only, never off the mana announced for X, although CR 107.3a and 601.2f count the announced X in the total cost. A creature with {X} in its mana cost, emerged under Herigast, therefore pays its full X. That errs toward costing more, so Herigast ships as Caveats with that sentence, and the general fix is #2701.
+
 ## Consequences
 
 - 44 cards become implementable, and Herigast after ADR 0129 PR 4. Four of them (Snag, Abolish, Flameshot and Outbreak) need no engine change at all.
