@@ -40,7 +40,8 @@ const tappedBlocker = 0.3
 //     creature untaps before any opponent can attack;
 //   - in the bot's own first main phase, for a creature that could
 //     attack, it is the blocker plus the attack it gives up, priced as
-//     station prices it (#759): Weights.Power per point of power;
+//     station prices it (#759): Weights.Power per point of power, or,
+//     with Config.GangAwareAttacks on, attackGivenUp (#2690);
 //   - elsewhere it is tappedBlocker.
 func (p *Policy) tapCreatureCost(st *state, c *protocol.CardView) float64 {
 	if !p.cfg.TapByTiming {
@@ -50,9 +51,29 @@ func (p *Policy) tapCreatureCost(st *state, c *protocol.CardView) float64 {
 		return 0
 	}
 	if st.myTurn && st.step == "precombat_main" && couldAttack(c) {
+		if p.cfg.GangAwareAttacks {
+			return tappedBlocker + p.attackGivenUp(st, c)
+		}
 		return tappedBlocker + st.w.Power*float64(c.Power)
 	}
 	return tappedBlocker
+}
+
+// attackGivenUp is what tapping c before combat gives up when
+// Config.GangAwareAttacks is on (#2690): its best attack this turn,
+// priced by attackValue against each opponent, the number decideAttack
+// would weigh the attack at, and nothing when every attack loses. Mary
+// Read and Anne Bonny into a board that gang-blocks and kills her
+// gives up nothing, so the loot is worth taking; into an open board it
+// gives up the damage.
+func (p *Policy) attackGivenUp(st *state, c *protocol.CardView) float64 {
+	best := 0.0
+	for _, o := range st.opps {
+		if a, _ := p.attackValue(st, c, o, 0, 0); a > best {
+			best = a
+		}
+	}
+	return best
 }
 
 // tapFuelValue prices the bot's permanent with this instance ID as

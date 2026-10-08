@@ -1057,3 +1057,30 @@ Before is `develop` at `c1391ff97` (#2649 merged), after is the branch; every ru
 Win rates do not move beyond a game. Run 1: esper 27 and 27 of 64, izzet 3 and 2, black 22 and 24, simic 12 and 11. Run 2 half B: `heuristic` 42 of 96 seat-games both times (43.8%, 34.3%–53.7%), `heuristic-baseline` 6 of 96 both times; by deck, black 22 then 21, simic 20 then 21. The simic ×4 runs are at the null by construction. The other A2 and A3 rows are within one game in run 1 and run 2. In the simic ×4 runs, where a changed Harrow decision changes the rest of the game, they move by up to eight games either way along with their offered counts (Ornithopter of Paradise 137 of 168 to 145 of 177, Delighted Halfling 155 of 181 to 152 of 184), and the only row that crosses its bar is Delighted Halfling in the 40-game run, upward (76% to 82%). The suite is 37 of 37.
 
 Run 1 now meets A3's 50% for Harrow, but the 160-game simic ×4 pool, at 34%, does not. A decision log of six games shows why the rest of the windows still pass: Harrow is priced positive in nearly every window it is offered in, and it is refused where the bar is `InstantThreshold`, with a trigger on the stack in the bot's own main phase or in its upkeep and draw steps, or it loses the main phase to a bigger cast that taps the bot out. It is rarely offered in the end step before the bot's turn, because the bot has spent its mana by then. Those are sequencing questions, not Harrow's price.
+
+### #2675, #2690, #2676: combat priced by what combat does (2026-10-08)
+
+Three fixes from the 2026-10-08 review games, each a knob that `BaselineConfig` turns off: `FocusNeedsValue` (the focus bonus only on an attack whose own value is positive, and an attacker with no power is not a blocker the defender must spend), `GangAwareAttacks` (an attack priced against any group of free blockers that kills it, a dying commander charged `CommanderTax`, and a creature tapped in the bot's first main phase charged its attack at `attackValue`), and `Weights.BlockOnlyBody` (0.10 per point of toughness for a token with no power and no abilities, in place of its body price in combat). This is combat, which §Out of scope left alone; `CombatValue` stays body-only (owner decision 3), since `BlockOnlyBody` reads only the body and the token flag.
+
+Before is `develop` at `da81f844d`, after is the branch; every run is `--rotate --lockstep` with the real dump, seed 1, 0 stalls and 0 rejected moves in every run.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games) | esper-control | 27, 42.2% (30.9%–54.4%) | 25, 39.1% (28.1%–51.3%) |
+| Run 1 | izzet-aggro | 2, 3.1% (0.9%–10.7%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 24, 37.5% (26.7%–49.7%) | 17, 26.6% (17.3%–38.5%) |
+| Run 1 | simic-ramp | 11, 17.2% (9.9%–28.2%) | 18, 28.1% (18.6%–40.1%) |
+| Run 2 (izzet and simic, 48 games) | heuristic | 24 / 96, 25.0% (17.4%–34.5%) | 28 / 96, 29.2% (21.0%–38.9%) |
+| Run 2 | heuristic-baseline | 24 / 96, 25.0% (17.4%–34.5%) | 20 / 96, 20.8% (13.9%–30.0%) |
+
+Run 1's turns p50 goes from 15 to 14; run 2's stays 12. The counters, from the decision logs (run 1, per game; run 2, the `heuristic` seats over 48 games):
+
+| Counter | Run 1 before | after | Run 2 before | after |
+|---|---:|---:|---:|---:|
+| Attacks with a 0-power creature | 60 (0.94) | 5 (0.08) | 40 | 18 |
+| Attackers blocked by two or more and lost | 41 of 76 | 7 of 23 | 7 of 17 | 1 of 7 |
+| Losing blocks (the blocker dies, the attacker lives) | 186 | 161 | 155 | 118 |
+| of them with a 0-power token | 3 | 5 | 0 | 1 |
+| "No blocks" with an untapped 0-power token and an attack incoming | 5 | 1 | 0 | 0 |
+
+The 0-power attacks left are all lethal pushes, two-turn races and attrition plans, which send every body by design. The curated decks make few 0-power tokens, so the chump counter barely moves; the issue's window is pinned by a unit test instead. The A3 canaries in run 1 move by at most two games: Mary Read's loot 44 of 61 to 49 of 61, Harrow 15 of 27 (56%) to 13 of 27 (48%), which crosses the bar downward by two games; the others stay above it. The suite is 41 of 41 before and after.

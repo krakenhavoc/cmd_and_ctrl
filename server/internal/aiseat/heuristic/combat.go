@@ -317,7 +317,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		if keepHome > 0 && len(available) <= keepHome && !hasKeyword(atk, "vigilance") && !push[ap.Target] {
 			continue
 		}
-		declared, declaredPower := declaredAgainst(st, ap.Target)
+		declared, declaredPower := declaredAgainst(st, ap.Target, p.cfg.FocusNeedsValue)
 		v, reason := p.attackValue(st, atk, def, declared, declaredPower)
 		// ADR 0080 / #1063: the CR 508.1a attack tax. The enumerator
 		// has already dropped every attack this seat cannot pay for,
@@ -336,7 +336,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 			v += p.cfg.LethalBonus
 			reason = "all-in for the kill"
 		}
-		if ap.Target == focus {
+		if ap.Target == focus && p.focusApplies(v) {
 			v += p.cfg.FocusBonus
 			reason += " (focus)"
 		}
@@ -360,7 +360,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 			ev += p.cfg.LethalBonus
 			ereason = "all-in for the kill, exerted"
 		}
-		if ap.Target == focus {
+		if ap.Target == focus && p.focusApplies(ev) {
 			ev += p.cfg.FocusBonus
 			ereason += " (focus)"
 		}
@@ -375,6 +375,15 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		}, true
 	}
 	return aiseat.Decision{}, false
+}
+
+// focusApplies reports whether an attack valued at v earns FocusBonus.
+// With Config.FocusNeedsValue on (#2675) only a positive attack does:
+// the bonus is pressure on the seat the rotation settled on, and an
+// attack that deals nothing, or that the defender blocks at a profit,
+// puts no pressure on anyone. A 0/1 Plant into a 2/4 was +1.00.
+func (p *Policy) focusApplies(v float64) bool {
+	return !p.cfg.FocusNeedsValue || v > 0
 }
 
 // opposingCreatures counts the untapped creatures every opponent
@@ -394,9 +403,17 @@ func (p *Policy) opposingCreatures(st *state) int {
 // outnumbers the blockers, every further attacker is unblockable, and
 // a planner that cannot see that will sit behind an even board until
 // somebody's library runs out.
-func declaredAgainst(st *state, defender string) (count, power int) {
+//
+// With powered set (Config.FocusNeedsValue, #2675) an attacker with no
+// power is not counted: it deals no damage, so the defender need not
+// spend a blocker on it, and five 0/1 Plants do not make the next
+// attacker unblockable.
+func declaredAgainst(st *state, defender string, powered bool) (count, power int) {
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
+		if powered && c.Power <= 0 {
+			continue
+		}
 		if c.Controller == st.me && c.AttackingTarget == defender {
 			count++
 			power += c.Power
@@ -568,8 +585,15 @@ func byPower(attackers []*protocol.CardView) []int {
 }
 
 // attackValue prices one attacker against one defending seat. The
-// model is deliberately shallow: what does the defender's best
-// single block do to this creature, and is the damage worth it.
+// model is deliberately shallow: what does the defender's best block
+// do to this creature, and is the damage worth it.
+//
+// With Config.GangAwareAttacks off the best block is the best single
+// block. With it on (#2690) the defender may also block with any group
+// of its free blockers, and does when the group kills the attacker for
+// less than it is worth (gangJoin): Y'shtola and a Soldier on a 3/3
+// commander kill it and lose the Soldier, and neither kills it alone.
+// A commander attacker that dies also costs its next cast's tax.
 func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, declared, declaredPower int) (float64, string) {
 	damage := float64(atk.Power) * p.cfg.DamageToOpponent
 	if hasKeyword(atk, "lifelink") && st.myEval != nil {
@@ -598,12 +622,15 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 		return damage, "outnumbers their blockers"
 	}
 
+	// What the defender gains by killing the attacker.
+	killed := st.w.CombatValue(atk) + p.commanderDeath(atk)
+
 	// The defender blocks with whichever creature profits them most.
 	worst := 0.0
 	for _, b := range blockers {
 		gain := 0.0
 		if kills(b, atk) {
-			gain += st.w.CombatValue(atk)
+			gain += killed
 		}
 		if kills(atk, b) {
 			gain -= st.w.CombatValue(b)
@@ -614,11 +641,38 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 			worst = gain
 		}
 	}
+	reason := "blocked at a loss"
+	if p.cfg.GangAwareAttacks && free >= 2 {
+		// The cheapest group that kills it, from blockers the declared
+		// attackers leave free.
+		if join, ok := st.gangJoin(atk, nil, blockers); ok && len(join) >= 2 && len(join) <= free {
+			gang := make([]*protocol.CardView, 0, len(join))
+			for _, i := range join {
+				gang = append(gang, blockers[i])
+			}
+			gain := killed - st.lossValue(atk, gang) + float64(atk.Power)*st.w.MarginalLife(def.Life)
+			if gain > worst {
+				worst, reason = gain, "gang-blocked at a loss"
+			}
+		}
+	}
 	if worst <= 0 {
 		// Nothing they can do about it profitably.
 		return damage, "blockers can't profit"
 	}
-	return damage - worst, "blocked at a loss"
+	return damage - worst, reason
+}
+
+// commanderDeath is what the bot loses beyond the body when its
+// commander dies in combat (#2690, Config.GangAwareAttacks): the next
+// cast costs {2} more, priced as the board evaluation
+// prices each cast already made, Weights.CommanderTax. Zero for any
+// other creature, and with the knob off.
+func (p *Policy) commanderDeath(atk *protocol.CardView) float64 {
+	if !p.cfg.GangAwareAttacks || !atk.IsCommander {
+		return 0
+	}
+	return p.cfg.Weights.CommanderTax
 }
 
 // attackTaxValue is what this attack move charges at CR 508.1a, as a

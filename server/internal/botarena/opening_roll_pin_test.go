@@ -55,6 +55,17 @@ import (
 // 412 moves to the same turn 9 instead of 411. Checked by diffing the
 // two move logs: the first 269 lines are identical.
 //
+// A fourth deliberate exception, re-pinned by hand (#2690, 2026-10-08):
+// a commander that dies in combat costs its next cast's tax. In seed 31,
+// turn 8, seat 1's 3/3 commander attacked into seat 0's untapped 3/3
+// commander at "blocked at a loss (focus) (+1.54)", and the two traded
+// (move 293). With the tax priced the attack is −0.46 and gets no focus
+// bonus (#2675), so seat 1 passes, and from move 293 on the game
+// differs: 398 moves to the same turn 9 instead of 412. Checked by
+// diffing the two move logs, the second with the three knobs of
+// #2675, #2690 and #2676 turned off, which still gives the old digest:
+// the first 292 lines are identical.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -96,7 +107,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 412, turns: 9, winner: -1, digest: "1a4e782275b723171772da310280380c548eef6210556799d93384e42060cf55",
+			moves: 398, turns: 9, winner: -1, digest: "129235aeda37908d24fca70df7107f2db7462587d67b40411c3092c04d5cc14a",
 		},
 		{
 			name: "four heuristic seats to a winner",
