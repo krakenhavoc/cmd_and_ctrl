@@ -7182,6 +7182,52 @@ real, put an ascend permanent and nine others on the battlefield and call
 blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
 `CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
 
+### Speed: start your engines! and max speed (ADR 0138, #2122, CR 702.178 / 702.179)
+
+Speed is the player's, and the engine owns all of it (`game/speed.go`):
+the state-based action that gives a player speed 1 (CR 704.5aa), the
+inherent once-per-turn trigger that raises it when an opponent loses
+life on their turn (CR 702.179d), the cap at 4. A card declares the
+keyword and wraps each "Max speed —" ability, nothing else:
+
+```go
+PrintedKeywords: []string{StartYourEngines},                 // "Start your engines!"
+Static: append([]game.StaticAbility{MaxSpeedSelfPump(1, 1)},  // "Max speed — This creature gets +1/+1
+    MaxSpeedSelfKeywords("menace")...),                       //  and has menace."
+Activated: []ActivatedAbility{MaxSpeedActivated(ActivatedAbility{
+    Label: "Max speed — {T}: …",                               // the printed line, "Max speed —" included
+    …
+})},
+ManaAbilities: []ManaAbility{MaxSpeedMana(ManaAbility{…})},
+Triggered:     []game.TriggeredAbility{MaxSpeedTrigger(WheneverYouDraw(…))},
+Replacements:  []game.ReplacementEffect{MaxSpeedReplacement(YouDrawTwiceInstead(…))},
+CostModifiers: []game.CostModifier{MaxSpeedCostModifier(CostsLess(1, "…", YourSpell()))},
+```
+
+Write the ability exactly as you would without "Max speed —", then wrap
+it. Never write the speed check by hand.
+
+- **It is not an ADR 0071 designation.** That gate reads only the
+  object, and max speed is the player's (ADR 0138 §5). So the wrappers
+  put `YouHaveMaxSpeed` in the slot's own predicate: `AppliesTo` for a
+  static, trigger, replacement or cost modifier, and `Condition` for an
+  activated or mana ability. A max-speed activated ability is therefore
+  shown greyed below max speed (`condition_unmet`) rather than hidden,
+  which is what you want: the label says what the player is racing to.
+- **"Where X is your speed"** is `YourSpeed(g, player)`, read at
+  resolution. A player with no speed has 0 (CR 702.179f).
+- **"You" is the controller, or the owner off the battlefield**
+  (the glossary's "Max Speed"), so a Surveyor's graveyard ability reads
+  its owner's speed. Declare `Zones` as for any graveyard ability; the
+  max speed half follows it there (CR 702.178b).
+- **A static that reads the speed needs no `DependsOn…` flag.** Every
+  speed change emits `game.EventSpeedChanged`, which bumps the layer
+  version.
+
+Tests set the speed with `g.SetSpeedForTest(player, n)` (it goes through
+the one write and its event) rather than playing turns: see
+`speed_cards_test.go`.
+
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
 A **designation** is a marker a permanent has on the battlefield that

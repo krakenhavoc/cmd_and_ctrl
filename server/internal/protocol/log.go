@@ -385,6 +385,12 @@ const (
 	// ability or a clause of a resolving spell), so without a line the
 	// marker beside the player's name would appear unexplained. #2696.
 	LogCitysBlessing LogKind = "citys_blessing"
+	// LogSpeed — a player's speed changed (CR 702.179, ADR 0138).
+	// `Actor` is the player and `Amount` the new speed. Narrated
+	// because the start-your-engines state-based action gives a
+	// player speed 1 with no spell or ability behind it, and because
+	// reaching max speed switches abilities on across the board.
+	LogSpeed LogKind = "speed"
 	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
 	// (CR 702.26). #1199, ADR 0084.
 	//
@@ -1679,6 +1685,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventSpeedChanged:
+		// CR 702.179, ADR 0138. Not tied to a card: the state-based
+		// action and the inherent trigger have no source.
+		base.Kind = LogSpeed
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventStorm:
 		// CR 702.40a, #1238. The count is the card, and nothing else
 		// says it: a spell copy emits no event (CR 707.10 — it is
@@ -2384,6 +2397,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("It becomes %s", e.Label)
 	case LogCitysBlessing:
 		return fmt.Sprintf("%s gets the city's blessing", actor)
+	case LogSpeed:
+		if e.Amount >= game.MaxSpeed {
+			return fmt.Sprintf("%s has max speed", actor)
+		}
+		return fmt.Sprintf("%s's speed is now %d", actor, e.Amount)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

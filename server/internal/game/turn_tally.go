@@ -116,6 +116,10 @@ type PlayerTurnTally struct {
 	// each {E} you've paid or lost this turn" read it through
 	// Game.EnergyPaidOrLostThisTurn. Additive within schema v7.
 	EnergyPaidOrLost int `json:"energyPaidOrLost,omitempty"`
+	// SpeedTriggered is CR 702.179d's "this ability triggers only once
+	// each turn": set as this player's inherent speed trigger is
+	// queued (speedTriggerLocked). ADR 0138. Additive within schema v7.
+	SpeedTriggered bool `json:"speedTriggered,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.

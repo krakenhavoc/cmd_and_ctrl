@@ -4578,6 +4578,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.prepareCopySweepSBALocked() {
 		fired = true
 	}
+	// CR 702.179a (ADR 0138): a player with no speed who controls a
+	// permanent with start your engines! gets speed 1. See speed.go.
+	if g.startYourEnginesSBALocked() {
+		fired = true
+	}
 	// ADR 0091, CR 702.75a: the controller of a hideaway permanent may
 	// look at the card it hid. Not a state-based action and never
 	// "fired" — it keeps a knower set current as control moves.

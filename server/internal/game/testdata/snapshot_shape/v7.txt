@@ -4076,6 +4076,7 @@ seats[].mulligansTaken	number:int
 seats[].name	string
 seats[].poison	number:int
 seats[].seat	number:int
+seats[].speed	number:int
 seats[].statics	array
 seats[].statics[]	object
 seats[].statics[].cantAttack	object
@@ -4829,6 +4830,7 @@ turnTally.players{}.lifeLowSet	bool
 turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int
+turnTally.players{}.speedTriggered	bool
 turnTally.players{}.tokensCreated	number:int
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int
