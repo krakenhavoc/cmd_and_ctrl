@@ -189,7 +189,8 @@ func TestBlockToSurviveGangsUpToKill(t *testing.T) {
 }
 
 // TestOrderedKills is what the bot's own canonical damage assignment
-// kills: lethal down the declared order while the damage lasts.
+// kills: the blockers worth most that its damage can buy, in any order
+// (#2692).
 func TestOrderedKills(t *testing.T) {
 	w := body(7, 7, "trample")
 	o1, o2 := named(body(4, 4), "o1"), named(body(4, 4), "o2")
@@ -202,12 +203,23 @@ func TestOrderedKills(t *testing.T) {
 	}{
 		{"chump first, joiner lives", []*protocol.CardView{o1, o2}, 1},
 		{"Bear then Ogre: both", []*protocol.CardView{b, o1}, 2},
-		{"an indestructible wall soaks its 3 and lives", []*protocol.CardView{wall, o1}, 1},
+		{"an indestructible wall takes nothing and lives", []*protocol.CardView{wall, o1}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := len(orderedKills(w, tc.blockers)); got != tc.want {
 				t.Fatalf("%d killed, want %d", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestOrderedKillsIgnoresTheDeclaredOrder is review game 2's seq 325
+// (#2692): a 3/3 blocked by a 2/4, then a 1/1, kills the 1/1.
+func TestOrderedKillsIgnoresTheDeclaredOrder(t *testing.T) {
+	mary := body(3, 3)
+	yshtola, soldier := named(body(2, 4), "y"), named(body(1, 1), "s")
+	got := orderedKills(mary, []*protocol.CardView{yshtola, soldier})
+	if len(got) != 1 || got[0] != soldier {
+		t.Fatalf("kills %v, want the 1/1", got)
 	}
 }

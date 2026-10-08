@@ -144,8 +144,9 @@ func TestTurnRotationSkipsEliminatedSeats(t *testing.T) {
 }
 
 // TestDamageAssignmentZeroEntriesDoNotConstrainPriors: with three
-// blockers and two power, [2, 0, 0] is the only legal split (CR
-// 510.1c) and must be accepted; [1, 1, 0] must still be rejected.
+// blockers and two power, [2, 0, 0] must be accepted (found by the S31
+// bot fuzzer under the old ordered rule), and so must [1, 1, 0]: CR
+// 510.1c divides the damage as its controller chooses.
 func TestDamageAssignmentZeroEntriesDoNotConstrainPriors(t *testing.T) {
 	g := newWrapGame(t, 2)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -183,9 +184,11 @@ func TestDamageAssignmentZeroEntriesDoNotConstrainPriors(t *testing.T) {
 		t.Fatalf("expected one damage-assignment prompt, got %d", len(g.PendingChoices))
 	}
 	id := g.PendingChoices[0].ID
-	bad := []DamageAssignmentEntry{{BlockerID: b1, Amount: 1}, {BlockerID: b2, Amount: 1}, {BlockerID: b3, Amount: 0}}
-	if err := g.ResolveDamageAssignment(id, active.ID, bad, 0); err == nil {
-		t.Errorf("[1,1,0] should violate prefix-lethal")
+	// #2692: CR 510.1c has no damage assignment order, so a split that
+	// kills nobody is as legal as one that kills the first blocker.
+	spread := []DamageAssignmentEntry{{BlockerID: b1, Amount: 1}, {BlockerID: b2, Amount: 1}, {BlockerID: b3, Amount: 0}}
+	if err := g.Clone().ResolveDamageAssignment(id, active.ID, spread, 0); err != nil {
+		t.Errorf("[1,1,0] must be accepted: %v", err)
 	}
 	good := []DamageAssignmentEntry{{BlockerID: b1, Amount: 2}, {BlockerID: b2, Amount: 0}, {BlockerID: b3, Amount: 0}}
 	if err := g.ResolveDamageAssignment(id, active.ID, good, 0); err != nil {

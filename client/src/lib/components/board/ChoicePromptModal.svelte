@@ -1230,11 +1230,11 @@
   }
 
   // S18 damage_assignment branch — CR 510.1c multi-blocker combat
-  // damage prompt. The attacker's controller reorders the blockers
-  // (drag via up/down buttons since drag-and-drop UX lives outside
-  // this sprint) and assigns damage per blocker. Server validates
-  // at-least-lethal prefix + total = attacker_power, and trample
-  // overflow if AllowTrample.
+  // damage prompt. The attacker's controller assigns damage per
+  // blocker (the up/down buttons only arrange the rows). Server
+  // validates total = attacker_power, and trample overflow only if
+  // AllowTrample and every blocker has lethal (CR 702.19b). Since
+  // #2692 any other split is legal: CR 510.1c has no order.
   const isDamageAssignment = $derived(active?.kind === "damage_assignment");
   const damageFrame = $derived<DamageAssignmentView | null>(active?.damage_assignment ?? null);
 

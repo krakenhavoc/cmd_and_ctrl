@@ -2512,9 +2512,9 @@ type castTargetWire struct {
 
 // damageAssignmentParam is one {blocker_id, amount} pair from a
 // resolve_choice action on a PendingChoiceDamageAssignment entry.
-// The attacker's controller submits an ordered list; the server's
-// ResolveDamageAssignment validates prefix-lethal and total. Added
-// in S18 sub-PR 3.
+// The attacker's controller submits one entry per blocker; the
+// server's ResolveDamageAssignment validates the total and trample's
+// lethal-first rule (CR 510.1c, 702.19b). Added in S18 sub-PR 3.
 type damageAssignmentParam struct {
 	BlockerID string `json:"blocker_id"`
 	Amount    int    `json:"amount"`
