@@ -75,6 +75,12 @@ const (
 // type — ManaRestrictType("Creature") for Ancient Ziggurat.
 func ManaRestrictType(t string) string { return game.ManaRestrictType(t) }
 
+// ManaRestrictNotType restricts a token to casting a spell with none of
+// the named card types — ManaRestrictNotType("Creature") for Nardole's
+// "only to cast noncreature spells" (#2136). Pair it with
+// ManaRestrictCast, which it implies but does not replace.
+func ManaRestrictNotType(types ...string) string { return game.ManaRestrictNotType(types...) }
+
 // ManaRestrictSubtype restricts a token to objects with the named
 // subtype — ManaRestrictSubtype("Eldrazi") for Eldrazi Temple.
 func ManaRestrictSubtype(t string) string { return game.ManaRestrictSubtype(t) }

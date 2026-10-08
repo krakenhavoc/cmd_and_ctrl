@@ -531,3 +531,39 @@ None. The option lives on a spec and the entry event, neither of which is persis
 ### Out of scope
 
 - Counters on a card put into a hand, graveyard or exile by a search: they would be lost on the move (CR 122.2), so the option is ignored for any other destination.
+
+## Amendment 2026-10-08 (fourth) — Mana spendable only on noncreature spells (#2136)
+
+**Why it lands here.** Nardole, Resourceful Cyborg was found landing §4's undying pool. Its amount (one {U} per counter) is a `ProducedFunc`; its spend clause had no tag. This adds the tag and changes nothing in [ADR 0040](0040-mana-pipeline.md)'s production or spend paths.
+
+### What exists, what is missing
+
+`game/mana_restriction.go` reads a closed vocabulary of `ManaToken.Restrictions` tags, all positive ("the object has this type") but one purpose-aware negative, `not:nonartifact-spell`. "Noncreature spell" is the negation of a type and had no spelling. An unknown tag is a deny, so a card that guessed one would have been unspendable, not unrestricted.
+
+### The rules
+
+- **CR 106.6 / 601.2h.** Restricted mana can pay only the cost the restriction names. "Spend this mana only to cast noncreature spells" is about casting: it does not pay an activated ability's cost or an unlock cost, whatever the source.
+- **CR 205.2a.** A spell's card types come from the card; an artifact creature spell is a creature spell.
+
+### Decision
+
+1. **`ManaRestrictNotType(types...)`** builds `nottype:<T1>|<T2>`. `matchesRestriction` admits it only for a cast (`SpendPurposeCast`) whose spend context has none of the named types, case-insensitively. An activation, an unlock and an unknown purpose are refused. Unlike the positive keyed tags, `|` means "none of these", so it is decided before the alternation loop, not inside it.
+2. **Cards still name the purpose.** A card writes `ManaRestrictCast` as well, like every type-keyed restriction (#2059); the nottype tag is also refused for an activation by itself, so a card that forgot cannot ship stronger than printed. `TestRestrictedManaNamingAnObjectPropertyAlsoNamesAPurpose` now counts `nottype:` as an object tag.
+3. **Nothing else changes.** The spend context, the solvers, the auto-tapper and the enumerator already thread `ManaSpendContext`, so they honour the tag with no edit. The spend context reads the spell's effective types, as the positive tags do.
+
+### Cards
+
+- **Nardole, Resourceful Cyborg: Full.** Undying (`PrintedKeywords`), one {U} per counter of any kind, noncreature-only. Doctor's companion is a deck-construction rule that needs nothing on the card (the Partner precedent: Thrasios, Triton Hero); the validator's one-commander limit is the same for every partner pair.
+
+### Tests
+
+`game/mana_restriction_nottype_test.go` (cast admitted, creature and artifact creature refused, activation refused with and without the cast tag, unknown purpose refused, several types) and `cards/effects/nardole_resourceful_cyborg_test.go` (the pool, a creature spell refused, an activation refused, an instant and an artifact paid, no counters adds nothing).
+
+### Snapshot impact
+
+None. The tag is an opaque string already carried on `ManaToken.Restrictions`.
+
+### Out of scope
+
+- Doctor's companion in the deck validator.
+- A positive "noncreature" predicate for targets: those are `Not(Creature())` and already exist.
