@@ -843,6 +843,8 @@ func (st *state) cardTargetValue(cfg Config, id string) float64 {
 		if isCreature(c) {
 			base = st.w.CreatureValue(c)
 		}
+		// #2679: a commander comes back from the command zone.
+		base = st.commanderRemovalValue(cfg, c, base)
 		return base * cfg.RemovalConfidence * st.leaderBoost(cfg, c.Controller)
 	}
 	if c := st.stack[id]; c != nil {

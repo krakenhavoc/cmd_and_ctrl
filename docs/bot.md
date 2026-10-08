@@ -898,6 +898,34 @@ what it does to its pick:
 Lightning Bolt at a player on 40 is then +0.15 at two seats, not +1.20,
 so the bot keeps it for a creature it kills or for the last points.
 
+**Removal is priced net of what comes back** (#2679, `NetRemoval`,
+`net_removal.go`). Removal of an opposing permanent is priced as its
+value × `RemovalConfidence` × `LeaderBoost`. Two things now come off
+that:
+
+- **A commander comes back.** A destroyed, exiled, bounced or tucked
+  commander may go to the command zone (CR 903.9a, 903.9b) and be cast
+  again for {2} more (CR 903.8). An opposing commander its opponent owns
+  is priced at `2 × CommanderTax + DamageToOpponent × power`, the tax
+  and the damage it does not deal for one turn, never more than its
+  value. Review game 2's Chaos Warp on a 2/4 commander drops from 6.65
+  to 3.72, below casting the bot's own commander (4.17). `is_commander`
+  is on the wire, so no catalog data is needed.
+- **A declared gift comes back.** A target entry's `returns` says what
+  the target's controller is given when it is removed: a creature token
+  of a printed size (Rapid Hybridization, Pongify, Beast Within,
+  Generous Gift, Stroke of Midnight), life equal to the target's power
+  (Swords to Plowshares) or a land (Path to Exile, Assassin's Trophy).
+  It is valued as that seat would value it (the token's body, the life
+  at what `Strength` counts it, a land at `ManaSource`) and taken off on
+  the removal's own scale. Review game 1's Rapid Hybridization on a 1/1
+  drops from 3.45 to −1.77, so the bot passes. Chaos Warp's gift is
+  whatever the owner reveals from the top of their library, which no
+  printed amount says, so it declares nothing.
+
+Only a target an opponent controls is netted, and a return does not make
+the move purpose-priced.
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,

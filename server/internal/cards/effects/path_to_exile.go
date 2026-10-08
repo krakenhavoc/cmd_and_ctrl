@@ -32,6 +32,8 @@ func init() {
 		Name:         "Path to Exile",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		// #2679: what the target's controller is given back.
+		Purpose: ForTargets(RemovalReturning(0, game.TargetReturn{Lands: 1})),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			// Diagnostic: surface silent no-ops so they're visible in
 			// the event log as EventEffectError. Path appearing to

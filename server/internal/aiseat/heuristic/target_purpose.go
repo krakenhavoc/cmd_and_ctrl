@@ -123,7 +123,16 @@ func rowEntryFor(src *protocol.CardView, index int, t targetRef) *protocol.Targe
 // test reads. The second result reports whether any pick was priced by
 // its entry, which makes the move purpose-priced (purposeSet's
 // targetsPriced). With PriceTargetPurposes off it is targetsValue.
+// Either way, what a removal's declared `returns` hand the target's
+// controller is taken off (NetRemoval, net_removal.go); a return alone
+// does not make the move purpose-priced.
 func (p *Policy) pricedTargetsValue(st *state, targets []targetRef, entryOf func(targetRef) *protocol.TargetPurposeView, self, source *protocol.CardView) (float64, bool) {
+	v, priced := p.pricedTargetsGross(st, targets, entryOf, self, source)
+	return v - p.removalReturnsValue(st, targets, entryOf), priced
+}
+
+// pricedTargetsGross is pricedTargetsValue before the returns.
+func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func(targetRef) *protocol.TargetPurposeView, self, source *protocol.CardView) (float64, bool) {
 	if !p.cfg.PriceTargetPurposes {
 		return st.targetsValue(p.cfg, targets), false
 	}
@@ -238,6 +247,8 @@ func (p *Policy) damageCardValue(st *state, id string, dmg int, source *protocol
 			if mine {
 				return -value, true
 			}
+			// #2679: a commander comes back from the command zone.
+			value = st.commanderRemovalValue(p.cfg, c, value)
 			return value * p.cfg.RemovalConfidence * st.leaderBoost(p.cfg, c.Controller), true
 		}
 		if mine {
@@ -256,6 +267,10 @@ func (p *Policy) damageCardValue(st *state, id string, dmg int, source *protocol
 		value := st.permanentValue(c)
 		if mine {
 			return -share * value, true
+		}
+		if share >= 1 {
+			// #2679: a commander comes back from the command zone.
+			value = st.commanderRemovalValue(p.cfg, c, value)
 		}
 		return share * value * p.cfg.RemovalConfidence * st.leaderBoost(p.cfg, c.Controller), true
 	}

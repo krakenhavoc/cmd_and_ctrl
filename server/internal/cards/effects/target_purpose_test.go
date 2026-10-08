@@ -31,6 +31,9 @@ func targetEntriesOf(s Spec) map[string][]game.TargetPurpose {
 
 func TestCuratedTargetPurposeDeclarations(t *testing.T) {
 	dmg := func(n int) []game.TargetPurpose { return []game.TargetPurpose{{Slot: 0, Damage: n}} }
+	ret := func(r game.TargetReturn) map[string][]game.TargetPurpose {
+		return map[string][]game.TargetPurpose{"card": {{Slot: 0, Returns: r}}}
+	}
 	cases := []struct {
 		oracle, name string
 		want         map[string][]game.TargetPurpose
@@ -48,6 +51,15 @@ func TestCuratedTargetPurposeDeclarations(t *testing.T) {
 		{"f07bd49d-8e71-4d56-be2a-638514011318", "Fiery Temper", map[string][]game.TargetPurpose{"card": dmg(3)}},
 		{"f9db72dc-9a5b-48a4-a86e-7464d9a2166a", "Abrade", map[string][]game.TargetPurpose{"mode 0": dmg(3)}},
 		{"a07698f6-5ad5-49a3-9da2-f82d407f5cd7", "Izzet Charm", map[string][]game.TargetPurpose{"mode 1": dmg(2)}},
+		// #2679: removal that hands its target's controller something.
+		{"06692cd9-ac2f-4a32-8fd1-043ba3c0fe71", "Rapid Hybridization", ret(game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3})},
+		{"05849bd6-8f38-4031-be2b-e2aa03beb8cc", "Pongify", ret(game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3})},
+		{"7735eeba-693b-47e2-bd51-414379cf1016", "Beast Within", ret(game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3})},
+		{"fae37e28-e137-4177-b973-fa8b4dd8f409", "Generous Gift", ret(game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3})},
+		{"9a107e48-3d50-4941-95b1-10f2b29a4245", "Stroke of Midnight", ret(game.TargetReturn{CreatureTokens: 1, TokenPower: 1, TokenToughness: 1})},
+		{"b1544f21-7e98-461b-aed5-e748b0168c52", "Swords to Plowshares", ret(game.TargetReturn{LifeEqualToPower: true})},
+		{"d683d985-9888-4d21-8b5f-69e69ce4a03b", "Path to Exile", ret(game.TargetReturn{Lands: 1})},
+		{"ac10d218-f9a6-4058-9cda-a15ca1b0b7b5", "Assassin's Trophy", ret(game.TargetReturn{Lands: 1, LandsUntapped: 1})},
 	}
 	for _, c := range cases {
 		spec, ok := Lookup(c.oracle)
@@ -119,6 +131,26 @@ func TestTargetPurposeGuard(t *testing.T) {
 		{"on an overload, which clears the clause", Spec{Targets: TargetCreature("target creature"),
 			AlternativeCosts: []game.AlternativeCost{CostWithPurpose(Overload("{4}{R}"), entries(DamageToTarget(0, 2)))}},
 			"not one of the statement's 0"},
+		{"a token back to a creature's controller", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3}))}, ""},
+		{"a land back to a permanent's controller", Spec{Targets: TargetPermanent("target permanent"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{Lands: 1, LandsUntapped: 1}))}, ""},
+		{"life back, by power", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{LifeEqualToPower: true}))}, ""},
+		{"a return for a player", Spec{Targets: TargetPlayer("target player"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{Lands: 1}))}, "cannot target a permanent"},
+		{"a return for a spell", Spec{Targets: TargetSpell("target spell"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 1, TokenToughness: 1}))}, "cannot target a permanent"},
+		{"a token with no size", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1}))}, "printed toughness"},
+		{"a 3/0 token", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 3}))}, "printed toughness"},
+		{"a size with no token", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{TokenPower: 3, TokenToughness: 3}))}, "printed toughness"},
+		{"more untapped lands than lands", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{Lands: 1, LandsUntapped: 2}))}, "untapped lands"},
+		{"a negative return", Spec{Targets: TargetCreature("target creature"),
+			Purpose: entries(RemovalReturning(0, game.TargetReturn{Lands: -1}))}, "negative return"},
 		{"on a row built at trigger time", Spec{Triggered: []game.TriggeredAbility{{
 			Key: "t", Purpose: entries(DamageToTarget(0, 1)),
 			TargetsFrom: func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec { return TargetAny() },
