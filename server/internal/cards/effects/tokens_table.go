@@ -179,6 +179,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white Pegasus with flying":                 {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Soldier with vigilance":              {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/2 white and blue Knight with vigilance":      {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W", "U"}, Keywords: []string{"vigilance"}},
+	"2/2 white and blue Detective":                  {Name: "Detective", TypeLine: "Token Creature — Detective", Power: 2, Toughness: 2, Colors: []string{"W", "U"}},
 	"3/1 red Dinosaur":                              {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 1, Colors: []string{"R"}},
 	"1/1 white Kithkin Soldier":                     {Name: "Kithkin Soldier", TypeLine: "Token Creature — Kithkin Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 black and green Worm":                      {Name: "Worm", TypeLine: "Token Creature — Worm", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},

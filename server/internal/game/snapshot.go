@@ -644,8 +644,9 @@ type playerSnapshot struct {
 	IsBot              bool                  `json:"isBot,omitempty"`
 	BotTier            string                `json:"botTier,omitempty"`
 	BotDeck            string                `json:"botDeck,omitempty"`
-	Agent              bool                  `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
-	AgentClient        string                `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
+	Agent              bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
+	AgentClient        string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
+	CitysBlessing      bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
 	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
 	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
 	Counters           map[string]int        `json:"counters,omitempty"`
@@ -2075,6 +2076,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		CommanderCasts:        copyIntMap(p.CommanderCasts),
 		Counters:              copyStringIntMap(p.Counters),
@@ -2949,6 +2951,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,

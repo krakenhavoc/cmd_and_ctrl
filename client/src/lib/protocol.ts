@@ -969,6 +969,9 @@ export type LogKind =
   // is the new designation. Narrated because the untap-step check
   // changes it with no spell or ability behind it.
   | "day_night"
+  // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
+  // `card_id` the ascend permanent or spell whose check granted it.
+  | "citys_blessing"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
@@ -1900,6 +1903,10 @@ export interface PlayerView {
   // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
   is_agent?: boolean;
   agent_client?: string;
+  // #2696 (CR 702.131c): the city's blessing, a player designation
+  // ascend gives and nothing takes away. Public, identical for every
+  // viewer; absent until the seat has it.
+  citys_blessing?: boolean;
   // The playmat the seat's signed-in owner chose (ADR 0128): a
   // same-origin path, /playmats/<uuid>, drawn behind that seat's
   // battlefield. Public and identical for every viewer. Absent for a

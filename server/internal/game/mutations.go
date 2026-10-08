@@ -3327,6 +3327,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
+	// #2696, CR 702.131a: an instant or sorcery with ascend checks the
+	// controller's permanents before any of its other instructions, so
+	// "if you have the city's blessing" below reads the answer.
+	g.ascendSpellLocked(&top, item)
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
 	// CR 608.2c / 700.2d: each chosen bullet's own body, in printed
 	// order, once per occurrence. A modal card that branches inside
@@ -4264,6 +4268,19 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// (a 2/2 + Glorious Anthem under 3 marked damage would die
 	// because CurrentToughness reads Effective().Toughness == 3).
 	g.RecomputeLayersIfStaleLocked()
+
+	// #2696, CR 702.131b: ascend on a permanent is a static ability
+	// that gives its controller the city's blessing any time they
+	// control ten permanents. Not a state-based action, so it does not
+	// count toward `fired`; this pass is simply the one place that runs
+	// after every action with the board settled and before a player
+	// receives priority. After the recompute so a keyword granted by a
+	// layer-6 effect is seen, and followed by another recompute so the
+	// statics that read the new designation are in place before the
+	// toughness checks below.
+	if g.citysBlessingSweepLocked() {
+		g.RecomputeLayersIfStaleLocked()
+	}
 
 	// S24 / CR 704.5m + 704.5n: an Equipment attached to something
 	// that is no longer a creature becomes unattached; an Aura

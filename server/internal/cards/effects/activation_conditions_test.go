@@ -847,7 +847,9 @@ func TestLilypadVillageCountsARatTokenThatHasSinceDied(t *testing.T) {
 	}
 }
 
-// The city's blessing, read live: ten permanents including the Arch.
+// The city's blessing (CR 702.131, #2696): ten permanents including the
+// Arch earn it through the Arch's own ascend, and it is kept after the
+// board shrinks.
 func TestArchOfOrazcaDrawsWithTheCitysBlessing(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -856,11 +858,26 @@ func TestArchOfOrazcaDrawsWithTheCitysBlessing(t *testing.T) {
 	advanceToMain(t, g)
 	b06AddMana(me, "C", "C", "C", "C", "C")
 
+	g.RunStateChecksForTest()
 	acRefused(t, g, me.ID, arch, 0, game.ActivateAbilityParams{})
 	acLands(g, me.ID, 1, "Wastes")
+	g.RunStateChecksForTest()
+	if !me.CitysBlessing {
+		t.Fatal("ten permanents with the Arch's ascend did not give the city's blessing")
+	}
+	// Kept: take the board back under ten and the draw is still open.
+	g.WithWriteLock(func() {
+		removed := 0
+		for i := len(g.Battlefield.Cards) - 1; i >= 0 && removed < 4; i-- {
+			if c := g.Battlefield.Cards[i]; c.InstanceID != arch && c.Controller == me.ID {
+				_, _ = g.Battlefield.Remove(c.InstanceID)
+				removed++
+			}
+		}
+	})
 	handBefore := me.Hand.Size()
 	b16Activate(t, g, me.ID, arch, 0, game.ActivateAbilityParams{})
 	if me.Hand.Size() != handBefore+1 {
-		t.Errorf("hand %d → %d, want one card drawn", handBefore, me.Hand.Size())
+		t.Errorf("hand %d → %d, want one card drawn after the board shrank", handBefore, me.Hand.Size())
 	}
 }

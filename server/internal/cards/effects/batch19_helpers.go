@@ -20,8 +20,7 @@ import (
 // b17LandCardsInGraveyard, "sacrifice a land:" is b08SacrificeALand,
 // the permanent a cost sacrificed is b17PermanentSacrificedToPay,
 // the Gnome is b17GnomeToken, the Zombie is BlackZombieToken, the
-// tapped Treasure is tappedTreasureToken, the permanents a player
-// controls are b11PermanentsControlled, "not the source" is
+// tapped Treasure is tappedTreasureToken, "not the source" is
 // Another, and the Guildgate is a row in guildgates.go.
 
 // --- token templates ---------------------------------------------

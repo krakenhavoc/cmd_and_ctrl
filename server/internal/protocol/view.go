@@ -1746,6 +1746,10 @@ type PlayerView struct {
 	// seat. Never cleared once set, and never true on a bot seat.
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
+	// CitysBlessing is the city's blessing (CR 702.131c): a player
+	// designation ascend gives, kept for the rest of the game. Public
+	// and identical for every viewer, like the monarch. #2696.
+	CitysBlessing bool `json:"citys_blessing,omitempty"`
 
 	// PlaymatURL is the same-origin URL of the playmat the seat's
 	// signed-in owner chose (ADR 0128), drawn behind that seat's
@@ -8047,6 +8051,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		BotDeck:               p.BotDeck,
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		CommanderCasts:        cmdrCasts,
 		Counters:              cloneStringIntMap(p.Counters),
 		MaxHandSize:           g.EffectiveMaxHandSizeLocked(p),

@@ -255,6 +255,13 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. Redundant (CR 702.88c): one instance or several
 	// is one exile and one delayed trigger.
 	KeywordRebound: true,
+	// ascend (CR 702.131) joins with #2696 (ADR 0096's 2026-10-08
+	// amendment), in the same change that teaches the engine to honour
+	// it. Its consumers are citysBlessingSweepLocked (the static on a
+	// permanent) and ascendSpellLocked (the spell ability on an instant
+	// or sorcery), both in citys_blessing.go, and both read it with
+	// HasKeyword, so a deck-imported card works with no catalog entry.
+	KeywordAscend: true,
 	// sunburst (CR 702.44) joins with #1552 (ADR 0109 §11 decision 2),
 	// in the same change that teaches the engine to honour it as a
 	// keyword. Its consumer is applySunburstLocked (entry_counters.go),

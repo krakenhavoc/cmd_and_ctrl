@@ -576,6 +576,7 @@ var playerFields = plan(
 	"BotDeck", carried, "",
 	"Agent", carried, "",
 	"AgentClient", carried, "",
+	"CitysBlessing", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
