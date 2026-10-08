@@ -85,6 +85,7 @@ registered, or when this file is stale.
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |
 | `createGame` | `create game` | form | aria | `routes/Lobby.svelte` | the Lobby's create-a-table form; the lobby.create hint points at it |
+| `suggestTableName` | `suggest a name` | button | aria | `lib/components/NewTableRow.svelte` | the dice next to the Lobby's game-name box: fills it with a generated table name (#2630) |
 | `deckLink` | `deck link` | textbox | aria | `routes/Decks.svelte` | the Decks page's deck-link field; the decks.check hint points at it |
 | `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte` | a signed-in person's saved decks; the decks.library hint points at it |
 | `settingsSections` | `settings sections` | navigation | aria | `lib/components/Settings.svelte` | the Settings dialog's section tabs; the settings.display hint points at it |

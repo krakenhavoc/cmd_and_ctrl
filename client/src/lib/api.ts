@@ -280,6 +280,14 @@ export async function createGame(
   return (await res.json()) as CreateGameResponse;
 }
 
+// fetchNameSuggestion asks for a generated table name (GET
+// /games/name-suggestion, #2630), personalised when signed in. The
+// create form's dice fills the name box with it.
+export async function fetchNameSuggestion(): Promise<string> {
+  const res = await authFetch("/games/name-suggestion", { method: "GET" });
+  return ((await res.json()) as { name: string }).name;
+}
+
 // fetchMySetup reads the caller's remembered table setup (GET
 // /me/setup, ADR 0110 §5 item 1). Signed-in only: gate on
 // myGames.signedInUserID first, as for the other /me/* reads.

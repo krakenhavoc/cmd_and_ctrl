@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/google/uuid"
@@ -34,14 +33,6 @@ func TestBuildInviteURL(t *testing.T) {
 		if got != c.want {
 			t.Errorf("buildInviteURL(%q): got %q, want %q", c.base, got, c.want)
 		}
-	}
-}
-
-func TestDefaultGameName(t *testing.T) {
-	fixed := time.Date(2026, 4, 22, 14, 32, 0, 0, time.UTC)
-	got := defaultGameName(fixed)
-	if got != "Discord game · 2026-04-22 14:32 UTC" {
-		t.Errorf("defaultGameName: got %q", got)
 	}
 }
 
@@ -375,8 +366,18 @@ func TestInviteNamesTheInvokerAsHost(t *testing.T) {
 	if got["host_discord_id"] != "424242" {
 		t.Errorf("host_discord_id = %q, want the invoker 424242 (body %v)", got["host_discord_id"], got)
 	}
-	if got["name"] != name || name == "" {
-		t.Errorf("name = %q, sent %q", name, got["name"])
+	// No name option: the bot sends an empty name and the server picks
+	// one (#2630). It no longer invents a timestamp.
+	if name != "" || got["name"] != "" {
+		t.Errorf("name = %q, sent %q, want both empty", name, got["name"])
+	}
+
+	// An explicit name goes through unchanged.
+	named := discordgo.ApplicationCommandInteractionData{Name: CmdInvite, Options: []*discordgo.ApplicationCommandInteractionDataOption{
+		{Name: "name", Type: discordgo.ApplicationCommandOptionString, Value: "friday"},
+	}}
+	if name, _, err = h.createInviteGame(context.Background(), i, named); err != nil || name != "friday" || got["name"] != "friday" {
+		t.Errorf("named: name = %q, sent %q, err %v", name, got["name"], err)
 	}
 
 	// A DM interaction carries the user on User, not Member.

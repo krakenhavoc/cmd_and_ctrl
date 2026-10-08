@@ -615,6 +615,16 @@ only an admin:
 { "name": "Friday Night Magic", "host_discord_id": "123456789012345678", "setup": "last" }
 ```
 
+`name` is optional (#2630). An empty or whitespace-only name makes the server
+pick one: a Magic-flavoured mash-up from a hand-written word list ("Six
+Untapped Islands", "The Grumpy Ornithopter Accord"), at most 80 characters.
+When the caller is a signed-in person, some of the templates use their display
+name ("Krakenhavoc's Questionable Gambit"), when it is short enough; the admin
+token and the Discord bot's `/c2-invite` get a purely random one. An explicit
+name is trimmed to 80 characters and otherwise kept.
+[`GET /games/name-suggestion`](#get-gamesname-suggestion-signed-in-or-the-admin-token)
+previews one.
+
 `host_discord_id` is optional, and only the admin token may send it; a signed-in
 person's table always names its creator. It names the table host by Discord
 user ID ([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)).
@@ -657,9 +667,26 @@ again (see `GET /games/{id}`).
 |---|---|
 | 401 | unauthenticated |
 | 403 | the caller is not a signed-in person and not the admin token |
-| 400 | empty name, or an unknown `setup` |
+| 400 | an unknown `setup` (a blank name is not an error: the server names the table) |
 | 409 | the caller already has 3 open tables; the message names them. Start one, or end one with `/c2-end` |
 | 429 | the caller created tables too quickly (1 per 30 s, burst 3); `Retry-After: 30` |
+
+### `GET /games/name-suggestion` *(signed in, or the admin token)*
+
+A generated table name, for the create form's dice button (#2630). Nothing is
+stored, and the name is not reserved: `POST /games` with a blank name draws its
+own. It has the same gate as `POST /games` (a signed-in person or the admin
+token; a guest seat or spectator is 403, no credential is 401) and its own
+per-caller rate limit (429 when exceeded).
+
+A signed-in caller's suggestions sometimes use their display name; the admin
+token's never do.
+
+**Response 200**
+
+```json
+{ "name": "Goblins Behaving Badly" }
+```
 
 ### The table host
 

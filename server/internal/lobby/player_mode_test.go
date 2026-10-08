@@ -605,6 +605,7 @@ var keptServerCredentialSites = map[string]int{
 	"request":            1, // deck_id on POST /deck-requests is a person's library; the token is refused (ADR 0112 PR 2, #2001)
 	"callerKey":          1, // the per-caller limits' shared admin bucket
 	"createGameWith":     1, // the token creates tables with no creator and no open-table cap
+	"nameSuggestion":     1, // the token may ask for a name, as it may create a table; it has no display name to use (#2630)
 	"practiceOwner":      1, // the token's practice table
 	"inviteDM":           1, // naming a raw Discord snowflake
 	"AuthorizeUpgrade":   1, // the token never has an own binding

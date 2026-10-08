@@ -28,6 +28,7 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { L } from "../lib/labels";
+  import NewTableRow from "../lib/components/NewTableRow.svelte";
   import { session, LobbyApiError } from "../lib/session";
   import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
   import { signedInUserID } from "../lib/myGames";
@@ -451,7 +452,7 @@
 
   async function onCreate(e: SubmitEvent): Promise<void> {
     e.preventDefault();
-    if (!newName.trim()) return;
+    // A blank name is fine: the server picks one (#2630).
     busy = true;
     error = "";
     try {
@@ -773,15 +774,7 @@
       {#if canCreate}
         <form class="start-card create" aria-label={L.createGame} onsubmit={onCreate}>
           <h2 class="panel-h">create game</h2>
-          <div class="create-row">
-            <input
-              type="text"
-              placeholder="game name"
-              aria-label="game name"
-              bind:value={newName}
-            />
-            <button type="submit" class="primary" disabled={busy || !newName.trim()}>create</button>
-          </div>
+          <NewTableRow bind:name={newName} {busy} />
           {#if lastSetup}
             <label class="use-setup">
               <input type="checkbox" bind:checked={useLastSetup} />
