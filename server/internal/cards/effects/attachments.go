@@ -84,6 +84,18 @@ func EquipOnlyAbility(label, cost string, targets *game.TargetSpec) ActivatedAbi
 	return ab
 }
 
+// EquipPayingAbility is EquipAbility with a cost that is not only mana
+// and the card's own wording — Inventor's Axe's "Equip—Pay {E}{E}"
+// (ADR 0129 §5): `EquipPayingAbility("Equip—Pay {E}{E}", PayEnergy(2))`.
+// Equip is an activated ability (CR 702.6a), so the energy is an
+// ordinary AbilityCost component, checked and paid with the rest.
+func EquipPayingAbility(label string, cost game.AbilityCost) ActivatedAbility {
+	ab := EquipAbility("")
+	ab.Label = label
+	ab.Cost = cost
+	return ab
+}
+
 // AttachSourceToTarget is the equip ability's resolution: attach the
 // source permanent to the chosen creature.
 //

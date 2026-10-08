@@ -14,8 +14,10 @@ func init() {
 		UntapStepRestrictions: []game.UntapStepRestriction{doesntUntapDuringYourUntapStep()},
 		ManaAbilities:         []ManaAbility{{Cost: ManaAbilityCost{Tap: true}, Produced: "{C}{C}{C}", Label: "Add {C}{C}{C}"}},
 		Activated: []ActivatedAbility{{
-			Label: "{4}: Untap Grim Monolith",
-			Cost:  ManaCost("{4}"),
+			// #2500: the whole effect is untapping the source.
+			UntapSelf: true,
+			Label:     "{4}: Untap Grim Monolith",
+			Cost:      ManaCost("{4}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
 			}}},

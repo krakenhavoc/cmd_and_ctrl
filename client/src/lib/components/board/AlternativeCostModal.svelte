@@ -127,6 +127,8 @@
   function unpayable(index: number): boolean {
     const offer = addOns[index];
     if (!offer) return true;
+    // ADR 0129 §5: an energy cost the viewer cannot pay even once.
+    if (offer.energy_short === true) return true;
     const options = optionalCostPayOptions(offer);
     if (options !== undefined && options.length === 0) return true;
     // #1267: a gift with nobody left to promise it to.
@@ -157,6 +159,11 @@
     branches.length === 0 || (branch !== undefined && branches[branch]?.payable === true),
   );
   const canConfirm = $derived((giftOffer === undefined || giftOpponent !== undefined) && branchOK);
+
+  // energyCost spells n energy as pips for ManaCost: "{E}{E}".
+  function energyCost(n: number): string {
+    return "{E}".repeat(n);
+  }
 
   function timesPaid(index: number): number {
     return paying.get(index) ?? 0;
@@ -265,6 +272,10 @@
               {#if offer.mana_cost}
                 <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
               {/if}
+              {#if offer.energy}
+                <span class="note cost"><ManaCost cost={energyCost(offer.energy)} size={14} /></span
+                >
+              {/if}
             </button>
           </li>
         {/each}
@@ -310,6 +321,11 @@
                 <span class="name">{offer.label ?? offer.key}</span>
                 {#if offer.mana_cost}
                   <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
+                {/if}
+                {#if offer.energy}
+                  <span class="note cost"
+                    ><ManaCost cost={energyCost(offer.energy)} size={14} /></span
+                  >
                 {/if}
                 <button
                   type="button"

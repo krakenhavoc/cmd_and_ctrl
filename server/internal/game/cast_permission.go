@@ -203,6 +203,22 @@ type PermissionFilter struct {
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
 
+	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
+	// in your graveyard have retrace" (#2550): a card qualifies when it
+	// has AT LEAST ONE of the named creature types — "X and Y cards" is
+	// a union, not a card that is both (a Merfolk Wizard qualifies). It
+	// composes with CreatureType as a further AND, and an all-empty
+	// array constrains nothing. Read through the same CreatureTypesOf
+	// vocabulary as CreatureType, so a changeling in the graveyard
+	// qualifies, which is correct.
+	//
+	// A two-slot ARRAY rather than a slice because PermissionFilter is
+	// compared with == (a slice field makes the struct incomparable and
+	// breaks every `a.Filter != b.Filter` in the engine and its tests);
+	// two is the widest printed union, and a card that needs a third
+	// widens the array.
+	CreatureTypesAny [2]string `json:"creatureTypesAny"`
+
 	// NotOwnedByHolder is Tinybones, Bauble Burglar's "cards YOU DON'T
 	// OWN": a card whose owner is the permission's holder does not
 	// qualify. The holder is not known to the pure-data Matches, so the
@@ -268,6 +284,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
+		return false
+	}
+	if (f.CreatureTypesAny != [2]string{}) && !cardHasAnyCreatureType(c, f.CreatureTypesAny) {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
@@ -390,6 +409,14 @@ type CastPermission struct {
 	// Not applied to a LAND: a land has no mana cost to replace, and
 	// Citadel's clause says "if you cast a spell this way".
 	LifeEqualToManaValue bool `json:"lifeEqualToManaValue,omitempty"`
+
+	// EnergyEqualToManaValue is Amped Raptor's "You may cast that card
+	// by paying an amount of {E} equal to its mana value rather than
+	// paying its mana cost" (ADR 0129 §5): Bolas's Citadel's shape with
+	// energy for life. A COST (CR 107.14, CR 118.3), so it becomes an
+	// AlternativeCost.Energy and a player short of it cannot claim the
+	// offer. Not applied to a land, for LifeEqualToManaValue's reason.
+	EnergyEqualToManaValue bool `json:"energyEqualToManaValue,omitempty"`
 
 	// ExileOtherFromGraveyard is escape's "exile N other cards from
 	// your graveyard" (CR 702.138a) — Underworld Breach's three, The
@@ -760,6 +787,12 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		// "rather than pay its mana cost".
 		out.ManaCost = ""
 		out.Life = card.ManaValue()
+	}
+	if p.EnergyEqualToManaValue {
+		// The same read for energy (ADR 0129 §5): "rather than paying
+		// its mana cost", so no mana is owed.
+		out.ManaCost = ""
+		out.Energy = card.ManaValue()
 	}
 	if p.ExileOtherFromGraveyard > 0 {
 		out.ExileFromGraveyard = escapeExileSpec(p.ExileOtherFromGraveyard)
@@ -1732,6 +1765,16 @@ func (g *Game) standingExilePermissionOnLocked(card Card, zone ZoneKind) *CastPe
 func cardHasCreatureType(c Card, want string) bool {
 	for _, t := range CreatureTypesOf(&c) {
 		if t == want {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasAnyCreatureType is cardHasCreatureType for a union of types.
+func cardHasAnyCreatureType(c Card, want [2]string) bool {
+	for _, t := range want {
+		if t != "" && cardHasCreatureType(c, t) {
 			return true
 		}
 	}

@@ -396,7 +396,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// Once per (card, face, offer) rather than once per announced set
 	// of optional costs: nothing in ADR 0073's optional half can
 	// change a timing answer.
-	if !e.g.CastTimingOpenLocked(e.seat, card, kind, perm) {
+	if !e.g.CastTimingForOfferOpenLocked(e.seat, card, kind, perm, offer) {
 		return
 	}
 	// ADR 0073 §9: a card with optional additional costs is several
@@ -411,6 +411,12 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// runs exactly once for them and the enumeration is unchanged.
 	optional := game.OptionalCostsFor(game.CatalogKey(card))
 	for _, chosen := range e.optionalCostSets(optional) {
+		// ADR 0129 §5, CR 118.3: a replicate paid more times than the
+		// seat has energy for (with the offer's own, Nissa's eight) is
+		// a cast the engine refuses, so it is never offered.
+		if game.EnergyShortfall(e.p, game.CastEnergyOwed(offer, nil, optional, chosen)) != nil {
+			continue
+		}
 		// ADR 0089: a set that promises a gift is one announcement
 		// per opponent who could receive it — "which opponent" is
 		// part of paying the cost (CR 702.174a), and a bot offered
@@ -1474,7 +1480,10 @@ func (e *enumerator) castMoveEmitter(
 			// #1677: and the Phyrexian symbols this move pays with
 			// life, which Params names only as a count.
 			// ADR 0100: and a branch's fixed "pay 3 life".
-			Cost: withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+			// ADR 0129 §5: and the energy the cast pays — the offer's
+			// and a replicate's, once per payment.
+			Cost: withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+				game.CastEnergyOwed(offer, nil, optional, chosen)),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that

@@ -1501,6 +1501,10 @@ type ActivatedAbility struct {
 	// instant" (#1208). Set by EquipAbility; no card file sets it
 	// directly, exactly as none sets Cycling.
 	Equip bool
+	// UntapSelf marks a row whose whole effect is untapping its own
+	// source (Basalt and Grim Monolith, #2500). Bot data: the engine
+	// never reads it. See game.ActivatedAbility.UntapSelf.
+	UntapSelf bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
 	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition

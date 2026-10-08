@@ -27,7 +27,7 @@ import {
   exileCostBadge,
   exileEntryLegality,
   exileStripEntries,
-  manaSymbols,
+  priceSymbols,
   priceText,
   type ExileCostBadge,
   type ExileStripEntry,
@@ -157,7 +157,7 @@ export function commanderCostBadge(card: CardView, casts = 0): ExileCostBadge | 
   for (const p of prices.slice(1)) {
     lines.push(`or ${priceText(p)}${p.label ? ` (${p.label})` : ""}`);
   }
-  const symbols = manaSymbols(cheapest.cost);
+  const symbols = priceSymbols(cheapest);
   return {
     symbols: symbols.length > 0 ? symbols : ["0"],
     life: cheapest.life,

@@ -2422,6 +2422,7 @@ seats[].castPermissions[].duration.PinnedUnstamped	bool
 seats[].castPermissions[].duration.Player	custom(uuid.UUID)
 seats[].castPermissions[].duration.Source	custom(uuid.UUID)
 seats[].castPermissions[].duration.SourceEnteredAt	number:int64
+seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].exileOnResolution	bool
 seats[].castPermissions[].exileOtherFromGraveyard	number:int
 seats[].castPermissions[].faces	array
@@ -2429,6 +2430,8 @@ seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
+seats[].castPermissions[].filter.creatureTypesAny	array
+seats[].castPermissions[].filter.creatureTypesAny[]	string
 seats[].castPermissions[].filter.exiledWith	object
 seats[].castPermissions[].filter.exiledWith.epoch	number:int
 seats[].castPermissions[].filter.exiledWith.id	custom(uuid.UUID)
@@ -3906,6 +3909,8 @@ seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
+seats[].statics[].cantBeCountered.filter.creatureTypesAny	array
+seats[].statics[].cantBeCountered.filter.creatureTypesAny[]	string
 seats[].statics[].cantBeCountered.filter.exiledWith	object
 seats[].statics[].cantBeCountered.filter.exiledWith.epoch	number:int
 seats[].statics[].cantBeCountered.filter.exiledWith.id	custom(uuid.UUID)
@@ -3928,6 +3933,8 @@ seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
+seats[].statics[].castBan.filter.creatureTypesAny	array
+seats[].statics[].castBan.filter.creatureTypesAny[]	string
 seats[].statics[].castBan.filter.exiledWith	object
 seats[].statics[].castBan.filter.exiledWith.epoch	number:int
 seats[].statics[].castBan.filter.exiledWith.id	custom(uuid.UUID)
@@ -3968,6 +3975,11 @@ seats[].statics[].gameEnd.cantWin	bool
 seats[].statics[].gameEnd.causes	array
 seats[].statics[].gameEnd.causes[]	string
 seats[].statics[].gameEnd.scope	number:uint8
+seats[].statics[].handSize	object
+seats[].statics[].handSize.active	bool
+seats[].statics[].handSize.at	number:int64
+seats[].statics[].handSize.kind	number:int
+seats[].statics[].handSize.n	number:int
 seats[].statics[].keepManaColors	array
 seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
@@ -3982,6 +3994,8 @@ seats[].statics[].nextSpell.counters	number:int
 seats[].statics[].nextSpell.filter	object
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
+seats[].statics[].nextSpell.filter.creatureTypesAny	array
+seats[].statics[].nextSpell.filter.creatureTypesAny[]	string
 seats[].statics[].nextSpell.filter.exiledWith	object
 seats[].statics[].nextSpell.filter.exiledWith.epoch	number:int
 seats[].statics[].nextSpell.filter.exiledWith.id	custom(uuid.UUID)
@@ -4006,6 +4020,8 @@ seats[].statics[].timing.affects	string
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
+seats[].statics[].timing.filter.creatureTypesAny	array
+seats[].statics[].timing.filter.creatureTypesAny[]	string
 seats[].statics[].timing.filter.exiledWith	object
 seats[].statics[].timing.filter.exiledWith.epoch	number:int
 seats[].statics[].timing.filter.exiledWith.id	custom(uuid.UUID)

@@ -643,6 +643,17 @@ var mechanics = []Mechanic{
 		Adopt:      `Triggered: []game.TriggeredAbility{Storm()}`,
 	},
 	{
+		// ADR 0129 §5: effects.Replicate stamps its trigger with the
+		// keyword, and Register holds the trigger and the replicate
+		// cost together, so the probe is exact.
+		Name:       "replicate",
+		Phrases:    []string{"replicate"},
+		Implements: keywordTrigger(effects.KeywordReplicate),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "replicate"`,
+		Confidence: Exact,
+		Adopt:      `OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(n, max)} with Triggered: []game.TriggeredAbility{Replicate()} — see effects/replicate.go`,
+	},
+	{
 		// ADR 0099: discover is an instruction inside a closure, so the
 		// only machine-readable signal is the Spec's own declaration,
 		// which effects/discover_guard_test.go holds to the source.

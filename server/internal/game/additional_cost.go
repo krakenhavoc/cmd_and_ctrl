@@ -206,6 +206,16 @@ type AdditionalCost struct {
 	// component. Added by ADR 0100 §2 for the either/or branches.
 	PayLife int
 
+	// Energy is "pay N {E}" as part of this cost, once per payment (CR
+	// 107.14, ADR 0129 §5): Reiterating Bolt's "Replicate—Pay {E}{E}{E}"
+	// is an optional cost keyed ReplicateKey with Energy 3, paid any
+	// number of times (CR 702.56a). Not card-shaped, so it may repeat
+	// like a multikicker's mana. Summed across the whole plan, and with a
+	// claimed alternative cost's energy, by CastEnergyOwed; checked at
+	// announce (CR 118.3) and paid through payEnergyLocked with the
+	// spell on the stack. Never waived (ADR 0129 §4).
+	Energy int
+
 	// TapCreatures is "Tap an untapped creature you control" paid as a
 	// cost (Collective Effort's escalate, CR 702.120a): N distinct
 	// untapped creatures the caster controls, any power. Named on the
@@ -316,7 +326,7 @@ func (c *AdditionalCost) MaxPayments() int {
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
-		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
+		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
 		c.Reveal == nil)
 }
 
@@ -379,6 +389,10 @@ const (
 	// times. Counted with KickerKey by KickedTimesPaid, because "the
 	// number of times it was kicked" does not distinguish them.
 	MultikickerKey = "multikicker"
+	// ReplicateKey is CR 702.56a's replicate: an optional cost paid any
+	// number of times, and a cast trigger that copies the spell once per
+	// payment (effects.Replicate, ADR 0129 §5).
+	ReplicateKey = "replicate"
 	// BuybackKey is CR 702.27's buyback. Read by the stack-exit route
 	// and by nothing else.
 	BuybackKey = "buyback"
@@ -763,6 +777,30 @@ func planLife(plan []costPayment, xValue int) int {
 		if pay.cost.PayLifeX {
 			n += xValue
 		}
+	}
+	return n
+}
+
+// planEnergy is the energy the plan pays: each entry's Energy, once
+// per payment, so a replicate paid twice owes twice its {E}{E}{E}.
+func planEnergy(plan []costPayment) int {
+	n := 0
+	for _, pay := range plan {
+		n += pay.cost.Energy
+	}
+	return n
+}
+
+// CastEnergyOwed is the energy one announcement pays (ADR 0129 §5): the
+// claimed alternative cost's, and the additional-cost plan's (the
+// mandatory cost, or the chosen branch, then each announced payment of
+// an optional cost). One sum, read by CastSpell's CR 118.3 check and by
+// the bot enumerator, so a move the enumerator offers is a cast the
+// engine accepts. Zero for every cast that pays no energy.
+func CastEnergyOwed(alt *AlternativeCost, mandatory *AdditionalCost, optional []AdditionalCost, chosen []int) int {
+	n := planEnergy(castCostPayments(mandatory, optional, chosen))
+	if alt != nil {
+		n += alt.Energy
 	}
 	return n
 }

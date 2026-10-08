@@ -606,6 +606,14 @@ type ActivatedAbilityShape struct {
 	// label's spelling.
 	Equip bool
 
+	// UntapSelf marks a row whose whole effect is untapping its own
+	// source: Basalt Monolith's "{3}: Untap this artifact", Grim
+	// Monolith's {4}. Declared by hand on the card file, like Purpose,
+	// and read by nothing in the engine. The heuristic reads it to tell
+	// a self-untap that pays for itself from one that only trades mana
+	// for mana (#2500): it cannot see an effect, only the wire.
+	UntapSelf bool
+
 	// Zones is the set of zones this ability functions from
 	// (CR 113.6 — an ability works only where it says it does).
 	// Nil means the BATTLEFIELD, which is every ability written

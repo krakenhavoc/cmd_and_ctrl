@@ -1054,10 +1054,35 @@ the bot pays it and the stepper opens on it. A reflexive "When you do,
 `mayPayEnergyThen`, `sacrificeThisUnlessYouPayEnergy`,
 `getEnergyThenPayAnyAmountToDamageTarget`.
 
-**Not yet:** energy as an alternative cost, replicate or a keyword's cost waits on ADR 0129 PR 4;
-"whenever you get one or more {E}" and "{E} you've paid or lost this
-turn" on PR 5. Put such a card on the matching registry row's `Waiting`
-list.
+**Energy in other costs** (PR 4). An alternative cost takes
+`AlternativeCost.Energy`, checked with the offer (a caster short of it is
+not offered it, CR 118.3) and paid through `payEnergyLocked`:
+
+```go
+GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayEightEnergyForPermanentSpellsYouCast()}, // Nissa, Worldsoul Speaker
+GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayEnergyForSmallCreatureSpellsWithFlash()}, // Primal Prayers
+```
+
+A granted offer narrows the spells it reaches with
+`GrantedAlternativeCost.Spells` (a `PermissionFilter`) and `MaxManaValue`;
+"if you cast a spell this way, you may cast it as though it had flash" is
+`AlternativeCost.AsThoughFlash` (CR 601.3c), which opens the window for
+that claim only. A grant of "cast it by paying {E} equal to its mana value"
+is `CastPermission{AltCostKey: …, EnergyEqualToManaValue: true}` (Amped
+Raptor). Replicate is two declarations, refused one without the other:
+
+```go
+OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(3, 10)}, // "Replicate—Pay {E}{E}{E}"
+Triggered:     []game.TriggeredAbility{Replicate()},
+```
+
+Equip and unearth with an energy cost are `EquipPayingAbility("Equip—Pay
+{E}{E}", PayEnergy(2))` and `UnearthPaying("Unearth—Pay eight {E}",
+PayEnergy(8))`. Reconfigure is not implemented (`reconfigure`, #2639).
+
+**Not yet:** "whenever you get one or more {E}" and "{E} you've paid or
+lost this turn" wait on ADR 0129 PR 5. Put such a card on the matching
+registry row's `Waiting` list.
 
 ### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
 
@@ -4490,7 +4515,10 @@ catalog card can. A card that GRANTS retrace to others declares a
 `DiscardLandCard: true` — on `Spec.CastPermissions` for a permanent (Six,
 with `Filter: PermissionFilter{NonLandPermanentOnly: true}` and
 `Timing: game.TimingYourTurnOnly`), or on `EmblemSpec.CastPermissions`
-for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). Standing
+for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). "X and Y
+cards" is a union: Deeproot Historian uses
+`PermissionFilter{CreatureTypesAny: [2]string{"Merfolk", "Druid"}}`
+(#2550). Standing
 permissions are derived from the battlefield or the owner's emblems on
 every query, so they end when the source does.
 

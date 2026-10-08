@@ -224,6 +224,8 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
+	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
+	checkReplicate(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
