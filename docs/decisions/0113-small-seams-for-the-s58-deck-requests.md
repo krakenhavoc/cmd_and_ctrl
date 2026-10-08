@@ -450,3 +450,41 @@ Additive: `seats[].statics[].handSize.{active,kind,n,at}`, recorded in `snapshot
 
 - A grant that reaches another player or that a permanent's leaving ends: those are `HandSizeStatic`s on a permanent (§3).
 - Showing a granted change in the seat badge: the badge already reads the effective maximum.
+
+## Amendment 2026-10-08 — "Enters from a graveyard" triggers (#2135)
+
+**Why it lands here.** §4 is the undying and persist section, and the issue was found landing it: a creature returned by undying is the first permanent a card text can name by where it came from. This amendment adds an event field and changes no earlier decision.
+
+### What exists, what is missing
+
+- **`EventCast` already says where a spell was cast from** (`OldZone`, S22). `EventZoneMove` says where a card moved from. `EventETB` named only the new permanent, so a trigger could not tell a creature returned from a graveyard (undying, persist, reanimation) from one that was cast.
+
+### The rules
+
+- **CR 603.6a:** an enters-the-battlefield ability triggers on the event of a permanent entering, and the event knows the zone the object came from (CR 400.7 makes it a new object, but the move is a single event).
+- **CR 603.10a:** it looks at the event, not at the object afterwards, so the origin has to ride on the event.
+
+### Decision
+
+1. **Two fields on `game.Event`, `EnteredFrom` (zone kind) and `EnteredFromOwner` (the zone's owner), stamped on `EventETB`** by the two sites that emit it for a card that moved: `announceEntryLocked` (from `entryLanding.srcKind` / `srcOwner`, read where `landEntryLocked` takes the card out of its zone) and the sandbox `MoveCardByID`. A token and a spawned card come from no zone and leave both empty. They are new fields, not `OldZone` / `NewZone`: the layer listener and the turn tally key on the zones an event names, and an ETB carrying `OldZone` would be counted as a second zone move beside the `EventZoneMove` that already announces it (the snapshot corpus caught exactly that: an extra layer-version bump).
+2. **`effects.EnteredFromAGraveyard` and `EnteredFromYourGraveyard`** are the two `When` conditions. "Your graveyard" compares `EnteredFromOwner` with the trigger source's controller. Both read the event only, so they compose with `Self` and `AllOf`.
+3. **No new prompt, no wire change.** The fields are on the event log (additive, `omitempty`, recorded in `testdata/snapshot_shape/v7.txt`, no schema bump); the public log projection copies named fields and does not carry these.
+4. **Bots.** Nothing to add: these are ordinary triggers, and the existing target prompts (Flayer's "any target", Pit-Dweller's "target opponent") already have enumerator coverage.
+
+### Cards
+
+- **Treacherous Pit-Dweller: Full.** The control change is indefinite (CR 611.2a) and pinned to the object that entered.
+- **Flayer of the Hatebound: Full.** Triggers on itself or another creature entering from the controller's own graveyard; the entering creature is the damage source.
+- **River Kelpie: Full.** Draws on any permanent entering from any graveyard, and on any spell cast from a graveyard (`EventCast.OldZone`).
+
+### Tests
+
+`cards/effects/enters_from_graveyard_test.go`: the event's origin after undying and after a sandbox move, each card's positive and negative case (a cast Pit-Dweller keeps its controller, a cast creature draws nothing, an opponent's graveyard does not trigger Flayer). Back-outs: dropping `EnteredFrom` fails four of them, dropping `EnteredFromOwner` fails two, dropping the sandbox stamp fails the sandbox test.
+
+### Snapshot impact
+
+Additive `entered_from` and `entered_from_owner` on the events inside the snapshot (and the triggers that carry one). A binary without them drops the keys and loses nothing it reads.
+
+### Out of scope
+
+- The evoke sacrifice's synthetic harvest event, which is not an entry.

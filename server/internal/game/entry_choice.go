@@ -368,6 +368,10 @@ type entryLanding struct {
 	// srcKind is the zone it came from; "" for a created token, which
 	// comes from no zone (CR 111.1).
 	srcKind ZoneKind
+	// srcOwner is the owner of the zone it came from (the graveyard's
+	// owner, for "enters from your graveyard"); uuid.Nil for a token and
+	// for a shared zone.
+	srcOwner uuid.UUID
 	// entered is its battlefield ID: the NEW one when the entry minted
 	// a new object.
 	entered uuid.UUID
@@ -396,6 +400,7 @@ type entryLanding struct {
 func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, err error) {
 	var (
 		srcKind    ZoneKind
+		srcOwner   uuid.UUID
 		moved      Card
 		stackEpoch int
 	)
@@ -422,6 +427,7 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 			return entryLanding{}, false, nil
 		}
 		srcKind = src.Kind
+		srcOwner = src.Owner
 		if src.Kind == ZoneStack {
 			// ADR 0104: the object's epoch AS A SPELL, read before
 			// MoveCard bumps it (CR 400.7) — the key the records
@@ -561,7 +567,7 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 			moved = *c
 		}
 	}
-	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered, played: ev.landPlay, doors: doors}, true, nil
+	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, srcOwner: srcOwner, entered: entered, played: ev.landPlay, doors: doors}, true, nil
 }
 
 // announceEntryLocked emits what a landed permanent's arrival owes the
@@ -612,9 +618,11 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 		g.attachResolvedAuraLocked(l.entered, ev.stackItem)
 	}
 	g.EmitEvent(Event{
-		Kind:   EventETB,
-		Actor:  ev.Actor,
-		CardID: l.entered,
+		Kind:             EventETB,
+		Actor:            ev.Actor,
+		CardID:           l.entered,
+		EnteredFrom:      l.srcKind,
+		EnteredFromOwner: l.srcOwner,
 	})
 	// ADR 0103, CR 709.5h: "when you unlock this door" triggers on a
 	// door unlocked as the permanent enters, too. After EventETB, in

@@ -368,7 +368,9 @@ const (
 	// EventETB — a permanent entered the battlefield. CardID is the
 	// new permanent. Distinct from ZoneMove so listeners can key
 	// off of ETB specifically without pattern-matching the zone
-	// fields.
+	// fields. EnteredFrom / EnteredFromOwner name where it came from
+	// ("" for a token or a spawned card), CR 603.6a, so "enters from a
+	// graveyard" can be read (ADR 0113 amendment 2026-10-08).
 	EventETB EventKind = "etb"
 
 	// EventLTB — a permanent left the battlefield (any reason).
@@ -1424,6 +1426,17 @@ type Event struct {
 	// events. Empty string means "not applicable."
 	OldZone ZoneKind `json:"old_zone,omitempty"`
 	NewZone ZoneKind `json:"new_zone,omitempty"`
+
+	// EnteredFrom is the zone an EventETB's permanent came from, and
+	// EnteredFromOwner that zone's owner (ADR 0113, amendment
+	// 2026-10-08): "enters from YOUR graveyard" compares the owner to the
+	// trigger's controller. Empty for a token and a spawned card. These are
+	// fields of their own rather than OldZone, because OldZone makes an
+	// event look like a zone move to the layer and tally listeners that key
+	// on the zones an event names, and an ETB is already announced by the
+	// EventZoneMove beside it.
+	EnteredFrom      ZoneKind  `json:"entered_from,omitempty"`
+	EnteredFromOwner uuid.UUID `json:"entered_from_owner,omitempty"`
 
 	// Played marks a battlefield entry as a PLAY (CR 305.1) rather
 	// than an effect PUTTING the permanent onto the battlefield
