@@ -22,9 +22,11 @@ describe("castPreviewParams — the choices announced so far", () => {
       tapIDs: ["bird", "elf"],
       face: 1,
       // Not part of the price question the endpoint takes as cast
-      // params — x rides its own `x` param, the alternative cost's
-      // cards are paid rather than priced.
+      // params — x rides its own `x` param.
       xValue: 3,
+      // ADR 0135 §4: the alternative cost's cards ARE sent — an emerge
+      // creature lowers the price by its mana value, and every named
+      // card is kept away from the plan.
       altCostIDs: ["b"],
       // #1242: a discard is not priced either, but it IS sent — the
       // plan must not also spend a card the cast has named (a Spirit
@@ -38,6 +40,7 @@ describe("castPreviewParams — the choices announced so far", () => {
       tapIDs: ["bird", "elf"],
       face: 1,
       discardIDs: ["a"],
+      altCostIDs: ["b"],
     });
   });
 

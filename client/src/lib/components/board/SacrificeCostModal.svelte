@@ -21,7 +21,7 @@
   // ADR 0111 PR 6: a sheet in the action dock; Sacrifice and Cancel are
   // the dock's action bar (Enter / Escape through its one key handler).
 
-  import type { CardView, SacrificeGroupView } from "../../protocol";
+  import type { AltCostPriceView, CardView, SacrificeGroupView } from "../../protocol";
   import {
     canConfirmSacrificeRange,
     canFillEachOf,
@@ -69,6 +69,11 @@
     // then reads "Tap an untapped creature you control to cast Orim's
     // Cure."
     castName?: string;
+    // ADR 0135 §4: an emerge offer's price per candidate (its mana value
+    // and what the spell costs with it sacrificed), from the server's
+    // pricer. Shown beside each option, so the player sees what each
+    // creature saves.
+    prices?: Record<string, AltCostPriceView>;
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
@@ -83,6 +88,7 @@
     countIsX = false,
     eachOf,
     castName,
+    prices,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -210,6 +216,14 @@
               {#if c.power !== undefined && c.toughness !== undefined}
                 <span class="note pt">{c.power}/{c.toughness}</span>
               {/if}
+              {#if prices?.[c.instance_id]}
+                {@const p = prices[c.instance_id]}
+                <span
+                  class="note price"
+                  title={`Mana value ${p.mana_value}: the spell costs ${p.price} with this sacrificed`}
+                  >MV {p.mana_value} · costs {p.price}</span
+                >
+              {/if}
             </button>
           </li>
         {/each}
@@ -222,7 +236,8 @@
   .name {
     flex: 1 1 auto;
   }
-  .pt {
+  .pt,
+  .price {
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--fg-muted);

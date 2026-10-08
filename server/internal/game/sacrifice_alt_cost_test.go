@@ -409,7 +409,7 @@ func TestSacrificeAltCostIgnoresHexproof(t *testing.T) {
 // must not be cracked for that mana first.
 func TestCastAutoTapExclusionsCoverTheAlternativeCostsCards(t *testing.T) {
 	a, b := uuid.New(), uuid.New()
-	ex := CastAutoTapExclusions(CastSpellParams{AltCostIDs: []uuid.UUID{a, b}})
+	ex := CastAutoTapExclusions(CastSpellParams{AltCostIDs: []uuid.UUID{a, b}}, nil)
 	if !ex[a] || !ex[b] {
 		t.Fatalf("exclusions = %v, want both alt_cost_ids", ex)
 	}

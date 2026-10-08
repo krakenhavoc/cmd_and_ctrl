@@ -168,6 +168,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostTapOthers(spec.Name, ac)
+		checkEmerge(spec.Name, ac)
 		checkAwaken(spec, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
@@ -1268,6 +1269,20 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents — an alternative cost taps a fixed number", card, where))
 	}
 	checkTapOthersClause(card, where, tc, false)
+}
+
+// checkEmerge holds ReducedBySacrificedManaValue (ADR 0135 §4) to the
+// shape CR 702.119a prints: beside a Sacrifice of exactly one permanent.
+// The pricer reads the one permanent AltCostIDs names, so the flag on a
+// cost that sacrifices nothing, or several, would price a discount the
+// card does not print.
+func checkEmerge(card string, ac game.AlternativeCost) {
+	if !ac.ReducedBySacrificedManaValue {
+		return
+	}
+	if ac.Sacrifice == nil || game.SacrificeCostCount(ac.Sacrifice) != 1 || game.SacrificeCostVariable(ac.Sacrifice) {
+		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by the sacrificed permanent's mana value without a sacrifice of exactly one permanent (CR 702.119a)", card, ac.Key))
+	}
 }
 
 // Lookup returns the Spec for a given oracle ID. The second return

@@ -471,3 +471,30 @@ describe("an alternative-cost tap picker", () => {
     expect(text).not.toContain("to pay for this ability");
   });
 });
+
+// ADR 0135 §4: the emerge picker shows each creature's mana value and the
+// price the spell is cast at with it sacrificed.
+describe("an emerge sacrifice picker", () => {
+  it("shows each candidate's price", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      {
+        component: SacrificeCostModal as never,
+        props: {
+          source: card("fiend", "Elder Deep-Fiend"),
+          label: "a creature",
+          options: [ox],
+          castName: "Elder Deep-Fiend",
+          prices: { [ox.instance_id]: { mana_value: 4, price: "{1}{U}{U}" } },
+          onConfirm: (ids: string[]) => calls.confirmed.push([ids]),
+          onCancel: () => calls.cancelled++,
+        },
+      } as never,
+    );
+    flushSync();
+    const text = sheetPanel()!.textContent ?? "";
+    expect(text).toContain("Sacrifice a creature to cast Elder Deep-Fiend.");
+    expect(text).toContain("MV 4 · costs {1}{U}{U}");
+  });
+});

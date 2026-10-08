@@ -800,6 +800,8 @@ func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, p
 		if c.Controller != controller {
 			continue
 		}
+		// TRUE is excluded outright; a sacrifice-named permanent (FALSE,
+		// ADR 0135 §4) is asked per ability below.
 		if excluded[c.InstanceID] {
 			continue
 		}
@@ -822,6 +824,14 @@ func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, p
 		}
 		for _, cand := range cands(controller, c) {
 			picked := &cand.ab
+			// ADR 0135 §4 (owner decision 3): a permanent named to a
+			// sacrifice cost on this cast may still tap for mana (CR
+			// 601.2g before 601.2h), but no ability that sacrifices it
+			// may be planned — the cost would then have nothing to pay
+			// with.
+			if !autoTapMayUse(excluded, c.InstanceID, picked) {
+				continue
+			}
 			// #1242: the tapped check lives AFTER the pick and asks only of
 			// an ability that owes a {T}. It used to open the loop, which
 			// was right while every planned ability tapped; a Gold that

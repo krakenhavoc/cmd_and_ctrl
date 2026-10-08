@@ -24,6 +24,7 @@
     ActionType,
     ActivatedAbilityView,
     AdditionalCostView,
+    AltCostPriceView,
     CardView,
     GameView,
     LegalTargetsView,
@@ -823,6 +824,8 @@
   let altSacPromptChoices: CastChoices = {};
   let altSacPromptClause = $state<LegalTargetsView | undefined>(undefined);
   let altSacPromptLabel = $state("a permanent");
+  // ADR 0135 §4: an emerge offer's price per candidate, shown in the picker.
+  let altSacPromptPrices = $state<Record<string, AltCostPriceView> | undefined>(undefined);
   const altSacOptions = $derived.by(() => {
     if (!altSacPromptCard) return [];
     return orderSacrificeOptions(view.battlefield.cards, altSacPromptClause?.cards);
@@ -835,6 +838,7 @@
     altSacPromptCard = null;
     altSacPromptChoices = {};
     altSacPromptClause = undefined;
+    altSacPromptPrices = undefined;
     if (!card) return;
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
@@ -882,6 +886,7 @@
     if (sacClause !== undefined) {
       altSacPromptClause = sacClause;
       altSacPromptLabel = offer?.pay_label ?? offer?.label ?? "a permanent";
+      altSacPromptPrices = offer?.reduces_by_mana_value ? offer.sacrifice_prices : undefined;
       altSacPromptChoices = choices;
       altSacPromptCard = card;
       return;
@@ -3407,11 +3412,14 @@
     count={altSacBounds.max}
     min={altSacBounds.min}
     eachOf={altSacPromptClause?.each_of}
+    prices={altSacPromptPrices}
+    castName={altSacPromptPrices ? altSacPromptCard?.name : undefined}
     onConfirm={confirmAltSacrifice}
     onCancel={() => {
       altSacPromptCard = null;
       altSacPromptChoices = {};
       altSacPromptClause = undefined;
+      altSacPromptPrices = undefined;
     }}
   />
   <!-- ADR 0135 §1: an alternative cost's tap ("tap an untapped creature

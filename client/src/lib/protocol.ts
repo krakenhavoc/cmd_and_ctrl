@@ -2291,6 +2291,13 @@ export interface AlternativeCostView {
   // for `sacrifice_options` ("three creatures") or for `tap_options`
   // ("an untapped creature you control").
   pay_label?: string;
+  // ADR 0135 §4: an emerge offer (CR 702.119a) — the permanent picked
+  // from `sacrifice_options` reduces the cost by its mana value.
+  reduces_by_mana_value?: boolean;
+  // ADR 0135 §4: an emerge offer's price per candidate, keyed by the
+  // instance IDs in `sacrifice_options`: the candidate's mana value and
+  // the mana the cast pays with it sacrificed, from the server's pricer.
+  sacrifice_prices?: Record<string, AltCostPriceView>;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow
   // skips the X picker and sends nothing. Absent for nearly every
@@ -4039,4 +4046,11 @@ export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
 export interface AutoAnswerRuleView {
   key: string;
   answer: "always" | "never";
+}
+
+// ADR 0135 §4: one emerge candidate's price — the permanent's mana value,
+// and the cast's mana cost with it sacrificed ("{1}{U}{U}").
+export interface AltCostPriceView {
+  mana_value: number;
+  price: string;
 }

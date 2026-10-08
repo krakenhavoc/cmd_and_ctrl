@@ -1472,7 +1472,8 @@ would fail.
 | `x` | no | Caller-supplied X value for spells with `{X}` in their cost. Defaults to 0. |
 | `ability` | no | Price the card's CR 602 activated ability at this index instead of its cast cost. Every cast-shaped param above is ignored on this branch — an ability is not a cast — except `tap_ids`, which here names the permanents tapped for a TapOthers cost (#1422). #1405: priced by `Game.PriceActivation`, the function `ActivateCatalogAbility` charges, so board activation modifiers (Boom Scholar) and the ability's own cost clause (the channel lands, Dragonfire Blade) are in the plan and the `missing` list. No commander tax. |
 | `targets` | no | #1405, with `ability` only — the targets the activation announces, as comma-separated `card:<uuid>` / `player:<uuid>` entries. A price that reads the target (Dragonfire Blade's "{1} less for each color of the creature it targets") is previewed at that target's price. Omitted, the no-target price, which is what the activation charges when it names no target and what the X and Phyrexian pickers want, since they open before targeting. Any other kind, or a malformed UUID, is a 400. Slot and mode are not carried; no cost reads them. |
-| `sacrifice_ids` / `discard_ids` | no | #1242 — the permanents and cards the cast names to its additional cost's sacrifice and discard. They do not change the price — except a per-sacrifice discount, which reads the sacrifice count (ADR 0100 §3: Torgaar, Famine Incarnate previews at `{B}{B}` with three `sacrifice_ids`); the plan must not ALSO spend them on mana (an Eldrazi Spawn offered to Village Rites, a Spirit Guide offered to Thrill of Possibility), exactly as `CastSpell`'s auto-tap will not. The same holds for `tap_ids`, which the plan now excludes too. |
+| `sacrifice_ids` / `discard_ids` | no | #1242 — the permanents and cards the cast names to its additional cost's sacrifice and discard. They do not change the price — except a per-sacrifice discount, which reads the sacrifice count (ADR 0100 §3: Torgaar, Famine Incarnate previews at `{B}{B}` with three `sacrifice_ids`); the plan must not ALSO spend them on mana (an Eldrazi Spawn offered to Village Rites, a Spirit Guide offered to Thrill of Possibility), exactly as `CastSpell`'s auto-tap will not. The same holds for `tap_ids`, which the plan now excludes too. ADR 0135 §4 (owner decision 3): a permanent named to a SACRIFICE may still be tapped for mana first (CR 601.2g before 601.2h), so a Llanowar Elves offered to Village Rites can pay part of the cost; no mana ability that sacrifices it is planned. |
+| `alt_cost_ids` | no | ADR 0135 §4 — the permanents and cards the cast names to its alternative cost's card component, as on `cast_spell`. An emerge creature changes the PRICE (its mana value comes off the generic part), so Elder Deep-Fiend previews at `{1}{U}{U}` over a four-drop. The plan never spends a named card or permanent, except that one named to a sacrifice offer may tap for mana first, as with `sacrifice_ids`. |
 | `exile_ids` / `waterbend_ids` | no | #1422, with `ability` only — the cards named to an "exile N cards" cost and the permanents tapped to waterbend, under the `activate_ability` payload's field names. With `ability`, `tap_ids` / `sacrifice_ids` / `discard_ids` name the activation's own TapOthers, sacrifice and discard payments. The plan never spends any of them, nor the ability's own source when its cost has `{T}` or sacrifices it: the preview excludes `game.ActivationAutoTapExclusions`, the set `ActivateCatalogAbility`'s auto-tap excludes, so it cannot plan Castle Vantress's own `{U}` for its `{2}{U}{U}, {T}` ability. Each waterbend tap also pays `{1}`, subtracted with `game.WaterbendReduced` before the Phyrexian strike, the activation's own order. |
 | `exclude` | no | Comma-separated permanent UUIDs the auto-tapper must NOT consider — the lock-tap UI's reservation list. |
 | `phyrexian` | no | #916 — how many of the cost's Phyrexian symbols the announcement will pay with 2 life each (CR 107.4f). Those symbols are struck before planning, exactly as the engine strikes them, so the plan and the `missing` breakdown describe the MANA the announcement still owes. Defaults to 0. Clamped to the number the cost prints rather than rejected: refusing a malformed announce is the announce gate's job, not a read-only preview's. |
@@ -1889,6 +1890,32 @@ is the N. A cast for the mana cost that names the land is refused as
 resolution the land gets its N +1/+1 counters first and then becomes a
 0/0 Elemental creature with haste that is still a land, with no
 duration.
+
+**Emerge (ADR 0135 §4, #2416, CR 702.119).** An emerge offer is keyed
+`emerge` and labelled as printed ("Emerge {5}{U}{U}", or "Emerge from
+artifact {5}{B}{B}" for CR 702.119b's variant). It is a sacrifice of one
+permanent, so it carries `sacrifice_options` (`min` == `max` == 1) and
+`pay_label` ("a creature", "an artifact"), and two more fields:
+`reduces_by_mana_value: true`, and `sacrifice_prices`, keyed by the
+instance IDs in `sacrifice_options`, each `{ mana_value, price }`: the
+candidate's mana value (a token that isn't a copy is 0) and the mana the
+cast owes with it sacrificed ("{1}{U}{U}" over a four-drop), priced by
+the server's one pricer, commander tax and the board's cost modifiers
+included. The reduction comes off the generic part only (CR 118.7a),
+after any increase and never below {0} (CR 601.2f); `mana_cost` stays
+the printed emerge cost. `sacrifice_prices` is per viewer and stripped
+from a public pile with `sacrifice_options`. The pick rides `cast_spell`
+as `alt_cost_ids`, exactly one permanent. The auto-tap preview
+(`GET /games/{id}/auto-tap-preview`) takes
+the same pick as `alt_cost_ids` on its query string, so its `cost`,
+`plan` and `missing` are for the reduced price. A permanent named to any
+sacrifice cost on a cast (`alt_cost_ids` under a sacrifice offer, or
+`sacrifice_ids`) may still be tapped for mana by the auto-tapper before
+it is sacrificed (CR 601.2g before 601.2h), but no mana ability that
+sacrifices it is planned. The sacrifice happens at CR 601.2h with the
+spell on the stack, and the stack item's paid-cost record keeps the
+objects the alternative cost paid with (`PaidCost.AltCostObjects`, kept
+by a CR 707.10 copy and by the permanent the spell becomes).
 
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
