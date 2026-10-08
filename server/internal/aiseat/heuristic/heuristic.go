@@ -438,6 +438,18 @@ type Config struct {
 	// KeepMinLands / KeepMaxLands bound a keepable opening hand.
 	KeepMinLands int
 	KeepMaxLands int
+	// KeepNeedsCast checks a hand at the KeepMinLands floor for a spell
+	// it can cast soon (#2693, mulligan.go): one whose mana value is at
+	// most the lands in hand plus KeepCastReach, with its coloured pips
+	// covered by those lands. A hand without one is mulliganed when the
+	// mulligan is free (the first one), and kept as before when
+	// it would cost a card. Off (the zero value) counts lands only, and
+	// a two-land hand of five-drops is kept.
+	KeepNeedsCast bool
+	// KeepCastReach is how far past the lands in hand a spell may cost
+	// and still count as castable soon: the land drops the hand is
+	// relying on drawing.
+	KeepCastReach int
 	// MaxMulligans caps how far the bot will dig. London mulligans
 	// cost a card each; three is already a losing hand.
 	MaxMulligans int
@@ -568,6 +580,9 @@ func DefaultConfig() Config {
 		KeepMinLands: 2,
 		KeepMaxLands: 5,
 		MaxMulligans: 2,
+		// The lands in hand only: a two-land hand keeps a two-drop.
+		KeepNeedsCast: true,
+		KeepCastReach: 0,
 
 		BlockChumpLife: 8,
 		AttackReserve:  1,
@@ -659,6 +674,9 @@ func BaselineConfig() Config {
 	c.PriceOwnPermanentPicks = false
 	c.PriceExtraLandDrops = false
 	c.ExtraLandDropRecurring = 0
+	// #2693: the mulligan counted lands only.
+	c.KeepNeedsCast = false
+	c.KeepCastReach = 0
 	return c
 }
 
@@ -1003,9 +1021,17 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing worth doing"}
 }
 
-// decideMulligan keeps any hand that can cast something. Two to five
-// lands in seven is the standard keepable range; below the floor the
-// hand cannot function and above the ceiling it is all lands.
+// decideMulligan keeps a hand that has the lands to function. Two to
+// five lands in seven is the standard keepable range; below the floor
+// the hand cannot function and above the ceiling it is all lands. With
+// KeepNeedsCast, a hand at the floor must also hold a spell it can cast
+// soon, or it takes the free mulligan (#2693, mulligan.go).
+//
+// The engine's mulligan (the multiplayer free first mulligan, as
+// legal.mulliganMoves offers it) redraws a full seven the first time
+// and one card fewer each time after; nothing goes to the bottom
+// (game.Mulligan). So `next` below is the size of the hand a mulligan
+// would draw, and a mulligan is free while next is the hand's size.
 func (p *Policy) decideMulligan(st *state, moves []legal.Move) aiseat.Decision {
 	keep := indexOfType(moves, legal.TypeKeepHand)
 	mull := indexOfType(moves, legal.TypeMulligan)
@@ -1038,6 +1064,12 @@ func (p *Policy) decideMulligan(st *state, moves []legal.Move) aiseat.Decision {
 		return aiseat.Decision{
 			Index:  mull,
 			Reason: fmt.Sprintf("mulligan: %d lands in %d", lands, size),
+		}
+	}
+	if p.cfg.KeepNeedsCast && lands == lo && next >= size && !p.castableSoon(st.seat.Hand.Cards, lands) {
+		return aiseat.Decision{
+			Index:  mull,
+			Reason: fmt.Sprintf("mulligan: %d lands in %d and nothing castable by %d mana", lands, size, lands+p.cfg.KeepCastReach),
 		}
 	}
 	return aiseat.Decision{Index: keep, Reason: fmt.Sprintf("keep: %d lands in %d", lands, size)}
