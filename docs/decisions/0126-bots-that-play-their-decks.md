@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
 This ADR was written plan-first. No code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
@@ -611,6 +611,83 @@ The owner chose option (a), the recommended one, on every question. No section a
 4. **Per point, plus lethal.** Declared damage at a player is priced at `DamageToOpponent` per point through those weights, with `LethalBonus` when it reaches the player's life (D1; CR 704.5a).
 5. **The curated decks, then gifts.** PR 2 declares the curated decks' cards in both classes. PR 5 then declares every catalog spell, mode or row that gives its target player something, and burn follows from the dump audit. Undeclared burn keeps today's removal price.
 6. **Planeswalkers by loyalty.** A planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
+
+## Amendment 2026-10-08: what removal hands back
+
+**Status:** Accepted (owner decision on #2753, 2026-10-08).
+**Issue:** [#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679). PR: #2753.
+**Amends:** the target half of the cast price, and the [amendment of 2026-10-08](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills)'s target entries, which gain one field. Everything else is unchanged.
+
+### The problem
+
+A spell aimed at an opposing permanent is priced as removal, at the permanent's value × `RemovalConfidence` × `leaderBoost` (`cardTargetValue`, `damageCardValue`). Two kinds of removal give something back, and that price saw neither of them.
+
+- **A commander comes back.** CR 903.9a: a commander put into a graveyard or exile may go to the command zone. CR 903.9b: one that would go to a hand or a library may go there instead. CR 903.8: each later cast from there costs {2} more. In review game 2 (`06e98afa`, seq 186), Chaos Warp on Y'shtola, a 2/4 commander, priced at 6.65 and beat casting the bot's own commander (4.17).
+- **Some removal gives its target's controller a gift.** Rapid Hybridization, Pongify, Beast Within and Generous Gift give a 3/3. Stroke of Midnight gives a 1/1. Swords to Plowshares gives life equal to the target's power. Path to Exile and Assassin's Trophy give a basic land. In review game 1 (`8a9f18d7`, seq 66), Rapid Hybridization on a 1/1 priced at 3.45 and handed back a 3/3.
+
+### Why the per-target entries cannot say it
+
+The previous amendment's `targets` entries (#2689) describe what happens **to the target**. Their player amounts (`draws`, `discards`, `tokens`, `life_gain`, `life_loss`) belong to the player the clause picks. The registration guard refuses a player amount on a clause that cannot target a player. Removal's clause targets a creature or a permanent, and the gift goes to that permanent's **controller**, who is not a target. So `tokens: 1` on Rapid Hybridization's creature clause is refused, and it would mean the wrong thing if it were accepted. Inferring the gift from the card is ruled out by §6 ("declared, never inferred").
+
+### Decision
+
+**1. A declared return on the target entry.** `game.TargetPurpose` gains `Returns`, a `game.TargetReturn` of printed amounts:
+
+| Field | Wire (`targets[].returns`) | Meaning | Example |
+|---|---|---|---|
+| `CreatureTokens` | `creature_tokens` | creature tokens the target's controller creates | Rapid Hybridization 1 |
+| `TokenPower`, `TokenToughness` | `token_power`, `token_toughness` | each token's printed size | 3 and 3; Stroke of Midnight 1 and 1 |
+| `LifeEqualToPower` | `life_equal_to_power` | the controller gains life equal to the target's power, counted at resolution, so a flag rather than a number | Swords to Plowshares |
+| `Lands` | `lands` | land cards the controller may put onto the battlefield | Path to Exile, Assassin's Trophy 1 |
+| `LandsUntapped` | `lands_untapped` | how many of those enter untapped | Assassin's Trophy 1, Path to Exile 0 |
+
+It is additive on the wire, with every field omitted when zero, and there is no snapshot change. `docs/protocol.md` documents it and `client/src/lib/protocol.ts` mirrors it. An entry that holds only a return is not empty (`TargetPurpose.IsZero`).
+
+**The guard** (`checkTargetPurposes`) refuses:
+
+- a return on a clause that cannot target a permanent;
+- a negative amount;
+- creature tokens with no printed toughness, or a token size with no tokens;
+- more untapped lands than lands.
+
+`effects.RemovalReturning(slot, r)` builds the entry. It is declared on the eight cards listed above.
+
+**Chaos Warp declares nothing.** What it gives back is whatever the owner reveals from the top of their library, and no printed amount says that.
+
+**2. The price** (`NetRemoval`; on in `DefaultConfig`, off in `BaselineConfig`; `net_removal.go`).
+
+- **An opposing commander**, owned by its opponent, is priced at `min(its value, 2 × CommanderTax + DamageToOpponent × power)` before `RemovalConfidence` and `leaderBoost`.
+  - `2 × CommanderTax` is the tax counted for its {2}.
+  - `DamageToOpponent × power` is the one turn of damage it does not deal while it is away.
+  - This applies on the default removal path, and to declared damage that kills it or removes all of a planeswalker's loyalty.
+  - It needs no catalog data, because `is_commander` is on the wire.
+  - A commander the bot owns but an opponent controls keeps its full price, since it comes back to the bot.
+- **A declared return** is valued the way the target's controller would value it:
+  - a token at the `CreatureValue` of its printed body;
+  - life at what `Strength` counts it;
+  - a land at `ManaSource`.
+
+  It is taken off the removal on the removal's own scale (× `RemovalConfidence` × `leaderBoost`), so the move is worth the removal less the gift. Only a target an opponent controls is netted. A return does not make the move purpose-priced, so the mana-value proxy stays.
+
+**Worked:**
+
+- Game 1 seq 66: Rapid Hybridization on the 1/1 goes from 3.45 to −1.77, and the bot passes.
+- Game 2 seq 186: Chaos Warp on Y'shtola goes from 6.65 to 3.72, and the bot casts Mary Read and Anne Bonny (4.17).
+
+### Measured
+
+The run tables are under [Measurements, #2679](#2679-removal-priced-net-of-what-comes-back-2026-10-08).
+
+- Run 2's seeds 1, 1001 and 2001 pooled are unchanged for `heuristic` (80 of 288 before and after).
+- **Seed 2001** is the one seed where `heuristic` finished behind the baseline after the change (21 vs 27; it was 24 vs 24). Two more seeds put `heuristic` 6 and 2 games up. Over five seeds it went from 135 of 480 to 143 of 480 (28.1% to 29.8%, intervals overlapping). The owner reads the seed 2001 dip as noise against the five-seed pool.
+- The counters it targets went to near zero:
+  - gift removal cast on a target worth less than its gift: 23 to 0 in run 1, and 49 to 0 in run 2;
+  - the listed removal on an opposing commander: 59 to 13, and 47 to 2.
+
+### Open
+
+- **Sweeps and edicts** still price a commander at its full body. A wipe's `ScoreEval` and an untargeted sacrifice do not read `is_commander`.
+- **A non-removal targeted effect on an opposing commander** also gets the net price on the default path, because without an entry the heuristic cannot tell a destroy from a Pacifism-style aura or a tap. Such an effect keeps the commander on the battlefield, so the net price undervalues it. A target entry that says "this does not remove" is the fix, if a curated card needs it.
 
 ## Consequences
 
@@ -1451,7 +1528,7 @@ In run 1, every A3 canary meets its bar after (Harrow 12 / 27 before, 15 / 29 af
 
 ### #2679: removal priced net of what comes back (2026-10-08)
 
-`NetRemoval` (on in `DefaultConfig`, off in `BaselineConfig`; `net_removal.go`). An opposing commander its opponent owns is priced at `2 × CommanderTax + DamageToOpponent × power`, never above its value, because it returns from the command zone (CR 903.8, 903.9a, 903.9b). A target entry's new `returns` (a creature token of a printed size, life equal to the target's power, lands) is valued as the target's controller would value it and taken off the removal at `RemovalConfidence × leaderBoost`. The amendment's target entries could not say it: their amounts are the target's own, and the guard refuses a player amount on a clause that cannot target a player. So `TargetPurpose` gained `Returns`, additive on the wire as `targets[].returns`, declared on Rapid Hybridization, Pongify, Beast Within, Generous Gift, Stroke of Midnight, Swords to Plowshares, Path to Exile and Assassin's Trophy. Chaos Warp's return is a random card and declares nothing; its commander half is covered.
+`NetRemoval` (on in `DefaultConfig`, off in `BaselineConfig`; `net_removal.go`), as decided in the [amendment of 2026-10-08, what removal hands back](#amendment-2026-10-08-what-removal-hands-back). An opposing commander its opponent owns is priced at `2 × CommanderTax + DamageToOpponent × power`, never above its value, because it returns from the command zone (CR 903.8, 903.9a, 903.9b). A target entry's new `returns` (a creature token of a printed size, life equal to the target's power, lands) is valued as the target's controller would value it and taken off the removal at `RemovalConfidence × leaderBoost`. The amendment's target entries could not say it: their amounts are the target's own, and the guard refuses a player amount on a clause that cannot target a player. So `TargetPurpose` gained `Returns`, additive on the wire as `targets[].returns`, declared on Rapid Hybridization, Pongify, Beast Within, Generous Gift, Stroke of Midnight, Swords to Plowshares, Path to Exile and Assassin's Trophy. Chaos Warp's return is a random card and declares nothing; its commander half is covered.
 
 Review windows, re-ranked offline (game 1 with the declaration patched onto the logged view): game 1 seq 66, Rapid Hybridization on a 1/1 Archivist of Oghma, 3.45 to −1.77, so the bot passes. Game 2 seq 186, Chaos Warp on Y'shtola (a 2/4 commander), 6.65 to 3.72, below Mary Read and Anne Bonny from the command zone (4.17), which the bot now casts.
 
