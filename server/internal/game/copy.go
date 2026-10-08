@@ -127,6 +127,10 @@ type PrintedValues struct {
 	// gets it by copying this slice like any other printed value.
 	GrantedAbilities []string
 
+	// ColorCDADropped is Card.ColorCDADropped: a colour-setting
+	// exception dropped the copied colour-defining ability (CR 707.9d).
+	ColorCDADropped bool
+
 	Power           int
 	Toughness       int
 	StartingLoyalty int
@@ -219,6 +223,7 @@ func printedValuesOf(src Card) PrintedValues {
 		ProducedMana:      copyStringSlice(src.ProducedMana),
 		Keywords:          copyStringSlice(src.Keywords),
 		GrantedAbilities:  copyStringSlice(src.GrantedAbilities),
+		ColorCDADropped:   src.ColorCDADropped,
 		Power:             src.Power,
 		Toughness:         src.Toughness,
 		VariableToughness: src.VariableToughness,
@@ -566,6 +571,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.ProducedMana = v.ProducedMana
 	c.Keywords = v.Keywords
 	c.GrantedAbilities = v.GrantedAbilities
+	c.ColorCDADropped = v.ColorCDADropped
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
@@ -614,6 +620,7 @@ func (c *Card) restorePrintedSelf() {
 	// sacrifice trigger. PrintedSelf carries the card's own (almost
 	// always empty) grant list, so this restores rather than clears.
 	c.GrantedAbilities = v.GrantedAbilities
+	c.ColorCDADropped = v.ColorCDADropped
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness

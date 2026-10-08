@@ -93,6 +93,12 @@ export interface LegalActions {
   canAttack(cardID: string): boolean;
   /** Whom the creature may attack: players, planeswalkers, battles. */
   attackTargets(cardID: string): readonly string[];
+  /**
+   * ADR 0130 §5: the creature may be exerted as it attacks right now
+   * (CR 701.43d) — the server offers its attacks with `exert: true`
+   * beside the plain ones. Read off the digest, never oracle text.
+   */
+  canExertOnAttack(cardID: string): boolean;
   /** The attackers this creature may block, alone or in a group. */
   blockableAttackers(cardID: string): readonly string[];
   /**
@@ -124,6 +130,7 @@ interface Acc {
   attack_targets: string[];
   blocks: string[];
   cast_idle_hint?: string;
+  exert_on_attack?: boolean;
 }
 
 function push<T>(list: T[], v: T | undefined | null): void {
@@ -195,6 +202,8 @@ function fromMoves(moves: readonly LegalMoveView[]): Map<string, LegalSourceView
         break;
       case "attack":
         push(e.attack_targets, str(p.target));
+        // ADR 0130 §5: the twin move that exerts it as it attacks.
+        if (p.exert === true) e.exert_on_attack = true;
         break;
       case "block": {
         // declare_blockers names a group (the two creatures a menace
@@ -268,6 +277,7 @@ function lookup(
     readySpecialActions: (id) => get(id)?.special_actions ?? NONE,
     canAttack: (id) => get(id)?.kinds.includes("attack") ?? false,
     attackTargets: (id) => get(id)?.attack_targets ?? NONE,
+    canExertOnAttack: (id) => get(id)?.exert_on_attack === true,
     blockableAttackers: (id) => get(id)?.blocks ?? NONE,
     readyCount(zone, seatID) {
       if (!view || sources.size === 0) return 0;
@@ -356,7 +366,9 @@ export function acrossActions(
   for (const c of cards) {
     if ((c.controller || c.owner) === viewerID) continue;
     const own = new Set(
-      (c.activated_abilities ?? []).filter((a) => a.any_player && a.ref).map((a) => a.ref),
+      (c.activated_abilities ?? [])
+        .filter((a) => (a.any_player || a.opponents_only || a.owner_only) && a.ref)
+        .map((a) => a.ref),
     );
     if (own.size === 0) continue;
     const live = actions.readyAbilityRefs(c.instance_id).filter((r) => own.has(r));
@@ -377,6 +389,7 @@ export function acrossActions(
     readySpecialActions: () => NONE,
     canAttack: () => false,
     attackTargets: () => NONE,
+    canExertOnAttack: () => false,
     blockableAttackers: () => NONE,
     readyCount: () => 0,
   };

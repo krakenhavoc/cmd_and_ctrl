@@ -52,6 +52,8 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			CostModifiers: a.CostModifiers,
 			Uncopyable:    a.Uncopyable,
 			AnyPlayer:     a.AnyPlayer,
+			OpponentsOnly: a.OpponentsOnly,
+			OwnerOnly:     a.OwnerOnly,
 			Purpose:       a.Purpose,
 			Effect:        a.Effect,
 		}
@@ -77,6 +79,8 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			SacrificeOther:            a.Cost.SacrificeOther,
 			TapOthers:                 a.Cost.TapOthers,
 			LifeCost:                  a.Cost.Life,
+			EnergyCost:                a.Cost.Energy,
+			ExertCost:                 a.Cost.Exert,
 			ManaCost:                  a.Cost.Mana,
 			RemoveCounters:            a.Cost.RemoveCounters,
 			AddCounter:                a.Cost.AddCounter,
@@ -165,6 +169,8 @@ func buildDef(spec Spec) *game.CardDef {
 		AlternativeCosts:           spec.AlternativeCosts,
 		TapCost:                    spec.TapCost,
 		Delve:                      spec.Delve,
+		SpendOnly:                  spec.SpendOnly,
+		SpendOnlySources:           spec.SpendOnlySources,
 		SpellsYouCastHaveDelve:     spec.SpellsYouCastHaveDelve,
 		CostModifiers:              spec.CostModifiers,
 		SelfCostModifiers:          spec.SelfCostModifiers,
@@ -172,6 +178,7 @@ func buildDef(spec Spec) *game.CardDef {
 		AttackTaxes:                spec.AttackTaxes,
 		BlockRules:                 spec.BlockRules,
 		AttackLimits:               spec.AttackLimits,
+		ExertOnAttack:              spec.ExertOnAttack,
 		HexproofBypasses:           spec.HexproofBypasses,
 		WardSuppressions:           spec.WardSuppressions,
 		CastableZones:              spec.CastableZones,
@@ -190,10 +197,12 @@ func buildDef(spec Spec) *game.CardDef {
 		ManaPool:                   spec.ManaPool,
 		PlayerKeywords:             spec.PlayerKeywords,
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
+		DamageStaysThroughCleanup:  spec.DamageStaysThroughCleanup,
 		DamageCantBePrevented:      spec.DamageCantBePrevented,
 		CantGainLife:               spec.CantGainLife,
 		DamageAsThough:             spec.DamageAsThough,
 		AnyColorSpend:              spec.AnyColorSpend,
+		LifeForMana:                spec.LifeForMana,
 		LegendRuleExemptions:       spec.LegendRuleExemptions,
 		OpponentEffectProtections:  spec.OpponentEffectProtections,
 		GameEndGates:               spec.GameEndGates,
@@ -205,6 +214,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GatedCastPermissions:       gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                spec.CastTimings,
 		GrantedAlternativeCosts:    spec.GrantedAlternativeCosts,
+		OpeningHand:                spec.OpeningHand,
 		LibraryTopVisible:          spec.LibraryTopVisible,
 		CastCondition:              spec.CastCondition,
 		CastConditionLabel:         spec.CastConditionLabel,
@@ -302,8 +312,10 @@ func buildDef(spec Spec) *game.CardDef {
 			// #2219: this row IS the printed keywords, which the
 			// tile already shows as keyword chips.
 			Keywords: kws,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				appendKeywordsTo(c, kws)
+			Apply: func(c *game.Characteristic, target *game.Card, _ *game.Game, _ *game.Card) {
+				// CR 707.9d (#2322): a copy whose colour exception
+				// dropped devoid does not get it back from the entry.
+				appendKeywordsTo(c, target.PrintedKeywordsHonouringCopy(kws))
 			},
 		}
 		d.Static = append(append([]game.StaticAbility(nil), spec.Static...), synth)

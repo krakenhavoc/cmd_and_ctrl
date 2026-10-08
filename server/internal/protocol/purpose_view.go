@@ -42,6 +42,9 @@ type PurposeView struct {
 	SelfMillTutor int `json:"self_mill_tutor,omitempty"`
 	// Tokens is the tokens it creates for its controller.
 	Tokens int `json:"tokens,omitempty"`
+	// Energy is the energy counters it gives its controller (ADR 0129
+	// §7).
+	Energy int `json:"energy,omitempty"`
 	// Sweep is present on a board wipe.
 	Sweep *SweepView `json:"sweep,omitempty"`
 	// DeathPayoff is set on a triggered row that pays out whenever a
@@ -51,6 +54,27 @@ type PurposeView struct {
 	// whenever its controller discards a card it matches (ADR 0126's
 	// amendment of 2026-10-06).
 	DiscardPayoff *DiscardPayoffView `json:"discard_payoff,omitempty"`
+	// Pump is what the row gives its own source until end of turn
+	// (ADR 0130's amendment of 2026-10-07).
+	Pump *PumpView `json:"pump,omitempty"`
+	// ExtraCombat is the additional combat phases it adds.
+	ExtraCombat int `json:"extra_combat,omitempty"`
+	// PreventCombatDamageToSelf: it prevents all combat damage that
+	// would be dealt to its source this turn.
+	PreventCombatDamageToSelf bool `json:"prevent_combat_damage_to_self,omitempty"`
+	// DamageToCreature is the damage it deals to one target creature.
+	DamageToCreature int `json:"damage_to_creature,omitempty"`
+	// DamageEachOpponent is the damage it deals to each opponent.
+	DamageEachOpponent int `json:"damage_each_opponent,omitempty"`
+	// LifeGain is the life its controller gains.
+	LifeGain int `json:"life_gain,omitempty"`
+}
+
+// PumpView is game.Pump on the wire: a self pump until end of turn.
+type PumpView struct {
+	Power     int      `json:"power,omitempty"`
+	Toughness int      `json:"toughness,omitempty"`
+	Keywords  []string `json:"keywords,omitempty"`
 }
 
 // DiscardPayoffView is game.DiscardPayoff on the wire: which discarded
@@ -100,14 +124,23 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		return nil
 	}
 	v := &PurposeView{
-		Draws:               p.Draws,
-		ControllerLosesLife: p.ControllerLosesLife,
-		Discards:            p.Discards,
-		Lands:               p.Lands,
-		Tutors:              p.Tutors,
-		SelfMillTutor:       p.SelfMillTutor,
-		Tokens:              p.Tokens,
-		DeathPayoff:         p.DeathPayoff,
+		Draws:                     p.Draws,
+		ControllerLosesLife:       p.ControllerLosesLife,
+		Discards:                  p.Discards,
+		Lands:                     p.Lands,
+		Tutors:                    p.Tutors,
+		SelfMillTutor:             p.SelfMillTutor,
+		Tokens:                    p.Tokens,
+		Energy:                    p.Energy,
+		DeathPayoff:               p.DeathPayoff,
+		ExtraCombat:               p.ExtraCombat,
+		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf,
+		DamageToCreature:          p.DamageToCreature,
+		DamageEachOpponent:        p.DamageEachOpponent,
+		LifeGain:                  p.LifeGain,
+	}
+	if pm := p.Pump; pm != nil {
+		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{

@@ -459,8 +459,8 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// run, and running it again through the cleared pointer would
 		// be a no-op rather than a second payout.
 		return nil
-	case RepEventDraw, RepEventCounter, RepEventStepTransition, RepEventProduceMana:
-		// No continuation exists on any of the four, so an abandoned
+	case RepEventDraw, RepEventCounter, RepEventStepTransition, RepEventProduceMana, RepEventExtraTurn:
+		// No continuation exists on any of the five, so an abandoned
 		// one owes nobody an answer. A cancelled step transition is a
 		// SKIP and does move the cursor (CR 500.11), but only when its
 		// prompt is ANSWERED — one taken away leaves the step where it
@@ -784,6 +784,9 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	if ev.ShuffleDestinationLibrary && dstZone.Kind == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(dstOwnerID)
 	}
+	// #2530: "exiled with" the permanent whose replacement sent it
+	// here, stamped once the card has actually landed in exile.
+	stampExiledWithLocked(dstZone, ev.CardID, ev.ExiledWith)
 	if src.Kind == ZoneStack {
 		// #1318: the source zone decides, not a flag on the route. A
 		// card that has left the stack is no longer a spell (CR 400.7),

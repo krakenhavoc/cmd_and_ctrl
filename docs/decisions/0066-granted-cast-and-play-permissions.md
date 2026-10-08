@@ -2711,3 +2711,194 @@ a coloured symbol only if it shares the colour, and otherwise only generic.
 
 Out of scope, unchanged: an any-colour grant on a spell with waterbend (the
 extra cost is generic and the grant does not touch it).
+
+## Amendment — 2026-10-07 (#2528): retrace, an additional cost on a priced graveyard offer, and an emblem that grants permissions
+
+Retrace (CR 702.81a) is "you may cast this card from your graveyard by
+discarding a land card in addition to paying its other costs". Printed on
+ten cards and granted by Six ("During your turn, nonland permanent cards in
+your graveyard have retrace") and by Wrenn and Six's emblem ("Instant and
+sorcery cards in your graveyard have retrace"). The model already had every
+piece but one: a graveyard cast zone (`Spec.CastableZones`), a standing
+permission over a filtered graveyard (Underworld Breach's escape), a timing
+rule on a permission (`TimingYourTurnOnly`, Tinybones) and a discard that is
+paid as a cost (`DiscardCauseCost`). The missing piece was a cost component
+that discards a card from hand and is owed only on the graveyard cast.
+
+### Decision 1: the discard rides a priced offer, not `Spec.AdditionalCost`
+
+`Spec.AdditionalCost` is unconditional per spell: it is paid on every cast
+of the card, hand or graveyard. Retrace's discard is owed only when the cast
+is a retrace cast, and a printed `AdditionalCost` that depended on the cast
+zone would need the zone threaded through the additional-cost validator, the
+view's cost stamp, the enumerator and the client's prompt chain. The
+alternative-cost path already carries a zone binding (`FromZone`), a claim on
+the wire (`alternative_cost`), a card component paid from `alt_cost_ids`, a
+view stamp (`pay_options`), an enumerator walk (`AltCostCandidatesLocked`)
+and a client picker. So retrace is an `AlternativeCost` with a new card
+component, `DiscardFromHand`, whose ManaCost is the card's PRINTED cost and
+never empty, which is what keeps it from being read as a replacement of the
+mana. The discard goes through `discardCardsLocked` with `DiscardCauseCost`,
+the same path an additional discard cost uses: it may not pause (CR 601.2h),
+it emits `EventDiscardCard` so a discard payoff sees the land, and the land
+is gone even if the spell is countered. A card's own `AdditionalCost` is
+untouched and still applies.
+
+**What the model gives up, stated.** Retrace is not an alternative cost (CR
+702.81a), and here it is claimed as one, so a cast cannot combine it with
+another alternative cost (overload, flashback, escape). No catalog card can:
+the ten printed retrace cards print no other alternative cost, and a card
+that prints a graveyard cast of its own keeps its own price under a granted
+retrace, by rule 4 of `validateCastPathLocked` as for every grant. A card
+with an ADDITIONAL cost of its own (an optional kicker, a discard) pays it as
+well; that composition is the point of using the offer's price rather than
+replacing it.
+
+`effects.Retrace(printedCost)` bundles the zone binding, the key, the land
+discard and the printed price. It takes the cost as a string, like
+`Flashback`, because the offer is catalog data built before any card exists;
+`TestPrintedRetraceCardsDeclareBothHalves` pins every card's string and the
+fixture check in the PR pins it against the Scryfall dump. Unlike flashback it
+carries no `ExileOnLeavingStack`: a retraced spell resolves into the
+graveyard and can be retraced again.
+
+### Decision 2: a granted retrace is a permission field, `DiscardLandCard`
+
+`CastPermission.AlternativeCostFor` synthesises the offer a permission prices
+the cast under. It gains one boolean, `DiscardLandCard`, that fills
+`DiscardFromHand` with the same `game.RetraceDiscardSpec()` the catalog
+constructor uses, so a printed and a granted retrace pay one price by
+construction. The key is the shared `game.AltCostKeyRetrace`, the way
+"escape" is, so a rule that reads "retraced" reads one string however the
+cast arrived. `PermissionFilter` gains `NonLandPermanentOnly` for Six; the
+instants-and-sorceries filter Past in Flames wrote already existed.
+
+Six is a plain `Spec.CastPermissions` entry with `Timing: TimingYourTurnOnly`
+(CR "during your turn", the card's own timing still in force, so a flash
+creature is an instant-speed cast on Six's controller's turn and nothing on
+anyone else's). It is derived from the battlefield on every query, so it
+lasts as long as Six does, covers a card milled by the very attack that
+triggers it, and two Sixes compose.
+
+### Decision 3: an emblem may declare standing permissions
+
+Wrenn and Six's emblem is a rule over a player and a zone, not an effect
+that resolves, so it is the `ScopeStanding` shape, and an emblem's abilities
+function in the command zone (CR 114.3). `EmblemSpec.CastPermissions` is the
+`Spec.CastPermissions` slot one zone over, normalised by the same
+`standingCastPermissions`, and `standingCastPermissionsLocked` walks the
+seat's own `Player.Emblems` after the battlefield, exactly as the
+activation-timing read already has a second address there (#1275). An emblem
+leaves only with its owner (CR 800.4a), so its presence is the duration and
+nothing is stored. Ungated only: no printed emblem gates a permission on a
+designation.
+
+### What does not change
+
+The wire. `alternative_costs[].pay_options` already carries a card-shaped
+payment, and the client's `AltCostPaymentModal` already renders it from
+`pay_label`; the new component sets `pay_label` to "a land card". The
+snapshot gains two additive bool fields on `CastPermission` and one on
+`PermissionFilter`; both zero-value to "not retrace", so a restore point
+written before them restores unchanged.
+
+### Out of scope, stated
+
+- Deeproot Historian ("Merfolk and Druid cards in your graveyard have
+  retrace") needs a two-subtype filter; `PermissionFilter.CreatureType` names
+  one. Left to a follow-up.
+- Cenn's Enlistment, Call the Skybreaker, Worm Harvest and Formless Genesis
+  print retrace and need tokens the token table has no printed-token row for
+  (Kithkin Soldier, a 5/5 flying Elemental, Worm, a variable Shapeshifter);
+  Glamerdye needs text-change effects and Reality Scramble a type-matching
+  reveal. Not catalogued here.
+## Amendment — 2026-10-07 (#2530): "cards exiled with this permanent", when a replacement did the exiling
+
+Valgavoth, Terror Eater: "If a card you didn't control would be put into an
+opponent's graveyard from anywhere, exile it instead. During your turn, you
+may play cards exiled with Valgavoth. If you cast a spell this way, pay life
+equal to its mana value rather than pay its mana cost." The #1117 triage held
+the second sentence back because a replacement effect runs before the card
+moves, so it has no post-move moment at which to register a stored permission
+over the card that lands, and because `PermissionFilter` had no "exiled by
+this permanent" member.
+
+This is a dated amendment, not a new ADR: it adds one filter flag and one
+card-carried link to the model decision 1 already defines, and writes no
+second grant type.
+
+### Decision 1 — a STANDING permission, not a stored one
+
+The permission is `Spec.CastPermissions` — derived off the battlefield on every
+query, never stored — the shape Tinybones, Bauble Burglar (#2179) and Bolas's
+Citadel already use. That is what makes the stored-permission problem go away:
+nothing is registered when the card is exiled, so nothing has to be registered
+over a card that has not landed yet. It also reaches cards exiled before the
+permission was asked for, and ends the moment Valgavoth leaves, because a
+permanent that is gone grants nothing (decision 1's "for as long as the source
+remains", free).
+
+### Decision 2 — `Card.ExiledWith`, a link stamped after the move
+
+CR 607.2a's "exiled with [this permanent]" for an exile a REPLACEMENT made is a
+card-carried link, `Card.ExiledWith PermissionCardRef` — the permanent object
+`{instance, epoch}`, the shape `Card.HiddenBy` (ADR 0091) already has. It is not
+the effects package's event-log record (`b27ExiledWith`), which opens a window
+on an `EventResolve` for an ABILITY; a replacement resolves nothing, so there is
+no event to key on, and a pure-data filter has a `Card` in hand and no log.
+
+A replacement still cannot write to the card, so it leaves the link on the
+event: `ReplacementEvent.ExiledWith`, set by the same `Replace` that rewrites
+`NewZone` (the `ShuffleDestinationLibrary` pattern, ADR 0013 §5ah). The two
+functions that perform every replaced exit's physical landing —
+`executeZoneRouteLocked` and `executeBattlefieldLeaveLocked` — call
+`stampExiledWithLocked` once the card has landed, and it writes the link only
+if the destination zone really is exile. A move a later replacement redirected
+to a command zone, hand or library stamps nothing. `MoveCard` clears the link on
+every move, so a card that leaves exile and comes back by another route was
+exiled with nothing.
+
+The shared `effects.GraveyardBecomesExile` gets `LinkExiled`, off by default:
+Rest in Peace and the Leylines exile without a link, because nothing refers to
+the cards they exile.
+
+### Decision 3 — `PermissionFilter.ExiledWithSource`
+
+A catalog entry is static and cannot name an object, so the filter carries a
+flag and the derivation fills in the object. `ExiledWithSource` says "the card
+must be linked to the permanent granting this"; `stampStandingPermissionLocked`
+writes the granting permanent's `{InstanceID, ObjectEpoch}` into
+`PermissionFilter.ExiledWith`, the way it already fills `CreatureType` for
+`FromChosenType`; `Matches` compares the card's link to it. A flag with no
+derived object matches nothing. The epoch is the CR 400.7 check: a Valgavoth
+that is bounced and replayed keeps its `InstanceID` and is a new object, so
+the cards its earlier self exiled are not exiled with it. Every consumer of
+`Matches` (the cast validator, the enumerator, the view) gets the narrowing
+with no change.
+
+### Decision 4 — the price is Citadel's, unchanged
+
+"Pay life equal to its mana value rather than pay its mana cost" is
+`LifeEqualToManaValue` with an `AltCostKey` (`valgavoth_terror_eater`): a CR 118.9
+alternative cost with a CR 119.4 life component, refused when the player cannot
+pay, never offered on a land (a land is played, with no cost). The printed mana
+cost is not on offer for a card exiled this way: a zone that has a bound offer
+can only be cast from by claiming it (decision 3 above). "During your turn" is
+`TimingYourTurnOnly`, which leaves the card's own timing in force.
+
+### Snapshot
+
+One additive key, `exiledWith`, on every card (`Card.ExiledWith`), and
+`exiledWith` / `exiledWithSource` under every `PermissionFilter`. A file written
+before it decodes as "exiled with nothing", which is every game before it; a
+binary before it that drops the key leaves an eaten card unlinked, which errs
+toward weaker, never stronger. `snapshot_shape/v7.txt` is regenerated; no schema
+bump.
+
+### Out of scope, stated
+
+- Cards exiled by an ABILITY's resolution and then played (Court of Locthwain,
+  Currency Converter) keep `b27ExiledWith` and a stored grant. Moving them onto
+  this link would be a second change; the two coexist because they answer
+  different questions (an ability's window versus a replacement's event).
+- No wire change: `Card.ExiledWith` is engine state, like `HiddenBy`.

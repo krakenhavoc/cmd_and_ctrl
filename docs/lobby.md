@@ -2519,6 +2519,191 @@ always a 412.
 - A failed write never blocks the UI. It is retried with a backoff, and
   again when the browser comes back online.
 
+### Playmats (ADR 0128)
+
+A signed-in person can keep up to **three playmats** and show one of
+them: an image every player at the table sees behind *their*
+battlefield, as with a mat on a paper table. Bots, guests and agent
+seats have none. The reasons for every choice here are in
+[ADR 0128](decisions/0128-playmats.md); §11 is the three-slot design
+and the best-size fit.
+
+A person's mats live in **slots 1 to 3**, and **at most one is
+active**: the one the table shows. "None" is allowed, so a person can
+keep saved mats and show none. Switching the active mat never deletes a
+file; removing or replacing a slot deletes its file.
+
+| Route | Who | What |
+|---|---|---|
+| `GET /me/playmats` | a signed-in person | the saved slots, which one is active, the wash |
+| `PUT /me/playmats/{slot}` | a signed-in person | upload into a slot: `multipart/form-data`, part `file` |
+| `POST /me/playmats/{slot}/link` | a signed-in person | `{"url": "https://…"}`: the server fetches it once and stores it in the slot |
+| `POST /me/playmats/{slot}/fit` | a signed-in person | `{"x": n, "y": n}`: crop the slot's image to the best size, the crop's top-left corner in the stored image's pixels |
+| `DELETE /me/playmats/{slot}` | a signed-in person | remove the slot's playmat |
+| `PUT /me/playmats/active` | a signed-in person | `{"slot": n \| null}`: which slot the table shows; `null` shows none |
+| `PATCH /me/playmats` | a signed-in person | `{"wash": 30..90}`: how dark the active playmat is under the cards (ADR 0128 §10) |
+| `GET /playmats/{id}` | any session | the image |
+| `DELETE /admin/users/{id}/playmats/{slot}` | admin | remove one of anyone's playmats (moderation) |
+| `DELETE /admin/users/{id}/playmat` | admin | remove all of anyone's playmats |
+
+The v1 singular routes (`/me/playmat`, `/me/playmat/link`) are gone:
+nothing but the client called them, and the client moved with the server.
+
+Same caller rule as the rest of `/me/*`: no credential is **401**; a
+guest's seat or spectator session, the admin token and every session on
+a deployment with no database are **403**, never 401 (#1154). A server
+with a database but no `CMDCTRL_DATA_DIR` has nowhere to store an
+image: `GET /me/playmats` answers `{"enabled": false}` and the writes
+are **503**. The client hides the Settings section in both cases.
+
+A `{slot}` outside 1 to 3, or not a whole number, is **400** on every
+route that takes one (the table also has a `CHECK`). Uploading into an
+**empty slot while no mat is active** makes it active; any other write
+leaves the active mat alone, except that replacing or fitting the
+**active** slot moves the active pointer to the new image.
+
+**The body of every `/me/playmats` route**, with `Cache-Control:
+no-store`:
+
+```json
+{
+  "enabled": true,
+  "max_slots": 3,
+  "ideal_width": 2400,
+  "ideal_height": 1400,
+  "slots": [
+    { "slot": 1, "url": "/playmats/6f1c2a9e-1b2c-4d3e-8f40-0123456789ab", "width": 2400, "height": 1400, "fits": true },
+    {
+      "slot": 3, "url": "/playmats/0d1e2f30-4a5b-4c6d-8e7f-8091a2b3c4d5", "width": 2560, "height": 1800, "fits": false,
+      "suggestion": {
+        "target_width": 2400, "target_height": 1400,
+        "crop": { "x": 0, "y": 153, "width": 2560, "height": 1493 },
+        "smaller": false
+      }
+    }
+  ],
+  "active": 1,
+  "slot": 3,
+  "wash": 58
+}
+```
+
+`slots` holds the occupied slots in slot order and is absent for none;
+`active` is absent when none is on show; `slot` is present only on the
+answer to an upload, link or fit, and names the slot it wrote, so a
+client can open the best-size prompt on that slot's `suggestion`;
+`wash` is sent while the feature is enabled. Every `url` is this
+server's own route, never a link that was pasted.
+
+**What is stored.** The bytes sent are never stored. They are decoded
+(PNG, JPEG or WebP, by content, never by `Content-Type` or file name;
+anything else, including GIF and SVG, is **415**), refused over 10 MB
+(**413**) or over 40 megapixels (**413**, judged from the header before
+any pixel buffer exists), downscaled so the long edge is at most 2560 px,
+and re-encoded as a JPEG at quality 85. That strips EXIF (a phone photo
+carries the location), XMP and anything appended to the original; the
+EXIF orientation is applied first, so a portrait photo is not stored
+sideways. Transparency is flattened onto white. The file is
+`<data dir>/playmats/<uuid>.jpg`, a `user_playmats` row (migration
+0013) names it for its slot, and `users.playmat_id` points at the
+active one. A replacement is a new uuid, the old file is deleted, and
+the old URL is a 404 from then on. Removing deletes the file.
+
+**`POST /me/playmats/{slot}/link`.** The server makes the request, once,
+and stores the result exactly like an upload; the link is never kept or
+shown to anyone, and no other player's browser ever contacts that host.
+The fetch is guarded against SSRF (ADR 0128 §3): `https` only (an
+`http` link is refused); the address is checked **where it is
+dialled**, on the resolved IP, so a name that resolves to a private
+address, or rebinds to one, is refused; loopback, private, link-local
+(including `169.254.169.254`), carrier-grade NAT, multicast,
+unspecified, unique-local and reserved ranges are all refused, and an
+IPv4 address written as IPv6 (`::ffff:`, NAT64, 6to4) is judged by the
+IPv4 address inside it; every redirect is checked the same way, at most
+3, and a redirect to `http` is refused; 10 seconds for the whole
+request; the body is capped at 10 MB; no proxy, cookies, credentials or
+`Referer`. A refusal is **422** `{error}` that says what to do and never
+echoes what the guard saw.
+
+**The best size, `fits` and `suggestion`** (ADR 0128 §11). Playmats look
+best at `ideal_width` x `ideal_height`, **2400 x 1400**, the shape of a
+paper playmat (24 x 14 in, 12:7). A stored image **fits** when its
+aspect ratio is within 5% of 12:7 and its long edge is at least 1600 px.
+An image that fits has `"fits": true` and no `suggestion`. When the
+shape is off, `suggestion` carries the target size, the **centred crop**
+rectangle in the stored image's own pixels (the largest 12:7 rectangle
+that fits), and `smaller`: true when the result will be smaller than the
+ideal, because **the server never upscales**; a small image is cropped
+to the shape at its own resolution and the client warns it may look soft
+at the table. A right-shaped image that is merely small has `"fits":
+false` and no `suggestion`: a crop would change nothing, and the fix is
+a bigger image.
+
+**`POST /me/playmats/{slot}/fit`** takes `{"x": n, "y": n}`, the crop's
+top-left corner. The crop's size is the server's (`suggestion.crop`'s
+width and height); the client only chooses where the window sits along
+the axis being cropped. The server validates that the rectangle lies
+inside the stored image (**400** otherwise), crops the stored image,
+scales the crop down to the target (never up), re-encodes it through the
+same JPEG path, writes a **new file under a new uuid** (so a cache never
+serves the old image), moves the slot's pointer, and the active pointer
+if that slot was active, and deletes the old file. If the slot has no
+`suggestion` (the image is already the best shape) it is a **409**; an
+empty slot is a **404**; a slot that changed while the fit was being
+made is a **409** to ask again. The answer is the same body as above.
+A fit works from the stored image, which is already normalised to a
+long edge of at most 2560 px: a portrait source has lost resolution
+before the fit sees it, because the server keeps no original (disk use,
+and EXIF never reaches disk).
+
+| Status | When |
+|---|---|
+| 200 | Stored, activated, fitted or removed (removing an empty slot is a 200) |
+| 400 | A slot outside 1 to 3; not multipart, or no `file` part; a link or fit body that is malformed; a crop outside the image; an activation body that is not `{"slot": 1..3 \| null}` |
+| 401 / 403 | See the caller rule above |
+| 404 | `PUT /me/playmats/active` or a fit names an empty slot |
+| 409 | A fit of an image that is already the best shape, or one that lost a race with a replacement |
+| 413 | Over 10 MB, or over 40 megapixels |
+| 415 | Not a PNG, JPEG or WebP |
+| 422 | The link was refused or could not be fetched |
+| 429 | Upload, link, fit and remove: over the per-person bucket (a burst of 5, then one every 6 seconds, shared by all four) or, for the three that decode, the per-IP one (1 a second, a burst of 10). Activate and the wash share a cheaper bucket (one a second, a burst of 5). `Retry-After` is set |
+| 503 | No data directory; or too many images are being decoded at once (`Retry-After: 5`: at most 2 at a time) |
+
+**`GET /playmats/{id}`** needs a session, like `/avatars` and `/cards`,
+and any session may fetch any id: every player must see every other
+player's mat. There is no listing route. The `<img>` carries the session
+as `?token=`, as an avatar's does. Served as `image/jpeg` with
+`X-Content-Type-Options: nosniff`, `Content-Security-Policy:
+default-src 'none'; sandbox`, `Referrer-Policy: no-referrer` and
+`Cache-Control: private, max-age=31536000, immutable` (the bytes at a
+URL never change). A malformed or unknown id is **404**, the same
+answer for both.
+
+**On the wire.** The seat's owner's **active** playmat is
+`PlayerView.playmat_url` ([docs/protocol.md](protocol.md)), stamped by
+the room on every capture, so a change reaches everyone on the next
+state broadcast. Activating, removing or fitting the active mat, or
+replacing the active slot, is pushed to every live seat the person holds
+the way an upload was in v1; saving into an inactive slot costs the
+table nothing, because nothing it shows changed.
+
+**The wash** (ADR 0128 §10) is the owner's, one per account and not per
+mat: how strongly their active playmat is darkened under the cards, a
+whole percentage from 30 to 90, 58 until they set one. Every
+`/me/playmats` answer carries it as `wash` while the feature is
+enabled. `PATCH /me/playmats` with `{"wash": n}` sets it, image or not;
+out of range, a non-number or any other field is **400**. The table sees
+it as `PlayerView.playmat_wash` beside the URL. It is stored in
+`users.playmat_wash` (migration 0012).
+
+**`DELETE /admin/users/{id}/playmats/{slot}`** and **`DELETE
+/admin/users/{id}/playmat`** are `requireAdmin`, so admin mode off gets
+a non-admin's 403. The first removes one saved playmat, the second all
+of them. **204**, also for a person with none; **404** for an unknown
+user; **400** for a malformed id or a slot outside 1 to 3. The person
+can upload again; this removes images and does not ban the feature. The
+admin account view calls the per-slot route, one Remove per thumbnail.
+
 ### `POST /deck-requests`
 
 Ask for a deck's missing cards to be added to the engine
@@ -2830,6 +3015,10 @@ requests (at most 100, newest first, then `deck_requests_truncated`).
 {
   "generated_at": 1791206364278,
   "account": { "id": "<uuid>", "name": "Ann", "games_played": 12, "playing_now": false },
+  "playmats": [
+    { "slot": 1, "url": "/playmats/<uuid>", "active": true },
+    { "slot": 3, "url": "/playmats/<uuid>" }
+  ],
   "sign_in": {
     "last_sign_in_at": 1791200000000,
     "discord_linked_at": 1790000000000,
@@ -2863,7 +3052,11 @@ absent while unset, is the only per-person session state: a session
 issued at or before it is refused. `revoke_path` is
 [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only).
 A deck has no list and no coverage report. A deck request is matched to
-the account through its Discord identity in SQL.
+the account through its Discord identity in SQL. `playmats` are the
+account's saved playmats in slot order, absent for none, each with its
+slot, its `/playmats/<uuid>` path and `active` on the one on show; the
+account view's Remove button on each thumbnail calls `DELETE
+/admin/users/{id}/playmats/{slot}` ([ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) amendment, [ADR 0128](decisions/0128-playmats.md) §11).
 
 | Status | Reason |
 |---|---|

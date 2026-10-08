@@ -92,6 +92,7 @@ func (g *Game) commitAttackDeclarationLocked() {
 		attacker   uuid.UUID
 		controller uuid.UUID
 		defender   uuid.UUID
+		exert      bool
 	}
 	var fresh []declaration
 	for i := range g.Battlefield.Cards {
@@ -103,10 +104,26 @@ func (g *Game) commitAttackDeclarationLocked() {
 			attacker:   c.InstanceID,
 			controller: c.Controller,
 			defender:   c.AttackingTarget,
+			exert:      c.ExertOnAttack,
 		})
+		// The staged choice is spent here: once the declaration is
+		// locked in, the exert is paid, like the tap.
+		c.ExertOnAttack = false
 	}
 	for _, d := range fresh {
 		g.noteAttackAnnouncedLocked(d.attacker)
+	}
+	// ADR 0130 §2 (owner decision 2): the optional costs to attack the
+	// player chose (CR 508.1g) are paid now (CR 508.1j), before the
+	// creatures become attacking creatures (CR 508.1k) and in the same
+	// event batch as the EventAttacks below, so the triggers the exerts
+	// cause are harvested with the attack triggers (CR 508.1m) and go
+	// on the stack together at CR 508.2, before blockers. The exert is
+	// keyed to the attacking player, the declaration's controller.
+	for _, d := range fresh {
+		if d.exert {
+			g.exertLocked(d.attacker, d.controller, d.defender)
+		}
 	}
 	for _, d := range fresh {
 		g.EmitEvent(Event{

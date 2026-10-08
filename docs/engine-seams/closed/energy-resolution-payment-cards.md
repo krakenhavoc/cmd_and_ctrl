@@ -1,0 +1,6 @@
+---
+title: "The rest of the energy resolution-payment cards"
+date: 2026-10-07
+issues: [1995]
+---
+**The rest of the energy resolution-payment cards** (#1995, [ADR 0129](decisions/0129-energy-getting-and-paying-it.md) §3, PR 3's card half) — 28 more cards on `energy-resolution-payments`, all Full: Consul's Shieldguard, Eddytrail Hawk, Smelted Chargebug, Maulfist Doorbuster, Aetherstorm Roc, Glint-Sleeve Siphoner, Electrozoa, Static Prison, Liberty Prime, Recharged, Robobrain War Mind, Riddle Gate Gargoyle, Cyclops Superconductor, Behemoth of Vault 0, Territorial Aetherkite, Rampaging Aetherhood, Localized Destruction, Wrath of the Skies, Confiscation Coup, Jolted Awake, Aether Spike, Rush of Inspiration, Lightning Runner, Assaultron Dominator, Guide of Souls, Sentry Bot, Aether Refinery, T-45 Power Armor and Suppression Ray. Five reflexive bodies join `reflexive_bodies.go` (Riddle Gate Gargoyle, Cyclops Superconductor, Behemoth of Vault 0, Guide of Souls, Territorial Aetherkite). Aether Refinery's "twice that many {E}" is a counter replacement on the player (`RepEventCounter`, `CounterPlayer`). Eleven cards stay on the row, each waiting on something other than paying energy; the registry names what.

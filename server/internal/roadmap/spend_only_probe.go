@@ -13,6 +13,11 @@ import (
 // whose mana is restricted to monocolored or multicolored spells. Kept
 // out of registry.go so the seam's entry there stays one hunk.
 func declaresSpendOnly(s effects.Spec) bool {
+	// #2556: the cast side — a spell's own "spend only … on X" or
+	// "spend only mana produced by …".
+	if s.SpendOnly != nil || s.SpendOnlySources != 0 {
+		return true
+	}
 	for _, a := range s.Activated {
 		if a.Cost.SpendOnly != nil {
 			return true

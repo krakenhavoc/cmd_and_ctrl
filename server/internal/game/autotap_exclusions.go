@@ -53,8 +53,8 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 }
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's
-// mana component: the source when the cost taps, sacrifices or exiles
-// it, and
+// mana component: the source when the cost taps, sacrifices, exiles
+// or returns it (#2028), and
 // the permanents and cards named to its TapOthers, sacrifice, discard
 // and exile-N-cards components. Nil when empty.
 //
@@ -76,7 +76,7 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 // graveyard it is the list being right in advance, as above.
 func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacrificeIDs, discardIDs, exileIDs []uuid.UUID) map[uuid.UUID]bool {
 	var self []uuid.UUID
-	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf {
+	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf {
 		self = []uuid.UUID{sourceID}
 	}
 	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs, exileIDs)
@@ -157,4 +157,49 @@ func WithAutoTapExclusions(base map[uuid.UUID]bool, ids ...[]uuid.UUID) map[uuid
 
 func unionIDs(lists ...[]uuid.UUID) map[uuid.UUID]bool {
 	return WithAutoTapExclusions(nil, lists...)
+}
+
+// excludeNonQualifyingSourcesLocked is `excluded` plus every source of
+// `controller`'s that could not make mana a source-restricted payment
+// accepts (#2556): "Spend only mana produced by basic lands to cast
+// this spell" (Imperiosaur) is a rule about the SOURCE, and the planner
+// plans from permanents, so a source whose kinds miss `only` is simply
+// not reachable — the same exclusion list a convoked creature or a
+// sacrificed Treasure gets, which every gatherer already honours.
+//
+// The kinds are read the way a mint site reads them (manaSourceKindsOf),
+// so a permanent the planner skips here is exactly one whose mana the
+// pool solver would then refuse. `only` zero returns `excluded`
+// unchanged (nil stays nil): the walk is paid by the few casts that
+// print the clause. Never mutates its argument. Caller must hold g.mu.
+func (g *Game) excludeNonQualifyingSourcesLocked(controller uuid.UUID, excluded map[uuid.UUID]bool, only ManaSourceKinds) map[uuid.UUID]bool {
+	if only == 0 {
+		return excluded
+	}
+	out := make(map[uuid.UUID]bool, len(excluded))
+	for id := range excluded {
+		out[id] = true
+	}
+	skip := func(c Card) {
+		if !manaSourceKindsOf(c).HasAny(only) {
+			out[c.InstanceID] = true
+		}
+	}
+	if g.Battlefield != nil {
+		for _, c := range g.Battlefield.Cards {
+			if c.Controller == controller {
+				skip(c)
+			}
+		}
+	}
+	if p := g.playerByIDLocked(controller); p != nil {
+		for _, kind := range supportedManaAbilityZones {
+			if pile := playerManaZone(p, kind); pile != nil {
+				for _, c := range pile.Cards {
+					skip(c)
+				}
+			}
+		}
+	}
+	return out
 }

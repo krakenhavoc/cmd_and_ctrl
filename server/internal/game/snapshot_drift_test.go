@@ -101,6 +101,9 @@ var gameFields = plan(
 	"OpeningRoll", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
+	// ADR 0132: the day/night designation and the previous turn's spell
+	// count. Plain data.
+	"DayNight", carried, "",
 	"Settings", carried, "",
 	"StartingSeat", carried, "",
 	"StackMeta", carried, "",
@@ -155,6 +158,7 @@ var gameFields = plan(
 	// validates against. A restored game is a NEW *Game — zero
 	// generation, empty slot — and its first view refolds the carried
 	// Events from scratch, so there is nothing to serialise.
+	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #1479: the card-location hint table. Every answer it gives is
@@ -187,6 +191,9 @@ var gameFields = plan(
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
+	// ADR 0127 §2: the ordinals behind the keys of the prompts one
+	// resolution or one answered prompt's branch queues.
+	"promptKeys", dropped, "not game state: read only inside one resolution function or one answered prompt's branch, and reset where each begins (ADR 0127 §2)",
 	// #830 block-declaration lock-in, and #715's blocked state.
 	// Carried for the same reason and in the same pair-wise way: the
 	// map of announced pairings names what the blocked marks were
@@ -327,6 +334,9 @@ var cardFields = plan(
 	// owner's question.
 	"CommanderReturnDue", carried, "",
 	"AttackingTarget", carried, "",
+	// ADR 0130 §8: a staged exert not yet paid. Carried: a restore
+	// point written between the verb and the lock-in must still pay it.
+	"ExertOnAttack", carried, "",
 	"BlockingTarget", carried, "",
 	// #1706: a multi-blocker's further attackers.
 	"AlsoBlocking", carried, "",
@@ -416,6 +426,9 @@ var cardFields = plan(
 	// restore that dropped it would leave a Phantasmal Image copy
 	// with no sacrifice trigger and no Illusion type.
 	"GrantedAbilities", carried, "",
+	// #2322 / CR 707.9d: a colour-setting copy exception dropped the
+	// copied devoid. Carried: nothing else on the card says so.
+	"ColorCDADropped", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
@@ -481,6 +494,9 @@ var cardFields = plan(
 	// a legal state ("not hidden by anything"), so a restore that
 	// dropped it would say nothing and leave the card orphaned.
 	"HiddenBy", carried, "",
+	// #2530: the "exiled with" link, one field over from HiddenBy and
+	// for the same reason — the zero value is a legal state.
+	"ExiledWith", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's
@@ -543,6 +559,7 @@ var playerFields = plan(
 	"HandKept", carried, "",
 	"MulliganDecided", carried, "",
 	"TriggerOrderAlwaysAsk", carried, "",
+	"AutoAnswers", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",
 	"UndosRemaining", carried, "",
@@ -799,6 +816,7 @@ var pendingChoiceFields = plan(
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	"PayAmount", dropped, "ADR 0129 §3: a pay_amount prompt always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"NoLegalTarget", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",
@@ -888,6 +906,8 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"ChooseMax", carried, "",
+	"ChoosePlayers", carried, "",
+	"ChooseSuggested", carried, "",
 	// #568's option pick: the branches of "choose one of the
 	// following", carried for the same reason ChooseCards is — the
 	// options ARE the prompt, and a restored game that forgot them
@@ -916,10 +936,15 @@ var pendingChoiceFields = plan(
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"midResolution", carried, "",
+	"AutoAnswerKey", carried, "",
+	"AutoAnswerCard", carried, "",
+	"AutoAnswerPrompt", carried, "",
+	"AskedByHand", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"private", dropped, "ADR 0133: only an opening-hand offer sets it, and that prompt always carries a confirmResume frame, counted in ContinuationCensus.ChoiceResumeFrames, so it is never written to a restore point; Clone copies it with the rest of the choice",
 	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
 )
 

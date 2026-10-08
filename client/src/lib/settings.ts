@@ -9,6 +9,7 @@ import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane"
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
 import { normalizeSeen } from "./hints/seen";
+import { DEFAULT_PLAYMATS_MODE, isPlaymatsMode, type PlaymatsMode } from "./playmatMode";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -65,6 +66,10 @@ export interface Settings {
     // the master switch off, or reduced motion) the result still shows,
     // settled, for the same hold; only the motion goes.
     dice: boolean;
+    // ADR 0134 §5: attackers lunge and hits land. Off (or the master
+    // switch off, or reduced motion) combat shows as it did before:
+    // badges, the life popup, the log and the first-strike text cue.
+    combat: boolean;
   };
 
   display: {
@@ -157,6 +162,13 @@ export interface Settings {
     //                    where a player reads what a card does.
     battlefieldArt: boolean;
     handArt: boolean;
+    // ADR 0128: whose playmats are drawn behind the battlefields.
+    // "all" (the default) draws every player's, "mine" only yours,
+    // "off" none. Per device: it is about this screen (a low-power
+    // phone, a window where someone else's art is a distraction), not
+    // about the person. Having a playmat of your own is an account
+    // matter and lives on the server (PUT /me/playmat), not here.
+    playmats: PlaymatsMode;
   };
 
   gameplay: {
@@ -188,6 +200,13 @@ export interface Settings {
     // server's, so the server holds the seat's copy and the client keeps
     // it in step (triggerOrderPref.ts). Default off.
     alwaysAskTriggerOrder: boolean;
+    // ADR 0127 §3: standing answers to repeated prompts ("never pay
+    // for Rhystic Study"), one per prompt key. Ask is the absence of a
+    // rule. `card` and `prompt` are display copies so Settings can list
+    // the rules without a game. The server holds the seat's copy and
+    // answers for the player (autoAnswerPref.ts keeps it in step).
+    // At most MAX_AUTO_ANSWERS. Default empty.
+    autoAnswers: AutoAnswerRule[];
     // S13.6: when a stopped step lands on the viewer but the
     // legality engine reports no legal response (no castable hand
     // cards, no battlefield activations, no commander cast),
@@ -393,6 +412,7 @@ export function defaultSettings(): Settings {
       particlesEtb: true,
       damagePopups: true,
       dice: true,
+      combat: true,
     },
     display: {
       theme: DEFAULT_SKIN,
@@ -424,6 +444,9 @@ export function defaultSettings(): Settings {
       // in the hand.
       battlefieldArt: true,
       handArt: false,
+      // ADR 0128: every player's playmat is drawn, until the player
+      // turns them down.
+      playmats: DEFAULT_PLAYMATS_MODE,
     },
     gameplay: {
       confirmExit: true,
@@ -440,6 +463,8 @@ export function defaultSettings(): Settings {
       strictMana: true,
       // #1530 default: off. The server orders a commuting batch itself.
       alwaysAskTriggerOrder: false,
+      // ADR 0127 default: no rules; every prompt is asked.
+      autoAnswers: [],
       // S13.6 default: on. The step-stops grid is the intent
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
@@ -553,6 +578,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     particlesEtb: "synced",
     damagePopups: "synced",
     dice: "synced",
+    combat: "synced",
   },
   display: {
     theme: "synced",
@@ -570,6 +596,8 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     // answer 5).
     battlefieldArt: "synced",
     handArt: "synced",
+    // ADR 0128: about this screen, not the person.
+    playmats: "device",
   },
   gameplay: {
     confirmExit: "synced",
@@ -577,6 +605,9 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     stepStops: "synced",
     strictMana: "synced",
     alwaysAskTriggerOrder: "synced",
+    // ADR 0127 §3: the cards are in a person's decks, so the answers
+    // travel with the person.
+    autoAnswers: "synced",
     smartAutoPass: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
@@ -936,6 +967,14 @@ function migrate(raw: unknown): Settings {
   if (!isTableLayout(merged.display.tableLayout)) {
     merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
   }
+  // ADR 0128: display.playmats is new. The shallow merge fills it with
+  // "all" for any older blob, and a value that is not one of the three
+  // (a hand edit) falls back to the default rather than to a board that
+  // draws nothing for a reason nobody can see. No version bump: it is
+  // per device, so no account copy carries it.
+  if (!isPlaymatsMode(merged.display.playmats)) {
+    merged.display.playmats = DEFAULT_PLAYMATS_MODE;
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
@@ -951,7 +990,67 @@ function migrate(raw: unknown): Settings {
     seen: normalizeSeen(merged.help?.seen),
     tipsOff: merged.help?.tipsOff === true,
   };
+  // ADR 0127 §3: gameplay.autoAnswers. New fields fill from the default
+  // (empty) through the shallow merge, so SETTINGS_VERSION stands. The
+  // list is checked, not trusted: only well-formed rules survive, one
+  // per key, at most MAX_AUTO_ANSWERS.
+  merged.gameplay.autoAnswers = normalizeAutoAnswers(merged.gameplay.autoAnswers);
   return absorbLegacy(merged);
+}
+
+// ---- ADR 0127: standing answers ------------------------------------------
+
+/** The server's ceiling on one seat's rules (game.MaxAutoAnswerRules). */
+export const MAX_AUTO_ANSWERS = 100;
+/** The server's ceiling on one key, in bytes (game.MaxAutoAnswerKeyLen). */
+export const MAX_AUTO_ANSWER_KEY_BYTES = 256;
+// Display copies are trimmed so 100 rules stay well inside the
+// account's 32 KiB of settings.
+const MAX_AUTO_ANSWER_TEXT = 120;
+
+/** One standing answer: "always" or "never" for the prompt `key`. */
+export interface AutoAnswerRule {
+  key: string;
+  card: string;
+  prompt: string;
+  answer: "always" | "never";
+}
+
+/** utf8Length is a string's length in UTF-8 bytes, as the server counts. */
+export function utf8Length(s: string): number {
+  return new TextEncoder().encode(s).length;
+}
+
+/** normalizeAutoAnswers keeps the well-formed rules of a stored list. */
+export function normalizeAutoAnswers(raw: unknown): AutoAnswerRule[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AutoAnswerRule[] = [];
+  const seen = new Set<string>();
+  for (const r of raw) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>;
+    const key = o.key;
+    const answer = o.answer;
+    if (typeof key !== "string" || key === "" || utf8Length(key) > MAX_AUTO_ANSWER_KEY_BYTES) {
+      continue;
+    }
+    if (answer !== "always" && answer !== "never") continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      key,
+      card: typeof o.card === "string" ? o.card.slice(0, MAX_AUTO_ANSWER_TEXT) : "",
+      prompt: typeof o.prompt === "string" ? o.prompt.slice(0, MAX_AUTO_ANSWER_TEXT) : "",
+      answer,
+    });
+    if (out.length >= MAX_AUTO_ANSWERS) break;
+  }
+  return out;
+}
+
+/** trimAutoAnswerText is a display copy as a rule stores it. */
+export function trimAutoAnswerText(s: string | undefined): string {
+  return (s ?? "").slice(0, MAX_AUTO_ANSWER_TEXT);
 }
 
 // stepStopsMatchDefault reports whether the supplied stepStops map
@@ -1064,6 +1163,7 @@ settings.subscribe((s) => {
     particlesEtb: s.animations.particlesEtb,
     damagePopups: s.animations.damagePopups,
     dice: s.animations.dice,
+    combat: s.animations.combat,
   });
 });
 
@@ -1133,6 +1233,7 @@ export type SettingsTab =
   | "audio"
   | "animations"
   | "display"
+  | "playmat"
   | "gameplay"
   | "shortcuts"
   | "accessibility"

@@ -179,6 +179,15 @@ type Config struct {
 	// payoff pays less (discard_payoff.go). Off (the zero value) prices
 	// a discard by the card alone.
 	PriceDiscardPayoffs bool
+	// PriceExert turns on ADR 0130 §9 (owner decision 4): the twin
+	// attack move that exerts its attacker is priced by what the
+	// exert's rows declare against what the creature gives up by
+	// staying tapped (exert.go), and taken when it is worth more than
+	// the plain attack. Off (the zero value) never exerts.
+	PriceExert bool
+	// ExertCostWeight scales an exert's cost: the creature's next-turn
+	// attack value plus its blocking value across the opponents' turns.
+	ExertCostWeight float64
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -377,6 +386,9 @@ func DefaultConfig() Config {
 
 		PriceDiscardPayoffs: true,
 
+		PriceExert:      true,
+		ExertCostWeight: 1.00,
+
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
 		FuelRecast: 0.55,
@@ -463,6 +475,8 @@ func BaselineConfig() Config {
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0
 	c.TokenWeight = 0
+	// ADR 0129 §7: energy, priced at nothing before it.
+	c.Weights.Energy = 0
 	c.PriceSweeps = false
 	c.DiscardCostByCard = false
 	c.LastLandDiscard = 0
@@ -471,6 +485,9 @@ func BaselineConfig() Config {
 	c.DeathPayoff = 0
 	// ADR 0126's amendment of 2026-10-06: discard payoffs.
 	c.PriceDiscardPayoffs = false
+	// ADR 0130 §9: exert, never taken before it.
+	c.PriceExert = false
+	c.ExertCostWeight = 0
 	return c
 }
 

@@ -168,16 +168,19 @@ type keywordActionTail struct {
 	// called with explicit lists — and the same choice is applied
 	// each time the settled count asks for.
 	//
-	// DECLARED SIMPLIFICATION, and a small one: in paper each
-	// proliferate of a "proliferate twice" is its own choice. The
-	// catalog's chooser is the deterministic beneficial pick, which
-	// only ever chooses things that already have counters and only
-	// ever adds a counter of a kind already there, so a second pick
-	// over the board the first one left returns the same two lists.
-	// See cards/effects/proliferate.go, which carries the choice half
-	// of the rule and the reason it is not prompted yet.
+	// These are the EXPLICIT form: the caller already knows what it
+	// wants (a test, or an effect that names its own lists), and the
+	// same choice is applied each time the settled count asks for.
+	// The ordinary form is `ask` below, where the player chooses.
 	cards   []uuid.UUID
 	players []uuid.UUID
+
+	// ask makes a proliferate the PLAYER'S choice (#2525, CR 701.34a):
+	// once the window settles, each time the settled count asks for
+	// queues its own PendingChoiceProliferate, so "proliferate twice"
+	// is two choices, the second made over the board the first one
+	// left. cards / players are ignored when it is set.
+	ask bool
 
 	// choice is the prompt a settled scry or surveil queues —
 	// PendingChoiceScry or PendingChoiceSurveil. The count on the
@@ -262,6 +265,34 @@ func (g *Game) ProliferateForEffect(player, source uuid.UUID, cardIDs, playerIDs
 	return err
 }
 
+// ProliferateChoosingForEffect takes the proliferate keyword action
+// with the choice left to `player` (#2525): the CR 614 window settles
+// first, then each proliferate it settled on queues a
+// PendingChoiceProliferate offering the permanents and players with
+// counters, the engine's beneficial pick suggested.
+//
+// `then` is the rest of the sentence ("Proliferate. Draw a card.") and
+// runs once every proliferate has been answered — or at once when the
+// action was cancelled, replaced down to nothing, or had nothing on the
+// board to choose. nil is fine.
+//
+// Unlike ProliferateForEffect this PAUSES in the ordinary case: nothing
+// has been given when it returns, and a caller that sequences work
+// behind it must hand that work to `then`.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) ProliferateChoosingForEffect(player, source uuid.UUID, then func(g *Game) error) error {
+	_, err := g.runKeywordActionLocked(&ReplacementEvent{
+		Kind:               RepEventKeywordAction,
+		Actor:              player,
+		Source:             source,
+		KeywordAction:      KeywordActionProliferate,
+		KeywordActionCount: 1,
+		keywordAction:      &keywordActionTail{ask: true, then: then},
+	})
+	return err
+}
+
 // runKeywordActionLocked runs the CR 614 window for ev and, once it
 // settles, takes the action the window left. Shared by the three
 // entry points and by the CR 616 resume
@@ -324,10 +355,20 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 			})
 			times = maxKeywordActionRepeats
 		}
+		// The rest of the sentence is taken as a VALUE and cleared off
+		// the tail, exactly as earthbend does (#1282): whichever path
+		// finishes the action runs it, and nothing else can.
+		then := takeKeywordActionThen(tail)
+		if tail.ask {
+			return 0, g.proliferateAskLocked(ev.Actor, ev.Source, times, then)
+		}
 		for i := 0; i < times; i++ {
 			if err := g.applyProliferateLocked(ev.Actor, tail.cards, tail.players); err != nil {
 				return 0, err
 			}
+		}
+		if then != nil {
+			return 0, then(g)
 		}
 		return 0, nil
 	case KeywordActionScry, KeywordActionSurveil:
@@ -375,8 +416,8 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 // A caller sequencing work behind the action has to be told even when
 // the answer is "none", or it waits forever; that is the call #808
 // made for the life tail, #853 for the route tail and #762 for the
-// token tail. A proliferate carries no continuation and this is a
-// no-op for it.
+// token tail. A proliferate's continuation is the rest of its sentence
+// (Steady Progress's draw), and it runs here too.
 //
 // Caller must hold g.mu.
 func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {

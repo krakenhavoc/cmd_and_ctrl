@@ -25,11 +25,14 @@ type choiceParams struct {
 	Apply    *bool    `json:"apply,omitempty"`
 	// TapIDs rides a pay_unless "pay" whose cost is a waterbend cost
 	// (#1311): the permanents tapped for part of the generic.
-	TapIDs      []string      `json:"tap_ids,omitempty"`
-	Assignments []assignParam `json:"assignments,omitempty"`
-	TrampleTo   int           `json:"trample_to_player,omitempty"`
-	Target      *targetWire   `json:"target,omitempty"`
-	Targets     []targetWire  `json:"targets"`
+	TapIDs []string `json:"tap_ids,omitempty"`
+	// PhyrexianLife rides a pay_unless "pay" that spends 2 life on each
+	// of that many symbols of the cost (ADR 0131 §2).
+	PhyrexianLife int           `json:"phyrexian_life,omitempty"`
+	Assignments   []assignParam `json:"assignments,omitempty"`
+	TrampleTo     int           `json:"trample_to_player,omitempty"`
+	Target        *targetWire   `json:"target,omitempty"`
+	Targets       []targetWire  `json:"targets"`
 	// Distribution rides a pick_target answer whose clause divides
 	// (#1563): game.PickTargetDefaultDistribution, the even split.
 	Distribution map[string]int `json:"distribution,omitempty"`
@@ -62,6 +65,10 @@ type choiceParams struct {
 	// absent, and an index list of zeroes is a perfectly ordinary
 	// answer ([0, 0, 0] is Mystic Confluence drawing three cards).
 	Modes []int `json:"modes"`
+	// Amount answers a pay_amount prompt (ADR 0129 §3): the energy
+	// paid. A pointer, for OptionIndex's reason: paying nothing is
+	// zero. Routed by KIND.
+	Amount *int `json:"amount,omitempty"`
 	// CreatureType answers a choose_creature_type prompt (CR 614.12).
 	// omitempty because the dispatcher routes on its PRESENCE: an
 	// empty string sent on every other kind would be read as "this is
@@ -259,6 +266,32 @@ func (e *enumerator) choiceMoves() bool {
 			// move naming the cards it pays with; there is none when
 			// the seat cannot pay (CR 118.3), and the decline is
 			// always there.
+			// ADR 0129 §3: an energy payment names nothing. "Pay" is
+			// a move only when the seat has the energy (CR 118.3),
+			// through the predicate the engine pays with, and it
+			// carries the energy it spends; the decline is always
+			// there.
+			if action := c.PayAction(); action != nil && action.Kind == game.PayActionEnergy {
+				if game.EnergyShortfall(playerByID(g, c.Chooser), action.Count) == nil {
+					a := true
+					p := base()
+					p.Apply = &a
+					e.add(Move{
+						Type:   TypeResolveChoice,
+						Player: e.seat,
+						Kind:   KindChoice,
+						Label:  reason + ": pay " + c.PayCost,
+						Source: c.Source,
+						Params: mustJSON(p),
+						Cost:   withEnergy(nil, action.Count),
+					})
+				}
+				a := false
+				p := base()
+				p.Apply = &a
+				e.addChoice(c, reason+": decline", p)
+				continue
+			}
 			if action := c.PayAction(); action != nil {
 				pool := g.PayActionOptionsForEffect(c.Chooser, action)
 				for _, set := range e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
@@ -282,6 +315,7 @@ func (e *enumerator) choiceMoves() bool {
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false
 			var taps []uuid.UUID
+			payLife := 0
 			if cost, err := game.ParseCost(c.PayCost); err == nil {
 				if c.PayTapCost().Empty() {
 					// Zero spend context, matching payCostLocked: a
@@ -289,6 +323,26 @@ func (e *enumerator) choiceMoves() bool {
 					// activation, so restricted mana cannot fund it
 					// (#352).
 					canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+					if !canPay {
+						// ADR 0131 §2: a printed {B/P}, or a {B} under
+						// K'rrik, may be paid with 2 life. Mana first;
+						// then the fewest symbols paid with life that
+						// make the cost payable, bounded by the
+						// engine's own life predicate (CR 119.4, CR
+						// 119.8) so an offered payment is one the
+						// answer accepts (#544).
+						lifeCost := g.LifeGrantedCostForEffect(e.seat, cost)
+						for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
+							reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, game.ManaSpendContext{}, n)
+							if !g.CanPayLifeLocked(e.p, life) {
+								break
+							}
+							if e.canPay(reduced, 0, game.ManaSpendContext{}) {
+								canPay, payLife = true, n
+								break
+							}
+						}
+					}
 				} else {
 					// #1311, "Ward—Waterbend {4}": the payment may tap
 					// artifacts and creatures for the generic, so
@@ -311,8 +365,48 @@ func (e *enumerator) choiceMoves() bool {
 						verb += fmt.Sprintf(" (waterbending with %d)", len(taps))
 						p.TapIDs = idStrings(taps)
 					}
+					if payLife > 0 {
+						verb += phyrexianLifeLabel(payLife)
+						p.PhyrexianLife = payLife
+					}
 				}
-				e.addChoice(c, reason+": "+verb, p)
+				var price *MoveCost
+				if apply {
+					price = withPhyrexianLife(nil, payLife)
+				}
+				e.addChoiceCost(c, reason+": "+verb, p, price)
+			}
+
+		case game.PendingChoicePayAmount:
+			// ADR 0129 §3 (owner decision 3): nothing, the smallest
+			// payment, the card's own threshold and the ceiling, so a
+			// 50-energy prompt is at most four moves and not 51. Every one is within the bounds
+			// the engine validates against.
+			pa := c.PayAmount
+			if pa == nil {
+				continue
+			}
+			for _, n := range payAmountOffers(pa) {
+				amount := n
+				p := base()
+				p.Amount = &amount
+				label := fmt.Sprintf("%s: pay %d {E}", reason, amount)
+				if amount == 0 {
+					label = reason + ": pay nothing"
+				}
+				m := Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  label,
+					Source: c.Source,
+					Params: mustJSON(p),
+					Cost:   withEnergy(nil, amount),
+					// Paying nothing is the one answer the engine
+					// can never refuse.
+					AlwaysLegal: amount == 0,
+				}
+				e.add(m)
 			}
 
 		case game.PendingChoiceDamageAssignment:
@@ -640,7 +734,8 @@ func (e *enumerator) choiceMoves() bool {
 			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
 			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
 			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents,
-			game.PendingChoiceChooseSource, game.PendingChoiceRingBearer:
+			game.PendingChoiceChooseSource, game.PendingChoiceRingBearer,
+			game.PendingChoiceProliferate:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -729,11 +824,20 @@ func (e *enumerator) choiceMoves() bool {
 				// it always has an answer.
 				verb = ": choose Ring-bearer"
 			}
+			if c.Kind == game.PendingChoiceProliferate {
+				sets = withSuggestedFirst(g, c, sets)
+				verb = ": proliferate"
+			}
 			for _, set := range sets {
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + verb
 				for _, id := range set {
+					if playerByID(g, id) != nil {
+						// A proliferate names seats too (CR 701.34a).
+						label += " " + choiceSeatName(g, id)
+						continue
+					}
 					// cardNameFor, not cardName: the candidates are
 					// as often cards in a hand as cards on the
 					// battlefield, and only a seat the effect made a
@@ -1182,12 +1286,20 @@ func (e *enumerator) loopIsSelfActivated(c *game.PendingChoice) bool {
 }
 
 func (e *enumerator) addChoice(c *game.PendingChoice, label string, p choiceParams) {
+	e.addChoiceCost(c, label, p, nil)
+}
+
+// addChoiceCost is addChoice for an answer that charges something the
+// params do not show — a pay_unless "pay" that spends life on symbols
+// (ADR 0131 §2), which the heuristic prices through Move.Cost.
+func (e *enumerator) addChoiceCost(c *game.PendingChoice, label string, p choiceParams, cost *MoveCost) {
 	e.add(Move{
 		Type:   TypeResolveChoice,
 		Player: e.seat,
 		Kind:   KindChoice,
 		Label:  label,
 		Source: c.Source,
+		Cost:   cost,
 		Params: mustJSON(p),
 	})
 }
@@ -1796,8 +1908,73 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		// ADR 0114 §7: the seat's own creatures, best Ring-bearer
 		// first — the opposite end from own_permanents'.
 		return e.bestRingBearerFirst(c.ChooseCards)
+	case game.PendingChoiceProliferate:
+		// #2525: permanents AND seats, the engine's suggestion first so
+		// its members survive MaxExpansionPerSource (and withSuggestedFirst
+		// offers the whole suggested set regardless).
+		return proliferatePool(c)
 	}
 	return c.ChooseCards
+}
+
+// proliferatePool is a proliferate prompt's candidates, permanents then
+// seats, with the engine's suggested members leading each group.
+func proliferatePool(c *game.PendingChoice) []uuid.UUID {
+	suggested := make(map[uuid.UUID]bool, len(c.ChooseSuggested))
+	for _, id := range c.ChooseSuggested {
+		suggested[id] = true
+	}
+	out := make([]uuid.UUID, 0, len(c.ChooseCards)+len(c.ChoosePlayers))
+	for _, want := range []bool{true, false} {
+		for _, group := range [][]uuid.UUID{c.ChooseCards, c.ChoosePlayers} {
+			for _, id := range group {
+				if suggested[id] == want {
+					out = append(out, id)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// withSuggestedFirst puts a proliferate prompt's suggested set at the
+// head of its offered sets, whatever the subset walk reached (#2525).
+//
+// Every subset of the candidates is an acceptable answer, so what the
+// move list has to guarantee is not legality but REACH: on a board with
+// a dozen countered permanents the walk stops at the expansion cap
+// long before it builds the large set a policy wants, and a bot that
+// cannot name the suggested pick would be choosing between a handful of
+// small ones. The set is run past the engine's own acceptance check
+// like any other, and an empty suggestion offers nothing here (the
+// empty answer is already the AlwaysLegal move above).
+func withSuggestedFirst(g *game.Game, c *game.PendingChoice, sets [][]uuid.UUID) [][]uuid.UUID {
+	if len(c.ChooseSuggested) == 0 || !g.ChooseCardsPickLegalLocked(c, c.ChooseSuggested) {
+		return sets
+	}
+	same := func(a, b []uuid.UUID) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		in := make(map[uuid.UUID]bool, len(a))
+		for _, id := range a {
+			in[id] = true
+		}
+		for _, id := range b {
+			if !in[id] {
+				return false
+			}
+		}
+		return true
+	}
+	out := make([][]uuid.UUID, 0, len(sets)+1)
+	out = append(out, append([]uuid.UUID(nil), c.ChooseSuggested...))
+	for _, set := range sets {
+		if !same(set, c.ChooseSuggested) {
+			out = append(out, set)
+		}
+	}
+	return out
 }
 
 // bestRingBearerFirst orders a ring_bearer prompt's candidates by the

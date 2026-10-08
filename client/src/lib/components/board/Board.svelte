@@ -63,6 +63,7 @@
   } from "../../stackLane";
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
+  import CombatStrikes from "./CombatStrikes.svelte";
   import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
@@ -92,13 +93,17 @@
   import { seatSelector } from "../../boardAnchor";
   import { currentDockRequest, dockKeyFor } from "../../dock";
   import { foreignModalOpen } from "../../modalLayers";
-  import { tick, untrack } from "svelte";
+  import { onDestroy, tick, untrack } from "svelte";
+  import { get } from "svelte/store";
+  import { provideCombatCues } from "../../combatCues.svelte";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
   import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
   import DockRequest from "./DockRequest.svelte";
   import { castAnywayConfirmRequest } from "../../targetingDock";
   import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
+  import { payLifeRequest } from "../../payLifeForMana";
+  import { fetchAutoTapPreview } from "../../api";
   import {
     targeting,
     begin as beginTargeting,
@@ -120,6 +125,7 @@
     optionalCostsOf,
     castTeamworkOffer,
     castBlightOffer,
+    castRevealCost,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -145,7 +151,7 @@
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
-  import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import { abilityEnergyMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
   import { castSacrificeRange, orderSacrificeOptions, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
@@ -171,6 +177,7 @@
     manaTapPayment,
   } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
+  import { discardedManaValue } from "../../discardCostX";
   import {
     costConfirmLines,
     costConfirmNote,
@@ -190,6 +197,9 @@
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { L } from "../../labels";
   import {
+    onlyGrantedSymbols,
+    phyrexianGrantedForAbility,
+    phyrexianGrantedForCast,
     phyrexianSymbolsForAbility,
     phyrexianSymbolsForCast,
     shouldAskPhyrexianLife,
@@ -231,7 +241,8 @@
     attention?: Snippet;
     // #187 / ADR 0053: changes whenever the combat damage beats should
     // prime again instead of cueing what they missed (reconnect, replay
-    // toggle). Passed straight to CombatArrows.
+    // toggle). Primes the board's combat damage clock (ADR 0134 §1), and
+    // is passed straight to the dice layer and the linger.
     beatsPrimeKey?: string;
     // ADR 0105 (#1789): the frame's legal-action lookup, built once in
     // Game.svelte and already "nothing" while highlights are off or
@@ -276,6 +287,23 @@
     if (disabled) return;
     sendAction(type, params, player);
   };
+
+  // ADR 0134 §1: one combat damage clock for the whole board. The arrows'
+  // beat cues and the strike layer's lunges both listen to it, and every
+  // Card reads its striking set (through the context) to hide while its
+  // copy flies. A prime-key change (reconnect, replay toggle) primes the
+  // next frame; declared before the frame effect so a key and a view
+  // that change together prime that same frame.
+  const combatCues = provideCombatCues();
+  onDestroy(() => combatCues.dispose());
+  $effect(() => {
+    void beatsPrimeKey;
+    untrack(() => combatCues.requestReprime());
+  });
+  $effect(() => {
+    const log = view.log;
+    untrack(() => combatCues.frame(log, get(settings)));
+  });
 
   // Spectators have no perspective — there's no "self" seat to anchor
   // the around-the-table rotation. Use a uniform grid for them with
@@ -343,8 +371,12 @@
   // the X the same mana buys a one-slot cost — and never below the
   // printed floor, which the modal also enforces.
   const suggestedAbilityX = $derived.by(() =>
-    xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX) : 0,
+    xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX, viewerEnergy) : 0,
   );
+
+  // ADR 0129 §8: the viewer's energy, the ceiling on a "Pay X {E}"
+  // ability's X (CR 118.3).
+  const viewerEnergy = $derived(view.seats.find((s) => s.id === viewerID)?.counters?.energy ?? 0);
 
   // #916: the viewer's life total, which is CR 119.4's cap on a
   // Phyrexian life payment. Read off the live snapshot so a life loss
@@ -602,6 +634,28 @@
     orderSacrificeOptions(view.battlefield.cards, blightPromptOptionIDs),
   );
 
+  // ADR 0100 amendment 2026-10-07: a chosen reveal / behold branch asks
+  // which one card to show — a card in your hand or, to behold, a
+  // permanent you control. The same single-pick sheet the blight
+  // creature uses, over the server's `reveal_options` (hand first, then
+  // permanents), resolved against both zones.
+  let revealPrompt = $state<{ card: CardView; label: string; choices: CastChoices } | null>(null);
+  let revealPromptOptionIDs = $state<string[]>([]);
+  const revealOptions = $derived.by(() => {
+    const me = view.seats.find((s) => s.id === viewerID);
+    return orderSacrificeOptions(
+      [...(me?.hand.cards ?? []), ...view.battlefield.cards],
+      revealPromptOptionIDs,
+    );
+  });
+
+  function confirmReveal(ids: string[]): void {
+    const p = revealPrompt;
+    revealPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, revealIDs: ids });
+  }
+
   function afterSacrificeCost(card: CardView, choices: CastChoices): void {
     const tw = castTeamworkOffer(card, choices);
     if (tw && choices.teamworkIDs === undefined) {
@@ -618,6 +672,16 @@
           bl.n === 0
             ? `a creature you control for ${bl.offer.label ?? "Blight X"} (it gets X -1/-1 counters)`
             : `a creature you control for ${bl.offer.label ?? `Blight ${bl.n}`} (it gets ${bl.n} -1/-1 counter${bl.n === 1 ? "" : "s"})`,
+        choices,
+      };
+      return;
+    }
+    const rv = castRevealCost(card, choices);
+    if (rv && choices.revealIDs === undefined) {
+      revealPromptOptionIDs = rv.options;
+      revealPrompt = {
+        card,
+        label: rv.behold ? `${rv.label} (choose or reveal)` : rv.label,
         choices,
       };
       return;
@@ -868,9 +932,41 @@
     // prints no Phyrexian symbol, and when CR 119.4 leaves the
     // caster unable to buy even one — a prompt whose only answer is
     // 0 is a click, not a choice.
+    //
+    // ADR 0131 (owner decision 4): when EVERY symbol is one a grant
+    // (K'rrik) lets life pay, the stepper would open on nearly every
+    // black spell, so it opens only when the mana falls short — asked of
+    // the auto-tap preview with nothing claimed — or when the player
+    // chose "Pay life for {B}…" from the card's menu. A printed
+    // Phyrexian symbol still always asks.
     const symbols = phyrexianSymbolsForCast(card, choices.altCost);
-    if (shouldAskPhyrexianLife(symbols, viewerLife)) {
-      phyrexianPrompt = { card, symbols, choices };
+    const granted = phyrexianGrantedForCast(card, choices.altCost);
+    const asked = choices.askPhyrexianLife === true;
+    if (onlyGrantedSymbols(symbols, granted) && !asked) {
+      // A confirmed Cast anyway pays no mana, so mana is never short;
+      // with strict payment off the engine charges none either.
+      if (choices.forceCast || !$settings.gameplay.strictMana) {
+        afterPhyrexianLife(card, choices);
+        return;
+      }
+      fetchAutoTapPreview(view.id, card.instance_id, {
+        xValue: choices.xValue,
+        cast: castPreviewParams(choices),
+      })
+        .then((p) => {
+          if (shouldAskPhyrexianLife(symbols, viewerLife, granted, !p.ok)) {
+            phyrexianPrompt = { card, symbols, granted, suggest: true, choices };
+          } else {
+            afterPhyrexianLife(card, choices);
+          }
+        })
+        // A preview that failed says nothing: cast on, and the server,
+        // the only real answer, refuses a short strict cast.
+        .catch(() => afterPhyrexianLife(card, choices));
+      return;
+    }
+    if (shouldAskPhyrexianLife(symbols, viewerLife, granted, true, asked)) {
+      phyrexianPrompt = { card, symbols, granted, suggest: false, choices };
       return;
     }
     afterPhyrexianLife(card, choices);
@@ -893,6 +989,10 @@
   let phyrexianPrompt = $state<{
     card: CardView;
     symbols: number;
+    // ADR 0131: how many of `symbols` are a grant's, not printed.
+    granted: number;
+    // Open at the smallest count that makes the mana half payable.
+    suggest: boolean;
     choices: CastChoices;
   } | null>(null);
 
@@ -1012,8 +1112,9 @@
     face?: number,
     viaDrag = false,
     forceCast = false,
+    askPhyrexianLife = false,
   ): void {
-    const base = castChoicesBase(fromZone, viaDrag, forceCast);
+    const base = castChoicesBase(fromZone, viaDrag, forceCast, askPhyrexianLife);
     if (face !== undefined) {
       afterFace(cardAsFace(card, face), { ...base, face });
       return;
@@ -1070,6 +1171,18 @@
     const p = $castAnywayPending;
     if (!p) return;
     if (locateCard(view, p.card.instance_id)?.zone !== p.zone) clearCastAnyway();
+  });
+
+  // ADR 0131 §4: the card menu's "Pay life for {B}…" row only sets
+  // payLifeRequest; the Board starts the ordinary cast chain with the
+  // Phyrexian stepper forced open, so a player whose mana is there can
+  // still choose to pay life.
+  $effect(() => {
+    const card = $payLifeRequest;
+    if (!card) return;
+    payLifeRequest.set(null);
+    const live = findCard(view, card.instance_id) ?? card;
+    handlePlayCard(live, undefined, undefined, false, false, true);
   });
 
   // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
@@ -1366,6 +1479,7 @@
       abilityExilePermanentIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
+      abilityDiscardX = undefined;
       abilityTapX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
@@ -1502,6 +1616,9 @@
   // the X stepper is skipped for such an ability — asking twice could
   // only produce an announcement the server refuses.
   let abilitySacrificeX: number | undefined;
+  // #2527: and the count picked for "Discard X cards" (Gix), the same
+  // way: the number of cards the player discards IS the announcement.
+  let abilityDiscardX: number | undefined;
   // #1421: the count picked for "Tap X" is the announcement, just
   // as the sacrifice picker supplies X for "Sacrifice X".
   let abilityTapX: number | undefined;
@@ -1663,6 +1780,7 @@
     // along with this one.
     abilityWaterbendIDs = undefined;
     abilitySacrificeX = undefined;
+    abilityDiscardX = undefined;
     abilityTapX = undefined;
     // #660: the discard payment is asked FIRST, as the cast flow asks
     // its own — it is the cost most likely to make a player back out.
@@ -1671,6 +1789,18 @@
     // no modal.
     // ADR 0109 §7: a random discard names nothing — it is confirmed
     // below, with the library exile, rather than picked here.
+    // #2527: "Discard X cards" always asks — how many is the question,
+    // so there is no hand size at which the answer is forced. An empty
+    // hand pays it at X=0 with nothing to pick.
+    if (ability.discard_cost_count_from_x) {
+      const options = ability.discard_cost_options ?? [];
+      if (options.length > 0) {
+        abilityDiscardPrompt = { card, ability };
+        return;
+      }
+      afterAbilityDiscardCost(card, ability, []);
+      return;
+    }
     if (ability.discard_cost_n && !ability.discard_cost_random) {
       const options = ability.discard_cost_options ?? [];
       if (options.length > ability.discard_cost_n) {
@@ -1692,6 +1822,18 @@
     discardIDs: string[],
   ): void {
     abilityDiscardIDs = discardIDs;
+    // #2527: the cards picked for "Discard X cards" are the announced
+    // X, so the X stepper has nothing left to ask.
+    abilityDiscardX = ability.discard_cost_count_from_x ? discardIDs.length : undefined;
+    // #2190: and the card picked for "Discard a card with mana value X"
+    // IS the announcement: its mana value is X, for the target clause
+    // that follows as much as for the engine.
+    if (ability.discard_cost_mana_value_x) {
+      abilityDiscardX = discardedManaValue(
+        view.seats.find((s) => s.id === viewerID)?.hand.cards,
+        discardIDs,
+      );
+    }
     // #1297: the exile pick next — the same card-shaped question one
     // component over, skipped the same way when the pile holds exactly
     // what the clause demands.
@@ -2227,6 +2369,8 @@
         xValue = abilitySacrificeX;
       } else if (abilityTapX !== undefined) {
         xValue = abilityTapX;
+      } else if (abilityDiscardX !== undefined) {
+        xValue = abilityDiscardX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -2236,12 +2380,58 @@
     // symbols. Same question the cast chain asks, in the same place —
     // after X, before the modes and the targets — and the same
     // stepper asks it, told to price the ABILITY's cost.
-    if (
-      phyrexianLife === undefined &&
-      shouldAskPhyrexianLife(phyrexianSymbolsForAbility(ability), viewerLife)
-    ) {
-      phyrexianAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, modes };
-      return;
+    //
+    // ADR 0131: the same rule as the cast's. A printed Phyrexian symbol
+    // always asks; when every symbol is a granted one (K'rrik's {B}) it
+    // asks only if the preview, with nothing claimed, says mana is short.
+    if (phyrexianLife === undefined) {
+      const symbols = phyrexianSymbolsForAbility(ability);
+      const granted = phyrexianGrantedForAbility(ability);
+      if (onlyGrantedSymbols(symbols, granted)) {
+        if (
+          !$settings.gameplay.strictMana ||
+          !shouldAskPhyrexianLife(symbols, viewerLife, granted, true)
+        ) {
+          // Nothing to ask: strict payment is off, or CR 119.4 leaves no
+          // symbol to buy. Continue claiming nothing.
+          continueActivation(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes, 0);
+          return;
+        }
+        fetchAutoTapPreview(view.id, card.instance_id, { xValue, abilityIndex: ability.index })
+          .then((p) => {
+            if (p.ok) {
+              continueActivation(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes, 0);
+            } else {
+              phyrexianAbilityPrompt = {
+                card,
+                ability,
+                sacrificeIDs,
+                crewIDs,
+                xValue,
+                counter,
+                modes,
+                suggest: true,
+              };
+            }
+          })
+          .catch(() =>
+            continueActivation(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes, 0),
+          );
+        return;
+      }
+      if (shouldAskPhyrexianLife(symbols, viewerLife, granted, true)) {
+        phyrexianAbilityPrompt = {
+          card,
+          ability,
+          sacrificeIDs,
+          crewIDs,
+          xValue,
+          counter,
+          modes,
+          suggest: false,
+        };
+        return;
+      }
     }
     // #1310, CR 701.67a: "Waterbend {N}:" — which untapped artifacts
     // and creatures pay part of it. After X, because a Waterbend {X}
@@ -2325,6 +2515,7 @@
     abilityExilePermanentIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
+    abilityDiscardX = undefined;
     abilityTapX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
@@ -2339,6 +2530,8 @@
     xValue?: number;
     counter?: CounterPayment;
     modes?: number[];
+    // ADR 0131: open at the smallest count that makes the mana payable.
+    suggest: boolean;
   } | null>(null);
 
   function confirmAbilityPhyrexianLife(n: number): void {
@@ -3011,12 +3204,15 @@
   <CombatArrows
     {view}
     {boardEl}
-    {beatsPrimeKey}
+    cues={combatCues}
     stackTargets={!(
       laneShowsStack &&
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
     )}
   />
+  <!-- ADR 0134: attackers lunge and hits land. Art-only copies at z 37,
+       aria-hidden, no pointer events, on the same beat clock. -->
+  <CombatStrikes {view} {boardEl} cues={combatCues} />
   <!-- ADR 0121 §7: every die a card rolls and every coin it flips
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->
@@ -3085,6 +3281,7 @@
     options={sacrificeOptions}
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
+    eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -3118,6 +3315,16 @@
     verb="Choose"
     onConfirm={confirmBlight}
     onCancel={() => (blightPrompt = null)}
+  />
+  <!-- ADR 0100 amendment: reveal a card from hand / behold — one pick. -->
+  <SacrificeCostModal
+    source={revealPrompt?.card ?? null}
+    label={revealPrompt?.label ?? "a card to show"}
+    options={revealOptions}
+    count={1}
+    verb="Choose"
+    onConfirm={confirmReveal}
+    onCancel={() => (revealPrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}
@@ -3164,6 +3371,7 @@
     options={altSacOptions}
     count={altSacBounds.max}
     min={altSacBounds.min}
+    eachOf={altSacPromptClause?.each_of}
     onConfirm={confirmAltSacrifice}
     onCancel={() => {
       altSacPromptCard = null;
@@ -3191,6 +3399,7 @@
     options={abilityDiscardOptions}
     need={abilityDiscardPrompt?.ability.discard_cost_n}
     label={abilityDiscardPrompt?.ability.discard_cost_label}
+    variable={abilityDiscardPrompt?.ability.discard_cost_count_from_x}
     onConfirm={confirmAbilityDiscardCost}
     onCancel={() => {
       abilityDiscardPrompt = null;
@@ -3361,6 +3570,7 @@
     count={castSacrificeBounds.max}
     min={castSacrificeBounds.min}
     countIsX={sacrificePromptClause?.count_from_x === true}
+    eachOf={sacrificePromptClause?.each_of}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;
@@ -3402,6 +3612,7 @@
     abilityIndex={xAbilityPrompt?.ability.index}
     costLabel={xAbilityPrompt?.ability.mana_cost}
     minX={xAbilityPrompt?.ability.min_x ?? 0}
+    maxX={xAbilityPrompt ? abilityEnergyMaxX(xAbilityPrompt.ability, viewerEnergy) : undefined}
     confirmVerb="Activate"
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
@@ -3413,6 +3624,8 @@
     gameID={view.id}
     card={phyrexianPrompt?.card ?? null}
     symbols={phyrexianPrompt?.symbols ?? 0}
+    granted={phyrexianPrompt?.granted ?? 0}
+    suggest={phyrexianPrompt?.suggest ?? false}
     life={viewerLife}
     xValue={phyrexianPrompt?.choices.xValue}
     castParams={castPreviewParams(phyrexianPrompt?.choices)}
@@ -3425,6 +3638,10 @@
     gameID={view.id}
     card={phyrexianAbilityPrompt?.card ?? null}
     symbols={phyrexianAbilityPrompt ? (phyrexianAbilityPrompt.ability.phyrexian_symbols ?? 0) : 0}
+    granted={phyrexianAbilityPrompt
+      ? phyrexianGrantedForAbility(phyrexianAbilityPrompt.ability)
+      : 0}
+    suggest={phyrexianAbilityPrompt?.suggest ?? false}
     life={viewerLife}
     xValue={phyrexianAbilityPrompt?.xValue}
     abilityIndex={phyrexianAbilityPrompt?.ability.index}

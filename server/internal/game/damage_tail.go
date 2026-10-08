@@ -795,14 +795,25 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// about the damage is unchanged — the event, the CR 903.10a tally
 	// (a commander with infect runs both clocks), lifelink crediting
 	// the damage amount — because the damage is still dealt; only its
-	// result differs. Infect damage changes no life total, so no
-	// "whenever a player loses life" trigger sees it.
+	// result differs.
+	//
+	// #2105, CR 119.2, CR 702.90b: whatever part of the damage cost no
+	// life rides the event as DamageNotLifeLoss, so a "whenever a player
+	// loses life" trigger and the turn tally's LifeLost (both read
+	// Event.DamageLifeLoss) see only the life actually lost. Infect
+	// damage and damage to a locked life total read as no loss at all,
+	// while every "is dealt damage" reader still sees Amount.
 	//
 	// ADR 0108 §10: a battlefield static can make the damage dealt as
 	// though its source had infect (Phyrexian Unlife), read as it lands
 	// (damage_as_though.go).
 	poison, lifeLoss := g.damageResultAsThoughLocked(ev, t).DamageToPlayer(ev.DamageAmount, t.combat)
 	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
+	lost := 0
+	if loseLife {
+		lost = lifeLoss
+	}
+	notLost := ev.DamageAmount - lost
 	if t.combat {
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
@@ -814,9 +825,9 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 		if t.commanderSource != uuid.Nil {
 			p.RecordCommanderDamage(t.commanderSource, ev.DamageAmount)
 		}
-		g.emitDealDamageLocked(ev, t)
+		g.emitDealDamageLocked(ev, t, notLost)
 	} else {
-		g.emitDealDamageLocked(ev, t)
+		g.emitDealDamageLocked(ev, t, notLost)
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
 			g.noteLifeLostLocked(p.ID, lifeLoss)
@@ -853,7 +864,7 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 	if !ok {
 		return 0, ErrCardNotFound
 	}
-	g.emitDealDamageLocked(ev, t)
+	g.emitDealDamageLocked(ev, t, 0)
 	// ADR 0056 Decision 3, CR 120.3d: damage to a creature from a
 	// source with infect or wither is -1/-1 counters rather than marked
 	// damage. They are a RESULT, not a write, so they go through the
@@ -939,16 +950,20 @@ func (g *Game) placeDamageResultCountersLocked(ev *ReplacementEvent, t *damageTa
 // combat_step tag — key off the same shape whether or not the event
 // paused. This is the only place Event.CombatStep is written.
 //
+// notLifeLoss is Event.DamageNotLifeLoss (#2105): the part of damage to
+// a player that cost no life. Always 0 for damage to a permanent.
+//
 // Caller must hold g.mu.
-func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail) {
+func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLifeLoss int) {
 	g.EmitEvent(Event{
-		Kind:       EventDealDamage,
-		Actor:      t.actor,
-		Source:     ev.DamageSource,
-		Target:     ev.DamageTarget,
-		Amount:     ev.DamageAmount,
-		Combat:     t.combat,
-		CombatStep: t.combatStep,
+		Kind:              EventDealDamage,
+		Actor:             t.actor,
+		Source:            ev.DamageSource,
+		Target:            ev.DamageTarget,
+		Amount:            ev.DamageAmount,
+		DamageNotLifeLoss: notLifeLoss,
+		Combat:            t.combat,
+		CombatStep:        t.combatStep,
 	})
 }
 

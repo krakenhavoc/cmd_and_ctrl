@@ -47,6 +47,9 @@
   import { confirmAction, type DockAction } from "../../dock";
   import { onDestroy } from "svelte";
   import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
+  import { get } from "svelte/store";
+  import { settings, updateSettings } from "../../settings";
+  import { rememberedRule, ruleRefusalText, withRule } from "../../autoAnswerPref";
   import {
     rejectionForPrompt,
     type ChoiceRejection,
@@ -57,6 +60,14 @@
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
+  import {
+    energyShortBy,
+    payAmountAnswerable,
+    payAmountClamp,
+    payAmountFloor,
+    payAmountStart,
+  } from "../../payEnergy";
+  import { L } from "../../labels";
   import {
     canPayCards,
     payCardsOptions,
@@ -138,6 +149,12 @@
   // it if one came back. See the effect below the reset.
   let submission: ChoiceSubmission | null = null;
   let rejection = $state<ChoiceRejection | null>(null);
+  // ADR 0127 §6: "Remember this answer" — off each time a prompt
+  // appears. `rememberRefusal` is the message when the rule cannot be
+  // added (a 101st, or the account's settings are full); the answer is
+  // then not sent, so the player can untick and answer.
+  let remember = $state(false);
+  let rememberRefusal = $state<string | null>(null);
 
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
@@ -156,9 +173,19 @@
         active?.kind === "untap_choice" &&
         options.length > 0 &&
         (active.choose_max ?? 0) >= options.length;
-      selected = preselect ? new Set(options.map((c) => c.instance_id)) : new Set();
+      // #2525: a proliferate opens on the engine's suggested pick — the
+      // answer a player takes nearly every time — and the player's click
+      // is the deviation.
+      selected =
+        active?.kind === "proliferate"
+          ? new Set(active.choose_suggested ?? [])
+          : preselect
+            ? new Set(options.map((c) => c.instance_id))
+            : new Set();
       ordered = [];
       rejection = null;
+      remember = false;
+      rememberRefusal = null;
       submission = null;
       lastChoiceID = nextID;
       inlineRefusal.set(null);
@@ -283,6 +310,19 @@
   // ADR 0114 §4, CR 701.54a: "choose your Ring-bearer" — one of the
   // chooser's own creatures, untargeted.
   const isRingBearer = $derived(active?.kind === "ring_bearer");
+  // #2525, CR 701.34a: "choose any number of permanents and/or players
+  // with counters on them". The grid shows the permanents, the seats on
+  // offer are chips beside it, and both are picked into the one
+  // `selected` set (a seat by its player ID) and sent as card_ids. The
+  // engine's suggested pick is pre-selected.
+  const isProliferate = $derived(active?.kind === "proliferate");
+  const proliferateSeats = $derived.by<{ id: string; name: string }[]>(() => {
+    if (!isProliferate || !active) return [];
+    return (active.choose_players ?? []).map((id) => ({
+      id,
+      name: snap.seats.find((s) => s.id === id)?.name ?? "a player",
+    }));
+  });
   // #2115: the revealed-hand pick with a variant. The same revealed
   // hand and the same `eligible` list as discard_from_hand, plus a
   // floor (`choose_min` 0 is "you may choose": an empty answer is a
@@ -306,7 +346,8 @@
       isRevealPick ||
       isPermanentPick ||
       isChooseSource ||
-      isRingBearer,
+      isRingBearer ||
+      isProliferate,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -591,7 +632,13 @@
       snap.seats?.find((s) => s.id === viewerID),
     );
   });
-  const payBlocked = $derived(payCards !== null && !payCardsReady(payCards, payCardPicks));
+  // ADR 0129 §3: the viewer's energy, for an energy payment's Pay (and
+  // the pay_amount stepper's ceiling, which the server sends as max).
+  const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
+  const payBlocked = $derived(
+    (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
+      (isPayUnless && energyShortBy(active, viewerEnergy) > 0),
+  );
   const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
   const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
   const payTapOptions = $derived.by((): CardView[] => {
@@ -768,6 +815,36 @@
   const loopAnswerable = $derived(
     Number.isFinite(loopIterations) && loopIterations >= 0 && loopIterations <= loopMax,
   );
+
+  // ADR 0129 §3 pay_amount (owner decision 3): "you may pay any amount
+  // of {E}". A stepper from the smallest payment to the seat's energy,
+  // opening on the card's own threshold; Pay sends it and the decline
+  // sends 0.
+  const isPayAmount = $derived(active?.kind === "pay_amount");
+  const payAmountView = $derived(isPayAmount ? (active?.pay_amount ?? null) : null);
+  let payAmountValue = $state(0);
+  let lastPayAmountID: string | null = null;
+  $effect(() => {
+    if (!isPayAmount || !active || !payAmountView) {
+      lastPayAmountID = null;
+      return;
+    }
+    if (active.id === lastPayAmountID) return;
+    lastPayAmountID = active.id;
+    payAmountValue = payAmountStart(payAmountView);
+  });
+  const payAmountOK = $derived(
+    payAmountView !== null && payAmountAnswerable(payAmountView, payAmountValue),
+  );
+  function stepPayAmount(delta: number): void {
+    if (!payAmountView) return;
+    payAmountValue = payAmountClamp(payAmountView, payAmountValue + delta);
+  }
+  function submitPayAmount(amount: number): void {
+    if (!active || !viewerID || !payAmountView) return;
+    if (!payAmountAnswerable(payAmountView, amount)) return;
+    answer({ amount });
+  }
 
   function submitLoopShortcut(iterations: number): void {
     if (!active || !viewerID) return;
@@ -1011,14 +1088,35 @@
     }
   }
 
-  function answerOptional(apply: boolean): void {
+  // rememberAnswer sets the standing answer the pressed button implies
+  // (ADR 0127 §6): Yes / Pay is Always, No / Don't pay is Never. A
+  // "Pay with life" answer sets none: an automatic answer pays mana
+  // only. Returns false when the rule was refused, and says why.
+  function rememberAnswer(apply: boolean, phyrexianLife: number): boolean {
+    if (!remember || !active || phyrexianLife > 0) return true;
+    const rule = rememberedRule(active, apply);
+    if (!rule) return true;
+    const current = get(settings);
+    const next = withRule(current.gameplay.autoAnswers, rule, current);
+    if (typeof next === "string") {
+      rememberRefusal = ruleRefusalText(next);
+      return false;
+    }
+    updateSettings("gameplay", "autoAnswers", next);
+    return true;
+  }
+
+  function answerOptional(apply: boolean, phyrexianLife = 0): void {
     if (!active || !viewerID) return;
+    if (!rememberAnswer(apply, phyrexianLife)) return;
     // #1311: a waterbend pay-unless names its taps beside the apply.
     if (isPayUnless) {
       // ADR 0108 §5: a discard or sacrifice payment is not a "Pay"
       // until the picks add up to the count.
       if (apply && payBlocked) return;
-      answer(payUnlessAnswer(active, apply, payTaps, payCardPicks));
+      // ADR 0131 §2: and the symbols paid with 2 life each, when the
+      // player chose "Pay with N life".
+      answer(payUnlessAnswer(active, apply, payTaps, payCardPicks, phyrexianLife));
       return;
     }
     // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
@@ -1046,22 +1144,36 @@
             mayCastCardName: mayCastCard?.name || undefined,
             loopIterations,
             loopAnswerable,
+            energy: viewerEnergy,
+            payAmount: payAmountValue,
+            payAmountAnswerable: payAmountOK,
+            life: snap.seats?.find((s) => s.id === viewerID)?.life,
             body: isManaPick
               ? manaBody
               : isColorChoice
                 ? colorBody
                 : isLoopShortcut
                   ? loopBody
-                  : commanderCard
-                    ? commanderBody
-                    : undefined,
-            rejection: rejection?.message ?? null,
+                  : isPayAmount
+                    ? payAmountBody
+                    : commanderCard
+                      ? commanderBody
+                      : undefined,
+            rejection: rememberRefusal ?? rejection?.message ?? null,
+            remember: {
+              on: remember,
+              onToggle: () => {
+                remember = !remember;
+                rememberRefusal = null;
+              },
+            },
           },
           {
             onAnswer: answerOptional,
             onCoin: answerCoin,
             onOption: answerOptionPick,
             onLoop: submitLoopShortcut,
+            onAmount: submitPayAmount,
           },
         )
       : null,
@@ -1442,10 +1554,12 @@
                           ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
                           : isRingBearer
                             ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
-                            : [
-                                `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                                isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
-                              ];
+                            : isProliferate
+                              ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
+                              : [
+                                  `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                  isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
+                                ];
     const verb = isSacrifice
       ? "Sacrifice"
       : isSearch
@@ -1470,11 +1584,15 @@
                   ? "Sacrifice"
                   : isChooseSource
                     ? "Choose this source"
-                    : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                      ? "Choose"
-                      : isRevealedVariant && none && pickMin === 0
-                        ? "Choose nothing"
-                        : "Confirm";
+                    : isProliferate
+                      ? none
+                        ? "Proliferate nothing"
+                        : "Proliferate"
+                      : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                        ? "Choose"
+                        : isRevealedVariant && none && pickMin === 0
+                          ? "Choose nothing"
+                          : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -1551,6 +1669,42 @@
       }}
     />
   </label>
+{/snippet}
+
+{#snippet payAmountBody()}
+  {#if payAmountView}
+    <div class="pay-amount" role="group" aria-label={L.energyToPay}>
+      <button
+        type="button"
+        class="pay-amount-step"
+        aria-label="One less energy"
+        disabled={payAmountValue <= payAmountFloor(payAmountView)}
+        onclick={() => stepPayAmount(-1)}>−</button
+      >
+      <input
+        type="number"
+        min={payAmountFloor(payAmountView)}
+        max={payAmountView.max}
+        step="1"
+        bind:value={payAmountValue}
+        aria-label="Amount of energy"
+        onkeydown={(e) => {
+          // The number typed is the answer: Enter in the field pays it.
+          if (e.key !== "Enter" || !payAmountOK || payAmountValue <= 0) return;
+          e.preventDefault();
+          submitPayAmount(payAmountValue);
+        }}
+      />
+      <button
+        type="button"
+        class="pay-amount-step"
+        aria-label="One more energy"
+        disabled={payAmountValue >= payAmountView.max}
+        onclick={() => stepPayAmount(1)}>+</button
+      >
+      <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
+    </div>
+  {/if}
 {/snippet}
 
 {#if open && active && inline}
@@ -2085,6 +2239,10 @@
             Pick between {pickMin} and {pickMax} of your permanents.
           {/if}
           Nothing here is targeted — the choice is being made now, as the card resolves.
+        {:else if isProliferate}
+          Each permanent and player you pick gets another counter of every kind it already has. The
+          engine's suggestion is selected: what a counter helps on your side and hurts on theirs.
+          Pick any number, or none.
         {:else if isRingBearer}
           The Ring tempts you. Pick one of your creatures to be your Ring-bearer. It isn't targeted,
           so anything listed can be chosen.
@@ -2144,7 +2302,7 @@
             <Card card={c} />
             {#if isChooseSource}
               <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
-            {:else if isChooseCards || isUntapChoice}
+            {:else if isChooseCards || isUntapChoice || isProliferate}
               <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
             {:else if graveyardIDs.has(c.instance_id)}
               <span class="source-caption">in graveyard</span>
@@ -2152,6 +2310,23 @@
           </button>
         {/each}
       </div>
+      {#if proliferateSeats.length > 0}
+        <div class="seat-picks" role="group" aria-label="Players with counters">
+          {#each proliferateSeats as seat (seat.id)}
+            <button
+              type="button"
+              class="seat-pick"
+              class:selected={selected.has(seat.id)}
+              disabled={!selected.has(seat.id) && selected.size >= pickMax}
+              onclick={() => toggle(seat.id)}
+              aria-pressed={selected.has(seat.id)}
+              aria-label={`select ${seat.name}`}
+            >
+              {seat.name}
+            </button>
+          {/each}
+        </div>
+      {/if}
     {/if}
   </DockSheet>
 {/if}
@@ -2256,6 +2431,31 @@
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     gap: 8px;
   }
+  /* #2525: the seats a proliferate may pick, beside the permanents. */
+  .seat-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .seat-pick {
+    padding: 6px 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    cursor: pointer;
+  }
+  .seat-pick:hover:not(:disabled) {
+    border-color: var(--border-strong);
+  }
+  .seat-pick.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .seat-pick:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
   .card-pick {
     background: transparent;
     border: 2px solid transparent;
@@ -2321,6 +2521,22 @@
     margin-right: auto;
     font-size: 13px;
     opacity: 0.85;
+  }
+  .pay-amount {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .pay-amount input {
+    width: 4.5rem;
+    text-align: center;
+  }
+  .pay-amount-step {
+    min-width: 2rem;
+  }
+  .pay-amount-of {
+    color: var(--fg-muted);
+    font-size: 13px;
   }
   .loop-iterations input {
     width: 88px;

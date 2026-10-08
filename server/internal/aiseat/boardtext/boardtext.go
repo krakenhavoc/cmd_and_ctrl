@@ -104,6 +104,12 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if len(s.ManaPool) > 0 {
 			fmt.Fprintf(&b, ", mana pool %s", strings.Join(s.ManaPool, ""))
 		}
+		// ADR 0129 §7: the seat's player counters ("4 energy, 2
+		// poison"), so a model seat and the MCP seat see the energy they
+		// can pay and the poison they are racing.
+		if pc := PlayerCounters(s.Counters); pc != "" {
+			fmt.Fprintf(&b, ", %s", pc)
+		}
 		// ADR 0057 Decision 6: a seat behind a "can't lose" or "can't
 		// win" gate plays by different arithmetic, and the model is
 		// told so on the seat line, with the sources.
@@ -161,7 +167,23 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Kind == "optional_replacement" && ch.PlayableFromZone {
 			b.WriteString(" (if you say no it goes to your hand, where you can cast it without the commander tax)")
 		}
-		if ch.Count > 0 {
+		// ADR 0129 §3: what an energy payment asks, beside the energy
+		// the seat line already shows.
+		if ch.PayEnergy != nil {
+			fmt.Fprintf(&b, " (pay %d energy)", *ch.PayEnergy)
+		}
+		if pa := ch.PayAmount; pa != nil {
+			lo := pa.Min
+			if lo < 1 {
+				lo = 1
+			}
+			fmt.Fprintf(&b, " (pay nothing, or %d to %d energy", lo, pa.Max)
+			if pa.Goal > 0 {
+				fmt.Fprintf(&b, "; %d reaches the card's threshold", pa.Goal)
+			}
+			fmt.Fprintf(&b, "; one energy is one point of %s)", pa.Unit)
+		}
+		if ch.Count > 0 && ch.PayAmount == nil {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}
 		b.WriteByte('\n')
@@ -453,4 +475,21 @@ func endGateNote(s *protocol.PlayerView) string {
 		out += " because of " + strings.Join(names, ", ")
 	}
 	return out
+}
+
+// PlayerCounters is a seat's non-zero player counters as one phrase,
+// in name order: "4 energy, 2 poison". Empty when it has none.
+func PlayerCounters(counters map[string]int) string {
+	names := make([]string, 0, len(counters))
+	for name, n := range counters {
+		if n > 0 {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	parts := make([]string, len(names))
+	for i, name := range names {
+		parts[i] = strconv.Itoa(counters[name]) + " " + name
+	}
+	return strings.Join(parts, ", ")
 }

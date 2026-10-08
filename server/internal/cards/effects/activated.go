@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // activated.go — S21 sub-PR 2: cost constructors for
 // Spec.Activated, so a card file reads like its oracle text:
@@ -78,6 +82,60 @@ func SacrificeAnotherN(n int, label string, preds ...CardPredicate) game.Ability
 	return game.AbilityCost{SacrificeOther: Another(sacrificeSpec(label, preds...)).WithCount(n, n)}
 }
 
+// SacrificeEach is "Sacrifice <one of each kind>" — Jarad, Golgari
+// Lich Lord's "Sacrifice a Swamp and a Forest" is
+//
+//	SacrificeEach("a Swamp and a Forest",
+//	    SacrificeSubtype("a Swamp", "Swamp"),
+//	    SacrificeSubtype("a Forest", "Forest"))
+//
+// The activator names one permanent per kind, all distinct, and every
+// kind must be filled by its own pick: two Swamps are not a Swamp and a
+// Forest, and a Swamp Forest can fill one kind but not both (#2526).
+// The count is the number of kinds. The clause's own predicate is the
+// union of the kinds, so the per-permanent candidate walks (the
+// validator, the legal enumerator, the protocol view) list every
+// permanent that could fill any kind, and game.TargetSpec.EachOf is
+// what judges the set.
+//
+// Needs at least two kinds: one kind is SacrificeN(1, …). The label is
+// the clause as printed, without the verb. Kinds are data (a subtype or
+// a card type), not predicates; a rule over something else about the
+// picks ("different names") is not this.
+func SacrificeEach(label string, kinds ...game.SacrificeKind) game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: sacrificeEachSpec(label, kinds...)}
+}
+
+// SacrificeSubtype is a kind of permanent by subtype — "a Swamp",
+// "a Treasure". Any of the subtypes qualifies.
+func SacrificeSubtype(label string, subtypes ...string) game.SacrificeKind {
+	return game.SacrificeKind{Label: label, Subtypes: subtypes}
+}
+
+// SacrificeCardType is a kind of permanent by card type — "a creature",
+// "a land". Types are lower-case, as Card.HasCardType reads them; any of
+// them qualifies.
+func SacrificeCardType(label string, cardTypes ...string) game.SacrificeKind {
+	return game.SacrificeKind{Label: label, CardTypes: cardTypes}
+}
+
+// sacrificeEachSpec builds the clause SacrificeEach and the
+// additional-cost form share: a head whose predicate is the union of the
+// kinds, with the kinds as EachOf and the count their number.
+func sacrificeEachSpec(label string, kinds ...game.SacrificeKind) *game.TargetSpec {
+	spec := sacrificeSpec(label)
+	spec.CardOK = func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+		for _, k := range kinds {
+			if k.Matches(c) {
+				return true
+			}
+		}
+		return false
+	}
+	spec.EachOf = append([]game.SacrificeKind(nil), kinds...)
+	return spec.WithCount(len(kinds), len(kinds))
+}
+
 // SacrificeOneOrMore is "Sacrifice one or more <permanents>" —
 // Radiant Lotus's "{T}, Sacrifice one or more artifacts" is
 //
@@ -139,6 +197,25 @@ func MinX(n int) game.AbilityCost { return game.AbilityCost{MinX: n} }
 
 // PayLife is a life component (CR 119.4).
 func PayLife(n int) game.AbilityCost { return game.AbilityCost{Life: n} }
+
+// PayEnergy is "Pay N {E}" (CR 107.14, ADR 0129 §2): remove N energy
+// counters from the activator. Compose it with the rest of the cost —
+// Plus(TapCost(), PayEnergy(2)) is "{T}, Pay {E}{E}". Energy is never
+// waived; only mana is.
+func PayEnergy(n int) game.AbilityCost { return game.AbilityCost{Energy: n} }
+
+// ExertThis is "Exert this creature" as a cost (ADR 0130 §4, CR
+// 701.43a): the source won't untap during the activator's next untap
+// step. Compose it with the rest — Plus(ManaCost("{W}"), TapCost(),
+// ExertThis()) is Pride Sovereign's "{W}, {T}, Exert this creature".
+// Always payable, again after an earlier exert this turn (CR 701.43b);
+// a "whenever you exert a creature" payoff sees it.
+func ExertThis() game.AbilityCost { return game.AbilityCost{Exert: true} }
+
+// PayXEnergy is "Pay X {E}" (CR 107.3a): the activator announces X,
+// which may not exceed their energy, and the effect reads it back with
+// ctx.X() or item.X.
+func PayXEnergy() game.AbilityCost { return game.AbilityCost{EnergyX: true} }
 
 // LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
 // "−3" printed to the left of the ability. Positive adds counters,
@@ -283,6 +360,28 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// mana — stronger than printed, the #259 direction.
 		if c.SpendOnly != nil {
 			out.SpendOnly = c.SpendOnly
+		}
+		// ADR 0129 §2: and the energy component. A composed "{T}, Pay
+		// {E}{E}" that dropped its energy would be a free activation
+		// every turn — stronger than printed, the #259 direction.
+		if c.Energy != 0 {
+			out.Energy = c.Energy
+		}
+		if c.EnergyX {
+			out.EnergyX = true
+		}
+		// #2028: and the return-this component. A composed "{1}{G},
+		// {T}, Return Shigeki to its owner's hand" that dropped it would
+		// dig for a land every turn and keep the creature — stronger
+		// than printed, the #259 direction.
+		if c.ReturnSelf {
+			out.ReturnSelf = true
+		}
+		// ADR 0130 §4: and the exert component. A composed "{T}, Exert
+		// this creature" that dropped it would untap next turn — stronger
+		// than printed, the #259 direction.
+		if c.Exert {
+			out.Exert = true
 		}
 	}
 	return out
@@ -434,6 +533,24 @@ func ExileACreatureYouControl() game.AbilityCost {
 // zone (game.ExileSelfZoneSupported).
 func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 
+// ReturnThis is the "Return this <permanent> to its owner's hand" cost
+// component (#2028) — Gossamer Chains' "Return this enchantment to its
+// owner's hand:", Shigeki, Jukai Visionary's "Return Shigeki to its
+// owner's hand". It names the SOURCE, which a ReturnAPermanentToHand
+// filter cannot: that clause is "a permanent you control", and another
+// copy of the same card would match it.
+//
+// The permanent goes to its OWNER's hand, which is not its
+// controller's when it was gained from an opponent. The return is paid
+// at announce (CR 602.2b), so the ability resolves with the permanent
+// already gone; an effect that reads "this permanent" reads its
+// last-known information through the item's source object.
+//
+// Battlefield only: Register refuses it on an ability that functions
+// from any other zone, and beside a sacrifice-this or exile-this cost.
+// Compose it with Plus like any other component.
+func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
+
 // DiscardThis is cycling's "Discard this card" cost component
 // (CR 702.29a). It only means anything on an ability that functions
 // from the hand, and Register refuses it anywhere else — build the
@@ -461,6 +578,50 @@ func DiscardCardsMatching(n int, label string, match func(game.Card) bool) game.
 // DiscardN(2, "two cards").
 func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
+}
+
+// DiscardX is "Discard X cards" as a cost (#2527, ADR 0113's
+// 2026-10-07 amendment) — Gix, Yawgmoth Praetor's
+//
+//	Plus(ManaCost("{4}{B}{B}{B}"), DiscardX("X cards"))
+//
+// The count is the X announced with the activation (CR 602.2b), which
+// the effect reads back with ctx.X() exactly as an {X} mana cost's is,
+// and the activator names that many cards in hand (`discard_ids`). It
+// makes the ability demand an X even when the mana component has none,
+// so Register refuses a cost that ALSO puts {X} in its mana cost or
+// sacrifices or taps X: one announced number cannot pay two clauses.
+// It needs a stack item to carry the announcement, so Register refuses
+// it on a mana ability (CR 605.3b). Pass a predicate for "X creature
+// cards"; the label is the clause as printed, without the verb.
+func DiscardX(label string, match ...func(game.Card) bool) game.AbilityCost {
+	dc := &game.DiscardCost{Label: label, CountFromX: true}
+	if len(match) > 0 {
+		dc.Match = match[0]
+	}
+	return game.AbilityCost{DiscardCards: dc}
+}
+
+// DiscardCardWithManaValueX is "Discard a card with mana value X" as a
+// cost (#2190, ADR 0113's 2026-10-07 amendment) — Kozilek, the Great
+// Distortion's
+//
+//	Cost: DiscardCardWithManaValueX("a card with mana value X")
+//
+// paired with a spell target clause bounded by the same X:
+//
+//	Targets: TargetSpell("target spell with mana value X").WithManaValueEqualsX()
+//
+// X is announced with the activation (CR 602.2b) but not paid for: it
+// is the mana value the discarded card must have, and the number the
+// target clause compares against. The activator names one card in
+// `discard_ids` and sends its mana value as `x_value`; the engine
+// refuses a card of any other value. Register refuses it beside {X} in
+// the mana cost or another claim on the announced X, beside another
+// hand-spending component, and on a mana ability (CR 605.3b). The
+// label is the clause as printed, without the verb.
+func DiscardCardWithManaValueX(label string) game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: 1, Label: label, ManaValueX: true}}
 }
 
 // DiscardAtRandom is "Discard N cards at random" as a cost (ADR 0109

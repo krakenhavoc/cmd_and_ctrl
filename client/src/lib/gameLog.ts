@@ -76,6 +76,8 @@ const LOG_TONE: Record<LogKind, string> = {
   no_blocks: "tone-combat",
   token: "tone-zone",
   sacrifice: "tone-bad",
+  // ADR 0130: an exert is part of an attack declaration.
+  exert: "tone-combat",
   eliminated: "tone-bad",
   // ADR 0057: the end of the game is the spine of the log, not a
   // whisper; a prevented win is a swing that didn't happen.
@@ -121,10 +123,14 @@ const LOG_TONE: Record<LogKind, string> = {
   trigger: "tone-cast",
   activate: "tone-cast",
   cycle: "tone-zone",
+  // ADR 0127 §6: a prompt the server answered with its chooser's
+  // standing answer. A decision, so toned like a cast.
+  auto_answer: "tone-cast",
   counters: "tone-quiet",
   scry: "tone-quiet",
   surveil: "tone-quiet",
   discover: "tone-zone",
+  manifest_dread: "tone-zone",
   saga_chapter: "tone-resolve",
   class_level: "tone-resolve",
   // ADR 0103. A door opening is a Room switching its text on, which
@@ -139,6 +145,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0059 (#753). An extra turn changes who plays next, which is
   // the turn structure the step spine narrates — toned like it.
   extra_turn: "tone-step",
+  // #2529. A skipped extra turn is the same structure changing back.
+  extra_turn_skipped: "tone-step",
   // Added phases change the turn's structure too — another combat is
   // coming — so they are toned like the step spine as well.
   extra_phase: "tone-step",
@@ -162,7 +170,11 @@ const LOG_TONE: Record<LogKind, string> = {
   transform: "tone-zone",
   phase_out: "tone-zone",
   phase_in: "tone-zone",
+  // The game becoming day or night turns permanents over with no card
+  // behind it, so it is toned like the turn-over it causes.
+  day_night: "tone-zone",
   turn_face_down: "tone-zone",
+  turn_face_up: "tone-zone",
 };
 
 export function logTone(kind: LogKind): string {

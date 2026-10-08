@@ -96,6 +96,11 @@ describe("service worker routing", () => {
     "/admin/games",
     "/auth/discord/callback",
     "/avatars/123.png",
+    // Playmats (ADR 0128): a session-gated image the browser's own HTTP
+    // cache already holds (immutable); the worker must not keep a second
+    // copy of someone's living room.
+    "/playmats/6f1c2a9e-0000-4000-8000-000000000000",
+    "/me/playmats/2",
     "/bugreport",
     "/bugreport/upload",
     // S31 bot seats: the Add-bot picker's options probe.

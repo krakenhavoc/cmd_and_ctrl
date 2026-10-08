@@ -174,6 +174,12 @@ const (
 	// mints no undo entry (MintsNoUndo); undo carries it forward. Never
 	// a bot move — the enumerator does not offer it.
 	TypeSetTriggerOrderPreference Type = "set_trigger_order_preference"
+	// ADR 0127 §3 — a seat's standing answers to repeated prompts,
+	// params `{rules: [{key, answer}]}` with answer "always" or "never";
+	// the list replaces the seat's rules. A setting, not a play, like
+	// set_trigger_order_preference: legal during the opening roll, mints
+	// no undo entry, carried across an undo, never a bot move.
+	TypeSetAutoAnswers Type = "set_auto_answers"
 )
 
 // openingRollActions are the only action types Dispatch accepts while
@@ -189,6 +195,7 @@ var openingRollActions = map[Type]struct{}{
 	TypeChooseStartingPlayer:      {},
 	TypeRollTableDie:              {},
 	TypeSetTriggerOrderPreference: {},
+	TypeSetAutoAnswers:            {},
 	TypeConcede:                   {},
 	TypeSetTableSettings:          {},
 	TypeSetUndoLimit:              {},
@@ -214,7 +221,7 @@ func MintsNoUndo(g *game.Game, t Type) bool {
 	switch t {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
 		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit,
-		TypeSetTriggerOrderPreference:
+		TypeSetTriggerOrderPreference, TypeSetAutoAnswers:
 		return true
 	}
 	return g.OpeningRollOpen()
@@ -485,6 +492,8 @@ var playerScopedActions = map[Type]struct{}{
 	TypeRollTableDie: {},
 	// #1530: a seat sets only its own preference.
 	TypeSetTriggerOrderPreference: {},
+	// ADR 0127 §3: and only its own standing answers.
+	TypeSetAutoAnswers: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
 	// initiative are NOT player-scoped — any seated player may flip
@@ -628,6 +637,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 701.68a). Absent unless optional_costs names one.
 			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 			BlightIDs   []string `json:"blight_ids,omitempty"`
+			// ADR 0100 amendment 2026-10-07 — the one card an
+			// announced reveal / behold branch shows ("reveal an Elf
+			// card from your hand or pay {3}"). Absent unless the
+			// chosen cost_branch reveals.
+			RevealIDs []string `json:"reveal_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -750,6 +764,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
@@ -980,6 +995,34 @@ func dispatch(g *game.Game, a Action) error {
 		}
 		return g.SetTriggerOrderPreference(a.Player, *p.AlwaysAsk)
 
+	case TypeSetAutoAnswers:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Rules *[]struct {
+				Key    string `json:"key"`
+				Answer string `json:"answer"`
+			} `json:"rules"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.Rules == nil {
+			return fmt.Errorf("%w: %s rules", ErrMissingParams, a.Type)
+		}
+		if len(*p.Rules) > game.MaxAutoAnswerRules {
+			return game.ErrTooManyAutoAnswers
+		}
+		rules := make(map[string]game.AutoAnswer, len(*p.Rules))
+		for _, r := range *p.Rules {
+			if _, dup := rules[r.Key]; dup {
+				return fmt.Errorf("%w: %s names %q twice", game.ErrInvalidParam, a.Type, r.Key)
+			}
+			rules[r.Key] = game.AutoAnswer(r.Answer)
+		}
+		return g.SetAutoAnswers(a.Player, rules)
+
 	case TypeRollTableDie:
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
@@ -1000,6 +1043,9 @@ func dispatch(g *game.Game, a Action) error {
 		var p struct {
 			Attacker string `json:"attacker"`
 			Target   string `json:"target"`
+			// Exert is the choice to exert the attacker as it attacks
+			// (CR 701.43d, ADR 0130 §5). Absent means no.
+			Exert bool `json:"exert,omitempty"`
 			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
@@ -1020,13 +1066,15 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return err
 		}
-		return g.DeclareAttackerWith(attackerID, targetID, declParams)
+		return g.DeclareAttackerDeclWith(game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: p.Exert}, declParams)
 
 	case TypeDeclareAttackers:
 		var p struct {
 			Attackers []struct {
 				Attacker string `json:"attacker"`
 				Target   string `json:"target"`
+				// Exert: ADR 0130 §5, per attacker.
+				Exert bool `json:"exert,omitempty"`
 			} `json:"attackers"`
 			attackTaxParams
 		}
@@ -1057,7 +1105,7 @@ func dispatch(g *game.Game, a Action) error {
 			if err := requireCardController(g, a.Caller, attackerID); err != nil {
 				return err
 			}
-			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID})
+			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert})
 		}
 		declParams, err := p.attackTaxParams.decode("declare_attackers")
 		if err != nil {
@@ -1657,6 +1705,13 @@ func dispatch(g *game.Game, a Action) error {
 			// other answer, and refused on one that has no waterbend
 			// clause. The same wire name a cast's convoke taps use.
 			TapIDs []string `json:"tap_ids,omitempty"`
+			// PhyrexianLife rides a PendingChoicePayUnless "pay" answer
+			// (ADR 0131 §2): how many symbols of the cost the chooser
+			// pays 2 life each for instead of the mana — a ward {B}
+			// under K'rrik, or a printed {B/P}. The wire name casts and
+			// activations use. Refused on a "Don't pay" and on a
+			// non-mana payment.
+			PhyrexianLife int `json:"phyrexian_life,omitempty"`
 			// Assignments populates an S18 sub-PR 3
 			// PendingChoiceDamageAssignment pick — each entry is
 			// {blocker_id, amount}. The attacker's controller
@@ -1729,6 +1784,10 @@ func dispatch(g *game.Game, a Action) error {
 			// an ordinary answer, and so is the empty list on a
 			// "choose up to one".
 			Modes []int `json:"modes"`
+			// Amount answers a PendingChoicePayAmount (ADR 0129 §3):
+			// how much energy the chooser pays. Routed by the choice's
+			// KIND, for Iterations' reason — paying nothing is zero.
+			Amount int `json:"amount"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1746,6 +1805,12 @@ func dispatch(g *game.Game, a Action) error {
 		// presence to route on.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLoopShortcut {
 			return g.ResolveLoopShortcut(choiceID, a.Player, p.Iterations)
+		}
+		// ADR 0129 §3, CR 118.12: "you may pay any amount of {E}".
+		// Routed by kind: the whole payload is an integer whose
+		// commonest value may be zero.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoicePayAmount {
+			return g.ResolvePayAmount(choiceID, a.Player, p.Amount)
 		}
 		// #568, CR 608.2: "choose one of the following", addressed to
 		// any seat. Routed by kind for the same reason the shortcut
@@ -1959,6 +2024,9 @@ func dispatch(g *game.Game, a Action) error {
 					}
 					return g.ResolvePayUnlessWithCards(choiceID, a.Player, *p.OptionalApply, cardIDs)
 				}
+				if p.PhyrexianLife != 0 {
+					return g.ResolvePayUnlessWithLife(choiceID, a.Player, *p.OptionalApply, tapIDs, p.PhyrexianLife)
+				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:
 				// S28 cascade: "you may cast it without paying its
@@ -2104,6 +2172,12 @@ func dispatch(g *game.Game, a Action) error {
 				// ADR 0107 §6, CR 609.7a: "a source of your choice" —
 				// exactly one, from the prompt's candidates.
 				return g.ResolveChooseSource(choiceID, a.Player, ids)
+			case game.PendingChoiceProliferate:
+				// #2525, CR 701.34a: "choose any number of permanents
+				// and/or players with counters". Floor zero, so an
+				// EMPTY list is a real answer; seats ride in the same
+				// list by player ID.
+				return g.ResolveProliferate(choiceID, a.Player, ids)
 			case game.PendingChoiceRingBearer:
 				// ADR 0114 §4, CR 701.54a: "choose a creature you
 				// control" as the Ring tempts you — exactly one, from
@@ -2186,6 +2260,12 @@ func dispatch(g *game.Game, a Action) error {
 			// the activator's other sources for whatever the pool is
 			// missing. See game.ManaAbilityParams.AutoTap.
 			AutoTap bool `json:"auto_tap,omitempty"`
+			// ADR 0131 §2 — phyrexian_life is how many of the mana
+			// component's symbols are paid with 2 life each: a printed
+			// {B/P}, or a {B} under K'rrik. The same wire name
+			// cast_spell and activate_ability use. See
+			// game.ManaAbilityParams.PhyrexianLife.
+			PhyrexianLife int `json:"phyrexian_life,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2262,6 +2342,7 @@ func dispatch(g *game.Game, a Action) error {
 			ExilePermanentIDs: manaExilePermanentIDs,
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
+			PhyrexianLife:     p.PhyrexianLife,
 		})
 
 	case TypeSetMaxHandSize:

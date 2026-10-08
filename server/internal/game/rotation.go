@@ -71,8 +71,23 @@ func (g *Game) sweepTurnEndLocked() {
 	// since #816, by the same helper the battlefield exit uses, so the
 	// two places that clear marked damage cannot disagree about what
 	// clearing means.
+	// The exemption below reads the layered ability key, so catch the
+	// layers up first rather than trust a stale cache.
+	g.RecomputeLayersIfStaleLocked()
 	for i := range g.Battlefield.Cards {
+		// #2058: Ancient Adamantoise's printed "damage isn't removed
+		// from this creature during cleanup steps".
+		if g.Battlefield.Cards[i].keepsDamageThroughCleanup() {
+			continue
+		}
 		clearBattlefieldDamage(&g.Battlefield.Cards[i])
+	}
+	// CR 514.2 names phased-out permanents too, and a phased-out
+	// permanent's statics do nothing (CR 702.26b), so none is exempt.
+	if g.PhasedOut != nil {
+		for i := range g.PhasedOut.Cards {
+			clearBattlefieldDamage(&g.PhasedOut.Cards[i])
+		}
 	}
 	// #667 / CR 701.19a: a regeneration shield lasts until it is used
 	// or until the turn ends, and this is the second of those. Swept
@@ -155,6 +170,9 @@ func (g *Game) beginNextTurnLocked() {
 	// ADR 0108 §6: the turn that is ending is its player's last turn
 	// from here on. Before g.Turn and the tally are replaced.
 	g.recordLastTurnAttacksLocked()
+	// ADR 0132, CR 502.2: and the spells its active player cast, which
+	// the NEXT untap step's day/night check reads.
+	g.recordPrevTurnSpellsLocked()
 	if et, ok := g.popExtraTurnLocked(); ok {
 		g.Turn = Turn{
 			Seq:            g.Turn.Seq + 1,

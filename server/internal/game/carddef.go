@@ -96,6 +96,16 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
+	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
+	// (Soul Burn), #2556: the colour half of a restriction on the mana
+	// that pays THIS spell. The cast pricer stamps it onto the
+	// ParsedCost, where costAsPaidByLocked folds it (spend_only.go).
+	SpendOnly *ManaSpendOnly
+	// SpendOnlySources is the source half — "Spend only mana produced
+	// by basic lands to cast this spell" (Imperiosaur) — read into the
+	// cast's ManaSpendContext (ManaSpendForCast).
+	SpendOnlySources ManaSourceKinds
 	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
@@ -129,6 +139,10 @@ type CardDef struct {
 	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
 	// attack_limits.go and ADR 0045 Decision 44 (#1507).
 	AttackLimits []AttackLimit
+	// ExertOnAttack is the static ability "You may exert this creature
+	// as it attacks" (CR 701.43d, ADR 0130 §2). Read through
+	// CatalogExertOnAttack, keyed by CatalogAbilityKey; see exert.go.
+	ExertOnAttack *ExertOnAttack
 	// HexproofBypasses are this permanent's "can be the targets of
 	// spells and abilities as though they didn't have hexproof"
 	// statics (CR 702.11) — Nowhere to Run, Kaya, Bane of the Dead.
@@ -249,6 +263,11 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// DamageStaysThroughCleanup is this permanent's printed "Damage
+	// isn't removed from this creature during cleanup steps" (CR 514.2 —
+	// Ancient Adamantoise). Read from the battlefield through
+	// CatalogAbilityKey; see cleanup_damage.go.
+	DamageStaysThroughCleanup bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -268,6 +287,11 @@ type CardDef struct {
 	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
 	// battlefield through CatalogAnyColorSpend; see spend_any_color.go.
 	AnyColorSpend []AnyColorSpendStatic
+	// LifeForMana are this permanent's printed "for each {B} in a cost,
+	// you may pay 2 life rather than pay that mana" statics (CR 107.4f,
+	// ADR 0131) — K'rrik, Son of Yawgmoth. Read from the battlefield
+	// through CatalogLifeForMana; see life_for_mana.go.
+	LifeForMana []LifeForManaStatic
 	// LegendRuleExemptions are this permanent's printed "the legend rule
 	// doesn't apply" statics (CR 704.5j) — Mirror Box, Mirror Gallery,
 	// Sakashima of a Thousand Faces. Read from the battlefield through
@@ -390,6 +414,13 @@ type CardDef struct {
 	// granted_alternative_cost.go. Derived on every query, for the
 	// reason CastPermissions gives.
 	GrantedAlternativeCosts []GrantedAlternativeCost
+
+	// OpeningHand is the CR 103.6 action this card offers from its
+	// owner's opening hand (ADR 0133) — "you may begin the game with
+	// this on the battlefield" on a Leyline, with Gemstone Caverns'
+	// riders. Read through CatalogOpeningHand when the mulligan window
+	// closes; see opening_hand.go. Nil for every other card.
+	OpeningHand *OpeningHandAction
 
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
@@ -560,6 +591,18 @@ func init() {
 		}
 		return nil
 	}
+	CatalogSpellSpendOnly = func(key string) *ManaSpendOnly {
+		if d := catalogDef(key); d != nil {
+			return d.SpendOnly
+		}
+		return nil
+	}
+	CatalogSpellSpendOnlySources = func(key string) ManaSourceKinds {
+		if d := catalogDef(key); d != nil {
+			return d.SpendOnlySources
+		}
+		return 0
+	}
 	CatalogDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.Delve
@@ -611,6 +654,12 @@ func init() {
 	CatalogAttackLimits = func(key string) []AttackLimit {
 		if d := catalogDef(key); d != nil {
 			return d.AttackLimits
+		}
+		return nil
+	}
+	CatalogExertOnAttack = func(key string) *ExertOnAttack {
+		if d := catalogDef(key); d != nil {
+			return d.ExertOnAttack
 		}
 		return nil
 	}
@@ -736,6 +785,10 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
 	}
+	CatalogDamageStaysThroughCleanup = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.DamageStaysThroughCleanup
+	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DamageCantBePrevented
@@ -757,6 +810,12 @@ func init() {
 	CatalogAnyColorSpend = func(key string) []AnyColorSpendStatic {
 		if d := catalogDef(key); d != nil {
 			return d.AnyColorSpend
+		}
+		return nil
+	}
+	CatalogLifeForMana = func(key string) []LifeForManaStatic {
+		if d := catalogDef(key); d != nil {
+			return d.LifeForMana
 		}
 		return nil
 	}
@@ -819,6 +878,12 @@ func init() {
 	CatalogGrantedAlternativeCosts = func(key string) []GrantedAlternativeCost {
 		if d := catalogDef(key); d != nil {
 			return d.GrantedAlternativeCosts
+		}
+		return nil
+	}
+	CatalogOpeningHand = func(key string) *OpeningHandAction {
+		if d := catalogDef(key); d != nil {
+			return d.OpeningHand
 		}
 		return nil
 	}

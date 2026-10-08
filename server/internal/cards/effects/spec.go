@@ -607,6 +607,33 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
+	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
+	// (Soul Burn) — a restriction on the mana that pays THIS spell
+	// (#2556, ADR 0040's 2026-10-07 amendment). Build it with
+	// SpellSpendOnlyOnX; never by hand.
+	//
+	//	SpendOnly: SpellSpendOnlyOnX("B"), // Drain Life
+	//
+	// The cast pricer stamps it on the price and costAsPaidByLocked
+	// folds it for the announced X, so the cast, its auto-tap, the
+	// legal-move list and the auto-tap preview all pay it the same way
+	// and the price shown stays printed. Refused beside Delve or
+	// TapCost (convoke / waterbend), where which part of the cost a
+	// tap or an exiled card pays is a question no printed card asks.
+	SpendOnly *game.ManaSpendOnly
+
+	// SpendOnlySources is "Spend only mana produced by basic lands to
+	// cast this spell" (Imperiosaur) or "…by creatures" (Myr Superion):
+	// a restriction on the SOURCE of the mana that pays this spell.
+	//
+	//	SpendOnlySources: game.ManaSourceBasicLand, // Imperiosaur
+	//
+	// Carried by the cast's ManaSpendContext, so the pool solver
+	// refuses mana from any other source and the auto-tapper plans from
+	// qualifying permanents only. Zero for every other card.
+	SpendOnlySources game.ManaSourceKinds
+
 	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). A static
 	// ability of the permanent (CR 604.1), read off the battlefield as a
@@ -740,6 +767,13 @@ type Spec struct {
 	// creature can block each combat") is a BlockRule, built with
 	// NoMoreThanNCanBlockEachCombat. Nil for nearly every card.
 	AttackLimits []game.AttackLimit
+
+	// ExertOnAttack is the static ability "You may exert this creature
+	// as it attacks" (CR 701.43d, ADR 0130 §2). Build it with
+	// ExertAsItAttacks or ExertAsItAttacksUnless in exert.go, and put
+	// any linked "when you do" trigger in Triggered with WhenExerted.
+	// Nil for nearly every card.
+	ExertOnAttack *game.ExertOnAttack
 
 	// HexproofBypasses are this permanent's printed "<these> can be
 	// the targets of spells and abilities [you control] as though
@@ -966,6 +1000,15 @@ type Spec struct {
 	// Issue #1200, ADR 0085.
 	PlayerLifeTotalLocked bool
 
+	// DamageStaysThroughCleanup declares the printed static "Damage
+	// isn't removed from this creature during cleanup steps" (CR 514.2 —
+	// Ancient Adamantoise). Judged on the battlefield through
+	// CatalogAbilityKey, so a permanent that lost its abilities is
+	// cleaned as usual; a phased-out one is always cleaned (CR 702.26b).
+	// Regeneration and leaving the battlefield still clear the damage.
+	// Issue #2058.
+	DamageStaysThroughCleanup bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//
@@ -1020,6 +1063,20 @@ type Spec struct {
 	// though it were mana of any color to cast that spell" (Breeches,
 	// impulse exile) is CastPermission.AnyColor, not this.
 	AnyColorSpend []game.AnyColorSpendStatic
+
+	// LifeForMana declares this permanent's printed "for each {B} in a
+	// cost, you may pay 2 life rather than pay that mana" static
+	// (CR 107.4f, ADR 0131):
+	//
+	//	LifeForMana: YouMayPayLifeForMana("B"), // K'rrik, Son of Yawgmoth
+	//
+	// Read from the battlefield at every mana payment through
+	// game.CatalogLifeForMana, keyed by CatalogAbilityKey: a {B} (or the
+	// {B} half of a hybrid symbol) in a cost its controller pays becomes
+	// payable with 2 life, claimed at announcement as for a printed
+	// Phyrexian symbol. Never generic mana. The price shown stays
+	// printed.
+	LifeForMana []game.LifeForManaStatic
 
 	// LegendRuleExemptions declares a printed "the legend rule doesn't
 	// apply" static (CR 704.5j):
@@ -1212,6 +1269,20 @@ type Spec struct {
 	// cost could be paid (CR 118.9a), keeps the spell's own timing, and
 	// takes commander tax and cost modifiers on top (CR 118.9d).
 	GrantedAlternativeCosts []game.GrantedAlternativeCost
+
+	// OpeningHand declares the CR 103.6 action this card offers from its
+	// owner's opening hand (ADR 0133): "If this card is in your opening
+	// hand, you may begin the game with it on the battlefield" — every
+	// Leyline — and Gemstone Caverns' version with its two riders.
+	// Build one with BeginTheGameOnTheBattlefield (opening_hand.go).
+	//
+	// Asked once, when the mulligan window closes, of the seat holding
+	// the card, in turn order from the starting player. Nothing about it
+	// is read once the game has begun, so a card that is cast, drawn or
+	// returned to a hand later is an ordinary card. Chancellor-style
+	// "you may reveal this card from your opening hand" is a different
+	// shape and has no slot yet.
+	OpeningHand *game.OpeningHandAction
 
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —
@@ -1482,6 +1553,15 @@ type ActivatedAbility struct {
 	// component and on an ability with a non-battlefield zone. See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (Clergy of the Holy Nimbus); OwnerOnly is "Only this creature's
+	// owner may activate this ability" (Personal Incarnation). The
+	// activator is "you" in the effect. Register refuses them beside each
+	// other or AnyPlayer, with the components and zones AnyPlayer refuses,
+	// and with a Purpose (the bot never reads one on these rows). See
+	// game.ActivatedAbilityShape.OpponentsOnly.
+	OpponentsOnly bool
+	OwnerOnly     bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does
@@ -1851,6 +1931,17 @@ type ManaAbilityCost struct {
 	// the source does not tap. "Add {R}. This land deals 1 damage to
 	// you" is the other thing — see ManaAbility.Rider.
 	Life int
+
+	// Energy is "Pay N {E}" (ADR 0129 §5): Aether Hub's "{T}, Pay {E}:
+	// Add one mana of any color". Paid after the life; the auto-tapper
+	// plans it in the energy tier, before the pain tier.
+	Energy int
+
+	// Exert is "Exert this land" / "Exert this creature" (ADR 0130 §4):
+	// Arena of Glory's "{R}, {T}, Exert this land: Add {R}{R}". Still a
+	// mana ability (CR 605.1a). The auto-tapper never pays it on its
+	// own; the player activates the row.
+	Exert bool
 
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",

@@ -92,8 +92,10 @@ type Player struct {
 	// is a state-based action evaluated in S13+ rules work.
 	Life int
 
-	// Poison counters (10 = loss). Energy is tracked but has no rules
-	// effect until mechanics referencing it are implemented.
+	// Poison counters (10 = loss) and energy counters, mirrored from
+	// Counters["poison"] / Counters["energy"], which are the source of
+	// truth (ADR 0008 §2). Energy is spent by "Pay {E}" costs
+	// (CR 107.14, ADR 0129), paid through payEnergyLocked.
 	Poison int
 	Energy int
 
@@ -219,6 +221,15 @@ type Player struct {
 	// local setting whenever the seat's view disagrees. Survives undo
 	// (RestoreFrom carries it forward) and the snapshot.
 	TriggerOrderAlwaysAsk bool
+
+	// AutoAnswers is this seat's standing answers to repeated prompts
+	// (ADR 0127 §3), by key (PendingChoice.AutoAnswerKey). Ask is the
+	// absence of a key. Set only by set_auto_answers, which replaces
+	// the whole map and mints no undo entry; RestoreFrom carries it
+	// across an undo, like TriggerOrderAlwaysAsk. Always empty for a bot
+	// seat. Server-held so the server can answer while the player's
+	// browser is closed.
+	AutoAnswers map[string]AutoAnswer
 
 	// MulligansTaken is the count of Mulligan calls this player has
 	// made in the current opening-hand window. Reset at Start. Used

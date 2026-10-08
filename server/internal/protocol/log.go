@@ -150,6 +150,10 @@ const (
 	// LogZone entry it replaces, because "sacrificed" and "destroyed"
 	// are different facts to a player reading the table.
 	LogSacrifice LogKind = "sacrifice"
+	// LogExert — a player exerted a permanent (CR 701.43a, ADR 0130
+	// §5): "<player> exerted <card>". The skipped untap it causes is on
+	// the card's no_untap, so the line is the moment, not the state.
+	LogExert LogKind = "exert"
 	// LogEliminated — a player left the game: a concession, a
 	// state-based loss or an effect loss. Cause says which (ADR 0057
 	// Decision 7), and the text says why.
@@ -285,6 +289,14 @@ const (
 	// the LogZone line for the discard that paid the cost, which is
 	// the same motion in words that do not say "cycled".
 	LogCycle LogKind = "cycle"
+	// LogAutoAnswer — the server answered a prompt with its chooser's
+	// standing answer (ADR 0127 §6): "Bob paid {1} for Rhystic Study
+	// (automatic)". `Call` is the answer ("pay", "dont_pay", "yes",
+	// "no"), public as the answer is in paper; `Label` is the cost paid
+	// on a pay, or the trigger's stack label on an optional trigger,
+	// redacted with the card's name. "(automatic)" is public too: CR
+	// 732.1a asks that the table understand each player's shortcut.
+	LogAutoAnswer LogKind = "auto_answer"
 	// LogCounters — the count of one counter kind on one card
 	// changed (CR 122). `Label` is the kind ("+1/+1") and `Amount`
 	// the count AFTER the change, which is what the engine's event
@@ -307,6 +319,12 @@ const (
 	// the walk found nothing. The line comes when the card is settled:
 	// after the cast that used the grant, or once it is in a hand.
 	LogDiscover LogKind = "discover"
+	// LogManifestDread — a player manifested dread (CR 701.62a, ADR
+	// 0082's 2026-10-07 amendment). NEVER a card, for anyone: the
+	// manifested card is face down and known only to its controller, and
+	// the card that went to the graveyard is already on the table's
+	// zone-move line.
+	LogManifestDread LogKind = "manifest_dread"
 	// LogSagaChapter — a lore counter advanced a Saga onto a chapter
 	// (CR 714.2b); `Amount` is the chapter number.
 	LogSagaChapter LogKind = "saga_chapter"
@@ -354,6 +372,12 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogDayNight — the game became day or night (CR 731.1). `Label` is
+	// the new designation ("day" or "night"). Narrated because the
+	// untap-step check (CR 502.2) changes it with no spell or ability
+	// behind it, so the table would otherwise watch every werewolf
+	// turn over with nothing saying why. ADR 0132.
+	LogDayNight LogKind = "day_night"
 	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
 	// (CR 702.26). #1199, ADR 0084.
 	//
@@ -407,11 +431,21 @@ const (
 	// still on the entry, so a client can point at the permanent on
 	// the board, which is the half of the identity that IS public.
 	//
-	// The reverse direction has no line at all: EventTurnedFaceUp's
-	// silence row says the CR 116.2g special action's own line
-	// already carries it, and there is no special action here to
-	// carry this one.
+	// The reverse direction is LogTurnFaceUp, below, and only for an
+	// effect's turn: the CR 116.2g special action's own line already
+	// carries that one.
 	LogTurnFaceDown LogKind = "turn_face_down"
+	// LogTurnFaceUp — a face-down permanent was turned face up by an
+	// EFFECT (CR 708.8, CR 701.40b; ADR 0082's 2026-10-07 second
+	// amendment, #2590): Hauntwoods Shrieker, Zimone, Staff Room.
+	// `card_id` is the permanent, which is public again by the time
+	// the line is written (turning it up makes every seat a knower),
+	// and `target` the object that did it. The CR 116.2g special
+	// action has no line of this kind: its own LogSpecialAction line
+	// already names the card and the price, and the two are told
+	// apart by the event's Source (the permanent itself for the
+	// action, the effect's object otherwise).
+	LogTurnFaceUp LogKind = "turn_face_up"
 	// LogExtraTurn — an effect gave a player an extra turn (CR 500.7,
 	// ADR 0059 Decision 11). `seat` is the player who will take it and
 	// `card_id` the card whose effect created it; one entry per turn,
@@ -421,6 +455,13 @@ const (
 	// no longer the next seat, and the table needs to know why before
 	// the turn bar moves.
 	LogExtraTurn LogKind = "extra_turn"
+	// LogExtraTurnSkipped — a queued extra turn was skipped instead of
+	// beginning (CR 614.10, #2529: Trouble in Pairs). `seat` is the
+	// player who would have taken it and `card_id` the card whose effect
+	// created it. Narrated because the LogExtraTurn line promised a turn
+	// and the turn bar will not move to it; without this line the
+	// promise just vanishes.
+	LogExtraTurnSkipped LogKind = "extra_turn_skipped"
 	// LogExtraPhase — an effect added phases or a step to the current
 	// turn (CR 500.8 / 500.9, ADR 0059 Decision 11). `seat` is the
 	// active player, whose turn gets them, and `card_id` the card whose
@@ -613,6 +654,11 @@ type LogEvent struct {
 	// lets anyone at a preview table spawn), is left false — which is
 	// the honest answer, not a missing one.
 	ActorIsHost bool `json:"actor_is_host,omitempty"`
+	// AutoAnswerKey is, on a LogAutoAnswer entry, the standing-answer
+	// key the server answered under (ADR 0127 §6). The chooser's alone:
+	// FilterViewFor clears it for every other viewer. The client's
+	// notice uses it for "Ask me next time".
+	AutoAnswerKey string `json:"auto_answer_key,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -1137,6 +1183,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
+	case game.EventExert:
+		base.Kind = LogExert
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
 	case game.EventDrawCard:
 		// Never the card — a drawn card is hidden, and the owner's
 		// own hand already shows it. One entry per card, collapsed by
@@ -1431,6 +1482,20 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventAutoAnswer:
+		// ADR 0127 §6. Every automatic answer is a line for the whole
+		// table: the answer, the card, and that it was a standing one.
+		base.Kind = LogAutoAnswer
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Call = ev.Call
+		base.Label = ev.Label
+		base.AutoAnswerKey = ev.AnswerKey
+		// An optional trigger's label names the card the way a
+		// LogTrigger's does, and is redacted off the source's knower set
+		// the same way (#1257).
+		base.ability = ev.Call == game.AutoAnswerCallYes || ev.Call == game.AutoAnswerCallNo
+		return base, true
+
 	case game.EventCycle:
 		// CR 702.29b. The cost's discard already produced a LogZone
 		// line for the same motion; publicLogOf REPLACES it with this
@@ -1499,6 +1564,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventManifestDread:
+		// CR 701.62a. Carries no card reference on purpose: the
+		// manifested card is hidden from every seat but its controller
+		// (CR 708.5) and the line must not be the leak.
+		base.Kind = LogManifestDread
+		return base, true
+
 	case game.EventSagaChapter:
 		// CR 714.2b. A chapter firing is a beat of the turn, and until
 		// #1021 only the chapter ability's own resolve line marked it
@@ -1564,12 +1636,32 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventTurnedFaceUp:
+		// CR 708.8, #2590. The special action narrates itself; only
+		// an effect's turn lands here, and it is told apart by the
+		// event's Source, which is the permanent for the action and
+		// the effect's object otherwise.
+		if ev.Source == ev.CardID {
+			return LogEvent{}, false
+		}
+		base.Kind = LogTurnFaceUp
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Target = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventTransform:
 		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
 		// says it — this is the only line the table gets, and without
 		// it a permanent silently becomes a different card.
 		base.Kind = LogTransform
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
+	case game.EventDayNightChanged:
+		// CR 731.1. Not tied to a card: the untap-step check and a
+		// daybound permanent arriving both change it with no source.
+		base.Kind = LogDayNight
 		base.Label = ev.Label
 		return base, true
 
@@ -1590,6 +1682,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 
 	case game.EventExtraTurnAdded:
 		base.Kind = LogExtraTurn
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
+	case game.EventExtraTurnSkipped:
+		base.Kind = LogExtraTurnSkipped
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
@@ -2052,6 +2149,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderZoneText(e, card)
 	case LogSacrifice:
 		return fmt.Sprintf("%s sacrificed %s", actor, card)
+	case LogExert:
+		return fmt.Sprintf("%s exerted %s", actor, card)
 	case LogDraw:
 		if e.Amount == 1 {
 			return fmt.Sprintf("%s drew a card", actor)
@@ -2168,6 +2267,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s activated %s's %s", actor, target, card)
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
+	case LogAutoAnswer:
+		return renderAutoAnswerText(e, actor, cardName)
 	case LogTrigger:
 		line := fmt.Sprintf("%s's trigger: %s", actor, abilityName(e.Label, cardName))
 		if e.Label == "" && cardName == "" {
@@ -2189,6 +2290,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s discovered %d and found nothing", actor, e.Amount)
 		}
 		return fmt.Sprintf("%s discovered %d — %s", actor, e.Amount, card)
+	case LogManifestDread:
+		return fmt.Sprintf("%s manifested dread", actor)
 	case LogSagaChapter:
 		if e.Amount <= 0 {
 			return fmt.Sprintf("%s advanced a chapter", card)
@@ -2233,11 +2336,21 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s was turned face down", card)
 		}
 		return fmt.Sprintf("%s turned %s face down", target, card)
+	case LogTurnFaceUp:
+		if e.Target == "" {
+			return fmt.Sprintf("%s was turned face up", card)
+		}
+		return fmt.Sprintf("%s turned %s face up", target, card)
 	case LogExtraTurn:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s will take an extra turn", actor)
 		}
 		return fmt.Sprintf("%s will take an extra turn (%s)", actor, card)
+	case LogExtraTurnSkipped:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s skips their extra turn", actor)
+		}
+		return fmt.Sprintf("%s skips their extra turn (%s)", actor, card)
 	case LogTurnEnded:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s's turn ends", actor)
@@ -2253,6 +2366,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:
 		return fmt.Sprintf("%s phased in", card)
+	case LogDayNight:
+		return fmt.Sprintf("It becomes %s", e.Label)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label
@@ -2705,4 +2820,35 @@ func logNameOf(c CardView) string {
 		return c.Name
 	}
 	return c.Faces[0].Name + " // " + c.Faces[1].Name
+}
+
+// renderAutoAnswerText writes a LogAutoAnswer line (ADR 0127 §6, owner
+// decision 11): the answer, what it was about, and "(automatic)".
+//
+//	Bob paid {1} for Rhystic Study (automatic)
+//	Bob didn't pay for Rhystic Study (automatic)
+//	Alice answered Yes to Consecrated Sphinx — draw two cards (automatic)
+//
+// A redacted entry has lost the card's name and the label with it, and
+// says only that a standing answer was given.
+func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
+	card := nameOr(cardName, "a card")
+	switch e.Call {
+	case game.AutoAnswerCallPay:
+		if e.Label == "" {
+			return fmt.Sprintf("%s paid for %s (automatic)", actor, card)
+		}
+		return fmt.Sprintf("%s paid %s for %s (automatic)", actor, e.Label, card)
+	case game.AutoAnswerCallDontPay:
+		return fmt.Sprintf("%s didn't pay for %s (automatic)", actor, card)
+	}
+	answer := "No"
+	if e.Call == game.AutoAnswerCallYes {
+		answer = "Yes"
+	}
+	subject := card
+	if e.Label != "" {
+		subject = abilityName(e.Label, cardName)
+	}
+	return fmt.Sprintf("%s answered %s to %s (automatic)", actor, answer, subject)
 }

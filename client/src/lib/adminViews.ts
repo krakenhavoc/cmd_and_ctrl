@@ -314,10 +314,19 @@ export interface AdminDeckRequest {
   issue_url?: string;
 }
 
+/** One saved playmat in the account view; `active` marks the one on show. */
+export interface AdminPlaymat {
+  slot: number;
+  url: string;
+  active?: boolean;
+}
+
 export interface AdminAccountResponse {
   generated_at: number;
   account: AdminAccount;
   sign_in: AdminSignIn;
+  /** The account's saved playmats, in slot order; absent for none (ADR 0128 §11). */
+  playmats?: AdminPlaymat[];
   games: AdminGame[];
   games_truncated: boolean;
   decks: AdminDeck[];
@@ -545,6 +554,11 @@ export function archiveConfirm(g: Pick<AdminGame, "name" | "state">): string {
 /** revokeConfirm is the question before Revoke sessions, naming the person. */
 export function revokeConfirm(name: string): string {
   return `Sign ${name} out everywhere? Every session they hold stops working now, and they stay signed out until they sign in with Discord again. Their account, games and decks are kept.`;
+}
+
+/** playmatRemoveConfirm is the question before Remove playmat, naming the person. */
+export function playmatRemoveConfirm(name: string, slot: number): string {
+  return `Remove ${name}'s playmat ${slot}? The image is deleted, and if it is the one on show it disappears from every table they sit at now. They can upload another, and their account, games, decks and other playmats are kept.`;
 }
 
 /** canArchive, canUnarchive and canReplay say which action a table row offers. */

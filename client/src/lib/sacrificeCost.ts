@@ -16,7 +16,7 @@
 // definition of "how many" and "can this be paid" and vitest can pin
 // both without mounting a component.
 
-import type { CardView } from "./protocol";
+import type { CardView, SacrificeGroupView } from "./protocol";
 
 // SacrificeOptionsShape is the part of a LegalTargetsView the helpers
 // read. The menus' local cost shapes declare only cards / players, so
@@ -29,6 +29,9 @@ export interface SacrificeOptionsShape {
   // Treasures'), so min / max say nothing and the number picked IS
   // the x_value the same message announces. See sacrificeRange.
   count_from_x?: boolean;
+  // #2526: the clause's set rule ("Sacrifice a Swamp and a Forest"):
+  // the picks must fill every group one-to-one. See fillsEachOf.
+  each_of?: SacrificeGroupView[];
 }
 
 // sacrificeCount is how many permanents the clause sacrifices: the
@@ -48,7 +51,7 @@ export function sacrificeShortfall(opts: SacrificeOptionsShape | undefined, labe
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
   const need = sacrificeCount(opts);
-  if (have >= need) return "";
+  if (have >= need && canFillEachOf(opts.each_of)) return "";
   if (need === 1) return `nothing to sacrifice (${label})`;
   return `needs ${label} (you have ${have})`;
 }
@@ -198,7 +201,7 @@ export function sacrificeRangeShortfall(
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
   const need = sacrificeRange(opts).min;
-  if (have >= need) return "";
+  if (have >= need && canFillEachOf(opts.each_of)) return "";
   if (need === 1) return `nothing to sacrifice (${label})`;
   return `needs ${label} (you have ${have})`;
 }
@@ -229,4 +232,73 @@ export function castSacrificeRange(opts: SacrificeOptionsShape | undefined): Sac
 // sacrifice to be castable at all — 0 for the two variable counts.
 export function castSacrificeFloor(opts: SacrificeOptionsShape | undefined): number {
   return castSacrificeRange(opts).min;
+}
+
+// --- #2526: a clause with a SET RULE ---------------------------------------
+//
+// "Sacrifice a Swamp and a Forest" ships min 2 / max 2 over the union of
+// both kinds in `cards`, plus `each_of`: one group per printed part, each
+// listing the candidates that could fill it. The picks must fill every
+// group with a DIFFERENT permanent — two Swamps are not a Swamp and a
+// Forest, and a Swamp Forest fills one part but not both. This is the
+// server's own matching (game.SacrificeSetSatisfiedForEffect), so the
+// confirm button never opens on a pick the server would refuse.
+//
+// Absent or empty groups mean no set rule, and every function here then
+// answers "yes" / passes its input through, so a plain clause reads
+// exactly as it did.
+
+// assignGroups finds one pick per group, no pick used twice, trying
+// `order` in turn. Returns the picks in group order, or null.
+function assignGroups(groups: SacrificeGroupView[], order: string[]): string[] | null {
+  const out: string[] = [];
+  const used = new Set<string>();
+  const walk = (i: number): boolean => {
+    if (i === groups.length) return true;
+    const fits = new Set(groups[i].cards ?? []);
+    for (const id of order) {
+      if (used.has(id) || !fits.has(id)) continue;
+      used.add(id);
+      out.push(id);
+      if (walk(i + 1)) return true;
+      out.pop();
+      used.delete(id);
+    }
+    return false;
+  };
+  return walk(0) ? out : null;
+}
+
+// canFillEachOf is whether the permanents on offer can fill every part
+// at all — the "can this cost be paid" test for a greyed row.
+export function canFillEachOf(groups: SacrificeGroupView[] | undefined): boolean {
+  if (!groups || groups.length === 0) return true;
+  const all = [...new Set(groups.flatMap((g) => g.cards ?? []))];
+  return assignGroups(groups, all) !== null;
+}
+
+// fillsEachOf is the confirm gate for a set rule: the picks fill every
+// group, one permanent each. No groups means no rule.
+export function fillsEachOf(chosen: string[], groups: SacrificeGroupView[] | undefined): boolean {
+  if (!groups || groups.length === 0) return true;
+  if (chosen.length !== groups.length) return false;
+  return assignGroups(groups, chosen) !== null;
+}
+
+// chooseSacrificeSetForMe is "Choose for me" under a set rule: a set
+// that fills every group, taking a permanent that fits only some groups
+// before one that fits them all (so a dual land stays on the board while
+// basics will do), and otherwise keeping the server's payment order.
+// Empty when the board cannot pay.
+export function chooseSacrificeSetForMe(
+  options: string[],
+  groups: SacrificeGroupView[] | undefined,
+): string[] {
+  if (!groups || groups.length === 0) return [];
+  const fitCount = (id: string) => groups.filter((g) => (g.cards ?? []).includes(id)).length;
+  const order = options
+    .map((id, i) => ({ id, i, n: fitCount(id) }))
+    .sort((a, b) => a.n - b.n || a.i - b.i)
+    .map((x) => x.id);
+  return assignGroups(groups, order) ?? [];
 }

@@ -712,6 +712,11 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	// restrictions below (Seedborn Muse, Winter Orb) must be read off
 	// a board that no longer has the phased-out permanents in it.
 	g.performPhasingLocked(activePlayer)
+	// CR 502.2 / 703.4b, the SECOND turn-based action of this step
+	// (ADR 0132): the day/night check, straight after phasing and
+	// ahead of the untap. Here for the reason phasing is: everything
+	// ahead of the untap pause runs exactly once.
+	g.dayNightTurnCheckLocked()
 	g.RecomputeLayersIfStaleLocked()
 	ids := g.untapStepSetLocked(activePlayer)
 	// Markers are consumed for the actual step even when their card was

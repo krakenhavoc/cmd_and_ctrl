@@ -1275,3 +1275,80 @@ alternative inside an OR would stop restricting.
 
 A restricted mana ability is not planned by the auto-tapper (unchanged), so
 Jegantha is tapped by hand.
+
+## Amendment 2026-10-07 — "spend only …" on a spell's own cost (#2556)
+
+**The gap.** The 2026-10-03 amendment (#1600) gave an ABILITY's cost a
+`SpendOnly` clause and folded it at the one place payment is read. A SPELL
+prints the same sentences — Drain Life's and Consume Spirit's "Spend only black
+mana on X", Soul Burn's "black and/or red", Imperiosaur's "Spend only mana
+produced by basic lands to cast this spell", Myr Superion's "…by creatures" —
+and nothing stamped them on the cast's price.
+
+### Decision 1 — the colour clause is the same data, declared on the card and stamped by the cast pricer
+
+`Spec.SpendOnly *game.ManaSpendOnly` (-> `CardDef.SpendOnly`, read through
+`SpellSpendOnlyFor`), built with `effects.SpellSpendOnlyOnX(colors...)`. The
+cast pricer, `printedCostLocked` — THE pricer the cast, its auto-tap,
+`PriceCast`, `internal/legal` (through `CastPrice.Base`) and the preview all
+read — resolves it against the card and stamps `ParsedCost.SpendOnly` last,
+the way the ability pricer does. Every later copy of the cost (the modifiers,
+the taps, the enumerator's repricing of `Base`) carries it, and
+`costAsPaidByLocked` folds it for the announced X, so the cast, `applyAutoTapLocked`,
+`canPayExcluding` and `costAsPaidForPreview` pay it identically with no solver
+changed. `String()` ignores it, so the price shown stays `{X}{1}{B}`. Under
+Chromatic Orrery any mana pays it (Decision 3 of the 2026-10-03 amendment).
+
+Only the "on X" form is declared on a spell: the whole-cost form and "the
+chosen color" read an ability source's state that a spell does not have, and
+`Register` refuses them. It is also refused beside `Delve` or `TapCost`
+(convoke / waterbend), both of which settle `{X}` into generic before anyone
+pays it. The one reachable overlap — a spell given delve by a Teval — is
+handled rather than refused: `delveBudget` leaves the restricted X out of the
+generic it can eat, and `delveAdjusted` folds X into coloured requirements
+before it subtracts.
+
+### Decision 2 — a SOURCE restriction rides the spend context, not the cost
+
+"Produced by basic lands" is not a colour, so it cannot be folded into a
+`ColorRequirement`. It is a property of the payment, and the payment already
+threads a `ManaSpendContext` through the pool solver, the auto-tapper's top-up,
+`internal/legal`'s probe and the preview. So `Spec.SpendOnlySources
+game.ManaSourceKinds` (-> `CardDef.SpendOnlySources`) is read into
+`ManaSpendContext.SourceOnly` by `ManaSpendForCast`, and two places read it:
+
+- **The pool.** `ManaSpendContext.allowsToken` refuses a token whose recorded
+  `SourceKinds` (#1212, snapshotted when the mana was made) share no kind with
+  `SourceOnly`; a token with none recorded (mana from a spell) never
+  qualifies. The one `allows(tok.Restrictions)` call in `spendOrder` and the
+  one in `poolShortfalls` became `allowsToken`.
+- **The planner.** `autoTapTopUpLocked`, the one entry point every auto-tap payer
+  uses, adds every permanent (and hand source) of the payer's whose
+  `manaSourceKindsOf` misses `SourceOnly` to the `excluded` set the gatherers
+  already honour, so the plan is built from qualifying sources only and
+  `planFundsLocked` never refuses a plan it chose itself.
+
+`ManaSourceKinds` gained `ManaSourceBasicLand` (a land with the Basic
+supertype). Mana kinds are read as the mana is made, so a Dryad Arbor counts as
+a creature's mana and an animated Mutavault does while it is one.
+
+### What it does not cover
+
+- **Emblazoned Golem's** "Spend only colored mana on X. No more than one mana of
+  each color may be spent this way" — a distinct-colours cap, plus a kicker
+  `{X}` that is not the printed mana cost. A `ColorRequirement` is one symbol
+  and the solvers match them independently, so "each of a different colour" has
+  no shape. Still waiting.
+- **Security Rhox's** Treasure-only alternative cost: the source restriction now
+  exists as `SpendOnlySources`, but it is declared per card, not per alternative
+  cost, and the card is not catalogued. It would need the restriction on
+  `AlternativeCost`.
+- **Soul Burn's** "the amount of {B} spent on X" is counted as the least it could
+  have been (the black spent, less every mana that paid something other than
+  X), because `PaidCost.Mana` records the whole payment and not which cost
+  component each token paid. The card says so in its caveat. Exact accounting
+  needs the payment to record the component.
+
+Proof cards: Drain Life, Consume Spirit (full); Imperiosaur, Myr Superion
+(full); Soul Burn (caveat). Tracker
+[#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).

@@ -211,6 +211,7 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 			return err
 		}
 		room.SetHost(humanP.ID)
+		l.bindPlaymat(room, humanP.ID, human.UserID)
 		// The opening roll, as at every table (ADR 0125 §5.2). Nothing
 		// is shuffled or dealt until the winner chooses. See the file
 		// comment.

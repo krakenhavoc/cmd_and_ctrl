@@ -139,6 +139,19 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	if c.Hand > 0 {
 		v -= st.w.Hand * float64(c.Hand)
 	}
+	// ADR 0129 §7: the energy the move spends, at the flat per-counter
+	// weight. A sink is used when what it buys is worth more than its
+	// counters.
+	if c.Energy > 0 {
+		v -= st.w.Energy * float64(c.Energy)
+	}
+	// ADR 0130 §4 and §9: an activation that exerts its source (Steward
+	// of Solidarity, Arena of Glory) gives up the source's next untap,
+	// priced like the attack twin's exert (exertCost) under the same
+	// switch, so heuristic-baseline is unchanged.
+	if c.Exert && p.cfg.PriceExert && src != nil {
+		v -= p.costExertCost(st, src)
+	}
 	return v, false
 }
 
@@ -306,6 +319,16 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				if row := rowAt(src, cp.AbilityIndex); row != nil && row.SacrificeSelf {
 					v -= st.permanentValue(src)
 				}
+			}
+		}
+		// #2028: a row that returns its own source to hand pays for the
+		// part of the permanent it gives up (selfReturnCost), purposed or
+		// not. It is a cost the row prints, like a tap, and an unpriced
+		// one would bounce Gossamer Chains at any unblocked creature for
+		// the flat ActivateBase.
+		if !across {
+			if row := rowAt(src, cp.AbilityIndex); row != nil && row.ReturnSelf {
+				v -= st.selfReturnCost(src)
 			}
 		}
 		v += st.targetsValue(p.cfg, cp.Targets)

@@ -293,6 +293,37 @@ type MoveCost struct {
 	// ids for it), so without this field a policy would read the
 	// whole hand as free. Zero for an empty hand, which pays the cost.
 	Hand int `json:"hand,omitempty"`
+
+	// Energy is the energy counters the move removes from the seat
+	// (CR 107.14, ADR 0129 §7): a "Pay N {E}" activation's N, or N + X
+	// for "Pay X {E}" at the move's X. The params name no amount, so
+	// without it a policy would read Aethertorch Renegade's "Pay eight
+	// {E}" as free. Always positive when present: the enumerator has
+	// already checked the seat has the energy.
+	Energy int `json:"energy,omitempty"`
+
+	// Exert is true when the move exerts its own source as part of the
+	// cost (ADR 0130 §4, CR 701.43a): Steward of Solidarity's "{T},
+	// Exert this creature:", Arena of Glory's "Exert this land". The
+	// source won't untap during the seat's next untap step. The params
+	// name nothing for it, so without this a policy would price the
+	// activation as a plain {T}. An exert cost is always payable, so the
+	// enumerator gates nothing on it.
+	Exert bool `json:"exert,omitempty"`
+}
+
+// withExert marks a (possibly nil) MoveCost as exerting the move's
+// source (ADR 0130 §4). Nil stays nil when the cost does not exert.
+func withExert(c *MoveCost, exert bool) *MoveCost {
+	if !exert {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Exert = true
+	return &out
 }
 
 // withHandDiscard adds a "Discard your hand" count to a (possibly nil)
@@ -306,6 +337,20 @@ func withHandDiscard(c *MoveCost, n int) *MoveCost {
 		out = *c
 	}
 	out.Hand = n
+	return &out
+}
+
+// withEnergy adds an energy payment to a (possibly nil) MoveCost (ADR
+// 0129 §7). Nil stays nil for zero energy.
+func withEnergy(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Energy = n
 	return &out
 }
 
@@ -330,6 +375,15 @@ func moveCost(life, loyalty int) *MoveCost {
 	}
 	return &MoveCost{Life: life, Loyalty: loyalty}
 
+}
+
+// phyrexianLifeLabel is the label suffix of a payment that spends life
+// on `symbols` symbols of a mana cost. It says "instead of mana" and not
+// "for Phyrexian mana": the life may buy a printed {B/P} or a {B} a
+// life-for-mana grant (K'rrik, ADR 0131) lets its controller pay for, and
+// the move does not say which.
+func phyrexianLifeLabel(symbols int) string {
+	return fmt.Sprintf(" paying %d life instead of mana", symbols*game.PhyrexianLifePerSymbol)
 }
 
 // withPhyrexianLife adds `symbols` Phyrexian symbols paid with life

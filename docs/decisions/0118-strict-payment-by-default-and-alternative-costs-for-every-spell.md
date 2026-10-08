@@ -239,7 +239,7 @@ PR 4 waits for PR 2 so the escape exists before strict becomes everyone's defaul
 - **Hunting Velociraptor** and any granted offer with a spell filter or a condition.
 - **The bot's choice between a free and a paid offer.** The arena can measure it if it matters.
 - **Removing `AutoTapPreviewModal`** and the lock-tap UI inside it.
-- **The opening-hand action** (CR 103.6a) for any Leyline.
+- **The opening-hand action** (CR 103.6a) for any Leyline. *Landed later in [ADR 0133](0133-opening-hand-actions.md).*
 
 ## Calls made here
 

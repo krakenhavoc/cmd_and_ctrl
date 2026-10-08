@@ -774,6 +774,19 @@ func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
 	return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
 }
 
+// counterTheChosenSpell is the Effect of an ACTIVATED ability that
+// reads "Counter target spell" — Tidal Control's, Kozilek, the Great
+// Distortion's. The first target still legal as the ability resolves
+// (CR 608.2b) is countered; counterTheTargetSpell is the same body for
+// a spell's OnResolve, which is handed the item instead.
+func counterTheChosenSpell(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		return CounterTarget{StackID: t.ID}.Apply(ctx)
+	}
+	return nil
+}
+
 // destroyTheTargetPermanent is the whole OnResolve of "Destroy target
 // [permanent]." — Bedevil's body, named for the same reason.
 func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
@@ -1445,6 +1458,21 @@ func millHalfOfTargetPlayer(_ *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
 			return b22MillHalf(ctx, t.ID)
+		}
+	}
+	return nil
+}
+
+// plusOneCounterOnChosenTargets is "put a +1/+1 counter on target
+// creature": a triggered ability's Effect that reads the creature(s) the
+// controller chose from the item and puts one counter on each that is
+// still a legal target as it resolves (CR 608.2b). Ivy Lane Denizen and
+// Sunrise Cavalier are the same body behind different conditions.
+func plusOneCounterOnChosenTargets(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+			return err
 		}
 	}
 	return nil

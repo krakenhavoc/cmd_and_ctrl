@@ -95,6 +95,21 @@ describe("settings", () => {
     expect(SYNCED_FIELDS.animations.dice).toBe("synced");
   });
 
+  // ADR 0134 §5: combat motion is on by default, synced, and an older
+  // blob gains it from the merge, with no version bump.
+  it("defaults animations.combat on, syncs it, and fills it into an older blob", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 21, animations: { enabled: true, dice: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS } = await freshModule();
+    expect(defaultSettings().animations.combat).toBe(true);
+    const s = get(settings);
+    expect(s.animations.combat).toBe(true);
+    expect(s.animations.dice).toBe(false);
+    expect(SYNCED_FIELDS.animations.combat).toBe("synced");
+  });
+
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
     localStorage.setItem("cmdctrl.muted", "1");
     const { settings } = await freshModule();

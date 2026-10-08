@@ -306,6 +306,30 @@ type ManaAbilityShape struct {
 	// Added in the S22 mana-ability-rider pass.
 	LifeCost int
 
+	// EnergyCost is "Pay N {E}" in a mana ability's cost (ADR 0129 §5,
+	// CR 107.14) — Aether Hub's "{T}, Pay {E}: Add one mana of any
+	// color". Such an ability is still a mana ability (CR 605.1a).
+	// Validated with the other components before anything is paid
+	// (CR 118.3) and paid through payEnergyLocked after the life. No
+	// mana ability prints "Pay X {E}", so there is no X form. The
+	// auto-tapper plans it in the energy tier, after every plan that
+	// spends no energy and before the pain tier (owner decision 2).
+	EnergyCost int
+
+	// ExertCost is "Exert this land" / "Exert this creature" in a mana
+	// ability's cost (ADR 0130 §4, owner decision 3; CR 701.43a) —
+	// Arena of Glory's "{R}, {T}, Exert this land: Add {R}{R}", Oasis
+	// Ritualist's "{T}, Exert this creature: Add two mana of any one
+	// color". Still a mana ability (CR 605.1a): it is paid with the
+	// other components and resolves at once (CR 605.3b), through
+	// exertLocked, keyed to the activator's next untap step. A "whenever
+	// you exert" trigger it causes waits for the next time a player
+	// would receive priority, like every trigger from a mana ability.
+	// Always payable on the battlefield (CR 701.43b). The auto-tapper
+	// never plans it: an exert is a cost the player chooses, so such a
+	// row is paid only when the player activates it.
+	ExertCost bool
+
 	// ManaCost is a mana component in the activation cost — the
 	// Signet cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2},
 	// {T}". Scryfall brace grammar, parsed with ParseCost.

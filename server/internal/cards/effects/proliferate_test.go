@@ -101,7 +101,7 @@ func TestSteadyProgressProliferatesAndDraws(t *testing.T) {
 
 	before := len(me.Hand.Cards)
 	castCatalogSpell(t, g, "Steady Progress", "Instant", steadyProgressOracle, nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("my +1/+1 counters = %d, want 2", got)
@@ -130,7 +130,7 @@ func TestSteadyProgressWithNoCountersIsANoOp(t *testing.T) {
 	me := g.Seats[0]
 	before := len(me.Hand.Cards)
 	castCatalogSpell(t, g, "Steady Progress", "Instant", steadyProgressOracle, nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := len(me.Hand.Cards); got != before+1 {
 		t.Errorf("hand = %d, want %d (cast the spell, drew a card)", got, before+1)
 	}
@@ -148,7 +148,7 @@ func TestKarnsBastionProliferatesForFourAndATap(t *testing.T) {
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("proliferate must wait for resolution, counters = %d", got)
 	}
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 3 {
 		t.Errorf("+1/+1 counters = %d, want 3", got)
 	}
@@ -180,7 +180,7 @@ func TestContagionClaspShrinksThenProliferates(t *testing.T) {
 	if err := g.ResolvePickTarget(pick.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: victim}); err != nil {
 		t.Fatalf("ResolvePickTarget: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, victim, game.CounterMinusOne); got != 1 {
 		t.Fatalf("victim -1/-1 counters = %d, want 1", got)
 	}
@@ -189,7 +189,7 @@ func TestContagionClaspShrinksThenProliferates(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, clasp, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, victim, game.CounterMinusOne); got != 2 {
 		t.Errorf("victim -1/-1 counters = %d, want 2", got)
 	}
@@ -202,13 +202,13 @@ func TestFluxChannelerProliferatesOnNoncreatureSpellsOnly(t *testing.T) {
 	mine := pushCounterCreature(g, me.ID, "Mine", game.CounterPlusOne, 1)
 
 	castCatalogSpell(t, g, "Some Sorcery", "Sorcery", "", nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("a noncreature spell should proliferate: counters = %d, want 2", got)
 	}
 
 	castCatalogSpell(t, g, "Some Bear", "Creature — Bear", "", nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("a CREATURE spell must not proliferate: counters = %d, want 2", got)
 	}
@@ -221,7 +221,7 @@ func TestInexorableTideProliferatesOnEverySpell(t *testing.T) {
 	mine := pushCounterCreature(g, me.ID, "Mine", game.CounterPlusOne, 1)
 
 	castCatalogSpell(t, g, "Some Bear", "Creature — Bear", "", nil)
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("the Tide sees creature spells too: counters = %d, want 2", got)
 	}
@@ -234,8 +234,50 @@ func TestEvolutionSageProliferatesOnLandfall(t *testing.T) {
 	mine := pushCounterCreature(g, me.ID, "Mine", game.CounterPlusOne, 1)
 
 	playLandFromHand(t, g, "Forest", "")
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 	if got := counterCount(g, mine, game.CounterPlusOne); got != 2 {
 		t.Errorf("landfall should proliferate: counters = %d, want 2", got)
 	}
+}
+
+// --- the player's choice (#2525) -------------------------------------
+
+// proliferatePrompt returns the open proliferate prompt, or nil.
+func proliferatePrompt(g *game.Game) *game.PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceProliferate {
+			return c
+		}
+	}
+	return nil
+}
+
+// answerProliferate answers the open proliferate prompt with `picks`
+// (permanents and seats share the one list).
+func answerProliferate(t *testing.T, g *game.Game, picks ...uuid.UUID) {
+	t.Helper()
+	c := proliferatePrompt(g)
+	if c == nil {
+		t.Fatal("no proliferate prompt is open")
+	}
+	if err := g.ResolveProliferate(c.ID, c.Chooser, picks); err != nil {
+		t.Fatalf("ResolveProliferate: %v", err)
+	}
+}
+
+// settleAnsweringProliferate is passPriorityAroundTable for a test that
+// does not care WHAT was proliferated: whenever a proliferate prompt
+// opens it takes the engine's suggested answer, which is what the old
+// auto-pick did, and the stack is settled behind it.
+func settleAnsweringProliferate(t *testing.T, g *game.Game) {
+	t.Helper()
+	for i := 0; i < 16; i++ {
+		passPriorityAroundTable(t, g)
+		c := proliferatePrompt(g)
+		if c == nil {
+			return
+		}
+		answerProliferate(t, g, c.ChooseSuggested...)
+	}
+	t.Fatal("proliferate prompts never stopped")
 }

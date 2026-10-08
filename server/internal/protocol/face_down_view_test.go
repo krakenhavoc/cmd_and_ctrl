@@ -372,7 +372,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			// #1727: never set beside pay_options on a real offer, but
 			// the redaction table has to see it filled.
 			SacrificeOptions: lt,
-			XLockedAtZero:    true, PhyrexianSymbols: 1,
+			XLockedAtZero:    true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// ADR 0126 §6.
@@ -391,6 +391,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		Delve:                   &DelveView{Options: lt, Max: 1},
 		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
 		PhyrexianSymbols:        1,
+		PhyrexianGranted:        1,
 		CastableHere:            true,
 		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
 		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
@@ -815,6 +816,7 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// placed with TapCost, whose options are the caster's own board.
 	"Delve":            surfacePublicPile,
 	"PhyrexianSymbols": surfacePublicPile,
+	"PhyrexianGranted": surfacePublicPile,
 	"TargetCostNotes":  surfacePublicPile,
 	// #1169: and the four that are not cost-shaped. `target_mode` is
 	// the card's printed prompt shape and is already public on a
@@ -888,6 +890,7 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	"TargetMode":       surfacePublicPile,
 	"XLockedAtZero":    surfacePublicPile,
 	"PhyrexianSymbols": surfacePublicPile,
+	"PhyrexianGranted": surfacePublicPile,
 	// #1172: the two board-derived lists. `legal_targets` is the
 	// clause this offer leaves the spell with, resolved for the asking
 	// seat; `pay_options` is "the blue cards in YOUR hand", "the cards

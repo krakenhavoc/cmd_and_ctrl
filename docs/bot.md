@@ -219,6 +219,18 @@ A prompt over anything else (the battlefield, a graveyard, an
 opponent's hand or library) carries nothing on the wire that says what
 naming a card costs, so the bot takes the first answer offered.
 
+### Automatic answers are for people (ADR 0127)
+
+A person can tell the server to answer a repeated prompt for them —
+"never pay for Rhystic Study", "always draw two off Consecrated Sphinx"
+([ADR 0127](decisions/0127-answering-repeated-prompts-for-you.md),
+`set_auto_answers`). Bots do not use it. A bot answers its own prompts
+through the enumerator, as it always has: the enumerator never offers
+`set_auto_answers`, the server refuses rules for a bot seat, and the room
+checks that a seat is human before it answers anything for it. A
+person's automatic answer reaches a bot as an ordinary state change and
+an `auto_answer` log line.
+
 ### What a bot answers when somebody else's card asks (#796 / #568 / #929)
 
 Three prompt shapes reach a bot seat from a spell or ability it does
@@ -792,6 +804,7 @@ Hand × (draws + TutorWeight × tutors + SelfMillWeight × self_mill_tutor)
 − DiscardWeight × discards
 + (ManaSource + the ramp premium) × lands
 + TokenWeight × tokens
++ Weights.Energy × energy
 ```
 
 `TutorWeight` is 1.00. `SelfMillWeight` is 0.50, because Entomb finds a
@@ -1355,8 +1368,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, or `heuristic-baseline`: the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). That one is an arena name only; the lobby and `GET /bot/options` never offer it. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline` or `heuristic-noexert`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
@@ -2023,6 +2036,26 @@ that quietly stops happening. The runtime half is
 tier through the factory and asks it everything the runner and the
 enumerator will ask it.
 
+## Proliferating (#2525)
+
+A proliferate (CR 701.34a) asks the proliferating seat which permanents
+and players with counters get another counter of each kind. The
+enumerator offers the empty answer (always legal), the engine's
+suggested set as ONE whole move, first, and then the subsets its walk
+reaches. The suggested set is the beneficial pick: every permanent or
+player of the seat's own that a counter helps, and every opponent's one
+it hurts (a -1/-1 or stun counter, poison, rad), where a single unwanted
+kind rules a permanent out. It is offered whole on purpose: on a board
+wider than the expansion cap the walk never builds the large set, and a
+bot that could only name small ones would strand the rest.
+
+The heuristic scores an answer by its overlap with the suggestion (+1 a
+member, -1.5 anything else), so the exact suggestion wins, a strict
+subset ranks below it, and with nothing suggested it chooses nothing.
+The same table of harmful counters serves the client's pre-selection and
+the bot, so they cannot drift. The model tiers get the same move list and
+the same labels (`proliferate <name> …`, seats by name).
+
 ## Choosing a Ring-bearer (ADR 0114 §7)
 
 When the Ring tempts a bot seat that controls two or more creatures, it
@@ -2512,7 +2545,7 @@ is offered once per card out of the budget the targets left over. The
 counts in between are the same trade paid partly, so they are not
 offered. Every count is bounded by the engine's own life predicate
 (CR 119.4, and CR 119.8's locked life total). The move label says
-`paying 4 life for Phyrexian mana`, and `Move.Cost` carries the life
+`paying 4 life instead of mana`, and `Move.Cost` carries the life
 twice: in `life`, with the rest of what the move charges, and in
 `phyrexian_life`, the part that buys nothing extra.
 
@@ -2524,6 +2557,15 @@ mana payment scores higher. The heuristic also never pays Phyrexian
 life that would leave it below 10 (`phyrexianLifeFloor`, the default
 `DangerLife`). The random tier picks among the legal moves like any
 other.
+
+The same payment is offered for a `{B}` under K'rrik, Son of Yawgmoth
+([ADR 0131](decisions/0131-krrik-pay-life-for-black-mana.md)), and for
+the two payments that are not casts: a mana ability's own mana cost (the
+move carries `phyrexian_life`) and a mana `pay_unless` such as ward
+(the "pay" answer carries it). The enumerator offers the fewest symbols
+paid with life that make the move payable, after mana. The heuristic
+prices a life-paid ward like a Phyrexian cast: declined below the floor
+of 10, and below the all-mana answer above it.
 
 **"Discard your hand" is priced by the hand it throws away.** Lion's
 Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry
@@ -2539,6 +2581,19 @@ empty hand costs nothing. Lion's Eye Diamond and Diamond Lion are only
 offered while the seat could cast an instant: holding priority, owing
 no prompt, with no prompt stopping the table. The auto-tapper never
 cracks one to pay for a cast.
+
+**Energy is priced at a flat amount per counter** ([ADR
+0129](decisions/0129-energy-getting-and-paying-it.md) §7, owner decision
+5). An activation that pays energy is only offered when the seat has it,
+through the predicate the engine refuses with, and `Move.Cost.Energy`
+names the counters it removes: "Pay N {E}", or N + X for "Pay X {E}",
+whose X the enumerator bounds by the seat's energy. The heuristic charges
+`Weights.Energy` (0.30, a quarter of a card in hand) per counter spent,
+and credits the same per counter a declared `energy` purpose gives, so a
+sink is used when what it buys is worth more than its counters. The
+baseline prices energy at nothing. The model tiers and the MCP seat read
+each seat's energy and other player counters on its board-text line
+("4 energy, 2 poison").
 
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
@@ -2575,18 +2630,37 @@ as it holds on a pass. The table comes to rest at the threshold with
 the notice naming the ability, which is [ADR 0055
 §5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
 
-**A real loop stops a bot-only table outright, and the curated decks
-can now reach one.** When a trigger or activation loop's shortcuts run
-out (the second ask offers only "stop here"), autopass stays suspended
-and no bot seat has a move that keeps the loop going. The room's
-commit sequence stops with the notice naming the ability and count
-still in the game state. The table does not finish, and it does not
-spin forever ([ADR 0055](decisions/0055-loop-breaker.md) §5). Since
-S66 the heuristic casts mono-black-aristocrats' Sanguine Bond and
-Exquisite Blood, and that pair is a drain loop that ends the game. A
-bot table that assembles it stalls at the loop breaker with the black
-seat far ahead
-([#2450](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2450)). It
-was seen twice in ADR 0126's measurement runs. A loop that makes
-progress is not the kind CR 732 exists for, and #2450 needs an ADR 0055
-decision.
+**A real loop stops a bot-only table outright; a batch of triggers
+does not.** When a trigger or activation loop's shortcuts run out (the
+second ask offers only "stop here"), autopass stays suspended and no
+bot seat has a move that keeps the loop going. The room's commit
+sequence stops with the notice naming the ability and count still in
+the game state. The table does not finish, and it does not spin forever
+([ADR 0055](decisions/0055-loop-breaker.md) §5).
+
+A batch is different. Three of ADR 0126's measurement tables stopped
+at the breaker after a wrath killed about thirty creatures with
+mono-black-aristocrats' Syr Konrad and Exquisite Blood out: each Konrad
+trigger pinged three opponents, each ping triggered Exquisite Blood, and
+Blood's count passed 25 with nobody deciding anything
+([#2450](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2450)).
+That is a finite number of triggers from one event (CR 603.2c), not a
+loop. Since ADR 0055's amendment of 2026-10-07 the engine measures the
+work left on the stack as each triggered ability begins to resolve, and
+a new low restarts every run: a batch keeps making new lows and runs to
+the end, and a loop, which replaces what it resolves, trips the breaker
+as before. It is engine-wide, so a human's autopass plays through a
+batch too. (Sanguine Bond with Exquisite Blood never tripped it: each
+Bond trigger asks for a target, and answering is a decision.)
+
+**A loop that is ending the game plays out.** Exquisite Blood with
+Marauding Blight-Priest is a real mandatory loop, and it grows the
+stack rather than draining it, but every iteration takes each opponent
+to a new low. A life total makes only so many lows before its player
+loses, so the engine counts a new lowest life total this turn, a new
+highest poison count this turn, or a player leaving the game as
+progress, and progress restarts the runs (ADR 0055's amendment of
+2026-10-07, option B). The loop steps on until its controller wins. A
+player who can't lose the game that way (ADR 0057) makes no progress
+that way. A loop that makes no progress, such as gaining life forever,
+still trips the breaker, and still stops a bot-only table.

@@ -417,7 +417,7 @@ func pickDistinctColor(work ManaPool, used []bool, order []int, spentColors map[
 func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
 	order := make([]int, 0, len(pool))
 	for i, tok := range pool {
-		if !ctx.allows(tok.Restrictions) {
+		if !ctx.allowsToken(tok) {
 			continue
 		}
 		order = append(order, i)

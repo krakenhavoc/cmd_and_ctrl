@@ -98,6 +98,7 @@ type printedInputs struct {
 	colors          []string // Card.Colors (empty: derive — none if devoid, else the cost's)
 	keywords        []string // Card.Keywords, the import's keywords
 	catalogKeywords []string // CatalogPrintedKeywords(CatalogKey(c))
+	colorCDADropped bool     // Card.ColorCDADropped: devoid is not a printed keyword here (CR 707.9d)
 }
 
 // printedInputsOf reads the inputs off a face-up card. The slices
@@ -111,6 +112,8 @@ func printedInputsOf(c *Card) printedInputs {
 		toughness: c.Toughness,
 		colors:    c.Colors,
 		keywords:  c.Keywords,
+
+		colorCDADropped: c.ColorCDADropped,
 	}
 	// The gate is the catalog KEY and not an oracle ID (ADR 0083
 	// decision 3): a token has a key of its own since #521, so a
@@ -159,6 +162,11 @@ func (in *printedInputs) characteristicFrom(supertypes, types, subtypes []string
 	// as two badges on the client's keyword row. A CUMULATIVE keyword
 	// (prowess, toxic) is the one exception — see that function.
 	abilities := mergePrintedKeywords(in.catalogKeywords, in.keywords)
+	if in.colorCDADropped {
+		// CR 707.9d: a copy exception provided the colour, so the
+		// colour-defining ability was never copied (#2322).
+		abilities = withoutKeyword(abilities, KeywordDevoid)
+	}
 	return Characteristic{
 		Power:      in.power,
 		Toughness:  in.toughness,
@@ -194,7 +202,8 @@ func (in *printedInputs) sameAs(o *printedInputs) bool {
 		in.toughness == o.toughness &&
 		sameStrings(in.colors, o.colors) &&
 		sameStrings(in.keywords, o.keywords) &&
-		sameStrings(in.catalogKeywords, o.catalogKeywords)
+		sameStrings(in.catalogKeywords, o.catalogKeywords) &&
+		in.colorCDADropped == o.colorCDADropped
 }
 
 func sameStrings(a, b []string) bool {

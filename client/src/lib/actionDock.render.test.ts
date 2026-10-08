@@ -347,6 +347,7 @@ function attackPlan(over: Partial<AttackAllPlan> = {}): AttackAllPlan {
     blocked: [],
     defenders: [seat(OPP, "Opp", 1)],
     targets: {},
+    exertable: [],
     ...over,
   };
 }

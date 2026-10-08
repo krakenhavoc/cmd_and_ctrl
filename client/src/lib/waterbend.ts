@@ -38,8 +38,13 @@ export function payUnlessAnswer(
   apply: boolean,
   tapIDs: string[] = [],
   cardIDs: string[] = [],
+  phyrexianLife = 0,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { choice_id: choice.id, apply };
+  // ADR 0131 §2: symbols of the cost paid with 2 life each. Never sent
+  // on a "Don't pay" — the server refuses it rather than reading it as
+  // a decline.
+  if (apply && phyrexianLife > 0) out.phyrexian_life = phyrexianLife;
   if (apply && choice.tap_cost && tapIDs.length > 0) out.tap_ids = [...tapIDs];
   // ADR 0108 §5: a discard or sacrifice payment names its cards.
   if (apply && choice.pay_cards && cardIDs.length > 0) out.card_ids = [...cardIDs];

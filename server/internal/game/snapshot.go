@@ -304,6 +304,12 @@ type GameSnapshot struct {
 	OpeningRoll *OpeningRoll `json:"openingRoll,omitempty"`
 	Monarch     uuid.UUID    `json:"monarch"`
 	Initiative  uuid.UUID    `json:"initiative"`
+	// DayNight is the day/night designation and the previous turn's
+	// spell count (CR 731, ADR 0132). Additive within the current
+	// schema, like OpeningRoll: absent on every file written before it
+	// and on every game that never had a designation, which restores
+	// as neither day nor night.
+	DayNight *DayNightState `json:"dayNight,omitempty"`
 	// UndoLimit is the pre-v4 home of the undo budget. Read only when
 	// migrating an older file (migrateLegacySettings); a v4 capture
 	// leaves it zero and it is omitted.
@@ -624,22 +630,26 @@ type playerSnapshot struct {
 	MulliganDecided bool `json:"mulliganDecided,omitempty"`
 	// TriggerOrderAlwaysAsk is Player.TriggerOrderAlwaysAsk (#1530).
 	// Additive: a file written before it restores with false, the default.
-	TriggerOrderAlwaysAsk bool              `json:"triggerOrderAlwaysAsk,omitempty"`
-	MulligansTaken        int               `json:"mulligansTaken"`
-	DeckImported          bool              `json:"deckImported"`
-	UndosRemaining        int               `json:"undosRemaining"`
-	DiscordID             string            `json:"discordId,omitempty"`
-	DiscordAvatarHash     string            `json:"discordAvatarHash,omitempty"`
-	DisplayName           string            `json:"displayName,omitempty"`
-	IsBot                 bool              `json:"isBot,omitempty"`
-	BotTier               string            `json:"botTier,omitempty"`
-	BotDeck               string            `json:"botDeck,omitempty"`
-	Agent                 bool              `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
-	AgentClient           string            `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
-	AttemptedEmptyDraw    bool              `json:"losesAtNextSba"`
-	CommanderCasts        map[uuid.UUID]int `json:"commanderCasts,omitempty"`
-	Counters              map[string]int    `json:"counters,omitempty"`
-	MaxHandSize           int               `json:"maxHandSize"`
+	TriggerOrderAlwaysAsk bool `json:"triggerOrderAlwaysAsk,omitempty"`
+	// AutoAnswers is Player.AutoAnswers (ADR 0127 §8). Additive: a file
+	// written before it restores with none, which asks every prompt;
+	// the client's reconcile sends the rules again on the next frame.
+	AutoAnswers        map[string]AutoAnswer `json:"autoAnswers,omitempty"`
+	MulligansTaken     int                   `json:"mulligansTaken"`
+	DeckImported       bool                  `json:"deckImported"`
+	UndosRemaining     int                   `json:"undosRemaining"`
+	DiscordID          string                `json:"discordId,omitempty"`
+	DiscordAvatarHash  string                `json:"discordAvatarHash,omitempty"`
+	DisplayName        string                `json:"displayName,omitempty"`
+	IsBot              bool                  `json:"isBot,omitempty"`
+	BotTier            string                `json:"botTier,omitempty"`
+	BotDeck            string                `json:"botDeck,omitempty"`
+	Agent              bool                  `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
+	AgentClient        string                `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
+	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
+	Counters           map[string]int        `json:"counters,omitempty"`
+	MaxHandSize        int                   `json:"maxHandSize"`
 	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
@@ -717,6 +727,7 @@ type cardSnapshot struct {
 	StartingLoyalty   int            `json:"startingLoyalty"`
 	Keywords          []string       `json:"keywords,omitempty"`
 	GrantedAbilities  []string       `json:"grantedAbilities,omitempty"`
+	ColorCDADropped   bool           `json:"colorCDADropped,omitempty"`
 	Layout            string         `json:"layout,omitempty"`
 	Faces             []Face         `json:"faces,omitempty"`
 	ActiveFace        int            `json:"activeFace,omitempty"`
@@ -744,7 +755,12 @@ type cardSnapshot struct {
 	// an older file has none, which is what every game before it was.
 	CommanderReturnDue bool      `json:"commanderReturnDue,omitempty"`
 	AttackingTarget    uuid.UUID `json:"attackingTarget"`
-	BlockingTarget     uuid.UUID `json:"blockingTarget"`
+	// ExertOnAttack is Card.ExertOnAttack (ADR 0130 §8): a choice to
+	// exert this attacker, staged and not yet paid. A restore point can
+	// be written between the verb and the lock-in. Additive within v7;
+	// omitted when false.
+	ExertOnAttack  bool      `json:"exertOnAttack,omitempty"`
+	BlockingTarget uuid.UUID `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -895,7 +911,13 @@ type cardSnapshot struct {
 	// exiled this card face down. Carried because nothing else records
 	// it — a restore that dropped it would leave the card unplayable by
 	// the land that hid it and unreadable by that land's controller.
-	HiddenBy          PermissionCardRef `json:"hiddenBy"`
+	HiddenBy PermissionCardRef `json:"hiddenBy"`
+	// ExiledWith is the CR 607.2a link from an exiled card to the
+	// permanent object whose replacement exiled it (#2530, Valgavoth,
+	// Terror Eater). Carried: a restore that dropped it would leave the
+	// card in exile that nobody may play. An older file decodes as the
+	// zero ref, "exiled with nothing", which is every game before it.
+	ExiledWith        PermissionCardRef `json:"exiledWith"`
 	StartingDefense   int               `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
@@ -1359,6 +1381,12 @@ type pendingChoiceSnapshot struct {
 	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
 	ChooseCards     []uuid.UUID `json:"chooseCards,omitempty"`
 	ChooseMin       int         `json:"chooseMin,omitempty"`
+	// #2525: a proliferate's seats on offer and the engine's suggested
+	// answer. Carried for ChooseCards' reason — the prompt is its
+	// options — even though the prompt's continuation frame keeps a
+	// game with one open from being restorable until it is answered.
+	ChoosePlayers   []uuid.UUID `json:"choosePlayers,omitempty"`
+	ChooseSuggested []uuid.UUID `json:"chooseSuggested,omitempty"`
 	// #568: the branches of an option pick. Carried for the reason
 	// ChooseCards is — the prompt is the options, and a restored game
 	// that forgot them would render a question with no answers.
@@ -1372,6 +1400,13 @@ type pendingChoiceSnapshot struct {
 	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
 	// MidResolution is PendingChoice.midResolution (#1289).
 	MidResolution bool `json:"midResolution,omitempty"`
+	// ADR 0127 §8: the standing-answer key and its display copies, and
+	// whether the prompt is asked by hand. Additive: a file written
+	// before them restores a prompt with no key, which is asked.
+	AutoAnswerKey    string      `json:"autoAnswerKey,omitempty"`
+	AutoAnswerCard   string      `json:"autoAnswerCard,omitempty"`
+	AutoAnswerPrompt string      `json:"autoAnswerPrompt,omitempty"`
+	AskedByHand      AskedByHand `json:"askedByHand,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -1639,6 +1674,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		OpeningRoll:           cloneOpeningRoll(g.OpeningRoll),
 		Monarch:               g.Monarch,
 		Initiative:            g.Initiative,
+		DayNight:              snapshotDayNight(g.DayNight),
 		Settings:              g.Settings,
 		StartingSeat:          g.StartingSeat,
 		SplitSecondActive:     g.SplitSecondActive,
@@ -1914,6 +1950,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
+		ColorCDADropped:          c.ColorCDADropped,
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
@@ -1931,6 +1968,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
+		ExertOnAttack:            c.ExertOnAttack,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		GoadedBy:                 c.LatestGoader(),
@@ -1973,6 +2011,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
+		ExiledWith:               c.ExiledWith,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -2020,6 +2059,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -2308,6 +2348,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
@@ -2315,6 +2357,10 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		MidResolution:        c.midResolution,
+		AutoAnswerKey:        c.AutoAnswerKey,
+		AutoAnswerCard:       c.AutoAnswerCard,
+		AutoAnswerPrompt:     c.AutoAnswerPrompt,
+		AskedByHand:          c.AskedByHand,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -2477,6 +2523,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.OpeningRoll = cloneOpeningRoll(s.OpeningRoll)
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
+	g.DayNight = s.DayNight.valueOrZero()
 	g.Settings = s.Settings
 	if s.Schema < settingsSchemaVersion {
 		g.Settings = migrateLegacySettings(s.State, s.UndoLimit)
@@ -2746,6 +2793,7 @@ func restoreCard(c *cardSnapshot) Card {
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
+		ColorCDADropped:          c.ColorCDADropped,
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
@@ -2763,6 +2811,7 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
+		ExertOnAttack:            c.ExertOnAttack,
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
@@ -2804,6 +2853,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
+		ExiledWith:               c.ExiledWith,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -2883,6 +2933,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
 		UndosRemaining:        p.UndosRemaining,
@@ -3123,6 +3174,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
+		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
@@ -3130,6 +3183,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		midResolution:        c.MidResolution,
+		AutoAnswerKey:        c.AutoAnswerKey,
+		AutoAnswerCard:       c.AutoAnswerCard,
+		AutoAnswerPrompt:     c.AutoAnswerPrompt,
+		AskedByHand:          c.AskedByHand,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.

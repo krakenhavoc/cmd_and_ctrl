@@ -179,6 +179,7 @@ func (g *Game) removeFromCombatLocked(c *Card) {
 		g.invalidateLayersForAttackChangeLocked()
 	}
 	c.AttackingTarget = uuid.Nil
+	c.ExertOnAttack = false
 	c.clearBlocking()
 	delete(g.announcedAttacks, c.InstanceID)
 	g.forgetAttackDefenderLocked(c.InstanceID)

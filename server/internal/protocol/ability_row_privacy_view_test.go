@@ -64,13 +64,16 @@ var activatedRowScopes = map[string]rowScope{
 	// battlefield for every viewer to see.
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeSelf": rowPublic, "ManaCost": rowPublic, "LifeCost": rowPublic,
+	// ADR 0129 §8: the printed energy component; a player's energy is
+	// public, so the shortfall it greys the row with is too.
+	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
-	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
+	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.
-	"AnyPlayer": rowPublic, "Purpose": rowPublic,
+	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "Purpose": rowPublic,
 	// #2449: the printed equip keyword (CR 702.6).
 	"Equip": rowPublic,
 	// The printed discard clause: the count in "Discard two cards"
@@ -105,7 +108,7 @@ var activatedRowScopes = map[string]rowScope{
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	// ADR 0109 §7: the printed random flag, the printed counts of the
 	// two library components and the put's words.
-	"DiscardCostRandom": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
+	"DiscardCostRandom": rowPublic, "DiscardCostCountFromX": rowPublic, "DiscardCostManaValueX": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
 	"LibraryExileCostN": rowPublic,
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
@@ -120,12 +123,15 @@ var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
 	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
+	// ADR 0129 §5: the printed energy component (a player's energy is
+	// public).
+	"EnergyCost": rowPublic, "Exert": rowPublic,
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
-	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
+	"ChargedManaCost": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
 	// #1443: the commander identity it is narrowed and ordered by is
 	// public (the command zone, and CR 903.4a fixes it before the game).

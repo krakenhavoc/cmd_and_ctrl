@@ -142,6 +142,23 @@ type AbilityCost struct {
 	// charged is on PaidCost.LifePaid; nothing re-reads the count.
 	LifeFrom LifeCostCount
 
+	// Energy is "Pay N {E}" (CR 107.14): remove N energy counters from
+	// the activating player (CR 602.1a). Zero means no such component.
+	// ADR 0129 §2. Checked with the other costs before anything is
+	// paid, so a player short of energy pays nothing (CR 118.3,
+	// CR 601.2h), and paid through payEnergyLocked (energy_cost.go).
+	// Energy is never waived: strict, permissive and force_cast decide
+	// only whether the MANA is charged (ADR 0129 §4).
+	Energy int
+
+	// EnergyX is "Pay X {E}": the announced X (CR 107.3a) is the
+	// amount, added to Energy (normally zero). DemandsX counts it, so
+	// the view, the enumerator and the client ask for X exactly as for
+	// an {X} in Mana, and X may not exceed the player's energy
+	// (CR 118.3). effects.Register refuses it on an ability with no use
+	// for X.
+	EnergyX bool
+
 	// Loyalty is the loyalty-counter component of a planeswalker's
 	// loyalty ability (CR 606.4): +N adds N counters to the source,
 	// −N removes N, and [0] neither. Nil means "this is not a
@@ -379,6 +396,52 @@ type AbilityCost struct {
 	// where the cost has just put it.
 	ExileSelf bool
 
+	// ReturnSelf returns the SOURCE PERMANENT to its owner's hand as
+	// part of the cost (#2028) — Gossamer Chains' "Return this
+	// enchantment to its owner's hand:", Shigeki, Jukai Visionary's
+	// "{1}{G}, {T}, Return Shigeki to its owner's hand:". CR 602.2b
+	// runs CR 601.2h for an ability, so the return is paid at announce
+	// with the rest of the cost, and the permanent is in its owner's
+	// hand before anyone can respond.
+	//
+	// SacrificeSelf's and ExileSelf's sibling, and NOT ReturnToHand
+	// with a filter: a CardPredicate cannot name the ability's source,
+	// so "this enchantment" could not be told from another copy of the
+	// same card. Nothing is chosen, so it rides no params and no wire
+	// pick, exactly as ExileSelf rides none.
+	//
+	// Battlefield only: AbilityNeedsPermanentSource names it, so
+	// effects.Register refuses it on an ability that functions from
+	// any other zone. The source pays one component (CR 118.3), so
+	// the activation refuses it as a sacrifice, return or exile pick
+	// as well. Paid with ReturnToHand, through the same payer and the
+	// same CR 903.9b question asked before the payment (ADR 0115): a
+	// commander that returns itself is offered the command zone. The
+	// permanent leaves the battlefield, so leaves-the-battlefield
+	// triggers see it and its last-known information is recorded
+	// (CR 608.2h); in the hand it is a new object (CR 400.7), so the
+	// effect reads "this permanent" through the item's SourceObject,
+	// which is stamped before the payment.
+	ReturnSelf bool
+
+	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
+	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
+	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
+	// creature:". CR 602.2b runs CR 601.2h for an ability, so it is paid
+	// at announce with the rest of the cost, through exertLocked, the one
+	// path that exerts: the source won't untap during the ACTIVATOR's
+	// next untap step, the turn's tally records it, and EventExert fires
+	// with no attack target, so a "whenever you exert a creature" payoff
+	// sees it and a "when you do" linked to an attack never does.
+	//
+	// It can always be paid while the source is on the battlefield: a
+	// permanent can be exerted untapped, tapped, or already exerted this
+	// turn (CR 701.43b, ruling 7), and every exert before the activator's
+	// next untap step expires at that one step. Nothing is chosen, so it
+	// rides no params. Battlefield only (CR 701.43c):
+	// AbilityNeedsPermanentSource names it.
+	Exert bool
+
 	// ExileCards is "Exile N <kind> cards from your graveyard" or
 	// "… from your hand" as a cost (#1297) — Grim Lavamancer's
 	// "Exile two cards from your graveyard", Moorland Haunt's "a
@@ -453,8 +516,12 @@ type AbilityCost struct {
 // XSlots is deliberately NOT widened with them: a sacrifice or tap
 // clause's X buys permanents, not generic mana, so the mana component
 // stays the same at every announced X.
+//
+// ADR 0129 §2: "Pay X {E}" (EnergyX) is a third such owner — Sphinx of
+// the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers)
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -719,6 +786,18 @@ type ActivatedAbilityShape struct {
 	// one, and who may tap somebody else's permanent is a rule nobody
 	// has tested.
 	AnyPlayer bool
+
+	// OpponentsOnly is "Only your opponents may activate this ability"
+	// (CR 602.2, CR 602.1b; Clergy of the Holy Nimbus): every player but
+	// the permanent's controller, and not the controller. OwnerOnly is
+	// "Only this creature's owner may activate this ability" (Personal
+	// Incarnation): the owner alone, which is not the controller once the
+	// card has been stolen. Both are read in MayActivate beside AnyPlayer
+	// (ADR 0106 §1 amendment 2026-10-07, #1947), so the engine, the
+	// enumerator and the view agree, and the activator is "you" in the
+	// effect exactly as for AnyPlayer. At most one of the three is set.
+	OpponentsOnly bool
+	OwnerOnly     bool
 
 	// Purpose is what the ability does, as printed amounts (ADR 0126
 	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
@@ -1295,8 +1374,22 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// cost exiles it — because one permanent pays one component
 	// (CR 118.3).
 	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.Cost.ExilePermanents, params.ExilePermanentIDs,
-		movedSourceAlso(cardID, ab.Cost.ExileSelf, sacrifices, params.ReturnIDs)); err != nil {
+		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf, sacrifices, params.ReturnIDs)); err != nil {
 		return err
+	}
+	// #2028: "Return this enchantment to its owner's hand". Nothing to
+	// choose — the source IS the payment — so this is the zone check and
+	// the one-permanent-one-component check (CR 118.3) against the
+	// components that move permanents, made here with the rest so a
+	// refusal costs nothing.
+	if err := validateReturnSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
+		return err
+	}
+	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
+	// else to check: an exert cost can be paid tapped or untapped, and
+	// again after an earlier exert this turn (CR 701.43b).
+	if ab.Cost.Exert && srcZone != ZoneBattlefield {
+		return ErrInvalidParam
 	}
 	// #1310, CR 701.67: the waterbend taps. The budget is measured
 	// against the PRICED mana — the same number the payment below
@@ -1336,7 +1429,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #660: the discard components. Validated here with everything
 	// else and paid last (a discard moves the source out of hand,
 	// which invalidates `source` exactly as a sacrifice does).
-	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs)
+	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs, params.XValue)
 	if err != nil {
 		return err
 	}
@@ -1388,6 +1481,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// after. CR 119.8 forbids it outright while the player's life
 		// total can't change (#1200, life_lock.go).
 		return ErrInvalidParam
+	}
+	// ADR 0129 §2, CR 107.14 / 118.3: the energy component, the printed
+	// amount plus the announced X for "Pay X {E}". Checked here with
+	// life, so a player short of energy taps nothing and loses nothing.
+	energyCost := AbilityEnergyCost(ab.Cost, params.XValue)
+	if err := EnergyShortfall(p, energyCost); err != nil {
+		return err
 	}
 	// CR 602.2b / 700.2: the modes are announced with the targets, in
 	// that order — the chosen bullets are what decide which target
@@ -1466,7 +1566,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
 	moving = append(append(append(moving, tops...), libraryExiles...), randoms...)
-	if ab.Cost.ExileSelf {
+	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf {
 		moving = append(moving, cardID)
 	}
 	// #1427: every permanent the payment TAPS — the {T}, the crew,
@@ -1493,6 +1593,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// any other card and offered the command zone afterwards by the
 	// CR 903.9a state-based action.
 	asking := append(append([]uuid.UUID(nil), params.ReturnIDs...), tops...)
+	// #2028: and the source a return-this cost puts into its owner's
+	// hand. A commander that returns itself is asked CR 903.9b here,
+	// before anything is paid, like any other returned commander.
+	if ab.Cost.ReturnSelf {
+		asking = append(asking, cardID)
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
@@ -1579,6 +1685,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
+	// ADR 0130 §4: "Exert this creature", beside the {T} and while the
+	// source is certainly on the battlefield (CR 701.43c), keyed to the
+	// activator's untap step (CR 701.43a). Always payable (CR 701.43b,
+	// ruling 7); a "whenever you exert" trigger it causes is put on the
+	// stack above this ability by the closing pass (CR 603.3b).
+	if ab.Cost.Exert {
+		g.exertLocked(cardID, playerID, uuid.Nil)
+	}
 	for _, id := range crew {
 		// The crewing creatures tap, the Vehicle does not (CR
 		// 702.122b) — which is the whole point, since a Vehicle that
@@ -1596,6 +1710,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return err
 		}
 		paid.LifePaid += lifeCost
+	}
+	// ADR 0129 §2: the energy, beside the life (CR 601.2h lets these be
+	// paid in any order). Never waived by the permissive posture or
+	// force_cast, which decide only the mana (ADR 0129 §4).
+	if err := g.payEnergyLocked(playerID, energyCost, cardID); err != nil {
+		return err
 	}
 	if ab.Cost.Loyalty != nil {
 		// payCostCounterLocked (counter_cost.go), not applyCounterLocked:
@@ -1664,6 +1784,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// carries no combat state. Ninjutsu's entry reads it back through
 	// Context.ReturnedAttacking(); see PaidCost.ReturnedAttacking.
 	paid.ReturnedAttacking = returnedAttacking
+	// #2028: the return-this half, beside the other returns and through
+	// the same payer. The source leaves the battlefield here; the stack
+	// item's SourceObject was stamped above, before any cost was paid, so
+	// the effect still names the permanent that paid (CR 400.7) and reads
+	// it through its last-known information (CR 608.2h).
+	if err := g.payReturnSelfCostLocked(playerID, cardID, ab.Cost, params.commanderAnswers); err != nil {
+		return err
+	}
 	// #1600: the exile-a-permanent component, beside the returns and for
 	// the same reasons — it moves permanents, so it goes after every
 	// component that needs the source where it was, and before the stack
@@ -2051,6 +2179,13 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		if cost.SacrificeOther.ExcludeSource && id == sourceID {
 			return nil, ErrIllegalTarget
 		}
+	}
+	// #2526: "Sacrifice a Swamp and a Forest" — each pick passed the
+	// clause's union predicate above; the SET must still fill every
+	// entry, one permanent each. Two Swamps are not a Swamp and a
+	// Forest.
+	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, ErrIllegalTarget
 	}
 	return append(out, chosen...), nil
 }

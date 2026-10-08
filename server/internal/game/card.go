@@ -198,6 +198,8 @@ type Card struct {
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
 
+	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
+
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
 
 	// ManaAbilities are mana abilities carried on the card object,
@@ -915,6 +917,28 @@ type Card struct {
 	// names nothing ever again. Carried by the snapshot.
 	HiddenBy PermissionCardRef
 
+	// ExiledWith is CR 607.2a's link from a card in exile to the
+	// permanent OBJECT {instance, epoch} whose replacement effect put
+	// it there: Valgavoth, Terror Eater's "if a card you didn't control
+	// would be put into an opponent's graveyard from anywhere, exile it
+	// instead ... you may play cards EXILED WITH Valgavoth" (#2530, ADR
+	// 0066's 2026-10-07 amendment).
+	//
+	// Stamped by the exit finishers from ReplacementEvent.ExiledWith,
+	// AFTER the move, because a replacement runs before the card has
+	// moved and so cannot write to the card that lands (the #1117
+	// triage). Read by PermissionFilter.ExiledWithSource, which a
+	// STANDING cast permission carries; the epoch pins the incarnation,
+	// so a Valgavoth that leaves and returns is a new object with no
+	// claim on what the old one exiled (CR 400.7).
+	//
+	// Cleared by MoveCard on every move, so a card that leaves exile
+	// and comes back by another route was not exiled with anything.
+	// Carried by the snapshot. An ability-resolution exile (Duplicant,
+	// Angel of Serenity) keeps the effects package's event-log record
+	// (b27ExiledWith) and does not write this.
+	ExiledWith PermissionCardRef
+
 	// Solved, Prepared and PrepareCopy live in the bool block at the
 	// end of Card, for alignment.
 
@@ -990,6 +1014,18 @@ type Card struct {
 	// weren't already going to learn, and a false one costs the
 	// signal its credibility.
 	NeedsEffect bool
+
+	// ColorCDADropped records that a CR 707.9d copy exception gave
+	// this object a colour, so the copy did not take the copied
+	// object's colour-defining ability (devoid) at all. A copiable
+	// value like Keywords: a copy of the copy inherits it. It exists
+	// for the catalog road, where devoid arrives through the copied
+	// oracle ID's PrintedKeywords and cannot be stripped from
+	// Keywords. Written by SetCopyExceptionColors (and the copy
+	// plumbing); read by printedInputsOf, printsDevoid and
+	// PrintedKeywordsHonouringCopy. Carried by the snapshot; reset
+	// when the object becomes a new object (#2322).
+	ColorCDADropped bool
 
 	// Tapped is the usual MTG tap state. Only meaningful for cards on
 	// the battlefield; ignored in other zones.
@@ -1268,6 +1304,14 @@ type Card struct {
 	// art stamp. See ADR 0078, "Two predicates that read
 	// ScryfallID != ''".
 	TokenArtOnly bool
+
+	// ExertOnAttack is a staged choice to exert this creature as it
+	// attacks (CR 701.43d, 508.1g; ADR 0130 §2): set by a declaration
+	// verb beside AttackingTarget, paid and cleared by
+	// commitAttackDeclarationLocked as the declaration locks in, and
+	// cleared with AttackingTarget wherever the creature leaves combat
+	// before that. True only between the verb and the lock-in.
+	ExertOnAttack bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

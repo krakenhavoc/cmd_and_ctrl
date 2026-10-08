@@ -242,6 +242,10 @@ type AutoTapPlanEntry struct {
 	// half, Ancient Tomb). Zero for a painless source.
 	Life   int
 	Damage int
+	// Energy is the energy the payment pays as part of the ability's
+	// cost (Aether Hub's "Pay {E}", ADR 0129 §5), so the preview lists
+	// "Pay {E}" against the source before the player confirms.
+	Energy int
 }
 
 // AutoTapPlanPreferringExcluding is AutoTapForCostPreferringExcluding
@@ -290,6 +294,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
 				entry.OncePerTurn = autoTapFreeOncePerTurn(*ab)
 				entry.Life, entry.Damage = ab.LifeCost, ab.RiderSelfDamage
+				entry.Energy = ab.EnergyCost
 			}
 			out = append(out, entry)
 			continue
@@ -490,7 +495,7 @@ func (g *Game) autoTapPreferringLocked(
 	deferred := 0
 	// #2392: the life a plan may spend on pain-tier sources, shared by
 	// both passes — see painBudgetFor.
-	pain := painBudgetFor(g, controller)
+	pain := autoTapSpendBudget(g, controller)
 	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred, &pain) {
 		return nil, false
 	}
@@ -562,6 +567,15 @@ func sortTapSources(sources []tapSource) {
 		// frozen included, and before every sacrificed one (tested
 		// after the sacrifice keys, so it ranks above them). Among two
 		// pain sources, the cheaper first.
+		// ADR 0129 §5, owner decision 2: the energy tier comes before
+		// the pain tier, and inside it the source spending the least
+		// energy first.
+		if ti, tj := sources[i].costTier(), sources[j].costTier(); ti != tj {
+			return ti < tj
+		}
+		if sources[i].Energy != sources[j].Energy {
+			return sources[i].Energy < sources[j].Energy
+		}
 		if sources[i].Pain != sources[j].Pain {
 			return sources[i].Pain < sources[j].Pain
 		}
@@ -732,6 +746,13 @@ type tapSource struct {
 	// painBudgetFor.
 	Pain int
 
+	// Energy is the energy this candidate spends (ADR 0129 §5): its
+	// ability's "Pay {E}" cost (Aether Hub). A tier of both comparators,
+	// after every source that spends nothing but its tap and before the
+	// pain tier (owner decision 2), and the solver bounds a plan's total
+	// by the controller's energy (spendBudget).
+	Energy int
+
 	// Cost is the mana this candidate's ability owes, priced through
 	// the CR 601.2f pass (#2455): a Signet's {1}. Zero on every source
 	// the ordinary solver sees; only gatherCostedSources sets it.
@@ -899,6 +920,8 @@ func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, p
 				FreeOncePerTurn: autoTapFreeOncePerTurn(*picked),
 				// #2392: life the payment spends.
 				Pain: picked.LifeCost + picked.RiderSelfDamage,
+				// ADR 0129 §5: energy the payment spends.
+				Energy: picked.EnergyCost,
 				// #2455: the mana the ability owes; zero unless costed.
 				Cost: cand.cost,
 			}, slots)
@@ -1402,6 +1425,17 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.SacrificeOther != nil {
 		return false
 	}
+	// ADR 0130 §4 (owner decision 3): an exert is a cost the PLAYER
+	// chooses, so the planner never pays one on its own — not as a last
+	// resort, not at all. Arena of Glory's "{R}, {T}, Exert this land"
+	// and Oasis Ritualist's "{T}, Exert this creature" are paid only
+	// when the player activates the row; the same permanents' plain
+	// "{T}: Add …" rows stay ordinary candidates. The cast gate, the
+	// preview and the enumerator ask this same predicate, so none of
+	// them counts an exert row's mana as mana the seat can auto-pay.
+	if a.ExertCost {
+		return false
+	}
 	// #1183: "Activate each exhaust ability only once", and this
 	// object has. Not a decision the planner is declining — the
 	// activation path would refuse it with ErrAbilityExhausted,
@@ -1420,6 +1454,12 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 		return false
 	}
 	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
+		return false
+	}
+	// ADR 0129 §5: an energy cost is plannable when the player has the
+	// energy for this one source (CR 118.3); the plan's total is bounded
+	// by spendBudget.
+	if EnergyShortfall(g.playerByIDLocked(asker), a.EnergyCost) != nil {
 		return false
 	}
 	if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
@@ -1518,7 +1558,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if !a.OncePerTurn || a.TapCost || a.SacrificeCost {
 		return false
 	}
-	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.ManaCost != "" {
+	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.ManaCost != "" {
 		return false
 	}
 	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
@@ -1592,7 +1632,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
 			continue
 		}
-		if a.LifeCost > 0 || a.Rider != nil {
+		if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.Rider != nil {
 			continue
 		}
 		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
@@ -1741,7 +1781,7 @@ func solveColored(
 	reqIdx int,
 	budget *int,
 	deferred *int,
-	pain *int,
+	pain *spendBudget,
 ) bool {
 	if *budget <= 0 {
 		return false
@@ -1764,7 +1804,7 @@ func solveColored(
 		// #2392: a source whose life cost or rider the plan's
 		// remaining pain budget cannot cover is not one.
 		wasUsed := used[i]
-		if !wasUsed && sources[i].Pain > *pain {
+		if !wasUsed && !pain.covers(sources[i]) {
 			continue
 		}
 		// #2461: every free slot of this source that can pay the
@@ -1778,7 +1818,7 @@ func solveColored(
 			// only on the source's first use.
 			if !wasUsed {
 				used[i] = true
-				*pain -= sources[i].Pain
+				pain.spend(sources[i])
 				*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 			}
 			consumed[i][slotIdx] = true
@@ -1788,7 +1828,7 @@ func solveColored(
 			consumed[i][slotIdx] = false
 			if !wasUsed {
 				used[i] = false
-				*pain += sources[i].Pain
+				pain.refund(sources[i])
 				*plan = (*plan)[:len(*plan)-1]
 			}
 			if *budget <= 0 {
@@ -1894,7 +1934,7 @@ func recruitGeneric(
 	consumed [][]bool,
 	plan *tapPlan,
 	need int,
-	pain *int,
+	pain *spendBudget,
 ) bool {
 	if need <= 0 {
 		return true
@@ -1925,10 +1965,10 @@ func recruitGeneric(
 			continue
 		}
 		// #2392: the plan's pain budget, as in the coloured pass.
-		if sources[i].Pain > *pain {
+		if !pain.covers(sources[i]) {
 			continue
 		}
-		*pain -= sources[i].Pain
+		pain.spend(sources[i])
 		used[i] = true
 		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 		deficit -= len(sources[i].Slots)
@@ -1981,6 +2021,8 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		creature   bool
 		frozen     bool
 		pain       int
+		energy     int
+		costTier   int
 		tier       int // 0 = colorless-only, else how many colours (#2278)
 		slotCnt    int
 	}
@@ -1999,6 +2041,8 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			creature:   s.SacrificesCreature,
 			frozen:     s.Frozen,
 			pain:       s.Pain,
+			energy:     s.Energy,
+			costTier:   s.costTier(),
 			tier:       t,
 			slotCnt:    len(s.Slots),
 		})
@@ -2059,6 +2103,14 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		// comparator — a painland's {C} half is an ordinary candidate
 		// and pays the generic pip; its coloured half never does while
 		// anything painless is left.
+		// ADR 0129 §5: the energy tier before the pain tier, as in the
+		// coloured comparator.
+		if out[a].costTier != out[b].costTier {
+			return out[a].costTier < out[b].costTier
+		}
+		if out[a].energy != out[b].energy {
+			return out[a].energy < out[b].energy
+		}
 		if out[a].pain != out[b].pain {
 			return out[a].pain < out[b].pain
 		}

@@ -218,6 +218,10 @@ export type ActionType =
   // #1530: `{always_ask: boolean}` — the seat's own "always ask me to
   // order my triggers" preference. A setting, not a play: never undoable.
   | "set_trigger_order_preference"
+  // ADR 0127 §3: `{rules: [{key, answer}]}` — the seat's standing
+  // answers to repeated prompts, replacing the list ("always" or
+  // "never"; Ask is no rule). A setting, not a play: never undoable.
+  | "set_auto_answers"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -371,6 +375,10 @@ export interface GameView {
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
   initiative?: string;
+  // The game's day/night designation (CR 731, ADR 0132): "day" or
+  // "night", omitted while the game has neither. Public and the same
+  // for every viewer; the action dock shows it beside the turn line.
+  day_night?: "day" | "night";
   // Per-pair "I owe you" promise tally as "{from}->{to}" string keys
   // → count. Sparse: zero entries are dropped server-side. Added in
   // S10.
@@ -640,6 +648,10 @@ export interface LegalSourceView {
   faces?: number[];
   // Players, planeswalkers and battles this creature may attack.
   attack_targets?: string[];
+  // ADR 0130 §5: the creature may be exerted as it attacks right now
+  // (CR 701.43d) — an attack move with `exert: true` is offered beside
+  // the plain one. Absent otherwise.
+  exert_on_attack?: boolean;
   // Attackers this creature may block, alone or in a group.
   blocks?: string[];
   // #1918: present only when EVERY cast move for the card carries an
@@ -770,6 +782,10 @@ export interface MoveCost {
   // whole hand reads as free. Absent for an empty hand, which pays
   // the cost.
   hand?: number;
+  // ADR 0129 §7: the energy counters the move removes from the seat
+  // (CR 107.14) — "Pay N {E}", or N + X for "Pay X {E}" at the move's
+  // X. Always positive when present, and payable.
+  energy?: number;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
@@ -796,6 +812,13 @@ export type LogKind =
   | "no_blocks"
   | "token"
   | "sacrifice"
+  // ADR 0130 §5: a player exerted a permanent (CR 701.43a). `seat` is
+  // the player, `card_id` the permanent; server-rendered `text`.
+  | "exert"
+  // ADR 0127 §6: the server answered a prompt with its chooser's
+  // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
+  // Server-rendered `text`.
+  | "auto_answer"
   // A player left the game. `cause` says why ("life", "empty_draw",
   // "poison", "commander_damage", "effect", "concede"); `card_id` is
   // the source of an effect loss. One line per departure (ADR 0057).
@@ -894,6 +917,8 @@ export type LogKind =
   // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
   // `card_id` the discovered card, absent when nothing was found.
   | "discover"
+  // ADR 0082 amendment (#2570): a player manifested dread. Carries no card.
+  | "manifest_dread"
   | "saga_chapter"
   | "class_level"
   // ADR 0103: a Room's door was unlocked or locked (CR 709.5c/g);
@@ -940,10 +965,18 @@ export type LogKind =
   // the log says which.
   | "phase_out"
   | "phase_in"
+  // ADR 0132 (#2561): the game became day or night (CR 731.1). `label`
+  // is the new designation. Narrated because the untap-step check
+  // changes it with no spell or ability behind it.
+  | "day_night"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
   | "extra_turn"
+  // #2529 (CR 614.10): a queued extra turn was skipped instead of
+  // beginning (Trouble in Pairs). `seat` is who would have taken it,
+  // `card_id` the card whose effect created it.
+  | "extra_turn_skipped"
   // ADR 0059 Decision 11 (#753): an effect added phases or a step to
   // the current turn (CR 500.8 / 500.9). `seat` is the active player,
   // `card_id` the card whose effect added them, and `label` what was
@@ -962,7 +995,12 @@ export type LogKind =
   // any viewer, its controller included — so `text` reads "a card"
   // and `card_id` is still present for the client to point at the
   // permanent on the board.
-  | "turn_face_down";
+  | "turn_face_down"
+  // #2590, ADR 0082's 2026-10-07 second amendment: a face-down permanent was
+  // turned face up by an EFFECT (CR 708.8). `card_id` is the permanent, public
+  // again by then; `target` is the object that did it. The special action has
+  // no line of this kind (its `special_action` line carries it).
+  | "turn_face_up";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -1048,6 +1086,9 @@ export interface LogEvent {
   // route lets anyone at a preview table spawn) and on one by the
   // admin, who has no seat.
   actor_is_host?: boolean;
+  // ADR 0127 §6: on an `auto_answer` entry, the key of the rule that
+  // answered. Present only on the chooser's own view.
+  auto_answer_key?: string;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
@@ -1056,7 +1097,8 @@ export interface LogEvent {
   sides?: number;
   results?: number[];
   faces?: string[];
-  call?: "heads" | "tails";
+  // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer.
+  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
   // that tied, or the seats the host rolled for.
@@ -1285,6 +1327,14 @@ export interface PendingChoiceView {
     // candidates are battlefield creatures. Its reason is "choose your
     // Ring-bearer".
     | "ring_bearer"
+    // #2525, CR 701.34a: "choose any number of permanents and/or
+    // players with counters on them" — a proliferate. The permanents
+    // are `options`; the seats on offer are `choose_players`, and a
+    // seat is picked by sending its player ID in the same `card_ids`
+    // list. `choose_suggested` is the engine's beneficial pick, which
+    // the modal pre-selects. Floor zero; public (counters are on the
+    // table). Answered with {choice_id, card_ids}.
+    | "proliferate"
     // ADR 0108 §7 (#1904), CR 615.7: a charged prevention shield ("the
     // next 3 damage") that meets several damage events at once, more
     // than it can cover — the protected player divides the charge among
@@ -1320,6 +1370,11 @@ export interface PendingChoiceView {
   count: number;
   source?: string;
   reason?: string;
+  // ADR 0133: the prompt's words name a card in the chooser's hidden
+  // hand (an opening-hand action's question). Only the chooser gets
+  // `source`, the question and the branch labels; everyone else gets the
+  // prompt, its kind and its chooser, with a neutral `reason`.
+  private_text?: boolean;
   options?: CardView[];
   // ADR 0116: for "discard_from_hand", the instance IDs among
   // `options` the chooser may pick ("you choose a nonland card from
@@ -1423,6 +1478,22 @@ export interface PendingChoiceView {
   // "unless" consequence fires. Also carries the life payment ("2
   // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // ADR 0131 §2 (#2531): the "or 2 life" half of a mana "pay_unless".
+  // `phyrexian_symbols` is how many symbols of `pay_cost` the chooser
+  // could pay 2 life each for (a printed {B/P}, or a {B} under K'rrik);
+  // `phyrexian_granted` how many of those are the grant's. The answer
+  // is {apply: true, phyrexian_life: n}. Absent at zero.
+  phyrexian_symbols?: number;
+  phyrexian_granted?: number;
+  // ADR 0127 §2, §8: the key a standing answer to this prompt is filed
+  // under (absent when it can take none), and its display copies — the
+  // card's name and the question — which Settings shows beside the rule.
+  // `asked_by_hand` says why a prompt that has a rule is asked anyway.
+  // All four are on the chooser's own view only.
+  auto_answer_key?: string;
+  auto_answer_card?: string;
+  auto_answer_prompt?: string;
+  asked_by_hand?: AskedByHand;
   // #1311: populated for a "pay_unless" whose payment is a WATERBEND
   // cost ("Ward—Waterbend {4}", The Unagi of Kyoshi Island): the
   // chooser's untapped artifacts and creatures that may each pay {1}
@@ -1438,6 +1509,14 @@ export interface PendingChoiceView {
   // discard's options are the chooser's hand and reach the chooser
   // only. Absent for a mana payment.
   pay_cards?: PayCardsView;
+  // ADR 0129 §3: the energy a "pay_unless" asks for ("you may pay
+  // {E}{E}", "unless you pay {E}"). pay_cost carries the symbols. Paying
+  // 0 {E} is a payment too, so 0 is present. A "Pay" from a seat with
+  // less energy is a decline.
+  pay_energy?: number;
+  // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
+  // {E}". Answered with { amount }: 0, or min..max.
+  pay_amount?: PayAmountView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
@@ -1513,6 +1592,12 @@ export interface PendingChoiceView {
   // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // #2525: kind "proliferate" only. The seats on offer beside
+  // `options` (player IDs), and the engine's suggested answer
+  // (instance IDs and player IDs) for the modal to pre-select. A
+  // default, not a rule: any subset is a legal answer.
+  choose_players?: string[];
+  choose_suggested?: string[];
   // CR 603.2d: when this is a trigger_prompt or pick_target choice,
   // the public permanent that caused the additional trigger. The
   // server omits both fields for ordinary choices.
@@ -1772,6 +1857,13 @@ export interface PlayerView {
   // Present (true) only in the seat's OWN view; the server blanks it for
   // everyone else. Omitempty: absent means off.
   trigger_order_always_ask?: boolean;
+  // ADR 0127 §3: this seat's standing answers, sorted by key. Own view
+  // only; the client reconciles it with gameplay.autoAnswers.
+  auto_answers?: AutoAnswerRuleView[];
+  // ADR 0127 §6 (owner amendment 2026-10-07): the seq of this seat's
+  // automatic answer while it is the top undo entry, so `undo` takes it
+  // back. Own view only; absent once anything else sits on top.
+  undo_auto_answer?: number;
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.
@@ -1808,6 +1900,16 @@ export interface PlayerView {
   // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
   is_agent?: boolean;
   agent_client?: string;
+  // The playmat the seat's signed-in owner chose (ADR 0128): a
+  // same-origin path, /playmats/<uuid>, drawn behind that seat's
+  // battlefield. Public and identical for every viewer. Absent for a
+  // guest, a bot, an agent and a person with none. Use playmatSrc()
+  // (lib/playmat.ts) to turn it into something an <img> can load.
+  playmat_url?: string;
+  // How strongly the owner darkens that playmat under the cards, in
+  // percent, 30 to 90 (ADR 0128 amendment). The same for every viewer.
+  // Absent with no playmat; draw 58 when absent.
+  playmat_wash?: number;
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;
@@ -2055,6 +2157,13 @@ export interface AdditionalCostView {
   // greatest toughness among your creatures, the most X may be.
   blight_x?: boolean;
   blight_x_max?: number;
+  // ADR 0100 amendment 2026-10-07: a branch that reveals a card from your
+  // hand (`reveal`) or, to behold (`behold`), may choose a permanent you
+  // control instead. `reveal_options` lists the cards that could pay it,
+  // hand cards first; the one pick rides cast_spell as `reveal_ids`.
+  reveal?: boolean;
+  behold?: boolean;
+  reveal_options?: LegalTargetsView;
   payable?: boolean;
 }
 
@@ -2170,6 +2279,14 @@ export interface AlternativeCostView {
   // offer a payment the announce gate rejects. Absent for every offer
   // that prints none, which is all of them today.
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // #1686: the engine will refuse THIS offer right now for timing (CR
   // 307.1) even though its zone and payability both check out. Every
   // S22 keyword here answers to the card's own printed timing (or a
@@ -2207,6 +2324,15 @@ export interface DelveView {
 // instance IDs (the chooser's hand for a discard, the permanents of
 // the clause's kind they control for a sacrifice); one payment names
 // exactly `count` of them.
+// ADR 0129 §3: the bounds of a pay_amount prompt. goal is the card's
+// own threshold (the stepper starts there); unit is what one energy buys.
+export interface PayAmountView {
+  min: number;
+  max: number;
+  goal?: number;
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
+}
+
 export interface PayCardsView {
   action: "discard" | "sacrifice";
   count: number;
@@ -2367,6 +2493,13 @@ export interface ActivatedAbilityView {
   // chosen. See targetPrices.ts.
   target_charged_mana_costs?: Record<string, string>;
   life_cost?: number;
+  // ADR 0129 §8: "Pay N {E}" — the energy counters an activation
+  // removes from the activator (CR 107.14). energy_cost_x marks "Pay X
+  // {E}": the announced X is added, and demands_x is set. When the
+  // controller is short, cant_activate carries the server's refusal
+  // ("Not enough energy (have 2, need 3)").
+  energy_cost?: number;
+  energy_cost_x?: boolean;
   sorcery_speed?: boolean;
   // #1208: true when the engine will refuse this activation RIGHT NOW
   // for timing (CR 602.5d, CR 606.3), as modified by any per-player
@@ -2473,6 +2606,14 @@ export interface ActivatedAbilityView {
   // over, advisory for the same reason and sending nothing for the
   // same reason: the source IS the payment.
   exile_self?: boolean;
+  // #2028: "Return this enchantment to its owner's hand" (Gossamer
+  // Chains, Shigeki). Advisory like `exile_self`: the source is the
+  // payment, so nothing is picked and nothing is sent.
+  return_self?: boolean;
+  // ADR 0130 §4: "Exert this creature" — the source won't untap during
+  // the activator's next untap step. Always payable, so it never greys
+  // the row, and nothing is sent.
+  exert?: boolean;
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
@@ -2481,6 +2622,18 @@ export interface ActivatedAbilityView {
   // `discard_cost_options` and nothing is sent, so the client confirms
   // the cost instead of opening the picker.
   discard_cost_random?: boolean;
+  // #2527: "Discard X cards" (Gix, Yawgmoth Praetor). The count is the
+  // activation's X, so `discard_cost_n` is absent: the client always
+  // opens the picker (zero up to every card in `discard_cost_options`),
+  // sends the picks as `discard_ids` and their number as `x_value`, and
+  // skips the X stepper. `demands_x` is set beside it.
+  discard_cost_count_from_x?: boolean;
+  // #2190: "Discard a card with mana value X" (Kozilek, the Great
+  // Distortion). `discard_cost_n` is 1 and `demands_x` is set, but X is
+  // not asked for: the card picked IS the announcement, so the client
+  // sends its mana value as `x_value` (the engine refuses any other) and
+  // narrows the ability's target clause by it (`mana_value_equals_x`).
+  discard_cost_mana_value_x?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride
@@ -2579,6 +2732,14 @@ export interface ActivatedAbilityView {
   // menu knows to open the stepper at all. A COUNT rather than
   // something the client derives, for the reason demands_x is one.
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
@@ -2602,6 +2763,13 @@ export interface ActivatedAbilityView {
   // live for the viewer right now is still the digest's answer
   // (`legal_actions`), never the row's. Absent on every other row.
   any_player?: boolean;
+  // ADR 0106 §1 amendment 2026-10-07 (#1947): "Only your opponents may
+  // activate this ability" (Clergy of the Holy Nimbus) and "Only this
+  // creature's owner may activate this ability" (Personal Incarnation).
+  // Read with the card's `controller` and `owner` to say who the row is
+  // open to; the controller's own opponents-only row is greyed.
+  opponents_only?: boolean;
+  owner_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
@@ -2622,8 +2790,17 @@ export interface PurposeView {
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
+  // ADR 0129 §7: energy counters it gives its controller.
+  energy?: number;
   sweep?: SweepView;
   death_payoff?: boolean;
+  // ADR 0130 (amendment of 2026-10-07): what an exert row does.
+  pump?: { power?: number; toughness?: number; keywords?: string[] };
+  extra_combat?: number;
+  prevent_combat_damage_to_self?: boolean;
+  damage_to_creature?: number;
+  damage_each_opponent?: number;
+  life_gain?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.
@@ -2671,7 +2848,18 @@ export interface ModeOptionView {
 
 // LegalTargetsView is a clause's legal set right now plus its
 // target count (S20 sub-PR 5): min..max picks, max 0 = unbounded.
+// #2526: one part of a sacrifice clause's set rule ("a Swamp") and the
+// candidates that could fill it. A candidate that fits two parts (a
+// Swamp Forest) is listed in both.
+export interface SacrificeGroupView {
+  label: string;
+  cards?: string[];
+}
+
 export interface LegalTargetsView {
+  // #2526: a SACRIFICE clause's set rule — the picks must fill every
+  // group with a different permanent. See sacrificeCost.ts.
+  each_of?: SacrificeGroupView[];
   players?: string[];
   cards?: string[];
   min?: number;
@@ -2872,6 +3060,14 @@ export interface CastSurfaceView {
   // cards and absent everywhere else, so its presence IS the question
   // "is there a life half to offer here".
   phyrexian_symbols?: number;
+  // ADR 0131 (#2531): how many of `phyrexian_symbols` are payable with
+  // life only because the viewer controls a permanent that grants it —
+  // K'rrik's "for each {B} in a cost, you may pay 2 life rather than pay
+  // that mana" — rather than because the cost prints a Phyrexian symbol.
+  // Absent for every viewer without such a permanent. When every symbol
+  // is granted the cast asks about life only if mana falls short, and
+  // the card's menu keeps a "Pay life for {B}…" row.
+  phyrexian_granted?: number;
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its
@@ -3467,6 +3663,9 @@ export interface AbilityRowView {
   label: string;
   // ADR 0126 §6: the row's declared purpose (death_payoff). Bot data.
   purpose?: PurposeView;
+  // ADR 0130 (amendment of 2026-10-07): "linked" on exert's "when you
+  // do" trigger, "payoff" on "Whenever you exert a creature". Bot data.
+  exert?: "linked" | "payoff";
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may
@@ -3517,6 +3716,12 @@ export interface ProtectionView {
 export interface ManaAbilityView {
   index: number;
   label?: string;
+  // ADR 0131 §2 (#2531): ActivatedAbilityView's pair for this mana
+  // ability's own mana component — how many symbols the viewer could pay
+  // 2 life each for, and how many of them are a grant's. The answer
+  // rides activate_mana_ability as `phyrexian_life`. Absent at zero.
+  phyrexian_symbols?: number;
+  phyrexian_granted?: number;
   // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
   // "land:<colour>", "grant:<bundle>:<i>:<n>"), sent back as
   // activate_mana_ability's `ref`. See ActivatedAbilityView.ref.
@@ -3581,6 +3786,13 @@ export interface ManaAbilityView {
   // damage to you", the painlands / Ancient Tomb) is NOT a cost and
   // never appears here — it is spelled out in `label` instead.
   life_cost?: number;
+  // ADR 0129 §5: a "Pay N {E}" component — Aether Hub's "{T}, Pay
+  // {E}:". When the controller is short, cant_activate says so.
+  energy_cost?: number;
+  // ADR 0130 §4: "Exert this land" / "Exert this creature" (Arena of
+  // Glory, Oasis Ritualist). The auto-tapper never pays such a row; the
+  // player activates it from this menu.
+  exert?: boolean;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with
@@ -3786,4 +3998,13 @@ export interface TableSettingsView {
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).
   allow_spawn: boolean;
+}
+
+// ADR 0127: why a prompt with a standing answer is asked by hand.
+export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
+
+// ADR 0127 §3: one of a seat's standing answers, as the server holds it.
+export interface AutoAnswerRuleView {
+  key: string;
+  answer: "always" | "never";
 }

@@ -117,6 +117,6 @@ func scarabGodZombieException(t *game.Card) {
 	t.Power = 4
 	t.Toughness = 4
 	t.VariableToughness = false
-	t.Colors = []string{"B"}
+	t.SetCopyExceptionColors("B")
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
 }

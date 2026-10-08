@@ -221,11 +221,21 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// the rest of the card's sentence) waits on it: it blocks for
 	// option_pick's reason.
 	PendingChoiceRingBearer: true,
+	// #2525, CR 701.34a. "Choose any number of permanents and/or
+	// players" is asked mid-resolution and the counters are the rest of
+	// the card: it blocks for ring_bearer's reason, a table that could
+	// walk past the question would be answering it by doing.
+	PendingChoiceProliferate: true,
 	// ADR 0108 §7, CR 615.7. "Divide this shield among the damage" holds
 	// an instance's damage events, which are dealt once it is answered:
 	// a table that could walk past the question would be dealing the
 	// damage by doing.
 	PendingChoiceDivideShield: true,
+	// ADR 0129 §3, CR 118.12. "You may pay any amount of {E}" is a cost
+	// paid as the spell resolves, and the rest of the card (Harnessed
+	// Lightning's damage) is the amount paid: it blocks for option_pick's
+	// reason.
+	PendingChoicePayAmount: true,
 	// #804, CR 732. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the

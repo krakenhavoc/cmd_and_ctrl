@@ -6,7 +6,7 @@
   // time, and links the existing revoke (POST /admin/users/{id}/
   // revoke-sessions) behind a confirmation that names the person.
   import { onMount } from "svelte";
-  import { fetchAdminAccount, revokeUserSessions } from "../../api";
+  import { fetchAdminAccount, removeUserPlaymat, revokeUserSessions } from "../../api";
   import {
     accountsHash,
     avatarSrc,
@@ -14,11 +14,13 @@
     gameHash,
     gamesHash,
     outcomeLine,
+    playmatRemoveConfirm,
     revokeConfirm,
     seatNumber,
     stateLabel,
     type AdminAccountResponse,
   } from "../../adminViews";
+  import { playmatSrc } from "../../playmat";
   import { LobbyApiError, session } from "../../session";
   import Icon from "../Icon.svelte";
   import RelTime from "./RelTime.svelte";
@@ -35,6 +37,9 @@
   let confirming = $state(false);
   let busy = $state(false);
   let done = $state("");
+  // The slot waiting on its Remove confirmation (ADR 0128 §11), or null.
+  let confirmingMat = $state<number | null>(null);
+  let matDone = $state("");
 
   async function load(): Promise<void> {
     loading = true;
@@ -83,7 +88,29 @@
     }
   }
 
+  async function removeMat(slot: number): Promise<void> {
+    if (!d) return;
+    busy = true;
+    error = "";
+    matDone = "";
+    try {
+      await removeUserPlaymat(d.account.id, slot);
+      confirmingMat = null;
+      matDone = `Playmat ${slot} removed.`;
+      await load();
+    } catch (err) {
+      if (err instanceof LobbyApiError && err.status === 403) {
+        onforbidden();
+        return;
+      }
+      error = err instanceof LobbyApiError ? `remove failed: ${err.message}` : "remove failed";
+    } finally {
+      busy = false;
+    }
+  }
+
   const now = $derived(d?.generated_at ?? Date.now());
+  const mats = $derived(d?.playmats ?? []);
   const avatar = $derived(d ? avatarSrc(d.account.avatar_url, $session?.token) : null);
 </script>
 
@@ -166,6 +193,61 @@
       {/if}
       {#if done}
         <p class="notice ok" role="status">{done}</p>
+      {/if}
+    </div>
+
+    <div class="card">
+      <h3>Playmats · {mats.length}</h3>
+      {#if mats.length > 0}
+        <ul class="mats">
+          {#each mats as m (m.slot)}
+            {@const src = playmatSrc(m.url)}
+            <li>
+              {#if src}
+                <img class="mat" {src} alt="{a.name}'s playmat {m.slot}" loading="lazy" />
+              {/if}
+              <span class="rname">
+                Playmat {m.slot}{#if m.active}
+                  <span class="chip live">on show</span>{/if}
+              </span>
+              <button
+                type="button"
+                class="ghost"
+                disabled={busy}
+                aria-label="Remove playmat {m.slot}"
+                onclick={() => (confirmingMat = m.slot)}
+              >
+                Remove playmat
+              </button>
+              {#if confirmingMat === m.slot}
+                <div class="confirm" role="alert">
+                  <p>{playmatRemoveConfirm(a.name, m.slot)}</p>
+                  <div class="confirm-actions">
+                    <button
+                      type="button"
+                      class="primary"
+                      disabled={busy}
+                      onclick={() => removeMat(m.slot)}
+                    >
+                      remove their playmat
+                    </button>
+                    <button
+                      type="button"
+                      class="ghost"
+                      disabled={busy}
+                      onclick={() => (confirmingMat = null)}>cancel</button
+                    >
+                  </div>
+                </div>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="none">No playmat.</p>
+      {/if}
+      {#if matDone}
+        <p class="notice ok" role="status">{matDone}</p>
       {/if}
     </div>
 
@@ -302,6 +384,29 @@
     height: 36px;
     border-radius: 50%;
     background: var(--surface-raised);
+  }
+  .mat {
+    display: block;
+    max-width: 160px;
+    max-height: 100px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+  }
+  .mats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .mats li {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    max-width: 200px;
   }
   .actions {
     display: flex;

@@ -30,6 +30,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -206,6 +207,15 @@ type Config struct {
 	// answer 403 before they reach it.
 	UserSettings usersettings.Store
 
+	// Playmats is a signed-in person's saved playmats, up to three
+	// (ADR 0128, migrations 0011, 0012 and 0013), behind /me/playmats
+	// and GET /playmats/{id}. Nil, or a service with no data directory
+	// or no database, reports the feature disabled: GET /me/playmats
+	// says so and a write is a 503. With no database no principal
+	// carries a UserID, so every /me/playmats route answers 403 before
+	// it gets here.
+	Playmats *playmat.Service
+
 	// TableSetups is each person's last table setup (ADR 0110 section
 	// 5, migration 0008's table_setups): written when a table starts
 	// (startGame), read by GET /me/setup, applied by POST
@@ -307,6 +317,14 @@ type GameEvictor interface {
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
+//	GET  /me/playmats       — signed in: the caller's saved playmats (ADR 0128 §11), up to three, which is active, and the wash
+//	PUT  /me/playmats/{slot}        — signed in: upload one into a slot (multipart, part "file")
+//	POST /me/playmats/{slot}/link   — signed in: fetch one from an https URL, once, and store it
+//	POST /me/playmats/{slot}/fit    — signed in: crop it to the best size, {"x","y"} the crop origin
+//	DELETE /me/playmats/{slot}      — signed in: remove one
+//	PUT  /me/playmats/active        — signed in: which slot the table shows, {"slot": n | null}
+//	PATCH /me/playmats      — signed in: set the wash, {"wash": 30..90}
+//	GET  /playmats/{id}     — any session: a stored playmat image
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	GET  /me/setup          — signed in: the caller's last table setup
 //	GET  /me/last-deck      — signed in: the deck the caller last seated
@@ -604,6 +622,31 @@ func Handler(c Config) http.Handler {
 	settingsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// Playmats (ADR 0128, §11: three slots). The writes that decode an
+	// image (upload, link, fit) are rate-limited per person (a burst of
+	// 5, then one per 6 s) inside auth, and per IP outside it, so a
+	// table behind one proxy address cannot spend each other's
+	// allowance. The link route also makes an outbound request, which
+	// is why it is not looser than upload. Remove shares the per-person
+	// bucket. The read and the image route ride the avatar bucket.
+	playmatWrite := newLimiter(1.0/6, 5)
+	playmatIP := newLimiter(1, 10)
+	// Activating a slot and the owner-set wash (ADR 0128 §10) are a
+	// pointer and a number, not an image: the settings bucket's rate.
+	playmatCheap := newLimiter(1, 5)
+	mux.Handle("GET /me/playmats", auth.Middleware(c.Auth)(handlerFunc(c, myPlaymats)))
+	mux.Handle("PUT /me/playmats/{slot}", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, putMyPlaymat)))))
+	mux.Handle("POST /me/playmats/{slot}/link", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, linkMyPlaymat)))))
+	mux.Handle("POST /me/playmats/{slot}/fit", playmatIP.Middleware(auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, fitMyPlaymat)))))
+	mux.Handle("DELETE /me/playmats/{slot}", auth.Middleware(c.Auth)(perCallerLimit(playmatWrite, handlerFunc(c, deleteMyPlaymat))))
+	// "active" is a literal, so it wins over PUT /me/playmats/{slot}.
+	mux.Handle("PUT /me/playmats/active", auth.Middleware(c.Auth)(perCallerLimit(playmatCheap, handlerFunc(c, activateMyPlaymat))))
+	mux.Handle("PATCH /me/playmats", auth.Middleware(c.Auth)(perCallerLimit(playmatCheap, handlerFunc(c, patchMyPlaymats))))
+	// NOTE: /playmats is a new top-level prefix; it is in
+	// deploy/Caddyfile's @api matcher, client/vite.config.ts and the
+	// service worker's API_PATH, all of which have to agree or this
+	// 404s only in production.
+	mux.Handle("GET /playmats/{id}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, servePlaymat))))
 	// The last setup and the last deck (ADR 0110 section 5). Same
 	// caller rule as the rest of /me/*: a signed-in person, else 403.
 	// Applying a setup seats bot decks, so it rides the deck bucket,
@@ -697,6 +740,9 @@ func Handler(c Config) http.Handler {
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
 	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
+	// Moderation for a playmat on a shared table (ADR 0128 section 9).
+	mux.Handle("DELETE /admin/users/{id}/playmat", requireAdmin(c, handlerFunc(c, adminRemovePlaymat)))
+	mux.Handle("DELETE /admin/users/{id}/playmats/{slot}", requireAdmin(c, handlerFunc(c, adminRemovePlaymatSlot)))
 	// The admin views (ADR 0124 §2, admin_views.go): read-only, behind
 	// requireAdmin like every admin route, so the same-answer census
 	// finds each pattern. No rate limit of their own: only admins reach
@@ -2277,6 +2323,9 @@ func writeAutoTapPreview(
 		// mana (a painland's coloured half, Ancient Tomb).
 		Life   int `json:"life,omitempty"`
 		Damage int `json:"damage,omitempty"`
+		// ADR 0129 §5: energy the payment pays as part of the cost
+		// (Aether Hub's "Pay {E}"), listed before the player confirms.
+		Energy int `json:"energy,omitempty"`
 	}
 	type response struct {
 		OK      bool     `json:"ok"`
@@ -2305,6 +2354,7 @@ func writeAutoTapPreview(
 				OncePerTurn: e.OncePerTurn,
 				Life:        e.Life,
 				Damage:      e.Damage,
+				Energy:      e.Energy,
 			}
 		}
 	} else {

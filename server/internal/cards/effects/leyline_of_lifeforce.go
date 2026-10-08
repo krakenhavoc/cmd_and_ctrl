@@ -11,19 +11,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The second line is ADR 0106 §4's battlefield static (#1806), in its
 // "any player" form, as Gaea's Herald prints it.
 //
-// ONE SIMPLIFICATION, the one every Leyline in the catalog carries
-// (leyline_of_sanctity.go): there is no pre-game window in which a card
-// in an opening hand can be put onto the battlefield, so the Leyline is
-// cast for its four mana like any other enchantment. Strictly weaker
-// than printed.
+// The opening-hand clause (CR 103.6a) is Spec.OpeningHand (ADR 0133):
+// the seat holding it is asked as the mulligan window closes.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "997478aa-b790-4269-a626-abf0cb30fea0",
 		Name:         "Leyline of Lifeforce",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Starting the game with this on the battlefield from your opening hand isn't implemented — you cast it for {2}{G}{G} like an ordinary enchantment.",
-		},
+		Completeness: CompletenessFull,
+		OpeningHand:  BeginTheGameOnTheBattlefield(),
 		SpellsCantBeCountered: []game.CounterShieldStatic{
 			AnyPlayersSpellsCantBeCountered("Creature spells can't be countered.", Creature()),
 		},

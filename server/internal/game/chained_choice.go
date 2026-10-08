@@ -135,7 +135,7 @@ func isCardSetPickKind(kind PendingChoiceKind) bool {
 	switch kind {
 	case PendingChoiceChooseCards, PendingChoiceUntapChoice, PendingChoiceEntryRevealFromHand,
 		PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice, PendingChoiceChooseSource,
-		PendingChoiceRingBearer:
+		PendingChoiceRingBearer, PendingChoiceProliferate:
 		return true
 	}
 	return isResolutionPickKind(kind)
@@ -413,31 +413,42 @@ func (g *Game) ResolveConfirm(choiceID, chooserID uuid.UUID, accept bool) error 
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	g.answerConfirmLocked(idx, choice, chooserID, accept, false)
+	return nil
+}
+
+// answerConfirmLocked is ResolveConfirm's body, shared with the
+// automatic answer (ADR 0127 §4): `auto` takes the prompt out of the
+// queue without counting it as a player decision. The branch runs as the
+// answered prompt's branch, so a prompt it queues is keyed from this
+// one's (§2). Caller must hold g.mu.
+func (g *Game) answerConfirmLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, accept, auto bool) {
 	frame := choice.confirmResume
 	source := choice.Source
-	g.dequeueChoiceLocked(idx)
+	g.answerChoiceLocked(idx, auto)
 	if frame == nil {
 		// Nothing to run. The prompt is gone either way rather than
 		// stuck: a confirm with no frame is a bug in whoever queued
 		// it, and refusing the answer would wedge the seat.
-		return nil
+		return
 	}
 	branch := frame.onDecline
 	if accept {
 		branch = frame.onAccept
 	}
 	if branch != nil {
-		if err := branch(g); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    chooserID,
-				Source:   source,
-				ErrorMsg: err.Error(),
-			})
-		}
+		g.runPromptBranchLocked(choice.AutoAnswerKey, func() {
+			if err := branch(g); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    chooserID,
+					Source:   source,
+					ErrorMsg: err.Error(),
+				})
+			}
+		})
 	}
 	g.runStateChecksLocked()
-	return nil
 }
 
 // ResolveChooseCards answers a PendingChoiceChooseCards: `picks` are
@@ -527,6 +538,10 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 	}
 	candidates := make(map[uuid.UUID]bool, len(choice.ChooseCards))
 	for _, id := range choice.ChooseCards {
+		candidates[id] = true
+	}
+	// A proliferate names seats as well as permanents (CR 701.34a).
+	for _, id := range choice.ChoosePlayers {
 		candidates[id] = true
 	}
 	frame := choice.chooseCardsResume

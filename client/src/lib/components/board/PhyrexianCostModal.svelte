@@ -47,6 +47,14 @@
     // How many Phyrexian symbols the cost being paid prints — the
     // server's `phyrexian_symbols`.
     symbols: number;
+    // ADR 0131: how many of `symbols` are payable with life only because
+    // a permanent grants it (K'rrik's {B}), not because they print a
+    // Phyrexian symbol. The hint words them differently.
+    granted?: number;
+    // ADR 0131: open at the smallest count that makes the mana half
+    // payable. Set when the prompt opened because mana fell short, so the
+    // player starts on a payable announcement instead of a red one.
+    suggest?: boolean;
     // The announcer's life total, for the CR 119.4 cap.
     life: number;
     // The announced X, so the preview prices the same cost the
@@ -70,6 +78,8 @@
     gameID,
     card,
     symbols,
+    granted = 0,
+    suggest = false,
     life,
     xValue = undefined,
     abilityIndex = undefined,
@@ -89,6 +99,10 @@
   let n = $state(0);
   let preview = $state<AutoTapPreview | null>(null);
   let loading = $state(false);
+  // ADR 0131: still stepping up to the smallest payable count. Ends the
+  // first time the preview says the mana half is affordable, or at the
+  // ceiling, and never starts again for the same prompt.
+  let suggesting = $state(false);
 
   // Reset when a different card — or a different ability on the same
   // card — opens the prompt. Default 0: paying the coloured half is
@@ -100,6 +114,7 @@
       lastKey = key;
       n = 0;
       preview = null;
+      suggesting = suggest;
     }
   });
 
@@ -130,7 +145,12 @@
       cast,
     })
       .then((p) => {
-        if (reqID === fetchSeq) preview = p;
+        if (reqID !== fetchSeq) return;
+        preview = p;
+        if (suggesting) {
+          if (p.ok || claim >= max) suggesting = false;
+          else n = claim + 1;
+        }
       })
       .catch(() => {
         if (reqID === fetchSeq) preview = null;
@@ -180,11 +200,19 @@
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">
-      {symbols === 1
-        ? "This cost prints one Phyrexian symbol"
-        : `This cost prints ${symbols} Phyrexian symbols`}
-      — each can be paid with its colour of mana, or with {PhyrexianLifePerSymbol} life. You have {life}
-      life, so you can buy at most {max}.
+      {#if granted >= symbols}
+        {symbols === 1
+          ? "One {B} in this cost can be paid with life"
+          : `${symbols} {B} symbols in this cost can be paid with life`}
+        — each can be paid with its mana, or with {PhyrexianLifePerSymbol} life. You have {life}
+        life, so you can buy at most {max}.
+      {:else}
+        {symbols === 1
+          ? "This cost prints one Phyrexian symbol"
+          : `This cost prints ${symbols} Phyrexian symbols`}
+        — each can be paid with its colour of mana, or with {PhyrexianLifePerSymbol} life. You have {life}
+        life, so you can buy at most {max}.
+      {/if}
     </p>
     <div class="pay-row">
       <span class="pay-label">Pay with life</span>

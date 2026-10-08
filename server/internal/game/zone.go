@@ -218,6 +218,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleX = 0
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
+		c.ExertOnAttack = false
 		c.clearBlocking()
 		c.Goads = nil
 		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch
@@ -254,6 +255,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// bounced Cavern of Souls names a tribe again when it is
 		// replayed, and a Cavern in a graveyard names none.
 		c.NamedTribe = ""
+		// #2322 / CR 400.7: a colour exception's dropped devoid belongs to
+		// the copy object, not the card; a new object has its own text.
+		c.ColorCDADropped = false
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
@@ -397,6 +401,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// exile. Any move ends that object, and a card that comes back to
 	// exile by some other route was not exiled by the hideaway.
 	c.HiddenBy = PermissionCardRef{}
+	// CR 607.2a / 400.7 (#2530): the "exiled with" link names the card
+	// as it sat in exile, and any move ends that object.
+	c.ExiledWith = PermissionCardRef{}
 	// CR 712.8a: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written

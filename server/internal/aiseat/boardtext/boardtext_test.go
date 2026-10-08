@@ -40,6 +40,42 @@ func TestRenderBotFlavourIsTerse(t *testing.T) {
 	}
 }
 
+// ADR 0129 §7: each seat's non-zero player counters follow its pool, in
+// name order, so a model seat sees the energy it can pay.
+func TestRenderPrintsPlayerCounters(t *testing.T) {
+	v := view()
+	v.Seats[0].ManaPool = []string{"{G}"}
+	v.Seats[0].Counters = map[string]int{"poison": 2, "energy": 4, "rad": 0}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if want := "Ann (YOU) — 40 life, 1 cards in hand, 0 in library, mana pool {G}, 4 energy, 2 poison\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+	if !strings.Contains(got, "Bo — 38 life, 0 cards in hand, 0 in library\n") {
+		t.Errorf("a seat with no counters grew a counters phrase:\n%s", got)
+	}
+}
+
+// ADR 0129 §3: an energy payment the seat owes says how much, and a
+// pay_amount prompt its bounds, the card's threshold and the unit.
+func TestRenderEnergyPrompts(t *testing.T) {
+	v := view()
+	two := 2
+	v.PendingChoices = []protocol.PendingChoiceView{
+		{ID: "p1", Kind: "pay_unless", Chooser: "a", Reason: "Thriving Rhino — pay {E}{E}?", Count: 1, PayEnergy: &two},
+		{ID: "p2", Kind: "pay_amount", Chooser: "a", Reason: "Harnessed Lightning", Count: 1,
+			PayAmount: &protocol.PayAmountView{Min: 0, Max: 5, Goal: 3, Unit: "damage"}},
+	}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	for _, want := range []string{
+		"YOU OWE A CHOICE: pay_unless — Thriving Rhino — pay {E}{E}? (pay 2 energy) (choose 1)\n",
+		"YOU OWE A CHOICE: pay_amount — Harnessed Lightning (pay nothing, or 1 to 5 energy; 3 reaches the card's threshold; one energy is one point of damage)\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+}
+
 func TestRenderNoteUnimplementedForTheAgent(t *testing.T) {
 	got := boardtext.Render(view(), "a", boardtext.Options{NoteUnimplemented: true})
 	for _, want := range []string{

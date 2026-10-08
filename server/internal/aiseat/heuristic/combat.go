@@ -232,6 +232,15 @@ func (st *state) losses(atk *protocol.CardView, blockers []*protocol.CardView) [
 
 // --- attacks -------------------------------------------------------
 
+// plainAttack reports whether m is an attack move the heuristic plans
+// with: an attack declaration that doesn't exert. The twin move that
+// exerts the attacker (ADR 0130 §6) is priced against it separately,
+// under Config.PriceExert (exert.go), so every plan still counts each
+// attacker once.
+func plainAttack(m legal.Move) bool {
+	return m.Kind == legal.KindAttack && !decode[attackParams](m.Params).Exert
+}
+
 // decideAttack picks one attacker to declare, or reports that the bot
 // is done attacking this turn.
 func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, bool) {
@@ -244,7 +253,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 	seen := map[string]bool{}
 	var available []*protocol.CardView
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		id := decode[attackParams](moves[i].Params).Attacker
@@ -284,19 +293,19 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 	// its crack-back check counted on exactly that reserve (race.go).
 	if len(push) == 0 {
 		if plan := p.planRace(st, moves, focus); plan != nil {
-			return p.raceAttack(moves, plan)
+			return p.raceAttack(st, moves, plan)
 		}
 		// #1548: no race inside two turns, but maybe one after a few
 		// even trades that keep the edge (attrition.go). The plan is
 		// sent exactly as a race is, reserve and all.
 		if plan := p.planAttrition(st, moves, focus); plan != nil {
-			return p.raceAttack(moves, plan)
+			return p.raceAttack(st, moves, plan)
 		}
 	}
 
 	best, bestVal, bestReason := -1, 0.0, ""
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		ap := decode[attackParams](moves[i].Params)
@@ -333,6 +342,30 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		}
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
+		}
+		// ADR 0130 §9: the twin that exerts this attacker, taken when
+		// the exert's gain is worth more than its cost (exert.go).
+		if !p.cfg.PriceExert {
+			continue
+		}
+		twin := exertTwin(moves, ap)
+		if twin < 0 {
+			continue
+		}
+		ev, ereason := p.exertTwinValue(st, atk, def, declared, declaredPower, push[ap.Target], focus)
+		if tax := attackTaxValue(moves[twin]); tax > 0 {
+			ev -= float64(tax) * p.cfg.AttackTaxPenalty
+		}
+		if push[ap.Target] {
+			ev += p.cfg.LethalBonus
+			ereason = "all-in for the kill, exerted"
+		}
+		if ap.Target == focus {
+			ev += p.cfg.FocusBonus
+			ereason += " (focus)"
+		}
+		if ev > bestVal {
+			best, bestVal, bestReason = twin, ev, ereason
 		}
 	}
 	if best >= 0 && bestVal > p.cfg.PassThreshold {

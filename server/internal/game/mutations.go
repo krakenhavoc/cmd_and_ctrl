@@ -365,6 +365,13 @@ type CastSpellParams struct {
 	TeamworkIDs []uuid.UUID
 	BlightIDs   []uuid.UUID
 
+	// RevealIDs names the ONE card an announced reveal / behold cost
+	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
+	// in the caster's hand, or — to behold — a matching permanent they
+	// control. Refused rather than ignored when the announcement pays no
+	// such cost.
+	RevealIDs []uuid.UUID
+
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
 	// declared game.AlternativeCost entries, "overload" / "evoke" /
@@ -1163,6 +1170,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad reveal payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"reveal_received", len(params.RevealIDs),
+			"err", err,
+		)
+		return err
+	}
 	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
 	// here with the other announce-time choices and paid further
 	// down once the spell is on the stack, same validate-all-then-pay
@@ -1646,6 +1662,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0100 amendment 2026-10-07: a revealed card is shown with the
+	// spell on the stack, so the table sees the Elf the Vanquisher paid
+	// with. Nothing moves.
+	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
 	if splitSecond {
 		g.SplitSecondActive = true
 	}
@@ -2269,6 +2289,13 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 			if err := g.PayLifeForEffect(cardID, p.ID, ab.LifeCost); err != nil {
 				continue
 			}
+		}
+		// ADR 0129 §5: the energy tier's payment (Aether Hub), after the
+		// life. The planner held the plan to the controller's energy
+		// (autoTapBudget), so this refuses only if something spent it
+		// since; the source is then tapped and mints nothing.
+		if err := g.payEnergyLocked(p.ID, ab.EnergyCost, cardID); err != nil {
+			continue
 		}
 		// #1215: the sacrifice, AFTER the tap and BEFORE the mana —
 		// the component order ActivateManaAbility pays in, and for
@@ -2923,6 +2950,13 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// needs red creatures for its {R}{R}, exactly as the player static
 	// (costAsPaidByLocked) is read after the taps.
 	cost = spendAsThoughAny(grant, cost)
+	// #2556: the spell's own "Spend only black mana on X" — resolved
+	// against THIS card and stamped last, as the ability pricer stamps
+	// an ability's (cost_modifier.go), so every copy of the cost made
+	// from here on (the modifiers, the taps, the enumerator's repricing
+	// of Base) carries it to costAsPaidByLocked, which folds it for the
+	// announced X. String() ignores it: the price shown stays printed.
+	cost.SpendOnly = SpellSpendOnlyFor(CatalogKey(card)).ResolveFor(card)
 	return cost, chosen, nil
 }
 
@@ -4276,58 +4310,70 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		if g.zoneChangePausedLocked(c.InstanceID) {
 			continue
 		}
+		// The rules below are independent: a permanent is checked against
+		// EVERY one its current types call for, and is doomed if any
+		// applies (CR 704.3). A planeswalker that is also a creature (a
+		// Gideon until end of turn) answers to the creature rules and to
+		// 704.5i, so no arm may `continue` past the others. It is
+		// DESTROYED only if every rule that doomed it destroys; one
+		// "put into a graveyard" rule (704.5f, 704.5i, 704.5v/w) is
+		// something indestructible and a regeneration shield do nothing
+		// about, whatever else applies (ADR 0032 amendment of 2026-10-07).
+		var (
+			doom        bool
+			destruction = true
+		)
 		if c.IsCreature() {
 			// Whether the toughness is KNOWN is judged as if this
 			// check's CR 704.5q cancel had already happened: a `*`
 			// placeholder whose counters cancel to nothing is as
 			// unknown as one that never had any (the cancel itself
-			// runs after the sweep, below).
-			if !afterPlusMinusCancel(c).ToughnessIsKnown() {
-				continue
+			// runs after the sweep, below). Only the CREATURE rules
+			// are skipped for it: an object with no toughness has no
+			// lethal-damage threshold, but its loyalty is still read.
+			if afterPlusMinusCancel(c).ToughnessIsKnown() {
+				curT := c.CurrentToughness()
+				// CR 704.5f — toughness 0 or less PUTS the creature into
+				// its owner's graveyard; it does not destroy it, so
+				// indestructible deliberately does not save it here. A
+				// 2/2 with indestructible under two -1/-1 counters dies.
+				if curT <= 0 {
+					doom, destruction = true, false
+				} else {
+					// S25 (#77): the two damage-driven creature SBAs
+					// below are both DESTRUCTION (CR 704.5g, CR 704.5h),
+					// so indestructible switches both off (CR 702.12b).
+					// The damage stays marked either way — see
+					// indestructible.go.
+					indestructible := IsIndestructible(&c)
+					if c.DamageMarked >= curT && !indestructible {
+						doom = true
+					}
+					// S18 sub-PR 3: CR 702.2c — a creature hit by any
+					// nonzero damage from a deathtouch source is
+					// destroyed at the next SBA regardless of
+					// toughness. The flag is consumed by the pass that
+					// reads it (consumeDeathtouchMarksLocked, #2319):
+					// CR 704.5h only counts damage dealt since the last
+					// check, so a creature that was indestructible for
+					// that check is not destroyed by the mark at a later
+					// one.
+					if c.MarkedLethalByDeathtouch && !indestructible {
+						doom = true
+					}
+				}
 			}
-			curT := c.CurrentToughness()
-			// CR 704.5f — toughness 0 or less PUTS the creature into
-			// its owner's graveyard; it does not destroy it, so
-			// indestructible deliberately does not save it here. A
-			// 2/2 with indestructible under two -1/-1 counters dies.
-			if curT <= 0 {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
-				continue
-			}
-			// S25 (#77): the two damage-driven creature SBAs below
-			// are both DESTRUCTION (CR 704.5g, CR 704.5h), so
-			// indestructible switches both off (CR 702.12b). The
-			// damage stays marked either way — see indestructible.go.
-			indestructible := IsIndestructible(&c)
-			if c.DamageMarked >= curT && !indestructible {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
-				continue
-			}
-			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
-			// damage from a deathtouch source is destroyed at the
-			// next SBA regardless of toughness. The flag is consumed by
-			// the pass that reads it (consumeDeathtouchMarksLocked, #2319):
-			// CR 704.5h only counts damage dealt since the last check, so a
-			// creature that was indestructible for that check is not
-			// destroyed by the mark at a later one.
-			if c.MarkedLethalByDeathtouch && !indestructible {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
-			}
-			continue
 		}
 		// 704.5i — planeswalker with 0 loyalty counters.
-		if c.IsPlaneswalker() {
-			if c.Counters == nil || c.Counters[CounterLoyalty] <= 0 {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
-			}
-			continue
+		if c.IsPlaneswalker() && (c.Counters == nil || c.Counters[CounterLoyalty] <= 0) {
+			doom, destruction = true, false
 		}
 		// 704.5v/w — battle with 0 defense counters.
-		if c.IsBattle() {
-			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
-				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
-			}
-			continue
+		if c.IsBattle() && (c.Counters == nil || c.Counters[CounterDefense] <= 0) {
+			doom, destruction = true, false
+		}
+		if doom {
+			doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: destruction})
 		}
 	}
 	// 704.5k (ADR 0109 §8) — the world rule. Not a choice, so it joins
@@ -4710,6 +4756,9 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	}
 	p.Eliminated = true
 	p.AttemptedEmptyDraw = false
+	// #2450: a player leaving the game is loop progress (ADR 0055's
+	// 2026-10-07 amendment, option B, owner decision 3a).
+	g.noteLoopProgressLocked()
 	// #2275: the departure takes their spells and abilities off the
 	// stack (CR 800.4a), so what the other seats passed over may not
 	// be what is on top now. The succession starts again from whoever
@@ -5238,7 +5287,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.ExiledWith)
 	tailErr := g.runRouteTailLocked(ev.zoneRoute)
 	if moveErr != nil {
 		return moveErr
@@ -5268,8 +5317,14 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // genuine shuffle-in (Blightsteel Colossus, the Eldrazi titans)
 // rather than a placement; every other caller passes false.
 //
+// exiledWith is ReplacementEvent.ExiledWith carried down the same way
+// (#2530): stamped onto the card as Card.ExiledWith once it has landed
+// in exile, and ignored for any other destination. The zero ref —
+// every caller but a replacement that declared the link — stamps
+// nothing.
+//
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith PermissionCardRef) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -5354,6 +5409,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	if shuffleAfter && dest == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
 	}
+	stampExiledWithLocked(destZone, cardID, exiledWith)
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,
@@ -6294,6 +6350,21 @@ type ManaAbilityParams struct {
 	// on every one with a mana component.
 	AutoTap bool
 
+	// PhyrexianLife is how many of the mana component's symbols the
+	// activator pays 2 life each for instead of the mana (CR 107.4f,
+	// CR 602.2b, ADR 0131 §2): a printed {B/P} on a mana ability's
+	// cost, or a {B} that K'rrik, Son of Yawgmoth lets its controller
+	// pay with life — a filter land's "{B}, {T}: Add {B}{B}". The same
+	// field and wire name (`phyrexian_life`) as
+	// CastSpellParams.PhyrexianLife and ActivateAbilityParams.PhyrexianLife,
+	// through the same strike-and-pay helper pair, so the ceiling, the
+	// CR 119.4 / 119.8 gate and the choice of which symbols to strike
+	// are one piece of code. Claiming one against a mana ability with no
+	// mana component, or more than the cost has symbols for, is refused
+	// before anything is paid. Zero pays the symbols with mana, as ever;
+	// the auto-tap never claims it (CR 601.2b).
+	PhyrexianLife int
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -6481,6 +6552,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// the same predicate.
 		return ErrInvalidParam
 	}
+	// ADR 0129 §5, CR 118.3: "Pay {E}" (Aether Hub). Checked with the
+	// life, so a player short of energy taps nothing.
+	if err := EnergyShortfall(p, ab.EnergyCost); err != nil {
+		return err
+	}
 	// #789: the counter components, validated by the SAME functions
 	// the CR 602 activated path uses, because it is the same
 	// component — a Vivid land's charge counter and Heart of Kiran's
@@ -6513,7 +6589,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// (effects.ManaAbilityCost has no such field to set).
 	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, AbilityCost{
 		DiscardCards: ab.DiscardCards,
-	}, params.DiscardIDs)
+	}, params.DiscardIDs, 0)
 	if err != nil {
 		return err
 	}
@@ -6578,7 +6654,17 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		manaCost  ParsedCost
 		manaPlan  tapPlan
 		manaShort ParsedCost
+		// manaLife is the life the announced PhyrexianLife claim costs
+		// (ADR 0131 §2); paid below, after the fallible mana half is
+		// known payable.
+		manaLife int
 	)
+	// A claim against a mana ability with no mana component is a client
+	// firing the wrong ability, so it is refused rather than dropped —
+	// the check activated.go makes for a CR 602 ability.
+	if params.PhyrexianLife != 0 && ab.ManaCost == "" {
+		return ErrInvalidParam
+	}
 	if ab.ManaCost != "" {
 		priced, perr := g.ManaAbilityManaCostForEffect(playerID, *card, ab)
 		if perr != nil {
@@ -6593,6 +6679,21 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// with colourless — the same widening the pay step below
 		// spends under, because it spends this manaCost.
 		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, 0)
+		// CR 107.4f / CR 602.2b (ADR 0131 §2): the symbols the activator
+		// announced they pay with life leave the mana cost here, through
+		// the helper the cast and CR 602 paths run, BEFORE the auto-tap
+		// plan below is made — tapping a land for a pip the player said
+		// they would pay 2 life for strands it. A mana ability's own
+		// "Pay N life" component is checked on top (CR 119.4 is about
+		// the total).
+		var serr error
+		manaCost, manaLife, serr = g.strikePhyrexianLifeLocked(p, card.Name, manaCost, spendCtx, params.PhyrexianLife, nil)
+		if serr != nil {
+			return serr
+		}
+		if manaLife > 0 && !g.CanPayLifeLocked(p, manaLife+ab.LifeCost) {
+			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
+		}
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
 			if !params.AutoTap {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
@@ -6717,6 +6818,18 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		paid.Mana = spent
 		g.EmitEvent(manaSpentEvent(playerID, cardID, spent))
 	}
+	// ADR 0131 §2: the announced Phyrexian life, paid with the mana
+	// component it replaces (CR 602.2b pays every cost together). The
+	// total was checked above; PayLifeForEffect can still refuse a
+	// CR 119.8 lock that appeared in between, so the error is returned
+	// rather than swallowed.
+	if manaLife > 0 {
+		if err := g.payPhyrexianLifeLocked(cardID, playerID, manaLife); err != nil {
+			return err
+		}
+		paid.LifePaid += manaLife
+		needStateChecks = true
+	}
 	// #763 / ADR 0074: the permanent as it was at the moment it was
 	// tapped for mana (CR 106.12a), copied because the same cost may
 	// still sacrifice it (Lotus Petal) and a triggered mana ability's
@@ -6727,6 +6840,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		card.Tapped = true
 		tappedForMana = *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// ADR 0130 §4: "Exert this land" (Arena of Glory), beside the {T}
+	// as the CR 602 path pays it, keyed to the activator's untap step
+	// (CR 701.43a). Always payable on the battlefield (CR 701.43b).
+	if ab.ExertCost {
+		g.exertLocked(cardID, playerID, uuid.Nil)
 	}
 	// #758: the tap-another half, after the source's own {T} and
 	// before the life and the sacrifices — the same component order
@@ -6753,8 +6872,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if err := g.PayLifeForEffect(cardID, playerID, ab.LifeCost); err != nil {
 			return err
 		}
-		paid.LifePaid = ab.LifeCost
+		paid.LifePaid += ab.LifeCost
 		needStateChecks = true
+	}
+	// ADR 0129 §5: the energy, after the life, through the one path
+	// that pays energy (CR 107.14). Validated above.
+	if err := g.payEnergyLocked(playerID, ab.EnergyCost, cardID); err != nil {
+		return err
 	}
 	// #789: counters after the life and before the sacrifice, the
 	// same component order ActivateCatalogAbility pays in — a self
@@ -8077,6 +8201,18 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 // zero value is also the STRICT posture — pay from the pool, refuse if
 // short — so a caller that forgets the params cannot waive a tax.
 func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params DeclareAttackersParams) error {
+	return g.DeclareAttackerDeclWith(AttackDeclaration{Attacker: attackerID, Target: targetPlayerID}, params)
+}
+
+// DeclareAttackerDeclWith is DeclareAttackerWith taking the whole
+// declaration, so it can carry the choice to exert the attacker as it
+// attacks (ADR 0130 §2): `exert: true` on declare_attacker. The
+// choice is validated before anything is paid or staged
+// (ErrCantExert), staged on Card.ExertOnAttack and paid at the
+// lock-in. A creature re-pointed before the lock-in keeps a choice it
+// already staged.
+func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAttackersParams) error {
+	attackerID, targetPlayerID := one.Attacker, one.Target
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -8163,9 +8299,23 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			if err := g.attackRequirementRefusalLocked(decl); err != nil {
 				return err
 			}
+			// ADR 0130 §2: the choice to exert it as it attacks
+			// (CR 508.1g), checked before the tax so a refusal leaves
+			// the board as it was. The requirement check above ignores
+			// the choice: a requirement never forces an optional cost
+			// (CR 508.1d).
+			if err := g.validateExertChoicesLocked([]AttackDeclaration{one}); err != nil {
+				return err
+			}
 			price := g.priceAttackDeclarationLocked(decl)
 			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
 				return err
+			}
+			// Staged, paid at the lock-in. A re-point keeps a choice
+			// already staged; clear_combat or undo is how it is taken
+			// back.
+			if one.Exert {
+				card.ExertOnAttack = true
 			}
 			// #859: staging, not announcing. A creature is declared
 			// as an attacker once (CR 508.1), and the sandbox lets a
@@ -8203,6 +8353,12 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 type AttackDeclaration struct {
 	Attacker uuid.UUID
 	Target   uuid.UUID
+	// Exert is the player's choice to exert the attacker as it attacks
+	// (CR 701.43d, 508.1g; ADR 0130 §2). Staged on Card.ExertOnAttack
+	// and paid as the declaration locks in. A creature that can't be
+	// exerted as it attacks refuses the whole declaration with
+	// ErrCantExert. False is every declaration made before exert.
+	Exert bool
 }
 
 // DeclareAttackers declares an entire attacking set in ONE mutation.
@@ -8350,6 +8506,15 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.attackRequirementRefusalLocked(eligible); err != nil {
 		return nil, err
 	}
+	// ADR 0130 §2: an exert choice on an eligible attacker that can't
+	// be exerted refuses the whole batch, before any tax is paid. An
+	// INELIGIBLE attacker was skipped silently above (#318) and its
+	// choice with it; an exert flag the creature can't honour is a
+	// client bug, and dropping it would attack without the cost the
+	// player chose.
+	if err := g.validateExertChoicesLocked(eligible); err != nil {
+		return nil, err
+	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
@@ -8382,6 +8547,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			continue
 		}
 		g.setAttackTargetLocked(card, d.Target)
+		// ADR 0130 §2: staged, paid by the lock-in below.
+		if d.Exert {
+			card.ExertOnAttack = true
+		}
 		// CR 508.1f: declaring an attacker taps it unless it has
 		// vigilance (CR 702.20).
 		if !HasKeyword(card, "vigilance") {
@@ -9051,6 +9220,7 @@ func (g *Game) clearCombatLocked() {
 			attackerLeft = true
 		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
+		g.Battlefield.Cards[i].ExertOnAttack = false
 		g.Battlefield.Cards[i].clearBlocking()
 	}
 	if attackerLeft {

@@ -18,8 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "40ec0a47-badf-4074-b0a8-749bb7c17b95",
 		Name:         "Inexorable Tide",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, ByYou, "Inexorable Tide — proliferate", Do(Proliferate{})),
 		},

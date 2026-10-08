@@ -3,6 +3,8 @@ package effects
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -114,5 +116,37 @@ func TestGhostOfRamirezReadsTheLatestArrival(t *testing.T) {
 	g.ReadSnapshot(func() { stillCounts = discardedOrMilledThisTurn(g, card) })
 	if stillCounts {
 		t.Error("a card whose latest arrival was a death is not 'discarded this turn'")
+	}
+}
+
+// #2608: the trigger has "up to one" target and nothing to point at, so
+// it needs no prompt and finishes inside the harvest. The state-based
+// sweep that used to run from there eliminated the damaged player while
+// the battlefield was being walked, took their permanents out from under
+// the walk, and panicked with an index out of range. The harvest is
+// read-only: the sweep is the damage step's boundary, not the harvest's.
+func TestGhostOfRamirezHarvestDoesNotSweepTheBattlefieldItIsWalking(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ghost := b12Push(g, me.ID, "Ghost of Ramirez DePietro", "Legendary Creature — Spirit Pirate", ghostOfRamirezOracle, 2, 3)
+	// Behind the Ghost in the walk, so a shrinking battlefield is
+	// exactly what would have been indexed past.
+	var bears []uuid.UUID
+	for i := 0; i < 6; i++ {
+		bears = append(bears, b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2))
+	}
+	g.WithWriteLock(func() { opp.Life = 0 })
+
+	emitDamageEventForTest(g, ghost, opp.ID, 2, true)
+
+	if !g.Battlefield.Contains(bears[0]) {
+		t.Error("the harvest must not run the state-based sweep under its own walk")
+	}
+	g.RunStateChecksForTest()
+	if g.Battlefield.Contains(bears[0]) {
+		t.Error("the damage step's boundary eliminates the player and sweeps their permanents")
+	}
+	if !g.Battlefield.Contains(ghost) {
+		t.Error("the Ghost stays")
 	}
 }

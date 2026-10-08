@@ -37,6 +37,8 @@
   } from "../shortcuts";
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
+  import PlaymatSettings from "./PlaymatSettings.svelte";
+  import AutoAnswersSettings from "./AutoAnswersSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
@@ -66,6 +68,7 @@
     | "audio"
     | "animations"
     | "display"
+    | "playmat"
     | "gameplay"
     | "shortcuts"
     | "accessibility"
@@ -377,28 +380,45 @@
 
       <div class="body">
         <nav aria-label={L.settingsSections}>
-          <button class:active={activeTab === "audio"} onclick={() => (activeTab = "audio")}
-            >Audio</button
+          <button
+            class:active={activeTab === "audio"}
+            aria-current={activeTab === "audio" ? "page" : undefined}
+            onclick={() => (activeTab = "audio")}>Audio</button
           >
           <button
             class:active={activeTab === "animations"}
+            aria-current={activeTab === "animations" ? "page" : undefined}
             onclick={() => (activeTab = "animations")}>Animations</button
           >
-          <button class:active={activeTab === "display"} onclick={() => (activeTab = "display")}
-            >Display</button
+          <button
+            class:active={activeTab === "display"}
+            aria-current={activeTab === "display" ? "page" : undefined}
+            onclick={() => (activeTab = "display")}>Display</button
           >
-          <button class:active={activeTab === "gameplay"} onclick={() => (activeTab = "gameplay")}
-            >Gameplay</button
+          <button
+            class:active={activeTab === "playmat"}
+            aria-current={activeTab === "playmat" ? "page" : undefined}
+            onclick={() => (activeTab = "playmat")}>Playmat</button
           >
-          <button class:active={activeTab === "shortcuts"} onclick={() => (activeTab = "shortcuts")}
-            >Shortcuts</button
+          <button
+            class:active={activeTab === "gameplay"}
+            aria-current={activeTab === "gameplay" ? "page" : undefined}
+            onclick={() => (activeTab = "gameplay")}>Gameplay</button
+          >
+          <button
+            class:active={activeTab === "shortcuts"}
+            aria-current={activeTab === "shortcuts" ? "page" : undefined}
+            onclick={() => (activeTab = "shortcuts")}>Shortcuts</button
           >
           <button
             class:active={activeTab === "accessibility"}
+            aria-current={activeTab === "accessibility" ? "page" : undefined}
             onclick={() => (activeTab = "accessibility")}>Accessibility</button
           >
-          <button class:active={activeTab === "advanced"} onclick={() => (activeTab = "advanced")}
-            >Advanced</button
+          <button
+            class:active={activeTab === "advanced"}
+            aria-current={activeTab === "advanced" ? "page" : undefined}
+            onclick={() => (activeTab = "advanced")}>Advanced</button
           >
         </nav>
 
@@ -512,6 +532,16 @@
                   onchange={(e) => change("animations", "dice", e.currentTarget.checked)}
                 />
                 Dice and coins: animate rolls and flips
+              </label>
+              <!-- ADR 0134 §5. Off, combat damage shows as it did before
+                   (badges, the life popup, the log); only the motion goes. -->
+              <label class="inline">
+                <input
+                  type="checkbox"
+                  checked={$settings.animations.combat}
+                  onchange={(e) => change("animations", "combat", e.currentTarget.checked)}
+                />
+                Combat: attackers lunge and hits land
               </label>
             </fieldset>
           {:else if activeTab === "display"}
@@ -751,6 +781,8 @@
               Show card art in your hand (hover for the full card)
               {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
             </label>
+          {:else if activeTab === "playmat"}
+            <PlaymatSettings />
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
             <label>
@@ -800,6 +832,8 @@
               this on to be asked every time, so you choose which resolves first while your
               opponents can still respond between them.
             </p>
+
+            <AutoAnswersSettings />
 
             <label>
               <input
@@ -1946,5 +1980,54 @@
   .sc-mini:disabled {
     opacity: 0.35;
     cursor: default;
+  }
+  /* Phone width (#2519): the 180px column left ~150px for a tab's
+     content. Below the app's usual phone breakpoint the nav becomes a
+     horizontally scrolling strip above the content, so every tab gets
+     the full panel width. Still real buttons in DOM order, so Tab
+     order and the active tab (aria-current) work as on desktop. */
+  @media (max-width: 599px) {
+    .settings-panel {
+      width: 96vw;
+    }
+    .body {
+      flex-direction: column;
+    }
+    nav {
+      flex-direction: row;
+      width: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 10px;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    nav button {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    section {
+      padding: 14px 14px 18px;
+    }
+    /* Rows built for a 550px content column: let them wrap instead of
+       pushing the panel sideways. */
+    label.slider-row {
+      flex-wrap: wrap;
+    }
+    label.slider-row > span:first-child {
+      min-width: 0;
+      flex: 1 1 100%;
+    }
+    input[type="range"] {
+      flex: 1 1 140px;
+      min-width: 0;
+    }
+    select {
+      min-width: 0;
+      max-width: 100%;
+    }
+    .sc-row {
+      flex-wrap: wrap;
+    }
   }
 </style>

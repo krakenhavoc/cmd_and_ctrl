@@ -53,6 +53,7 @@ battlefield.cards[].chosenName	string
 battlefield.cards[].chosenOption	string
 battlefield.cards[].chosenPlayer	custom(uuid.UUID)
 battlefield.cards[].classLevel	number:int
+battlefield.cards[].colorCDADropped	bool
 battlefield.cards[].colorIdentity	array
 battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
@@ -68,6 +69,7 @@ battlefield.cards[].damageMarked	number:int
 battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
+battlefield.cards[].durationCopyBase.ColorCDADropped	bool
 battlefield.cards[].durationCopyBase.ColorIdentity	array
 battlefield.cards[].durationCopyBase.ColorIdentity[]	string
 battlefield.cards[].durationCopyBase.Colors	array
@@ -107,6 +109,10 @@ battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
+battlefield.cards[].exertOnAttack	bool
+battlefield.cards[].exiledWith	object
+battlefield.cards[].exiledWith.epoch	number:int
+battlefield.cards[].exiledWith.id	custom(uuid.UUID)
 battlefield.cards[].faceDown	bool
 battlefield.cards[].faceDownKind	string
 battlefield.cards[].faceDownListed	object
@@ -168,6 +174,8 @@ battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
 battlefield.cards[].nextUntapSkips[].while.Also	array
 battlefield.cards[].nextUntapSkips[].while.Also[]	number:int
+battlefield.cards[].nextUntapSkips[].while.CombatPhase	number:int
+battlefield.cards[].nextUntapSkips[].while.CombatTurn	number:int
 battlefield.cards[].nextUntapSkips[].while.Condition	number:int
 battlefield.cards[].nextUntapSkips[].while.CounterKind	string
 battlefield.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -196,6 +204,7 @@ battlefield.cards[].preparedBy.id	custom(uuid.UUID)
 battlefield.cards[].printedPTKnown	bool
 battlefield.cards[].printedSelf	object
 battlefield.cards[].printedSelf.ActiveFace	number:int
+battlefield.cards[].printedSelf.ColorCDADropped	bool
 battlefield.cards[].printedSelf.ColorIdentity	array
 battlefield.cards[].printedSelf.ColorIdentity[]	string
 battlefield.cards[].printedSelf.Colors	array
@@ -303,6 +312,10 @@ continuations.turnScopedReplacements	number:int
 continuations.turnScopedStatics	number:int
 continuations.unpersistableRng	bool
 createdAt	custom(time.Time)
+dayNight	object
+dayNight.designation	string
+dayNight.prevTurnKnown	bool
+dayNight.prevTurnSpells	number:int
 delayedTriggers	array
 delayedTriggers[]	object
 delayedTriggers[].at	string
@@ -334,6 +347,8 @@ delayedTriggers[].due	bool
 delayedTriggers[].duration	object
 delayedTriggers[].duration.Also	array
 delayedTriggers[].duration.Also[]	number:int
+delayedTriggers[].duration.CombatPhase	number:int
+delayedTriggers[].duration.CombatTurn	number:int
 delayedTriggers[].duration.Condition	number:int
 delayedTriggers[].duration.CounterKind	string
 delayedTriggers[].duration.ExpiresAfterTurnsBegun	number:int
@@ -393,6 +408,7 @@ events	array
 events[]	object
 events[].actor	custom(uuid.UUID)
 events[].amount	number:int
+events[].answer_key	string
 events[].attacking_target	custom(uuid.UUID)
 events[].batch	number:uint64
 events[].batch_seq	number:uint64
@@ -407,6 +423,7 @@ events[].colors	array
 events[].colors[]	string
 events[].combat	bool
 events[].combat_step	string
+events[].damage_not_life_loss	number:int
 events[].discard_cause	string
 events[].error_msg	string
 events[].exhaust	bool
@@ -473,6 +490,7 @@ exile.cards[].chosenName	string
 exile.cards[].chosenOption	string
 exile.cards[].chosenPlayer	custom(uuid.UUID)
 exile.cards[].classLevel	number:int
+exile.cards[].colorCDADropped	bool
 exile.cards[].colorIdentity	array
 exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
@@ -488,6 +506,7 @@ exile.cards[].damageMarked	number:int
 exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
+exile.cards[].durationCopyBase.ColorCDADropped	bool
 exile.cards[].durationCopyBase.ColorIdentity	array
 exile.cards[].durationCopyBase.ColorIdentity[]	string
 exile.cards[].durationCopyBase.Colors	array
@@ -527,6 +546,10 @@ exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
+exile.cards[].exertOnAttack	bool
+exile.cards[].exiledWith	object
+exile.cards[].exiledWith.epoch	number:int
+exile.cards[].exiledWith.id	custom(uuid.UUID)
 exile.cards[].faceDown	bool
 exile.cards[].faceDownKind	string
 exile.cards[].faceDownListed	object
@@ -588,6 +611,8 @@ exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
 exile.cards[].nextUntapSkips[].while.Also	array
 exile.cards[].nextUntapSkips[].while.Also[]	number:int
+exile.cards[].nextUntapSkips[].while.CombatPhase	number:int
+exile.cards[].nextUntapSkips[].while.CombatTurn	number:int
 exile.cards[].nextUntapSkips[].while.Condition	number:int
 exile.cards[].nextUntapSkips[].while.CounterKind	string
 exile.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -616,6 +641,7 @@ exile.cards[].preparedBy.id	custom(uuid.UUID)
 exile.cards[].printedPTKnown	bool
 exile.cards[].printedSelf	object
 exile.cards[].printedSelf.ActiveFace	number:int
+exile.cards[].printedSelf.ColorCDADropped	bool
 exile.cards[].printedSelf.ColorIdentity	array
 exile.cards[].printedSelf.ColorIdentity[]	string
 exile.cards[].printedSelf.Colors	array
@@ -820,6 +846,8 @@ lastKnownPermanents{}[].attachedTo.Kind	string
 lastKnownPermanents{}[].attachedTo.Mode	number:int
 lastKnownPermanents{}[].attachedTo.Slot	number:int
 lastKnownPermanents{}[].attacking	bool
+lastKnownPermanents{}[].blocking	array
+lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic	object
 lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
@@ -951,6 +979,7 @@ lastKnownStack[].card.chosenName	string
 lastKnownStack[].card.chosenOption	string
 lastKnownStack[].card.chosenPlayer	custom(uuid.UUID)
 lastKnownStack[].card.classLevel	number:int
+lastKnownStack[].card.colorCDADropped	bool
 lastKnownStack[].card.colorIdentity	array
 lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
@@ -966,6 +995,7 @@ lastKnownStack[].card.damageMarked	number:int
 lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
+lastKnownStack[].card.durationCopyBase.ColorCDADropped	bool
 lastKnownStack[].card.durationCopyBase.ColorIdentity	array
 lastKnownStack[].card.durationCopyBase.ColorIdentity[]	string
 lastKnownStack[].card.durationCopyBase.Colors	array
@@ -1005,6 +1035,10 @@ lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
+lastKnownStack[].card.exertOnAttack	bool
+lastKnownStack[].card.exiledWith	object
+lastKnownStack[].card.exiledWith.epoch	number:int
+lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
 lastKnownStack[].card.faceDown	bool
 lastKnownStack[].card.faceDownKind	string
 lastKnownStack[].card.faceDownListed	object
@@ -1066,6 +1100,8 @@ lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
 lastKnownStack[].card.nextUntapSkips[].while.Also	array
 lastKnownStack[].card.nextUntapSkips[].while.Also[]	number:int
+lastKnownStack[].card.nextUntapSkips[].while.CombatPhase	number:int
+lastKnownStack[].card.nextUntapSkips[].while.CombatTurn	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Condition	number:int
 lastKnownStack[].card.nextUntapSkips[].while.CounterKind	string
 lastKnownStack[].card.nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -1094,6 +1130,7 @@ lastKnownStack[].card.preparedBy.id	custom(uuid.UUID)
 lastKnownStack[].card.printedPTKnown	bool
 lastKnownStack[].card.printedSelf	object
 lastKnownStack[].card.printedSelf.ActiveFace	number:int
+lastKnownStack[].card.printedSelf.ColorCDADropped	bool
 lastKnownStack[].card.printedSelf.ColorIdentity	array
 lastKnownStack[].card.printedSelf.ColorIdentity[]	string
 lastKnownStack[].card.printedSelf.Colors	array
@@ -1313,6 +1350,7 @@ lastKnownStack[].item.trigger	object
 lastKnownStack[].item.trigger.Event	object
 lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.amount	number:int
+lastKnownStack[].item.trigger.Event.answer_key	string
 lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
@@ -1327,6 +1365,7 @@ lastKnownStack[].item.trigger.Event.colors	array
 lastKnownStack[].item.trigger.Event.colors[]	string
 lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
+lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
@@ -1427,10 +1466,18 @@ outcome.winner	custom(uuid.UUID)
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
+pendingChoices[].askedByHand	string
+pendingChoices[].autoAnswerCard	string
+pendingChoices[].autoAnswerKey	string
+pendingChoices[].autoAnswerPrompt	string
 pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseMax	number:int
 pendingChoices[].chooseMin	number:int
+pendingChoices[].choosePlayers	array
+pendingChoices[].choosePlayers[]	custom(uuid.UUID)
+pendingChoices[].chooseSuggested	array
+pendingChoices[].chooseSuggested[]	custom(uuid.UUID)
 pendingChoices[].chooser	custom(uuid.UUID)
 pendingChoices[].coinAllowStop	bool
 pendingChoices[].coinCount	number:int
@@ -1772,6 +1819,7 @@ pendingTriggers[].trigger	object
 pendingTriggers[].trigger.Event	object
 pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.amount	number:int
+pendingTriggers[].trigger.Event.answer_key	string
 pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
@@ -1786,6 +1834,7 @@ pendingTriggers[].trigger.Event.colors	array
 pendingTriggers[].trigger.Event.colors[]	string
 pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
+pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
@@ -1871,6 +1920,7 @@ phasedOut.cards[].chosenName	string
 phasedOut.cards[].chosenOption	string
 phasedOut.cards[].chosenPlayer	custom(uuid.UUID)
 phasedOut.cards[].classLevel	number:int
+phasedOut.cards[].colorCDADropped	bool
 phasedOut.cards[].colorIdentity	array
 phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
@@ -1886,6 +1936,7 @@ phasedOut.cards[].damageMarked	number:int
 phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
+phasedOut.cards[].durationCopyBase.ColorCDADropped	bool
 phasedOut.cards[].durationCopyBase.ColorIdentity	array
 phasedOut.cards[].durationCopyBase.ColorIdentity[]	string
 phasedOut.cards[].durationCopyBase.Colors	array
@@ -1925,6 +1976,10 @@ phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
+phasedOut.cards[].exertOnAttack	bool
+phasedOut.cards[].exiledWith	object
+phasedOut.cards[].exiledWith.epoch	number:int
+phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
 phasedOut.cards[].faceDown	bool
 phasedOut.cards[].faceDownKind	string
 phasedOut.cards[].faceDownListed	object
@@ -1986,6 +2041,8 @@ phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
 phasedOut.cards[].nextUntapSkips[].while.Also	array
 phasedOut.cards[].nextUntapSkips[].while.Also[]	number:int
+phasedOut.cards[].nextUntapSkips[].while.CombatPhase	number:int
+phasedOut.cards[].nextUntapSkips[].while.CombatTurn	number:int
 phasedOut.cards[].nextUntapSkips[].while.Condition	number:int
 phasedOut.cards[].nextUntapSkips[].while.CounterKind	string
 phasedOut.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -2014,6 +2071,7 @@ phasedOut.cards[].preparedBy.id	custom(uuid.UUID)
 phasedOut.cards[].printedPTKnown	bool
 phasedOut.cards[].printedSelf	object
 phasedOut.cards[].printedSelf.ActiveFace	number:int
+phasedOut.cards[].printedSelf.ColorCDADropped	bool
 phasedOut.cards[].printedSelf.ColorIdentity	array
 phasedOut.cards[].printedSelf.ColorIdentity[]	string
 phasedOut.cards[].printedSelf.Colors	array
@@ -2159,6 +2217,8 @@ scopedEffects[].controller	custom(uuid.UUID)
 scopedEffects[].duration	object
 scopedEffects[].duration.Also	array
 scopedEffects[].duration.Also[]	number:int
+scopedEffects[].duration.CombatPhase	number:int
+scopedEffects[].duration.CombatTurn	number:int
 scopedEffects[].duration.Condition	number:int
 scopedEffects[].duration.CounterKind	string
 scopedEffects[].duration.ExpiresAfterTurnsBegun	number:int
@@ -2183,6 +2243,7 @@ scopedEffects[].mods[].combatOnly	bool
 scopedEffects[].mods[].copy	array
 scopedEffects[].mods[].copy[]	object
 scopedEffects[].mods[].copy[].ActiveFace	number:int
+scopedEffects[].mods[].copy[].ColorCDADropped	bool
 scopedEffects[].mods[].copy[].ColorIdentity	array
 scopedEffects[].mods[].copy[].ColorIdentity[]	string
 scopedEffects[].mods[].copy[].Colors	array
@@ -2319,6 +2380,8 @@ scopedEffects[].timestamp	number:int64
 seats	array
 seats[]	object
 seats[].agentClient	string
+seats[].autoAnswers	map:string
+seats[].autoAnswers{}	string
 seats[].botDeck	string
 seats[].botTier	string
 seats[].castPermissions	array
@@ -2333,12 +2396,15 @@ seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
 seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
 seats[].castPermissions[].duration.Also	array
 seats[].castPermissions[].duration.Also[]	number:int
+seats[].castPermissions[].duration.CombatPhase	number:int
+seats[].castPermissions[].duration.CombatTurn	number:int
 seats[].castPermissions[].duration.Condition	number:int
 seats[].castPermissions[].duration.CounterKind	string
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
@@ -2359,11 +2425,16 @@ seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
+seats[].castPermissions[].filter.exiledWith	object
+seats[].castPermissions[].filter.exiledWith.epoch	number:int
+seats[].castPermissions[].filter.exiledWith.id	custom(uuid.UUID)
+seats[].castPermissions[].filter.exiledWithSource	bool
 seats[].castPermissions[].filter.fromChosenType	bool
 seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
+seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
@@ -2416,6 +2487,7 @@ seats[].command.cards[].chosenName	string
 seats[].command.cards[].chosenOption	string
 seats[].command.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].command.cards[].classLevel	number:int
+seats[].command.cards[].colorCDADropped	bool
 seats[].command.cards[].colorIdentity	array
 seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
@@ -2431,6 +2503,7 @@ seats[].command.cards[].damageMarked	number:int
 seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
+seats[].command.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].command.cards[].durationCopyBase.ColorIdentity	array
 seats[].command.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].command.cards[].durationCopyBase.Colors	array
@@ -2470,6 +2543,10 @@ seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
+seats[].command.cards[].exertOnAttack	bool
+seats[].command.cards[].exiledWith	object
+seats[].command.cards[].exiledWith.epoch	number:int
+seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].command.cards[].faceDown	bool
 seats[].command.cards[].faceDownKind	string
 seats[].command.cards[].faceDownListed	object
@@ -2531,6 +2608,8 @@ seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
 seats[].command.cards[].nextUntapSkips[].while.Also	array
 seats[].command.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].command.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].command.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].command.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].command.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].command.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -2559,6 +2638,7 @@ seats[].command.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].command.cards[].printedPTKnown	bool
 seats[].command.cards[].printedSelf	object
 seats[].command.cards[].printedSelf.ActiveFace	number:int
+seats[].command.cards[].printedSelf.ColorCDADropped	bool
 seats[].command.cards[].printedSelf.ColorIdentity	array
 seats[].command.cards[].printedSelf.ColorIdentity[]	string
 seats[].command.cards[].printedSelf.Colors	array
@@ -2692,6 +2772,7 @@ seats[].emblems.cards[].chosenName	string
 seats[].emblems.cards[].chosenOption	string
 seats[].emblems.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].emblems.cards[].classLevel	number:int
+seats[].emblems.cards[].colorCDADropped	bool
 seats[].emblems.cards[].colorIdentity	array
 seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
@@ -2707,6 +2788,7 @@ seats[].emblems.cards[].damageMarked	number:int
 seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
+seats[].emblems.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].emblems.cards[].durationCopyBase.ColorIdentity	array
 seats[].emblems.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].emblems.cards[].durationCopyBase.Colors	array
@@ -2746,6 +2828,10 @@ seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
+seats[].emblems.cards[].exertOnAttack	bool
+seats[].emblems.cards[].exiledWith	object
+seats[].emblems.cards[].exiledWith.epoch	number:int
+seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].emblems.cards[].faceDown	bool
 seats[].emblems.cards[].faceDownKind	string
 seats[].emblems.cards[].faceDownListed	object
@@ -2807,6 +2893,8 @@ seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
 seats[].emblems.cards[].nextUntapSkips[].while.Also	array
 seats[].emblems.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].emblems.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].emblems.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -2835,6 +2923,7 @@ seats[].emblems.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].emblems.cards[].printedPTKnown	bool
 seats[].emblems.cards[].printedSelf	object
 seats[].emblems.cards[].printedSelf.ActiveFace	number:int
+seats[].emblems.cards[].printedSelf.ColorCDADropped	bool
 seats[].emblems.cards[].printedSelf.ColorIdentity	array
 seats[].emblems.cards[].printedSelf.ColorIdentity[]	string
 seats[].emblems.cards[].printedSelf.Colors	array
@@ -2959,6 +3048,7 @@ seats[].graveyard.cards[].chosenName	string
 seats[].graveyard.cards[].chosenOption	string
 seats[].graveyard.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].graveyard.cards[].classLevel	number:int
+seats[].graveyard.cards[].colorCDADropped	bool
 seats[].graveyard.cards[].colorIdentity	array
 seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
@@ -2974,6 +3064,7 @@ seats[].graveyard.cards[].damageMarked	number:int
 seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
+seats[].graveyard.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].graveyard.cards[].durationCopyBase.ColorIdentity	array
 seats[].graveyard.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].graveyard.cards[].durationCopyBase.Colors	array
@@ -3013,6 +3104,10 @@ seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
+seats[].graveyard.cards[].exertOnAttack	bool
+seats[].graveyard.cards[].exiledWith	object
+seats[].graveyard.cards[].exiledWith.epoch	number:int
+seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].graveyard.cards[].faceDown	bool
 seats[].graveyard.cards[].faceDownKind	string
 seats[].graveyard.cards[].faceDownListed	object
@@ -3074,6 +3169,8 @@ seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
 seats[].graveyard.cards[].nextUntapSkips[].while.Also	array
 seats[].graveyard.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].graveyard.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].graveyard.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3102,6 +3199,7 @@ seats[].graveyard.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].graveyard.cards[].printedPTKnown	bool
 seats[].graveyard.cards[].printedSelf	object
 seats[].graveyard.cards[].printedSelf.ActiveFace	number:int
+seats[].graveyard.cards[].printedSelf.ColorCDADropped	bool
 seats[].graveyard.cards[].printedSelf.ColorIdentity	array
 seats[].graveyard.cards[].printedSelf.ColorIdentity[]	string
 seats[].graveyard.cards[].printedSelf.Colors	array
@@ -3224,6 +3322,7 @@ seats[].hand.cards[].chosenName	string
 seats[].hand.cards[].chosenOption	string
 seats[].hand.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].hand.cards[].classLevel	number:int
+seats[].hand.cards[].colorCDADropped	bool
 seats[].hand.cards[].colorIdentity	array
 seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
@@ -3239,6 +3338,7 @@ seats[].hand.cards[].damageMarked	number:int
 seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
+seats[].hand.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].hand.cards[].durationCopyBase.ColorIdentity	array
 seats[].hand.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].hand.cards[].durationCopyBase.Colors	array
@@ -3278,6 +3378,10 @@ seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
+seats[].hand.cards[].exertOnAttack	bool
+seats[].hand.cards[].exiledWith	object
+seats[].hand.cards[].exiledWith.epoch	number:int
+seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].hand.cards[].faceDown	bool
 seats[].hand.cards[].faceDownKind	string
 seats[].hand.cards[].faceDownListed	object
@@ -3339,6 +3443,8 @@ seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
 seats[].hand.cards[].nextUntapSkips[].while.Also	array
 seats[].hand.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].hand.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].hand.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].hand.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].hand.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3367,6 +3473,7 @@ seats[].hand.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].hand.cards[].printedPTKnown	bool
 seats[].hand.cards[].printedSelf	object
 seats[].hand.cards[].printedSelf.ActiveFace	number:int
+seats[].hand.cards[].printedSelf.ColorCDADropped	bool
 seats[].hand.cards[].printedSelf.ColorIdentity	array
 seats[].hand.cards[].printedSelf.ColorIdentity[]	string
 seats[].hand.cards[].printedSelf.Colors	array
@@ -3500,6 +3607,7 @@ seats[].library.cards[].chosenName	string
 seats[].library.cards[].chosenOption	string
 seats[].library.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].library.cards[].classLevel	number:int
+seats[].library.cards[].colorCDADropped	bool
 seats[].library.cards[].colorIdentity	array
 seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
@@ -3515,6 +3623,7 @@ seats[].library.cards[].damageMarked	number:int
 seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
+seats[].library.cards[].durationCopyBase.ColorCDADropped	bool
 seats[].library.cards[].durationCopyBase.ColorIdentity	array
 seats[].library.cards[].durationCopyBase.ColorIdentity[]	string
 seats[].library.cards[].durationCopyBase.Colors	array
@@ -3554,6 +3663,10 @@ seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
+seats[].library.cards[].exertOnAttack	bool
+seats[].library.cards[].exiledWith	object
+seats[].library.cards[].exiledWith.epoch	number:int
+seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
 seats[].library.cards[].faceDown	bool
 seats[].library.cards[].faceDownKind	string
 seats[].library.cards[].faceDownListed	object
@@ -3615,6 +3728,8 @@ seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
 seats[].library.cards[].nextUntapSkips[].while.Also	array
 seats[].library.cards[].nextUntapSkips[].while.Also[]	number:int
+seats[].library.cards[].nextUntapSkips[].while.CombatPhase	number:int
+seats[].library.cards[].nextUntapSkips[].while.CombatTurn	number:int
 seats[].library.cards[].nextUntapSkips[].while.Condition	number:int
 seats[].library.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].library.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -3643,6 +3758,7 @@ seats[].library.cards[].preparedBy.id	custom(uuid.UUID)
 seats[].library.cards[].printedPTKnown	bool
 seats[].library.cards[].printedSelf	object
 seats[].library.cards[].printedSelf.ActiveFace	number:int
+seats[].library.cards[].printedSelf.ColorCDADropped	bool
 seats[].library.cards[].printedSelf.ColorIdentity	array
 seats[].library.cards[].printedSelf.ColorIdentity[]	string
 seats[].library.cards[].printedSelf.Colors	array
@@ -3781,11 +3897,16 @@ seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
+seats[].statics[].cantBeCountered.filter.exiledWith	object
+seats[].statics[].cantBeCountered.filter.exiledWith.epoch	number:int
+seats[].statics[].cantBeCountered.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].cantBeCountered.filter.exiledWithSource	bool
 seats[].statics[].cantBeCountered.filter.fromChosenType	bool
 seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
+seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
@@ -3798,11 +3919,16 @@ seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
+seats[].statics[].castBan.filter.exiledWith	object
+seats[].statics[].castBan.filter.exiledWith.epoch	number:int
+seats[].statics[].castBan.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].castBan.filter.exiledWithSource	bool
 seats[].statics[].castBan.filter.fromChosenType	bool
 seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.nonLandOnly	bool
+seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
@@ -3812,6 +3938,8 @@ seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].duration	object
 seats[].statics[].duration.Also	array
 seats[].statics[].duration.Also[]	number:int
+seats[].statics[].duration.CombatPhase	number:int
+seats[].statics[].duration.CombatTurn	number:int
 seats[].statics[].duration.Condition	number:int
 seats[].statics[].duration.CounterKind	string
 seats[].statics[].duration.ExpiresAfterTurnsBegun	number:int
@@ -3845,11 +3973,16 @@ seats[].statics[].nextSpell.counters	number:int
 seats[].statics[].nextSpell.filter	object
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
+seats[].statics[].nextSpell.filter.exiledWith	object
+seats[].statics[].nextSpell.filter.exiledWith.epoch	number:int
+seats[].statics[].nextSpell.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].nextSpell.filter.exiledWithSource	bool
 seats[].statics[].nextSpell.filter.fromChosenType	bool
 seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.landsOnly	bool
 seats[].statics[].nextSpell.filter.nonLandOnly	bool
+seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
 seats[].statics[].nextSpell.filter.sorceryOnly	bool
@@ -3864,11 +3997,16 @@ seats[].statics[].timing.affects	string
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
+seats[].statics[].timing.filter.exiledWith	object
+seats[].statics[].timing.filter.exiledWith.epoch	number:int
+seats[].statics[].timing.filter.exiledWith.id	custom(uuid.UUID)
+seats[].statics[].timing.filter.exiledWithSource	bool
 seats[].statics[].timing.filter.fromChosenType	bool
 seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.nonLandOnly	bool
+seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.notOwnedByHolder	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
@@ -3927,6 +4065,7 @@ stack.cards[].chosenName	string
 stack.cards[].chosenOption	string
 stack.cards[].chosenPlayer	custom(uuid.UUID)
 stack.cards[].classLevel	number:int
+stack.cards[].colorCDADropped	bool
 stack.cards[].colorIdentity	array
 stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
@@ -3942,6 +4081,7 @@ stack.cards[].damageMarked	number:int
 stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
+stack.cards[].durationCopyBase.ColorCDADropped	bool
 stack.cards[].durationCopyBase.ColorIdentity	array
 stack.cards[].durationCopyBase.ColorIdentity[]	string
 stack.cards[].durationCopyBase.Colors	array
@@ -3981,6 +4121,10 @@ stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
+stack.cards[].exertOnAttack	bool
+stack.cards[].exiledWith	object
+stack.cards[].exiledWith.epoch	number:int
+stack.cards[].exiledWith.id	custom(uuid.UUID)
 stack.cards[].faceDown	bool
 stack.cards[].faceDownKind	string
 stack.cards[].faceDownListed	object
@@ -4042,6 +4186,8 @@ stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
 stack.cards[].nextUntapSkips[].while.Also	array
 stack.cards[].nextUntapSkips[].while.Also[]	number:int
+stack.cards[].nextUntapSkips[].while.CombatPhase	number:int
+stack.cards[].nextUntapSkips[].while.CombatTurn	number:int
 stack.cards[].nextUntapSkips[].while.Condition	number:int
 stack.cards[].nextUntapSkips[].while.CounterKind	string
 stack.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
@@ -4070,6 +4216,7 @@ stack.cards[].preparedBy.id	custom(uuid.UUID)
 stack.cards[].printedPTKnown	bool
 stack.cards[].printedSelf	object
 stack.cards[].printedSelf.ActiveFace	number:int
+stack.cards[].printedSelf.ColorCDADropped	bool
 stack.cards[].printedSelf.ColorIdentity	array
 stack.cards[].printedSelf.ColorIdentity[]	string
 stack.cards[].printedSelf.Colors	array
@@ -4292,6 +4439,7 @@ stackMeta[].trigger	object
 stackMeta[].trigger.Event	object
 stackMeta[].trigger.Event.actor	custom(uuid.UUID)
 stackMeta[].trigger.Event.amount	number:int
+stackMeta[].trigger.Event.answer_key	string
 stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)
 stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
@@ -4306,6 +4454,7 @@ stackMeta[].trigger.Event.colors	array
 stackMeta[].trigger.Event.colors[]	string
 stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
+stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool
@@ -4406,9 +4555,19 @@ turnTally.entered	map:array
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int
+turnTally.exerts	array
+turnTally.exerts[]	object
+turnTally.exerts[].epoch	number:int
+turnTally.exerts[].object	custom(uuid.UUID)
+turnTally.exerts[].phaseId	number:int
+turnTally.exerts[].player	custom(uuid.UUID)
 turnTally.firstEvent	number:int
+turnTally.loopActivated	string
 turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int
+turnTally.loopLow	number:int
+turnTally.loopLowSet	bool
+turnTally.loopProgressed	bool
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
 turnTally.modesChosen	map:string
@@ -4429,8 +4588,11 @@ turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
+turnTally.players{}.lifeLow	number:int
+turnTally.players{}.lifeLowSet	bool
 turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
+turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int

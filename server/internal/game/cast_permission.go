@@ -157,6 +157,14 @@ type PermissionFilter struct {
 	// graveyard has escape".
 	NonLandOnly bool `json:"nonLandOnly,omitempty"`
 
+	// NonLandPermanentOnly is Six's "NONLAND PERMANENT cards in your
+	// graveyard have retrace" (#2528): an artifact, creature,
+	// enchantment, planeswalker or battle card, and not a land (which
+	// retrace is paid with) and not an instant or sorcery (which is not
+	// a permanent card at all, CR 110.4). Read off the card's effective
+	// types, so a changeling-style type grant is honoured.
+	NonLandPermanentOnly bool `json:"nonLandPermanentOnly,omitempty"`
+
 	// CreatureOnly is Realmwalker's "creature spells", and the half
 	// of The Grim Captain's Locker that says "each CREATURE card".
 	CreatureOnly bool `json:"creatureOnly,omitempty"`
@@ -208,6 +216,28 @@ type PermissionFilter struct {
 	// when the card leaves exile, so the marker survives exactly as long
 	// as the card stays there.
 	WithCounter string `json:"withCounter,omitempty"`
+
+	// ExiledWithSource is Valgavoth, Terror Eater's "cards exiled with
+	// Valgavoth" (#2530, CR 607.2a): the card must carry
+	// Card.ExiledWith naming the permanent that grants the permission,
+	// as the very object it is now. The catalog declares the flag; the
+	// derivation (stampStandingPermissionLocked) fills ExiledWith with
+	// the granting permanent's {instance, epoch}, because a catalog
+	// entry is static and cannot name an object. A flag with no
+	// derived object matches nothing — "exiled with nothing" is not a
+	// qualification.
+	//
+	// The epoch is what ends the permission with the permanent: a
+	// Valgavoth that leaves and returns is a new object (CR 400.7),
+	// so the cards its earlier self exiled are no longer "exiled with"
+	// it. And because the permission is a standing one, derived off
+	// the battlefield on every query, a Valgavoth that has left grants
+	// nothing at all.
+	ExiledWithSource bool `json:"exiledWithSource,omitempty"`
+
+	// ExiledWith is ExiledWithSource's derived payload: the source
+	// object the card must be linked to. Zero on every catalog entry.
+	ExiledWith PermissionCardRef `json:"exiledWith"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -217,6 +247,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.NonLandOnly && c.IsLand() {
+		return false
+	}
+	if f.NonLandPermanentOnly && (c.IsLand() || !c.IsPermanent()) {
 		return false
 	}
 	if f.CreatureOnly && !c.IsCreature() {
@@ -238,6 +271,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
+		return false
+	}
+	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
 	return true
@@ -359,6 +395,14 @@ type CastPermission struct {
 	// your graveyard" (CR 702.138a) — Underworld Breach's three, The
 	// Grim Captain's Locker's four.
 	ExileOtherFromGraveyard int `json:"exileOtherFromGraveyard,omitempty"`
+
+	// DiscardLandCard is retrace's "discarding a land card in addition
+	// to paying its other costs" (CR 702.81a), Six's grant. It makes
+	// the synthesised offer pay the card's PRINTED mana cost (this
+	// permission names no Cost) and a land card from the holder's hand,
+	// discarded — see AlternativeCost.DiscardFromHand for why a
+	// priced offer is the home of an additional cost here.
+	DiscardLandCard bool `json:"discardLandCard,omitempty"`
 
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
@@ -719,6 +763,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	}
 	if p.ExileOtherFromGraveyard > 0 {
 		out.ExileFromGraveyard = escapeExileSpec(p.ExileOtherFromGraveyard)
+	}
+	if p.DiscardLandCard {
+		out.DiscardFromHand = RetraceDiscardSpec()
+		out.PayLabel = "a land card"
 	}
 	out.ExileOnLeavingStack = p.ExileOnResolution
 	if out.Label == "" {
@@ -1359,6 +1407,28 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 		}
 	}
+	// #2528, CR 114.3: an emblem's abilities function in the command
+	// zone, so the derived home has a second address — this seat's own
+	// `Player.Emblems` — exactly as the activation-timing read has one
+	// (activation_timing.go). Wrenn and Six's "instant and sorcery
+	// cards in your graveyard have retrace". An emblem leaves only with
+	// its owner (CR 800.4a), so its presence IS the duration and nothing
+	// is stored here either. Ungated only: no emblem prints a designation
+	// condition.
+	if CatalogCastPermissions != nil && p.Emblems != nil {
+		for i := range p.Emblems.Cards {
+			c := &p.Emblems.Cards[i]
+			key := catalogAbilityKeyOf(c)
+			if key == "" {
+				continue
+			}
+			for _, perm := range CatalogCastPermissions(key) {
+				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
+					out = append(out, stamped)
+				}
+			}
+		}
+	}
 	return out
 }
 
@@ -1397,6 +1467,11 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 			return CastPermission{}, false
 		}
 		perm.Filter.CreatureType = c.NamedTribe
+	}
+	if perm.Filter.ExiledWithSource {
+		// Valgavoth, Terror Eater (#2530): "cards exiled with this
+		// permanent" is this OBJECT's cards, so the filter names it.
+		perm.Filter.ExiledWith = PermissionCardRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
 	}
 	return perm, true
 }
@@ -1685,6 +1760,27 @@ func escapeExileSpec(n int) *TargetSpec {
 			return c.Owner == caster
 		},
 		Min: n, Max: n,
+	}
+}
+
+// RetraceDiscardSpec builds the "discard a land card" component of a
+// retrace cost (CR 702.81a, #2528): one land card from the caster's own
+// hand. Shared by the catalog's Retrace constructor and by a granted
+// retrace's synthesised offer (CastPermission.DiscardLandCard), so a
+// printed and a granted retrace pay the same price by construction.
+//
+// A cost, not a target (CR 601.2h): matched directly against the card, so
+// no hexproof gate narrows it. Ownership is "your hand" via the caster's
+// own zone, and the Owner check is belt and braces for the picker's
+// SpecCandidatesForEffect, which walks every seat.
+func RetraceDiscardSpec() *TargetSpec {
+	return &TargetSpec{
+		Label: "Discard a land card",
+		Zones: []ZoneKind{ZoneHand},
+		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.Owner == caster && c.IsLand()
+		},
+		Min: 1, Max: 1,
 	}
 }
 

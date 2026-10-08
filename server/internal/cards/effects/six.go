@@ -24,27 +24,42 @@ import (
 // the pick is a "may", which is why the trigger has no
 // OptionalPrompt and the choose-cards prompt floors at zero.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the third line is
-// dropped. Retrace is unimplemented (seam #652, the same one that
-// keeps Wrenn and Six's ultimate off the board) and it needs two
-// things that do not exist — the alternative cost itself, "cast this
-// from your graveyard by discarding a land card in addition to
-// paying its other costs", and a granted cast permission one player
-// holds over a SET of cards nobody printed it on. Six's clause adds
-// a third that the emblem does not: the grant is live only during
-// its controller's turn, which is a duration the permission model
-// has no shape for either. Registering it would put a line on the
-// card the engine never honours; leaving it out costs the card its
-// recursion and nothing else. The day #652 lands, this is one static
-// and a caveat deletion.
+// The third line is a STANDING cast permission (ADR 0066, #2528),
+// declared on Spec.CastPermissions and derived from the battlefield on
+// every query, never stored — so it lasts exactly as long as Six does,
+// covers a card milled by this very attack, and two Sixes compose. Its
+// filter is "nonland permanent cards" (NonLandPermanentOnly: an artifact,
+// creature, enchantment, planeswalker or battle, never a land and never
+// an instant or sorcery), its zone is the graveyard, and its timing is
+// TimingYourTurnOnly — "during your turn", with the card's own timing
+// still in force on it, so a permanent spell is a main-phase cast and a
+// flash creature is castable at instant speed, on Six's controller's
+// turn only.
+//
+// Retrace is not an alternative cost: the card is cast for its PRINTED
+// mana cost and a land card is discarded in addition (CR 702.81a). The
+// permission synthesises a priced offer of that shape (AltCostKey
+// "retrace", DiscardLandCard); see AlternativeCost.DiscardFromHand for
+// why an additional cost rides an offer. Claiming the offer is what opens
+// the graveyard, so the discard is owed on exactly the graveyard cast and
+// never on the hand cast of the same card. A card that prints its own
+// graveyard cast (flashback, retrace) keeps its own price, as under every
+// standing grant.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "dbcbdf37-c40f-4068-b4a7-a849cab1056c",
 		Name:         "Six",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Nonland permanent cards in your graveyard don't have retrace — retrace isn't implemented yet.",
-		},
+		Completeness: CompletenessFull,
+		CastPermissions: []game.CastPermission{{
+			Zone:            game.ZoneGraveyard,
+			Filter:          game.PermissionFilter{NonLandPermanentOnly: true},
+			AltCostKey:      game.AltCostKeyRetrace,
+			DiscardLandCard: true,
+			Timing:          game.TimingYourTurnOnly,
+			Label:           "Retrace — discard a land card (Six)",
+		}},
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Six — mill three cards", sixAttackMill),

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -176,8 +178,8 @@ func (d DestroyTarget) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(d.Target) {
 		return nil
 	}
-	return ctx.Game.DestroyPermanentForEffect(d.Target,
-		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated})
+	return nothingIfGone(ctx.Game.DestroyPermanentForEffect(d.Target,
+		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated}))
 }
 
 // Regenerate creates one regeneration shield for a permanent
@@ -257,7 +259,7 @@ func (s SacrificePermanent) Apply(ctx *Context) error {
 		return nil
 	}
 	if s.Then == nil {
-		return ctx.Game.SacrificePermanentForEffect(s.Target)
+		return nothingIfGone(ctx.Game.SacrificePermanentForEffect(s.Target))
 	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract massEffect.apply explains: an undo restores
@@ -308,7 +310,7 @@ func (e ExileTarget) Apply(ctx *Context) error {
 		return nil
 	}
 	if e.Then == nil {
-		return ctx.Game.ExileCardForEffect(e.Target)
+		return nothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
 	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract massEffect.apply explains: an undo restores
@@ -646,7 +648,7 @@ func (b BounceToHand) Apply(ctx *Context) error {
 		return nil
 	}
 	if b.Then == nil {
-		return ctx.Game.BounceToHandForEffect(b.Target)
+		return nothingIfGone(ctx.Game.BounceToHandForEffect(b.Target))
 	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract massEffect.apply explains: an undo restores
@@ -719,11 +721,21 @@ type CounterTarget struct {
 	Dest    game.ZoneRef
 }
 
+// Apply counters the item. A stack object that has already left (countered or resolved in
+// response, #2612) is not an error: there is nothing to counter, so the
+// instruction does nothing (CR 608.2b), as CopySpell does for a spell
+// that has gone.
 func (c CounterTarget) Apply(ctx *Context) error {
+	var err error
 	if c.Dest.Kind == "" {
-		return ctx.Game.CounterTargetForEffect(c.StackID)
+		err = ctx.Game.CounterTargetForEffect(c.StackID)
+	} else {
+		err = ctx.Game.CounterTargetToZoneForEffect(c.StackID, c.Dest)
 	}
-	return ctx.Game.CounterTargetToZoneForEffect(c.StackID, c.Dest)
+	if errors.Is(err, game.ErrCardNotOnStack) {
+		return nil
+	}
+	return err
 }
 
 // ReturnSpellToHand returns a spell on the stack to its owner's hand
@@ -737,7 +749,13 @@ type ReturnSpellToHand struct {
 }
 
 func (r ReturnSpellToHand) Apply(ctx *Context) error {
-	return ctx.Game.ReturnSpellToHandForEffect(r.StackID)
+	// #2620: a spell that already left the stack in response: nothing to
+	// return (CR 608.2b), as CounterTarget does since #2612.
+	err := ctx.Game.ReturnSpellToHandForEffect(r.StackID)
+	if errors.Is(err, game.ErrCardNotOnStack) {
+		return nil
+	}
+	return err
 }
 
 // ExileTargetSpell exiles a spell from the stack WITHOUT countering it
@@ -829,6 +847,19 @@ type AddCounter struct {
 	N      int
 }
 
+// nothingIfGone is the CR 608.2b rule for a one-object instruction (#2620):
+// when the object it names no longer exists — a token that died while
+// its trigger waited, a card that left the zone the instruction reads —
+// the instruction does nothing. Only ErrCardNotFound is absorbed; an
+// illegal parameter or any other failure still surfaces, because those
+// mean the CARD is wrong rather than that the table moved on.
+func nothingIfGone(err error) error {
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	return err
+}
+
 func (a AddCounter) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
@@ -836,7 +867,15 @@ func (a AddCounter) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(a.Target) {
 		return nil
 	}
-	return ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
+	err := ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
+	// #2611: a target that no longer exists anywhere — a token that
+	// died, or one that left in response — has nothing to take the
+	// counter. CR 608.2b: the instruction does nothing; it is not an
+	// effect error. A card that merely changed zones is still found.
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	return err
 }
 
 // CreateToken puts N copies of `Template` on the battlefield under
@@ -886,9 +925,9 @@ type ReturnFromGraveyard struct {
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
 	if r.Tapped {
-		return ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true)
+		return nothingIfGone(ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true))
 	}
-	return ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller)
+	return nothingIfGone(ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller))
 }
 
 // SearchLibrary looks through `Player`'s library for up to `Limit`

@@ -170,6 +170,22 @@ var mechanics = []Mechanic{
 		Adopt:      "AnyColorSpend: YouMaySpendManaAsAnyColor() / PlayersMaySpendManaAsAnyColor() — see any_color_spend.go",
 	},
 	{
+		// ADR 0131 (#2531): a permanent's "for each {B} in a cost, you
+		// may pay 2 life rather than pay that mana" (K'rrik, Son of
+		// Yawgmoth). Phrased as paying 2 life INSTEAD of a mana symbol, so
+		// a caveat about a printed life cost, or about a card that pays
+		// "life instead of mana" for something else (Bolass's Citadel),
+		// is not read as this.
+		Name: "paying 2 life instead of black mana",
+		Phrases: []string{
+			"2 life instead of", "2 life rather than pay that mana", "pay 2 life for each",
+		},
+		Implements: func(s effects.Spec) bool { return len(s.LifeForMana) > 0 },
+		Evidence:   "Spec.LifeForMana declares a life-for-mana static",
+		Confidence: Exact,
+		Adopt:      "LifeForMana: YouMayPayLifeForMana(\"B\") — see life_for_mana.go",
+	},
+	{
 		Name:       "flashback",
 		Phrases:    []string{"flashback"},
 		Implements: altCost("flashback"),
@@ -217,6 +233,31 @@ var mechanics = []Mechanic{
 		Evidence:   `game.AlternativeCostByKey(oracleID, "escape") resolves`,
 		Confidence: Exact,
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Escape("{cost}", n) — EscapeWithCounters when the creature escapes with counters`,
+	},
+	{
+		// #2528, CR 702.81: printed on the card (Retrace("{cost}")) or granted
+		// to the cards in a graveyard by a standing permission (Six).
+		Name:    "retrace",
+		Phrases: []string{"retrace"},
+		Implements: func(s effects.Spec) bool {
+			if game.AlternativeCostByKey(s.OracleID, game.AltCostKeyRetrace) != nil {
+				return true
+			}
+			for _, p := range s.CastPermissions {
+				if p.AltCostKey == game.AltCostKeyRetrace {
+					return true
+				}
+			}
+			for _, p := range s.GatedCastPermissions {
+				if p.Permission.AltCostKey == game.AltCostKeyRetrace {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   `a printed Retrace("{cost}") offer, or a CastPermission whose AltCostKey is "retrace"`,
+		Confidence: Exact,
+		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Retrace("{printed cost}"); a granting permanent declares a CastPermission with AltCostKey game.AltCostKeyRetrace and DiscardLandCard`,
 	},
 	{
 		Name:       "warp",

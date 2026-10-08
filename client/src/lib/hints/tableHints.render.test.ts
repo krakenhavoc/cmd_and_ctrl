@@ -23,6 +23,11 @@ import { HINTS } from "./index";
 import { anchorOf, emptyContext, type Hint, type HintContext } from "./hint";
 import { _resetTableMomentForTests, notQuietReason, tableState } from "./tableMoment";
 
+// Every test here mounts the full Game route in jsdom, which takes 1-4 s on a
+// loaded runner (#2508). The 5 s default left no headroom, so this file, and
+// only this file, gets a longer limit; the global default is untouched.
+vi.setConfig({ testTimeout: 20_000 });
+
 const Game = await import("../../routes/Game.svelte").then((m) => m.default);
 
 class FakeObserver {
@@ -244,12 +249,16 @@ describe("the table's hint anchors on a mounted table", () => {
     expect(zoneEl.closest('[aria-label="your board"]')).not.toBeNull();
   });
 
-  it("finds the stack's pile while an item waits, and not otherwise", async () => {
+  // One mount per test: mounting the whole Game route is the expensive
+  // step (about 1.3 s each on a quiet machine, #2508), and the earlier
+  // single test mounted twice and ran past the 5 s default on CI.
+  it("finds the stack's pile while an item waits", async () => {
     const view = table({ stack: true });
     await mountGame(view);
     expect(resolved("table.stack", view)).not.toBeNull();
-    cleanup();
-    _resetTableMomentForTests();
+  });
+
+  it("does not find the stack's pile when nothing is on the stack", async () => {
     const empty = table();
     await mountGame(empty);
     expect(resolved("table.stack", empty)).toBeNull();

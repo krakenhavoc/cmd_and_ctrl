@@ -155,7 +155,7 @@ func raceSwing(st *state, moves []legal.Move, def *SeatEval) (committed, joinabl
 	// and every unpayable attack tax the enumerator applied is honoured.
 	seen := map[string]bool{}
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		ap := decode[attackParams](moves[i].Params)
@@ -740,14 +740,19 @@ func crackBackPower(st *state, attackers, blockers []*protocol.CardView) int {
 // that every attacker in it has been declared — in which case the bot
 // is done attacking: the creatures outside the swing are the reserve
 // the crack-back check counted on.
-func (p *Policy) raceAttack(moves []legal.Move, plan *racePlan) (aiseat.Decision, bool) {
+//
+// ADR 0130 §9: an attacker whose exert is free (exertFree) and gains
+// something is declared with its exert twin. A race counts on its
+// attackers next turn, so an exert that would keep one tapped is never
+// taken here.
+func (p *Policy) raceAttack(st *state, moves []legal.Move, plan *racePlan) (aiseat.Decision, bool) {
 	want := make(map[string]int, len(plan.swing))
 	for i, c := range plan.swing {
 		want[c.InstanceID] = i
 	}
 	best, bestRank := -1, 0
 	for i := range moves {
-		if moves[i].Kind != legal.KindAttack {
+		if !plainAttack(moves[i]) {
 			continue
 		}
 		ap := decode[attackParams](moves[i].Params)
@@ -766,6 +771,17 @@ func (p *Policy) raceAttack(moves []legal.Move, plan *racePlan) (aiseat.Decision
 	if reason == "" {
 		reason = fmt.Sprintf("attack: two-turn race — %d now + %d next turn ≥ their %d life; crack-back %d < my %d",
 			plan.now, plan.next, plan.life, plan.crack, plan.myLife)
+	}
+	if p.cfg.PriceExert {
+		ap := decode[attackParams](moves[best].Params)
+		if twin := exertTwin(moves, ap); twin >= 0 {
+			if atk := st.bf[ap.Attacker]; atk != nil && st.exertFree(atk) {
+				rows := st.exertRows(atk)
+				if gain := p.exertGain(st, atk, rows, plan.target); gain > 0 || pumps(rows) {
+					return aiseat.Decision{Index: twin, Reason: reason + " (exerted: free)"}, true
+				}
+			}
+		}
 	}
 	return aiseat.Decision{Index: best, Reason: reason}, true
 }

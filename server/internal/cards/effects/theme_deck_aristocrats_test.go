@@ -238,7 +238,7 @@ func TestS21ThemeDeckAristocratsPlaysThreeTurns(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, bastion, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("turn 3: activate the Bastion: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	settleAnsweringProliferate(t, g)
 
 	if got := counterCount(g, korvold, game.CounterPlusOne); got != 2 {
 		t.Errorf("turn 3: Korvold has %d counters after proliferate, want 2", got)

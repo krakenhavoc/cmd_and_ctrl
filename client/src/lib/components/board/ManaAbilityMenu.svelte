@@ -16,18 +16,25 @@
   import {
     chargedManaCostLabel,
     chargedManaCostNote,
+    energyCostSymbols,
+    energyCostWords,
+    exertCostWords,
     judgeAbilityRows,
     type AbilityRowContext,
     type MenuAction,
     type MenuItem,
   } from "../../contextMenu.logic";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
+  import { maxPhyrexianLife, phyrexianLifeCost } from "../../phyrexianLife";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     abilities: ManaAbilityView[];
     tapped: boolean;
-    onActivate: (abilityIndex: number) => void;
+    // ADR 0131 §2: the second argument is how many of the ability's mana
+    // symbols the "Pay life for {B}…" row pays with 2 life each.
+    onActivate: (abilityIndex: number, phyrexianLife?: number) => void;
     // S21 sub-PR 2: CR 602 activated abilities, listed below the
     // mana abilities in the same popover. Costs that need a further
     // choice (sacrifice, target) are collected by the parent after
@@ -83,6 +90,12 @@
     // section's only row. Undefined hides it.
     castAnyway?: MenuItem;
     onCastAnyway?: () => void;
+    // ADR 0131 §4: the "Pay life for {B}…" row on a hand card whose cost
+    // has a symbol a grant (K'rrik) lets life pay. Choosing it fires
+    // `onPayLife`, which starts the cast with the life stepper open;
+    // nothing is sent from here. Undefined hides it.
+    payLife?: MenuItem;
+    onPayLife?: () => void;
     // ADR 0117 §2: the card the rows belong to, for its restrictions
     // (Arrest, Faith's Fetters) and, with `view` and `viewerID`, a
     // planeswalker's "already activated this turn" and the −N it cannot
@@ -129,6 +142,8 @@
     onRawTap,
     castAnyway,
     onCastAnyway,
+    payLife,
+    onPayLife,
     onClose,
     payerLife,
     across = false,
@@ -145,9 +160,19 @@
     onClose?.();
   }
 
-  function activate(index: number): void {
-    onActivate(index);
+  function activate(index: number, phyrexianLife?: number): void {
+    onActivate(index, phyrexianLife);
     onClose?.();
+  }
+
+  // ADR 0131 §2: a mana ability whose own mana component has symbols the
+  // viewer could pay 2 life each for (a filter land's {B} under K'rrik, a
+  // printed {B/P}) gets one "Pay life for {B}…" row per count, bounded by
+  // CR 119.4. Auto-tap never pays life, so this row is how a player
+  // chooses it. The count is the server's `phyrexian_symbols`.
+  function lifeCounts(a: ManaAbilityView): number[] {
+    const max = maxPhyrexianLife(a.phyrexian_symbols ?? 0, payerLife);
+    return Array.from({ length: max }, (_, i) => i + 1);
   }
 
   // Whether each row can be used is ADR 0117 §2's one predicate
@@ -194,6 +219,11 @@
       ? "Untap it by hand: a manual change that activates nothing"
       : "Turn it sideways by hand: a manual change that adds no mana and activates nothing",
   );
+
+  function firePayLife(): void {
+    onPayLife?.();
+    onClose?.();
+  }
 
   function fireCastAnyway(): void {
     if (!castAnyway || castAnyway.disabled) return;
@@ -292,7 +322,43 @@
              cost, so it shows up in the label instead of here. -->
         <span class="cost" aria-label={`pay ${a.life_cost} life`}>♥{a.life_cost}</span>
       {/if}
+      {#if a.energy_cost}
+        <!-- ADR 0129 §5: "Pay {E}" (Aether Hub). A seat short of energy
+             has the row greyed by the server's cant_activate. -->
+        <span class="cost" title={energyCostWords(a)}>
+          <ManaCost cost={energyCostSymbols(a)} size={13} label={energyCostWords(a)} />
+        </span>
+      {/if}
+      {#if a.exert}
+        <!-- ADR 0130 §4: "Exert this land" (Arena of Glory). Never
+             greyed: an exert can always be paid. -->
+        <span class="cost exert" title={exertCostWords(a)} aria-label={exertCostWords(a)}
+          >exert</span
+        >
+      {/if}
     </button>
+    {#each lifeCounts(a) as k (k)}
+      <!-- ADR 0131 §2: pays k of the ability's mana symbols with 2 life
+           each instead of mana. The name is a label contract (AGENTS.md
+           §5); the chip says how much life. -->
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        disabled={!!blocked}
+        title={blocked || PAY_LIFE_TITLE}
+        data-kind="mana-pay-life"
+        onclick={(ev) => {
+          ev.stopPropagation();
+          if (!blocked) activate(a.index, k);
+        }}
+      >
+        <span class="label">{PAY_LIFE_LABEL}</span>
+        <span class="cost" aria-label={`pay ${phyrexianLifeCost(k)} life`}
+          >♥{phyrexianLifeCost(k)}</span
+        >
+      </button>
+    {/each}
   {/each}
   {#if activated.length > 0 || manualLoyalty.length > 0}
     {#if abilities.length > 0}
@@ -327,6 +393,21 @@
             <ManaCost cost={chargedManaCostLabel(a)} size={13} />
           </span>
         {/if}
+        {#if a.energy_cost || a.energy_cost_x}
+          <!-- ADR 0129 §8: "Pay N {E}" / "Pay X {E}" as energy pips.
+               Advisory; a seat short of energy has the row greyed by
+               the server's cant_activate. -->
+          {@const energy = energyCostSymbols(a)}
+          <span class="cost" title={energyCostWords(a)}>
+            <ManaCost cost={energy} size={13} label={energyCostWords(a)} />
+          </span>
+        {/if}
+        {#if a.exert}
+          <!-- ADR 0130 §4: "Exert this creature" (Steward of Solidarity). -->
+          <span class="cost exert" title={exertCostWords(a)} aria-label={exertCostWords(a)}
+            >exert</span
+          >
+        {/if}
       </button>
     {/each}
     {#each manualLoyalty as item (item.id)}
@@ -347,6 +428,26 @@
         <span class="label">{item.label}</span>
       </button>
     {/each}
+  {/if}
+  {#if payLife && onPayLife}
+    <!-- ADR 0131 §4: the name is a label contract (AGENTS.md §5). It is a
+         payment choice, not a sandbox override, so it has its own group. -->
+    <div class="sandbox" role="group" aria-label="payment">
+      <span class="section-label" aria-hidden="true">Payment</span>
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        title={payLife.hint || payLife.label}
+        data-pay-life
+        onclick={(ev) => {
+          ev.stopPropagation();
+          firePayLife();
+        }}
+      >
+        <span class="label">{payLife.label}</span>
+      </button>
+    </div>
   {/if}
   {#if onRawTap || (castAnyway && onCastAnyway)}
     <!-- ADR 0117 §3: the Sandbox section. Never a pip, never counted by
@@ -476,6 +577,12 @@
   .cost {
     font-weight: 700;
     opacity: 0.75;
+  }
+  /* ADR 0130 §4: the exert chip, a word rather than a symbol. */
+  .cost.exert {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
      "available". Spoken, not drawn: the accent already draws it. */

@@ -33,6 +33,11 @@
   // file only measures, draws and renders. Cues are overlays: the board
   // already shows the frame's end state and input stays live under
   // them (pointer-events: none throughout).
+  //
+  // ADR 0134 §1: the beat clock is shared with CombatStrikes (the
+  // lunges), so it lives in lib/combatCues.svelte.ts, owned by Board.
+  // This overlay subscribes to it and ignores ordinary combat's
+  // unlabelled beats, which are the strike layer's alone.
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
@@ -42,8 +47,8 @@
   import { settings } from "../../settings";
   import { cardAnchors, cardSelector, findAnchor, seatSelector } from "../../boardAnchor";
   import { boardExpandLayout } from "../../boardExpand";
+  import type { CombatCues } from "../../combatCues.svelte";
   import {
-    BeatDirector,
     beatMode,
     cueAnchor,
     cueSummary,
@@ -62,18 +67,19 @@
   interface Props {
     view: GameView;
     boardEl: HTMLElement | null;
-    // Changing this asks the beat tracker to prime again on the next
-    // frame, as on a first frame: Game.svelte changes it across a
-    // reconnect and a replay toggle, where the board stays mounted but
-    // the frames in between were never watched live.
-    beatsPrimeKey?: string;
+    // ADR 0134 §1: the board's shared beat clock. Board.svelte owns it,
+    // folds each frame into it (and primes it across a reconnect or a
+    // replay toggle), and this overlay only listens.
+    cues: CombatCues;
     // #1467: false while the fan stack lane is up. It draws its own
     // target arrows from its tiles, and two sets of arrows from one
     // stack item would read as two spells.
     stackTargets?: boolean;
   }
 
-  const { view, boardEl, beatsPrimeKey = "", stackTargets = true }: Props = $props();
+  const { view, boardEl, cues: givenCues, stackTargets = true }: Props = $props();
+  // Fixed for the life of the overlay: the clock is never swapped.
+  const cues = untrack(() => givenCues);
 
   type Pair =
     | { kind: "attack"; id: string; fromCardID: string; toSeatID: string }
@@ -259,7 +265,7 @@
         board,
       });
     }
-    pruneCardCache(cardCache, onBattlefield, keepArrowCache(view.turn?.step, director.pending));
+    pruneCardCache(cardCache, onBattlefield, keepArrowCache(view.turn?.step, cues.pending));
   }
 
   // One pulse (on a live arrow) or ghost (from cached geometry). Each
@@ -284,11 +290,10 @@
   }
   let cueBoxes = $state<CueBox[]>([]);
 
-  let reprimeNext = false;
-
-  // The director cancels every pending cue when a frame primes, and
-  // onReset clears what those cues had put on screen.
-  const director = new BeatDirector({
+  // The shared clock cancels every pending cue when a frame primes, and
+  // onReset clears what those cues had put on screen. Each frame it has
+  // folded in, the geometry caches are dropped if nothing needs them.
+  const unsubscribe = cues.subscribe({
     onCue: playCue,
     onHide: (stepSeq) => {
       cueBoxes = cueBoxes.filter((b) => b.stepSeq !== stepSeq);
@@ -299,11 +304,12 @@
       geoCache.clear();
       cardCache.clear();
     },
+    onFrame: () => dropCacheIfDone(),
   });
-  onDestroy(() => director.dispose());
+  onDestroy(unsubscribe);
 
   function dropCacheIfDone(): void {
-    const keep = keepArrowCache(view.turn?.step, director.pending);
+    const keep = keepArrowCache(view.turn?.step, cues.pending);
     if (!keep) geoCache.clear();
     pruneCardCache(cardCache, new Set(view.battlefield.cards.map((c) => c.instance_id)), keep);
   }
@@ -320,6 +326,9 @@
 
   function playCue(cue: ScheduledCue): void {
     if (!boardEl) return;
+    // ADR 0134 §1: ordinary combat's unlabelled beat carries no pulse
+    // and no text: it is the strike layer's alone.
+    if (!cue.labelled) return;
     // Measure now: the frame that carried the beat has rendered, so
     // the live set is the end state's, not the previous frame's. This
     // also refreshes the tiles still on the board.
@@ -393,37 +402,6 @@
     // sequencer has released it.
     queueMicrotask(dropCacheIfDone);
   }
-
-  // A prime-key change (reconnect, replay toggle) primes the next
-  // frame. Declared before the frame effect so a key and a view that
-  // change together prime on that same frame.
-  $effect(() => {
-    void beatsPrimeKey;
-    untrack(() => {
-      reprimeNext = true;
-    });
-  });
-
-  // Plan and play each frame's beats. Only `view` is tracked: settings
-  // are read at plan time. A normal frame never cancels a cue; a
-  // priming frame cancels them all (BeatDirector).
-  $effect(() => {
-    const log = view.log;
-    untrack(() => {
-      const s = get(settings);
-      director.frame(log, {
-        mode: beatMode(
-          s.animations.enabled,
-          s.animations.damagePopups,
-          s.accessibility.reduceMotion,
-        ),
-        speed: s.animations.speed,
-        reprime: reprimeNext,
-      });
-      reprimeNext = false;
-      dropCacheIfDone();
-    });
-  });
 
   // beatEffect runs one pulse or ghost: in and out within its beat,
   // then removes itself. Only ever mounted in "full" mode.

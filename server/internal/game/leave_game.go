@@ -251,7 +251,7 @@ func (g *Game) exileStillControlledLocked(playerID uuid.UUID) {
 		}
 	}
 	for _, id := range stuck {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, PermissionCardRef{}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "leaving the game: exile of a still-controlled permanent failed: " + err.Error(),
@@ -295,7 +295,7 @@ func (g *Game) exileGhostControlledLocked() int {
 		ghosts = append(ghosts, c.InstanceID)
 	}
 	for _, id := range ghosts {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, PermissionCardRef{}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "CR 800.4c: exile of a permanent left to a departed controller failed: " + err.Error(),
@@ -587,6 +587,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// exactly the branch that happens when it is not. The drop runs
 	// the decline (#961).
 	PendingChoicePayUnless: {onDrop: dropDecline},
+	// pay_amount (ADR 0129 §3) is the same CR 800.4f cost, never
+	// reassigned: nobody else pays a departed player's energy. The drop
+	// runs the rest of the card with nothing paid, through the
+	// chooseValueResume frame's "no choice" (dropDefault), which is what
+	// "the amount of {E} paid this way" is when none was.
+	PendingChoicePayAmount: {onDrop: dropDefault},
 	// entry_pay_life is 800.4f too, and its "unless" branch — the
 	// permanent enters tapped — is about the departed player's OWN
 	// permanent, which CR 800.4a takes out of the game in the same
@@ -672,6 +678,11 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// frame is stranded. A trigger it would cause is controlled by the
 	// player who left, so CR 800.4d keeps it off the stack.
 	PendingChoiceRingBearer: {onDrop: dropDefault},
+	// #2525. A proliferate is the proliferating player's own choice and
+	// is never reassigned. The drop runs the continuation with nothing
+	// chosen: no counters are given, a "proliferate twice" notices the
+	// seat has gone and stops, and the rest of the card finishes.
+	PendingChoiceProliferate: {onDrop: dropDefault},
 	// ADR 0108 §7. A divide_shield is the protected player's, and the
 	// shield was protecting them or their permanents, which CR 800.4a
 	// takes with them: nothing is reassigned. But the instance's other

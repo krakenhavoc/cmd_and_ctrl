@@ -82,6 +82,11 @@ type specialActionParams struct {
 type attackParams struct {
 	Attacker string `json:"attacker"`
 	Target   string `json:"target"`
+	// Exert marks the twin move that also exerts the attacker (ADR 0130
+	// §6). The heuristic never picks one yet: pricing an exert is ADR
+	// 0130 PR 3 (§9), so until then plainAttack filters them out and the
+	// bot attacks exactly as it did before exert existed.
+	Exert bool `json:"exert"`
 }
 
 type blockParams struct {
@@ -115,6 +120,9 @@ type choiceParams struct {
 	// OptionIndex answers an option_pick or an entry_controller
 	// prompt (ADR 0102): the offset into the prompt's pick_options.
 	OptionIndex *int `json:"option_index"`
+	// Amount answers a pay_amount prompt (ADR 0129 §3): the energy
+	// paid.
+	Amount *int `json:"amount"`
 }
 
 type mulliganParams struct {

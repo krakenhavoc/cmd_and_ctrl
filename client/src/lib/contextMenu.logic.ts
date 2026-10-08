@@ -25,9 +25,11 @@ import {
   attackAllParams,
   attackAllTaxLabel,
   attackTaxOn,
+  exertChoiceAt,
   planAttackAll,
   seatLabel,
 } from "./attackAll";
+import { L } from "./labels";
 import { grantedFromLabel } from "./abilityRef";
 import { CAST_ANYWAY_LABEL, CAST_ANYWAY_TITLE } from "./castAnyway";
 import {
@@ -288,6 +290,39 @@ export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
   return (card.activated_abilities ?? []).filter((a) => a.any_player === true);
 }
 
+// reachesAcross says a row names an activator other than the plain
+// controller: any player, only the controller's opponents, or only the
+// owner (CR 602.2, ADR 0106 §1 and its 2026-10-07 amendment).
+export function reachesAcross(a: ActivatedAbilityView): boolean {
+  return a.any_player === true || a.opponents_only === true || a.owner_only === true;
+}
+
+// rowOpenToViewer mirrors game.MayActivate for a permanent on the
+// battlefield: whether the server would let this viewer activate the row.
+// The controller's own opponents-only row is the one a controller sees
+// and cannot use; the owner of a stolen owner-only row is the one a
+// non-controller can.
+export function rowOpenToViewer(
+  a: ActivatedAbilityView,
+  card: CardView,
+  viewerID: string | null | undefined,
+): boolean {
+  if (!viewerID) return false;
+  if (a.any_player === true) return true;
+  const controller = card.controller || card.owner;
+  if (a.opponents_only === true) return viewerID !== controller;
+  if (a.owner_only === true) return viewerID === card.owner;
+  return viewerID === controller;
+}
+
+// openAcrossRows is the rows a viewer who does not control the permanent
+// may activate on it.
+function openAcrossRows(card: CardView, viewerID: string): ActivatedAbilityView[] {
+  return (card.activated_abilities ?? []).filter(
+    (a) => reachesAcross(a) && rowOpenToViewer(a, card, viewerID),
+  );
+}
+
 // mayActivateAcross is CR 602.2's exception for the client: a SEATED
 // viewer who does not control the permanent may still open it for its
 // any-player rows (ADR 0106 §1 decision 6). A spectator never may: a
@@ -296,7 +331,7 @@ export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
 export function mayActivateAcross(card: CardView, viewerID: string | null): boolean {
   if (!viewerID) return false;
   if ((card.controller || card.owner) === viewerID) return false;
-  return anyPlayerRows(card).length > 0;
+  return openAcrossRows(card, viewerID).length > 0;
 }
 
 // menuAbilityRows is the activated-ability rows the ability popover
@@ -315,7 +350,7 @@ export function menuAbilityRows(
   if (viewerID === undefined || !card.activated_abilities) return rows;
   if (viewerID === null) return [];
   if ((card.controller || card.owner) === viewerID) return rows;
-  return rows.filter((a) => a.any_player === true);
+  return rows.filter((a) => reachesAcross(a) && rowOpenToViewer(a, card, viewerID));
 }
 
 // acrossFor says whether `card`'s activated rows are being opened by a
@@ -613,6 +648,12 @@ export interface AbilityCost {
   // activated abilities under the same wire name
   // (ActivatedAbilityView.LifeCost / ManaAbilityView.LifeCost).
   life_cost?: number;
+  // ADR 0129 §8: a "Pay N {E}" component, and "Pay X {E}". The
+  // server's cant_activate already says when the seat is short.
+  energy_cost?: number;
+  energy_cost_x?: boolean;
+  // ADR 0130 §4: an exert component on an activated or mana ability.
+  exert?: boolean;
   // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
@@ -724,6 +765,30 @@ export function chargedManaCostNote(a: AbilityCost): string {
 export function chargedManaCostLabel(a: AbilityCost): string {
   if (a.charged_mana_cost === undefined) return a.mana_cost ?? "";
   return a.charged_mana_cost || "free";
+}
+
+// energyCostSymbols is an ability's energy component in brace notation,
+// for ManaCost to draw as {E} pips (ADR 0129 §8): "{E}{E}" for "Pay
+// {E}{E}", "{X}{E}" for "Pay X {E}" (and "{X}{E}{E}" for a printed part
+// beside the X, which no card has). "" when the ability pays no energy.
+export function energyCostSymbols(a: AbilityCost): string {
+  const fixed = "{E}".repeat(Math.max(0, a.energy_cost ?? 0));
+  if (a.energy_cost_x) return `{X}${fixed || "{E}"}`;
+  return fixed;
+}
+
+// energyCostWords says the same thing aloud: "pay 2 energy", "pay X
+// energy".
+export function energyCostWords(a: AbilityCost): string {
+  const n = a.energy_cost ?? 0;
+  if (a.energy_cost_x) return n > 0 ? `pay X plus ${n} energy` : "pay X energy";
+  return n > 0 ? `pay ${n} energy` : "";
+}
+
+// exertCostWords says what an exert component costs (ADR 0130 §4,
+// CR 701.43a): "" when the ability exerts nothing.
+export function exertCostWords(a: AbilityCost): string {
+  return a.exert ? "exert it: it won't untap during your next untap step" : "";
 }
 
 // ReturnOptionsShape is the part of a LegalTargetsView a return-to-hand
@@ -1040,6 +1105,19 @@ export function abilityRowBlocked(
   ctx: AbilityRowContext,
 ): string {
   const restrictions = ctx.card?.restrictions ?? [];
+  // A named-activator row this viewer's seat may not activate (CR 602.2):
+  // the controller's own opponents-only row, a thief's owner-only one.
+  const viewer = ctx.loyalty?.viewerID;
+  const named = a as Partial<ActivatedAbilityView>;
+  if (
+    kind === "activated" &&
+    ctx.card &&
+    viewer &&
+    (named.opponents_only === true || named.owner_only === true) &&
+    !rowOpenToViewer(named as ActivatedAbilityView, ctx.card, viewer)
+  ) {
+    return ROW_NOT_OPEN_TO_YOU;
+  }
   if (kind === "activated" && restrictions.includes("cant_activate")) {
     return EFFECT_STOPS_ABILITIES;
   }
@@ -1247,6 +1325,12 @@ function abilityItems(
 // any-player row for every seat (ADR 0106 §1 decision 2).
 export const EFFECT_STOPS_ABILITIES = "an effect stops its abilities";
 
+// ROW_NOT_OPEN_TO_YOU is the reason on a named-activator row (ADR 0106 §1
+// amendment 2026-10-07) the viewer's seat may not activate: the
+// controller's own "Only your opponents may activate this ability" row,
+// or an "Only this creature's owner may activate" row on a stolen creature.
+export const ROW_NOT_OPEN_TO_YOU = "you can't activate this ability";
+
 // ABILITY_NOT_RIGHT_NOW is the reason on an any-player row the exact
 // digest leaves out (ADR 0106 §1 decision 6): the server would refuse
 // it, and the row fields say nothing more specific. The same sentence
@@ -1303,7 +1387,7 @@ function anyPlayerAbilityItems(
     across: true,
     loyalty: { card, view, viewerID },
   };
-  const items = anyPlayerRows(card).map((a) => {
+  const items = openAcrossRows(card, viewerID).map((a) => {
     const blocked = abilityRowBlocked(a, "activated", ctx);
     return activatedItem(a, blocked, !blocked && !!a.ref && readyAbilities.includes(a.ref));
   });
@@ -1531,16 +1615,24 @@ function damageItems(card: CardView): MenuItem[] {
   ];
 }
 
-function combatItems(view: GameView, card: CardView): MenuItem[] {
+// combatItems is the card menu's combat section. `gate` is the frame's
+// FULL lookup when the viewer controls the card (the digest is per
+// seat), and the lookup that knows nothing otherwise.
+function combatItems(view: GameView, card: CardView, gate: LegalActions): MenuItem[] {
   const items: MenuItem[] = [];
   const defenders = view.seats.filter((s) => s.id !== card.controller && !s.eliminated);
   if (defenders.length > 0) {
-    items.push({
-      id: "combat-attack",
-      label: card.attacking_target ? "Re-declare attacker" : "Declare attacker",
-      items: [
+    // The defenders, as one declaration each. `exert` sends ADR 0130's
+    // choice to exert the attacker as it attacks.
+    const targetItems = (exert: boolean): MenuItem[] => {
+      const prefix = exert ? "combat-attack-exert" : "combat-attack";
+      const params = (target: string) =>
+        exert
+          ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
+          : { attacker: card.instance_id, target, auto_tap: true };
+      return [
         ...defenders.map((s) => ({
-          id: `combat-attack-${s.id}`,
+          id: `${prefix}-${s.id}`,
           label: s.display_name || s.name,
           // ADR 0080 (#1063): the seat's CR 508.1a attack tax, stated
           // on the control that charges it. Read off the server's
@@ -1550,7 +1642,7 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
             type: "declare_attacker" as ActionType,
             // auto_tap: the tax may need lands tapped for it. Inert
             // at a table with no attack tax on it.
-            params: { attacker: card.instance_id, target: s.id, auto_tap: true },
+            params: params(s.id),
           },
         })),
         // S27: planeswalkers and battles are attackable too
@@ -1558,16 +1650,33 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         // which is what makes the polymorphic target cheap on this
         // side. The set is the server's; see attackTargets.ts.
         ...permanentAttackTargets(view, card.controller).map((t) => ({
-          id: `combat-attack-${t.id}`,
+          id: `${prefix}-${t.id}`,
           label: t.label,
           hint: attackTargetHint(view, t),
           action: {
             type: "declare_attacker" as ActionType,
-            params: { attacker: card.instance_id, target: t.id, auto_tap: true },
+            params: params(t.id),
           },
         })),
-      ],
+      ];
+    };
+    items.push({
+      id: "combat-attack",
+      label: card.attacking_target ? "Re-declare attacker" : "Declare attacker",
+      items: targetItems(false),
     });
+    // ADR 0130 §7 (owner decision 1): beside it, the same declaration
+    // with the creature exerted, for a creature the server says may be
+    // exerted as it attacks. A declared attacker is not listed by the
+    // server, so a re-point is offered no exert (it keeps one staged).
+    if (!card.attacking_target && gate.canExertOnAttack(card.instance_id)) {
+      items.push({
+        id: "combat-attack-exert",
+        label: L.declareAttackerAndExert,
+        hint: "an exerted creature won't untap during your next untap step",
+        items: targetItems(true),
+      });
+    }
     // #318: the board-wide sibling of the row above. Same "pick a
     // defender" submenu shape, so the bulk affordance reads as a
     // wider version of the per-card one rather than a new idea — and
@@ -1575,7 +1684,7 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
     // board-wide verb parked in this section. Rendered from the
     // card's controller so an admin driving another seat gets that
     // seat's board, not their own.
-    const plan = planAttackAll(view, card.controller);
+    const plan = planAttackAll(view, card.controller, gate);
     const n = plan.eligible.length;
     if (n === 0) {
       items.push({
@@ -1589,9 +1698,22 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         id: "combat-attack-all",
         label: `Attack with all ${n}`,
         hint: `declares ${n} creature${n === 1 ? "" : "s"} in one action — one undo takes it all back`,
-        items: plan.defenders.flatMap((s) => {
+        items: plan.defenders.flatMap((s): MenuItem[] => {
           const params = attackAllParams(plan, s.id);
           if (!params) return [];
+          // ADR 0130 §7: a creature that may be exerted is never sent
+          // without asking. This menu has no toggles, so the row points
+          // at the dock's picker, which does.
+          if (exertChoiceAt(plan, s.id)) {
+            return [
+              {
+                id: `combat-attack-all-${s.id}`,
+                label: seatLabel(s),
+                hint: "a creature here may be exerted — choose in the dock's Attack with all",
+                disabled: true,
+              },
+            ];
+          }
           return [
             {
               id: `combat-attack-all-${s.id}`,
@@ -1879,7 +2001,15 @@ export function buildMenuSections(
     sections.push({ id: "counters", label: "counters", items: counterItems(card) });
     sections.push({ id: "damage", label: "damage", items: damageItems(card) });
     if (COMBAT_STEPS.has(view.turn?.step ?? "")) {
-      sections.push({ id: "combat", label: "combat", items: combatItems(view, card) });
+      // ADR 0130 §7: the viewer's own lookup for their own creature only
+      // (the digest is per seat); an admin driving another seat gets
+      // no exert rows and the plain attack-all.
+      const combatGate = viewerID && card.controller === viewerID ? gate : NO_LEGAL_ACTIONS;
+      sections.push({
+        id: "combat",
+        label: "combat",
+        items: combatItems(view, card, combatGate),
+      });
     }
   }
 

@@ -94,6 +94,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 blue Fish":                                 {Name: "Fish", TypeLine: "Token Creature — Fish", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Squid with islandwalk":                {Name: "Squid", TypeLine: "Token Creature — Squid", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"islandwalk"}},
 	"1/1 blue Merfolk with hexproof":                {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
+	"1/1 white and blue Merfolk":                    {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"W", "U"}},
 	"1/1 blue Tentacle":                             {Name: "Tentacle", TypeLine: "Token Creature — Tentacle", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Thopter artifact with flying":         {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue and black Faerie with flying":         {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U", "B"}, Keywords: []string{"flying"}},
@@ -163,6 +164,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Assembly-Worker artifact":        {Name: "Assembly-Worker", TypeLine: "Token Artifact Creature — Assembly-Worker", Power: 2, Toughness: 2},
 	"2/2 green Cat":                                 {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 colorless Spawn artifact":                  {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
+	"2/2 white Knight Ally":                         {Name: "Knight Ally", TypeLine: "Token Creature — Knight Ally", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight with vigilance":               {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/2 white Fox with vigilance":                  {Name: "Fox", TypeLine: "Token Creature — Fox", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/2 colorless Robot artifact":                  {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 2, Toughness: 2},
@@ -212,7 +214,6 @@ var tokenTable = map[string]game.Card{
 	"8/8 blue Scion of the Deep":                    {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"9/9 blue Kraken":                               {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
 	"20/20 black Marit Lage":                        {Name: "Marit Lage", TypeLine: "Token Legendary Creature — Avatar", Power: 20, Toughness: 20, Colors: []string{"B"}, Keywords: []string{"flying", "indestructible"}},
-	"Munitions":                                     {Name: "Munitions", TypeLine: "Token Artifact"},
 
 	// A key longer than every row above: kept in its own block so gofmt
 	// does not re-align the whole table (and every open PR's rows) for it.

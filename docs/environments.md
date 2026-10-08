@@ -758,6 +758,64 @@ Rolling forward again recreates the column empty, with no backfill.
 `TestMigration0010RollbackByHand` runs exactly this sequence and then
 rolls forward.
 
+Migration 0011 (ADR 0128, playmats) adds one nullable column,
+`users.playmat_id`, the uuid of a person's playmat image. An older
+binary refuses the v11 schema. Drop the column by hand (SQLite 3.35 or
+newer):
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE users DROP COLUMN playmat_id; DELETE FROM schema_migrations WHERE version = 11;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs everyone their playmat: the images stay on disk under
+`<data dir>/playmats/` as files nothing points at, and can be deleted.
+Rolling forward again recreates the column empty, with no backfill, so
+people upload again. `TestMigration0011RollbackByHand` runs exactly this
+sequence and then rolls forward.
+
+Migration 0012 (ADR 0128 amendment) adds one nullable column,
+`users.playmat_wash`, how dark each person wants their playmat under
+the cards. An older binary refuses the v12 schema. Drop the column by
+hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE users DROP COLUMN playmat_wash; DELETE FROM schema_migrations WHERE version = 12;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only each person's chosen darkness: every playmat is drawn at
+the default 58% again. Rolling forward again recreates the column empty.
+`TestMigration0012RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
+Migration 0013 (ADR 0128 §11, three saved playmats) adds one table,
+`user_playmats`, one row per saved playmat (user, slot 1 to 3, image
+id), and backfills every existing `users.playmat_id` into slot 1. An
+older binary refuses the v13 schema. Drop the table by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE user_playmats; DELETE FROM schema_migrations WHERE version = 13;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+`users.playmat_id` is not touched, and keeps pointing at the **active**
+mat, so the older binary finds the one playmat it knew. It costs the
+other saved mats: their files stay under `<data dir>/playmats/` as files
+nothing points at, and can be deleted. Rolling forward again recreates
+the table and backfills the active mat into slot 1, so a person who had
+three is back to one. `TestMigration0013RollbackByHand` runs exactly
+this sequence and then rolls forward.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,

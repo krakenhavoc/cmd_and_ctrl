@@ -76,6 +76,14 @@ type Game struct {
 	// Plain data, carried by Clone and the snapshot.
 	TurnEndPending bool
 
+	// harvestDepth counts the trigger-harvest passes in progress
+	// (triggerHarvester.OnEvent). While it is non-zero the battlefield
+	// is being walked, so nothing reached from a harvest may move a
+	// permanent: a state-based-action sweep run from inside the walk
+	// removed a whole departed player's cards under it (#2608). Not
+	// part of a snapshot: a clone is only ever taken between passes.
+	harvestDepth int
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
@@ -143,6 +151,12 @@ type Game struct {
 	// venturing is resolved manually until rules graft work lands.
 	// Added in S10.
 	Initiative uuid.UUID
+
+	// DayNight is the game's day/night designation (CR 731) and the one
+	// number its turn-based check reads (ADR 0132, daynight.go). The
+	// zero value is the start of every game: neither day nor night.
+	// Carried by Clone, RestoreFrom and the snapshot.
+	DayNight DayNightState
 
 	// Settings is the table's configuration: the undo budget and
 	// scope, starting life, the commander damage threshold, bot pace
@@ -751,6 +765,12 @@ type Game struct {
 	resolutionOpen  bool
 	resolutionDepth int
 
+	// promptKeys is the transient bookkeeping behind the keys of the
+	// prompts a resolution or an answered prompt's branch queues (ADR
+	// 0127 §2, auto_answer.go). Reset where each begins, so neither
+	// Clone nor the snapshot carries it.
+	promptKeys promptKeyState
+
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
 	// random draw goes through randForLocked in rng.go, which derives
@@ -952,6 +972,11 @@ func NewGame() *Game {
 	// that event. See turn_tally.go.
 	g.Listeners = append(g.Listeners, turnTallyListener{})
 	g.Listeners = append(g.Listeners, layerVersionBump{})
+	// ADR 0132, CR 702.145b: a daybound permanent that enters at night
+	// enters transformed. Directly after the layer bump (which stamps
+	// the entry) and ahead of the harvester, so the ETB event that
+	// follows the zone move is harvested off the face that entered.
+	g.Listeners = append(g.Listeners, dayNightListener{})
 	// S19 sub-PR 1: install the auto-fire trigger dispatcher. Walks
 	// the battlefield (and the LKI map for LTB events) on every
 	// emit, queues matching catalog-declared TriggeredAbility
@@ -1485,6 +1510,15 @@ func (g *Game) driveStepToEndLocked() driveResult {
 // caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
 // every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
+	// ADR 0108 amendment 2026-10-07 (#2027): "until end of combat"
+	// effects expire as the combat phase ends (CR 511.3, 724.2d). The
+	// kind is a pure read of the cursor, so it only needs a sweep once
+	// the cursor has moved; any step of a combat phase can be the last
+	// one this call leaves (a phase an effect ended walks through here
+	// step by step), so every move out of one sweeps.
+	if PhaseOf(g.Turn.Step) == PhaseCombat {
+		defer g.ClearExpiredScopedStaticsLocked()
+	}
 	// CR 511.3: "as soon as the end of combat step ends, all
 	// creatures, battles and planeswalkers are removed from combat."
 	// This is where that step ends — the one seam every step

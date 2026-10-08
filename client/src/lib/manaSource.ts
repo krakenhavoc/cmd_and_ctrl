@@ -132,6 +132,8 @@ export function manaAbilityRider(a: ManaAbilityView): string {
   const mana = a.charged_mana_cost ?? a.mana_cost;
   if (mana) parts.push(`pay ${mana}`);
   if (a.life_cost) parts.push(`pay ${a.life_cost} life`);
+  if (a.energy_cost) parts.push(`pay ${a.energy_cost} energy`);
+  if (a.exert) parts.push("exert it");
   if (a.sacrifice_cost) parts.push("sacrifice it");
   if (a.sacrifice_options) parts.push(`sacrifice ${a.sacrifice_label || "a permanent"}`);
   if (a.exile_self) parts.push("exile it");

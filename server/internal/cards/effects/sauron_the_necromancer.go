@@ -99,7 +99,7 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 func sauronWraithException(t *game.Card) {
 	t.Power, t.Toughness = 3, 3
 	t.VariableToughness = false // a printed 3, not a `*` stand-in (#683)
-	t.Colors = []string{"B"}
+	t.SetCopyExceptionColors("B")
 	t.TypeLine = retypedTypeLine(t.TypeLine, "Wraith")
 	if !slices.Contains(t.Keywords, "menace") {
 		t.Keywords = append(t.Keywords, "menace")

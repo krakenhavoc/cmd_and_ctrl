@@ -122,6 +122,7 @@ func ManaAbilityNeedsPermanentSource(ab ManaAbilityShape) string {
 	if why := AbilityNeedsPermanentSource(AbilityCost{
 		Tap:           ab.TapCost,
 		SacrificeSelf: ab.SacrificeCost,
+		Exert:         ab.ExertCost,
 	}); why != "" {
 		return why
 	}

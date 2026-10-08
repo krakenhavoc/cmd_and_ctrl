@@ -41,9 +41,11 @@ import (
 type PlayerTurnTally struct {
 	// LifeGained is the sum of positive life changes.
 	LifeGained int `json:"lifeGained,omitempty"`
-	// LifeLost is the sum of negative life changes plus damage dealt
-	// to the player — the CR 119.3 reading every "lost life this
-	// turn" card in the catalog already used.
+	// LifeLost is the sum of negative life changes plus the life that
+	// damage dealt to the player cost them (CR 119.2, CR 120.3a):
+	// damage from a source with infect, or to a player whose life
+	// total can't change, is dealt but loses no life and is not
+	// counted (#2105, Event.DamageLifeLoss).
 	LifeLost int `json:"lifeLost,omitempty"`
 	// CardsDrawn counts draws (one event per card).
 	CardsDrawn int `json:"cardsDrawn,omitempty"`
@@ -85,6 +87,16 @@ type PlayerTurnTally struct {
 	// (CR 603.10a), not the card's field afterwards. Read through
 	// Game.PermanentLeftThisTurn.
 	PermanentsLeft int `json:"permanentsLeft,omitempty"`
+	// LifeLow / LifeLowSet are this player's lowest life total this
+	// turn, and PoisonHigh their highest poison count: the CR 732 loop
+	// breaker's progress marks (#2450, ADR 0055's 2026-10-07 amendment,
+	// option B). A new low or a new high restarts the loop runs, because
+	// it can happen only so many times before CR 704.5a or CR 122.1f
+	// takes the player out. Written by noteLoopLifeLowLocked and
+	// noteLoopPoisonHighLocked and read by nothing else.
+	LifeLow    int  `json:"lifeLow,omitempty"`
+	LifeLowSet bool `json:"lifeLowSet,omitempty"`
+	PoisonHigh int  `json:"poisonHigh,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -220,6 +232,27 @@ type TurnTally struct {
 	// loopSuspectedLocked over LoopRun; this says whether the answer
 	// it gives is news. See loop_breaker.go (#804).
 	LoopAllowance map[string]int `json:"loopAllowance,omitempty"`
+	// LoopLow and LoopLowSet are the lowest count of work left on the
+	// stack (StackMeta plus PendingTriggers) seen as a TRIGGERED
+	// ability began to resolve, since the last player decision (#2450,
+	// ADR 0055's 2026-10-07 amendment, option A). A resolution that
+	// finds the count strictly below the low is a batch draining, not a
+	// loop, and restarts the runs (noteLoopProgressLocked). Cleared by
+	// notePlayerDecisionLocked with everything else.
+	LoopLow    int  `json:"loopLow,omitempty"`
+	LoopLowSet bool `json:"loopLowSet,omitempty"`
+	// LoopActivated is the key of the activated ability the last
+	// decision activated (#810's notePlayerActivationLocked), whose run
+	// a draining batch does NOT restart: an activation loop is fed one
+	// activation at a time, and the triggers each activation causes may
+	// well drain between activations. Empty when the last decision was
+	// not an activation.
+	LoopActivated string `json:"loopActivated,omitempty"`
+	// LoopProgressed marks a new lowest life total or a new highest
+	// poison count since the last triggered resolution (#2450, option
+	// B). noteLoopWorkLocked applies it as the next triggered ability
+	// begins to resolve, and clears it.
+	LoopProgressed bool `json:"loopProgressed,omitempty"`
 	// Casts is every spell cast this turn, TABLE-WIDE, in cast order:
 	// the instance ID of each spell as it went on the stack. Read
 	// through Game.SpellsCastBeforeThisTurn.
@@ -275,6 +308,12 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// Exerts is every exert this turn, in order (ADR 0130 §1, CR
+	// 701.43): one record per exert, so a creature exerted in two
+	// combats has two. Written only by exertLocked; read through
+	// ExertedThisTurn (Combat Celebrant's "if this creature hasn't
+	// been exerted this turn"). Additive within v7: omitted when empty.
+	Exerts []ExertRecord `json:"exerts,omitempty"`
 	// StepsBegun and PhasesBegun count the steps and phase families
 	// that have begun this turn; PhaseStarted is the PhaseID of the
 	// phase the last count opened. They are what Turn.StepOrdinal and
@@ -919,9 +958,14 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
+	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
+	out.LoopProgressed = t.LoopProgressed
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
+	}
+	if len(t.Exerts) > 0 {
+		out.Exerts = append([]ExertRecord(nil), t.Exerts...)
 	}
 	if len(t.StepsBegun) > 0 {
 		out.StepsBegun = make(map[Step]int, len(t.StepsBegun))
@@ -972,7 +1016,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Amount <= 0 || g.playerByIDLocked(ev.Target) == nil {
 			return
 		}
-		g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += ev.Amount })
+		// #2105: the life the damage COST, not the damage — infect
+		// damage and damage to a locked life total lose no life.
+		if lost := ev.DamageLifeLoss(); lost > 0 {
+			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += lost })
+		}
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".
 		g.recordDamageDealerLocked(g.findCardByIDLocked(ev.Source), ev.Target, ev.Combat)

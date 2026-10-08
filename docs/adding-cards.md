@@ -73,6 +73,16 @@ surface tiny.
    resolution against the source's effective power, or its last-known
    power once it has left (#2146). Don't read `source.CurrentPower()` in
    a `TargetsFrom`: that freezes the bound when the trigger is built.
+   "Target creature it's blocking" / "blocked by this creature" /
+   "blocking equipped creature" is the same idea for combat: wrap the
+   clause in `BlockedBySource(spec)`, `BlockingSource(spec)`,
+   `BlockingEquipped(spec)` or `BlockedByEquipped(spec)` and keep the
+   candidate's own type and keywords in the predicates
+   (`BlockedBySource(TargetCreature("…", HasKeyword("flying")))`). It is
+   `game.TargetSpec.CombatWithSource`, judged at announce and at
+   resolution; a creature removed from combat in response is illegal,
+   and a source that has left is read from its last-known blocks
+   (#1863, ADR 0019 amendment 2026-10-07).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -417,6 +427,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
 | Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
 | Sacrifice N permanents | `ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther}` | (none yet; #747) |
+| Sacrifice one of each kind | `ManaAbilityCost{SacrificeOther: SacrificeEach("a Swamp and a Forest", SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest", "Forest")).SacrificeOther}` | (an activated ability today: Jarad, Golgari Lich Lord; #2526) |
 | Pay N life | `ManaAbilityCost{Life: 1}` | Mana Confluence |
 | A mana cost | `ManaAbilityCost{Mana: "{1}"}` | the Signet cycle |
 | Remove N counters | `ManaAbilityCost{RemoveCounters: RemoveCountersFromThis("charge", 1).RemoveCounters}` | Vivid Creek, Ramos |
@@ -635,11 +646,22 @@ The price shown stays printed; the engine folds the clause into coloured
 symbols wherever a payment or an affordability check reads the cost, so the
 auto-tapper, the bot and the view all agree with the payment. Under
 Chromatic Orrery any mana pays such a COST (CR 609.4b), while a mana
-RESTRICTION still binds. The clause works on activated abilities only:
-"Spend only black mana on X" on a SPELL (Drain Life), "Spend only mana
-produced by basic lands" (Imperiosaur) and Emblazoned Golem's
-one-of-each-colour cap have no shape yet. See ADR 0040's 2026-10-03
-amendment.
+RESTRICTION still binds. The same sentences on a SPELL are two `Spec`
+fields (#2556, ADR 0040's 2026-10-07 amendment):
+
+```go
+SpendOnly:        SpellSpendOnlyOnX("B"),       // Drain Life: "Spend only black mana on X"
+SpendOnly:        SpellSpendOnlyOnX("B", "R"),  // Soul Burn: "black and/or red"
+SpendOnlySources: game.ManaSourceBasicLand,     // Imperiosaur: "…produced by basic lands"
+SpendOnlySources: game.ManaSourceCreature,      // Myr Superion: "…produced by creatures"
+```
+
+The colour clause is stamped on the cast's price and folded like an
+ability's; the source clause is read from the cast's spend context by the
+pool and by the auto-tapper's planner. A spell's clause is the "on X" form
+only, and `Register` refuses it beside delve or convoke / waterbend.
+Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
+2026-10-03 and 2026-10-07 amendments.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
@@ -715,7 +737,10 @@ func init() {
 | "until end of turn" | `DurationUntilEndOfTurn(ctx)` | that turn's cleanup step (CR 514.2) |
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
+| "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
+
+A damage shield takes the last two rows through `PreventDamageFromSource{Lasts: ShieldThisCombat}` ("prevent all combat damage that would be dealt this combat", Sewers of Estark) and `Lasts: ShieldWhileSourceRemains` ("for as long as this Saga remains on the battlefield", Old Fat Spider Can't See Me); the default is this turn.
 
 Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell that changes characteristics or control must pin its affected set at resolution (CR 611.2c). A mass restriction changes neither and reads a live set instead (`RestrictUntilEOT{Scope}`, #1650). `ScopedEffectFor` does the pinning itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](decisions/0063-durations-and-control.md) and [ADR 0035](decisions/0035-until-end-of-turn-effects.md).
 
@@ -896,6 +921,15 @@ the row is stamped with that seat as the activator; the client opens the
 ability popover on another player's permanent for its `any_player` rows;
 and smart autopass does not stop for them.
 
+**Only some players may activate (ADR 0106 §1 amendment, #1947).**
+"Only your opponents may activate this ability" (Clergy of the Holy
+Nimbus) is `OpponentsOnly: true` on the row, and "Only this creature's
+owner may activate this ability" (Personal Incarnation) is
+`OwnerOnly: true`. Same predicate (`game.MayActivate`), same "you is the
+activator" reading, same registration limits as `AnyPlayer`; set at most
+one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
+activator is the granting spell's controller (Martyrdom) has no shape yet.
+
 ### Declaring what a card does: Purpose (ADR 0126 §6)
 
 The heuristic bot reads the seat's view and nothing else, and the view
@@ -948,6 +982,128 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   `CMDCTRL_SCRYFALL_DUMP` set). It fails on a catalog card whose text
   reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
   names why.
+
+### Paying energy (ADR 0129, #1995)
+
+Energy is a counter on the player (CR 107.14, CR 122.1):
+`Player.Counters["energy"]`, mirrored on `Player.Energy`. Nothing new is
+stored for it.
+
+**Getting it.** "You get {E}{E}" is the `GetEnergy{N: 2}` primitive
+(`effects/energy.go`), which puts the counters on through ADR 0056's
+window, so a replacement on getting energy and a trigger on
+`EventPlayerCounterPlaced` both see it. The common line "When this
+creature enters, you get {E}{E}" is `WhenThisEntersYouGetEnergy(name, 2)`.
+Declare the energy a card gives in its purpose (`game.Purpose{Energy: 2}`
+on the Spec for a spell or an enters effect, on the row for an activated
+"you get"), the printed amount only, as for draws.
+
+**Paying it as an activation cost.** "Pay {E}{E}" is `PayEnergy(2)`,
+composed like every other component:
+
+```go
+Cost: Plus(TapCost(), PayEnergy(2)),           // "{T}, Pay {E}{E}:"
+Cost: PayEnergy(8),                             // "Pay eight {E}:"
+Cost: Plus(ManaCost("{W}{U}{U}"), TapCost(), PayXEnergy()), // "Pay X {E}:", X read with ctx.X()
+```
+
+The engine checks the activator's energy with the other costs, before
+anything is paid (CR 118.3, CR 601.2h), refuses with
+`game.ErrInsufficientEnergy` ("Not enough energy (have 2, need 3)"), and
+pays through `payEnergyLocked`, the one path that pays energy. Energy is
+never waived: strict, permissive and Cast anyway decide only the mana
+(ADR 0129 §4). "Pay X {E}" makes the ability demand X, X may not exceed
+the activator's energy, and the enumerator bounds X by it. The view
+stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
+short for.
+
+**A mana ability that pays energy** (PR 2) declares it on its cost:
+`ManaAbilityCost{Tap: true, Energy: 1}` is Aether Hub's "{T}, Pay {E}:"
+(`anyColorForEnergyRow` in `effects/energy_mana.go` is the whole row).
+It stays a mana ability (CR 605.1a). The auto-tapper plans it in the
+energy tier: only when no plan that spends no energy pays, before the
+pain tier, and never for more energy than the controller has across the
+whole plan (ADR 0129 owner decision 2).
+
+**Paying it while an ability resolves** (PR 3, CR 118.12 and 118.12a).
+Each primitive queues a prompt, so what the card does after the payment
+goes inside the branch, never after `Apply` returns. Every one holds the
+step it was asked in, so an attack trigger's counter lands before
+blockers.
+
+```go
+MayPayEnergy{N: 2, Question: "…", OnPay: func(ctx *Context) error { … }}        // "you may pay {E}{E}. If you do, …"
+PayEnergyUnless{N: 2, Question: "…", OnDecline: func(ctx *Context) error { … }} // "sacrifice it unless you pay {E}{E}"
+PayEnergyOrElse{N: 2, OrElse: func(ctx *Context) error { … }}                    // "pay {E}{E}. If you can't, …" (asks nothing)
+PayEnergyAmount{Min: 0, Unit: game.PayAmountDamage, Goal: lethalDamageGoal,      // "you may pay any amount of {E}"
+	Then: func(ctx *Context, paid int) error { … }}                               // Min: 1 for "one or more"
+```
+
+`MayPayEnergy` / `PayEnergyUnless` are the `pay_unless` prompt with an
+energy payment: "Pay" is a payment only when the payer has the energy
+(CR 118.3), and an amount computed at resolution ("an amount of {E}
+equal to its mana value") is just `N`. `PayEnergyAmount` is the
+`pay_amount` prompt: `Then` always runs exactly once, with 0 when
+nothing was paid (no energy, declined, or the payer left), so the rest
+of the card ("Destroy all creatures") lives inside it. `Goal` is the
+amount the card is for, computed when it is asked (the lethal damage,
+`lethalDamageGoal`; `AsMuchAsYouCan` for counters or a token's size):
+the bot pays it and the stepper opens on it. A reflexive "When you do,
+…" is `WhenYouDo(...)` applied inside `OnPay`. The shared lines are in
+`effects/energy_resolution.go`: `whenThisAttacksMayPayEnergy`,
+`mayPayEnergyThen`, `sacrificeThisUnlessYouPayEnergy`,
+`getEnergyThenPayAnyAmountToDamageTarget`.
+
+**Not yet:** energy as an alternative cost, replicate or a keyword's cost waits on ADR 0129 PR 4;
+"whenever you get one or more {E}" and "{E} you've paid or lost this
+turn" on PR 5. Put such a card on the matching registry row's `Waiting`
+list.
+
+### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
+
+"For each {B} in a cost, you may pay 2 life rather than pay that mana"
+(K'rrik, Son of Yawgmoth) is a player static, declared on
+`Spec.LifeForMana` with the card-side sentence in
+`effects/life_for_mana.go`:
+
+```go
+LifeForMana: YouMayPayLifeForMana("B"), // K'rrik, Son of Yawgmoth
+```
+
+It changes how the controller PAYS, not the cost, so it is read at the
+payment, never in a pricer. `costAsPaidByLocked` (`game/spend_any_color.go`)
+calls `grantLifeForManaLocked` first, which marks each requirement whose
+options include the granted colour `ColorRequirement.LifeGranted`;
+`PaysWithLife()` is then true for it exactly as for a printed `{B/P}`, and
+the one strike-and-pay helper (`PhyrexianLifePlan`,
+`strikePhyrexianLifeLocked`) pays it. Consequences worth knowing before you
+touch it:
+
+- It reaches `{B}` and the `{B}` half of a hybrid symbol (`{B/G}`, `{2/B}`),
+  never generic mana, `{C}`, or the black requirements a "spend only black
+  mana on X" clause folds in (the mark runs before the fold).
+- The price shown, the mana value and the card's colour are unchanged: the
+  flag lives on the copy made at payment.
+- **Auto-tap never pays life.** The life is paid only when the action
+  claims it with `phyrexian_life` (CR 601.2b), the same field a printed
+  Phyrexian symbol uses, on a cast, an activation or an attack
+  declaration. The view reports `phyrexian_symbols` (the ceiling) and
+  `phyrexian_granted` (how many are the grant's) for the viewer.
+- The enumerator and the bot need no new code for a card: the life loops in
+  `legal/cast.go`, `legal/abilities.go` and `legal/combat.go` call
+  `LifeGrantedCostForEffect` before they count symbols.
+- Every mana payment is covered. A mana ability's own mana component
+  (`ManaAbilityParams.PhyrexianLife`, wire `phyrexian_life` on
+  `activate_mana_ability`; a filter land's "{W/B}, {T}: Add …") and a mana
+  `pay_unless` (`ResolvePayUnlessWithLife`, `phyrexian_life` on
+  `resolve_choice`; ward {B}, "unless that player pays {B}") take the same
+  claim through the same helper pair, so a card with such a cost needs no
+  caveat for them.
+- A grant for another colour is data: `YouMayPayLifeForMana("G")`.
+
+A caveat that says "pays 2 life instead of {B}" goes stale the day a card
+declares `LifeForMana`; the `paying 2 life instead of black mana`
+coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
 ### Adding a replacement effect (S17+)
 
@@ -1286,6 +1442,19 @@ queued no prompt when the entry point returns;
 after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
+
+**Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
+asks: once the window above has settled it queues a
+`PendingChoiceProliferate` offering every permanent and player with a
+counter, with the beneficial pick suggested (and pre-selected, and what
+a bot answers with). It PAUSES the effect that asked, so anything the
+card says after "proliferate" goes in `Proliferate{Then: func(g
+*game.Game) error {…}}` and not on the next line — Steady Progress draws
+from its `Then`. Capture scalars, never the `*Context`. Explicit lists
+(`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
+proliferates is `CompletenessFull`; there is no caveat to write. In a
+test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+`answerProliferate(t, g, picks…)` takes a chosen one.
 
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an
@@ -2908,10 +3077,36 @@ much mana is around at resolution.
 
 X lives in the MANA component, or in a cost with a variable COUNT:
 Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
-0100) and Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
-(#1421). The count the activator names IS the announced X, read with
+0100), Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
+(#1421) and Gix, Yawgmoth Praetor's "Discard X cards" is `DiscardX`
+(#2527, ADR 0113's 2026-10-07 amendment). The count the activator
+names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
 puts X in two places.
+
+**X read off a card (#2190):** Kozilek, the Great Distortion's "Discard a
+card with mana value X: Counter target spell with mana value X" is
+`Cost: DiscardCardWithManaValueX("a card with mana value X")` with
+`Targets: TargetSpell("target spell with mana value X").WithManaValueEqualsX()`.
+Nothing pays for X; it is the mana value the discarded card must have and
+the one the target must have, so the engine refuses a card and a target
+that disagree, and checks the target again as the ability resolves. A spell
+on the stack counts {X} as the value chosen for it; a card in a hand counts
+it as zero. The client sends the picked card's mana value as `x_value`
+rather than asking for X (ADR 0113's second 2026-10-07 amendment).
+
+**A sacrifice of different kinds (#2526):** "Sacrifice a Swamp and a Forest"
+(Jarad, Golgari Lich Lord) is `SacrificeEach("a Swamp and a Forest",
+SacrificeSubtype("a Swamp", "Swamp"), SacrificeSubtype("a Forest",
+"Forest"))` (`SacrificeCardType` for "a creature"), not `SacrificeN(2, …)`
+with a union predicate —
+that would accept two Swamps. The picks must fill every part with a
+different permanent; a dual land fills one part, never two. The enumerator
+searches for a set and prefers the permanent that fits fewest parts, and
+the picker holds confirm until the parts are filled
+(`game.TargetSpec.EachOf`, ADR 0020 amendment 2026-10-07). The rule is "one
+of each KIND" (a subtype or a card type, as data); a rule over an attribute of the picks ("different names")
+is not this and still waits.
 
 **A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
 hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
@@ -4272,6 +4467,33 @@ is a *price* rather than a permission:
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
 
+**Retrace (#2528, CR 702.81, [ADR 0066 amendment 2026-10-07](decisions/0066-granted-cast-and-play-permissions.md))**
+is "cast this from your graveyard by discarding a land card in addition
+to paying its other costs". The card file is escape's two lines, with
+the card's own printed mana cost spelled out (hybrid symbols included),
+because retrace never replaces the mana:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+AlternativeCosts: []game.AlternativeCost{Retrace("{R}")},   // Flame Jab
+```
+
+Retrace is an **additional** cost, and the engine carries it on a
+graveyard-bound priced offer (`AlternativeCost.DiscardFromHand`, a land
+card from hand discarded **as a cost**, so a discard payoff sees it and a
+countered spell does not give the land back). That makes the claim the
+thing that opens the graveyard, so the discard is owed on exactly the
+graveyard cast and never on the hand cast. The one thing the model gives
+up is combining retrace with another alternative cost on one cast; no
+catalog card can. A card that GRANTS retrace to others declares a
+`CastPermission` with `AltCostKey: game.AltCostKeyRetrace` and
+`DiscardLandCard: true` — on `Spec.CastPermissions` for a permanent (Six,
+with `Filter: PermissionFilter{NonLandPermanentOnly: true}` and
+`Timing: game.TimingYourTurnOnly`), or on `EmblemSpec.CastPermissions`
+for an emblem (Wrenn and Six's −7, `InstantOrSorceryOnly`). Standing
+permissions are derived from the battlefield or the owner's emblems on
+every query, so they end when the source does.
+
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
 `AlternativeCost.CastsFace: 1`, so the spell is the card's **back
@@ -4967,6 +5189,15 @@ per-instance state (counters, `ExilePlay`, the cached characteristic) is
 deliberately not copied — CR 707.2. "Enters as a copy" for a real card
 (Clone) is a different thing: see "Adding a copy effect" above.
 
+An exception that provides a colour ("except it's a 4/4 black Zombie")
+must set it with `t.SetCopyExceptionColors("B")`, never `t.Colors = ...`
+(#2322, CR 707.9d): the copied object's colour-defining ability is not
+copied, so a devoid creature's token copy is not devoid. The helper
+strips devoid from `Keywords` and sets `Card.ColorCDADropped`, which the
+printed-keyword merge and the catalog's synthesised keyword static both
+honour; the mark is a copiable value, so a copy of that token has no
+devoid either.
+
 **Event picker.** Each row is the `when` for `On(kind, when, label, effect)`; the rows with a name in `triggers_common.go` are the constructors above.
 
 | Trigger text | `Watches` | `AppliesTo` |
@@ -5583,6 +5814,24 @@ Three things to know if you touch priority, prompts or the tally:
 - **A bare `pass_priority` is not a decision**, on purpose: if it were,
   the first manual "next" would clear the notice and four autopassing
   clients would spin the loop straight back up.
+- **A batch that drains is not a loop** (#2450, ADR 0055's amendment of
+  2026-10-07). As each TRIGGERED ability begins to resolve,
+  `noteLoopWorkLocked` counts the work left (`StackMeta` plus
+  `PendingTriggers`) and keeps the lowest count since the last decision
+  (`TurnTally.LoopLow`). A new low restarts every run, clears the
+  notice and withdraws a shortcut prompt (`noteLoopProgressLocked`).
+  That is what lets thirty Syr Konrad triggers from one wrath resolve.
+  Spells and activated abilities are not measured, and the run of the
+  last activation (`TurnTally.LoopActivated`) survives a new low, so
+  #810's activation loops still trip.
+- **A loop that is ending the game is progress** (option B of the same
+  amendment). A new lowest life total this turn or a new highest poison
+  count (`PlayerTurnTally.LifeLow` / `PoisonHigh`, marked in
+  `noteLifeLostLocked` and `emitPlayerCounterDeltaLocked`) sets
+  `TurnTally.LoopProgressed`, which the next triggered resolution
+  applies as a restart. A player leaving restarts at once
+  (`leaveGameLocked`). A player ADR 0057 says can't lose to that cause
+  is skipped.
 
 **The shortcut prompt (#804).** Raising the notice also asks the
 repeating ability's controller "resolve it K more times, then stop?" —
@@ -5669,8 +5918,8 @@ For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
 names that player's next untap step. Markers expire at that actual step,
 even on an untapped permanent, survive skipped steps, and disappear on
 zone changes. They are data on `Card`, not turn-scoped closures, so undo
-and persisted snapshots retain them. Exert's action/cost remains separate
-work. See [ADR 0058](decisions/0058-doesnt-untap.md) and
+and persisted snapshots retain them. Exert, as it attacks and as a
+cost, has its own section below ([ADR 0130](decisions/0130-exert.md)). See [ADR 0058](decisions/0058-doesnt-untap.md) and
 [ADR 0070](decisions/0070-untap-step-choices.md).
 
 For "it doesn't untap during its controller's untap step **for as long
@@ -5824,6 +6073,42 @@ hid. The link is an object reference, so a triggered payoff captures
 `game.ObjectRefOf(*source)` in its `Build` (Rabble Rousing) rather than
 re-reading the source at resolution. The three Lorwyn lands are a table
 in `hideaway_lands.go`; a new land of the same shape is a row.
+
+### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
+
+Manifest dread (CR 701.62a) is the choice manifest does not have: look
+at the top two cards, put the one YOU pick onto the battlefield face
+down as a 2/2 and the other into your graveyard. A card file says it
+with the words in
+[manifest_dread_primitive.go](../server/internal/cards/effects/manifest_dread_primitive.go):
+
+```go
+Do(ManifestDread{})                                              // "Manifest dread."
+Do(ManifestDread{Then: PutCountersOnManifested(                  // "..., then put two +1/+1 counters
+    CounterAmount{Kind: game.CounterPlusOne, N: 2})})            //    and a trample counter on that creature."
+Do(ManifestDreadTimes{N: 2})                                     // "Manifest dread twice."
+ManifestDread{Then: AttachSourceToManifested(ctx)}.Apply(ctx)    // "..., then attach this Equipment to that creature."
+On(game.EventManifestDread, WheneverYouManifestDread, ...)       // "Whenever you manifest dread" (ev.CardID = the
+                                                                 //  permanent, ev.Target = the card put into the graveyard)
+```
+
+Everything after "then" is the `Then` continuation, which is told
+`game.ManifestDreadResult{Manifested, Graveyarded}`. Never write it as
+the next line of the effect: the controller's pick is a prompt, so the
+rest of the sentence runs when it is answered, and it must capture only
+scalars. An empty library runs `Then` with a zero result, so guard on
+`Manifested != uuid.Nil` (the ready-made continuations already do).
+
+"X times" is `ManifestDreadTimes` (Valgavoth's Onslaught): each
+repetition is its own look and its own prompt, and `Then` gets every
+result. "When it dies this turn, manifest dread" (Turn Inside Out) is
+`ManifestDreadWhenItDiesThisTurn`, an event-delayed trigger. A
+replacement that cares about a face-down entry reads
+`ReplacementEvent.FaceDown`: the library card is not yet the 2/2
+colorless creature it will be (Curator Beastie).
+
+Not here: turning a permanent face up as an EFFECT (no cost) has no
+door yet, so cards that say "you may turn it face up" wait on it.
 
 ### Adding a creature-type card (S26+)
 
@@ -6181,8 +6466,14 @@ A spell file that moves its own card (Beacon, Rise of the Eldrazi's
 `TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
 spell moving itself is not a permanent's ability.
 
-Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
-no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
+Skipping an EXTRA turn is `SkipOpponentsExtraTurns()` in `Spec.Replacements`
+(Trouble in Pairs, #2529): a CR 614 replacement over `RepEventExtraTurn`,
+the window the rotation seam opens when a queued extra turn would begin.
+A cancel is the skip, and a delayed trigger bound to that turn goes with
+it (CR 614.10a). The window cannot pause (ADR 0059 amendment 2026-10-07),
+so write the replacement as a pure cancel. Skipping a NORMAL turn ("skip
+your next turn": Magosi, Lethal Vapors) and a step of a named turn (Savor
+the Moment) have no shape yet. Declare those as a caveat.
 
 ### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
 
@@ -6274,6 +6565,74 @@ trigger the process caused goes on the stack before another cleanup step
 Not built yet: Day's Undoing's "if it's your turn" is buildable on the
 same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
 cost reduction with no shape, so it stays out.
+
+### Exert (ADR 0130, #2048, CR 701.43)
+
+"You may exert this creature as it attacks" is an optional cost to
+attack (CR 701.43d, 508.1g). Declare it on the Spec, and put a linked
+"when you do" trigger (CR 607.2h) in `Triggered`:
+
+```go
+ExertOnAttack: ExertAsItAttacks(),
+Triggered: []game.TriggeredAbility{
+    WhenExerted("Oketra's Avenger — prevent all combat damage that would be dealt to it this turn", effect),
+},
+```
+
+- **`ExertAsItAttacks()`** is the static ability. The engine reads it off
+  the creature's effective abilities, offers each attack twice (plain
+  and exerting), pays a chosen exert as the declaration locks in, in the
+  attacks' event batch, and emits `game.EventExert`. A card file never
+  exerts anything itself.
+- **`ExertAsItAttacksUnless(cond)`** adds a condition under which it may
+  NOT be exerted. Combat Celebrant's "If this creature hasn't been
+  exerted this turn" is `ExertAsItAttacksUnless(ExertedThisTurn)`, which
+  reads `Game.ExertedThisTurn` (per object, CR 400.7).
+- **`WhenExerted(label, effect)`** is the linked "When you do". It fires
+  only when this permanent is exerted as it attacks (the event names an
+  attack target). Wrap it in `Targeting` for a targeted one (Glorybringer):
+  the creature may be exerted with no legal target, and the trigger is
+  then removed (CR 603.3d).
+- **`WheneverYouExert(label, effect)`** is "Whenever you exert a
+  creature" (Resolute Survivors, Battlefield Scavenger). It sees the
+  source itself, any other creature its controller exerts, and a
+  creature exerted to pay a cost, but not a land.
+- **The skip is ADR 0058's next-untap marker**, keyed to the exerting
+  player's untap step (CR 701.43a). A second exert before that step adds
+  no second marker (CR 701.43b); don't make the plain marker count.
+- **Declare what the exert does** (ADR 0130's amendment of 2026-10-07).
+  The bot prices an exert by the purposes of the rows the two helpers
+  stamp (`exert: "linked"` and `"payoff"` on the wire), so wrap each in
+  `TriggerWithPurpose` with the printed amounts: `Pump` for "this
+  creature gets +N/+N and gains …", `PreventCombatDamageToSelf`,
+  `DamageToCreature`, `DamageEachOpponent`, `LifeGain`, `ExtraCombat`,
+  or the ADR 0126 §6 fields (`Draws`, `Tokens`, …). Oketra's Avenger:
+
+  ```go
+  TriggerWithPurpose(WhenExerted("…", effect), game.Purpose{PreventCombatDamageToSelf: true}),
+  ```
+
+  A row with no purpose is an exert the bot takes only when it is free.
+- **`ExertedGets(label, power, toughness, keywords...)`** is the whole
+  linked row of the self-pump cards ("it gets +1/+1 and gains flying
+  until end of turn"): the pump on this object, with the matching `Pump`
+  purpose declared. A card whose "when you do" refers to "that creature"
+  on a payoff (Rohirrim Chargers) builds its trigger with
+  `whenYouExertBuild`, which records the exerted object and its epoch.
+- **Exert as an activation cost** ("{T}, Exert this creature: …", ADR
+  0130 §4) is a cost component. On an activated ability compose
+  `ExertThis()`: `Plus(ManaCost("{W}"), TapCost(), ExertThis())` is Pride
+  Sovereign's "{W}, {T}, Exert this creature". On a mana ability set
+  `ManaAbilityCost{Tap: true, Exert: true}` (Oasis Ritualist; Arena of
+  Glory adds `Mana: "{R}"`). The engine pays it beside the {T} through
+  `exertLocked`, keyed to the activator, with no attack target, so a
+  `WhenExerted` row never fires for it and a `WheneverYouExert` row does
+  (for a creature). It is always payable, again after an earlier exert
+  this turn (CR 701.43b), and battlefield only (Register refuses it in
+  another zone, beside a cost that moves the source, and on an
+  any-player row). The auto-tapper never pays an exert mana row: the
+  player activates it from the mana menu, and a plain "{T}: Add …" row
+  on the same permanent is still planned.
 
 ### When NOT to add a catalog entry
 
@@ -6551,8 +6910,8 @@ Three things to know:
 - **`Register` panics** on an `EmblemSpec` with no `Label`, no `Text`,
   or no abilities at all. An emblem whose printed ability the engine
   cannot express yet is NOT declared with an empty `Static` — leave
-  the ultimate omitted and say why in `Caveats`, as Wrenn and Six does
-  for retrace (#652). ADR 0032 still holds: a −7 that costs seven
+  the ultimate omitted and say why in `Caveats`, as Wrenn and Six did
+  for retrace until #2528. ADR 0032 still holds: a −7 that costs seven
   loyalty and delivers a chip that does nothing is the lie the
   omission exists to avoid.
 - **Nothing removes an emblem**, and nothing can name one. It is not a
@@ -6635,6 +6994,43 @@ Three things to know:
   `WheneverTheRingTemptsYou`, Call of the Ring's
   `WheneverYouChooseARingBearer`, Ringsight's search in `Then` (read the
   board there, after the tempt: the new Ring-bearer is legendary).
+
+### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
+
+The game itself can be day or night. The designation, the untap-step
+check that changes it (CR 502.2) and the werewolf turn-over are engine
+(`game/daynight.go`); a card needs only the vocabulary in
+[daynight.go](../server/internal/cards/effects/daynight.go):
+
+```go
+AsEnters: BecomesDayAsEnters(),   // "If it's neither day nor night, it becomes day as ~ enters."
+Triggered: []game.TriggeredAbility{
+    WheneverDayBecomesNightOrNightBecomesDay("Firmament Sage — draw a card", Do(DrawCards{N: 1})),
+},
+OnResolve: …Do(BecomeNight{})…    // also BecomeDay{} and ToggleDayNight{} (The Celestus)
+SelfCostModifiers: []game.CostModifier{CostsLess(2, "…if it's night.", ItsNightCost())},
+```
+
+**The trigger is a flip.** The first designation a game gains is not
+"day becomes night", so `WheneverDayBecomesNightOrNightBecomesDay`
+ignores it; write your own `On(game.EventDayNightChanged, …)` only for a
+card that cares about the first one, and read `ev.Label` ("day" /
+"night"). "If it's night" inside a resolution is `ItsNight(ctx.Game)`.
+
+**A werewolf is two `Spec`s and no machinery.** The front face's key is
+the oracle ID and the back face's is `"<oracle_id>#1"`; each declares
+its own `PrintedKeywords` including `"daybound"` / `"nightbound"`. The
+engine turns the permanent over when the designation changes, makes a
+daybound card cast at night enter on its back face (so it is the back
+face's "enters" ability that triggers, and no transform event fires),
+and refuses every other instruction to transform it. See
+[village_watch.go](../server/internal/cards/effects/village_watch.go) and
+[infestation_expert.go](../server/internal/cards/effects/infestation_expert.go);
+a face with nothing but keywords is a row of the table in
+[werewolves_keyword.go](../server/internal/cards/effects/werewolves_keyword.go).
+Test them through `deck.ToGameCard` (`werewolfRow` in
+`werewolf_cards_test.go`), because the per-face keywords reach the card
+only through the importer.
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
@@ -6820,6 +7216,46 @@ the same way an upkeep does. A card-level `CastableZones: exile`
 declaration is the WRONG shape for either and was retired on #659: it
 opens exile for every copy of the card, at any time, however the copy
 got there — so a Path to Exile'd Rift Bolt would be castable.
+
+### Opening-hand actions (ADR 0133, #2190, CR 103.6a)
+
+"If this card is in your opening hand, you may begin the game with it on
+the battlefield" (every Leyline, Leyline Axe) is `Spec.OpeningHand`, built
+with `BeginTheGameOnTheBattlefield`:
+
+```go
+OpeningHand: BeginTheGameOnTheBattlefield(),
+
+// Gemstone Caverns — "and you're not the starting player", "with a luck
+// counter on it", "if you do, exile a card from your hand":
+OpeningHand: BeginTheGameOnTheBattlefield(
+    NotTheStartingPlayer(),
+    WithCounter("luck", 1),
+    ThenExileFromHand(1),
+),
+```
+
+The engine asks when the mulligan window closes (`settleMulliganLocked`),
+each seat in turn order from the starting player, once per qualifying card
+in hand: a yes puts the card onto the battlefield through the ordinary
+hand door, then places the counters and queues the exile pick. A card file
+declares only what the card prints; it never queues a prompt. The riders
+are plain data on `game.OpeningHandAction`, so a fourth rider is a fourth
+field, not a closure.
+
+Three things to know:
+
+- **Not a reveal.** "You may reveal this card from your opening hand. If you
+  do, at the beginning of the first upkeep, …" (the Chancellors) is a
+  different shape — it arms a delayed trigger — and has no slot yet.
+- **The question is private.** It names a card in a hidden zone, so the
+  view strips its words from every viewer but the chooser
+  (`PendingChoice.private`, wire `private_text`). The table sees who the
+  game is waiting on and nothing else.
+- **Test with a window that is still open.** `newCatalogGame` has already
+  kept every hand. Use `openingTable`, `handWith` and `keepAll` in
+  [opening_hand_actions_test.go](../server/internal/cards/effects/opening_hand_actions_test.go),
+  which stop before the first keep so the hands can be stocked.
 
 ### Adding a `Spec` slot (#622)
 

@@ -16,6 +16,7 @@ tests-e2e/
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
     ├── cast-anyway-2188.spec.ts # ADR 0118 §2: Cast anyway (don't pay) asks first, casts unpaid, logs it
+    ├── combat-strike-2614.spec.ts # ADR 0134: an attacker's copy lunges and is gone in 2 s; none with combat motion off
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)

@@ -63,6 +63,8 @@
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { usableManaAbilities } from "../../seatSummary";
   import { cancelAction, confirmAction } from "../../dock";
+  import { EXERT_NOTE } from "../../combatDock";
+  import { L } from "../../labels";
   import DockSheet from "./DockSheet.svelte";
 
   interface Props {
@@ -80,7 +82,9 @@
     // the "attack with all" button counts. Absent means no information:
     // the row fields decide, as they did before.
     legalGate?: LegalActions;
-    onConfirm: (attackerIDs: string[], lockedSources: string[]) => void;
+    // ADR 0130 §7: `exertIDs` are the checked attackers whose Exert
+    // toggle is on.
+    onConfirm: (attackerIDs: string[], lockedSources: string[], exertIDs: string[]) => void;
     onCancel: () => void;
   }
 
@@ -109,6 +113,10 @@
 
   let selected = $state<string[]>([]);
   let lockedSources = $state<string[]>([]);
+  // ADR 0130 §7 (owner decision 1): the attackers the player chose to
+  // exert as they attack. Off by default on every row: nothing exerts a
+  // creature the player didn't ask to (CR 508.1g).
+  let exerted = $state<string[]>([]);
 
   // Seed the selection with every eligible attacker when the modal
   // OPENS for a defender — not on every later snapshot, which would
@@ -120,8 +128,19 @@
       lastDefenderSeatID = defenderSeatID;
       selected = seedAttackSelection(eligible, cap);
       lockedSources = [];
+      exerted = [];
     }
   });
+
+  function toggleExert(id: string): void {
+    exerted = exerted.includes(id) ? exerted.filter((x) => x !== id) : [...exerted, id];
+  }
+  // Only a checked attacker the server still lists as exertable is sent
+  // with exert: an unchecked row's toggle sends nothing.
+  const liveExerted = $derived(
+    exerted.filter((id) => liveSelected.includes(id) && plan.exertable.includes(id)),
+  );
+  const anyExertable = $derived(eligible.some((c) => plan.exertable.includes(c.instance_id)));
 
   // A selected ID can go stale between the modal opening and the
   // confirm click — a creature dies to a response, a snapshot lands
@@ -164,7 +183,7 @@
 
   function confirm(): void {
     if (liveSelected.length === 0 || overCap) return;
-    onConfirm(liveSelected.slice(), lockedSources.slice());
+    onConfirm(liveSelected.slice(), lockedSources.slice(), liveExerted.slice());
   }
 </script>
 
@@ -220,9 +239,33 @@
             <span class="prompt-radio" aria-hidden="true"></span>
             <span class="label">{c.name || "unknown creature"}</span>
           </button>
+          {#if plan.exertable.includes(c.instance_id)}
+            {@const ex = exerted.includes(c.instance_id)}
+            <!-- ADR 0130 §7: the Exert toggle, off by default. -->
+            <button
+              type="button"
+              class="ghost exert-btn"
+              class:on={ex}
+              role="switch"
+              aria-checked={ex}
+              aria-label={L.exertAttacker(c.name || "unknown creature")}
+              disabled={!on}
+              title={ex
+                ? "exerting — it won't untap during your next untap step"
+                : "exert it as it attacks — it won't untap during your next untap step"}
+              onclick={() => toggleExert(c.instance_id)}
+            >
+              {ex ? "Exerting" : "Exert"}
+            </button>
+          {/if}
         </li>
       {/each}
     </ul>
+    {#if anyExertable}
+      <p class="prompt-hint" role="note">
+        Exert is off unless you turn it on. {EXERT_NOTE}
+      </p>
+    {/if}
     <div class="pick-bulk">
       <button type="button" class="ghost" onclick={selectAll}
         >{cap !== null && cap < eligible.length ? "First " + cap : "All"}</button
@@ -258,6 +301,29 @@
 {/if}
 
 <style>
+  li:has(.exert-btn) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  li:has(.exert-btn) > .prompt-opt {
+    flex: 1;
+    min-width: 0;
+  }
+  .exert-btn {
+    flex: none;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .exert-btn.on {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
   .pick-bulk {
     display: flex;
     justify-content: flex-end;

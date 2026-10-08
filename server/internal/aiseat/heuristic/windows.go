@@ -69,7 +69,7 @@ func couldAttack(c *protocol.CardView) bool {
 // keeps the normal threshold in a leftover window.
 var nonManaCastKeys = []string{
 	"alt_cost_ids", "discard_ids", "sacrifice_ids", "delve_ids",
-	"teamwork_ids", "blight_ids", "optional_costs", "cost_branch",
+	"teamwork_ids", "blight_ids", "reveal_ids", "optional_costs", "cost_branch",
 	"phyrexian_life",
 }
 
@@ -137,7 +137,7 @@ func (p *Policy) instantSpeed(st *state, m legal.Move) bool {
 // all of it on the wire (ADR 0033 §3).
 func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 	if c := m.Cost; c != nil {
-		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 {
+		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 || c.Energy > 0 {
 			return false
 		}
 	}
@@ -187,7 +187,7 @@ func (p *Policy) tapsACreature(st *state, m legal.Move) bool {
 // rowCostsOnlyManaAndTaps reports whether an activated ability's
 // printed cost has no component but mana and tapping.
 func rowCostsOnlyManaAndTaps(r *protocol.ActivatedAbilityView) bool {
-	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf &&
+	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf &&
 		r.SacrificeLabel == "" && r.LifeCost == 0 && r.LoyaltyCost == nil &&
 		r.DiscardCostN == 0 && r.TopCostN == 0 && r.ExileCostN == 0 &&
 		r.LibraryExileCostN == 0 && r.ReturnLabel == "" && r.ExilePermanentLabel == ""

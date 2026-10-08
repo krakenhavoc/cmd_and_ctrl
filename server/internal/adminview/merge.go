@@ -163,11 +163,23 @@ type DeckRequest struct {
 	IssueURL    string `json:"issue_url,omitempty"`
 }
 
+// PlaymatSlot is one saved playmat in the account view: a thumbnail
+// the admin can remove. Active marks the one the table shows.
+type PlaymatSlot struct {
+	Slot   int    `json:"slot"`
+	URL    string `json:"url"`
+	Active bool   `json:"active,omitempty"`
+}
+
 // AccountResponse is GET /admin/users/{id}.
 type AccountResponse struct {
-	GeneratedAt           int64         `json:"generated_at"`
-	Account               Account       `json:"account"`
-	SignIn                SignIn        `json:"sign_in"`
+	GeneratedAt int64   `json:"generated_at"`
+	Account     Account `json:"account"`
+	SignIn      SignIn  `json:"sign_in"`
+	// Playmats are the account's saved playmats, in slot order, absent
+	// for none: what each "Remove" action would take away (ADR 0124
+	// amendment, ADR 0128 §11).
+	Playmats              []PlaymatSlot `json:"playmats,omitempty"`
 	Games                 []Game        `json:"games"`
 	GamesTruncated        bool          `json:"games_truncated"`
 	Decks                 []Deck        `json:"decks"`
@@ -375,6 +387,7 @@ func MergeAccount(rows AccountRows, live []string, ov Overlay, now time.Time) Ac
 	out := AccountResponse{
 		GeneratedAt: now.UnixMilli(),
 		Account:     account(rows.Account, set(live)[rows.Account.ID]),
+		Playmats:    rows.Playmats,
 		SignIn: SignIn{
 			LastSignInAt:          ms(rows.Account.LastSignInAt),
 			DiscordLinkedAt:       ms(rows.DiscordLinkedAt),

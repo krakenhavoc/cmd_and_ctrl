@@ -61,7 +61,8 @@ const (
 
 	// EventDealDamage — Amount damage was dealt from Source to Target.
 	// Target may be a player or a card (distinguished by whether
-	// Target resolves in PlayerByID vs the zone scan).
+	// Target resolves in PlayerByID vs the zone scan). To a player,
+	// the life it cost is Event.DamageLifeLoss, not Amount (#2105).
 	EventDealDamage EventKind = "deal_damage"
 
 	// EventChangeLife — a player's life total changed by Amount
@@ -428,6 +429,24 @@ const (
 	// scry.
 	EventDiscover EventKind = "discover"
 
+	// EventManifestDread — Actor finished a manifest dread
+	// (CR 701.62a, ADR 0082's 2026-10-07 amendment). Source is the
+	// permanent or spell that asked. CardID is the permanent that
+	// entered face down (uuid.Nil if none did) and Target is the card
+	// put into Actor's graveyard "this way" (uuid.Nil if none was),
+	// so "whenever you manifest dread, put a card you put into your
+	// graveyard this way into your hand" (Paranormal Analyst) reads it
+	// straight off the event.
+	//
+	// Emitted once, after both moves have settled. Not emitted when
+	// the library showed no cards, because no manifest dread happened.
+	//
+	// Its own kind rather than a flag on an ordinary manifest: a card
+	// that cares about manifest dread must not fire on a plain
+	// manifest of the top card (Cloak, Manifest), which is a
+	// different keyword action.
+	EventManifestDread EventKind = "manifest_dread"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.21):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE
@@ -505,6 +524,21 @@ const (
 	// kind exists for triggers, which need the moment rather than the
 	// state. Added in S22.
 	EventAttack EventKind = "attack"
+
+	// EventExert — a permanent was exerted (CR 701.43a, ADR 0130 §1).
+	// Actor is the player who exerted it, whose next untap step it
+	// won't untap during; CardID and Source are the permanent. Target
+	// is the attack target when it was exerted as it attacked
+	// (CR 701.43d), and uuid.Nil when it was exerted to pay a cost —
+	// which is how a linked "when you do" trigger (CR 607.2h) tells
+	// the two apart.
+	//
+	// Emitted only by exertLocked. An exert as it attacks is paid by
+	// commitAttackDeclarationLocked as the declaration locks in, ahead
+	// of the EventAttacks of the same declaration and in the same
+	// event batch, so its triggers go on the stack with the attack
+	// triggers (CR 508.1j, 508.1m).
+	EventExert EventKind = "exert"
 
 	// EventBecomesTarget — an object or player became the target of
 	// a spell or ability (CR 115.3). Actor is the controller of the
@@ -629,6 +663,21 @@ const (
 	// event log — cards read it only via ReplacementEffect.Watches.
 	// Added in S17 sub-PR 2.
 	EventStepTransition EventKind = "step_transition"
+
+	// EventExtraTurnBegin is the replacement-watch key for a queued
+	// extra turn about to begin (RepEventExtraTurn, CR 500.7 / 614.10,
+	// #2529). An engine-internal sentinel of the EventStepTransition
+	// shape: cards read it only via ReplacementEffect.Watches and
+	// nothing emits it to the public log. The log's twins are
+	// EventExtraTurnAdded (queued) and EventTurnBegan (began).
+	EventExtraTurnBegin EventKind = "extra_turn_begin"
+
+	// EventExtraTurnSkipped — a queued extra turn was skipped instead of
+	// beginning (CR 614.10, #2529; Trouble in Pairs). Actor is the
+	// player who would have taken it, Source the card whose effect
+	// created it and Amount the turn's ExtraTurn.Ref. Emitted by the
+	// rotation seam when the RepEventExtraTurn window cancels.
+	EventExtraTurnSkipped EventKind = "extra_turn_skipped"
 
 	// EventKeywordAction is the second engine-internal sentinel of
 	// the same shape, and the replacement-watch key for a KEYWORD
@@ -1067,9 +1116,14 @@ const (
 	EventPhaseIn  EventKind = "phase_in"
 
 	// EventTurnedFaceUp — Actor turned the face-down permanent
-	// CardID face up (CR 708.6, the CR 116.2g special action).
-	// Source is the same card: a permanent turns ITSELF face up, and
-	// there is no other object involved.
+	// CardID face up (CR 708.6, the CR 116.2g special action, or an
+	// effect, CR 708.8 / CR 701.40b).
+	// Source is the same card for the special action: a permanent
+	// turns ITSELF face up, and there is no other object involved.
+	// For an EFFECT (TurnFaceUpForEffect, ADR 0082's 2026-10-07
+	// second amendment) Source is the object doing it, which is how
+	// the log tells the two apart — the special action's own
+	// LogSpecialAction line already narrates the first.
 	//
 	// A KIND OF ITS OWN, not a reuse of EventTransform or EventETB,
 	// and the distinction is a rules one rather than a tidiness one.
@@ -1281,6 +1335,20 @@ type Event struct {
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
 
+	// DamageNotLifeLoss is the part of an EventDealDamage to a PLAYER
+	// that cost that player no life (#2105): all of it when the source
+	// had infect, or was dealt as though it had (CR 120.3b, CR 702.90b),
+	// and all of it when the player's life total can't change (CR 119.8,
+	// ADR 0085). The damage is still DEALT either way, so Amount keeps
+	// the damage and "whenever ~ is dealt damage" readers are unchanged;
+	// a life-loss reader asks DamageLifeLoss instead.
+	//
+	// Stored as the part NOT lost rather than the part lost so that the
+	// zero value is the ordinary case: an event written before this field
+	// existed (a restore point's queued trigger, this turn's log) reads as
+	// the life loss it was taken for when it was written.
+	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
+
 	// Round is the table-facing round for EventStepBegan. Amount carries
 	// the turn sequence on EventStepBegan and EventTurnBegan; keeping the
 	// display value separate lets same-seat and extra turns retain distinct
@@ -1418,6 +1486,12 @@ type Event struct {
 
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
+
+	// AnswerKey is the standing-answer key an EventAutoAnswer answered
+	// under (ADR 0127 §6). The log carries it to the chooser alone, so
+	// the notice's "Ask me next time" can remove the rule. Empty on
+	// every other kind.
+	AnswerKey string `json:"answer_key,omitempty"`
 
 	// RevealSeq groups the per-card EventRevealCards events of ONE
 	// reveal, and is the Seq the first of them was stamped with.
@@ -1586,6 +1660,19 @@ type Event struct {
 	// S35 (#1032, ADR 0075).
 	SettingOld string `json:"setting_old,omitempty"`
 	SettingNew string `json:"setting_new,omitempty"`
+}
+
+// DamageLifeLoss is the life an EventDealDamage cost the player it was
+// dealt to (#2105, CR 119.2, CR 120.3a): its Amount less the part that
+// cost no life (DamageNotLifeLoss: infect, or a life total that can't
+// change). 0 for any other kind of event. Damage to a permanent is the
+// caller's to rule out by checking that Target is a player, as every
+// life-loss reader already does.
+func (ev Event) DamageLifeLoss() int {
+	if ev.Kind != EventDealDamage {
+		return 0
+	}
+	return max(ev.Amount-ev.DamageNotLifeLoss, 0)
 }
 
 // The two values of Event.CombatStep (and DamageAssignmentFrame's

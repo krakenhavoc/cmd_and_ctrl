@@ -23,30 +23,38 @@ import (
 // card and it is most of why Wrenn is played — the plus is a
 // loyalty engine first and a land recursion second.
 //
-// The ultimate is STILL NOT REGISTERED, and since S40 (#623) emblems
-// are no longer the reason. RETRACE is: the emblem's entire text is
-// "Instant and sorcery cards in your graveyard have retrace", and
-// retrace needs two things that do not exist — the alternative cost
-// itself ("cast this from your graveyard by discarding a land"), and
-// a granted cast permission a player can hold over a set of cards
-// they did not print, which is seam #652.
+// The −7 is the emblem "Instant and sorcery cards in your graveyard have
+// retrace." (#2528). It is a STANDING cast permission declared on the
+// emblem (EmblemSpec.CastPermissions) and derived from its owner's
+// Player.Emblems on every query, so it covers an instant that reaches the
+// graveyard after the ultimate, never ends (CR 114.2), and composes with
+// a Six on the same table. Retrace is the card's printed mana cost plus a
+// discarded land card, claimed as a priced offer (AltCostKey "retrace",
+// DiscardLandCard); there is no turn restriction, so an instant is
+// retraced at instant speed on any turn. See six.go and ADR 0066's
+// 2026-10-07 amendment.
 //
-// Registering it now would offer a −7 that kills Wrenn, puts a real
-// emblem chip on the board reading "…have retrace", and then never
-// offers a retrace cast. That is the lie ADR 0032 refuses, moved one
-// step later, and a player who paid seven loyalty for it would get no
-// signal in game at all. The day #652 lands this card gains an
-// `Emblem` slot with one static in it and nothing else changes.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "108ae90a-50fa-4cfd-b751-d630e41425fe",
 		Name:         "Wrenn and Six",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The -7 ultimate isn't offered — its emblem grants retrace, which the engine can't cast yet (#652)."},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
 		StartingLoyalty: 3,
+		Emblem: &EmblemSpec{
+			Label: "Wrenn and Six emblem",
+			Text:  "Instant and sorcery cards in your graveyard have retrace.",
+			CastPermissions: []game.CastPermission{{
+				Zone:            game.ZoneGraveyard,
+				Filter:          game.PermissionFilter{InstantOrSorceryOnly: true},
+				AltCostKey:      game.AltCostKeyRetrace,
+				DiscardLandCard: true,
+				Label:           "Retrace — discard a land card (Wrenn and Six emblem)",
+			}},
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label:   "+1: Return up to one target land card from your graveyard to your hand.",
@@ -68,6 +76,13 @@ func init() {
 						Target: item.Targets[0].ID,
 						Amount: 1,
 					}.Apply(ctx)
+				},
+			},
+			{
+				Label: "−7: You get an emblem with \"Instant and sorcery cards in your graveyard have retrace.\"",
+				Cost:  LoyaltyCost(-7),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return CreateEmblem{}.Apply(NewContext(g, item))
 				},
 			},
 		},

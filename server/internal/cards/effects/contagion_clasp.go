@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creature.
 //	 {4}, {T}: Proliferate."
 //
-// The card the proliferate auto-pick was written against: the Clasp
+// The card the proliferate suggested pick was written against: the Clasp
 // puts a -1/-1 counter on something of THEIRS, and every later
 // activation grows it. That is the whole engine, and it is also the
 // asymmetry the pick has to get right — proliferating this board
@@ -25,8 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "43f2d81e-aa01-4fa9-9046-6a27a05dbd2d",
 		Name:         "Contagion Clasp",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't choose what to proliferate — the game picks for you, adding every counter that helps you and every counter that hurts an opponent."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

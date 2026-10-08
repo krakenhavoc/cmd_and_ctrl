@@ -13,18 +13,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Leyline and an Orrery has two sources saying the same thing and
 // losing either changes nothing.
 //
-// One declared deviation, the one every Leyline in this catalog
-// shares: there is no "begin the game with it on the battlefield"
-// step in this sandbox, so the enchantment is cast for {2}{U}{U} like
-// any other. See Leyline of the Void, which carries the same note.
+// The opening-hand clause (CR 103.6a) is Spec.OpeningHand (ADR 0133):
+// the seat holding it is asked as the mulligan window closes.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "9dc65ffe-17fc-4280-b4bd-78073ac7e12b",
 		Name:         "Leyline of Anticipation",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You can't begin the game with it on the battlefield from your opening hand — it has to be cast.",
-		},
-		CastTimings: []game.CastTimingRule{CastAsThoughFlash()},
+		Completeness: CompletenessFull,
+		OpeningHand:  BeginTheGameOnTheBattlefield(),
+		CastTimings:  []game.CastTimingRule{CastAsThoughFlash()},
 	})
 }

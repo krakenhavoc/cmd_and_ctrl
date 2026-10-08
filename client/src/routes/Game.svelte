@@ -24,6 +24,12 @@
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { stampManaEnforcement } from "../lib/manaEnforcement";
   import { isStaleAbilityRefError } from "../lib/abilityRef";
+  import {
+    CANT_EXERT_SENTENCE,
+    declareAttackerParams,
+    isCantExertError,
+    selectAttackerFor,
+  } from "../lib/exert";
   import { cardMenu, closeCardMenu } from "../lib/contextMenu";
   import { closeManaSourcePicker, manaSourcePicker } from "../lib/manaSourcePicker";
   import { abilityPopover, closeAbilityPopover } from "../lib/abilityPopover";
@@ -45,6 +51,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
@@ -94,6 +101,7 @@
     attackLimitOn,
     blockedSummary,
     bulkAttackRefusal,
+    exertChoiceAt,
     planAttackAll,
     type AttackAllParams,
     type BulkAttackAttempt,
@@ -121,6 +129,7 @@
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import { newTriggerOrderPrefState, triggerOrderPrefToSend } from "../lib/triggerOrderPref";
+  import { autoAnswersToSend, newAutoAnswersPrefState } from "../lib/autoAnswerPref";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import {
     openShortcutsHelp,
@@ -812,6 +821,25 @@
     }
   });
 
+  // ADR 0127 §3: the same for the standing answers. The server answers
+  // with its copy of the seat's rules (so it works with this tab
+  // closed); this sends the synced setting whenever the seat's view
+  // disagrees — a change in Settings or on a prompt, a reconnect, a
+  // second device, a server restored from an older snapshot.
+  const autoAnswersPrefState = newAutoAnswersPrefState();
+  $effect(() => {
+    if (replaying) return;
+    const rules = autoAnswersToSend(
+      autoAnswersPrefState,
+      $snapshot,
+      viewerID,
+      $settings.gameplay.autoAnswers,
+    );
+    if (rules !== null && viewerID) {
+      client.sendAction("set_auto_answers", viewerID, { rules });
+    }
+  });
+
   // ADR 0105 (#1789): the frame's legal-action lookup, built once per
   // snapshot so every card reads it in O(1), and what the board is
   // allowed to draw from it. Highlights are live while the player has
@@ -986,8 +1014,15 @@
   // the viewer's tab; nothing on the wire until the second click
   // dispatches the action.
 
+  // ADR 0130 §7: `exert` is the selected attacker's exert answer. It is
+  // absent for a creature that can't be exerted as it attacks, null for
+  // one that can and whose player hasn't answered yet (the dock asks
+  // "Attack" or "Attack and exert"; no seat click commits before then),
+  // and true or false once answered. A creature already declared is
+  // re-pointed with no exert question: the server keeps a staged exert
+  // across a re-point and never exerts one later in combat.
   type CombatSelection =
-    | { kind: "attacker"; cardID: string }
+    | { kind: "attacker"; cardID: string; exert?: boolean | null }
     | { kind: "blocker"; cardID: string }
     | null;
   let combatSelection = $state<CombatSelection>(null);
@@ -1196,7 +1231,12 @@
     combatSelection =
       combatSelection?.kind === "attacker" && combatSelection.cardID === cardID
         ? null
-        : { kind: "attacker", cardID };
+        : selectAttackerFor(cardID, legalActions);
+  }
+  // ADR 0130 §7: the dock's "Attack" / "Attack and exert" answer.
+  function chooseExert(exert: boolean): void {
+    if (combatSelection?.kind !== "attacker") return;
+    combatSelection = { ...combatSelection, exert };
   }
   function selectBlocker(cardID: string): void {
     combatSelection =
@@ -1206,14 +1246,12 @@
   }
   function declareAttackTarget(targetPlayerID: string): void {
     if (!viewerID || combatSelection?.kind !== "attacker") return;
-    client.sendAction("declare_attacker", undefined, {
-      attacker: combatSelection.cardID,
-      target: targetPlayerID,
-      // ADR 0080 (#1063): the CR 508.1a attack tax may need lands
-      // tapped. Inert at a table with no attack tax on it, and the
-      // price is already shown on the seat control this came from.
-      auto_tap: true,
-    });
+    // ADR 0130 §7: null while the exert question is open — the click
+    // commits nothing until the player answers it in the dock. The
+    // params carry auto_tap (ADR 0080) and, when chosen, exert.
+    const params = declareAttackerParams(combatSelection, targetPlayerID);
+    if (!params) return;
+    client.sendAction("declare_attacker", undefined, params);
     combatSelection = null;
     play("attack");
   }
@@ -1266,6 +1304,14 @@
   }
 
   function attackAllAt(defenderSeatID: string): void {
+    // ADR 0130 §7 (owner decision 1): with a creature that may be
+    // exerted among the attackers, "Attack with all" opens the picker
+    // so the player sees its Exert toggles, rather than sending a
+    // declaration that answers "no" for them.
+    if (exertChoiceAt(attackPlan, defenderSeatID)) {
+      openAttackPicker(defenderSeatID);
+      return;
+    }
     const params = attackAllParams(attackPlan, defenderSeatID);
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
@@ -1316,7 +1362,11 @@
   function dismissAttackTaxRefusal(): void {
     client.lastError.set(null);
   }
-  function confirmAttackPicker(attackerIDs: string[], lockedSources: string[]): void {
+  function confirmAttackPicker(
+    attackerIDs: string[],
+    lockedSources: string[],
+    exertIDs: string[] = [],
+  ): void {
     const defenderSeatID = attackPickerDefenderID;
     attackPickerDefenderID = null;
     if (!defenderSeatID) return;
@@ -1324,6 +1374,8 @@
     const params = attackAllParams(attackPlan, defenderSeatID, {
       only: attackerIDs,
       lockedSources,
+      // ADR 0130 §7: the rows whose Exert toggle the player turned on.
+      exert: exertIDs,
     });
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
@@ -1334,6 +1386,12 @@
   // exactly as it is for "attack with all".
   function declareGroupAttackers(attackerIDs: string[], defenderSeatID: string): void {
     if (!canDeclareAttackers) return;
+    // ADR 0130 §7: a group with a member that may be exerted is asked
+    // about in the picker, like "Attack with all".
+    if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
+      openAttackPicker(defenderSeatID);
+      return;
+    }
     const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
@@ -1601,6 +1659,11 @@
           combatSelection.kind,
           cardLabel(combatSelection.cardID).name,
           () => (combatSelection = null),
+          // ADR 0130 §7: "Attack" / "Attack and exert" for a creature
+          // that may be exerted as it attacks.
+          combatSelection.kind === "attacker" && combatSelection.exert !== undefined
+            ? { chosen: combatSelection.exert, onChoose: chooseExert }
+            : null,
         )
       : null,
   );
@@ -2073,6 +2136,9 @@
                   {#if staleAbilityRef}
                     That ability moved — the board changed. Nothing was paid; try again from the
                     updated card.
+                  {:else if isCantExertError($lastError.message)}
+                    <!-- ADR 0130: the server's ErrCantExert, said plainly. -->
+                    {CANT_EXERT_SENTENCE}
                   {:else}
                     {$lastError.message}
                   {/if}
@@ -2307,6 +2373,7 @@
         lastError={$lastError}
         docked={dockShown}
       />
+      <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
       <AutoTapPreviewModal
         {gameID}
         snap={view}
