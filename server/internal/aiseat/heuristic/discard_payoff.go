@@ -20,7 +20,8 @@ import (
 // for each), and every place the policy prices one of its own cards
 // being discarded subtracts what the bot's battlefield pays for it:
 //
-//   - a discard paid as a spell's additional cost (valueOfCast);
+//   - a discard paid as a spell's additional cost (valueOfCast), or as
+//     its alternative cost (ADR 0135 §2: Snag, Foil, retrace);
 //   - a discard the bot chooses on resolution: a loot's, a rummage's,
 //     "discard a card" (valueKeptInHand, choiceDiscardFromHand) and the
 //     cleanup-step discard to hand size;
@@ -111,4 +112,19 @@ func (st *state) resolutionDiscardPayoff(cfg Config, n int, self *protocol.CardV
 		v += cands[i].pay
 	}
 	return v
+}
+
+// altCostDiscards reports whether the alternative cost a cast claims
+// discards the cards it is paid with (ADR 0135 §2): the offer's own
+// `discards` flag on the card view. False for no claim or no card.
+func altCostDiscards(c *protocol.CardView, key string) bool {
+	if c == nil || key == "" {
+		return false
+	}
+	for i := range c.AlternativeCosts {
+		if ac := &c.AlternativeCosts[i]; ac.Key == key {
+			return ac.Discards
+		}
+	}
+	return false
 }

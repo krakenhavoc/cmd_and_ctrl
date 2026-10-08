@@ -1254,6 +1254,14 @@ type AlternativeCostView struct {
 	// from the graveyard. Per viewer, like `pay_options` (#1172).
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 
+	// Discards marks an offer whose `pay_options` are DISCARDED rather
+	// than exiled or returned (ADR 0135 §2): retrace's land card, Snag's
+	// Forest card, Foil's two cards. The client words its prompt
+	// "Discard …", and a policy prices the discard's payoffs (Mary Read's
+	// Treasure for an Island). Absent for every other offer. Public with
+	// the rest of the printed offer.
+	Discards bool `json:"discards,omitempty"`
+
 	// PayLabel is the picker's prompt copy for PayOptions or
 	// SacrificeOptions ("a blue card", "an Island you control", "three
 	// creatures"). Absent when there is nothing to pick.
@@ -6160,7 +6168,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
+			// ADR 0135 §2: a set rule (Foil's "an Island card and
+			// another card") ships its entries in the shape the
+			// sacrifice picker reads, so the hand picker can hold
+			// confirm until the picks fill them all.
+			opts.EachOf = costSetGroupsView(g, paySpec, game.ZoneHand, opts.Cards)
 			v.PayOptions = opts
+			v.Discards = true
 		} else if paySpec := ac.ReturnToHand; paySpec != nil {
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = filterToController(g, opts.Cards, caster)
@@ -10097,12 +10111,35 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	}
 	// #2526: a set rule ("a Swamp and a Forest") ships its entries so the
 	// picker can hold confirm until the picks fill them all.
-	for _, grp := range g.SacrificeSetGroupsForEffect(spec, ordered) {
+	out.EachOf = setGroupsView(g.SacrificeSetGroupsForEffect(spec, ordered))
+	return out
+}
+
+// costSetGroupsView is the each_of of a non-sacrifice cost clause with a
+// set rule (ADR 0135 §2: a hand discard), over the candidates the view
+// already lists, in their order. Nil without a rule.
+func costSetGroupsView(g *game.Game, spec *game.TargetSpec, zone game.ZoneKind, cards []string) []SacrificeGroupView {
+	if len(game.SacrificeSetKinds(spec)) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, 0, len(cards))
+	for _, s := range cards {
+		if id, err := uuid.Parse(s); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return setGroupsView(g.CostSetGroupsForEffect(spec, zone, ids))
+}
+
+// setGroupsView is the wire shape of a set rule's groups.
+func setGroupsView(groups []game.SacrificeSetGroup) []SacrificeGroupView {
+	var out []SacrificeGroupView
+	for _, grp := range groups {
 		gv := SacrificeGroupView{Label: grp.Label}
 		for _, id := range grp.Candidates {
 			gv.Cards = append(gv.Cards, id.String())
 		}
-		out.EachOf = append(out.EachOf, gv)
+		out = append(out, gv)
 	}
 	return out
 }

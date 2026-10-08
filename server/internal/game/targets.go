@@ -604,6 +604,10 @@ type TargetSpec struct {
 	// clause but a handful — means no set rule, and the clause reads
 	// exactly as it did.
 	//
+	// ADR 0135 §2 widened it to a DISCARD clause: an alternative cost's
+	// DiscardFromHand, Foil's "an Island card and another card", whose
+	// picks are cards in hand (SacrificeKind.Any is "another card").
+	//
 	// The head spec's own predicate is the UNION of the entries
 	// (effects.SacrificeEach builds it from them), so the per-permanent
 	// walks that list candidates — the validator, the legal enumerator

@@ -2400,6 +2400,7 @@ seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int

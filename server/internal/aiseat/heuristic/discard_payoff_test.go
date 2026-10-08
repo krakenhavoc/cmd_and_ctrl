@@ -173,3 +173,39 @@ func TestCleanupDiscardPitchesThePayoffsCard(t *testing.T) {
 		t.Fatalf("chose %q, want the Island", got)
 	}
 }
+
+// ADR 0135 §2: an alternative cost that DISCARDS (Foil's, Snag's) pays
+// the discard payoffs as an additional cost's discard does, so with Mary
+// Read out the bot pays with the Island. An offer that exiles its card
+// (a pitch) pays none.
+func TestADiscardAlternativeCostPaysTheDiscardPayoff(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		discards bool
+		want     float64
+	}{
+		{"discard", true, heuristic.DefaultConfig().TokenWeight},
+		{"pitch (an exile)", false, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sp := spell(cardID(1), 0, "Discard Counter", "{2}{U}{U}")
+			sp.AlternativeCosts = []protocol.AlternativeCostView{{Key: "alt", Discards: tc.discards}}
+			mountain, isl := land(cardID(2), 0), island(cardID(3), 0)
+			cast := func(pay string) legal.Move {
+				m := castMove(t, 0, sp.InstanceID, "Cast for its alternative cost paying "+pay)
+				m.Params = mustJSON(t, map[string]any{"instance_id": sp.InstanceID, "from_zone": "hand",
+					"alternative_cost": "alt", "alt_cost_ids": []string{pay}})
+				return m
+			}
+			bf := append(manaLands(7, 0, 100), maryRead(cardID(4), 0))
+			v := newView([]protocol.PlayerView{newSeat(0, withHand(sp, mountain, isl)), newSeat(1)},
+				withBattlefield(bf...), withTurn(9, 0, "precombat_main"))
+			in := input(0, v, passMove(0), cast(mountain.InstanceID), cast(isl.InstanceID))
+			pol := heuristic.New()
+			gap := rankValue(t, pol, in, in.Moves[2].Label) - rankValue(t, pol, in, in.Moves[1].Label)
+			if !nearly(gap, tc.want) {
+				t.Errorf("the Island is %.3f cheaper than the Mountain, want %.3f", gap, tc.want)
+			}
+		})
+	}
+}

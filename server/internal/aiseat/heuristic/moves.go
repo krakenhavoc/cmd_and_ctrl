@@ -534,6 +534,14 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	for _, id := range cp.AltCostIDs {
 		v -= p.fuelValue(st, id)
 	}
+	// ADR 0135 §2: an offer that DISCARDS its cards (Snag's Forest,
+	// retrace's land) pays the discard payoffs, as an additional cost's
+	// discard does below, so Mary Read makes Foil's Island cheaper.
+	if altCostDiscards(card, cp.AlternativeCost) {
+		for _, id := range cp.AltCostIDs {
+			v += st.discardPayoff(p.cfg, st.mine[id])
+		}
+	}
 	// ADR 0100: delve's exiles are graveyard fuel too, priced by the
 	// same function the enumerator ordered the delve pool by, so the
 	// fewest-cards payment and the full-budget one are compared on what
