@@ -2276,14 +2276,13 @@ var items = []Item{
 		EngineNotes: "layer dependency: `dependencyOrderedLayers` (`game/layer_dependency.go`, ADR 0067) orders CR 613.8 dependencies by trial application in layer 4 only. In layer 6 the one ordered case is an ability-removing effect before the effects of the sources it silences (ADR 0093 Decision 3); a grant whose \"applies to\" reads another grant's output is applied in timestamp order. ADR 0067's rule for adding a layer is a catalogued pair plus a benchmark. Sephara's alternative cost is buildable (`effects.TapInsteadPaying`, ADR 0135 §1).",
 	},
 	{
-		Slug: "land-to-graveyard-this-turn", Name: "A land you controlled was put into a graveyard this turn", Kind: KindSeam, Status: StatusMissing,
+		Slug: "land-to-graveyard-this-turn", Name: "A land you controlled was put into a graveyard this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that check whether a land you controlled was put into a graveyard from the battlefield this turn, such as The Lady of Otaria's end-step trigger.",
-		Missing:     "The turn tally counts permanents that left the battlefield, but not lands that went to a graveyard.",
 		Rules:       []string{"603.4", "608.2h"},
 		Issue:       2664,
 		Tracked:     "#2664 (found landing ADR 0135 PR 3, #2030)",
-		Waiting:     []string{"The Lady of Otaria"},
-		EngineNotes: "turn tally: `PlayerTurnTally.PermanentsLeft` (#2148) counts every permanent that left under a player's control, whatever it was and wherever it went, and `PermanentsSacrificed` misses a land destroyed or put there another way. A per-player count bumped at the same exit choke point when the departing permanent was a land and its destination a graveyard would be an additive snapshot field. The Lady of Otaria's alternative cost is buildable (`effects.TapInstead`, ADR 0135 §1).",
+		Examples:    []string{"The Lady of Otaria"},
+		EngineNotes: "**Shipped** (#2664, ADR 0049's 2026-10-08 amendment). `PlayerTurnTally.LandsToGraveyard` is bumped from the `EventLTB` branch that already feeds `CreaturesDied`: the exit goes to a graveyard and the permanent was a land as it last existed (CR 608.2h, `lastKnownBattlefield`), under the controller the exit stamped (CR 603.10a). A bounce or an exile does not count, nor does a nonland permanent or an opponent's land. Read through `Game.LandToGraveyardThisTurn`. Card: The Lady of Otaria (end-step intervening if, checked at trigger and at resolution, CR 603.4).",
 	},
 	{
 		Slug: "damage-redirected-from-a-chosen-source", Name: "Damage dealt to something else instead", Kind: KindSeam, Status: StatusImplemented,
