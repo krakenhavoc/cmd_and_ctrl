@@ -1283,12 +1283,12 @@ this ADR has so far:
 - **The sweep.** `sweepTurnEndLocked` (the CR 514.2 cleanup sweep) calls
   `clearSaddledLocked`, which clears the flag and the saddlers on the
   battlefield and the phased-out zone and bumps the layer version when anything
-  was cleared, so a gated static switches off with the designation. #2695 also
-  says the designation ends when the Mount phases out, so `phaseOutLocked`
-  clears it too, unlike the other designations, which ride through a phase-out
-  (CR 702.26d). The sweep of the phased-out zone is only a backstop. If the
-  pinned rules turn out to let a saddled Mount stay saddled through a phase-out,
-  that one clear is the line to remove; it errs weaker, never stronger.
+  was cleared, so a gated static switches off with the designation. Phasing
+  out does not clear it (#2718): CR 702.171b ends the designation at end of
+  turn or when the permanent leaves the battlefield, and a phased-out
+  permanent has not left (CR 702.26d), so the Mount is still saddled if it
+  phases back in the same turn. The sweep of the phased-out zone is what ends
+  it for a Mount that is still out at cleanup.
 - **`SaddledBy` and `Game.SaddlersOf`** answer "creatures that saddled it this
   turn". The record is the creatures tapped to pay for the saddle ability that
   resolved, as objects (instance ID and `ObjectEpoch`); `SaddlersOf` returns
