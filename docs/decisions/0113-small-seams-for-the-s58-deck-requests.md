@@ -407,3 +407,46 @@ None. `DiscardCost` is catalog data and the announced X rides `StackItem.XValue`
 
 - The form as a cast's additional cost or a mana ability's cost (no printed card).
 - Teaching the heuristic when to spend a card to counter a spell. It prices the discard and the activation base like any other cost-paying move.
+
+---
+
+## Amendment 2026-10-08 — A maximum hand size changed by a spell, or for a while (#2108)
+
+**Why it lands here.** §3 built the maximum hand size as a timestamp-ordered fold and said, in its consequences, that "a future 'your maximum hand size is increased by one' is one more `HandSizeStatic`". Its player-level half was deliberately one value (`Player.MaxHandSize`, stamped by `Player.MaxHandSizeAt`), enough for "no maximum for the rest of the game". This amendment adds the missing half without changing §3's fold or its battlefield declarations.
+
+### What exists, what is missing
+
+- **One player grant.** `SetMaxHandSizeForEffect` writes one number and one timestamp. A second write replaces the first, so it cannot hold a reduction, two reductions, or an effect with a duration.
+- **Durations on a player already exist.** `PlayerStatic` (`player_statics.go`) is the slice of things a player has for a CR 611.2 duration, with a payload per kind, swept by `sweepPlayerStaticsLocked` through `durationExpiredLocked` and carried by the snapshot. It has eight payloads and none is a hand size.
+
+### The rules
+
+- **CR 402.2 / 613.11.** Effects that change a maximum hand size apply "in timestamp order", after all other continuous effects. **CR 613.7b**: a spell's or ability's effect takes the timestamp of its creation. **CR 611.2a / 611.2b**: it lasts for its stated duration ("for the rest of the game", "until your next turn").
+- **Cleave (CR 702.148).** Inspired Idea's reduction is in square brackets, so the cleaved spell does not make it.
+
+### Decision
+
+1. **A ninth `PlayerStatic` payload.** `PlayerStatic.HandSize` is a `game.HandSizeGrant{Active, Kind, N, At}`: the same `HandSizeKind` vocabulary as §3 (no maximum, set, modify), the creation timestamp, and `Active` as the presence bit (the zero kind is "no maximum", so the zero value cannot mean "nothing"). The duration is the entry's own `Duration`.
+2. **One writer.** `Game.GrantHandSizeForEffect(player, kind, n, label, source, duration)` refuses a Set below zero and a Modify by zero, the two declarations `Register` refuses. Any number of grants live at once.
+3. **One reader.** `EffectiveMaxHandSizeLocked` gathers each live grant (testing `durationExpiredLocked` itself, not leaving it to the sweep) as an entry at `HandSize.At`, beside the player's single grant and the battlefield statics, and folds them in the same stable timestamp order. §3's tie-break is unchanged: the player's own grant, then the stored grants in the order made, then the battlefield.
+4. **`SetMaxHandSizeForEffect` and the sandbox action are unchanged.** Finale of Revelation and Sea Gate Restoration keep their single "rest of the game" grant.
+
+Rejected: a list on `Player` next to `MaxHandSize`. It would need its own sweep, clone and snapshot field and a second reading of `Duration`, which is the argument that put the cast ban, the life lock and the rest on `PlayerStatic`.
+
+### Cards
+
+- **Inspired Idea: Full.** Draw three; unless cleaved, a Modify of −3 for the rest of the game. Cleave `{3}{U}{U}` skips it.
+- **Enter the Infinite: Full.** A no-maximum grant until the caster's next turn, then a draw of the library's size and a Brainstorm-style put-back of one card.
+
+### Tests
+
+`game/max_hand_size_grants_test.go` (the reader tests the duration with no sweep; grants stack; a clone owns its own list) and `cards/effects/max_hand_size_grants_test.go` (both cards, cleave, two Ideas, timestamp order against Null Profusion, the duration ending as the caster's turn begins, an empty library).
+
+### Snapshot impact
+
+Additive: `seats[].statics[].handSize.{active,kind,n,at}`, recorded in `snapshot_shape/v7.txt`. No new closure is reachable from `Game`. An older restore point has no such entry, which reads as none.
+
+### Out of scope
+
+- A grant that reaches another player or that a permanent's leaving ends: those are `HandSizeStatic`s on a permanent (§3).
+- Showing a granted change in the seat badge: the badge already reads the effective maximum.

@@ -3959,6 +3959,11 @@ seats[].statics[].gameEnd.cantWin	bool
 seats[].statics[].gameEnd.causes	array
 seats[].statics[].gameEnd.causes[]	string
 seats[].statics[].gameEnd.scope	number:uint8
+seats[].statics[].handSize	object
+seats[].statics[].handSize.active	bool
+seats[].statics[].handSize.at	number:int64
+seats[].statics[].handSize.kind	number:int
+seats[].statics[].handSize.n	number:int
 seats[].statics[].keepManaColors	array
 seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
