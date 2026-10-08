@@ -170,6 +170,7 @@ battlefield.cards[].namedTribe	string
 battlefield.cards[].needsEffect	bool
 battlefield.cards[].nextUntapSkips	array
 battlefield.cards[].nextUntapSkips[]	object
+battlefield.cards[].nextUntapSkips[].extra	number:int
 battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
 battlefield.cards[].nextUntapSkips[].while.Also	array
@@ -607,6 +608,7 @@ exile.cards[].namedTribe	string
 exile.cards[].needsEffect	bool
 exile.cards[].nextUntapSkips	array
 exile.cards[].nextUntapSkips[]	object
+exile.cards[].nextUntapSkips[].extra	number:int
 exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
 exile.cards[].nextUntapSkips[].while.Also	array
@@ -1096,6 +1098,7 @@ lastKnownStack[].card.namedTribe	string
 lastKnownStack[].card.needsEffect	bool
 lastKnownStack[].card.nextUntapSkips	array
 lastKnownStack[].card.nextUntapSkips[]	object
+lastKnownStack[].card.nextUntapSkips[].extra	number:int
 lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
 lastKnownStack[].card.nextUntapSkips[].while.Also	array
@@ -2037,6 +2040,7 @@ phasedOut.cards[].namedTribe	string
 phasedOut.cards[].needsEffect	bool
 phasedOut.cards[].nextUntapSkips	array
 phasedOut.cards[].nextUntapSkips[]	object
+phasedOut.cards[].nextUntapSkips[].extra	number:int
 phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
 phasedOut.cards[].nextUntapSkips[].while.Also	array
@@ -2604,6 +2608,7 @@ seats[].command.cards[].namedTribe	string
 seats[].command.cards[].needsEffect	bool
 seats[].command.cards[].nextUntapSkips	array
 seats[].command.cards[].nextUntapSkips[]	object
+seats[].command.cards[].nextUntapSkips[].extra	number:int
 seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
 seats[].command.cards[].nextUntapSkips[].while.Also	array
@@ -2889,6 +2894,7 @@ seats[].emblems.cards[].namedTribe	string
 seats[].emblems.cards[].needsEffect	bool
 seats[].emblems.cards[].nextUntapSkips	array
 seats[].emblems.cards[].nextUntapSkips[]	object
+seats[].emblems.cards[].nextUntapSkips[].extra	number:int
 seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
 seats[].emblems.cards[].nextUntapSkips[].while.Also	array
@@ -3165,6 +3171,7 @@ seats[].graveyard.cards[].namedTribe	string
 seats[].graveyard.cards[].needsEffect	bool
 seats[].graveyard.cards[].nextUntapSkips	array
 seats[].graveyard.cards[].nextUntapSkips[]	object
+seats[].graveyard.cards[].nextUntapSkips[].extra	number:int
 seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
 seats[].graveyard.cards[].nextUntapSkips[].while.Also	array
@@ -3439,6 +3446,7 @@ seats[].hand.cards[].namedTribe	string
 seats[].hand.cards[].needsEffect	bool
 seats[].hand.cards[].nextUntapSkips	array
 seats[].hand.cards[].nextUntapSkips[]	object
+seats[].hand.cards[].nextUntapSkips[].extra	number:int
 seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
 seats[].hand.cards[].nextUntapSkips[].while.Also	array
@@ -3724,6 +3732,7 @@ seats[].library.cards[].namedTribe	string
 seats[].library.cards[].needsEffect	bool
 seats[].library.cards[].nextUntapSkips	array
 seats[].library.cards[].nextUntapSkips[]	object
+seats[].library.cards[].nextUntapSkips[].extra	number:int
 seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
 seats[].library.cards[].nextUntapSkips[].while.Also	array
@@ -4182,6 +4191,7 @@ stack.cards[].namedTribe	string
 stack.cards[].needsEffect	bool
 stack.cards[].nextUntapSkips	array
 stack.cards[].nextUntapSkips[]	object
+stack.cards[].nextUntapSkips[].extra	number:int
 stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
 stack.cards[].nextUntapSkips[].while.Also	array
