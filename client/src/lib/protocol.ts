@@ -3809,8 +3809,8 @@ export interface ProtectionView {
   printed: string;
   // Which characteristic of a source the quality is compared
   // against: "color", "card_type", "subtype", "everything",
-  // "player", "mana_value_at_most" (value = the bound N, #2181) or
-  // "ring_bearer" (#2145).
+  // "player", "mana_value_at_most" (value = the bound N, #2181),
+  // "ring_bearer" (#2145) or "opponents" (#2745).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
@@ -3823,6 +3823,10 @@ export interface ProtectionView {
   // so the display string never holds a UUID. Absent while the
   // permanent's as-enters prompt is still open, which reads correctly
   // as "protected from nobody".
+  //
+  // For "opponents" (#2745 — "protection from each of your opponents")
+  // it is the seat that HAS the protection, and a source matches when
+  // its controller is any other seat.
   value?: string;
 }
 

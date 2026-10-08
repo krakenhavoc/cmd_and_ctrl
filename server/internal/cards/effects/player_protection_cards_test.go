@@ -21,6 +21,7 @@ const (
 	leylineOfSanctityOracle = "492e0e6c-8c27-4376-938b-f8a8b6205810"
 	aegisOfTheGodsOracle    = "c5bfc1b9-a55d-4608-a6f7-bb62cb8dc3c6"
 	teferisProtectionOracle = "0d4ecdb1-ec90-497f-a7a4-1c68092b8757"
+	absoluteVirtueOracle    = "d4fddf20-6b3a-42c3-a245-002dacbb4725"
 )
 
 // playerAbilities reads a seat's abilities the way every consumer
@@ -132,6 +133,38 @@ func TestAegisOfTheGodsAndLeylineCompose(t *testing.T) {
 	})
 	if !hasPlayerAbility(playerAbilities(g, me), KeywordHexproof) {
 		t.Error("killing the Aegis revoked the Leyline's grant")
+	}
+}
+
+// --- Absolute Virtue -----------------------------------------------
+
+// TestAbsoluteVirtueProtectsYouFromYourOpponentsOnly is #2745's card:
+// its controller has protection from each of their opponents, so an
+// opponent's Bolt is refused and their own is not, and the grant ends
+// when Absolute Virtue leaves.
+func TestAbsoluteVirtueProtectsYouFromYourOpponentsOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	virtue := pushPermanentForTest(g, opp.ID, "Absolute Virtue", absoluteVirtueOracle,
+		"Legendary Creature — Avatar Warrior")
+
+	if got := playerAbilities(g, opp); !hasPlayerAbility(got, ProtectionFromEachOfYourOpponents) {
+		t.Fatalf("Absolute Virtue's controller has %v, want %q", got, ProtectionFromEachOfYourOpponents)
+	}
+	if err := boltAtPlayerErr(t, g, me, opp.ID); err != game.ErrIllegalTarget {
+		t.Errorf("an opponent's Bolt at Absolute Virtue's controller: got %v, want ErrIllegalTarget", err)
+	}
+	if err := boltAtPlayerErr(t, g, opp, opp.ID); err != nil {
+		t.Errorf("Absolute Virtue's controller targeting themselves: %v", err)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(virtue); err != nil {
+			t.Fatalf("destroy Absolute Virtue: %v", err)
+		}
+	})
+	if err := boltAtPlayerErr(t, g, me, opp.ID); err != nil {
+		t.Errorf("the protection outlived Absolute Virtue: %v", err)
 	}
 }
 
