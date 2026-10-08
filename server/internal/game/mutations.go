@@ -9618,6 +9618,10 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == cardID {
+			// #1824: a counter that can't be removed stays put.
+			if delta < 0 && g.counterRemovalLockedLocked(&z.Cards[i], name) {
+				return nil
+			}
 			hadCounters := len(z.Cards[i].Counters) > 0
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)

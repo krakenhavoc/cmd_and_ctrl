@@ -198,6 +198,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "SpecialActionGrants", fallback: "Grants a special action"},
 	{field: "UntapStep", fallback: "Untaps during other untap steps", ownLabel: true},
 	{field: "UntapStepRestrictions", fallback: "Untap restriction", ownLabel: true},
+	{field: "CounterRemovalLocks", fallback: "Counters can't be removed", ownLabel: true},
 	{field: "UntapCaps", fallback: "Limits untapping", ownLabel: true},
 	{field: "UntapOptOuts", fallback: "May choose not to untap", ownLabel: true},
 	{field: "DrawStep", fallback: "Extra draw", ownLabel: true},
