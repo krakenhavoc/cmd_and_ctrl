@@ -1653,6 +1653,9 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
+		if !e.g.AttachedToSourceOKForEffect(spec, sourceID, id) {
+			continue
+		}
 		if c := findBattlefield(e.g, id); c != nil && c.Controller == e.seat {
 			pool = append(pool, id)
 		}

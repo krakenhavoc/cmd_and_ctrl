@@ -2187,6 +2187,9 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		if cost.SacrificeOther.ExcludeSource && id == sourceID {
 			return nil, ErrIllegalTarget
 		}
+		if !g.AttachedToSourceOKForEffect(cost.SacrificeOther, sourceID, id) {
+			return nil, ErrIllegalTarget
+		}
 	}
 	// #2526: "Sacrifice a Swamp and a Forest" — each pick passed the
 	// clause's union predicate above; the SET must still fill every

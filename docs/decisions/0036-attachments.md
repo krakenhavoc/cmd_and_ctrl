@@ -983,3 +983,47 @@ question of any stamped item, triggers included. An item with no stamp
 (from a snapshot written before #1418) keeps the kind gate above. A
 living-weapon or Hero's Blade trigger whose Equipment was flickered in
 response now attaches nothing, just as an equip does.
+
+## Amendment (2026-10-08, #1945): decision 20 — Role tokens are token Auras, and CR 704.5z keeps the newest
+
+Wilds of Eldraine's Roles are Aura tokens (CR 111.10, 303.7). The
+engine already had everything a token Aura needs except three things,
+and the amendment adds exactly those.
+
+### 1. A Role is a token template, not a new card kind
+
+`effects.RoleToken` / `CreateRoleToken` mint a "Token Enchantment —
+Aura Role" from the ADR 0083 token catalog: the abilities ride the
+template's static and triggered slots (`PumpAttached`,
+`GrantToAttached`, `SetAttachedBasePT`, `WardGranted`, a dies trigger),
+so the instance carries only `TokenKey` and a board holding a Role is
+as snapshottable as one holding a Treasure. Monster, Cursed, Royal and
+Wicked are declared. Sorcerer, Young Hero, Virtuous, Questing and Chef
+each grant the enchanted creature a triggered ability or count
+enchantments, which no token slot expresses yet; a card making one
+stays off the catalog (#1945 stays open for them).
+
+`CreateRoleToken` creates nothing for a host that is not a creature on
+the battlefield (CR 303.4f: the Aura could not enter attached to it).
+It creates through `CreateTokensThenForEffect` and attaches in the
+continuation, so a Doubling Season window still attaches the right
+tokens. `Card.IsRole` is `IsAura` plus the Role subtype.
+
+### 2. CR 704.5z in the attachment sweep
+
+`attachmentSBALocked` gains the Role branch: for each (host,
+controller) pair holding two or more Roles, all but the one with the
+latest `AttachedAt` (CR 303.7a, 613.7e; board order breaks a tie) go to
+the graveyard. The key includes the controller, so two players' Roles
+on one creature coexist. An unattached Role also fails CR 704.5m,
+which the sweep previously applied only to Auras with a catalog enchant
+clause (a token has none).
+
+### 3. "Sacrifice an Aura attached to this creature"
+
+`TargetSpec.AttachedToSource` restricts a sacrifice clause to
+permanents attached to the paying permanent. One function,
+`Game.AttachedToSourceOKForEffect`, answers it for the payment
+validator, the legal enumerator's pool and the protocol picker, so the
+three cannot disagree (#544). Built with `effects.AttachedToThis`.
+Faunsbane Troll is the proof card.
