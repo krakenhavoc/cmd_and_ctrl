@@ -200,6 +200,9 @@ func KnownBlockerFilter(key string) bool {
 // predicate matches. An unregistered key binds nobody, which is the
 // weaker-than-printed direction.
 func (r BlockRequirement) bindsBlocker(blocker *Card) bool {
+	if r.ExceptController != uuid.Nil && (blocker == nil || blocker.Controller == r.ExceptController) {
+		return false
+	}
 	if r.Filter == "" {
 		return true
 	}
@@ -268,6 +271,13 @@ type BlockRequirement struct {
 	// filter matches (KnownBlockerFilter; "wall", "flying"). Empty on
 	// every other kind, and on an ordinary Lure.
 	Filter string
+	// ExceptController narrows a BlockRequirementLure to blockers NOT
+	// controlled by this player (#2050): "all creatures your opponents
+	// control able to block it do so" — the writer's controller is
+	// exempt. Zero on every other kind and on an ordinary Lure. Read at
+	// the declaration, like Filter, so a creature that changed hands
+	// since the effect resolved is judged by its controller now.
+	ExceptController uuid.UUID
 }
 
 // blockRequirementsOf is what the layer pass wrote onto `c`. Read off

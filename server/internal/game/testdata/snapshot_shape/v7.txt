@@ -811,6 +811,7 @@ lastKnownBattlefield{}.BlockRequirements[]	object
 lastKnownBattlefield{}.BlockRequirements[].Attacker	object
 lastKnownBattlefield{}.BlockRequirements[].Attacker.epoch	number:int
 lastKnownBattlefield{}.BlockRequirements[].Attacker.id	custom(uuid.UUID)
+lastKnownBattlefield{}.BlockRequirements[].ExceptController	custom(uuid.UUID)
 lastKnownBattlefield{}.BlockRequirements[].Filter	string
 lastKnownBattlefield{}.BlockRequirements[].Kind	string
 lastKnownBattlefield{}.BlockRequirements[].Source	custom(uuid.UUID)
@@ -909,6 +910,7 @@ lastKnownPermanents{}[].characteristic.BlockRequirements[]	object
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Attacker	object
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Attacker.epoch	number:int
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Attacker.id	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.BlockRequirements[].ExceptController	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Filter	string
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Kind	string
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Source	custom(uuid.UUID)
@@ -1569,6 +1571,7 @@ pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Attacker	object
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Attacker.epoch	number:int
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Attacker.id	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].ExceptController	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Filter	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Kind	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Source	custom(uuid.UUID)

@@ -984,6 +984,15 @@ func AddBlockRequirementMod(kind BlockRequirementKind) Mod {
 	return Mod{Kind: ModAddBlockRequirement, Text: string(kind)}
 }
 
+// AddLureExceptMod is "all creatures <everyone but except> controls able
+// to block this creature do so" (#2050): a Lure that spares `except`'s
+// creatures — You Look Upon the Tarrasque's "creatures your opponents
+// control". Reads Player; a nil player would be an ordinary Lure, which
+// is stronger than the printed text, so callers pass the controller.
+func AddLureExceptMod(except uuid.UUID) Mod {
+	return Mod{Kind: ModAddBlockRequirement, Text: string(BlockRequirementLure), Player: except}
+}
+
 // BlocksAttackerMod is "<affected creature> blocks <attacker> this turn
 // if able" (#1684): Provoke, Grappling Hook, Turntimber Basilisk. The
 // requirement names the attacking OBJECT, so it asks nothing once that
@@ -1035,6 +1044,9 @@ func blockRequirementModProblem(m Mod) string {
 	}
 	if kind != BlockRequirementBlocksAttacker && len(m.Objects) != 0 {
 		return fmt.Sprintf("block requirement %q names objects it does not read", m.Text)
+	}
+	if m.Player != uuid.Nil && kind != BlockRequirementLure {
+		return fmt.Sprintf("block requirement %q names a player, which only a lure reads (#2050)", m.Text)
 	}
 	return ""
 }
@@ -1729,8 +1741,9 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		if len(m.Objects) > 0 {
 			attacker = m.Objects[0]
 		}
+		except := m.Player
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
-			r := BlockRequirement{Kind: kind, Attacker: attacker}
+			r := BlockRequirement{Kind: kind, Attacker: attacker, ExceptController: except}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

@@ -2074,14 +2074,14 @@ var items = []Item{
 		EngineNotes: "designation: CR 702.112b's renowned is a marker a permanent keeps until it leaves the battlefield; the engine has none, so renown's trigger and \"if it's renowned\" can't be written. 22 Commander-legal cards print renown or ask about it, none catalogued. Enshrouding Mist's shield is `ModPreventFromSource` (ADR 0108 PR 7, #1904).",
 	},
 	{
-		Slug: "lure-from-opponents-creatures", Name: "Blocks required only of your opponents' creatures", Kind: KindSeam, Status: StatusMissing,
+		Slug: "lure-from-opponents-creatures", Name: "Blocks required only of your opponents' creatures", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that make only your opponents' creatures block a creature, such as You Look Upon the Tarrasque's \"All creatures your opponents control able to block that creature this turn do so\".",
-		Missing:     "A spell can make every creature able to block a creature do so, but not only your opponents' creatures.",
 		Rules:       []string{"509.1c"},
 		Issue:       2050,
 		Tracked:     "#2050 (found landing ADR 0108 PR 7, #1904)",
-		Waiting:     []string{"You Look Upon the Tarrasque"},
-		EngineNotes: "block requirement filter: `effects.BlockRequirementUntilEOT` with `game.BlockRequirementLure` binds every creature able to block (Alluring Scent), and `FilteredLure`'s keys (`BlockerFilterWall`, `BlockerFilterFlying`) describe the blocker, not its controller. Forcing your own creatures to block an opponent's creature that attacks you would be stronger than printed. The card's other mode is `ModPreventFromSource` (ADR 0108 PR 7, #1904).",
+		ADR:         "0045-combat-restrictions.md",
+		Examples:    []string{"You Look Upon the Tarrasque"},
+		EngineNotes: "**Shipped** (ADR 0045 amendment 2026-10-08, #2050): `game.BlockRequirement.ExceptController` narrows a Lure to blockers the named player does not control, read at the declaration in `bindsBlocker` (the one place the engine, the enumerator and the bots all ask). A resolving effect writes it through `game.AddLureExceptMod(controller)`, which carries the player in `Mod.Player`, or `effects.BlockRequirementUntilEOT{ExceptController: …}`. Registration refuses a player on any kind but a Lure. `FilteredLure`'s keys still describe the blocker, not its controller.",
 	},
 	{
 		Slug: "all-damage-from-a-chosen-source", Name: "Shields against a chosen source that are not one-use", Kind: KindSeam, Status: StatusImplemented,
