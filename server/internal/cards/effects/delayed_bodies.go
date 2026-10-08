@@ -164,6 +164,14 @@ var (
 	// on the battlefield: "Destroy it at the beginning of the next end
 	// step" (Glyph of Destruction, #2027).
 	destroyTheObjectBody = game.DelayedBody("destroy/the-object", destroyTheObject)
+
+	// Return the card <Object> names from a graveyard to the battlefield
+	// under the delayed trigger's controller, if it is still that object
+	// in a graveyard: "return that card to the battlefield under your
+	// control at the beginning of the next end step" (Avacyn, Angel of
+	// Horror).
+	returnTheObjectFromGraveyardUnderYourControlBody = game.DelayedBody("graveyard/return-the-object-under-your-control",
+		returnTheObjectFromGraveyardUnderYourControl)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

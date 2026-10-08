@@ -14,10 +14,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // point, where a Counterspell aimed at this resolves and does
 // nothing rather than fizzling (CR 701.6a). See
 // server/internal/game/cant_be_countered.go.
+//
+// No simplification. Reviewed for #2741: it prints no "can't be
+// regenerated", so the sweep is wrathDestroyAllCreatures and not the
+// NoRegen form, and s23_boardwipes_test.go pins both halves.
 func init() {
 	Register(Spec{
 		OracleID:        "0230de18-8d15-4cfa-9d42-7ccddd9f9570",
 		Name:            "Supreme Verdict",
+		Completeness:    CompletenessFull,
 		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		CantBeCountered: true,
 		OnResolve:       wrathDestroyAllCreatures,
