@@ -3,6 +3,7 @@ package heuristic
 import (
 	"context"
 	"slices"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
@@ -650,14 +651,20 @@ const libraryTakeFloor = 0.01
 // The zone is the whole signal, and that is a claim about the catalog
 // rather than about the wire, so here is the evidence. Every
 // choose_cards prompt whose candidates are cards in the chooser's own
-// library comes from one of three helpers in cards/effects, and in all
-// three a named card goes somewhere the chooser wants it:
+// library comes from one of four helpers, and in all four a named card
+// goes somewhere the chooser wants it (manifest dread's is the one with
+// a wrinkle, see below):
 //
 //   - TakeFromLibraryToHand / EachPlayerTakesFromLibrary — into the
 //     hand (Horn of the Mark, Explore the Vastlands);
 //   - PutFromLibraryOntoBattlefield — onto the battlefield under the
 //     chooser's control;
-//   - hideaway — exiled face down, to be played later for free.
+//   - hideaway — exiled face down, to be played later for free;
+//   - manifest dread (#2570) — onto the battlefield face down, the OTHER
+//     looked-at card going to the graveyard. A manifested creature card
+//     can be turned face up for its mana cost (CR 701.40b) and a
+//     noncreature one never can, so manifestDreadValue replaces the
+//     generic "take the best card" rule for that prompt (#2591).
 //
 // The cards a look does NOT name go to the bottom, or stay where they
 // were; nothing names a library card to mill it, exile it for good or
@@ -689,12 +696,47 @@ func (st *state) valueTakenFromLibrary(cfg Config, ch *protocol.PendingChoiceVie
 		}
 		opts[id] = &ch.Options[i]
 	}
+	if strings.HasPrefix(ch.Reason, manifestDreadReason) {
+		var v float64
+		for _, id := range named {
+			v += st.manifestDreadValue(cfg, opts[id])
+		}
+		return v, true
+	}
 	var v float64
 	for _, id := range named {
 		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
 	}
 	return v, true
 }
+
+// manifestDreadReason opens the question game.ManifestDreadThenForEffect
+// asks. The heuristic may not import internal/game, and the prompt
+// carries no purpose field, so the wire text is the signal; the aiseat
+// manifest-dread test fails if the engine's wording drifts from it.
+const manifestDreadReason = "Manifest dread"
+
+// manifestDreadValue scores manifesting one of the two looked-at cards
+// (#2591). A creature card is worth manifesting: it can be turned face
+// up for its mana cost (CR 701.40b), so the cheaper one is the one the
+// bot can afford soonest. A noncreature card never turns face up, so
+// manifesting it is only a 2/2 body: when neither card is a creature
+// the answer prefers manifesting the LESS valuable one and graveyarding
+// the better, which is the opposite of the take rule.
+func (st *state) manifestDreadValue(cfg Config, c *protocol.CardView) float64 {
+	if c == nil {
+		return 0
+	}
+	if isCreature(c) {
+		return manifestCreatureBase - float64(manaValue(c.ManaCost, 0))
+	}
+	return -st.cardValue(cfg, c)
+}
+
+// manifestCreatureBase lifts every creature answer above every
+// noncreature one: noncreature answers are zero or negative, and no
+// mana value approaches this.
+const manifestCreatureBase = 1000
 
 // valueTakenFromGraveyard scores one choose_cards answer over the bot's
 // own graveyard by the total cardValue of the candidates it NAMES, the
