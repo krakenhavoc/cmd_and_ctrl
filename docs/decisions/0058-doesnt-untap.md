@@ -1051,3 +1051,34 @@ closed by this amendment.
   `Steps: 2`.
 - The view is unchanged: `no_untap.next` already lists the player whose step is
   next, and no card needs the remaining count shown.
+
+## Amendment (2026-10-08, #1824): stun counters that can't be removed
+
+Decision 6 made a stun counter replace an untap (CR 122.1d) by removing it in
+`untapPermanentLocked`. Fear of Sleep Paralysis prints "Stun counters can't be
+removed from permanents your opponents control", which that code could not
+honour: the engine had no prohibition on counter removal, so the card was left
+out of ADR 0103 PR 4 rather than ship weaker than printed. The seam row
+"Counters that can't be removed" is closed by this amendment.
+
+- `Spec.CounterRemovalLocks []game.CounterRemovalLock` declares the static:
+  a counter kind (empty means every kind) and a `Locks(target, g, source)`
+  predicate. It is derived, never stored, like `UntapStepRestrictions`: asked at
+  the moment of removal against the live battlefield, so the source leaving play
+  lifts the lock with no bookkeeping, and it needs no snapshot field.
+- It is a prohibition (CR 101.2), so it sits at the one choke point every
+  removal reaches, `applyCounterByLocked`: a negative delta on a locked
+  (permanent, kind) is a no-op. The stun untap needs no change of its own. It
+  still calls the removal and returns, so the permanent stays tapped with its
+  counter, which is the printed result. Removal effects (`AddCounterForEffect`
+  with a negative delta) and cost payments go through the same function.
+- A counter-removal COST is refused before anything is paid (CR 118.3):
+  `counterKindsPaying` withholds the option and `validateCounterRemovalLocked`
+  returns `ErrInsufficientCounters`, so the enumerator, the client's greyed row
+  and the validator agree and no one pays for a removal that cannot happen.
+  Because the filter is on the permanent whose counters come off, the options
+  list simply loses that permanent; no new prompt, wire field or bot input.
+- Out of scope: loyalty-ability costs (`ActivateLoyalty`) read the loyalty count
+  directly and are not routed through the lock. No card locks loyalty or any
+  other kind today; the lock is the place to add it when one does.
+- Proof card: **Fear of Sleep Paralysis** (`Full`).

@@ -176,6 +176,7 @@ type CardDef struct {
 
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
+	CounterRemovalLocks   []CounterRemovalLock
 	UntapCaps             []UntapCap
 	UntapOptOuts          []UntapOptOut
 
@@ -726,6 +727,12 @@ func init() {
 	CatalogUntapStepRestrictions = func(key string) []UntapStepRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStepRestrictions
+		}
+		return nil
+	}
+	CatalogCounterRemovalLocks = func(key string) []CounterRemovalLock {
+		if d := catalogDef(key); d != nil {
+			return d.CounterRemovalLocks
 		}
 		return nil
 	}
