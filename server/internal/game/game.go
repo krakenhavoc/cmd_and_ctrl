@@ -495,6 +495,10 @@ type Game struct {
 	shieldDivisions []ShieldDivision
 	damageStage     *damageStage
 
+	// redirectOrders is the CR 616 order chosen for redirections per
+	// damage instance (redirect_order.go, #2066). Copy on write.
+	redirectOrders []redirectOrder
+
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks
 	// maps blocker -> the attacker its EventBlock named;

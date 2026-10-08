@@ -207,6 +207,7 @@ func (g *Game) endDamageInstanceLocked(inst DamageInstance) {
 	// ADR 0108 §7: its events have all landed, so its shield divisions
 	// are spent.
 	g.dropShieldDivisionsLocked(inst)
+	g.dropRedirectOrdersLocked(inst)
 }
 
 // damageInstancePausedLocked reports whether a damage event of `inst` is

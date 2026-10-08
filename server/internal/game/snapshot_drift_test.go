@@ -186,6 +186,7 @@ var gameFields = plan(
 	"damageInstanceLives", rebuilt, "keyed on the transient instance stamp, which no restored event carries: every instance of a restored game is new and records its own life totals as it begins, and a lookup that finds no record reads the live total (damage_as_though.go)",
 	// ADR 0108 §7: the divide_shield machinery (divide_shield.go).
 	"shieldDivisions", dropped, "restores empty: a CR 615.7 division is written as its prompt is answered and spent by the events it divides, which land in that action or wait on a CR 616 prompt (not a restore point); an entry left after its events have landed names a finished instance, so a restore that starts with none changes nothing",
+	"redirectOrders", dropped, "restores empty: the order is written as its CR 616 prompt is answered and read by the later events of the same instance, keyed on the transient instance stamp, which no restored event carries (redirect_order.go, #2066)",
 	"damageStage", dropped, "not game state: an instance's events collected for a division, opened and closed inside one mutation, so it is nil between actions",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
