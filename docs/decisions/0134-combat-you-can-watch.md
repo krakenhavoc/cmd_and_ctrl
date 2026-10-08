@@ -1,8 +1,8 @@
 # ADR 0134 — Combat you can watch: attackers lunge, hits land
 
-**Status:** Proposed · 2026-10-07 · S69 — Combat you can watch: table animations (issue [#2614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2614))
+**Status:** Accepted (owner answers 2026-10-07) · 2026-10-07 · S69 — Combat you can watch: table animations (issue [#2614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2614))
 **Issues:** [#2614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2614) (this change).
-**Owner decisions:** none yet. The owner calls #2614 a brainstorm, so this ADR lays out the options for each part and recommends one. The eleven questions are under [Questions for the owner](#questions-for-the-owner). Each lists the recommended option first. Smaller calls the questions do not cover are under [Calls made here](#calls-made-here), so the owner can overturn any of them in review.
+**Owner decisions:** on 2026-10-07 the owner chose the recommended option, (a), on all eleven questions. The answers are listed under [Owner decisions](#owner-decisions-2026-10-07) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered). Smaller calls the questions do not cover are under [Calls made here](#calls-made-here), so the owner can overturn any of them in review.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-07. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: `origin/develop`, `origin/main`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/cost-tracker`, `origin/feat/playmats`, `origin/fix/2608-harvest-battlefield-mutation`, `origin/fix/caddy-reload-admin-off`, `origin/fix/themberchaud-sweep`, `origin/wip/836-one-click-default` and `pr/2326`. The highest number on any of them is 0133 (`0133-opening-hand-actions.md`, on `origin/develop`). None of the four open pull requests adds an ADR. This ADR takes **0134**.
 **Amends:** [ADR 0053](0053-combat-damage-beats.md) in two small ways (§1). Combat damage with no first-strike step gets a beat with no label, so it has motion and still has no text cue. The same-frame pause between the two beats grows to fit a lunge when combat motion is on.
 **Builds on:** [ADR 0053](0053-combat-damage-beats.md) (the beat tracker, priming, rewind, finishing the cues, and cached geometry for creatures that died), [ADR 0119](0119-a-stack-you-can-follow.md) §2 and §3 (the stack hold, and the linger's copy in a layer over the board), [ADR 0120](0120-expand-a-players-board.md) §3 (`boardAnchor` and the z ladder), [ADR 0121](0121-animated-dice.md) §7 (an animation that waits for nothing, with a per-effect toggle), and [ADR 0075](0075-table-settings-and-host-controls.md) §2.2 (bot pace).
@@ -18,6 +18,22 @@ Combat damage reaches the table as a jump cut today. A frame arrives, the life t
 **Constraint (owner, on #2614):** the table is never played below tablet size, so every attacker, blocker and avatar is on screen. This ADR designs no phone-width fallback.
 
 Every claim below was checked on `origin/develop` at `280e5309`. Every rule was checked against the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`).
+
+### Owner decisions (2026-10-07)
+
+The owner chose (a), the recommended option, on every question:
+
+1. **Trigger:** the combat damage log entries in a new frame, through ADR 0053's beat tracker (§1).
+2. **What moves:** an art-only copy in a board-level layer, with the live tile hidden during the flight (§2).
+3. **Distance:** to contact, clamped to between ½ and 0.85 of the centre-to-centre distance (§2).
+4. **Several blockers:** one lunge at the blockers' centroid, and they all shake together (§3).
+5. **Trample:** the player's avatar shakes at the same contact, and PR 2 adds a streak to it (§3).
+6. **Blockers:** a blocker lunges only in a beat where its attacker dealt it no damage, and otherwise braces (§3).
+7. **Deaths:** the death plays after the hit. An attacker that died fades as it snaps back, and a blocker that died shakes, then fades (§3).
+8. **Pacing:** display only, so nothing waits for the animation (§4).
+9. **Setting:** a new `animations.combat` toggle, default on, under the master switch and reduced motion, scaled by speed (§5).
+10. **Replays:** strikes play only on a one-frame step forward, and any other jump re-primes (§6).
+11. **Sound:** in PR 3, `combat_resolve` moves to the first contact of each beat, with no new sound files (§7).
 
 ### The rules
 
@@ -273,9 +289,9 @@ These are made by this ADR and can be overturned in review.
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each question lists the recommended option first.
+Each question lists the recommended option first. On 2026-10-07 the owner chose (a) on all eleven (see [Owner decisions](#owner-decisions-2026-10-07)). The questions are kept here with the options that were not chosen.
 
 1. **What starts the animation?**
    - (a) **The combat damage entries in a newly arrived frame, through ADR 0053's beat tracker** (§1). It is exact about source and target, and priming, undo and reconnects are already solved and tested.
