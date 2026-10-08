@@ -298,6 +298,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Solved:            true,
 		Harnessed:         true,
 		Monstrous:         true,
+		Saddled:           true,
 		RingBearer:        true,
 		Prepared:          true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are

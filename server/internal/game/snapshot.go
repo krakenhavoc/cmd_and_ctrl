@@ -880,6 +880,13 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Saddled and SaddledBy are the CR 702.171 saddled designation and
+	// the creatures that paid for it this turn (ADR 0071 amendment
+	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
+	// that dropped them mid-turn would un-saddle a Mount that has
+	// already been paid for. Additive within v7.
+	Saddled   bool        `json:"saddled,omitempty"`
+	SaddledBy []ObjectRef `json:"saddledBy,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -2007,6 +2014,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Saddled:                  c.Saddled,
+		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2849,6 +2858,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Saddled:                  c.Saddled,
+		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,

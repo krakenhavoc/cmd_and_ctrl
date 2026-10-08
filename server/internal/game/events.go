@@ -909,6 +909,14 @@ const (
 	// as this creature is monstrous" static switches on.
 	EventBecameMonstrous EventKind = "became_monstrous"
 
+	// EventBecameSaddled — a Mount became saddled (CR 702.171, ADR 0071
+	// amendment 2026-10-08, #2695). Source / CardID / Target = the
+	// Mount, Actor = its controller. Emitted only when the Mount was
+	// not already saddled, so it is once per Mount per turn
+	// ("for the first time each turn" is the event's own shape). Bumps
+	// the layer version for EventBecameMonstrous's reason.
+	EventBecameSaddled EventKind = "became_saddled"
+
 	// EventEvolved — a creature evolved (CR 702.100b): one or more
 	// +1/+1 counters were put on it as a result of its evolve ability
 	// resolving. CardID / Target / Source = the creature, Actor = the

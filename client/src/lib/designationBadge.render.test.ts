@@ -127,6 +127,22 @@ describe("the designation badge", () => {
     expect(badgeText(container)).toBe("MONSTROUS");
   });
 
+  // #2695 (CR 702.171): a saddled Mount says its "attacks while saddled"
+  // abilities are live, which is nowhere else on the card.
+  it("shows a saddled Mount", () => {
+    const { container } = mount(
+      permanent({ name: "Gilded Ghoda", type_line: "Creature — Horse Mount", saddled: true }),
+    );
+    expect(badgeText(container)).toBe("SADDLED");
+  });
+
+  it("is absent on a Mount that isn't saddled", () => {
+    const { container } = mount(
+      permanent({ name: "Gilded Ghoda", type_line: "Creature — Horse Mount" }),
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
   it("is absent on a creature that hasn't become monstrous", () => {
     const { container } = mount(
       permanent({ name: "Stormbreath Dragon", type_line: "Creature — Dragon" }),

@@ -384,7 +384,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// information to make.
 		var crewIDs []uuid.UUID
 		if ab.Cost.Crew > 0 {
-			crewIDs = e.crewPayment(ab.Cost.Crew)
+			crewIDs = e.crewPayment(ab.Cost.Crew, uuid.Nil)
+			if crewIDs == nil {
+				continue
+			}
+		}
+		// Saddle (CR 702.171a, #2695) is crew's cost over OTHER
+		// creatures: the same cheapest-set answer with the Mount left
+		// out, which the engine would refuse (ErrInvalidParam).
+		if ab.Cost.Saddle > 0 {
+			crewIDs = e.crewPayment(ab.Cost.Saddle, source.InstanceID)
 			if crewIDs == nil {
 				continue
 			}
@@ -1827,7 +1836,7 @@ func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, 
 // five-power creature crews a Vehicle that says 3 and so does a pair
 // of two-power ones. Enumerating the subsets would be an exponential
 // expansion for a choice the policy has nothing to decide it with.
-func (e *enumerator) crewPayment(crew int) []uuid.UUID {
+func (e *enumerator) crewPayment(crew int, except uuid.UUID) []uuid.UUID {
 	type candidate struct {
 		id    uuid.UUID
 		power int
@@ -1835,7 +1844,7 @@ func (e *enumerator) crewPayment(crew int) []uuid.UUID {
 	var pool []candidate
 	for i := range e.g.Battlefield.Cards {
 		c := &e.g.Battlefield.Cards[i]
-		if c.Controller != e.seat || !c.IsCreature() || c.Tapped {
+		if c.Controller != e.seat || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
 		pool = append(pool, candidate{id: c.InstanceID, power: c.CurrentPower()})

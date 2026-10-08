@@ -697,6 +697,19 @@ type Card struct {
 	// TurnTally.ModesChosen instead, where the turn boundary flushes it.
 	ModesChosen map[string][]int
 
+	// SaddledBy is the creatures tapped to pay for the saddle ability
+	// that made this Mount saddled this turn (CR 702.171c, "creatures
+	// that saddled it this turn"), each as the object it was. A Mount
+	// saddled twice in a turn lists both groups. Empty when the
+	// designation came from a spell or ability, as Guidelight Matrix's
+	// does. Cleared with Saddled. Read through SaddlersOf, which drops
+	// every creature that has since left the battlefield: a creature
+	// that left is a new object and did not saddle anything (CR 400.7).
+	//
+	// Always replaced, never appended in place: clone shares the
+	// backing array. ADR 0071 amendment 2026-10-08, #2695.
+	SaddledBy []ObjectRef
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it
@@ -1181,6 +1194,23 @@ type Card struct {
 	// cleared when the permanent leaves the battlefield (CR 400.7),
 	// carried by clone and the snapshot.
 	Monstrous bool
+
+	// Saddled is the CR 702.171 designation on a Mount: it became
+	// saddled by a saddle ability or a spell or ability that says so,
+	// and stays saddled only until the turn ends (swept in
+	// sweepTurnEndLocked, CR 514.2) or until it leaves the battlefield.
+	// ADR 0071 amendment 2026-10-08, #2695.
+	//
+	// Set by SaddleForEffect and by nothing else. Unlike Monstrous it
+	// is turn-scoped, which is the whole reason it is a Card field and
+	// not a scoped effect: a designation gate (Designation.Active)
+	// reads a Card and nothing else, so "as long as it's saddled" can
+	// only be answered off the object. A marker, not part of the
+	// copiable values (CopiableValuesOf never reads it), cleared at both
+	// CR 400.7 sites, carried by clone and the snapshot. Its companion
+	// SaddledBy sits with the other slices, to keep the struct free of
+	// alignment padding.
+	Saddled bool
 
 	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
 	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by

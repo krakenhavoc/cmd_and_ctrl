@@ -2594,6 +2594,12 @@ type CardView struct {
 	// Public, like Harnessed, and set straight off the card for the
 	// same reason: no card type owns monstrosity.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Saddled is a Mount's CR 702.171 saddled designation (ADR 0071
+	// amendment 2026-10-08, #2695) — set until end of turn and gone when
+	// the turn ends or the Mount leaves. Public, set straight off the
+	// card like Monstrous: the table can see the Mount is saddled, which
+	// is what the attack triggers read.
+	Saddled bool `json:"saddled,omitempty"`
 	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
 	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
 	// Public, and set straight off the card. Unlike Monstrous it is NOT
@@ -3503,8 +3509,17 @@ type ActivatedAbilityView struct {
 	// re-checks. Each option's power is already on the CardView the
 	// client holds, so the running total is computable client-side
 	// without a second round trip. Added in S27.
+	//
+	// A Mount's saddle ability (CR 702.171a, #2695) rides the same two
+	// fields, because its cost is crew's — creatures tapped for total
+	// power — and the client's picker, the `crew_ids` payload and the
+	// engine's validator are one walk. CrewCost then carries the saddle
+	// number, Saddle is true so the picker says "Saddle" rather than
+	// "Crew", and CrewOptions leaves out the Mount itself ("other"
+	// creatures).
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
+	Saddle      bool              `json:"saddle,omitempty"`
 	// CounterCostView is the counter half of the cost — embedded, so
 	// its fields sit at the top level of the JSON exactly as they did
 	// before #789 split them out, and so a mana ability can carry the
@@ -9070,6 +9085,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// to be false — only a permanent with a monstrosity ability can
 	// become monstrous, so the badge would hint at the hidden card.
 	out.Monstrous = false
+	// #2695: cleared with the other designations rather than trusted to
+	// be false — a face-down permanent is not a Mount (CR 708.2).
+	out.Saddled = false
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.
@@ -9397,6 +9415,7 @@ func viewOfCard(c game.Card) CardView {
 		}
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
+		view.Saddled = c.Saddled
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
 		if game.HasSharedTypeLine(c) {
@@ -9888,7 +9907,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
-			v.CrewOptions = crewOptions(g, caster)
+			v.CrewOptions = crewOptions(g, caster, uuid.Nil)
+		}
+		if a.Cost.Saddle > 0 {
+			v.CrewCost = a.Cost.Saddle
+			v.Saddle = true
+			v.CrewOptions = crewOptions(g, caster, c.InstanceID)
 		}
 		v.CounterCostView = counterCostView(g, caster, c.InstanceID, a.Cost.RemoveCounters, a.Cost.AddCounter)
 		if a.Cost.DemandsX() {
@@ -10018,10 +10042,10 @@ func cardIDStrings(ids []uuid.UUID) []string {
 //
 // Summoning-sick creatures are included deliberately — tapping to
 // crew is not paying a {T} cost (CR 702.122b). Caller must hold g.mu.
-func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
+func crewOptions(g *game.Game, caster, except uuid.UUID) *LegalTargetsView {
 	out := &LegalTargetsView{Min: 1, Max: 0}
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != caster || !c.IsCreature() || c.Tapped {
+		if c.Controller != caster || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
 		out.Cards = append(out.Cards, c.InstanceID.String())

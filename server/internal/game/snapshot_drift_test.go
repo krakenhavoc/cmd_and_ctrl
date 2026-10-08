@@ -477,6 +477,11 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
+	// designation and the creatures that paid for it, carried for
+	// Monstrous's reason.
+	"Saddled", carried, "",
+	"SaddledBy", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",
