@@ -1505,14 +1505,15 @@ var items = []Item{
 		EngineNotes: "cost: `game.AdditionalCost` has no component that exiles a card from a graveyard (`ExileFromGraveyard` is on alternative costs and activated-ability costs only), and `ctx.Exiled()` is filled only by an activation. Draconic Intervention's X is the exiled card's mana value; its damage, ADR 0108 PR 1's \"if a creature dealt damage this way would die this turn, exile it instead\" and its self-exile are expressible.",
 	},
 	{
-		Slug: "enters-from-a-graveyard", Name: "Triggers on entering from a graveyard", Kind: KindSeam, Status: StatusMissing,
+		// #2135 (ADR 0113's 2026-10-08 amendment). Closed; history in
+		// Closed seams.
+		Slug: "enters-from-a-graveyard", Name: "Triggers on entering from a graveyard", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that trigger when a permanent enters the battlefield from a graveyard, such as Treacherous Pit-Dweller's and River Kelpie's.",
-		Missing:     "An ability can't yet tell a permanent that entered from a graveyard from one that was cast.",
 		Rules:       []string{"603.6a"},
 		Issue:       2135,
-		Tracked:     "#2135 (found landing the undying and persist pool, #2075)",
-		Waiting:     []string{"Treacherous Pit-Dweller", "Flayer of the Hatebound", "River Kelpie"},
-		EngineNotes: "event: `EventETB` carries no origin zone — the entry pipeline (`entry_choice.go`) and `MoveCard` both emit `Event{Kind: EventETB, CardID}` — so \"enters from a graveyard\" and \"enters from your graveyard\" have nothing to read. Likely an `OldZone` (and the graveyard's owner) stamped on `EventETB` from the `ReplacementEvent` each entry site already holds.",
+		ADR:         "0113-small-seams-for-the-s58-deck-requests.md",
+		Examples:    []string{"Treacherous Pit-Dweller", "Flayer of the Hatebound", "River Kelpie"},
+		EngineNotes: "**Shipped** (#2135, ADR 0113's 2026-10-08 amendment): `EventETB` now carries `EnteredFrom` and `EnteredFromOwner` at the entry pipeline (`landEntryLocked`) and the sandbox `MoveCard` site; a token or a spawned card has neither. `effects.EnteredFromAGraveyard` and `EnteredFromYourGraveyard` are the `When` conditions. A spell cast from a graveyard was already readable as `EventCast.OldZone`. Not covered: the evoke sacrifice's synthetic harvest event, which is not an entry.",
 	},
 	{
 		Slug: "spend-only-on-noncreature-spells", Name: "Mana spendable only on noncreature spells", Kind: KindSeam, Status: StatusMissing,

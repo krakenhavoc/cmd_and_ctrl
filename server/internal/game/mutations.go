@@ -6183,7 +6183,7 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		g.EmitEvent(ltb)
 	}
 	if dstZone.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventETB, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, EnteredFrom: srcZone.Kind, EnteredFromOwner: srcZone.Owner})
 		// ETB hook for admin direct-drop onto battlefield (and the
 		// commander zone-replacement destination). Find the card in
 		// the destination zone to pull its Scryfall ID.
