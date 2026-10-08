@@ -345,7 +345,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		for _, id := range cp.ExilePermanentIDs {
 			if c := st.bf[id]; c != nil {
 				v -= st.permanentValue(c)
+				continue
 			}
+			// ADR 0137: a craft material from the graveyard is fuel,
+			// priced as the exile-N-cards cost below prices it.
+			v -= p.fuelValue(st, id)
 		}
 		// #1297: an exile-N-cards cost spends real cards — a graveyard
 		// card the seat might have recast, a card in hand. One price

@@ -524,6 +524,12 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
+		// ADR 0137: craft's graveyard half and an exile-cards component
+		// could both name one graveyard card, and no printed cost has
+		// both.
+		if ec := ab.Cost.ExilePermanents; ec != nil && ec.FromGraveyard && ab.Cost.ExileCards != nil {
+			panic(fmt.Sprintf("effects.Register: %q ability %d exiles materials from the graveyard beside an exile-cards cost — one card could pay both", spec.Name, i))
+		}
 		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would — unless
@@ -672,6 +678,11 @@ func Register(spec Spec) {
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
+		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
+		// ability exiles graveyard cards through this component.
+		if ec := ma.Cost.ExilePermanents; ec != nil && ec.FromGraveyard {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials from the graveyard — only a CR 602 ability may (ADR 0137)", spec.Name, i))
+		}
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",

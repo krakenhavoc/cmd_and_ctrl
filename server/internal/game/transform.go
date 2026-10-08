@@ -305,6 +305,105 @@ func (g *Game) ExileAndReturnTransformedForEffect(cardID, controller uuid.UUID) 
 	})
 }
 
+// ReturnCraftedFromExileForEffect is craft's resolution (CR 702.167a,
+// ADR 0137): "Return this card to the battlefield transformed under its
+// owner's control", said of the card the ability's own cost has just
+// exiled, plus CR 702.167c's link to the materials that cost exiled.
+//
+// It is the exile form of ReturnFromGraveyardTransformedForEffect, and
+// the second half of ExileAndReturnTransformedForEffect with the first
+// half paid as a cost: the back face is set on the card WHILE IT IS IN
+// EXILE (CR 712.8a puts it there front face up), for the reason those
+// two give, and the ordinary exile return mints the new object (CR
+// 400.7) through the CR 614 entry pipeline. What enters is a new
+// permanent: summoning sick, no counters, a fresh timestamp, and every
+// enters ability on its back face fires.
+//
+// `materials` are the instance IDs the cost exiled (PaidCost.Exiled).
+// Each is linked as the object it is in exile NOW, and one that is not
+// in exile any more — a commander its owner moved to the command zone
+// (CR 903.9a), a token that ceased to exist there (CR 111.8) — is not
+// linked at all: CR 702.167c names "cards in exile that were exiled to
+// pay the cost". The link rides the entry (entryTail.craftedWith) and
+// is stamped before EventETB, so it is there for the new permanent's
+// own enters trigger on the inline path and the resumed one alike.
+//
+// Nothing happens, and that is not an error, when the card is no longer
+// in exile (it is a new object the ability does not know, CR 400.7),
+// when it is a token (CR 111.8), or when it cannot transform — a copy
+// of a craft card that is not itself double-faced stays in exile, as
+// ExileAndReturnTransformedForEffect leaves a permanent it cannot
+// transform (ADR 0079 decision 5). If the
+// entry is cancelled or redirected the front face is put back, so no
+// card sits in exile showing its back; a PAUSED entry keeps the back
+// face, because the resume needs it.
+//
+// Returns the new permanent's ID, or uuid.Nil when nothing entered (or
+// the entry paused). Under its owner's control (CR 702.167a), whoever
+// activated the ability.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnCraftedFromExileForEffect(cardID uuid.UUID, materials []uuid.UUID) (uuid.UUID, error) {
+	if g.Exile == nil {
+		return uuid.Nil, nil
+	}
+	var card *Card
+	for i := range g.Exile.Cards {
+		if g.Exile.Cards[i].InstanceID == cardID {
+			card = &g.Exile.Cards[i]
+			break
+		}
+	}
+	if card == nil || card.IsToken() {
+		return uuid.Nil, nil
+	}
+	front := *card
+	front.ActiveFace = 0
+	if !CanTransform(front) {
+		return uuid.Nil, nil
+	}
+	var link []ObjectRef
+	for _, id := range materials {
+		if id == cardID {
+			continue
+		}
+		for i := range g.Exile.Cards {
+			if c := &g.Exile.Cards[i]; c.InstanceID == id && !c.IsToken() {
+				link = append(link, ObjectRef{ID: id, Epoch: c.ObjectEpoch})
+				break
+			}
+		}
+	}
+	setFaceInZoneLocked(g.Exile, cardID, 1)
+	newController := card.Owner
+	card.Controller = newController
+	entered, err := g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+		Kind:           RepEventMove,
+		Actor:          newController,
+		CardID:         cardID,
+		OldZone:        ZoneExile,
+		NewZone:        ZoneBattlefield,
+		entryResumable: true,
+		entryTail:      &entryTail{newObject: true, craftedWith: link},
+	})
+	if entered == uuid.Nil && len(g.PendingChoices) == 0 && g.Exile.Contains(cardID) {
+		setFaceInZoneLocked(g.Exile, cardID, 0)
+	}
+	return entered, err
+}
+
+// CraftMaterialsForEffect resolves CR 702.167c's "the exiled cards used
+// to craft it" (Card.CraftedWith, PermanentInfo.CraftedWith, ADR 0137):
+// the cards still in exile as the objects the craft cost put there, in
+// the order named, as value copies. The delve link's reader under the
+// craft link's name — one rule (CR 400.7: a card that left exile and
+// came back is a new object nothing links to), applied in one place.
+//
+// Caller must hold g.mu.
+func (g *Game) CraftMaterialsForEffect(refs []ObjectRef) []Card {
+	return g.DelvedCardsForEffect(refs)
+}
+
 // ReturnFromGraveyardTransformedForEffect is the graveyard form of the
 // other verb: "return it to the battlefield [tapped] transformed under
 // its owner's control" (the Ojer gods, CR 712.14a), said of a double-faced

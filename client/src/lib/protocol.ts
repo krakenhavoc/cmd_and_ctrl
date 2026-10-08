@@ -2597,6 +2597,8 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `exile_permanent_ids` — NOT
   // `exile_ids`, which names cards in a hand or a graveyard. An absent
   // or short list means the cost cannot be paid (CR 118.3).
+  // ADR 0137: on a craft ability the options also include cards in
+  // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,

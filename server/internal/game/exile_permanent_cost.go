@@ -87,6 +87,27 @@ type ExilePermanentsCost struct {
 	// if it has the card type.
 	ExcludeSource bool
 
+	// FromGraveyard is craft's second zone (CR 702.167b, ADR 0137): a
+	// material named WITHOUT the word "card" ("Craft with artifact")
+	// may be a permanent the activator controls OR a card with that
+	// quality in the activator's own graveyard, and one payment may mix
+	// the two ("Exile the two from among creatures you control and/or
+	// creature cards in your graveyard", Visage of Dread). A graveyard
+	// card is judged on its characteristics there, which for a
+	// double-faced card are its front face's (CR 712.8a).
+	//
+	// Ability-only: effects.Register refuses it on a mana ability, and
+	// beside an ExileCards component, which could then name the same
+	// graveyard card twice.
+	FromGraveyard bool
+
+	// Subtype is a subtype the material must have — "Craft with Island"
+	// (Waterlogged Hulk), "Craft with Cave" (Kaslem's Stonetree): a
+	// craft quality may be a subtype (CR 702.167b). Read through
+	// Card.HasSubtype, so a changeling is every creature type. Empty
+	// names no subtype; set beside CardType it narrows that type.
+	Subtype string
+
 	// Label is the clause as printed, without the verb — "a creature
 	// you control" — shown above the client's picker.
 	Label string
@@ -97,9 +118,35 @@ func (c *ExilePermanentsCost) Empty() bool {
 	return c == nil || c.Count < 1
 }
 
-// matches reports whether `card` has the clause's card type.
+// matches reports whether `card` has the clause's card type and
+// subtype.
 func (c *ExilePermanentsCost) matches(card *Card) bool {
-	return c.CardType == "" || card.HasCardType(strings.ToLower(c.CardType))
+	if c.CardType != "" && !card.HasCardType(strings.ToLower(c.CardType)) {
+		return false
+	}
+	return c.Subtype == "" || card.HasSubtype(c.Subtype)
+}
+
+// graveyardMaterialLocked returns the card `id` names in `playerID`'s
+// own graveyard when the clause reaches there (FromGraveyard, ADR
+// 0137), or nil. "Your graveyard" is the activator's: a card in another
+// player's graveyard never pays, whoever controlled it last.
+//
+// Caller must hold g.mu.
+func (g *Game) graveyardMaterialLocked(playerID uuid.UUID, ec *ExilePermanentsCost, id uuid.UUID) *Card {
+	if ec == nil || !ec.FromGraveyard {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Graveyard == nil {
+		return nil
+	}
+	for i := range p.Graveyard.Cards {
+		if p.Graveyard.Cards[i].InstanceID == id {
+			return &p.Graveyard.Cards[i]
+		}
+	}
+	return nil
 }
 
 // ExilePermanentsOptionsForEffect is the set of permanents that could
@@ -122,6 +169,19 @@ func (g *Game) ExilePermanentsOptionsForEffect(playerID, sourceID uuid.UUID, ec 
 			continue
 		}
 		out = append(out, c.InstanceID)
+	}
+	// ADR 0137: craft's graveyard half, after the permanents, in pile
+	// order.
+	if ec.FromGraveyard {
+		if p := g.playerByIDLocked(playerID); p != nil && p.Graveyard != nil {
+			for i := range p.Graveyard.Cards {
+				c := &p.Graveyard.Cards[i]
+				if c.InstanceID == sourceID || !ec.matches(c) {
+					continue
+				}
+				out = append(out, c.InstanceID)
+			}
+		}
 	}
 	return out
 }
@@ -179,6 +239,15 @@ func (g *Game) validateExilePermanentsCostLocked(playerID, sourceID uuid.UUID, e
 			return ErrInvalidParam
 		}
 		seen[id] = true
+		// ADR 0137: a craft material may be a card in the activator's
+		// own graveyard. It is theirs by being there, so the clause is
+		// the only question.
+		if gc := g.graveyardMaterialLocked(playerID, ec, id); gc != nil {
+			if gc.InstanceID == sourceID || !ec.matches(gc) {
+				return ErrIllegalTarget
+			}
+			continue
+		}
 		c := findBattlefieldCard(g, id)
 		if c == nil {
 			return ErrCardNotFound
@@ -239,8 +308,13 @@ func movedSourceAlso(sourceID uuid.UUID, exileSelf bool, lists ...[]uuid.UUID) [
 func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) ([]uuid.UUID, error) {
 	var moved []uuid.UUID
 	for _, id := range ids {
+		// ADR 0137: a craft material in the activator's graveyard goes
+		// through the same door, as a card leaving a graveyard rather
+		// than a permanent leaving the battlefield.
 		if findBattlefieldCard(g, id) == nil {
-			continue
+			if z := g.findCardZoneLocked(id); z == nil || z.Kind != ZoneGraveyard || z.Owner != playerID {
+				continue
+			}
 		}
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,

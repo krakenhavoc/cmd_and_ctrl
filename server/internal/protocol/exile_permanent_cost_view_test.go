@@ -152,3 +152,80 @@ func TestExilePermanentCostViewAndEnumeratorAgree(t *testing.T) {
 		t.Errorf("view offers %v, enumerator pays with %v — want one list", keysOfSet(view), keysOfSet(paid))
 	}
 }
+
+// ADR 0137 (#2124): craft's materials span two zones (CR 702.167b). The
+// view offers my creatures AND the creature cards in my own graveyard —
+// never a card in another player's graveyard or a noncreature card in
+// mine — with min and max the clause's count, and the enumerator pays
+// out of exactly that list.
+func TestCraftMaterialOptionsSpanTheBattlefieldAndYourGraveyard(t *testing.T) {
+	g := busyTable(t, 0)
+	me := g.Seats[g.Turn.ActiveSeat]
+	src := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: src, Name: "Craft Stand-in", TypeLine: "Artifact",
+		OracleID: "00000000-0000-0000-0000-000000002124",
+		Owner:    me.ID, Controller: me.ID,
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "Craft with two creatures",
+			Cost: game.AbilityCost{ExileSelf: true, ExilePermanents: &game.ExilePermanentsCost{
+				Count: 2, CardType: "creature", ExcludeSource: true, FromGraveyard: true,
+				Label: "two from among creatures you control and/or creature cards in your graveyard",
+			}},
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+	live := seatExileCreatureFor(g, me.ID, "Live Bear")
+	dead := uuid.New()
+	me.Graveyard.PushTop(game.Card{InstanceID: dead, Name: "Dead Bear", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID})
+	rock := uuid.New()
+	me.Graveyard.PushTop(game.Card{InstanceID: rock, Name: "Dead Rock", TypeLine: "Artifact", Owner: me.ID, Controller: me.ID})
+	refused := map[string]bool{src.String(): true, rock.String(): true}
+	for _, s := range g.Seats {
+		if s.ID != me.ID {
+			theirs := uuid.New()
+			s.Graveyard.PushTop(game.Card{InstanceID: theirs, Name: "Their Dead Bear", TypeLine: "Creature — Bear", Owner: s.ID, Controller: s.ID})
+			refused[theirs.String()] = true
+		}
+	}
+	g.BumpLayerVersionForTest()
+
+	opts := vehicleView(t, g, src).ActivatedAbilities[0].ExilePermanentOptions
+	if opts == nil || opts.Min != 2 || opts.Max != 2 {
+		t.Fatalf("exile_permanent_options = %+v, want two to pick", opts)
+	}
+	offered := map[string]bool{}
+	for _, id := range opts.Cards {
+		offered[id] = true
+		if refused[id] {
+			t.Errorf("craft options offer %s, which the clause refuses (the source, a noncreature card, another player's graveyard)", id)
+		}
+	}
+	if !offered[live.String()] || !offered[dead.String()] {
+		t.Fatalf("craft options = %v, want my creature and my graveyard creature card among them", opts.Cards)
+	}
+
+	paid := map[string]bool{}
+	for _, m := range legal.EnumerateLocked(g, me.ID, legal.Options{}) {
+		if m.Type != legal.TypeActivateAbility || m.Source != src {
+			continue
+		}
+		var p struct {
+			ExilePermanentIDs []string `json:"exile_permanent_ids"`
+		}
+		if err := json.Unmarshal(m.Params, &p); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		for _, id := range p.ExilePermanentIDs {
+			paid[id] = true
+		}
+	}
+	if len(paid) != 2 {
+		t.Fatalf("enumerator pays with %v, want one payment of two", keysOfSet(paid))
+	}
+	for id := range paid {
+		if !offered[id] {
+			t.Errorf("enumerator pays with %s, which the view does not offer", id)
+		}
+	}
+}

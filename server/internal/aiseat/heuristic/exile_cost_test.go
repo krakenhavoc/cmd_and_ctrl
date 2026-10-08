@@ -48,3 +48,30 @@ func TestExiledCardsArePricedOnAnActivation(t *testing.T) {
 		t.Errorf("the bot chose %q — the activation that exiles a card from hand should price below the free one", got)
 	}
 }
+
+// ADR 0137 (#2124): a craft material may be a card in the seat's own
+// graveyard, named in exile_permanent_ids beside the permanents. It is
+// fuel, and priced as fuel: an activation that spends one costs more
+// than the same activation that spends nothing. Before craft, an id in
+// that list that was not on the battlefield was priced at zero.
+func TestAGraveyardCraftMaterialIsPricedAsFuel(t *testing.T) {
+	dead := graveyardCardView(cardID(30), 0, "Dead Bear", "Creature — Bear", "{1}{G}")
+	v := newView([]protocol.PlayerView{newSeat(0, withGraveyard(dead)), newSeat(1)},
+		withBattlefield(
+			land(cardID(1), 0),
+			land(cardID(2), 0),
+		))
+	const costly, free = "Eats A Graveyard Card: craft", "Eats Nothing: the same ability"
+	pays := legal.Move{
+		Type: legal.TypeActivateAbility, Player: seatID(0), Kind: legal.KindActivate,
+		Label: costly, Source: uuid.MustParse(cardID(1)),
+		Params: mustJSON(t, map[string]any{
+			"source_card_id": cardID(1), "ability_index": 0,
+			"exile_permanent_ids": []string{cardID(30)},
+		}),
+	}
+	in := input(0, v, passMove(0), pays, exileActivateMove(t, 0, cardID(2), free))
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != free {
+		t.Errorf("the bot chose %q — exiling a graveyard card to a cost should price below paying nothing", got)
+	}
+}
