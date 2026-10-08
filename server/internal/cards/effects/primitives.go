@@ -749,7 +749,13 @@ type ReturnSpellToHand struct {
 }
 
 func (r ReturnSpellToHand) Apply(ctx *Context) error {
-	return ctx.Game.ReturnSpellToHandForEffect(r.StackID)
+	// #2620: a spell that already left the stack in response: nothing to
+	// return (CR 608.2b), as CounterTarget does since #2612.
+	err := ctx.Game.ReturnSpellToHandForEffect(r.StackID)
+	if errors.Is(err, game.ErrCardNotOnStack) {
+		return nil
+	}
+	return err
 }
 
 // ExileTargetSpell exiles a spell from the stack WITHOUT countering it

@@ -39,6 +39,12 @@ func TestPrimitivesOnAVanishedObjectDoNothing(t *testing.T) {
 		}},
 		{"ReturnFromGraveyard", func(id uuid.UUID) Applier { return ReturnFromGraveyard{Target: id} }},
 		{"PhaseOut", func(id uuid.UUID) Applier { return PhaseOut{Targets: []uuid.UUID{id}} }},
+		{"CounterTarget", func(id uuid.UUID) Applier { return CounterTarget{StackID: id} }},
+		{"ReturnSpellToHand", func(id uuid.UUID) Applier { return ReturnSpellToHand{StackID: id} }},
+		{"ExileTargetSpell", func(id uuid.UUID) Applier { return ExileTargetSpell{StackID: id} }},
+		{"ExileTargetSpell Then", func(id uuid.UUID) Applier {
+			return ExileTargetSpell{StackID: id, Then: func(*Context, bool) error { return nil }}
+		}},
 		{"BecomePrepared", func(id uuid.UUID) Applier { return BecomePrepared{Target: id} }},
 		{"DealDamage", func(id uuid.UUID) Applier { return DealDamage{Source: id, Target: id, Amount: 2} }},
 	}
