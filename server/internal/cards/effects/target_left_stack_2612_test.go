@@ -120,6 +120,23 @@ func TestJinGitaxiasTriggerWithSpellGoneIsNotAnError(t *testing.T) {
 	}
 }
 
+// Rewind's body (counter, then untap) with the target gone: it shares
+// CounterTarget, so it must not error before the untap half (the
+// integrator's random-policy seed 3030).
+func TestRewindBodyWithTargetGoneDoesNotError(t *testing.T) {
+	g := newCatalogGame(t)
+	item := &game.StackItem{
+		Kind:       game.StackItemSpell,
+		Controller: g.Seats[0].ID,
+		Targets:    []game.TargetRef{{Kind: game.TargetCard, ID: uuid.New()}},
+	}
+	g.WithWriteLock(func() {
+		if err := b09CounterThenUntapLands(4, "Rewind")(item, NewContext(g, item)); err != nil {
+			t.Errorf("Rewind body with the target gone: %v", err)
+		}
+	})
+}
+
 // assertNoEffectErrors fails on any EventEffectError: the engine survives
 // a failed effect and logs it, so a test that only checks the stack
 // would pass over exactly the bug #2612 was.
