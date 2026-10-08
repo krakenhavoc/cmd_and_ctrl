@@ -97,6 +97,17 @@ type PlayerTurnTally struct {
 	LifeLow    int  `json:"lifeLow,omitempty"`
 	LifeLowSet bool `json:"lifeLowSet,omitempty"`
 	PoisonHigh int  `json:"poisonHigh,omitempty"`
+	// EnergyPaidOrLost is the energy this player has paid or lost this
+	// turn (ADR 0129 §6): the sum of every negative energy delta that
+	// landed on them, whether it was paid (payEnergyLocked, CR 107.14)
+	// or removed by an effect (Final Act). Read off
+	// EventPlayerCounterPlaced, so a sandbox stepper that takes energy
+	// off the seat counts too, as a sandbox life change counts toward
+	// LifeLost. Izzet Generatorium's "Activate only if you've paid or
+	// lost four or more {E} this turn" and Blaster Hulk's "{1} less for
+	// each {E} you've paid or lost this turn" read it through
+	// Game.EnergyPaidOrLostThisTurn. Additive within schema v7.
+	EnergyPaidOrLost int `json:"energyPaidOrLost,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -476,6 +487,13 @@ func (g *Game) objectEpochLocked(source uuid.UUID) int {
 		return c.ObjectEpoch
 	}
 	return 0
+}
+
+// EnergyPaidOrLostThisTurn is how much energy playerID has paid or
+// lost this turn (ADR 0129 §6, PlayerTurnTally.EnergyPaidOrLost).
+// Caller must hold g.mu.
+func (g *Game) EnergyPaidOrLostThisTurn(playerID uuid.UUID) int {
+	return g.TurnTally.Players[playerID].EnergyPaidOrLost
 }
 
 // TurnTallyFor returns playerID's tally for the current turn (the
@@ -1036,6 +1054,13 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			if src := g.findCardByIDLocked(ev.Source); src != nil {
 				g.recordCombatDamageToPlayerLocked(ev.Actor, src, ev.Target)
 			}
+		}
+	case EventPlayerCounterPlaced:
+		// ADR 0129 §6: energy paid or lost. The event carries the
+		// delta that landed, so a removal from fewer counters than it
+		// named counts only what came off.
+		if ev.Label == CounterEnergy && ev.Amount < 0 && g.playerByIDLocked(ev.Target) != nil {
+			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.EnergyPaidOrLost -= ev.Amount })
 		}
 	case EventDrawCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
