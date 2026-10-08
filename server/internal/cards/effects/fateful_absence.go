@@ -22,17 +22,18 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				controller, ok := controllerOfTarget(ctx, t.ID)
-				if !ok {
-					return nil
-				}
-				if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-				return CreateToken{Controller: controller, Template: ClueToken(), N: 1}.Apply(ctx)
+			t, ok := ctx.ClauseTarget(0)
+			if !ok {
+				return nil
 			}
-			return nil
+			controller, ok := controllerOfTarget(ctx, t.ID)
+			if !ok {
+				return nil
+			}
+			if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+				return err
+			}
+			return CreateToken{Controller: controller, Template: ClueToken(), N: 1}.Apply(ctx)
 		},
 	})
 }
