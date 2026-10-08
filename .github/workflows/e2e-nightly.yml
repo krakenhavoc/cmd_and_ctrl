@@ -85,9 +85,10 @@ concurrency:
 # branch, though this workflow carries neither trigger today.
 #
 # Every checkout below reads TESTED_REF instead of picking its own
-# default, and the soak-tracker issue names TESTED_BRANCH plus the
-# commit `bot-soak` actually tested, so the four jobs can never
-# disagree about what ran.
+# default (the two soak jobs read the SHA `bot-soak-seed` resolved it
+# to), and the soak-tracker issue names TESTED_BRANCH plus the commit
+# the soak jobs actually tested, so the jobs can never disagree about
+# what ran.
 env:
   TESTED_REF: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
   TESTED_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.ref_name }}
@@ -123,6 +124,11 @@ jobs:
   # job's last three steps; it does need the dump, so it moved to its
   # own self-hosted job (`catalog-soak`, below) rather than pinning
   # this whole job back down for one step.
+  #
+  # #2661: the twenty-game random-table run used to be this job's
+  # second step, ~14 minutes after the ~10-minute -race step, which
+  # made this the job every E2E run waited on. It is `bot-random`
+  # below now, in four shards that run beside this one.
   bot-games:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     env:
@@ -149,9 +155,9 @@ jobs:
       - name: Bot whole-game tests
         working-directory: server
         # -skip the twenty-game random run and, since #685, the
-        # twenty-game heuristic run: the step below owns the first and
-        # the `bot-soak` job owns the second, and neither should be
-        # played twice a night.
+        # twenty-game heuristic run: the `bot-random` job owns the
+        # first and the `bot-soak-4p` job owns the second, and neither
+        # should be played twice a night.
         #
         # Splitting the random one out costs a second `go test`
         # invocation and buys the difference between 24 minutes and 4:
@@ -170,25 +176,69 @@ jobs:
         #
         # TestTwoHeuristicBotsPlayToAWinner (#1096) joins the -skip
         # list on the same argument as its four-seat sibling: the
-        # `bot-soak` job below plays both gates, and a table played
-        # twice a night is a table whose second run buys nothing.
+        # `bot-soak-2p` job below plays it, and a table played twice a
+        # night is a table whose second run buys nothing.
         run: go test ./internal/aiseat/... -race -timeout 30m -skip 'TestFourRandomBotsPlayToAWinner|TestFourHeuristicBotsPlayToAWinner|TestTwoHeuristicBotsPlayToAWinner'
 
-      # S31's four-`random`-bots exit criterion: twenty consecutive
-      # unattended games to a winner, no deadlocks, no illegal actions,
-      # replays captured. Twenty is the sprint's number and it lives
-      # here rather than in a default so the line stays continuously
-      # true instead of being true on the afternoon somebody typed it.
-      #
+  # S31's four-`random`-bots exit criterion: twenty consecutive
+  # unattended games to a winner, no deadlocks, no illegal actions,
+  # replays captured. Twenty is the sprint's number and it lives
+  # here rather than in a default so the line stays continuously
+  # true instead of being true on the afternoon somebody typed it.
+  #
+  # #2661: four shards of five games, run side by side. The test plays
+  # game i at seed base+i (AISEAT_RANDOM_SEED, default 31000), so the
+  # shards' bases 31000, 31005, 31010 and 31015 cover seeds
+  # 31000..31019: exactly the twenty tables one run of twenty played,
+  # in a quarter of the wall clock. A red shard names its seeds in its
+  # own log, and `AISEAT_RANDOM_SEED=<seed> AISEAT_RANDOM_GAMES=1`
+  # replays one.
+  #
+  # No -race, for the reason the `bot-games` step above records. Hosted,
+  # on the same guardrails as `bot-games`.
+  bot-random:
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    strategy:
+      # Each shard is five independent tables; one red shard must not
+      # cancel the other fifteen.
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 0
+            seed: "31000"
+          - shard: 1
+            seed: "31005"
+          - shard: 2
+            seed: "31010"
+          - shard: 3
+            seed: "31015"
+    env:
+      AISEAT_GAME_TESTS: "1"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TESTED_REF }}
+
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
+
       # AISEAT_REPLAY_DIR puts the ws.Room replay JSONL somewhere the
       # upload step can reach. The test deletes a passing game's replay
       # immediately — one game is ~390 MiB — so this directory is empty
       # unless something went wrong, which is why the upload is
       # if: failure() with if-no-files-found: ignore.
-      - name: Bot random-table soak (20 games, replays captured)
+      - name: Bot random-table soak (5 games from seed ${{ matrix.seed }}, replays captured)
         working-directory: server
         env:
-          AISEAT_RANDOM_GAMES: "20"
+          AISEAT_RANDOM_GAMES: "5"
+          AISEAT_RANDOM_SEED: ${{ matrix.seed }}
           AISEAT_REPLAY_DIR: ${{ github.workspace }}/bot-replays
         run: go test ./internal/aiseat/ -run TestFourRandomBotsPlayToAWinner -v -timeout 30m
 
@@ -196,7 +246,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: bot-replays
+          name: bot-replays-${{ matrix.shard }}
           path: bot-replays/
           if-no-files-found: ignore
           retention-days: 14
@@ -206,9 +256,9 @@ jobs:
   # cost, so without the dump there is no card to deal and the test
   # skips. That is the one thing the hosted image above can't supply,
   # so this job stays self-hosted (#1456) rather than pinning all of
-  # `bot-games` back down for it. Same cache key as the playwright job
-  # below — both jobs run on the same day's dump, and whichever starts
-  # first populates it.
+  # `bot-games` back down for it. Same cache key as the realdump and
+  # playwright jobs below — they all run on the same day's dump, and
+  # whichever starts first populates it.
   catalog-soak:
     runs-on: self-hosted
     env:
@@ -278,6 +328,91 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # The three checks that compare checked-in data with the real
+  # Scryfall dump. They used to be the playwright job's first steps,
+  # ~4 minutes the browser suite waited behind every night; #2661 gave
+  # them their own self-hosted job (the dump is on disk there, as for
+  # `catalog-soak`), so Playwright starts as soon as its servers do.
+  realdump:
+    runs-on: self-hosted
+    env:
+      CMDCTRL_DATA_DIR: ${{ github.workspace }}/data
+      CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TESTED_REF }}
+
+      # cache: false — self-hosted; see catalog-soak above.
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
+          cache: false
+
+      - name: Compute Scryfall cache key
+        id: scryfall-stamp
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Scryfall bulk data
+        uses: actions/cache@v6
+        with:
+          path: data/scryfall
+          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          restore-keys: |
+            scryfall-default-cards-
+
+      - name: Refresh Scryfall bulk data
+        run: scripts/scryfall-refresh.sh
+
+      # The pre-built decks are only HALF checked without real Scryfall
+      # data: decks_test.go pins coverage, count, singleton and the
+      # DECLARED colour identities offline, but it cannot tell a
+      # plausible card name from a real one, and it never runs
+      # deck.Validate. realdump_manual_test.go does both, and until now
+      # nothing ran it — CMDCTRL_SCRYFALL_DUMP is set in no workflow,
+      # so the check existed and had never executed.
+      #
+      # It belongs in a job with the dump. It matters more now than
+      # when it was added: these decks are served to the Add-bot picker
+      # AND to the human deck picker, so a renamed card is a 422 in a
+      # player's face at the moment they try to start a game, not a
+      # test failure. The package moved to internal/decks when the
+      # second picker landed.
+      #
+      # !cancelled() on the two steps after it: the three checks are
+      # independent, and a red one must not hide the other two.
+      - name: Pre-built decks — validate against the real Scryfall dump
+        working-directory: server
+        run: go test ./internal/decks/ -run RealDump -v
+
+      # Token templates against the printed token cards (#1127, ADR
+      # 0078 decision 8). A template's name, type line, P/T and colours
+      # ARE the token's characteristics, and a row that matches no
+      # printing is usually a row that is wrong: 21 of them declared no
+      # colour where every printing of that token is coloured, which is
+      # a rules bug (protection, lords, "destroy target white
+      # creature", devotion) and not a cosmetic one. Same job for the
+      # same reason as the step above — it is where the dump is.
+      - name: Token templates — match against the real Scryfall dump
+        if: ${{ !cancelled() }}
+        working-directory: server
+        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
+
+      # The oracle-text fixture behind TestAbilitiesMatchOracleText
+      # (#1276, ADR 0042 amendment). PR CI has no dump, so the check
+      # reads a checked-in, generated copy of every catalogued card's
+      # printed text, one file per card (#1542); this is where that
+      # copy is compared with the dump. It fails on an erratum, a
+      # catalogued card with no file, or a file for a card that left
+      # the catalog. Fix: regenerate with -update-oracle (the failure
+      # prints the command, scoped to the cards that differ).
+      - name: Oracle-text fixture — match against the real Scryfall dump
+        if: ${{ !cancelled() }}
+        working-directory: server
+        run: go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -v
+
   # S31's two standing gates that nothing ran (#685, #89 exit criteria
   # 2 and 4 of the ORIGINAL list — see docs/sprints.md § S31):
   #
@@ -290,15 +425,20 @@ jobs:
   # AISEAT_SOAK_GAMES, so `TestRandomBotSoak` had run in CI exactly
   # zero times. A criterion nothing runs is a claim, not a gate.
   #
-  # Its own job rather than two more steps on `bot-games`: that job is
-  # already ~10 minutes of whole games under -race plus the catalog
-  # soak's Scryfall download, this adds ~15, and one red step there
-  # would hide the other three. Separate jobs also mean this one can
-  # own its budgets (below) without loosening anything `bot-games`
-  # asserts.
+  # Their own jobs rather than more steps on `bot-games`: that job is
+  # already ~10 minutes of whole games under -race, this adds ~15, and
+  # one red step there would hide the others. Separate jobs also mean
+  # these can own their budgets (below) without loosening anything
+  # `bot-games` asserts.
   #
-  # NO -race, deliberately, for the reason the random-table step
-  # already records: what these two buy is the ENGINE states 120 four-
+  # #2661 split the one `bot-soak` job in two by seat count,
+  # `bot-soak-4p` and `bot-soak-2p`, which run side by side; it used to
+  # play its four passes one after another, ~12 minutes. Both take
+  # their base seeds and the commit they test from `bot-soak-seed`, so
+  # they still test one commit and still play disjoint seeds.
+  #
+  # NO -race, deliberately, for the reason the random-table job
+  # already records: what these buy is the ENGINE states 120 four-
   # bot tables reach, and the runner-goroutine concurrency the detector
   # would watch is the same code every whole-game test in `bot-games`
   # drives under -race. -race also costs roughly 8x here (one random
@@ -309,28 +449,89 @@ jobs:
   # the model tiers are out of scope by construction: the seats are
   # filled by `heuristic.New()` and `aiseat.NewRandomPolicy`, both of
   # which decide in microseconds against the local engine.
-  # Hosted since #1456, same guardrails as bot-games above. Measured on
-  # a self-hosted 24-core developer machine (below); a hosted runner's
-  # 4 vCPU is slower, but 100 minutes stays comfortably inside GitHub's
-  # 360-minute (6h) hard cap for a hosted job, so the budget is
-  # unchanged rather than raised pre-emptively.
-  bot-soak:
+  # Hosted since #1456, same guardrails as bot-games above.
+  #
+  # Every game in these jobs is seeded, and every seed is printed.
+  #
+  # The heuristic gate's seeds are fixed in the test (101..120), and
+  # since #1409 the gate plays its seats in LOCKSTEP — one
+  # goroutine, seat order — so a seed is a whole game, not just a
+  # deal: the same twenty games every night, and a red one replays
+  # move for move with `AISEAT_HEURISTIC_GAMES` covering its seed.
+  # (Before, four runner goroutines interleaved differently on every
+  # run: one binary played seed 107 to a winner on turn 13 eight
+  # times out of nine and stopped at turn 51 on the ninth, #1261.) A
+  # game the turn budget stops still prints the board it stopped on.
+  #
+  # The soak is the other half of that split (discussion #1390): it
+  # keeps the production schedule, one goroutine per seat, because
+  # concurrent liveness is what it is for — so its seed fixes the deal
+  # and the policies' randomness, and the interleaving is the
+  # scheduler's. The soak's base seed is derived from the UTC date
+  # instead, the way the catalog soak's is (#601): a fixed soak seed
+  # would fuzz the same hundred tables for ever and stop finding
+  # anything after the first green night. The x1000 is what keeps
+  # consecutive nights disjoint — game i uses base+i, so two nights 1
+  # apart would otherwise overlap in 99 of 100 games.
+  bot-soak-seed:
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    outputs:
+      seed: ${{ steps.seed.outputs.seed }}
+      seed_2p: ${{ steps.seed.outputs.seed_2p }}
+      tested_sha: ${{ steps.tested.outputs.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TESTED_REF }}
+
+      # #1456: the soak-tracker issue names the commit the soak jobs
+      # actually tested. `github.sha` isn't it on a schedule — that
+      # context is always the default branch's tip, not TESTED_REF —
+      # so record what checkout put in the working tree instead. Both
+      # soak jobs check out this SHA rather than TESTED_REF (#2661), so
+      # a push to the branch between their two checkouts cannot leave
+      # them testing different commits.
+      - name: Record the tested commit
+        id: tested
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Pick the soak's base seed
+        id: seed
+        shell: bash
+        run: |
+          set -eu
+          seed="${SEED_INPUT}"
+          if [ -z "${seed}" ]; then
+            seed="$(date -u +%Y%m%d)000"
+          fi
+          echo "seed=${seed}" >> "$GITHUB_OUTPUT"
+          echo "soak base seed: ${seed} (games use base+0 .. base+n-1)"
+          # #1096: the two-seat pass gets its own block, 500 above the
+          # four-seat one. Game i uses base+i, so a shared base would
+          # make the two passes play the same seeds at different seat
+          # counts — half the fuzzing for the same runtime. 500 is
+          # comfortably above any soak_games anyone will type and well
+          # inside the x1000 that keeps consecutive nights disjoint.
+          echo "seed_2p=$((seed + 500))" >> "$GITHUB_OUTPUT"
+          echo "two-seat soak base seed: $((seed + 500))"
+        env:
+          SEED_INPUT: ${{ inputs.soak_seed }}
+
+  # The four-seat gates.
+  bot-soak-4p:
+    needs: [bot-soak-seed]
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     # Measured 2026-09-19 on an idle 24-core developer machine: the
     # heuristic gate 112s for 20 games, the soak 679s for 100. 100
     # minutes is ~8x that, and it is deliberately ABOVE the
     # `go test -timeout` values below: a Go timeout prints every
     # goroutine's stack into the artifact, a job timeout kills the
-    # upload.
-    #
-    # #1096 added the two-seat pass and it is small against that
-    # budget: a two-seat heuristic game is ~0.5s (so ~11s for the
-    # twenty) and #1096 measured 100 two-seat soak games at 82s. Call
-    # it ~100s on top of ~790s, which leaves the 100-minute ceiling
-    # roughly 6x the expected run rather than 8x.
+    # upload. A hosted runner's 4 vCPU is slower than that machine,
+    # but 100 minutes stays comfortably inside GitHub's 360-minute (6h)
+    # hard cap for a hosted job, so the budget is unchanged rather than
+    # raised pre-emptively.
     timeout-minutes: 100
-    outputs:
-      tested_sha: ${{ steps.tested.outputs.sha }}
     env:
       AISEAT_GAME_TESTS: "1"
       # The budgets, and the whole reason #685 asked for them before
@@ -346,23 +547,11 @@ jobs:
       AISEAT_STALL: ${{ inputs.stall || '30s' }}
       AISEAT_WALLCLOCK: ${{ inputs.wallclock || '300s' }}
       SOAK_LOGS: ${{ github.workspace }}/bot-soak-logs
-      # #1096: the two-seat pass writes into its own directory and
-      # uploads as its own artifact, so "the two-seat soak went red" is
-      # answerable from the artifact list without opening a log.
-      SOAK_LOGS_2P: ${{ github.workspace }}/bot-soak-logs-2p
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.TESTED_REF }}
-
-      # #1456: the soak-tracker issue names the commit this job
-      # actually tested. `github.sha` isn't it on a schedule — that
-      # context is always the default branch's tip, not TESTED_REF —
-      # so record what checkout put in the working tree instead.
-      - name: Record the tested commit
-        id: tested
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          ref: ${{ needs.bot-soak-seed.outputs.tested_sha }}
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
@@ -397,50 +586,6 @@ jobs:
           fi
           df -h / /tmp | sed 's/^/after: /'
 
-      # Every game in this job is seeded, and every seed is printed.
-      #
-      # The heuristic gate's seeds are fixed in the test (101..120), and
-      # since #1409 the gate plays its seats in LOCKSTEP — one
-      # goroutine, seat order — so a seed is a whole game, not just a
-      # deal: the same twenty games every night, and a red one replays
-      # move for move with `AISEAT_HEURISTIC_GAMES` covering its seed.
-      # (Before, four runner goroutines interleaved differently on every
-      # run: one binary played seed 107 to a winner on turn 13 eight
-      # times out of nine and stopped at turn 51 on the ninth, #1261.) A
-      # game the turn budget stops still prints the board it stopped on.
-      #
-      # The soak below is the other half of that split (discussion
-      # #1390): it keeps the production schedule, one goroutine per
-      # seat, because concurrent liveness is what it is for — so its
-      # seed fixes the deal and the policies' randomness, and the
-      # interleaving is the scheduler's. The soak's base seed is derived from the
-      # UTC date instead, the way the catalog soak's is (#601): a fixed
-      # soak seed would fuzz the same hundred tables for ever and stop
-      # finding anything after the first green night. The x1000 is what
-      # keeps consecutive nights disjoint — game i uses base+i, so two
-      # nights 1 apart would otherwise overlap in 99 of 100 games.
-      - name: Pick the soak's base seed
-        id: seed
-        shell: bash
-        run: |
-          set -eu
-          seed="${SEED_INPUT}"
-          if [ -z "${seed}" ]; then
-            seed="$(date -u +%Y%m%d)000"
-          fi
-          echo "seed=${seed}" >> "$GITHUB_OUTPUT"
-          echo "soak base seed: ${seed} (games use base+0 .. base+n-1)"
-          # #1096: the two-seat pass gets its own block, 500 above the
-          # four-seat one. Game i uses base+i, so a shared base would
-          # make the two passes play the same seeds at different seat
-          # counts — half the fuzzing for the same runtime. 500 is
-          # comfortably above any soak_games anyone will type and well
-          # inside the x1000 that keeps consecutive nights disjoint.
-          echo "seed_2p=$((seed + 500))" >> "$GITHUB_OUTPUT"
-          echo "two-seat soak base seed: $((seed + 500))"
-        env:
-          SEED_INPUT: ${{ inputs.soak_seed }}
-
       # S31 exit criterion 2. 20/20 to a single survivor inside 50
       # turns, zero engine-refused moves, zero runner fallbacks — the
       # heuristic policy is the fallback, so needing one is a bug.
@@ -474,60 +619,12 @@ jobs:
         env:
           AISEAT_SOAK_GAMES: ${{ inputs.soak_games || '100' }}
           AISEAT_SOAK_POLICY: ${{ inputs.soak_policy || 'random' }}
-          AISEAT_SOAK_SEED: ${{ steps.seed.outputs.seed }}
+          AISEAT_SOAK_SEED: ${{ needs.bot-soak-seed.outputs.seed }}
         run: |
           set -euo pipefail
           mkdir -p "${SOAK_LOGS}"
           go test ./internal/aiseat/ -run TestRandomBotSoak \
             -v -timeout 60m 2>&1 | tee "${SOAK_LOGS}/random-soak.log"
-
-      # #1096. The same two gates at TWO seats, which is a supported
-      # configuration (#39 fixed its seating) and the shape ADR 0076
-      # makes the tutorial's — one human seat, one `random` bot. It was
-      # also the one shape this fuzzer had never run: TestRandomBotSoak
-      # passed a literal 4 to newRoom, so every table the nightly has
-      # ever played had four seats.
-      #
-      # Two seats is not four minus two. There is no third seat for the
-      # priority cursor to pass through, the bot is the only opponent,
-      # and an eliminated-seat or turn-wrap bug surfaces differently —
-      # or not at all — with two positions in the rotation.
-      #
-      # Cheap, which is why it is the same 100 games rather than a
-      # reduced sample: #1096 measured 100 two-seat games in 82s and
-      # 150 in 134s locally, and a 20-game local run at 2 seats took
-      # 21s on the branch that added this. The four-seat soak is 679s
-      # for 100 on this runner, so the whole two-seat pass is well
-      # inside the job's 100-minute budget with the four-seat run and
-      # the heuristic gates alongside it.
-      #
-      # !cancelled() for the same reason the step above has it: the
-      # passes are independent gates and a red one must not hide the
-      # others.
-      - name: Heuristic gate (2 seats) — two heuristic bots to a winner, 20 games
-        if: ${{ !cancelled() }}
-        working-directory: server
-        env:
-          AISEAT_HEURISTIC_GAMES: ${{ inputs.heuristic_games || '20' }}
-        run: |
-          set -euo pipefail
-          mkdir -p "${SOAK_LOGS_2P}"
-          go test ./internal/aiseat/ -run TestTwoHeuristicBotsPlayToAWinner \
-            -v -timeout 30m 2>&1 | tee "${SOAK_LOGS_2P}/heuristic-games-2p.log"
-
-      - name: Random soak (2 seats) — 100 games, zero engine-rejected actions
-        if: ${{ !cancelled() && (inputs.soak_games_2p || '100') != '0' }}
-        working-directory: server
-        env:
-          AISEAT_SOAK_GAMES: ${{ inputs.soak_games_2p || '100' }}
-          AISEAT_SOAK_SEATS: "2"
-          AISEAT_SOAK_POLICY: ${{ inputs.soak_policy || 'random' }}
-          AISEAT_SOAK_SEED: ${{ steps.seed.outputs.seed_2p }}
-        run: |
-          set -euo pipefail
-          mkdir -p "${SOAK_LOGS_2P}"
-          go test ./internal/aiseat/ -run TestRandomBotSoak \
-            -v -timeout 60m 2>&1 | tee "${SOAK_LOGS_2P}/random-soak-2p.log"
 
       # Uploaded on green too, and that is the point: the log carries
       # the seeds and the per-game result line, so the night a game
@@ -548,9 +645,102 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      # #1096: its own artifact rather than another file in the one
-      # above, so the two seat counts are told apart in the artifact
-      # list — which is where the morning after a red night starts.
+  # #1096. The same two gates at TWO seats, which is a supported
+  # configuration (#39 fixed its seating) and the shape ADR 0076
+  # makes the tutorial's — one human seat, one `random` bot. It was
+  # also the one shape this fuzzer had never run: TestRandomBotSoak
+  # passed a literal 4 to newRoom, so every table the nightly has
+  # ever played had four seats.
+  #
+  # Two seats is not four minus two. There is no third seat for the
+  # priority cursor to pass through, the bot is the only opponent,
+  # and an eliminated-seat or turn-wrap bug surfaces differently —
+  # or not at all — with two positions in the rotation.
+  #
+  # Cheap, which is why it is the same 100 games rather than a
+  # reduced sample: #1096 measured 100 two-seat games in 82s and
+  # 150 in 134s locally, and a 20-game local run at 2 seats took
+  # 21s on the branch that added this. A two-seat heuristic game is
+  # ~0.5s, so ~11s for the twenty.
+  bot-soak-2p:
+    needs: [bot-soak-seed]
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    # Same budget as bot-soak-4p, for the same reason: above the
+    # `go test -timeout` values, so a hang prints its stacks into the
+    # artifact instead of the job dying before the upload.
+    timeout-minutes: 100
+    env:
+      AISEAT_GAME_TESTS: "1"
+      # The same budgets as bot-soak-4p; see the reasoning there.
+      AISEAT_STALL: ${{ inputs.stall || '30s' }}
+      AISEAT_WALLCLOCK: ${{ inputs.wallclock || '300s' }}
+      # #1096: the two-seat pass writes into its own directory and
+      # uploads as its own artifact, so "the two-seat soak went red" is
+      # answerable from the artifact list without opening a log.
+      SOAK_LOGS_2P: ${{ github.workspace }}/bot-soak-logs-2p
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.bot-soak-seed.outputs.tested_sha }}
+
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
+
+      # Verbatim from bot-soak-4p; see the reasoning there.
+      - name: Free runner disk
+        if: runner.environment == 'self-hosted'
+        shell: bash
+        run: |
+          df -h / /tmp | sed 's/^/before: /'
+          rm -rf /tmp/go-build* 2>/dev/null || true
+          avail_kb=$(df --output=avail -k / | tail -1 | tr -d ' ')
+          if [ "${avail_kb:-0}" -lt 15728640 ]; then
+            echo "under 15 GB free: dropping the Go build and test caches"
+            go clean -cache -testcache
+          fi
+          if command -v docker >/dev/null 2>&1; then
+            docker system prune -f >/dev/null 2>&1 || true
+          fi
+          df -h / /tmp | sed 's/^/after: /'
+
+      - name: Heuristic gate (2 seats) — two heuristic bots to a winner, 20 games
+        working-directory: server
+        env:
+          AISEAT_HEURISTIC_GAMES: ${{ inputs.heuristic_games || '20' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${SOAK_LOGS_2P}"
+          go test ./internal/aiseat/ -run TestTwoHeuristicBotsPlayToAWinner \
+            -v -timeout 30m 2>&1 | tee "${SOAK_LOGS_2P}/heuristic-games-2p.log"
+
+      # !cancelled(): the two passes are independent gates and a red
+      # one must not hide the other.
+      - name: Random soak (2 seats) — 100 games, zero engine-rejected actions
+        if: ${{ !cancelled() && (inputs.soak_games_2p || '100') != '0' }}
+        working-directory: server
+        env:
+          AISEAT_SOAK_GAMES: ${{ inputs.soak_games_2p || '100' }}
+          AISEAT_SOAK_SEATS: "2"
+          AISEAT_SOAK_POLICY: ${{ inputs.soak_policy || 'random' }}
+          AISEAT_SOAK_SEED: ${{ needs.bot-soak-seed.outputs.seed_2p }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${SOAK_LOGS_2P}"
+          go test ./internal/aiseat/ -run TestRandomBotSoak \
+            -v -timeout 60m 2>&1 | tee "${SOAK_LOGS_2P}/random-soak-2p.log"
+
+      # #1096: its own artifact rather than another file in the
+      # four-seat one, so the two seat counts are told apart in the
+      # artifact list — which is where the morning after a red night
+      # starts. Uploaded on green too, for the same diff-against-last-
+      # night reason as bot-soak-4p's.
       - name: Upload two-seat soak decision logs and stall dumps
         if: always()
         uses: actions/upload-artifact@v7
@@ -570,8 +760,12 @@ jobs:
   #
   # Scheduled runs only. A workflow_dispatch against a branch is
   # somebody checking their own work and is expected to go red.
+  #
+  # #2661: `needs` names all three soak jobs, and failure() is true when
+  # any of them failed, so a red four-seat or two-seat job each still
+  # files here (as does a seed job that never let either start).
   soak-tracker:
-    needs: [bot-soak]
+    needs: [bot-soak-seed, bot-soak-4p, bot-soak-2p]
     if: ${{ failure() && github.event_name == 'schedule' }}
     runs-on: self-hosted
     permissions:
@@ -591,12 +785,12 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           # #1456: `github.sha` is the default branch's tip on a
           # schedule, not what this run tested (TESTED_REF pins
-          # `develop`). `bot-soak`'s own checkout recorded the real
-          # commit; this job only runs on a schedule (see the `if:`
+          # `develop`). `bot-soak-seed`'s checkout recorded the real
+          # commit, and both soak jobs tested it; this job only runs on a schedule (see the `if:`
           # above), so TESTED_BRANCH is always "develop" here too, but
           # it's named explicitly rather than hard-coded so this stays
           # correct if the trigger condition ever widens.
-          SHA: ${{ needs.bot-soak.outputs.tested_sha }}
+          SHA: ${{ needs.bot-soak-seed.outputs.tested_sha }}
           BRANCH: ${{ env.TESTED_BRANCH }}
           TITLE: "Nightly bot soak is red (S31 standing gates)"
         run: |
@@ -620,16 +814,17 @@ jobs:
           # scalar keeps the block's indentation, and four indented
           # lines are a Markdown code fence nobody meant to write.
           body=$(printf '%s\n' \
-            'The nightly `bot-soak` job failed: the heuristic-20 gate, the' \
-            '100-game randomised soak, or both. These are S31 exit criteria' \
+            'The nightly `bot-soak-4p` or `bot-soak-2p` job failed: a' \
+            'heuristic-20 gate, a 100-game randomised soak, or more than one.' \
+            'These are S31 exit criteria' \
             '2 and 4 (docs/sprints.md § S31), and they are gates rather than' \
             'claims only while this job is green.' \
             '' \
             "- Run: ${RUN_URL}" \
             "- Tested: \`${SHA}\` on \`${BRANCH}\`" \
             '' \
-            'The `bot-soak-logs` artifact on that run holds both `go test -v`' \
-            'logs. Every game is seeded and every seed is printed, including' \
+            'The `bot-soak-logs` and `bot-soak-logs-2p` artifacts on that run' \
+            'hold the `go test -v` logs. Every game is seeded and every seed is printed, including' \
             'on a green night, and a stalled table prints the exact command' \
             'that replays it.' \
             '' \
@@ -655,10 +850,31 @@ jobs:
             esac
           fi
 
+
+  # The browser suite, in four shards (#2661). It used to be one ~20-
+  # minute job at `workers: 1`. Sharding splits the spec files across
+  # four jobs; inside each, `workers: 1` and the serial order are
+  # unchanged, since the server's lobby state is still per process.
+  #
+  # Each shard starts its own Go server and Vite client. The self-hosted
+  # runners share one host, so each shard also gets its own pair of
+  # ports (CMDCTRL_DEV_SERVER_PORT / CMDCTRL_DEV_CLIENT_PORT, read by
+  # tests-e2e/playwright.config.ts, tests-e2e/tests/env.ts and
+  # client/vite.config.ts; 8080 and 5173 when unset). The server's data
+  # dir, and so its SQLite file, is `<workspace>/data`, and each runner
+  # has its own workspace.
   playwright:
     runs-on: self-hosted
+    strategy:
+      # A red shard must not cancel the other three: their results are
+      # what tells a flake from a regression.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       CMDCTRL_DATA_DIR: ${{ github.workspace }}/data
+      CMDCTRL_DEV_SERVER_PORT: "1808${{ matrix.shard }}"
+      CMDCTRL_DEV_CLIENT_PORT: "1517${{ matrix.shard }}"
       CI: "true"
     steps:
       - name: Checkout code
@@ -698,6 +914,8 @@ jobs:
       # the download entirely (scryfall-refresh.sh skips when its
       # last-refresh stamp is <24h old). restore-keys falls back to an
       # older day's cache, which the script then refreshes in place.
+      # The server the suite drives loads it from CMDCTRL_DATA_DIR:
+      # deck imports resolve card names against it.
       - name: Compute Scryfall cache key
         id: scryfall-stamp
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
@@ -713,54 +931,6 @@ jobs:
       - name: Refresh Scryfall bulk data
         run: scripts/scryfall-refresh.sh
 
-      # The pre-built decks are only HALF checked without real Scryfall
-      # data: decks_test.go pins coverage, count, singleton and the
-      # DECLARED colour identities offline, but it cannot tell a
-      # plausible card name from a real one, and it never runs
-      # deck.Validate. realdump_manual_test.go does both, and until now
-      # nothing ran it — CMDCTRL_SCRYFALL_DUMP is set in no workflow,
-      # so the check existed and had never executed.
-      #
-      # It belongs here because this is the only job that has the dump.
-      # It matters more now than when it was added: these decks are
-      # served to the Add-bot picker AND to the human deck picker, so a
-      # renamed card is a 422 in a player's face at the moment they try
-      # to start a game, not a test failure. The package moved to
-      # internal/decks when the second picker landed.
-      - name: Pre-built decks — validate against the real Scryfall dump
-        working-directory: server
-        env:
-          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
-        run: go test ./internal/decks/ -run RealDump -v
-
-      # Token templates against the printed token cards (#1127, ADR
-      # 0078 decision 8). A template's name, type line, P/T and colours
-      # ARE the token's characteristics, and a row that matches no
-      # printing is usually a row that is wrong: 21 of them declared no
-      # colour where every printing of that token is coloured, which is
-      # a rules bug (protection, lords, "destroy target white
-      # creature", devotion) and not a cosmetic one. Same job for the
-      # same reason as the step above — it is where the dump is.
-      - name: Token templates — match against the real Scryfall dump
-        working-directory: server
-        env:
-          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
-        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
-
-      # The oracle-text fixture behind TestAbilitiesMatchOracleText
-      # (#1276, ADR 0042 amendment). PR CI has no dump, so the check
-      # reads a checked-in, generated copy of every catalogued card's
-      # printed text, one file per card (#1542); this is where that
-      # copy is compared with the dump. It fails on an erratum, a
-      # catalogued card with no file, or a file for a card that left
-      # the catalog. Fix: regenerate with -update-oracle (the failure
-      # prints the command, scoped to the cards that differ).
-      - name: Oracle-text fixture — match against the real Scryfall dump
-        working-directory: server
-        env:
-          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
-        run: go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -v
-
       - name: Client — npm ci
         working-directory: client
         run: npm ci
@@ -773,14 +943,14 @@ jobs:
         working-directory: tests-e2e
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright
+      - name: Run Playwright (shard ${{ matrix.shard }} of 4)
         working-directory: tests-e2e
-        run: npm test
+        run: npm test -- --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: tests-e2e/playwright-report/
           retention-days: 5

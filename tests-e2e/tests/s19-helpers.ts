@@ -22,6 +22,7 @@ import {
   startGameAs,
   type GameMeta,
 } from "./lobby-api";
+import { SERVER_ORIGIN, SERVER_WS_ORIGIN } from "./env";
 import { makeS19CasterDeck, makeS19OpponentDeck } from "./s19-deck-fixture";
 
 // --- Snapshot view types --------------------------------------
@@ -185,7 +186,7 @@ async function openAdminConnection(
   gameID: string,
   asSeatID: string,
 ): Promise<AdminConnection> {
-  const url = `ws://localhost:8080/ws?game=${gameID}&player=${encodeURIComponent(asSeatID)}&token=${encodeURIComponent(adminToken)}`;
+  const url = `${SERVER_WS_ORIGIN}/ws?game=${gameID}&player=${encodeURIComponent(asSeatID)}&token=${encodeURIComponent(adminToken)}`;
   // Node-side WebSocket: global since Node 22. Node 20 throws a bare
   // ReferenceError here, which is how the nightly went red in Sept 2026.
   if (typeof WebSocket === "undefined") {
@@ -331,7 +332,7 @@ async function cardNamesFromReplay(
   adminToken: string,
   gameID: string,
 ): Promise<Map<string, string>> {
-  const res = await fetch(`http://localhost:8080/games/${gameID}/replay`, {
+  const res = await fetch(`${SERVER_ORIGIN}/games/${gameID}/replay`, {
     headers: { Authorization: `Bearer ${adminToken}` },
   });
   if (!res.ok) {
