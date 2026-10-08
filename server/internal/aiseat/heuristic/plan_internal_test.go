@@ -86,6 +86,10 @@ func TestManaModelReadsWhatTheSeatCanMakeNow(t *testing.T) {
 		{"tapped, greyed and one-shot sources make nothing", []protocol.CardView{tappedLand, greyed, treasure}, nil, nil},
 		{"Sol Ring makes two colourless", []protocol.CardView{solRing}, nil, []uint8{manaC, manaC}},
 		{"a painland is one mana of any of its colours", []protocol.CardView{painland}, nil, []uint8{manaG | manaU | manaC}},
+		{"Mana Confluence is painful", []protocol.CardView{{Name: "Mana Confluence", TypeLine: "Land", ManaAbilities: []protocol.ManaAbilityView{
+			{TapCost: true, Produced: "{W|U|B|R|G}", LifeCost: 1}}}}, nil, []uint8{manaAnyColor | manaPain}},
+		{"Ancient Tomb's damage is painful", []protocol.CardView{{Name: "Ancient Tomb", TypeLine: "Land", ManaAbilities: []protocol.ManaAbilityView{
+			{TapCost: true, Produced: "{C}{C}", Label: "Add {C}{C}. Ancient Tomb deals 2 damage to you."}}}}, nil, []uint8{manaC | manaPain, manaC | manaPain}},
 		{"the floating pool counts", nil, []string{"R", "C"}, []uint8{manaR, manaC}},
 		{"restricted mana is left out", []protocol.CardView{{Name: "Delighted Halfling", TypeLine: "Creature — Halfling", ManaAbilities: []protocol.ManaAbilityView{
 			{TapCost: true, Produced: "{C}"}, {TapCost: true, Produced: "{W|U|B|R|G}", Restrictions: []string{"legendary"}}}}}, nil, []uint8{manaC}},
@@ -125,6 +129,14 @@ func TestManaModelPaysColouredSymbolsFirst(t *testing.T) {
 		{"generic takes anything", []uint8{manaC, manaW}, []string{"{2}"}, true},
 		{"two casts, five of five", []uint8{manaG, manaG, manaU, manaC, manaC}, []string{"{2}", "{1}{G}{U}"}, true},
 		{"two casts, six of five", []uint8{manaG, manaG, manaU, manaC, manaC}, []string{"{3}", "{1}{G}{U}"}, false},
+		// The auto-tapper spends painless sources first, so Hedron
+		// Archive is paid with the Swamps and leaves Ancient Tomb.
+		{"a painful source is spent last", []uint8{manaC | manaPain, manaC | manaPain, manaB, manaB, manaB, manaB}, []string{"{4}", "{B}{B}"}, false},
+		{"pain is spent when it is all there is", []uint8{manaC | manaPain, manaC | manaPain, manaB, manaB}, []string{"{2}", "{B}{B}"}, false},
+		{"colourless before a colour", []uint8{manaC | manaPain, manaC | manaPain, manaB, manaB, manaB, manaB}, []string{"{B}{B}", "{2}"}, true},
+		// The auto-tapper does not know what comes next: a tie between a
+		// Mountain and an Island may spend the Island the next spell needs.
+		{"a tie is spent the worst way", []uint8{manaR, manaU}, []string{"{1}", "{U}"}, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

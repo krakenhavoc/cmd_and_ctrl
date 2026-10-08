@@ -56,6 +56,12 @@ const (
 	manaG
 	manaC
 
+	// manaPain marks a mana whose source costs life or deals damage to
+	// its controller (Mana Confluence, Ancient Tomb, City of Brass). It
+	// is not a colour: the engine's auto-tapper spends such a source
+	// only once nothing painless is left, and the model does the same.
+	manaPain uint8 = 1 << 7
+
 	manaAnyColor = manaW | manaU | manaB | manaR | manaG
 	// manaAny pays any symbol at all, {C} included (a snow symbol's
 	// stand-in).
@@ -515,12 +521,20 @@ func manaSourceOf(c *protocol.CardView) (manaSource, bool) {
 			cost = *ab.ChargedManaCost
 		}
 		src := manaSource{units: abilityUnits(ab), input: manaValue(cost, 0)}
+		if ab.LifeCost > 0 || strings.Contains(strings.ToLower(ab.Label), "damage to you") {
+			for k := range src.units {
+				src.units[k] |= manaPain
+			}
+		}
 		switch {
 		case !found || src.net() > best.net() || (src.net() == best.net() && src.input < best.input):
 			best, found = src, true
 		case src.net() == best.net() && src.input == best.input && len(src.units) == len(best.units):
+			// Either row: the colours of both, and painless if either is
+			// (a painland's {C} is).
 			for k := range best.units {
-				best.units[k] |= src.units[k]
+				pain := best.units[k] & src.units[k] & manaPain
+				best.units[k] = (best.units[k]|src.units[k])&^manaPain | pain
 			}
 		}
 	}
@@ -605,10 +619,16 @@ func castAddsMana(c *protocol.CardView, ps purposeSet) []manaSource {
 	return out
 }
 
-// payMana pays cost out of units (§2): coloured symbols first, each
-// from the most constrained unit that can pay it, then generic from the
-// units the later symbols need least (spareFirst). It reorders units in
-// place.
+// payMana pays cost out of units (§2) the way the engine's auto-tapper
+// would, since that is what will pay it: coloured symbols first, the
+// most constrained symbol first, each from the painless and least
+// flexible unit that can pay it; then generic from painless before
+// painful, colourless before coloured, fewest colours first
+// (engineOrder). The auto-tapper does not know what the plan casts
+// next, so where its order ties the model assumes the worst: it spends
+// the unit the later members' symbols (later) need most. A plan that
+// survives that is one the engine will let the bot finish. It reorders
+// units in place.
 func payMana(units []uint8, cost manaCost, later []uint8) ([]uint8, bool) {
 	if cost.total() > len(units) {
 		return units, false
@@ -624,7 +644,7 @@ func payMana(units []uint8, cost manaCost, later []uint8) ([]uint8, bool) {
 			if u&sym == 0 {
 				continue
 			}
-			if pick < 0 || bits.OnesCount8(u) < bits.OnesCount8(units[pick]) {
+			if pick < 0 || spendBefore(u, units[pick], later) {
 				pick = k
 			}
 		}
@@ -636,30 +656,38 @@ func payMana(units []uint8, cost manaCost, later []uint8) ([]uint8, bool) {
 	if cost.generic > len(units) {
 		return units, false
 	}
-	spareFirst(units, later)
+	engineOrder(units, later)
 	return units[cost.generic:], true
 }
 
-// spareFirst orders units so the ones to spend on generic mana come
-// first: those the later coloured symbols could use least, then the
-// least flexible.
-func spareFirst(units, later []uint8) {
-	demand := func(u uint8) int {
-		n := 0
-		for _, sym := range later {
-			if u&sym != 0 {
-				n++
-			}
-		}
-		return n
+// engineOrder sorts units into the order the auto-tapper spends them on
+// generic mana, worst case first within its ties (payMana).
+func engineOrder(units, later []uint8) {
+	sort.SliceStable(units, func(i, j int) bool { return spendBefore(units[i], units[j], later) })
+}
+
+// spendBefore reports whether the auto-tapper spends a before b:
+// painless first, then the fewest colours (colourless is none), and
+// within a tie the one the later symbols need more.
+func spendBefore(a, b uint8, later []uint8) bool {
+	if pa, pb := a&manaPain != 0, b&manaPain != 0; pa != pb {
+		return !pa
 	}
-	sort.SliceStable(units, func(i, j int) bool {
-		di, dj := demand(units[i]), demand(units[j])
-		if di != dj {
-			return di < dj
+	if ca, cb := bits.OnesCount8(a&manaAnyColor), bits.OnesCount8(b&manaAnyColor); ca != cb {
+		return ca < cb
+	}
+	return demand(a, later) > demand(b, later)
+}
+
+// demand is how many of the later symbols u could pay.
+func demand(u uint8, later []uint8) int {
+	n := 0
+	for _, sym := range later {
+		if u&sym != 0 {
+			n++
 		}
-		return bits.OnesCount8(units[i]) < bits.OnesCount8(units[j])
-	})
+	}
+	return n
 }
 
 // payers is how many units can pay sym.
@@ -698,14 +726,14 @@ func removeUnit(units []uint8, k int) []uint8 {
 }
 
 // addSource activates src: a filter consumes its input as generic mana
-// is paid (spareFirst), and is not run when there is not enough to feed
-// it.
+// is paid (engineOrder), and is not run when there is not enough to
+// feed it.
 func addSource(units []uint8, src manaSource, later []uint8) []uint8 {
 	if src.input > 0 {
 		if len(units) < src.input {
 			return units
 		}
-		spareFirst(units, later)
+		engineOrder(units, later)
 		units = units[src.input:]
 	}
 	return append(units, src.units...)
