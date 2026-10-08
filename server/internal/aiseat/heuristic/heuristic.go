@@ -235,6 +235,31 @@ type Config struct {
 	// to a three-mana one (1.5 against 0.6 per mana before, 2.5 against
 	// 1.0 now).
 	DiscardLandFloor float64
+	// PricePutsFromHand prices a choose_cards prompt that puts the card
+	// it names from the bot's hand onto the battlefield (#2680,
+	// puts.go): Uro's land, Eureka Moment, Growth Spiral, the
+	// `choose_destination` the prompt carries. The named card is worth
+	// what it keeps in hand plus what it adds on the battlefield, so a
+	// land is put while lands are wanted (and still put after). Off
+	// (the zero value) prices the prompt as a discard of the named card.
+	PricePutsFromHand bool
+	// PriceOwnPermanentPicks scores a fixed-count own_permanents pick
+	// (a karoo's "return a land you control", Lotus Field's sacrifice)
+	// by what each named permanent is worth to keep (#2680, puts.go):
+	// the cheapest goes, a land priced by the mana it makes. Off (the
+	// zero value) scores every answer 0 and the enumerator's order
+	// decides.
+	PriceOwnPermanentPicks bool
+	// PriceExtraLandDrops prices a declared extra land drop (#2678,
+	// puts.go): one more land this turn while the bot holds a land it
+	// could not otherwise play, at ManaSource plus the ramp premium,
+	// and ExtraLandDropRecurring per drop for a permanent while the
+	// bot has fewer than RampWantCap mana sources. Off (the zero value)
+	// prices Oracle of Mul Daya and Exploration by their bodies alone.
+	PriceExtraLandDrops bool
+	// ExtraLandDropRecurring is what one extra land drop on each later
+	// turn adds to a permanent's cast price.
+	ExtraLandDropRecurring float64
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -473,6 +498,11 @@ func DefaultConfig() Config {
 		DiscardLandFloor:    2.50,
 		PlanTurnMana:        true,
 
+		PricePutsFromHand:      true,
+		PriceOwnPermanentPicks: true,
+		PriceExtraLandDrops:    true,
+		ExtraLandDropRecurring: 0.50,
+
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
 		FuelRecast: 0.55,
@@ -590,6 +620,12 @@ func BaselineConfig() Config {
 	c.DiscardLandFloor = 0
 	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
 	c.PlanTurnMana = false
+	// #2680 and #2678: puts from hand, own-permanent picks and extra
+	// land drops.
+	c.PricePutsFromHand = false
+	c.PriceOwnPermanentPicks = false
+	c.PriceExtraLandDrops = false
+	c.ExtraLandDropRecurring = 0
 	return c
 }
 

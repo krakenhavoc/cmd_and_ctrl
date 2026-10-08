@@ -314,6 +314,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// answer is always chosen: a seat owing a choice is offered
 		// nothing else, and a policy with no opinion must still pick
 		// (#544).
+		// #2680: a prompt that says the named card goes onto the
+		// battlefield is not a discard (puts.go).
+		if v, ok := p.valuePutOntoBattlefield(st, ch, cp.CardIDs); ok {
+			return v, "put it onto the battlefield"
+		}
 		if v, ok := st.valueKeptInHand(p.cfg, ch, cp.CardIDs); ok {
 			return v, "name the worst, keep the rest"
 		}
@@ -571,6 +576,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			return 1, "commander: send it to the command zone"
 		}
 		return 0.5, "commander: leave it"
+
+	case choiceOwnPermanents:
+		// #2680: a karoo's return, Lotus Field's sacrifice — give up
+		// the permanent worth least (puts.go).
+		if v, ok := p.ownPermanentsValue(st, ch, cp.CardIDs); ok {
+			return v, "give up the least"
+		}
 
 	case choiceReplacementOrder, choiceTriggerOrder:
 		// Either canonical order is as good as the other at this

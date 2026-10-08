@@ -329,6 +329,10 @@ type ChooseCardsPrompt struct {
 	// Then receives the picks. Runs with g.mu held; may queue further
 	// choices, which is how a chain continues.
 	Then func(g *Game, picked []uuid.UUID) error
+	// Destination is where the named cards go, when the clause puts
+	// them somewhere a chooser wants them (#2680): PendingChoice's
+	// ChooseDestination. Zero declares nothing.
+	Destination ChooseDestination
 
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
@@ -375,6 +379,8 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 		ChooseMin:   lo,
 		ChooseMax:   hi,
 		promptRun:   p.promptRun,
+
+		ChooseDestination: p.Destination,
 		chooseCardsResume: &chooseCardsFrame{
 			zone:     p.Zone,
 			validate: p.Validate,
@@ -625,3 +631,18 @@ func (g *Game) findChoiceLocked(choiceID uuid.UUID) (int, *PendingChoice) {
 	}
 	return -1, nil
 }
+
+// ChooseDestination is where a choose_cards prompt sends the cards it
+// names (#2680, PendingChoice.ChooseDestination). An open vocabulary
+// read only by the bot and the client: an unknown value restores as
+// itself and means nothing to either.
+type ChooseDestination string
+
+const (
+	// ChooseOntoBattlefield: the named card is put onto the
+	// battlefield ("you may put a land card from your hand onto the
+	// battlefield").
+	ChooseOntoBattlefield ChooseDestination = "battlefield"
+	// ChooseOntoBattlefieldTapped: the same, tapped.
+	ChooseOntoBattlefieldTapped ChooseDestination = "battlefield_tapped"
+)

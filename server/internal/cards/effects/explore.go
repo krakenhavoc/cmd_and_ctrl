@@ -29,6 +29,8 @@ func init() {
 		OracleID:     "b8f566ea-8283-4afa-9ac8-737e26419283",
 		Name:         "Explore",
 		Completeness: CompletenessFull,
+		// #2678: a card, and one more land this turn.
+		Purpose: game.Purpose{Draws: 1, ExtraLandDrops: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ctx.Game.GrantAdditionalLandPlayForEffect(item.Controller, 1)
 			return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)

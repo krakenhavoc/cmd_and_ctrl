@@ -116,3 +116,28 @@ func TestChooseCardsPromptIsPrivateToItsChooser(t *testing.T) {
 			other.ChooseMin, other.ChooseMax)
 	}
 }
+
+// #2680: a choose_cards prompt that puts the named card onto the
+// battlefield says so to its chooser, and to nobody else, like the
+// bounds.
+func TestChooseCardsDestinationReachesItsChooserOnly(t *testing.T) {
+	g := newTwoSeatGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	cards := []uuid.UUID{me.Hand.Cards[0].InstanceID}
+	g.WithWriteLock(func() {
+		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:     me.ID,
+			Question:    "you may put a land card from your hand onto the battlefield",
+			Cards:       cards,
+			Max:         1,
+			Zone:        game.ZoneHand,
+			Destination: game.ChooseOntoBattlefield,
+		})
+	})
+	if got := FilterViewFor(ViewOfGame(g), me.ID.String()).PendingChoices[0].ChooseDestination; got != "battlefield" {
+		t.Errorf("chooser reads destination %q, want battlefield", got)
+	}
+	if got := FilterViewFor(ViewOfGame(g), them.ID.String()).PendingChoices[0].ChooseDestination; got != "" {
+		t.Errorf("opponent reads destination %q, want it withheld with the bounds", got)
+	}
+}

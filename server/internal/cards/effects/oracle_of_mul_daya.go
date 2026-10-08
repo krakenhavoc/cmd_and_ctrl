@@ -38,6 +38,7 @@ func init() {
 		Name:                "Oracle of Mul Daya",
 		Completeness:        CompletenessFull,
 		AdditionalLandPlays: 1,
+		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		LibraryTopVisible:   game.LibraryTopRevealed,
 		CastPermissions: []game.CastPermission{
 			PlayFromTopOfYourLibrary(

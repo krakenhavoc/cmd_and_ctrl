@@ -51,7 +51,12 @@ type purposeSet struct {
 	// awaken is the N of an awaken cast (ADR 0135 §3): the counters on
 	// the land it makes a hasty 0/0 creature.
 	awaken int
-	sweeps []protocol.SweepView
+	// extraLands is the additional land drops it declares (#2678,
+	// puts.go). Not one of hasAmounts' amounts: it is priced under its
+	// own Config switch, beside the purpose rather than in place of a
+	// spell's proxy.
+	extraLands int
+	sweeps     []protocol.SweepView
 }
 
 // add folds one declared purpose in.
@@ -67,6 +72,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.tokens += p.Tokens
 	ps.energy += p.Energy
 	ps.awaken += p.AwakenLand
+	ps.extraLands += p.ExtraLandDrops
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}

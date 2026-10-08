@@ -1552,6 +1552,7 @@ pendingChoices[].autoAnswerKey	string
 pendingChoices[].autoAnswerPrompt	string
 pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
+pendingChoices[].chooseDestination	string
 pendingChoices[].chooseMax	number:int
 pendingChoices[].chooseMin	number:int
 pendingChoices[].choosePlayers	array

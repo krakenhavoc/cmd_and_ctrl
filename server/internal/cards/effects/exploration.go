@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Exploration — Enchantment {G} (EDHREC rank 301):
 //
 //	"You may play an additional land on each of your turns."
@@ -15,5 +17,6 @@ func init() {
 		Name:                "Exploration",
 		Completeness:        CompletenessFull,
 		AdditionalLandPlays: 1,
+		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 	})
 }
