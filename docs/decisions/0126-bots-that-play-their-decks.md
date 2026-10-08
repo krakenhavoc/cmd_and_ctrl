@@ -1448,3 +1448,30 @@ Three things the 2026-10-08 review games found the heuristic pricing as nothing,
 Run 2 is `--seats heuristic-baseline,heuristic-baseline,heuristic,heuristic --decks izzet-aggro,simic-ramp,izzet-aggro,simic-ramp --games 48`, so each policy plays each deck 48 times per seed. The pooled difference is six games of 288, inside the run-to-run spread (seed 1001 moved seven games one way, seed 2001 three the other), and in no run does the baseline win more than `heuristic`. Turns p50 is 12 to 11 at seed 1 and 12 both times at seeds 1001 and 2001. Run 1's karoo returns before were the source itself in 78 of 96, because the enumerator offers the cheapest fuel first and a tapped karoo ties a tapped basic; after, with no other tapped land offered it returns an untapped land (27 times) rather than itself.
 
 In run 1, every A3 canary meets its bar after (Harrow 12 / 27 before, 15 / 29 after, now meeting it). A2 rows meeting their bar fell from 6 to 4: Delighted Halfling (85% to 76%) and Ornithopter of Paradise (83% to 64%) in simic-ramp, whose early turns now also hold an Exploration or an Oracle priced above a body. In run 2 the met A2 and A3 rows went from 6 to 11 at seed 1, 8 to 10 at seed 1001 and 9 to 10 at seed 2001. The suite is 41 of 41 before and after, and no position's pick changed.
+
+### #2679: removal priced net of what comes back (2026-10-08)
+
+`NetRemoval` (on in `DefaultConfig`, off in `BaselineConfig`; `net_removal.go`). An opposing commander its opponent owns is priced at `2 × CommanderTax + DamageToOpponent × power`, never above its value, because it returns from the command zone (CR 903.8, 903.9a, 903.9b). A target entry's new `returns` (a creature token of a printed size, life equal to the target's power, lands) is valued as the target's controller would value it and taken off the removal at `RemovalConfidence × leaderBoost`. The amendment's target entries could not say it: their amounts are the target's own, and the guard refuses a player amount on a clause that cannot target a player. So `TargetPurpose` gained `Returns`, additive on the wire as `targets[].returns`, declared on Rapid Hybridization, Pongify, Beast Within, Generous Gift, Stroke of Midnight, Swords to Plowshares, Path to Exile and Assassin's Trophy. Chaos Warp's return is a random card and declares nothing; its commander half is covered.
+
+Review windows, re-ranked offline (game 1 with the declaration patched onto the logged view): game 1 seq 66, Rapid Hybridization on a 1/1 Archivist of Oghma, 3.45 to −1.77, so the bot passes. Game 2 seq 186, Chaos Warp on Y'shtola (a 2/4 commander), 6.65 to 3.72, below Mary Read and Anne Bonny from the command zone (4.17), which the bot now casts.
+
+Before is `develop` at `50d5c34ec`, after is this branch; every run is `--rotate --lockstep` with the real dump. No run stalled. Counters come from a scratch pass over the decision logs; "worth less than the gift" compares the target's body (`CreatureValue`, or its board value) with the gift's value, both before `RemovalConfidence` and `leaderBoost`.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (64 games, seed 1) | gift-removal casts at a target worth less than its gift | 23 of 190 | 0 of 143 |
+| | the listed removal (the eight, plus Chaos Warp) on an opposing commander | 59 | 13 |
+| | any targeted cast at an opposing commander | 232 | 138 |
+| | esper / izzet / black / simic wins | 18 / 3 / 21 / 22 | 21 / 1 / 22 / 20 |
+| | turns p50 | 13 | 13 |
+| Run 2, seed 1 | `heuristic` / `heuristic-baseline` wins | 29 / 19 | 29 / 19 |
+| Run 2, seed 1001 | | 27 / 21 | 30 / 18 |
+| Run 2, seed 2001 | | 24 / 24 | 21 / 27 |
+| Run 2, seeds 1, 1001, 2001 | `heuristic` | 80 / 288, 27.8% (22.9%–33.2%) | 80 / 288, 27.8% (22.9%–33.2%) |
+| | `heuristic` gift-removal casts worth less than the gift | 49 of 258 | 0 of 198 |
+| | `heuristic` listed removal on an opposing commander | 47 | 2 |
+| Run 2, seeds 3001 and 4001 (added) | `heuristic` / `heuristic-baseline` wins | 29 / 19, 26 / 22 | 35 / 13, 28 / 20 |
+| Run 2, five seeds pooled | `heuristic` | 135 / 480, 28.1% (24.3%–32.3%) | 143 / 480, 29.8% (25.9%–34.0%) |
+| | izzet-aggro under `heuristic` | 28 / 240 | 32 / 240 |
+
+Seed 2001 is the one seed where `heuristic` finished behind the baseline after (21 to 27; it was 24 to 24 before), so two more seeds were run rather than any weight tuned. Pooled over five seeds `heuristic` is 8 games up and the baseline 8 down. Turns p50 is unchanged except seed 1001 (12 to 11). In run 1 every A3 canary meets its bar except Harrow (19 / 32, 59%, to 13 / 29, 45%); Harrow is not removal, and simic-ramp's games diverge once its Beast Within and Pongify casts change. A2 rows meeting their bar went from 6 to 8 of 31 (Delighted Halfling and Ornithopter of Paradise). The suite is 41 of 41 before and after, and no position's pick changed.
