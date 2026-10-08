@@ -1273,3 +1273,42 @@ Run 1's turns p50 goes from 15 to 14; run 2's stays 12. The counters, from the d
 | "No blocks" with an untapped 0-power token and an attack incoming | 5 | 1 | 0 | 0 |
 
 The 0-power attacks left are all lethal pushes, two-turn races and attrition plans, which send every body by design. The curated decks make few 0-power tokens, so the chump counter barely moves; the issue's window is pinned by a unit test instead. The A3 canaries in run 1 move by at most two games: Mary Read's loot 44 of 61 to 49 of 61, Harrow 15 of 27 (56%) to 13 of 27 (48%), which crosses the bar downward by two games; the others stay above it. The suite is 41 of 41 before and after.
+
+### Amendment PR 3: target purposes priced (2026-10-08)
+
+`PriceTargetPurposes` (`target_purpose.go`), A1 and B1 of the [amendment of 2026-10-08](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills). A player pick whose declared entry gives it cards, tokens or life is priced as that seat's strength change through `ScoreEval`, and the cast drops the mana proxy. Damage entries keep today's price until `DamageByLethality` (PR 4). `BaselineConfig` turns it off.
+
+Before is `develop` at `32886c5cc` (PR 2 merged), after is the branch; every run is `--rotate --lockstep` with the real dump, 0 stalls in every run. Lockstep tie-breaks are not yet fully deterministic (#2730), so read the intervals.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 26, 40.6% (29.5%–52.9%) | 23, 35.9% (25.3%–48.2%) |
+| Run 1 | izzet-aggro | 5, 7.8% (3.4%–17.0%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 18, 28.1% (18.6%–40.1%) | 19, 29.7% (19.9%–41.8%) |
+| Run 1 | simic-ramp | 15, 23.4% (14.7%–35.1%) | 18, 28.1% (18.6%–40.1%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 33 / 96, 34.4% (25.6%–44.3%) | 33 / 96, same |
+| Run 2 | heuristic-baseline | 15 / 96, 15.6% | 15 / 96, same |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 31 / 96, same |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 17 / 96, same |
+| Targeted (izzet and black, 96 games) | heuristic | 64 / 192, 33.3% (27.0%–40.3%) | 64 / 192, same |
+| Targeted | heuristic-baseline | 32 / 192, 16.7% | 32 / 192, same |
+
+Run 1's turns p50 is 14 before and 15 after; run 2's is 12. A2 and A3 rows move by at most three games and none crosses its bar (Harrow stays below A3 at 11 of 26 and 10 of 23).
+
+A head-to-head with the knob alone (today's heuristic against itself with `PriceTargetPurposes` off, a local build, izzet and simic, 48 games each at seeds 1 and 1001): with the knob 44 / 192, 22.9% (17.5%–29.4%); without 52 / 192, 27.1% (21.3%–33.8%). The intervals overlap and both contain the null; the direction is against the knob in both seeds, mostly on izzet at seed 1 (2 against 7 wins).
+
+Who the cards were aimed at in the targeted run (after, from the decision logs; before, every cast aimed at an opponent by construction, as `heuristic-baseline`'s 23 Sign in Blood and 11 of 14 Prismari casts are):
+
+| Contestant | Card | Aimed at | Casts |
+|---|---|---|---:|
+| heuristic | Sign in Blood | itself | 6 |
+| heuristic | Sign in Blood | an opponent on 2 life (3) or 6 | 4 |
+| heuristic | Prismari Command | 2 damage at an opponent, destroy an artifact | 8 |
+| heuristic | Prismari Command | 2 damage at an opponent, loot itself | 3 |
+| heuristic | Prismari Command | loot itself, destroy an artifact | 3 |
+| heuristic | Prismari Command | loot itself, Treasure itself | 2 |
+| heuristic-baseline | Prismari Command | 2 damage and loot, both at an opponent | 11 |
+| heuristic-baseline | Prismari Command | 2 damage at an opponent, destroy an artifact | 3 |
+| heuristic-baseline | Sign in Blood | an opponent | 23 |
+
+`heuristic` cast Sign in Blood in fewer games (14 of 16 to 10 of 16; run 1, 11 of 12 to 6 of 11): at itself it is +0.96, not +2.40, so it loses more main phases to a creature. At seq 248 of review game 2, with PR 2's declarations put on the logged view, the chosen line moves from 2 at Y'shtola and loot Claude (9.12) to 2 at Y'shtola and loot the bot (6.72); the lines that loot Claude fall by 5.40 and those that give Claude the Treasure by 4.35. The cast stays above `InstantThreshold` because 2 damage at a 2/4 is still priced as removal (6.72), which is PR 4's to fix. The suite is 41 of 41 before and after.
