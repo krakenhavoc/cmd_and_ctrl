@@ -1281,24 +1281,25 @@ Two card choices the 2026-10-08 review games found wrong, both local to the deci
 - **#2677, `LandColorNeed` (0.30).** A library search scored every land at one flat `cardValue` and took the first. A land now adds `LandColorNeed` × its fit: for each colour its repeatable mana abilities make, 1/(1 + the bot's sources of it) when the hand or commander has a pip of it, and 0.1 when nothing does, so a dual beats a basic that meets the hand equally. The same score answers a `choose_cards` look at the library.
 - **#2691, `DiscardByDistance`, `DistanceDiscount` (0.60), `DiscardSpellPerMana` (1.00), `DiscardLandFloor` (2.50).** A discard from the bot's own hand (cleanup, a discard prompt, a loot's or rummage's named cards, and the discard-payoff estimate that mirrors them) prices a nonland card by `handKeepValue`: an instant or sorcery at `DiscardSpellPerMana` per mana, a permanent at its `permanentValue`, either multiplied by `DistanceDiscount` per mana it is short (its mana value less sources and lands in hand, or its coloured pips less the sources and lands in hand of each colour, whichever is larger). A land is worth what it brings the rest of the hand closer to castable, never less than its `cardValue`, and never less than `DiscardLandFloor` while the bot has fewer than `RampWantCap` sources. The floor came from measurement: without it the bot discarded 243 lands in run 1 where it had discarded 142, and played no land on 27.1% of its own turns against 24.1%.
 
-`BaselineConfig` zeroes all five. Before is `develop` at `da81f844d`, after is the branch; every run is `--rotate --lockstep` with the real dump. No run stalled and no move was rejected. The counters come from a scratch observer on the runner's decision feed, not part of the change: a search counts when every option is a land and some option makes a colour the hand needs and has no source of while another does not; a discard counts when the nonland cards in hand differ in distance and at least one is short.
+`BaselineConfig` zeroes all five. Before is `develop` at `36d0e9e4c` (with #2710's combat fixes), after is the branch merged onto it; every run is `--rotate --lockstep` with the real dump. No run stalled and no move was rejected. The counters come from a scratch observer on the runner's decision feed, not part of the change: a search counts when every option is a land and some option makes a colour the hand needs and has no source of while another does not; a discard counts when the nonland cards in hand differ in distance and at least one is short.
 
 | Run | Measure | Before | After |
 |---|---|---|---|
 | Run 1 (§8, 64 games, seed 1) | search took a colour the hand needs | 27 / 64 | 55 / 55 |
-| | search took a dual over a basic, need equal | 55 / 140 | 133 / 135 |
-| | discard took the card furthest from castable | 0 / 54 | 18 / 45 |
-| | own turns with no land played | 800 / 3319, 24.1% | 856 / 3288, 26.0% |
-| | lands among the cards discarded | 142 / 636 | 207 / 658 |
-| | turns p50 | 15 | 14 |
-| Run 2, izzet and simic, seed 1 | `heuristic` wins | 24 / 96, 25.0% (17.4%–34.5%) | 28 / 96, 29.2% (21.0%–38.9%) |
-| | `heuristic-baseline` wins | 24 / 96, 25.0% | 20 / 96, 20.8% |
-| Run 2, izzet and simic, seed 1001 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 27 / 96, 28.1% (20.1%–37.8%) |
-| | `heuristic-baseline` wins | 17 / 96, 17.7% | 21 / 96, 21.9% |
-| Run 2, pooled | `heuristic` wins | 55 / 192, 28.6% (22.7%–35.4%) | 55 / 192, 28.6% (22.7%–35.4%) |
+| | search took a dual over a basic, need equal | 52 / 150 | 134 / 136 |
+| | discard took the card furthest from castable | 0 / 56 | 17 / 43 |
+| | own turns with no land played | 798 / 3267, 24.4% | 850 / 3267, 26.0% |
+| | lands among the cards discarded | 133 / 581 | 205 / 633 |
+| | turns p50 | 14 | 15 |
+| Run 2, seed 1 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 28 / 96, 29.2% (21.0%–38.9%) |
+| | `heuristic-baseline` wins | 17 / 96 | 20 / 96 |
+| Run 2, seed 1001 | `heuristic` wins | 24 / 96, 25.0% (17.4%–34.5%) | 24 / 96, 25.0% (17.4%–34.5%) |
+| | `heuristic-baseline` wins | 24 / 96 | 24 / 96 |
+| Run 2, pooled | `heuristic` wins | 55 / 192, 28.6% (22.7%–35.4%) | 52 / 192, 27.1% (21.3%–33.8%) |
+| | `heuristic-baseline` wins | 41 / 192, 21.4% | 44 / 192, 22.9% |
 
-Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48`, so each policy plays each deck 48 times; its turns p50 is 11 then 12 at seed 1 and 12 both times at seed 1001. In run 2 `heuristic` took the needed colour in 20 of 20 and 18 of 18 searches (8 of 22 and 6 of 19 before) and played no land on 17.7% and 16.8% of its turns (19.0% and 17.5% before).
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48`, so each policy plays each deck 48 times; its turns p50 is 11 then 12 at seed 1 and 12 both times at seed 1001. In run 2 `heuristic` took the needed colour in 20 of 20 and 18 of 18 searches (8 of 21 and 6 of 19 before), and played no land on 18.3% and 16.9% of its turns (18.3% and 17.6% before). The pooled difference is three games of 192 either way. The same runs on the base before #2710 (`da81f844d`) gave 55 of 192 before and 55 after, with the baseline at 41 both times.
 
-Run 1's deck shares moved: esper 27 to 18 of 64, izzet 2 to 6, black 24 to 28, simic 11 to 12. Four copies of one policy are zero-sum, so this measures no strength, and the intermediate builds of this change gave esper 23 and 24 on the same seeds; run 2 is the strength measure, and it is unchanged pooled. `never` counts are esper 0, izzet 2, black 4 to 3, simic 1 to 2. A2 and A3 rows move both ways with their offered counts, as in #2469's runs: 17 of 41 rows met their bar before and 14 after in run 1 (Harrow 15 of 27 to 12 of 28 crosses back under A3's 50%; Worn Powerstone and Delighted Halfling under A2's 80%), 9 to 7 in run 2 at seed 1 and 7 to 7 at seed 1001.
+Run 1's deck shares moved: esper 26 to 20 of 64, izzet 5 to 7, black 18 to 25, simic 15 to 12. Four copies of one policy are zero-sum, so this measures no strength; run 2 is the strength measure. `never` counts are esper 0, izzet 2 to 3, black 4, simic 1 to 2. A2 and A3 rows move both ways with their offered counts, as in #2469's runs: in run 1, 17 of 41 rows met their bar before and 15 after; in run 2, 8 to 9 at seed 1 and 7 to 8 at seed 1001. Every A3 canary that met its bar in run 1 still does (Harrow, 11 of 26 before, is 12 of 27 after). One A2 row fell on both bases: Worn Powerstone, used in 18 of 20 games before and 8 of 14 after here, and 15 of 17 before and 9 of 13 after on the older base. A discard now prices this tapped three-mana rock at about 2.0 against a castable three-mana spell's 3.0, which may be why it reaches fewer games; why it is also cast in fewer of the games it is offered in, the runs do not show. It is the one A2 or A3 row that moves the same way every time.
 
-The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 4 turns before and 2 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.
+The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 5 turns before and 1 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.
