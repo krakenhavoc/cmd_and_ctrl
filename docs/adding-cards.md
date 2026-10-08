@@ -7151,6 +7151,37 @@ Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
 
+### Ascend and the city's blessing (ADR 0096 amendment 2026-10-08, #2696, CR 702.131)
+
+The city's blessing is a **player** designation the engine grants and
+keeps (`Player.CitysBlessing`, `game/citys_blessing.go`): a permanent with
+ascend gives it to its controller as soon as they control ten permanents,
+and an instant or sorcery with ascend as it resolves, before its other
+instructions. Nothing takes it away, so **never approximate it with a
+live permanent count** (that is what the four old caveats were). A card
+declares the keyword and reads the designation, with the vocabulary in
+[citys_blessing.go](../server/internal/cards/effects/citys_blessing.go):
+
+```go
+PrintedKeywords: []string{game.KeywordAscend},                          // the badge; the engine reads it
+Static: []game.StaticAbility{SelfPumpWhileCitysBlessing(3, 0)},          // Snubhorn Sentry: +3/+0 as long as you have it
+Static: []game.StaticAbility{SelfKeywordWhileCitysBlessing("flying")},   // Skymarcher Aspirant
+Condition: YouHaveTheCitysBlessingCondition(),                           // "Activate only if you have the city's blessing"
+On(game.EventBeginUpkeep, AllOf(ByYou, YouHaveTheCitysBlessingNow), …)   // intervening "if" (re-check in the effect)
+if YouHaveTheCitysBlessing(ctx.Game, item.Controller) { … }              // "if you have the city's blessing, instead"
+```
+
+An intervening "if" is read at the trigger and again as it resolves
+(CR 603.4); "instead" is a clause of the effect, read as it resolves. A
+catalog card lists `ascend` in `PrintedKeywords`; a deck-imported one gets
+it from Scryfall. In a test, `grantBlessing(g, p)` in
+`citys_blessing_cards_test.go` gives the designation the way the engine
+does (it emits the event that invalidates the layer pass); to earn it for
+real, put an ascend permanent and nine others on the battlefield and call
+`g.RunStateChecksForTest()`. "Can't attack unless you have the city's
+blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
+`CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
+
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
 A **designation** is a marker a permanent has on the battlefield that

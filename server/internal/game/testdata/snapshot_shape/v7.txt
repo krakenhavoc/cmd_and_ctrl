@@ -812,6 +812,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Su
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Types[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustBePoisoned	bool
@@ -911,6 +912,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMust
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Types[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustBePoisoned	bool
@@ -1598,6 +1600,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Controlle
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Types[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustBePoisoned	bool
@@ -2562,6 +2565,7 @@ seats[].castPermissions[].timing	string
 seats[].castPermissions[].topOfLibraryOnly	bool
 seats[].castPermissions[].zone	string
 seats[].castPermissions[].zoneOwner	custom(uuid.UUID)
+seats[].citysBlessing	bool
 seats[].command	object
 seats[].command.cards	array
 seats[].command.cards[]	object

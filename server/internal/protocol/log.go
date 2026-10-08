@@ -378,6 +378,13 @@ const (
 	// behind it, so the table would otherwise watch every werewolf
 	// turn over with nothing saying why. ADR 0132.
 	LogDayNight LogKind = "day_night"
+	// LogCitysBlessing — a player got the city's blessing (CR 702.131).
+	// `Actor` is the player; `CardID` is the ascend permanent or spell
+	// whose check granted it, when known. Narrated because the blessing
+	// arrives with no spell or ability of its own (ascend is a static
+	// ability or a clause of a resolving spell), so without a line the
+	// marker beside the player's name would appear unexplained. #2696.
+	LogCitysBlessing LogKind = "citys_blessing"
 	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
 	// (CR 702.26). #1199, ADR 0084.
 	//
@@ -1665,6 +1672,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventCitysBlessing:
+		// CR 702.131. The granting object is a public permanent or the
+		// resolving spell, so the card reference is safe on the wire.
+		base.Kind = LogCitysBlessing
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventStorm:
 		// CR 702.40a, #1238. The count is the card, and nothing else
 		// says it: a spell copy emits no event (CR 707.10 — it is
@@ -2368,6 +2382,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s phased in", card)
 	case LogDayNight:
 		return fmt.Sprintf("It becomes %s", e.Label)
+	case LogCitysBlessing:
+		return fmt.Sprintf("%s gets the city's blessing", actor)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label
