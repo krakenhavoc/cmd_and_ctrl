@@ -304,3 +304,72 @@ func (g *Game) ExileAndReturnTransformedForEffect(cardID, controller uuid.UUID) 
 		return err
 	})
 }
+
+// ReturnFromGraveyardTransformedForEffect is the graveyard form of the
+// other verb: "return it to the battlefield [tapped] transformed under
+// its owner's control" (the Ojer gods, CR 712.14a), said of a double-faced
+// card that is already in a graveyard (#1900, ADR 0079 amendment).
+//
+// CR 712.8a puts a card outside the battlefield and the stack on its
+// FRONT face, so the card sits in the graveyard showing its front and
+// this sets the back face on it there, for the width of one locked
+// mutation, and then runs the ordinary graveyard entry. Setting it
+// first is the same ordering ExileAndReturnTransformedForEffect and
+// CastSpell use, for the same reason: the CR 614 pipeline resolves the
+// entering card by ID out of its SOURCE zone, so a self-replacement on
+// the back face has to be findable under the back face's catalog key
+// before the pipeline runs. Unlike the exile return, the graveyard
+// return keeps the card's InstanceID (it is the same zone-change path
+// every reanimation takes); the battlefield entry stamps the fresh
+// CR 613.7 timestamp.
+//
+// A card whose other face is not a permanent face (or that is not
+// double-faced at all) is returned as itself would NOT be right, so it
+// is left in the graveyard: the clause "transformed" has nothing to turn
+// it into, and a front-face return would be the stronger-than-printed
+// outcome (#259). It does nothing and returns uuid.Nil with no error.
+//
+// If the entry is cancelled or redirected the face is put back, so no
+// card is left in a graveyard showing its back (CR 712.8a). The one
+// case left alone is a paused entry (a CR 616 ordering prompt or an
+// entry choice is open): the resume needs the back face, and a card
+// that is still in a graveyard with a prompt open is mid-move.
+//
+// `counters` ride the entry event as "enters with" counters
+// (Ojer Pakpatiq's three time counters, CR 614.1c); nil names none.
+// controller uuid.Nil means "under its owner's control". Returns
+// ErrCardNotFound when the card is not in a graveyard any more, the
+// CR 400.7 answer a "return it" trigger swallows.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
+	src := g.findCardZoneLocked(cardID)
+	if src == nil || src.Kind != ZoneGraveyard {
+		return uuid.Nil, ErrCardNotFound
+	}
+	var card *Card
+	for i := range src.Cards {
+		if src.Cards[i].InstanceID == cardID {
+			card = &src.Cards[i]
+			break
+		}
+	}
+	if card == nil {
+		return uuid.Nil, ErrCardNotFound
+	}
+	// The card is on its front face (CR 712.8a); ask the transform
+	// question of that shape, whatever a stray ActiveFace says.
+	front := *card
+	front.ActiveFace = 0
+	if !CanTransform(front) {
+		return uuid.Nil, nil
+	}
+	setFaceInZoneLocked(src, cardID, 1)
+	id, err := g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters)
+	if id == uuid.Nil && len(g.PendingChoices) == 0 {
+		if z := g.findCardZoneLocked(cardID); z != nil && z.Kind == ZoneGraveyard {
+			setFaceInZoneLocked(z, cardID, 0)
+		}
+	}
+	return id, err
+}
