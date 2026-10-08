@@ -110,7 +110,7 @@ type arenaFlags struct {
 func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	fs := flag.NewFlagSet("arena", flag.ContinueOnError)
 	fs.SetOutput(out)
-	seats := fs.String("seats", "", "comma-separated contestants, one per chair: a tier, heuristic-baseline (the heuristic frozen before S66) or heuristic-noexert (today's heuristic with ADR 0130's exert pricing off) (e.g. assisted,heuristic,heuristic,heuristic)")
+	seats := fs.String("seats", "", "comma-separated contestants, one per chair: a tier, heuristic-baseline (the heuristic frozen before S66), heuristic-noexert (today's heuristic with ADR 0130's exert pricing off) or heuristic-noplan (today's heuristic with ADR 0136's turn plan off) (e.g. assisted,heuristic,heuristic,heuristic)")
 	decks := fs.String("decks", "", "comma-separated curated deck ids, one per chair; empty deals the synthetic battle deck, exert-battle its exert variant (ADR 0130 §9), and monolith-battle one with the two Monoliths (#2500)")
 	names := fs.String("names", "", "comma-separated tally names, one per chair; empty tallies each chair under its tier")
 	games := fs.Int("games", 10, "how many games to play")

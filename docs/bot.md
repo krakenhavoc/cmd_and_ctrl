@@ -1218,7 +1218,13 @@ heuristic's whole ranking, the exact prompt the model was shown and
 its raw reply, the index and label parsed out of it and the move they
 resolved to (`parsed_index`, `parsed_move`, `model_index`, `pick`), the runner's own fallback
 cause when it overruled the policy, whether the engine accepted the
-move, and how long the decision took.
+move, and how long the decision took. A window in which the heuristic
+chose a turn plan of two or more casts ([ADR 0136](decisions/0136-planning-the-turns-mana.md)
+§7, from its PR 4) also carries `trace.plan`: the plan's members in
+the order it will cast them, each as `index` into the window's moves
+and `label`, with `held: true` on an instant kept for the end step
+before the seat's turn. The field is absent otherwise, so older
+readers see the records they always did.
 
 Two facts are recorded separately on purpose: why the runner did not
 use the answer the policy returned (a timeout, an error, an
@@ -1403,7 +1409,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline` or `heuristic-noexert`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone; until the plan lands (ADR 0136 PR 4) it plays exactly as `heuristic`. Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, and `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
@@ -1576,6 +1582,32 @@ game.
   observer, so it needs no decision log; `summary.json` carries it as
   `cards` and `canaries`, and each game's per-seat counts are in
   `games.jsonl`.
+- **Turn mana** — [ADR 0136](decisions/0136-planning-the-turns-mana.md)
+  §8's two numbers, one row per policy (deck `all`) and one per
+  contestant. Each is read off the runner's observer, so it needs no
+  decision log; `summary.json` carries it as `turn_mana` on every
+  `per_policy` and `per_contestant` row, and `games.jsonl` per seat.
+  - **Stranded mana.** `own turns` are the seat's own turns in which
+    it passed in a main phase with an empty stack, and each is read at
+    the last such pass: the mana the seat could still make then (its
+    floating pool, plus each untapped permanent it controls with a
+    repeatable mana ability it can activate now, at what one activation
+    nets; a summoning-sick dork adds nothing), and whether a cast was on
+    offer. A turn is `stranded` when that pass left 2 or more mana and a
+    cast was on offer; `idle` is 2 or more mana with or without one.
+    `stranded %` is stranded over own turns, and `mean unspent` the mana
+    left per own turn. The count is of mana, not colours: two red open
+    with only a blue spell in hand is not stranded, because the blue
+    spell was not offered. Acceptance bar P2 holds `heuristic`'s
+    stranded share to half of `heuristic-noplan`'s.
+  - **Plan misses.** `planned windows` carried a turn plan of two or
+    more casts (the decision log's `trace.plan`). After the seat makes a
+    plan's first move, its next main-phase window with an empty stack in
+    the same phase is `checked`, unless another seat made a move other
+    than a pass in between; a `plan miss` is a checked window in which
+    the plan's next cast (skipping members held for the end step) is not
+    offered. `miss % of planned` is P6's measure, held under 5%. No plan
+    is made before ADR 0136 PR 4, so these columns read 0 until then.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a

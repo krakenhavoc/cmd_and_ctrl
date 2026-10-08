@@ -174,6 +174,10 @@ type PolicyTotals struct {
 	Funnel model.Stats      `json:"funnel"`
 	Runner aiseat.Stats     `json:"runner"`
 	Meter  rules.MeterStats `json:"meter"`
+
+	// TurnMana is ADR 0136 §8's stranded mana and plan misses, summed
+	// over the seat-games (turnmana.go).
+	TurnMana TurnMana `json:"turn_mana"`
 }
 
 // Beats reports whether the whole interval is above the null rate —
@@ -472,6 +476,7 @@ func (a *accumulator) add(r GameResult) {
 			t.Stalled++
 		}
 		p.turns = append(p.turns, r.Turns)
+		t.TurnMana.add(s.TurnMana)
 		mergeRunner(&t.Runner, s.Runner)
 		mergeMeter(&t.Meter, s.Meter)
 		if s.Funnel != nil {
@@ -651,6 +656,7 @@ func (s Summary) Markdown() string {
 	}
 
 	writeCards(&b, s)
+	writeTurnMana(&b, s)
 
 	b.WriteString("\n### Funnel\n\n")
 	b.WriteString("| policy | windows | A | B | C | escalated | calls | timeouts | fallbacks | picks | in tok | out tok | prompt B p50 |\n")
