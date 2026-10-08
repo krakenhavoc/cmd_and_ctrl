@@ -2149,13 +2149,12 @@ var items = []Item{
 		EngineNotes: "duration: a `CastPermission` ends on a `game.Duration` (until end of turn, while in a zone, until your next turn, indefinite); none ends when the same source exiles a different card. Needs a permission keyed to its source object that the source's next exile closes. 3 Commander-legal cards (Furious Rise, Superior Foes of Spider-Man, Unstable Amulet), none catalogued.",
 	},
 	{
-		Slug: "first-life-loss-each-turn", Name: "Losing life for the first time each turn", Kind: KindSeam, Status: StatusMissing,
+		Slug: "first-life-loss-each-turn", Name: "Losing life for the first time each turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that trigger the first time each turn you lose life, such as Gonti's Machinations.",
-		Missing:     "Nothing triggers on the first time a player loses life in a turn.",
 		Issue:       2540,
-		Tracked:     "#2540 (found landing ADR 0129 PR 1, #1995)",
-		Waiting:     []string{"Gonti's Machinations"},
-		EngineNotes: "trigger condition: the turn tally counts life lost (`TurnTally.LifeLost`), but no trigger predicate reads \"the first time each turn\", and one event that loses life several times must trigger once. 3 Commander-legal cards (Gonti's Machinations, Intermediate Chirography, Vengeful Warchief), none catalogued.",
+		Printed:     printedWords("lose life for the first time each turn"),
+		Examples:    []string{"Gonti's Machinations", "Vengeful Warchief"},
+		EngineNotes: "**Shipped** (#2540). `effects.WheneverYouLoseLifeForTheFirstTimeEachTurn` (`cards/effects/first_life_loss.go`) reads the turn tally: the tally listener runs ahead of the trigger harvester, so a trigger's `AppliesTo` sees `PlayerTurnTally.LifeLost` already including the loss it is asked about (pinned by `TestATriggerSeesTheTallyIncludingTheLossItIsAskedAbout`), and a loss is the turn's first exactly when the tally equals it. Several creatures dealing combat damage to one player are one event each: the first sees only itself, the rest see the running total, so the trigger fires once. A gain is not a loss, and damage that costs no life (infect, prevention, a locked life total) neither triggers nor uses up the turn's first. The loss itself is `s22PlayerLostLife`. No snapshot change. Intermediate Chirography waits on the Class card (level abilities and the modified-creature-died end-step check), not on this trigger.",
 	},
 	{
 		Slug: "shield-source-filters", Name: "Shields against sources described by what they aren't, their power, combat status or controller", Kind: KindSeam, Status: StatusImplemented,
