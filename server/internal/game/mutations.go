@@ -3542,6 +3542,14 @@ func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
 	if item == nil || len(item.Targets) == 0 {
 		return false
 	}
+	// #2182: "This ability still resolves if its target becomes
+	// illegal." The clause the item was announced under says so; the
+	// effect then treats an illegal target as unaffected.
+	for _, step := range g.itemAnnouncedClauses(item) {
+		if step.Clause.ResolvesIfIllegal {
+			return false
+		}
+	}
 	hadTargeted := false
 	anyLegal := false
 	for _, t := range item.Targets {

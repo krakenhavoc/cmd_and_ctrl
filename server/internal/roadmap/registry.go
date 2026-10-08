@@ -2948,14 +2948,14 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2181): `game.ProtectionQualityManaValueAtMost` (`game/protection.go`), parser token \"mana value N or less\" (the bound is `ProtectionQuality.Value`). The source's mana value rides the source snapshot as `Characteristic.SourceManaValue` / `SourceManaValueKnown`, stamped by `SourceCharacteristics` (printed cost, face-down 0, a token that is no copy 0, an unreadable cost matches nothing) and by `SourceCharacteristicsX` for a spell, which counts its announced X (CR 202.3e): `TargetSource.X` at announce and re-check, `damageSourceLKILocked` for damage. A source that has left uses `PermanentInfo.ManaValue`. Every protection reader already goes through `ProtectionQuality.Matches`. Wire: `ProtectionView.kind` `mana_value_at_most` with `value` N; the bot reads `CardView.mana_cost` in `heuristic.protectedFrom`. Known gap: the view's legal-target preview for a spell with {X} reads X as 0 before it is chosen, which only errs toward showing fewer targets.",
 	},
 	{
-		Slug: "resolves-despite-illegal-target", Name: "Abilities that resolve even if their target becomes illegal", Kind: KindSeam, Status: StatusMissing,
+		Slug: "resolves-despite-illegal-target", Name: "Abilities that resolve even if their target becomes illegal", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that still resolve when their target becomes illegal, such as Gilded Drake's exchange, which sacrifices the Drake when no exchange happens.",
-		Missing:     "An ability whose only target becomes illegal never resolves, so Gilded Drake would stay on the battlefield when it should be sacrificed.",
 		Rules:       []string{"608.2b"},
 		Issue:       2182,
 		Tracked:     "#2182 (S58 tracker #2077)",
-		Waiting:     []string{"Gilded Drake"},
-		EngineNotes: "resolution: `spellAllTargetsIllegalLocked` (`game/mutations.go`) removes any item whose targeted slots are all illegal, with no exemption, so Gilded Drake's \"If you don't or can't make an exchange, sacrifice this creature\" would never run when its target is gone, stronger than printed. Needs a flag on the ability that skips the CR 608.2b removal while the effect still treats the illegal target as unaffected. `ExchangeControlForEffect` already reports whether an exchange happened.",
+		Printed:     `(?i)still resolves if its target becomes illegal`,
+		Examples:    []string{"Gilded Drake"},
+		EngineNotes: "**Shipped** (#2182, ADR 0019 amendment 2026-10-08): `TargetSpec.ResolvesIfIllegal`, set with `.StillResolves()`, exempts the item from the CR 608.2b removal in `spellAllTargetsIllegalLocked` (`game/mutations.go`); it is read off the announced clauses, so it works for a spell, a trigger or a modal option and rides the spec every snapshot already re-derives. The effect must treat an illegal target as unaffected (`Context.IsTargetLegal`), and `ExchangeControl.ApplyAndReport` says whether an exchange happened, so \"if you don't or can't\" is a plain branch.",
 	},
 	{
 		Slug: "life-lost-at-once", Name: "How much life a player lost at once", Kind: KindSeam, Status: StatusImplemented,

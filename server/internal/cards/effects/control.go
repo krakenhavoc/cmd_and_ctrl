@@ -78,9 +78,16 @@ type ExchangeControl struct {
 }
 
 func (e ExchangeControl) Apply(ctx *Context) error {
-	ctx.Game.ExchangeControlForEffect(ctx.Source(), e.A, e.B,
-		eotLabel(e.Label, "exchange control"))
-	return nil
+	_, err := e.ApplyAndReport(ctx)
+	return err
+}
+
+// ApplyAndReport is Apply that also says whether control was
+// exchanged (CR 701.12b: false when either object is gone) - Gilded
+// Drake's "if you don't or can't make an exchange" (#2182).
+func (e ExchangeControl) ApplyAndReport(ctx *Context) (bool, error) {
+	return ctx.Game.ExchangeControlForEffect(ctx.Source(), e.A, e.B,
+		eotLabel(e.Label, "exchange control")), nil
 }
 
 // GainControlOfSpell is "gain control of target spell" (ADR 0104,
