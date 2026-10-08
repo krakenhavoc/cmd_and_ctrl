@@ -15,8 +15,14 @@
   // last box cached for a creature that died; a box cached on a board
   // of another size is never used, and that strike is skipped.
   //
-  // Every rule (who moves, at what, who braces, who died, the lunge's
-  // length, the timings, the gates) is in lib/combatStrikes.ts, pure and
+  // PR 2's polish: a lethal hit (a creature that dies, a player the hit
+  // eliminates) shakes harder and flashes red; a creature that died
+  // crumbles after its hit (a dead attacker once it is home); and
+  // trample's excess draws a streak from the blockers to what it hit.
+  //
+  // Every rule (who moves, at what, who braces, who died, which hit is
+  // lethal, the lunge's length, the streak's segment, the shards, the
+  // timings, the gates) is in lib/combatStrikes.ts, pure and
   // unit-tested. The beats come from the board's shared clock
   // (lib/combatCues.svelte.ts), the same one CombatArrows' text cue
   // reads. This file measures, draws and flies.
@@ -34,18 +40,22 @@
   import { boardExpandLayout } from "../../boardExpand";
   import { cardImageURL } from "../../cardImage";
   import { showsCardBack } from "../../cardBack";
-  import { deathFade, impactShake, lunge } from "../../animations";
+  import { crumble, impactShake, lunge, streak } from "../../animations";
   import { keepArrowCache, type ScheduledCue } from "../../combatBeats";
   import type { CombatCues } from "../../combatCues.svelte";
   import {
     aimBox,
     combatMotion,
+    crumbleShards,
+    crumbleTiming,
     lungeVector,
+    streakSegment,
     strikeLate,
     strikeTimeline,
     strikesFor,
     usableTile,
     type CachedTile,
+    type StreakSegment,
     type StrikeBox,
     type StrikeTarget,
   } from "../../combatStrikes";
@@ -63,7 +73,8 @@
   interface Copy {
     key: string;
     cardID: string;
-    // "lunge": a mover's flight; "die": a dead target shaking, then fading.
+    // "lunge": a mover's flight; "die": a dead target taking the lethal
+    // shake, then crumbling.
     mode: "lunge" | "die";
     src: string | null;
     // Centre, in board pixels, and the tile's size at rest and rotation.
@@ -73,13 +84,22 @@
     height: number;
     rot: number;
     to: { x: number; y: number };
+    // It died in this beat: it crumbles (a mover once it is home).
     dies: boolean;
     flash: boolean;
+    // The flash at contact is the lethal one: red (ADR 0134 PR 2).
+    lethal: boolean;
     // Whether this copy hid a live tile (and so must unhide it).
     hides: boolean;
   }
 
+  // Trample's streak from the blockers to what took the excess.
+  interface Streak extends StreakSegment {
+    key: string;
+  }
+
   let copies = $state<Copy[]>([]);
+  let streaks = $state<Streak[]>([]);
   let serial = 0;
   let destroyed = false;
 
@@ -234,12 +254,21 @@
     const plan = strikesFor(cue, cue.log);
     const tl = strikeTimeline(s.animations.speed);
 
+    // Trample's streaks, drawn at contact: from the blockers' centroid
+    // to each player, planeswalker or battle that took the excess.
+    const trample: StreakSegment[] = [];
+
     for (const m of plan.movers) {
       const from = cardTile(m.cardID, b);
       if (!from) continue;
       const aims = m.aim.map((t) => targetBox(t, b)).filter((x): x is StrikeBox => x !== null);
       const aim = aimBox(aims);
       if (!aim) continue;
+      for (const t of m.through) {
+        const to = targetBox(t, b);
+        const seg = to ? streakSegment(aim, to) : null;
+        if (seg) trample.push(seg);
+      }
       const v = lungeVector(from.tile.box, aim);
       addCopy(
         {
@@ -254,20 +283,24 @@
           to: { x: v.x, y: v.y },
           dies: m.dies,
           flash: m.flash,
+          lethal: m.lethal,
           hides: from.live,
         },
-        tl.totalMs,
+        // A creature that died is home at totalMs and crumbles there.
+        m.dies ? crumbleTiming(tl, "mover").endMs : tl.totalMs,
       );
     }
 
-    // Every target shakes at the same contact (CR 510.2).
+    // Every target shakes at the same contact (CR 510.2), and trample's
+    // streaks draw then, during the contact hold.
     later(() => {
       const now = boardSize();
       if (!now) return;
+      for (const seg of trample) addStreak(seg, tl.streakDrawMs + tl.streakFadeMs);
       for (const imp of plan.impacts) {
         if (imp.target.kind === "seat") {
           const el = seatElement(imp.target.seat);
-          if (el) void impactShake(el);
+          if (el) void impactShake(el, { lethal: imp.lethal });
           continue;
         }
         const id = imp.target.cardID;
@@ -275,11 +308,13 @@
         if (!where) continue;
         if (where.live) {
           const el = boardEl ? findCardAnchor(boardEl, id, { accept: hasSize }) : null;
-          if (el) void impactShake(el);
+          if (el) void impactShake(el, { lethal: imp.lethal });
           continue;
         }
-        // A creature that died: it shakes, then fades, in its cached place.
+        // A creature that died: the lethal shake, then it crumbles, in
+        // its cached place.
         if (!imp.dies) continue;
+        const death = crumbleTiming(tl, "target");
         addCopy(
           {
             cardID: id,
@@ -293,18 +328,29 @@
             to: { x: 0, y: 0 },
             dies: true,
             flash: false,
+            lethal: true,
             hides: false,
           },
-          tl.shakeMs + tl.deathFadeMs,
+          // Mounted at contact, so its life runs from there.
+          death.endMs - tl.contactMs,
         );
       }
     }, tl.contactMs);
+  }
+
+  function addStreak(seg: StreakSegment, lifeMs: number): void {
+    const key = `streak-${++serial}`;
+    streaks = [...streaks, { ...seg, key }];
+    later(() => {
+      streaks = streaks.filter((s) => s.key !== key);
+    }, lifeMs);
   }
 
   function reset(): void {
     for (const t of timers) clearTimeout(t);
     timers.clear();
     copies = [];
+    streaks = [];
     cues.clearStriking();
     tiles.clear();
     images.clear();
@@ -365,23 +411,58 @@
   // timer (addCopy), so the tween is presentation only.
   function fly(node: HTMLElement, c: Copy) {
     const face = node.querySelector<HTMLElement>(".face");
+    // A creature that died breaks up after its hit (ADR 0134 question 7,
+    // PR 2): the shards are planned in combatStrikes.ts, seeded by the
+    // card, and made inside the face, so they go when the copy does.
+    let gone = false;
+    const crumbleNow = () => {
+      if (gone || destroyed || !face) return;
+      void crumble(face, crumbleShards(c.cardID, c.width, c.height, c.rot));
+    };
     if (c.mode === "lunge") {
-      void lunge(node, c.to, { dies: c.dies, flash: c.flash ? face : null });
-    } else if (face) {
-      void impactShake(face).then(() => {
-        if (!destroyed) void deathFade(node);
+      void lunge(node, c.to, { flash: c.flash ? face : null, lethal: c.lethal }).then(() => {
+        if (c.dies) crumbleNow();
       });
+    } else if (face) {
+      void impactShake(face, { lethal: true }).then(crumbleNow);
     }
     return {
       destroy() {
+        gone = true;
         gsap.killTweensOf(node);
-        if (face) gsap.killTweensOf(face);
+        if (face) {
+          gsap.killTweensOf(face);
+          for (const s of face.querySelectorAll(".shard")) gsap.killTweensOf(s);
+        }
+      },
+    };
+  }
+
+  // One streak's draw, started when it mounts. Its removal is on a
+  // timer (addStreak).
+  function draw(node: HTMLElement) {
+    void streak(node);
+    return {
+      destroy() {
+        gsap.killTweensOf(node);
       },
     };
   }
 </script>
 
 <div class="strike-layer" aria-hidden="true" data-combat-strikes>
+  {#each streaks as s (s.key)}
+    <div
+      class="streak"
+      data-strike-streak
+      style:left={`${s.x}px`}
+      style:top={`${s.y}px`}
+      style:width={`${s.length}px`}
+      style:--streak-angle={`${s.angle}deg`}
+    >
+      <div class="bar" use:draw></div>
+    </div>
+  {/each}
   {#each copies as c (c.key)}
     <div
       class="copy"
@@ -440,5 +521,68 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+  /* The lethal flash (ADR 0134 PR 2): a red wash over the copy, at
+     --impact-glow. Transparent unless --impact-wash is set, so an
+     ordinary flash is the brightness filter alone, as before. */
+  .face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: var(--impact-wash, transparent);
+    opacity: calc(var(--impact-glow, 0) * 0.6);
+  }
+  /* The crumble: the shards (made by animations.ts crumble, so they
+     carry no scoped class) take over from the face's own art, frame and
+     shadow, and are free to fall out of its box. */
+  .face:global(.crumbling) {
+    overflow: visible;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .face:global(.crumbling) > img {
+    visibility: hidden;
+  }
+  .face :global(.shard) {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0d1220;
+    filter: grayscale(0.55) brightness(0.85);
+  }
+  .face :global(.shard img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  /* Trample's streak: a bar along the segment, turned from its start.
+     The outer box carries the angle and the inner bar the draw, so the
+     tween never overwrites the rotation. */
+  .streak {
+    position: absolute;
+    height: 0;
+    transform: rotate(var(--streak-angle, 0deg));
+    transform-origin: 0 0;
+  }
+  .streak .bar {
+    position: absolute;
+    left: 0;
+    top: -2px;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    transform-origin: 0 50%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 214, 140, 0) 0%,
+      rgba(255, 226, 170, 0.9) 55%,
+      rgba(255, 246, 220, 1) 100%
+    );
+    box-shadow: 0 0 8px rgba(255, 200, 120, 0.75);
   }
 </style>

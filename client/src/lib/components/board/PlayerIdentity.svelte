@@ -609,7 +609,8 @@
     inset: 0;
     border-radius: 50%;
     pointer-events: none;
-    background: #fff;
+    /* Red when the hit eliminates this player (ADR 0134 PR 2). */
+    background: var(--impact-wash, #fff);
     opacity: calc(var(--impact-glow, 0) * 0.5);
   }
   .avatar {

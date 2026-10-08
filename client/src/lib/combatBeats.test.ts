@@ -13,6 +13,8 @@ import {
   arrowRefsFor,
   arrowRender,
   beatMode,
+  beatsPrimeKey,
+  replayJumpEpoch,
   cueAnchor,
   cueSummary,
   emptyBeatTracker,
@@ -1248,5 +1250,91 @@ describe("two real combat damage steps (#717, CR 510.4)", () => {
 
   it("keeps the arrow geometry cache through the first-strike step", () => {
     expect(keepArrowCache("first_strike_damage", 0)).toBe(true);
+  });
+});
+
+// ADR 0134 §6 (question 10): the dev replay scrubber plays only a
+// one-frame step forward; every other move re-primes.
+describe("replay: the one-step rule", () => {
+  it("keeps the epoch for a one-frame step forward", () => {
+    expect(replayJumpEpoch(3, 4, 5)).toBe(3);
+    expect(replayJumpEpoch(0, 0, 1)).toBe(0);
+  });
+
+  it("bumps it for a jump ahead, a step back, the same frame, and entering or leaving", () => {
+    expect(replayJumpEpoch(3, 4, 6)).toBe(4); // two frames at once
+    expect(replayJumpEpoch(3, 4, 40)).toBe(4); // the slider
+    expect(replayJumpEpoch(3, 4, 3)).toBe(4); // a step back
+    expect(replayJumpEpoch(3, 4, 4)).toBe(4); // the same frame again
+    expect(replayJumpEpoch(3, null, 0)).toBe(4); // live → replay
+    expect(replayJumpEpoch(3, 7, null)).toBe(4); // replay → live
+  });
+
+  it("changes the prime key exactly when the epoch, the toggle or the connection does", () => {
+    const key = beatsPrimeKey(true, true, 2);
+    expect(beatsPrimeKey(true, true, 2)).toBe(key);
+    expect(beatsPrimeKey(true, true, 3)).not.toBe(key);
+    expect(beatsPrimeKey(true, false, 2)).not.toBe(key);
+    expect(beatsPrimeKey(false, true, 2)).not.toBe(key);
+  });
+
+  // Scrub a recorded game: frame i carries the log up to its own
+  // entries, and three combats land in frames 2, 3 and 4. Walk it the
+  // way Board.svelte does: a prime-key change re-primes the next frame.
+  function scrub(indexes: (number | null)[]): number[] {
+    const frames: LogEvent[][] = [];
+    let log: LogEvent[] = [];
+    for (let i = 0; i < 5; i++) {
+      const base = 100 * (i + 1);
+      const add: LogEvent[] =
+        i < 2
+          ? [{ seq: base, kind: "step", step: "precombat_main", turn: i + 1, seat: 0, text: "" }]
+          : [
+              { seq: base, kind: "step", step: "combat_damage", turn: i + 1, seat: 0, text: "" },
+              {
+                seq: base + 1,
+                kind: "damage",
+                turn: i + 1,
+                seat: 0,
+                card_id: `c${i}`,
+                target_seat: 1,
+                amount: 2,
+                combat: true,
+                text: "",
+              },
+            ];
+      log = [...log, ...add];
+      frames.push(log);
+    }
+    let tracker = emptyBeatTracker();
+    let epoch = 0;
+    let prev: number | null = null;
+    let key = beatsPrimeKey(true, false, epoch);
+    const played: number[] = [];
+    for (const next of indexes) {
+      epoch = replayJumpEpoch(epoch, prev, next);
+      const nextKey = beatsPrimeKey(true, next !== null, epoch);
+      const r = track(tracker, frames[next ?? frames.length - 1], nextKey !== key);
+      key = nextKey;
+      prev = next;
+      tracker = r.tracker;
+      const { tracker: t2, beats } = splitBeats(tracker, frames[next ?? 4], r.fresh);
+      tracker = t2;
+      played.push(beats.length);
+    }
+    return played;
+  }
+
+  it("plays each combat when the scrubber steps through them one frame at a time", () => {
+    expect(scrub([0, 1, 2, 3, 4])).toEqual([0, 0, 1, 1, 1]);
+  });
+
+  it("plays nothing when it jumps past them, back over them, or onto the same frame", () => {
+    // Enter at 0, jump to 4: three combats skipped, none played.
+    expect(scrub([0, 4])).toEqual([0, 0]);
+    // Step to 3 (plays), back to 2, forward to 3 again (one step: plays).
+    expect(scrub([1, 2, 3, 2, 3])).toEqual([0, 1, 1, 0, 1]);
+    // The same frame twice plays it once.
+    expect(scrub([1, 2, 2])).toEqual([0, 1, 0]);
   });
 });
