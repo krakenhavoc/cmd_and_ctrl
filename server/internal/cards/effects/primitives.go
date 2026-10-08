@@ -962,6 +962,13 @@ type SearchLibrary struct {
 	// card's. Since S22 the fetched card's own enters-tapped
 	// replacement runs too (#263), and the two are OR-ed.
 	TappedOnEntry bool
+	// EntersWithCounters are the counters a fetched permanent enters
+	// with, keyed by counter name — Neoform's "put that card onto the
+	// battlefield with an additional +1/+1 counter on it" (#2098).
+	// Seeded onto the entry event, so they are there as the permanent
+	// enters and go through the CR 614 counter pipeline. Only
+	// meaningful when Dest == ZoneBattlefield.
+	EntersWithCounters map[string]int
 	// Optional is "you MAY search" (CR 701.23b) — Assassin's Trophy,
 	// Path to Exile, Solemn Simulacrum. Forces the prompt so the
 	// searcher can decline the card AND the shuffle.
@@ -1012,23 +1019,24 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		source = ctx.Source()
 	}
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-		Player:        s.Player,
-		Source:        source,
-		Pred:          s.Predicate,
-		Dest:          s.Dest,
-		Limit:         s.Limit,
-		Reveal:        s.Reveal,
-		Shuffle:       s.Shuffle,
-		TappedOnEntry: s.TappedOnEntry,
-		Optional:      s.Optional,
-		Reason:        s.Reason,
-		Validate:      s.Validate,
-		Then:          s.Then,
-		ToTop:         s.ToTop,
-		Depth:         s.Depth,
-		LibraryOwner:  s.LibraryOwner,
-		Unbounded:     s.Unbounded,
-		FaceDown:      s.FaceDown,
+		Player:             s.Player,
+		Source:             source,
+		Pred:               s.Predicate,
+		Dest:               s.Dest,
+		Limit:              s.Limit,
+		Reveal:             s.Reveal,
+		Shuffle:            s.Shuffle,
+		TappedOnEntry:      s.TappedOnEntry,
+		EntersWithCounters: s.EntersWithCounters,
+		Optional:           s.Optional,
+		Reason:             s.Reason,
+		Validate:           s.Validate,
+		Then:               s.Then,
+		ToTop:              s.ToTop,
+		Depth:              s.Depth,
+		LibraryOwner:       s.LibraryOwner,
+		Unbounded:          s.Unbounded,
+		FaceDown:           s.FaceDown,
 	})
 }
 

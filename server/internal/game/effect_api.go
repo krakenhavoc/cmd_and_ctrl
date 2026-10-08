@@ -2354,6 +2354,22 @@ type SearchLibrarySpec struct {
 	// own condition fires.
 	TappedOnEntry bool
 
+	// EntersWithCounters are the counters a fetched permanent enters
+	// with, keyed by counter name — "put that card onto the
+	// battlefield with an additional +1/+1 counter on it" (Neoform,
+	// #2098). Meaningful only for Dest ZoneBattlefield.
+	//
+	// Like TappedOnEntry it expresses the FETCHING effect's printed
+	// text, and like a token's Counters (#762) it is SEEDED onto the
+	// entry event rather than placed afterwards: the counters go
+	// through the CR 614 counter pipeline (a Doubling Season doubles
+	// them), are there before EventETB fires so a watcher reading
+	// the entering creature sees the finished object, and survive a
+	// paused entry because a resume reads ev.EntersWithCounters. The
+	// card's own "enters with" clauses add on top, which is what
+	// "additional" means. CR 614.1c, 122.6.
+	EntersWithCounters map[string]int
+
 	// Optional marks a "you MAY search" (CR 701.23b). It forces the
 	// prompt even when the pick is otherwise forced, so the searcher
 	// can decline — Assassin's Trophy's victim keeps the right to
@@ -2795,6 +2811,9 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		EntersTapped:   spec.TappedOnEntry,
 		entryResumable: true,
 		entryTail:      &entryTail{then: then},
+		// Copied: the event owns its map (replacements add to it), and
+		// the spec is shared with a pending prompt.
+		EntersWithCounters: copyCounterMap(spec.EntersWithCounters),
 	})
 	return err
 }
@@ -3728,4 +3747,18 @@ func (g *Game) SetMaxHandSizeForEffect(playerID uuid.UUID, value int) error {
 	p.MaxHandSize = value
 	p.MaxHandSizeAt = timeNowUnixNano()
 	return nil
+}
+
+// copyCounterMap returns an independent copy of m, or nil when it is
+// empty, so a seeded entry event never aliases the map on the spec
+// that built it.
+func copyCounterMap(m map[string]int) map[string]int {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }

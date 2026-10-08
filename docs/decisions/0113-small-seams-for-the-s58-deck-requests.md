@@ -488,3 +488,46 @@ Additive `entered_from` and `entered_from_owner` on the events inside the snapsh
 ### Out of scope
 
 - The evoke sacrifice's synthetic harvest event, which is not an entry.
+
+---
+
+## Amendment 2026-10-08 (third) — A searched-for card that enters with counters (#2098)
+
+**Why it lands here.** §1's sacrifice pool made the sacrificed creature's mana value readable, and Neoform was the one card of that pool still held back, by its put-onto-the-battlefield clause. It is the same family as §1 (a card read off the payment, then fetched), and it changes no earlier decision.
+
+### What exists, what is missing
+
+- **Entry counters exist.** A token's `TokenEntryOptions.Counters` and a mana rider's counters are seeded on the entry event as `ReplacementEvent.EntersWithCounters` (#762). The settled map is applied through the CR 614 counter pipeline before `EventETB` fires, and a paused entry's resume reads it back off the event.
+- **A search to the battlefield had no way to seed them.** `SearchLibrarySpec` carried `TappedOnEntry` for the fetching effect's tapped clause and nothing for counters. The only spelling of Neoform was to add the counter after the creature entered, which is a different event: an ability that triggers as the creature enters and reads its counters would see none, and a Doubling Season would see a counter placed on a permanent instead of one it enters with.
+
+### The rules
+
+- **CR 614.1c:** "enters with counters" is a replacement effect on the entry, not a later instruction.
+- **CR 122.6:** a permanent that enters with counters has them as it enters, so a trigger on its entry sees them.
+- **CR 608.2h:** the sacrificed creature's mana value is the one it last had on the battlefield (§1).
+
+### Decision
+
+1. **One option.** `SearchLibrarySpec.EntersWithCounters map[string]int`, mirrored on the `effects.SearchLibrary` primitive. Meaningful only for `Dest: ZoneBattlefield`.
+2. **Seeded, not stamped.** `searchEnterBattlefieldLocked` copies the map onto the entry event (`copyCounterMap`, so the event owns its map and the spec, which a pending prompt shares, is never mutated), the way it already seeds `EntersTapped`. A resume therefore keeps the counters with no help from the search.
+3. **"Additional".** The fetched card's own enters-with clauses add on top of the seeded ones.
+
+### Wire, client and bot
+
+None. There is no new prompt and no new field on the wire; the counters are on the permanent the snapshot already shows. The enumerator and the bot see the same search prompt as before.
+
+### Cards
+
+- **Neoform: Full.** Sacrifice a creature, search for a creature of mana value exactly one more, and it enters with a +1/+1 counter. A sacrificed token that is no copy is mana value 0, so the search is for mana value 1.
+
+### Tests
+
+`game/search_enters_with_counters_test.go` (the counter is placed before `EventETB`, the spec's map is not consumed, no option means no counters) and `cards/effects/neoform_test.go` (exactly one more, the token case, Doubling Season doubling the counter).
+
+### Snapshot impact
+
+None. The option lives on a spec and the entry event, neither of which is persisted.
+
+### Out of scope
+
+- Counters on a card put into a hand, graveyard or exile by a search: they would be lost on the move (CR 122.2), so the option is ignored for any other destination.
