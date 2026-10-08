@@ -166,6 +166,12 @@ type Config struct {
 	DiscardWeight float64
 	// TokenWeight is one token the purpose makes (a Treasure, a Clue).
 	TokenWeight float64
+	// AwakenLandShare is the share of a hasty N/N creature an awaken
+	// cast's land is worth (ADR 0135 §3, owner decision 6): below one,
+	// because the body is a land, and creature removal that answers it
+	// also takes a mana source. Zero (the baseline) prices awaken at
+	// nothing, so the bot casts an awaken spell for its mana cost.
+	AwakenLandShare float64
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -389,6 +395,7 @@ func DefaultConfig() Config {
 		SelfMillWeight:    0.50,
 		DiscardWeight:     0.60,
 		TokenWeight:       0.50,
+		AwakenLandShare:   0.75,
 		PriceSweeps:       true,
 		DiscardCostByCard: true,
 		LastLandDiscard:   1.00,
@@ -486,6 +493,8 @@ func BaselineConfig() Config {
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0
 	c.TokenWeight = 0
+	// ADR 0135 §3: awaken, priced at nothing before it.
+	c.AwakenLandShare = 0
 	// ADR 0129 §7: energy, priced at nothing before it.
 	c.Weights.Energy = 0
 	c.PriceSweeps = false

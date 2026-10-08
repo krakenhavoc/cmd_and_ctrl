@@ -1199,6 +1199,13 @@ type AlternativeCostView struct {
 	// and stays public with the rest of the offer.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of that statement when it has more than
+	// one (#764), each with its own legal set: awaken's rewrite is the
+	// spell's own clause followed by "target land you control" (ADR
+	// 0135 §3), and the client walks them in order. Absent for a
+	// single-clause statement, where legal_targets is the whole answer.
+	// Per viewer, like legal_targets.
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 
 	// Life is the "pay N life" half of the cost (Force of Will's 1,
 	// Snuff Out's 4). Zero — absent — for the costs that charge none.
@@ -5005,6 +5012,7 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 	out := make([]AlternativeCostView, len(offers))
 	for i, o := range offers {
 		o.LegalTargets = nil
+		o.Clauses = nil
 		o.PayOptions = nil
 		// #1727: "the creatures YOU control", one seat's answer.
 		o.SacrificeOptions = nil
@@ -6176,6 +6184,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
+			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		// The card-shaped half. SpecCandidatesForEffect, not
 		// LegalTargetsForEffect, for the same reason the additional

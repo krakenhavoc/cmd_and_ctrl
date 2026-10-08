@@ -76,7 +76,7 @@ import (
 //     enters 0/0 and is counted up afterwards, exactly as printed.
 //  4. THE SUBTYPE is a layer-4 continuous effect with no stated
 //     duration, pinned to the object: `grantAmassSubtypeLocked`, which
-//     is `animateEarthbentLandLocked`'s layer-4 arm one subtype over.
+//     is `animateLandLocked`'s layer-4 arm one subtype over.
 //
 // # "The Army you amassed"
 //

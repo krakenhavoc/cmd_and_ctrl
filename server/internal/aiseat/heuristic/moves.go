@@ -480,6 +480,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
 	card := st.castSource(cp.InstanceID)
+	// ADR 0135 §3: an awaken cast's last target is its own land, which
+	// awakenValue prices as the body it becomes; it is not a pump on a
+	// permanent of the bot's (OwnPermanentTarget), and it does not make
+	// an untargeted spell a targeted one (SpellFloor).
+	targets := spellTargets(card, cp)
 	var v float64
 	reason := "cast"
 	if cp.AlternativeCost != "" {
@@ -503,7 +508,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			ps.lands -= n
 			v += st.w.ManaSource * float64(n)
 		}
-		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(cp.Targets) > 0)
+		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(targets) > 0)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
 		// mana now, which a card being pitched to a cost is not.
@@ -590,7 +595,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v += st.discardPayoff(p.cfg, st.mine[id])
 	}
 	v -= p.sacrificeCost(st, cp.SacrificeIDs)
-	v += st.targetsValue(p.cfg, cp.Targets)
+	v += st.targetsValue(p.cfg, targets)
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
 		// {2} more (CR 903.8); the tax is already in the score, this
