@@ -2,6 +2,7 @@ package legal_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -106,6 +107,18 @@ func TestRepeatableModePickOffersTheAllOneSelectionFirst(t *testing.T) {
 	moves := legal.EnumerateFor(g, me.ID)
 	if len(moves) == 0 {
 		t.Fatal("the seat is offered an answer")
+	}
+}
+
+// #2681, CR 700.2d: a repeatable prompt offers the mixed multisets too,
+// after the all-one selections.
+func TestRepeatableModePickOffersTheMixedSelections(t *testing.T) {
+	g := newTable(t)
+	me := g.Seats[0]
+	c := modePickPrompt(t, g, me.ID, []int{1, 2}, []string{"Bounce.", "Draw a card."}, 3, 3, true)
+	got := fmt.Sprint(game.ModePickSelections(c, 12))
+	if want := "[[1 1 1] [2 2 2] [1 1 2] [1 2 2]]"; got != want {
+		t.Errorf("selections %s, want %s", got, want)
 	}
 }
 
