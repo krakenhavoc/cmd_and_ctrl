@@ -346,6 +346,24 @@ type Config struct {
 	// sustained pressure instead of poking whoever is momentarily
 	// cheapest.
 	FocusBonus float64
+	// FocusNeedsValue adds FocusBonus only to an attack whose own value
+	// is positive (#2675), so pressure on the focus seat never sends a
+	// creature that deals no damage, or one the defender blocks at a
+	// profit, into combat. It also stops an attacker with no power from
+	// counting as a blocker the defender has to spend, since nothing
+	// needs to block it. Off (the zero value) adds the bonus to every
+	// attack on the focus seat, and a 0/1 token attacks at +1.00.
+	FocusNeedsValue bool
+	// GangAwareAttacks prices an attack against every way the defender
+	// can block it, not only the best single block (#2690): any group of
+	// its free blockers that kills the attacker (gangJoin, #1548). A
+	// commander attacker that dies also costs CommanderTax, the next
+	// cast's surcharge. And tapping a creature that could attack, in the
+	// bot's own first main phase, costs the attack it gives up priced by
+	// attackValue, the same number the attack would be declared at,
+	// rather than Weights.Power per point. Off (the zero value) checks
+	// single blocks only and prices a given-up attack by power.
+	GangAwareAttacks bool
 	// LethalBonus is the value of a line that would finish a seat
 	// outright — an alpha strike the defender cannot absorb, or a
 	// spell pointed at a player already inside FinishLife.
@@ -472,6 +490,8 @@ func DefaultConfig() Config {
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
 		FocusBonus:       1.00,
+		FocusNeedsValue:  true,
+		GangAwareAttacks: true,
 		LethalBonus:      25.00,
 		FinishLife:       3,
 
@@ -547,6 +567,10 @@ func BaselineConfig() Config {
 	// ADR 0130 §9: exert, never taken before it.
 	c.PriceExert = false
 	c.ExertCostWeight = 0
+	// #2675, #2690, #2676: combat priced by what combat does.
+	c.FocusNeedsValue = false
+	c.GangAwareAttacks = false
+	c.Weights.BlockOnlyBody = 0
 	// #2677 and #2691: land searches by colour, discards by distance.
 	c.LandColorNeed = 0
 	c.DiscardByDistance = false

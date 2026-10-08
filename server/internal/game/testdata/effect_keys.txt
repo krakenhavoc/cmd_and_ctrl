@@ -137,3 +137,5 @@ body territorial-aetherkite/damage-each-other
 body blaster-hulk/divided-damage
 body exalted/pump
 body ondu-rising/attacker-gains-lifelink
+body merry-bards/young-hero-role
+body spellbook-vendor/sorcerer-role

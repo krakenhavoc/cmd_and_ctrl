@@ -52,6 +52,10 @@ export interface AutoTapCastParams {
   // ADR 0100 §2: the either/or branch being paid. Its mana ("pay {5}")
   // joins the total, so the preview has to know which.
   costBranch?: number;
+  // ADR 0135 §4: the alternative cost's named payment. An emerge
+  // creature changes the PRICE (its mana value comes off the generic),
+  // and a creature named to a sacrifice may still tap for mana first.
+  altCostIDs?: string[];
 }
 
 // castPreviewParams projects the choices announced so far onto the
@@ -79,6 +83,7 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
   if (choices.delveIDs && choices.delveIDs.length > 0) out.delveIDs = [...choices.delveIDs];
   if (choices.costBranch !== undefined) out.costBranch = choices.costBranch;
+  if (choices.altCostIDs && choices.altCostIDs.length > 0) out.altCostIDs = [...choices.altCostIDs];
   return out;
 }
 
@@ -130,6 +135,8 @@ export function castPreviewParamsFromPayload(
   if (blight.length > 0) out.blightIDs = blight;
   const delve = stringIDs(payload.delve_ids);
   if (delve.length > 0) out.delveIDs = delve;
+  const alt = stringIDs(payload.alt_cost_ids);
+  if (alt.length > 0) out.altCostIDs = alt;
   if (
     typeof payload.cost_branch === "number" &&
     Number.isInteger(payload.cost_branch) &&

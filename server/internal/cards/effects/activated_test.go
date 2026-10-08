@@ -29,7 +29,14 @@ const (
 // existing contract — a non-sick creature the caller can act with
 // immediately.
 func pushCatalogPermanent(g *game.Game, owner uuid.UUID, name, typeLine, oracle string, sick bool) uuid.UUID {
-	id := uuid.New()
+	return pushCatalogPermanentWithID(g, uuid.New(), owner, name, typeLine, oracle, sick)
+}
+
+// pushCatalogPermanentWithID is pushCatalogPermanent with a caller-chosen
+// InstanceID. A keyed random stream (ADR 0054) is seeded from the SOURCE
+// card's id as well as the game key, so a test that pins the key but lets
+// the source id be uuid.New() still draws a different sequence every run.
+func pushCatalogPermanentWithID(g *game.Game, id, owner uuid.UUID, name, typeLine, oracle string, sick bool) uuid.UUID {
 	g.Battlefield.PushTop(game.Card{
 		InstanceID: id, Name: name, TypeLine: typeLine, OracleID: oracle,
 		Power: 1, Toughness: 1, Owner: owner, Controller: owner,

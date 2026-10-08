@@ -26,6 +26,8 @@ package legal
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -523,6 +525,14 @@ type TargetCandidate struct {
 	// cost would TAP rather than spend (ADR 0135 §1: a tap alternative
 	// cost). The policy prices tapping it, not losing it.
 	Tap bool
+	// Saves is how much generic mana spending this candidate saves the
+	// cast (ADR 0135 §4, owner decision 5): an emerge payment's
+	// reduction, the sacrificed permanent's mana value as the pricer
+	// takes it off. The policy prices the saving in its own units and
+	// subtracts it from what the candidate is worth to keep, so a spent
+	// six-drop can rank ahead of a token that saves nothing. Zero for
+	// every other cost.
+	Saves int
 }
 
 // TargetOrder prices one candidate target for the enumerating seat.
@@ -972,6 +982,32 @@ func wireTargets(refs []game.TargetRef) []targetWire {
 		out = append(out, targetWire{Kind: string(r.Kind), ID: r.ID.String(), Slot: r.Slot, Mode: r.Mode})
 	}
 	return out
+}
+
+// modesLabel names the modes a modal announcement chose, in the order
+// chosen: " (Target player draws two cards, then discards two cards;
+// Target player creates a Treasure token)". Two moves with the same
+// targets and different modes are otherwise the same line (#2681). A
+// card that is not modal gets nothing.
+func modesLabel(ms *game.ModeSpec, modes []int) string {
+	if ms == nil {
+		return ""
+	}
+	if len(modes) == 0 {
+		return " (no mode)"
+	}
+	parts := make([]string, 0, len(modes))
+	for _, m := range modes {
+		label := ""
+		if m >= 0 && m < len(ms.Options) {
+			label = strings.TrimSuffix(strings.TrimSpace(ms.Options[m].Label), ".")
+		}
+		if label == "" {
+			label = "mode " + strconv.Itoa(m+1)
+		}
+		parts = append(parts, label)
+	}
+	return " (" + strings.Join(parts, "; ") + ")"
 }
 
 func targetLabel(g *game.Game, refs []game.TargetRef) string {

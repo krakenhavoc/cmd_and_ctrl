@@ -192,6 +192,24 @@ type AlternativeCost struct {
 	// variable sacrifice that the announce path could price.
 	Sacrifice *TargetSpec
 
+	// ReducedBySacrificedManaValue is emerge's "its total cost is reduced
+	// by an amount of generic mana equal to the sacrificed creature's
+	// mana value" (CR 702.119a, ADR 0135 §4, #2416). Only beside a
+	// Sacrifice of exactly one permanent; effects.Register refuses it
+	// anywhere else.
+	//
+	// CR 702.119c settles the permanent as the cost is chosen (601.2b)
+	// and CR 601.2f totals the cost while it is still on the
+	// battlefield, so the reduction is a cost REDUCTION: the pricer reads
+	// the named permanent's mana value into CostQuery.AltSacrificeManaValue
+	// and applyCostModifiersLocked takes it off the generic part (CR
+	// 118.7a) with the board's other reductions, after the increases and
+	// the commander tax and never below {0} (CR 601.2f). The price
+	// therefore depends on which permanent is named, and every reader of
+	// it (the payment, the auto-tap preview, the view's per-candidate
+	// price and the enumerator) prices from CastSpellParams.AltCostIDs.
+	ReducedBySacrificedManaValue bool
+
 	// DiscardFromHand is retrace's "discarding a land card in addition
 	// to paying its other costs" (CR 702.81a, #2528): a card from the
 	// caster's HAND, named in CastSpellParams.AltCostIDs and DISCARDED

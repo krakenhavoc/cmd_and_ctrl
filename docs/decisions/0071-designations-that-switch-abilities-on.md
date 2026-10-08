@@ -1216,3 +1216,172 @@ All eight are new. Seven ship `full`; one ships with a caveat.
   change rides layer 4 — both unverified.
 - The rest of the monstrosity cards are keywords plus the ability and are
   one file each.
+
+
+## Amendment (2026-10-08): a seventh designation, Saddled — the one that lasts a turn (CR 702.171, #2695)
+
+**Status:** Accepted · 2026-10-08 · tracked on
+[#2695](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2695), under the
+deck-request tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077).
+Follow-ups: [#2704](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2704)
+(cards that act on "creatures that saddled it") and
+[#2705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2705) (the Pilot
+cards' "as though its power were 2 greater").
+**No new ADR.** Saddle is a designation that switches abilities on, which is
+this ADR's subject, and its cost is ADR 0020's crew cost over other creatures;
+neither needed a decision of its own, so this amends the one that owns the gate.
+No ADR number was taken.
+
+**Rules text.** The CR text file was not available to this change, so the
+sub-rule letters below are the ones #2695 quotes (702.171a the ability, 702.171b
+the designation, 702.171c "creatures that saddled it this turn"), not a reading
+of the pinned edition. Nothing here depends on a letter; re-check them against
+the September 25, 2026 text when it is to hand.
+
+### Context
+
+Saddle N is Outlaws of Thunder Junction's Mount keyword: "Tap any number of
+other untapped creatures you control with total power N or more: This permanent
+becomes saddled until end of turn. Saddle only as a sorcery." Cards then read
+"whenever this creature attacks while saddled" and "as long as it's saddled".
+About thirty Commander-legal cards print it, and `ability_rows.go` already named
+`saddle` as a keyword activated ability while nothing implemented it. Guidelight
+Matrix shipped without its Mount half, with a caveat saying so.
+
+Crew already pays "tap creatures with total power N or more" and is the template
+for the cost. Saddled is the new part, and it differs from every designation
+this ADR has so far:
+
+| Designation | Lasts |
+|---|---|
+| class level, solved, harnessed, monstrous, Ring-bearer | until the permanent leaves the battlefield |
+| station charge counters | while the counters are there |
+| **saddled** | **until end of turn**, or until it leaves the battlefield |
+
+### Decision: Monstrous's pieces, swept at cleanup
+
+- **`Card.Saddled bool`** and **`Card.SaddledBy []ObjectRef`** (`game/card.go`).
+  It is a Card field and not a scoped effect for the reason every designation is:
+  `Designation.Active` reads a `Card` and nothing else, so "as long as it's
+  saddled" can only be answered off the object. Not copiable, cleared at both
+  CR 400.7 sites (`zone.go`, `entry_tail.go`), carried by clone and the snapshot
+  (`cardSnapshot.Saddled` / `SaddledBy`, additive within v7 — the shape file was
+  updated in place, no bump; `carried` in `snapshot_drift_test.go`).
+- **`DesignationSaddled`** is appended to the enum, `Active` answers
+  `c.Saddled`, and `game.SaddledGate()` builds the gate (`effects.Saddled()`).
+  Nothing else changed for the four accessors to honour it, which is this ADR's
+  Decision 1 paying off a seventh time.
+- **`Game.SaddleForEffect(cardID, saddlers)`** is the one writer. It does
+  nothing for a permanent that is not a Mount (`MountSubtype`), so Alacrian
+  Armory's "becomes saddled if it's a Mount" is the primitive itself. It emits
+  **`EventBecameSaddled`** only when the Mount was not already saddled: "for
+  the first time each turn" (Stubborn Burrowfiend) is therefore the event's own
+  shape and needs no per-turn counter. A second saddle in a turn still records
+  its saddlers. The event bumps the layer version with the other designation
+  events (`layer_listener.go`) and is silent on the public log
+  (`silentBoardStateIsVisible`).
+- **The sweep.** `sweepTurnEndLocked` (the CR 514.2 cleanup sweep) calls
+  `clearSaddledLocked`, which clears the flag and the saddlers on the
+  battlefield and the phased-out zone and bumps the layer version when anything
+  was cleared, so a gated static switches off with the designation. #2695 also
+  says the designation ends when the Mount phases out, so `phaseOutLocked`
+  clears it too, unlike the other designations, which ride through a phase-out
+  (CR 702.26d). The sweep of the phased-out zone is only a backstop. If the
+  pinned rules turn out to let a saddled Mount stay saddled through a phase-out,
+  that one clear is the line to remove; it errs weaker, never stronger.
+- **`SaddledBy` and `Game.SaddlersOf`** answer "creatures that saddled it this
+  turn". The record is the creatures tapped to pay for the saddle ability that
+  resolved, as objects (instance ID and `ObjectEpoch`); `SaddlersOf` returns
+  the ones still on the battlefield as the same objects, so a creature that left
+  or came back is dropped (CR 400.7). It is replaced, never appended in place,
+  because clone shares the backing array.
+
+### Decision: the cost is crew's, over other creatures
+
+`AbilityCost.Saddle int` sits beside `Crew` rather than being a flag on it,
+because the two differ in the one thing the validator checks (the source is not
+a legal payment) and in everything a probe or a card wants to read. Both go
+through `validateCrewCostLocked`, which now takes the source: a Saddle cost
+refuses the source anywhere it is named (`ErrInvalidParam`), then runs crew's
+walk unchanged. Controller, untapped, a creature, no repeats, **no
+summoning-sickness check** (tapping to saddle is not a {T} cost), power read at
+payment from the post-layer value, the printed number a floor. The creatures
+ride the existing `crew_ids`. Their tap is paid in the crew loop, and the
+creatures are written onto the item's payment record
+(`PaidCost.TappedOthers`, station's field, which already survives clone, undo,
+a CR 707.10 copy and a restore) so the saddle effect can read who paid at
+resolution. `effects.Saddle(n)` is the whole ability: label `Saddle N`,
+sorcery timing (`SorcerySpeed`, CR 602.5d), and `saddleEffect`, which does
+nothing for a Mount that left and came back (#1432). `Register` refuses a
+saddle cost on an any-player ability, as it does crew.
+
+### Decision: wire, enumerator, bots
+
+- **Wire.** `CardView.saddled` (public, omitempty, cleared on the face-down
+  redaction). A saddle ability rides crew's two fields, `crew_cost` (the saddle
+  number) and `crew_options` (untapped creatures the controller controls with
+  the Mount left out), plus `activated_abilities[i].saddle: true`, so the
+  client's one picker, the `crew_ids` payload and the legal-move lookup need no
+  second shape. Documented in `docs/protocol.md`.
+- **Enumerator.** `crewPayment` takes the creature to leave out and the Mount is
+  passed for a saddle cost, so a Mount with nothing else to tap is offered no
+  activation (#544) and an offered one names a set the engine accepts. Sorcery
+  timing is the ability's, which `legal` already judges. Bots need nothing
+  else: saddling is an ordinary activation, and a Mount's attack payoff is the
+  heuristic's to weigh like any trigger.
+- **Client.** The designation badge slot gains SADDLED (`Card.svelte`), and
+  `CrewCostModal` words the picker "Saddle" when the ability says so. The
+  context menu's disabled reason says "no other untapped creatures to saddle
+  with".
+
+### Decision: read "isn't saddled" when the trigger is built
+
+Caustic Bronco pays differently if it "isn't saddled", judged as the trigger
+resolves. A Mount removed in response is judged as it last existed (CR 608.2h),
+and no last-known-information record carries the designation. Because saddle is
+sorcery speed the designation cannot change while the trigger waits, so
+reading it when the trigger is built is the same answer, and `item.Params`
+carries it. A card whose condition can change in the window should not copy
+this.
+
+### Cards
+
+Thirteen ship, twelve `full` and one with a caveat. They prove the cost and the gate
+(every Mount), the designation set from outside (Guidelight Matrix), the first
+saddle of a turn (Stubborn Burrowfiend), and "creatures that saddled it"
+(Rambling Possum).
+
+| Card | What it proves |
+|---|---|
+| Guidelight Matrix | `BecomeSaddled` from an activated ability, sorcery speed, a Mount-only target; its caveat is cleared |
+| Gilded Ghoda | the base shape: `Saddle(1)` and an attack trigger that reads the designation |
+| Drover Grizzly | a group keyword grant fixed at resolution |
+| Seraphic Steed | a token on a saddled attack |
+| Gloryheath Lynx | a library search from the trigger |
+| Bounding Felidar | counters on each other creature, life for each once they settle |
+| District Mascot | an entry counter, a counter-removal cost, a trigger on the Mount itself |
+| Bulwark Ox | a targeted saddled-attack trigger and a group grant behind a predicate |
+| Ornery Tumblewagg | a beginning-of-combat trigger beside a saddled one; doubling counters |
+| Caustic Bronco | the designation carried on the item (above) |
+| Stubborn Burrowfiend | `WhenBecomesSaddled`, once a turn |
+| Rambling Possum | `SaddlersOf` through a card-set prompt with a floor of zero |
+| Guardian Sunmare | ward and a nonland search; **caveat:** an Aura fetched this way enters unattached (Zur the Enchanter's gap) |
+
+### Still not covered
+
+- **Cards that act on a specific saddler** — a target restricted to the
+  saddlers (Giant Beaver), a sacrifice that reads the saddler's power (The
+  Gitrog), a tapped-and-attacking copy (Calamity), a flicker with a chosen
+  saddler at end of combat (Fortune) — are #2704. The data is built.
+- **"Saddles Mounts and crews Vehicles as though its power were 2 greater"**
+  (the Pilot token and Pilot creatures) and Interface Ace's toughness rule are
+  #2705. They need a per-creature contribution that the payment, the picker's
+  running total and the enumerator all read.
+- **An event for "whenever this creature saddles a Mount or crews a Vehicle"**
+  (Canyon Vaulter, Reckless Velocitaur) is part of #2705.
+- **The remaining Mounts** (Gila Courser, Dracosaur Auxiliary, Lagorin,
+  Congregation Gryff, Brightfield Mustang, Unswerving Sloth, Bridled Bighorn,
+  Autarch Mammoth, Venomsac Lagac, Trained Arynx, Brightfield Glider, Quilled
+  Charger, Alacrian Jaguar, Archmage's Newt) and the two support cards
+  (Kolodin, Alacrian Armory) need nothing the seam lacks; they are one file
+  each.

@@ -1152,15 +1152,15 @@ type DamageAssignmentFrame struct {
 	// a BLOCKER that blocks two or more attackers, AttackerID names the
 	// blocker, BlockerIDs the attackers it blocks, and the chooser is
 	// the blocker's controller. Its damage is "divided as its controller
-	// chooses among them", so the lethal-first order below does not
-	// apply and neither does trample. Zero in every attacker's prompt,
+	// chooses among them", and trample does not apply. Zero in every attacker's prompt,
 	// and in a frame restored from before the field, which is what
 	// those frames were.
 	BlockerDivides bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
-	// the at-least-lethal prefix rule: 1 damage satisfies the
-	// threshold regardless of the blocker's remaining toughness.
+	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage
+	// satisfies the threshold regardless of the blocker's remaining
+	// toughness.
 	HasDeathtouch bool
 	// FirstStrike is true when the assignment prompt was queued
 	// from the first-strike substep. The resume path needs this
@@ -2922,10 +2922,12 @@ type DamageAssignmentEntry struct {
 //   - the chooserID matches the attacker's controller
 //   - ordered is a permutation of the blocker IDs from the frame
 //   - sum(amounts) + trampleToPlayer == attacker power
-//   - each ordered-prefix blocker is assigned at-least-lethal before
-//     the next one receives any damage (CR 510.1c). Deathtouch
-//     relaxes the threshold to 1.
-//   - trampleToPlayer > 0 only when the attacker has trample
+//   - trampleToPlayer > 0 only when the attacker has trample, and
+//     only when every blocker is assigned lethal damage (CR 702.19b).
+//     Deathtouch relaxes the threshold to 1.
+//
+// Any other split is legal: CR 510.1c divides the damage among the
+// blockers as the controller chooses, with no order (#2692).
 //
 // On success, applies damage via the regular combat-damage path so
 // replacement (Fog), lifelink (mark source's controller), and
@@ -2996,77 +2998,36 @@ func (g *Game) ResolveDamageAssignment(
 	if total != frame.AttackerPower {
 		return ErrInvalidParam
 	}
-	// Prefix-lethal check: every blocker before the last non-zero
-	// assignment must have received at-least-lethal damage. Lethal
-	// threshold = max(1, blocker.CurrentToughness - blocker.DamageMarked).
-	// Deathtouch collapses the threshold to 1.
+	// CR 510.1c: a blocked creature's damage is "divided as its
+	// controller chooses among" its blockers. There is no damage
+	// assignment order and no lethal-first rule, so any split that adds
+	// up is legal (#2692; the engine enforced the old ordered rule until
+	// then). CR 510.1d is the same for a blocker dividing among the
+	// attackers it blocks (#1706).
 	//
-	// #1706: a blocker dividing its damage among the attackers it
-	// blocks has no order to keep (CR 510.1d) — any split that adds up
-	// is legal.
-	assigned := make(map[uuid.UUID]int, len(ordered))
-	for i, e := range ordered {
-		if frame.BlockerDivides {
-			break
-		}
-		lethal := 1
-		if !frame.HasDeathtouch {
+	// Trample is the one constraint (CR 702.19b): damage reaches the
+	// player only once every blocker has been assigned lethal damage,
+	// max(1, toughness less damage marked), and 1 from deathtouch (CR
+	// 702.2c). A blocker that has left the battlefield, or that already
+	// carries lethal damage, needs nothing.
+	if trampleToPlayer > 0 {
+		for _, e := range ordered {
+			lethal := 1
 			blk := findBattlefieldCard(g, e.BlockerID)
-			if blk == nil {
-				// Blocker left the battlefield mid-prompt. Treat as
-				// lethal satisfied (no target).
+			switch {
+			case blk == nil:
 				lethal = 0
-			} else {
-				remaining := blk.CurrentToughness() - blk.DamageMarked
-				if remaining > 1 {
-					lethal = remaining
-				} else if remaining <= 0 {
-					// Already lethal-marked; damage still applies but
-					// threshold is satisfied.
-					lethal = 0
+			case !frame.HasDeathtouch:
+				lethal = max(blk.CurrentToughness()-blk.DamageMarked, 0)
+				if lethal == 0 {
+					break
 				}
+				lethal = max(lethal, 1)
 			}
-		}
-		// Earlier blockers must be at-least-lethal before this one
-		// receives any damage (CR 510.1c "assigns damage in order").
-		// Only a blocker that actually receives damage constrains its
-		// predecessors: with three blockers and two power, [2, 0, 0]
-		// is the only legal split, and checking the zero entries'
-		// priors rejected it — no assignment could ever be accepted
-		// and the table wedged. Found by the S31 bot fuzzer.
-		if e.Amount > 0 {
-			for j := 0; j < i; j++ {
-				prior := ordered[j]
-				priorLethal := 1
-				if !frame.HasDeathtouch {
-					pblk := findBattlefieldCard(g, prior.BlockerID)
-					if pblk != nil {
-						priorRemaining := pblk.CurrentToughness() - pblk.DamageMarked
-						if priorRemaining > 1 {
-							priorLethal = priorRemaining
-						} else if priorRemaining <= 0 {
-							priorLethal = 0
-						}
-					}
-				}
-				if prior.Amount < priorLethal {
-					return ErrInvalidParam
-				}
-			}
-		}
-		// If this blocker got less than lethal AND anything downstream
-		// got non-zero damage OR trample spilled, reject.
-		if e.Amount < lethal {
-			for j := i + 1; j < len(ordered); j++ {
-				if ordered[j].Amount > 0 {
-					return ErrInvalidParam
-				}
-			}
-			if trampleToPlayer > 0 {
+			if e.Amount < lethal {
 				return ErrInvalidParam
 			}
 		}
-		assigned[e.BlockerID] = e.Amount
 	}
 	g.dequeueChoiceLocked(idx)
 

@@ -293,6 +293,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Crew != 0 {
 			out.Crew = c.Crew
 		}
+		if c.Saddle != 0 {
+			out.Saddle = c.Saddle
+		}
 		// #625: without this a composed "{T}, Remove a +1/+1 counter"
 		// silently loses its counter component and the ability becomes
 		// free to repeat — stronger than printed, the #259 direction.
@@ -316,6 +319,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		}
 		if c.DiscardCards != nil {
 			out.DiscardCards = c.DiscardCards
+		}
+		// #2598: and the reveal component — a composed "{1}, Reveal X
+		// black cards, Sacrifice this" that dropped its reveal would
+		// exile for free at any X, stronger than printed (#259).
+		if c.RevealCards != nil {
+			out.RevealCards = c.RevealCards
 		}
 		// #1213: the same reasoning again — a composed "{1}, Return a
 		// land you control to its owner's hand" that dropped the

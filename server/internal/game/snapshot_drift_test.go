@@ -462,6 +462,10 @@ var cardFields = plan(
 	// that escaped would come back hard-cast and sacrifice itself; a
 	// kicked Gatekeeper of Malakir would come back unkicked.
 	"Provenance", carried, "",
+	// ADR 0137: CR 702.167c's craft link, carried for Provenance's
+	// reason — the craft ability that wrote it is gone, so nothing could
+	// rebuild it, and a restored Jadeheart Attendant would gain no life.
+	"CraftedWith", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
 	// two above — both zero values are LEGAL states ("level 1",
@@ -477,6 +481,11 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
+	// designation and the creatures that paid for it, carried for
+	// Monstrous's reason.
+	"Saddled", carried, "",
+	"SaddledBy", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",
@@ -576,6 +585,7 @@ var playerFields = plan(
 	"BotDeck", carried, "",
 	"Agent", carried, "",
 	"AgentClient", carried, "",
+	"CitysBlessing", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",

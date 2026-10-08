@@ -709,14 +709,29 @@ func TestB19IllustriousWanderglyphMakesGnomesAndLordsThemAtTen(t *testing.T) {
 		t.Fatal("nine permanents: still no bonus")
 	}
 	b12Permanent(g, me.ID, "Last Land", "Basic Land — Forest")
+	g.RunStateChecksForTest()
 	if effectivePower(t, g, myr) != 3 || effectivePower(t, g, gnome) != 3 {
 		t.Error("ten permanents: other artifact creatures you control get +2/+2")
 	}
 	if effectivePower(t, g, glyph) != 2 || effectivePower(t, g, bear) != 2 || effectivePower(t, g, theirMyr) != 1 {
 		t.Error("not itself, not a non-artifact, not an opponent's")
 	}
-	if spec, _ := Lookup(b19IllustriousWanderglyphOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the blessing gap must be declared")
+	// The city's blessing is kept (CR 702.131c, #2696).
+	g.WithWriteLock(func() {
+		removed := 0
+		for i := len(g.Battlefield.Cards) - 1; i >= 0 && removed < 6; i-- {
+			if c := g.Battlefield.Cards[i]; c.Controller == me.ID && c.Name == "Land" {
+				_, _ = g.Battlefield.Remove(c.InstanceID)
+				removed++
+			}
+		}
+		g.BumpLayerVersionForTest()
+	})
+	if effectivePower(t, g, myr) != 3 {
+		t.Error("back under ten: the +2/+2 stays, the blessing is kept")
+	}
+	if spec, _ := Lookup(b19IllustriousWanderglyphOracle); spec.Completeness != CompletenessFull {
+		t.Error("the blessing is a real designation now, so the card is full")
 	}
 }
 

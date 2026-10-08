@@ -222,6 +222,8 @@ func TestBlocksAttackerModIsValidated(t *testing.T) {
 		{"lure naming an object", Mod{Kind: ModAddBlockRequirement, Text: string(BlockRequirementLure), Objects: []ObjectRef{ref}}, true},
 		{"another mod naming an object", Mod{Kind: ModModifyPT, Power: 1, Objects: []ObjectRef{ref}}, true},
 		{"unknown kind", AddBlockRequirementMod("blocksEverything"), true},
+		{"lure sparing a player (#2050)", AddLureExceptMod(uuid.New()), false},
+		{"must-be-blocked naming a player", Mod{Kind: ModAddBlockRequirement, Text: string(BlockRequirementMustBeBlocked), Player: uuid.New()}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

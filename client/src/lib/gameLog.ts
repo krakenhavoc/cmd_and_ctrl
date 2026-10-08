@@ -173,6 +173,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // The game becoming day or night turns permanents over with no card
   // behind it, so it is toned like the turn-over it causes.
   day_night: "tone-zone",
+  // The blessing is a designation earned off the board, toned with the
+  // other board-state lines.
+  citys_blessing: "tone-zone",
   turn_face_down: "tone-zone",
   turn_face_up: "tone-zone",
 };

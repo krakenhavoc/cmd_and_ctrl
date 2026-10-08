@@ -918,27 +918,35 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// name and the next few are that payment with its last card
 		// swapped for the next-cheapest.
 		pool := g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)
-		if offer.TapOthers != nil {
-			// ADR 0135 §1: a tap price spends no card, so the policy
-			// prices each candidate as TAPPED, not as lost — a blocker
-			// it no longer has, and its attack before combat on its own
-			// turn (TargetCandidate.Tap).
-			pool = e.cheapestTapFirst(pool)
+		if offer.ReducedBySacrificedManaValue {
+			// ADR 0135 §4 (owner decision 5): an emerge payment is priced
+			// on its own, because what it saves is the sacrificed
+			// permanent's mana value — and offered best first, up to the
+			// cap, among the payments the seat can afford.
+			altCostSets = e.emergePayments(card, offer, pool, cost, fromZone, spend, xFloor)
 		} else {
-			pool = e.cheapestFuelFirst(pool)
-		}
-		if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
-			// ADR 0135 §2: a set rule (Foil's "an Island card and
-			// another card") — the first N of the pool may be two
-			// non-Islands. One payment from #2526's set search, fed
-			// the pool in the policy's order, as sacrificePayments
-			// does for a sacrifice clause.
-			altCostSets = nil
-			if pay != nil {
-				altCostSets = [][]uuid.UUID{pay}
+			if offer.TapOthers != nil {
+				// ADR 0135 §1: a tap price spends no card, so the policy
+				// prices each candidate as TAPPED, not as lost — a blocker
+				// it no longer has, and its attack before combat on its
+				// own turn (TargetCandidate.Tap).
+				pool = e.cheapestTapFirst(pool)
+			} else {
+				pool = e.cheapestFuelFirst(pool)
 			}
-		} else {
-			altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+			if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
+				// ADR 0135 §2: a set rule (Foil's "an Island card and
+				// another card") — the first N of the pool may be two
+				// non-Islands. One payment from #2526's set search, fed
+				// the pool in the policy's order, as sacrificePayments
+				// does for a sacrifice clause.
+				altCostSets = nil
+				if pay != nil {
+					altCostSets = [][]uuid.UUID{pay}
+				}
+			} else {
+				altCostSets = e.combos(pool, want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
+			}
 		}
 		if len(altCostSets) == 0 {
 			// Unreachable through CastOffersForLocked, which already
@@ -949,6 +957,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 	}
+	// ADR 0135 §4: the reduction the FIRST payment buys, priced into
+	// every announcement below; the other payments are repriced on their
+	// own when they are offered against it (first.base).
+	altMV := emergeManaValue(g, offer, altCostSets[0])
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
 	// ADR 0100 §6: a VARIABLE sacrifice clause on a cast — "sacrifice X
@@ -1029,12 +1041,23 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		delvePool = e.cheapestFuelFirst(g.DelveOptionsForEffect(e.seat, card.InstanceID))
 	}
 
-	budget := e.opts.MaxExpansionPerSource
+	total := e.opts.MaxExpansionPerSource
 	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
-	for _, modes := range modeSets {
+	// #2681, ADR 0065 §6: the budget is spent MODES-outermost. Each
+	// mode selection is walked on its own, up to the whole budget, into
+	// queued[i]; the moves offered are then taken round-robin across
+	// the selections, so every selection gets one announcement before
+	// any gets a second. Before this the first selection's target
+	// product could spend the whole budget: Mystic Confluence's
+	// [bounce, bounce, bounce] over ten creatures crowded out
+	// [draw, draw, draw].
+	queued := make([][]announcedCast, len(modeSets))
+modeLoop:
+	for si, modes := range modeSets {
+		budget := total
 		// Spree (CR 702.172a): this selection's own mana joins the
 		// base cost at the same point printedCostLocked adds it
 		// (ADR 0073 §3's precedence), so the price this candidate is
@@ -1071,9 +1094,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// sacrificed.
 		if !perTarget && !varSac {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
-				Card:       card,
-				Controller: e.seat,
-				FromZone:   fromZone,
+				Card:                  card,
+				Controller:            e.seat,
+				FromZone:              fromZone,
+				AltSacrificeManaValue: altMV,
 			})
 			if err != nil {
 				continue
@@ -1166,10 +1190,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				// a Fireball the seat can pay for at one target is not
 				// crowded out by the three-target sets it cannot.
 				priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
-					Card:       card,
-					Controller: e.seat,
-					FromZone:   fromZone,
-					Targets:    targets,
+					Card:                  card,
+					Controller:            e.seat,
+					FromZone:              fromZone,
+					Targets:               targets,
+					AltSacrificeManaValue: altMV,
 				})
 				if err != nil {
 					continue
@@ -1222,7 +1247,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				for _, sacs := range sacSets {
 					if budget <= 0 {
 						e.budgetSpent()
-						return
+						continue modeLoop
 					}
 					payX, payLife, payCost, payPrinted := setX, setLife, setCost, setPrinted
 					payDelve, payDelveFull := setDelve, setDelveFull
@@ -1239,12 +1264,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							tgts = targets
 						}
 						priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
-							Card:        card,
-							Controller:  e.seat,
-							FromZone:    fromZone,
-							XValue:      payX,
-							Targets:     tgts,
-							Sacrificing: len(sacs),
+							Card:                  card,
+							Controller:            e.seat,
+							FromZone:              fromZone,
+							XValue:                payX,
+							Targets:               tgts,
+							Sacrificing:           len(sacs),
+							AltSacrificeManaValue: altMV,
 						})
 						if err != nil {
 							continue
@@ -1286,7 +1312,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							TeamworkIDs:  teamIDs,
 							BlightIDs:    blightIDs,
 							AltCostIDs:   altCostSets[0],
-						})) {
+						}, offer)) {
 						continue
 					}
 					budget--
@@ -1301,28 +1327,43 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 {
 						xv = openX(xFloor, payX)
 					}
-					if first == nil {
-						first = &announcedCast{
-							modes:     modes,
-							targets:   targets,
-							x:         payX,
-							life:      payLife,
-							cost:      payCost,
-							printed:   payPrinted,
-							dist:      dist,
-							discards:  discards,
-							sacs:      sacs,
-							team:      teamIDs,
-							blight:    blightIDs,
-							alt:       altCostSets[0],
-							delve:     payDelve,
-							delveFull: payDelveFull,
-							xv:        xv,
-						}
-					}
-					emit(altCostSets[0], modes, targets, payX, payLife, dist, discards, sacs, payDelve, xv)
+					queued[si] = append(queued[si], announcedCast{
+						modes:     modes,
+						targets:   targets,
+						x:         payX,
+						life:      payLife,
+						base:      modeCost,
+						cost:      payCost,
+						printed:   payPrinted,
+						dist:      dist,
+						discards:  discards,
+						sacs:      sacs,
+						team:      teamIDs,
+						blight:    blightIDs,
+						alt:       altCostSets[0],
+						delve:     payDelve,
+						delveFull: payDelveFull,
+						xv:        xv,
+						offer:     offer,
+					})
 				}
 			}
+		}
+	}
+	budget := total
+	take := roundRobin(queued, budget)
+	for si, n := range take {
+		budget -= n
+		if n < len(queued[si]) {
+			// ADR 0122 §6.2: an announcement the budget never offered.
+			e.budgetSpent()
+		}
+		for i := range queued[si][:n] {
+			a := &queued[si][i]
+			if first == nil {
+				first = a
+			}
+			emit(altCostSets[0], a.modes, a.targets, a.x, a.life, a.dist, a.discards, a.sacs, a.delve, a.xv)
 		}
 	}
 	// #1013: the ALTERNATIVE payments, out of whatever expansion budget
@@ -1379,7 +1420,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// kept away from the auto-tapper (game.CastAutoTapExclusions) —
 		// a different three creatures may include the Spawn the first
 		// payment left free to make the mana.
-		if !e.canPayExcluding(first.cost, first.x, spend, first.autoTapExclusions(altPaid)) {
+		//
+		// ADR 0135 §4: and an emerge payment at ITS price, which is the
+		// first announcement's less this permanent's mana value.
+		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac)
+		if !ok || !e.canPayExcluding(payCost, first.x, spend, first.autoTapExclusions(altPaid)) {
 			continue
 		}
 		budget--
@@ -1396,7 +1441,11 @@ type announcedCast struct {
 	// life is how many Phyrexian symbols the announcement pays with
 	// life (#1677); printed is its cost before that strike, and cost
 	// the mana it pays after it.
-	life     int
+	life int
+	// base is the announcement's cost before the board's modifiers (its
+	// modes' mana included), the cost an emerge payment is repriced
+	// from (ADR 0135 §4).
+	base     game.ParsedCost
 	cost     game.ParsedCost
 	printed  game.ParsedCost
 	dist     map[uuid.UUID]int
@@ -1418,6 +1467,9 @@ type announcedCast struct {
 	// xv is the announcement's open X (ADR 0122 §6.2), nil when its X is
 	// fixed by something else in the move.
 	xv *MoveValue
+	// offer is the alternative cost the announcement claims, nil for
+	// none: what its payments are excluded from the auto-tap plan by.
+	offer *game.AlternativeCost
 }
 
 // castEmitter writes one concrete cast move.
@@ -1447,6 +1499,7 @@ func (e *enumerator) castMoveEmitter(
 	// #1918: fixed for the whole expansion — it reads the offer and the
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
+	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		label := "Cast " + card.Name
 		switch from {
@@ -1488,6 +1541,10 @@ func (e *enumerator) castMoveEmitter(
 		if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
 			label += sacrificeLabel(g, sacs)
 		}
+		// #2681: the modes, so two moves with the same targets and
+		// different modes are told apart (Prismari Command's [0,1] and
+		// [0,2] at the same two targets).
+		label += modesLabel(modeSpec, modes)
 		label += targetLabel(g, targets)
 		e.add(Move{
 			Type:   TypeCastSpell,
@@ -1837,7 +1894,7 @@ func (a *announcedCast) autoTapExclusions(alt []uuid.UUID) map[uuid.UUID]bool {
 		TeamworkIDs:  a.team,
 		BlightIDs:    a.blight,
 		AltCostIDs:   alt,
-	})
+	}, a.offer)
 }
 
 // legalModeSets lists every distinct mode selection of size lo..hi,
@@ -1913,10 +1970,14 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 			}
 		}
 	}
+	// Then the rest: distinct combinations, or for a repeatable spec
+	// every multiset (CR 700.2d, #2681) — [bounce, bounce, draw] as
+	// well as [bounce, draw, draw]. The all-one-option ones were
+	// emitted above.
 	var rec func(start int, cur []int) bool
 	rec = func(start int, cur []int) bool {
 		if len(cur) >= lo && len(cur) <= hi {
-			if !(repeatable && len(cur) == 1) && !add(cur) {
+			if !(repeatable && game.SameModeThroughout(cur)) && !add(cur) {
 				return false
 			}
 		}
@@ -1924,7 +1985,11 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 			return true
 		}
 		for i := start; i < len(options); i++ {
-			if !rec(i+1, append(cur, options[i])) {
+			next := i + 1
+			if repeatable {
+				next = i
+			}
+			if !rec(next, append(cur, options[i])) {
 				return false
 			}
 		}
@@ -2318,4 +2383,26 @@ func (e *enumerator) tapCreaturesPayment(n int) []uuid.UUID {
 		return e.g.TeamworkPowerForEffect(pool[i]) < e.g.TeamworkPowerForEffect(pool[j])
 	})
 	return pool[:n]
+}
+
+// roundRobin is how many of each queue's entries a budget offers when
+// it is spent across the queues in turn: one from each queue that has
+// one, then a second from each, and so on (ADR 0065 §6's
+// modes-outermost order, #2681).
+func roundRobin[T any](queues [][]T, budget int) []int {
+	take := make([]int, len(queues))
+	for more := true; more && budget > 0; {
+		more = false
+		for i := range queues {
+			if budget <= 0 {
+				break
+			}
+			if take[i] < len(queues[i]) {
+				take[i]++
+				budget--
+				more = true
+			}
+		}
+	}
+	return take
 }

@@ -43,7 +43,7 @@ func (e *enumerator) teamworkBlightPayment(mandatory *game.AdditionalCost, optio
 		// controls, greedy from the biggest effective power down, no
 		// summoning-sickness filter (CR 702.194a is crew's sentence).
 		// Its candidates are the engine's TeamworkOptionsForEffect.
-		team = e.crewPayment(teamwork)
+		team = e.crewPayment(teamwork, uuid.Nil)
 		if team == nil {
 			return nil, nil, false
 		}

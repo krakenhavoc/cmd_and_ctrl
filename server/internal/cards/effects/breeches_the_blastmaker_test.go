@@ -29,6 +29,15 @@ func breechesRNGKey() [32]byte {
 	}
 }
 
+// breechesSourceID is Breeches' fixed InstanceID. The keyed coin stream
+// is seeded from (game key, player seat, SOURCE id, turn, counter), so
+// pinning only the key left the source as uuid.New() and the whole
+// flip sequence different on every run: the 12-burn scan in
+// TestBreechesCopiesOnAWinAndBlastsOnALoss then saw all-wins or
+// all-losses about 1 run in 2048 (#2545; #1605 pinned the key and
+// missed this half).
+var breechesSourceID = uuid.MustParse("5b1e7c0d-3a42-4f6e-9d18-c2a07e4b6f93")
+
 // castSpellWithCost is castCatalogSpell for a spell whose MANA COST
 // the test needs — "damage equal to that spell's mana value" is
 // unobservable on the zero-cost placeholder cards the harness seeds.
@@ -94,7 +103,7 @@ func breechesPlay(t *testing.T, burn int, afterFlip func(g *game.Game, bolt uuid
 	g := newCatalogGame(t)
 	g.SetRNGKeyForTest(breechesRNGKey())
 	me, opp := g.Seats[0], g.Seats[1]
-	breeches := pushCatalogPermanent(g, me.ID, "Breeches, the Blastmaker",
+	breeches := pushCatalogPermanentWithID(g, breechesSourceID, me.ID, "Breeches, the Blastmaker",
 		"Legendary Creature — Goblin Pirate", breechesBlastmakerOracle, false)
 	relic := pushCatalogPermanent(g, me.ID, "Worn Relic", "Artifact", "", false)
 

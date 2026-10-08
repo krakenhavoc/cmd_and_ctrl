@@ -4579,3 +4579,61 @@ declare blockers" (`dockHint.ts`).
 - **A disconnected defender** still holds the step until someone sends
   `advance_step`. A per-seat timeout belongs to the table-pacing work, not to
   the rules.
+
+## Amendment (2026-10-08, [#2050](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2050)): a Lure on only your opponents' creatures
+
+Follows up the #1597 and #1684 amendments. Decisions 1–70 stand. The #1684
+amendment's filtered Lure described the blocker; this one describes who
+controls it. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+You Look Upon the Tarrasque's "All creatures your opponents control able to
+block that creature this turn do so" is narrower than Alluring Scent's. When
+the target is an opponent's creature attacking you, your own creatures are
+not required to block it, and a plain Lure would force them to. That is
+stronger than printed, so the card waited.
+
+### Decisions
+
+71. **The exemption is a player, not a characteristic filter.**
+    `BlockRequirement.ExceptController` names the player whose creatures the
+    Lure does not bind. Zero is an ordinary Lure. `bindsBlocker` checks it
+    first: a blocker that player controls at the declaration is not bound,
+    any other blocker is, and a nil blocker is not. It is read at the
+    declaration like `Filter`, so a creature that changed hands since the
+    effect resolved is judged by its controller now.
+72. **The same record, one more field.** A resolving effect writes it with
+    `game.AddLureExceptMod(controller)`, a `ModAddBlockRequirement` of kind
+    `lure` whose `Mod.Player` is the exempt player. `Mod.Player` is already
+    serialised, so undo, `Clone` and a restore point need nothing new.
+    Registration refuses a player on any other kind (`blockRequirementModProblem`).
+    `effects.BlockRequirementUntilEOT.ExceptController` is the card-side
+    spelling and panics on a non-Lure kind.
+73. **Every reader goes through `bindsBlocker`.** The block search, the
+    CR 509.1c checkpoint, `blockPairWeight` and the enumerator already ask it,
+    so the enumerator and the bots follow without a change of their own. A
+    legal-package test pins that a defender whose creatures are all spared is
+    offered `finish_blocks` and no required block.
+
+### Tests
+
+- `game/block_requirements_2050_test.go`: `bindsBlocker` spares the exempt
+  player and binds others, a nil blocker, and an ordinary Lure is unchanged.
+  `block_requirements_1684_test.go`'s validation table gains a Lure naming a
+  player and a non-Lure naming one.
+- `legal/block_requirements_2050_test.go`: the defender is offered
+  `finish_blocks` and no required block.
+- `cards/effects/you_look_upon_the_tarrasque_test.go`: the caster's opponent
+  must block with every creature able; the caster's own creatures need not;
+  the target is 7/7 and indestructible; Run and Hide prevents combat damage
+  to the caster's creature and not to the opponent's, nor non-combat damage.
+
+### What this does NOT decide
+
+- **"Opponents" is "every player but the controller."** Commander has no
+  teams, so the two coincide; a team format would need the exemption to be a
+  set.
+- **A Lure that spares a creature type or a keyword and a player together.**
+  The two narrowings compose by both applying; no card needs it.

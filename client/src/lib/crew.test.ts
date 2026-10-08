@@ -95,6 +95,12 @@ describe("abilityBlocked for a crew ability", () => {
     expect(abilityBlocked(empty, false, false)).toBe("no untapped creatures to crew with");
   });
 
+  // #2695: a saddle ability is the same row over OTHER creatures.
+  it("says so in saddle's words when no other creature is untapped", () => {
+    const empty: ActivatedAbilityView = { ...crew4, saddle: true, crew_options: { cards: [] } };
+    expect(abilityBlocked(empty, false, false)).toBe("no other untapped creatures to saddle with");
+  });
+
   it("leaves the row open when creatures exist, even if they fall short", () => {
     // Whether they ADD UP is the prompt's job, with the running
     // total in front of the player — two answers on screen would be

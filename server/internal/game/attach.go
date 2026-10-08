@@ -52,6 +52,12 @@ func (c Card) IsAura() bool {
 	return c.IsEnchantment() && c.HasSubtype("Aura")
 }
 
+// IsRole reports whether the card is a Role: an Aura with the Role
+// subtype (CR 303.7). Effective characteristics, like IsAura.
+func (c Card) IsRole() bool {
+	return c.IsAura() && c.HasSubtype("Role")
+}
+
 // IsAttached reports whether this card is currently attached to
 // anything. The zero TargetRef (Kind == "") is the unattached
 // sentinel, and TargetNone / TargetSelf are treated as unattached
@@ -319,7 +325,10 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// A catalogued Aura always acquires its host at resolution,
 		// so reaching here means an effect put it onto the
 		// battlefield without one.
-		return !c.IsAura() || TargetSpecFor(catalogKeyOf(c)) == nil
+		// A Role token has no enchant clause in the catalog (a token
+		// has no TargetSpec) but is created attached and is as
+		// illegal unattached as any other Aura (CR 704.5m, CR 303.7).
+		return !c.IsAura() || (TargetSpecFor(catalogKeyOf(c)) == nil && !c.IsRole())
 	}
 	// CR 702.16c-d: a permanent with protection from a quality can't
 	// be enchanted, equipped or fortified by anything WITH that
@@ -453,6 +462,35 @@ func (g *Game) attachmentSBALocked() bool {
 		}
 		doomed = append(doomed, doomedAttachment{id: c.InstanceID, aura: c.IsAura()})
 	}
+	// CR 704.5z: a permanent with two or more Roles controlled by the
+	// same player keeps only the newest of that player's Roles on it;
+	// the rest go to their owners' graveyards. Newest is the latest
+	// attach timestamp (CR 303.7a, 613.7e), board order breaking a tie.
+	doomedSet := make(map[uuid.UUID]bool, len(doomed))
+	for _, d := range doomed {
+		doomedSet[d.id] = true
+	}
+	type roleKey struct{ host, controller uuid.UUID }
+	newest := map[roleKey]int{}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if doomedSet[c.InstanceID] || !c.IsRole() || c.AttachedTo.Kind != TargetCard {
+			continue
+		}
+		k := roleKey{c.AttachedTo.ID, c.Controller}
+		if j, ok := newest[k]; !ok || c.AttachedAt >= g.Battlefield.Cards[j].AttachedAt {
+			newest[k] = i
+		}
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if doomedSet[c.InstanceID] || !c.IsRole() || c.AttachedTo.Kind != TargetCard {
+			continue
+		}
+		if newest[roleKey{c.AttachedTo.ID, c.Controller}] != i {
+			doomed = append(doomed, doomedAttachment{id: c.InstanceID, aura: true})
+		}
+	}
 	if len(doomed) == 0 {
 		return false
 	}
@@ -535,4 +573,18 @@ func (g *Game) attachResolvedAuraLocked(cardID uuid.UUID, item *StackItem) {
 		return
 	}
 	_ = g.AttachForEffect(cardID, host)
+}
+
+// AttachedToSourceOKForEffect answers TargetSpec.AttachedToSource for
+// one candidate of a sacrifice clause: true when the clause does not
+// carry the flag, otherwise true only when `candidate` is attached to
+// the permanent paying the cost (`sourceID`). One answer for the
+// payment validator, the legal enumerator and the protocol view.
+// Caller must hold g.mu.
+func (g *Game) AttachedToSourceOKForEffect(spec *TargetSpec, sourceID, candidate uuid.UUID) bool {
+	if spec == nil || !spec.AttachedToSource {
+		return true
+	}
+	c := findBattlefieldCard(g, candidate)
+	return c != nil && c.IsAttachedTo(sourceID)
 }

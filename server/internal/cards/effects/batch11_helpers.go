@@ -44,22 +44,6 @@ func b11ControlsBasicLand(g *game.Game, src *game.Card) bool {
 	return false
 }
 
-// b11PermanentsControlled counts the permanents `controller`
-// controls — Tendershoot Dryad's "ten or more permanents". Walks the
-// live slice because it runs inside a layer recompute.
-func b11PermanentsControlled(g *game.Game, controller uuid.UUID) int {
-	if g.Battlefield == nil {
-		return 0
-	}
-	n := 0
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].Controller == controller {
-			n++
-		}
-	}
-	return n
-}
-
 // b11CreatureCardsInGraveyard counts the creature cards in
 // `controller`'s graveyard — Wight of the Reliquary's bonus. A card in
 // a graveyard has no layer cache, so this is the printed type line,

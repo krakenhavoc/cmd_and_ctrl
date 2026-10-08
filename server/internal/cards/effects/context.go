@@ -166,6 +166,22 @@ func (c *Context) SacrificedPermanent() (game.PermanentInfo, bool) {
 	return all[0], true
 }
 
+// AltCostPermanents is the permanents the spell's alternative cost paid
+// with, each as it last existed on the battlefield (ADR 0135 §4,
+// PaidCost.AltCostObjects): an emerge spell's sacrificed creature, Dread
+// Return's three. Nil when the cast claimed no offer with a battlefield
+// component. For an entry trigger, whose own record is empty, read the
+// permanent's CastProvenance through game.AltCostPermanentsForEffect
+// instead.
+//
+// Must be called under the write lock the resolution holds.
+func (c *Context) AltCostPermanents() []game.PermanentInfo {
+	if c.Game == nil {
+		return nil
+	}
+	return c.Game.AltCostPermanentsForEffect(c.Paid().AltCostObjects)
+}
+
 // SacrificedPower is the sacrificed permanent's power as it last
 // existed on the battlefield, floored at zero: "damage equal to the
 // sacrificed creature's power" with a -1 power creature deals none (CR

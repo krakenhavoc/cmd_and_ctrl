@@ -1452,6 +1452,11 @@ func dispatch(g *game.Game, a Action) error {
 			// harness, Altar of Bhaal). Its own field rather than
 			// exile_ids, which names cards in a hand or a graveyard.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #2598 — reveal_ids names the cards revealed to pay a
+			// "Reveal X black cards from your hand" cost (Martyr of
+			// Bones). The name a cast's reveal pick rides; the count
+			// is the clause's, or the announced x_value for the X form.
+			RevealIDs []string `json:"reveal_ids,omitempty"`
 			// #1310 — waterbend_ids names the untapped artifacts and
 			// creatures tapped to pay part of a "Waterbend {N}" cost
 			// (CR 701.67a), each covering {1} of its generic mana.
@@ -1554,6 +1559,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				exilePermanentIDs = append(exilePermanentIDs, id)
 			}
+			revealIDs := make([]uuid.UUID, 0, len(p.RevealIDs))
+			for _, raw := range p.RevealIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability reveal_ids: %w", err)
+				}
+				revealIDs = append(revealIDs, id)
+			}
 			waterbendIDs := make([]uuid.UUID, 0, len(p.WaterbendIDs))
 			for _, raw := range p.WaterbendIDs {
 				id, err := uuid.Parse(raw)
@@ -1588,6 +1601,7 @@ func dispatch(g *game.Game, a Action) error {
 				TopIDs:            topIDs,
 				ReturnIDs:         returnIDs,
 				ExilePermanentIDs: exilePermanentIDs,
+				RevealIDs:         revealIDs,
 				WaterbendIDs:      waterbendIDs,
 				Targets:           refs,
 				// #1563, CR 601.2d via 602.2b: the division, with
@@ -2512,9 +2526,9 @@ type castTargetWire struct {
 
 // damageAssignmentParam is one {blocker_id, amount} pair from a
 // resolve_choice action on a PendingChoiceDamageAssignment entry.
-// The attacker's controller submits an ordered list; the server's
-// ResolveDamageAssignment validates prefix-lethal and total. Added
-// in S18 sub-PR 3.
+// The attacker's controller submits one entry per blocker; the
+// server's ResolveDamageAssignment validates the total and trample's
+// lethal-first rule (CR 510.1c, 702.19b). Added in S18 sub-PR 3.
 type damageAssignmentParam struct {
 	BlockerID string `json:"blocker_id"`
 	Amount    int    `json:"amount"`

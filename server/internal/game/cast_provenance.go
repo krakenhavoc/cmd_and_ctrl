@@ -171,6 +171,16 @@ type CastProvenance struct {
 	// that rule, and never by ranging this slice against a zone.
 	Delved []ObjectRef `json:"delved,omitempty"`
 
+	// AltCostObjects is PaidCost.AltCostObjects carried across the entry
+	// (CR 400.7d, ADR 0135 §4): the objects the alternative cost's card
+	// component paid with, in the order named. An entry trigger cannot
+	// read the spell's record, which is gone by the time it resolves, so
+	// "if this creature's emerge cost was paid, … X is the sacrificed
+	// creature's toughness" (Adipose Offspring) reads it here, through
+	// Game.AltCostPermanentsOfForEffect. Nil for a permanent whose cast
+	// claimed no such offer.
+	AltCostObjects []ObjectRef `json:"altCostObjects,omitempty"`
+
 	// X is StackItem.XValue at the moment the spell became this
 	// permanent (CR 107.3m, #1312): "if an object's enters-the-
 	// battlefield triggered ability … refers to X, and the spell that
@@ -225,7 +235,7 @@ func (p CastProvenance) Spent() ManaSpent {
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0 ||
-		p.Caster != uuid.Nil || len(p.Delved) > 0
+		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.AltCostObjects) > 0
 }
 
 // CastByItsController reports whether the permanent `c` was cast by
@@ -256,6 +266,9 @@ func (p CastProvenance) Clone() CastProvenance {
 	// whose Applied stamps are what a Hall of the Bandit Lord's haste
 	// reads off this permanent.
 	p.Mana = cloneManaTokens(p.Mana)
+	if len(p.AltCostObjects) > 0 {
+		p.AltCostObjects = append([]ObjectRef(nil), p.AltCostObjects...)
+	}
 	if len(p.Delved) > 0 {
 		p.Delved = append([]ObjectRef(nil), p.Delved...)
 	}
@@ -380,6 +393,11 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 	// backing array for the reason OptionalCosts has one.
 	if len(item.Paid.Delved) > 0 {
 		prov.Delved = append([]ObjectRef(nil), item.Paid.Delved...)
+	}
+	// ADR 0135 §4: the objects the alternative cost paid with, for the
+	// same reason and with the same copy.
+	if len(item.Paid.AltCostObjects) > 0 {
+		prov.AltCostObjects = append([]ObjectRef(nil), item.Paid.AltCostObjects...)
 	}
 	// ADR 0104: who cast it. A copy was never cast (CR 707.10), and
 	// its token takes another path (resolvePermanentSpellCopyLocked),

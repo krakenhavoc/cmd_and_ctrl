@@ -148,6 +148,23 @@ const CASES: Case[] = [
     confirms: [["ox"]],
   },
   {
+    // #2695 (CR 702.171a): a Mount's saddle ability is crew's picker with
+    // its own word, over the other creatures the server lists.
+    title: "the saddle picker",
+    component: CrewCostModal as never,
+    props: (c) => ({
+      card: card("mount", "Gilded Ghoda"),
+      ability: { index: 0, crew_cost: 1, saddle: true },
+      options: [ox],
+      onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "Gilded Ghoda",
+    primary: "Saddle",
+    pick: firstOption,
+    confirms: [["ox"]],
+  },
+  {
     title: "the counter-cost picker",
     component: CounterCostModal as never,
     props: (c) => ({
@@ -469,5 +486,32 @@ describe("an alternative-cost tap picker", () => {
     const text = sheetPanel()!.textContent ?? "";
     expect(text).toContain("Tap an untapped creature you control to cast Orim's Cure.");
     expect(text).not.toContain("to pay for this ability");
+  });
+});
+
+// ADR 0135 §4: the emerge picker shows each creature's mana value and the
+// price the spell is cast at with it sacrificed.
+describe("an emerge sacrifice picker", () => {
+  it("shows each candidate's price", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      {
+        component: SacrificeCostModal as never,
+        props: {
+          source: card("fiend", "Elder Deep-Fiend"),
+          label: "a creature",
+          options: [ox],
+          castName: "Elder Deep-Fiend",
+          prices: { [ox.instance_id]: { mana_value: 4, price: "{1}{U}{U}" } },
+          onConfirm: (ids: string[]) => calls.confirmed.push([ids]),
+          onCancel: () => calls.cancelled++,
+        },
+      } as never,
+    );
+    flushSync();
+    const text = sheetPanel()!.textContent ?? "";
+    expect(text).toContain("Sacrifice a creature to cast Elder Deep-Fiend.");
+    expect(text).toContain("MV 4 · costs {1}{U}{U}");
   });
 });

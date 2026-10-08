@@ -418,3 +418,11 @@ shipped with the gap as a declared caveat and a pinned test
   doesn't count — is a general engine limitation tracked in ADR 0013
   and `docs/engine-seams.md`, not a Ranar-specific simplification, so
   it does not reopen the caveat.
+
+## Amendment (2026-10-08, #2664): the tally counts lands put into a graveyard
+
+*Branch `feat/2664-land-to-graveyard-tally`.*
+
+The Lady of Otaria's end-step trigger asks "if a land you controlled was put into a graveyard from the battlefield this turn" (CR 603.4). `PlayerTurnTally.PermanentsLeft` (#2148) counts every exit under a player's control and cannot say "a land" or "to a graveyard", and `PermanentsSacrificed` misses a land that was destroyed or put there another way.
+
+`PlayerTurnTally.LandsToGraveyard` is the missing cell, an additive field in snapshot schema 7. It is bumped in `turnTallyListener.OnEvent` from the same `EventLTB` branch that feeds `CreaturesDied`, once the destination is known to be a graveyard: the permanent is read as a land from `lastKnownBattlefield` (CR 608.2h, so an animated land that dies counts) and credited to the controller the exit stamped on the event (CR 603.10a). A bounce, an exile, a nonland permanent and an opponent's land do not count. It resets with the rest of the tally and is read through `Game.LandToGraveyardThisTurn`. Back-out: remove the bump and `TestTurnTallyCountsLandsPutIntoAGraveyard` and `TestTheLadyOfOtariaTakesDwarvesAndBottomsTheRest` fail.

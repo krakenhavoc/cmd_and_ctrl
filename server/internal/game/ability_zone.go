@@ -86,6 +86,8 @@ func AbilityNeedsPermanentSource(cost AbilityCost) string {
 		return "an exert cost"
 	case cost.Crew > 0:
 		return "a crew cost"
+	case cost.Saddle > 0:
+		return "a saddle cost"
 	case cost.Loyalty != nil:
 		return "a loyalty cost"
 	}

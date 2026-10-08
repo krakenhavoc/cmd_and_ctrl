@@ -82,7 +82,11 @@ import (
 //   - ControllerMustControlMore, "unless you control more creatures than
 //     defending player" (Goblin Goon, Mogg Toady; Monstrous Hound's
 //     lands). The "you" is the attacking creature's controller: every
-//     printed one is the creature's own ability.
+//     printed one is the creature's own ability;
+//   - ControllerMustHaveCitysBlessing, "unless you have the city's
+//     blessing" (Wayward Swordtooth, #2696, CR 702.131c). A fact about
+//     the attacking creature's controller alone, so it refuses every
+//     target while it is unmet.
 //
 // Every clause a restriction sets must hold. A creature that prints two
 // conditions has two restrictions, and both must hold too.
@@ -131,6 +135,12 @@ type AttackTargetRestriction struct {
 	// controller does: "can't attack unless you control more creatures
 	// than defending player".
 	ControllerMustControlMore []PermanentQuery `json:",omitempty"`
+	// ControllerMustHaveCitysBlessing forbids attacking anything while
+	// the attacking creature's controller lacks the city's blessing:
+	// "can't attack unless you have the city's blessing" (Wayward
+	// Swordtooth, #2696, CR 702.131c). Read live at declaration, like
+	// every clause here; the blessing is never lost once earned.
+	ControllerMustHaveCitysBlessing bool `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -152,14 +162,16 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderMustBeMonarch == o.DefenderMustBeMonarch &&
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
 		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
-		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn
+		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn &&
+		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing
 }
 
 // asksOfTheDefender reports whether r has any clause about the target's
 // defending player (CR 508.5), as opposed to only the owner clauses.
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
-		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0
+		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
+		r.ControllerMustHaveCitysBlessing
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -187,6 +199,9 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	if qs := r.ControllerMustControlMore; len(qs) > 0 &&
 		g.countMatchingLocked(you, qs) <= g.countMatchingLocked(defender, qs) {
 		return g.playerNameLocked(you) + " doesn't control more " + permanentQueriesPlural(qs) + " than " + name
+	}
+	if r.ControllerMustHaveCitysBlessing && !g.CitysBlessingForEffect(you) {
+		return g.playerNameLocked(you) + " doesn't have the city's blessing"
 	}
 	return ""
 }

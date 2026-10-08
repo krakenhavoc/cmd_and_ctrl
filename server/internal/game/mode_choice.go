@@ -231,11 +231,13 @@ func ModePickSelections(choice *PendingChoice, budget int) [][]int {
 			}
 		}
 	}
-	// Then the distinct combinations, shortest first.
+	// Then the rest: the distinct combinations, or for a repeatable
+	// prompt every multiset (CR 700.2d, #2681), mixed ones such as
+	// [bounce, bounce, draw] included.
 	var rec func(start int, cur []int) bool
 	rec = func(start int, cur []int) bool {
 		if len(cur) >= max(lo, 1) && len(cur) <= hi {
-			if choice.ModeRepeatable && len(cur) == 1 {
+			if choice.ModeRepeatable && SameModeThroughout(cur) {
 				// Already emitted by the all-one-option pass.
 			} else if !add(cur) {
 				return false
@@ -245,7 +247,11 @@ func ModePickSelections(choice *PendingChoice, budget int) [][]int {
 			return true
 		}
 		for i := start; i < len(choice.ModeOptionIndex); i++ {
-			if !rec(i+1, append(cur, choice.ModeOptionIndex[i])) {
+			next := i + 1
+			if choice.ModeRepeatable {
+				next = i
+			}
+			if !rec(next, append(cur, choice.ModeOptionIndex[i])) {
 				return false
 			}
 		}
@@ -253,4 +259,18 @@ func ModePickSelections(choice *PendingChoice, budget int) [][]int {
 	}
 	rec(0, nil)
 	return out
+}
+
+// SameModeThroughout reports whether a non-empty selection repeats one
+// mode: an all-one-option selection.
+func SameModeThroughout(sel []int) bool {
+	if len(sel) == 0 {
+		return false
+	}
+	for _, m := range sel[1:] {
+		if m != sel[0] {
+			return false
+		}
+	}
+	return true
 }

@@ -1132,9 +1132,25 @@ func TestB11TendershootDryadMakesASaprolingEveryUpkeepAndPumpsAtTen(t *testing.T
 	for i := 0; i < 5; i++ {
 		seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
 	}
-	g.WithWriteLock(func() { g.BumpLayerVersionForTest() })
+	g.RunStateChecksForTest()
 	if p := effectivePower(t, g, sap); p != 3 {
 		t.Errorf("ten permanents: Saproling power %d, want 3", p)
+	}
+
+	// The city's blessing is kept (CR 702.131c, #2696): the bonus stays
+	// when the board drops back under ten.
+	g.WithWriteLock(func() {
+		removed := 0
+		for i := len(g.Battlefield.Cards) - 1; i >= 0 && removed < 5; i-- {
+			if c := g.Battlefield.Cards[i]; c.Controller == me.ID && c.Name == "Forest" {
+				_, _ = g.Battlefield.Remove(c.InstanceID)
+				removed++
+			}
+		}
+		g.BumpLayerVersionForTest()
+	})
+	if p := effectivePower(t, g, sap); p != 3 {
+		t.Errorf("back under ten: Saproling power %d, want 3 (the blessing is kept)", p)
 	}
 }
 

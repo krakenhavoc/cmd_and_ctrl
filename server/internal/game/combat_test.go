@@ -245,7 +245,24 @@ func TestCombatMenaceAcceptsTwoBlockers(t *testing.T) {
 	}
 }
 
-func TestResolveDamageAssignmentPrefixLethal(t *testing.T) {
+// damageAssignmentPrompt is the damage_assignment prompt queued for
+// the attacker, or the test fails.
+func damageAssignmentPrompt(t *testing.T, g *Game) uuid.UUID {
+	t.Helper()
+	for _, pc := range g.PendingChoices {
+		if pc.Kind == PendingChoiceDamageAssignment {
+			return pc.ID
+		}
+	}
+	t.Fatalf("expected damage_assignment prompt")
+	return uuid.Nil
+}
+
+// TestResolveDamageAssignmentAnyDivision: CR 510.1c divides a blocked
+// creature's damage among its blockers "as its controller chooses",
+// with no damage assignment order, so a split that skips the first
+// blocker's lethal damage is legal (#2692).
+func TestResolveDamageAssignmentAnyDivision(t *testing.T) {
 	g := newActiveGame(t)
 	attacker := pushKeywordCreature(t, g, g.Seats[0], 5, 5)
 	bear1 := pushKeywordCreature(t, g, g.Seats[1], 2, 2)
@@ -256,37 +273,52 @@ func TestResolveDamageAssignmentPrefixLethal(t *testing.T) {
 	g.DeclareBlocker(bear1, attacker)
 	g.DeclareBlocker(bear2, attacker)
 	advanceIntoStep(t, g, StepCombatDamage)
-	var promptID uuid.UUID
-	for _, pc := range g.PendingChoices {
-		if pc.Kind == PendingChoiceDamageAssignment {
-			promptID = pc.ID
-			break
-		}
+	promptID := damageAssignmentPrompt(t, g)
+	// A total that is not the attacker's power is still refused.
+	if err := g.ResolveDamageAssignment(promptID, g.Seats[0].ID,
+		[]DamageAssignmentEntry{{BlockerID: bear1, Amount: 1}, {BlockerID: bear2, Amount: 3}}, 0); err != ErrInvalidParam {
+		t.Errorf("4 of 5 assigned: got %v, want ErrInvalidParam", err)
 	}
-	if promptID == uuid.Nil {
-		t.Fatalf("expected damage_assignment prompt")
-	}
-	// Reject non-lethal-prefix: [bear1=1, bear2=4] — bear1 not at-least-lethal
-	// but bear2 still got damage.
+	// [bear1=1, bear2=4]: bear1 short of lethal, bear2 still damaged.
 	err := g.ResolveDamageAssignment(promptID, g.Seats[0].ID,
 		[]DamageAssignmentEntry{
 			{BlockerID: bear1, Amount: 1},
 			{BlockerID: bear2, Amount: 4},
 		}, 0)
-	if err != ErrInvalidParam {
-		t.Errorf("non-lethal prefix: got %v, want ErrInvalidParam", err)
-	}
-	// Accept [bear1=2, bear2=3] — both lethal.
-	err = g.ResolveDamageAssignment(promptID, g.Seats[0].ID,
-		[]DamageAssignmentEntry{
-			{BlockerID: bear1, Amount: 2},
-			{BlockerID: bear2, Amount: 3},
-		}, 0)
 	if err != nil {
-		t.Errorf("lethal split: got %v, want nil", err)
+		t.Fatalf("a free division: got %v, want nil", err)
 	}
-	if findCard(g, bear1) != nil || findCard(g, bear2) != nil {
-		t.Errorf("both blockers should be destroyed after lethal assignment")
+	if findCard(g, bear2) != nil {
+		t.Errorf("bear2 should be destroyed by its 4")
+	}
+	if b := findCard(g, bear1); b == nil || b.DamageMarked != 1 {
+		t.Errorf("bear1 = %+v, want alive with 1 damage", b)
+	}
+}
+
+// TestResolveDamageAssignmentTrampleNeedsLethalToEveryBlocker: CR
+// 702.19b — a trampler's damage reaches the player only once every
+// blocker has been assigned lethal damage.
+func TestResolveDamageAssignmentTrampleNeedsLethalToEveryBlocker(t *testing.T) {
+	g := newActiveGame(t)
+	dreadmaw := pushKeywordCreature(t, g, g.Seats[0], 6, 6, "trample")
+	bear1 := pushKeywordCreature(t, g, g.Seats[1], 2, 2)
+	bear2 := pushKeywordCreature(t, g, g.Seats[1], 3, 3)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	g.DeclareAttacker(dreadmaw, g.Seats[1].ID)
+	advanceIntoStep(t, g, StepDeclareBlockers)
+	g.DeclareBlocker(bear1, dreadmaw)
+	g.DeclareBlocker(bear2, dreadmaw)
+	advanceIntoStep(t, g, StepCombatDamage)
+	promptID := damageAssignmentPrompt(t, g)
+	if err := g.ResolveDamageAssignment(promptID, g.Seats[0].ID,
+		[]DamageAssignmentEntry{{BlockerID: bear1, Amount: 1}, {BlockerID: bear2, Amount: 4}}, 1); err != ErrInvalidParam {
+		t.Errorf("trample past a blocker short of lethal: got %v, want ErrInvalidParam", err)
+	}
+	// Without trample damage the same short split is legal.
+	if err := g.ResolveDamageAssignment(promptID, g.Seats[0].ID,
+		[]DamageAssignmentEntry{{BlockerID: bear1, Amount: 1}, {BlockerID: bear2, Amount: 5}}, 0); err != nil {
+		t.Errorf("a trampler's free division with nothing over: got %v, want nil", err)
 	}
 }
 

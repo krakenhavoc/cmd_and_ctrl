@@ -644,8 +644,9 @@ type playerSnapshot struct {
 	IsBot              bool                  `json:"isBot,omitempty"`
 	BotTier            string                `json:"botTier,omitempty"`
 	BotDeck            string                `json:"botDeck,omitempty"`
-	Agent              bool                  `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
-	AgentClient        string                `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
+	Agent              bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
+	AgentClient        string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
+	CitysBlessing      bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
 	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
 	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
 	Counters           map[string]int        `json:"counters,omitempty"`
@@ -856,6 +857,13 @@ type cardSnapshot struct {
 	// one omitted it (#1492). The frozen fixtures carry the key, so it
 	// is always written; omitzero_tag_guard_test.go holds that.
 	Provenance CastProvenance `json:"provenance"`
+	// CraftedWith is ADR 0137's CR 702.167c link: the objects the craft
+	// ability that put this permanent onto the battlefield exiled as
+	// materials. Carried for Provenance's reason: the ability that wrote
+	// it is gone, so nothing could rebuild it, and a restored Jadeheart
+	// Attendant would gain no life. Additive within the schema; old
+	// files have no key and read as "not crafted".
+	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -880,6 +888,13 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Saddled and SaddledBy are the CR 702.171 saddled designation and
+	// the creatures that paid for it this turn (ADR 0071 amendment
+	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
+	// that dropped them mid-turn would un-saddle a Mount that has
+	// already been paid for. Additive within v7.
+	Saddled   bool        `json:"saddled,omitempty"`
+	SaddledBy []ObjectRef `json:"saddledBy,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -1997,6 +2012,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
+		CraftedWith:              cloneObjectRefs(c.CraftedWith),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -2007,6 +2023,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Saddled:                  c.Saddled,
+		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2075,6 +2093,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		CommanderCasts:        copyIntMap(p.CommanderCasts),
 		Counters:              copyStringIntMap(p.Counters),
@@ -2839,6 +2858,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
+		CraftedWith:              cloneObjectRefs(c.CraftedWith),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -2849,6 +2869,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Saddled:                  c.Saddled,
+		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2949,6 +2971,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,

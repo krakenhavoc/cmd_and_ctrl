@@ -235,6 +235,20 @@ func TestSamiBOrazcaRelic(t *testing.T) {
 	for i := 0; i < 9; i++ {
 		pushCatalogPermanent(g, me.ID, "Island", "Basic Land — Island", "", false)
 	}
+	g.RunStateChecksForTest()
+	if !me.CitysBlessing {
+		t.Fatal("ten permanents with the Relic's ascend did not give the city's blessing")
+	}
+	// Kept (CR 702.131c, #2696): take the board back under ten first.
+	g.WithWriteLock(func() {
+		removed := 0
+		for i := len(g.Battlefield.Cards) - 1; i >= 0 && removed < 5; i-- {
+			if c := g.Battlefield.Cards[i]; c.Controller == me.ID && c.Name == "Island" {
+				_, _ = g.Battlefield.Remove(c.InstanceID)
+				removed++
+			}
+		}
+	})
 	life, hand := me.Life, len(me.Hand.Cards)
 	if err := g.ActivateCatalogAbility(me.ID, relic, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("with ten permanents: %v", err)
@@ -244,8 +258,8 @@ func TestSamiBOrazcaRelic(t *testing.T) {
 		t.Errorf("life %d→%d, hand %d→%d; want +3 life and +1 card", life, me.Life, hand, len(me.Hand.Cards))
 	}
 	spec, _ := Lookup(samiOrazcaRelic)
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the blessing is not kept, so the card declares a caveat")
+	if spec.Completeness != CompletenessFull {
+		t.Error("the blessing is a real designation now, so the Relic is full")
 	}
 }
 

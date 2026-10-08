@@ -68,7 +68,7 @@ var activatedRowScopes = map[string]rowScope{
 	// public, so the shortfall it greys the row with is too.
 	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
@@ -116,6 +116,10 @@ var activatedRowScopes = map[string]rowScope{
 	// ADR 0109 §7: the hand again, for "Put a card from your hand on
 	// top of your library".
 	"TopCostOptions": rowHiddenZone,
+	// #2598: the reveal component — its printed count, its words and
+	// the X flag are public; the matching HAND cards are not.
+	"RevealCostN": rowPublic, "RevealCostLabel": rowPublic, "RevealCostCountFromX": rowPublic,
+	"RevealCostOptions": rowHiddenZone,
 }
 
 // manaRowScopes is activatedRowScopes for ManaAbilityView.

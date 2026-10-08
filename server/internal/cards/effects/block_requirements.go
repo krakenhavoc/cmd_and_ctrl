@@ -122,6 +122,11 @@ type BlockRequirementUntilEOT struct {
 	Target uuid.UUID
 	Kind   game.BlockRequirementKind
 	Label  string
+	// ExceptController spares that player's creatures from a Lure
+	// (#2050): "all creatures your opponents control able to block it do
+	// so" sets it to the controller. Refused on any other kind, where it
+	// would mean nothing.
+	ExceptController uuid.UUID
 }
 
 // Apply registers the record. A zero Target registers nothing.
@@ -132,9 +137,16 @@ func (b BlockRequirementUntilEOT) Apply(ctx *Context) error {
 	if b.Kind == game.BlockRequirementBlocksAttacker {
 		panic("effects: a blocksAttacker requirement names an attacking object; use BlocksAttackerUntilEOT")
 	}
+	mod := game.AddBlockRequirementMod(b.Kind)
+	if b.ExceptController != uuid.Nil {
+		if b.Kind != game.BlockRequirementLure {
+			panic("effects: ExceptController narrows a Lure; no other block requirement reads it")
+		}
+		mod = game.AddLureExceptMod(b.ExceptController)
+	}
 	return ScopedEffectFor{
 		Target:   b.Target,
-		Mods:     []game.Mod{game.AddBlockRequirementMod(b.Kind)},
+		Mods:     []game.Mod{mod},
 		Duration: DurationUntilEndOfTurn(ctx),
 		Label:    eotLabel(b.Label, "block requirement: "+string(b.Kind)),
 	}.Apply(ctx)

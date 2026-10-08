@@ -42,6 +42,10 @@ type activateParams struct {
 	// Cycling's "Discard this card" sends none — the source is the
 	// payment.
 	DiscardIDs []string `json:"discard_ids,omitempty"`
+	// #2598: the cards revealed to pay a "Reveal X black cards from
+	// your hand" cost (Martyr of Bones). Nothing moves, so it is its
+	// own list and no other component's pick excludes it.
+	RevealIDs []string `json:"reveal_ids,omitempty"`
 	// #1297: the cards paid to an "Exile two cards from your
 	// graveyard" / "Exile a card from your hand" cost. Its own field,
 	// because an exiled card is not discarded.
@@ -380,7 +384,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// information to make.
 		var crewIDs []uuid.UUID
 		if ab.Cost.Crew > 0 {
-			crewIDs = e.crewPayment(ab.Cost.Crew)
+			crewIDs = e.crewPayment(ab.Cost.Crew, uuid.Nil)
+			if crewIDs == nil {
+				continue
+			}
+		}
+		// Saddle (CR 702.171a, #2695) is crew's cost over OTHER
+		// creatures: the same cheapest-set answer with the Mount left
+		// out, which the engine would refuse (ErrInvalidParam).
+		if ab.Cost.Saddle > 0 {
+			crewIDs = e.crewPayment(ab.Cost.Saddle, source.InstanceID)
 			if crewIDs == nil {
 				continue
 			}
@@ -507,6 +520,32 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
+		// #2598: a "Reveal N <quality> cards from your hand" cost. Nothing
+		// leaves the hand, so there is no fuel to rank and no other
+		// component to avoid: the first N candidates in hand order. The
+		// X form (Martyr of Bones) announces its count as X, so it is a
+		// bounded ladder like "Discard X cards" — 1, 2, 3 cards, and never
+		// the X = 0 no-op for a card that declares XMatters. Nothing
+		// payable means no move at all (#544).
+		revealSets := [][]uuid.UUID{nil}
+		revealMaxX := 0
+		if rc := ab.Cost.RevealCards; rc != nil {
+			pool := g.RevealCardsOptionsForEffect(e.seat, source.InstanceID, rc)
+			if rc.CountFromX {
+				revealSets = e.variableCountPayments(pool, enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()),
+					func(int) bool { return true })
+				for _, s := range revealSets {
+					revealMaxX = max(revealMaxX, len(s))
+				}
+			} else if len(pool) >= rc.N {
+				revealSets = [][]uuid.UUID{pool[:rc.N:rc.N]}
+			} else {
+				revealSets = nil
+			}
+			if len(revealSets) == 0 {
+				continue
+			}
+		}
 		// #1297: an "Exile N cards from your graveyard / hand" cost,
 		// solved as the discard above is — ONE payment, not one move
 		// per subset — out of the engine's own candidate walk, minus
@@ -553,6 +592,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 		}
 		type announcement struct {
+			// sel is the index of its mode selection in modeSets.
+			sel     int
 			modes   []int
 			targets []game.TargetRef
 			steps   []game.AnnouncedClause
@@ -569,9 +610,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// the innermost loop, through the engine's own
 			// TargetsWithinBoundForEffect.
 			bounded bool
+			// xCounted lists the steps whose target COUNT is the
+			// announced X (#2598: Martyr of Bones' "up to X target
+			// cards"). The announcement was built with those clauses
+			// opened to 0..revealMaxX, and each (payment, targets) pair
+			// is judged against the payment's X in the innermost loop.
+			xCounted []int
 		}
 		var announcements []announcement
-		for _, modes := range modeSets {
+		for si, modes := range modeSets {
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
 			// #1657: a divided amount read off the board, sized as
 			// the activation gate will size it.
@@ -609,7 +656,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 						game.BindStepsXForEffect(xs, x)
 						for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
-							announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+							announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: xs, xValue: x})
 						}
 					}
 					continue
@@ -621,7 +668,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						continue
 					}
 					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
-						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1, bounded: true})
+						announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: steps, xValue: -1, bounded: true})
 					}
 					continue
 				}
@@ -637,18 +684,57 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 					game.BindStepsXForEffect(xs, x)
 					for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
-						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+						announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: xs, xValue: x})
 					}
 				}
 				continue
 			}
+			// #2598: a target count defined by the X a reveal cost
+			// announces. Opened to "up to the largest X on offer" here
+			// and held to the payment's own X below; the engine's
+			// resolveStepCountsFromX / xCountMismatch is the gate this
+			// mirrors, so nothing offered bounces (#544).
+			var xCounted []int
+			if game.RevealCardsCountFromX(ab.Cost.RevealCards) {
+				if xCounted = stepsCountedByX(steps); len(xCounted) > 0 {
+					steps = openRevealCountedSteps(steps, xCounted, revealMaxX)
+				}
+			}
 			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
-				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1})
+				announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: steps, xValue: -1, xCounted: xCounted})
 			}
 		}
 		if len(announcements) == 0 {
 			continue
+		}
+		// #2681, ADR 0065 §6: the budget below is spent MODES-outermost,
+		// so the announcements are taken round-robin across the mode
+		// selections: every selection's first target set before any
+		// selection's second.
+		if len(modeSets) > 1 {
+			rank := make([]int, len(announcements))
+			seen := make([]int, len(modeSets))
+			for i, ann := range announcements {
+				rank[i] = seen[ann.sel]
+				seen[ann.sel]++
+			}
+			idx := make([]int, len(announcements))
+			for i := range idx {
+				idx[i] = i
+			}
+			sort.SliceStable(idx, func(a, b int) bool {
+				ia, ib := idx[a], idx[b]
+				if rank[ia] != rank[ib] {
+					return rank[ia] < rank[ib]
+				}
+				return announcements[ia].sel < announcements[ib].sel
+			})
+			ordered := make([]announcement, len(announcements))
+			for i, j := range idx {
+				ordered[i] = announcements[j]
+			}
+			announcements = ordered
 		}
 		// #74: the life and loyalty components ride the Move
 		// rather than the params, because the params are the
@@ -677,187 +763,246 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 			abilityMana, abilityExcluded := pay.mana, pay.excluded
 			phyrexianLife, waterbendIDs := pay.phyrexianLife, pay.waterbendIDs
-			for _, pair := range sacrificeDiscardPairs(sacrificeSets, discardSets, discardIDs) {
-				sacs, discardIDs := pair.sacs, pair.discards
-				// #1213: "Sacrifice X Treasures" announces its count
-				// as X (CR 602.2b), so the move's x_value IS the
-				// payment it carries. Register refuses a cost that
-				// also puts {X} in its mana component, so there is
-				// never a second claimant on this number.
-				//
-				// #1723: `ann.xValue >= 0` only for an ability whose
-				// mana cost has {X} (the ladder above requires
-				// ab.Cost.XSlots() > 0), and effects.Register already
-				// refuses {X} in the mana cost alongside
-				// SacrificeCountFromX (#1213) — one announced X
-				// cannot pay both. So the two conditions below can
-				// never both hold for the same ability, and reading
-				// one after the other here is never a clobber.
-				xValue := pay.xValue
-				if ann.xValue >= 0 {
-					xValue = ann.xValue
-				}
-				if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
-					xValue = len(sacs)
-				}
-				// #2527: and "Discard X cards" announces its count the
-				// same way. Register refuses it beside either of the
-				// other two claimants.
-				if game.DiscardCountFromX(ab.Cost.DiscardCards) {
-					xValue = len(discardIDs)
-				}
-				// #2190: and "Discard a card with mana value X" announces
-				// the discarded card's mana value.
-				if game.DiscardManaValueX(ab.Cost.DiscardCards) && len(discardIDs) == 1 {
-					if dc, ok := g.LookupCardForEffect(discardIDs[0]); ok {
-						xValue, _ = dc.ParsedManaValue()
+			for _, revealIDs := range revealSets {
+				for _, pair := range sacrificeDiscardPairs(sacrificeSets, discardSets, discardIDs) {
+					sacs, discardIDs := pair.sacs, pair.discards
+					// #1213: "Sacrifice X Treasures" announces its count
+					// as X (CR 602.2b), so the move's x_value IS the
+					// payment it carries. Register refuses a cost that
+					// also puts {X} in its mana component, so there is
+					// never a second claimant on this number.
+					//
+					// #1723: `ann.xValue >= 0` only for an ability whose
+					// mana cost has {X} (the ladder above requires
+					// ab.Cost.XSlots() > 0), and effects.Register already
+					// refuses {X} in the mana cost alongside
+					// SacrificeCountFromX (#1213) — one announced X
+					// cannot pay both. So the two conditions below can
+					// never both hold for the same ability, and reading
+					// one after the other here is never a clobber.
+					xValue := pay.xValue
+					if ann.xValue >= 0 {
+						xValue = ann.xValue
 					}
-				}
-				// #1242: the engine's auto-tap will not spend what this
-				// payment names (AbilityAutoTapExclusions), so the
-				// affordability answered above — with nothing named —
-				// has to hold with these named too. An Eldrazi Spawn
-				// that is both the sacrifice and the mana is a move the
-				// engine refuses; offering it is #544.
-				if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
-					!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
-						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
-					continue
-				}
-				for _, moved := range permanentCostPairs(returnSets, permanentSets, sacs, source.InstanceID, ab.Cost) {
-					rets, perms := moved.returned, moved.exiled
-					for _, taps := range tapSets {
-						tapXValue := xValue
-						if game.TapOthersCountFromX(ab.Cost.TapOthers) {
-							tapXValue = len(taps)
-						}
-						// #759: the same #1242 rule for the tapped
-						// permanents — the auto-tapper will not spend a
-						// creature the payment has already named, so a
-						// mana creature that is both the tap and the mana
-						// is a move the engine refuses. #1600: and for the
-						// exiled permanents (ActivationAutoTapExclusions).
-						if ab.Cost.Mana != "" && (len(taps) > 0 || len(perms) > 0) &&
-							!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, game.ManaSpendForAbility(*source),
-								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps, perms)) {
+					if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
+						xValue = len(sacs)
+					}
+					// #2527: and "Discard X cards" announces its count the
+					// same way. Register refuses it beside either of the
+					// other two claimants.
+					if game.DiscardCountFromX(ab.Cost.DiscardCards) {
+						xValue = len(discardIDs)
+					}
+					// #2598: and "Reveal X cards" announces its count the same
+					// way. A target count defined by that X must agree with it.
+					if game.RevealCardsCountFromX(ab.Cost.RevealCards) {
+						xValue = len(revealIDs)
+						if len(ann.xCounted) > 0 && !xCountedTargetsFit(ann.steps, ann.xCounted, targets, xValue) {
 							continue
 						}
-						// #1563: the division this activation announces
-						// under its X — none refused by the gate (#544).
-						dist, ok := game.EvenDistribution(ann.steps, targets, tapXValue)
-						if !ok {
-							continue
+					}
+					// #2190: and "Discard a card with mana value X" announces
+					// the discarded card's mana value.
+					if game.DiscardManaValueX(ab.Cost.DiscardCards) && len(discardIDs) == 1 {
+						if dc, ok := g.LookupCardForEffect(discardIDs[0]); ok {
+							xValue, _ = dc.ParsedManaValue()
 						}
-						for _, cc := range counterChoices {
-							if budget <= 0 {
-								// ADR 0122 §6.2: a payment the budget
-								// never built.
-								e.budgetSpent()
-								break
+					}
+					// #1242: the engine's auto-tap will not spend what this
+					// payment names (AbilityAutoTapExclusions), so the
+					// affordability answered above — with nothing named —
+					// has to hold with these named too. An Eldrazi Spawn
+					// that is both the sacrifice and the mana is a move the
+					// engine refuses; offering it is #544.
+					if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
+						!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
+							game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
+						continue
+					}
+					for _, moved := range permanentCostPairs(returnSets, permanentSets, sacs, source.InstanceID, ab.Cost) {
+						rets, perms := moved.returned, moved.exiled
+						for _, taps := range tapSets {
+							tapXValue := xValue
+							if game.TapOthersCountFromX(ab.Cost.TapOthers) {
+								tapXValue = len(taps)
 							}
-							// ADR 0109 §9: the bound this payment sets —
-							// the counters it removes, or the X its
-							// sacrifice or tap count announces. A pair
-							// the engine would refuse is never offered
-							// (#544), and costs no budget.
-							if ann.bounded && !g.TargetsWithinBoundForEffect(ann.steps, targets,
-								game.AnnouncedBound{X: tapXValue, CountersRemoved: cc.total}) {
+							// #759: the same #1242 rule for the tapped
+							// permanents — the auto-tapper will not spend a
+							// creature the payment has already named, so a
+							// mana creature that is both the tap and the mana
+							// is a move the engine refuses. #1600: and for the
+							// exiled permanents (ActivationAutoTapExclusions).
+							if ab.Cost.Mana != "" && (len(taps) > 0 || len(perms) > 0) &&
+								!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, game.ManaSpendForAbility(*source),
+									game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps, perms)) {
 								continue
 							}
-							budget--
-							label := abilityMoveLabel(g, source, e.seat, ab.Label)
-							if tapXValue > 0 {
-								label += fmt.Sprintf(" for X=%d", tapXValue)
+							// #1563: the division this activation announces
+							// under its X — none refused by the gate (#544).
+							dist, ok := game.EvenDistribution(ann.steps, targets, tapXValue)
+							if !ok {
+								continue
 							}
-							if phyrexianLife > 0 {
-								label += phyrexianLifeLabel(phyrexianLife)
+							for _, cc := range counterChoices {
+								if budget <= 0 {
+									// ADR 0122 §6.2: a payment the budget
+									// never built.
+									e.budgetSpent()
+									break
+								}
+								// ADR 0109 §9: the bound this payment sets —
+								// the counters it removes, or the X its
+								// sacrifice or tap count announces. A pair
+								// the engine would refuse is never offered
+								// (#544), and costs no budget.
+								if ann.bounded && !g.TargetsWithinBoundForEffect(ann.steps, targets,
+									game.AnnouncedBound{X: tapXValue, CountersRemoved: cc.total}) {
+									continue
+								}
+								budget--
+								label := abilityMoveLabel(g, source, e.seat, ab.Label)
+								if tapXValue > 0 {
+									label += fmt.Sprintf(" for X=%d", tapXValue)
+								}
+								if phyrexianLife > 0 {
+									label += phyrexianLifeLabel(phyrexianLife)
+								}
+								if len(waterbendIDs) > 0 {
+									label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
+								}
+								label += sacrificeLabel(g, sacs)
+								label += returnLabel(g, rets)
+								label += exileLabel(g, perms)
+								label += tapLabel(g, taps)
+								label += randomDiscardLabel(ab.Cost)
+								handN := e.handDiscardCount(ab.Cost.DiscardCards, source.InstanceID)
+								label += handDiscardLabel(ab.Cost.DiscardCards, handN)
+								label += cc.label(g)
+								label += modesLabel(ab.Modes, ann.modes)
+								label += targetLabel(g, targets)
+								// #74: the life on the Move is what the
+								// controller pays at announce, so the
+								// Phyrexian half counts — a policy that saw
+								// only the printed component would read a
+								// four-life activation as free. #1594: and
+								// the computed component is `life`, the
+								// amount the engine will charge.
+								cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
+								// ADR 0129 §7: the energy this move removes.
+								cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
+								// ADR 0130 §4: and whether it exerts its source.
+								cost = withExert(cost, ab.Cost.Exert)
+								for _, price := range cc.prices() {
+									cost = withCounterPrice(cost, price)
+								}
+								// #1600: the hand a "Discard your hand"
+								// cost throws away, which the params cannot
+								// name.
+								cost = withHandDiscard(cost, handN)
+								// ADR 0122 §6.2: an open X, where nothing else in
+								// the move is fixed by it — no X-bound or
+								// X-counted target, no count of sacrificed or
+								// tapped permanents, no waterbend taps, no
+								// division.
+								var xv *MoveValue
+								if (ab.Cost.XSlots() > 0 || ab.Cost.EnergyX) && ann.xValue < 0 && !ann.bounded && dist == nil &&
+									len(waterbendIDs) == 0 && !game.SacrificeCountFromX(ab.Cost.SacrificeOther) &&
+									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
+									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
+								}
+								e.add(Move{
+									Type:   TypeActivateAbility,
+									Player: e.seat,
+									Kind:   KindActivate,
+									Label:  label,
+									Source: source.InstanceID,
+									Cost:   cost,
+									Value:  xv,
+									// See the same note on the cast emitter:
+									// a modal ability's stack-targeting mode
+									// is flagged on its own.
+									TargetsStack: targetsStackObject(g, targets),
+									Params: mustJSON(activateParams{
+										SourceCardID:      source.InstanceID.String(),
+										AbilityIndex:      idx,
+										Ref:               origins.Ref(idx),
+										Targets:           wireTargets(targets),
+										Modes:             ann.modes,
+										SacrificeIDs:      idStrings(sacs),
+										CrewIDs:           idStrings(crewIDs),
+										CounterSourceIDs:  cc.wireIDs(),
+										CounterCounts:     cc.wireCounts(),
+										CounterKind:       cc.wireKind(),
+										CounterKinds:      cc.wireKinds(),
+										DiscardIDs:        idStrings(discardIDs),
+										RevealIDs:         idStrings(revealIDs),
+										ExileIDs:          idStrings(exileIDs),
+										TopIDs:            idStrings(topIDs),
+										ReturnIDs:         idStrings(rets),
+										ExilePermanentIDs: idStrings(perms),
+										WaterbendIDs:      idStrings(waterbendIDs),
+										TapIDs:            idStrings(taps),
+										XValue:            tapXValue,
+										Distribution:      distributionWire(dist),
+										PhyrexianLife:     phyrexianLife,
+										Strict:            true,
+										AutoTap:           true,
+									}),
+								})
 							}
-							if len(waterbendIDs) > 0 {
-								label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
-							}
-							label += sacrificeLabel(g, sacs)
-							label += returnLabel(g, rets)
-							label += exileLabel(g, perms)
-							label += tapLabel(g, taps)
-							label += randomDiscardLabel(ab.Cost)
-							handN := e.handDiscardCount(ab.Cost.DiscardCards, source.InstanceID)
-							label += handDiscardLabel(ab.Cost.DiscardCards, handN)
-							label += cc.label(g)
-							label += targetLabel(g, targets)
-							// #74: the life on the Move is what the
-							// controller pays at announce, so the
-							// Phyrexian half counts — a policy that saw
-							// only the printed component would read a
-							// four-life activation as free. #1594: and
-							// the computed component is `life`, the
-							// amount the engine will charge.
-							cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
-							// ADR 0129 §7: the energy this move removes.
-							cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
-							// ADR 0130 §4: and whether it exerts its source.
-							cost = withExert(cost, ab.Cost.Exert)
-							for _, price := range cc.prices() {
-								cost = withCounterPrice(cost, price)
-							}
-							// #1600: the hand a "Discard your hand"
-							// cost throws away, which the params cannot
-							// name.
-							cost = withHandDiscard(cost, handN)
-							// ADR 0122 §6.2: an open X, where nothing else in
-							// the move is fixed by it — no X-bound or
-							// X-counted target, no count of sacrificed or
-							// tapped permanents, no waterbend taps, no
-							// division.
-							var xv *MoveValue
-							if (ab.Cost.XSlots() > 0 || ab.Cost.EnergyX) && ann.xValue < 0 && !ann.bounded && dist == nil &&
-								len(waterbendIDs) == 0 && !game.SacrificeCountFromX(ab.Cost.SacrificeOther) &&
-								!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
-								xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
-							}
-							e.add(Move{
-								Type:   TypeActivateAbility,
-								Player: e.seat,
-								Kind:   KindActivate,
-								Label:  label,
-								Source: source.InstanceID,
-								Cost:   cost,
-								Value:  xv,
-								// See the same note on the cast emitter:
-								// a modal ability's stack-targeting mode
-								// is flagged on its own.
-								TargetsStack: targetsStackObject(g, targets),
-								Params: mustJSON(activateParams{
-									SourceCardID:      source.InstanceID.String(),
-									AbilityIndex:      idx,
-									Ref:               origins.Ref(idx),
-									Targets:           wireTargets(targets),
-									Modes:             ann.modes,
-									SacrificeIDs:      idStrings(sacs),
-									CrewIDs:           idStrings(crewIDs),
-									CounterSourceIDs:  cc.wireIDs(),
-									CounterCounts:     cc.wireCounts(),
-									CounterKind:       cc.wireKind(),
-									CounterKinds:      cc.wireKinds(),
-									DiscardIDs:        idStrings(discardIDs),
-									ExileIDs:          idStrings(exileIDs),
-									TopIDs:            idStrings(topIDs),
-									ReturnIDs:         idStrings(rets),
-									ExilePermanentIDs: idStrings(perms),
-									WaterbendIDs:      idStrings(waterbendIDs),
-									TapIDs:            idStrings(taps),
-									XValue:            tapXValue,
-									Distribution:      distributionWire(dist),
-									PhyrexianLife:     phyrexianLife,
-									Strict:            true,
-									AutoTap:           true,
-								}),
-							})
 						}
 					}
 				}
 			}
 		}
 	}
+}
+
+// openRevealCountedSteps returns a copy of `steps` with every
+// X-counted clause opened to its ceiling (#2598): at most `bound`
+// targets, none required when the clause is "up to X". The announced
+// X is not known yet — it is the number of cards a payment reveals —
+// so each (payment, targets) pair is judged afterwards by
+// xCountedTargetsFit. Zero targets stays on offer for an "up to X"
+// clause, which is the X = 0 case resolveStepCountsFromX allows.
+func openRevealCountedSteps(steps []game.AnnouncedClause, idx []int, bound int) []game.AnnouncedClause {
+	out := append([]game.AnnouncedClause(nil), steps...)
+	for _, i := range idx {
+		c := &out[i].Clause
+		c.CountFromX = false
+		if c.UpToX {
+			c.Min = 0
+		} else {
+			c.Min = 1
+		}
+		c.Max = max(bound, 1)
+	}
+	return out
+}
+
+// xCountedTargetsFit reports whether a target set answers every
+// X-counted step with the payment's own X: exactly X, or at most X for
+// an "up to X" clause (the engine's xCountMismatch, one place over).
+func xCountedTargetsFit(steps []game.AnnouncedClause, idx []int, targets []game.TargetRef, x int) bool {
+	for _, i := range idx {
+		n := 0
+		for _, t := range targets {
+			if t.Kind == game.TargetSelf || t.Kind == game.TargetNone {
+				continue
+			}
+			if t.Mode == steps[i].Mode && t.Slot == steps[i].Slot {
+				n++
+			}
+		}
+		if steps[i].Clause.UpToX {
+			if n > x {
+				return false
+			}
+		} else if n != x {
+			return false
+		}
+	}
+	return true
 }
 
 // abilityMoveLabel is the head of an activate move's label: the
@@ -1653,6 +1798,9 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
+		if !e.g.AttachedToSourceOKForEffect(spec, sourceID, id) {
+			continue
+		}
 		if c := findBattlefield(e.g, id); c != nil && c.Controller == e.seat {
 			pool = append(pool, id)
 		}
@@ -1719,7 +1867,7 @@ func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, 
 // five-power creature crews a Vehicle that says 3 and so does a pair
 // of two-power ones. Enumerating the subsets would be an exponential
 // expansion for a choice the policy has nothing to decide it with.
-func (e *enumerator) crewPayment(crew int) []uuid.UUID {
+func (e *enumerator) crewPayment(crew int, except uuid.UUID) []uuid.UUID {
 	type candidate struct {
 		id    uuid.UUID
 		power int
@@ -1727,7 +1875,7 @@ func (e *enumerator) crewPayment(crew int) []uuid.UUID {
 	var pool []candidate
 	for i := range e.g.Battlefield.Cards {
 		c := &e.g.Battlefield.Cards[i]
-		if c.Controller != e.seat || !c.IsCreature() || c.Tapped {
+		if c.Controller != e.seat || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
 		pool = append(pool, candidate{id: c.InstanceID, power: c.CurrentPower()})

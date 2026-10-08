@@ -536,7 +536,9 @@
             ? "HARNESSED"
             : card.monstrous
               ? "MONSTROUS"
-              : "",
+              : card.saddled
+                ? "SADDLED"
+                : "",
   );
   const designationTitle = $derived(
     card.solved
@@ -547,7 +549,9 @@
           ? "harnessed — its ∞ ability lines are on (CR 701.64)"
           : card.monstrous
             ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
-            : `Class level ${card.class_level ?? 1}`,
+            : card.saddled
+              ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
+              : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to

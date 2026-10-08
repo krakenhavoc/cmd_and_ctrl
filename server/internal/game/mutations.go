@@ -1594,9 +1594,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// ADR 0100 §2: and which either/or branch was paid and which
 		// cards the additional cost discarded — Grab the Prize's "if
 		// the discarded card wasn't a land card".
-		Paid: paidWithBranchAndDiscards(
+		//
+		// ADR 0135 §4: and the objects the alternative cost's card
+		// component pays with, named while they are still where they were
+		// — Adipose Offspring's "the sacrificed creature's toughness".
+		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
 			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.GiftOpponent),
-			params.CostBranch, params.DiscardIDs),
+			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
@@ -2033,7 +2037,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// offered to Village Rites and leave the sacrifice nothing to pay
 	// with, after the mana was made. One list, shared with the
 	// legal-move enumerator: see CastAutoTapExclusions.
-	excluded := CastAutoTapExclusions(params)
+	excluded := g.castAutoTapExclusionsLocked(p.ID, card, params)
 	// #1212: the spell's own source wish. A card whose text reads
 	// which mana paid for it ("if mana from a Treasure was spent to
 	// cast it") prefers a source it can read back — a tiebreak in the
@@ -2833,6 +2837,10 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// settles before 601.2f totals the cost (Torgaar's "{2} less
 		// for each creature sacrificed this way").
 		Sacrificing: len(params.SacrificeIDs),
+		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
+		// permanent the claimed offer names while it is still on the
+		// battlefield.
+		AltSacrificeManaValue: g.altSacrificeManaValueLocked(p.ID, card, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -3319,6 +3327,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
+	// #2696, CR 702.131a: an instant or sorcery with ascend checks the
+	// controller's permanents before any of its other instructions, so
+	// "if you have the city's blessing" below reads the answer.
+	g.ascendSpellLocked(&top, item)
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
 	// CR 608.2c / 700.2d: each chosen bullet's own body, in printed
 	// order, once per occurrence. A modal card that branches inside
@@ -4256,6 +4268,19 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// (a 2/2 + Glorious Anthem under 3 marked damage would die
 	// because CurrentToughness reads Effective().Toughness == 3).
 	g.RecomputeLayersIfStaleLocked()
+
+	// #2696, CR 702.131b: ascend on a permanent is a static ability
+	// that gives its controller the city's blessing any time they
+	// control ten permanents. Not a state-based action, so it does not
+	// count toward `fired`; this pass is simply the one place that runs
+	// after every action with the board settled and before a player
+	// receives priority. After the recompute so a keyword granted by a
+	// layer-6 effect is seen, and followed by another recompute so the
+	// statics that read the new designation are in place before the
+	// toughness checks below.
+	if g.citysBlessingSweepLocked() {
+		g.RecomputeLayersIfStaleLocked()
+	}
 
 	// S24 / CR 704.5m + 704.5n: an Equipment attached to something
 	// that is no longer a creature becomes unattached; an Aura

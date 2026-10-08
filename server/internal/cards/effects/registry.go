@@ -168,6 +168,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostTapOthers(spec.Name, ac)
+		checkEmerge(spec.Name, ac)
 		checkAwaken(spec, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
@@ -523,6 +524,12 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
+		// ADR 0137: craft's graveyard half and an exile-cards component
+		// could both name one graveyard card, and no printed cost has
+		// both.
+		if ec := ab.Cost.ExilePermanents; ec != nil && ec.FromGraveyard && ab.Cost.ExileCards != nil {
+			panic(fmt.Sprintf("effects.Register: %q ability %d exiles materials from the graveyard beside an exile-cards cost — one card could pay both", spec.Name, i))
+		}
 		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would — unless
@@ -530,6 +537,8 @@ func Register(spec Spec) {
 		checkDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
 		checkDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		checkDiscardXBesideOtherCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
+		// #2598: the reveal-cards component (reveal_cards_cost.go).
+		checkRevealCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// ADR 0109 §7: the random discard and the two library
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
@@ -669,6 +678,11 @@ func Register(spec Spec) {
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
+		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
+		// ability exiles graveyard cards through this component.
+		if ec := ma.Cost.ExilePermanents; ec != nil && ec.FromGraveyard {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials from the graveyard — only a CR 602 ability may (ADR 0137)", spec.Name, i))
+		}
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",
@@ -1268,6 +1282,20 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents — an alternative cost taps a fixed number", card, where))
 	}
 	checkTapOthersClause(card, where, tc, false)
+}
+
+// checkEmerge holds ReducedBySacrificedManaValue (ADR 0135 §4) to the
+// shape CR 702.119a prints: beside a Sacrifice of exactly one permanent.
+// The pricer reads the one permanent AltCostIDs names, so the flag on a
+// cost that sacrifices nothing, or several, would price a discount the
+// card does not print.
+func checkEmerge(card string, ac game.AlternativeCost) {
+	if !ac.ReducedBySacrificedManaValue {
+		return
+	}
+	if ac.Sacrifice == nil || game.SacrificeCostCount(ac.Sacrifice) != 1 || game.SacrificeCostVariable(ac.Sacrifice) {
+		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by the sacrificed permanent's mana value without a sacrifice of exactly one permanent (CR 702.119a)", card, ac.Key))
+	}
 }
 
 // Lookup returns the Spec for a given oracle ID. The second return

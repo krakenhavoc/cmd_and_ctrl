@@ -138,6 +138,7 @@ var silentEventKinds = map[string]string{
 	"EventCaseSolved":      silentBoardStateIsVisible,
 	"EventHarnessed":       silentBoardStateIsVisible,
 	"EventBecameMonstrous": silentBoardStateIsVisible,
+	"EventBecameSaddled":   silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
 	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line
