@@ -55,6 +55,34 @@ func (p *Policy) tapCreatureCost(st *state, c *protocol.CardView) float64 {
 	return tappedBlocker
 }
 
+// tapFuelValue prices the bot's permanent with this instance ID as
+// something a cost would TAP (ADR 0135 §1: a tap alternative cost): what
+// tapping it costs (tapCreatureCost), since the permanent stays. A
+// permanent the seat cannot see on the battlefield is Weights.Unknown,
+// as fuelValue prices an unreadable card.
+func (p *Policy) tapFuelValue(st *state, id string) float64 {
+	c := st.bf[id]
+	if c == nil {
+		return st.w.Unknown
+	}
+	return p.tapCreatureCost(st, c)
+}
+
+// altCostTaps reports whether the alternative cost keyed `key` on c taps
+// its permanents rather than spending them: the view stamps such an
+// offer's candidates on `tap_options` (ADR 0135 §1).
+func altCostTaps(c *protocol.CardView, key string) bool {
+	if c == nil || key == "" {
+		return false
+	}
+	for i := range c.AlternativeCosts {
+		if ac := &c.AlternativeCosts[i]; ac.Key == key {
+			return ac.TapOptions != nil
+		}
+	}
+	return false
+}
+
 // couldAttack reports whether c could be declared as an attacker this
 // turn as far as the card itself says: untapped, no summoning sickness
 // (the view's flag already allows for haste), some power to swing

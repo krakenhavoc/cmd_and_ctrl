@@ -917,7 +917,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// first combination below is the best payment the policy can
 		// name and the next few are that payment with its last card
 		// swapped for the next-cheapest.
-		pool := e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer))
+		pool := g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)
+		if offer.TapOthers != nil {
+			// ADR 0135 §1: a tap price spends no card, so the policy
+			// prices each candidate as TAPPED, not as lost — a blocker
+			// it no longer has, and its attack before combat on its own
+			// turn (TargetCandidate.Tap).
+			pool = e.cheapestTapFirst(pool)
+		} else {
+			pool = e.cheapestFuelFirst(pool)
+		}
 		if pay, ok := g.AltCostSetPaymentLocked(offer, pool); ok {
 			// ADR 0135 §2: a set rule (Foil's "an Island card and
 			// another card") — the first N of the pool may be two
@@ -1608,13 +1617,25 @@ func distributionWire(dist map[uuid.UUID]int) map[string]int {
 // move list. The returned slice is fresh: the pool comes from the
 // engine and must not be reordered under it.
 func (e *enumerator) cheapestFuelFirst(pool []uuid.UUID) []uuid.UUID {
+	return e.cheapestByFuel(pool, false)
+}
+
+// cheapestTapFirst is cheapestFuelFirst for a cost that TAPS its
+// permanents rather than spending them (ADR 0135 §1: Orim's Cure's
+// creature, Battle Screech's three): the policy is asked what tapping
+// each costs (TargetCandidate.Tap), and the cheapest is tapped first.
+func (e *enumerator) cheapestTapFirst(pool []uuid.UUID) []uuid.UUID {
+	return e.cheapestByFuel(pool, true)
+}
+
+func (e *enumerator) cheapestByFuel(pool []uuid.UUID, tap bool) []uuid.UUID {
 	if e.opts.OrderCostFuel == nil || len(pool) < 2 {
 		return pool
 	}
 	out := append([]uuid.UUID(nil), pool...)
 	price := make(map[uuid.UUID]float64, len(out))
 	for _, id := range out {
-		price[id] = e.opts.OrderCostFuel(TargetCandidate{ID: id})
+		price[id] = e.opts.OrderCostFuel(TargetCandidate{ID: id, Tap: tap})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return price[out[i]] < price[out[j]] })
 	return out
@@ -2257,8 +2278,11 @@ func altCostLabel(g *game.Game, offer *game.AlternativeCost, paid []uuid.UUID) s
 		// that logged "exiling Island" would be describing a different
 		// card.
 		verb := ", exiling "
-		if offer.ReturnToHand != nil {
+		switch {
+		case offer.ReturnToHand != nil:
 			verb = ", returning "
+		case offer.TapOthers != nil:
+			verb = ", tapping "
 		}
 		label += verb + strings.Join(names, ", ")
 	}

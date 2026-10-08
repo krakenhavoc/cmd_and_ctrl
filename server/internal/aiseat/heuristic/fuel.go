@@ -77,6 +77,12 @@ func (p *Policy) CostFuelPrice(in aiseat.Input) legal.CostFuelOrder {
 	st := p.newState(in)
 	p.mu.Unlock()
 	return func(c legal.TargetCandidate) float64 {
+		if c.Tap {
+			// ADR 0135 §1: a permanent a cost would TAP, priced as the
+			// cast prices it (valueOfCast), so the payment offered first
+			// is the one the bot then scores as cheapest.
+			return p.tapFuelValue(st, c.ID.String())
+		}
 		return p.fuelValue(st, c.ID.String())
 	}
 }

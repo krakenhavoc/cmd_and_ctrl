@@ -116,6 +116,23 @@ const CASES: Case[] = [
     confirms: [["ox"]],
   },
   {
+    title: "the alternative-cost tap picker",
+    component: SacrificeCostModal as never,
+    props: (c) => ({
+      source: card("cure", "Orim's Cure"),
+      label: "an untapped creature you control",
+      options: [ox],
+      verb: "Tap",
+      castName: "Orim's Cure",
+      onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "Orim's Cure",
+    primary: "Tap",
+    pick: firstOption,
+    confirms: [["ox"]],
+  },
+  {
     title: "the crew picker",
     component: CrewCostModal as never,
     props: (c) => ({
@@ -424,5 +441,33 @@ describe("an alternative-cost discard with a set rule", () => {
     expect(barPrimary()!.disabled).toBe(false);
     click(barPrimary()!);
     expect(calls.confirmed).toEqual([[["mtn", "isl"]]]);
+  });
+});
+
+// ADR 0135 §1: the tap picker paying a SPELL's alternative cost names the
+// spell, not "this ability", and is shown even when the board offers
+// exactly the one creature the cost needs.
+describe("an alternative-cost tap picker", () => {
+  it("says which spell the tap pays for", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      {
+        component: SacrificeCostModal as never,
+        props: {
+          source: card("cure", "Orim's Cure"),
+          label: "an untapped creature you control",
+          options: [ox],
+          verb: "Tap",
+          castName: "Orim's Cure",
+          onConfirm: (ids: string[]) => calls.confirmed.push([ids]),
+          onCancel: () => calls.cancelled++,
+        },
+      } as never,
+    );
+    flushSync();
+    const text = sheetPanel()!.textContent ?? "";
+    expect(text).toContain("Tap an untapped creature you control to cast Orim's Cure.");
+    expect(text).not.toContain("to pay for this ability");
   });
 });

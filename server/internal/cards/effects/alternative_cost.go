@@ -369,6 +369,80 @@ func AnyCard(label string) game.SacrificeKind {
 	return game.SacrificeKind{Label: label, Any: true}
 }
 
+// TapInstead is "[If <condition>,] you may tap <label> rather than pay
+// this spell's mana cost" (CR 118.9, ADR 0135 §1, #2030): Orim's Cure's
+//
+//	TapInstead(1, "an untapped creature you control", ControlsA("Plains"), Creature())
+//
+// The permanents are named in alt_cost_ids and tapped as a cost through
+// the activated abilities' tap-others payer (#758), with the spell
+// already on the stack. They must be untapped and yours (CR 118.3, CR
+// 701.26a); they are not targeted, so a hexproof creature pays; and a
+// creature that arrived this turn pays, because this is not the {T}
+// symbol (CR 302.6). `label` is the clause without the verb, as the
+// picker reads it: "Tap <label> to cast <card>". A nil condition is an
+// unconditional offer (The Lady of Otaria).
+//
+// The empty ManaCost is "rather than pay this spell's mana cost": an
+// additional cost (commander tax, CR 903.8) is still added to it (CR
+// 118.9d).
+func TapInstead(n int, label string, condition func(g *game.Game, controller uuid.UUID) bool, preds ...CardPredicate) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "tap",
+		Label:     "Tap " + label + " rather than pay this spell's mana cost",
+		ManaCost:  "",
+		Condition: condition,
+		TapOthers: tapOthersPrice(n, label, preds...),
+		PayLabel:  label,
+	}
+}
+
+// TapInsteadPaying is TapInstead with a mana half (ADR 0135 §1): "You may
+// pay {W} and tap four untapped creatures you control with flying rather
+// than pay this spell's mana cost" (Sephara, Sky's Blade) is
+//
+//	TapInsteadPaying("{W}", 4, "four untapped creatures you control with flying", Creature(), HasKeyword("flying"))
+//
+// The mana is paid like any spell's cost (the auto-tapper, or the pool);
+// the permanents named to the tap are kept away from the auto-tapper
+// (CastAutoTapExclusions), so one creature can't pay both halves.
+func TapInsteadPaying(mana string, n int, label string, preds ...CardPredicate) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "tap",
+		Label:     "Pay " + mana + " and tap " + label + " rather than pay this spell's mana cost",
+		ManaCost:  mana,
+		TapOthers: tapOthersPrice(n, label, preds...),
+		PayLabel:  label,
+	}
+}
+
+// FlashbackTap is "Flashback—Tap <label>" (CR 702.34a, ADR 0135 §1):
+// Prismatic Strands'
+//
+//	FlashbackTap(1, "an untapped white creature you control", OfColor("W"), Creature())
+//
+// Flashback's cast from the graveyard and its exile on leaving the stack,
+// with no mana and the tap as the whole price. The card file still lists
+// ZoneGraveyard in CastableZones, as for Flashback.
+func FlashbackTap(n int, label string, preds ...CardPredicate) game.AlternativeCost {
+	ac := Flashback("")
+	ac.Label = "Flashback—Tap " + label
+	ac.TapOthers = tapOthersPrice(n, label, preds...)
+	ac.PayLabel = label
+	return ac
+}
+
+// tapOthersPrice is the TapOthers component of a tap alternative cost: n
+// permanents matching the predicates, never the spell itself (it is not on
+// the battlefield, so there is no "another" to say).
+func tapOthersPrice(n int, label string, preds ...CardPredicate) *game.TapOthersCost {
+	return &game.TapOthersCost{
+		Count:  n,
+		Filter: TargetPermanent(label, preds...),
+		Label:  label,
+	}
+}
+
 // EscapeWithCounters is Escape plus "this creature escapes with N
 // +1/+1 counters on it" (CR 702.138c) — the rider most escape
 // creatures print, and the reason an escaped Voracious Typhon is a

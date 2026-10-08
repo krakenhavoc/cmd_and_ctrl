@@ -157,7 +157,7 @@ func Register(spec Spec) {
 		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
 		// three black creatures" is life plus ONE.
 		if n := altCostCardComponents(ac); n > 1 {
-			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice and DiscardFromHand",
+			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice, DiscardFromHand and TapOthers",
 				spec.Name, ac.Key, n))
 		}
 		// The sacrifice component is the additional cost's clause and
@@ -167,6 +167,7 @@ func Register(spec Spec) {
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
+		checkAltCostTapOthers(spec.Name, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
 			continue
@@ -1232,7 +1233,8 @@ func checkCastsFace(spec Spec, ac game.AlternativeCost) {
 }
 
 // altCostCardComponents counts an alternative cost's card-shaped
-// payments (#1727) — the ones whose cards ride alt_cost_ids.
+// payments (#1727) — the ones whose cards ride alt_cost_ids. ADR 0135
+// §1's TapOthers is one of them.
 func altCostCardComponents(ac game.AlternativeCost) int {
 	n := 0
 	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
@@ -1240,7 +1242,31 @@ func altCostCardComponents(ac game.AlternativeCost) int {
 			n++
 		}
 	}
+	if ac.TapOthers != nil {
+		n++
+	}
 	return n
+}
+
+// checkAltCostTapOthers holds a tap alternative cost (ADR 0135 §1) to the
+// shape the cast path reads: the ability clause's own checks (a filter, a
+// label, a positive fixed count, no AllowSame, no players), and two more.
+// No "another" (ExcludeSource): the spell is not on the battlefield, so
+// there is nothing for the word to exclude. No X: no printed alternative
+// cost taps X permanents, and the announce path has no X to size it by.
+func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
+	tc := ac.TapOthers
+	if tc == nil {
+		return
+	}
+	where := fmt.Sprintf("alternative cost %q", ac.Key)
+	if tc.ExcludeSource {
+		panic(fmt.Sprintf("effects.Register: %q %s taps \"another\" permanent — a spell being cast is not on the battlefield, so ExcludeSource names nothing", card, where))
+	}
+	if tc.Filter != nil && tc.Filter.CountFromX {
+		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents — an alternative cost taps a fixed number", card, where))
+	}
+	checkTapOthersClause(card, where, tc, false)
 }
 
 // Lookup returns the Spec for a given oracle ID. The second return

@@ -905,6 +905,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// #1727: "the creatures YOU control" for a sacrifice price — the
 	// same per-seat list as pay_options, in the sacrifice picker's shape.
 	"SacrificeOptions": surfacePrivate,
+	// ADR 0135 §1: "the untapped creatures YOU control" for a tap price,
+	// in the tap picker's shape.
+	"TapOptions": surfacePrivate,
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,

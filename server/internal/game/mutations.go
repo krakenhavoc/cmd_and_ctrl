@@ -1149,6 +1149,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
+	// ADR 0135 §1, CR 118.3 and 701.26a: one permanent is tapped once. A
+	// creature tapped for a tap alternative cost (AltCostIDs) can't also
+	// be tapped for convoke or waterbend (TapIDs) or for teamwork or
+	// escalate (TeamworkIDs): each list is validated on its own as
+	// untapped, so a creature named to two would pass both.
+	if alt != nil && alt.TapOthers != nil && (sharesAnID(params.AltCostIDs, params.TapIDs) || sharesAnID(params.AltCostIDs, params.TeamworkIDs)) {
+		slog.Warn("cast_spell rejected: one permanent named to two tap costs",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+		)
+		return ErrInvalidParam
+	}
 	// ADR 0129 §5, CR 118.3: the energy the whole cast pays — a claimed
 	// alternative cost's and the plan's (replicate, once per payment) —
 	// against the caster's total, summed so the two cannot each pass

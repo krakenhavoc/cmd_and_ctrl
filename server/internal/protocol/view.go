@@ -1262,9 +1262,25 @@ type AlternativeCostView struct {
 	// the rest of the printed offer.
 	Discards bool `json:"discards,omitempty"`
 
-	// PayLabel is the picker's prompt copy for PayOptions or
-	// SacrificeOptions ("a blue card", "an Island you control", "three
-	// creatures"). Absent when there is nothing to pick.
+	// TapOptions is the cost's card-shaped half when that half TAPS
+	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
+	// creature you control", Battle Screech's three white creatures,
+	// Zahid's artifact. The untapped permanents the caster controls that
+	// match the clause, in payment order, with min and max both the
+	// count — the block an activated ability's `tap_others_options`
+	// ships (tapOthersCostOptions), so the client opens the same tap
+	// picker. The picks ride cast_spell as `alt_cost_ids`.
+	//
+	// Set instead of `pay_options` and `sacrifice_options`, never beside
+	// them: an offer has one card component. A cost does not target (CR
+	// 601.2h), so hexproof never narrows it, and a creature that arrived
+	// this turn is listed (CR 302.6). An offer the board can't pay is not
+	// stamped at all (#695). Per viewer, like `pay_options` (#1172).
+	TapOptions *LegalTargetsView `json:"tap_options,omitempty"`
+
+	// PayLabel is the picker's prompt copy for PayOptions,
+	// SacrificeOptions or TapOptions ("a blue card", "an Island you
+	// control", "three creatures"). Absent when there is nothing to pick.
 	PayLabel string `json:"pay_label,omitempty"`
 
 	// XLockedAtZero is CR 107.3b for THIS offer: the card prints an
@@ -4992,6 +5008,8 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.PayOptions = nil
 		// #1727: "the creatures YOU control", one seat's answer.
 		o.SacrificeOptions = nil
+		// ADR 0135 §1: "untapped creatures YOU control", likewise.
+		o.TapOptions = nil
 		out[i] = o
 	}
 	return out
@@ -6202,6 +6220,10 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the caster's own permanents (CR 701.21a), in payment
 			// order, bounded by the clause's count.
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, paySpec, uuid.Nil, false)
+		} else if tc := ac.TapOthers; !tc.Empty() {
+			// ADR 0135 §1: the ability's tap-others block, with no
+			// source — the spell is not on the battlefield.
+			v.TapOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
 		}
 		out = append(out, v)
 	}

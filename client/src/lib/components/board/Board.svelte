@@ -134,6 +134,7 @@
     modesUnderChoices,
     altCostPayOptions,
     altCostSacrificeClause,
+    altCostTapClause,
     applyCastChoices,
     castChoicesBase,
     isLegalCardTarget,
@@ -838,6 +839,32 @@
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
+  // ADR 0135 §1: an offer whose card half TAPS permanents (Orim's Cure,
+  // Battle Screech's flashback) opens the tap picker an ability's "tap an
+  // untapped creature you control" uses, the sacrifice picker with the
+  // verb "Tap". It is shown even when the board offers exactly the count:
+  // tapping a blocker is a choice the player should see. The picks pay
+  // the offer, on alt_cost_ids.
+  let altTapPromptCard = $state<CardView | null>(null);
+  let altTapPromptChoices: CastChoices = {};
+  let altTapPromptClause = $state<LegalTargetsView | undefined>(undefined);
+  let altTapPromptLabel = $state("an untapped creature you control");
+  const altTapOptions = $derived.by(() => {
+    if (!altTapPromptCard) return [];
+    return orderSacrificeOptions(view.battlefield.cards, altTapPromptClause?.cards);
+  });
+  const altTapBounds = $derived(sacrificeRange(altTapPromptClause));
+
+  function confirmAltTap(instanceIDs: string[]): void {
+    const card = altTapPromptCard;
+    const choices = altTapPromptChoices;
+    altTapPromptCard = null;
+    altTapPromptChoices = {};
+    altTapPromptClause = undefined;
+    if (!card) return;
+    afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -857,6 +884,14 @@
       altSacPromptLabel = offer?.pay_label ?? offer?.label ?? "a permanent";
       altSacPromptChoices = choices;
       altSacPromptCard = card;
+      return;
+    }
+    const tapClause = altCostTapClause(offer);
+    if (tapClause !== undefined) {
+      altTapPromptClause = tapClause;
+      altTapPromptLabel = offer?.pay_label ?? "an untapped creature you control";
+      altTapPromptChoices = choices;
+      altTapPromptCard = card;
       return;
     }
     if (altCostPayOptions(offer) !== undefined) {
@@ -3377,6 +3412,24 @@
       altSacPromptCard = null;
       altSacPromptChoices = {};
       altSacPromptClause = undefined;
+    }}
+  />
+  <!-- ADR 0135 §1: an alternative cost's tap ("tap an untapped creature
+       you control rather than pay this spell's mana cost") is the tap
+       picker; the picks pay the offer, on alt_cost_ids. -->
+  <SacrificeCostModal
+    source={altTapPromptCard}
+    label={altTapPromptLabel}
+    options={altTapOptions}
+    count={altTapBounds.max}
+    min={altTapBounds.min}
+    verb="Tap"
+    castName={altTapPromptCard?.name}
+    onConfirm={confirmAltTap}
+    onCancel={() => {
+      altTapPromptCard = null;
+      altTapPromptChoices = {};
+      altTapPromptClause = undefined;
     }}
   />
   <!-- ADR 0100: the count and the label are the cost THIS cast pays —

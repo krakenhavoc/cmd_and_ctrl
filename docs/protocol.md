@@ -1852,6 +1852,26 @@ must fill every group with a different card. Two non-Island cards are
 refused as `bad_request` with nothing paid, and an offer whose hand
 cannot fill the groups is not stamped.
 
+**A tap as the price (ADR 0135 §1, #2030).** An offer whose card half
+TAPS permanents — Orim's Cure's "If you control a Plains, you may tap an
+untapped creature you control rather than pay this spell's mana cost",
+Battle Screech's "Flashback—Tap three untapped white creatures you
+control", Zahid's "pay {3}{U} and tap an untapped artifact you control"
+— carries `tap_options` instead of `pay_options` or `sacrifice_options`:
+the block an ability's `tap_others_options` ships, the UNTAPPED
+permanents the viewer controls that match, in payment order, with `min`
+and `max` both the count. `pay_label` is the clause ("an untapped
+creature you control"). The client opens the tap picker ("Tap <pay_label>
+to cast <card>"), even when exactly the count is offered, and the picks
+ride `alt_cost_ids`. They are tapped at CR 601.2h with the spell on the
+stack. A cost does not target, so a hexproof creature is listed, and it
+is not the {T} symbol, so a creature that arrived this turn is too (CR
+302.6). A tapped, opponent's or non-matching permanent, the wrong count,
+or a permanent also named in `tap_ids` or `teamwork_ids` on the same cast
+(CR 118.3) is refused as `bad_request` with nothing paid. The auto-tapper
+never taps a named permanent for the offer's mana. An offer whose board
+can't pay the count is not stamped. Per viewer, like `pay_options`.
+
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
 Two additive fields on `CardView` and one on `cast_spell`, both

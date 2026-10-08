@@ -1206,6 +1206,19 @@ export function altCostSacrificeClause(
   return offer?.sacrifice_options;
 }
 
+// altCostTapClause returns an offer's tap half (ADR 0135 §1) — Orim's
+// Cure's "tap an untapped creature you control", Battle Screech's
+// "Flashback—Tap three untapped white creatures you control" — or
+// undefined when the offer taps nothing. The cast flow opens the tap
+// picker on it, even when the board offers exactly the count: tapping a
+// blocker is a choice the player should see. The picks ride
+// `alt_cost_ids`.
+export function altCostTapClause(
+  offer: AlternativeCostView | undefined,
+): LegalTargetsView | undefined {
+  return offer?.tap_options;
+}
+
 // altCostPayCount is how many cards the offer's card-shaped half
 // demands. One for every S28 shape — Force of Will pitches a card,
 // Daze bounces an Island — and N for S29's escape, whose cost is
