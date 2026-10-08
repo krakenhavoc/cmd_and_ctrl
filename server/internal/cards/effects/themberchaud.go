@@ -35,7 +35,9 @@ func init() {
 		Name:            "Themberchaud",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		ExertOnAttack:   ExertAsItAttacks(),
+		// ADR 0126 §6: the damage is the number of Mountains, counted as the trigger resolves, so the sweep is declared as the destruction it usually is, an upper bound (Chain Reaction's shape). Partial: fliers and Themberchaud are spared.
+		Purpose:       game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
+		ExertOnAttack: ExertAsItAttacks(),
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
