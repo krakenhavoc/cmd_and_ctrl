@@ -27,6 +27,7 @@ func init() {
 				Label:   "{T}, Pay {E}{E}{E}: This artifact deals 2 damage to target player or planeswalker.",
 				Cost:    Plus(TapCost(), PayEnergy(3)),
 				Targets: targetPlayerOrPlaneswalker(),
+				Purpose: ForTargets(DamageToTarget(0, 2)),
 				Effect:  sourceDealsDamageToEachLegalTarget(2),
 			},
 		},

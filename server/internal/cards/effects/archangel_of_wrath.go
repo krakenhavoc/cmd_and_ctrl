@@ -30,12 +30,12 @@ func init() {
 		PrintedKeywords: []string{"flying", "lifelink"},
 		OptionalCosts:   Kickers("{B}", "{R}"),
 		Triggered: []game.TriggeredAbility{
-			Targeting(On(game.EventETB, AllOf(Self, ThisKickedAtLeast(1)),
+			TriggerWithPurpose(Targeting(On(game.EventETB, AllOf(Self, ThisKickedAtLeast(1)),
 				"Archangel of Wrath — kicked, 2 damage to any target",
-				sourceDealsDamageToEachLegalTarget(2)), TargetAny()),
-			Targeting(On(game.EventETB, AllOf(Self, ThisKickedAtLeast(2)),
+				sourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
+			TriggerWithPurpose(Targeting(On(game.EventETB, AllOf(Self, ThisKickedAtLeast(2)),
 				"Archangel of Wrath — kicked twice, 2 damage to any target",
-				sourceDealsDamageToEachLegalTarget(2)), TargetAny()),
+				sourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
 		},
 	})
 }

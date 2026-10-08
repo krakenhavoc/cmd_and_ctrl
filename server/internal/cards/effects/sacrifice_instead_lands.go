@@ -125,6 +125,7 @@ func init() {
 			Label:   "{1}, {T}: This land deals 1 damage to target attacking creature.",
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: TargetCreature("target attacking creature", AttackingCreature()),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  sourceDealsDamageToEachLegalTarget(1),
 		}},
 	})

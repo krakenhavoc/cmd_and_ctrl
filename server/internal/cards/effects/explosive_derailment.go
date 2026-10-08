@@ -21,7 +21,7 @@ func init() {
 		Name:         "Explosive Derailment",
 		Completeness: CompletenessFull,
 		Modes: Spree(
-			SpreeModeDoing("Explosive Derailment deals 4 damage to target creature.", "{2}",
+			ModeWithPurpose(SpreeModeDoing("Explosive Derailment deals 4 damage to target creature.", "{2}",
 				TargetCreature("target creature"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -29,7 +29,7 @@ func init() {
 						return nil
 					}
 					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 4}.Apply(ctx)
-				}),
+				}), ForTargets(DamageToTarget(0, 4))),
 			SpreeModeDoing("Destroy target artifact.", "{2}",
 				TargetPermanent("target artifact", Artifact()),
 				DestroyTheModesTarget),

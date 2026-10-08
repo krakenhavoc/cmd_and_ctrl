@@ -34,6 +34,7 @@ func init() {
 			Zones:         []game.ZoneKind{game.ZoneHand},
 			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
 			Targets:       TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
+			Purpose:       ForTargets(DamageToTarget(0, 4)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				legal := ctx.LegalTargets()

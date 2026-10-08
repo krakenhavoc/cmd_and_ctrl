@@ -16,6 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	attack := AttacksWhileSaddled("Dracosaur Auxiliary — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2))
 	attack.Targets = TargetAny()
+	attack = TriggerWithPurpose(attack, ForTargets(DamageToTarget(0, 2)))
 	Register(Spec{
 		OracleID:        "457e3218-b2ef-4280-931a-5320987b9657",
 		Name:            "Dracosaur Auxiliary",

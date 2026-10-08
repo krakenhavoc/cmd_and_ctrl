@@ -57,6 +57,7 @@ func init() {
 			Cost:      TapCost(),
 			Condition: DuringStep(game.StepEndCombat),
 			Targets:   TargetCreature("target attacking creature", AttackingCreature()),
+			Purpose:   ForTargets(DamageToTarget(0, 1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {
