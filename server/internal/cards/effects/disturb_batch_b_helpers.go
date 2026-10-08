@@ -13,10 +13,10 @@ import (
 // AttackingAlone is CR 506.5's "is attacking alone": the creature is
 // attacking and no other creature is. Read live, so a creature whose
 // fellow attackers were removed from combat is attacking alone from
-// then on. Counted the way attackedAlone (exalted.go) counts it.
+// then on. Counted by game.AttackedAlone, exalted's own count.
 func AttackingAlone() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.AttackingTarget != uuid.Nil && attackedAlone(g)
+		return c.AttackingTarget != uuid.Nil && game.AttackedAlone(g)
 	}
 }
 

@@ -452,7 +452,36 @@ func corpusBoards() []corpusBoard {
 		{"revealed_hand_pick_optional_then", corpusRevealedHandPickOptional},
 		{"revealed_hand_pick_exile_graveyard", corpusRevealedHandPickExile},
 		{"revealed_hand_pick_measures", corpusRevealedHandPickMeasures},
+		// v7, added by #2538 (ADR 0101 amendment 2026-10-08) as a new
+		// file: a Noble Hierarch's exalted trigger — the fourth engine
+		// keyword trigger, keyed by its exalted/pump body — waiting on
+		// the stack, carrying the lone attacker in its params.
+		{"exalted_trigger_pending", corpusExaltedTriggerPending},
 	}
+}
+
+// corpusExaltedTriggerPending is a real Noble Hierarch's exalted
+// trigger (#2538: an engine trigger with no catalog row) waiting on the
+// stack in the declare attackers step, a lone 2/2 attacking.
+func corpusExaltedTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	hierarch := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Noble Hierarch", TypeLine: "Creature — Human Druid",
+		OracleID: nobleHierarchOracle, Power: 0, Toughness: 1, Keywords: []string{game.KeywordExalted},
+		Owner: me, Controller: me,
+	})
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Grizzly Bears", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me, Controller: me,
+	})
+	declareAttack(t, g, opp, bear)
+	it := corpusSettleTrigger(t, g, hierarch)
+	if it.Body != "exalted/pump" || it.Params.Object.ID != bear {
+		t.Fatalf("setup: the exalted trigger is %+v, want body exalted/pump pinned to the attacker", it)
+	}
+	return g
 }
 
 // corpusRevealedHandPickHand gives seat 1 a land and two spells, seat 1

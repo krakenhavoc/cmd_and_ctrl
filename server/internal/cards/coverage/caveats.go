@@ -743,6 +743,17 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordPersist} — the engine does the rest`,
 	},
 	{
+		// #2538 (ADR 0101 amendment 2026-10-08): exalted is a
+		// canonicalKeywords token whose trigger the engine derives from
+		// the ability list (game/exalted.go). Same probe as evolve.
+		Name:       "exalted",
+		Phrases:    []string{"exalted"},
+		Implements: printedKeywordProbe(game.KeywordExalted),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "exalted"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordExalted} — the engine does the rest`,
+	},
+	{
 		// #1519: split second is a canonicalKeywords token read off
 		// the spell at announce (game/split_second.go). Same probe as
 		// prowess, for the same reason: the declaration is the fact,

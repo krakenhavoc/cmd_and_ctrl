@@ -198,6 +198,13 @@ func KeywordIsCumulative(kw string) bool {
 	if kw == KeywordUndying || kw == KeywordPersist {
 		return true
 	}
+	// Exalted (#2538, ADR 0101 amendment 2026-10-08): no rule of its
+	// own on the point, so CR 113.2c — each instance is its own
+	// trigger, and the Emissary of Soulfire ruling makes each exalted
+	// counter one more.
+	if kw == KeywordExalted {
+		return true
+	}
 	_, ok := ToxicValue(kw)
 	return ok
 }

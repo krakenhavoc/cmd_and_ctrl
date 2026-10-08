@@ -25,7 +25,7 @@ import (
 // the battlefield, any controller's (the printed line has no "you
 // control"), excluding Rabblemaster itself, and the +1/+0 lands as a
 // one-time until-end-of-turn boost rather than a live-recomputed
-// static — exactly like Exalted's pump, one layer over.
+// static — exactly like exalted's pump (game/exalted.go).
 //
 // No simplification.
 func init() {
