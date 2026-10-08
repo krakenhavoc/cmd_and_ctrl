@@ -21,8 +21,8 @@ func init() {
 		Name:         "Abrade",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Abrade deals 3 damage to target creature.",
-				TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Abrade deals 3 damage to target creature.",
+				TargetCreature("target creature")), ForTargets(DamageToTarget(0, 3))),
 			Mode("Destroy target artifact.",
 				TargetPermanent("target artifact", Artifact())),
 		),

@@ -83,7 +83,15 @@
                   "min": 1,
                   "max": 1
                 },
-                "mana_cost": "{R}"
+                "mana_cost": "{R}",
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "damage": 3
+                    }
+                  ]
+                }
               },
               {
                 "instance_id": "0000000b-0000-4000-8000-000000000000",
@@ -1033,7 +1041,15 @@
                   "min": 1,
                   "max": 1
                 },
-                "mana_cost": "{R}"
+                "mana_cost": "{R}",
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "damage": 3
+                    }
+                  ]
+                }
               }
             ]
           },

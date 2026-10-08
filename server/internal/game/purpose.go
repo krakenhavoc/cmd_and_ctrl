@@ -111,6 +111,81 @@ type Purpose struct {
 	// the heuristic prices it as a hasty N/N body that is also a land,
 	// beside the spell's own purpose, which awaken leaves alone.
 	AwakenLand int
+
+	// Targets is what happens TO each target the statement names, one
+	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
+	// answer 1). Every amount above is its controller's; an entry's are
+	// the target's. "Target player draws two cards" is {Slot: 0, Draws:
+	// 2} here, never Draws 2 above, because who draws is whoever the
+	// move aims it at. The statement is the one the purpose is declared
+	// on: the card's own clause list, a mode's, an alternative cost's or
+	// an ability row's, and Slot indexes it as TargetRef.Slot does.
+	//
+	// Nil is "no target entries"; effects.Register refuses an empty
+	// list. A pointer so Purpose stays comparable.
+	Targets *TargetPurposes
+}
+
+// TargetPurposes is a statement's target entries (Purpose.Targets), at
+// most one per clause.
+type TargetPurposes []TargetPurpose
+
+// TargetPurpose is what a spell or an ability does to the target chosen
+// for one of its clauses, as printed amounts. A player amount (draws,
+// discards, tokens, life gained or lost) is that player's; Damage is
+// dealt to whatever the clause's pick is, player or permanent.
+type TargetPurpose struct {
+	// Slot is the target clause's index in its statement (CR 601.2c:
+	// one clause per instance of the word "target"), the slot a move's
+	// target names.
+	Slot int
+	// Draws is the cards the target player draws: Sign in Blood 2.
+	Draws int
+	// Discards is the cards the target player discards on resolution:
+	// Prismari Command's loot 2.
+	Discards int
+	// Tokens is the tokens the target player creates: Prismari
+	// Command's Treasure 1.
+	Tokens int
+	// LifeGain is the life the target player gains.
+	LifeGain int
+	// LifeLoss is the life the target player loses: Sign in Blood 2.
+	// Damage is not here; it is Damage.
+	LifeLoss int
+	// Damage is the damage dealt to the target: Lightning Bolt 3.
+	Damage int
+}
+
+// IsZero reports whether the entry says nothing about its target.
+func (t TargetPurpose) IsZero() bool {
+	return !t.HasPlayerAmount() && t.Damage == 0
+}
+
+// HasPlayerAmount reports whether the entry names an amount only a
+// player can be given: a draw, a discard, a token or a life change.
+func (t TargetPurpose) HasPlayerAmount() bool {
+	return t.Draws != 0 || t.Discards != 0 || t.Tokens != 0 || t.LifeGain != 0 || t.LifeLoss != 0
+}
+
+// ForTargets is the Purpose.Targets of these entries, nil for none.
+// The card files' constructor:
+//
+//	Purpose: game.Purpose{Targets: game.ForTargets(
+//		game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2})}
+func ForTargets(ts ...TargetPurpose) *TargetPurposes {
+	if len(ts) == 0 {
+		return nil
+	}
+	out := TargetPurposes(append([]TargetPurpose(nil), ts...))
+	return &out
+}
+
+// List is the entries, nil-safe.
+func (tp *TargetPurposes) List() []TargetPurpose {
+	if tp == nil {
+		return nil
+	}
+	return *tp
 }
 
 // Pump is a self pump until end of turn (Purpose.Pump): the power and
@@ -253,8 +328,11 @@ func CardPurposeOf(c Card) Purpose {
 
 // plus is what two effects declare together: a fused split spell
 // does both halves (fuse). Amounts add; a sweep is the first
-// half's when it has one, else the second's.
-func (p Purpose) plus(o Purpose) Purpose {
+// half's when it has one, else the second's. The target entries are
+// the first half's followed by the second's, whose slots move past the
+// first half's `leftClauses` clauses, as the fused statement numbers
+// them (split_fuse.go).
+func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	out := Purpose{
 		Draws:                     p.Draws + o.Draws,
 		ControllerLosesLife:       p.ControllerLosesLife + o.ControllerLosesLife,
@@ -284,5 +362,11 @@ func (p Purpose) plus(o Purpose) Purpose {
 	if out.DiscardPayoff == nil {
 		out.DiscardPayoff = o.DiscardPayoff
 	}
+	targets := append([]TargetPurpose(nil), p.Targets.List()...)
+	for _, t := range o.Targets.List() {
+		t.Slot += leftClauses
+		targets = append(targets, t)
+	}
+	out.Targets = ForTargets(targets...)
 	return out
 }

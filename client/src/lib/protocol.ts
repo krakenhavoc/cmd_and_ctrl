@@ -2865,6 +2865,24 @@ export interface PurposeView {
   life_gain?: number;
   // ADR 0135 §3: the N of an awaken offer.
   awaken_land?: number;
+  // ADR 0126 (amendment of 2026-10-08): what happens to each target,
+  // one entry per target clause of the statement this purpose rides
+  // on, keyed by the slot a move's `targets[].slot` names.
+  targets?: TargetPurposeView[];
+}
+
+// TargetPurposeView is what a spell or an ability does to the target
+// picked for clause `slot` (ADR 0126, amendment of 2026-10-08). The
+// player amounts are that player's. Bot data; every amount is absent
+// when zero.
+export interface TargetPurposeView {
+  slot: number;
+  draws?: number;
+  discards?: number;
+  tokens?: number;
+  life_gain?: number;
+  life_loss?: number;
+  damage?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.

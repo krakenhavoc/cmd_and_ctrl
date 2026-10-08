@@ -118,12 +118,12 @@ var exitPayoutAllowlist = map[string]string{
 		"\"each opponent loses life equal to that card's mana value\" is an unconditional clause " +
 		"about PLAYERS, not gated on the card reaching a hand, and `if loss == 0` returns early " +
 		"only to avoid a life change of nothing.",
-	"prismari_command.go:61": "a cross-closure artifact of the enclosing-declaration walk, not a " +
+	"prismari_command.go:63": "a cross-closure artifact of the enclosing-declaration walk, not a " +
 		"payout (#1027, #1112 — the same shape kolaghans_command.go:70 used to name before its " +
 		"damage bullet moved to the shared DealFixedDamageToModesTarget helper and stopped being " +
-		"a closure at all). The `ok` at prismari_command.go:61 is the TREASURE mode's own " +
+		"a closure at all). The `t` and `ok` read at prismari_command.go:63 are the TREASURE mode's own " +
 		"`t, ok := ModeTarget(ctx, occ)`, declared inside that mode's closure; the discard at " +
-		"line 49 is the DRAW-THEN-DISCARD mode's, one closure earlier, and the two locals never " +
+		"line 50 is the DRAW-THEN-DISCARD mode's, one closure earlier, and the two locals never " +
 		"share a scope. exitPayoutsIn walks a func literal both on its own and as part of the " +
 		"init() it sits in (the header says so), and on the enclosing pass every mode's locals " +
 		"look like one function's. The per-closure pass sees the Treasure mode with no exit in " +

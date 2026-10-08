@@ -11,6 +11,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // realdump_purpose_manual_test.go — ADR 0126 §6's manual audit of
@@ -33,7 +34,11 @@ import (
 //     It also LISTS, without failing, the catalog cards whose text reads
 //     as a draw, a tutor or a land search and that declare no purpose:
 //     a review aid, since ADR 0126 declares those for the curated decks
-//     alone.
+//     alone. It lists the same way the cards whose text gives a target
+//     player something ("target player draws / creates / gains") or
+//     deals a fixed amount of damage to a creature or any target, and
+//     that declare no target entry: ADR 0126's amendment of 2026-10-08,
+//     whose PR 5 works through that list.
 
 // The oracle-text readings. Deliberately loose: a false positive is a
 // line on reviewedNotAWipe, a false negative is a wipe nobody declared.
@@ -51,7 +56,42 @@ var (
 	tutorText     = regexp.MustCompile(`(?i)search your library for`)
 	landToBfText  = regexp.MustCompile(`(?i)search your library for [^.]*\bland[^.]*onto the battlefield`)
 	instantSorcer = regexp.MustCompile(`\b(Instant|Sorcery)\b`)
+	// ADR 0126's amendment of 2026-10-08: a target that is given
+	// something, and burn at a creature or any target.
+	giftText = regexp.MustCompile(`(?i)\btarget (player|opponent) (draws|creates|gains)\b`)
+	burnText = regexp.MustCompile(`(?i)deals \d+ damage to (any (other )?target|(up to \w+ )?(another )?target ([\w,-]+ )*?(creature|planeswalker))`)
 )
+
+// declaresTargetEntry reports whether a spec declares a target entry
+// (Purpose.Targets) in any slot.
+func declaresTargetEntry(s effects.Spec) bool {
+	ps := []game.Purpose{s.Purpose}
+	modes := func(m *game.ModeSpec) {
+		if m != nil {
+			for _, o := range m.Options {
+				ps = append(ps, o.Purpose)
+			}
+		}
+	}
+	modes(s.Modes)
+	for _, a := range s.AlternativeCosts {
+		ps = append(ps, a.Purpose)
+	}
+	for _, a := range s.Activated {
+		ps = append(ps, a.Purpose)
+		modes(a.Modes)
+	}
+	for _, t := range s.Triggered {
+		ps = append(ps, t.Purpose)
+		modes(t.Modes)
+	}
+	for _, p := range ps {
+		if p.Targets != nil {
+			return true
+		}
+	}
+	return false
+}
 
 // reviewedNotAWipe is every catalog card the sweep reading flags that
 // declares no Sweep, with why. Each was read.
@@ -193,8 +233,8 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 	// Every Spec under one base oracle ID is one card: its faces, a
 	// split card's halves.
 	type entry struct {
-		name             string
-		declared, sweeps bool
+		name                      string
+		declared, sweeps, targets bool
 	}
 	byBase := map[string]*entry{}
 	for _, s := range effects.All() {
@@ -207,6 +247,7 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 		d, sw := anyPurpose(s)
 		e.declared = e.declared || d
 		e.sweeps = e.sweeps || sw
+		e.targets = e.targets || declaresTargetEntry(s)
 	}
 
 	var undeclaredWipes, staleReviews []string
@@ -236,6 +277,14 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 		case reviewed && (e.sweeps || !wipe):
 			staleReviews = append(staleReviews, card.Name)
 		}
+		if !e.targets {
+			switch {
+			case reads(giftText):
+				listed["target gift"] = append(listed["target gift"], card.Name)
+			case reads(burnText):
+				listed["burn at a creature or any target"] = append(listed["burn at a creature or any target"], card.Name)
+			}
+		}
 		if e.declared {
 			continue
 		}
@@ -259,10 +308,16 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 		t.Errorf("reviewedNotAWipe lists cards that now declare a Sweep, or no longer read as one:\n\t%s",
 			strings.Join(staleReviews, "\n\t"))
 	}
-	for _, class := range []string{"land search", "tutor", "draw (instant or sorcery)"} {
-		names := listed[class]
+	for _, class := range []struct{ name, lacks string }{
+		{"land search", "purpose"},
+		{"tutor", "purpose"},
+		{"draw (instant or sorcery)", "purpose"},
+		{"target gift", "target entry"},
+		{"burn at a creature or any target", "target entry"},
+	} {
+		names := listed[class.name]
 		sort.Strings(names)
-		t.Logf("review aid: %d catalog card(s) read as a %s and declare no purpose:\n\t%s",
-			len(names), class, strings.Join(names, "\n\t"))
+		t.Logf("review aid: %d catalog card(s) read as a %s and declare no %s:\n\t%s",
+			len(names), class.name, class.lacks, strings.Join(names, "\n\t"))
 	}
 }
