@@ -1367,7 +1367,9 @@
     z-index: 4;
     border-radius: inherit;
     pointer-events: none;
-    background: #fff;
+    /* Red for a lethal hit (ADR 0134 PR 2): animations.ts impactShake
+       sets --impact-wash for the length of the shake. */
+    background: var(--impact-wash, #fff);
     opacity: calc(var(--impact-glow, 0) * 0.5);
   }
   .card.clickable {

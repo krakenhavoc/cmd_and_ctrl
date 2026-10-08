@@ -67,8 +67,9 @@ export class CombatCues {
   }
 
   /**
-   * The next frame primes, as a first frame does: a reconnect or a
-   * replay toggle (Game.svelte's beatsPrimeKey).
+   * The next frame primes, as a first frame does: a reconnect, a
+   * replay toggle, or a replay move that is not a one-frame step
+   * forward (Game.svelte's beatsPrimeKey, ADR 0134 §6).
    */
   requestReprime(): void {
     this.#reprimeNext = true;
