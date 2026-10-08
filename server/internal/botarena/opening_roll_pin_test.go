@@ -66,6 +66,19 @@ import (
 // #2675, #2690 and #2676 turned off, which still gives the old digest:
 // the first 292 lines are identical.
 //
+// A fifth deliberate exception, re-pinned by hand (#2689, 2026-10-08):
+// declared damage at a player is priced per point (ADR 0126's amendment
+// of 2026-10-08, D1, `DamageByLethality`). The battle deck's Lightning
+// Bolt at a player on 40 life was "cast spell (+1.20)", the flat attack
+// price; it is now 3 × DamageToOpponent through the opposition weights,
+// less the card, +0.15 at two seats, so the heuristic seat holds it. In
+// every seed the first difference is that cast: seed 1503 at move 57
+// (346 moves to the same turn 3 instead of 359), seed 31 at move 9 (399
+// moves to the same turn 9 instead of 398), and seed 107 at move 14,
+// whose first declared attack now comes after 576 moves instead of 440.
+// Checked by diffing the move logs with DamageByLethality off, which
+// still gives the old digests: every line before those is identical.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -99,7 +112,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 359, turns: 3, winner: -1, digest: "296da15d6f1c0f8953b18f7d41ecedecae065bbcf88b2d0858745a8f7d75dd27",
+			moves: 346, turns: 3, winner: -1, digest: "82e0b2b6f5074e68ecb39c9987859470e52da06da4c71c3746e18b8566c71545",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -107,7 +120,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 398, turns: 9, winner: -1, digest: "129235aeda37908d24fca70df7107f2db7462587d67b40411c3092c04d5cc14a",
+			moves: 399, turns: 9, winner: -1, digest: "8571487c58f438604d8572d31045426f4a45eed52c1ce8f86e2fb94b322012ea",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -120,7 +133,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 440, digest: "055cb3a9582a4431b6493a4a54c9bb81d222aa16d4acbc1bf8095bb5022a5a6c",
+			opening: true, moves: 576, digest: "9c1082665a302894a239c9358931e4226d83418bc4d1fc7d5324e004bae96312",
 		},
 	}
 	for _, c := range cases {
