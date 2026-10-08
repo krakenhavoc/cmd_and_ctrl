@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -836,7 +838,15 @@ func (a AddCounter) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(a.Target) {
 		return nil
 	}
-	return ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
+	err := ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
+	// #2611: a target that no longer exists anywhere — a token that
+	// died, or one that left in response — has nothing to take the
+	// counter. CR 608.2b: the instruction does nothing; it is not an
+	// effect error. A card that merely changed zones is still found.
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	return err
 }
 
 // CreateToken puts N copies of `Template` on the battlefield under

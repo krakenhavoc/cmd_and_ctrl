@@ -1342,3 +1342,37 @@ func TestB10FireLitThicketFiltersOneHybridIntoTwo(t *testing.T) {
 		t.Errorf("pool %v, want [R R]", got)
 	}
 }
+
+// #2611: a token Marwyn that dies while its counter trigger waits on
+// the stack has ceased to exist, so the trigger's AddCounter finds no
+// card anywhere. "Put a counter on this" with nothing to put it on
+// does nothing (CR 608.2b); it must not surface as an effect error.
+func TestB10MarwynTokenGoneBeforeTriggerResolvesDoesNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	marwyn := pushCatalogPermanent(g, me.ID, "Marwyn, the Nurturer", "Token Legendary Creature — Elf Druid", b10MarwynOracle, false)
+
+	castCatalogSpell(t, g, "Elf", "Creature — Elf Warrior", "", nil)
+	for i := 0; i < 8 && triggerOnStack(g, marwyn) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if triggerOnStack(g, marwyn) == nil {
+		t.Fatal("Marwyn's counter trigger never reached the stack")
+	}
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(marwyn); err != nil {
+			t.Errorf("destroy Marwyn: %v", err)
+		}
+	})
+	g.RunStateChecksForTest() // CR 704.5d: the dead token ceases to exist
+	if _, ok := g.LookupCardForEffect(marwyn); ok {
+		t.Fatal("test setup: the token Marwyn should have ceased to exist")
+	}
+	before := len(g.Events)
+	passPriorityAroundTable(t, g)
+	if n := countCatalogEvents(g, game.EventEffectError, before); n != 0 {
+		t.Errorf("EventEffectError count = %d, want 0 — the trigger should do nothing", n)
+	}
+}
