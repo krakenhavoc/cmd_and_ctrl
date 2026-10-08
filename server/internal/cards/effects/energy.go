@@ -51,3 +51,51 @@ func EnergySymbols(n int) string {
 func WhenThisEntersYouGetEnergy(name string, n int) game.TriggeredAbility {
 	return WhenThisEnters(name+" — you get "+EnergySymbols(n), Do(GetEnergy{N: n}))
 }
+
+// YouGotEnergy is the When for "whenever you get one or more {E}"
+// (ADR 0129 §6): one or more energy counters landed on the source's
+// controller. One placement is one EventPlayerCounterPlaced, so "one or
+// more" triggers once per placement, as printed (CR 603.2c). The event
+// carries the delta that landed, after any replacement (Izzet
+// Generatorium's "that many plus one"), and a payment is a negative
+// delta, so paying energy never triggers it.
+func YouGotEnergy(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Label == game.CounterEnergy && ev.Amount > 0 && ev.Target == source.Controller
+}
+
+// WheneverYouGetEnergy is "Whenever you get one or more {E}, <effect>".
+// Set Targets on the returned ability for a targeted body; the effect
+// reads how much was gotten with EnergyGotten.
+func WheneverYouGetEnergy(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventPlayerCounterPlaced, YouGotEnergy, label, effect)
+}
+
+// EnergyGotten is "that much" in a WheneverYouGetEnergy body: the energy
+// the triggering placement put on the player.
+func EnergyGotten(item *game.StackItem) int {
+	if item == nil || item.Trigger == nil || item.Trigger.Event.Amount < 0 {
+		return 0
+	}
+	return item.Trigger.Event.Amount
+}
+
+// PaidOrLostEnergyThisTurn is "Activate only if you've paid or lost N or
+// more {E} this turn" (Izzet Generatorium), read off the turn tally
+// (ADR 0129 §6).
+func PaidOrLostEnergyThisTurn(n int) ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return g.EnergyPaidOrLostThisTurn(controller) >= n
+	}
+}
+
+// CostsLessForEachEnergyPaidOrLost is "This spell costs {N} less to cast
+// for each {E} you've paid or lost this turn" (Blaster Hulk), read at
+// CR 601.2f through the one pricer. Generic mana only.
+func CostsLessForEachEnergyPaidOrLost(n int, label string) game.CostModifier {
+	return CostsLessEach(func(q game.CostQuery) int {
+		if q.Game == nil {
+			return 0
+		}
+		return n * q.Game.EnergyPaidOrLostThisTurn(q.Controller)
+	}, label)
+}

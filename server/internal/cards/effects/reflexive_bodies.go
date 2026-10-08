@@ -133,6 +133,12 @@ var (
 		func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 			return damageEachMatching(NewContext(g, item), And(Creature(), NotSelf(item.SourceCardID)), p.Amount)
 		})
+
+	// Blaster Hulk (ADR 0129 §6): "when you do, this creature deals 8
+	// damage divided as you choose among up to eight targets". The
+	// division is announced with the targets (CR 601.2d).
+	blasterHulkDamageBody = game.ReflexiveBody("blaster-hulk/divided-damage", simpleBody(blasterHulkDamage),
+		constTargets(func() *game.TargetSpec { return TargetAny().WithCount(0, 8).Dividing(Divide(8)) }))
 )
 
 // simpleBody adapts a no-params reflexive body — every one of them
