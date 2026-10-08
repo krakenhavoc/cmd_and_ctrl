@@ -203,6 +203,38 @@ type Config struct {
 	// attack value plus its blocking value across the opponents' turns.
 	ExertCostWeight float64
 
+	// LandColorNeed breaks a land search's ties by colour (#2677,
+	// card_choices.go): a land is worth this much more per colour it
+	// makes that the hand or commander asks for, scaled down by the
+	// sources of that colour the bot already has, and a little for a
+	// colour nothing asks for, so a dual beats a basic. Zero (the
+	// baseline) takes the first land offered, every land being one flat
+	// cardValue.
+	LandColorNeed float64
+	// DiscardByDistance prices a card the bot discards from its own
+	// hand by how far it is from castable (#2691, card_choices.go
+	// handKeepValue): DistanceDiscount per mana it is short, counting
+	// lands in hand and colours, with spells at DiscardSpellPerMana so
+	// spells and permanents share a scale, and a land at what it brings
+	// the rest of the hand closer to castable. Off (the zero value) is
+	// cardValue's flat x0.6, which keeps a 7-drop on two lands and
+	// pitches the cheap spell.
+	DiscardByDistance bool
+	// DistanceDiscount is the factor a discard candidate is multiplied
+	// by for each mana it is short of castable.
+	DistanceDiscount float64
+	// DiscardSpellPerMana is an instant's or a sorcery's worth per mana
+	// value in a discard: about what a creature's body prices per mana,
+	// where SpellPerMana is the cast-time proxy.
+	DiscardSpellPerMana float64
+	// DiscardLandFloor is the least a land in hand is worth in such a
+	// discard while the bot has fewer than RampWantCap mana sources: the
+	// land drop it will want later, whatever the hand holds now. At the
+	// default it keeps the pre-#2691 order between a land and a spell,
+	// with both on the new scale: a land beats a two-mana spell and loses
+	// to a three-mana one (1.5 against 0.6 per mana before, 2.5 against
+	// 1.0 now).
+	DiscardLandFloor float64
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -434,7 +466,12 @@ func DefaultConfig() Config {
 		PriceExert:      true,
 		ExertCostWeight: 1.00,
 
-		PlanTurnMana: true,
+		LandColorNeed:       0.30,
+		DiscardByDistance:   true,
+		DistanceDiscount:    0.60,
+		DiscardSpellPerMana: 1.00,
+		DiscardLandFloor:    2.50,
+		PlanTurnMana:        true,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -545,6 +582,12 @@ func BaselineConfig() Config {
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false
 	c.Weights.BlockOnlyBody = 0
+	// #2677 and #2691: land searches by colour, discards by distance.
+	c.LandColorNeed = 0
+	c.DiscardByDistance = false
+	c.DistanceDiscount = 0
+	c.DiscardSpellPerMana = 0
+	c.DiscardLandFloor = 0
 	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
 	c.PlanTurnMana = false
 	return c

@@ -1273,3 +1273,40 @@ Run 1's turns p50 goes from 15 to 14; run 2's stays 12. The counters, from the d
 | "No blocks" with an untapped 0-power token and an attack incoming | 5 | 1 | 0 | 0 |
 
 The 0-power attacks left are all lethal pushes, two-turn races and attrition plans, which send every body by design. The curated decks make few 0-power tokens, so the chump counter barely moves; the issue's window is pinned by a unit test instead. The A3 canaries in run 1 move by at most two games: Mary Read's loot 44 of 61 to 49 of 61, Harrow 15 of 27 (56%) to 13 of 27 (48%), which crosses the bar downward by two games; the others stay above it. The suite is 41 of 41 before and after.
+
+### #2677 and #2691: land searches by colour, discards by distance (2026-10-08)
+
+Two card choices the 2026-10-08 review games found wrong, both local to the decision they fix (`card_choices.go`); `cardValue`, which the scry, the sacrifice, the fuel pricer and the cast-cost discard read, is unchanged.
+
+- **#2677, `LandColorNeed` (0.30).** A library search scored every land at one flat `cardValue` and took the first. A land now adds `LandColorNeed` × its fit: for each colour its repeatable mana abilities make, 1/(1 + the bot's sources of it) when the hand or commander has a pip of it, and 0.1 when nothing does, so a dual beats a basic that meets the hand equally. The same score answers a `choose_cards` look at the library.
+- **#2691, `DiscardByDistance`, `DistanceDiscount` (0.60), `DiscardSpellPerMana` (1.00), `DiscardLandFloor` (2.50).** A discard from the bot's own hand (cleanup, a discard prompt, a loot's or rummage's named cards, and the discard-payoff estimate that mirrors them) prices a nonland card by `handKeepValue`: an instant or sorcery at `DiscardSpellPerMana` per mana, a permanent at its `permanentValue`, either multiplied by `DistanceDiscount` per mana it is short (its mana value less sources and lands in hand, or its coloured pips less the sources and lands in hand of each colour, whichever is larger). A land is worth what it brings the rest of the hand closer to castable, never less than its `cardValue`, and never less than `DiscardLandFloor` while the bot has fewer than `RampWantCap` sources. The floor came from measurement: without it the bot discarded 243 lands in run 1 where it had discarded 142, and played no land on 27.1% of its own turns against 24.1%.
+
+`BaselineConfig` zeroes all five. Before is `develop` at `36d0e9e4c` (with #2710's combat fixes), after is the branch merged onto it; every run is `--rotate --lockstep` with the real dump. No run stalled and no move was rejected. The counters come from a scratch observer on the runner's decision feed, not part of the change: a search counts when every option is a land and some option makes a colour the hand needs and has no source of while another does not; a discard counts when the nonland cards in hand differ in distance and at least one is short.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | search took a colour the hand needs | 27 / 64 | 55 / 55 |
+| | search took a dual over a basic, need equal | 52 / 150 | 134 / 136 |
+| | discard took the card furthest from castable | 0 / 56 | 17 / 43 |
+| | own turns with no land played | 798 / 3267, 24.4% | 850 / 3267, 26.0% |
+| | lands among the cards discarded | 133 / 581 | 205 / 633 |
+| | turns p50 | 14 | 15 |
+| Run 2, seed 1 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 28 / 96, 29.2% (21.0%–38.9%) |
+| | `heuristic-baseline` wins | 17 / 96 | 20 / 96 |
+| Run 2, seed 1001 | `heuristic` wins | 24 / 96, 25.0% (17.4%–34.5%) | 24 / 96, 25.0% (17.4%–34.5%) |
+| | `heuristic-baseline` wins | 24 / 96 | 24 / 96 |
+| Run 2, pooled | `heuristic` wins | 55 / 192, 28.6% (22.7%–35.4%) | 52 / 192, 27.1% (21.3%–33.8%) |
+| | `heuristic-baseline` wins | 41 / 192, 21.4% | 44 / 192, 22.9% |
+
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48`, so each policy plays each deck 48 times; its turns p50 is 11 then 12 at seed 1 and 12 both times at seed 1001. In run 2 `heuristic` took the needed colour in 20 of 20 and 18 of 18 searches (8 of 21 and 6 of 19 before), and played no land on 18.3% and 16.9% of its turns (18.3% and 17.6% before). The pooled difference is three games of 192 either way. The same runs on the base before #2710 (`da81f844d`) gave 55 of 192 before and 55 after, with the baseline at 41 both times.
+
+Run 1's deck shares moved: esper 26 to 20 of 64, izzet 5 to 7, black 18 to 25, simic 15 to 12. Four copies of one policy are zero-sum, so this measures no strength; run 2 is the strength measure. `never` counts are esper 0, izzet 2 to 3, black 4, simic 1 to 2. A2 and A3 rows move both ways with their offered counts, as in #2469's runs: in run 1, 17 of 41 rows met their bar before and 15 after; in run 2, 8 to 9 at seed 1 and 7 to 8 at seed 1001. Every A3 canary that met its bar in run 1 still does (Harrow, 11 of 26 before, is 12 of 27 after). One A2 row fell on both bases: Worn Powerstone, used in 18 of 20 games before and 8 of 14 after here, and 15 of 17 before and 9 of 13 after on the older base. Four run-1 games where black cast it before and not after (seeds 14, 22, 32 and 52) were replayed one by one with the decision log on, and the cause is not its price. In every window it is offered in, before and after, it is priced by the same rule (+2.8, +1.8 or +0.8 as the ramp deficit closes), and it is never discarded. It is the bot's last-choice play once the deficit closes, cast only in a main phase with nothing better to spend the mana on, and after the change that main phase comes later or not at all:
+
+- Seed 22: the cleanup discards of turns 3 and 4 kept Exsanguinate and Ambition's Cost (pitched before) and pitched Rise of the Dark Realms, a nine-drop three mana short, and Dictate of Erebos. On turn 7 the bot cast Ambition's Cost (+2.4) where before, with neither card kept, it cast the Powerstone (+2.8).
+- Seed 14: the table diverges from turn 3 on other seats' decisions. Demonic Tutor then takes Midnight Reaper, and from turn 6 every main phase has a castable creature or spell priced above the Powerstone's +0.8 (Midnight Reaper, Gray Merchant, Deadly Dispute, Sign in Blood, Read the Bones).
+- Seed 32: black's decisions are the same as before, window by window, but the game ends at turn 11 instead of 16, before the late main phase in which it had cast the rock.
+- Seed 52: black draws it on turn 6 instead of 8, taps out for its commander that turn, and an opponent's Wheel of Fortune discards its hand in the same round.
+
+So the row measures how often black runs out of better plays before the game ends. The change gives it more of them (seeds 22 and 14), and it moves when the game ends and what the opponents do (seeds 32 and 52). Casting a card-draw spell or a creature over a tapped three-mana rock at seven mana is consistent with how §2 prices a rock once the deficit closes. Nothing in this change was adjusted for it.
+
+The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 5 turns before and 1 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.
