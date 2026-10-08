@@ -521,6 +521,18 @@ export function strikesScheduled(motion: boolean, visibility: string | undefined
   return motion && (visibility === undefined || visibility === "visible");
 }
 
+// stepChangePlaysCombatSound: whether the step change to a combat damage
+// step plays combat_resolve itself. When strikes are scheduled the strike
+// layer plays it at each beat's first contact instead (ADR 0134 §7), so
+// the step change stays silent. With motion off, reduced motion or a
+// hidden tab no strike plays, and the sound keeps its step-change timing.
+export function stepChangePlaysCombatSound(
+  motion: boolean,
+  visibility: string | undefined,
+): boolean {
+  return !strikesScheduled(motion, visibility);
+}
+
 // strikeLate: a strike whose start comes more than STRIKE_LATE_MS after
 // the moment it was scheduled for (its frame's arrival plus its cue's
 // offset) is dropped. The offset is the same-frame pause, which at speed

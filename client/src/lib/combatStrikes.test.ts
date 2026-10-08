@@ -24,6 +24,7 @@ import {
   strikeLate,
   strikeTimeline,
   strikesFor,
+  stepChangePlaysCombatSound,
   strikesScheduled,
   usableTile,
   type CachedTile,
@@ -637,6 +638,13 @@ describe("gates", () => {
     expect(strikesScheduled(true, "hidden")).toBe(false);
     expect(strikesScheduled(false, "visible")).toBe(false);
     expect(strikesScheduled(true, undefined)).toBe(true);
+  });
+
+  it("the step change plays combat_resolve only when no strike will (ADR 0134 §7)", () => {
+    expect(stepChangePlaysCombatSound(true, "visible")).toBe(false);
+    expect(stepChangePlaysCombatSound(false, "visible")).toBe(true);
+    expect(stepChangePlaysCombatSound(true, "hidden")).toBe(true);
+    expect(stepChangePlaysCombatSound(true, undefined)).toBe(false);
   });
 
   it(`drops a strike that would start more than ${STRIKE_LATE_MS} ms late`, () => {
