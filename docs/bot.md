@@ -1900,6 +1900,12 @@ decided:
   targets would be the whole move list and the other three bullets
   would never be offered. Each selection is walked on its own and the
   moves are then taken round-robin across them (#2681).
+- **Clauses spread the same way.** Within one selection, the target
+  clauses' product is spent round-robin over the earlier clauses'
+  picks: every first-clause target gets one pairing before any gets a
+  second. Spent prefix-major, the bot's threat order could make every
+  offered Arc Trail start with its own seat, so the 2 damage could only
+  go at itself (#2746). Under the budget nothing changes.
 - **Every multiset for a repeatable spec.** After the all-one
   selections come the mixed ones: Mystic Confluence offers [bounce,
   bounce, draw] and [bounce, draw, draw] as well (#2681).
