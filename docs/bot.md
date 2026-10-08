@@ -874,9 +874,29 @@ x at a two-seat table (1.5), a third of `OpponentMean` plus
 mana-value proxy (or `ActivateBase`), because what it does is declared.
 Prismari Command's loot and Treasure at the bot is then +0.50, and at
 the opponent −3.75. Sign in Blood at the bot beats Sign in Blood at
-an opponent. A pick with no entry, and an entry that only deals
-damage, keep the old price: damage by whether it kills is the
-amendment's PR 4 (`DamageByLethality`).
+an opponent. A pick with no entry keeps the old price.
+
+**Declared damage is priced by whether it kills** (the same amendment,
+`DamageByLethality`, `damageKills`). An entry's `damage` is priced by
+what it does to its pick:
+
+- **A creature:** removal if the damage kills it, and `DamageChip`
+  (0.00) of removal if it does not. Marked damage is removed in
+  cleanup, so 2 damage to a 2/4 is worth nothing. The kill test is the
+  combat planner's: toughness less the damage already marked, no kill
+  through indestructible or protection from the source, any damage from
+  a deathtouch source. The bot's own creature costs its value if it
+  dies and nothing if it survives.
+- **A planeswalker:** the share of its loyalty removed, all of it at or
+  above its loyalty.
+- **A player:** `DamageToOpponent` (0.30) per point, as a strength
+  change through the opposition weights, the bot's own life at
+  `MarginalLife`, and `LethalBonus` when the life the move takes reaches
+  the player's total.
+- **A battle**, or a pick the view does not show, keeps the old price.
+
+Lightning Bolt at a player on 40 is then +0.15 at two seats, not +1.20,
+so the bot keeps it for a creature it kills or for the last points.
 
 ### Board wipes
 
