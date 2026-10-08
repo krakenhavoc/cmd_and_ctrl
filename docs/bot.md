@@ -939,6 +939,24 @@ names) is priced by `handKeepValue` (`card_choices.go`), not
 The cast-cost discard (`DiscardCostByCard` above), the scry, the
 sacrifice and the fuel pricer still read `cardValue`.
 
+### The mulligan checks for something to cast (#2693)
+
+The heuristic keeps a hand of two to five lands (`KeepMinLands`,
+`KeepMaxLands`) and digs at most `MaxMulligans` (2) times, never to five.
+The engine's first mulligan is free (it redraws seven) and each one
+after it draws a card fewer; nothing goes to the bottom. Counting lands
+alone kept review game 2's Mountain, Exotic Orchard and five spells of
+three to seven mana, and the bot missed its next two land drops.
+
+With `KeepNeedsCast` a hand at the land floor is kept only if it holds
+a spell it can cast soon: a nonland card whose mana value is at most
+the lands in hand plus `KeepCastReach` (0), with its coloured pips made
+by those lands. A land whose abilities name no colour (a fetch land,
+Exotic Orchard) counts as any colour; a land that makes only {C} counts
+as none. A hand without such a spell takes the free mulligan. When the
+mulligan would cost a card the check does not apply, and the hand is
+kept on its land count as before. `BaselineConfig` turns it off.
+
 ### Which land a search takes (#2677)
 
 A library search scores each answer by `cardValue`, and every land is
@@ -1694,6 +1712,12 @@ game.
     the plan's next cast (skipping members held for the end step) is not
     offered. `miss % of planned` is P6's measure, held under 5%. No plan
     is made before ADR 0136 PR 4, so these columns read 0 until then.
+- **Opening hands** (#2693) — per policy and per contestant: the
+  seat-games that kept a hand, the mulligans they took and mulligans per
+  keep, the kept hands by size, and the seat's own turns 2–4 it reached
+  with the ones in which it played no land (`missed land drops`). A land
+  a spell puts onto the battlefield is not a land drop, so a ramp deck's
+  misses read high. `summary.json` carries it as `opening`.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a
