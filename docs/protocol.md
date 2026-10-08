@@ -2839,6 +2839,7 @@ Every field is omitted when zero.
 | `damage_each_opponent` | damage it deals to each opponent | Resolute Survivors 1 |
 | `life_gain` | life its controller gains | Resolute Survivors 1 |
 | `awaken_land` | on an alternative cost only: the N of "Awaken N—[cost]", the +1/+1 counters it puts on a land its controller controls as that land becomes a 0/0 Elemental creature with haste ([ADR 0135](decisions/0135-alternative-costs-that-tap-discard-awaken-and-emerge.md) §3). The spell's own `purpose` still applies | Ruinous Path 4 |
+| `targets` | what happens to each target, one entry per target clause; see [Target entries](#target-entries-adr-0126-amendment-of-2026-10-08) | Sign in Blood |
 
 An amount is the printed number. A card whose amount is X, or is
 counted at resolution ("draw a card for each creature you control"),
@@ -2905,6 +2906,41 @@ these rows' purposes; a client may ignore it.
 
 The modes and the offers are public with their labels, which say the
 same thing in words, and hidden exactly when those are.
+
+### Target entries (ADR 0126, amendment of 2026-10-08)
+
+Additive, `v` unmoved, no snapshot change. Every amount above is the
+**controller's**. `targets` says what happens **to each target** the
+statement names, one entry per target clause, so a card whose value
+depends on whom it is aimed at can say so: "Target player draws two
+cards" gives two cards to whoever the move picks, which may be an
+opponent.
+
+```json
+"purpose": {
+  "targets": [{"slot": 0, "draws": 2, "life_loss": 2}]
+}
+```
+
+| Field | Meaning | Example |
+|---|---|---|
+| `slot` | the target clause the entry describes, its index in the statement this `purpose` rides on (the card's own clause list, a mode's, an alternative cost's or an ability row's). It is the `slot` a move's `targets[i]` names, and on a modal cast `targets[i].mode` says which chosen bullet's statement that is. Always sent | 0 |
+| `draws` | cards the target player draws | Sign in Blood 2 |
+| `discards` | cards the target player discards on resolution | Prismari Command's loot 2 |
+| `tokens` | tokens the target player creates | Prismari Command's Treasure 1 |
+| `life_gain` | life the target player gains | |
+| `life_loss` | life the target player loses (not damage) | Sign in Blood 2 |
+| `damage` | damage dealt to the target, player or permanent | Lightning Bolt 3 |
+
+Every amount but `slot` is omitted when zero, and `targets` is absent
+when there are none. A clause with no entry says nothing about its
+target. A `purpose` holding only `targets` is still sent. The server
+refuses at boot an entry whose `slot` is not one of its statement's
+clauses, one that names a slot twice or says nothing, a player amount on
+a clause that cannot target a player, and `damage` on a clause that can
+target neither a player nor a permanent. An amount is the printed
+number: Blaze's X declares no entry. `damage_to_creature` above stays
+for a row whose target is picked later, where no move names it.
 
 ## An equip row says it is one (#2449, 2026-10-07)
 

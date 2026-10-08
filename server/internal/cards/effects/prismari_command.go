@@ -33,10 +33,11 @@ func init() {
 		Name:         "Prismari Command",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose two", 2, 2,
-			ModeDoing("Prismari Command deals 2 damage to any target.",
+			ModeWithPurpose(ModeDoing("Prismari Command deals 2 damage to any target.",
 				TargetAny(),
 				DealFixedDamageToModesTarget(2)),
-			ModeDoing("Target player draws two cards, then discards two cards.",
+				ForTargets(DamageToTarget(0, 2))),
+			ModeWithPurpose(ModeDoing("Target player draws two cards, then discards two cards.",
 				TargetPlayer("target player"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -54,7 +55,8 @@ func init() {
 					})
 					return nil
 				}),
-			ModeDoing("Target player creates a Treasure token.",
+				ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, Discards: 2})),
+			ModeWithPurpose(ModeDoing("Target player creates a Treasure token.",
 				TargetPlayer("target player"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -63,6 +65,7 @@ func init() {
 					}
 					return CreateToken{Controller: t.ID, Template: TreasureToken(), N: 1}.Apply(ctx)
 				}),
+				ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1})),
 			ModeDoing("Destroy target artifact.",
 				TargetPermanent("target artifact", Artifact()),
 				DestroyTheModesTarget),

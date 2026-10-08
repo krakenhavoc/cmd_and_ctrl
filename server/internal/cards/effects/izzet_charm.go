@@ -27,8 +27,8 @@ func init() {
 		Modes: ChooseOne(
 			Mode("Counter target noncreature spell unless its controller pays {2}.",
 				TargetSpell("target noncreature spell", Noncreature())),
-			Mode("Izzet Charm deals 2 damage to target creature.",
-				TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Izzet Charm deals 2 damage to target creature.",
+				TargetCreature("target creature")), ForTargets(DamageToTarget(0, 2))),
 			ModeWithPurpose(Mode("Draw two cards, then discard two cards."), game.Purpose{Draws: 2, Discards: 2}),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

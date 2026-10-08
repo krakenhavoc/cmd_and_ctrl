@@ -72,6 +72,26 @@ type PurposeView struct {
 	// on a land its controller controls as it becomes a 0/0 Elemental
 	// creature with haste (ADR 0135 §3). On an awaken offer only.
 	AwakenLand int `json:"awaken_land,omitempty"`
+	// Targets is what happens to each target the statement names, one
+	// entry per target clause, keyed by the clause's slot: the slot a
+	// move's `targets[].slot` names, within the statement this purpose
+	// rides on (ADR 0126's amendment of 2026-10-08). The amounts above
+	// are the controller's; an entry's are its target's. Absent when
+	// empty. A pointer so PurposeView stays comparable.
+	Targets *[]TargetPurposeView `json:"targets,omitempty"`
+}
+
+// TargetPurposeView is game.TargetPurpose on the wire: what the spell
+// or ability does to the target picked for clause `slot`. Every amount
+// is omitted when zero; `slot` is always sent.
+type TargetPurposeView struct {
+	Slot     int `json:"slot"`
+	Draws    int `json:"draws,omitempty"`
+	Discards int `json:"discards,omitempty"`
+	Tokens   int `json:"tokens,omitempty"`
+	LifeGain int `json:"life_gain,omitempty"`
+	LifeLoss int `json:"life_loss,omitempty"`
+	Damage   int `json:"damage,omitempty"`
 }
 
 // PumpView is game.Pump on the wire: a self pump until end of turn.
@@ -155,6 +175,16 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			Counters:           d.Counters,
 			DamageEachOpponent: d.DamageEachOpponent,
 		}
+	}
+	if ts := p.Targets.List(); len(ts) > 0 {
+		out := make([]TargetPurposeView, len(ts))
+		for i, t := range ts {
+			out[i] = TargetPurposeView{
+				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
+				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage,
+			}
+		}
+		v.Targets = &out
 	}
 	if s := p.Sweep; !s.IsZero() {
 		v.Sweep = &SweepView{
