@@ -4,6 +4,7 @@
 **Issue:** [#1753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1753). It relates to the Betor deck re-check on #1117, where Perennation is the last seam-blocked card.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then read every `docs/decisions/` file name on every remote branch (41 heads). The highest number on any branch is **0098**. Numbers 0099, 0100 and 0102 are held for ADRs being written at the same time, so this one takes **0101**.
 **Owner decisions:** 2026-09-30. All five recommendations were accepted; see Owner decisions below.
+**Amendments:** 2026-10-08, exalted as a keyword and its counter ([#2538](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2538)). Proposed; see Amendments at the end.
 **Builds on:** [ADR 0014](0014-combat-keywords.md) (the closed keyword table), [ADR 0046](0046-layer-6-authoritative.md) (layer 6 is the one ability list), [ADR 0067](0067-layer-dependency-ordering.md) (CR 613.6 silencing), [ADR 0038](0038-protection-style-keywords.md)'s 2026-09-28 amendment (the "can't have" strip), and [ADR 0041](0041-game-persistence.md) (the snapshot shape rule).
 
 ---
@@ -245,3 +246,181 @@ The owner accepted all five recommendations.
 3. **Off-battlefield counters: ship the read now** (Decision 4).
 4. **Restore fallback: accepted** (Decision 7). An unstamped keyword counter is ordered at its permanent's own timestamp. There is no schema bump.
 5. **Decayed and exalted wait** for a deck that asks for them.
+
+---
+
+## Amendments
+
+### 2026-10-08 (#2538): exalted becomes a keyword, and its counter joins the table (Proposed)
+
+**Status:** Proposed. No code until the owner accepts it (#2538, comment of 2026-10-08).
+**Reconsiders:** owner decision 5 ("Decayed and exalted wait for a deck that asks for them"), for exalted only. On 2026-10-08 the owner agreed to reconsider it for Emissary of Soulfire, which S68's energy sweep found.
+**Registry row:** `exalted-counters` (`server/internal/roadmap/registry.go:2132`).
+**Line numbers** below are on `develop` at `62fa97c64`.
+
+#### Why now
+
+Emissary of Soulfire reads: "Pay {E}{E}: Put an exalted counter on target creature you control. Activate only as a sorcery." Energy is built (ADR 0129), so the counter is the only missing piece. Decision 1 keeps the counter out until exalted is in `canonicalKeywords`.
+
+Making exalted a keyword buys more than the one card:
+
+- **Printed exalted.** 35 Commander-legal cards print exalted as a keyword (Scryfall's `keywords` array, deduplicated by oracle ID). #2538's count of 42 is every card whose text names exalted. Only Noble Hierarch and Ignoble Hierarch are in the catalog. The deck importer filters Scryfall's keywords through `CanonicalKeywords` (`deck/deck.go:345`), so it drops "Exalted" today, and the other 33 have no exalted at all.
+- **Keyword-only cards.** 15 of the 35 print nothing but canonical keywords once exalted is one: Akrasan Squire, Aven Squire, Court Archers, Duskmantle Prowler, Ethercaste Knight, Goblin Champion, Guardians of Akrasa, Knight of Glory, Knight of Infamy, Outrider of Jhess, Rhox Charger, Servant of Nefarox, Sigiled Behemoth, Sigiled Paladin and Waveskimmer Aven. `NeedsCatalogEffect` skips a line that is only canonical keywords (`game/coverage.go:160`), so these 15 move from `manual` to `no_effect` with no catalog entry.
+- **Granted exalted.** Six Commander-legal cards GRANT exalted: Sublime Archangel ("Other creatures you control have exalted"), First Sliver's Chosen, Merchant of Truth, Rashel, Fist of Torm, Zarda, the Power Princess, and Rammas Echor, Ancient Shield. A constructor on `Spec.Triggered` cannot reach a granted instance. A token can, through `KeywordGrant` and `TribalKeywordGrant` (`cards/effects/tribal.go:176`, `:196`) and the other layer-6 grants.
+
+ADR 0014's amendment of 2026-09-24 made this argument for prowess, and ADR 0106 §3 made it for evolve.
+
+#### What the rules say
+
+I checked every rule below against the Comprehensive Rules effective September 25, 2026.
+
+- **CR 702.83a.** "Exalted is a triggered ability. 'Exalted' means 'Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.'"
+- **CR 702.83b.** "A creature 'attacks alone' if it's the only creature declared as an attacker in a given combat phase. See rule 506.5."
+- **CR 506.5.** "A creature attacks alone if it's the only creature declared as an attacker during the declare attackers step."
+- **CR 113.2c.** "If an object has multiple instances of the same ability, each instance functions independently." CR 702.83 has no rule of its own about multiple instances, so this is the rule that makes two exalted abilities two triggers. The registry row's "one trigger per instance" was attributed to CR 702.83b in the brief for this amendment. That is wrong: 702.83b defines "attacks alone". Sublime Archangel's reminder text says the same thing: "If a creature has multiple instances of exalted, each triggers separately."
+- **CR 603.3a.** "A triggered ability is controlled by the player who controlled its source at the time it triggered, unless it's a delayed triggered ability."
+- **CR 508.3a.** An ability that reads "Whenever [a creature] attacks" triggers only if that creature is declared as an attacker. It "won't trigger if a creature is put onto the battlefield attacking."
+- **CR 122.1b** lists exalted among the keywords a keyword counter can be.
+- **CR 613.7c** gives every counter of one kind one timestamp, renewed on each placement. Decision 2's stamp already does this for exalted counters.
+
+Two rulings bear on the design:
+
+- **Emissary of Soulfire (2024-06-07):** "A creature with multiple exalted counters will have that many instances of exalted." So exalted counters are **not** redundant. Two statements stop being true once exalted joins: Decision 1's "One keyword, however many counters", and the comment on `keywordCounterEffect.Apply` (`game/keyword_counters.go:154`, "CR 122.1b's keywords are all redundant when repeated"). The Ikoria release note they rely on predates exalted counters.
+- **Sublime Archangel (2012-07-01):** "count the number of instances of exalted among permanents you control. After those abilities resolve, that's how many times the creature will get +1/+1."
+
+#### How keyword triggers work today
+
+Exalted can be built on the machinery that prowess, evolve and annihilator already use. Each of the three is derived from the effective ability list and has no catalog row.
+
+1. **The token is the declaration.** `canonicalKeywords` holds `KeywordProwess` (`game/keywords.go:224`), `KeywordEvolve` and `KeywordAnnihilator` (`:242`). The deck importer stamps a printed instance from Scryfall, a token template's `Keywords` carries it, and a layer-6 grant appends it.
+2. **Cumulative, so instances survive.** `KeywordIsCumulative` (`game/infect_wither_toxic.go:163`) names all three, so `AppendKeywordAbility` (`:135`) keeps every granted instance instead of deduping it. For a cumulative token, `mergePrintedKeywords` (`game/characteristic.go:458`) takes the higher of the catalog's count and the import's count, never the sum. The importer counts a doubled printed line such as "Prowess, prowess" (#1510).
+3. **One trigger per instance.** `keywordTriggersFor` (`game/prowess.go:144`) walks the list with `forEachAbilityToken` (`game/keywords.go:565`), the same walk `HasKeyword` uses. It returns one `TriggeredAbility` per instance. `triggersOf` (`game/designations.go:388`) puts them in front of the catalog's rows, so every harvest sees them (`game/triggers.go:680`).
+4. **The same harvest as a catalog trigger.** `harvestMatchLocked` (`game/triggers.go:787`) treats a derived trigger exactly as it treats a catalog one: suppression, trigger doublers (`triggerDoublersLocked`, `game/trigger_doubling.go:180`), the CR 603.3d target check and the APNAP queue. `stampTriggerContext` (`game/triggers.go:927`) puts the triggering event on the item.
+5. **A keyed item, not a catalog ref.** Each `Build` calls `NewKeyedTriggeredItem` (`game/triggers.go:80`) with a body registered under an on-disk key: `"prowess/pump"` (`game/prowess.go:100`) or `"annihilator/sacrifice"` (`game/annihilator.go`). A table with one of these on the stack is a restore point. An older binary refuses the file with `ErrUnknownEffectKey`, which is the designed rollback case.
+6. **Ability removal and face-down come free.** A CR 613.1f "loses all abilities" empties the list in its own timestamp slot, and the triggers go with it. A face-down permanent has no tokens, so it has no keyword triggers.
+
+Exalted today is the other shape. `effects.Exalted()` (`cards/effects/exalted.go:30`) is a catalog `TriggeredAbility` with a declared `Effect`. Its stack item is therefore stamped `Body: "catalog/triggered"`, with an `AbilityRef` naming the card's row (ADR 0041 P9). It has **two** production call sites, `noble_hierarch.go:21` and `ignoble_hierarch.go:21`. The brief for this amendment counted five. The other hits are comments and the shared `attackedAlone` helper's two readers, `derelict_attic_widows_walk.go:32` and `disturb_batch_b_helpers.go:19`. Those two are not exalted, and they keep working.
+
+#### The plan
+
+##### A1. `KeywordExalted` joins `canonicalKeywords`, as a cumulative keyword
+
+- **The token.** `const KeywordExalted = "exalted"` goes in a new `game/exalted.go`. Its entry in `canonicalKeywords` gets the kind of comment the other triggered keywords carry.
+- **Cumulative.** `KeywordIsCumulative(KeywordExalted)` is true, citing CR 113.2c. Two grants are two abilities, and a printed exalted under Sublime Archangel's grant is two.
+- **No importer change.** The deck importer already filters against the table. Its line scan already counts repeats of a cumulative keyword. Urza's Dark Cannonball's "Exalted, exalted" is the only printed double, and it is an Un-card.
+
+##### A2. One derived trigger per instance
+
+`keywordTriggersFor` gains a fourth count. Each exalted instance contributes one copy of a package-level `exaltedTrigger`, built like `prowessTrigger`:
+
+- **Keyword:** `KeywordExalted`.
+- **Watches:** `EventAttack`. That event is emitted only for a declared attacker (CR 508.3a).
+- **AppliesTo:** two tests.
+  - The attacker is controlled by the source's controller (`ev.Actor == source.Controller`).
+  - Exactly one creature was declared as an attacker. That count moves into the game package as `AttackedAlone(g)`, the body of today's `effects.attackedAlone` (`cards/effects/exalted.go:61`). `DeclareAttackers` stamps every attacker before it announces any `EventAttack`, so a lone declaration reads as alone. The effects package's two other readers call the exported function.
+- **Build:** `NewKeyedTriggeredItem(source, exaltedLabel, exaltedPumpBody, EffectParams{Object: <the attacker's ObjectRef>})`.
+  - The attacker is fixed when the ability triggers, by instance ID and battlefield-entry stamp. An attacker that leaves and comes back in response gets nothing (CR 400.7).
+  - That is what `exaltedPumpTheLoneAttacker` does today through `item.Trigger.Event.CardID`. Carrying the attacker in `Params.Object` means the body reads one field instead of the trigger context.
+- **The body,** `"exalted/pump"`: a layer-7c +1/+1 until end of turn on the pinned attacker. It is registered as a scoped-effect data record, as `resolveProwess` does (`game/prowess.go:111`).
+- **Commutes:** true, for the reason #1511 gives for prowess.
+  - Every exalted instance reads only its pinned attacker and writes only a +1/+1 to it. A batch of nothing but exalted triggers therefore needs no CR 603.3b ordering prompt.
+  - A batch that also holds Rafiq of the Many's or Battlegrace Angel's own "attacks alone" trigger still asks, because those do not commute.
+
+**The controller of the trigger** is its source's controller when it triggered (CR 603.3a).
+
+- `NewTriggeredItem` already sets `Controller` from `source.Controller` (`game/triggers.go:63`), and the harvest reads the battlefield as it stands when the event fires.
+- Exalted on a permanent you control triggers only for your own lone attacker. In a Commander game only the active player attacks, so only the active player's exalted triggers.
+- A permanent whose control changed, such as a Noble Hierarch taken with Threaten, triggers for its new controller.
+
+**Noncreature sources** need nothing extra. Cathedral of War is a land, and Angelic Benediction and Finest Hour are enchantments. `forEachAbilityToken` reads any permanent's list, so their printed exalted works like a creature's.
+
+##### A3. Several instances: printed, granted and counters
+
+Every instance is one entry in the effective ability list, and the trigger count is the entry count. The three sources combine like this:
+
+- **Printed.** The importer's stamp and the catalog's `PrintedKeywords` merge to the higher count (`mergePrintedKeywords`). A card that prints exalted once has one instance, whether or not its catalog entry also declares it.
+- **Granted.** Each grant appends one instance, because the keyword is cumulative. With two Sublime Archangels out, each other creature you control has two instances and each Archangel has two: its own printed one and the other's grant.
+- **Counters.** `keywordCounterEffect` gains a count field.
+  - For a cumulative kind, `Apply` appends `Counters[kind]` instances. For every other kind it appends one, as now.
+  - `keywordCounterTokens` (`game/keyword_counters.go:199`), the off-battlefield half, does the same, so the badge and the rule agree.
+  - All counters of one kind share one CR 613.7c timestamp. A later "loses all abilities" removes every counter instance at once, and a placement or proliferate after it brings them all back. That is Decision 2's stamp, unchanged.
+
+The comment on `keywordCounterEffect.Apply` is corrected to cite the Emissary ruling. Decision 1's bullet "One keyword, however many counters" now reads "one keyword per kind, however many counters, except exalted, which gives one instance per counter (ruling of 2024-06-07)".
+
+##### A4. Migrating the two call sites without double triggers
+
+The risk is a card that has both the catalog row and the token, which would trigger twice. Four steps prevent it:
+
+1. **Delete the constructor.** `Exalted()` is deleted from `cards/effects/exalted.go`, along with `exaltedPumpTheLoneAttacker`. `attackedAlone` either becomes a one-line call to `game.AttackedAlone`, or is deleted and its callers repointed.
+2. **Change the two cards.** Noble Hierarch and Ignoble Hierarch drop `Triggered: []game.TriggeredAbility{Exalted()}` and declare `PrintedKeywords: []string{game.KeywordExalted}`. Every prowess and evolve card already has this shape (`monastery_mentor.go`, `fathom_mage.go`). With the importer's stamp beside it, `mergePrintedKeywords` keeps one instance, not two.
+3. **Add a guard test.** It fails on any catalog row that watches `EventAttack` and has a label starting "Exalted". It also asserts that each Hierarch harvests exactly one trigger for a lone attack.
+4. **Fix the comments that call exalted a constructor:** `provoke.go:19` ("for Exalted's reason"), `shared_animosity.go:16` and `goblin_rabblemaster.go:28`. Provoke's reason for staying out of the table loses exalted as its example.
+
+##### A5. `CounterExalted` joins `keywordCounterKinds`, and the guard tests follow
+
+- **The constant.** `CounterExalted = "exalted"` is added to `game/keyword_counters.go` and to `keywordCounterKinds` (`:65`).
+- **The two guard tests.**
+  - `TestKeywordCounterKindsAreCR1221b` needs no change, because exalted is in CR 122.1b.
+  - `TestKeywordCounterKindsAreCanonicalKeywords` drops "exalted" from the kinds that must stay out (`game/keyword_counters_test.go:55`).
+  - The count assertion at `:443` becomes 14, "CR 122.1b's fifteen less decayed".
+- **A new test pins the ruling.** Two exalted counters on one creature are two instances and two triggers. So are one exalted counter and a printed exalted.
+- **The file comment** changes from "Two of CR 122.1b's fifteen are out" to one.
+
+##### A6. Emissary of Soulfire
+
+- **The card file,** `cards/effects/emissary_of_soulfire.go`, has two abilities:
+  - the ETB "you get {E}{E}{E}", with ADR 0129's helper;
+  - the activated "Pay {E}{E}: Put an exalted counter on target creature you control", with sorcery timing (CR 602.5d) and a "creature you control" target.
+- **`CompletenessFull`,** if tests pin both abilities and an attack with two counters.
+- **The registry row.** `exalted-counters` flips to implemented, with a `docs/engine-seams/closed/2538-exalted-counters.md` fragment, then `go test ./internal/roadmap/ -update`.
+- **`docs/adding-cards.md`.** The "A keyword counter needs no grant" paragraph stops naming exalted as not counted. It gains one sentence: exalted counters are cumulative.
+
+#### Snapshot and restore
+
+- **No new Card field.** The token lives in `Abilities` and `Keywords`, which are already persisted. The counter is a `Counters` entry and its stamp is in `CounterStampedAt`, both from ADR 0101. `testdata/snapshot_shape/v7.txt` does not change.
+- **A new effect key, `"exalted/pump"`.** It is on-disk vocabulary like `"prowess/pump"`: never renamed and never reused. An older binary refuses a newer restore point that has one waiting on the stack, with `ErrUnknownEffectKey`, and keeps the file. That is the designed rollback case, and within schema v7 it needs no bump.
+- **A Hierarch trigger written before the change.**
+  - **The problem.** Suppose a restore point from today's binary has a Hierarch's exalted trigger on the stack or queued. It names `catalog/triggered` with `AbilityRef{key: <the Hierarch's key>, slot: "triggered", ref: "own:0", name: "Exalted — +1/+1 until end of turn"}`. After A4 that row is gone, so `restoreCatalogAbility` (`game/ability_ref.go:445`) reaches the owner's Q3 outcome: the item becomes a manual item with no effect, the Hierarch is flagged `AbilitiesLostOnRestore` for the rest of the game, and the boot logs an ERROR.
+  - **The size.** The window is narrow: from a lone attack until the trigger resolves, at the moment of a deploy. The flag, though, lasts the whole game.
+  - **A fix.** Owner question 3 asks whether to close it with a one-entry restore alias. On a lost `catalog/triggered` ref whose name is exactly the retired exalted label, restore rewrites the item to `"exalted/pump"`, taking `Params.Object` from the item's carried `Trigger.Event`, and does not flag the card.
+- **No frozen fixture is affected.** No file under `internal/game/testdata/snapshots/` names exalted. A new v7 board with a derived exalted trigger on the stack is added beside the others; the writer never touches an existing file.
+- **`closure_fields.txt` does not change.** The derived trigger is package-level data, and its item is keyed.
+
+#### Bot valuation
+
+- **`keywordTable`** (`aiseat/heuristic/score.go:218`) gains `"exalted": 0.30`, summed per instance as prowess is. The value is low because the bonus applies only to a lone attack, and the table is board-blind on purpose. A creature with exalted counters becomes worth a little more, so the existing `targetsValue` prices Emissary's activation.
+- **`redundantKeywordCounter`'s list** (`aiseat/heuristic/purpose.go:392`) must **not** gain exalted, because a second exalted counter is a second instance, not a redundant one. A test pins that an exalted-counter activation on a creature that already has exalted is not penalised.
+- **Emissary's activation declares no `Purpose`.** `game.Purpose` has no field for "put a keyword counter on target creature", and adding one for a single card is the wrong trade. The bot prices the activation as an undeclared one (`ActivateBase` plus the target's value), less the energy it spends (ADR 0129 §7).
+- **Out of scope:** teaching the attack planner to attack alone to collect exalted. The bot does not see the Hierarchs' exalted today either, so nothing regresses. Changing the planner would need ADR 0052's arena measurement. See owner question 4.
+
+#### Decayed stays out, as its own seam
+
+Decayed should **not** ride this change. CR 702.147a: "Decayed represents a static ability and a triggered ability. 'Decayed' means 'This creature can't block' and 'When this creature attacks, sacrifice it at end of combat.'"
+
+- **Its consumer is different.** Decayed is a block restriction folded in after the layer pass (like unleash's `foldUnleashLocked`), plus a sacrifice at end of combat. This change builds neither.
+- **Its cards are mostly tokens.** 19 Commander-legal cards print decayed or make something with it, and none is catalogued. Most of them create decayed Zombie tokens: Ghoulish Procession, Wilhelt, the Rotcleaver, Tainted Adversary, Diregraf Horde and Falcon Abomination, among others. Rot-Curse Rakshasa is the only card that uses the counter.
+- **Recommendation.** File a `tier:3-design` seam issue for decayed with those 19 cards. Keep `keywordCounterKinds` at fourteen kinds until it lands; the counter is then a one-line follow-up. See owner question 5.
+
+#### Delivery
+
+One PR holds A1 to A5 (the engine, the migration, the counter and the tests), plus Emissary of Soulfire and the registry flip.
+
+- **Testing.** The PR is engine work: a derived trigger, a new stack-item key, and a change to the layer-6 count. So it runs the branch E2E and the real-dump audits.
+- **The coverage census** is left for CI to publish. It should show the 15 keyword-only cards moving to `no_effect`.
+
+#### Owner questions
+
+1. **Exalted as a canonical keyword with a derived trigger (A1 and A2), replacing `effects.Exalted()`?** Recommended: yes. The alternative is to keep the constructor and add a separate "granted exalted" static that builds triggers. That leaves the 33 uncatalogued printed cards without exalted, and makes granted and printed exalted two mechanisms that must agree.
+2. **Exalted counters count one instance per counter (A3), per the Emissary of Soulfire ruling of 2024-06-07, by giving `keywordCounterEffect` a count for cumulative kinds?** Recommended: yes. One instance per kind would make a second Emissary activation on the same creature do nothing, which is weaker than printed.
+3. **A Hierarch trigger on a restore point from before the change.**
+   - (a) Recommended: a one-entry restore alias. It rewrites a lost `catalog/triggered` ref named "Exalted — +1/+1 until end of turn" to `"exalted/pump"`, so the trigger resolves and the Hierarch is not flagged for the rest of the game.
+   - (b) Accept the existing Q3 outcome (a manual item, `AbilitiesLostOnRestore` and an ERROR log) for a window of one combat at one deploy.
+4. **Bot scope.**
+   - (a) Recommended: `keywordTable` gains `exalted` at 0.30 per instance, `redundantKeywordCounter` leaves it out, and the attack planner does not change in this PR.
+   - (b) As (a), plus a separate bot PR, measured in the arena, that teaches the attack planner to value attacking alone with exalted.
+5. **Decayed.**
+   - (a) Recommended: it stays out of this change. File its own seam issue (19 cards, mostly decayed Zombie tokens), and its counter follows that seam.
+   - (b) Build decayed in the same PR.
+6. **Delivery.**
+   - (a) Recommended: one PR with the engine change, the Hierarch migration, `CounterExalted` and Emissary of Soulfire, as ADR 0101 shipped Perennation with its seam.
+   - (b) Two PRs: the engine and the migration first, then the card.
