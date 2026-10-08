@@ -1710,7 +1710,16 @@ decided:
   every selection gets at least one target set before any selection
   gets a second. Without that, one charm's first bullet with twelve
   targets would be the whole move list and the other three bullets
-  would never be offered.
+  would never be offered. Each selection is walked on its own and the
+  moves are then taken round-robin across them (#2681).
+- **Every multiset for a repeatable spec.** After the all-one
+  selections come the mixed ones: Mystic Confluence offers [bounce,
+  bounce, draw] and [bounce, draw, draw] as well (#2681).
+- **The label names the modes.** A modal cast or activation reads
+  "Cast Prismari Command (Target player draws two cards, then
+  discards two cards; Target player creates a Treasure token)
+  targeting …", so two moves with the same targets and different
+  modes are told apart.
 
 A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
 every legal multiset of the bullets the prompt carries, capped by the

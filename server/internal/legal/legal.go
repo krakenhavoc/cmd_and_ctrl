@@ -26,6 +26,8 @@ package legal
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -980,6 +982,32 @@ func wireTargets(refs []game.TargetRef) []targetWire {
 		out = append(out, targetWire{Kind: string(r.Kind), ID: r.ID.String(), Slot: r.Slot, Mode: r.Mode})
 	}
 	return out
+}
+
+// modesLabel names the modes a modal announcement chose, in the order
+// chosen: " (Target player draws two cards, then discards two cards;
+// Target player creates a Treasure token)". Two moves with the same
+// targets and different modes are otherwise the same line (#2681). A
+// card that is not modal gets nothing.
+func modesLabel(ms *game.ModeSpec, modes []int) string {
+	if ms == nil {
+		return ""
+	}
+	if len(modes) == 0 {
+		return " (no mode)"
+	}
+	parts := make([]string, 0, len(modes))
+	for _, m := range modes {
+		label := ""
+		if m >= 0 && m < len(ms.Options) {
+			label = strings.TrimSuffix(strings.TrimSpace(ms.Options[m].Label), ".")
+		}
+		if label == "" {
+			label = "mode " + strconv.Itoa(m+1)
+		}
+		parts = append(parts, label)
+	}
+	return " (" + strings.Join(parts, "; ") + ")"
 }
 
 func targetLabel(g *game.Game, refs []game.TargetRef) string {
