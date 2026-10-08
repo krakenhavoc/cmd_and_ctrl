@@ -1436,6 +1436,9 @@ estimate.
 > ability, in PR 3, and `cantPlayLands`, a rules gate, in PR 5), each an
 > additive on-disk identity under schema v7.
 
+> **Amended by [ADR 0096](0096-the-monarch-from-a-card-effect.md)** (2026-10-08): `cantBecomeMonarch`,
+> a rules gate (#2039), is one more additive kind under schema v7.
+
 P5 proposed two new record types, `ScopedReplacement` and
 `ScopedBlockRule`. This amendment proposes new kinds on the existing
 `ScopedEffect` instead. There are three reasons:

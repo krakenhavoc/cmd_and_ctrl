@@ -205,3 +205,30 @@ CR 611.2c set, spent by the first spell it opens. Every card in the set also hol
 permission, so the caster chooses which a cast uses by claiming the free one's alternative cost
 (`CastPermissionForClaimLocked`, `CastOffersForLocked`). Locke, Treasure Hunter lands on the same
 field.
+
+## Amendment (2026-10-08, [#2039](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2039)): "you can't become the monarch this turn"
+
+Jared Carthalion, True Heir crowns an opponent and then says "You can't become the monarch this
+turn." Until now `becomeMonarchLocked` had no gate. No new ADR: the monarch's one write is already
+this ADR's subject.
+
+- **A rules gate, stored as data.** `ModCantBecomeMonarch` is a `ScopedEffect` kind with reader
+  `rule`, scope game and `Mod.Player` naming the barred player, swept at cleanup (CR 514.2). It is a
+  `ScopedEffect` rather than a flag on `Game` for the reason ADR 0109 §4 gave `cantPlayLands`: an
+  older binary refuses the unknown kind on restore instead of silently dropping the bar. It follows
+  the ADR 0107 §5 pattern (`cantGainLife`), and ADR 0041's vocabulary gains one additive kind under
+  schema v7 (corpus file `cant_become_monarch.json`).
+- **One reader, at the one write.** `becomeMonarchLocked` asks `playerCantBecomeMonarchLocked` and
+  returns without a change, so the CR 725.2 combat-damage steal, a card's "you become the monarch"
+  and CR 725.4's hand-on are all covered without per-route checks. The combat trigger still goes on
+  the stack (the creature did deal combat damage); its resolution changes nothing. Jared's ruling
+  falls out: when the player named can't become the monarch, the current monarch stays the monarch.
+- **CR 725.4** says the crown goes to "the next player in turn order who can become the monarch".
+  The hand-on skips a barred player; if every survivor is barred there is no monarch.
+- **The sandbox's manual `SetMonarch` bypasses the gate** (`writeMonarchLocked`): it is an admin
+  correction of the table, not an effect.
+- **Authoring.** `effects.CantBecomeTheMonarchThisTurn{Player}` (default: the controller).
+
+**Back-outs.** Deleting the gate line in `becomeMonarchLocked` fails
+`TestJaredCarthalionBarsTheCrownForTheTurn` and `TestCantBecomeMonarchRefusesACardEffect`; removing
+the skip in the hand-on loop fails `TestMonarchHandOnSkipsAPlayerWhoCantBecomeIt`.

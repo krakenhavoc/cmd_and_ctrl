@@ -1020,3 +1020,34 @@ Rust Tick and Amber Prison, which lose their ADR 0070 Decision 6 caveats.
 - Merieke Ri Berit's "when … becomes untapped, destroy that creature" is a
   linked **trigger**, not a duration.
 - Exert and Telekinesis are unchanged.
+
+## Amendment (2026-10-08, #2029): "next two untap steps" — the one-shot marker counts steps
+
+Decision 2's one-shot marker skipped exactly one untap step, and a second
+identical marker was dropped as a duplicate, so "it doesn't untap during its
+controller's next two untap steps" (Telekinesis) could not be counted. The
+"Out of scope" row and the Telekinesis bullet in the earlier sections are
+closed by this amendment.
+
+- `UntapSkip` gains `Extra`: the untap steps the marker still skips after the
+  next one. Zero is the original marker, so every existing marker, snapshot
+  (`untapSkipSnapshot.Extra`, omitted when zero) and the exert marker behave as
+  before.
+- `Game.SkipNextUntapStepsForEffect(card, player, n)` records `Extra = n-1`.
+  `SkipNextUntapForEffect` is `n = 1`. Overlapping effects do not add: a marker
+  already keyed to the same player is raised to the larger count, never
+  stacked, because the later effect's steps are the untap steps the earlier one
+  already covers. This keeps the exert rule (CR 701.43b, a second exert adds no
+  second marker) intact; `TestExertingTwiceIsOneSkippedUntap` still pins it.
+- `consumeUntapSkipsLocked` spends one step per matching untap step: it keeps a
+  marker with `Extra > 0` and decrements it, and drops one with none left. A
+  step is spent whether or not the permanent is tapped, as Decision 2 already
+  says for the one-shot marker.
+- Keyed to "its controller" (nil player), the count follows whoever controls
+  the permanent at each step (the Telekinesis ruling), so a control change does
+  not lock the effect in.
+- Card side: `DoesntUntapNextUntapStep.Steps` (zero is one). **Telekinesis** is
+  new and `Full`: tap, `PreventDamageFromSource` on the target (ADR 0108), then
+  `Steps: 2`.
+- The view is unchanged: `no_untap.next` already lists the player whose step is
+  next, and no card needs the remaining count shown.

@@ -65,6 +65,10 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedByPlayer rule needs Text, the clause the refusal sentence reads"
 		}
+	case ModCantBeBlockedByPower:
+		if m.Text == "" {
+			return "a cantBeBlockedByPower rule needs Text, the clause the refusal sentence reads"
+		}
 	case ModLimitBlockersPerDefender:
 		if m.Amount < 1 {
 			return fmt.Sprintf("a limitBlockersPerDefender rule needs an amount of at least 1, got %d", m.Amount)
@@ -100,6 +104,14 @@ func LimitBlockersPerDefenderMod(n int) Mod {
 // controls").
 func CantBeBlockedByPlayerMod(player uuid.UUID, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedByPlayer, Player: player, Text: text}
+}
+
+// CantBeBlockedByPowerMod is "<creature> can't be blocked by creatures
+// with power N or less this turn" (Rhonas's Stalwart, #2600). `text` is
+// the barred set as the refusal sentence reads it ("creatures with
+// power 2 or less").
+func CantBeBlockedByPowerMod(n int, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedByPower, Amount: n, Text: text}
 }
 
 // ---------------------------------------------------------------
@@ -151,6 +163,18 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return blocker != nil && blocker.Controller == barred && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedByPower:
+		affected := affectedPredicate(e.Affected)
+		n := m.Amount
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				// The power the comparison rules use (CR 208.1,
+				// negative power included), read live.
+				return blocker != nil && blocker.PowerForComparison() <= n && affected(attacker, g, nil)
 			},
 		}
 	case ModLimitBlockersPerDefender:

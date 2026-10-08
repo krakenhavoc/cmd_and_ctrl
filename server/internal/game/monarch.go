@@ -218,7 +218,8 @@ func (g *Game) monarchLeftTheGameLocked() {
 		start = 0
 	}
 	for offset := 0; offset < len(g.Seats); offset++ {
-		if s := g.Seats[(start+offset)%len(g.Seats)]; s != nil && !s.Eliminated {
+		// #2039: "the next player ... who can become the monarch".
+		if s := g.Seats[(start+offset)%len(g.Seats)]; s != nil && !s.Eliminated && !g.playerCantBecomeMonarchLocked(s.ID) {
 			g.becomeMonarchLocked(s.ID)
 			return
 		}
@@ -248,7 +249,56 @@ func (g *Game) monarchLeftTheGameLocked() {
 // layerVersionBump bumps on it.
 //
 // Caller must hold g.mu in write mode.
+//
+// #2039 (ADR 0096 amendment, 2026-10-08): a player who "can't become
+// the monarch this turn" (Jared Carthalion, ModCantBecomeMonarch) is
+// refused here, so every route obeys it at once: the combat-damage
+// steal, a card's "you become the monarch", CR 725.4's hand-on. The
+// current monarch simply stays the monarch (Jared's rulings). The
+// sandbox's manual SetMonarch is a table correction and bypasses the
+// gate (writeMonarchLocked).
 func (g *Game) becomeMonarchLocked(playerID uuid.UUID) {
+	if playerID != uuid.Nil && g.playerCantBecomeMonarchLocked(playerID) {
+		return
+	}
+	g.writeMonarchLocked(playerID)
+}
+
+// playerCantBecomeMonarchLocked reports whether a stored
+// ModCantBecomeMonarch record bars this player right now. Reads only.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) playerCantBecomeMonarchLocked(player uuid.UUID) bool {
+	for i := range g.ScopedEffects {
+		for _, m := range g.ScopedEffects[i].Mods {
+			if m.Kind == ModCantBecomeMonarch && (m.Player == uuid.Nil || m.Player == player) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// PlayerCantBecomeMonarchForEffect is the exported reader, for card
+// files and the view. Caller must hold g.mu.
+func (g *Game) PlayerCantBecomeMonarchForEffect(player uuid.UUID) bool {
+	return g.playerCantBecomeMonarchLocked(player)
+}
+
+// CantBecomeMonarchThisTurnForEffect registers "<player> can't become
+// the monarch this turn": a ModCantBecomeMonarch record swept at
+// cleanup (CR 514.2). Registers nothing for a player who is not seated.
+// Reports whether a record was written. Caller must hold g.mu (write).
+func (g *Game) CantBecomeMonarchThisTurnForEffect(sourceID, player uuid.UUID, label string) bool {
+	if player == uuid.Nil || g.playerByIDLocked(player) == nil {
+		return false
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{{Kind: ModCantBecomeMonarch, Player: player}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// writeMonarchLocked is the ungated write behind becomeMonarchLocked.
+func (g *Game) writeMonarchLocked(playerID uuid.UUID) {
 	if playerID != uuid.Nil {
 		p := g.playerByIDLocked(playerID)
 		if p == nil || p.Eliminated {
