@@ -367,7 +367,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
-			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, PayLabel: "a blue card",
+			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, Energy: 1, PayLabel: "a blue card",
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
 			// #1727: never set beside pay_options on a real offer, but
 			// the redaction table has to see it filled.
@@ -399,7 +399,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// about a face-down card than its mana cost does.
 		CantCast: "Each player can't cast more than one spell each turn.",
 		// #1389: the viewer's own exile price list.
-		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Printed: true}},
+		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Energy: 1, Printed: true}},
 	}
 }
 
@@ -886,6 +886,7 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	"Label":            surfacePublicPile,
 	"ManaCost":         surfacePublicPile,
 	"Life":             surfacePublicPile,
+	"Energy":           surfacePublicPile,
 	"PayLabel":         surfacePublicPile,
 	"TargetMode":       surfacePublicPile,
 	"XLockedAtZero":    surfacePublicPile,

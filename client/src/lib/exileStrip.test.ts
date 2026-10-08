@@ -313,6 +313,17 @@ describe("exileCostBadge — when the tag shows and what it says", () => {
     expect(b?.life).toBe(3);
     expect(b?.label).toBe("costs free + 3 life to cast from exile");
   });
+
+  it("draws an energy price as energy pips, not as free — Amped Raptor (ADR 0129)", () => {
+    const b = exileCostBadge(
+      exiled("raptor-hit", {
+        mana_cost: "{1}{G}",
+        cast_prices: [price("{0}", { alternative_cost: "amped_raptor", energy: 2 })],
+      }),
+    );
+    expect(b?.symbols).toEqual(["E", "E"]);
+    expect(b?.label).toBe("costs 2 energy to cast from exile");
+  });
 });
 
 describe("manaSymbols", () => {

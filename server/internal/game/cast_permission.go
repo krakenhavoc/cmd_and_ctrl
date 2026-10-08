@@ -391,6 +391,14 @@ type CastPermission struct {
 	// Citadel's clause says "if you cast a spell this way".
 	LifeEqualToManaValue bool `json:"lifeEqualToManaValue,omitempty"`
 
+	// EnergyEqualToManaValue is Amped Raptor's "You may cast that card
+	// by paying an amount of {E} equal to its mana value rather than
+	// paying its mana cost" (ADR 0129 §5): Bolas's Citadel's shape with
+	// energy for life. A COST (CR 107.14, CR 118.3), so it becomes an
+	// AlternativeCost.Energy and a player short of it cannot claim the
+	// offer. Not applied to a land, for LifeEqualToManaValue's reason.
+	EnergyEqualToManaValue bool `json:"energyEqualToManaValue,omitempty"`
+
 	// ExileOtherFromGraveyard is escape's "exile N other cards from
 	// your graveyard" (CR 702.138a) — Underworld Breach's three, The
 	// Grim Captain's Locker's four.
@@ -760,6 +768,12 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		// "rather than pay its mana cost".
 		out.ManaCost = ""
 		out.Life = card.ManaValue()
+	}
+	if p.EnergyEqualToManaValue {
+		// The same read for energy (ADR 0129 §5): "rather than paying
+		// its mana cost", so no mana is owed.
+		out.ManaCost = ""
+		out.Energy = card.ManaValue()
 	}
 	if p.ExileOtherFromGraveyard > 0 {
 		out.ExileFromGraveyard = escapeExileSpec(p.ExileOtherFromGraveyard)

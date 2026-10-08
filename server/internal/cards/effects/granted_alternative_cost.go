@@ -33,6 +33,14 @@ const (
 	// GrantedAltCostFree is "You may cast spells from your hand without
 	// paying their mana costs."
 	GrantedAltCostFree = "granted-free"
+	// GrantedAltCostEightEnergyPermanents is "You may pay eight {E}
+	// rather than pay the mana cost for permanent spells you cast."
+	GrantedAltCostEightEnergyPermanents = "granted-eight-energy-permanents"
+	// GrantedAltCostEnergySmallCreatures is "You may cast creature
+	// spells with mana value 3 or less by paying {E} rather than paying
+	// their mana costs. If you cast a spell this way, you may cast it as
+	// though it had flash."
+	GrantedAltCostEnergySmallCreatures = "granted-energy-small-creatures"
 )
 
 // PayWUBRGForSpellsYouCast is Fist of Suns', Jodah, Archmage Eternal's
@@ -63,11 +71,49 @@ func CastFromHandWithoutPayingManaCost() game.GrantedAlternativeCost {
 	}
 }
 
+// PayEightEnergyForPermanentSpellsYouCast is Nissa, Worldsoul Speaker's
+// static: "You may pay eight {E} rather than pay the mana cost for
+// permanent spells you cast." (ADR 0129 §5). Every zone a permanent
+// spell is cast from, wherever its printed mana cost could be paid (CR
+// 118.9a). The energy is a cost (CR 107.14): a caster with fewer than
+// eight is not offered it.
+func PayEightEnergyForPermanentSpellsYouCast() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:    GrantedAltCostEightEnergyPermanents,
+			Label:  "Pay eight {E} rather than pay this spell's mana cost",
+			Energy: 8,
+		},
+		Spells: game.PermissionFilter{NonLandPermanentOnly: true},
+	}
+}
+
+// PayEnergyForSmallCreatureSpellsWithFlash is Primal Prayers' static:
+// "You may cast creature spells with mana value 3 or less by paying {E}
+// rather than paying their mana costs. If you cast a spell this way, you
+// may cast it as though it had flash." (ADR 0129 §5). The flash belongs
+// to the claim (CR 601.3c), so the same creature cast for its printed
+// cost keeps its own timing.
+func PayEnergyForSmallCreatureSpellsWithFlash() game.GrantedAlternativeCost {
+	three := 3
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:           GrantedAltCostEnergySmallCreatures,
+			Label:         "Pay {E} rather than pay this spell's mana cost, as though it had flash",
+			Energy:        1,
+			AsThoughFlash: true,
+		},
+		Spells:       game.PermissionFilter{CreatureOnly: true},
+		MaxManaValue: &three,
+	}
+}
+
 // checkGrantedAlternativeCosts refuses a declaration the engine would
 // read wrongly, at boot: a key outside the namespace (it could shadow a
 // card's own offer, or be shadowed by one), a key declared twice, and a
 // component the seam does not carry. A granted offer is a price and a
-// label. Life, a card to pay with, a target rewrite or a spell rider
+// label, plus energy (ADR 0129 §5) and "as though it had flash" (CR
+// 601.3c). Life, a card to pay with, a target rewrite or a spell rider
 // has never been checked against the seam, so none may be declared
 // until a card needs one and the seam is grown for it.
 func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost) {
@@ -86,6 +132,12 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		}
 		if _, err := game.ParseCost(o.ManaCost); err != nil {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has an unparseable ManaCost %q: %v", name, o.Key, o.ManaCost, err))
+		}
+		if o.Energy < 0 {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a negative Energy", name, o.Key))
+		}
+		if gr.MaxManaValue != nil && *gr.MaxManaValue < 0 {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a negative MaxManaValue", name, o.Key))
 		}
 		if o.Life != 0 || o.PaysCards() || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
 			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile ||

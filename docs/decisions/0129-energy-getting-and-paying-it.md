@@ -210,6 +210,8 @@ Each PR lands its engine change and its cards together, test first. Each flips i
 
 **Docs.** PR 1 adds a "Paying energy" recipe to `docs/adding-cards.md`. Each PR updates the `pay-energy-cost` row's notes and adds rows for the families it does not land: `energy-resolution-payments`, `energy-alternative-costs` and `energy-paid-or-lost`, each pointing here. Every row goes through `go test ./internal/roadmap/ -update`, never by hand.
 
+**Note on PR 4 (2026-10-08).** §5 assumed reconfigure was an existing keyword whose "{2} or {E}{E}{E}" only needed two rows. It is not in the engine: there is no unattach ability and no CR 702.151b "isn't a creature while attached". PR 4 ships the other six cards and moves Razorfield Ripper to a new `reconfigure` seam row (#2639). Its energy half needs nothing more. PR 4 also adds `AlternativeCost.AsThoughFlash` for Primal Prayers' "as though it had flash", which CR 601.3c ties to the claim, read by `CastTimingForOfferOpenLocked`.
+
 ## Consequences
 
 - Energy becomes a resource the engine charges. The 52 activation costs, the four mana abilities, about 62 resolution payments, three alternative costs and replicate become expressible, and about 120 cards become implementable across five PRs.
