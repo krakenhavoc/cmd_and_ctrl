@@ -44,6 +44,10 @@ type GrantFlashbackToCard struct {
 	Target uuid.UUID
 	// Label is the clause as printed, for the client's cost picker.
 	Label string
+	// Cost overrides the flashback cost when it is not the card's mana
+	// cost — "gains flashback {0}" (Archmage's Newt, saddled). Empty
+	// keeps "equal to its mana cost".
+	Cost string
 }
 
 func (e GrantFlashbackToCard) Apply(ctx *Context) error {
@@ -58,6 +62,7 @@ func (e GrantFlashbackToCard) Apply(ctx *Context) error {
 		Player:            ctx.Controller(),
 		Zone:              game.ZoneGraveyard,
 		AltCostKey:        "flashback",
+		Cost:              e.Cost,
 		ExileOnResolution: true,
 		// Duration left zero: the one write path reads that as "until
 		// end of turn" and stamps it against this turn, which is what
