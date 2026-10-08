@@ -431,6 +431,13 @@ type CastPermission struct {
 	// priced offer is the home of an additional cost here.
 	DiscardLandCard bool `json:"discardLandCard,omitempty"`
 
+	// DiscardCard is The Infamous Cruelclaw's "You may cast that card by
+	// discarding a card rather than paying its mana cost" (CR 118.9,
+	// ADR 0135 §2): the synthesised offer charges no mana and one card
+	// from the holder's hand, discarded as a cost (CR 701.9a), so a
+	// discard payoff sees it. Any card but the one being cast.
+	DiscardCard bool `json:"discardCard,omitempty"`
+
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
 	// (CR 702.34a). A REPLACEMENT, so it also catches a granted
@@ -800,6 +807,13 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.DiscardLandCard {
 		out.DiscardFromHand = RetraceDiscardSpec()
 		out.PayLabel = "a land card"
+	}
+	if p.DiscardCard {
+		// ADR 0135 §2: "by discarding a card rather than paying its
+		// mana cost" replaces the mana cost.
+		out.ManaCost = ""
+		out.DiscardFromHand = discardAnyCardSpec()
+		out.PayLabel = "a card"
 	}
 	out.ExileOnLeavingStack = p.ExileOnResolution
 	if out.Label == "" {
@@ -1822,6 +1836,22 @@ func RetraceDiscardSpec() *TargetSpec {
 		Zones: []ZoneKind{ZoneHand},
 		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
 			return c.Owner == caster && c.IsLand()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// discardAnyCardSpec builds the "discarding a card" component of a
+// granted offer (CastPermission.DiscardCard, ADR 0135 §2): any one card
+// from the caster's own hand. A cost, not a target (CR 601.2h); the
+// Owner check is RetraceDiscardSpec's belt and braces for the picker's
+// SpecCandidatesForEffect, which walks every seat.
+func discardAnyCardSpec() *TargetSpec {
+	return &TargetSpec{
+		Label: "Discard a card",
+		Zones: []ZoneKind{ZoneHand},
+		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.Owner == caster
 		},
 		Min: 1, Max: 1,
 	}

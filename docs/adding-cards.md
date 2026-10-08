@@ -1080,9 +1080,25 @@ Equip and unearth with an energy cost are `EquipPayingAbility("Equip—Pay
 {E}{E}", PayEnergy(2))` and `UnearthPaying("Unearth—Pay eight {E}",
 PayEnergy(8))`. Reconfigure is not implemented (`reconfigure`, #2639).
 
-**Not yet:** "whenever you get one or more {E}" and "{E} you've paid or
-lost this turn" wait on ADR 0129 PR 5. Put such a card on the matching
-registry row's `Waiting` list.
+**Getting it as a trigger, and "paid or lost this turn"** (PR 5).
+"Whenever you get one or more {E}, …" is `WheneverYouGetEnergy(label,
+effect)`: one trigger per placement of energy on the controller (CR
+603.2c), never on a payment. "That much" is `EnergyGotten(item)`, the
+energy that landed after any replacement. Compose `YouGotEnergy` with
+another condition for a narrower clause ("during your turn" is Brotherhood
+Scribe's `IsYourTurn`). The energy a player has paid or lost this turn is
+`g.EnergyPaidOrLostThisTurn(player)`, the turn tally's
+`EnergyPaidOrLost`, which counts every payment and every energy counter an
+effect removes:
+
+```go
+Condition: PaidOrLostEnergyThisTurn(4), // "Activate only if you've paid or lost four or more {E} this turn"
+SelfCostModifiers: []game.CostModifier{CostsLessForEachEnergyPaidOrLost(1, "…")}, // Blaster Hulk
+```
+
+A replacement on getting energy is a `RepEventCounter` with
+`CounterPlayer` set and `CounterName == game.CounterEnergy` (Aether
+Refinery, Izzet Generatorium).
 
 ### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
 

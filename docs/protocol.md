@@ -1838,6 +1838,20 @@ leaves them dead. An offer whose clause the caster's board cannot fill
 is not stamped at all, which is how a flashback that cannot be paid
 leaves its card not `castable_here`. Per viewer, like `pay_options`.
 
+**A discard as the price (ADR 0135 §2, #2412).** An offer whose
+`pay_options` cards are DISCARDED rather than exiled or returned —
+retrace's land card, Snag's "You may discard a Forest card rather than
+pay this spell's mana cost", Foil's "an Island card and another card",
+The Infamous Cruelclaw's granted "by discarding a card" — carries
+`discards: true` (public, with the rest of the printed offer). The
+picks ride `alt_cost_ids` and are discarded at CR 601.2h with the spell
+on the stack. An offer with a set rule (Foil) also carries
+`pay_options.each_of`, in the shape the sacrifice picker reads: one
+group per printed part with the cards that could fill it, and the picks
+must fill every group with a different card. Two non-Island cards are
+refused as `bad_request` with nothing paid, and an offer whose hand
+cannot fill the groups is not stamped.
+
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
 Two additive fields on `CardView` and one on `cast_spell`, both

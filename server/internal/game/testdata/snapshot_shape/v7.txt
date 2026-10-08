@@ -426,6 +426,8 @@ events[].combat	bool
 events[].combat_step	string
 events[].damage_not_life_loss	number:int
 events[].discard_cause	string
+events[].entered_from	string
+events[].entered_from_owner	custom(uuid.UUID)
 events[].error_msg	string
 events[].exhaust	bool
 events[].kind	string
@@ -1370,6 +1372,8 @@ lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
 lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
+lastKnownStack[].item.trigger.Event.entered_from	string
+lastKnownStack[].item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
 lastKnownStack[].item.trigger.Event.kind	string
@@ -1839,6 +1843,8 @@ pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
 pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
+pendingTriggers[].trigger.Event.entered_from	string
+pendingTriggers[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
 pendingTriggers[].trigger.Event.kind	string
@@ -2400,6 +2406,7 @@ seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
@@ -3901,6 +3908,9 @@ seats[].poison	number:int
 seats[].seat	number:int
 seats[].statics	array
 seats[].statics[]	object
+seats[].statics[].cantAttack	object
+seats[].statics[].cantAttack.fromTurnsBegun	number:int
+seats[].statics[].cantAttack.protected	custom(uuid.UUID)
 seats[].statics[].cantBeCountered	object
 seats[].statics[].cantBeCountered.active	bool
 seats[].statics[].cantBeCountered.except	object
@@ -4482,6 +4492,8 @@ stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
 stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
+stackMeta[].trigger.Event.entered_from	string
+stackMeta[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool
 stackMeta[].trigger.Event.kind	string
@@ -4611,6 +4623,7 @@ turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.creaturesDied	number:int
+turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int

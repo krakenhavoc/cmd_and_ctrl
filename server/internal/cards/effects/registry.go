@@ -166,6 +166,7 @@ func Register(spec Spec) {
 		// a fixed count is what the announce path, the picker and the
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
+		checkAltCostSetRule(spec.Name, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
 			continue
@@ -1062,11 +1063,46 @@ func checkSacrificeSetRule(card, where string, spec *game.TargetSpec) {
 		panic(fmt.Sprintf("effects.Register: %q %s has a set rule over %d entries but sacrifices %d to %d permanents — the count must be exactly the entry count (SacrificeEach)",
 			card, where, len(spec.EachOf), spec.Min, spec.Max))
 	}
+	checkSetRuleEntries(card, where, spec)
+}
+
+// checkSetRuleEntries refuses a set-rule entry that names nothing: no
+// subtype, no card type and not "any card" (ADR 0135 §2's Any). Such an
+// entry would match nothing, and the cost could never be paid.
+func checkSetRuleEntries(card, where string, spec *game.TargetSpec) {
 	for i, k := range spec.EachOf {
-		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 && !k.Any {
 			panic(fmt.Sprintf("effects.Register: %q %s set-rule entry %d names no subtype or card type — it would match nothing", card, where, i))
 		}
 	}
+}
+
+// checkAltCostSetRule is ADR 0135 §2's guard for a set rule on an
+// alternative cost's card component. It is allowed on a sacrifice
+// (checkSacrificeSetRule, #2526) and on a hand discard (Foil's "an
+// Island card and another card"), held there to the same shape: at least
+// two entries, a fixed count equal to their number. On the other
+// components (exile from hand or graveyard, return to hand) nothing
+// reads it, so the cost would be charged without its rule.
+func checkAltCostSetRule(card string, ac game.AlternativeCost) {
+	where := fmt.Sprintf("alternative cost %q", ac.Key)
+	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard} {
+		if spec != nil && len(spec.EachOf) > 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s has a set rule (EachOf) on a component that does not read one — only a sacrifice or a hand discard does", card, where))
+		}
+	}
+	spec := ac.DiscardFromHand
+	if spec == nil || len(spec.EachOf) == 0 {
+		return
+	}
+	if len(spec.EachOf) < 2 {
+		panic(fmt.Sprintf("effects.Register: %q %s has a one-entry set rule — that is an ordinary discard clause (DiscardInstead), not EachOf", card, where))
+	}
+	if spec.CountFromX || spec.Min != len(spec.EachOf) || spec.Max != len(spec.EachOf) {
+		panic(fmt.Sprintf("effects.Register: %q %s has a set rule over %d entries but discards %d to %d cards — the count must be exactly the entry count (DiscardEachInstead)",
+			card, where, len(spec.EachOf), spec.Min, spec.Max))
+	}
+	checkSetRuleEntries(card, where, spec)
 }
 
 // checkReturnClause is #1213's registration guard for the
