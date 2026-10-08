@@ -366,7 +366,60 @@ type catalogRun struct {
 	stallKind   game.PendingChoiceKind
 	stallKinds  string
 	stallReason string
+	stallCause  string
 	dump        string
+}
+
+// stallDiagnosis is what diagnoseStall read off a table that stopped
+// committing.
+type stallDiagnosis struct {
+	kinds     string
+	firstKind game.PendingChoiceKind
+	reason    string
+	cause     string
+}
+
+// diagnoseStall names why a table stopped moving, so a stall report
+// never reads as an empty set (#2609). Two things can hold a bot-only
+// table:
+//
+//   - the CR 732 loop breaker (ADR 0055 section 5): the notice suspends
+//     automatic passing and the runner refuses to feed the named
+//     permanent, so a table whose only moves are "pass" and that
+//     permanent's ability parks every seat. That is the breaker working
+//     as designed, and the old report (kinds=[] reason="") could not
+//     tell it from a hang;
+//   - a pending choice, named by kind and reason.
+//
+// Anything else is "no pending choice and no loop notice", which is the
+// shape a real hang has and is worth a bug report.
+func diagnoseStall(g *game.Game) (pending int, d stallDiagnosis) {
+	var kinds []string
+	g.ReadSnapshot(func() {
+		pending = len(g.PendingChoices)
+		seen := map[game.PendingChoiceKind]bool{}
+		for _, c := range g.PendingChoices {
+			if c == nil || seen[c.Kind] {
+				continue
+			}
+			seen[c.Kind] = true
+			kinds = append(kinds, string(c.Kind))
+			if d.firstKind == "" {
+				d.firstKind, d.reason = c.Kind, c.Reason
+			}
+		}
+	})
+	sort.Strings(kinds)
+	d.kinds = strings.Join(kinds, ", ")
+	switch n := g.CurrentLoopNotice(); {
+	case n != nil:
+		d.cause = fmt.Sprintf("loop breaker (CR 732, ADR 0055 section 5): %q has resolved %d times and automatic passing is suspended", n.Label, n.Count)
+	case pending > 0:
+		d.cause = fmt.Sprintf("pending choice(s) [%s]", d.kinds)
+	default:
+		d.cause = "UNEXPLAINED: no pending choice and no loop notice, a hang rather than a wait"
+	}
+	return pending, d
 }
 
 // playCatalogGame is playGameIn with the stall RETURNED rather than
@@ -424,29 +477,13 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 		if seq := room.Seq(); seq != lastSeq {
 			lastSeq, lastMove = seq, time.Now()
 		} else if time.Since(lastMove) > stall {
-			var pending int
-			var kinds []string
-			g.ReadSnapshot(func() {
-				pending = len(g.PendingChoices)
-				seen := map[game.PendingChoiceKind]bool{}
-				for _, c := range g.PendingChoices {
-					if c == nil || seen[c.Kind] {
-						continue
-					}
-					seen[c.Kind] = true
-					kinds = append(kinds, string(c.Kind))
-					if out.stallKind == "" {
-						out.stallKind, out.stallReason = c.Kind, c.Reason
-					}
-				}
-			})
-			sort.Strings(kinds)
-			out.stallKinds = strings.Join(kinds, ", ")
+			pending, diag := diagnoseStall(g)
+			out.stallKind, out.stallKinds, out.stallReason, out.stallCause = diag.firstKind, diag.kinds, diag.reason, diag.cause
 			// describeSeats takes the read lock itself, so it is
 			// called outside the block above rather than inside it.
 			out.stalled = true
-			out.dump = fmt.Sprintf("turn %d step %s priority=%d pending=%d kinds=[%s]\n%s",
-				snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, pending, out.stallKinds, describeSeats(g))
+			out.dump = fmt.Sprintf("cause: %s\nturn %d step %s priority=%d pending=%d kinds=[%s]\n%s",
+				out.stallCause, snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, pending, out.stallKinds, describeSeats(g))
 			break
 		}
 		if ctx.Err() != nil {
@@ -626,8 +663,8 @@ func TestCatalogSoak(t *testing.T) {
 			// The hard assertion is the one below: a card whose
 			// effect threw.
 			if res.stalled {
-				t.Logf("seed %d: table stalled — kinds=[%s] first=%q reason=%q\n%s\nreproduce: AISEAT_CATALOG_SEED=%d AISEAT_CATALOG_GAMES=1",
-					seed, res.stallKinds, res.stallKind, res.stallReason, res.dump, seed)
+				t.Logf("seed %d: table stalled — cause=%s kinds=[%s] first=%q reason=%q\n%s\nreproduce: AISEAT_CATALOG_SEED=%d AISEAT_CATALOG_GAMES=1",
+					seed, res.stallCause, res.stallKinds, res.stallKind, res.stallReason, res.dump, seed)
 			}
 
 			// The assertion this file exists for. An effect error is a
