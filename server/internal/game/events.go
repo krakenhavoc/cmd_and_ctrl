@@ -1116,9 +1116,14 @@ const (
 	EventPhaseIn  EventKind = "phase_in"
 
 	// EventTurnedFaceUp — Actor turned the face-down permanent
-	// CardID face up (CR 708.6, the CR 116.2g special action).
-	// Source is the same card: a permanent turns ITSELF face up, and
-	// there is no other object involved.
+	// CardID face up (CR 708.6, the CR 116.2g special action, or an
+	// effect, CR 708.8 / CR 701.40b).
+	// Source is the same card for the special action: a permanent
+	// turns ITSELF face up, and there is no other object involved.
+	// For an EFFECT (TurnFaceUpForEffect, ADR 0082's 2026-10-07
+	// second amendment) Source is the object doing it, which is how
+	// the log tells the two apart — the special action's own
+	// LogSpecialAction line already narrates the first.
 	//
 	// A KIND OF ITS OWN, not a reuse of EventTransform or EventETB,
 	// and the distinction is a rules one rather than a tidiness one.

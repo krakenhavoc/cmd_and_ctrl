@@ -174,6 +174,7 @@ const LOG_TONE: Record<LogKind, string> = {
   // behind it, so it is toned like the turn-over it causes.
   day_night: "tone-zone",
   turn_face_down: "tone-zone",
+  turn_face_up: "tone-zone",
 };
 
 export function logTone(kind: LogKind): string {

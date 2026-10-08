@@ -478,7 +478,114 @@ func turnFaceUpLabel(cost string) string {
 
 // turnFaceUpLocked is the turn_face_up special action's performer,
 // run by PerformSpecialAction once the morph cost is paid
-// (CR 708.6, CR 116.2g).
+// (CR 708.6, CR 116.2g). It validates, then hands the turn itself to
+// finishTurnFaceUpLocked, which holds the CR 708.8 contract (not a new
+// object, clear before emit) and is shared with TurnFaceUpForEffect.
+//
+// Caller must hold g.mu (write).
+func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) error {
+	idx := findCardOnBattlefield(g, cardID)
+	if idx < 0 {
+		return ErrCardNotFound
+	}
+	c := &g.Battlefield.Cards[idx]
+	// Re-checked here rather than trusted from the dispatcher: the
+	// offer was priced against this card, and between then and now
+	// nothing may have changed it — but "nothing may have" is not a
+	// guarantee the performer is entitled to make about itself.
+	if !c.FaceDownIsPermanent() || c.Controller != p.ID {
+		return ErrSpecialActionNotOffered
+	}
+	// The special action's event names the permanent as its own
+	// Source: it turns ITSELF face up and nothing else is involved.
+	return g.finishTurnFaceUpLocked(idx, p.ID, cardID, cardID, sa.FaceUpCounter)
+}
+
+// CanTurnFaceUpForEffect reports whether an instruction to turn this
+// permanent face up can do anything to it (ADR 0082's 2026-10-07
+// second amendment, CR 708.8).
+//
+// An effect is not the special action. CR 702.37e / CR 701.40b price
+// the ACTION — a morph cost, a manifested creature card's mana cost —
+// and an effect that says "turn it face up" pays nothing, so the
+// per-kind offer TurnFaceUpOffer is not the question. What an effect
+// can still not do is CR 701.40b's one refusal: a manifested (or, by
+// CR 701.58b, cloaked) card that is not a creature card stays face
+// down, because it has no face-up form the rules let it take. Every
+// other face-down permanent can be turned up, INCLUDING one an
+// Ixidron left with no way back up (CR 708.7 withholds the special
+// action, not the effect) and one whose controller could not afford
+// its cost.
+//
+// "Creature card" is PrintedIsCreature, for the reason TurnFaceUpOffer
+// gives: the question is what the CARD says, and the face-down
+// projection would call a manifested Island a 2/2 creature.
+func CanTurnFaceUpForEffect(c Card) bool {
+	if !c.FaceDownIsPermanent() {
+		return false
+	}
+	switch c.FaceDownKind {
+	case FaceDownManifested, FaceDownCloaked:
+		return c.PrintedIsCreature()
+	}
+	return true
+}
+
+// TurnFaceUpForEffect turns the face-down battlefield permanent `id`
+// face up as part of an effect, paying nothing (CR 701.40b, CR 708.8).
+// Hauntwoods Shrieker's "you may turn it face up", Zimone's "turn a
+// permanent you control face up" and Staff Room's "turn that creature
+// face up". `actor` is the player whose effect it is — NOT the
+// permanent's controller, who need not be the same (the Shrieker
+// reaches an opponent's creature card) — and `source` is the object
+// doing it.
+//
+// Returns whether it turned. A permanent that is not on the
+// battlefield, is not face down, or that CanTurnFaceUpForEffect
+// refuses is left exactly as it was and nothing is emitted: CR 701.40b
+// has a manifested non-creature card stay face down, and abilities
+// that trigger when a permanent is turned face up do not see it.
+//
+// THE SAME PATH AS THE SPECIAL ACTION, and that is the point:
+// finishTurnFaceUpLocked is the one writer, so the copiable values
+// revert (CR 708.8), the object stays the same object, the timestamp
+// is renewed (CR 613.7f), every seat becomes a knower, and
+// EventTurnedFaceUp fires after the state is cleared — "when this is
+// turned face up" and Growing Dread's "whenever you turn a permanent
+// face up" cannot tell the two apart, which is correct.
+//
+// What differs is what is NOT paid: no cost, and no megamorph counter.
+// CR 702.37b puts that counter on the permanent only if its megamorph
+// cost was paid to turn it face up, so a megamorph card turned up by
+// an effect arrives without it. The counter rides the cost, and an
+// effect has none.
+//
+// Caller must hold g.mu (write).
+func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
+	if g.Battlefield == nil || id == uuid.Nil {
+		return false
+	}
+	idx := findCardOnBattlefield(g, id)
+	if idx < 0 || !CanTurnFaceUpForEffect(g.Battlefield.Cards[idx]) {
+		return false
+	}
+	if source == uuid.Nil {
+		source = id
+	}
+	// No counter is requested, so the only error the shared tail can
+	// return (the megamorph counter's) cannot happen.
+	return g.finishTurnFaceUpLocked(idx, actor, source, id, false) == nil
+}
+
+// finishTurnFaceUpLocked is the one writer of "this permanent is now
+// face up", shared by the CR 116.2g special action (turnFaceUpLocked)
+// and the effect door (TurnFaceUpForEffect). `idx` is the permanent's
+// battlefield index, already validated by the caller; `actor` is who
+// turned it; `source` is the object doing it — the permanent itself
+// for the special action, the effect's source otherwise (the log
+// narrates the second and stays silent on the first, which its own
+// special-action line already covers). `counter` is CR 702.37b's
+// megamorph counter, owed only when the megamorph COST was paid.
 //
 // CR 708.8: turning a permanent face up DOES NOT make it a new
 // object. So this touches nothing that identifies one — InstanceID,
@@ -496,25 +603,8 @@ func turnFaceUpLabel(cost string) string {
 // trigger CR 708.8 exists for.
 //
 // Caller must hold g.mu (write).
-func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) error {
-	idx := -1
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		return ErrCardNotFound
-	}
+func (g *Game) finishTurnFaceUpLocked(idx int, actor, source, cardID uuid.UUID, counter bool) error {
 	c := &g.Battlefield.Cards[idx]
-	// Re-checked here rather than trusted from the dispatcher: the
-	// offer was priced against this card, and between then and now
-	// nothing may have changed it — but "nothing may have" is not a
-	// guarantee the performer is entitled to make about itself.
-	if !c.FaceDownIsPermanent() || c.Controller != p.ID {
-		return ErrSpecialActionNotOffered
-	}
 	c.ClearFaceDown()
 	// ADR 0103: a Room turned face up is a Room on the battlefield
 	// again — the halves its doors unlock, none if it entered face
@@ -539,18 +629,18 @@ func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) e
 	// so every seat becomes a knower — the mirror of the face-down
 	// landing, which REPLACED the marking rather than adding to it.
 	g.markCardKnownInZoneLocked(g.Battlefield, cardID)
-	if sa.FaceUpCounter {
+	if counter {
 		// CR 702.37b: megamorph turns it face up AND puts a +1/+1
 		// counter on it — before the event, so a "when this is turned
 		// face up" trigger already sees it.
-		if err := g.applyCounterByLocked(cardID, "+1/+1", 1, p.ID, cardID); err != nil {
+		if err := g.applyCounterByLocked(cardID, "+1/+1", 1, actor, cardID); err != nil {
 			return err
 		}
 	}
 	g.EmitEvent(Event{
 		Kind:   EventTurnedFaceUp,
-		Actor:  p.ID,
-		Source: cardID,
+		Actor:  actor,
+		Source: source,
 		CardID: cardID,
 	})
 	return nil

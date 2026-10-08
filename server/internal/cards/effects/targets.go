@@ -266,6 +266,20 @@ func WithMorphAbility() CardPredicate {
 	}
 }
 
+// FaceDown is the "face-down permanent" clause (CR 708.2): a battlefield
+// permanent that is currently face down. Hauntwoods Shrieker's target
+// (#2590).
+//
+// A card face down in EXILE (a foretold card, a Necropotence exile) is
+// not a permanent and does not pass. The predicate reads the object's
+// STATE and never its identity, so it tells the targeting player
+// nothing about the card underneath.
+func FaceDown() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.FaceDownIsPermanent()
+	}
+}
+
 // --- controller / owner predicates ------------------------------
 
 // YouControl passes for cards the caster controls.

@@ -748,17 +748,13 @@ func TestExperimentalLabPutsTwoCountersAndATrampleCounterOnWhatItManifested(t *t
 	}
 }
 
-// The doors are complete; the Room that keeps a caveat names only the
-// gap that remains.
-func TestManifestDreadRoomsDeclareOnlyWhatIsStillMissing(t *testing.T) {
-	for _, id := range []string{mdWeightRoomOracle, mdTicketBoothOracle, mdUnderwaterOracle} {
+// The doors are complete, and since #2590 so is Staff Room's: it turns a
+// face-down creature face up as an effect.
+func TestManifestDreadRoomsAreComplete(t *testing.T) {
+	for _, id := range []string{mdWeightRoomOracle, mdTicketBoothOracle, mdUnderwaterOracle, mdExpLabOracle} {
 		spec, _ := Lookup(id)
 		if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s should be complete now that manifest dread exists", spec.Name)
 		}
-	}
-	spec, _ := Lookup(mdExpLabOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Experimental Lab keeps exactly the Staff Room caveat, has %v", spec.Caveats)
 	}
 }

@@ -886,3 +886,139 @@ Left on the roadmap row, each with its blocker:
   component.
 
 Nothing ships stronger than printed (#259).
+
+## Amendment (2026-10-07, #2590): turning a permanent face up as an effect (CR 708.8, CR 701.40b) · Accepted · S43
+
+**Status:** Accepted · 2026-10-07 · S43 · [#2590](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2590),
+tracker [#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886),
+home tracker [#2555](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2555)
+**Proof cards:** Hauntwoods Shrieker, Zimone, Mystery Unraveler, and the Staff
+Room door of Experimental Lab // Staff Room (shipped with a caveat in PR #2585).
+**Numbering:** an amendment to this ADR; no new number is taken. This follows
+the manifest dread amendment above, which left these three cards on the
+roadmap row as its first named gap.
+
+Decision 6 made turning face up a special action with a price. Three printed
+cards turn a permanent face up as an INSTRUCTION, paying nothing: "you may turn
+it face up", "turn a permanent you control face up", "turn that creature face
+up". The special action cannot carry them, because its price and its timing are
+the action's and not the effect's. What was missing was a door for the second.
+
+### D1. `TurnFaceUpForEffect(source, actor, id)` and one shared tail
+
+```go
+func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool
+func CanTurnFaceUpForEffect(c Card) bool
+```
+
+`turnFaceUpLocked` is split in two. The part that validates the SPECIAL ACTION
+(the card is face down, the actor controls it) stays in it. The part that
+turns the permanent over moved, unchanged, into `finishTurnFaceUpLocked`, and
+both doors call it: the same `ClearFaceDown`, the same Room-door
+materialisation, the same CR 613.7f timestamp, the same cache nil-out, the same
+every-seat-is-a-knower marking, the same `EventTurnedFaceUp` emitted AFTER the
+state is cleared (decision 7's order). That sharing is the contract. A "when
+this is turned face up" trigger and Growing Dread's "whenever you turn a
+permanent face up" cannot tell the two doors apart, which is what the rules say:
+CR 708.8 does not care how it was turned.
+
+It returns whether the permanent turned. A permanent that is gone, face up, or
+refused is left exactly as it was and nothing is emitted.
+
+### D2. What an effect still cannot do
+
+An effect does not pay a morph cost or a mana cost, so `TurnFaceUpOffer` (decision 5) is
+not the question: it prices the ACTION. Asking it would refuse a permanent an
+Ixidron left with no way back up (CR 708.7 withholds the special action, not
+the effect) and would demand a cost the effect never pays. The question is
+`CanTurnFaceUpForEffect`:
+
+| kind | an effect may turn it face up |
+|---|---|
+| `morphed`, `disguised`, `turned` | yes |
+| `manifested`, `cloaked` | only if the card is a creature card (CR 701.40b, CR 701.58b) |
+
+"Creature card" is `PrintedIsCreature`, for decision 5's reason: the question is
+what the CARD says, and the face-down projection calls a manifested Island a
+2/2 creature. A manifested noncreature card stays face down and the effect does
+nothing to it, with no event, so abilities that trigger on a turn face up do not
+see it.
+
+### D3. No cost means no megamorph counter
+
+CR 702.37b owes the +1/+1 counter only when the megamorph COST was paid to turn
+the permanent up. The counter therefore rides the cost, and `finishTurnFaceUpLocked`
+takes it as a parameter: the special action passes `sa.FaceUpCounter`, the effect
+door passes false. A megamorph creature turned up by Hauntwoods Shrieker is a
+creature without its counter. This is stated rather than discovered later
+because "the same path" is easy to read as "the same counter".
+
+### D4. Actor, source, and the log
+
+`EventTurnedFaceUp.Actor` is the player whose effect it is, NOT the permanent's
+controller. The Shrieker reaches an opponent's creature card; "whenever you turn
+a permanent face up" is asked of the player who turned it. `Source` is the
+object doing it. For the special action it remains the permanent itself, which
+is the case the existing `Self` predicate and the harvester already read, and
+which the event's doc comment promised.
+
+The log's silence row for this kind said that if a second emitter ever appeared
+the kind would need an arm. It has. `LogTurnFaceUp` ("turn_face_up") is written
+only when `Source` is not the permanent, so the special action keeps its
+`LogSpecialAction` line and does not gain a second one. The entry names the
+permanent, which is public again by the time it is written, and carries the doer
+in `target`, the mirror of `turn_face_down`. The client's `LogKind` union and
+tone map gain the kind and nothing else.
+
+### D5. Hauntwoods Shrieker: a reveal that leaves the permanent face down
+
+"Reveal target face-down permanent" goes through `RevealForEffect`, the same
+door CR 708.9 uses: every seat becomes a knower of the card and one reveal frame
+goes out. The permanent stays face down unless the controller of the Shrieker
+says yes to the following "you may turn it face up", which is asked only if the
+card underneath is a creature card the engine will let an effect turn over. The
+knowledge stays: a table that was shown a card does not forget it, and decision
+A3 of the 2026-09-23 amendment forgot only when the permanent was turned face
+down, where the controller was the only person who had ever looked. The target
+clause is a new `effects.FaceDown()` predicate beside `WithMorphAbility`, which
+reads the object's state and tells the targeting player nothing about the card.
+
+### D6. Zimone: the tally already existed
+
+"If this is the first time this ability has resolved this turn" is
+`Game.ResolvedThisTurn(source, label)`, the per-object count Sephiroth reads. The
+count includes the resolution in progress, so the first resolution reads 1. It
+is per OBJECT (CR 400.7): a Zimone that left and came back starts again. No new
+tally was built: the manifest dread amendment's note that Zimone "also needs"
+one is satisfied by a reading the engine already had. The "otherwise" branch is a
+`ChoosePermanents` over the controller's own face-down permanents that
+`CanTurnFaceUpForEffect` accepts, floor zero and ceiling one. With nothing to
+turn over it asks nothing.
+
+### D7. Staff Room: a choice asked only when there is one
+
+"Turn that creature face up or put a +1/+1 counter on it" is a choice of the
+resolving controller. A face-up creature has only the counter, so it gets it
+without a prompt, exactly as before. A face-down creature the engine will let an
+effect turn over gets a `MayChoice` with both options spelled out. A manifested
+noncreature card is not offered the turn and takes the counter.
+
+### D8. Bot and enumerator coverage
+
+No new prompt kind. `MayChoice` is a confirm, `ChoosePermanents` over one's own
+board is `own_permanents`, and manifest dread's pick is `choose_cards`; the
+enumerator and both bot policies already answer all three. The bounded AI-seat
+run covers them with the Shrieker, Zimone and Staff Room cards in the catalog.
+
+### D9. What this does NOT build
+
+- **CR 701.40c** (a manifested card that also has morph may be turned up for
+  either cost) remains out of scope, for decision 5's reason.
+- **The special action is unchanged.** Its price, timing and offer are exactly
+  what they were; only its tail moved, with no change in behaviour.
+- **Morph is not made turnable "for the Shrieker's cost".** The Shrieker's
+  turn is free, as printed.
+
+Nothing ships stronger than printed (#259): the one place an effect could have
+exceeded the rules, a manifested noncreature card, is refused in D2, and the
+megamorph counter an effect does not owe is not given in D3.
