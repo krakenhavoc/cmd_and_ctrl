@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): proposed, waiting on the owner's answers.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
 This ADR was written plan-first. No code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
@@ -426,7 +426,7 @@ Worked, in the owner's position: late in the game a land in hand has a `cardValu
 
 ## Amendment (2026-10-08): purposes that follow a mode's target, and damage priced by whether it kills
 
-**Status:** Proposed, 2026-10-08. Waiting on the owner's answers to [Q1–Q6](#open-questions-for-the-owner-2026-10-08). No code changes with it.
+**Status:** Accepted (owner answers 2026-10-08). The owner chose the recommended option, (a), on every question; see [Owner answers (2026-10-08)](#owner-answers-2026-10-08) at the end of this amendment. No code changed with it. The changes land in the PRs under its delivery plan.
 **Issue:** [#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689). Related: [#2681](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2681) (Prismari's self loot and Treasure selection is never enumerated) and [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457) (the bot's own draw step as a spend window).
 **Amends:** §6 (what a purpose says, and who it is about) and the target half of the cast price. §4's sweep, §7, and the discard-payoff amendment are unchanged.
 **Line numbers** are on `develop` at `8cda8c86d`. The issue cited `46f6b1e0c`; `aiseat/heuristic/moves.go` has not moved since, and `legal/legal.go`'s cap moved from `:554` to `:562`.
@@ -552,7 +552,7 @@ Under D2 instead, "2 to Claude, loot to Bot 1" is 1.80 + 1.20 − 1.20 = 1.80, w
 | 2 | **The signal.** `game.Purpose`'s target list, `TargetPurposeView`, the projection, the guard, `docs/protocol.md` and `protocol.ts`. Declarations for the curated decks' cards in both classes: Prismari Command, Sign in Blood, Lightning Bolt, Shock, Arc Trail, Fiery Temper, Abrade, Izzet Charm's damage mode, and Blaze if X can be declared (otherwise it goes on `noPrintedAmount`). `TestCuratedDeckPurposes` requires an entry for each and drops their `valueIsTheirTarget` notes. The dump audit lists catalog cards whose text reads "target player draws / creates / gains", or "deals N damage to" a creature or any target, with no entry. **No price change.** Touches `effects`, `game`, `protocol`, `decks` and the client types, and nothing under `aiseat/`. | 1 | Unit tests for the guard and the projection. `TestCuratedDeckPurposes`. §8 run 1 and run 2 identical to `develop` apart from IDs and timings, as PR 6 showed. |
 | 3 | **Target purposes priced** (A1, B1) behind `PriceTargetPurposes`. `targetRef` decodes `slot` and `mode`. A declared entry replaces `targetsValue`'s price for its pick, and a cast whose only declared amounts are target entries counts as purpose-priced, so the mana proxy goes. | 2 | Unit tests: Prismari's loot is worth more on the bot than on an opponent, its Treasure likewise, and Sign in Blood at itself beats an opponent on 30 life. §8 run 1 and run 2 under §8's sub-PR bar: no tag's agreement falls, and `heuristic`'s upper bound stays above 25%. A targeted run, `boteval arena --seats heuristic,heuristic,heuristic-baseline,heuristic-baseline --decks izzet-aggro,mono-black-aristocrats,izzet-aggro,mono-black-aristocrats --games 96 --rotate --lockstep`, reporting Prismari's and Sign in Blood's Cards rows, with who each was aimed at, read from the decision logs. |
 | 4 | **Damage by whether it kills** (C1, D1) behind `DamageByLethality`. `cardTargetValue` takes the declared amount; the kill test is shared with `combat.go`'s. | 2 (3 for the acceptance position) | Unit tests: Shock at a 2/4 is about 0, at a 2/2 it is removal, at an indestructible 2/2 it is 0, at a 3/3 with 1 damage marked it is removal, and at a player on 2 life it gets the lethal bonus. §8 run 1 and run 2 as in PR 3. The izzet-aggro run, reporting burn aimed at creatures it killed, at creatures it did not, and at players. |
-| 5 | **The catalog sweep** (Q5's answer): the dump audit's list, in card batches with no price change. Each batch follows docs/adding-cards.md (its own oracle fixtures only, Completeness unchanged). | 2 | The dump audit's list shrinks. The real-dump audits pass. |
+| 5 | **The catalog sweep** (owner answer 5): every catalog spell, mode or row that gives its target player something (a draw, a token, a life gain or a loot), then burn from the dump audit's list, in card batches with no price change. Each batch follows docs/adding-cards.md (its own oracle fixtures only, Completeness unchanged). | 2 | The dump audit's list shrinks. The real-dump audits pass. |
 
 Suite positions are **proposals only**, for the owner to review in the PR that adds them, as every suite position is:
 
@@ -600,6 +600,17 @@ Each question lists the recommended option first.
 6. **Q6. Planeswalker and battle targets of declared damage.**
    - **(a) Recommended:** a planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
    - **(b)** Both keep today's price, as removal whatever the amount. Smaller, and 2 damage to a 6-loyalty planeswalker stays priced as killing it.
+
+#### Owner answers (2026-10-08)
+
+The owner chose option (a), the recommended one, on every question. No section above changed. These answers bind the delivery PRs.
+
+1. **Per target clause.** `Purpose` and `PurposeView` gain a `targets` list keyed by the clause's `slot` (A1).
+2. **Through the table's weights.** A gift to an opponent is that seat's strength change, priced through `ScoreEval`'s `OpponentMean` and `OpponentMax` (B1).
+3. **`DamageChip` 0.00.** Damage that does not kill a creature is worth nothing (C1; CR 514.2).
+4. **Per point, plus lethal.** Declared damage at a player is priced at `DamageToOpponent` per point through those weights, with `LethalBonus` when it reaches the player's life (D1; CR 704.5a).
+5. **The curated decks, then gifts.** PR 2 declares the curated decks' cards in both classes. PR 5 then declares every catalog spell, mode or row that gives its target player something, and burn follows from the dump audit. Undeclared burn keeps today's removal price.
+6. **Planeswalkers by loyalty.** A planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
 
 ## Consequences
 
