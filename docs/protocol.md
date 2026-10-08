@@ -2838,6 +2838,21 @@ two of its own creatures buys only what the new host gains, and a free
 equip priced like a pump was moved back and forth forever (#2449). The
 client does not read it. Public with the row.
 
+## A self-untap row says it is one (#2500, 2026-10-08)
+
+Additive, `v` unmoved.
+
+- **`untap_self: true` on an `activated_abilities[i]` row** whose whole
+  effect is untapping its own source: Basalt Monolith's "{3}: Untap",
+  Grim Monolith's "{4}: Untap". Declared by hand on the card file
+  (`game.ActivatedAbility.UntapSelf`). Absent on every other row.
+
+It is bot data. With the source's `mana_abilities` on the same card, a
+policy can tell a self-untap that nets mana from one that only trades it,
+and the heuristic prices the latter below passing so a Monolith is not
+untapped in a loop (#2500). The client does not read it. Public with the
+row.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client

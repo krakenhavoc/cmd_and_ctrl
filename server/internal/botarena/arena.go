@@ -287,7 +287,7 @@ func (c Config) Validate() error {
 		if s.Tier.NeedsModel() && c.Client == nil {
 			return fmt.Errorf("botarena: seat %d is %s, which needs a model endpoint: set --endpoint or $CMDCTRL_OPENAI_ENDPOINT (an %s seat with no client silently plays the heuristic)", i, s.Tier, s.Tier)
 		}
-		if s.Deck != "" && s.Deck != ExertDeckID && c.Index == nil {
+		if !IsSynthetic(s.Deck) && c.Index == nil {
 			return fmt.Errorf("botarena: seat %d plays %q, which needs a Scryfall dump: set --dump or $CMDCTRL_SCRYFALL_DUMP", i, s.Deck)
 		}
 	}
@@ -748,6 +748,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return BattleDeck(uuid.Nil), nil
 	case ExertDeckID:
 		return ExertBattleDeck(uuid.Nil), nil
+	case MonolithDeckID:
+		return MonolithBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

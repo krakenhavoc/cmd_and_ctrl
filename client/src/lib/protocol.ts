@@ -2773,6 +2773,9 @@ export interface ActivatedAbilityView {
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
+  // #2500: a row whose whole effect is untapping its own source
+  // (Basalt Monolith). Bot data; the client does not read it.
+  untap_self?: boolean;
   // ADR 0126 §6 (and ADR 0106 §1 decision 8 on an any-player row):
   // what the row does. Bot data; the client does not read it.
   purpose?: PurposeView;
