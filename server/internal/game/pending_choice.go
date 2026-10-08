@@ -3300,7 +3300,16 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 	// the batch that targeted (#1539).
 	item.TargetsAnnouncePending = len(item.Targets) > 0
 	g.queueHarvestedTriggerLocked(item)
-	g.runStateChecksLocked()
+	// #2608: this is also reached straight from the harvest (a trigger
+	// whose every clause is "up to" and has nothing to point at needs no
+	// prompt, so it finishes at once). A state-based sweep there ran
+	// under the battlefield walk and removed a departed player's cards
+	// from it. The event that is being harvested belongs to a mutation
+	// whose caller runs the boundary, exactly as for an untargeted
+	// trigger, so only the answer path runs it here.
+	if g.harvestDepth == 0 {
+		g.runStateChecksLocked()
+	}
 }
 
 // withoutPicked drops from a legal set every object already picked

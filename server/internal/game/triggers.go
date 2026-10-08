@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+	"log/slog"
+
+	"github.com/google/uuid"
+)
 
 // triggers.go is the S19 auto-fire dispatcher: a single per-game
 // listener that watches the event log and queues triggered abilities
@@ -581,6 +586,8 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 		g.RecomputeLayersIfStaleLocked()
 	}
 	pass := g.newHarvestPassLocked(ev)
+	g.harvestDepth++
+	defer func() { g.harvestDepth-- }()
 	g.harvestFromZone(&pass, g.Battlefield)
 	// #623 / CR 114.3: an emblem's triggered abilities function in the
 	// command zone. One more zone into the same walk — see emblem.go.
@@ -643,7 +650,16 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 	if z == g.Battlefield {
 		origin = triggerOfPermanent
 	}
-	for i := range z.Cards {
+	walked := len(z.Cards)
+	for i := 0; i < walked; i++ {
+		// The walk is read-only (#2608). If a trigger's AppliesTo or the
+		// dispatch behind a match moved a permanent, the indices below no
+		// longer line up with the cards the walk started with: stop here
+		// rather than index past the slice, and say so loudly in tests.
+		if len(z.Cards) != walked {
+			harvestWalkMutated(z, walked, i)
+			return
+		}
 		card := &z.Cards[i]
 		// During a simultaneous exit the live card may already have lost a
 		// continuous effect because another batch member moved. Triggers see
@@ -681,6 +697,27 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 			g.harvestMatchLocked(pass, *source, lki, t, origin)
 		}
 	}
+}
+
+// harvestInvariantHook is the test hook for a harvest walk that changed
+// its own zone (#2608). Production leaves it nil and logs; the package
+// tests install a panic, as the card-index cross-check does.
+var harvestInvariantHook func(msg string)
+
+// SetHarvestInvariantHook installs the hook; nil restores log-only.
+func SetHarvestInvariantHook(f func(msg string)) { harvestInvariantHook = f }
+
+// harvestWalkMutated reports a zone that changed size while
+// harvestFromZone was walking it. Trigger harvesting is read-only: an
+// ability is queued, never carried out, so reaching this is an ordering
+// bug in whatever ran under the walk, not something to absorb.
+func harvestWalkMutated(z *Zone, walked, at int) {
+	msg := fmt.Sprintf("harvestFromZone: zone changed from %d to %d cards during the walk (at index %d)", walked, len(z.Cards), at)
+	if harvestInvariantHook != nil {
+		harvestInvariantHook(msg)
+		return
+	}
+	slog.Error(msg)
 }
 
 // harvestCastFromStack fires the FromStack triggers of the spell
