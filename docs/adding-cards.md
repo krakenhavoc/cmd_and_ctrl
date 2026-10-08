@@ -3205,8 +3205,32 @@ locking accessor), and reads only public information, because every
 viewer receives the flag. Never drop a condition you can't express,
 and never move it into `Effect`: the first is stronger than printed
 (#259), the second charges the cost for nothing. "Activate only once
-each turn" and boast still have no shape (the per-source activation
-count in `docs/engine-seams.md`).
+each turn" is `OncePerTurnActivation(label)` (Quirion Ranger).
+
+**Boast (CR 702.142, #2697):** never spell "attacked this turn" and
+"only once each turn" by hand. `Boast(text, cost, effect)` and
+`BoastTargeting(text, cost, targets, effect)` in
+[boast.go](../server/internal/cards/effects/boast.go) write the label
+("Boast — " + the printed line after the dash) and set the bit; the
+engine does the rest in one gate, `Game.BoastBlockLocked`, which the
+activation path, the bot enumerator and the view (`boast_blocked`) all
+read:
+
+```go
+Activated: []ActivatedAbility{
+    Boast("{2}{R}: Create a 2/1 red Dwarf Berserker creature token.",
+        ManaCost("{2}{R}"), createTheToken("2/1 red Dwarf Berserker")),
+},
+```
+
+A card that changes the limit (Birgi: "can boast twice … rather than
+once") declares `BoastLimits: []game.BoastLimit{YourCreaturesBoastTimes(label, 2)}`;
+the largest applicable limit wins, it is not a sum. A card that talks
+ABOUT boast abilities reads the bits the engine stamps: `ABoastAbility`
+on the activation event ("whenever you activate a boast ability",
+Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
+Berserker, with `ActivationCostsLessEach`). `Register` panics when the
+label prints "Boast —" without the bit or the bit without the label.
 
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
