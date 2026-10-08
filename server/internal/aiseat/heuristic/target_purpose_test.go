@@ -43,6 +43,13 @@ func modalCast(t *testing.T, id, label string, modes []int, seats ...int) legal.
 func withoutTargetPurposes() *heuristic.Policy {
 	cfg := heuristic.DefaultConfig()
 	cfg.PriceTargetPurposes = false
+	cfg.DamageByLethality = false
+	return heuristic.NewWithConfig(cfg)
+}
+
+func withoutLethality() *heuristic.Policy {
+	cfg := heuristic.DefaultConfig()
+	cfg.DamageByLethality = false
 	return heuristic.NewWithConfig(cfg)
 }
 
@@ -141,9 +148,9 @@ func TestAGiftIsWeighedByTheTable(t *testing.T) {
 	}
 }
 
-// A pick with no entry, or with only a damage entry, keeps
-// targetsValue's price: damage is PR 4's (DamageByLethality).
-func TestDamageEntriesKeepTodaysPrice(t *testing.T) {
+// With DamageByLethality off, a damage entry keeps targetsValue's
+// price: the gifts half alone.
+func TestDamageEntriesWithoutLethalityKeepTodaysPrice(t *testing.T) {
 	id := cardID(1)
 	shock := spell(id, 0, "Shock", "{R}")
 	shock.Purpose = targetEntries(protocol.TargetPurposeView{Slot: 0, Damage: 2})
@@ -156,7 +163,7 @@ func TestDamageEntriesKeepTodaysPrice(t *testing.T) {
 		castMove(t, 0, id, "Shock me", playerTarget(0)),
 	}
 	in := input(0, v, moves...)
-	on, off := heuristic.New(), withoutTargetPurposes()
+	on, off := withoutLethality(), withoutTargetPurposes()
 	for _, m := range moves[1:] {
 		if a, b := rankValue(t, on, in, m.Label), rankValue(t, off, in, m.Label); !nearly(a, b) {
 			t.Errorf("%s priced %.3f with target purposes, %.3f without", m.Label, a, b)
@@ -173,5 +180,98 @@ func TestDamageEntriesKeepTodaysPrice(t *testing.T) {
 	want := cfg.DamageToPlayer*cfg.LeaderBoost + 2*cfg.Weights.Hand - 2*cfg.DiscardWeight - cfg.Weights.Hand
 	if got := rankValue(t, on, input(0, v, passMove(0), m), m.Label); !nearly(got, want) {
 		t.Errorf("2 at the opponent and loot the bot priced %.3f, want %.3f", got, want)
+	}
+}
+
+// shockAt prices Shock (2 damage, declared) at each pick, as the
+// target's share alone: the cast's Hand is added back.
+func shockAt(t *testing.T, pol *heuristic.Policy, bf []protocol.CardView, myLife, theirLife int, picks map[string]map[string]string) map[string]float64 {
+	t.Helper()
+	id := cardID(1)
+	shock := spell(id, 0, "Shock", "{R}")
+	shock.Colors = []string{"R"}
+	shock.Purpose = targetEntries(protocol.TargetPurposeView{Slot: 0, Damage: 2})
+	v := newView([]protocol.PlayerView{newSeat(0, withHand(shock), withLife(myLife)), newSeat(1, withLife(theirLife))},
+		withBattlefield(append(manaLands(1, 0, 100), bf...)...), withTurn(5, 0, "precombat_main"))
+	moves := []legal.Move{passMove(0)}
+	for label, pick := range picks {
+		moves = append(moves, castMove(t, 0, id, label, pick))
+	}
+	in := input(0, v, moves...)
+	out := map[string]float64{}
+	for label := range picks {
+		out[label] = rankValue(t, pol, in, label) + pol.Config().Weights.Hand
+	}
+	return out
+}
+
+// C1 and D1 (owner answers 3 and 4): Shock is priced by whether its 2
+// damage kills.
+func TestDamageIsPricedByWhetherItKills(t *testing.T) {
+	twoFour := creature(cardID(200), 1, "Wall", 2, 4)
+	twoTwo := creature(cardID(201), 1, "Bear", 2, 2)
+	god := creature(cardID(202), 1, "God", 2, 2, keywords("indestructible"))
+	hurt := creature(cardID(203), 1, "Ogre", 3, 3)
+	hurt.DamageMarked = 1
+	proRed := creature(cardID(204), 1, "Knight", 2, 2, protection(proColor("R", "red")))
+	mine := creature(cardID(205), 0, "Elf", 1, 1)
+	bf := []protocol.CardView{twoFour, twoTwo, god, hurt, proRed, mine}
+	picks := map[string]map[string]string{
+		"2/4": cardTarget(twoFour.InstanceID), "2/2": cardTarget(twoTwo.InstanceID),
+		"indestructible": cardTarget(god.InstanceID), "3/3 hurt": cardTarget(hurt.InstanceID),
+		"pro red": cardTarget(proRed.InstanceID), "my elf": cardTarget(mine.InstanceID),
+		"them": playerTarget(1),
+	}
+	pol := heuristic.New()
+	cfg := pol.Config()
+	got := shockAt(t, pol, bf, 30, 30, picks)
+	for _, label := range []string{"2/4", "indestructible", "pro red"} {
+		if !nearly(got[label], 0) {
+			t.Errorf("Shock at the %s priced %.3f, want 0: it kills nothing", label, got[label])
+		}
+	}
+	for _, label := range []string{"2/2", "3/3 hurt"} {
+		if got[label] <= 1 {
+			t.Errorf("Shock at the %s priced %.3f, want removal", label, got[label])
+		}
+	}
+	if got["my elf"] >= 0 {
+		t.Errorf("Shock at the bot's own 1/1 priced %.3f, want below zero", got["my elf"])
+	}
+	// Two seats: 2 x DamageToOpponent x (OpponentMean + OpponentMax).
+	face := 2 * cfg.DamageToOpponent * (cfg.Weights.OpponentMean + cfg.Weights.OpponentMax)
+	if !nearly(got["them"], face) {
+		t.Errorf("Shock at the opponent on 30 priced %.3f, want %.3f", got["them"], face)
+	}
+	// On 2 life it is lethal (CR 704.5a).
+	if lethal := shockAt(t, pol, nil, 30, 2, map[string]map[string]string{"them": playerTarget(1)}); lethal["them"] < cfg.LethalBonus {
+		t.Errorf("Shock at an opponent on 2 priced %.3f, want the lethal bonus %.1f", lethal["them"], cfg.LethalBonus)
+	}
+
+	// With the knob off the 2/4 is removal, as before.
+	if off := shockAt(t, withoutLethality(), bf, 30, 30, picks); off["2/4"] <= 1 {
+		t.Errorf("with DamageByLethality off Shock at the 2/4 priced %.3f, want the old removal price", off["2/4"])
+	}
+}
+
+// Owner answer 6: a planeswalker loses loyalty for good, so damage is
+// priced by the share it removes, and as killed at its loyalty.
+func TestDamageAtAPlaneswalkerIsPricedByLoyalty(t *testing.T) {
+	walker := func(id string, loyalty int) protocol.CardView {
+		c := spell(id, 1, "Walker", "{2}{U}{U}")
+		c.TypeLine = "Legendary Planeswalker — Jace"
+		c.Counters = map[string]int{"loyalty": loyalty}
+		return c
+	}
+	big, small := walker(cardID(300), 6), walker(cardID(301), 2)
+	bf := []protocol.CardView{big, small}
+	picks := map[string]map[string]string{"six": cardTarget(big.InstanceID), "two": cardTarget(small.InstanceID)}
+	got := shockAt(t, heuristic.New(), bf, 30, 30, picks)
+	if !(got["six"] > 0 && got["six"] < got["two"]*0.5) {
+		t.Errorf("2 at a 6-loyalty walker priced %.3f, 2 at a 2-loyalty one %.3f: want about a third", got["six"], got["two"])
+	}
+	off := shockAt(t, withoutLethality(), bf, 30, 30, picks)
+	if off["six"] < off["two"] {
+		t.Errorf("with DamageByLethality off both walkers price as removed, the bigger higher: %.3f and %.3f", off["six"], off["two"])
 	}
 }

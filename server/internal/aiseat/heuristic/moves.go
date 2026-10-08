@@ -317,7 +317,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// declares an entry for is priced by what the row does to it.
 		targetV, targetsPriced := p.pricedTargetsValue(st, cp.Targets, func(t targetRef) *protocol.TargetPurposeView {
 			return rowEntryFor(src, cp.AbilityIndex, t)
-		}, nil)
+		}, nil, src)
 		if !across {
 			var ps purposeSet
 			ps.add(rowPurpose(src, cp.AbilityIndex))
@@ -500,7 +500,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// the cast is then priced by its purpose rather than its mana value.
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
 		return castEntryFor(card, cp, t)
-	}, card)
+	}, card, card)
 	var v float64
 	reason := "cast"
 	if cp.AlternativeCost != "" {

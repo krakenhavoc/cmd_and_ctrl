@@ -165,6 +165,20 @@ type Config struct {
 	// every player target as an attack and every permanent as removal,
 	// whatever the spell does to it.
 	PriceTargetPurposes bool
+	// DamageByLethality prices a declared damage entry by what the
+	// damage does (ADR 0126's amendment of 2026-10-08, C1 and D1;
+	// target_purpose.go). At a creature: removal if it dies (CR 120.6,
+	// 702.2b, 702.12b, 702.16e), DamageChip of removal if it survives,
+	// since marked damage goes in cleanup (CR 514.2). At a planeswalker:
+	// the share of its loyalty removed (CR 120.3c, 704.5i). At a player:
+	// DamageToOpponent per point through the opposition weights, with
+	// LethalBonus when it reaches their life (CR 704.5a). It needs
+	// PriceTargetPurposes. Off (the zero value) prices a damage entry as
+	// targetsValue does: every creature as removed, every player as hit.
+	DamageByLethality bool
+	// DamageChip is the share of a creature's removal value that damage
+	// which does not kill it is worth (owner answer 3: none).
+	DamageChip float64
 	// TutorWeight is a card searched out to hand or the top of the
 	// library, in cards drawn: above one, because the bot picks it.
 	TutorWeight float64
@@ -432,6 +446,8 @@ func DefaultConfig() Config {
 		PricePurposes:       true,
 		NetLandSwaps:        true,
 		PriceTargetPurposes: true,
+		DamageByLethality:   true,
+		DamageChip:          0.00,
 		TutorWeight:         1.00,
 		SelfMillWeight:      0.50,
 		DiscardWeight:       0.60,
@@ -537,6 +553,8 @@ func BaselineConfig() Config {
 	// ADR 0126's amendment of 2026-10-08: a target priced by what the
 	// purpose does to it.
 	c.PriceTargetPurposes = false
+	c.DamageByLethality = false
+	c.DamageChip = 0
 	c.TutorWeight = 0
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0

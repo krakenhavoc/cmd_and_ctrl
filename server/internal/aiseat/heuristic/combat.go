@@ -125,23 +125,35 @@ func effectiveToughness(c *protocol.CardView) int {
 // kills reports whether attacker-or-blocker `a` destroys `b` in one
 // combat exchange.
 func kills(a, b *protocol.CardView) bool {
+	return damageKills(a, b, a.Power)
+}
+
+// damageKills reports whether `dmg` damage from `source` destroys
+// creature `b`: the combat exchange's test, and the one a declared
+// damage entry is priced by (ADR 0126's amendment of 2026-10-08, C1).
+// `source` may be nil for a source the view does not show.
+func damageKills(source, b *protocol.CardView, dmg int) bool {
+	// CR 702.12b: lethal damage does not destroy an indestructible
+	// permanent.
 	if hasKeyword(b, "indestructible") {
 		return false
 	}
-	if a.Power <= 0 {
+	if dmg <= 0 {
 		return false
 	}
 	// CR 702.16e: damage from a source with the quality is prevented,
 	// so an exchange with a protected creature is not an exchange at
 	// all. Deathtouch does not get round it — prevented damage is
 	// never dealt (#662).
-	if protectedFrom(b, a) {
+	if protectedFrom(b, source) {
 		return false
 	}
-	if hasKeyword(a, "deathtouch") {
+	// CR 702.2b: any damage from a deathtouch source is lethal.
+	if source != nil && hasKeyword(source, "deathtouch") {
 		return true
 	}
-	return a.Power >= effectiveToughness(b)
+	// CR 120.6: lethal once the damage marked reaches its toughness.
+	return dmg >= effectiveToughness(b)
 }
 
 // blockMove reads one KindBlock move as "this attacker, blocked by
