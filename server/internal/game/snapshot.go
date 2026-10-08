@@ -1409,6 +1409,9 @@ type pendingChoiceSnapshot struct {
 	// game with one open from being restorable until it is answered.
 	ChoosePlayers   []uuid.UUID `json:"choosePlayers,omitempty"`
 	ChooseSuggested []uuid.UUID `json:"chooseSuggested,omitempty"`
+	// #2680: where a choose_cards prompt sends what it names. Carried
+	// with the options it describes.
+	ChooseDestination ChooseDestination `json:"chooseDestination,omitempty"`
 	// #568: the branches of an option pick. Carried for the reason
 	// ChooseCards is — the prompt is the options, and a restored game
 	// that forgot them would render a question with no answers.
@@ -2377,6 +2380,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
+		ChooseDestination:    c.ChooseDestination,
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
@@ -3208,6 +3212,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
+		ChooseDestination:    c.ChooseDestination,
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),

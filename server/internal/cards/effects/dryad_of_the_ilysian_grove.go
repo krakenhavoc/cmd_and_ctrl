@@ -26,6 +26,7 @@ func init() {
 		Name:                "Dryad of the Ilysian Grove",
 		Completeness:        CompletenessFull,
 		AdditionalLandPlays: 1,
+		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,

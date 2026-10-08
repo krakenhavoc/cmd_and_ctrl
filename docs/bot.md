@@ -952,6 +952,44 @@ Island, a dual beats a basic that meets the hand equally, and a
 missing colour beats a fourth source of one the bot has. The same score
 picks a land out of a `choose_cards` look at the library.
 
+### Putting a card onto the battlefield, and giving up a permanent (#2680)
+
+A `choose_cards` prompt over the bot's own hand is scored as a discard:
+an answer is worth what it leaves in hand. "You may put a land card from
+your hand onto the battlefield" (Uro, Eureka Moment, Growth Spiral and
+the other users of `PutFromHandOntoBattlefield`) is not a discard, so
+that prompt says where the card goes: `choose_destination` is
+`battlefield`, or `battlefield_tapped` for the "tapped" rider. With
+`PricePutsFromHand` on (`puts.go`), each candidate is worth what keeping
+it is worth, and the named one adds what it brings onto the
+battlefield: a land is `ManaSource` (`TappedManaSource` when it enters
+tapped) plus the ramp premium while the bot has fewer than `RampWantCap`
+sources, 0.3 of that after, plus its colour fit; any other permanent is
+what casting it would be worth. Every put is taken, and the land the
+hand wants most is the one put.
+
+An `own_permanents` pick (a karoo's "return a land you control to its
+owner's hand", Lotus Field's sacrifice, annihilator) had no rule at all:
+every answer scored 0 and the enumerator's order chose. With
+`PriceOwnPermanentPicks` on, a fixed-count pick gives up the permanents
+worth least to keep: their `permanentValue`, with a land counted once
+per mana it makes and its ability rows added. So a karoo returns a
+tapped basic, not itself and not an untapped land. A pick whose count
+is the chooser's ("sacrifice any number of lands", or Tragic
+Arrogance's own leg, where what is named is kept) has no sign the rule
+can read, and keeps the enumerator's order.
+
+### An extra land drop (#2678)
+
+`purpose.extra_land_drops` is declared on every card with the engine's
+`AdditionalLandPlays` (Oracle of Mul Daya, Exploration, Dryad of the
+Ilysian Grove, Azusa, …), and on Explore for its one-turn drop. With
+`PriceExtraLandDrops` on, a cast adds one land this turn for each drop
+the bot has a land in hand for and could not otherwise play (its turn,
+lands in hand beyond the drops left), at `ManaSource` plus the ramp
+premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
+while the bot has fewer than `RampWantCap` sources.
+
 ### Sacrifices
 
 With `SacrificeDyingAnyway` on, a permanent sacrificed to pay a cost

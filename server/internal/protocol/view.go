@@ -609,6 +609,13 @@ type PendingChoiceView struct {
 	// chained choice queue (#74).
 	ChooseMin int `json:"choose_min,omitempty"`
 	ChooseMax int `json:"choose_max,omitempty"`
+	// ChooseDestination populates the "choose_cards" kind when the
+	// card says where the named cards go (#2680): "battlefield" or
+	// "battlefield_tapped" for "put a land card from your hand onto
+	// the battlefield [tapped]". Absent on every other choose_cards,
+	// where naming a card from the chooser's hand is giving it up.
+	// Withheld from a non-chooser with the bounds.
+	ChooseDestination string `json:"choose_destination,omitempty"`
 
 	// ChoosePlayers and ChooseSuggested populate the "proliferate"
 	// kind (#2525, CR 701.34a). ChoosePlayers are the seats on offer
@@ -7597,6 +7604,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if game.IsCardSetPickKind(c.Kind) {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
+			v.ChooseDestination = string(c.ChooseDestination)
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -8623,6 +8631,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].Options = nil
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
+			out[i].ChooseDestination = ""
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's

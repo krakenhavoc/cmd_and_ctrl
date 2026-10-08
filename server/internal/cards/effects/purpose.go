@@ -37,6 +37,8 @@ import (
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
 //   - AwakenLand anywhere but an alternative cost (ADR 0135 §3);
+//   - ExtraLandDrops anywhere but the card, or on a card whose
+//     AdditionalLandPlays says a different number (#2678);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -68,8 +70,11 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 {
 		fail("has a negative amount")
+	}
+	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
+		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
 		fail("names ControllerLosesLife off an any-player activated row — the activator and the controller are one player there")
@@ -178,6 +183,10 @@ func checkModePurposes(name, where string, m *game.ModeSpec) {
 func checkSpecPurposes(spec Spec) {
 	name := spec.Name
 	checkPurpose(name, "card", purposeOnCard, spec.Purpose)
+	if n := spec.Purpose.ExtraLandDrops; n != 0 && spec.AdditionalLandPlays != 0 && n != spec.AdditionalLandPlays {
+		panic(fmt.Sprintf("effects.Register: %q declares ExtraLandDrops %d but AdditionalLandPlays %d: the purpose says what the static does (#2678)",
+			name, n, spec.AdditionalLandPlays))
+	}
 	checkTargetPurposes(name, "card", spec.Purpose, spec.Targets, true)
 	checkModePurposes(name, "spell", spec.Modes)
 	for _, a := range spec.AlternativeCosts {

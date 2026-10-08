@@ -291,6 +291,12 @@ func TestCuratedDeckPurposes(t *testing.T) {
 			if slot, ok := curatedPermanentPurposes[c.Name]; ok && !declaresIn(spec, slot) {
 				t.Errorf("%s (%s) declares no purpose on its %s", c.Name, d.ID, slot)
 			}
+			// #2678: an extra land drop the engine runs is one the bot
+			// can read. Register refuses a number that disagrees.
+			if spec.AdditionalLandPlays > 0 && spec.Purpose.ExtraLandDrops == 0 {
+				t.Errorf("%s (%s) plays %d additional land(s) a turn and declares no Purpose.ExtraLandDrops (#2678)",
+					c.Name, d.ID, spec.AdditionalLandPlays)
+			}
 			if slot, ok := curatedTargetPurposes[c.Name]; ok && targetEntriesIn(spec, slot) == 0 {
 				t.Errorf("%s (%s) declares no target entry on its %s (ADR 0126's amendment of 2026-10-08)", c.Name, d.ID, slot)
 			}
