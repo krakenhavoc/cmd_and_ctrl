@@ -209,6 +209,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedYoungHeroRoleToken,
 	printedVirtuousRoleToken,
 	printedChefRoleToken,
+
+	// Twisted Sewer-Witch's Rat (#1945).
+	printedCantBlockRatToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
