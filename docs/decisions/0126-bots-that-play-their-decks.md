@@ -1485,3 +1485,20 @@ Left undeclared, because no printed number says the amount:
 The real-dump audit's "target gift" list goes from 30 cards to those 10. The gifts to the controller of a removal spell's target (Swords to Plowshares and the rest of #2679's list) cannot be declared here: their clause is a creature, and the guard refuses a player amount on one.
 
 **Curated decks.** Only Loran of the Third Path (esper-control) gains an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `50d5c34ec` and from this branch: 0 stalls in both, turns p50 13 in both, and wins esper-control 18 / 17, izzet-aggro 3 / 3, mono-black-aristocrats 21 / 21, simic-ramp 22 / 23. Nine games differ, and every one has a Loran in play: Loran's activation is taken 0 to 2 times in eight of them and 6 times in one, against 1 to 4 before, because aiming a symmetric draw at an opponent is no longer priced as an attack. Two more games differ without a Loran in either deck; a control run of the `develop` binary over seeds 1 to 3 differs from its own earlier run on seed 3 in the runner counters, so that is the residual tie-break nondeterminism, not this change. The suite is 41 of 41 before and after.
+
+#### Burn batch 1 (2026-10-08)
+
+The first burn batch of PR 5 declares a damage target entry (`DamageToTarget`, per clause and slot) on the dump audit's undeclared burn list, A through E in alphabetical order. No price code changed: declared burn goes through the existing `DamageByLethality` and `PriceTargetPurposes` code, and undeclared burn keeps today's price.
+
+Declared (34 cards): Aethertorch Renegade (both abilities), Agate Assault (the damage mode), Annihilating Fire, Arc-Slogger, Archangel of Wrath (both triggers), Balduvian Trading Post, Ballista Watcher // Ballista Wielder (both faces), Barbarian Ring, Betrayer's Bargain, Blasting Station, Bonecrusher Giant // Stomp (Stomp), Boros Charm (the damage mode), Bot Bashing Time, Breya, Etherium Shaper (the player-or-planeswalker ability), Brutal Expulsion (the damage mode), Burn the Accursed (the 5 at the creature; the 2 to its controller is not a target clause), Call In a Professional, Carbonize, Cathartic Pyre (the damage mode), Collective Defiance (the creature and opponent modes), Combust, Consulate Turret, Cramped Vents // Access Maze (Cramped Vents' 6; the life gained from the excess is not declared), Cut In (slot 0 only), Dawnsire, Sunstar Dreadnought (100), Demonic Pact (the damage mode), Desert, Dracosaur Auxiliary, Dynavolt Tower, Eiganjo, Seat of the Empire (channel), Electrickery (the single-target cast; overload clears the clause), Elspeth's Smite, Engulfing Flames and Explosive Derailment (the damage mode).
+
+Left undeclared (5):
+- Arrow Storm: 4, or 5 with raid, read as it resolves.
+- Burst Lightning: 2, or 4 kicked; the kicker is chosen at cast.
+- Cinder Strike: 2, or 4 if blight was paid.
+- Court of Ire: 2, or 7 if you are the monarch.
+- Drakuseth, Maw of Flames: 4 to the first target and 3 to each other target of one clause, which one entry per clause cannot say.
+
+The audit's burn list goes from 165 cards to 131: 34 declared, the 5 above left in A through E, and 126 from F on. Batch 2 starts at Fall of Cair Andros.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `a544704cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. One game of 64 differs between the two. A second run of the `develop` binary differs from its own first run in 2 games and ends at 20 / 2 / 22 / 20, the branch's numbers, so the difference is the run-to-run tie-break nondeterminism of #2730, not this change. The suite is 41 of 41 before and after.

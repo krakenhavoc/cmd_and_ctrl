@@ -27,6 +27,7 @@ func init() {
 			Label:   "{T}, Sacrifice a creature: Blasting Station deals 1 damage to any target",
 			Cost:    Plus(TapCost(), SacrificeACreature()),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  b33DamageChosenTargetFromSource(1),
 		}},
 		Triggered: []game.TriggeredAbility{

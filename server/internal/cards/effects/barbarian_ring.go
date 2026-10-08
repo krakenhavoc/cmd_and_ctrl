@@ -30,6 +30,7 @@ func init() {
 			Label:     "Threshold — {R}, {T}, Sacrifice this land: It deals 2 damage to any target. Activate only if there are seven or more cards in your graveyard.",
 			Cost:      Plus(ManaCost("{R}"), TapCost(), SacrificeThis()),
 			Targets:   TargetAny(),
+			Purpose:   ForTargets(DamageToTarget(0, 2)),
 			Condition: GraveyardAtLeast(7, nil),
 			Effect:    b33DamageChosenTargetFromSource(2),
 		}},

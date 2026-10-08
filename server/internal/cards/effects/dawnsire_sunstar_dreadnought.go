@@ -52,5 +52,5 @@ func dawnsireAttackTrigger() game.TriggeredAbility {
 			})),
 		spec)
 	t.ActiveWhen = AtChargeCounters(10)
-	return t
+	return TriggerWithPurpose(t, ForTargets(DamageToTarget(0, 100)))
 }

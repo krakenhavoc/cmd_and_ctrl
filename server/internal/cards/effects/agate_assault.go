@@ -18,8 +18,8 @@ func init() {
 		Name:         "Agate Assault",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Agate Assault deals 4 damage to target creature. If that creature would die this turn, exile it instead.",
-				TargetCreature("target creature"), damageModesTargetExileIfItDies(4)),
+			ModeWithPurpose(ModeDoing("Agate Assault deals 4 damage to target creature. If that creature would die this turn, exile it instead.",
+				TargetCreature("target creature"), damageModesTargetExileIfItDies(4)), ForTargets(DamageToTarget(0, 4))),
 			ModeDoing("Exile target artifact.",
 				TargetPermanent("target artifact", Artifact()), exileTheModesTarget),
 		),

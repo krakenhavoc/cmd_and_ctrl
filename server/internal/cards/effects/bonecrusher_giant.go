@@ -106,6 +106,7 @@ func init() {
 		Name:         "Stomp",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve: damageCantBePreventedThen(func(item *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
