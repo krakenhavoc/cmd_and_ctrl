@@ -636,3 +636,24 @@ printed* the moment it was dealt damage that wasn't prevented.
   CR 302.6 and applies to him, which is why "He can't attack if he was cast this turn" on the Oathsworn
   is reminder text), and is a legal attack target while he is a planeswalker (CR 506.4); nothing about
   combat needed to change.
+
+
+## Amendment (2026-10-09, #2797): a static can stop CR 704.5i applying (Sanctum Lurker)
+
+"Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty." CR 704.5i is
+a state-based action, and this is a static ability that stops it applying to a class of permanents. It is
+not a replacement effect (nothing is replaced) and not indestructible (nothing is prevented): the pass
+skips the planeswalker, and every other state-based action still applies, so a planeswalker that is also a
+creature with lethal damage dies to CR 704.5g (`TestZeroLoyaltyExemptionDoesNotStopTheOtherStateBasedActions`).
+
+`CardDef.ZeroLoyaltyExemptions` (`game/zero_loyalty_exemption.go`) is the LegendRuleExemption pattern
+(#2177) copied: read live off the battlefield by `mutations.go`'s CR 704.5i arm, keyed by `CatalogAbilityKey`,
+never stored. Two exempting permanents compose, one leaving cannot revoke the other's exemption, and one
+that lost all its abilities exempts nothing (`TestZeroLoyaltyExemptionIsAStaticOfItsSource`). When the last
+one leaves, the next pass puts every uncovered 0-loyalty planeswalker into its owner's graveyard in one
+event (CR 704.3). The scope is the exempting permanent's controller's planeswalkers, as printed; an
+opponent's still die (`TestZeroLoyaltyExemptionKeepsYourPlaneswalkersOnTheBattlefield`).
+
+A walker left at 0 loyalty is still a walker. CR 606.6 still asks for N counters, so it can use a plus
+ability and no minus (`TestZeroLoyaltyWalkerCanOnlyUsePlusAbilities`). The card side is
+`Spec.ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()`.

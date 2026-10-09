@@ -7085,6 +7085,57 @@ Three things to know:
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
 
+### Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)
+
+Reality Fracture prints five things about planeswalkers that no earlier card needed. Each is a declaration
+on a `Spec` or a trigger shape; none needs an engine change in the card file.
+
+**"Planeswalkers you control have '[−8]: …'"** is an ADR 0093 bundle whose ability row costs `LoyaltyCost(−8)`,
+granted to the class with `GrantAbilitiesToYourPlaneswalkers` (`planeswalker_grants.go`):
+
+```go
+Grants: []AbilityGrant{{
+    Key: "kiora-of-salt-and-sand/leviathan",
+    Activated: []ActivatedAbility{{Label: "−8: Create an 8/8 blue Leviathan creature token with hexproof.",
+        Cost: LoyaltyCost(-8), Effect: …}},
+    Text: "[−8]: Create an 8/8 blue Leviathan creature token with hexproof.",
+}},
+Static: []game.StaticAbility{GrantAbilitiesToYourPlaneswalkers("kiora-of-salt-and-sand/leviathan")},
+```
+
+Nothing else to declare. The row is the planeswalker's: it pays the cost (CR 606.6) and CR 606.3's one
+activation a turn is the walker's, shared with its printed rows and with every other grantor's. The recipient
+set is read live every layer pass, so a walker that arrives later has the row and one that leaves takes it.
+The token is `item.Controller`'s, the activator's. `PlaneswalkersYouControl` is the bare predicate for a
+static that is not a grant. "You've activated a loyalty ability this turn" (an intervening "if") is
+`youActivatedALoyaltyAbilityThisTurn(g, you)`; it reads the turn's activation events, so a granted row counts.
+
+**"Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty"** (Sanctum
+Lurker) is `ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()` on the `Spec`. It is a static that stops
+CR 704.5i applying, not indestructible and not a replacement: every other state-based action still does, and a
+walker at 0 can use a plus ability and no minus. Read live off the battlefield, so a source that loses its
+abilities or leaves exempts nothing.
+
+**"Whenever you put one or more loyalty counters on a planeswalker"** (Inspired Tethermage) is
+`WheneverYouPutLoyaltyCountersOnAPlaneswalker(label, effect)`. One trigger per placement EVENT, so a +2 is one
+trigger and a doubled placement is one; a minus is a removal and triggers nothing; "each planeswalker you
+control" is one trigger per walker. Do not wrap it in `OncePerBatch`.
+
+**"Until end of turn, you may activate loyalty abilities of Jace planeswalkers you control … any time you
+could cast an instant"** (Jace's Machinations) is `GrantLoyaltyAbilitiesAtInstantSpeed{Subtype: "Jace"}`,
+applied from the spell's `OnResolve`. It stores a plain-data statement on the player with a duration (ADR 0066's
+2026-10-09 amendment), unlike the derived `ThisSourcesLoyaltyAbilitiesAtInstantSpeed` and
+`LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed` a permanent or an emblem declares. An empty `Subtype` is
+every planeswalker you control. It opens the window only; the once-per-permanent count still holds.
+
+**Eminence** (The Ur-Sphinx) is a static that also works while its card is in its owner's command zone. For a cost
+reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
+0140). The modifier is gathered from every seat's command zone, "you" is the player whose zone it is, and it
+applies from no hand, library, graveyard or exile. An ordinary modifier on a command-zone card still does nothing
+there (CR 113.6), so a card whose static is not a cost modifier does not get an eminence by being a commander:
+eminence triggers and eminence replacements are not built, and a card that prints one ships without that line and
+says so in `Caveats`.
+
 ### The Ring tempts you (ADR 0114, #2076)
 
 "The Ring tempts you" (CR 701.54) is one primitive. Its player is the

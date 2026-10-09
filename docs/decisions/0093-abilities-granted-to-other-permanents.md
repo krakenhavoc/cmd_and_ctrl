@@ -723,3 +723,25 @@ This is a product decision the code and the rules do not settle. The ADR does no
    Rites) show as one row or two? Should a permanent carrying a granted ability get a board-level
    marker, or is the labelled row in its menu enough? *Working default until decided:* one row per
    grantor, labelled with the grantor's name, and no board marker (Decision 8).
+
+
+## Amendment 2026-10-09 — a bundle can be granted to a CLASS of planeswalkers (#2797, ADR 0140)
+
+Decision 10's loyalty exclusion was lifted by ADR 0109 §2 for an Aura that enchants one planeswalker.
+Reality Fracture prints the same grant to **every planeswalker its controller controls**: "Planeswalkers
+you control have '[−8]: Create an 8/8 blue Leviathan creature token with hexproof.'" (Kiora of Salt and
+Sand), and the same shape on Sanctum Lurker, Avatar of Burgeoning Echoes and the "Way of the …" cycle.
+
+Nothing in the engine changes. A bundle row with a `LoyaltyCost` is the recipient's row, so the walker
+pays the cost (CR 606.6) and CR 606.3's once-per-turn count is the walker's, shared with its printed rows
+and with every other grantor's, in either order. What the class form adds is the recipient predicate,
+read live every layer pass: a planeswalker that arrives after the grantor has the row at once, and one
+that leaves takes it with it. The card side is `effects.PlaneswalkersYouControl` and
+`effects.GrantAbilitiesToYourPlaneswalkers(keys…)` (`planeswalker_grants.go`).
+
+Pinned by `TestKioraGrantsTheLoyaltyAbilityToEveryPlaneswalkerYouControl` (mine, an opponent's, one that
+arrives later, the grantor leaving), `TestKioraGrantedMinusEightMakesALeviathan`,
+`TestClassGrantedLoyaltyAbilitySharesTheWalkersOncePerTurn` (three orders, including two grantors), and in
+`internal/legal` `TestEnumeratorOffersTheClassGrantedLoyaltyAbility` and `TestWireViewShowsTheClassGrantedLoyaltyRow`
+(the bot's list and the client's menu). A granted STATIC to planeswalkers (Tomik, Orzhov Lawmage's
+"No more than one creature can attack this planeswalker each combat") stays out of scope under Decision 10.

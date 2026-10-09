@@ -93,6 +93,36 @@ func CostsLessEach(amount func(q game.CostQuery) int, label string, when ...Cost
 	}
 }
 
+// Eminence marks a cost modifier as working from the command zone as
+// well as the battlefield — "Eminence — As long as <this> is in the
+// command zone or on the battlefield, other Sphinx spells you cast cost
+// {1} less to cast." (ADR 0140, The Ur-Sphinx):
+//
+//	CostModifiers: []game.CostModifier{
+//	    Eminence(CostsLess(1, "Eminence — other Sphinx spells you cast cost {1} less to cast.",
+//	        YourSpell(), OtherSpellOfCreatureType("Sphinx"))),
+//	},
+//
+// A modifier without it does nothing from the command zone, which is
+// the rule for every other static a commander prints (CR 113.6). With
+// it, "you" is the player whose command zone the card is in, and the
+// clause applies in no other zone.
+func Eminence(m game.CostModifier) game.CostModifier {
+	m.Eminence = true
+	return m
+}
+
+// OtherSpellOfCreatureType passes on a spell of the named creature type
+// that is not the modifier's own source — "other Sphinx spells you
+// cast". The subtype is read off the spell as it sits on the stack,
+// where HasSubtype answers true for every creature type on a changeling
+// (CR 702.73a).
+func OtherSpellOfCreatureType(subtype string) CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Card.InstanceID != q.Source.InstanceID && q.Card.HasSubtype(subtype)
+	}
+}
+
 // CostsAtLeast is a cost-SETTING effect: "each spell that would cost
 // less than `n` mana to cast costs `n` mana to cast" (Trinisphere).
 // The shortfall is made up in generic mana, so a {1}{B} spell under

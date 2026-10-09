@@ -3450,3 +3450,26 @@ choice back sets a preference.
 
 Item 1 of #1530 (commutativity for token triggers) is unchanged and
 stays open.
+
+
+## Amendment 2026-10-09 — "whenever you put one or more loyalty counters on a planeswalker" (#2797)
+
+Inspired Tethermage's trigger is one trigger per placement, not per counter (CR 603.2c). The engine already
+gives it: `EventCounterPlaced` is one event per KIND per permanent per placement, carrying the total after the
+change, and loyalty is one kind. A +2 loyalty ability, a Doubling Season that makes one counter two, and a
+"put three loyalty counters" are each one event and so one trigger
+(`TestLoyaltyCounterTriggerFiresOncePerPlacementNotPerCounter`, `…IsOneEventWhenTheCountersAreDoubled`); a
+−N cost or damage is a removal and triggers nothing.
+
+What the trigger must NOT collapse is two planeswalkers: "put a loyalty counter on each planeswalker you
+control" is one placement per permanent, and a trigger on "a planeswalker" (an object) fires for each
+(`TestLoyaltyCounterTriggerFiresForEachPlaneswalker`). So it is deliberately NOT `OncePerBatch`, which is
+the right tool for "one or more counters on THIS permanent" (Aragorn) and the wrong one here.
+
+"You put" reads the event's Actor first (a loyalty cost names its activating player, CR 606.4, and so does
+any effect that goes through `AddCounterBy…`), and falls back to `b12CountersPlacedBy`'s attribution when
+nobody is named, which credits only a planeswalker's controller. The fallback is weaker than printed where
+it is wrong (a counter you put on an opponent's planeswalker by an effect that names no placer is not
+credited), never stronger. A planeswalker entering with its counters counts (CR 122.6: "put" covers an
+object given counters as it enters). The card side is `effects.WheneverYouPutLoyaltyCountersOnAPlaneswalker`
+(`loyalty_counter_trigger.go`).

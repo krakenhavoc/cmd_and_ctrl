@@ -203,7 +203,14 @@ type activationTimingVerdict struct {
 // Caller must hold g.mu (read or write).
 func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTimingVerdict {
 	var v activationTimingVerdict
-	if g == nil || CatalogActivationTimings == nil {
+	if g == nil {
+		return v
+	}
+	// #2797: the STORED half, a granted statement with a duration
+	// (Jace's Machinations), folded before the derived walk, which is
+	// skipped when no catalog is wired.
+	g.foldStoredActivationTimingsLocked(q, &v)
+	if CatalogActivationTimings == nil {
 		return v
 	}
 	// A pointer, so the walk copies a permanent only when it actually

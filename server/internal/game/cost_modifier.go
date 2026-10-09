@@ -416,6 +416,21 @@ type CostModifier struct {
 	// start taxing a foretell, and Ranar's clause can never start
 	// discounting an ordinary cast.
 	SpecialActions bool
+
+	// Eminence declares that this modifier works while its card is in
+	// its owner's command zone as well as on the battlefield — "Eminence —
+	// As long as The Ur-Sphinx is in the command zone or on the
+	// battlefield, other Sphinx spells you cast cost {1} less to cast."
+	// ADR 0140.
+	//
+	// A modifier without the flag is a battlefield static and does
+	// nothing from the command zone (CR 113.6: an ability functions only
+	// on the battlefield unless it says otherwise). With it, the
+	// modifier is gathered from every seat's command zone, bound with
+	// that seat as its controller, and never from a hand, library,
+	// graveyard or exile. Use the effects.Eminence constructor rather
+	// than setting it by hand.
+	Eminence bool
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
@@ -515,6 +530,55 @@ type boundCostModifier struct {
 	source   Card
 }
 
+// pricesAnnouncement reports whether this modifier prices the kind of
+// announcement q describes. #1184, widened by #1319: a cast, an
+// activation and a special action are three different announcements,
+// and a modifier prices exactly one of them — never the other two. See
+// CostModifier.Activations and CostModifier.SpecialActions.
+func (m CostModifier) pricesAnnouncement(q CostQuery) bool {
+	switch {
+	case q.Ability != nil:
+		return m.Activations
+	case q.SpecialAction != nil:
+		return m.SpecialActions
+	default:
+		return !m.Activations && !m.SpecialActions
+	}
+}
+
+// appendEminenceCostModifiersLocked adds the Eminence modifiers of every
+// card in a seat's command zone (ADR 0140). The source is bound with the
+// zone's owner as its controller: a card in the command zone carries no
+// controller of its own, and "you" in the printed clause is the player
+// whose command zone it is.
+//
+// Caller must hold g.mu.
+func (g *Game) appendEminenceCostModifiersLocked(out []boundCostModifier, q CostQuery) []boundCostModifier {
+	if CatalogCostModifiers == nil {
+		return out
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.Command == nil {
+			continue
+		}
+		for i := range p.Command.Cards {
+			mods := costModifiersOf(&p.Command.Cards[i])
+			if len(mods) == 0 {
+				continue
+			}
+			src := p.Command.Cards[i]
+			src.Controller = p.ID
+			for _, m := range mods {
+				if !m.Eminence || !m.pricesAnnouncement(q) {
+					continue
+				}
+				out = append(out, boundCostModifier{modifier: m, source: src})
+			}
+		}
+	}
+	return out
+}
+
 // activeCostModifiersLocked collects every cost modifier that bears
 // on this cast — one entry per (battlefield permanent, declared
 // modifier) pair, then the spell's own self modifiers.
@@ -556,29 +620,20 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 			}
 			src := g.Battlefield.Cards[i]
 			for _, m := range mods {
-				// #1184, widened by #1319: a cast, an activation and a
-				// special action are three different announcements,
-				// and a modifier prices exactly one of them — never
-				// the other two. See CostModifier.Activations and
-				// CostModifier.SpecialActions.
-				switch {
-				case q.Ability != nil:
-					if !m.Activations {
-						continue
-					}
-				case q.SpecialAction != nil:
-					if !m.SpecialActions {
-						continue
-					}
-				default:
-					if m.Activations || m.SpecialActions {
-						continue
-					}
+				if !m.pricesAnnouncement(q) {
+					continue
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}
 		}
 	}
+	// ADR 0140: eminence. A cost modifier that declares Eminence also
+	// works while its card is in its owner's command zone (The Ur-Sphinx:
+	// "As long as this is in the command zone or on the battlefield,
+	// other Sphinx spells you cast cost {1} less"). Nothing else a
+	// command-zone card says works there, so a modifier without the flag
+	// is skipped, and a card in any other zone is never asked.
+	out = g.appendEminenceCostModifiersLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the
@@ -646,6 +701,19 @@ func (g *Game) CastPriceReadsTargetsForEffect(card Card) bool {
 		for _, m := range CatalogCostModifiers(CatalogAbilityKey(g.Battlefield.Cards[i])) {
 			if m.ReadsTargets {
 				return true
+			}
+		}
+	}
+	// ADR 0140: an eminence modifier in a command zone prices casts too.
+	for _, p := range g.Seats {
+		if p == nil || p.Command == nil {
+			continue
+		}
+		for i := range p.Command.Cards {
+			for _, m := range CatalogCostModifiers(CatalogAbilityKey(p.Command.Cards[i])) {
+				if m.Eminence && m.ReadsTargets {
+					return true
+				}
 			}
 		}
 	}

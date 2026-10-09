@@ -258,6 +258,16 @@ type PlayerStatic struct {
 	// above (#1492).
 	CantAttack CantAttackGrant `json:"cantAttack"`
 
+	// ActivationTiming is a granted "you may activate loyalty abilities of
+	// <subtype> planeswalkers you control any time you could cast an
+	// instant" for a duration (Jace's Machinations). #2797,
+	// activation_timing_grant.go. The ELEVENTH payload, told apart by
+	// ActivationTimingGrant.Timing being non-empty; it carries no Keyword.
+	// Its READER is activationTimingVerdictLocked, which folds it with the
+	// derived statements of the battlefield and the emblems. No
+	// `omitzero`, for Timing's reason above (#1492).
+	ActivationTiming ActivationTimingGrant `json:"activationTiming"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored
