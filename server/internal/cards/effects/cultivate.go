@@ -22,10 +22,13 @@ import (
 // a second prompt opened at that moment would offer a card the
 // player is in the middle of taking.
 //
-// "Up to two" degrades the way it reads: a library with one basic
-// gives the battlefield half and finds nothing for the hand half; a
-// library with none no-ops both, and either way the player may
-// decline.
+// "Up to two" degrades the way it reads: a library with none no-ops
+// both halves. A library with exactly ONE basic land is the case the
+// pair of searches cannot express (the first would take it for the
+// battlefield with no say): the one card found goes to the battlefield
+// tapped OR to the hand, the searcher's choice, so that card is asked
+// about (a confirm prompt) and fetched to the answer's zone, with the
+// one shuffle.
 //
 // The land enters the battlefield TAPPED because Cultivate says so
 // (SearchLibrary.TappedOnEntry). Since #263 the fetched land's own
@@ -36,11 +39,13 @@ func init() {
 		OracleID:     "8b755881-a72d-4e21-a369-d2924eb4585a",
 		Name:         "Cultivate",
 		Purpose:      game.Purpose{Lands: 1, Tutors: 1},
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If your library holds only one basic land, it is always put onto the battlefield tapped — you can't choose to put it into your hand instead."},
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			source := ctx.Source()
+			if cultivateOnlyOneBasic(ctx, controller) {
+				return cultivateLoneBasic(ctx, controller, source, "Cultivate")
+			}
 			return SearchLibrary{
 				Player:        controller,
 				Source:        source,
@@ -66,4 +71,53 @@ func init() {
 			}.Apply(ctx)
 		},
 	})
+}
+
+// cultivateOnlyOneBasic reports whether the player's library holds
+// exactly one basic land card: the case where "put one onto the
+// battlefield tapped and the other into your hand" has a single card
+// to place and the searcher chooses where.
+func cultivateOnlyOneBasic(ctx *Context, player uuid.UUID) bool {
+	p := ctx.PlayerByID(player)
+	if p == nil || p.Library == nil {
+		return false
+	}
+	n := 0
+	for _, c := range p.Library.Cards {
+		if IsBasicLand(c) {
+			n++
+		}
+	}
+	return n == 1
+}
+
+// cultivateLoneBasic asks where the single basic goes, then fetches it
+// there and shuffles. Shared with Kodama's Reach, which prints the
+// same clause.
+func cultivateLoneBasic(ctx *Context, controller, source uuid.UUID, name string) error {
+	fetch := func(dest game.ZoneKind, reason string) func(g *game.Game) error {
+		return func(g *game.Game) error {
+			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+				Player:        controller,
+				Source:        source,
+				Pred:          IsBasicLand,
+				Dest:          dest,
+				Limit:         1,
+				Reveal:        true,
+				Shuffle:       true,
+				TappedOnEntry: dest == game.ZoneBattlefield,
+				Reason:        reason,
+			})
+		}
+	}
+	ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
+		Chooser:      controller,
+		Source:       source,
+		Question:     name + " — put the basic land onto the battlefield tapped or into your hand?",
+		AcceptLabel:  "Battlefield, tapped",
+		DeclineLabel: "Into your hand",
+		OnAccept:     fetch(game.ZoneBattlefield, name+" — basic land onto the battlefield tapped"),
+		OnDecline:    fetch(game.ZoneHand, name+" — basic land into your hand"),
+	})
+	return nil
 }

@@ -20,10 +20,11 @@ import (
 // begun this turn — the first-strike damage step counts, since it is
 // a combat damage step (CR 510.4). So it can't be cast in a combat
 // damage step, at end of combat, in the postcombat main phase or in
-// the ending phase. A turn with more than one combat is the one place
-// the printed sentence is unclear: this reading refuses the spell
-// after the turn's first combat damage step, which is the narrower
-// choice, and the caveat says so.
+// the ending phase. In a turn with more than one combat (an extra
+// combat phase, CR 500.8) the window is per combat: the beginning of
+// combat, declare attackers and declare blockers steps of each combat
+// are before THAT combat's damage step, so the spell can be cast there
+// even though an earlier combat dealt damage.
 //
 // THE PUMP. X is the target's power as Berserk resolves, read once
 // and unclamped (a negative power gives -X/+0); trample and +X/+0 are
@@ -43,10 +44,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8b67d192-9a05-4a47-82ae-5fc4b7834d88",
 		Name:         "Berserk",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"In a turn with more than one combat, it can't be cast after the first combat damage step.",
-		},
+		Completeness: CompletenessFull,
 		CastCondition: func(g *game.Game, _ uuid.UUID, _ game.Card) bool {
 			return berserkBeforeCombatDamage(g)
 		},
@@ -77,11 +75,14 @@ func init() {
 }
 
 // berserkBeforeCombatDamage is the cast window: a step before combat
-// damage, in a turn that has not yet had a combat damage step.
+// damage. A combat step before damage is before its own combat's
+// damage step, whatever an earlier combat did; the beginning phase and
+// the precombat main phase need no earlier damage step this turn.
 func berserkBeforeCombatDamage(g *game.Game) bool {
 	switch g.Turn.Step {
-	case game.StepUpkeep, game.StepDraw, game.StepPrecombatMain,
-		game.StepBeginCombat, game.StepDeclareAttackers, game.StepDeclareBlockers:
+	case game.StepBeginCombat, game.StepDeclareAttackers, game.StepDeclareBlockers:
+		return true
+	case game.StepUpkeep, game.StepDraw, game.StepPrecombatMain:
 	default:
 		return false
 	}
