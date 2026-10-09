@@ -80,17 +80,11 @@ func TestDualcasterMageOffersOnlyTheSpellStillOnTheStack(t *testing.T) {
 	castCatalogSpell(t, g, "Reverberate", "Instant", tt809ReverberateOracle,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: persist}})
 
-	// Reverberate resolves and opens the CR 707.10c re-target prompt
-	// for the copy; keep the same target.
-	passPriorityAroundTable(t, g)
-	retarget := latestPickTarget(g, me.ID)
-	if retarget == nil {
-		t.Fatal("Reverberate should ask whether to re-target the copy")
-	}
-	pickCard(t, g, me.ID, mage)
-
-	// The copy resolves, returns the Mage, and its ETB triggers while
-	// the copy is still on the stack with the original Persist below.
+	// Reverberate resolves. The Mage is the only creature card in the
+	// graveyard, so the copy has nothing to change its target to and
+	// keeps it without a CR 707.10c prompt (#2622). The copy resolves,
+	// returns the Mage, and its ETB triggers while the copy is still on
+	// the stack with the original Persist below.
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(mage) {
 		t.Fatal("the Persist copy should have returned the Mage")

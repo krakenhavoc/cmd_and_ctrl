@@ -287,6 +287,10 @@ func (g *Game) cloneLocked() *Game {
 			// trigger. The snapshot gets its own cursor and picks;
 			// the steps, spec and source it only reads stay shared.
 			cloned.pickTargetResume = clonePickTargetFrame(c.pickTargetResume)
+			// #2622: the CR 707.10c copy walk, for the same reason —
+			// answering a step advances its cursor and rewrites its
+			// target list.
+			cloned.copyResume = cloneCopyFrame(c.copyResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -819,6 +823,18 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
 	out.dist = cloneDistributionLocked(f.dist)
+	return &out
+}
+
+// cloneCopyFrame gives an undo snapshot its own cursor and target list
+// for a CR 707.10c copy walk; the steps, originals, source and item it
+// only reads stay shared.
+func cloneCopyFrame(f *copyFrame) *copyFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	out.next = append([]TargetRef(nil), f.next...)
 	return &out
 }
 

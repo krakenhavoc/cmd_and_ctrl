@@ -394,6 +394,15 @@ documented in `docs/bot.md` and implemented in `legalModeSets`:
   prompt walks the copied item's clause list head only; a two-clause
   spell copied by Reverberate re-targets its first clause and keeps
   the rest. Noted as a caveat on the copy path, not fixed here.
+  *Lifted by #2622 (2026-10-09):* the head-only prompt had since been
+  checked against the whole target list, so every answer to a copy of
+  a two-clause spell (Bite Down) or of targets in two modes (Dromoka's
+  Command) was refused and a bot table stopped. The prompt now walks
+  every step of the copied announcement, one prompt per step, asking
+  for exactly the number of targets the original chose there and
+  offering the step's original targets beside its legal new ones (CR
+  707.10c: a target left unchanged may stay even if illegal). A step
+  with nothing to change to is not asked. See `offerCopyTargetsLocked`.
 
 ---
 

@@ -532,6 +532,20 @@ func (g *Game) differentCountLocked(clause *TargetClause, ids []uuid.UUID) int {
 	return n
 }
 
+// pickTargetClauseOf is the clause a pick_target prompt is asking
+// about: the open step of a trigger's CR 603.3d walk or of a copy's
+// CR 707.10c walk (#2622). Nil for any other prompt, or one that
+// carries no live frame (a restored snapshot).
+func pickTargetClauseOf(c *PendingChoice) *TargetClause {
+	if c == nil || c.Kind != PendingChoicePickTarget {
+		return nil
+	}
+	if c.pickTargetResume != nil {
+		return c.pickTargetResume.currentClause()
+	}
+	return c.copyResume.currentClause()
+}
+
 // PickTargetSetRuleForEffect is the set rule of the clause a
 // pick_target prompt is asking about, with the key of each candidate
 // it offers, for the wire projection and the enumerator (#1559). Nil
@@ -541,10 +555,7 @@ func (g *Game) differentCountLocked(clause *TargetClause, ids []uuid.UUID) int {
 //
 // Caller must hold g.mu.
 func (g *Game) PickTargetSetRuleForEffect(c *PendingChoice) (*TargetDifference, map[uuid.UUID]string) {
-	if c == nil || c.Kind != PendingChoicePickTarget || c.pickTargetResume == nil {
-		return nil, nil
-	}
-	clause := c.pickTargetResume.currentClause()
+	clause := pickTargetClauseOf(c)
 	if clause == nil || clause.Different == nil {
 		return nil, nil
 	}
@@ -559,10 +570,7 @@ func (g *Game) PickTargetSetRuleForEffect(c *PendingChoice) (*TargetDifference, 
 //
 // Caller must hold g.mu.
 func (g *Game) PickTargetSameRuleForEffect(c *PendingChoice) (*TargetSameness, map[uuid.UUID]string) {
-	if c == nil || c.Kind != PendingChoicePickTarget || c.pickTargetResume == nil {
-		return nil, nil
-	}
-	clause := c.pickTargetResume.currentClause()
+	clause := pickTargetClauseOf(c)
 	if clause == nil || clause.Same == nil {
 		return nil, nil
 	}
