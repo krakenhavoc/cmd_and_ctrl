@@ -151,3 +151,4 @@ body decayed/schedule
 body rad/mill
 body prevention/bloatfly-remove-counters-give-rad
 body renown/grow
+body winter-tormented-loner/edict
