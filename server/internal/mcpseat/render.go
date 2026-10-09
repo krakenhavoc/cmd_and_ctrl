@@ -717,7 +717,7 @@ func windowKind(v *protocol.GameView, me string, moves []legal.Move) string {
 			return "mulligan"
 		case legal.TypeDiscardSelection:
 			return "choice:discard"
-		case legal.TypeDeclareAttacker:
+		case legal.TypeDeclareAttacker, typeDeclareAttackers:
 			return "attack"
 		case legal.TypeDeclareBlocker, legal.TypeDeclareBlockers, legal.TypeFinishBlocks:
 			return "block"
