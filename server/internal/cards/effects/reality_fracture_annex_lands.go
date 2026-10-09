@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // reality_fracture_annex_lands.go — the four Reality Fracture lands that
 // print
@@ -31,19 +27,8 @@ func init() {
 			OracleID:      land.oracleID,
 			Name:          land.name,
 			Completeness:  CompletenessFull,
-			Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(annexYouControlAPlaneswalker)},
+			Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(youControlAPlaneswalker)},
 			ManaAbilities: []ManaAbility{dualManaAbility(land.a, land.b)},
 		})
 	}
-}
-
-// annexYouControlAPlaneswalker is "unless you control a planeswalker",
-// read off the post-layer battlefield.
-func annexYouControlAPlaneswalker(g *game.Game, controller uuid.UUID) bool {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsPlaneswalker() {
-			return true
-		}
-	}
-	return false
 }
