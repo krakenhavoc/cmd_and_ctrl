@@ -1428,21 +1428,24 @@ on any Spec.
   adds ONE source-less layer-6 `ContinuousEffect` per suspected permanent to
   `activeStaticAbilitiesLocked`'s gather. Source-less means CR 613.6's
   silencing never reaches it: the designation is not an ability of the
-  permanent. Its `Apply` appends `menace` (`AppendKeywordAbility`, so a
-  creature that already has it keeps one) and ORs in `CantBlock`.
+  permanent. Its `Apply` appends `menace` and the `can't block` token
+  (`KeywordCantBlock`) with `AppendKeywordAbility`, so a creature that already
+  has one keeps one.
 - **The timestamp is the moment it became suspected** (`SuspectedAt`, stamped
   by `SuspectForEffect`; a restore from before the field falls back to the
   permanent's own timestamp). A "loses all abilities" that is older leaves the
-  menace; one that is newer takes it away. Both are tested, and both are
+  menace and the can't-block ability; one that is newer takes both away. Both are tested, and both are
   CR 613.7.
-- **`CantBlock` is a restriction bit, and that is stricter than a literal
-  reading.** Restrictions have no layer and nothing clears them
-  (`restrictions.go`), so a suspected creature that later loses all abilities
-  still cannot block, where the rule's wording makes "can't block" an ability
-  that would go with the rest. Chosen on purpose: it errs toward the
-  restriction, never toward a creature blocking when the table expected it not
-  to, and it lets the block gate, the enumerator and the view stay as they
-  were. Recorded in `game/suspect.go`.
+- **"Can't block" is an ability, folded into `CantBlock` after the pass**
+  (amended #2737; the first cut made it a bit ORed in by the layer-6 effect,
+  stricter than the rule, so a Turn to Frog left the creature unable to
+  block). Restrictions have no layer and nothing clears them
+  (`restrictions.go`), so the effect grants the `can't block` ability token
+  and `foldSuspectedCantBlockLocked` sets the `CantBlock` bit from the
+  finished ability list (CR 613.11), the way `foldUnleashLocked` does for
+  unleash. A removal newer than the designation strips the token, so the
+  creature may block; the block gate, the enumerator and the view still read
+  `CantBlock` through `Restricted`. The token also shows in the ability list.
 - **`Game.SuspectForEffect(id)`** reports whether it suspected. It refuses a
   permanent that is not on the battlefield, one that is not a creature, and
   one already suspected (CR 701.60d; this is also what keeps `SuspectedAt`
