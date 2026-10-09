@@ -14,8 +14,8 @@ import (
 // Regalia, Hammer of Nazahn, Buster Sword, Tarrian's Soulcleaver,
 // Conqueror's Flail, Embercleave, Caduceus Staff of Hermes, Bloodforged
 // Battle-Axe, Sting the Glinting Dagger, and Illusionist's Bracers.
-// Reconfigure (The Reality Chip, Lizard Blades) is not implemented and
-// both cards are left out of the catalog — see docs/engine-seams.md.
+// The Reality Chip and Lizard Blades waited on reconfigure, which #2639
+// built; they are tested in reconfigure_cards_test.go.
 
 const (
 	helmOfTheHostOracle        = "83b43aba-bf9c-4da2-967d-9daa632e97d2"

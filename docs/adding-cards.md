@@ -7386,6 +7386,34 @@ CreateToken{Controller: p, Template: MapToken(), N: 2}.Apply(ctx)               
 - Not built: simultaneous explores in APNAP order (CR 701.44d), and a
   replacement window on the action (Topography Tracker).
 
+### Reconfigure (CR 702.151, #2639)
+
+"Reconfigure [cost]" is two activated rows from one constructor in
+`cards/effects/reconfigure.go`. The rules side is `game/reconfigure.go`.
+
+```go
+Activated: Reconfigure("{2}"),                                         // Lizard Blades
+Activated: append([]ActivatedAbility{ownRow}, Reconfigure("{2}")...),  // Lion Sash
+Activated: ReconfigureOneOf("Reconfigure—Pay {2} or {E}{E}{E}",
+    ReconfigureOption{Pay: "{2}", Cost: ManaCost("{2}")},
+    ReconfigureOption{Pay: "{E}{E}{E}", Cost: PayEnergy(3)}),          // Razorfield Ripper
+```
+
+- Write the "Equipped creature …" lines as for any Equipment
+  (`PumpAttached`, `GrantToAttached`, `SetAttachedBasePT`). The engine
+  makes an attached reconfigure Equipment a noncreature with no creature
+  types (CR 702.151b), so do not write that line.
+- "Whenever this creature or equipped creature attacks / deals combat
+  damage to a player / becomes blocked" are
+  `ThisOrEquippedCreatureAttacks`,
+  `ThisOrEquippedCreatureDealsCombatDamageToAPlayer` and
+  `ThisOrEquippedCreatureBecomesBlocked`. "It" in the effect is the
+  creature in the event (`ctx.TriggeringPermanent()`, the event's
+  `CardID`).
+- "As long as ~ is attached to a creature" is
+  `g.AttachedToACreatureForEffect(source)`.
+- Never set `Reconfigure` or `Equip` on a row by hand.
+
 ### Suspect (CR 701.60, #2698)
 
 Suspected is a designation that **gives** abilities rather than switching

@@ -1513,6 +1513,10 @@ type ActivatedAbility struct {
 	// instant" (#1208). Set by EquipAbility; no card file sets it
 	// directly, exactly as none sets Cycling.
 	Equip bool
+	// Reconfigure marks both CR 702.151a reconfigure abilities (#2639).
+	// Set by the Reconfigure constructors (reconfigure.go); no card file
+	// sets it directly. See game.ActivatedAbilityShape.Reconfigure.
+	Reconfigure bool
 	// UntapSelf marks a row whose whole effect is untapping its own
 	// source (Basalt and Grim Monolith, #2500). Bot data: the engine
 	// never reads it. See game.ActivatedAbility.UntapSelf.

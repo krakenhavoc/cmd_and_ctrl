@@ -2223,16 +2223,6 @@ var items = []Item{
 		Examples: []string{"Reiterating Bolt"},
 	},
 	{
-		Slug: "reconfigure", Name: "Reconfigure", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Equipment creatures that attach to another creature you control, stop being creatures while attached, and can unattach.",
-		Missing:     "Reconfigure isn't implemented yet, so an Equipment creature with it can't attach or unattach this way.",
-		Rules:       []string{"702.151", "301.5c"},
-		Issue:       2639,
-		Waiting:     []string{"Razorfield Ripper"},
-		Phrases:     []string{"reconfigure"},
-		EngineNotes: "primitive: reconfigure (CR 702.151a) is two activated abilities, attach to another target creature you control and unattach, both sorcery speed; CR 702.151b makes the Equipment stop being a creature while it is attached, and CR 301.5c lets an Equipment creature equip only with reconfigure. Equip exists (`effects.EquipAbility`), the rest does not. A cost of \"{2} or {E}{E}{E}\" is two rows each way, and its energy half is already an `AbilityCost` component (ADR 0129 PR 4). Found landing ADR 0129 PR 4 (#1995).",
-	},
-	{
 		Slug: "energy-paid-or-lost", Name: "Getting energy, and energy paid or lost this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Cards that trigger whenever you get energy, or count the energy you've paid or lost this turn, such as Aether Revolt, Territorial Gorger and Izzet Generatorium.",
 		Rules:       []string{"107.14", "122.1", "603.2c"},
@@ -3116,6 +3106,13 @@ var items = []Item{
 		Summary:  "Creatures that explore: reveal the top card of your library, put a land into your hand, or otherwise put a +1/+1 counter on the creature and choose whether to put the card into your graveyard.",
 		Rules:    []string{"701.44", "111.10s"},
 		Examples: []string{"Get Lost", "Lodestone Needle"},
+	},
+	{
+		Slug: "reconfigure", Name: "Reconfigure", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Equipment creatures that attach to another creature you control, stop being creatures while attached, and can unattach.",
+		Rules:    []string{"702.151", "301.5c"},
+		Probe:    activated(func(ab effects.ActivatedAbility) bool { return ab.Reconfigure }),
+		Examples: []string{"Lizard Blades", "Razorfield Ripper", "Lion Sash"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

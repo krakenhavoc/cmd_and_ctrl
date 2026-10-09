@@ -640,6 +640,14 @@ type ActivatedAbilityShape struct {
 	// label's spelling.
 	Equip bool
 
+	// Reconfigure marks both CR 702.151a reconfigure abilities, the
+	// attach and the unattach. Set by effects.Reconfigure and by no
+	// card file. The engine reads it for CR 702.151b (a printed
+	// reconfigure Equipment stops being a creature while attached) and
+	// CR 301.5c (an Equipment creature may equip only with
+	// reconfigure); see reconfigure.go. Not an equip ability.
+	Reconfigure bool
+
 	// UntapSelf marks a row whose whole effect is untapping its own
 	// source: Basalt Monolith's "{3}: Untap this artifact", Grim
 	// Monolith's {4}. Declared by hand on the card file, like Purpose,

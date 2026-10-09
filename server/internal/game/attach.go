@@ -157,8 +157,8 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 // AttachSourceForEffect is "attach this permanent to <host>" as one of
 // its OWN abilities resolves: equip (CR 702.6a) is the printed case,
 // and fortify (CR 702.67a) and reconfigure (CR 702.151a) are the same
-// sentence for a Fortification and an Equipment creature — neither is
-// in the catalog yet, and both land on this when they arrive.
+// sentence for a Fortification and an Equipment creature. Reconfigure
+// resolves here since #2639; fortify lands on this when it arrives.
 //
 // It is AttachForEffect plus the one question the primitive cannot ask
 // for itself: is `item`'s source still the permanent whose ability
@@ -416,7 +416,18 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// CR 301.5c — an Equipment can only be attached to a
 		// creature. Effective, not printed: a creature that stopped
 		// being a creature drops its sword.
-		return g.Battlefield.Cards[idx].IsCreature()
+		if !g.Battlefield.Cards[idx].IsCreature() {
+			return false
+		}
+		// CR 301.5c again: an Equipment that is also a creature can't
+		// equip a creature unless it has reconfigure (#2639). An
+		// animated Equipment falls off; an attached reconfigure
+		// Equipment is not a creature at all (CR 702.151b), and one
+		// that a later effect animates stays. See reconfigure.go.
+		if c.HasSubtype("Equipment") && !c.IsAura() {
+			return equipmentCreatureMayEquipLocked(c)
+		}
+		return true
 	}
 	return false
 }

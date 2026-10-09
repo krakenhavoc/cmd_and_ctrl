@@ -1027,3 +1027,52 @@ permanents attached to the paying permanent. One function,
 validator, the legal enumerator's pool and the protocol picker, so the
 three cannot disagree (#544). Built with `effects.AttachedToThis`.
 Faunsbane Troll is the proof card.
+
+## Amendment (2026-10-09, #2639): decision 21 — reconfigure
+
+CR 702.151a makes reconfigure two activated abilities: attach this
+permanent to another target creature you control, and unattach it,
+which may be activated only while it is attached to a creature. Both
+are sorcery speed. CR 702.151b says that attaching an Equipment with
+reconfigure to another creature makes it stop being a creature until it
+becomes unattached from that creature. CR 301.5c says an Equipment that
+is also a creature can't equip a creature unless it has reconfigure.
+
+### 1. Two ordinary activated rows, as decision 4 did for equip
+
+`effects.Reconfigure(cost)` returns the pair, and
+`effects.ReconfigureOneOf(printed, options...)` returns one pair per
+payment for a cost printed with a choice (Razorfield Ripper's "Pay {2}
+or {E}{E}{E}"). The attach row resolves through `AttachSourceToTarget`,
+equip's resolution, and its target clause is wrapped in `Another`. The
+unattach row resolves through `game.UnattachSourceForEffect`, which does
+nothing for a source that left or came back as a new object (decision
+19), and its Condition is `SourceAttachedToACreature`. Both carry
+`ActivatedAbilityShape.Reconfigure`. Neither carries `Equip`: Leonin
+Shikari's "equip abilities" does not reach them.
+
+### 2. "Stops being a creature" is derived, not stored
+
+The layer pass gathers one layer-4 effect per battlefield permanent
+whose catalog rows print reconfigure and that is attached to a
+permanent still on the battlefield. It removes the creature card type
+and the creature subtypes (CR 205.3d), and keeps Artifact and
+Equipment. Its timestamp is `AttachedAt` (decision 2), so a later
+layer-4 animation makes it a creature again.
+
+Recording a flag at attach time would follow the rule's wording
+exactly, but it adds a snapshot field and a write at every place the
+link is cleared. The derived form differs only for a permanent that
+gains or loses reconfigure while attached. Because it reads the PRINTED
+rows, an attached Equipment that loses all abilities stays a
+noncreature, which is what the rule says. No card grants reconfigure.
+The host is checked too, because CR 701.3d counts a host that left the
+battlefield as an unattach.
+
+### 3. CR 301.5c in decision 9's legality check
+
+`attachmentLegalLocked` now refuses an Equipment that is a creature
+right now and has no reconfigure ability (`HasReconfigure`, which reads
+the layered rows, so removal counts). Such an Equipment becomes
+unattached as CR 704.5n says. This applies to animated Equipment too,
+which used to stay attached.

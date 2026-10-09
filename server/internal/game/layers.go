@@ -517,6 +517,10 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// CR 701.60c (#2698): a suspected permanent has menace and can't
 	// block. One more source list into the same gather; see suspect.go.
 	out = append(out, g.suspectContinuousEffectsLocked()...)
+	// CR 702.151b (#2639): an attached reconfigure Equipment is not a
+	// creature. One more source list into the same gather; see
+	// reconfigure.go.
+	out = append(out, g.reconfigureContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}
