@@ -191,6 +191,11 @@ func HasAllCreatureTypes(c *Card) bool {
 	if c.effective != nil {
 		return c.effective.AllCreatureTypes
 	}
+	// ADR 0141, CR 702.103b: a bestowed spell is not a creature, so it
+	// has no creature types (CR 205.3d).
+	if c.Bestowed {
+		return false
+	}
 	return HasKeyword(c, KeywordChangeling)
 }
 

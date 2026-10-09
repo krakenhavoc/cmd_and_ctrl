@@ -7637,6 +7637,28 @@ Activated: ReconfigureOneOf("Reconfigure—Pay {2} or {E}{E}{E}",
   `g.AttachedToACreatureForEffect(source)`.
 - Never set `Reconfigure` or `Equip` on a row by hand.
 
+### Bestow (ADR 0141, #2862, CR 702.103)
+
+"Bestow [cost]" is one alternative cost from `cards/effects/bestow.go`.
+The rules side is `game/bestow.go`.
+
+```go
+AlternativeCosts: []game.AlternativeCost{Bestow("{3}{G}{G}")},       // Boon Satyr
+Static: []game.StaticAbility{PumpAttached(4, 2)},                    // "Enchanted creature gets +4/+2"
+Static: []game.StaticAbility{PumpSelfCreatureOrAttachedPer(1, 1, count)}, // "This creature and enchanted creature each get …" (Nighthowler)
+```
+
+- Write the "Enchanted creature …" lines as for any Aura (`PumpAttached`,
+  `GrantToAttached`). They reach nothing while the card is a creature,
+  because it is attached to nothing.
+- Do not declare `Spec.Targets`: the creature cast has no target, and
+  `Bestow` carries the enchant creature clause for the bestowed one.
+- The engine makes the bestowed spell and Aura a noncreature "Enchantment
+  — Aura", attaches it, resolves it as a creature if its target is gone
+  (CR 702.103e), and keeps it as a creature when it becomes unattached
+  (CR 702.103f). Write none of that.
+- Never build the offer by hand: `Bestow` is what sets `AlternativeCost.Bestow`.
+
 ### Suspect (CR 701.60, #2698)
 
 Suspected is a designation that **gives** abilities rather than switching

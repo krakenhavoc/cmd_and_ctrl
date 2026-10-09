@@ -754,12 +754,20 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	// and from a copy of the targets, so nothing captured is the live
 	// stack item.
 	targets := append([]TargetRef(nil), item.Targets...)
+	// ADR 0141, CR 702.103c: a copy of a bestowed Aura spell is a
+	// bestowed Aura spell, and the token it becomes a bestowed Aura,
+	// attached the same way. Bestowed is not a copiable value, so the
+	// template does not carry it; the copy's stack card does.
+	bestowed := top.Bestowed
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,
 		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},
 		Source:     item.SourceCardID,
 	}, func(g *Game, created []uuid.UUID) error {
 		for _, id := range created {
+			if bestowed {
+				g.seedBestowedEntryLocked(id, nil)
+			}
 			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
 			g.adoptSpellControlLocked(controlRecords, id, controlBase)
 		}

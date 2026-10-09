@@ -41,6 +41,7 @@ battlefield.cards[].attackingTarget	custom(uuid.UUID)
 battlefield.cards[].baseController	custom(uuid.UUID)
 battlefield.cards[].battleX	number:float64
 battlefield.cards[].battleY	number:float64
+battlefield.cards[].bestowed	bool
 battlefield.cards[].blockingTarget	custom(uuid.UUID)
 battlefield.cards[].catalogAbilities	object
 battlefield.cards[].catalogAbilities.activated	number:int
@@ -505,6 +506,7 @@ exile.cards[].attackingTarget	custom(uuid.UUID)
 exile.cards[].baseController	custom(uuid.UUID)
 exile.cards[].battleX	number:float64
 exile.cards[].battleY	number:float64
+exile.cards[].bestowed	bool
 exile.cards[].blockingTarget	custom(uuid.UUID)
 exile.cards[].catalogAbilities	object
 exile.cards[].catalogAbilities.activated	number:int
@@ -1029,6 +1031,7 @@ lastKnownStack[].card.attackingTarget	custom(uuid.UUID)
 lastKnownStack[].card.baseController	custom(uuid.UUID)
 lastKnownStack[].card.battleX	number:float64
 lastKnownStack[].card.battleY	number:float64
+lastKnownStack[].card.bestowed	bool
 lastKnownStack[].card.blockingTarget	custom(uuid.UUID)
 lastKnownStack[].card.catalogAbilities	object
 lastKnownStack[].card.catalogAbilities.activated	number:int
@@ -2245,6 +2248,7 @@ phasedOut.cards[].attackingTarget	custom(uuid.UUID)
 phasedOut.cards[].baseController	custom(uuid.UUID)
 phasedOut.cards[].battleX	number:float64
 phasedOut.cards[].battleY	number:float64
+phasedOut.cards[].bestowed	bool
 phasedOut.cards[].blockingTarget	custom(uuid.UUID)
 phasedOut.cards[].catalogAbilities	object
 phasedOut.cards[].catalogAbilities.activated	number:int
@@ -2842,6 +2846,7 @@ seats[].command.cards[].attackingTarget	custom(uuid.UUID)
 seats[].command.cards[].baseController	custom(uuid.UUID)
 seats[].command.cards[].battleX	number:float64
 seats[].command.cards[].battleY	number:float64
+seats[].command.cards[].bestowed	bool
 seats[].command.cards[].blockingTarget	custom(uuid.UUID)
 seats[].command.cards[].catalogAbilities	object
 seats[].command.cards[].catalogAbilities.activated	number:int
@@ -3147,6 +3152,7 @@ seats[].emblems.cards[].attackingTarget	custom(uuid.UUID)
 seats[].emblems.cards[].baseController	custom(uuid.UUID)
 seats[].emblems.cards[].battleX	number:float64
 seats[].emblems.cards[].battleY	number:float64
+seats[].emblems.cards[].bestowed	bool
 seats[].emblems.cards[].blockingTarget	custom(uuid.UUID)
 seats[].emblems.cards[].catalogAbilities	object
 seats[].emblems.cards[].catalogAbilities.activated	number:int
@@ -3443,6 +3449,7 @@ seats[].graveyard.cards[].attackingTarget	custom(uuid.UUID)
 seats[].graveyard.cards[].baseController	custom(uuid.UUID)
 seats[].graveyard.cards[].battleX	number:float64
 seats[].graveyard.cards[].battleY	number:float64
+seats[].graveyard.cards[].bestowed	bool
 seats[].graveyard.cards[].blockingTarget	custom(uuid.UUID)
 seats[].graveyard.cards[].catalogAbilities	object
 seats[].graveyard.cards[].catalogAbilities.activated	number:int
@@ -3737,6 +3744,7 @@ seats[].hand.cards[].attackingTarget	custom(uuid.UUID)
 seats[].hand.cards[].baseController	custom(uuid.UUID)
 seats[].hand.cards[].battleX	number:float64
 seats[].hand.cards[].battleY	number:float64
+seats[].hand.cards[].bestowed	bool
 seats[].hand.cards[].blockingTarget	custom(uuid.UUID)
 seats[].hand.cards[].catalogAbilities	object
 seats[].hand.cards[].catalogAbilities.activated	number:int
@@ -4042,6 +4050,7 @@ seats[].library.cards[].attackingTarget	custom(uuid.UUID)
 seats[].library.cards[].baseController	custom(uuid.UUID)
 seats[].library.cards[].battleX	number:float64
 seats[].library.cards[].battleY	number:float64
+seats[].library.cards[].bestowed	bool
 seats[].library.cards[].blockingTarget	custom(uuid.UUID)
 seats[].library.cards[].catalogAbilities	object
 seats[].library.cards[].catalogAbilities.activated	number:int
@@ -4548,6 +4557,7 @@ stack.cards[].attackingTarget	custom(uuid.UUID)
 stack.cards[].baseController	custom(uuid.UUID)
 stack.cards[].battleX	number:float64
 stack.cards[].battleY	number:float64
+stack.cards[].bestowed	bool
 stack.cards[].blockingTarget	custom(uuid.UUID)
 stack.cards[].catalogAbilities	object
 stack.cards[].catalogAbilities.activated	number:int

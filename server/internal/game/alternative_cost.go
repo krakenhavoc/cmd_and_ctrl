@@ -431,6 +431,20 @@ type AlternativeCost struct {
 	// for any other flash grant (CR 101.2).
 	AsThoughFlash bool
 
+	// Bestow is CR 702.103's "cast it bestowed": paying this cost makes
+	// the spell an Aura enchantment with enchant creature and not a
+	// creature (CR 702.103b), as it is put onto the stack and for every
+	// gate after the claim (CR 702.103d). Its target is the enchant
+	// creature clause, which effects.Bestow puts on Targets. The spell
+	// that resolves attaches to it, or becomes a creature spell if the
+	// target is illegal (CR 702.103e, 608.3b), and the Aura it becomes
+	// stays on the battlefield as a creature when it becomes unattached
+	// (CR 702.103f). ADR 0141; the rules side is bestow.go.
+	//
+	// The third clause, after FaceDown and CastsFace, that changes what
+	// the spell IS rather than what it costs.
+	Bestow bool
+
 	// Purpose is what the spell does when cast for this cost, where
 	// that differs from the card's own (ADR 0126 §6): overload turns
 	// Cyclonic Rift into a bounce sweep. Zero for a cost that leaves the
@@ -440,15 +454,22 @@ type AlternativeCost struct {
 }
 
 // CastFaceOf returns the card as a cast claiming this offer puts it on
-// the stack: turned to CastsFace for a disturb offer (CR 712.11a), and
-// unchanged for every other offer and for nil.
+// the stack: turned to CastsFace for a disturb offer (CR 712.11a),
+// bestowed for a bestow offer (CR 702.103b, ADR 0141), and unchanged
+// for every other offer and for nil.
 //
 // The bot enumerator and the view stamp read the card through this so
 // that the target clause, the timing and the cast gate they judge are
-// the back face's — the same face CastSpell materialises before it
-// asks them. Nil-safe.
+// the back face's, or the Aura spell's (CR 702.103d) — the same object
+// CastSpell materialises before it asks them. Nil-safe.
 func (a *AlternativeCost) CastFaceOf(c Card) Card {
-	if a == nil || a.CastsFace == 0 || c.ActiveFace == a.CastsFace {
+	if a == nil {
+		return c
+	}
+	if a.Bestow {
+		c.Bestowed = true
+	}
+	if a.CastsFace == 0 || c.ActiveFace == a.CastsFace {
 		return c
 	}
 	c.SetFace(a.CastsFace)

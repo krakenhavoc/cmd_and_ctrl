@@ -925,6 +925,13 @@ type cardSnapshot struct {
 	// would let a renowned creature's renown trigger a second time.
 	// Additive within v7: an older binary ignores the key.
 	Renowned bool `json:"renowned,omitempty"`
+	// Bestowed is CR 702.103b's bestowed status (ADR 0141, #2862): a
+	// spell cast bestowed, or the Aura it became. Carried because "not
+	// bestowed" is a legal zero value: a restore that dropped it would
+	// turn a bestowed Aura into a creature still attached to its host,
+	// and a bestowed spell on the stack into a creature spell. Additive
+	// within v7: an older binary ignores the key.
+	Bestowed bool `json:"bestowed,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -2084,6 +2091,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
+		Bestowed:                 c.Bestowed,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -2943,6 +2951,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
+		Bestowed:                 c.Bestowed,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,

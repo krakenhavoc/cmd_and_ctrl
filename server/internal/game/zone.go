@@ -199,6 +199,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// pinned grants are handed to the permanent separately (CR
 	// 400.7a, inheritSpellControlLocked).
 	c.stackGranted = nil
+	// ADR 0141 / CR 400.7, CR 702.103: bestowed belongs to the spell
+	// and the permanent it becomes, never to the card. Every zone
+	// change ends it, a resolving one included: the battlefield entry
+	// of a bestowed spell seeds it afresh (bestow.go), and a countered
+	// or bounced one is an ordinary creature card in its new zone.
+	c.Bestowed = false
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.

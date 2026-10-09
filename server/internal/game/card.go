@@ -1428,6 +1428,22 @@ type Card struct {
 	// cleared at both CR 400.7 sites, carried by clone and the
 	// snapshot. Here for alignment, beside the other bools.
 	Renowned bool
+
+	// Bestowed is CR 702.103b's "bestowed" status (ADR 0141, #2862): a
+	// spell cast for its bestow cost, and the permanent that spell
+	// becomes, is an Aura enchantment with enchant creature and not a
+	// creature. Set by CastSpell when the bestow offer is claimed, and
+	// by the battlefield entry of a bestowed spell (bestow.go).
+	//
+	// Cleared when the object ceases to be bestowed: its target is
+	// illegal as it resolves (CR 702.103e), or it becomes unattached or
+	// is attached to something illegal (CR 702.103f, 702.103g). Cleared
+	// at both CR 400.7 sites too, on every zone change, because a new
+	// object was never cast bestowed. Not a copiable value (CR 707.2);
+	// a copy of a bestowed SPELL is bestowed by CR 702.103c, which the
+	// spell copy gets by copying the card. Carried by clone and the
+	// snapshot. Here for alignment, beside the other bools.
+	Bestowed bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -1762,6 +1778,11 @@ func hasCardType(c *Card, lowerType string) bool {
 		if c.faceDownPermanent() {
 			return typeListHas(faceDownCharacteristic(*c).Types, lowerType)
 		}
+		// ADR 0141, CR 702.103b: a bestowed spell is an Aura
+		// enchantment and not a creature (bestow.go).
+		if c.Bestowed {
+			return typeListHas(bestowBaseline(c).Types, lowerType)
+		}
 		return typeLineHas(c.TypeLine, lowerType)
 	}
 	return typeListHas(c.effective.Types, lowerType)
@@ -1794,6 +1815,11 @@ func (c Card) HasSubtype(subtype string) bool {
 		return typeListHas(faceDownCharacteristic(c).Subtypes, subtype)
 	}
 	if c.effective == nil {
+		// ADR 0141, CR 702.103b: a bestowed spell is an Aura and has no
+		// creature types, changeling or not (bestow.go).
+		if c.Bestowed {
+			return typeListHas(bestowBaseline(&c).Subtypes, subtype)
+		}
 		_, _, printed := printedTypeParts(&c)
 		if typeListHas(printed, subtype) {
 			return true

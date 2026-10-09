@@ -3201,6 +3201,14 @@ var items = []Item{
 		Examples: []string{"Volcano Hellion", "Phyrexian Processor", "Necrodominance"},
 	},
 	{
+		Slug: "bestow", Name: "Bestow", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures you may cast as an Aura on a creature for their bestow cost. If the creature leaves, or is gone when the spell resolves, the card is a creature instead.",
+		Rules:    []string{"702.103", "608.3b"},
+		ADR:      "0141-bestow.md",
+		Mechanic: "bestow",
+		Examples: []string{"Nighthowler", "Boon Satyr", "Eidolon of Countless Battles"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},
