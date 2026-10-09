@@ -2126,6 +2126,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
 | `"exalted"` | Exalted (CR 702.83) — #2538, a TRIGGERED keyword built like prowess: one trigger per instance (`game/exalted.go`, CR 113.2c) when exactly one creature is declared as an attacker (CR 506.5) and you control it; the attacker gets +1/+1 until end of turn. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`, and each exalted counter (`game.CounterExalted`) is one more instance. Declare it in `PrintedKeywords`; never write an exalted trigger by hand (the old `effects.Exalted()` constructor is gone, and `TestNoCatalogRowIsAnExaltedConstructor` keeps it gone). A creature whose only text is exalted and other tokens here needs no card file ([ADR 0101 amendment 2026-10-08](decisions/0101-keyword-counters.md)) |
 | `"annihilator N"` | Annihilator (CR 702.86) — #2073, the third TRIGGERED keyword: numbered like toxic and triggered like prowess. One attack trigger per instance (`game/annihilator.go`, CR 702.86b); the defending player (CR 508.5, read per attacker) chooses N permanents they control in one prompt and sacrifices them together. Declare it in `PrintedKeywords` (`"annihilator 4"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.AnnihilatorAmounts`, never `HasKeyword`. "Annihilator X" read at resolution is the catalog row `AnnihilatorCounted(label, count)` (Ulamog, the Defiler). A creature whose only text is annihilator and other tokens here needs no card file ([ADR 0113 §2](decisions/0113-small-seams-for-the-s58-deck-requests.md#2-annihilator-2073)) |
+| `"renown N"` | Renown (CR 702.112) — #2049, a TRIGGERED keyword numbered like annihilator. One trigger per instance (`game/renown.go`, CR 702.112c) on combat damage to a player — not a planeswalker, a battle or a creature — with the intervening "if it isn't renowned" read as it triggers and again as it resolves (CR 603.4). It puts N +1/+1 counters on the creature through the CR 614 window, then sets `Card.Renowned` and emits `game.EventBecameRenowned` (Amount = N). Declare it in `PrintedKeywords` (`"renown 2"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.RenownAmounts`, never `HasKeyword`. A creature whose only text is renown and other tokens here needs no card file. What reads the designation is in [Renown](#renown-cr-702112-2049) ([ADR 0071 amendment 2026-10-09](decisions/0071-designations-that-switch-abilities-on.md)) |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
@@ -7572,6 +7573,29 @@ Three things to get right:
   and the ability's source is that same card (Presumed Dead's granted
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
+
+### Renown (CR 702.112, #2049)
+
+Renown is a keyword the engine runs (`"renown N"` in `PrintedKeywords`), and
+renowned is a designation it sets: `Card.Renowned`, kept until the permanent
+leaves the battlefield, not copiable, carried by the snapshot ([ADR
+0071](decisions/0071-designations-that-switch-abilities-on.md) amendment
+2026-10-09). A card file only writes what reads it, from
+[renown.go](../server/internal/cards/effects/renown.go):
+
+```go
+PrintedKeywords: []string{"renown 1"},                                       // the engine does the trigger
+Static:    []game.StaticAbility{RenownedKeywords("menace")},                 // "As long as this creature is renowned, it has menace" (Goblin Glory Chaser)
+Triggered: []game.TriggeredAbility{WhenACreatureYouControlBecomesRenowned("…", effect)}, // Valeron Wardens
+if ctx.Game.IsRenowned(id) { … }                                             // "If it's renowned, untap it" on a target (Enshrouding Mist)
+```
+
+`Renowned()` is the `ActiveWhen` gate for any other "as long as this creature is
+renowned" line. "Whenever this creature attacks, if it's renowned" and "if this
+creature is renowned" are intervening ifs (CR 603.4): read `ThisIsRenowned(source)`
+in `AppliesTo` and `ThisWasRenowned(ctx)` in the effect, which reads the source
+as it last existed if it has left (Consul's Lieutenant, Scab-Clan Berserker).
+Never write a renown trigger by hand, and never set `Card.Renowned` from a card.
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 

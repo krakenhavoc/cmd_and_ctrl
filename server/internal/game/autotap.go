@@ -25,7 +25,7 @@ import (
 // cover it; on failure it backtracks to the previous requirement
 // and tries the next-best source. After all colored requirements
 // land, the remaining slots across used sources are tallied
-// against `cost.Generic + cost.XSlots*xValue`; if short, the
+// against `cost.GenericWithX(xValue)`; if short, the
 // solver recruits additional unused sources (preferring colorless
 // producers) until the budget is met or the source pool runs out.
 //
@@ -461,7 +461,7 @@ func (g *Game) autoTapPreferringLocked(
 	prefer ManaSourceKinds,
 ) (tapPlan, bool) {
 	sources := gatherTapSources(g, controller, excluded, prefer)
-	if len(sources) == 0 && (len(cost.Required) > 0 || cost.Generic+cost.XSlots*xValue > 0) {
+	if len(sources) == 0 && (len(cost.Required) > 0 || cost.GenericWithX(xValue) > 0) {
 		return nil, false
 	}
 	// Sort sources by restrictiveness — fewer color options first.
@@ -469,7 +469,7 @@ func (g *Game) autoTapPreferringLocked(
 	// requirement, so restrictive sources get reserved for the
 	// requirements that need them most.
 	sortTapSources(sources)
-	need := cost.Generic + cost.XSlots*xValue
+	need := cost.GenericWithX(xValue)
 	used := make([]bool, len(sources))
 	// #2461: WHICH slots of each source a coloured requirement has
 	// booked, not how many. A count cannot tell a Simic Growth

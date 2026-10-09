@@ -153,6 +153,14 @@ const (
 	// designation is turn-scoped (ADR 0071 amendment 2026-10-08,
 	// #2695). Appended so no existing kind's value moves.
 	DesignationSaddled
+
+	// DesignationRenowned is CR 702.112b's "renowned" designation:
+	// "As long as this creature is renowned, it has menace" (Goblin
+	// Glory Chaser). Set by a renown trigger's resolution (renown.go)
+	// and kept until the permanent leaves the battlefield. ADR 0071
+	// amendment 2026-10-09, #2049. Appended so no existing kind's value
+	// moves.
+	DesignationRenowned
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -217,6 +225,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Monstrous
 	case DesignationSaddled:
 		return c.Saddled
+	case DesignationRenowned:
+		return c.Renowned
 	case DesignationRingTempted:
 		return c.RingTemptations >= d.N
 	case DesignationChosenOption:
@@ -269,6 +279,11 @@ func DoorUnlocked(door DoorSide) Designation {
 // Monstrous builds a CR 701.37b gate: the ability exists while the
 // permanent is monstrous (#1700).
 func Monstrous() Designation { return Designation{Kind: DesignationMonstrous} }
+
+// RenownedGate builds a CR 702.112b gate: the ability exists while the
+// permanent is renowned (#2049). Named for its kind rather than
+// Renowned, which is the Card field.
+func RenownedGate() Designation { return Designation{Kind: DesignationRenowned} }
 
 // SaddledGate builds a CR 702.171 gate: the ability exists while the
 // Mount is saddled (#2695). Named for its kind rather than Saddled,

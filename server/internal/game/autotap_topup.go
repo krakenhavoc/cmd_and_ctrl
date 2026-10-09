@@ -129,7 +129,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 		}
 		unpaid[i] = true
 	}
-	need := cost.Generic + cost.XSlots*xValue
+	need := cost.GenericWithX(xValue)
 
 	var out []ParsedCost
 	var credit func(k int)
@@ -194,6 +194,7 @@ func shortfallCost(cost ParsedCost, unpaid []bool, generic int) ParsedCost {
 	}
 	out.Generic = generic
 	out.XSlots = 0
+	out.XReduced = 0
 	return out
 }
 

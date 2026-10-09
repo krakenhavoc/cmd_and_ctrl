@@ -125,6 +125,38 @@ func TestMonstrousViewIsPublicOnTheBattlefield(t *testing.T) {
 	}
 }
 
+// TestRenownedViewIsPublicOnTheBattlefield — #2049: CardView.renowned
+// is read straight off a battlefield permanent, like monstrous, and is
+// absent for one that is not renowned.
+func TestRenownedViewIsPublicOnTheBattlefield(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	renownedID, plainID := uuid.New(), uuid.New()
+	now := time.Now().UnixNano()
+	seen := map[uuid.UUID]bool{owner.ID: true, g.Seats[1].ID: true}
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: renownedID, Name: "Topan Freeblade", TypeLine: "Creature — Human Soldier",
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, Renowned: true, KnownBy: seen,
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: plainID, Name: "Grizzly Bears", TypeLine: "Creature — Bear",
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, KnownBy: seen,
+		})
+	})
+	v := ViewOfGameFor(g, g.Seats[1].ID.String())
+	got := map[string]bool{}
+	for _, c := range v.Battlefield.Cards {
+		got[c.InstanceID] = c.Renowned
+	}
+	if !got[renownedID.String()] {
+		t.Error("a renowned permanent does not project renowned to an opponent")
+	}
+	if got[plainID.String()] {
+		t.Error("a permanent that is not renowned projects renowned")
+	}
+}
+
 // TestSuspectedViewIsPublicOnTheBattlefield — #2698: CardView.suspected
 // is read straight off a battlefield permanent, like monstrous, is
 // absent for one that is not suspected, and survives a face-down

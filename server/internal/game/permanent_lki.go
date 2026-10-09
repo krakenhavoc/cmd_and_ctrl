@@ -183,6 +183,14 @@ type PermanentInfo struct {
 	// 400.7); only this record remembers it.
 	Suspected bool `json:"suspected,omitempty"`
 
+	// Renowned is whether it was renowned (CR 702.112b) as it last
+	// existed on the battlefield (#2049). "Whenever this creature
+	// attacks, if it's renowned" (Consul's Lieutenant) and "if this
+	// creature is renowned" (Scab-Clan Berserker) re-check the
+	// condition as they resolve (CR 603.4), and a source that has left
+	// by then is read as it last existed (CR 608.2h).
+	Renowned bool `json:"renowned,omitempty"`
+
 	// Attacking is whether it was an attacking creature (CR 508.1k) as
 	// it last existed on the battlefield, and Enchanted whether an Aura
 	// was attached to it (#2026). A damage shield against "attacking
@@ -231,6 +239,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
 		Suspected:      c.Suspected,
+		Renowned:       c.Renowned,
 		Attacking:      c.AttackingTarget != uuid.Nil,
 		Blocking:       c.BlockedAttackers(),
 	}

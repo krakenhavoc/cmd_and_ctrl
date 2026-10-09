@@ -2381,7 +2381,8 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 		return paid, err
 	}
 	// The announced X multiplies into the generic demand exactly as
-	// it does for a cast: cost.Generic + cost.XSlots*x. Treasure
+	// it does for a cast: cost.GenericWithX(x), which leaves out what a
+	// reduction took off the X (#2701). Treasure
 	// Vault's "{X}{X}" has two slots, so X=3 costs six.
 	x := params.XValue
 	if !params.Strict && !params.AutoTap {
