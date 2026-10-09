@@ -115,6 +115,7 @@ var reviewedNotAWipe = map[string]string{
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",
 	"Glorious End":                             "ends the turn",
+	"Jace, Reality Sculptor":                   "its 0 exiles all but the bottom card of each opponent's library, no permanents",
 	"Jace, the Mind Sculptor":                  "exiles a library",
 	"Karn Liberated":                           "restarts the game",
 	"Last Laugh":                               "a ping engine that fires only when a permanent dies",
