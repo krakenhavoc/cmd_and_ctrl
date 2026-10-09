@@ -238,6 +238,17 @@ func TestPlanMissesCountOnlyTheModelsOwnMisses(t *testing.T) {
 	}
 	next("precombat_main", f.other)
 
+	// 11. A plan whose only other member is held for the end step (ADR
+	//     0136 §5) names no next cast this turn: not a planned window,
+	//     and nothing is looked for.
+	{
+		v, m := main("postcombat_main", false, f.rock, f.spell)
+		ev := f.event(f.me, v, m, 1, true)
+		ev.Trace.Plan = []aiseat.PlanMember{{Index: 1}, {Index: 2, Held: true}}
+		w.Observe(ev)
+		next("postcombat_main", f.other)
+	}
+
 	got := w.forSeat(f.me)
 	if got.Planned != 9 || got.Checked != 6 || got.Misses != 2 {
 		t.Errorf("planned %d, checked %d, misses %d; want 9, 6, 2", got.Planned, got.Checked, got.Misses)

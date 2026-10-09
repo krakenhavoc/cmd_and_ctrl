@@ -340,6 +340,15 @@ type Config struct {
 	// than what the tax prevents (ADR 0136's amendment of 2026-10-09,
 	// tax.go). Off (the zero value) pays every tax it can, as before.
 	PlanWeighTaxes bool
+	// PlanHoldInstants holds the turn plan's instant-speed members for
+	// the end step before the bot's turn, unless a later member needs
+	// their mana or they draw with mana left after them (ADR 0136 §5,
+	// owner answer 6, #2668, holdinstants.go). A held member keeps its
+	// mana reserved in the plan; when every member left is held the bot
+	// passes, and ADR 0126 §5 casts it in that end step. It also lets a
+	// land swap that nets lands (Harrow) be a plan member. Off (the zero
+	// value) casts instants like sorceries, as PR 4 shipped.
+	PlanHoldInstants bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -592,6 +601,7 @@ func DefaultConfig() Config {
 		PlanNextTurnDiscount: 0.75,
 		IdleLateRocks:        true,
 		PlanWeighTaxes:       true,
+		PlanHoldInstants:     true,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -733,6 +743,7 @@ func BaselineConfig() Config {
 	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
 	c.IdleLateRocks = false
 	c.PlanWeighTaxes = false
+	c.PlanHoldInstants = false
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
 	c.PricePutsFromHand = false
@@ -766,6 +777,10 @@ type Policy struct {
 	// for an opponent's tax prompt before the plan's next cast
 	// (Config.PlanWeighTaxes, tax.go).
 	tail *planTail
+	// heldThisTurn is the cards a plan chosen earlier this turn held for
+	// the end step before the bot's next one (Config.PlanHoldInstants,
+	// holdinstants.go).
+	heldThisTurn *turnHolds
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -795,6 +810,7 @@ func (p *Policy) Reset() {
 	p.agg.reset()
 	p.hopelessTurns, p.hopelessTurn = 0, 0
 	p.tail = nil
+	p.heldThisTurn = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -1026,6 +1042,7 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 
 	d, plan := p.decideGeneral(ctx, st, in.Moves)
 	p.notePlan(st, in.Moves, plan)
+	p.noteHolds(st, in.Moves, plan)
 	return d, plan, nil
 }
 
@@ -1107,6 +1124,12 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	}
 	if chosen {
 		return d, plan
+	}
+	if p.holdRemainder(st, moves, vals, take) {
+		// ADR 0136 §5 and the owner's decision of 2026-10-09: what is
+		// left of this turn's plan is a member it held. It waits for
+		// the end step before the bot's turn, its mana kept up.
+		return holdDecision(moves, take, takeVal)
 	}
 	if take < 0 {
 		// ADR 0126 §2's amendment of 2026-10-09: a late mana source is

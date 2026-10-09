@@ -18,7 +18,9 @@ import (
 // only which one move is worth most.
 //
 //   - The members (§1, owner answer 3) are cast moves whose only costs
-//     are mana and the card. Each card contributes its best such move.
+//     are mana and the card, and with Config.PlanHoldInstants a land
+//     swap that nets lands (Harrow, planEligibleIn). Each card
+//     contributes its best such move.
 //     The PlanMaxCards cards whose best move prices highest are the
 //     candidates, so the search sees at most 2^PlanMaxCards sets.
 //   - The mana model (§2, owner answers 1, 2 and 4) is the bot's own,
@@ -46,8 +48,13 @@ import (
 // next window and the bot re-plans. The arena counts those plan misses
 // (botarena/turnmana.go).
 //
-// Instants are cast like sorceries here. Holding one for the end step
-// before the bot's turn (§5) is ADR 0136 PR 5.
+// Instants (§5, owner answer 6, PR 5): with Config.PlanHoldInstants an
+// instant-speed member is HELD for the end step before the bot's turn
+// unless a later member needs its mana or it draws and leaves mana
+// after it. A held member keeps its value and its mana in the plan, and
+// is paid after every member cast this turn; it is not cast now. When
+// every member left is held the bot passes, and ADR 0126 §5 casts it in
+// the end step before the bot's turn (holdinstants.go).
 
 // Colour masks for one mana in the model.
 const (
@@ -125,9 +132,16 @@ type planCandidate struct {
 	// removes from the board as it stands, so among the rest it goes
 	// before any permanent the plan adds.
 	sweep bool
-	// lands is the lands its purpose puts onto the battlefield, which
-	// make mana from next turn on (rocknow.go).
+	// lands is the lands its purpose puts onto the battlefield, net of
+	// any it sacrifices (Harrow), which make mana from next turn on
+	// (rocknow.go).
 	lands int
+	// instant is an instant-speed cast whose declared purpose is ramp
+	// or draw, which §5 may hold for the end step before the bot's turn
+	// (Config.PlanHoldInstants), and drawer one whose purpose draws or
+	// tutors.
+	instant bool
+	drawer  bool
 	// annotated is set once rankCandidates has filled the fields above.
 	annotated bool
 }
@@ -140,6 +154,9 @@ type turnPlan struct {
 	// members' bits in them.
 	cands []*planCandidate
 	mask  uint
+	// held is the members' bits that §5 holds for the end step before
+	// the bot's turn (Config.PlanHoldInstants).
+	held uint
 }
 
 // planEligible reports whether m may be a plan member (§1, owner answer
@@ -167,28 +184,29 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 	if len(cands) < 2 {
 		return out, false
 	}
-	mask, value, order, ok := p.bestSet(ctx, setSearch{
+	mask, value, order, held, ok := p.bestSet(ctx, setSearch{
 		cands:   cands,
 		base:    st.manaAvailable(p.cfg.PlanFilterLands),
 		want:    st.rampWants(),
 		sources: st.manaSourcesTotal(),
 		minSize: 2,
+		hold:    p.cfg.PlanHoldInstants,
 	})
 	if !ok {
 		return out, false
 	}
-	out.value, out.mask = value, mask
-	out.members = membersOf(cands, order, mask)
+	out.value, out.mask, out.held = value, mask, held
+	out.members = membersOf(cands, order, mask, held)
 	return out, true
 }
 
-// membersOf is the candidates in mask, in order.
-func membersOf(cands []*planCandidate, order []int, mask uint) []*planCandidate {
+// membersOf is the candidates in mask, in order: the ones cast this
+// turn first, then the ones held for the end step (§5), in the order
+// they are paid.
+func membersOf(cands []*planCandidate, order []int, mask, held uint) []*planCandidate {
 	var out []*planCandidate
-	for _, i := range order {
-		if mask&(1<<i) != 0 {
-			out = append(out, cands[i])
-		}
+	for _, i := range paySequence(order, mask, held) {
+		out = append(out, cands[i])
 	}
 	return out
 }
@@ -211,13 +229,16 @@ type setSearch struct {
 	// model: the engine offered the move, and its answer outranks the
 	// model's (§2).
 	trustSingles bool
+	// hold applies §5: an instant-speed member is held for the end step
+	// before the bot's turn unless this turn needs it (holdsFor).
+	hold bool
 }
 
 // bestSet is the feasible set worth most (§3), with the order its
-// members are paid in. Ties go to the smaller set, then to the set
-// found first. It stops at the context deadline with the best set so
-// far.
-func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int, bool) {
+// members are paid in and, with s.hold, the members §5 holds. Ties go
+// to the smaller set, then to the set found first. It stops at the
+// context deadline with the best set so far.
+func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int, uint, bool) {
 	cands := s.cands
 	maxMana := len(s.base)
 	for _, c := range cands {
@@ -230,7 +251,7 @@ func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int
 	n := len(cands)
 	order := identityOrder(n)
 	alt, amended := altOrder(cands)
-	bestMask, bestVal := uint(0), 0.0
+	bestMask, bestVal, bestHeld := uint(0), 0.0, uint(0)
 	var bestOrder []int
 	units := make([]uint8, 0, maxMana)
 	for mask := uint(1); mask < 1<<n; mask++ {
@@ -273,18 +294,39 @@ func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int
 			continue
 		}
 		used := order
-		if !(size == 1 && s.trustSingles) && !planFeasible(s.base, cands, order, mask, units) {
-			if mask&amended == 0 || !planFeasible(s.base, cands, alt, mask, units) {
-				continue
+		var held uint
+		if size == 1 && s.trustSingles {
+			if s.hold {
+				held, _ = holdsFor(s.base, cands, order, mask, units)
 			}
-			used = alt
+		} else {
+			h, ok := s.feasible(cands, order, mask, units)
+			if !ok {
+				if mask&amended == 0 {
+					continue
+				}
+				if h, ok = s.feasible(cands, alt, mask, units); !ok {
+					continue
+				}
+				used = alt
+			}
+			held = h
 		}
-		bestMask, bestVal, bestOrder = mask, value, used
+		bestMask, bestVal, bestOrder, bestHeld = mask, value, used, held
 	}
 	if bestMask == 0 {
-		return 0, 0, nil, false
+		return 0, 0, nil, 0, false
 	}
-	return bestMask, bestVal, bestOrder, true
+	return bestMask, bestVal, bestOrder, bestHeld, true
+}
+
+// feasible is planFeasible, or with s.hold §5's holds and whether the
+// set is payable with them (holdsFor).
+func (s setSearch) feasible(cands []*planCandidate, order []int, mask uint, scratch []uint8) (uint, bool) {
+	if s.hold {
+		return holdsFor(s.base, cands, order, mask, scratch)
+	}
+	return 0, planFeasible(s.base, cands, order, mask, scratch)
 }
 
 // identityOrder is 0..n-1: candidates are kept in §4's order.
@@ -342,7 +384,7 @@ func (p *Policy) eligibleCasts(st *state, moves []legal.Move, vals []float64) []
 	var order []string
 	for i := range moves {
 		m := moves[i]
-		if !planEligible(m) {
+		if !p.planEligibleIn(st, m) {
 			continue
 		}
 		cp := decode[castParams](m.Params)
@@ -399,13 +441,19 @@ func (p *Policy) rankCandidates(st *state, out []*planCandidate) []*planCandidat
 				c.amount += repeatableMana(c.card)
 			}
 			if p.cfg.PricePurposes {
-				c.amount += ps.lands
+				c.amount += max(0, ps.lands-len(cp.SacrificeIDs))
 			}
 		}
 		if p.cfg.PricePurposes {
-			c.lands = ps.lands
+			c.lands = max(0, ps.lands-len(cp.SacrificeIDs))
 		}
 		c.adds = castAddsMana(c.card, ps, p.cfg.PlanFilterLands)
+		c.drawer = ps.draws > 0 || ps.tutors > 0
+		// The owner's decision of 2026-10-09 (ADR 0136 §5, question 2):
+		// only an instant-speed cast whose declared purpose is ramp or
+		// draw is held. Removal, burn and flash creatures are not.
+		ramp := ps.lands > 0 || len(c.adds) > 0 || (!isLand(c.card) && repeatableMana(c.card) > 0)
+		c.instant = p.cfg.PlanHoldInstants && p.instantSpeed(st, m) && (ramp || c.drawer)
 		switch {
 		case len(c.adds) > 0:
 			c.baseClass = 0
@@ -463,29 +511,56 @@ func planBefore(a, b *planCandidate, base bool) bool {
 // amendment changes which member goes first, never which sets the bot
 // can afford.
 func planFeasible(base []uint8, cands []*planCandidate, order []int, mask uint, scratch []uint8) bool {
+	_, ok := planWalk(base, cands, order, mask, 0, -1, scratch)
+	return ok
+}
+
+// planWalk pays the members in mask in order from base, each member's
+// mana arriving for the ones after it, and reports whether every one
+// was paid. The members in held (§5) are paid last, after every member
+// cast this turn, in the end step before the bot's turn: their mana
+// stays reserved, and what they add arrives only for each other. left
+// is the mana there is right after the candidate at index `after` is
+// paid and its mana added, -1 when it is not reached.
+func planWalk(base []uint8, cands []*planCandidate, order []int, mask, held uint, after int, scratch []uint8) (left int, ok bool) {
 	units := append(scratch[:0], base...)
-	for k, i := range order {
-		if mask&(1<<i) == 0 {
-			continue
-		}
+	seq := paySequence(order, mask, held)
+	left = -1
+	for k, i := range seq {
 		c := cands[i]
 		// The coloured symbols of the members still to come: generic
 		// mana is paid around them.
 		var later []uint8
-		for _, j := range order[k+1:] {
-			if mask&(1<<j) != 0 {
-				later = append(later, cands[j].cost.colored...)
-			}
+		for _, j := range seq[k+1:] {
+			later = append(later, cands[j].cost.colored...)
 		}
-		var ok bool
 		if units, ok = payMana(units, c.cost, later); !ok {
-			return false
+			return left, false
 		}
 		for _, a := range c.adds {
 			units = addSource(units, a, later)
 		}
+		if i == after {
+			left = len(units)
+		}
 	}
-	return true
+	return left, true
+}
+
+// paySequence is the members in mask in order, the ones in held moved
+// after the rest.
+func paySequence(order []int, mask, held uint) []int {
+	seq := make([]int, 0, bits.OnesCount(mask))
+	for pass := 0; pass < 2; pass++ {
+		for _, i := range order {
+			bit := uint(1) << i
+			if mask&bit == 0 || (held&bit != 0) != (pass == 1) {
+				continue
+			}
+			seq = append(seq, i)
+		}
+	}
+	return seq
 }
 
 // planDeficit is rampFor's deficit with every card in the set left out
@@ -944,20 +1019,36 @@ func addSource(units []uint8, src manaSource, later []uint8) []uint8 {
 	return append(units, src.units...)
 }
 
-// planMembers is the plan as the trace records it (§7).
+// planMembers is the plan as the trace records it (§7), held members
+// marked (§5).
 func planMembers(moves []legal.Move, pl turnPlan) []aiseat.PlanMember {
 	out := make([]aiseat.PlanMember, 0, len(pl.members))
 	for _, c := range pl.members {
-		out = append(out, aiseat.PlanMember{Index: c.index, Label: moves[c.index].Label})
+		out = append(out, aiseat.PlanMember{Index: c.index, Label: moves[c.index].Label, Held: pl.isHeld(c)})
 	}
 	return out
 }
 
+// isHeld reports whether member c is held for the end step (§5).
+func (pl turnPlan) isHeld(c *planCandidate) bool {
+	for i, k := range pl.cands {
+		if k == c {
+			return pl.held&(1<<i) != 0
+		}
+	}
+	return false
+}
+
 // planReason is the decision's reason (§7): "plan: Arcane Signet →
-// Ornithopter of Paradise (+2.76)".
+// Ornithopter of Paradise (+2.76)", a held member named as "Harrow at
+// the end step" (§5).
 func planReason(pl turnPlan) string {
 	names := make([]string, 0, len(pl.members))
 	for _, c := range pl.members {
+		if pl.isHeld(c) {
+			names = append(names, c.card.Name+" at the end step")
+			continue
+		}
 		names = append(names, c.card.Name)
 	}
 	return fmt.Sprintf("plan: %s (+%.2f)", strings.Join(names, " → "), pl.value)
@@ -989,7 +1080,13 @@ func (p *Policy) decidePlan(ctx context.Context, st *state, moves []legal.Move, 
 	if pl.value <= p.setBar(st, moves, pl.members, threshold, leftover) {
 		return aiseat.Decision{}, nil, pl, true, false
 	}
-	return aiseat.Decision{Index: pl.members[0].index, Reason: planReason(pl)}, planMembers(moves, pl), pl, true, true
+	// §5: the first member cast this turn. The held members come last,
+	// so when the first is held every member is, and the bot passes.
+	d = aiseat.Decision{Index: pl.members[0].index, Reason: planReason(pl)}
+	if pl.isHeld(pl.members[0]) {
+		d.Index = passOrDecline(moves)
+	}
+	return d, planMembers(moves, pl), pl, true, true
 }
 
 // setBar is the bar a set of this turn's casts clears: the window's,

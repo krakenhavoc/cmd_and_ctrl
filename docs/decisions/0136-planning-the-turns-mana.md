@@ -4,7 +4,7 @@
 **Owner decisions:** the owner answered this ADR's ten questions on 2026-10-08, each with the recommended option. The answers are listed under [Owner answers](#owner-answers-2026-10-08) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Issues:** [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458) (this change: draw before deploying, rock first, two spells over one). It must not conflict with [#2668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2668) (hold instant-speed ramp for the end step before your turn); §5 says how the two fit. Under owner answer 6, #2668 is delivered by this ADR's PR 5.
 **Owner direction:** 2026-10-08, on #2458: a design pass before any implementation.
-**Amended:** 2026-10-09, the owner's decisions on PR 4b's questions 1 and 2: [a rock against a spell over two turns](#amendment-2026-10-09-a-rock-against-a-spell-over-two-turns), and an idle late rock, recorded in [ADR 0126 §2](0126-bots-that-play-their-decks.md#amendment-2026-10-09-an-idle-late-rock).
+**Amended:** 2026-10-09, the owner's decisions on PR 4b's questions 1 and 2: [a rock against a spell over two turns](#amendment-2026-10-09-a-rock-against-a-spell-over-two-turns), and an idle late rock, recorded in [ADR 0126 §2](0126-bots-that-play-their-decks.md#amendment-2026-10-09-an-idle-late-rock). 2026-10-09, the owner's decisions on PR 5's questions 1 and 2: [held instants](#amendment-2026-10-09-held-instants).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-08. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: `origin/develop`, `origin/main`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/playmats`, `origin/fix/2545-breeches-flake`, `origin/fix/2611-marwyn-source-left`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default` and `pr/2326`. The highest number on any of them is 0135 (`0135-alternative-costs-that-tap-discard-awaken-and-emerge.md`, on `origin/develop`, `origin/main` and `origin/fix/2545-breeches-flake`). The one open pull request, #2700, adds no ADR. This ADR takes **0136**.
 **Builds on:** [ADR 0126](0126-bots-that-play-their-decks.md) (the prices, §2's ramp premium, §5's leftover windows, §6's `purpose`, §8's measurement, and the [exit decision on A2](0126-bots-that-play-their-decks.md#exit-decisions-2026-10-07) that sends rock-first here), [ADR 0033](0033-ai-bot-seat.md) §3 (a policy reads the view and the move list, never the game), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena and the position suite).
 
@@ -124,7 +124,7 @@ value(S) = Σ valueOf(m) for m in S
 
 **The decision.** When the plan holds more than one member and is worth more than the best single move, the bot makes the plan's first move (§4) if the plan's value clears the window's bar (`PassThreshold`, or `LeftoverThreshold` in ADR 0126 §5's windows). Otherwise `decideGeneral` decides exactly as today. A plan of one is today's choice.
 
-The plan is not stored. It is rebuilt in every window from the view, so it adds nothing to the little the policy keeps between decisions (the aggression rotation and the concede counter). After the Signet resolves, the next window plans again with the Signet on the battlefield and finds the Ornithopter. If a draw finds something better, the next plan uses it. The [amendment of 2026-10-09](#amendment-2026-10-09-an-opponents-tax-against-the-plan) keeps one thing: the members of the plan the last window chose, until the phase ends, for an opponent's tax prompt to read.
+The plan is not stored. It is rebuilt in every window from the view, so it adds nothing to the little the policy keeps between decisions (the aggression rotation and the concede counter). After the Signet resolves, the next window plans again with the Signet on the battlefield and finds the Ornithopter. If a draw finds something better, the next plan uses it. The [amendment of 2026-10-09](#amendment-2026-10-09-an-opponents-tax-against-the-plan) keeps one thing: the members of the plan the last window chose, until the phase ends, for an opponent's tax prompt to read. The [held-instants amendment](#amendment-2026-10-09-held-instants) of the same day keeps a second: the cards a plan held for the end step, until the turn ends.
 
 ### 4. The order: mana first, then draws, then the rest
 
@@ -149,7 +149,7 @@ In a plan, an instant-speed member is **held** unless one of these holds:
 - it adds mana that a later member of the plan uses (§4 item 1), or
 - it draws or tutors and the plan has mana left after it, so the card it finds can still be cast this turn.
 
-A held member stays in the plan. Its mana is reserved: no other member may use it, and it counts in the plan's value. It is not cast now. If every remaining member is held, the bot passes, and ADR 0126 §5 casts the held spell in the end step before its turn as it does today.
+A held member stays in the plan. Its mana is reserved: no other member may use it, and it counts in the plan's value. It is not cast now. If every remaining member is held, the bot passes, and ADR 0126 §5 casts the held spell in the end step before its turn as it does today. Because the plan is rebuilt in every window and §3 makes a plan of one today's choice, "remaining" needs the turn's plan to be remembered. The [held-instants amendment](#amendment-2026-10-09-held-instants) says how, and which instants are held.
 
 So #2668 becomes one case of the plan, with no second rule beside it. In #2668's main-phase case, Harrow against a bigger spell that taps the bot out, the plan compares {the big spell} with {a smaller spell, Harrow held}, both on the same mana. Whichever of #2668 and this ADR's PR 5 lands first, the other keeps #2668's two gated positions, `harrow-at-the-end-step-before-yours` and `develop-before-harrow`, passing. If #2668 ships first as a standalone rule, PR 5 replaces it with this one and keeps the positions. Under owner answer 6, #2668 is delivered by PR 5.
 
@@ -212,7 +212,7 @@ In PR 4b's run 1, the largest class of plan misses was an opponent's Rhystic Stu
 
 The bot declines the tax when the member is worth more, and pays it otherwise. When paying still leaves the member payable, the answer is unchanged. It is also unchanged when the source declares no gift, and when no plan was chosen this phase. The mana check is §2's model. The member's mana is counted after the tax is paid, plus the mana that the members still on the stack add once they resolve.
 
-**What the policy now remembers.** A tax prompt offers only pay and decline (`legal.choiceMoves`), so the window that answers it cannot rebuild the plan. The policy remembers the members of the plan chosen in the last sorcery-speed window of its own turn: each card, its mana, its price and the mana it adds. A later sorcery-speed window that chooses no plan clears this memory. It is read only in the same turn and phase, and only for a member still in hand or in the command zone that is not held for the end step. This is the one exception to §3's "the plan is not stored". Replaying a tax window offline answers it as if no plan was chosen, unless the plan's window is replayed first on the same policy. It is game-independent policy state, like the aggression rotation, and not game state. The snapshot does not change.
+**What the policy now remembers.** (The [held-instants amendment](#amendment-2026-10-09-held-instants) below adds a second memory, the cards a plan held, kept for the turn.) A tax prompt offers only pay and decline (`legal.choiceMoves`), so the window that answers it cannot rebuild the plan. The policy remembers the members of the plan chosen in the last sorcery-speed window of its own turn: each card, its mana, its price and the mana it adds. A later sorcery-speed window that chooses no plan clears this memory. It is read only in the same turn and phase, and only for a member still in hand or in the command zone that is not held for the end step. This is the one exception to §3's "the plan is not stored". Replaying a tax window offline answers it as if no plan was chosen, unless the plan's window is replayed first on the same policy. It is game-independent policy state, like the aggression rotation, and not game state. The snapshot does not change.
 
 **Catalog.** Each tax card declares its gift on its triggered row. Rhystic Study, Mystic Remora's cast trigger and Esper Sentinel declare `draws: 1`. Smothering Tithe and Kazuul, Tyrant of the Cliffs declare `tokens: 1`. `TestCuratedDeckPurposes` requires the declaration on Rhystic Study and Smothering Tithe, the two curated cards. A ward prompt is never weighed this way: its decline counters the bot's own spell. The bot skips any prompt whose source is a target of the bot's own stack item.
 
@@ -255,6 +255,26 @@ Each source is read the way §2 reads one, filters included.
 It is `Config.PlanRockTwoTurns` with `Config.PlanNextTurnDiscount`, on in `DefaultConfig()` and off in `BaselineConfig()`. `heuristic-noplan` has the plan off, so it never runs the comparison. The decision's reason names both orders, for example `two turns: Arcane Signet now, then Siege Wurm (+x.xx) over Grizzly Bears now, then Arcane Signet (+y.yy)`, and the trace's `plan` lists A's set for this turn.
 
 The same day, the owner decided PR 4b's question 2 as an amendment to ADR 0126 §2: [an idle late rock](0126-bots-that-play-their-decks.md#amendment-2026-10-09-an-idle-late-rock). In the turn's last main-phase window, a rock with no open deficit is cast when its mana would otherwise go unused. It is ADR 0126's price, so it applies to `heuristic-noplan` as well.
+
+### Amendment 2026-10-09: held instants
+
+The owner's decisions on PR 5's questions 1 (option b) and 2 (option b), #2668. Both apply under `Config.PlanHoldInstants`, which is on in `DefaultConfig()` and off in `BaselineConfig()`.
+
+**Which instants are held (question 2).** Only an instant-speed cast whose declared purpose is ramp or draw. Ramp means lands, or mana the card adds. Draw means draws or tutors. Removal, burn and flash creatures are never held, and they are cast as members like any other. §5's two exceptions still apply to a ramp or draw instant: it is cast now if a later member needs its mana, or if it draws with mana left after it.
+
+**A plan of one (question 1).** This resolves the conflict between §3 and §5. §3 says a plan of one is today's choice. §5 says "if every remaining member is held, the bot passes", which happens in a later window, after the members cast this turn have resolved. By then the plan has been rebuilt from the view, and the held member is a plan of one.
+
+- A lone instant is held only when it is what remains of a plan chosen earlier in the same turn that held it. The §5 rule is checked again for it, as a plan of one.
+- Every other plan of one is today's choice, as §3 says. A Harrow alone in a first main phase, with no plan this turn, is cast. This is the gated position `harrow-sacrifices-the-tapped-land`.
+
+**What the policy now remembers.** This is the second exception to §3's "the plan is not stored", beside the tax memory of the [amendment above](#amendment-2026-10-09-an-opponents-tax-against-the-plan), which keeps a plan's members for the phase.
+
+- The policy keeps the cards that each plan chosen this turn held, by instance, until the turn ends. A new turn forgets them.
+- It is game-independent policy state, like the aggression rotation, and the snapshot does not change.
+- The trace records it. The window that chose the plan marks its held members (§7). A window that holds a remainder records that card as a held member of a plan of one, with the reason `plan: held for the end step before my turn`.
+- So a replay of the turn's windows in order on one policy rebuilds the memory. Replaying the remainder window alone answers it as if no plan was chosen this turn.
+
+**Harrow as a member.** §1's member rule leaves out casts with a sacrifice cost, but §2 and §5 name Harrow as a member. Under this switch, a cast whose only other cost is sacrificing lands that its own purpose more than replaces is a member: #2469's land swap. Its lands are counted net of the land it sacrifices.
 
 ---
 
@@ -363,6 +383,68 @@ Both rules act on `heuristic-noplan` differently. The two-turn comparison is par
 **Canaries (A3).** Run 1: Rhystic Study on simic-ramp 11 / 24 → 9 / 24 (below its 50% bar before and after), on esper-control 13 / 19 → 15 / 19; Harrow 14 / 30 → 14 / 25. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after. Run 3, pooled: Rhystic Study 108 / 218 (49.5%) → 108 / 229 (47.2%); Harrow 89 / 245 (36.3%) → 81 / 256 (31.6%). On simic-ramp an open deficit now sends the turn's mana to a rock that the bot used to spend on Rhystic Study or Harrow. Harrow's P4 is PR 5's.
 
 **The review-game windows** (game `8a9f18d7`), re-decided on this branch. On the logged views nothing changes: seq 133, 226 and 292 cast Arcane Signet, 180 casts Explosive Vegetation, and 402 and 475 cast Harmonize. With Oracle of Mul Daya's purpose as the catalog declares it today, 292 casts the Oracle and 402 and 475 cast the Oracle first, as before. Seq 180 changes. Before this change it cast the Oracle. Now the two-turn comparison casts Explosive Vegetation (`two turns: Explosive Vegetation now, then Arcane Signet → Tatyova, Benthic Druid (+6.19) over Oracle of Mul Daya now, then Explosive Vegetation (+5.36)`), which is the choice the worked table above gives for 180.
+
+### PR 5: held instants (2026-10-09)
+
+`Config.PlanHoldInstants`, on in `DefaultConfig()` and off in `BaselineConfig()` (`aiseat/heuristic/holdinstants.go`). What its first build implemented (the [held-instants amendment](#amendment-2026-10-09-held-instants) narrows the first item to ramp and draw instants):
+
+- **§5's rule, in a plan of two or more casts.** Every instant-speed member (an instant, or a card with flash) starts held. While the set cannot be paid, the first held member in §4's order that adds mana is cast now instead, because a later member needs its mana. Then each held member that draws or tutors is cast now if any mana is left right after it.
+- **A held member's mana is reserved.** The mana model (§2) pays it after every member cast this turn, so no other member can spend it. What it adds arrives only for the other held members. It keeps its value in the plan. When every member is held the bot passes.
+- **Harrow is a member.** §1 leaves out casts with a sacrifice, but §2 and §5 name Harrow as a member, so under this switch a cast whose only other cost is sacrificing lands that its own purpose more than replaces is one (`landSacrificeIsNetMana`, #2469's rule). Its lands are counted net of the one it sacrifices.
+- **The trace and the arena.** The trace marks held members and the reason names them ("Harrow at the end step"). The arena does not count a plan with fewer than two members cast this turn as a planned window, because it names no next cast to look for.
+
+The first build held only inside a plan of two or more, so the hold lasted one window: once the members cast this turn had resolved, the held member was a plan of one and was cast. The rows below are that build's. The owner's answers, and the rows for the build that ships, follow them.
+
+"Before" is `develop` at `067a66153`. "After" is this branch. All runs use `--rotate --lockstep` and the real dump. **0 stalls in every run.**
+
+| # | Measure | Before | After |
+|---|---|---|---|
+| P4 | run 3, Harrow used in a seat-game where it was offered (both blocks) | 75 / 254, 29.5% (24.3–35.4) | **206 / 244, 84.4% (79.3–88.4)** |
+| P4 | run 3 (40 logged games), Harrow cast in the end step before the bot's turn | 0 of 20 casts | 0 of 45 casts |
+| P4 | run 3 win rate | simic ×4, 25.0% by construction | the same |
+| P1 | run 1, rocks offered with the deficit open and used | 212 / 250, 84.8% | 211 / 245, 86.1% |
+| P2 | run 1 stranded share | 103 / 2,965, 3.5% | 96 / 2,936, 3.3% |
+| P3 | run 2, `heuristic` won (seeds 1 and 101, 384 seat-games) | 92 / 384, 24.0% (20.0–28.5); `noplan` 100 | 97 / 384, 25.3% (21.2–29.8); `noplan` 95 |
+| | heuristic against `heuristic-baseline`, izzet-aggro and simic-ramp, 48 games | 28 / 96 against 20 / 96 | 30 / 96 against 18 / 96 |
+| P5 | suite | 41 / 41 | 41 / 41, the same move, layer and reason at every position |
+| P6 | plan misses, runs 1 / 2 (seed 1) / 3 | 3.8% / 2.7% / 2.7% | 4.1% / 3.5% / 3.5% |
+| P6 | turns p50, runs 1 / 3 | 13 / 10, 11 | 13 / 11, 11 |
+| P7 | decision p99, run 2 seed 1, `heuristic` / `noplan`, halves A and B | 367 / 435 µs; 365 / 349 µs | 356 / 442 µs; 416 / 370 µs |
+
+Harrow's use rises because Harrow is now a plan member, so the plan casts it beside a rock or a spell that its lands pay for. The hold itself moves few casts. In run 3's logged games it held Harrow in 26 windows, and none of those holds reached the end step: Harrow was never offered in the end step before the bot's turn, before or after. In the before run the bot reached that step with Harrow in hand 200 times, with two or fewer lands untapped every time. The runner does offer that window: the before run has 1,465 such windows for heuristic seats, and ADR 0119's stack hold does not apply with the stack empty.
+
+Canaries (A3): Rhystic Study on simic-ramp 10 / 23 → 9 / 22 in run 1 and 110 / 225 → 114 / 248 in run 3. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after.
+
+**A scratch build that held every plan of one** (question 1's option a, which the owner did not choose) shows what holding every lone instant does. On the same seeds:
+
+- Harrow cast in the end step before the bot's turn in 5 of 47 casts in run 3's logged games, and used in 212 / 252 seat-games (84.1%). In the logged games Harrow was held in 41 windows. In the cases traced by hand, a later window's plan used Harrow's mana for its lands, or an opponent's Rhystic Study tax spent it.
+- Run 1's stranded share rose from 3.3% to 5.1%, because the held mana is counted as unspent at the bot's last main-phase pass.
+- Run 2: `heuristic` won 93 / 384 (24.2%), against 97 on this branch.
+- Run 1: esper-control won 16 games, against 17 on this branch, and izzet-aggro 1 against 3.
+- It fails the gated position `harrow-sacrifices-the-tapped-land` by passing: a lone Harrow in the first main phase is held. It also passes on Lightning Bolt in `never-bolt-yourself`, which is not gated.
+
+**The owner's answers** (2026-10-09) are recorded in the [held-instants amendment](#amendment-2026-10-09-held-instants): question 1 (b), a lone instant is held only when it is what remains of a plan chosen earlier this turn; question 2 (b), only ramp and draw instants are held. Their measurements follow.
+
+The build that ships has the first build's rules plus the amendment, on `develop` merged at `689be62f1`, which changed no bot code. "Before" is the same `develop` run as above. All runs use `--rotate --lockstep` and the real dump. **0 stalls in every run.**
+
+| # | Measure | Before | After |
+|---|---|---|---|
+| P4 | run 3, Harrow used in a seat-game where it was offered (both blocks) | 75 / 254, 29.5% (24.3–35.4) | **206 / 249, 82.7% (77.5–86.9)** |
+| P4 | run 3 (40 logged games), Harrow cast in the end step before the bot's turn | 0 of 20 casts | 2 of 44 casts |
+| P1 | run 1, rocks offered with the deficit open and used | 212 / 250, 84.8% | 209 / 245, 85.3% |
+| P2 | run 1 stranded share | 3.5% | 3.4% |
+| P3 | run 2, `heuristic` won (seeds 1 and 101, 384 seat-games) | 92 / 384, 24.0% (20.0–28.5); `noplan` 100 | 97 / 384, 25.3% (21.2–29.8); `noplan` 95 |
+| | heuristic against `heuristic-baseline`, izzet-aggro and simic-ramp, 48 games | 28 / 96 against 20 / 96 | 30 / 96 against 18 / 96 |
+| P5 | suite | 41 / 41 | 41 / 41, the same move, layer and reason at every position |
+| P6 | plan misses, runs 1 / 2 (seed 1) / 3 | 3.8% / 2.7% / 2.7% | 4.2% / 3.3% / 3.4% |
+| P6 | turns p50, runs 1 / 3 | 13 / 10, 11 | 13 / 11, 11 |
+| P7 | decision p99, run 2 seed 1, `heuristic` / `noplan`, halves A and B | 367 / 435 µs; 365 / 349 µs | 347 / 433 µs; 399 / 358 µs |
+
+`harrow-sacrifices-the-tapped-land` passes with no relabel: no plan was chosen earlier in its turn, so its lone Harrow is today's choice. Both of #2668's positions pass.
+
+**Why Harrow is still rarely cast in the end step.** In run 3's logged games Harrow was cast 44 times. 35 of those were plan casts in the first main phase, where §5 casts it now because a later member of the plan pays with the lands it puts onto the battlefield. 5 were a lone Harrow with no plan chosen that turn, which the amendment leaves as today's choice. 2 came from the two-turn comparison, and 2 were cast in the end step. Harrow was held in only 12 turns. Of those, 2 ended in an end-step cast and 3 in a later main-phase cast, after a draw or a Rhystic Study tax changed the plan. In 4 the bot reached its next turn with Harrow uncast, and in 3 the seat had no later window in the log. End-step casts stay rare because the holds are rare, not because the window is missing. No value was tuned on these numbers.
+
+Canaries (A3): Harrow 13 / 25 → 24 / 25 in run 1. Rhystic Study on simic-ramp 10 / 23 → 9 / 22 in run 1 and 110 / 225 → 110 / 245 in run 3. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after.
 
 ---
 
