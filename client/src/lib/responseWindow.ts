@@ -19,6 +19,9 @@
 //   hasPlay — is there anything to do on a step the player ticked?
 //     A response, or a land, a sorcery-speed cast, a declaration.
 //
+// Both read the combat window (#2871): crewing a Vehicle, animating a
+// manland or granting flying is a response there and nowhere else.
+//
 // and one about the moment: keyWindow says whether the cursor is in a
 // window where a response is worth stopping for even without a tick.
 // ADR 0009, amendment #1307.
@@ -43,7 +46,10 @@ import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 //   ability     — any other activated ability that targets or protects
 //                 (#2853: `has_targets`, or `interacts`: a sacrifice
 //                 outlet, regeneration, a pump, a blink, a shield; a
-//                 mana ability only when it is a sacrifice outlet).
+//                 mana ability only when it is a sacrifice outlet), or
+//                 one that changes a fight, in a combat window only
+//                 (#2871: `combat_interacts`: crew, a manland, a
+//                 granted keyword, an extra block, a creature token).
 //   untargeted  — any other non-mana activated ability: pure value
 //                 like Mind Stone, a fetch land, a Clue, cycling. Its
 //                 own class so it does not count as a response by
@@ -100,6 +106,9 @@ export const DEFAULT_RESPONSES: ResponseCategories = {
 // off and kept counters on. Nor does it send `has_targets`, so every
 // non-counter activation there reads as `untargeted`.
 //
+// `combat` is inCombatWindow: there, an activation the server marks
+// `combat_interacts` is an `ability`; elsewhere it is `untargeted`.
+//
 // ADR 0106 §1 decision 7 (owner decision 1, #1793): `controllers` maps
 // a battlefield permanent's instance ID to its controller, and `me` is
 // the viewer. An activate move whose source is a permanent somebody
@@ -115,6 +124,7 @@ export function classifyMove(
   sorceryWindow: boolean,
   controllers?: ReadonlyMap<string, string>,
   me?: string | null,
+  combat = false,
 ): MoveClass {
   if (m.kind === "activate" && controllers && me && activatesAcross(m, controllers, me)) {
     return "none";
@@ -134,7 +144,8 @@ export function classifyMove(
       if (sorceryWindow) return "play";
       if (m.targets_stack) return "counter";
       if (m.kind === "cast") return "instant";
-      return m.has_targets || m.interacts ? "ability" : "untargeted";
+      if (m.has_targets || m.interacts) return "ability";
+      return combat && m.combat_interacts ? "ability" : "untargeted";
     case "special_action":
       return "special";
     // #1501: finishing a block declaration is part of the declaration.
@@ -169,6 +180,31 @@ export function battlefieldControllers(
     if (c.controller) out.set(c.instance_id, c.controller);
   }
   return out;
+}
+
+// COMBAT_STEPS are the steps where a combat ability is a response
+// (#2871): the last moment to make a blocker or an attacker, and the
+// two declarations. Combat damage and end of combat are too late.
+const COMBAT_STEPS: ReadonlySet<string> = new Set([
+  "begin_combat",
+  "declare_attackers",
+  "declare_blockers",
+]);
+
+// ATTACK_OR_BLOCK names a stack item about an attack or a block: an
+// attack trigger, a "whenever this blocks" trigger.
+const ATTACK_OR_BLOCK = /\b(attack|attacks|attacking|attacked|block|blocks|blocking|blocked)\b/i;
+
+// inCombatWindow reports whether a combat ability counts as a response
+// now (#2871): beginning of combat, declare attackers or declare
+// blockers, or an attack or block trigger on the stack. Elsewhere a
+// board of them would stop the viewer on every spell.
+export function inCombatWindow(view: GameView | null | undefined): boolean {
+  if (!view) return false;
+  if (COMBAT_STEPS.has(view.turn?.step ?? "")) return true;
+  return (view.stack_items ?? []).some(
+    (it) => it.kind !== "spell" && ATTACK_OR_BLOCK.test(it.label ?? ""),
+  );
 }
 
 // inSorceryWindow: the viewer's own main phase, stack empty.
@@ -208,8 +244,9 @@ export function hasResponse(
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);
+  const combat = inCombatWindow(view);
   const controllers = battlefieldControllers(view);
-  return moves.some((m) => isEnabledResponse(classifyMove(m, sw, controllers, me), cats));
+  return moves.some((m) => isEnabledResponse(classifyMove(m, sw, controllers, me, combat), cats));
 }
 
 // hasPlay reports whether a ticked step has anything in it for the
@@ -233,9 +270,10 @@ export function hasPlay(
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);
+  const combat = inCombatWindow(view);
   const controllers = battlefieldControllers(view);
   return moves.some((m) => {
-    const c = classifyMove(m, sw, controllers, me);
+    const c = classifyMove(m, sw, controllers, me, combat);
     if (c === "play" || c === "declaration" || c === "other") return true;
     return isEnabledResponse(c, cats);
   });

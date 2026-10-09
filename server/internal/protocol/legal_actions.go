@@ -20,9 +20,10 @@ import (
 //
 // It is built from the UNCAPPED list, before capLegalMoves degrades an
 // over-long one to one move per (source, kind, targets_stack,
-// has_targets, interacts). So a board past legalMovesWireCap still says
-// which ability rows are live, which faces are castable and from which
-// zones, which the capped legal_moves cannot.
+// has_targets, interacts, combat_interacts). So a board past
+// legalMovesWireCap still says which ability rows are live, which faces
+// are castable and from which zones, which the capped legal_moves
+// cannot.
 //
 // It is not a second answer to "is this legal". digestLegalMoves reads
 // a []legal.Move and nothing else: no game read, no lock.

@@ -932,6 +932,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									TargetsStack: targetsStackObject(g, targets),
 									HasTargets:   hasTargets(targets),
 									Interacts:    !hasTargets(targets) && abilityInteracts(ab),
+									// #2871: a combat ability, counted only in combat.
+									CombatInteracts: !hasTargets(targets) && !abilityInteracts(ab) && abilityCombatInteracts(ab),
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,

@@ -173,6 +173,15 @@ type Move struct {
 	// abilityInteracts.
 	Interacts bool `json:"interacts,omitempty"`
 
+	// CombatInteracts is true on an activation with no target that
+	// changes attacks or blocks without answering a spell: crew, a
+	// manland or an animated artifact, a granted evasion or combat
+	// keyword, "can block an additional creature", a creature token
+	// (#2871). Smart autopass counts it only in a combat window, so it
+	// is a bit of its own rather than part of Interacts. Never set
+	// alongside Interacts. See abilityCombatInteracts.
+	CombatInteracts bool `json:"combat_interacts,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you

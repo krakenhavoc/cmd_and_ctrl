@@ -22,6 +22,10 @@ the precedence list below.
 no longer a response by default, and the hold toggle clears itself once the
 stack it held has emptied. See "Amendment: only real interaction stops you
 (#2853)" below.
+**Amended by:** S60 (#2871), 2026-10-09 — "stop at a ticked step only when I
+can do something" becomes its own setting, and crew, manlands and granted
+combat keywords count as a response in combat windows. See "Amendment: ticked
+steps and combat abilities (#2871)" below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -406,6 +410,104 @@ falls back to the default.
   haste, trample, menace or lifelink, "can block an additional creature", and a
   land or artifact that becomes a creature until end of turn. A board full of
   them would stop on every opponent spell, so they are left out for now.
+
+## Amendment: ticked steps and combat abilities (#2871)
+
+**Status:** Accepted · 2026-10-09 · Sprint S60
+
+The owner's goal, which governs every choice here, is the one #2853 states:
+"make the autopass as smart as possible and as convenient as possible so most
+of the time players are not thinking why do I have to click to pass or thinking
+I missed my window to respond".
+
+### Stop at a ticked step only when I can do something
+
+Rule 8 already skipped a ticked step with nothing to do in it, but only as one
+half of `smartAutoPass`, whose other half governs the opponent's stack and the
+key windows. A player who turned smart auto-pass off to see every opponent spell
+also lost the skip, and nothing on the Settings page said the two were joined.
+
+- **A setting of its own.** `gameplay.stepStopsOnlyWhenCanAct`, "Only stop at
+  my ticked steps when I can do something", sits under the step grid, on by
+  default. Rule 8 reads it in place of `smartAutoPass`:
+  `stepStopsOnlyWhenCanAct ? hasPlay || engineMayMissMana : true`.
+  `smartAutoPass` keeps rules 6 and 7 (opponent stack items and the key
+  windows).
+- **One toggle, not one per step.** The issue asked for a per-step option. One
+  global toggle is simpler, and every step wants the same answer: a ticked step
+  you cannot act on is dead air, whichever step it is. A player who wants one
+  step to stop every time pins it (§5) or turns the toggle off. A per-step
+  column would double the grid for a choice nobody has asked to make per step.
+- **What counts as something to do** is `hasPlay`, unchanged:
+  - on the viewer's own main phase with an empty stack, any cast, activation or
+    land the enumerator offers (a value ability and a crew included), plus
+    ADR 0118 owner decision 8's spell held back for mana alone. A main phase
+    with any play in it is never skipped; only one with mana moves and nothing
+    else is;
+  - elsewhere, a move in an enabled "Stop for" category, a declaration, a
+    choice, an unknown kind, an owed block (#328) or a declared attack (#599).
+- **The "Stop for" list** applies whenever either setting is on, so its
+  fieldset is disabled only when both are off.
+
+### Combat abilities count in combat
+
+#2853's costs named a gap: some untargeted abilities change a fight without
+answering a spell, so `interacts` leaves them out, and smart auto-pass passed
+the window to use them. They are now a response in a combat window and nowhere
+else, because a board of them would stop the viewer on every spell.
+
+- **`combat_interacts` on the legal move**, a server bit of its own rather
+  than a wider `interacts`, so the client can gate it on the window
+  (`server/internal/legal/combat_interacts.go`, `docs/protocol.md`). It is set
+  on an untargeted activation that `interacts` does not mark, read from the
+  ability's shape:
+  - a crew cost (CR 702.122), or a crew row whose cost is printed another way;
+  - printed effect text that makes it a creature (a manland, an animated
+    artifact), gives or takes away flying, haste, trample, menace, lifelink,
+    vigilance or reach, lets a creature block an additional creature or any
+    number, makes it unblockable, lures ("must be blocked"), forces attacks,
+    taps or untaps the enchanted creature, doubles damage, or makes a creature
+    token that does not enter tapped (populate and amass included).
+
+  It rides in `capLegalMoves`' key, now `(source, kind, targets_stack,
+  has_targets, interacts, combat_interacts)`. The change to `interacts.go` is
+  none: `abilityInteracts` is asked first, and a row it marks is never marked
+  again.
+- **The combat window** (`inCombatWindow`, `client/src/lib/responseWindow.ts`):
+  beginning of combat, declare attackers and declare blockers, or a triggered
+  or activated item on the stack whose text names an attack or a block. Combat
+  damage and end of combat are too late to make a blocker. There,
+  `classifyMove` classes a `combat_interacts` activation as `ability` (on by
+  default); elsewhere it stays `untargeted` (off by default). So a crew or a
+  manland stops you at an opponent's declare attackers or blockers, and on a
+  ticked beginning of combat, and not for an opponent's main-phase sorcery.
+- **The audit.** Of the catalog's 478 untargeted, instant-speed activated rows
+  that `interacts` does not mark, the rules mark 110 as combat abilities: 27
+  crew rows, the manlands and animated artifacts, the keyword grants, the
+  extra-block rows and the untapped creature-token makers. The rest were read
+  one by one. A tapped token (Automated Assembly Line) and a non-creature token
+  (Treasure, Food, Clue, Blood) do not count; "becomes that type" and "becomes
+  prepared" do not either. `combat_interacts_internal_test.go` pins both lists.
+
+### The settings migration (schema v23)
+
+A blob from before v23 copies `stepStopsOnlyWhenCanAct` from its
+`smartAutoPass`, so nobody's behaviour changes: a player who turned smart
+auto-pass off still stops at every ticked step, and everyone else keeps
+skipping the empty ones. An account copy from a v22 client goes through the
+same migrate (`applySyncedCopy`). From v23 on, the stored value stands, and a
+non-boolean falls back to the default (on).
+
+### Costs
+
+- A token maker with `{T}` (Castle Ardenvale, Kjeldoran Outpost) now stops you
+  at every opponent's declare attackers, whoever is attacked. A chump blocker
+  is a real play, and the owner's goal weighs a missed block above a click.
+- `combat_interacts` is read from printed text like `interacts`, with the same
+  risk of a misread either way; the test lists are where one is fixed.
+- A pump written without a `+N/+N` ("Double this creature's power") is still
+  read as value by `interacts`; #2872's declared answers is the place to fix
+  that, not this text reader.
 
 ## Context
 
