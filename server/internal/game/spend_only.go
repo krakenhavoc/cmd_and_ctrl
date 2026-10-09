@@ -168,8 +168,11 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	}
 	out := c
 	out.SpendOnly = nil
-	n := c.XSlots * x
+	// #2701: what a cost reduction took off the X is not paid, so it
+	// is not restricted either; XMana(x) is the X mana that remains.
+	n := c.XMana(x)
 	out.XSlots = 0
+	out.XReduced = 0
 	req := make([]ColorRequirement, 0, len(c.Required)+n+c.Generic)
 	for _, r := range c.Required {
 		if !lim.XOnly {
