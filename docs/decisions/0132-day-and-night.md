@@ -158,4 +158,4 @@ Each change was reverted by itself and the named test watched fail, then restore
 - **A nightbound face's self-replacement on entering transformed** (section 5): no face prints one.
 - **Pricing the toggle in the heuristic** (section 10).
 - **The other 37 cards** (#2586).
-- **Enters-or-transforms-into triggers, the "as this transforms into Curse of Leeches" attach, and Tovolar, Dire Overlord's "it becomes night. Then transform any number of Human Werewolves"** (a permanent with daybound can't be transformed by the instruction, CR 702.145b, so the second sentence does nothing to a real werewolf): each is a slice's decision, listed under #2586.
+- **Enters-or-transforms-into triggers, the "as this transforms into Curse of Leeches" attach (built: [ADR 0079](0079-transforming-a-permanent.md), amendment 2026-10-09, decision 11), and Tovolar, Dire Overlord's "it becomes night. Then transform any number of Human Werewolves"** (a permanent with daybound can't be transformed by the instruction, CR 702.145b, so the second sentence does nothing to a real werewolf): each is a slice's decision, listed under #2586.

@@ -591,3 +591,65 @@ Deepest Growth // Temple of Cultivation (Full) ship. Ojer Axonil, Deepest Might
 gains its dies trigger and Temple of Power, and keeps one caveat. Tests:
 `game/transform_test.go`, `cards/effects/ojer_gods_test.go` and
 `ojer_kaslem_test.go`.
+
+## Amendment 2026-10-09 (#2586): "as this permanent transforms into <Aura face>, attach it to a player"
+
+Issue [#2586](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2586), the last
+card of the day and night list ([ADR 0132](0132-day-and-night.md)). Curse of
+Leeches // Leeching Lurker has an Aura Curse on its front ("Enchant player,
+daybound") and a 4/4 lifelink creature on its back ("nightbound"), and the front
+face prints "As this permanent transforms into Curse of Leeches, attach it to a
+player." Decision 9's hook runs that clause; what it lacked was a way to attach a
+battlefield permanent to a *player* the controller chooses, from inside a
+synchronous hook.
+
+### Decision 11. The attach question is an `option_pick` over seats, and CR 704.5m waits for it
+
+- **The verb.** `Game.QueueAttachSourceToPlayerForEffect(source, question)`
+  (`game/attach_transform.go`). The front face's `AsTransformsInto` calls it. It
+  asks the Aura's **controller**, which is the sentence's "attach it" and not a
+  target: nothing is announced, nothing can respond, hexproof is irrelevant.
+- **Who is offered.** Every live player the Aura's own enchant clause admits
+  (`TargetSpecFor`, evaluated through `specMatchLocked` without the targeting
+  gate, exactly what `attachmentLegalLocked` will hold the Aura to afterwards)
+  and that is not protected from the Aura as a source (CR 702.16). The controller
+  is a legal answer. Ordering is the shared choose-a-player rule, most life first,
+  which is the bot's policy for a prompt it has nothing to say about.
+- **No new prompt kind.** It is the `option_pick` that `choose_player.go` already
+  built, answered with a seat (`ThenSeat`, so a CR 800.4a prune cannot renumber
+  it), so the choice gate, the enumerator, the wire, the client modal and the bot
+  carry it unchanged. The only addition is an unexported marker on the prompt's
+  frame, `optionPickFrame.attachesSource`.
+- **CR 704.5m waits.** While the question is open the Aura is attached to nothing,
+  and the state-based action would put it in the graveyard at the next check (the
+  day/night check runs in the untap step, so the next one is at the upkeep). `attachmentLegalLocked` answers "legal" for an unattached Aura whose
+  attach prompt is open (`attachPromptOpenForLocked`). The exemption reads the
+  open prompt itself, not a flag on the card, so there is nothing to clone,
+  snapshot or clear. When the prompt is answered the Aura is attached; when it is
+  dropped unanswered (#1006) it is not, and 704.5m takes it as it would any
+  Aura attached to nothing.
+- **No legal player.** Every seat eliminated or protected: nothing is queued and
+  the Aura goes to its owner's graveyard by 704.5m. No card code.
+- **The other direction.** Night turns the Aura into a creature that is still
+  attached to a player. `attachmentLegalLocked` used to skip the CR 704.5p
+  sentence for a creature or battle, so the Lurker would have stayed attached
+  to its player. The creature half of 704.5p is now enforced: a creature
+  or battle that is not an Aura, Equipment or Fortification becomes unattached
+  and stays. Reconfigure Equipment creatures are untouched (they are Equipment).
+  The CR text for that sentence was not available offline when this landed, so
+  the paraphrase in the code comment is from memory and flagged for a check.
+- **A cast Curse.** Cast by day, it is an ordinary Aura spell with an "enchant
+  player" target (`Spec.Targets`), announced and re-checked. Cast at night, or
+  put onto the battlefield at night, it enters as the Lurker, which never
+  transformed (decision 5, decision 9) and so is asked nothing.
+- **Snapshots, undo, wire.** Nothing new is stored. A prompt in flight is an
+  `option_pick` and is carried as every one is.
+
+### Cards
+
+Curse of Leeches // Leeching Lurker (Full). Tests:
+`game/attach_transform_test.go` (the creature half of 704.5p, the verb refusing a
+non-Aura, the answer attaching) and `cards/effects/curse_of_leeches_test.go` (cast
+by day, the upkeep drain on the enchanted player only, the Lurker letting go at
+night, the question and its 704.5m hold, the chosen player taking the drain, a
+protected seat not offered, no legal player, two Curses at once).

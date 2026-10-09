@@ -328,6 +328,15 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// A Role token has no enchant clause in the catalog (a token
 		// has no TargetSpec) but is created attached and is as
 		// illegal unattached as any other Aura (CR 704.5m, CR 303.7).
+		//
+		// One exception: an Aura whose controller is being asked where
+		// it goes. "As this permanent transforms into Curse of Leeches,
+		// attach it to a player" leaves the Aura unattached for as
+		// long as the question is open, and nothing is illegal about
+		// that yet (attach_transform.go).
+		if g.attachPromptOpenForLocked(c.InstanceID) {
+			return true
+		}
 		return !c.IsAura() || (TargetSpecFor(catalogKeyOf(c)) == nil && !c.IsRole())
 	}
 	// CR 702.16c-d: a permanent with protection from a quality can't
@@ -377,12 +386,20 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		if spec := TargetSpecFor(catalogKeyOf(c)); spec != nil {
 			return g.specMatchLocked(SourceChooser(c.Controller), spec, c.AttachedTo, false)
 		}
-	} else if !c.HasSubtype("Equipment") && !c.HasSubtype("Fortification") && !c.IsCreature() && !c.IsBattle() {
-		// CR 704.5p — "if any nonbattle, noncreature permanent
-		// that's neither an Aura, an Equipment, nor a Fortification
-		// is attached to an object or player, it becomes unattached
-		// and remains on the battlefield". The rule exists for the
-		// permanent that STOPS being one of those three while
+	} else if !c.HasSubtype("Equipment") && !c.HasSubtype("Fortification") {
+		// CR 704.5p: a battle or creature that is attached to an
+		// object or player becomes unattached and stays on the
+		// battlefield, and so does any other permanent that is neither
+		// an Aura, an Equipment nor a Fortification. (Paraphrased, and
+		// the sentence split is from memory: no copy of the pinned
+		// edition was available when #2586 added the creature half.
+		// Check it against the TXT.) The creature half is Leeching
+		// Lurker: Curse of Leeches turns over into a creature at night
+		// while attached to a player, and the creature must let go. A
+		// creature that is an Aura is the Aura branch above, an
+		// Equipment creature the reconfigure branch below. The
+		// general rule exists for the permanent that STOPS being one
+		// of those three while
 		// attached, which in this catalog means a Song of the
 		// Dryads: "enchanted permanent is a colorless Forest land"
 		// turns an opposing Control Magic or Bonesplitter into a
