@@ -291,12 +291,9 @@ Two engine seams grew to make the ready cards honest:
 - **Mana Drain** — fires at your next **precombat** main phase; a
   Drain cast in your own precombat main waits a turn instead of paying
   out in that turn's postcombat main.
-- **Victimize** — the sacrifice is an additional cost to cast, not a
-  resolution-time action (no sacrifice-then-continue prompt exists).
-  The engine validates targets before it pays the cost, so the
-  sacrificed creature can never be one of the two targets — same as
-  printed. The returned creatures enter untapped and are tapped a beat
-  later.
+- **Victimize** — ~~the sacrifice is an additional cost to cast, not a
+  resolution-time action~~. Closed: the creatures enter tapped together
+  since #1867, and the sacrifice happens on resolution since #2863.
 - **Tireless Provisioner** — always a Treasure, never a Food (no
   resolution-time option prompt for a trigger).
 - **Storm-Kiln Artist** — "cast or **copy**": no spell-copy event

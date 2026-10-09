@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // card is needed for that).
 //
 // Sandbox simplification, declared in full because it is the one
-// that changes how the card plays — Victimize's posture one zone
+// that changes how the card plays — Victimize's old posture one zone
 // over: the discard is modelled as an ADDITIONAL COST TO CAST
 // rather than as an optional resolution-time action. The engine's
 // resolution-time discard prompt is a fixed count with no

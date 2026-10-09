@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with the limit set by that branch — "up to" is the chooser's
 // minimum of zero.
 //
-// Sandbox simplification, the Victimize posture: "Sacrifice a land"
+// Sandbox simplification, Victimize's posture before #2863: "Sacrifice a land"
 // is modelled as an ADDITIONAL COST TO CAST, not a resolution-time
 // action, because no sacrifice-then-continue prompt exists. Every
 // observable difference runs the weaker way — the land is gone even

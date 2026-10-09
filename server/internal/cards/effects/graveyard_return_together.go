@@ -167,3 +167,78 @@ func exiledCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID {
 	}
 	return ids
 }
+
+// ReturnChosenFromGraveyard is "return N <kind> cards from your
+// graveyard to the battlefield" when the cards are CHOSEN as the effect
+// resolves rather than targeted at cast (#2863, ADR 0013 amendment of
+// 2026-10-09): Rise of the Witch-king's "you may return another
+// permanent card", Lich-Knights' Conquest's "return that many creature
+// cards".
+//
+// The candidates are read from the graveyard as it is WHEN THIS RUNS,
+// so a card that arrived earlier in the same resolution is on offer.
+// That is the point of it: put it in the continuation of whatever came
+// first (a sacrifice run's `then`, a SacrificeAllThenForEffect), and
+// the creature just sacrificed is one of the cards that can come back.
+// It is not a target, so nothing is announced at cast and opponents
+// have no pick to respond to.
+//
+// One choose_cards prompt to Player (zero is the resolving effect's
+// controller) over their own graveyard's permanent cards that Match
+// (nil matches every one), bounded by Min and Max. Max <= 0 is "all of
+// them", and the engine clamps Min to what is on offer, so a mandatory
+// "that many" with too few cards takes them all (CR 608.2). No
+// candidate, no prompt. Except leaves one card out of the offer:
+// "another" card. The chosen cards enter together (#1867) under their
+// owner's control, tapped when Tapped is set, and the Zone re-check on
+// submit refuses a card that left the graveyard while the question was
+// open.
+type ReturnChosenFromGraveyard struct {
+	Player   uuid.UUID
+	Question string
+	Match    func(game.Card) bool
+	Except   uuid.UUID
+	Min, Max int
+	Tapped   bool
+}
+
+func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
+	player := r.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	var candidates []uuid.UUID
+	for _, id := range graveyardCardIDs(ctx, player, func(c game.Card) bool {
+		return c.IsPermanent() && !c.IsToken() && (r.Match == nil || r.Match(c))
+	}) {
+		if id != r.Except {
+			candidates = append(candidates, id)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	dest := game.ChooseOntoBattlefield
+	if r.Tapped {
+		dest = game.ChooseOntoBattlefieldTapped
+	}
+	item, tapped := ctx.Item, r.Tapped
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:     player,
+		FromPlayer:  player,
+		Source:      ctx.Source(),
+		Question:    r.Question,
+		Cards:       candidates,
+		Min:         r.Min,
+		Max:         r.Max,
+		Zone:        game.ZoneGraveyard,
+		Destination: dest,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) == 0 {
+				return nil
+			}
+			return ReturnFromGraveyardTogether{Targets: picked, Tapped: tapped}.Apply(NewContext(g, item))
+		},
+	})
+	return nil
+}

@@ -3200,6 +3200,13 @@ var items = []Item{
 		Examples: []string{"Lizard Blades", "Razorfield Ripper", "Lion Sash"},
 	},
 	{
+		Slug: "graveyard-choice-after-a-sacrifice", Name: "Graveyard cards chosen after a sacrifice", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Spells that make you sacrifice and then return cards from your graveyard, with the sacrifice made and the cards chosen as the spell resolves, so the creature just sacrificed can come back.",
+		Rules:    []string{"608.2c", "701.21a"},
+		ADR:      "0013-replacement-effects.md",
+		Examples: []string{"Victimize", "Rise of the Witch-king", "Lich-Knights' Conquest"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

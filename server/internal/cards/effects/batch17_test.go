@@ -371,40 +371,51 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 	mine := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
 	theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
 	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
-	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery", b17RiseOfTheWitchKingOracle, b16TargetCard(rock))
+	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery", b17RiseOfTheWitchKingOracle, nil)
 	passPriorityAroundTable(t, g)
 	if sacrificeChoiceFor(g, me.ID) == nil || sacrificeChoiceFor(g, opp.ID) == nil {
 		t.Fatal("each player with a creature is asked to sacrifice one")
 	}
 	// #1019: "if you sacrificed a creature this way" is about the
-	// SACRIFICE, so nothing comes back while the prompts are open.
-	if g.Battlefield.Contains(rock) {
-		t.Error("the permanent came back before anybody had chosen a creature")
+	// SACRIFICE, so nothing is offered while the prompts are open.
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("the return was offered before anybody had chosen a creature")
 	}
 	answerSacrifice(t, g, me.ID, mine)
-	if g.Battlefield.Contains(rock) {
+	if chooseCardsChoiceFor(g, me.ID) != nil {
 		t.Error("the run waits for every asked seat, not just the controller")
 	}
 	answerSacrifice(t, g, opp.ID, theirs)
+	// #2863: the card is chosen now, from the graveyard as it is after
+	// the sacrifices — the Bear just sacrificed is on offer, the
+	// opponent's is not.
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("the controller chooses the permanent card on resolution")
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 1 {
+		t.Errorf("you MAY return ONE: bounds %d..%d", pick.ChooseMin, pick.ChooseMax)
+	}
+	if !hasID(pick.ChooseCards, rock) || !hasID(pick.ChooseCards, mine) || hasID(pick.ChooseCards, theirs) {
+		t.Errorf("offer %v: want your Sol Ring and your sacrificed Bear, never their Bear", pick.ChooseCards)
+	}
+	answerChooseCards(t, g, me.ID, rock)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(rock) || controllerOf(t, g, rock) != me.ID {
-		t.Error("the picked permanent card returns to the battlefield once the sacrifices have landed")
+		t.Error("the chosen permanent card returns to the battlefield")
 	}
 	if g.Battlefield.Contains(mine) || g.Battlefield.Contains(theirs) {
 		t.Error("the sacrifices happen")
 	}
 
 	// With no creature of your own there is nothing to sacrifice, and
-	// so nothing comes back.
+	// so nothing is offered.
 	rock2 := b17GraveyardCard(me, "Mind Stone", "Artifact", "{2}")
-	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery", b17RiseOfTheWitchKingOracle, b16TargetCard(rock2))
-	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(rock2) {
-		t.Error("no creature sacrificed — no return")
-	}
-	// And it is castable with no pick at all.
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery", b17RiseOfTheWitchKingOracle, nil)
 	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil || g.Battlefield.Contains(rock2) {
+		t.Error("no creature sacrificed — no return")
+	}
 }
 
 // --- the creatures: dies triggers ----------------------------------
