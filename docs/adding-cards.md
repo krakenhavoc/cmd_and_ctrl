@@ -7351,6 +7351,36 @@ Tests set the speed with `g.SetSpeedForTest(player, n)` (it goes through
 the one write and its event) rather than playing turns: see
 `speed_cards_test.go`.
 
+### Rad counters (#2042, CR 728)
+
+The rad counters' own trigger is the engine's (`game/rad_counters.go`):
+at the beginning of a player's precombat main phase they mill one card
+per rad counter, then lose 1 life and remove a counter for each nonland
+card milled. It is on the stack, with no source, controlled by the active
+player. A card only gives the counters, through the helpers in
+`effects/rad_counters.go`:
+
+```go
+playerGetsRadCounters(g, item.Controller, player, 2)  // "target player gets two rad counters"
+eachPlayerGetsRadCounters(g, item.Controller, 4)      // "each player gets four rad counters"
+eachOpponentGetsRadCounters(g, item.Controller, n)    // "each opponent gets …"
+damagedPlayerGetsRadCounters(4)                       // "… deals combat damage to a player, they get four"
+On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mills a nonland card"
+```
+
+- **The giver is the item's controller** (CR 120.3b's "you give"), so a
+  counter replacement such as Vorinclex sees who put them.
+- **"Life loss from radiation"** (CR 728.1a) is the life change the
+  trigger makes. A replacement reads `ev.LifeFromRadiation` on a
+  `RepEventLife`; a trigger reads `ev.FromRadiation` on the landed
+  `EventChangeLife`.
+- **"One or more nonland cards are milled"** (Mirelurk Queen, The Wise
+  Mothman) is a batch trigger, not `ANonlandCardWasMilled`, which fires
+  once per card. Nothing builds that batch yet (#2809).
+
+Tests give counters with `g.AddPlayerCounter(player, game.CounterRad, n)`
+and read `p.Counters[game.CounterRad]`: see `rad_counter_cards_test.go`.
+
 ### Empower Jace and the Jace token (ADR 0139, #2796, CR 701.71)
 
 "Empower Jace N" is one primitive, and it is the whole keyword action:

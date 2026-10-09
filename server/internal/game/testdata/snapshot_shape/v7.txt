@@ -452,6 +452,7 @@ events[].entered_from	string
 events[].entered_from_owner	custom(uuid.UUID)
 events[].error_msg	string
 events[].exhaust	bool
+events[].from_radiation	bool
 events[].kind	string
 events[].label	string
 events[].last_known_all_creature_types	bool
@@ -1453,6 +1454,7 @@ lastKnownStack[].item.trigger.Event.entered_from	string
 lastKnownStack[].item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
+lastKnownStack[].item.trigger.Event.from_radiation	bool
 lastKnownStack[].item.trigger.Event.kind	string
 lastKnownStack[].item.trigger.Event.label	string
 lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
@@ -1939,6 +1941,7 @@ pendingTriggers[].trigger.Event.entered_from	string
 pendingTriggers[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
+pendingTriggers[].trigger.Event.from_radiation	bool
 pendingTriggers[].trigger.Event.kind	string
 pendingTriggers[].trigger.Event.label	string
 pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
@@ -4736,6 +4739,7 @@ stackMeta[].trigger.Event.entered_from	string
 stackMeta[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool
+stackMeta[].trigger.Event.from_radiation	bool
 stackMeta[].trigger.Event.kind	string
 stackMeta[].trigger.Event.label	string
 stackMeta[].trigger.Event.last_known_all_creature_types	bool
