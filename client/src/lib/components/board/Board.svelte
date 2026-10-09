@@ -3762,6 +3762,7 @@
     suggestedMax={xPromptCard?.additional_cost?.blight_x
       ? Math.min(suggestedX, xPromptCard.additional_cost.blight_x_max ?? 0)
       : suggestedX}
+    xCeiling={xPromptCard?.x_max}
     costLabel={xPromptCard
       ? alternativeCostByKey(xPromptCard, xPromptChoices.altCost)?.mana_cost
       : undefined}

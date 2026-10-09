@@ -413,6 +413,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		CantCast: "Each player can't cast more than one spell each turn.",
 		// #1389: the viewer's own exile price list.
 		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Energy: 1, Printed: true}},
+		// #2581: the viewer's own printed X ceiling.
+		XMax: new(int),
 	}
 }
 
@@ -810,6 +812,8 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// #1389: what the asking seat would be charged. A cost modifier
 	// may be scoped to one player, so it is theirs alone.
 	"CastPrices": surfacePrivate,
+	// #2581: a count read off the asking seat's board.
+	"XMax": surfacePrivate,
 	// #1169: cost-shaped facts about the card. Public on a public
 	// pile — an escape offer is priced by a graveyard everybody can
 	// count — and not on a hand card the viewer was shown one of.

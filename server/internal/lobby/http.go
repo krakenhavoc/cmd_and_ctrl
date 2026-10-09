@@ -2061,7 +2061,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// `cost` stays the printed string, as on the cast branch: the
 		// modifiers are generic, and plan / missing carry the total.
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			price.Ability.Cost.Mana, spend, 0, 0, w)
+			price.Ability.Cost.Mana, spend, 0, 0, nil, w)
 	}
 	// #696: the whole of the cast's price, from the engine's one
 	// pricer. The alternative cost claimed at announce, a granted
@@ -2121,8 +2121,14 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// — CastPrice.DelveBudget, the one number the validator refuses a
 	// longer delve_ids list against — so the client's picker is capped
 	// by the server and never works a budget out of a mana string.
+	// #2581: the spell's printed X ceiling, read now for this caster —
+	// the count CastSpell refuses above — so the picker stops at it.
+	var xMax *int
+	if ceiling, ok := g.SpellXCeiling(p.PlayerID, game.CatalogKey(price.Card)); ok {
+		xMax = &ceiling
+	}
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-		price.Paid, spend, game.WantedManaSourcesFor(price.Card), price.DelveBudget, w)
+		price.Paid, spend, game.WantedManaSourcesFor(price.Card), price.DelveBudget, xMax, w)
 }
 
 // castParamsFromPreviewQuery reads the announce-time half of the cast
@@ -2339,6 +2345,7 @@ func writeAutoTapPreview(
 	spend game.ManaSpendContext,
 	prefer game.ManaSourceKinds,
 	delveBudget int,
+	xMax *int,
 	w http.ResponseWriter,
 ) error {
 	// ADR 0118 §1: the plan for what the floating pool is missing, the
@@ -2382,8 +2389,13 @@ func writeAutoTapPreview(
 		// exile to delve (ADR 0100 §4). Absent for a card with no delve
 		// and on the ability branch.
 		DelveBudget int `json:"delve_budget,omitempty"`
+		// XMax is the spell's printed "X can't be greater than
+		// <count>", read now for the caster (#2581) — the largest X
+		// the cast may announce. Absent for a card with no ceiling and
+		// on the ability branch; present-and-0 means only X = 0.
+		XMax *int `json:"x_max,omitempty"`
 	}
-	body := response{OK: ok, Cost: costStr, DelveBudget: delveBudget}
+	body := response{OK: ok, Cost: costStr, DelveBudget: delveBudget, XMax: xMax}
 	if ok {
 		body.Plan = make([]string, len(plan))
 		body.Sources = make([]source, len(plan))
