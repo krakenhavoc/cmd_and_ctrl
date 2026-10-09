@@ -66,7 +66,8 @@ type Purpose struct {
 	SelfMillTutor int
 	// Tokens is how many tokens it creates for its controller: Big
 	// Score's 2 Treasures. Tokens it gives to another player (Generous
-	// Gift's Elephant) are not counted.
+	// Gift's Elephant) are not counted here; a removal's gift to its
+	// target's controller is that entry's TargetPurpose.Returns.
 	Tokens int
 	// Energy is how many energy counters it gives its controller ("you
 	// get {E}{E}" is 2; ADR 0129 §7). An amount counted at resolution
@@ -174,11 +175,48 @@ type TargetPurpose struct {
 	LifeLoss int
 	// Damage is the damage dealt to the target: Lightning Bolt 3.
 	Damage int
+	// Returns is what the target's CONTROLLER is given when the spell
+	// or ability removes the target (#2679): Rapid Hybridization's 3/3
+	// Frog Lizard, Swords to Plowshares' life, Path to Exile's basic
+	// land. Declared on a clause that targets a permanent; the zero
+	// value is "nothing comes back".
+	Returns TargetReturn
 }
+
+// TargetReturn is what a removal spell hands the controller of the
+// permanent it removes, as printed amounts (#2679). A removal that
+// gives back a creature token, life or a land is worth less than the
+// same removal without it, and the bot cannot read which is which
+// without it: the gift is a closure in the card file.
+type TargetReturn struct {
+	// CreatureTokens is the creature tokens the target's controller
+	// creates: Rapid Hybridization, Pongify, Beast Within and Generous
+	// Gift 1, Stroke of Midnight 1.
+	CreatureTokens int
+	// TokenPower and TokenToughness are each such token's printed
+	// power and toughness: 3/3 for the four above, 1/1 for Stroke of
+	// Midnight.
+	TokenPower     int
+	TokenToughness int
+	// LifeEqualToPower is set when the target's controller gains life
+	// equal to the target's power: Swords to Plowshares. The amount is
+	// counted at resolution, so it is a flag rather than a number; the
+	// reader takes the power the target shows.
+	LifeEqualToPower bool
+	// Lands is the land cards the target's controller may put onto the
+	// battlefield: Path to Exile and Assassin's Trophy 1.
+	Lands int
+	// LandsUntapped is how many of those Lands enter untapped:
+	// Assassin's Trophy 1, Path to Exile 0. Never more than Lands.
+	LandsUntapped int
+}
+
+// IsZero reports whether nothing comes back.
+func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0
+	return !t.HasPlayerAmount() && t.Damage == 0 && t.Returns.IsZero()
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a

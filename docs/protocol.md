@@ -2939,6 +2939,17 @@ opponent.
 | `life_gain` | life the target player gains | |
 | `life_loss` | life the target player loses (not damage) | Sign in Blood 2 |
 | `damage` | damage dealt to the target, player or permanent | Lightning Bolt 3 |
+| `returns` | what the target's **controller** is given when the target is removed (#2679), an object below; absent when nothing comes back | Rapid Hybridization's 3/3 |
+
+`returns` holds printed amounts, each omitted when zero:
+
+| Field | Meaning | Example |
+|---|---|---|
+| `creature_tokens` | creature tokens the target's controller creates | Rapid Hybridization, Beast Within, Stroke of Midnight 1 |
+| `token_power`, `token_toughness` | each such token's printed power and toughness | 3 and 3; Stroke of Midnight 1 and 1 |
+| `life_equal_to_power` | the target's controller gains life equal to the target's power, counted at resolution | Swords to Plowshares |
+| `lands` | land cards the target's controller may put onto the battlefield | Path to Exile, Assassin's Trophy 1 |
+| `lands_untapped` | how many of those enter untapped | Assassin's Trophy 1 |
 
 Every amount but `slot` is omitted when zero, and `targets` is absent
 when there are none. A clause with no entry says nothing about its
@@ -2946,7 +2957,9 @@ target. A `purpose` holding only `targets` is still sent. The server
 refuses at boot an entry whose `slot` is not one of its statement's
 clauses, one that names a slot twice or says nothing, a player amount on
 a clause that cannot target a player, and `damage` on a clause that can
-target neither a player nor a permanent. An amount is the printed
+target neither a player nor a permanent, and a `returns` on a clause
+that cannot target a permanent, creature tokens with no printed
+toughness, or more untapped lands than lands. An amount is the printed
 number: Blaze's X declares no entry. `damage_to_creature` above stays
 for a row whose target is picked later, where no move names it.
 

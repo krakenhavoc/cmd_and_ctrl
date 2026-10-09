@@ -253,7 +253,11 @@ func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 //   - a player amount (draws, discards, tokens, life gained or lost)
 //     on a clause that cannot target a player;
 //   - damage on a clause that can target neither a player nor a
-//     permanent. The clause's card predicate is a closure, so "target
+//     permanent;
+//   - a return to the target's controller (#2679) on a clause that
+//     cannot target a permanent, a negative one, creature tokens with
+//     no printed toughness or a size with no tokens, or more untapped
+//     lands than lands. The clause's card predicate is a closure, so "target
 //     artifact" is a permanent clause to this check; the card's text
 //     is the rest of the review.
 func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSpec, known bool) {
@@ -292,6 +296,20 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		if e.Damage != 0 && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 			fail(fmt.Sprintf("deals damage to slot %d, whose clause %q can target neither a player nor a permanent", e.Slot, clause.Label))
 		}
+		if r := e.Returns; !r.IsZero() {
+			if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+				fail(fmt.Sprintf("returns something to the controller of slot %d, whose clause %q cannot target a permanent", e.Slot, clause.Label))
+			}
+			if r.CreatureTokens < 0 || r.TokenPower < 0 || r.TokenToughness < 0 || r.Lands < 0 || r.LandsUntapped < 0 {
+				fail(fmt.Sprintf("has a negative return on slot %d", e.Slot))
+			}
+			if (r.CreatureTokens == 0) != (r.TokenPower == 0 && r.TokenToughness == 0) || (r.CreatureTokens > 0 && r.TokenToughness == 0) {
+				fail(fmt.Sprintf("returns creature tokens on slot %d without a printed toughness, or a token size with no tokens", e.Slot))
+			}
+			if r.LandsUntapped > r.Lands {
+				fail(fmt.Sprintf("returns more untapped lands than lands on slot %d", e.Slot))
+			}
+		}
 	}
 }
 
@@ -302,6 +320,14 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 //	Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
 func ForTargets(entries ...game.TargetPurpose) game.Purpose {
 	return game.Purpose{Targets: game.ForTargets(entries...)}
+}
+
+// RemovalReturning is the target entry for a removal whose target's
+// controller is given something back (#2679): Rapid Hybridization is
+// ForTargets(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1,
+// TokenPower: 3, TokenToughness: 3})).
+func RemovalReturning(slot int, r game.TargetReturn) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, Returns: r}
 }
 
 // DamageToTarget is the target entry for "deals n damage to" the pick

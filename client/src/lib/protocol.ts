@@ -2902,6 +2902,20 @@ export interface TargetPurposeView {
   life_gain?: number;
   life_loss?: number;
   damage?: number;
+  // #2679: what the target's controller is given when it is removed.
+  returns?: TargetReturnView;
+}
+
+// TargetReturnView is what a removal spell hands the controller of the
+// permanent it removes (#2679). Bot data; every field is absent when
+// zero.
+export interface TargetReturnView {
+  creature_tokens?: number;
+  token_power?: number;
+  token_toughness?: number;
+  life_equal_to_power?: boolean;
+  lands?: number;
+  lands_untapped?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.

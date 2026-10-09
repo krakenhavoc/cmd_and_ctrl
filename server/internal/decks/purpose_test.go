@@ -68,32 +68,27 @@ var valueIsTheirTarget = map[string]string{
 	"Fierce Guardianship":       "counterspell",
 	"Absorb":                    "counterspell",
 	"Pyroblast":                 "counterspell or removal, by mode",
-	"Swords to Plowshares":      "removal",
-	"Path to Exile":             "removal",
-	"Doom Blade":                "removal",
-	"Go for the Throat":         "removal",
-	"Infernal Grasp":            "removal",
-	"Feed the Swarm":            "removal",
-	"Withering Torment":         "removal",
-	"Anguished Unmaking":        "removal",
-	"Mortify":                   "removal",
-	"Despark":                   "removal",
-	"Generous Gift":             "removal",
-	"Stroke of Midnight":        "removal",
-	"Murder":                    "removal",
-	"Hero's Downfall":           "removal",
-	"Utter End":                 "removal",
-	"Void Rend":                 "removal",
-	"Chaos Warp":                "removal",
-	"Rapid Hybridization":       "removal",
-	"Pongify":                   "removal",
-	"Beast Within":              "removal",
-	"Krosan Grip":               "removal",
-	"Ashes to Ashes":            "removal",
-	"Reanimate":                 "reanimation of the target",
-	"Zombify":                   "reanimation of the target",
-	"Dread Return":              "reanimation of the target",
-	"Stitch Together":           "reanimation of the target, or its return to hand",
+	// Chaos Warp gives its target's owner a random permanent from the
+	// top of their library, which no printed amount says (#2679).
+	"Doom Blade":         "removal",
+	"Go for the Throat":  "removal",
+	"Infernal Grasp":     "removal",
+	"Feed the Swarm":     "removal",
+	"Withering Torment":  "removal",
+	"Anguished Unmaking": "removal",
+	"Mortify":            "removal",
+	"Despark":            "removal",
+	"Murder":             "removal",
+	"Hero's Downfall":    "removal",
+	"Utter End":          "removal",
+	"Void Rend":          "removal",
+	"Chaos Warp":         "removal",
+	"Krosan Grip":        "removal",
+	"Ashes to Ashes":     "removal",
+	"Reanimate":          "reanimation of the target",
+	"Zombify":            "reanimation of the target",
+	"Dread Return":       "reanimation of the target",
+	"Stitch Together":    "reanimation of the target, or its return to hand",
 }
 
 // noPrintedAmount is the curated spells that do something in a priced
@@ -122,16 +117,25 @@ var noPrintedAmount = map[string]string{
 // answer 5, first half): a gift that is good or bad by whom it is
 // aimed at, and burn, which kills or does not by how much it deals.
 // Each declares a target entry (Purpose.Targets) on the slot named.
-// Blaze cannot, and says why on noPrintedAmount.
+// Blaze cannot, and says why on noPrintedAmount. Removal that hands its
+// target's controller something back declares that as the entry's
+// Returns (#2679).
 var curatedTargetPurposes = map[string]string{
-	"Prismari Command": "modes",
-	"Sign in Blood":    "card",
-	"Lightning Bolt":   "card",
-	"Shock":            "card",
-	"Fiery Temper":     "card",
-	"Abrade":           "modes",
-	"Izzet Charm":      "modes",
-	"Arc Trail":        "card",
+	"Prismari Command":     "modes",
+	"Sign in Blood":        "card",
+	"Lightning Bolt":       "card",
+	"Shock":                "card",
+	"Fiery Temper":         "card",
+	"Abrade":               "modes",
+	"Izzet Charm":          "modes",
+	"Arc Trail":            "card",
+	"Swords to Plowshares": "card",
+	"Path to Exile":        "card",
+	"Generous Gift":        "card",
+	"Stroke of Midnight":   "card",
+	"Rapid Hybridization":  "card",
+	"Pongify":              "card",
+	"Beast Within":         "card",
 }
 
 // targetEntriesIn counts the target entries a spell declares in `slot`:

@@ -179,6 +179,16 @@ type Config struct {
 	// DamageChip is the share of a creature's removal value that damage
 	// which does not kill it is worth (owner answer 3: none).
 	DamageChip float64
+	// NetRemoval prices removal net of what its target's controller
+	// gets back (#2679, net_removal.go). An opposing commander is priced
+	// at the tax and one turn of its body, never more than its value,
+	// because it returns from the command zone (CR 903.8, 903.9a,
+	// 903.9b). A target entry's declared `returns` (a creature token,
+	// life equal to the target's power, a land) is valued as its
+	// controller would value it and taken off the removal's price, on
+	// the removal's own scale. Off (the zero value) prices both as plain
+	// removal.
+	NetRemoval bool
 	// TutorWeight is a card searched out to hand or the top of the
 	// library, in cards drawn: above one, because the bot picks it.
 	TutorWeight float64
@@ -517,6 +527,7 @@ func DefaultConfig() Config {
 		PriceTargetPurposes: true,
 		DamageByLethality:   true,
 		DamageChip:          0.00,
+		NetRemoval:          true,
 		TutorWeight:         1.00,
 		SelfMillWeight:      0.50,
 		DiscardWeight:       0.60,
@@ -638,6 +649,8 @@ func BaselineConfig() Config {
 	c.PriceTargetPurposes = false
 	c.DamageByLethality = false
 	c.DamageChip = 0
+	// #2679: removal net of what its target's controller gets back.
+	c.NetRemoval = false
 	c.TutorWeight = 0
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0

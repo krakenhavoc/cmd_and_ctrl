@@ -100,6 +100,21 @@ type TargetPurposeView struct {
 	LifeGain int `json:"life_gain,omitempty"`
 	LifeLoss int `json:"life_loss,omitempty"`
 	Damage   int `json:"damage,omitempty"`
+	// Returns is what the target's controller is given when the target
+	// is removed (#2679). Absent when nothing comes back.
+	Returns *TargetReturnView `json:"returns,omitempty"`
+}
+
+// TargetReturnView is game.TargetReturn on the wire: what a removal
+// spell hands the controller of the permanent it removes (#2679). Every
+// field is omitted when zero.
+type TargetReturnView struct {
+	CreatureTokens   int  `json:"creature_tokens,omitempty"`
+	TokenPower       int  `json:"token_power,omitempty"`
+	TokenToughness   int  `json:"token_toughness,omitempty"`
+	LifeEqualToPower bool `json:"life_equal_to_power,omitempty"`
+	Lands            int  `json:"lands,omitempty"`
+	LandsUntapped    int  `json:"lands_untapped,omitempty"`
 }
 
 // PumpView is game.Pump on the wire: a self pump until end of turn.
@@ -192,6 +207,12 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
 				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage,
+			}
+			if r := t.Returns; !r.IsZero() {
+				out[i].Returns = &TargetReturnView{
+					CreatureTokens: r.CreatureTokens, TokenPower: r.TokenPower, TokenToughness: r.TokenToughness,
+					LifeEqualToPower: r.LifeEqualToPower, Lands: r.Lands, LandsUntapped: r.LandsUntapped,
+				}
 			}
 		}
 		v.Targets = &out
