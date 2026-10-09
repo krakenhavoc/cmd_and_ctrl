@@ -153,6 +153,7 @@ func isRed(c color.Color) bool  { r, _, b, _ := c.RGBA(); return r>>8 > 150 && b
 func isBlue(c color.Color) bool { r, _, b, _ := c.RGBA(); return b>>8 > 150 && r>>8 < 100 }
 
 func TestFitCropsScalesDownAndSwapsInANewFile(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, dir, user := newService(t, nil)
 	ctx := context.Background()
 	orig, err := s.SetFromBytes(ctx, user, 1, bandedMat(t, 2560, 1800, 900))
@@ -198,6 +199,7 @@ func TestFitCropsScalesDownAndSwapsInANewFile(t *testing.T) {
 }
 
 func TestFitHonoursWhereTheCropWindowSits(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, _, user := newService(t, nil)
 	ctx := context.Background()
 	if _, err := s.SetFromBytes(ctx, user, 1, bandedMat(t, 2560, 1800, 900)); err != nil {
@@ -217,6 +219,7 @@ func TestFitHonoursWhereTheCropWindowSits(t *testing.T) {
 }
 
 func TestFitNeverUpscalesASmallImage(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, _, user := newService(t, nil)
 	ctx := context.Background()
 	if _, err := s.SetFromBytes(ctx, user, 2, mat(t, 1000, 2000, color.RGBA{9, 99, 9, 255})); err != nil {
@@ -236,6 +239,7 @@ func TestFitNeverUpscalesASmallImage(t *testing.T) {
 }
 
 func TestFitRefusesACropOutsideTheImage(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, dir, user := newService(t, nil)
 	ctx := context.Background()
 	orig, err := s.SetFromBytes(ctx, user, 1, bandedMat(t, 2560, 1800, 900))
@@ -257,6 +261,7 @@ func TestFitRefusesACropOutsideTheImage(t *testing.T) {
 }
 
 func TestFitOnAnEmptySlotAndOnAnAlreadyFittingMat(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, _, user := newService(t, nil)
 	ctx := context.Background()
 	if _, err := s.Fit(ctx, user, 3, 0, 0); !errors.Is(err, ErrNoSlot) {
@@ -281,6 +286,7 @@ func TestFitOnAnEmptySlotAndOnAnAlreadyFittingMat(t *testing.T) {
 }
 
 func TestFitLeavesTheActivePointerAloneWhenTheSlotIsNotActive(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, _, user := newService(t, nil)
 	ctx := context.Background()
 	one, _ := s.SetFromBytes(ctx, user, 1, mat(t, 2400, 1400, color.White))
@@ -297,6 +303,7 @@ func TestFitLeavesTheActivePointerAloneWhenTheSlotIsNotActive(t *testing.T) {
 }
 
 func TestFitThatLosesARaceDropsItsFileAndSaysSo(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	s, dir, user := newService(t, nil)
 	ctx := context.Background()
 	orig, err := s.SetFromBytes(ctx, user, 1, bandedMat(t, 2560, 1800, 900))
@@ -326,6 +333,7 @@ func TestFitThatLosesARaceDropsItsFileAndSaysSo(t *testing.T) {
 }
 
 func TestFitReadsHeaderSizeForARowWithNoStoredDimensions(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race; own service, db and dir
 	// A row the migration backfilled has NULL width and height.
 	s, _, user := newService(t, nil)
 	ctx := context.Background()

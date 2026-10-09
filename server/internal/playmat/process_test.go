@@ -129,6 +129,7 @@ func TestNormalizeRefusesBombDimensionsFromTheHeader(t *testing.T) {
 }
 
 func TestNormalizeShrinksTheLongEdge(t *testing.T) {
+	t.Parallel() // #2766: a full-size image under -race, and nothing shared
 	n, err := Normalize(pngBytes(t, solid(3200, 1600, color.White)))
 	if err != nil {
 		t.Fatal(err)

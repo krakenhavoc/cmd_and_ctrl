@@ -204,87 +204,11 @@ jobs:
           fi
           df -h / /tmp | sed 's/^/after: /'
 
-      - name: Server — gofmt check
-        working-directory: server
-        run: |
-          unformatted=$(gofmt -s -l .)
-          if [ -n "$unformatted" ]; then
-            echo "These files are not gofmt-clean:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: Server — vet
-        working-directory: server
-        run: go vet ./...
-
-      - name: Server — lint
-        working-directory: server
-        # golangci-lint v2.14.0 via `go run` (see server/Makefile): the
-        # repo's .golangci.yml, with errcheck and unparam excluded in
-        # test files. Wired in by #582 once the tree was clean under it.
-        # It runs on the job's own Go 1.27 (its floor is 1.26), so the
-        # GOTOOLCHAIN=auto this step once needed is gone (ADR 0122 §1.1)
-        # and lint, vet, test and build all use one toolchain.
-        run: make lint
-
-  server-test:
-    needs: changes
-    if: needs.changes.outputs.server == 'true'
-    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
-    # Explicit rather than relying on the workflow-level default above,
-    # so it stays true if that default ever changes. Discussion #1231
-    # review point 2 (Luke, 2026-09-23): the `contents: write` this job
-    # used to carry (#1247) was broader than the one thing it existed
-    # for (pushing the census refresh), and it applied to every run of
-    # this job, including same-repository PR runs that never push
-    # anything. Publication now lives in its own job, `census-publish`,
-    # gated to push events on develop/main and holding the only write
-    # permission in this workflow. Ordinary CI stays read-only.
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - *setup-go
-      - *free-disk
-
-      # Discussion #1231 P1a: the generated catalog census block in
-      # docs/decklists/card-coverage-roadmap.md carries absolute counts
-      # that move under every merged card PR. Letting each PR
-      # regenerate the block itself was the reason nearly every rebase
-      # in the card-batch queue happened -- two PRs branch off the same
-      # develop commit, each runs `-update` before opening, each lands
-      # a different plausible total, and whichever merges second
-      # conflicts on these exact two lines even though the two PRs
-      # never touched the same card (14 of develop's 20 commits in one
-      # week touched only this block).
-      #
-      # The fix: only a push refreshes it, never a PR. This step runs
-      # the same `-update` a developer would run by hand, gated to
-      # `github.event_name == 'push'` so the tree is fresh BEFORE
-      # "Server -- test" below enforces it (see CENSUS_ENFORCE there)
-      # and before "Census -- commit refresh" pushes the result back
-      # at the end of the job. -run scopes this to the one test that
-      # owns the block; this package's OTHER -update consumer -- the
-      # exact-clone baseline in clones_test.go -- is a separate,
-      # unrelated concern and must not be regenerated here.
-      #
-      # #1461: the Closed seams list in docs/engine-seams.md is the same
-      # kind of block (generated from docs/engine-seams/closed/, one
-      # fragment per PR) and is refreshed here for the same reason, so
-      # CENSUS_ENFORCE=1 below judges it fresh too.
-      - name: Census — refresh
-        if: github.event_name == 'push'
-        working-directory: server
-        run: |
-          go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update
-          go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed
-
-      # The other half of the same contract, for a pull request instead
-      # of a push: a PR is not expected to carry today's numbers
-      # (develop refreshes them on its own next push, above), but it
+      # The other half of server-test's "Census -- refresh", for a pull
+      # request instead of a push. It lives here, not in server-test, so
+      # it runs once rather than once per shard (#2766). A PR is not
+      # expected to carry today's numbers (develop refreshes them on its
+      # own next push, in server-test), but it
       # also must not carry a regeneration of its OWN -- that is
       # exactly the two-PRs-collide failure mode Discussion #1231 was
       # filed over. This diffs only the generated block, not the whole
@@ -318,6 +242,135 @@ jobs:
           fi
           exit 0
 
+      - name: Server — gofmt check
+        working-directory: server
+        run: |
+          unformatted=$(gofmt -s -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Server — vet
+        working-directory: server
+        run: go vet ./...
+
+      - name: Server — lint
+        working-directory: server
+        # golangci-lint v2.14.0 via `go run` (see server/Makefile): the
+        # repo's .golangci.yml, with errcheck and unparam excluded in
+        # test files. Wired in by #582 once the tree was clean under it.
+        # It runs on the job's own Go 1.27 (its floor is 1.26), so the
+        # GOTOOLCHAIN=auto this step once needed is gone (ADR 0122 §1.1)
+        # and lint, vet, test and build all use one toolchain.
+        run: make lint
+
+  # Sharded (#2766). One `go test ./...` lasted as long as its slowest
+  # package (internal/game, ~8.5 min under -race on a 4-core runner),
+  # ~14 min in all. Each shard is now its own job on its own runner,
+  # with the same flags. scripts/ci-test-shard.sh decides what a shard
+  # runs: the heavy packages are pinned to shards of their own by
+  # measured time, and every other package -- including any added later
+  # -- falls into `rest` from `go list ./...` at run time. The matrix
+  # below must list the script's shards (`--names`) in its order;
+  # TestCITestShardsCoverEveryPackageOnce (internal/docsguard) fails if
+  # it does not, or if the shards' union is not exactly `go list ./...`.
+  # To rebalance, edit PINNED in the script, not this job.
+  #
+  # cmdctrl-ci reads `needs.server-test.result`, which for a matrix job
+  # is `failure` if any shard failed, so one red shard fails the gate.
+  server-test:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    name: server-test (${{ matrix.shard }})
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    strategy:
+      # Every shard reports, so one failure does not hide another.
+      fail-fast: false
+      matrix:
+        shard: [game, effects, lobby, rest]
+    # Explicit rather than relying on the workflow-level default above,
+    # so it stays true if that default ever changes. Discussion #1231
+    # review point 2 (Luke, 2026-09-23): the `contents: write` this job
+    # used to carry (#1247) was broader than the one thing it existed
+    # for (pushing the census refresh), and it applied to every run of
+    # this job, including same-repository PR runs that never push
+    # anything. Publication now lives in its own job, `census-publish`,
+    # gated to push events on develop/main and holding the only write
+    # permission in this workflow. Ordinary CI stays read-only.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - *setup-go
+      - *free-disk
+
+      # The packages this shard runs, from go list ./... (see the job's
+      # comment). Printed so a run says what it tested.
+      - name: Server — pick this shard's packages
+        id: shard
+        working-directory: server
+        run: |
+          pkgs=$(../scripts/ci-test-shard.sh "${{ matrix.shard }}")
+          echo "$pkgs"
+          {
+            echo "packages=$(echo $pkgs)"
+            if grep -qx 'github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/coverage' <<<"$pkgs"; then
+              echo "coverage=true"
+            fi
+            if grep -qx 'github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap' <<<"$pkgs"; then
+              echo "roadmap=true"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
+      # Discussion #1231 P1a: the generated catalog census block in
+      # docs/decklists/card-coverage-roadmap.md carries absolute counts
+      # that move under every merged card PR. Letting each PR
+      # regenerate the block itself was the reason nearly every rebase
+      # in the card-batch queue happened -- two PRs branch off the same
+      # develop commit, each runs `-update` before opening, each lands
+      # a different plausible total, and whichever merges second
+      # conflicts on these exact two lines even though the two PRs
+      # never touched the same card (14 of develop's 20 commits in one
+      # week touched only this block).
+      #
+      # The fix: only a push refreshes it, never a PR. This step runs
+      # the same `-update` a developer would run by hand, gated to
+      # `github.event_name == 'push'` so the tree is fresh BEFORE
+      # "Server -- test" below enforces it (see CENSUS_ENFORCE there)
+      # and before "Census -- commit refresh" pushes the result back
+      # at the end of the job. -run scopes this to the one test that
+      # owns the block; this package's OTHER -update consumer -- the
+      # exact-clone baseline in clones_test.go -- is a separate,
+      # unrelated concern and must not be regenerated here.
+      #
+      # #1461: the Closed seams list in docs/engine-seams.md is the same
+      # kind of block (generated from docs/engine-seams/closed/, one
+      # fragment per PR) and is refreshed here for the same reason, so
+      # CENSUS_ENFORCE=1 below judges it fresh too.
+      #
+      # Sharded (#2766): each refresh runs once per push, in the shard
+      # that tests its package, before that shard's "Server -- test".
+      # Only those two packages read the generated blocks, so no other
+      # shard needs the refreshed tree. census-publish regenerates the
+      # blocks itself from its own checkout; it reads nothing from here.
+      - name: Census — refresh
+        if: github.event_name == 'push' && (steps.shard.outputs.coverage == 'true' || steps.shard.outputs.roadmap == 'true')
+        working-directory: server
+        env:
+          COVERAGE: ${{ steps.shard.outputs.coverage }}
+          ROADMAP: ${{ steps.shard.outputs.roadmap }}
+        run: |
+          if [ "$COVERAGE" = true ]; then
+            go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update
+          fi
+          if [ "$ROADMAP" = true ]; then
+            go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed
+          fi
+
       - name: Server — test
         working-directory: server
         # -timeout 30m, not Go's 10m default. internal/aiseat runs whole
@@ -341,9 +394,14 @@ jobs:
         # PR, workflow_dispatch, merge_group) this is the empty string,
         # which census_test.go treats the same as unset: skip a stale
         # block instead of failing it (Discussion #1231).
+        #
+        # Sharded (#2766): same flags, this shard's packages instead of
+        # ./... (the "pick" step above). Unquoted on purpose: one word
+        # per package.
         env:
           CENSUS_ENFORCE: ${{ github.event_name == 'push' && '1' || '' }}
-        run: go test -race -cover -timeout 30m ./...
+          PACKAGES: ${{ steps.shard.outputs.packages }}
+        run: go test -race -cover -timeout 30m $PACKAGES
 
       # The commit-and-push half of this used to live here (Discussion
       # #1231 P1a / #1247: "Census -- commit refresh"). Luke's review

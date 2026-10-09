@@ -146,6 +146,10 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			// Parallel (#2766): each case is its own lockstep game, and
+			// the digest it pins is the proof that a neighbour changes
+			// nothing.
+			t.Parallel()
 			res, lines := playLogged(t, c.cfg)
 			if res.Stalled {
 				t.Fatalf("the game stalled:\n%s", res.StallDump)

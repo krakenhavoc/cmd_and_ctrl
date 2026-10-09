@@ -46,7 +46,8 @@ than on the live table.
 That is why a push to `develop` runs CI again even though its PR
 passed: it is the first run that tests the merged tree. It does not
 hold up the preview, though. `ci-cd.yml` runs `build`, `server-check`,
-`server-test` and `client` as parallel jobs, `cmdctrl-cd-dev` deploys
+`server-test` (four shards, one runner each, #2766) and `client` as
+parallel jobs, `cmdctrl-cd-dev` deploys
 as soon as `build` is done, and the tests finish behind it. A push to
 `main` waits for all of CI (`cmdctrl-cd-prod` needs `cmdctrl-ci`).
 On a PR, `changes` skips the Go jobs when only `client/` or

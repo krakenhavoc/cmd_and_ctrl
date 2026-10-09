@@ -392,6 +392,11 @@ func TestEveryCarriedFieldSurvivesTheSnapshot(t *testing.T) {
 				continue
 			}
 			t.Run(key, func(t *testing.T) {
+				// Parallel (#2766): each subtest builds, captures and
+				// restores its own game, its carriedFixture entry is
+				// used by this key alone, and the race detector checks
+				// the rest. Run serially it was half the package's time.
+				t.Parallel()
 				g := newRestorableGame(t)
 				enrich(t, g)
 
