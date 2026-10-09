@@ -160,9 +160,13 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 	// The four declared skips must stay out until their seam lands:
 	// a put-a-card-from-hand-onto-the-battlefield prompt (Walking
 	// Atlas, Elvish Piper), a counter-removal cost on an ability that
-	// MOVES a counter rather than spending it (Power Conduit, Staff of
-	// the Storyteller), and an opponent's three-way choice at
-	// resolution (Master of Ceremonies).
+	// MOVES a counter rather than spending it (Power Conduit), and an
+	// opponent's three-way choice at resolution (Master of Ceremonies).
+	//
+	// Staff of the Storyteller came off this list in slice
+	// fra-reprint-b: its counter is spent ("Remove a story counter:
+	// Draw a card"), which RemoveCountersFromThis already pays, so it
+	// was never the moving-a-counter shape.
 	//
 	// Ramos, Dragon Engine came off this list in #789, which gave a
 	// MANA ability a counter cost — see ramos_dragon_engine.go. It was
@@ -175,7 +179,6 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 		"855a4837-7fc8-4b97-afbd-daa88e322c89": "Walking Atlas",
 		"872ef617-7cdb-4a7a-85f5-efc9e12bece5": "Elvish Piper",
 		"2e358f7e-c282-4b92-8255-1436c99cda49": "Power Conduit",
-		"0c4e2c90-c17b-42cc-b4d7-cf75970fbe90": "Staff of the Storyteller",
 		"18ed0c8a-db8f-4247-87c4-544b833f01bd": "Master of Ceremonies",
 	} {
 		if _, ok := Lookup(oracle); ok {
