@@ -1564,7 +1564,7 @@ var items = []Item{
 		Rules:       []string{"606.4", "107.3"},
 		Issue:       1944,
 		Tracked:     "#1944 (found landing ADR 0108 PR 1, #1886)",
-		Waiting:     []string{"Chandra, Awakened Inferno", "Jeska, Thrice Reborn"},
+		Waiting:     []string{"Chandra, Awakened Inferno", "Jeska, Thrice Reborn", "Chandra, Chill of Compliance"},
 		EngineNotes: "cost: `game.AbilityCost.Loyalty` is a fixed `*int`, so no X is announced for a loyalty ability (Ugin, the Spirit Dragon omits its −X for the same reason). Chandra's −X rider (\"if a permanent dealt damage this way would die this turn, exile it instead\") is ADR 0108 PR 1's `ExileIfDealtDamageWouldDie`; her +2 emblem for each opponent and her −3 look expressible. Jeska, Thrice Reborn's 0 (\"until your next turn, if that creature would deal combat damage to one of your opponents, it deals triple that damage\") is ADR 0108 §3's `multiplyDamage` pinned to the creature, and her entry count is the sum of `Player.CommanderCasts`; her −X (\"X damage to each of up to three targets\") is this seam, and Partner is not supported either.",
 	},
 	{
