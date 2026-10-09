@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"fmt"
+	"sort"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -383,4 +386,138 @@ func viciousVerseResolve(item *game.StackItem, ctx *Context) error {
 		}
 	}
 	return nil
+}
+
+// rfExileTargetThenRevealCreatureOrPlaneswalker is the shared body of
+// Jace, Multiverse Architect's −3 and Identity Echo's ability:
+//
+//	"Exile [another] target creature or planeswalker you control. Reveal
+//	 cards from the top of your library until you reveal a creature or
+//	 planeswalker card. Put that card onto the battlefield and the rest
+//	 on the bottom of your library in a random order."
+//
+// The reveal is the exile's continuation, not the next line: the exile
+// opens the CR 614 window, and a commander's owner may be asked about
+// the command zone first (CR 903.9). The reveal is not an "if you do" —
+// it happens even if the exile was replaced.
+func rfExileTargetThenRevealCreatureOrPlaneswalker(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return ExileTarget{
+		Target: id,
+		Then: func(next *Context, _ bool) error {
+			return RevealUntilThenPutOntoBattlefield{
+				Match:  func(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() },
+				Reason: "revealed until a creature or planeswalker card",
+			}.Apply(next)
+		},
+	}.Apply(ctx)
+}
+
+// rfPutCardFromHandOnBottom is "put a card from your hand on the bottom
+// of your library": the controller picks one card (the whole hand is the
+// pick when it holds one card; an empty hand is not asked), and it is
+// tucked on the bottom.
+func rfPutCardFromHandOnBottom(ctx *Context, question string) error {
+	player := ctx.Controller()
+	hand := allHandCardIDs(ctx.Game, player)
+	if len(hand) == 0 {
+		return nil
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  player,
+		Source:   ctx.Source(),
+		Question: question,
+		Cards:    hand,
+		Min:      1,
+		Max:      1,
+		Zone:     game.ZoneHand,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			for _, id := range picked {
+				if err := g.TuckToLibraryThenForEffect(id, game.TuckOptions{ToBottom: true}, nil); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+	return nil
+}
+
+// rfRemoveUpToCounters is "remove up to N counters from <permanent>":
+// the chooser removes them one at a time, naming the kind each time,
+// and may stop early. One option-pick per counter, so a permanent with
+// several kinds (a planeswalker with a stun counter) is the chooser's
+// call, as the rules make it. A permanent that has left the battlefield,
+// or has no counters left, ends the run.
+func rfRemoveUpToCounters(g *game.Game, chooser, source, target uuid.UUID, n int, question string) error {
+	if n <= 0 {
+		return nil
+	}
+	if _, ok := g.PermanentRefForEffect(target); !ok {
+		return nil
+	}
+	c, ok := g.LookupCardForEffect(target)
+	if !ok {
+		return nil
+	}
+	var kinds []string
+	for kind, count := range c.Counters {
+		if count > 0 {
+			kinds = append(kinds, kind)
+		}
+	}
+	if len(kinds) == 0 {
+		return nil
+	}
+	sort.Strings(kinds)
+	options := []game.ChoiceOption{{Label: "Stop removing counters"}}
+	for _, kind := range kinds {
+		options = append(options, game.ChoiceOption{Label: fmt.Sprintf("Remove a %s counter", kind)})
+	}
+	g.QueueOptionPickForEffect(game.OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question,
+		Options:  options,
+		Then: func(g *game.Game, index int) error {
+			if index <= 0 || index > len(kinds) {
+				return nil
+			}
+			if err := g.AddCounterForEffect(target, kinds[index-1], -1); err != nil {
+				return err
+			}
+			return rfRemoveUpToCounters(g, chooser, source, target, n-1, question)
+		},
+	})
+	return nil
+}
+
+// rfOpponentCreatureWouldDie is the AppliesTo of "if a creature an
+// opponent controls would die": a battlefield-to-graveyard move of a
+// creature whose controller is not the source's controller.
+func rfOpponentCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if ev.Kind != game.RepEventMove || ev.OldZone != game.ZoneBattlefield || ev.NewZone != game.ZoneGraveyard {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsCreature() && c.Controller != src.Controller
+}
+
+// rfDamageFirstLegalTarget is "it deals N damage to target …" as an
+// activated ability's whole body: the still-legal first target takes the
+// damage from the ability's source, and a target that left in response
+// takes nothing.
+func rfDamageFirstLegalTarget(amount int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		legal := ctx.LegalTargets()
+		if len(legal) == 0 {
+			return nil
+		}
+		return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: amount}.Apply(ctx)
+	}
 }

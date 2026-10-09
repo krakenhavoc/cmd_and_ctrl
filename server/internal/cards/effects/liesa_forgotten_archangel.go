@@ -64,14 +64,8 @@ func init() {
 			},
 		}},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventMove || ev.OldZone != game.ZoneBattlefield || ev.NewZone != game.ZoneGraveyard {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature() && c.Controller != src.Controller
-			},
+			Watches:   []game.EventKind{game.EventZoneMove},
+			AppliesTo: rfOpponentCreatureWouldDie,
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.NewZone = game.ZoneExile
 				ev.NewZoneOwner = uuid.Nil
