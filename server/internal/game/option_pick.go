@@ -183,6 +183,11 @@ func cloneChoiceOptions(in []ChoiceOption) []ChoiceOption {
 type optionPickFrame struct {
 	then func(g *Game, index int) error
 
+	// attachesSource is set on the one prompt that asks where an Aura
+	// is to be attached (QueueAttachSourceToPlayerForEffect). See
+	// OptionPickPrompt.attachesSource.
+	attachesSource bool
+
 	// thenSeat is the continuation for an option list whose branches
 	// are SEATS (choose_player.go). It receives the chosen option's
 	// ChoiceOption.Player instead of its index, and exactly one of the
@@ -394,6 +399,13 @@ type OptionPickPrompt struct {
 	// off an OPEN prompt (#994, CR 800.4a), which renumbers everything
 	// after it. See optionPickFrame.thenSeat.
 	ThenSeat func(g *Game, seat uuid.UUID) error
+
+	// attachesSource marks the prompt as the Aura's own "attach it to a
+	// player" question (attach_transform.go). Unexported on purpose:
+	// only the engine's attach door sets it, and it is read by
+	// attachPromptOpenForLocked, which is what keeps CR 704.5m from
+	// sweeping the Aura away while the question is still open.
+	attachesSource bool
 }
 
 // QueueOptionPickForEffect queues a "choose one of the following" and
@@ -427,8 +439,9 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		Reason:      p.Question,
 		PickOptions: cloneChoiceOptions(p.Options),
 		optionPickResume: &optionPickFrame{
-			then:     p.Then,
-			thenSeat: p.ThenSeat,
+			then:           p.Then,
+			thenSeat:       p.ThenSeat,
+			attachesSource: p.attachesSource,
 		},
 	})
 }

@@ -1,0 +1,6 @@
+---
+title: "Day and night: the Aura that attaches as it transforms"
+date: 2026-10-09
+issues: [2586]
+---
+**Day and night: the Aura that attaches as it transforms** (#2586, ADR 0132, ADR 0079 amendment 2026-10-09) — the last card on the day and night list, Curse of Leeches // Leeching Lurker, needed "as this permanent transforms into Curse of Leeches, attach it to a player". `CardDef.AsTransformsInto` on the Aura face calls `Game.QueueAttachSourceToPlayerForEffect` (`game/attach_transform.go`): a seat pick addressed to the Aura's controller, over the live players its enchant clause admits and that are not protected from it (CR 702.16), answered with the same `option_pick` the other choose-a-player clauses use, so the gate, enumerator, wire and CR 800.4a pruning carry it unchanged. While the question is open the Aura is attached to nothing, and `attachPromptOpenForLocked` holds CR 704.5m off; with no eligible player, or a prompt dropped unanswered, nothing is attached and 704.5m sends it to the graveyard. The other direction needed CR 704.5p's first sentence, which was missing: a creature attached to an object or player becomes unattached and stays (`attachmentLegalLocked`), so Leeching Lurker lets go of its player at night. **Cards:** Curse of Leeches // Leeching Lurker (Full).
