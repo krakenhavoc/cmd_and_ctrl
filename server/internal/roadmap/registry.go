@@ -929,6 +929,14 @@ var items = []Item{
 		EngineNotes: "cost component: crew and saddle both pay through `validateCrewCostLocked` (`game/activated.go`), which sums each tapped creature's `CurrentPower()`. \"This creature saddles Mounts and crews Vehicles as though its power were 2 greater\" (the Pilot token and several Pilot creatures) and Interface Ace's \"using its toughness rather than its power\" need a per-creature contribution the payment reads. It has to reach the validator, the client's running total in `CrewCostModal` (`CardView.power` is the post-layer power and the picker adds it up client-side), the enumerator's `crewPayment` (`legal/abilities.go`) and the heuristic. The Pilot token prints the ability, so it is a `tokenTemplate` with a token ability (see `TreasureToken`). Canyon Vaulter and Reckless Velocitaur also need an event for \"saddles a Mount or crews a Vehicle\", which nothing emits: a creature tapped to pay a crew or saddle cost. Found building the saddle seam (#2695).",
 	},
 	{
+		Slug: "reality-fracture", Name: "Reality Fracture cards that wait on a mechanic", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Reality Fracture cards that wait on a mechanic the engine doesn't have yet.",
+		Missing:     "These cards need a rule the game doesn't have yet, so they can't be played.",
+		Issue:       2795,
+		Waiting:     []string{"Extrapolate the Impossible"},
+		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Each blocker is listed here by card as slices land.",
+	},
+	{
 		Slug: "modular", Name: "Modular", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Modular lets an artifact creature enter with +1/+1 counters and, when it dies, move those counters onto another artifact creature.",
 		Missing:     "Modular isn't implemented yet, so a creature with it enters without its counters and passes nothing on when it dies.",
