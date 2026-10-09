@@ -71,8 +71,9 @@ func init() {
 				},
 			},
 			{
-				Label: "−3: Ajani deals 4 damage to each creature except for tokens you control.",
-				Cost:  LoyaltyCost(-3),
+				Label:   "−3: Ajani deals 4 damage to each creature except for tokens you control.",
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 4, Partial: true}},
+				Cost:    LoyaltyCost(-3),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return damageEachMatching(NewContext(g, item),
 						And(Creature(), Not(And(IsTokenPredicate(), YouControl()))), 4)
