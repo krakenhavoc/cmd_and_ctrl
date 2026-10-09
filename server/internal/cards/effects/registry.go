@@ -705,6 +705,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
 	}
 	checkVariableSacrificePlan(spec)
+	checkSacrificeAllCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
 	// number, with game.MaxCatalogReplacementSlots as the stride. A

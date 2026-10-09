@@ -53,6 +53,30 @@ type AdditionalCost struct {
 	// a different reason: it is on the stack, not the battlefield.
 	Sacrifice *TargetSpec
 
+	// SacrificeAll is "As an additional cost to cast this spell,
+	// sacrifice ALL creatures you control" (Soulblast, #2097): the
+	// Sacrifice clause takes every permanent the caster controls that
+	// matches it, and the caster chooses none of them. The clause carries
+	// the "any number" bounds (Min 0, Max 0, SacrificeAnyNumber), so an
+	// empty board is a legal payment of nothing (CR 118.3: there is
+	// nothing the cost needs that the caster lacks), and this flag is
+	// what says WHICH number: all of them.
+	//
+	// The set is fixed by the engine at announce (CR 601.2b, 601.2h —
+	// sacrificeAllPaymentLocked) from the battlefield as it is then, so
+	// a phased-out permanent, which CR 702.26b treats as though it does
+	// not exist, is not among them, and an indestructible one is (CR
+	// 701.21a: sacrificing is not destroying). From there it is an
+	// ordinary payment: validated, paid as one simultaneous exit and
+	// recorded on PaidCost.Sacrificed and SacrificedObjects (ADR 0113
+	// §1), which is what "the sacrificed creatures" reads.
+	//
+	// cast_spell's sacrifice_ids may be empty (the engine fills it) or
+	// name exactly that set in any order; anything else is refused.
+	// effects.Register allows it only on the mandatory slot, never on
+	// an optional cost or an either/or branch.
+	SacrificeAll bool
+
 	// PayLifeX is "As an additional cost to cast this spell, pay X
 	// life" (Toxic Deluge), where X is the value announced on
 	// CastSpellParams.XValue. Added in S23.

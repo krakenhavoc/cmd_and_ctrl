@@ -2988,6 +2988,11 @@ export interface LegalTargetsView {
   // #2526: a SACRIFICE clause's set rule — the picks must fill every
   // group with a different permanent. See sacrificeCost.ts.
   each_of?: SacrificeGroupView[];
+  // #2097: a SACRIFICE clause that takes every permanent in `cards`
+  // ("sacrifice all creatures you control"); min and max are their
+  // number. The client confirms rather than picks, and sends
+  // `sacrifice_ids` empty for the server to fill.
+  all?: boolean;
   players?: string[];
   cards?: string[];
   min?: number;
