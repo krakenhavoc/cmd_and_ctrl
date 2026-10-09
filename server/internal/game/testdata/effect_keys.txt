@@ -157,3 +157,4 @@ condition fra-creature-c/lyra-combat-damage-to-a-player
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
 body lichs-relic/destroy
 condition attack/attacks-an-opponent-of-the-controller
+body primal-witchstalker/land
