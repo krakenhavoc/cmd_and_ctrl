@@ -15,25 +15,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so a target exiled in response is skipped while the other still
 // returns (CR 608.2b — "does as much as it can").
 //
-// Sandbox simplification, declared in full because it is the one
-// that changes how the card plays: the sacrifice is modelled as an
-// ADDITIONAL COST TO CAST rather than as a resolution-time action.
-// The engine has no "sacrifice a creature, and if you do, continue"
-// prompt mid-resolution (PendingChoiceSacrifice has no
-// continuation), and a cost is the only sacrifice-with-a-choice
-// shape that exists. The observable differences all run the weaker
-// way:
-//
-//   - The creature dies at announce, so its dies-triggers resolve
-//     BEFORE Victimize does, and countering Victimize does not give
-//     it back.
-//   - With no creature to sacrifice the spell cannot be cast at all
-//     (printed, it can be cast to do nothing).
-//   - The sacrificed creature can never be one of the two targets.
-//     That is true of the printed card too, and the engine keeps it
-//     so: CastSpell validates the targets BEFORE it pays the
-//     additional cost, so the creature is still on the battlefield
-//     when the graveyard is scanned for legal targets.
+// The sacrifice is part of the EFFECT, not a cost (#2863, ADR 0013
+// amendment of 2026-10-09). It is a one-seat sacrifice run
+// (PlayerSacrificesThenForEffect, ADR 0013 §5x): the caster picks a
+// creature as the spell resolves, and "if you do" is the run's answer
+// for the caster, read once the creature has really left the
+// battlefield. So the spell can be cast with no creature at all (it
+// then does nothing), the creature's death triggers go on the stack
+// AFTER Victimize has resolved, and a countered Victimize costs no
+// creature. The sacrificed creature can never be one of the two
+// cards returned: the targets were chosen at cast, before it died.
 //
 // The two creatures enter together and tapped (#1867): one entry, so
 // each sees the other enter (CR 603.6a), with the tapped clause on the
@@ -42,13 +33,25 @@ func init() {
 	Register(Spec{
 		OracleID:     "240e85d3-e495-4877-8609-4b4056c402f7",
 		Name:         "Victimize",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You must sacrifice a creature as you cast it, so its death triggers resolve first and you can't cast it with no creature to sacrifice."},
+		Completeness: CompletenessFull,
 		Targets: TargetCardInGraveyard("two target creature cards in your graveyard",
 			Creature(), YouOwn()).WithCount(2, 2),
-		AdditionalCost: SacrificeCost("a creature", Creature()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx), Tapped: true}.Apply(ctx)
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			controller := ctx.Controller()
+			return ctx.Game.PlayerSacrificesThenForEffect(
+				ctx.Source(), controller,
+				sacrificeSpec("a creature", Creature()),
+				"Victimize — sacrifice a creature",
+				1,
+				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+					if !sacrificed.Sacrificed(controller) {
+						return nil
+					}
+					// A fresh Context on the live *Game (resumeClause's
+					// contract), and the targets re-checked now.
+					ctx := NewContext(g, item)
+					return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx), Tapped: true}.Apply(ctx)
+				})
 		},
 	})
 }

@@ -11,10 +11,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The self-mill regrowth. The mill is MillCards; the return is a
 // creature or land card the caster owns, back to hand.
 //
-// Sandbox simplification, declared (the Rise of the Witch-king
-// posture): "then you may return" is a resolution-time choice made
-// AFTER the mill, and the engine has no pick-from-graveyard prompt
-// with a continuation for a spell. So the card to return is picked
+// Sandbox simplification, declared (the posture Rise of the Witch-king
+// had before #2863): "then you may return" is a resolution-time choice
+// made AFTER the mill. ReturnChosenFromGraveyard is that choice now,
+// but this card has not moved to it. So the card to return is picked
 // when the spell is cast, as an optional target ("up to one"), from
 // the graveyard as it stands BEFORE the mill, and it comes back after
 // the three cards are milled. Three consequences, all weaker than

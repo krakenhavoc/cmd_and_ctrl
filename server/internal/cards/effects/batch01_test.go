@@ -758,30 +758,31 @@ func TestDarkRitualAddsThreeBlackMana(t *testing.T) {
 
 // --- Victimize -----------------------------------------------------
 
-func TestVictimizeSacrificesAtCastAndReturnsBothTapped(t *testing.T) {
+// #2863: the sacrifice is part of the effect, not a cost. The creature
+// is still on the battlefield after the cast, the caster picks it as
+// the spell resolves, and the targets come back only once it is gone.
+func TestVictimizeSacrificesOnResolutionAndReturnsBothTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	a := pushGraveyardCardForTest(me, "Dead A")
 	b := pushGraveyardCardForTest(me, "Dead B")
 	fodder := seedCreature(g, "Fodder", me.ID)
-	for g.Turn.Step != game.StepPrecombatMain {
-		if _, err := g.AdvanceStep(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	id := uuid.New()
-	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Victimize", TypeLine: "Sorcery",
-		OracleID: victimizeOracle, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{
-		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}},
-		SacrificeIDs: []uuid.UUID{fodder},
-	}); err != nil {
-		t.Fatalf("CastSpell: %v", err)
-	}
-	if g.Battlefield.Contains(fodder) {
-		t.Error("the sacrifice is a cost and is paid at announce")
+	castCatalogSpell(t, g, "Victimize", "Sorcery", victimizeOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}})
+	if !g.Battlefield.Contains(fodder) {
+		t.Fatal("nothing is sacrificed at cast")
 	}
 	passPriorityAroundTable(t, g)
+	if sacrificeChoiceFor(g, me.ID) == nil {
+		t.Fatal("the caster is asked to sacrifice a creature as the spell resolves")
+	}
+	if g.Battlefield.Contains(a) || g.Battlefield.Contains(b) {
+		t.Fatal("the targets came back before the sacrifice")
+	}
+	answerSacrifice(t, g, me.ID, fodder)
+	if !me.Graveyard.Contains(fodder) {
+		t.Error("the chosen creature is sacrificed")
+	}
 	for _, want := range []uuid.UUID{a, b} {
 		card, ok := battlefieldCard(g, want)
 		if !ok {
@@ -794,27 +795,34 @@ func TestVictimizeSacrificesAtCastAndReturnsBothTapped(t *testing.T) {
 	}
 }
 
+// With no creature to sacrifice the spell is still castable (#2863);
+// "if you do" is false, so nothing comes back.
+func TestVictimizeWithNoCreatureResolvesAndReturnsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	a := pushGraveyardCardForTest(me, "Dead A")
+	b := pushGraveyardCardForTest(me, "Dead B")
+	spell := castCatalogSpell(t, g, "Victimize", "Sorcery", victimizeOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}})
+	passPriorityAroundTable(t, g)
+	if sacrificeChoiceFor(g, me.ID) != nil {
+		t.Fatal("a caster with no creature is not asked (CR 701.21a)")
+	}
+	if g.Battlefield.Contains(a) || g.Battlefield.Contains(b) {
+		t.Error("no creature was sacrificed, so nothing returns")
+	}
+	if !me.Graveyard.Contains(spell) || !me.Graveyard.Contains(a) || !me.Graveyard.Contains(b) {
+		t.Error("the spell resolves to the graveyard and the targets stay there")
+	}
+}
+
 func TestVictimizeNeedsExactlyTwoTargets(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	a := pushGraveyardCardForTest(me, "Dead A")
-	fodder := seedCreature(g, "Fodder", me.ID)
-	for g.Turn.Step != game.StepPrecombatMain {
-		if _, err := g.AdvanceStep(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	id := uuid.New()
-	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Victimize", TypeLine: "Sorcery",
-		OracleID: victimizeOracle, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{
-		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: a}},
-		SacrificeIDs: []uuid.UUID{fodder},
-	}); err == nil {
+	if err := castCatalogSpellErr(t, g, "Victimize", "Sorcery", victimizeOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: a}}); err == nil {
 		t.Error("one target was accepted for 'two target creature cards'")
-	}
-	if !g.Battlefield.Contains(fodder) {
-		t.Error("a refused cast must not pay the sacrifice")
 	}
 }
 
