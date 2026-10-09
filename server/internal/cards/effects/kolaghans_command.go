@@ -57,9 +57,9 @@ func init() {
 			ModeDoing("Destroy target artifact.",
 				TargetPermanent("target artifact", Artifact()),
 				DestroyTheModesTarget),
-			ModeDoing("Kolaghan's Command deals 2 damage to any target.",
+			ModeWithPurpose(ModeDoing("Kolaghan's Command deals 2 damage to any target.",
 				TargetAny(),
-				DealFixedDamageToModesTarget(2)),
+				DealFixedDamageToModesTarget(2)), ForTargets(DamageToTarget(0, 2))),
 		),
 	})
 }

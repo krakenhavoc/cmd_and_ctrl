@@ -31,6 +31,7 @@ func init() {
 		Name:         "Fiery Temper",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		Madness:      "{R}",
 		OnResolve:    damageToFirstTarget(3),
 	})

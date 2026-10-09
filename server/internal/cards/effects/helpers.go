@@ -1288,11 +1288,21 @@ func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
 // Firemind's draw trigger and Balduvian Trading Post's "1 damage to
 // target attacking creature" share it.
 func sourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *game.StackItem) error {
+	return sourceDealsComputedDamageToEachLegalTarget(func(*Context) int { return amount })
+}
+
+// sourceDealsComputedDamageToEachLegalTarget is
+// sourceDealsDamageToEachLegalTarget for an amount read at resolution
+// ("damage equal to 2 plus the sacrificed permanent's mana value" —
+// Broadside Bombardiers). The amount is read once, before any damage is
+// dealt.
+func sourceDealsComputedDamageToEachLegalTarget(amount func(ctx *Context) int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
+		n := amount(ctx)
 		return ctx.Game.DamageInstanceForEffect(func() error {
 			for _, t := range ctx.LegalTargets() {
-				if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
+				if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}).Apply(ctx); err != nil {
 					return err
 				}
 			}

@@ -87,6 +87,14 @@ type PlayerTurnTally struct {
 	// (CR 603.10a), not the card's field afterwards. Read through
 	// Game.PermanentLeftThisTurn.
 	PermanentsLeft int `json:"permanentsLeft,omitempty"`
+	// LandsToGraveyard counts the lands this player controlled that
+	// were put into a graveyard from the battlefield (#2664, ADR 0049's
+	// 2026-10-08 amendment): destroyed, sacrificed, or put there by any
+	// other route. A land that was bounced or exiled does not count. The
+	// permanent is read as it last existed (CR 608.2h), so an animated
+	// land that dies counts. The Lady of Otaria's end-step "if" reads it
+	// through Game.LandToGraveyardThisTurn. Additive within schema v7.
+	LandsToGraveyard int `json:"landsToGraveyard,omitempty"`
 	// LifeLow / LifeLowSet are this player's lowest life total this
 	// turn, and PoisonHigh their highest poison count: the CR 732 loop
 	// breaker's progress marks (#2450, ADR 0055's 2026-10-07 amendment,
@@ -108,6 +116,10 @@ type PlayerTurnTally struct {
 	// each {E} you've paid or lost this turn" read it through
 	// Game.EnergyPaidOrLostThisTurn. Additive within schema v7.
 	EnergyPaidOrLost int `json:"energyPaidOrLost,omitempty"`
+	// SpeedTriggered is CR 702.179d's "this ability triggers only once
+	// each turn": set as this player's inherent speed trigger is
+	// queued (speedTriggerLocked). ADR 0138. Additive within schema v7.
+	SpeedTriggered bool `json:"speedTriggered,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -1168,8 +1180,22 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			return
 		}
 		wasCreature := c.IsCreature()
+		wasLand := c.IsLand()
 		if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
 			wasCreature = hasTypeFold(lki.Types, "creature")
+			wasLand = hasTypeFold(lki.Types, "land")
+		}
+		if wasLand {
+			// #2664: a land put into a graveyard from the battlefield,
+			// under the controller it had as it left (CR 603.10a).
+			controller, known := ev.LeftUnderControlOf()
+			if !known {
+				controller = c.Controller
+			}
+			if controller == uuid.Nil {
+				controller = c.Owner
+			}
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.LandsToGraveyard++ })
 		}
 		if !wasCreature {
 			return
@@ -1275,4 +1301,13 @@ func (g *Game) recordPermanentLeftLocked(ev Event) {
 // Caller must hold g.mu.
 func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).PermanentsLeft > 0
+}
+
+// LandToGraveyardThisTurn reports whether a land `playerID` controlled
+// was put into a graveyard from the battlefield this turn (#2664, The
+// Lady of Otaria's intervening "if", CR 603.4).
+//
+// Caller must hold g.mu.
+func (g *Game) LandToGraveyardThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).LandsToGraveyard > 0
 }

@@ -232,3 +232,87 @@ this ADR's subject.
 **Back-outs.** Deleting the gate line in `becomeMonarchLocked` fails
 `TestJaredCarthalionBarsTheCrownForTheTurn` and `TestCantBecomeMonarchRefusesACardEffect`; removing
 the skip in the hand-on loop fails `TestMonarchHandOnSkipsAPlayerWhoCantBecomeIt`.
+
+## Amendment (2026-10-08, [#2696](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2696)): ascend and the city's blessing
+
+The city's blessing (CR 702.131c) is the monarch's cousin: a player designation that no card holds,
+that gates abilities ("if you have the city's blessing"), and that the layer pass has to notice. No new
+ADR: this one already owns the player-level designations, and ADR 0071 (designations that switch an
+object's own abilities on) is about objects. The monarch is one holder on the game; the blessing is a
+fact about each player, so it lives on the player.
+
+**The designation.** `Player.CitysBlessing` is a plain `bool`, written only by
+`grantCitysBlessingLocked` (`game/citys_blessing.go`), which emits `EventCitysBlessing` (`Actor` the
+player, `Source` the ascend object) and only on a real change. Nothing clears it: CR 702.131c says it
+stays "even if the permanent that caused them to get it leaves the battlefield or they no longer
+control ten or more permanents". Before this the catalog approximated "if you have the city's
+blessing" with a live "you control ten or more permanents", so a board that shrank shut every card that
+asked (Arch of Orazca, Orazca Relic, Tendershoot Dryad, Illustrious Wanderglyph each carried a caveat
+for it; they are `full` now). It rides `Clone` and undo (`clonePlayer`), the snapshot
+(`seats[].citysBlessing`, additive under schema 7, recorded in `testdata/snapshot_shape/v7.txt`; a
+file written before it restores with nobody blessed, which only ever makes a card weaker) and the wire
+(`PlayerView.citys_blessing`, public, identical for every viewer). The log narrates it
+(`LogCitysBlessing`) because it arrives with no spell or ability of its own.
+
+**Two checks, one per half of the rule.**
+
+- *A permanent with ascend* (CR 702.131b) is a static ability that is true "any time" its controller
+  has ten permanents. `citysBlessingSweepLocked` runs from `stateBasedActionsLocked`, after the layer
+  recompute and before the destruction pre-pass. It is not a state-based action (CR 704 does not list
+  it) and does not count toward `sbaFired`; that pass is simply the one place that runs after every
+  action with the board settled and before a player receives priority, which is when an "any time"
+  static is observable. A tenth permanent entering, a token arriving, a control change and a keyword
+  granted to a permanent already there all reach it the same way. It recomputes the layers again when it
+  grants, so statics that read the blessing are in place before the toughness checks. It walks nothing
+  once every living player has the blessing.
+- *An instant or sorcery with ascend* (CR 702.131a) is a spell ability: `ascendSpellLocked` runs as the
+  spell resolves, right after `EventResolve` and before the catalog's `OnResolve`, so a clause that
+  reads the blessing ("draw three cards instead") sees the answer the spell has just earned. A copy has
+  the ability too. A permanent spell is not asked; its ascend is the static above, which begins when it
+  lands.
+
+`ascend` is a canonical keyword (`game.KeywordAscend`), so a deck-imported card works with no catalog
+entry and the badge shows. The layer pass bumps on `EventCitysBlessing` for the same reason it bumps on
+`EventMonarchChanged`: "as long as you have the city's blessing" is a layer input that no permanent
+moving stands in for.
+
+**Authoring.** In `cards/effects/citys_blessing.go`: `YouHaveTheCitysBlessing(g, you)` (the reader),
+`YouHaveTheCitysBlessingCondition()` (an activation condition, "Activate only if you have the city's
+blessing"), `YouHaveTheCitysBlessingNow` (an intervening "if" trigger condition, CR 603.4; re-check with
+the reader in the effect), `WhileCitysBlessing(inner)`, `SelfPumpWhileCitysBlessing(p, t)` and
+`SelfKeywordWhileCitysBlessing(kw)` for the common "this creature gets / has … as long as you have the
+city's blessing" statics. Read it where the card reads it: "if you have the city's blessing, instead"
+is a clause of the effect, read as it resolves (CR 608.2), not an intervening "if".
+
+**Attack and block.** Wayward Swordtooth's "can't attack or block unless you have the city's blessing"
+adds one clause to ADR 0107 §2's `AttackTargetRestriction`, `ControllerMustHaveCitysBlessing`: a fact
+about the attacking creature's controller alone, so it refuses every target while unmet and the
+creature's chip says "<you> doesn't have the city's blessing". The block half is the existing
+`CantBlockUnless` block rule. `CantAttackUnlessYouHaveTheCitysBlessing` and
+`CantBlockUnlessYouHaveTheCitysBlessing` build them.
+
+**Client.** `PlayerIdentity` shows a read-only marker (the `flag` icon) beside the monarch and
+initiative markers on every seat that has it, self and opponent alike. It is not a toggle: there is no
+sandbox action for it.
+
+**No new prompt, cost or activation.** The enumerator (`internal/legal`) and the bots need nothing: the
+designation is a read, every card that uses it is an ordinary static, trigger or spell, and the one
+new prompt (Expel from Orazca's "put it on top instead") is the shared confirm the enumerator already
+offers both answers to.
+
+**Back-outs.** Removing the sweep call in `stateBasedActionsLocked` fails
+`TestAscendPermanentGrantsTheBlessingAtTen`; removing `ascendSpellLocked` from `resolveTopOfStackLocked`
+fails `TestAscendSpellChecksAtResolution` and `TestSecretsOfTheGoldenCityEarnsTheBlessingBeforeItDraws`;
+making `CitysBlessingForEffect` read the live permanent count again fails
+`TestArchOfOrazcaDrawsWithTheCitysBlessing` and `TestSamiBOrazcaRelic`; removing the
+`EventCitysBlessing` case from `layerVersionBump` fails
+`TestRadiantDestinyGivesVigilanceWithTheBlessing` and `TestSlipperyScoundrelIsHexproofAndUnblockableWithTheBlessing`;
+dropping the new clause from `unmetDefenderClauseLocked` fails `TestWaywardSwordtoothAttacksOnlyWithTheBlessing`.
+
+**Cards (16, all Full).** Orazca Relic, Arch of Orazca, Tendershoot Dryad and Illustrious Wanderglyph
+(caveats cleared); Wayward Swordtooth, Ocelot Pride, Twilight Prophet, Andúril Narsil Reforged, Vona's
+Hunger, Radiant Destiny, Detective of the Month, Expel from Orazca, Kumena's Awakening, Secrets of the
+Golden City, Slippery Scoundrel and Golden Demise. **Still open:** eleven ascend cards nobody has built
+yet ([#2706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2706)); Timestream Navigator also waits
+on a "put this on the bottom of its owner's library" cost, and Tilonalli's Summoner on a "may pay
+{X}{R}" as its trigger resolves.

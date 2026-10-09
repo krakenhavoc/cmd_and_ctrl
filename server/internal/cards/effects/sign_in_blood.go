@@ -12,7 +12,10 @@ func init() {
 		Name:         "Sign in Blood",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve:    signInBloodOnResolve,
+		// Who draws and who loses the life is whoever it targets (ADR
+		// 0126's amendment of 2026-10-08), so both are the target's.
+		Purpose:   ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
+		OnResolve: signInBloodOnResolve,
 	})
 }
 

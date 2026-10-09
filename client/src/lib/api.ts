@@ -1250,6 +1250,10 @@ export async function fetchAutoTapPreview(
     if (cast.blightIDs && cast.blightIDs.length > 0) {
       params.set("blight_ids", cast.blightIDs.join(","));
     }
+    // ADR 0135 §4: an emerge creature lowers the price by its mana value.
+    if (cast.altCostIDs && cast.altCostIDs.length > 0) {
+      params.set("alt_cost_ids", cast.altCostIDs.join(","));
+    }
   }
   // `abilityIndex` prices a CR 602 activated ability's own mana
   // component instead of the card's printed cast cost. Without it

@@ -287,6 +287,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// not kicked, because the spell that returned it was a
 		// different spell and was not even a spell.
 		c.Provenance = CastProvenance{}
+		// ADR 0137 / CR 702.167c: and so is what crafted it. A crafted
+		// permanent that leaves and comes back is a new object no craft
+		// ability put there.
+		c.CraftedWith = nil
 		// ADR 0071 / CR 400.7: the level and solved designations are
 		// battlefield state on a permanent, not characteristics of a
 		// card. A Wizard Class that is bounced and replayed is level 1
@@ -303,6 +307,13 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// is monstrous — a flickered Polukranos is a new object that
 		// can become monstrous again.
 		c.Monstrous = false
+		c.Saddled = false
+		c.SaddledBy = nil
+		// ADR 0071 amendment (#2698) / CR 400.7 + CR 701.60: and so is
+		// the suspected designation — a suspected creature that is
+		// flickered or bounced comes back a new, unsuspected object.
+		c.Suspected = false
+		c.SuspectedAt = 0
 		// ADR 0114 §3 / CR 400.7 + CR 701.54a: and so is the
 		// Ring-bearer designation — a Ring-bearer that leaves and comes
 		// back is a new object and is nobody's Ring-bearer.

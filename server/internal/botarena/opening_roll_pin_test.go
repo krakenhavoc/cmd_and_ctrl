@@ -55,6 +55,38 @@ import (
 // 412 moves to the same turn 9 instead of 411. Checked by diffing the
 // two move logs: the first 269 lines are identical.
 //
+// A fourth deliberate exception, re-pinned by hand (#2690, 2026-10-08):
+// a commander that dies in combat costs its next cast's tax. In seed 31,
+// turn 8, seat 1's 3/3 commander attacked into seat 0's untapped 3/3
+// commander at "blocked at a loss (focus) (+1.54)", and the two traded
+// (move 293). With the tax priced the attack is −0.46 and gets no focus
+// bonus (#2675), so seat 1 passes, and from move 293 on the game
+// differs: 398 moves to the same turn 9 instead of 412. Checked by
+// diffing the two move logs, the second with the three knobs of
+// #2675, #2690 and #2676 turned off, which still gives the old digest:
+// the first 292 lines are identical.
+//
+// A fifth deliberate exception, re-pinned by hand (#2689, 2026-10-08):
+// declared damage at a player is priced per point (ADR 0126's amendment
+// of 2026-10-08, D1, `DamageByLethality`). The battle deck's Lightning
+// Bolt at a player on 40 life was "cast spell (+1.20)", the flat attack
+// price; it is now 3 × DamageToOpponent through the opposition weights,
+// less the card, +0.15 at two seats, so the heuristic seat holds it. In
+// every seed the first difference is that cast: seed 1503 at move 57
+// (346 moves to the same turn 3 instead of 359), seed 31 at move 9 (399
+// moves to the same turn 9 instead of 398), and seed 107 at move 14,
+// whose first declared attack now comes after 576 moves instead of 440.
+// Checked by diffing the move logs with DamageByLethality off, which
+// still gives the old digests: every line before those is identical.
+//
+// A sixth deliberate exception, re-pinned by hand (ADR 0136 PR 4,
+// 2026-10-08): the turn plan names itself in the reason. The move log
+// records each decision's reason, and on top of #2689's re-pin only
+// seed 31 changes: the heuristic makes the same moves, and some of its
+// reasons now name its plan. Seed 107's Lightning Bolt, whose reason
+// changed before #2689, is now held, so its digest is #2689's. Every
+// move, turn and winner is the same as #2689's pin.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -88,7 +120,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 359, turns: 3, winner: -1, digest: "296da15d6f1c0f8953b18f7d41ecedecae065bbcf88b2d0858745a8f7d75dd27",
+			moves: 346, turns: 3, winner: -1, digest: "82e0b2b6f5074e68ecb39c9987859470e52da06da4c71c3746e18b8566c71545",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -96,7 +128,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 412, turns: 9, winner: -1, digest: "1a4e782275b723171772da310280380c548eef6210556799d93384e42060cf55",
+			moves: 399, turns: 9, winner: -1, digest: "b5c43024d7deab239bdb0a7a26483e2e2bdf68a075d3dcf18ffbef7b16e1695c",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -109,11 +141,15 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 440, digest: "055cb3a9582a4431b6493a4a54c9bb81d222aa16d4acbc1bf8095bb5022a5a6c",
+			opening: true, moves: 576, digest: "9c1082665a302894a239c9358931e4226d83418bc4d1fc7d5324e004bae96312",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			// Parallel (#2766): each case is its own lockstep game, and
+			// the digest it pins is the proof that a neighbour changes
+			// nothing.
+			t.Parallel()
 			res, lines := playLogged(t, c.cfg)
 			if res.Stalled {
 				t.Fatalf("the game stalled:\n%s", res.StallDump)

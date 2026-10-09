@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Azusa, Lost but Seeking — Legendary Creature — Human Monk {2}{G},
 // 1/2 (EDHREC rank 326):
 //
@@ -15,5 +17,6 @@ func init() {
 		Name:                "Azusa, Lost but Seeking",
 		Completeness:        CompletenessFull,
 		AdditionalLandPlays: 2,
+		Purpose:             game.Purpose{ExtraLandDrops: 2}, // #2678: the bot reads the extra drop
 	})
 }

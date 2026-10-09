@@ -203,6 +203,18 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// does not move to announce, exactly as the monarchy is. The
 		// werewolves' own turn-over bumps through EventTransform.
 		g.layerVersion.Add(1)
+	case EventCitysBlessing:
+		// #2696: "as long as you have the city's blessing" (Tendershoot
+		// Dryad, Snubhorn Sentry, Skymarcher Aspirant) is a layer input
+		// no permanent moving stands in for. It changes once a game per
+		// player, so there is nothing to gate.
+		g.layerVersion.Add(1)
+	case EventSpeedChanged:
+		// ADR 0138, CR 702.178a: "Max speed — this creature gets +1/+1"
+		// reads its controller's speed, a layer input nothing on the
+		// board moves to announce. At most four changes per player per
+		// game, so no gate.
+		g.layerVersion.Add(1)
 	case EventMonarchChanged:
 		// #1722, ADR 0096: "as long as you're the monarch" (Entourage of
 		// Trest's extra block) is a layer input that no permanent moving
@@ -313,7 +325,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// second pass produces no further delta and so no further
 		// bump.
 		g.layerVersion.Add(1)
-	case EventClassLevel, EventCaseSolved, EventHarnessed, EventBecameMonstrous, EventOptionChosen,
+	case EventClassLevel, EventCaseSolved, EventHarnessed, EventBecameMonstrous, EventBecameSaddled, EventOptionChosen,
 		EventDoorUnlocked, EventDoorLocked, EventRingTempted:
 		// ADR 0071: a designation switches printed statics on and off,
 		// so a level-up or a solve changes which continuous effects

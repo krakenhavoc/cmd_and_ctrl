@@ -78,6 +78,7 @@ var silentEventKinds = map[string]string{
 	// a LogActivate line, or LogActivateAcross when a player reaches
 	// across to another player's permanent (ADR 0106 §1).
 	"EventKeywordAction": silentImpliedByAnotherLine,
+	"EventExplored":      "every step of an explore is already a line: the reveal, the land's move to hand, the +1/+1 counter and the card's move to the graveyard (CR 701.44a); the event exists for \"whenever a creature you control explores\" triggers (#2720)",
 
 	// --- the step spine ----------------------------------------------
 	"EventTurnBegan":          "the first EventStepBegan announces the same boundary to the table; this kind exists for engine consumers after per-turn resets",
@@ -138,6 +139,7 @@ var silentEventKinds = map[string]string{
 	"EventCaseSolved":      silentBoardStateIsVisible,
 	"EventHarnessed":       silentBoardStateIsVisible,
 	"EventBecameMonstrous": silentBoardStateIsVisible,
+	"EventBecameSaddled":   silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
 	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line

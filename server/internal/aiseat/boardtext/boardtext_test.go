@@ -40,6 +40,20 @@ func TestRenderBotFlavourIsTerse(t *testing.T) {
 	}
 }
 
+// #2698 (CR 701.60): a suspected creature says so, beside the menace
+// its ability list carries, so a model seat is told why it cannot block.
+func TestRenderMarksASuspectedCreature(t *testing.T) {
+	v := view()
+	v.Battlefield.Cards = []protocol.CardView{{
+		Name: "Barbed Servitor", Controller: "a", TypeLine: "Artifact Creature", Power: 2, Toughness: 2,
+		Suspected: true, Abilities: []string{"indestructible", "menace"},
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if want := "  battlefield: Barbed Servitor 2/2 (suspected, indestructible menace)\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+}
+
 // ADR 0129 §7: each seat's non-zero player counters follow its pool, in
 // name order, so a model seat sees the energy it can pay.
 func TestRenderPrintsPlayerCounters(t *testing.T) {
@@ -52,6 +66,25 @@ func TestRenderPrintsPlayerCounters(t *testing.T) {
 	}
 	if !strings.Contains(got, "Bo — 38 life, 0 cards in hand, 0 in library\n") {
 		t.Errorf("a seat with no counters grew a counters phrase:\n%s", got)
+	}
+}
+
+// ADR 0138 §8: a seat with speed says so after its counters, and max
+// speed is named; a seat with none says nothing.
+func TestRenderPrintsSpeed(t *testing.T) {
+	v := view()
+	v.Seats[0].Speed = 3
+	v.Seats[1].Speed = 4
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if want := "Ann (YOU) — 40 life, 1 cards in hand, 0 in library, speed 3\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+	if want := "Bo — 38 life, 0 cards in hand, 0 in library, speed 4 (max speed)\n"; !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+	v.Seats[0].Speed, v.Seats[1].Speed = 0, 0
+	if got := boardtext.Render(v, "a", boardtext.Options{}); strings.Contains(got, "speed") {
+		t.Errorf("a seat with no speed grew a speed phrase:\n%s", got)
 	}
 }
 

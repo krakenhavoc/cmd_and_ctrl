@@ -83,7 +83,11 @@ func (p *Policy) CostFuelPrice(in aiseat.Input) legal.CostFuelOrder {
 			// is the one the bot then scores as cheapest.
 			return p.tapFuelValue(st, c.ID.String())
 		}
-		return p.fuelValue(st, c.ID.String())
+		// ADR 0135 §4 (owner decision 5): an emerge payment ranks by
+		// what the permanent is worth to keep LESS the generic mana it
+		// saves, each mana priced at SpellPerMana, the value-per-mana
+		// proxy the rest of the policy uses. Zero for every other cost.
+		return p.fuelValue(st, c.ID.String()) - p.cfg.SpellPerMana*float64(c.Saves)
 	}
 }
 
@@ -226,6 +230,11 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 		if v < p.cfg.SpellFloor && !sweep && !targeted && !c.Unimplemented && untargetedSpell(c) {
 			v = p.cfg.SpellFloor
 		}
+	}
+	// #2678: an extra land drop it declares (puts.go). Not on a card
+	// being spent: a pitched Exploration plays no land.
+	if !spent {
+		v += p.extraLandDropValue(st, ps.extraLands, c)
 	}
 	if c.IsCommander {
 		v += p.cfg.CommanderBonus

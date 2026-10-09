@@ -357,6 +357,14 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 				continue
 			}
 			for _, tok := range CatalogPlayerKeywords(key) {
+				// #2742: the chosen card type is on the granting
+				// permanent, so it is read here, where the permanent
+				// is in hand. Nothing chosen grants nothing.
+				if tok == ProtectionFromTheChosenCardType {
+					if tok = ProtectionFromCardType(c.ChosenOption); tok == "" {
+						continue
+					}
+				}
 				if !fn(tok) {
 					return
 				}
@@ -442,6 +450,9 @@ func (g *Game) PlayerProtectedFromLocked(p *Player, src *Characteristic) (Protec
 		// a player therefore protects from nobody, which is the weaker
 		// half of that gap and the direction this engine errs in. No
 		// catalogued card prints it — see ADR 0072's amendment §A4.
+		//
+		// "Each of your opponents" (#2745) is bound, to this player.
+		q = bindPlayerProtectionQuality(p.ID, q)
 		if q.Matches(src) {
 			out, found = q, true
 			return false
@@ -516,8 +527,9 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 		if !charsRead {
 			chars, charsRead = src.Characteristics(), true
 		}
-		// No bindProtectionQuality here for the same reason
-		// PlayerProtectedFromLocked has none — see its comment.
+		// Bound the way PlayerProtectedFromLocked binds — see its
+		// comment.
+		q = bindPlayerProtectionQuality(p.ID, q)
 		if q.Matches(chars) {
 			allowed = false
 			return false

@@ -25,6 +25,8 @@ func init() {
 		Name:         "Pongify",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		// #2679: what the target's controller is given back.
+		Purpose: ForTargets(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3})),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

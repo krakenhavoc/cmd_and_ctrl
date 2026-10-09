@@ -188,6 +188,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "SpellsYouCastHaveDelve", label: boolRow("Spells you cast have delve.")},
 	{field: "CostModifiers", fallback: "Cost-changing effect", ownLabel: true},
 	{field: "ExhaustPermissions", fallback: "Exhaust abilities can be activated again", ownLabel: true},
+	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
 	{field: "BlockRules", fallback: "Blocking restriction"},
 	{field: "AttackLimits", fallback: "Limits how many creatures can attack"},
@@ -395,7 +396,7 @@ var activatedKeywordAbilities = []string{
 // around the card's own effect ("Exhaust — {4}: Earthbend 4") is not
 // one.
 func IsKeywordActivatedAbility(a ActivatedAbilityShape) bool {
-	if a.Equip || a.Cycling {
+	if a.Equip || a.Cycling || a.Reconfigure {
 		return true
 	}
 	head := strings.ToLower(a.Label)

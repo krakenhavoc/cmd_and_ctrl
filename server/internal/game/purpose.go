@@ -47,6 +47,16 @@ type Purpose struct {
 	// its controller's control: Rampant Growth 1, Harrow 2. A land put
 	// into the hand (Cultivate's second) is a Tutor, not a Land.
 	Lands int
+	// LandsUntapped is how many of those Lands enter UNTAPPED, so their
+	// mana can be spent the turn the spell resolves (ADR 0136 §2, owner
+	// answer 4): Harrow 2, Nature's Lore 1, Three Visits 1; Rampant
+	// Growth's "onto the battlefield tapped" is 0. Never more than
+	// Lands; effects.Register refuses one that is. A land's OWN
+	// enters-tapped replacement is not counted against it: the printed
+	// spell puts the land onto the battlefield untapped, and a tapland
+	// it fetches still enters tapped, which the reader cannot know
+	// before the search.
+	LandsUntapped int
 	// Tutors is how many cards it searches out to its controller's
 	// hand or to the top of their library: Demonic Tutor 1, Vampiric
 	// Tutor 1, Cultivate's land to hand 1.
@@ -56,7 +66,8 @@ type Purpose struct {
 	SelfMillTutor int
 	// Tokens is how many tokens it creates for its controller: Big
 	// Score's 2 Treasures. Tokens it gives to another player (Generous
-	// Gift's Elephant) are not counted.
+	// Gift's Elephant) are not counted here; a removal's gift to its
+	// target's controller is that entry's TargetPurpose.Returns.
 	Tokens int
 	// Energy is how many energy counters it gives its controller ("you
 	// get {E}{E}" is 2; ADR 0129 §7). An amount counted at resolution
@@ -111,6 +122,128 @@ type Purpose struct {
 	// the heuristic prices it as a hasty N/N body that is also a land,
 	// beside the spell's own purpose, which awaken leaves alone.
 	AwakenLand int
+
+	// ExtraLandDrops is the additional lands its controller may play
+	// (#2678, CR 305.2): on a permanent, "you may play an additional
+	// land on each of your turns" (Oracle of Mul Daya, Exploration 1,
+	// Azusa 2); on an instant or sorcery, "you may play an additional
+	// land this turn" (Explore 1). Declared on the card slot only. On a
+	// permanent it must agree with the Spec's AdditionalLandPlays, the
+	// engine's own field for the static, and effects.Register refuses
+	// one that does not.
+	ExtraLandDrops int
+
+	// Targets is what happens TO each target the statement names, one
+	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
+	// answer 1). Every amount above is its controller's; an entry's are
+	// the target's. "Target player draws two cards" is {Slot: 0, Draws:
+	// 2} here, never Draws 2 above, because who draws is whoever the
+	// move aims it at. The statement is the one the purpose is declared
+	// on: the card's own clause list, a mode's, an alternative cost's or
+	// an ability row's, and Slot indexes it as TargetRef.Slot does.
+	//
+	// Nil is "no target entries"; effects.Register refuses an empty
+	// list. A pointer so Purpose stays comparable.
+	Targets *TargetPurposes
+}
+
+// TargetPurposes is a statement's target entries (Purpose.Targets), at
+// most one per clause.
+type TargetPurposes []TargetPurpose
+
+// TargetPurpose is what a spell or an ability does to the target chosen
+// for one of its clauses, as printed amounts. A player amount (draws,
+// discards, tokens, life gained or lost) is that player's; Damage is
+// dealt to whatever the clause's pick is, player or permanent.
+type TargetPurpose struct {
+	// Slot is the target clause's index in its statement (CR 601.2c:
+	// one clause per instance of the word "target"), the slot a move's
+	// target names.
+	Slot int
+	// Draws is the cards the target player draws: Sign in Blood 2.
+	Draws int
+	// Discards is the cards the target player discards on resolution:
+	// Prismari Command's loot 2.
+	Discards int
+	// Tokens is the tokens the target player creates: Prismari
+	// Command's Treasure 1.
+	Tokens int
+	// LifeGain is the life the target player gains.
+	LifeGain int
+	// LifeLoss is the life the target player loses: Sign in Blood 2.
+	// Damage is not here; it is Damage.
+	LifeLoss int
+	// Damage is the damage dealt to the target: Lightning Bolt 3.
+	Damage int
+	// Returns is what the target's CONTROLLER is given when the spell
+	// or ability removes the target (#2679): Rapid Hybridization's 3/3
+	// Frog Lizard, Swords to Plowshares' life, Path to Exile's basic
+	// land. Declared on a clause that targets a permanent; the zero
+	// value is "nothing comes back".
+	Returns TargetReturn
+}
+
+// TargetReturn is what a removal spell hands the controller of the
+// permanent it removes, as printed amounts (#2679). A removal that
+// gives back a creature token, life or a land is worth less than the
+// same removal without it, and the bot cannot read which is which
+// without it: the gift is a closure in the card file.
+type TargetReturn struct {
+	// CreatureTokens is the creature tokens the target's controller
+	// creates: Rapid Hybridization, Pongify, Beast Within and Generous
+	// Gift 1, Stroke of Midnight 1.
+	CreatureTokens int
+	// TokenPower and TokenToughness are each such token's printed
+	// power and toughness: 3/3 for the four above, 1/1 for Stroke of
+	// Midnight.
+	TokenPower     int
+	TokenToughness int
+	// LifeEqualToPower is set when the target's controller gains life
+	// equal to the target's power: Swords to Plowshares. The amount is
+	// counted at resolution, so it is a flag rather than a number; the
+	// reader takes the power the target shows.
+	LifeEqualToPower bool
+	// Lands is the land cards the target's controller may put onto the
+	// battlefield: Path to Exile and Assassin's Trophy 1.
+	Lands int
+	// LandsUntapped is how many of those Lands enter untapped:
+	// Assassin's Trophy 1, Path to Exile 0. Never more than Lands.
+	LandsUntapped int
+}
+
+// IsZero reports whether nothing comes back.
+func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
+
+// IsZero reports whether the entry says nothing about its target.
+func (t TargetPurpose) IsZero() bool {
+	return !t.HasPlayerAmount() && t.Damage == 0 && t.Returns.IsZero()
+}
+
+// HasPlayerAmount reports whether the entry names an amount only a
+// player can be given: a draw, a discard, a token or a life change.
+func (t TargetPurpose) HasPlayerAmount() bool {
+	return t.Draws != 0 || t.Discards != 0 || t.Tokens != 0 || t.LifeGain != 0 || t.LifeLoss != 0
+}
+
+// ForTargets is the Purpose.Targets of these entries, nil for none.
+// The card files' constructor:
+//
+//	Purpose: game.Purpose{Targets: game.ForTargets(
+//		game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2})}
+func ForTargets(ts ...TargetPurpose) *TargetPurposes {
+	if len(ts) == 0 {
+		return nil
+	}
+	out := TargetPurposes(append([]TargetPurpose(nil), ts...))
+	return &out
+}
+
+// List is the entries, nil-safe.
+func (tp *TargetPurposes) List() []TargetPurpose {
+	if tp == nil {
+		return nil
+	}
+	return *tp
 }
 
 // Pump is a self pump until end of turn (Purpose.Pump): the power and
@@ -253,8 +386,11 @@ func CardPurposeOf(c Card) Purpose {
 
 // plus is what two effects declare together: a fused split spell
 // does both halves (fuse). Amounts add; a sweep is the first
-// half's when it has one, else the second's.
-func (p Purpose) plus(o Purpose) Purpose {
+// half's when it has one, else the second's. The target entries are
+// the first half's followed by the second's, whose slots move past the
+// first half's `leftClauses` clauses, as the fused statement numbers
+// them (split_fuse.go).
+func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	out := Purpose{
 		Draws:                     p.Draws + o.Draws,
 		ControllerLosesLife:       p.ControllerLosesLife + o.ControllerLosesLife,
@@ -274,6 +410,7 @@ func (p Purpose) plus(o Purpose) Purpose {
 		DamageEachOpponent:        p.DamageEachOpponent + o.DamageEachOpponent,
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
+		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
 	}
 	if out.Pump == nil {
 		out.Pump = o.Pump
@@ -284,5 +421,11 @@ func (p Purpose) plus(o Purpose) Purpose {
 	if out.DiscardPayoff == nil {
 		out.DiscardPayoff = o.DiscardPayoff
 	}
+	targets := append([]TargetPurpose(nil), p.Targets.List()...)
+	for _, t := range o.Targets.List() {
+		t.Slot += leftClauses
+		targets = append(targets, t)
+	}
+	out.Targets = ForTargets(targets...)
 	return out
 }

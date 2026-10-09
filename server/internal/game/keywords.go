@@ -255,6 +255,13 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. Redundant (CR 702.88c): one instance or several
 	// is one exile and one delayed trigger.
 	KeywordRebound: true,
+	// ascend (CR 702.131) joins with #2696 (ADR 0096's 2026-10-08
+	// amendment), in the same change that teaches the engine to honour
+	// it. Its consumers are citysBlessingSweepLocked (the static on a
+	// permanent) and ascendSpellLocked (the spell ability on an instant
+	// or sorcery), both in citys_blessing.go, and both read it with
+	// HasKeyword, so a deck-imported card works with no catalog entry.
+	KeywordAscend: true,
 	// sunburst (CR 702.44) joins with #1552 (ADR 0109 §11 decision 2),
 	// in the same change that teaches the engine to honour it as a
 	// keyword. Its consumer is applySunburstLocked (entry_counters.go),
@@ -314,6 +321,12 @@ var canonicalKeywords = map[string]bool{
 	// canonical token, so a werewolf works with no catalog entry.
 	KeywordDaybound:   true,
 	KeywordNightbound: true,
+	// start your engines! (CR 702.179) joins with #2122 (ADR 0138). Its
+	// consumer is speed.go's state-based action, which gives a player
+	// with no speed who controls a permanent with it speed 1. Stamped
+	// by the deck importer like every other canonical token, so an
+	// uncatalogued speed card still starts its controller's speed.
+	KeywordStartYourEngines: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

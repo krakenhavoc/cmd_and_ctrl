@@ -554,6 +554,15 @@ type Card struct {
 	// battlefield exit, carried by clone and snapshot. Zero means
 	// "never turned since it entered".
 	FaceTurnedAt int64
+
+	// SuspectedAt is the CR 613.7 timestamp the suspected designation's
+	// menace and can't-block grants are ordered at in layer 6: the moment it BECAME
+	// suspected, so a "loses all abilities" older than the designation
+	// leaves the menace and one newer takes it away. Zero on a card
+	// that is not suspected, and on one restored from a point written
+	// before this field, in which case the grant falls back to the
+	// permanent's own timestamp.
+	SuspectedAt int64
 	// NamedTribe is the creature type chosen for this permanent by an
 	// "as this enters, choose a creature type" instruction (CR
 	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
@@ -697,6 +706,19 @@ type Card struct {
 	// TurnTally.ModesChosen instead, where the turn boundary flushes it.
 	ModesChosen map[string][]int
 
+	// SaddledBy is the creatures tapped to pay for the saddle ability
+	// that made this Mount saddled this turn (CR 702.171c, "creatures
+	// that saddled it this turn"), each as the object it was. A Mount
+	// saddled twice in a turn lists both groups. Empty when the
+	// designation came from a spell or ability, as Guidelight Matrix's
+	// does. Cleared with Saddled. Read through SaddlersOf, which drops
+	// every creature that has since left the battlefield: a creature
+	// that left is a new object and did not saddle anything (CR 400.7).
+	//
+	// Always replaced, never appended in place: clone shares the
+	// backing array. ADR 0071 amendment 2026-10-08, #2695.
+	SaddledBy []ObjectRef
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it
@@ -729,6 +751,28 @@ type Card struct {
 	//
 	// Added in S42 (#653, #664).
 	Provenance CastProvenance
+
+	// CraftedWith is CR 702.167c's link (ADR 0137): the objects the
+	// craft ability that put this permanent onto the battlefield exiled
+	// as its materials, as they landed in exile, in the order named.
+	// "The exiled card used to craft it" (Jadeheart Attendant) is one of
+	// these.
+	//
+	// Delve's link one keyword over (CastProvenance.Delved, ADR 0100),
+	// and the same shape for the same reason: refs, not cards, because
+	// a material that has left exile is a new object the permanent no
+	// longer refers to (CR 400.7), and a token material has ceased to
+	// exist. Resolve it with Game.CraftMaterialsForEffect, never by
+	// ranging it against a zone.
+	//
+	// Not on Provenance: crafting is not casting, and nothing about the
+	// craft ability is a spell's cost. Stamped by the entry finisher
+	// (entryTail.craftedWith), after the CR 400.7 reset and before
+	// EventETB, so the new permanent's own enters trigger finds it;
+	// cleared by MoveCard on the way off the battlefield and by that
+	// reset; carried by clone, the snapshot and the CR 608.2h record
+	// (PermanentInfo.CraftedWith). Not a copiable value (CR 707.2).
+	CraftedWith []ObjectRef
 
 	// FaceDownKind is WHY this object is face down (ADR 0069). Empty
 	// exactly when FaceDown is false; the two are written only by
@@ -1182,6 +1226,42 @@ type Card struct {
 	// carried by clone and the snapshot.
 	Monstrous bool
 
+	// Saddled is the CR 702.171 designation on a Mount: it became
+	// saddled by a saddle ability or a spell or ability that says so,
+	// and stays saddled only until the turn ends (swept in
+	// sweepTurnEndLocked, CR 514.2) or until it leaves the battlefield.
+	// ADR 0071 amendment 2026-10-08, #2695.
+	//
+	// Set by SaddleForEffect and by nothing else. Unlike Monstrous it
+	// is turn-scoped, which is the whole reason it is a Card field and
+	// not a scoped effect: a designation gate (Designation.Active)
+	// reads a Card and nothing else, so "as long as it's saddled" can
+	// only be answered off the object. A marker, not part of the
+	// copiable values (CopiableValuesOf never reads it), cleared at both
+	// CR 400.7 sites, carried by clone and the snapshot. Its companion
+	// SaddledBy sits with the other slices, to keep the struct free of
+	// alignment padding.
+	Saddled bool
+	// Suspected is the CR 701.60 suspected designation (ADR 0071
+	// amendment 2026-10-08, #2698). Unlike the designations above it
+	// switches nothing in the permanent's PRINTED abilities on: what it
+	// does is a continuous effect of its own, "a suspected creature has
+	// menace and can't block" (suspect.go), applied in the layer pass.
+	//
+	// Set by SuspectForEffect and cleared by UnsuspectForEffect and by
+	// nothing else. A permanent that is already suspected cannot become
+	// suspected again (CR 701.60d), which is also what keeps its
+	// SuspectedAt timestamp from being rewritten. Stays on a permanent
+	// through a control change — the new controller's creature is still
+	// suspected — and is cleared when the permanent leaves the
+	// battlefield (CR 400.7). Not copiable (CR 707.2: it is a status,
+	// not a characteristic): CopiableValuesOf never reads it. Carried
+	// by clone and the snapshot.
+	// Suspected lives in the bool block at the end of Card, for alignment.
+
+	// SuspectedAt lives with the other timestamps, after FaceTurnedAt,
+	// for alignment.
+
 	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
 	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by
 	// nothing else; the one write site first clears every other
@@ -1312,6 +1392,10 @@ type Card struct {
 	// cleared with AttackingTarget wherever the creature leaves combat
 	// before that. True only between the verb and the lock-in.
 	ExertOnAttack bool
+
+	// Suspected is the CR 701.60 designation described above
+	// (SuspectedAt). Here for alignment, beside the other bools.
+	Suspected bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

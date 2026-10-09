@@ -180,6 +180,15 @@ var items = []Item{
 		Printed:  printedKeyword("daybound"),
 	},
 	{
+		Slug: "start-your-engines", Name: "Start your engines!", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A player who controls a permanent with start your engines! gets a speed of 1. It rises by one on each of their turns when an opponent loses life, up to max speed, 4, and they keep it for the rest of the game.",
+		Rules:    []string{"702.179"},
+		ADR:      "0138-speed.md",
+		Keywords: []string{game.KeywordStartYourEngines},
+		Probe:    hasKeyword(game.KeywordStartYourEngines),
+		Printed:  printedKeyword("start your engines"),
+	},
+	{
 		Slug: "landwalk", Name: "Landwalk", Kind: KindKeyword, Status: StatusImplemented,
 		Summary: "A creature with landwalk (islandwalk, forestwalk and the rest) can't be blocked while the defending player controls a land of that kind.",
 		Rules:   []string{"702.14"},
@@ -600,6 +609,35 @@ var items = []Item{
 		Printed: printedLine("crew"),
 	},
 	{
+		Slug: "saddle", Name: "Saddle", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "Tap other creatures with enough total power to saddle a Mount until end of turn, as a sorcery; a saddled Mount's attack abilities switch on.",
+		Rules:   []string{"702.171"},
+		Issue:   2695,
+		ADR:     "0071-designations-that-switch-abilities-on.md",
+		Probe: anyOf(
+			activated(func(ab effects.ActivatedAbility) bool { return ab.Cost.Saddle > 0 }),
+			designation(game.DesignationSaddled),
+		),
+		Printed:  printedLine("saddle"),
+		Examples: []string{"Gilded Ghoda"},
+	},
+	{
+		Slug: "boast", Name: "Boast", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "An ability a creature can use only if it attacked this turn, and only once each turn; Birgi, God of Storytelling lets your creatures use each one twice.",
+		Rules:   []string{"702.142"},
+		Issue:   2697,
+		ADR:     "0020-activated-abilities.md",
+		Probe: anyOf(
+			activated(func(ab effects.ActivatedAbility) bool { return ab.Boast }),
+			func(s effects.Spec) bool { return len(s.BoastLimits) > 0 },
+		),
+		Printed: printedLine("boast"),
+		// The 2026-10-08 slice ships 15 of the 20 Commander-legal boast
+		// cards; the five left are named in the PR that closed #2697.
+		Examples:    []string{"Birgi, God of Storytelling", "Broadside Bombardiers"},
+		EngineNotes: "**Shipped** (#2697, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-08 amendment): `ActivatedAbilityShape.Boast`, set by `effects.Boast` / `BoastTargeting`, is the whole keyword. `game.Game.BoastBlockLocked` (`game/boast.go`) joins \"attacked this turn\" (`TurnTally.Attacks`) with \"once each turn\" (`Activations.Turn`, announce-time) and answers WHICH half failed; `ActivateCatalogAbility` refuses with `ErrBoastNotAttacked` / `ErrBoastSpent`, `internal/legal` drops the move, and `ActivatedAbilityView.boast_blocked` (`not_attacked` | `used`) greys the row with the client's own sentence. The limit is read through `CardDef.BoastLimits` (`game.BoastLimit`, built with `effects.YourCreaturesBoastTimes`): the largest applicable limit wins, so Birgi's \"twice rather than once\" is a replacement of the number, not an addition, and two of her do not make three. `Event.Boast` is stamped at the announce (Frenzied Raider), and `AbilityCostSubject.Boast` lets a cost modifier price boast abilities (Dragonkin Berserker, `ActivationCostsLessEach`). **Cards** (15): Birgi, Varragoth, Broadside Bombardiers, Eradicator Valkyrie (caveat: hexproof from planeswalkers), Dragonkin Berserker, Fearless Liberator, Usher of the Fallen, Fearless Pup, Duskwielder, Draugr Recruiter, Horizon Seeker, Tuskeri Firewalker, Frenzied Raider, Axgard Braggart, Battershield Warrior. **Still waiting, on card work or a separate seam:** Sigurd, Jarl of Ravensthorpe (a put-or-remove lore counter and a lore-counter trigger), Baron Helmut Zemo (copying a variable set of exiled cards), Arni Brokenbrow (a resolution-time \"you may\" on an activated ability), Goldmaw Champion and Hagi Mob (no blocker, left for the next slice).",
+	},
+	{
 		Slug: "typecycling", Name: "Landcycling and typecycling", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Discard a card with landcycling or another typecycling from your hand to search your library for a card of that type.",
 		Rules:   []string{"702.29"},
@@ -729,6 +767,16 @@ var items = []Item{
 		Examples: []string{"Stormbreath Dragon"},
 	},
 	{
+		Slug: "suspect", Name: "Suspect", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "A suspected creature has menace and can't block until it stops being suspected, and nothing can suspect it again while it is.",
+		Rules:   []string{"701.60"},
+		ADR:     "0071-designations-that-switch-abilities-on.md",
+		// A designation of its own rather than a gate on a printed ability, so no
+		// declaration on the Spec says a card uses it; the printed text does.
+		Printed:  `(?i)\bsuspects? (?:it|up to|target|enchanted|this)\b|\bsuspected\b`,
+		Examples: []string{"Person of Interest", "Rune-Brand Juggler", "Agrus Kos, Spirit of Justice"},
+	},
+	{
 		Slug: "hideaway", Name: "Hideaway", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "When a permanent with hideaway enters, you exile one of your top cards face down and may later play it for free.",
 		Rules:    []string{"702.75"},
@@ -849,6 +897,26 @@ var items = []Item{
 		EngineNotes: "**static and attached grants of mana, activated and triggered abilities ship (ADR 0093 PRs 1-3), with the client's picker (#1567).** A layer-6 static declares `StaticAbility.GrantAbilities` (card side: `effects.GrantAbilities`, `TribalAbilityGrant`, `GrantAbilitiesToAttached`) naming an `effects.AbilityGrant` bundle; the recipient carries `Characteristic.GrantedAbilities`, `CatalogAbilityKey` composes own + layered grants, the ability readers return own + intrinsic + granted with a stable `ref` per row, and the auto-tapper offers every acceptable ability of a permanent as mutually exclusive candidates with a creature's granted mana in the last-resort tier. Granted triggers are harvested from the host, whose controller controls them; a granted dies trigger fires from last-known information (`AbilityKeyFromLKI`) in a single death and in a wipe; and the ETB harvest catches the layers up first, so a creature entering under a grant has it (CR 603.6a). Shipped on Cryptolith Rite, Chromatic Lantern, Gemhide, Manaweft and Necrotic Sliver, Rishkar, Jaheira, Insidious Roots, Great Divide Guide, The World Tree, Paradise Mantle, Squirrel Nest, Springleaf Parade and Thornbite Staff; Dionus and Agent of the Iron Throne moved off their source-side approximations. **Duration grants ship (ADR 0093 PR 4, #1584):** a resolving spell or ability grants a bundle through the `grantAbilities` mod of ADR 0041 phase 3's ScopedEffect record (card side: `effects.GrantAbilitiesFor`, or `game.GrantAbilitiesMod` inside a `ScopedEffectFor`), pinned at resolution (CR 611.2c), timed by an ADR 0063 `Duration`, adapted into the same layer-6 declaration a static makes, and persisted as data, so a table holding one is still a restore point; a restore point naming an unregistered bundle is refused (`ErrUnknownEffectKey`). Shipped on Feign Death, Fake Your Own Death, Malakir Rebirth, Retraction Helix and Urza's Saga (an indefinite self-grant pinned to the Saga). **Counter-held durations ship (ADR 0109 §2, PR 2):** `game.WhilePinnedHasCounter` (4) with `Duration.CounterKind` holds while the pinned permanent is on the battlefield as the same object with a counter of that kind, and ends for good when the last one goes (CR 611.2b); `game.ForAsLongAsPinnedHasCounterDuration` answers \"never starts\". Card side (`effects/counter_held.go`): `CounterThenWhileItHasIt`, `GrantWhileItHasCounter` and `FloodTargetLand`. Shipped on Aquitect's Will, Xolatoyac, Aven Mimeomancer, Liege of the Tangle, Minas Morgul, and the granted abilities of Makeshift Mannequin, Mathas and Obsidian Fireheart. **Losing all land types ships (ADR 0109 §2, PR 3):** the layer-4 `ScopedEffect` kind `loseLandTypes` (`game.LoseLandTypesMod`, reads nothing) and its static form `effects.LosesAllLandTypes` both call `Characteristic.LoseLandTypes`, which removes every CR 205.3i land type and keeps every other subtype (CR 205.1a); it removes no ability by itself, and the basic land types' intrinsic mana abilities go with the types (CR 305.6). \"Loses all abilities and has …\" is the same effect's layer-6 half (`game.LoseAllAbilitiesMod` plus a grant in one record, or `effects.LosesAllAbilitiesAndHas`). Ultima, Origin of Oblivion writes all three into one record timed by `WhilePinnedHasCounter{blight}`; Lithoform Blight and Alpine Moon use the statics, and Alpine Moon reads its chosen name with `game.PermanentHasName` (the face that is up). The land-type chip lists a `loseLandTypes` record with what the same effect took and gave. **Granted loyalty abilities ship (ADR 0109 §2, owner decision 2, PR 4):** a bundle row with a `LoyaltyCost` is an ordinary granted activated row on the planeswalker, so CR 606.3's once-per-turn count and CR 606.6's counter check are the walker's; `ActivateCatalogAbility` stamps the row's grantor on the stack item (`StackItem.GrantedBy`, carried by snapshots and by a CR 707.10 copy), `effects.CreateEmblem` files the emblem under the grantor's key (CR 114.2), and `EventActivateAbility` carries a `Loyalty` bit for \"whenever you activate a loyalty ability of enchanted planeswalker\" (`effects.WheneverYouActivateALoyaltyAbilityOfEnchanted`). Shipped on Teferi's, Elspeth's, Liliana's, Rowan's and Vivien's Talent. Shield Broker waits on shield counters (#2000). Dread Wight writes the counter-held condition into an untap hold, so it lands only after PR 2 reaches main (ADR 0109 Shared machinery 2). Held for their other text, each with no seam row of its own yet: Sauron, Dino Devotee (\"it's a green Dinosaur\" sets the creature types), Eluge (\"costs {U} (or {1}) less\"), Immortal Obligation (a goad for as long as the counter stays), Promise of Loyalty (each player chooses a creature, and \"can't attack you\"), Quicksilver Fountain (a target the upkeep's player chooses) and Cyclopean Tomb (which lands its own counters went on).",
 	},
 	{
+		Slug: "saddlers-of-a-mount", Name: "Creatures that saddled a Mount", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "Some Mounts act on the creatures that were tapped to saddle them this turn.",
+		Missing:     "Rambling Possum can return the creatures that saddled it. A Mount that targets one of them, sacrifices one, copies one or exiles one along with itself isn't supported yet.",
+		Rules:       []string{"702.171"},
+		Issue:       2704,
+		ADR:         "0071-designations-that-switch-abilities-on.md",
+		Examples:    []string{"Rambling Possum"},
+		Waiting:     []string{"Giant Beaver", "The Gitrog, Ravenous Ride", "Calamity, Galloping Inferno", "Fortune, Loyal Steed"},
+		EngineNotes: "primitive: the data is built (#2695). `Card.SaddledBy` records the creatures tapped to pay for the saddle ability that made a Mount saddled, as objects (instance ID and epoch), `Game.SaddlersOf` returns the ones still on the battlefield as the same objects, and `effects.SaddlersOf` is the card-side read. Rambling Possum is a `game.ChooseCardsPrompt` over it. What is missing is each card's own shape: Giant Beaver's TARGET must be one of the saddlers (`TargetSpec` has `RelativeToSource` for power and toughness and `CombatWithSource` for combat, and no sibling that reads the source's saddlers); The Gitrog sacrifices a chosen saddler and reads its power as it last existed; Calamity chooses a nonlegendary saddler, makes a tapped and attacking token copy, sacrifices it at the next end step and repeats once; Fortune flickers itself and up to one chosen saddler at end of combat. Found building the saddle seam.",
+	},
+	{
+		Slug: "saddle-crew-power-bonus", Name: "Crewing and saddling as though a creature's power were greater", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Pilots count for more than their power when you tap them to crew a Vehicle or saddle a Mount.",
+		Missing:     "A Pilot counts only its printed power when it crews or saddles, so the cards that make Pilots, or care about crewing and saddling, aren't supported yet.",
+		Rules:       []string{"702.122", "702.171"},
+		Issue:       2705,
+		Waiting:     []string{"Cloudspire Captain", "Dynamite Diver", "Deathless Pilot", "Interface Ace", "Cloudspire Coordinator", "Defend the Rider", "Valor's Flagship", "Back on Track", "Roadside Assistance", "Country Roads", "Foul Roads", "Reef Roads", "Rocky Roads", "Wild Roads", "Canyon Vaulter", "Reckless Velocitaur"},
+		EngineNotes: "cost component: crew and saddle both pay through `validateCrewCostLocked` (`game/activated.go`), which sums each tapped creature's `CurrentPower()`. \"This creature saddles Mounts and crews Vehicles as though its power were 2 greater\" (the Pilot token and several Pilot creatures) and Interface Ace's \"using its toughness rather than its power\" need a per-creature contribution the payment reads. It has to reach the validator, the client's running total in `CrewCostModal` (`CardView.power` is the post-layer power and the picker adds it up client-side), the enumerator's `crewPayment` (`legal/abilities.go`) and the heuristic. The Pilot token prints the ability, so it is a `tokenTemplate` with a token ability (see `TreasureToken`). Canyon Vaulter and Reckless Velocitaur also need an event for \"saddles a Mount or crews a Vehicle\", which nothing emits: a creature tapped to pay a crew or saddle cost. Found building the saddle seam (#2695).",
+	},
+	{
 		Slug: "modular", Name: "Modular", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Modular lets an artifact creature enter with +1/+1 counters and, when it dies, move those counters onto another artifact creature.",
 		Missing:     "Modular isn't implemented yet, so a creature with it enters without its counters and passes nothing on when it dies.",
@@ -878,7 +946,7 @@ var items = []Item{
 		Printed:     `(?i)\breveals (?:their|his or her) hand\b.*\b(?:you may choose|exile that card|you gain life equal to|discards a card at random|for each card discarded this way|choose a color)`,
 		Examples:    []string{"Appetite for Brains", "Nightsnare", "Talara's Bane"},
 		Waiting:     []string{"Traumatic Revelation", "Distended Mindbender"},
-		EngineNotes: "**Shipped** (#2115, ADR 0116's 2026-10-05 amendment): `RevealedHandDiscard` gains `Destination` (`PickExile`: not a discard, CR 701.9a, so no madness and no discard triggers), `Optional` (\"you may choose\": the empty answer), `FromGraveyard` (Agonizing Remorse) and `Then`, a KEYED continuation (`game.RegisterRevealedPickThen` / `RegisterRevealedPickFirst`, ledger lines `pick <key>`) handed the chosen cards as last-known copies, run after the move or, for a clause printed before it (Talara's Bane), holding the move as `Done`. Any variant raises the new kind `revealed_hand_pick` through `RevealedHandPickForEffect`, so a binary from before refuses the restore point rather than restoring an exile as a discard; the prompt is plain data and stays a restore point. With nothing to choose the continuation still runs (\"if you don't\"). The discard checks #2178's protection at the move, with the chooser as the cause. `legal` offers the pool plus the AlwaysLegal empty answer; the heuristic prices it like the plain pick. A colour chosen first (Addle) and a count read from a discard (Last Rites) compose with the existing prompts. `ToughnessAnywhereForEffect` applies a card's own CDA off the battlefield (CR 113.6a). Still missing: one pick of two cards under two different filters (Distended Mindbender's \"a nonland card with mana value 3 or less and a card with mana value 4 or greater\", which also needs emerge, CR 702.119), and incubate (CR 701.53) for Traumatic Revelation's \"if you don't\" branch.",
+		EngineNotes: "**Shipped** (#2115, ADR 0116's 2026-10-05 amendment): `RevealedHandDiscard` gains `Destination` (`PickExile`: not a discard, CR 701.9a, so no madness and no discard triggers), `Optional` (\"you may choose\": the empty answer), `FromGraveyard` (Agonizing Remorse) and `Then`, a KEYED continuation (`game.RegisterRevealedPickThen` / `RegisterRevealedPickFirst`, ledger lines `pick <key>`) handed the chosen cards as last-known copies, run after the move or, for a clause printed before it (Talara's Bane), holding the move as `Done`. Any variant raises the new kind `revealed_hand_pick` through `RevealedHandPickForEffect`, so a binary from before refuses the restore point rather than restoring an exile as a discard; the prompt is plain data and stays a restore point. With nothing to choose the continuation still runs (\"if you don't\"). The discard checks #2178's protection at the move, with the chooser as the cause. `legal` offers the pool plus the AlwaysLegal empty answer; the heuristic prices it like the plain pick. A colour chosen first (Addle) and a count read from a discard (Last Rites) compose with the existing prompts. `ToughnessAnywhereForEffect` applies a card's own CDA off the battlefield (CR 113.6a). Still missing: one pick of two cards under two different filters (Distended Mindbender's \"a nonland card with mana value 3 or less and a card with mana value 4 or greater\"; its emerge shipped with ADR 0135 PR 5, #2416), and incubate (CR 701.53) for Traumatic Revelation's \"if you don't\" branch.",
 	},
 	{
 		Slug: "escalate", Name: "Escalate", Kind: KindMechanic, Status: StatusImplemented,
@@ -1471,14 +1539,15 @@ var items = []Item{
 		EngineNotes: "cast path: nothing reveals a second card from the hand as a spell is cast, adds its splice cost to the total, or appends its rules text to the spell (CR 702.47a); the spliced card stays in the hand. No catalogued card prints splice; the catalog's Arcane spells (Kodama's Reach, Devouring Greed) note that Arcane matters only to splice. Overblaze's own text is ADR 0108 §3's `multiplyDamage` pinned to its target, so splice is its only gap.",
 	},
 	{
-		Slug: "role-tokens", Name: "Role tokens", Kind: KindSeam, Status: StatusMissing,
+		Slug: "role-tokens", Name: "Role tokens", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Role tokens, the Aura tokens such as the Monster Role that are created attached to a creature.",
-		Missing:     "Role tokens can't be created yet, and a permanent with two of your Roles keeps both.",
+		Missing:     "Every Role except the Questing Role works. The Questing Role gives the enchanted creature all of Questing Beast's abilities, and two of those (it can't be blocked by creatures with power 2 or less, and combat damage from your creatures can't be prevented) are rules a granted ability can't carry yet.",
 		Rules:       []string{"111.10", "303.7a", "704.5z"},
 		Issue:       1945,
 		Tracked:     "#1945 (found landing ADR 0108 PR 1, #1886)",
-		Waiting:     []string{"Faunsbane Troll"},
-		EngineNotes: "tokens: no Role token definitions and no CR 704.5z state-based action. Faunsbane Troll's activated ability's \"if that creature would die this turn, exile it instead\" is ADR 0108 PR 1's; its \"Sacrifice an Aura attached to this creature\" cost needs checking with the Role.",
+		Examples:    []string{"Faunsbane Troll", "Living Lectern", "Ellivere of the Wild Court"},
+		Waiting:     []string{"Questing Cosplayer"},
+		EngineNotes: "tokens: the Roles are token templates (`role_tokens.go`) made by `CreateRoleToken`, and `attachmentSBALocked` applies CR 704.5z (ADR 0036 amendment 2026-10-08). Faunsbane Troll's \"Sacrifice an Aura attached to this creature\" cost is `TargetSpec.AttachedToSource`. A Role that gives the enchanted creature a triggered ability (Sorcerer: scry on attack; Young Hero: a counter on attack; Chef: a Food on attack) is a layer-6 grant of an ADR 0093 bundle that the token template declares in `tokenTemplate.Grants` (ADR 0093 amendment 2026-10-08), so the trigger's source is the enchanted creature. Virtuous is a layer 7c count of the Role controller's enchantments. Questing waits on `AbilityGrant` having no slot for a block rule or for `DamageCantBePrevented`, which Questing Beast declares on its own spec.",
 	},
 	{
 		Slug: "dealt-damage-by-this-creature-this-turn", Name: "Creatures dealt damage by one creature this turn", Kind: KindSeam, Status: StatusMissing,
@@ -1619,6 +1688,24 @@ var items = []Item{
 		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
 	},
 	{
+		// #2696 (ADR 0096 amendment 2026-10-08): ascend is a canonical
+		// keyword read by two engine paths (game/citys_blessing.go), and
+		// the city's blessing it grants is a per-player designation.
+		Slug: "ascend", Name: "Ascend and the city's blessing", Kind: KindKeyword, Status: StatusPartial,
+		Summary:     "Ascend gives you the city's blessing for the rest of the game once you control ten or more permanents: a permanent with ascend does it as soon as you do, and an instant or sorcery with ascend as it resolves. You keep the blessing even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
+		Missing:     "Two cards that read the city's blessing aren't built yet: Timestream Navigator's cost has no component for putting itself on the bottom of its owner's library, and Tilonalli's Summoner can't pay a chosen X as its trigger resolves.",
+		Rules:       []string{"702.131"},
+		Issue:       2706,
+		ADR:         "0096-the-monarch-from-a-card-effect.md",
+		Tracked:     "#2706 (the cards; the rules shipped with #2696)",
+		Keywords:    []string{game.KeywordAscend},
+		Probe:       hasKeyword(game.KeywordAscend),
+		Printed:     printedKeyword("ascend"),
+		Examples:    []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Secrets of the Golden City"},
+		Waiting:     []string{"Tilonalli's Summoner", "Timestream Navigator"},
+		EngineNotes: "rules shipped (#2696, ADR 0096's 2026-10-08 amendment); what is left is cards. `Player.CitysBlessing` (`game/citys_blessing.go`) is the designation (CR 702.131c): written only by `grantCitysBlessingLocked`, which emits `EventCitysBlessing` (the layer pass is invalidated on it, and the log narrates it), never cleared, carried by `Clone`, undo and the snapshot (`seats[].citysBlessing`, additive in schema 7) and on the wire as `PlayerView.citys_blessing`. `ascend` is a canonical keyword the deck importer stamps, with two consumers: `citysBlessingSweepLocked`, CR 702.131b's static ability on a permanent, run from `stateBasedActionsLocked` after the layer recompute (not a state-based action, and it does not count toward `sbaFired`; it gives the blessing to any player who controls an ascend permanent and ten permanents, and walks nothing once every living player has it), and `ascendSpellLocked`, CR 702.131a's spell ability on an instant or sorcery, run as the spell resolves before its other instructions. Card side (`effects/citys_blessing.go`): `YouHaveTheCitysBlessing`, `YouHaveTheCitysBlessingCondition` (an activation condition), `YouHaveTheCitysBlessingNow` (an intervening \"if\" trigger condition), `WhileCitysBlessing`, `SelfPumpWhileCitysBlessing`, `SelfKeywordWhileCitysBlessing`, and `CantAttackUnlessYouHaveTheCitysBlessing` (the new `AttackTargetRestriction.ControllerMustHaveCitysBlessing` clause) with `CantBlockUnlessYouHaveTheCitysBlessing`. **The Waiting cards are not blocked on this row**: they are the ascend cards nobody has built yet (#2706); Timestream Navigator also needs a put-this-on-the-bottom-of-its-owner's-library cost and Tilonalli's Summoner a \"may pay {X}{R}\" as its trigger resolves, and each says so in its slice.",
+	},
+	{
 		// #1552 (ADR 0109 §11 decision 2): sunburst is a keyword read off
 		// the resolving stack card (game/entry_counters.go).
 		Slug: "sunburst", Name: "Sunburst", Kind: KindKeyword, Status: StatusPartial,
@@ -1716,16 +1803,16 @@ var items = []Item{
 	{
 		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Spells and abilities that target several cards \"from a single graveyard\" make you pick them all from one player's graveyard, like Digsite Conservator and Decompose.",
-		Missing:  "A few of these cards also do something that isn't supported yet: revealing cards from your hand as a cost, targeting a creature that was dealt damage this turn, an Omen that shuffles itself away, and casting a copy of a card in exile.",
+		Missing:  "A few of these cards also do something that isn't supported yet: an Omen that shuffles itself away, and casting a copy of a card in exile.",
 		Rules:    []string{"601.2c", "608.2b"},
 		Issue:    1807,
 		ADR:      "0106-five-small-seams-from-the-s50-rechecks.md",
 		Printed:  printedWords("from a single graveyard"),
 		Examples: []string{"Digsite Conservator", "Decompose"},
 		Waiting: []string{
-			"Martyr of Bones", "Feral Deathgorger", "Spellweaver Helix",
+			"Feral Deathgorger", "Spellweaver Helix",
 		},
-		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. Qutrub Forayer shipped afterwards (its \"dealt damage this turn\" half arrived with Covert Cutpurse). **Still open:** three cards of the family are held for their OTHER text, each with no seam row of its own yet: Martyr of Bones (\"Reveal X black cards from your hand\" as an activation cost — `AbilityCost` has no reveal component), Feral Deathgorger // Dusk Sight (an Omen, CR 720 — Scryfall lays it out as an Adventure, the Adventure path always exiles the resolved half, and CR 720.3d shuffles an Omen into its owner's library instead) and Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
+		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. Qutrub Forayer shipped afterwards (its \"dealt damage this turn\" half arrived with Covert Cutpurse). **Still open:** two cards of the family are held for their OTHER text, each with no seam row of its own yet: Feral Deathgorger // Dusk Sight (an Omen, CR 720 — Scryfall lays it out as an Adventure, the Adventure path always exiles the resolved half, and CR 720.3d shuffles an Omen into its owner's library instead) and Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
 	},
 	{
 		Slug: "keyword-counters", Name: "Keyword counters", Kind: KindSeam, Status: StatusImplemented,
@@ -1888,7 +1975,7 @@ var items = []Item{
 		ADR:         "0109-rule-gates-land-types-mana-and-cost-components.md",
 		Printed:     `(?i)\bfor as long as [^.]*remains tapped\b`,
 		Examples:    []string{"Seasinger", "Vedalken Shackles", "Zygon Infiltrator"},
-		EngineNotes: "**Shipped** (ADR 0109 §3, PR 2). `Duration.Also []DurationCondition` is a conjunction (CR 611.2b): a ForAsLongAs duration lasts while `Condition` and every condition in `Also` hold, and ends when any one stops. All of them are read in `durationConditionHoldsLocked`, the one sweep, so the tap, untap and counter bumps that already re-sweep a duration re-sweep these. Two conditions about the PINNED object were appended: `WhilePinnedRemainsTapped` (5, Zygon Infiltrator) and `WhilePinnedPowerAtMostSource` (6, Old Man of the Sea's power comparison, both powers read live; the recompute bumps the layer version after a pass that breaks it, `powerConditionsFailLocked`, because power is a layer output the sweep at the top of the pass cannot see). Constructors: `game.ForAsLongAsYouControlAndSourceTappedDuration`, `ForAsLongAsPinnedTappedDuration`, `ForAsLongAsSourceTappedAndPowerAtMostDuration`, `Duration.And`; each answers CR 611.2b's \"never starts\". Card side (`effects/remains_tapped.go`): `WhileYouControlThisAndItRemainsTapped`, `DurationWhileThisRemainsTapped`, `TargetGetsWhileThisRemainsTapped`, `GainControlOfTargetFor`, `TapTargetsAndHoldWhileThisRemainsTapped`, `AttackingYou`, `PowerAtMostIslandsYouControl`, and `BecomeCopy`'s `CopyWhileOfRemainsTapped`. The restore check now covers every stored duration (ADR 0109 Shared machinery 2, `game/snapshot_durations.go`): the routes to a `Duration` are reflected from the snapshot types, and both an unknown key and a duration this binary cannot read (`Duration.Problem`) are refused with `ErrUnknownEffectKey` on a cast permission, a player static and an untap hold as well as a scoped effect and a delayed trigger. Snapshot: `Also` and `CounterKind` are additive under v7, omitted when empty; fixture `v7/durations.json`. Old Man of the Sea and Whip Vine shipped with the target described by the source (#1863). Still open, each with no seam row of its own yet: Callous Oppressor (\"an opponent chooses a creature type\", with no ruling here on which opponent), Preacher (a target an opponent chooses), Giant Oyster (\"remove all -1/-1 counters from the creature\" when it untaps or leaves, a link to the creature it held), Hedge Whisperer (collect evidence), Immovable Rod (venture into the dungeon), The Pandorica (\"it can't phase in\") and Braided Net (craft). See Closed seams.",
+		EngineNotes: "**Shipped** (ADR 0109 §3, PR 2). `Duration.Also []DurationCondition` is a conjunction (CR 611.2b): a ForAsLongAs duration lasts while `Condition` and every condition in `Also` hold, and ends when any one stops. All of them are read in `durationConditionHoldsLocked`, the one sweep, so the tap, untap and counter bumps that already re-sweep a duration re-sweep these. Two conditions about the PINNED object were appended: `WhilePinnedRemainsTapped` (5, Zygon Infiltrator) and `WhilePinnedPowerAtMostSource` (6, Old Man of the Sea's power comparison, both powers read live; the recompute bumps the layer version after a pass that breaks it, `powerConditionsFailLocked`, because power is a layer output the sweep at the top of the pass cannot see). Constructors: `game.ForAsLongAsYouControlAndSourceTappedDuration`, `ForAsLongAsPinnedTappedDuration`, `ForAsLongAsSourceTappedAndPowerAtMostDuration`, `Duration.And`; each answers CR 611.2b's \"never starts\". Card side (`effects/remains_tapped.go`): `WhileYouControlThisAndItRemainsTapped`, `DurationWhileThisRemainsTapped`, `TargetGetsWhileThisRemainsTapped`, `GainControlOfTargetFor`, `TapTargetsAndHoldWhileThisRemainsTapped`, `AttackingYou`, `PowerAtMostIslandsYouControl`, and `BecomeCopy`'s `CopyWhileOfRemainsTapped`. The restore check now covers every stored duration (ADR 0109 Shared machinery 2, `game/snapshot_durations.go`): the routes to a `Duration` are reflected from the snapshot types, and both an unknown key and a duration this binary cannot read (`Duration.Problem`) are refused with `ErrUnknownEffectKey` on a cast permission, a player static and an untap hold as well as a scoped effect and a delayed trigger. Snapshot: `Also` and `CounterKind` are additive under v7, omitted when empty; fixture `v7/durations.json`. Old Man of the Sea and Whip Vine shipped with the target described by the source (#1863). Still open, each with no seam row of its own yet: Callous Oppressor (\"an opponent chooses a creature type\", with no ruling here on which opponent), Preacher (a target an opponent chooses), Giant Oyster (\"remove all -1/-1 counters from the creature\" when it untaps or leaves, a link to the creature it held), Hedge Whisperer (collect evidence), Immovable Rod (venture into the dungeon), and The Pandorica (\"it can't phase in\"). Braided Net shipped with craft (#2124). See Closed seams.",
 	},
 	{
 		Slug: "land-play-restrictions", Name: "Rules that stop players playing lands", Kind: KindSeam, Status: StatusImplemented,
@@ -2074,14 +2161,14 @@ var items = []Item{
 		EngineNotes: "designation: CR 702.112b's renowned is a marker a permanent keeps until it leaves the battlefield; the engine has none, so renown's trigger and \"if it's renowned\" can't be written. 22 Commander-legal cards print renown or ask about it, none catalogued. Enshrouding Mist's shield is `ModPreventFromSource` (ADR 0108 PR 7, #1904).",
 	},
 	{
-		Slug: "lure-from-opponents-creatures", Name: "Blocks required only of your opponents' creatures", Kind: KindSeam, Status: StatusMissing,
+		Slug: "lure-from-opponents-creatures", Name: "Blocks required only of your opponents' creatures", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that make only your opponents' creatures block a creature, such as You Look Upon the Tarrasque's \"All creatures your opponents control able to block that creature this turn do so\".",
-		Missing:     "A spell can make every creature able to block a creature do so, but not only your opponents' creatures.",
 		Rules:       []string{"509.1c"},
 		Issue:       2050,
 		Tracked:     "#2050 (found landing ADR 0108 PR 7, #1904)",
-		Waiting:     []string{"You Look Upon the Tarrasque"},
-		EngineNotes: "block requirement filter: `effects.BlockRequirementUntilEOT` with `game.BlockRequirementLure` binds every creature able to block (Alluring Scent), and `FilteredLure`'s keys (`BlockerFilterWall`, `BlockerFilterFlying`) describe the blocker, not its controller. Forcing your own creatures to block an opponent's creature that attacks you would be stronger than printed. The card's other mode is `ModPreventFromSource` (ADR 0108 PR 7, #1904).",
+		ADR:         "0045-combat-restrictions.md",
+		Examples:    []string{"You Look Upon the Tarrasque"},
+		EngineNotes: "**Shipped** (ADR 0045 amendment 2026-10-08, #2050): `game.BlockRequirement.ExceptController` narrows a Lure to blockers the named player does not control, read at the declaration in `bindsBlocker` (the one place the engine, the enumerator and the bots all ask). A resolving effect writes it through `game.AddLureExceptMod(controller)`, which carries the player in `Mod.Player`, or `effects.BlockRequirementUntilEOT{ExceptController: …}`. Registration refuses a player on any kind but a Lure. `FilteredLure`'s keys still describe the blocker, not its controller.",
 	},
 	{
 		Slug: "all-damage-from-a-chosen-source", Name: "Shields against a chosen source that are not one-use", Kind: KindSeam, Status: StatusImplemented,
@@ -2134,16 +2221,6 @@ var items = []Item{
 		Mechanic: "replicate",
 		Printed:  printedKeyword("replicate"),
 		Examples: []string{"Reiterating Bolt"},
-	},
-	{
-		Slug: "reconfigure", Name: "Reconfigure", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Equipment creatures that attach to another creature you control, stop being creatures while attached, and can unattach.",
-		Missing:     "Reconfigure isn't implemented yet, so an Equipment creature with it can't attach or unattach this way.",
-		Rules:       []string{"702.151", "301.5c"},
-		Issue:       2639,
-		Waiting:     []string{"Razorfield Ripper"},
-		Phrases:     []string{"reconfigure"},
-		EngineNotes: "primitive: reconfigure (CR 702.151a) is two activated abilities, attach to another target creature you control and unattach, both sorcery speed; CR 702.151b makes the Equipment stop being a creature while it is attached, and CR 301.5c lets an Equipment creature equip only with reconfigure. Equip exists (`effects.EquipAbility`), the rest does not. A cost of \"{2} or {E}{E}{E}\" is two rows each way, and its energy half is already an `AbilityCost` component (ADR 0129 PR 4). Found landing ADR 0129 PR 4 (#1995).",
 	},
 	{
 		Slug: "energy-paid-or-lost", Name: "Getting energy, and energy paid or lost this turn", Kind: KindSeam, Status: StatusImplemented,
@@ -2207,6 +2284,16 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0135 §3, owner decisions 4 and 6, PR 4). `effects.Awaken(n, cost, printed)` is an alternative cost (CR 118.9) whose `Targets` rewrite is the spell's own clauses followed by \"target land you control\", so the land is a target only when the awaken cost is paid (CR 702.113b, 601.2c) and the announce gate, the CR 608.2b re-check and the view all read it through `TargetSpecUnderAlternativeCost`. The land clause is not `Distinct`, so Earthen Arms may name one land twice. `effects.AwakenAfter(n, effect)` runs the printed instruction and then `AwakenIfPaid`, which reads the land from the statement's last clause; Earthen Arms calls it from its own counter placement's continuation. `game.AwakenForEffect` puts the N +1/+1 counters on first, through the CR 614 placement window, so Doubling Season doubles them and Hardened Scales does not see a creature yet (CR 608.2c), then registers earthbend's one-record animation (`animateLandLocked`, now shared) with the Elemental subtype added: Creature, Elemental, haste and base 0/0, one timestamp, no duration (CR 611.2a), pinned to the object (CR 400.7), no return trigger. Existing mod kinds only, so no snapshot change. `effects.Register` refuses awaken on a modal spell, an offer whose clauses drift from the spell's, and an `AwakenLand` purpose off an awaken offer. The offer view now carries `clauses` for a multi-clause rewrite, and the client walks them. `Purpose.AwakenLand` (the N) is priced by the heuristic as a hasty N/N creature at `AwakenLandShare` (0.75), beside the spell's own purpose, and the land target is not priced as a pump. **Cards** (15, all Full): Boiling Earth, Clutch of Currents, Coastal Discovery, Earthen Arms, Encircling Fissure, Mire's Malice, Ondu Rising, Part the Waterveil, Planar Outburst, Rising Miasma, Roil Spout, Ruinous Path, Rush of Ice, Scatter to the Winds and Sheer Drop. See Closed seams.",
 	},
 	{
+		Slug: "emerge", Name: "Emerge", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Creatures with emerge, which may be cast by sacrificing a creature and paying another cost reduced by that creature's mana value, such as Elder Deep-Fiend and Wretched Gryff.",
+		Rules:       []string{"702.119a", "702.119b", "702.119c", "118.7a", "118.9", "202.3", "601.2f", "601.2g", "601.2h", "107.3a"},
+		Issue:       2416,
+		Tracked:     "#2416 (found landing #2115)",
+		ADR:         "0135-alternative-costs-that-tap-discard-awaken-and-emerge.md",
+		Examples:    []string{"Elder Deep-Fiend", "Wretched Gryff", "Adipose Offspring"},
+		EngineNotes: "**Shipped** (ADR 0135 §4, owner decisions 3 and 5, PR 5). `effects.Emerge(cost)` and `effects.EmergeFrom(quality, cost, preds…)` (CR 702.119b, Crabomination's artifact) are a one-permanent `AlternativeCost.Sacrifice` (#1727) flagged `ReducedBySacrificedManaValue`, which `effects.Register` refuses beside anything but a sacrifice of exactly one. The reduction is a cost reduction: `CostQuery.AltSacrificeManaValue` is the named permanent's mana value while it is still on the battlefield (`Game.AltSacrificeManaValueForEffect`, CR 202.3: a token that isn't a copy is 0), filled by the one pricer from `CastSpellParams.AltCostIDs`, and `applyCostModifiersLocked` takes it off the generic part (CR 118.7a) with the board's reductions, after every increase and before a cost floor, never below {0} (CR 601.2f). So the payment, the auto-tap preview (which now takes `alt_cost_ids`), the view's per-candidate `sacrifice_prices` (with `reduces_by_mana_value`) and the enumerator all read one price. Owner decision 3: a permanent named to any sacrifice cost on a cast (an alternative cost's or `sacrifice_ids`) is sacrifice-named in `CastAutoTapExclusions` rather than excluded, so the planner may tap it for mana (CR 601.2g before 601.2h) but never plans an ability that sacrifices it. Owner decision 5: the enumerator prices each emerge payment on its own, keeps the affordable ones, ranks them by the policy's value less the generic mana saved (`TargetCandidate.Saves`, priced at the heuristic's `SpellPerMana`), and offers the best three. `PaidCost.AltCostObjects` records what any alternative cost's card component paid with, kept by a CR 707.10 copy, carried to the permanent's `CastProvenance` and to an enters trigger's `ObjectSnapshot`, so Adipose Offspring reads the sacrificed creature's toughness as it last existed (`Game.AltCostPermanentsForEffect`, `Context.AltCostPermanents`). **Cards** (13, all Full): Abundant Maw, Adipose Offspring, Crabomination, Cresting Mosasaurus, Decimator of the Provinces, Drownyard Behemoth, Elder Deep-Fiend, It of the Horrid Swarm, Lashweed Lurker, Mockery of Nature, Twisted Riddlekeeper, Vexing Scuttler and Wretched Gryff. **Herigast** (ADR 0135 PR 6, Caveats): \"Each creature spell you cast has emerge. The emerge cost is equal to its mana cost.\" is a granted alternative cost (ADR 0118 §3), `effects.EmergeForCreatureSpellsYouCast()`, key `granted-emerge`: emerge's one-creature sacrifice flagged `ReducedBySacrificedManaValue` on the creature-spell filter ADR 0129 PR 4 added, with `GrantedAlternativeCost.PricedAtManaCost`, which sets the derived offer's `ManaCost` to the mana cost of the face being cast (an {X} stays and is chosen, CR 107.3a; a spell with no mana cost gets no offer, CR 118.6) and puts the price in the label. `checkGrantedAlternativeCosts` allows that one card component on a granted offer. The grant is read as the cost is chosen, so Herigast itself may be sacrificed to it; a creature that prints emerge keeps its own offer beside it; `effects.PaidEmerge` answers \"its emerge cost was paid\" for either key (Adipose Offspring). Herigast's caveat is the engine-wide one that a generic cost reduction never comes off the mana announced for X (#2701). Distended Mindbender's emerge shipped in PR 5; it waits on one pick of two cards under two filters (`revealed-hand-pick-variants`, #2115).",
+	},
+	{
 		Slug: "discard-alternative-cost", Name: "Alternative costs that discard cards", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Spells you may cast by discarding cards instead of paying their mana cost, such as Snag's \"You may discard a Forest card rather than pay this spell's mana cost\" and Foil's \"an Island card and another card\".",
 		Rules:       []string{"118.9", "601.2h", "701.9a"},
@@ -2264,14 +2351,13 @@ var items = []Item{
 		EngineNotes: "layer dependency: `dependencyOrderedLayers` (`game/layer_dependency.go`, ADR 0067) orders CR 613.8 dependencies by trial application in layer 4 only. In layer 6 the one ordered case is an ability-removing effect before the effects of the sources it silences (ADR 0093 Decision 3); a grant whose \"applies to\" reads another grant's output is applied in timestamp order. ADR 0067's rule for adding a layer is a catalogued pair plus a benchmark. Sephara's alternative cost is buildable (`effects.TapInsteadPaying`, ADR 0135 §1).",
 	},
 	{
-		Slug: "land-to-graveyard-this-turn", Name: "A land you controlled was put into a graveyard this turn", Kind: KindSeam, Status: StatusMissing,
+		Slug: "land-to-graveyard-this-turn", Name: "A land you controlled was put into a graveyard this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that check whether a land you controlled was put into a graveyard from the battlefield this turn, such as The Lady of Otaria's end-step trigger.",
-		Missing:     "The turn tally counts permanents that left the battlefield, but not lands that went to a graveyard.",
 		Rules:       []string{"603.4", "608.2h"},
 		Issue:       2664,
 		Tracked:     "#2664 (found landing ADR 0135 PR 3, #2030)",
-		Waiting:     []string{"The Lady of Otaria"},
-		EngineNotes: "turn tally: `PlayerTurnTally.PermanentsLeft` (#2148) counts every permanent that left under a player's control, whatever it was and wherever it went, and `PermanentsSacrificed` misses a land destroyed or put there another way. A per-player count bumped at the same exit choke point when the departing permanent was a land and its destination a graveyard would be an additive snapshot field. The Lady of Otaria's alternative cost is buildable (`effects.TapInstead`, ADR 0135 §1).",
+		Examples:    []string{"The Lady of Otaria"},
+		EngineNotes: "**Shipped** (#2664, ADR 0049's 2026-10-08 amendment). `PlayerTurnTally.LandsToGraveyard` is bumped from the `EventLTB` branch that already feeds `CreaturesDied`: the exit goes to a graveyard and the permanent was a land as it last existed (CR 608.2h, `lastKnownBattlefield`), under the controller the exit stamped (CR 603.10a). A bounce or an exile does not count, nor does a nonland permanent or an opponent's land. Read through `Game.LandToGraveyardThisTurn`. Card: The Lady of Otaria (end-step intervening if, checked at trigger and at resolution, CR 603.4).",
 	},
 	{
 		Slug: "damage-redirected-from-a-chosen-source", Name: "Damage dealt to something else instead", Kind: KindSeam, Status: StatusImplemented,
@@ -2488,6 +2574,18 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#1600, ADR 0020's 2026-10-02 amendment): `game.DiscardCost.Hand`, built by `effects.DiscardYourHand()`, on both owners of the component (`AbilityCost.DiscardCards`, `ManaAbilityCost.DiscardCards`). `validateDiscardCostLocked` reads the whole hand, refuses `discard_ids` for it, and pays an empty hand as nothing; the cards leave through the one discard door with cause cost. No options are stamped, so the client opens no picker and the enumerator sends no ids. A mana ability's \"Activate only as an instant\" is `effects.OnlyAsAnInstant()` over `Game.InstantWindowOpenForEffect`; the auto-tapper refuses every discard component. Not covered: \"As an additional cost to cast this spell, … discard your hand\" (Kaervek's Spite, which also sacrifices every permanent). Bomat Courier, Kyren Archive, Connecting the Dots, Reverberating Summons, Subira, Tulzidi Caravanner, Tarrian's Journal and Flamewar print the cost beside something else and are not catalogued.",
 	},
 	{
+		// #2598 (ADR 0020's 2026-10-08 amendment). Closed; history in
+		// Closed seams.
+		Slug: "reveal-cards-cost", Name: "Revealing cards from your hand as an ability's cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that reveal a number of cards of one colour from your hand, such as the Martyr cycle's \"Reveal X black cards from your hand\". The count is the X of the ability, and the cards stay in your hand.",
+		Rules:       []string{"107.3a", "602.2b", "701.20"},
+		Issue:       2598,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresRevealCards,
+		Examples:    []string{"Martyr of Bones", "Martyr of Sands"},
+		EngineNotes: "**Shipped** (#2598, ADR 0020's 2026-10-08 amendment, Decisions 58-60): `game.AbilityCost.RevealCards` (`RevealCardsCost{RevealCost, N, CountFromX, Label}`), built by `effects.RevealX` / `effects.RevealN`. It embeds the either/or branch's `RevealCost`, so the candidate walk and the quality test are shared, and `RevealCost` gained a `Color`. The count is a printed N or the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, the mana cost stays the printed one, and X may be zero. The cards are named in `reveal_ids`, shown to the table and left in the hand (CR 701.20b), so no other component's pick excludes them. `effects.Register` refuses it beside another claim on the announced X, a zero count, an unknown colour, no label and behold. The wire carries `reveal_cost_label` / `reveal_cost_n` / `reveal_cost_count_from_x` (public) and `reveal_cost_options` (controller only); the client reuses its discard picker with the verb Reveal. The enumerator offers the first 1, 2 and 3 matching cards, holds an \"up to X\" target count to each payment's X, and never the X = 0 no-op for a card that declares `XMatters`. 5 cards shipped: the Martyr cycle. **Still open:** \"Reveal this card from your hand\" (forecast, augment, Tetzimoc) and Illuminated Folio's \"two cards that share a color\".",
+	},
+	{
 		// #2527 (ADR 0113's 2026-10-07 amendment). Closed; history in
 		// Closed seams.
 		Slug: "variable-discard-cost", Name: "Discarding X cards as a cost", Kind: KindSeam, Status: StatusImplemented,
@@ -2533,7 +2631,7 @@ var items = []Item{
 		Probe:       declaresExilePermanentCost,
 		Examples:    []string{"The Soul Stone", "Food Chain", "City of Shadows"},
 		Waiting:     []string{"Lunar Hatchling", "Fabrication Foundry"},
-		EngineNotes: "**The ability side shipped** (#1600, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-03 amendment): `game.ExilePermanentsCost` (`Count`, `CardType`, `ExcludeSource`, `Label` — data, not a `TargetSpec`, so the ADR 0041 closure ratchet gains no route) on both owners, `AbilityCost.ExilePermanents` and `ManaAbilityShape.ExilePermanents`, built with `effects.ExileACreatureYouControl()` / `effects.ExileAPermanentYouControl(label, cardType)`. One candidate walk (`ExilePermanentsOptionsForEffect`) feeds the view's `exile_permanent_options`, the enumerator and the validator; the picks ride `exile_permanent_ids` on both actions; the payment is the one exit primitive with `MustSettleNow` (leaves-the-battlefield triggers fire, dies and sacrifice triggers do not; a commander is asked CR 903.9 first) and lands on `PaidCost.Exiled`. `PermanentInfo.ManaValue` answers \"the exiled creature's mana value\" as it last existed (Food Chain). The auto-tapper refuses a mana ability with the component. **Still open:** the casting-cost form — Lunar Hatchling's escape cost \"Exile a land you control, Exile five other cards from your graveyard\" is two card-shaped payments, and an alternative cost carries at most one; a VARIABLE count (Fabrication Foundry's \"one or more other artifacts you control with total mana value X\"); a clause a card type cannot say (Curie, Emergent Intelligence's \"another nontoken artifact creature\", which also needs \"becomes a copy of the exiled creature\"); and craft's two-zone \"a creature you control or a creature card from your graveyard\".",
+		EngineNotes: "**The ability side shipped** (#1600, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-03 amendment): `game.ExilePermanentsCost` (`Count`, `CardType`, `ExcludeSource`, `Label` — data, not a `TargetSpec`, so the ADR 0041 closure ratchet gains no route) on both owners, `AbilityCost.ExilePermanents` and `ManaAbilityShape.ExilePermanents`, built with `effects.ExileACreatureYouControl()` / `effects.ExileAPermanentYouControl(label, cardType)`. One candidate walk (`ExilePermanentsOptionsForEffect`) feeds the view's `exile_permanent_options`, the enumerator and the validator; the picks ride `exile_permanent_ids` on both actions; the payment is the one exit primitive with `MustSettleNow` (leaves-the-battlefield triggers fire, dies and sacrifice triggers do not; a commander is asked CR 903.9 first) and lands on `PaidCost.Exiled`. `PermanentInfo.ManaValue` answers \"the exiled creature's mana value\" as it last existed (Food Chain). The auto-tapper refuses a mana ability with the component. **Still open:** the casting-cost form — Lunar Hatchling's escape cost \"Exile a land you control, Exile five other cards from your graveyard\" is two card-shaped payments, and an alternative cost carries at most one; a VARIABLE count (Fabrication Foundry's \"one or more other artifacts you control with total mana value X\"); and a clause a card type cannot say (Curie, Emergent Intelligence's \"another nontoken artifact creature\", which also needs \"becomes a copy of the exiled creature\"). Craft's two-zone clause shipped as `FromGraveyard` (#2124, ADR 0137).",
 	},
 	{
 		Slug: "library-top-type-filters", Name: "Playing artifacts or historic cards from the top of your library", Kind: KindSeam, Status: StatusMissing,
@@ -2659,13 +2757,17 @@ var items = []Item{
 		EngineNotes: "zones and setup: there is no Attraction deck (CR 717.2), no junkyard pile in the command zone for a card with the Astrotorium back (CR 717.6), no open action (CR 701.51) and no roll to visit as the precombat main phase begins (CR 717.4, 701.52). Down for Repairs' revealed-hand pick already works (ADR 0116); its \"Destroy up to one target Attraction that player controls\" waits on the rest. Found landing the ADR 0116 pool (#2078).",
 	},
 	{
-		Slug: "speed", Name: "Speed: start your engines! and max speed", Kind: KindSeam, Status: StatusMissing,
+		Slug: "speed", Name: "Speed: start your engines! and max speed", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Aetherdrift's speed: start your engines! gives you a speed that rises when your opponents lose life on your turn, and max speed abilities turn on at speed 4, such as Gastal Raider.",
-		Missing:     "Players don't have a speed yet, so a card with start your engines! or a max speed ability can't be added.",
-		Rules:       []string{"702.178", "702.179"},
-		Issue:       2122,
-		Waiting:     []string{"Gastal Raider", "Perilous Snare"},
-		EngineNotes: "player state: no per-player speed value, no state-based action setting it to 1 for a player who controls a permanent with start your engines! (CR 702.179a), no inherent sourceless trigger raising it once each turn when an opponent loses life during that player's turn (CR 702.179d), and no condition a static grant can read for \"Max speed — [ability]\" (CR 702.178a). Gastal Raider's enters trigger is the revealed-hand pick and already works (ADR 0116). Found landing the ADR 0116 pool (#2078).",
+		Missing:     "Most speed cards aren't automated yet, though the speed rules they share are.",
+		Rules:       []string{"702.178", "702.179", "603.4", "704.3"},
+		Issue:       2711,
+		ADR:         "0138-speed.md",
+		Tracked:     "#2711 (the cards; the rules and 12 cards shipped with #2122)",
+		Examples:    []string{"Gastal Raider", "Perilous Snare", "Muraganda Raceway", "Vnwxt, Verbose Host"},
+		Printed:     `(?i)\bstart your engines\b|\bmax speed\b|\byour speed\b`,
+		Waiting:     []string{"Howlsquad Heavy", "Mendicant Core, Guidelight", "Hazoret, Godseeker", "Momentum Breaker", "Nesting Bot", "Kickoff Celebrations", "Zahur, Glory's Past", "Gas Guzzler", "Endrider Catalyzer", "Far Fortune, End Boss", "Lightwheel Enhancements", "Samut, the Driving Force", "Point the Way", "Hour of Victory", "Gastal Thrillseeker", "Embalmed Ascendant", "Slick Imitator", "Pride of the Road", "Outpace Oblivion", "Risen Necroregent", "Walking Sarcophagus", "Endrider Spikespitter", "Leonin Surveyor", "Streaking Oilgorger", "Mutant Surveyor", "Swiftwing Assailant", "Loxodon Surveyor", "Glitch Ghost Surveyor"},
+		EngineNotes: "rules shipped (#2122, ADR 0138); what is left is cards. `Player.Speed` (`game/speed.go`) is 0 for none, then 1 to `game.MaxSpeed` (4); `setSpeedLocked` is the one write and emits `EventSpeedChanged` (`Amount` the new speed), which bumps the layer version. `startYourEnginesSBALocked` is CR 702.179a, a state-based action reading the canonical keyword `start your engines!` (stamped by the deck importer, so an uncatalogued speed card works too). `speedTriggers` is CR 702.179d, a sourceless listener trigger like the monarch's: an opponent of the active player losing life (`EventChangeLife` below zero, or damage that cost life) queues `speed/increase` for the active player once each turn (`PlayerTurnTally.SpeedTriggered`), checked below 4 as it triggers and as it resolves (CR 603.4). Readers: `Game.SpeedOf`, `Game.HasMaxSpeed`. \"Max speed — [ability]\" (CR 702.178a) is NOT an ADR 0071 designation, because that gate reads the object and speed is the player's: `effects.MaxSpeedStatic` / `MaxSpeedSelfPump` / `MaxSpeedSelfKeywords` / `MaxSpeedTrigger` / `MaxSpeedReplacement` / `MaxSpeedCostModifier` gate `AppliesTo`, and `MaxSpeedActivated` / `MaxSpeedMana` AND a `Condition` (greyed with `condition_unmet` while short, refused by the engine, not offered by the enumerator, skipped by the auto-tapper). `effects.YourSpeed` is \"where X is your speed\". Wire: `PlayerView.speed`, the `speed` log line, a speed chip on every seat; the bot board text prints \"speed N\". **The Waiting cards are not blocked on this row** except where noted: they are the speed cards nobody has built yet (#2711). Lightwheel Enhancements also needs a cast-from-graveyard permission that exists only at max speed (`Spec.CastableZones` has no condition). See Closed seams.",
 	},
 	{
 		Slug: "read-ahead", Name: "Read ahead", Kind: KindSeam, Status: StatusMissing,
@@ -2677,13 +2779,20 @@ var items = []Item{
 		EngineNotes: "Sagas: `game/sagas.go` always puts one lore counter on a Saga as it enters (CR 714.3a). Read ahead needs an entry choice of a number from one to the final chapter number (CR 702.155b, 714.3b), the likely shape being the CR 614 entry pipeline that \"enters with\" counters use, and a chapter-trigger condition that stops a chapter triggering the turn the Saga entered unless it has exactly that chapter's number of lore counters (CR 702.155a). The Cruelty of Gix's chapters are otherwise expressible: chapter I is the revealed-hand pick (ADR 0116). Found landing the ADR 0116 pool (#2078).",
 	},
 	{
-		Slug: "craft", Name: "Craft", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Craft exiles an artifact together with materials from the battlefield or your graveyard and returns it transformed, such as Visage of Dread.",
-		Missing:     "Craft isn't supported, so a card with a craft ability can't be added yet.",
-		Rules:       []string{"702.167"},
-		Issue:       2124,
-		Waiting:     []string{"Visage of Dread // Dread Osseosaur", "Braided Net", "Tithing Blade // Consuming Sepulcher"},
-		EngineNotes: "cost and zone change: craft (CR 702.167a) is \"[Cost], Exile this permanent, Exile [materials] from among permanents you control and/or cards in your graveyard: Return this card to the battlefield transformed under its owner's control. Activate only as a sorcery.\" `game.ExilePermanentsCost` (#1600) exiles permanents only, and a material named without the word \"card\" may be a permanent or a graveyard card (CR 702.167b). Nothing returns a card from exile transformed: `ExileAndReturnTransformedForEffect` (ADR 0079) does both steps to a permanent, and #1900 is the graveyard form. CR 702.167c's \"the exiled cards used to craft it\" needs the paid cost remembered on the new permanent. Visage of Dread's enters trigger is the revealed-hand pick and already works (ADR 0116). Found landing the ADR 0116 pool (#2078). Tithing Blade's \"Craft with creature\" takes a creature you control or a creature card from your graveyard (S58 deck requests, #2077); its enters sacrifice and Consuming Sepulcher's upkeep drain are expressible.",
+		Slug: "craft", Name: "Craft", Kind: KindSeam, Status: StatusPartial,
+		Summary:  "Craft exiles an artifact together with materials from the battlefield or your graveyard and returns it transformed, such as Visage of Dread.",
+		Missing:  "Craft with \"one or more\" materials, with materials that must share or differ in type, or with materials from your graveyard only doesn't work yet.",
+		Rules:    []string{"702.167"},
+		Issue:    2709,
+		ADR:      "0137-craft.md",
+		Probe:    declaresCraft,
+		Examples: []string{"Visage of Dread", "Tithing Blade", "Jade Seedstones"},
+		Waiting: []string{
+			"Altar of the Wretched", "Sunbird Standard", "Saheeli's Lattice", "Paleontologist's Pick-Axe",
+			"Eye of Ojer Taq", "Throne of the Grim Captain", "The Enigma Jewel", "Ore-Rich Stalactite",
+			"Unstable Glyphbridge", "Master's Guide-Mural", "Dire Flail", "Tetzin, Gnome Champion",
+		},
+		EngineNotes: "**Shipped for fixed-count materials of one card type or subtype** (#2124, [ADR 0137](decisions/0137-craft.md)): `game.ExilePermanentsCost` gained `FromGraveyard` (CR 702.167b's second zone: the activator's own graveyard, judged on the card's front face, CR 712.8a) and `Subtype` (\"Craft with Island / Cave\"); `game.ReturnCraftedFromExileForEffect` returns the exiled card on its back face as a new object under its owner's control; `Card.CraftedWith []ObjectRef` is CR 702.167c's link (delve's shape), resolved by `CraftMaterialsForEffect`, carried by clone, the snapshot and `PermanentInfo`. `effects.Craft` with `CraftWith` / `CraftWithN` / `CraftWithSubtype` is the keyword. **Still open** (#2709): \"one or more\" (an announced count: Altar of the Wretched, Sunbird Standard, Saheeli's Lattice, Paleontologist's Pick-Axe); a rule over the set (Eye of Ojer Taq's \"two that share a card type\", Throne of the Grim Captain's four subtypes, The Enigma Jewel's \"four or more nonlands with activated abilities\"); graveyard-only and variable (Ore-Rich Stalactite). **Waiting on another face, not on craft:** Unstable Glyphbridge (\"they can't attack you … this turn\" and a cast ban on opponents who attacked you this turn; `GrantCantAttackPlayerForEffect` covers only the next turn), Master's Guide-Mural (\"if an artifact entered the battlefield under your control this turn\" needs a card-type entry tally), Dire Flail (an Equipment granting a trigger with a reflexive \"when you do\"), Tetzin, Gnome Champion (its back face transforms another double-faced artifact). See Closed seams.",
 	},
 
 	{
@@ -2967,6 +3076,44 @@ var items = []Item{
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.
+	{
+		Slug: "player-protection-from-opponents", Name: "Protection from each of your opponents", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that give you protection from each of your opponents, such as Absolute Virtue's, so nothing your opponents control can damage, enchant or target you.",
+		Rules:    []string{"702.16"},
+		Examples: []string{"Absolute Virtue"},
+	},
+	{
+		Slug: "mana-value-of-spells-cast-this-turn", Name: "The total mana value of spells cast this turn", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Spells that count the total mana value of the other spells you've cast this turn, such as Call Forth the Tempest.",
+		Rules:    []string{"202.3", "601.2i"},
+		Examples: []string{"Call Forth the Tempest"},
+	},
+	{
+		Slug: "protection-from-chosen-card-type", Name: "Protection from a card type chosen as it enters", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Permanents that choose a card type as they enter and then give protection from it, such as Serra's Emissary's \"You and creatures you control have protection from the chosen card type\".",
+		Rules:    []string{"702.16", "614.12"},
+		Examples: []string{"Serra's Emissary"},
+	},
+	{
+		Slug: "attack-requirement-most-life-opponent", Name: "Creatures that must attack the opponent with the most life", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures that must attack an opponent with the most life each combat, such as Galactus, Devourer of Worlds.",
+		Rules:    []string{"508.1d"},
+		ADR:      "0045-combat-restrictions.md",
+		Examples: []string{"Galactus, Devourer of Worlds"},
+	},
+	{
+		Slug: "explore", Name: "Explore", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures that explore: reveal the top card of your library, put a land into your hand, or otherwise put a +1/+1 counter on the creature and choose whether to put the card into your graveyard.",
+		Rules:    []string{"701.44", "111.10s"},
+		Examples: []string{"Get Lost", "Lodestone Needle"},
+	},
+	{
+		Slug: "reconfigure", Name: "Reconfigure", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Equipment creatures that attach to another creature you control, stop being creatures while attached, and can unattach.",
+		Rules:    []string{"702.151", "301.5c"},
+		Probe:    activated(func(ab effects.ActivatedAbility) bool { return ab.Reconfigure }),
+		Examples: []string{"Lizard Blades", "Razorfield Ripper", "Lion Sash"},
+	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",

@@ -137,3 +137,9 @@ body territorial-aetherkite/damage-each-other
 body blaster-hulk/divided-damage
 body exalted/pump
 body ondu-rising/attacker-gains-lifelink
+body merry-bards/young-hero-role
+body spellbook-vendor/sorcerer-role
+body curse-of-the-werefox/fight
+condition cast/you-next-cast-at-most-mv
+body speed/increase
+body graveyard/return-the-object-under-your-control

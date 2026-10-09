@@ -126,7 +126,14 @@ func CostsAtLeast(n int, label string, when ...CostPredicate) game.CostModifier 
 // spell-shaped predicate (CreatureSpell, SpellManaValueAtLeast) means
 // something different here and should not be reached for.
 func ActivationCostsLess(n int, label string, when ...CostPredicate) game.CostModifier {
-	m := CostsLessEach(func(game.CostQuery) int { return n }, label, when...)
+	return ActivationCostsLessEach(func(game.CostQuery) int { return n }, label, when...)
+}
+
+// ActivationCostsLessEach is ActivationCostsLess with an amount computed
+// per activation — Dragonkin Berserker's "Boast abilities you activate
+// cost {1} less to activate for each Dragon you control" (#2697).
+func ActivationCostsLessEach(amount func(q game.CostQuery) int, label string, when ...CostPredicate) game.CostModifier {
+	m := CostsLessEach(amount, label, when...)
 	m.Activations = true
 	return m
 }

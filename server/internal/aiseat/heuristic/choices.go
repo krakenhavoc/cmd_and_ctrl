@@ -96,7 +96,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range decode[discardSelectionParams](m.Params).CardIDs {
 			c := st.mine[id]
-			v -= st.cardValue(p.cfg, c) - st.discardPayoff(p.cfg, c)
+			v -= st.handKeepValue(p.cfg, c) - st.discardPayoff(p.cfg, c)
 		}
 		return v, "discard to hand size"
 	}
@@ -205,7 +205,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceSearchLibrary:
 		var v float64
 		for _, id := range cp.CardIDs {
-			v += st.cardValue(p.cfg, lookup(id))
+			v += st.searchValue(p.cfg, lookup(id))
 		}
 		return v, "search: take the best"
 
@@ -223,7 +223,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range cp.CardIDs {
 			c := lookup(id)
-			v += sign * st.cardValue(p.cfg, c)
+			if sign > 0 {
+				v += st.cardValue(p.cfg, c)
+			} else {
+				// The bot's own card: what keeping it is worth
+				// (card_choices.go, #2691).
+				v -= st.handKeepValue(p.cfg, c)
+			}
 			if sign < 0 {
 				// A discard the bot's own payoffs pay for
 				// (discard_payoff.go).
@@ -308,6 +314,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// answer is always chosen: a seat owing a choice is offered
 		// nothing else, and a policy with no opinion must still pick
 		// (#544).
+		// #2680: a prompt that says the named card goes onto the
+		// battlefield is not a discard (puts.go).
+		if v, ok := p.valuePutOntoBattlefield(st, ch, cp.CardIDs); ok {
+			return v, "put it onto the battlefield"
+		}
 		if v, ok := st.valueKeptInHand(p.cfg, ch, cp.CardIDs); ok {
 			return v, "name the worst, keep the rest"
 		}
@@ -566,6 +577,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		return 0.5, "commander: leave it"
 
+	case choiceOwnPermanents:
+		// #2680: a karoo's return, Lotus Field's sacrifice — give up
+		// the permanent worth least (puts.go).
+		if v, ok := p.ownPermanentsValue(st, ch, cp.CardIDs); ok {
+			return v, "give up the least"
+		}
+
 	case choiceReplacementOrder, choiceTriggerOrder:
 		// Either canonical order is as good as the other at this
 		// level; take the declared one.
@@ -627,7 +645,7 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 			kept += st.discardPayoff(cfg, c)
 			continue
 		}
-		kept += st.cardValue(cfg, c)
+		kept += st.handKeepValue(cfg, c)
 	}
 	return kept, true
 }
@@ -705,7 +723,7 @@ func (st *state) valueTakenFromLibrary(cfg Config, ch *protocol.PendingChoiceVie
 	}
 	var v float64
 	for _, id := range named {
-		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
+		v += libraryTakeFloor + st.searchValue(cfg, opts[id])
 	}
 	return v, true
 }

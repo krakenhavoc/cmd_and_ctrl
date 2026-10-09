@@ -378,6 +378,19 @@ const (
 	// behind it, so the table would otherwise watch every werewolf
 	// turn over with nothing saying why. ADR 0132.
 	LogDayNight LogKind = "day_night"
+	// LogCitysBlessing — a player got the city's blessing (CR 702.131).
+	// `Actor` is the player; `CardID` is the ascend permanent or spell
+	// whose check granted it, when known. Narrated because the blessing
+	// arrives with no spell or ability of its own (ascend is a static
+	// ability or a clause of a resolving spell), so without a line the
+	// marker beside the player's name would appear unexplained. #2696.
+	LogCitysBlessing LogKind = "citys_blessing"
+	// LogSpeed — a player's speed changed (CR 702.179, ADR 0138).
+	// `Actor` is the player and `Amount` the new speed. Narrated
+	// because the start-your-engines state-based action gives a
+	// player speed 1 with no spell or ability behind it, and because
+	// reaching max speed switches abilities on across the board.
+	LogSpeed LogKind = "speed"
 	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
 	// (CR 702.26). #1199, ADR 0084.
 	//
@@ -1665,6 +1678,20 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventCitysBlessing:
+		// CR 702.131. The granting object is a public permanent or the
+		// resolving spell, so the card reference is safe on the wire.
+		base.Kind = LogCitysBlessing
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
+	case game.EventSpeedChanged:
+		// CR 702.179, ADR 0138. Not tied to a card: the state-based
+		// action and the inherent trigger have no source.
+		base.Kind = LogSpeed
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventStorm:
 		// CR 702.40a, #1238. The count is the card, and nothing else
 		// says it: a spell copy emits no event (CR 707.10 — it is
@@ -2368,6 +2395,13 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s phased in", card)
 	case LogDayNight:
 		return fmt.Sprintf("It becomes %s", e.Label)
+	case LogCitysBlessing:
+		return fmt.Sprintf("%s gets the city's blessing", actor)
+	case LogSpeed:
+		if e.Amount >= game.MaxSpeed {
+			return fmt.Sprintf("%s has max speed", actor)
+		}
+		return fmt.Sprintf("%s's speed is now %d", actor, e.Amount)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

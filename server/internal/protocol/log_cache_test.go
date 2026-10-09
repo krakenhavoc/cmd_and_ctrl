@@ -225,6 +225,8 @@ func TestPublicLogCacheMatchesAFreshFold(t *testing.T) {
 	const events = 800
 	for seed := uint64(1); seed <= 3; seed++ {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
+			// Parallel (#2766): each seed folds its own game.
+			t.Parallel()
 			g := fourPlayerBoard(t)
 			fz := newLogFuzzer(g, seed)
 			var undo []*game.Game
@@ -377,6 +379,8 @@ func TestPublicLogCacheMatchesAFreshFoldInPlayedGames(t *testing.T) {
 	const moves = 1200
 	for seed := uint64(1); seed <= 2; seed++ {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
+			// Parallel (#2766): each seed plays its own game.
+			t.Parallel()
 			g := game.NewGame()
 			for i := 0; i < 4; i++ {
 				if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), logCacheDeck()); err != nil {

@@ -517,6 +517,11 @@
   // in exile to be cast. A Class or a Case is never a preparation
   // card, so the slot still holds one badge at most.
   //
+  // #2698 adds SUSPECTED (CR 701.60) at the head of the chain: it is
+  // the one designation that changes what the creature may do right
+  // now (menace, can't block), so it wins the slot when it shares it
+  // with a monstrous or harnessed creature.
+  //
   // ADR 0071's addendums add a fourth and fifth tenant, #1705:
   // HARNESSED (CR 701.64) and MONSTROUS (CR 701.37b). Unlike Class /
   // Case / preparation, neither carries a subtype gate — any
@@ -526,28 +531,36 @@
   // this slot still shows at most one badge; if that combination ever
   // ships, this priority chain is where to widen it.
   const designationBadge = $derived(
-    card.solved
-      ? "SOLVED"
-      : (card.class_level ?? 0) > 0
-        ? `LVL ${card.class_level}`
-        : card.prepared
-          ? "PREPARED"
-          : card.harnessed
-            ? "HARNESSED"
-            : card.monstrous
-              ? "MONSTROUS"
-              : "",
+    card.suspected
+      ? "SUSPECTED"
+      : card.solved
+        ? "SOLVED"
+        : (card.class_level ?? 0) > 0
+          ? `LVL ${card.class_level}`
+          : card.prepared
+            ? "PREPARED"
+            : card.harnessed
+              ? "HARNESSED"
+              : card.monstrous
+                ? "MONSTROUS"
+                : card.saddled
+                  ? "SADDLED"
+                  : "",
   );
   const designationTitle = $derived(
-    card.solved
-      ? "this Case is solved"
-      : card.prepared
-        ? "prepared — you may cast a copy of its spell from exile"
-        : card.harnessed
-          ? "harnessed — its ∞ ability lines are on (CR 701.64)"
-          : card.monstrous
-            ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
-            : `Class level ${card.class_level ?? 1}`,
+    card.suspected
+      ? "suspected — it has menace and can't block (CR 701.60)"
+      : card.solved
+        ? "this Case is solved"
+        : card.prepared
+          ? "prepared — you may cast a copy of its spell from exile"
+          : card.harnessed
+            ? "harnessed — its ∞ ability lines are on (CR 701.64)"
+            : card.monstrous
+              ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
+              : card.saddled
+                ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
+                : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to

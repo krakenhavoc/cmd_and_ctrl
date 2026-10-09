@@ -217,6 +217,26 @@ type AbilityCost struct {
 	// exact amount.
 	Crew int
 
+	// Saddle is the saddle number of a Mount's saddle ability (CR
+	// 702.171a): "Tap any number of other untapped creatures you
+	// control with total power N or more". Zero means "not a saddle
+	// cost". Crew's cost with one difference, which is the whole
+	// reason it is a field of its own and not a flag on Crew: the
+	// creatures are OTHER than the source, so a Mount can never tap
+	// itself to saddle itself. Everything else is Crew's, verbatim,
+	// and shares its validator: the source stays untapped (Tap must
+	// stay false), summoning sickness does not apply to the creatures
+	// tapped, power is read at payment time from the post-layer value,
+	// and the printed number is a floor. The creatures ride in the
+	// same ActivateAbilityParams.CrewIDs, and what they were is
+	// written onto the item's payment record (PaidCost.TappedOthers)
+	// for "creatures that saddled it this turn" (CR 702.171c).
+	//
+	// Crew and Saddle on one ability is refused at effects.Register.
+	// Sorcery timing is the ability's SorcerySpeed, which the Saddle
+	// constructor sets; it is not part of the cost.
+	Saddle int
+
 	// RemoveCounters is a "remove N counters" component (#625): from
 	// the source ("Remove a gold counter from this artifact"), from
 	// another permanent the activator controls ("remove a loyalty
@@ -326,6 +346,20 @@ type AbilityCost struct {
 	// activates an ability in one indivisible step, so a cost may
 	// not stop to ask the server a question mid-announce.
 	DiscardCards *DiscardCost
+
+	// RevealCards is "Reveal N <quality> cards from your hand" as a
+	// cost (#2598, ADR 0020's 2026-10-08 amendment) — Martyr of Bones'
+	// "{1}, Reveal X black cards from your hand, Sacrifice this
+	// creature:". Nil means no such component. See RevealCardsCost in
+	// reveal_cards_cost.go, which shares RevealCost's candidate walk
+	// with the either/or branch a spell's additional cost carries.
+	//
+	// The activator names the cards in ActivateAbilityParams.RevealIDs
+	// at announce, beside the discard and sacrifice picks. Revealing
+	// moves nothing (CR 701.20b), so the cards stay in the hand and
+	// are not kept out of any other component's reach. With
+	// CountFromX the count IS the announced X, and DemandsX counts it.
+	RevealCards *RevealCardsCost
 
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
@@ -521,7 +555,7 @@ type AbilityCost struct {
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
 	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
-		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards)
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -605,6 +639,14 @@ type ActivatedAbilityShape struct {
 	// instant" (#1208) — can find them, instead of matching on the
 	// label's spelling.
 	Equip bool
+
+	// Reconfigure marks both CR 702.151a reconfigure abilities, the
+	// attach and the unattach. Set by effects.Reconfigure and by no
+	// card file. The engine reads it for CR 702.151b (a printed
+	// reconfigure Equipment stops being a creature while attached) and
+	// CR 301.5c (an Equipment creature may equip only with
+	// reconfigure); see reconfigure.go. Not an equip ability.
+	Reconfigure bool
 
 	// UntapSelf marks a row whose whole effect is untapping its own
 	// source: Basalt Monolith's "{3}: Untap this artifact", Grim
@@ -735,6 +777,27 @@ type ActivatedAbilityShape struct {
 	// only during your turn.") sets this and Condition, and the two
 	// are checked in that order.
 	Exhaust bool
+
+	// Boast marks a BOAST ability (CR 702.142a, #2697):
+	//
+	//	Boast — {1}{R}: Create a 2/1 red Dwarf Berserker creature token.
+	//	(Activate only if this creature attacked this turn and only
+	//	once each turn.)
+	//
+	// One declarative bit, built by effects.Boast, for the reason Exhaust
+	// is one: the keyword IS two rules at once and a card file that wrote
+	// them out would be writing a rule the engine enforces in three
+	// places. Game.BoastBlock is the whole gate (boast.go), and
+	// ActivateCatalogAbility, internal/legal and the view all read it.
+	//
+	// It is NOT Condition. A boast ability that cannot be activated is
+	// still printed on the creature and still listed — the view ships
+	// `boast_blocked` so the client can say WHICH half failed (it hasn't
+	// attacked, or the ability has been used) — and the two halves
+	// recover differently: one never until the creature attacks, the
+	// other at the next turn. A card that also prints a true condition
+	// sets both, checked in that order.
+	Boast bool
 
 	// CostModifiers are the ability's OWN cost clauses — "This ability
 	// costs {1} less to activate for each legendary creature you
@@ -938,6 +1001,14 @@ type ActivateAbilityParams struct {
 	// (CR 602.2b), on the wire as `discard_ids`, exactly as a cast's
 	// additional discard cost rides CastSpellParams.DiscardIDs.
 	DiscardIDs []uuid.UUID
+
+	// RevealIDs names the cards revealed to pay a RevealCards cost
+	// (#2598): exactly the clause's N, or exactly XValue when it says
+	// CountFromX; each once, each in the activator's hand and each
+	// matching the clause's quality. Revealing moves nothing, so a
+	// card here may also be named in DiscardIDs. On the wire as
+	// `reveal_ids`, the name a cast's reveal pick already rides.
+	RevealIDs []uuid.UUID
 
 	// ExileIDs names the cards paid to an ExileCards cost (#1297):
 	// exactly the clause's count, each once, each in the activator's
@@ -1247,6 +1318,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
+	// CR 702.142a (#2697): a boast ability's two instructions, through
+	// the one gate the enumerator and the view also read. After the
+	// exhaust gate and before the printed condition, as documented on
+	// ActivatedAbilityShape.Boast.
+	if err := boastErr(g.BoastBlockLocked(source, ab)); err != nil {
+		return err
+	}
 	// CR 602.1b / 602.5: the ability's "Activate only if …" and
 	// "Activate only during …" instructions (#743). A player can't
 	// begin to activate an ability whose instructions forbid it, so
@@ -1343,7 +1421,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
-	crew, err := g.validateCrewCostLocked(playerID, ab.Cost, params.CrewIDs)
+	crew, err := g.validateCrewCostLocked(playerID, cardID, ab.Cost, params.CrewIDs)
 	if err != nil {
 		return err
 	}
@@ -1439,6 +1517,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// which invalidates `source` exactly as a sacrifice does).
 	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs, params.XValue)
 	if err != nil {
+		return err
+	}
+	// #2598: "Reveal X black cards from your hand" (Martyr of Bones).
+	// Validated with the rest and paid before the sacrifices; nothing
+	// moves, so no other component's pick is excluded.
+	if err := g.validateRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs, params.XValue); err != nil {
 		return err
 	}
 	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
@@ -1701,6 +1785,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.Exert {
 		g.exertLocked(cardID, playerID, uuid.Nil)
 	}
+	var saddlers []Card
 	for _, id := range crew {
 		// The crewing creatures tap, the Vehicle does not (CR
 		// 702.122b) — which is the whole point, since a Vehicle that
@@ -1708,6 +1793,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if c := findBattlefieldCard(g, id); c != nil {
 			c.Tapped = true
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
+			if ab.Cost.Saddle > 0 {
+				// #2695: who saddled it, as the objects they were, for
+				// CR 702.171c.
+				saddlers = append(saddlers, *c)
+			}
 		}
 	}
 	// #793: the cost path — CR 602.2b activates an ability in one
@@ -1766,6 +1856,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// One payment is one simultaneous exit (#747, CR 603.10a).
 	// ADR 0113 §1: which objects they were, named before they move.
 	sacrificedRefs := g.sacrificeRefsLocked(sacrifices)
+	// #2598: the reveal component, before anything leaves the table — a
+	// revealed card is shown while the source is still on the
+	// battlefield, and nothing it shows moves.
+	g.payRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs)
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
@@ -2005,6 +2099,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		StackItemID: itemID,
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
+		Boast:       ab.Boast,
 		// ADR 0109 §2: "whenever you activate a loyalty ability of
 		// enchanted planeswalker" (Elspeth's and Rowan's Talents). A
 		// loyalty ability is one with a loyalty symbol in its cost
@@ -2035,6 +2130,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taps are paid — so station's effect can read the tapped
 	// creature back at resolution (CR 702.184a). See PaidTap.
 	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	// #2695: a saddle ability's tapped creatures are the "creatures
+	// that saddled it" (CR 702.171c); the effect hands them to
+	// SaddleForEffect from this record. No printed cost has both a
+	// tap-another component and a saddle one.
+	if len(saddlers) > 0 {
+		item.Paid.TappedOthers = paidTapsFrom(saddlers)
+	}
 	// #1310: the waterbend taps, paid here for the same reason and
 	// through the same payer the cast path's convoke / waterbend taps
 	// use. Validated above with every other component; the mana they
@@ -2073,8 +2175,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 // rather than an illegal one.
 //
 // Caller must hold g.mu.
-func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
-	if cost.Crew <= 0 {
+//
+// A Saddle cost (CR 702.171a) runs through the same walk with one extra
+// rule: "other" creatures, so the source itself is refused
+// (ErrInvalidParam) wherever it is named.
+func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
+	need, saddle := cost.Crew, false
+	if cost.Saddle > 0 {
+		need, saddle = cost.Saddle, true
+	}
+	if need <= 0 {
 		if len(chosen) > 0 {
 			return nil, ErrInvalidParam
 		}
@@ -2095,6 +2205,9 @@ func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chos
 			return nil, ErrInvalidParam
 		}
 		seen[id] = true
+		if saddle && id == sourceID {
+			return nil, ErrInvalidParam
+		}
 		c := findBattlefieldCard(g, id)
 		if c == nil {
 			return nil, ErrCardNotFound
@@ -2111,7 +2224,7 @@ func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chos
 		total += c.CurrentPower()
 		out = append(out, id)
 	}
-	if total < cost.Crew {
+	if total < need {
 		return nil, ErrInsufficientCrew
 	}
 	return out, nil
@@ -2185,6 +2298,9 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// "Sacrifice ANOTHER creature": the source is not a legal pick
 		// (compared by object, not by name).
 		if cost.SacrificeOther.ExcludeSource && id == sourceID {
+			return nil, ErrIllegalTarget
+		}
+		if !g.AttachedToSourceOKForEffect(cost.SacrificeOther, sourceID, id) {
 			return nil, ErrIllegalTarget
 		}
 	}

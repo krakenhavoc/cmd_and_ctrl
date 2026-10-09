@@ -51,7 +51,20 @@ type purposeSet struct {
 	// awaken is the N of an awaken cast (ADR 0135 §3): the counters on
 	// the land it makes a hasty 0/0 creature.
 	awaken int
-	sweeps []protocol.SweepView
+	// landsUntapped is how many of `lands` enter untapped (ADR 0136 §2):
+	// mana the turn plan may spend this turn. Not priced.
+	landsUntapped int
+	// extraLands is the additional land drops it declares (#2678,
+	// puts.go). Not one of hasAmounts' amounts: it is priced under its
+	// own Config switch, beside the purpose rather than in place of a
+	// spell's proxy.
+	extraLands int
+	sweeps     []protocol.SweepView
+	// targetsPriced is set by a cast or an activation whose targets a
+	// declared entry prices (PriceTargetPurposes, target_purpose.go):
+	// what it does is then declared, so the proxy goes. Never set on a
+	// card being spent, which points at nothing.
+	targetsPriced bool
 }
 
 // add folds one declared purpose in.
@@ -62,11 +75,13 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.draws += p.Draws
 	ps.discards += p.Discards
 	ps.lands += p.Lands
+	ps.landsUntapped += p.LandsUntapped
 	ps.tutors += p.Tutors
 	ps.selfMill += p.SelfMillTutor
 	ps.tokens += p.Tokens
 	ps.energy += p.Energy
 	ps.awaken += p.AwakenLand
+	ps.extraLands += p.ExtraLandDrops
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}
@@ -152,7 +167,8 @@ func rowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
 // its amounts under PricePurposes, its sweeps under PriceSweeps. When it
 // does not, the caller keeps the price it had before ADR 0126.
 func (p *Policy) purposePriced(ps purposeSet) bool {
-	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0)
+	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0) ||
+		(p.cfg.PriceTargetPurposes && ps.targetsPriced)
 }
 
 // purposeValue prices a declared purpose for the bot: the §6 amounts

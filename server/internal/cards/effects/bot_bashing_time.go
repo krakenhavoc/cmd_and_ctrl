@@ -13,6 +13,7 @@ func init() {
 		Name:         "Bot Bashing Time",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 6)),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(6)),
 	})
 }

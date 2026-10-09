@@ -41,7 +41,21 @@ const (
 	// their mana costs. If you cast a spell this way, you may cast it as
 	// though it had flash."
 	GrantedAltCostEnergySmallCreatures = "granted-energy-small-creatures"
+	// GrantedAltCostEmerge is "Each creature spell you cast has emerge.
+	// The emerge cost is equal to its mana cost." (Herigast, Erupting
+	// Nullkite; ADR 0135 PR 6).
+	GrantedAltCostEmerge = "granted-emerge"
 )
+
+// PaidEmerge reports whether `key` — a StackItem's or a permanent's
+// AltCost — is an emerge cost: the card's own ("emerge") or one
+// Herigast gave it ("granted-emerge"). "If this creature's emerge cost
+// was paid" (Adipose Offspring) is true for either: a spell given emerge
+// has that emerge cost (CR 702.119a), and the Herigast ruling lets a
+// spell with two emerge costs be cast for either.
+func PaidEmerge(key string) bool {
+	return key == AltCostKeyEmerge || key == GrantedAltCostEmerge
+}
 
 // PayWUBRGForSpellsYouCast is Fist of Suns', Jodah, Archmage Eternal's
 // and Leyline of Mutation's static: "You may pay {W}{U}{B}{R}{G} rather
@@ -108,6 +122,33 @@ func PayEnergyForSmallCreatureSpellsWithFlash() game.GrantedAlternativeCost {
 	}
 }
 
+// EmergeForCreatureSpellsYouCast is Herigast, Erupting Nullkite's
+// static: "Each creature spell you cast has emerge. The emerge cost is
+// equal to its mana cost." (ADR 0135 §4 and PR 6, CR 702.119a). Each
+// creature spell its controller casts, from any zone where its printed
+// mana cost could be paid (CR 118.9a), may instead be cast by
+// sacrificing a creature and paying its own mana cost reduced by that
+// creature's mana value: the same one-creature sacrifice offer, flagged
+// ReducedBySacrificedManaValue, that Emerge builds, priced at the
+// spell's mana cost as it is cast (GrantedAlternativeCost.
+// PricedAtManaCost). A creature that prints its own emerge keeps it
+// beside this one, and either may be paid. The grant is read as the
+// cost is chosen, so Herigast itself may be the creature sacrificed.
+func EmergeForCreatureSpellsYouCast() game.GrantedAlternativeCost {
+	what := "a creature"
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:                          GrantedAltCostEmerge,
+			Label:                        "Emerge",
+			Sacrifice:                    sacrificeSpec(what, Creature()).WithCount(1, 1),
+			ReducedBySacrificedManaValue: true,
+			PayLabel:                     what,
+		},
+		Spells:           game.PermissionFilter{CreatureOnly: true},
+		PricedAtManaCost: true,
+	}
+}
+
 // checkGrantedAlternativeCosts refuses a declaration the engine would
 // read wrongly, at boot: a key outside the namespace (it could shadow a
 // card's own offer, or be shadowed by one), a key declared twice, and a
@@ -139,7 +180,19 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.MaxManaValue != nil && *gr.MaxManaValue < 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a negative MaxManaValue", name, o.Key))
 		}
-		if o.Life != 0 || o.PaysCards() || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
+		if gr.PricedAtManaCost && o.ManaCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q is priced at the spell's mana cost and also declares ManaCost %q", name, o.Key, o.ManaCost))
+		}
+		// ADR 0135 PR 6: the one card component a granted offer may
+		// carry is emerge's, a sacrifice of exactly one permanent that
+		// reduces the price (Herigast). checkEmerge holds its shape.
+		emerge := o.ReducedBySacrificedManaValue && o.Sacrifice != nil &&
+			o.ExileFromHand == nil && o.DiscardFromHand == nil && o.ReturnToHand == nil &&
+			o.ExileFromGraveyard == nil && o.TapOthers == nil
+		if emerge {
+			checkEmerge(name, o)
+		}
+		if o.Life != 0 || (o.PaysCards() && !emerge) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
 			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || o.RequiresGrant || o.CastsFace != 0 || o.Granted {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))

@@ -16,6 +16,7 @@ func init() {
 			Label:   "{T}: Goblin Sharpshooter deals 1 damage to any target",
 			Cost:    TapCost(),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  sourceDealsOneToFirstTarget,
 		}},
 		Triggered: []game.TriggeredAbility{{

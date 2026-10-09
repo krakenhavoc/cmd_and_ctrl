@@ -514,6 +514,13 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// its own CR 613.7c timestamp. One more source list into the same
 	// gather; see keyword_counters.go.
 	out = append(out, g.keywordCounterEffectsLocked()...)
+	// CR 701.60c (#2698): a suspected permanent has menace and can't
+	// block. One more source list into the same gather; see suspect.go.
+	out = append(out, g.suspectContinuousEffectsLocked()...)
+	// CR 702.151b (#2639): an attached reconfigure Equipment is not a
+	// creature. One more source list into the same gather; see
+	// reconfigure.go.
+	out = append(out, g.reconfigureContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}
@@ -985,6 +992,8 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	// CR 702.98a (#1556): unleash's "can't block as long as it has a
 	// +1/+1 counter on it", read off the finished ability list.
 	g.foldUnleashLocked()
+	// CR 701.60c (#2737): a suspected permanent's granted "can't block".
+	g.foldSuspectedCantBlockLocked()
 }
 
 // materialiseControlLocked copies layer 2's output back onto

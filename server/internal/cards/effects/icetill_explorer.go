@@ -22,6 +22,7 @@ func init() {
 		Name:                "Icetill Explorer",
 		Completeness:        CompletenessFull,
 		AdditionalLandPlays: 1,
+		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		CastPermissions: []game.CastPermission{{
 			Zone:   game.ZoneGraveyard,
 			Filter: game.PermissionFilter{LandsOnly: true},

@@ -33,6 +33,7 @@ func init() {
 			Label:     "Threshold — {U}, {T}, Sacrifice this land: Target player draws three cards, then discards three cards. Activate only if there are seven or more cards in your graveyard.",
 			Cost:      Plus(ManaCost("{U}"), TapCost(), SacrificeThis()),
 			Targets:   TargetPlayer("target player"),
+			Purpose:   ForTargets(game.TargetPurpose{Slot: 0, Draws: 3, Discards: 3}),
 			Condition: GraveyardAtLeast(7, nil),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

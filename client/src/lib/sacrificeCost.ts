@@ -71,6 +71,19 @@ export function orderSacrificeOptions(board: CardView[], ids: string[] | undefin
   return out;
 }
 
+// exilePermanentOptions resolves an exile-a-permanent cost's options
+// (`exile_permanent_options`). Since craft (ADR 0137, CR 702.167b) an
+// option may also be a card in the activator's own graveyard, so the
+// pool is the battlefield plus that graveyard, still in the server's
+// order.
+export function exilePermanentOptions(
+  battlefield: CardView[],
+  graveyard: CardView[] | undefined,
+  ids: string[] | undefined,
+): CardView[] {
+  return orderSacrificeOptions([...battlefield, ...(graveyard ?? [])], ids);
+}
+
 // toggleSacrificePick is one click in the picker. At a count of 1 a
 // click replaces the pick, as the single-choice picker always did. At
 // a count of N a click adds an unpicked permanent (unless N are

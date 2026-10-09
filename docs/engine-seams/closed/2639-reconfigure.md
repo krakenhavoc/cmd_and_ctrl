@@ -1,0 +1,13 @@
+---
+title: "Reconfigure"
+date: 2026-10-09
+issues: [2639]
+---
+**Reconfigure** (#2639, CR 702.151, CR 301.5c, [ADR 0036](decisions/0036-attachments.md) decision 21) — `game/reconfigure.go` is the rules side, `effects/reconfigure.go` the card side.
+- **The two abilities.** `effects.Reconfigure("{2}")` builds CR 702.151a's pair of sorcery-speed rows: attach to another target creature you control (`AttachSourceToTarget`, equip's resolution) and unattach (`game.UnattachSourceForEffect`), the second gated on `SourceAttachedToACreature`. A cost printed with a choice, "Reconfigure—Pay {2} or {E}{E}{E}", is `ReconfigureOneOf`, one pair of rows per payment. Labels are the printed keyword line plus a parenthesis naming the half, so they stay distinct. Both rows carry `ActivatedAbilityShape.Reconfigure`, not `Equip`.
+- **Not a creature while attached (CR 702.151b).** A layer-4 effect derived from the board (`reconfigureContinuousEffectsLocked`, beside the suspect and keyword-counter source lists): a permanent whose catalog rows print reconfigure and that is attached to a permanent still on the battlefield loses the creature type and its creature subtypes (CR 205.3d), at the attach's timestamp. Nothing is stored, so the snapshot is unchanged. It reads the printed rows, so an attached Equipment that loses its abilities stays a noncreature, as the rule says.
+- **CR 301.5c.** `attachmentLegalLocked` unattaches an Equipment that is a creature and has no reconfigure (an animated Equipment now falls off), and keeps one that has it (`HasReconfigure`, which honours ability removal).
+- **Granted gates.** `game.GameEndGate.You` names whose "you" a gate is, so Cloudsteel Kirin's "equipped creature has 'You can't lose the game …'" protects the host's controller ([ADR 0057](decisions/0057-win-and-lose-by-effect.md) amendment of 2026-10-09).
+- **Card helpers:** `ThisOrEquippedCreatureAttacks`, `…DealsCombatDamageToAPlayer`, `…BecomesBlocked` for "Whenever this creature or equipped creature …".
+- **Cards (17):** Lizard Blades, Rabbit Battery, Blade of the Oni, Ogre-Head Helm, Chainflail Centipede, Razorfield Ripper, Lion Sash, Simian Sling, Tanuki Transplanter, Bronzeplate Boar, Acquisition Octopus, The Reality Chip, Komainu Battle Armor, Armguard Familiar, Leech Gauntlet and Webspinner Cuff, Full; Cloudsteel Kirin with one caveat (a host that lost its abilities before the Kirin attached does not get the gate).
+- **Not built:** removing an Equipment that stops being a creature mid-combat from combat is the existing CR 506.4 path's business and is not reachable at sorcery speed; the bot prices both rows with the flat activation value.

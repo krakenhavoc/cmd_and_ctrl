@@ -4569,6 +4569,7 @@ declare blockers" (`dockHint.ts`).
   declaration happened before they were defending. That is the legacy shape
   above. Closing it needs a "the declaration as a whole is over" record beside
   `blocksDeclared` ([#2021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2021)).
+  *Closed by #2021 (Decision 74, amendment of 2026-10-09).*
 - **Triggers that wait in the parked step.** Triggers drained at the step's
   entry ("at the beginning of the declare blockers step", or one a completion
   point 1 declaration set off) go on the stack while priority is parked and
@@ -4579,3 +4580,190 @@ declare blockers" (`dockHint.ts`).
 - **A disconnected defender** still holds the step until someone sends
   `advance_step`. A per-seat timeout belongs to the table-pacing work, not to
   the rules.
+
+## Amendment (2026-10-08, [#2050](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2050)): a Lure on only your opponents' creatures
+
+Follows up the #1597 and #1684 amendments. Decisions 1–70 stand. The #1684
+amendment's filtered Lure described the blocker; this one describes who
+controls it. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+You Look Upon the Tarrasque's "All creatures your opponents control able to
+block that creature this turn do so" is narrower than Alluring Scent's. When
+the target is an opponent's creature attacking you, your own creatures are
+not required to block it, and a plain Lure would force them to. That is
+stronger than printed, so the card waited.
+
+### Decisions
+
+71. **The exemption is a player, not a characteristic filter.**
+    `BlockRequirement.ExceptController` names the player whose creatures the
+    Lure does not bind. Zero is an ordinary Lure. `bindsBlocker` checks it
+    first: a blocker that player controls at the declaration is not bound,
+    any other blocker is, and a nil blocker is not. It is read at the
+    declaration like `Filter`, so a creature that changed hands since the
+    effect resolved is judged by its controller now.
+72. **The same record, one more field.** A resolving effect writes it with
+    `game.AddLureExceptMod(controller)`, a `ModAddBlockRequirement` of kind
+    `lure` whose `Mod.Player` is the exempt player. `Mod.Player` is already
+    serialised, so undo, `Clone` and a restore point need nothing new.
+    Registration refuses a player on any other kind (`blockRequirementModProblem`).
+    `effects.BlockRequirementUntilEOT.ExceptController` is the card-side
+    spelling and panics on a non-Lure kind.
+73. **Every reader goes through `bindsBlocker`.** The block search, the
+    CR 509.1c checkpoint, `blockPairWeight` and the enumerator already ask it,
+    so the enumerator and the bots follow without a change of their own. A
+    legal-package test pins that a defender whose creatures are all spared is
+    offered `finish_blocks` and no required block.
+
+### Tests
+
+- `game/block_requirements_2050_test.go`: `bindsBlocker` spares the exempt
+  player and binds others, a nil blocker, and an ordinary Lure is unchanged.
+  `block_requirements_1684_test.go`'s validation table gains a Lure naming a
+  player and a non-Lure naming one.
+- `legal/block_requirements_2050_test.go`: the defender is offered
+  `finish_blocks` and no required block.
+- `cards/effects/you_look_upon_the_tarrasque_test.go`: the caster's opponent
+  must block with every creature able; the caster's own creatures need not;
+  the target is 7/7 and indestructible; Run and Hide prevents combat damage
+  to the caster's creature and not to the opponent's, nor non-combat damage.
+
+### What this does NOT decide
+
+- **"Opponents" is "every player but the controller."** Commander has no
+  teams, so the two coincide; a team format would need the exemption to be a
+  set.
+- **A Lure that spares a creature type or a keyword and a player together.**
+  The two narrowings compose by both applying; no card needs it.
+
+## Amendment (2026-10-08, [#2744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2744)): "attacks an opponent with the most life"
+
+Galactus, Devourer of Worlds prints "Galactus attacks an opponent with
+the most life among your opponents each combat if able unless you
+control a creature named Silver Surfer, Galactus's Herald." It is one
+CR 508.1d requirement, but it can only be obeyed by attacking certain
+players.
+
+- **The shape.** `AttackRequirement` gains a third form,
+  `MostLifeOpponentOf`: the seat whose opponents are compared, which is
+  the source's controller. `obeyedBy` accepts an attack only on a player
+  who is still in the game, is not that seat, and has the most life
+  among that seat's opponents. Ties count each tied player.
+- **When life is read.** At judgement, like every other `obeyedBy`
+  read. The CR 508.1d maximisation, the verb refusals, the checkpoint,
+  `MustAttackForEffect` and the enumerator all see the life totals as
+  they are when the attack is declared, so nothing goes stale.
+- **The sentence.** "Galactus, Devourer of Worlds must attack an
+  opponent with the most life if able."
+- **The exemption.** "Unless you control a creature named …" is the
+  static's `AppliesTo`. It reads the card's own name and type line,
+  which layer 1 has already rewritten for a copy (ADR 0043), so a Clone
+  of the named creature counts.
+- **Still open.** Gideon Jura's "attacks Gideon Jura if able"
+  (`attack-requirement-on-a-permanent`, #2567) needs a requirement on
+  one permanent. It is another target restriction of the same kind, and
+  should be a sibling field next to this one rather than an overload of
+  it.
+
+## Amendment (2026-10-09, [#2021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2021)): a player who becomes a defending player after the declaration does not declare
+
+Closes the first item in the #1501 amendment's "What this does NOT decide".
+Decisions 1–73 stand. Decision 69's paragraph on completion point 3 is
+narrowed: of its two shapes, only the restore point written before #1501
+remains. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+- **CR 509.1.** "First, the defending player declares blockers." It is one
+  turn-based action, taken as the declare blockers step begins. Only a player
+  who is a defending player at that moment declares.
+- **CR 508.5 / 802.2a.** A creature's defending player is the player it is
+  attacking, the controller of the planeswalker it is attacking, or the
+  protector of the battle it is attacking. That can change after the
+  declaration: CR 508.7a reselects what an attacker is attacking, and CR
+  508.4 puts a creature onto the battlefield attacking a player the attacking
+  player chooses. A control change of an attacked planeswalker or battle does
+  not, since that removes it from combat (CR 506.4, #1376), and its attackers
+  keep the defending player recorded for them (CR 506.4c, #1364).
+- **CR 509.1h.** An attacker with no blockers declared for it is unblocked,
+  and one with blockers is blocked, until it leaves combat or an effect says
+  otherwise. A player who becomes its defending player afterwards changes
+  neither.
+
+### Decision 74: the declaration as a whole closes once
+
+`Game.blockDeclarationClosed` records that the CR 509.1 action is over. It is
+set by `noteBlockDeclarationClosedIfCompleteLocked` (`block_completion.go`) the
+moment every player defending at that moment has completed their declaration.
+That check runs at each completion, at the step's entry once completion point 1
+has run (so a step with nobody to wait for closes as it begins), when the
+cursor leaves the step, and in the settle after an action. It is never cleared
+within the step. `clearBlockStateLocked` clears it with the rest of combat. It
+rides `Clone` / `RestoreFrom` and the snapshot (`blockDeclarationClosed`,
+additive, no bump) for `blocksDeclared`'s reason.
+
+Every "has this defender declared" question now asks
+`blockDeclarationDoneLocked(seat)`, which is `blocksDeclared[seat]` or the
+closed record, never `blocksDeclared` directly. So, for a player who becomes a
+defending player after the declaration closed:
+
+- `BlockDeclarationStatusLocked` answers `declared`. The wire lists them in
+  `blocks_declared_seats`, not `block_pending_seats`, so the client shows no
+  "No blocks" / "Done blocking" control and the dock does not wait on them.
+- The option generator offers them nothing. The #328 signal
+  (`block_decision_seats`), the enumerator's block moves and its
+  `finish_blocks` move follow from it and from the status.
+- The verb refuses their block with `blocks_declared` (Decision 68), checked
+  last as before. Its sentence still reads "You have already finished
+  declaring blockers this combat." It is accurate in substance (the table's
+  declaration is finished) and the reason stays one wire value.
+- `completeBlockDeclarationLocked` does nothing for them, so no
+  `EventBlockersDeclared` is emitted for a declaration they never made, at
+  `finish_blocks` (an idempotent no-op), at their pass, or as the step ends.
+  Their pass is an ordinary pass in the CR 117.4 succession and does not hand
+  the active player priority again.
+- `allBlockDeclarationsCompleteLocked` is true once closed, so nothing waits
+  on them.
+
+A player who is defending when the step begins and is still declaring is
+unaffected. While any defender is still declaring, priority is parked
+(Decision 69), so nothing can resolve and make a new defending player in that
+window. The closed record only matters after the active player has priority.
+
+### Snapshot and wire
+
+One additive game-level snapshot key, `blockDeclarationClosed`, recorded in
+`snapshot_shape/v7.txt`. A file written before it restores as false. That is
+the shape before this change, where such a player is asked to declare. A
+binary before it drops the key with the same result. No wire field changes:
+the existing `block_pending_seats` / `blocks_declared_seats` carry the answer.
+
+### Tests
+
+- `game/block_late_defender_test.go`: an attack reselected onto a fourth seat
+  after the declaration closed. That seat reads declared on the status and the
+  wire, is offered nothing and owes no decision, is refused with
+  `blocks_declared`, gets a no-op `finish_blocks`, passes as an ordinary pass,
+  is never announced as declaring, and takes the unblocked attacker's damage.
+  The same for a creature put onto the battlefield attacking a new player. The
+  record is not set while a second defender is still declaring, and is set by
+  the last one. It round-trips undo and the snapshot, and clear combat
+  forgets it.
+- `game/block_defender_test.go`: `TestBlockAfterAReselectIsRefusedToBothDefenders`
+  (formerly `…FollowsTheNewDefender`, which pinned the permissive behaviour)
+  refuses the new defender's block on the reselected attacker.
+- `legal/finish_blocks_test.go`: the late defender is offered neither a block
+  nor `finish_blocks`.
+
+### What this does NOT decide
+
+- **The sentence for a late defender.** "You have already finished declaring
+  blockers" is said to someone who never declared. A sentence of its own would
+  need the refusal to carry which case it is. No card makes this common.
+- **A sandbox move that makes a new defending player while priority is
+  parked.** It can only come from a manual verb. That player is pending and is
+  waited on like any other declaring defender.

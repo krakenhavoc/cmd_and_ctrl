@@ -852,6 +852,80 @@ whether the lands enter tapped. Harrow's do not; Roiling Regrowth and
 Cycle of Renewal, whose lands do, declare no purpose, and one should not
 be declared for them before the purpose can say so.
 
+**A target is priced by what the purpose does to it**
+([ADR 0126's amendment of 2026-10-08](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills),
+#2689, `PriceTargetPurposes`, `target_purpose.go`). A purpose's
+`targets` entries say what happens to the pick for each target clause:
+cards drawn and discarded, tokens made, life gained and lost. A player
+pick with such an entry is priced by those amounts, not as an attack:
+
+```
+x = Hand × draws − DiscardWeight × discards + TokenWeight × tokens
+    + the life gained and lost, at what Strength counts it
+    (+ the bot's discard payoffs, when the bot is the target)
+```
+
+and the move is worth the change in `ScoreEval` when that seat's
+strength moves by `x`, the way a sweep is priced. Given to the bot it
+is +x. Given to an opponent it costs `OpponentMean + OpponentMax` of
+x at a two-seat table (1.5), a third of `OpponentMean` plus
+`OpponentMax` for the strongest of three opponents, and a third of
+`OpponentMean` for any other. A cast or row with such a pick drops the
+mana-value proxy (or `ActivateBase`), because what it does is declared.
+Prismari Command's loot and Treasure at the bot is then +0.50, and at
+the opponent −3.75. Sign in Blood at the bot beats Sign in Blood at
+an opponent. A pick with no entry keeps the old price.
+
+**Declared damage is priced by whether it kills** (the same amendment,
+`DamageByLethality`, `damageKills`). An entry's `damage` is priced by
+what it does to its pick:
+
+- **A creature:** removal if the damage kills it, and `DamageChip`
+  (0.00) of removal if it does not. Marked damage is removed in
+  cleanup, so 2 damage to a 2/4 is worth nothing. The kill test is the
+  combat planner's: toughness less the damage already marked, no kill
+  through indestructible or protection from the source, any damage from
+  a deathtouch source. The bot's own creature costs its value if it
+  dies and nothing if it survives.
+- **A planeswalker:** the share of its loyalty removed, all of it at or
+  above its loyalty.
+- **A player:** `DamageToOpponent` (0.30) per point, as a strength
+  change through the opposition weights, the bot's own life at
+  `MarginalLife`, and `LethalBonus` when the life the move takes reaches
+  the player's total.
+- **A battle**, or a pick the view does not show, keeps the old price.
+
+Lightning Bolt at a player on 40 is then +0.15 at two seats, not +1.20,
+so the bot keeps it for a creature it kills or for the last points.
+
+**Removal is priced net of what comes back** (#2679, `NetRemoval`,
+`net_removal.go`). Removal of an opposing permanent is priced as its
+value × `RemovalConfidence` × `LeaderBoost`. Two things now come off
+that:
+
+- **A commander comes back.** A destroyed, exiled, bounced or tucked
+  commander may go to the command zone (CR 903.9a, 903.9b) and be cast
+  again for {2} more (CR 903.8). An opposing commander its opponent owns
+  is priced at `2 × CommanderTax + DamageToOpponent × power`, the tax
+  and the damage it does not deal for one turn, never more than its
+  value. Review game 2's Chaos Warp on a 2/4 commander drops from 6.65
+  to 3.72, below casting the bot's own commander (4.17). `is_commander`
+  is on the wire, so no catalog data is needed.
+- **A declared gift comes back.** A target entry's `returns` says what
+  the target's controller is given when it is removed: a creature token
+  of a printed size (Rapid Hybridization, Pongify, Beast Within,
+  Generous Gift, Stroke of Midnight), life equal to the target's power
+  (Swords to Plowshares) or a land (Path to Exile, Assassin's Trophy).
+  It is valued as that seat would value it (the token's body, the life
+  at what `Strength` counts it, a land at `ManaSource`) and taken off on
+  the removal's own scale. Review game 1's Rapid Hybridization on a 1/1
+  drops from 3.45 to −1.77, so the bot passes. Chaos Warp's gift is
+  whatever the owner reveals from the top of their library, which no
+  printed amount says, so it declares nothing.
+
+Only a target an opponent controls is netted, and a return does not make
+the move purpose-priced.
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,
@@ -881,7 +955,7 @@ A wipe gets no `SpellFloor`.
 
 With `DiscardCostByCard` on, a card discarded to pay a spell's cost
 costs what that card is worth to the bot (`cardValue`, the price the
-cleanup discard already uses), not a flat 1.20. A spare land late in
+cleanup discard used before #2691), not a flat 1.20. A spare land late in
 the game costs about 0.30. The bot's last land in hand, while it has
 fewer than `LandsWanted` (5) sources, costs `LastLandDiscard` (1.00)
 more. The enumerator offers one payment per combination of cards, so
@@ -903,6 +977,110 @@ TokenWeight × tokens
 
 So with Mary Read out, the bot loots away the Island rather than the
 Mountain.
+
+### Which card a discard gives up (#2691)
+
+With `DiscardByDistance` on, a card the bot discards from its own hand
+(the cleanup discard, a discard prompt, the cards a loot or a rummage
+names) is priced by `handKeepValue` (`card_choices.go`), not
+`cardValue`:
+
+- **Spells and permanents share a scale.** An instant or sorcery is
+  worth `DiscardSpellPerMana` (1.00) per mana value, about what a
+  creature's body prices per mana. `cardValue` prices it at
+  `SpellPerMana` (0.60), a cast-time proxy, so a cheap answer was always
+  the first card out.
+- **Distance to castable.** The card is multiplied by
+  `DistanceDiscount` (0.60) for each mana it is short: the larger of its
+  mana value less the bot's mana sources and the lands in its hand, and
+  its coloured pips less the sources and lands in hand of each colour.
+  On two lands with none in hand, a seven-drop is five short (×0.08) and
+  a Counterspell with one blue source is one short (×0.60), so the
+  seven-drop goes. `cardValue`'s flat ×0.60 for any card more than one
+  mana away is not applied.
+- **A land is worth what it brings the hand closer to castable**: for
+  each nonland card in hand, its keep value with the land less its keep
+  value without it, and never less than the land's `cardValue`. While
+  the bot has fewer than `RampWantCap` (7) mana sources it is also never
+  less than `DiscardLandFloor` (2.50), the land drop it will want later:
+  that keeps the old order between a land and a spell on the new scale
+  (a land beats a two-mana spell and loses to a three-mana one). Past
+  seven sources, with everything castable or a second land in hand
+  covering the same gap, a land is worth its `cardValue` and is the card
+  to pitch. Without the floor, raising the spells tipped the discard onto
+  lands, and the bot missed more land drops.
+
+The cast-cost discard (`DiscardCostByCard` above), the scry, the
+sacrifice and the fuel pricer still read `cardValue`.
+
+### The mulligan checks for something to cast (#2693)
+
+The heuristic keeps a hand of two to five lands (`KeepMinLands`,
+`KeepMaxLands`) and digs at most `MaxMulligans` (2) times, never to five.
+The engine's first mulligan is free (it redraws seven) and each one
+after it draws a card fewer; nothing goes to the bottom. Counting lands
+alone kept review game 2's Mountain, Exotic Orchard and five spells of
+three to seven mana, and the bot missed its next two land drops.
+
+With `KeepNeedsCast` a hand at the land floor is kept only if it holds
+a spell it can cast soon: a nonland card whose mana value is at most
+the lands in hand plus `KeepCastReach` (0), with its coloured pips made
+by those lands. A land whose abilities name no colour (a fetch land,
+Exotic Orchard) counts as any colour; a land that makes only {C} counts
+as none. A hand without such a spell takes the free mulligan. When the
+mulligan would cost a card the check does not apply, and the hand is
+kept on its land count as before. `BaselineConfig` turns it off.
+
+### Which land a search takes (#2677)
+
+A library search scores each answer by `cardValue`, and every land is
+the same flat value, so before `LandColorNeed` the bot took the first
+land offered. A land now adds `LandColorNeed` (0.30) times its fit
+(`landColorFit`, `card_choices.go`): for each colour its repeatable mana
+abilities make (`produced`), 1/(1 + the bot's sources of that colour) if
+the hand or the commander has a pip of it, and 0.1 if nothing asks for
+it. So a G-hungry hand with no G source fetches Breeding Pool over
+Island, a dual beats a basic that meets the hand equally, and a
+missing colour beats a fourth source of one the bot has. The same score
+picks a land out of a `choose_cards` look at the library.
+
+### Putting a card onto the battlefield, and giving up a permanent (#2680)
+
+A `choose_cards` prompt over the bot's own hand is scored as a discard:
+an answer is worth what it leaves in hand. "You may put a land card from
+your hand onto the battlefield" (Uro, Eureka Moment, Growth Spiral and
+the other users of `PutFromHandOntoBattlefield`) is not a discard, so
+that prompt says where the card goes: `choose_destination` is
+`battlefield`, or `battlefield_tapped` for the "tapped" rider. With
+`PricePutsFromHand` on (`puts.go`), each candidate is worth what keeping
+it is worth, and the named one adds what it brings onto the
+battlefield: a land is `ManaSource` (`TappedManaSource` when it enters
+tapped) plus the ramp premium while the bot has fewer than `RampWantCap`
+sources, 0.3 of that after, plus its colour fit; any other permanent is
+what casting it would be worth. Every put is taken, and the land the
+hand wants most is the one put.
+
+An `own_permanents` pick (a karoo's "return a land you control to its
+owner's hand", Lotus Field's sacrifice, annihilator) had no rule at all:
+every answer scored 0 and the enumerator's order chose. With
+`PriceOwnPermanentPicks` on, a fixed-count pick gives up the permanents
+worth least to keep: their `permanentValue`, with a land counted once
+per mana it makes and its ability rows added. So a karoo returns a
+tapped basic, not itself and not an untapped land. A pick whose count
+is the chooser's ("sacrifice any number of lands", or Tragic
+Arrogance's own leg, where what is named is kept) has no sign the rule
+can read, and keeps the enumerator's order.
+
+### An extra land drop (#2678)
+
+`purpose.extra_land_drops` is declared on every card with the engine's
+`AdditionalLandPlays` (Oracle of Mul Daya, Exploration, Dryad of the
+Ilysian Grove, Azusa, …), and on Explore for its one-turn drop. With
+`PriceExtraLandDrops` on, a cast adds one land this turn for each drop
+the bot has a land in hand for and could not otherwise play (its turn,
+lands in hand beyond the drops left), at `ManaSource` plus the ramp
+premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
+while the bot has fewer than `RampWantCap` sources.
 
 ### Sacrifices
 
@@ -1218,7 +1396,13 @@ heuristic's whole ranking, the exact prompt the model was shown and
 its raw reply, the index and label parsed out of it and the move they
 resolved to (`parsed_index`, `parsed_move`, `model_index`, `pick`), the runner's own fallback
 cause when it overruled the policy, whether the engine accepted the
-move, and how long the decision took.
+move, and how long the decision took. A window in which the heuristic
+chose a turn plan of two or more casts ([ADR 0136](decisions/0136-planning-the-turns-mana.md)
+§7, from its PR 4) also carries `trace.plan`: the plan's members in
+the order it will cast them, each as `index` into the window's moves
+and `label`, with `held: true` on an instant kept for the end step
+before the seat's turn. The field is absent otherwise, so older
+readers see the records they always did.
 
 Two facts are recorded separately on purpose: why the runner did not
 use the answer the policy returned (a timeout, an error, an
@@ -1403,7 +1587,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline` or `heuristic-noexert`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, and `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
@@ -1576,6 +1760,38 @@ game.
   observer, so it needs no decision log; `summary.json` carries it as
   `cards` and `canaries`, and each game's per-seat counts are in
   `games.jsonl`.
+- **Turn mana** — [ADR 0136](decisions/0136-planning-the-turns-mana.md)
+  §8's two numbers, one row per policy (deck `all`) and one per
+  contestant. Each is read off the runner's observer, so it needs no
+  decision log; `summary.json` carries it as `turn_mana` on every
+  `per_policy` and `per_contestant` row, and `games.jsonl` per seat.
+  - **Stranded mana.** `own turns` are the seat's own turns in which
+    it passed in a main phase with an empty stack, and each is read at
+    the last such pass: the mana the seat could still make then (its
+    floating pool, plus each untapped permanent it controls with a
+    repeatable mana ability it can activate now, at what one activation
+    nets; a summoning-sick dork adds nothing), and whether a cast was on
+    offer. A turn is `stranded` when that pass left 2 or more mana and a
+    cast was on offer; `idle` is 2 or more mana with or without one.
+    `stranded %` is stranded over own turns, and `mean unspent` the mana
+    left per own turn. The count is of mana, not colours: two red open
+    with only a blue spell in hand is not stranded, because the blue
+    spell was not offered. Acceptance bar P2 holds `heuristic`'s
+    stranded share to half of `heuristic-noplan`'s.
+  - **Plan misses.** `planned windows` carried a turn plan of two or
+    more casts (the decision log's `trace.plan`). After the seat makes a
+    plan's first move, its next main-phase window with an empty stack in
+    the same phase in which it holds priority (not a prompt the first
+    move raised as it resolved) is `checked`, unless another seat made a move other
+    than a pass in between; a `plan miss` is a checked window in which
+    the plan's next cast (skipping members held for the end step) is not
+    offered. `miss % of planned` is P6's measure, held under 5%.
+- **Opening hands** (#2693) — per policy and per contestant: the
+  seat-games that kept a hand, the mulligans they took and mulligans per
+  keep, the kept hands by size, and the seat's own turns 2–4 it reached
+  with the ones in which it played no land (`missed land drops`). A land
+  a spell puts onto the battlefield is not a land drop, so a ramp deck's
+  misses read high. `summary.json` carries it as `opening`.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a
@@ -1710,7 +1926,22 @@ decided:
   every selection gets at least one target set before any selection
   gets a second. Without that, one charm's first bullet with twelve
   targets would be the whole move list and the other three bullets
-  would never be offered.
+  would never be offered. Each selection is walked on its own and the
+  moves are then taken round-robin across them (#2681).
+- **Clauses spread the same way.** Within one selection, the target
+  clauses' product is spent round-robin over the earlier clauses'
+  picks: every first-clause target gets one pairing before any gets a
+  second. Spent prefix-major, the bot's threat order could make every
+  offered Arc Trail start with its own seat, so the 2 damage could only
+  go at itself (#2746). Under the budget nothing changes.
+- **Every multiset for a repeatable spec.** After the all-one
+  selections come the mixed ones: Mystic Confluence offers [bounce,
+  bounce, draw] and [bounce, draw, draw] as well (#2681).
+- **The label names the modes.** A modal cast or activation reads
+  "Cast Prismari Command (Target player draws two cards, then
+  discards two cards; Target player creates a Treasure token)
+  targeting …", so two moves with the same targets and different
+  modes are told apart.
 
 A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
 every legal multiset of the bullets the prompt carries, capped by the
@@ -2253,6 +2484,36 @@ a trampler's overflow as they go. A blocked attacker of the bot's lives
 into next turn only when its blockers plus every spare blocker that
 could join them cannot kill it.
 
+### Combat priced by what combat does (#2675, #2690, #2676)
+
+Three fixes from the 2026-10-08 review games, each a knob that
+`BaselineConfig` turns off:
+
+- **The focus bonus needs an attack worth making** (`FocusNeedsValue`,
+  [#2675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2675)).
+  `FocusBonus` (1.00) is added only to an attack whose own value is
+  positive. A creature with no power deals nothing, so a 0/1 Plant no
+  longer attacks into a 2/4 for the bonus, and an attacker with no power
+  already declared is not a blocker the defender has to spend.
+- **An attack is priced against every block**
+  (`GangAwareAttacks`,
+  [#2690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2690)). The
+  defender may block with any group of its free blockers, and does when
+  the group kills the attacker for less than it is worth (the gang
+  block planner's own `gangJoin`). A commander that dies also costs
+  `CommanderTax`, the next cast's surcharge. Tapping a creature that
+  could attack, in the bot's own first main phase, costs that attack at
+  its `attackValue` rather than at `Weights.Power` per point, so a loot
+  is not charged 3.0 for an attack priced below zero.
+- **A token whose only use is blocking is priced by that use**
+  (`Weights.BlockOnlyBody`, 0.10 per point of toughness,
+  [#2676](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2676)). A
+  token with no power and no abilities of any kind is worth that much in
+  combat instead of its body price (0.45 for a 0/1), so the bot chumps
+  a 3/3 with a Plant at 23 life rather than take the hit. A creature
+  card keeps its body price, so a real creature still does not chump at
+  a healthy life total.
+
 ### The attrition horizon (#1548)
 
 Gang blocks take away a lot of two-turn kills. The full seed-1409
@@ -2408,10 +2669,15 @@ and left black's win rate where it was. The deck, not this price, is
 what [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)
 rebalances.
 
-**No plan for the turn.** The heuristic prices one move at a time. It
-does not cast a cantrip first to see what it draws before deploying
-([#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458)), it
-does not treat a cycling card as a cheap discard or its own draw step
+**A plan for the turn's casts only.** In its own main phase with an
+empty stack the heuristic plans which casts this turn's mana buys and in
+what order: mana first, then draws, then the rest
+([ADR 0136](decisions/0136-planning-the-turns-mana.md),
+[#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458);
+`aiseat/heuristic/plan.go`). Everywhere else it prices one move at a
+time. It does not hold an instant in the plan for the end step before its
+turn (ADR 0136 PR 5), it does not plan activated abilities or casts with
+a non-mana cost, it does not treat a cycling card as a cheap discard or its own draw step
 as a spend window
 ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), and
 it does not cast a ritual or crack a Treasure for a specific spell.

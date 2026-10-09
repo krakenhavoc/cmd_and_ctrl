@@ -220,6 +220,10 @@ var gameFields = plan(
 	// invented it would read an attacker unblocked before the
 	// defender chose.
 	"blocksDeclared", carried, "",
+	// #2021: whether the declaration as a whole is over. Carried with
+	// blocksDeclared: a restore that dropped it would ask a player who
+	// became a defending player afterwards to declare.
+	"blockDeclarationClosed", carried, "",
 	// #1571: the attack declaration's CR 508.1d checkpoint. Carried
 	// with blocksDeclared: a restore that dropped it would re-judge a
 	// declaration whose triggers have fired, and one that invented it
@@ -462,6 +466,10 @@ var cardFields = plan(
 	// that escaped would come back hard-cast and sacrifice itself; a
 	// kicked Gatekeeper of Malakir would come back unkicked.
 	"Provenance", carried, "",
+	// ADR 0137: CR 702.167c's craft link, carried for Provenance's
+	// reason — the craft ability that wrote it is gone, so nothing could
+	// rebuild it, and a restored Jadeheart Attendant would gain no life.
+	"CraftedWith", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
 	// two above — both zero values are LEGAL states ("level 1",
@@ -477,6 +485,16 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
+	// designation and the creatures that paid for it, carried for
+	// Monstrous's reason.
+	"Saddled", carried, "",
+	"SaddledBy", carried, "",
+	// ADR 0071 amendment (#2698): the CR 701.60 suspected designation
+	// and the timestamp its layer-6 menace grant is ordered at, carried
+	// for Monstrous's reason.
+	"Suspected", carried, "",
+	"SuspectedAt", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",
@@ -576,12 +594,16 @@ var playerFields = plan(
 	"BotDeck", carried, "",
 	"Agent", carried, "",
 	"AgentClient", carried, "",
+	"CitysBlessing", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
 	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.
 	"MaxHandSizeAt", carried, "",
+	// ADR 0138: the player's speed (CR 702.179). Carried: a player
+	// keeps it after the permanent that started it has gone.
+	"Speed", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
 	// ADR 0066 granted cast and play permissions. Carried, not
@@ -909,6 +931,10 @@ var pendingChoiceFields = plan(
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",
+	// #2680: where a choose_cards prompt sends what it names — the
+	// bot prices a put onto the battlefield by it, so a restored
+	// prompt that forgot it would be priced as a discard.
+	"ChooseDestination", carried, "",
 	// #568's option pick: the branches of "choose one of the
 	// following", carried for the same reason ChooseCards is — the
 	// options ARE the prompt, and a restored game that forgot them

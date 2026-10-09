@@ -768,12 +768,14 @@ export interface MoveCost {
   // permanent — often not the move's source (Heart of Kiran's crew
   // paid with a planeswalker's loyalty).
   counters?: { card_id: string; counter: string; n: number }[];
-  // ADR 0080 (#1063): a cost string the move charges that `params`
-  // cannot name — today exactly one thing, the CR 508.1a attack tax
-  // on a declare_attacker move ("{2}" for an attack into Propaganda).
-  // A cast's mana is its printed cost and lives on the CardView; an
-  // attack has no printed cost, so without this a consumer prices an
-  // attack under Ghostly Prison exactly like a free one.
+  // A mana cost string the move charges that `params` cannot name.
+  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1a attack
+  // tax ("{2}" for an attack into Propaganda). On every cast_spell move
+  // (ADR 0136 §2): the total mana the cast charges (CR 601.2f), with
+  // the commander tax, X, alternative costs and the board's increases
+  // and reductions in it ("{5}{G}{U}" for a twice-cast Tatyova), which
+  // the printed mana_cost on the CardView is not. "{0}" when the cast
+  // charges no mana.
   mana?: string;
   // #1600: how many cards a "Discard your hand" cost throws away if
   // the move is made now — Lion's Eye Diamond, Null Brooch, Slate of
@@ -969,6 +971,13 @@ export type LogKind =
   // is the new designation. Narrated because the untap-step check
   // changes it with no spell or ability behind it.
   | "day_night"
+  // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
+  // `card_id` the ascend permanent or spell whose check granted it.
+  | "citys_blessing"
+  // ADR 0138 (#2122): a player's speed changed (CR 702.179). `seat` is
+  // the player and `amount` the new speed. Narrated because the
+  // start-your-engines state-based action has no card behind it.
+  | "speed"
   // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
@@ -1828,6 +1837,9 @@ export interface PlayerView {
   life: number;
   poison?: number;
   energy?: number;
+  // ADR 0138 (CR 702.179): the player's speed, 1 to 4; absent while
+  // they have none. 4 is max speed (CR 702.179e). Public.
+  speed?: number;
   library: ZoneView;
   hand: ZoneView;
   graveyard: ZoneView;
@@ -1900,6 +1912,10 @@ export interface PlayerView {
   // client's name, [a-z0-9._-] cut to 32 characters, or "unknown".
   is_agent?: boolean;
   agent_client?: string;
+  // #2696 (CR 702.131c): the city's blessing, a player designation
+  // ascend gives and nothing takes away. Public, identical for every
+  // viewer; absent until the seat has it.
+  citys_blessing?: boolean;
   // The playmat the seat's signed-in owner chose (ADR 0128): a
   // same-origin path, /playmats/<uuid>, drawn behind that seat's
   // battlefield. Public and identical for every viewer. Absent for a
@@ -2291,6 +2307,13 @@ export interface AlternativeCostView {
   // for `sacrifice_options` ("three creatures") or for `tap_options`
   // ("an untapped creature you control").
   pay_label?: string;
+  // ADR 0135 §4: an emerge offer (CR 702.119a) — the permanent picked
+  // from `sacrifice_options` reduces the cost by its mana value.
+  reduces_by_mana_value?: boolean;
+  // ADR 0135 §4: an emerge offer's price per candidate, keyed by the
+  // instance IDs in `sacrifice_options`: the candidate's mana value and
+  // the mana the cast pays with it sacrificed, from the server's pricer.
+  sacrifice_prices?: Record<string, AltCostPriceView>;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow
   // skips the X picker and sends nothing. Absent for nearly every
@@ -2551,6 +2574,13 @@ export interface ActivatedAbilityView {
   // come back: only a new object (CR 400.7 — a flicker, not an untap)
   // clears it, which is why the menu says something different.
   exhausted?: boolean;
+  // #2697, CR 702.142a: why a boast ability ("Activate only if this
+  // creature attacked this turn and only once each turn") cannot be
+  // activated right now. "not_attacked" recovers when the creature
+  // attacks; "used" at the next turn (Birgi, God of Storytelling raises
+  // the number of uses the server counts). Absent when the ability is not
+  // a boast ability or nothing objects.
+  boast_blocked?: "not_attacked" | "used";
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is
@@ -2590,6 +2620,8 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `exile_permanent_ids` — NOT
   // `exile_ids`, which names cards in a hand or a graveyard. An absent
   // or short list means the cost cannot be paid (CR 118.3).
+  // ADR 0137: on a craft ability the options also include cards in
+  // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
@@ -2658,6 +2690,18 @@ export interface ActivatedAbilityView {
   // sends its mana value as `x_value` (the engine refuses any other) and
   // narrows the ability's target clause by it (`mana_value_equals_x`).
   discard_cost_mana_value_x?: boolean;
+  // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
+  // clause as printed without the verb, the printed count (absent for the
+  // X form) and the matching hand cards — the controller's alone.
+  // `reveal_cost_count_from_x` marks the X form: the number of cards
+  // picked IS the announced X, so the client opens its picker (zero up to
+  // every card in `reveal_cost_options`), sends the picks as `reveal_ids`
+  // and their number as `x_value`, and skips the X stepper. `demands_x`
+  // is set beside it.
+  reveal_cost_n?: number;
+  reveal_cost_label?: string;
+  reveal_cost_options?: string[];
+  reveal_cost_count_from_x?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride
@@ -2691,6 +2735,13 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // #2695: a Mount's saddle ability (CR 702.171a) rides the two crew
+  // fields above — the same many-pick, floor-on-total-power prompt and
+  // the same `crew_ids` payload — and sets this flag so the prompt says
+  // "Saddle" rather than "Crew". crew_options then leaves out the Mount
+  // itself: the cost taps OTHER creatures. Absent — not `false` — for
+  // every other ability.
+  saddle?: boolean;
   // #625: a "remove N counters" cost component. counter_cost_n is how
   // many, and its presence marks the component.
   //
@@ -2814,6 +2865,9 @@ export interface PurposeView {
   controller_loses_life?: number;
   discards?: number;
   lands?: number;
+  // ADR 0136 §2: how many of `lands` enter untapped (Harrow 2, Nature's
+  // Lore 1). Never more than `lands`; absent when they enter tapped.
+  lands_untapped?: number;
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
@@ -2830,6 +2884,38 @@ export interface PurposeView {
   life_gain?: number;
   // ADR 0135 §3: the N of an awaken offer.
   awaken_land?: number;
+  // ADR 0126 (amendment of 2026-10-08): what happens to each target,
+  // one entry per target clause of the statement this purpose rides
+  // on, keyed by the slot a move's `targets[].slot` names.
+  targets?: TargetPurposeView[];
+}
+
+// TargetPurposeView is what a spell or an ability does to the target
+// picked for clause `slot` (ADR 0126, amendment of 2026-10-08). The
+// player amounts are that player's. Bot data; every amount is absent
+// when zero.
+export interface TargetPurposeView {
+  slot: number;
+  draws?: number;
+  discards?: number;
+  tokens?: number;
+  life_gain?: number;
+  life_loss?: number;
+  damage?: number;
+  // #2679: what the target's controller is given when it is removed.
+  returns?: TargetReturnView;
+}
+
+// TargetReturnView is what a removal spell hands the controller of the
+// permanent it removes (#2679). Bot data; every field is absent when
+// zero.
+export interface TargetReturnView {
+  creature_tokens?: number;
+  token_power?: number;
+  token_toughness?: number;
+  life_equal_to_power?: boolean;
+  lands?: number;
+  lands_untapped?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.
@@ -3529,6 +3615,18 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0071 amendment 2026-10-08, #2695 (CR 702.171): this Mount is
+  // saddled — until end of turn, or until it leaves the battlefield.
+  // Switches on its "while saddled" lines and is what its "attacks
+  // while saddled" triggers read. Public, read straight off the card.
+  // Absent — not `false` — for everything else.
+  saddled?: boolean;
+  // ADR 0071 amendment, #2698 (CR 701.60): this permanent is
+  // suspected — it has menace and can't block for as long as it is.
+  // Public, and kept on a face-down permanent: the designation was
+  // given to the object in public, and it is the reason the creature
+  // cannot block. Absent — not `false` — for everything else.
+  suspected?: boolean;
   // ADR 0114 §3, §9 (CR 701.54b): this permanent is its controller's
   // Ring-bearer. Public, and kept on a face-down permanent: the
   // designation was chosen in public and says nothing about the card.
@@ -3725,8 +3823,8 @@ export interface ProtectionView {
   printed: string;
   // Which characteristic of a source the quality is compared
   // against: "color", "card_type", "subtype", "everything",
-  // "player", "mana_value_at_most" (value = the bound N, #2181) or
-  // "ring_bearer" (#2145).
+  // "player", "mana_value_at_most" (value = the bound N, #2181),
+  // "ring_bearer" (#2145) or "opponents" (#2745).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
@@ -3739,6 +3837,10 @@ export interface ProtectionView {
   // so the display string never holds a UUID. Absent while the
   // permanent's as-enters prompt is still open, which reads correctly
   // as "protected from nobody".
+  //
+  // For "opponents" (#2745 — "protection from each of your opponents")
+  // it is the seat that HAS the protection, and a source matches when
+  // its controller is any other seat.
   value?: string;
 }
 
@@ -4039,4 +4141,11 @@ export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
 export interface AutoAnswerRuleView {
   key: string;
   answer: "always" | "never";
+}
+
+// ADR 0135 §4: one emerge candidate's price — the permanent's mana value,
+// and the cast's mana cost with it sacrificed ("{1}{U}{U}").
+export interface AltCostPriceView {
+  mana_value: number;
+  price: string;
 }

@@ -117,3 +117,13 @@ describe("either/or additional costs", () => {
     expect(castPreviewParamsFromPayload({ cost_branch: "1" }).costBranch).toBeUndefined();
   });
 });
+
+// ADR 0135 §4: the emerge creature rides the preview, because its mana
+// value changes the price.
+describe("the alternative cost's payment on the preview", () => {
+  it("carries alt_cost_ids both ways", () => {
+    expect(castPreviewParams({ altCostIDs: ["a"] }).altCostIDs).toEqual(["a"]);
+    expect(castPreviewParams({}).altCostIDs).toBeUndefined();
+    expect(castPreviewParamsFromPayload({ alt_cost_ids: ["b"] }).altCostIDs).toEqual(["b"]);
+  });
+});

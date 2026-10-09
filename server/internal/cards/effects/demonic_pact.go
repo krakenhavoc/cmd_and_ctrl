@@ -52,7 +52,7 @@ func init() {
 func demonicPactTrigger() game.TriggeredAbility {
 	t := AtYourUpkeep(demonicPactLabel, func(_ *game.Game, _ *game.StackItem) error { return nil })
 	t.Modes = ChooseOneNotChosen(
-		ModeDoing("This enchantment deals 4 damage to any target and you gain 4 life.", TargetAny(),
+		ModeWithPurpose(ModeDoing("This enchantment deals 4 damage to any target and you gain 4 life.", TargetAny(),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				if t, ok := ModeTarget(ctx, occ); ok {
 					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 4}).Apply(ctx); err != nil {
@@ -60,7 +60,7 @@ func demonicPactTrigger() game.TriggeredAbility {
 					}
 				}
 				return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
-			}),
+			}), ForTargets(DamageToTarget(0, 4))),
 		ModeDoing("Target opponent discards two cards.", TargetPlayer("target opponent", Opponent()),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)

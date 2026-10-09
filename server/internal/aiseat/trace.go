@@ -133,6 +133,27 @@ type Trace struct {
 	// thinking run it is tens of kilobytes a window (#2196). Zero with
 	// thinking off.
 	ReasoningChars int `json:"reasoning_chars,omitempty"`
+	// Plan is the turn plan Layer B chose in this window (ADR 0136 §7):
+	// the casts it means to make with this turn's mana, in the order it
+	// will make them, first move first. Empty when no plan of two or
+	// more members was chosen, which is every window until ADR 0136 PR 4
+	// and every window that is not the seat's own main phase with an
+	// empty stack after it. The arena's plan-miss count reads it.
+	Plan []PlanMember `json:"plan,omitempty"`
+}
+
+// PlanMember is one cast in a turn plan (ADR 0136 §7).
+type PlanMember struct {
+	// Index is the member's move in this window's Input.Moves. The
+	// card is that move's Source, which is how a later window finds
+	// the same cast.
+	Index int `json:"index"`
+	// Label is that move's label, for a reader of the log.
+	Label string `json:"label,omitempty"`
+	// Held marks an instant-speed member the plan keeps for the end
+	// step before the seat's turn rather than casting this turn (ADR
+	// 0136 §5).
+	Held bool `json:"held,omitempty"`
 }
 
 // Tracer is an optional Policy extension, the same shape as Conceder:

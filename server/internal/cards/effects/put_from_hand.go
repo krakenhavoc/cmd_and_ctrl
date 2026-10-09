@@ -130,13 +130,20 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		label = "Put a card from your hand onto the battlefield"
 	}
 	tapped := p.Tapped
+	// #2680: say where the pick goes, so a policy does not price
+	// putting a land onto the battlefield as giving it up.
+	dest := game.ChooseOntoBattlefield
+	if tapped {
+		dest = game.ChooseOntoBattlefieldTapped
+	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  player,
-		Source:   source,
-		Question: label,
-		Cards:    candidates,
-		Min:      floor,
-		Max:      1,
+		Destination: dest,
+		Chooser:     player,
+		Source:      source,
+		Question:    label,
+		Cards:       candidates,
+		Min:         floor,
+		Max:         1,
 		// Re-checked on submit: the pick must still be in that
 		// player's hand when the answer arrives.
 		Zone: game.ZoneHand,

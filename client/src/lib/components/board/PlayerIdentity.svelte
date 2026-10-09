@@ -23,6 +23,7 @@
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
+  import { speedTitle } from "../../speed";
   import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
@@ -411,6 +412,16 @@
          push the panel taller; each row is the same height as a
          single chip. -->
     <div class="side right">
+      <!-- The city's blessing (CR 702.131c, #2696): a designation ascend
+           gives and nothing takes away, so there is no toggle. Shown on
+           every seat, self and opponent alike. -->
+      {#if seat.citys_blessing}
+        <span
+          class="marker citys-blessing active"
+          title="the city's blessing"
+          aria-label="the city's blessing"><Icon name="flag" size={12} /></span
+        >
+      {/if}
       {#if isSelf}
         <div class="crown-row">
           <button
@@ -518,6 +529,19 @@
             {/if}
           {/each}
         {/if}
+      {/if}
+      <!-- ADR 0138: speed (CR 702.179) is public, so every seat shows
+           it, its own included. A display, not a stepper: no rule
+           lowers a speed, and the engine is its only writer. -->
+      {#if (seat.speed ?? 0) > 0}
+        <span
+          class="marker speed"
+          class:max={(seat.speed ?? 0) >= 4}
+          title={speedTitle(seat.speed ?? 0)}
+          aria-label="speed"
+        >
+          <Icon name="gauge" size={11} />{seat.speed}
+        </span>
       {/if}
     </div>
   </div>
@@ -975,11 +999,24 @@
     background: color-mix(in srgb, var(--magenta) 18%, transparent);
     box-shadow: 0 0 10px color-mix(in srgb, var(--magenta) 35%, transparent);
   }
+  .marker.active.citys-blessing {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
   .marker.poison {
     color: var(--mint);
   }
   .marker.energy {
     color: var(--accent);
+  }
+  .marker.speed {
+    color: var(--magenta);
+  }
+  .marker.speed.max {
+    border-color: color-mix(in srgb, var(--magenta) 70%, transparent);
+    background: color-mix(in srgb, var(--magenta) 18%, transparent);
   }
   .marker.counter {
     color: #b8c8e8;

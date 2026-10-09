@@ -10,6 +10,7 @@ func init() {
 		Name:         "Lightning Bolt",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    damageToFirstTarget(3),
 	})
 }

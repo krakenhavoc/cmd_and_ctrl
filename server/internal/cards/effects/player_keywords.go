@@ -36,6 +36,12 @@ import (
 // card files and a typo in any of them would silently grant nothing.
 const ProtectionFromEverything = "protection from everything"
 
+// ProtectionFromEachOfYourOpponents is "you have protection from each
+// of your opponents" (Absolute Virtue, #2745), re-exported from the
+// engine for the reason KeywordHexproof is. "Your" is the player the
+// ability belongs to; the engine reads that, not the token.
+const ProtectionFromEachOfYourOpponents = game.ProtectionFromEachOfYourOpponents
+
 // KeywordHexproof is CR 702.11d's token, re-exported from the engine
 // so a card file spells it once and the compiler checks it. The
 // constant itself lives in game/player_statics.go, beside the reader

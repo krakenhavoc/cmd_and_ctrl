@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // purpose_test.go — ADR 0126 §6: the curated decks' cards declare what
@@ -67,40 +68,27 @@ var valueIsTheirTarget = map[string]string{
 	"Fierce Guardianship":       "counterspell",
 	"Absorb":                    "counterspell",
 	"Pyroblast":                 "counterspell or removal, by mode",
-	"Swords to Plowshares":      "removal",
-	"Path to Exile":             "removal",
-	"Doom Blade":                "removal",
-	"Go for the Throat":         "removal",
-	"Infernal Grasp":            "removal",
-	"Feed the Swarm":            "removal",
-	"Withering Torment":         "removal",
-	"Anguished Unmaking":        "removal",
-	"Mortify":                   "removal",
-	"Despark":                   "removal",
-	"Generous Gift":             "removal",
-	"Stroke of Midnight":        "removal",
-	"Murder":                    "removal",
-	"Hero's Downfall":           "removal",
-	"Utter End":                 "removal",
-	"Void Rend":                 "removal",
-	"Chaos Warp":                "removal",
-	"Lightning Bolt":            "removal or burn",
-	"Shock":                     "removal or burn",
-	"Abrade":                    "removal, by mode",
-	"Arc Trail":                 "removal or burn",
-	"Blaze":                     "removal or burn",
-	"Fiery Temper":              "removal or burn",
-	"Prismari Command":          "removal or burn, and its targets decide who draws and who gets the Treasure, by mode",
-	"Rapid Hybridization":       "removal",
-	"Pongify":                   "removal",
-	"Beast Within":              "removal",
-	"Krosan Grip":               "removal",
-	"Ashes to Ashes":            "removal",
-	"Sign in Blood":             "its target decides whether it draws or drains",
-	"Reanimate":                 "reanimation of the target",
-	"Zombify":                   "reanimation of the target",
-	"Dread Return":              "reanimation of the target",
-	"Stitch Together":           "reanimation of the target, or its return to hand",
+	// Chaos Warp gives its target's owner a random permanent from the
+	// top of their library, which no printed amount says (#2679).
+	"Doom Blade":         "removal",
+	"Go for the Throat":  "removal",
+	"Infernal Grasp":     "removal",
+	"Feed the Swarm":     "removal",
+	"Withering Torment":  "removal",
+	"Anguished Unmaking": "removal",
+	"Mortify":            "removal",
+	"Despark":            "removal",
+	"Murder":             "removal",
+	"Hero's Downfall":    "removal",
+	"Utter End":          "removal",
+	"Void Rend":          "removal",
+	"Chaos Warp":         "removal",
+	"Krosan Grip":        "removal",
+	"Ashes to Ashes":     "removal",
+	"Reanimate":          "reanimation of the target",
+	"Zombify":            "reanimation of the target",
+	"Dread Return":       "reanimation of the target",
+	"Stitch Together":    "reanimation of the target, or its return to hand",
 }
 
 // noPrintedAmount is the curated spells that do something in a priced
@@ -116,11 +104,99 @@ var noPrintedAmount = map[string]string{
 	"Windfall":                  "each player discards a hand and draws as many as the largest; no fixed amount",
 	"Wheel of Fortune":          "each player discards a hand and draws seven; its value is the hands, which no amount says",
 	"Exsanguinate":              "drains X",
+	"Blaze":                     "deals X damage to any target",
 	"Living Death":              "a symmetric mass reanimation: a sweep purpose would price the sacrifice and miss the return",
 	"Rise of the Dark Realms":   "mass reanimation from every graveyard",
 	"Overrun":                   "a combat pump: its value is the attack (ADR 0126 Out of scope)",
 	"Return of the Wildspeaker": "draws as many as the greatest power, or a pump",
 	"Shamanic Revelation":       "draws one per creature, counted at resolution",
+}
+
+// curatedTargetPurposes is every curated spell whose value depends on
+// what it does to its target (ADR 0126's amendment of 2026-10-08, owner
+// answer 5, first half): a gift that is good or bad by whom it is
+// aimed at, and burn, which kills or does not by how much it deals.
+// Each declares a target entry (Purpose.Targets) on the slot named.
+// Blaze cannot, and says why on noPrintedAmount. Removal that hands its
+// target's controller something back declares that as the entry's
+// Returns (#2679).
+var curatedTargetPurposes = map[string]string{
+	"Prismari Command":     "modes",
+	"Sign in Blood":        "card",
+	"Lightning Bolt":       "card",
+	"Shock":                "card",
+	"Fiery Temper":         "card",
+	"Abrade":               "modes",
+	"Izzet Charm":          "modes",
+	"Arc Trail":            "card",
+	"Swords to Plowshares": "card",
+	"Path to Exile":        "card",
+	"Generous Gift":        "card",
+	"Stroke of Midnight":   "card",
+	"Rapid Hybridization":  "card",
+	"Pongify":              "card",
+	"Beast Within":         "card",
+}
+
+// targetEntriesIn counts the target entries a spell declares in `slot`:
+// "card" for the spell's own statement, "modes" for its bullets'.
+func targetEntriesIn(s effects.Spec, slot string) int {
+	switch slot {
+	case "card":
+		return len(s.Purpose.Targets.List())
+	case "modes":
+		n := 0
+		if s.Modes != nil {
+			for _, o := range s.Modes.Options {
+				n += len(o.Purpose.Targets.List())
+			}
+		}
+		return n
+	}
+	return 0
+}
+
+// curatedLandsUntapped is every curated card whose lands enter
+// untapped (ADR 0136 §2, owner answer 4), with how many: the card
+// declares Purpose.LandsUntapped on the slot that puts them onto the
+// battlefield. Every other curated card that declares Lands puts them
+// onto the battlefield tapped, and declares none.
+// realdump_purpose_manual_test.go checks the list against the oracle
+// text.
+var curatedLandsUntapped = map[string]int{
+	"Harrow":        2,
+	"Nature's Lore": 1,
+	"Three Visits":  1,
+}
+
+// specPurposes is every purpose a spec declares: on the card, on its
+// modes, on its alternative costs and on its ability rows.
+func specPurposes(s effects.Spec) []game.Purpose {
+	ps := []game.Purpose{s.Purpose}
+	if s.Modes != nil {
+		for _, o := range s.Modes.Options {
+			ps = append(ps, o.Purpose)
+		}
+	}
+	for _, a := range s.AlternativeCosts {
+		ps = append(ps, a.Purpose)
+	}
+	for _, a := range s.Activated {
+		ps = append(ps, a.Purpose)
+	}
+	for _, t := range s.Triggered {
+		ps = append(ps, t.Purpose)
+	}
+	return ps
+}
+
+// landsUntappedIn sums the LandsUntapped a spec declares in every slot.
+func landsUntappedIn(s effects.Spec) int {
+	n := 0
+	for _, p := range specPurposes(s) {
+		n += p.LandsUntapped
+	}
+	return n
 }
 
 // curatedPermanentPurposes is every curated permanent in a class ADR
@@ -262,6 +338,19 @@ func TestCuratedDeckPurposes(t *testing.T) {
 			if slot, ok := curatedPermanentPurposes[c.Name]; ok && !declaresIn(spec, slot) {
 				t.Errorf("%s (%s) declares no purpose on its %s", c.Name, d.ID, slot)
 			}
+			// #2678: an extra land drop the engine runs is one the bot
+			// can read. Register refuses a number that disagrees.
+			if spec.AdditionalLandPlays > 0 && spec.Purpose.ExtraLandDrops == 0 {
+				t.Errorf("%s (%s) plays %d additional land(s) a turn and declares no Purpose.ExtraLandDrops (#2678)",
+					c.Name, d.ID, spec.AdditionalLandPlays)
+			}
+			if got, want := landsUntappedIn(spec), curatedLandsUntapped[c.Name]; got != want {
+				t.Errorf("%s (%s) declares %d land(s) entering untapped, want %d: "+
+					"curatedLandsUntapped and the card's Purpose.LandsUntapped must agree (ADR 0136 §2)", c.Name, d.ID, got, want)
+			}
+			if slot, ok := curatedTargetPurposes[c.Name]; ok && targetEntriesIn(spec, slot) == 0 {
+				t.Errorf("%s (%s) declares no target entry on its %s (ADR 0126's amendment of 2026-10-08)", c.Name, d.ID, slot)
+			}
 		}
 	}
 	if len(missing) > 0 {
@@ -280,6 +369,8 @@ func TestCuratedDeckPurposes(t *testing.T) {
 		{"valueIsTheirTarget", sortedKeys(valueIsTheirTarget)},
 		{"noPrintedAmount", sortedKeys(noPrintedAmount)},
 		{"curatedPermanentPurposes", sortedKeys(curatedPermanentPurposes)},
+		{"curatedTargetPurposes", sortedKeys(curatedTargetPurposes)},
+		{"curatedLandsUntapped", sortedIntKeys(curatedLandsUntapped)},
 	} {
 		for _, n := range list.names {
 			if !inDeck[n] {
@@ -292,6 +383,11 @@ func TestCuratedDeckPurposes(t *testing.T) {
 			t.Errorf("valueIsTheirTarget lists %q, which is not in curatedInstantsAndSorceries", n)
 		}
 	}
+	for n := range curatedTargetPurposes {
+		if _, listed := valueIsTheirTarget[n]; listed {
+			t.Errorf("%s declares its target entries and is also on valueIsTheirTarget: take it off", n)
+		}
+	}
 	for n := range noPrintedAmount {
 		if !spells[n] {
 			t.Errorf("noPrintedAmount lists %q, which is not in curatedInstantsAndSorceries", n)
@@ -300,6 +396,15 @@ func TestCuratedDeckPurposes(t *testing.T) {
 }
 
 func sortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func sortedIntKeys(m map[string]int) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)

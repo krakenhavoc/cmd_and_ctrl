@@ -82,6 +82,23 @@ const protectionChosenPlayer = "the chosen player"
 // resolved by the reader; see ProtectionQuality.Player.
 const ProtectionFromChosenPlayer = protectionPrefix + protectionChosenPlayer
 
+// protectionEachOfYourOpponents is the printed quality of "you have
+// protection from each of your opponents" (Absolute Virtue), lowercased
+// for the parser's comparison. CR 702.16i makes it one protection from
+// each opponent, and CR 702.16k says what protection from a player is.
+// #2745.
+const protectionEachOfYourOpponents = "each of your opponents"
+
+// ProtectionFromEachOfYourOpponents is the token for "protection from
+// each of your opponents" (Absolute Virtue, #2745), exported for the
+// reason ProtectionFromChosenPlayer is.
+//
+// Like that one, the seats are not in the token. "Your" is whoever has
+// the ability, so the reader fills in ProtectionQuality.Holder: the
+// player's own seat for a player's protection, the controller for a
+// permanent's.
+const ProtectionFromEachOfYourOpponents = protectionPrefix + protectionEachOfYourOpponents
+
 // ProtectionQualityKind is which characteristic of the source a
 // quality is compared against.
 type ProtectionQualityKind uint8
@@ -121,6 +138,13 @@ const (
 	// characteristic, so it rides the source snapshot's
 	// SourceRingBearer rather than Types or Subtypes. #2145.
 	ProtectionQualityRingBearer
+	// ProtectionQualityOpponents is "protection from each of your
+	// opponents" (Absolute Virtue): CR 702.16i's shorthand for one
+	// CR 702.16k player quality per opponent. Like the player quality
+	// it tests the source's CONTROLLER, and matches when that is any
+	// player other than the one the protection belongs to
+	// (ProtectionQuality.Holder, filled in by the reader). #2745.
+	ProtectionQualityOpponents
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -144,6 +168,8 @@ func (k ProtectionQualityKind) String() string {
 		return "mana_value_at_most"
 	case ProtectionQualityRingBearer:
 		return "ring_bearer"
+	case ProtectionQualityOpponents:
+		return "opponents"
 	}
 	return ""
 }
@@ -176,6 +202,14 @@ type ProtectionQuality struct {
 	// stays the card's own words and the badge renders that, while the
 	// id sits here for the rules to compare.
 	Player uuid.UUID
+
+	// Holder is the seat "your" means in a ProtectionQualityOpponents
+	// quality, and uuid.Nil for every other kind (#2745). Resolved by
+	// the reader like Player: a player's protection binds it to the
+	// player's own seat (bindPlayerProtectionQuality), a permanent's to
+	// its controller (bindProtectionQuality). Zero matches no source,
+	// the weaker direction.
+	Holder uuid.UUID
 }
 
 // Token is the canonical wire token this quality was parsed from.
@@ -215,6 +249,12 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	// reader resolves it and the parser records only the kind.
 	if lower == protectionChosenPlayer {
 		return ProtectionQuality{Kind: ProtectionQualityPlayer, Printed: printed}, true
+	}
+	// CR 702.16i over CR 702.16k: a SET of players, each an opponent
+	// of whoever has the ability. Tested by controller like the one
+	// above, and resolved by the reader for the same reason. #2745.
+	if lower == protectionEachOfYourOpponents {
+		return ProtectionQuality{Kind: ProtectionQualityOpponents, Printed: printed}, true
 	}
 	// CR 702.16a with a mana value bound. The one grammar shape that
 	// carries a number, so it is matched whole: "mana value N or less".
@@ -301,6 +341,9 @@ var protectionCardTypes = map[string]string{
 	"planeswalkers": "planeswalker",
 	"sorcery":       "sorcery",
 	"sorceries":     "sorcery",
+	// Kindred has no plural: "protection from kindred". Offered by the
+	// chosen-card-type prompt (#2742), so the grammar has to read it.
+	"kindred": "kindred",
 }
 
 // singulars returns the candidate singular spellings of a printed
@@ -393,6 +436,51 @@ func ProtectionFromColor(color string) string {
 	return ""
 }
 
+// ChoosableCardTypes is the answer list for "choose a card type"
+// (Serra's Emissary, #2742): CR 205.2a's card types, minus the six that
+// exist only in other formats (conspiracy, dungeon, phenomenon, plane,
+// scheme, vanguard), in that rule's order and capitalised as a type
+// line spells them. Each one is a type ProtectionFromCardType can turn
+// into a token.
+var ChoosableCardTypes = []string{
+	"Artifact", "Battle", "Creature", "Enchantment", "Instant",
+	"Kindred", "Land", "Planeswalker", "Sorcery",
+}
+
+// protectionCardTypePlurals is how a protection token spells each
+// choosable card type: the printed plural ("protection from
+// creatures"), which keeps the badge in a card's own words.
+var protectionCardTypePlurals = map[string]string{
+	"artifact": "artifacts", "battle": "battles", "creature": "creatures",
+	"enchantment": "enchantments", "instant": "instants", "kindred": "kindred",
+	"land": "lands", "planeswalker": "planeswalkers", "sorcery": "sorceries",
+}
+
+// ProtectionFromCardType is the token for "protection from <card
+// type>", given a card type in any case ("Creature"). Empty for a word
+// that is not a card type in the grammar.
+//
+// The one place a card-type PICK becomes a protection token, as
+// ProtectionFromColor is for a colour pick (#2742).
+func ProtectionFromCardType(cardType string) string {
+	if plural, ok := protectionCardTypePlurals[strings.ToLower(strings.TrimSpace(cardType))]; ok {
+		return protectionPrefix + plural
+	}
+	return ""
+}
+
+// ProtectionFromTheChosenCardType is "protection from the chosen card
+// type" as a PLAYER keyword (Serra's Emissary's "You … have protection
+// from the chosen card type", #2742).
+//
+// It is not a quality the grammar parses, and it never reaches a
+// permanent's ability list. It is a placeholder in a Spec's
+// PlayerKeywords that the player walk (playerAbilityTokensLocked)
+// replaces with ProtectionFromCardType of the granting permanent's
+// answer, which lives on that permanent (Card.ChosenOption). Unanswered,
+// it grants nothing.
+const ProtectionFromTheChosenCardType = protectionPrefix + "the chosen card type"
+
 // ProtectionQualities is THE reader: every protection this card has
 // right now, parsed.
 //
@@ -432,9 +520,34 @@ func ProtectionQualities(c *Card) []ProtectionQuality {
 //
 // A nil card, or one whose choice has not been made yet, leaves Player
 // zero and the quality then matches nothing.
+//
+// The opponents quality (#2745) is the other one: "your" is the
+// permanent's controller, read off its effective characteristics so a
+// control change moves the protection with it.
 func bindProtectionQuality(c *Card, q ProtectionQuality) ProtectionQuality {
-	if q.Kind == ProtectionQualityPlayer && c != nil {
+	if c == nil {
+		return q
+	}
+	switch q.Kind {
+	case ProtectionQualityPlayer:
 		q.Player = c.ChosenPlayer
+	case ProtectionQualityOpponents:
+		q.Holder = c.Effective().Controller
+		if q.Holder == uuid.Nil {
+			q.Holder = c.Controller
+		}
+	}
+	return q
+}
+
+// bindPlayerProtectionQuality is bindProtectionQuality for a quality a
+// PLAYER has (player_statics.go). Only the opponents quality has a part
+// to fill in: "your opponents" are the opponents of the player who has
+// it. The chosen-player quality stays unbound, because a player has no
+// as-enters choice to read it from (see PlayerProtectedFromLocked).
+func bindPlayerProtectionQuality(holder uuid.UUID, q ProtectionQuality) ProtectionQuality {
+	if q.Kind == ProtectionQualityOpponents {
+		q.Holder = holder
 	}
 	return q
 }
@@ -486,6 +599,11 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		// does. A source with no controller — a sandbox verb's
 		// source-less damage — matches nothing for the same reason.
 		return q.Player != uuid.Nil && src.Controller == q.Player
+	case ProtectionQualityOpponents:
+		// Every other player at the table is an opponent: this engine
+		// seats no teams. An unbound holder or a source with no
+		// controller matches nothing, as above.
+		return q.Holder != uuid.Nil && src.Controller != uuid.Nil && src.Controller != q.Holder
 	case ProtectionQualityManaValueAtMost:
 		// An unreadable cost matches nothing, the weaker direction: a
 		// source whose value the engine could not price is not "0".

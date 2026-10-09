@@ -218,8 +218,9 @@ func TestBlockOnACreatureAttackingNothingIsRefused(t *testing.T) {
 // #1343's reselect path, CR 508.7a + 509.1h. The attacker was blocked
 // by seat 1, then reselected onto seat 2. The standing block stays and
 // may be repeated (alone or beside a new pairing); seat 1 may not add
-// a NEW blocker; seat 2, its defender now, may.
-func TestBlockAfterAReselectFollowsTheNewDefender(t *testing.T) {
+// a NEW blocker; nor may seat 2, its defender now, which was not
+// defending when blockers were declared (#2021).
+func TestBlockAfterAReselectIsRefusedToBothDefenders(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	attacker := pushCombatant(t, g, g.Seats[0], "Redirected", 3, 3)
 	other := pushCombatant(t, g, g.Seats[0], "Still At Seat 1", 2, 2)
@@ -274,13 +275,16 @@ func TestBlockAfterAReselectFollowsTheNewDefender(t *testing.T) {
 		t.Errorf("refusal's defender = %v, want seat 2 (the reselected one)", refusal.Defender)
 	}
 
-	// The new defender may block it, and the generator agrees.
+	// #2021: and the new defender may not block it either. Seat 2 was
+	// not defending when blockers were declared, so it never declares
+	// (CR 509.1); the attacker stays blocked by seat 1's creature
+	// (CR 509.1h). The generator agrees.
 	var newOffered, oldOffered bool
 	g.WithWriteLock(func() {
 		g.RecomputeLayersIfStaleLocked()
 		for _, opt := range g.BlockOptionsLocked(g.Seats[2].ID, 4) {
 			for _, d := range opt.Blocks {
-				newOffered = newOffered || (d.Blocker == newBlocker && d.Attacker == attacker)
+				newOffered = newOffered || d.Attacker == attacker
 			}
 		}
 		for _, opt := range g.BlockOptionsLocked(g.Seats[1].ID, 4) {
@@ -289,11 +293,14 @@ func TestBlockAfterAReselectFollowsTheNewDefender(t *testing.T) {
 			}
 		}
 	})
-	if !newOffered || oldOffered {
-		t.Errorf("generator: new defender offered = %v (want true), old defender offered = %v (want false)", newOffered, oldOffered)
+	if newOffered || oldOffered {
+		t.Errorf("generator: new defender offered = %v, old defender offered = %v (want neither)", newOffered, oldOffered)
 	}
-	if err := g.DeclareBlocker(newBlocker, attacker); err != nil {
-		t.Errorf("the new defender blocks the reselected attacker: %v", err)
+	if err := g.DeclareBlocker(newBlocker, attacker); !errors.As(err, &br) || br.Reason != BlockReasonBlocksDeclared {
+		t.Errorf("the new defender blocks the reselected attacker: %v, want blocks_declared", err)
+	}
+	if c := findCard(g, newBlocker); c.BlockingTarget != uuid.Nil {
+		t.Errorf("the refused late block was stored: blocking %v", c.BlockingTarget)
 	}
 }
 

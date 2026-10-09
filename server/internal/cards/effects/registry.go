@@ -66,6 +66,7 @@ func Register(spec Spec) {
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
+	checkBoast(spec)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
@@ -168,6 +169,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostTapOthers(spec.Name, ac)
+		checkEmerge(spec.Name, ac)
 		checkAwaken(spec, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
@@ -523,6 +525,12 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
+		// ADR 0137: craft's graveyard half and an exile-cards component
+		// could both name one graveyard card, and no printed cost has
+		// both.
+		if ec := ab.Cost.ExilePermanents; ec != nil && ec.FromGraveyard && ab.Cost.ExileCards != nil {
+			panic(fmt.Sprintf("effects.Register: %q ability %d exiles materials from the graveyard beside an exile-cards cost — one card could pay both", spec.Name, i))
+		}
 		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would — unless
@@ -530,6 +538,8 @@ func Register(spec Spec) {
 		checkDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
 		checkDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		checkDiscardXBesideOtherCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
+		// #2598: the reveal-cards component (reveal_cards_cost.go).
+		checkRevealCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// ADR 0109 §7: the random discard and the two library
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
@@ -669,6 +679,11 @@ func Register(spec Spec) {
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
+		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
+		// ability exiles graveyard cards through this component.
+		if ec := ma.Cost.ExilePermanents; ec != nil && ec.FromGraveyard {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials from the graveyard — only a CR 602 ability may (ADR 0137)", spec.Name, i))
+		}
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",
@@ -1270,6 +1285,20 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 	checkTapOthersClause(card, where, tc, false)
 }
 
+// checkEmerge holds ReducedBySacrificedManaValue (ADR 0135 §4) to the
+// shape CR 702.119a prints: beside a Sacrifice of exactly one permanent.
+// The pricer reads the one permanent AltCostIDs names, so the flag on a
+// cost that sacrifices nothing, or several, would price a discount the
+// card does not print.
+func checkEmerge(card string, ac game.AlternativeCost) {
+	if !ac.ReducedBySacrificedManaValue {
+		return
+	}
+	if ac.Sacrifice == nil || game.SacrificeCostCount(ac.Sacrifice) != 1 || game.SacrificeCostVariable(ac.Sacrifice) {
+		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by the sacrificed permanent's mana value without a sacrifice of exactly one permanent (CR 702.119a)", card, ac.Key))
+	}
+}
+
 // Lookup returns the Spec for a given oracle ID. The second return
 // is false when the ID is not in the catalog — that's the signal
 // for the resolution path to fall back to manual sandbox behaviour.
@@ -1569,6 +1598,45 @@ func checkExhaustAbilities(spec Spec) {
 	}
 }
 
+// checkBoast is the boot-time contract of CR 702.142 (#2697). The
+// ability label and the bit must agree in both directions, for the same
+// reason checkExhaustAbilities holds them to: a label that prints
+// "Boast —" with no bit is repeatable every turn and attackless, and a
+// bit with no printed keyword puts a rule on the card the player cannot
+// read. And a boast limit without Applies reaches every creature.
+func checkBoast(spec Spec) {
+	seen := map[string]bool{}
+	for i, a := range spec.Activated {
+		if a.Boast {
+			if seen[a.Label] {
+				panic(fmt.Sprintf("effects.Register: %q has two boast abilities labelled %q — the activation record is keyed by the label, so they would share one use", spec.Name, a.Label))
+			}
+			seen[a.Label] = true
+		}
+		printed := strings.HasPrefix(a.Label, "Boast — ")
+		if a.Boast && !printed {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets Boast but its label does not start with \"Boast — \" — build it with effects.Boast", spec.Name, i))
+		}
+		if printed && !a.Boast {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints \"Boast —\" and does not set Boast: true — without the bit it needs no attack and can be activated every turn", spec.Name, i))
+		}
+		if a.Boast && (a.Cost.Loyalty != nil || a.Equip || a.Cycling) {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d is a boast ability with a loyalty, equip or cycling shape — boast is its own ability", spec.Name, i))
+		}
+	}
+	for i, l := range spec.BoastLimits {
+		if l.Applies == nil {
+			panic(fmt.Sprintf("effects.Register: %q boast limit %d has no Applies — it would reach every creature of every player, always", spec.Name, i))
+		}
+		if l.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q boast limit %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+		if l.Limit < 2 {
+			panic(fmt.Sprintf("effects.Register: %q boast limit %d is %d — the printed limit is already 1, so a limit below 2 changes nothing", spec.Name, i, l.Limit))
+		}
+	}
+}
+
 // checkOneExhaustAbility is the body of the three checks above, for
 // one ability of either kind. `seen` is shared across the kinds
 // because the record's key space is.
@@ -1615,7 +1683,7 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // bare "protection" for.
 func checkPlayerKeywords(spec Spec) {
 	for i, kw := range spec.PlayerKeywords {
-		if kw == game.KeywordHexproof {
+		if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
 			continue
 		}
 		if _, ok := game.ParseProtectionQuality(kw); ok {

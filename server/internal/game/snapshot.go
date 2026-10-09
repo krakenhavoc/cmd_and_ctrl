@@ -471,6 +471,16 @@ type GameSnapshot struct {
 	// schema bump.
 	BlocksDeclared map[uuid.UUID]bool `json:"blocksDeclared,omitempty"`
 
+	// BlockDeclarationClosed is whether this combat's CR 509.1
+	// declaration as a whole is over (#2021,
+	// Game.blockDeclarationClosed): every player defending when it
+	// ended had declared, so a player who becomes a defending player
+	// afterwards does not declare. False outside the declare-blockers
+	// step's combat, and a file written before it restores as false —
+	// the shape before #2021, where such a player is asked to declare.
+	// No schema bump.
+	BlockDeclarationClosed bool `json:"blockDeclarationClosed,omitempty"`
+
 	// AttacksDeclared is whether this combat's attack declaration has
 	// passed its CR 508.1d requirement checkpoint (#1571,
 	// Game.attacksDeclared). False outside the declare-attackers step's
@@ -644,8 +654,9 @@ type playerSnapshot struct {
 	IsBot              bool                  `json:"isBot,omitempty"`
 	BotTier            string                `json:"botTier,omitempty"`
 	BotDeck            string                `json:"botDeck,omitempty"`
-	Agent              bool                  `json:"isAgent,omitempty"`     // ADR 0122 §7, additive in schema 7
-	AgentClient        string                `json:"agentClient,omitempty"` // ADR 0122 §7, additive in schema 7
+	Agent              bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
+	AgentClient        string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
+	CitysBlessing      bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
 	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
 	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
 	Counters           map[string]int        `json:"counters,omitempty"`
@@ -654,6 +665,9 @@ type playerSnapshot struct {
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
 	MaxHandSizeAt int64 `json:"maxHandSizeAt,omitempty"`
+	// Speed is the player's speed (ADR 0138, CR 702.179). Additive
+	// within v7: a file without it restores as no speed.
+	Speed int `json:"speed,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -856,6 +870,13 @@ type cardSnapshot struct {
 	// one omitted it (#1492). The frozen fixtures carry the key, so it
 	// is always written; omitzero_tag_guard_test.go holds that.
 	Provenance CastProvenance `json:"provenance"`
+	// CraftedWith is ADR 0137's CR 702.167c link: the objects the craft
+	// ability that put this permanent onto the battlefield exiled as
+	// materials. Carried for Provenance's reason: the ability that wrote
+	// it is gone, so nothing could rebuild it, and a restored Jadeheart
+	// Attendant would gain no life. Additive within the schema; old
+	// files have no key and read as "not crafted".
+	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -880,6 +901,21 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Saddled and SaddledBy are the CR 702.171 saddled designation and
+	// the creatures that paid for it this turn (ADR 0071 amendment
+	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
+	// that dropped them mid-turn would un-saddle a Mount that has
+	// already been paid for. Additive within v7.
+	Saddled   bool        `json:"saddled,omitempty"`
+	SaddledBy []ObjectRef `json:"saddledBy,omitempty"`
+	// Suspected is the CR 701.60 suspected designation and SuspectedAt
+	// the layer-6 timestamp its menace grant is ordered at (ADR 0071
+	// amendment, #2698), carried for Monstrous's reason: "not
+	// suspected" is a legal zero value, so a restore that dropped it
+	// would hand a suspected Barbed Servitor its blocking back, and say
+	// nothing about it.
+	Suspected   bool  `json:"suspected,omitempty"`
+	SuspectedAt int64 `json:"suspectedAt,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -1391,6 +1427,9 @@ type pendingChoiceSnapshot struct {
 	// game with one open from being restorable until it is answered.
 	ChoosePlayers   []uuid.UUID `json:"choosePlayers,omitempty"`
 	ChooseSuggested []uuid.UUID `json:"chooseSuggested,omitempty"`
+	// #2680: where a choose_cards prompt sends what it names. Carried
+	// with the options it describes.
+	ChooseDestination ChooseDestination `json:"chooseDestination,omitempty"`
 	// #568: the branches of an option pick. Carried for the reason
 	// ChooseCards is — the prompt is the options, and a restored game
 	// that forgot them would render a question with no answers.
@@ -1697,6 +1736,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
+	s.BlockDeclarationClosed = g.blockDeclarationClosed
 	s.AttacksDeclared = g.attacksDeclared
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
@@ -1997,6 +2037,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
+		CraftedWith:              cloneObjectRefs(c.CraftedWith),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -2007,6 +2048,10 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Saddled:                  c.Saddled,
+		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
+		Suspected:                c.Suspected,
+		SuspectedAt:              c.SuspectedAt,
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2075,11 +2120,13 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		CommanderCasts:        copyIntMap(p.CommanderCasts),
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,
 		MaxHandSizeAt:         p.MaxHandSizeAt,
+		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
@@ -2354,6 +2401,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
+		ChooseDestination:    c.ChooseDestination,
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
@@ -2547,6 +2595,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
+	g.blockDeclarationClosed = s.BlockDeclarationClosed
 	g.attacksDeclared = s.AttacksDeclared
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
@@ -2839,6 +2888,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
+		CraftedWith:              cloneObjectRefs(c.CraftedWith),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -2849,6 +2899,10 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Saddled:                  c.Saddled,
+		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
+		Suspected:                c.Suspected,
+		SuspectedAt:              c.SuspectedAt,
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -2949,10 +3003,12 @@ func restorePlayer(p *playerSnapshot) *Player {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		Counters:              copyStringIntMap(p.Counters),
 		MaxHandSize:           p.MaxHandSize,
 		MaxHandSizeAt:         p.MaxHandSizeAt,
+		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no
@@ -3180,6 +3236,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
+		ChooseDestination:    c.ChooseDestination,
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),

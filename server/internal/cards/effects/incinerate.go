@@ -16,6 +16,7 @@ func init() {
 		Name:         "Incinerate",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    damageAnyTargetNoRegenIfDealt(fixedAmount(3)),
 	})
 }

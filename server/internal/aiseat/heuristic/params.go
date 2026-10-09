@@ -20,6 +20,13 @@ import "encoding/json"
 type targetRef struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
+	// Slot is the target clause this pick answers, within its
+	// statement, and Mode the occurrence in the move's `modes` whose
+	// statement that is (ADR 0065 §2). Both zero for a single-clause
+	// non-modal move. The policy reads them to find a declared target
+	// entry (ADR 0126's amendment of 2026-10-08).
+	Slot int `json:"slot"`
+	Mode int `json:"mode"`
 }
 
 type castParams struct {

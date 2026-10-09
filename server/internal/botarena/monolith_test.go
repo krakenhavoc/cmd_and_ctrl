@@ -34,6 +34,9 @@ func TestMonolithBattleDeck(t *testing.T) {
 }
 
 func TestNoTableStallsOnAMonolithUntap(t *testing.T) {
+	// Parallel (#2766): a lockstep arena run owns its games, rooms and
+	// seeds, so it replays the same tables beside other tests.
+	t.Parallel()
 	deck := botarena.MonolithDeckID
 	cfg := botarena.Config{
 		Seats: []botarena.SeatSpec{

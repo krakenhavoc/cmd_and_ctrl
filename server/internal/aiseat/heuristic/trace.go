@@ -19,7 +19,8 @@ import (
 // Compile-time assertion: the heuristic is a Tracer.
 var _ aiseat.Tracer = (*Policy)(nil)
 
-// DecideTraced is Decide with the ranking attached.
+// DecideTraced is Decide with the ranking attached, and the turn plan
+// it chose (ADR 0136 §7).
 //
 // It prices the window twice — once in Rank, once inside Decide — and
 // that is fine: the model funnel already does exactly this on every
@@ -34,8 +35,8 @@ var _ aiseat.Tracer = (*Policy)(nil)
 // themselves.
 func (p *Policy) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
 	cands := p.Rank(ctx, in)
-	d, err := p.Decide(ctx, in)
-	tr := aiseat.Trace{Layer: "B", HeuristicIndex: d.Index}
+	d, plan, err := p.decide(ctx, in)
+	tr := aiseat.Trace{Layer: "B", HeuristicIndex: d.Index, Plan: plan}
 	if err != nil {
 		tr.HeuristicIndex = aiseat.Decline
 	}

@@ -41,8 +41,8 @@ func init() {
 		Name:         "Boros Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Boros Charm deals 4 damage to target player or planeswalker.",
-				targetPlayerOrPlaneswalker()),
+			ModeWithPurpose(Mode("Boros Charm deals 4 damage to target player or planeswalker.",
+				targetPlayerOrPlaneswalker()), ForTargets(DamageToTarget(0, 4))),
 			Mode("Permanents you control gain indestructible until end of turn."),
 			Mode("Target creature gains double strike until end of turn.",
 				TargetCreature("target creature")),

@@ -63,6 +63,16 @@ type ObjectRef struct {
 	Epoch int       `json:"epoch"`
 }
 
+// cloneObjectRefs copies a list of refs onto its own backing array, so
+// an undo snapshot or a restore point never shares one with the live
+// game. Nil in, nil out.
+func cloneObjectRefs(refs []ObjectRef) []ObjectRef {
+	if len(refs) == 0 {
+		return nil
+	}
+	return append([]ObjectRef(nil), refs...)
+}
+
 // stamped is the ref as a snapshot field: nil for the zero ref, so an
 // unstamped item writes nothing and an old snapshot reads back as
 // unstamped (#1418). The ID is the "stamped" bit; epoch zero is real.
@@ -133,6 +143,14 @@ type PermanentInfo struct {
 	// nothing.
 	Delved []ObjectRef `json:"delved,omitempty"`
 
+	// CraftedWith is the permanent's CR 702.167c link to the materials
+	// its craft ability exiled (Card.CraftedWith, ADR 0137), as it last
+	// existed: a crafted permanent's own trigger that resolves after it
+	// has left still finds "the exiled cards used to craft it". Resolve
+	// it with Game.CraftMaterialsForEffect. Nil for a permanent no
+	// craft ability put onto the battlefield.
+	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
+
 	// ChosenColor and NamedTribe are the colour and creature type chosen
 	// for it as it entered (Card.ChosenColor, Card.NamedTribe), as it last
 	// existed: Story Circle's and Circle of Solace's "of the chosen
@@ -157,6 +175,13 @@ type PermanentInfo struct {
 	// (#2145); the designation is cleared on leaving (CR 400.7), so
 	// only this record remembers it.
 	RingBearer bool `json:"ringBearer,omitempty"`
+
+	// Suspected is whether it was suspected (CR 701.60) as it last
+	// existed on the battlefield. Agency Coroner's "if the sacrificed
+	// creature was suspected" reads it after the cost has moved the
+	// creature to a graveyard, where the designation is gone (CR
+	// 400.7); only this record remembers it.
+	Suspected bool `json:"suspected,omitempty"`
 
 	// Attacking is whether it was an attacking creature (CR 508.1k) as
 	// it last existed on the battlefield, and Enchanted whether an Aura
@@ -200,10 +225,12 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		AttachedTo:     c.AttachedTo,
 		Tapped:         c.Tapped,
 		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
+		CraftedWith:    cloneObjectRefs(c.CraftedWith),
 		ChosenColor:    c.ChosenColor,
 		NamedTribe:     c.NamedTribe,
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
+		Suspected:      c.Suspected,
 		Attacking:      c.AttackingTarget != uuid.Nil,
 		Blocking:       c.BlockedAttackers(),
 	}

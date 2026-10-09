@@ -45,6 +45,7 @@ func init() {
 			Label:   "{7}{R}: This enchantment deals 7 damage to target creature.",
 			Cost:    ManaCost("{7}{R}"),
 			Targets: TargetCreature("target creature"),
+			Purpose: ForTargets(DamageToTarget(0, 7)),
 			Effect:  DealDamageToTheTarget(7),
 		}},
 	})

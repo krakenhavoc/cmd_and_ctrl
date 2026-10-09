@@ -20,6 +20,7 @@ func init() {
 			ManaAdditionalCost("{5}").Keyed("mana"),
 		),
 		Targets:   TargetCreature("target creature"),
+		Purpose:   ForTargets(DamageToTarget(0, 5)),
 		OnResolve: damageToFirstTarget(5),
 	})
 }

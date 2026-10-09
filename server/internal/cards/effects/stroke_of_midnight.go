@@ -20,6 +20,8 @@ func init() {
 		Name:         "Stroke of Midnight",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target nonland permanent", Nonland()),
+		// #2679: what the target's controller is given back.
+		Purpose: ForTargets(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 1, TokenToughness: 1})),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

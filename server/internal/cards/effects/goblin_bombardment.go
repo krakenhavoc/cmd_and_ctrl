@@ -24,6 +24,7 @@ func init() {
 			Label:   "Sacrifice a creature: deal 1 damage to any target",
 			Cost:    SacrificeACreature(),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 {
 					return nil

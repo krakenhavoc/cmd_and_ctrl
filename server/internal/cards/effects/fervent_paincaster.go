@@ -22,6 +22,7 @@ func init() {
 				Label:   "{T}: This creature deals 1 damage to target player or planeswalker.",
 				Cost:    TapCost(),
 				Targets: targetPlayerOrPlaneswalker(),
+				Purpose: ForTargets(DamageToTarget(0, 1)),
 				Effect:  sourceDealsDamageToEachLegalTarget(1),
 			},
 			{

@@ -15,6 +15,8 @@ func init() {
 		Name:         "Swords to Plowshares",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		// #2679: what the target's controller is given back.
+		Purpose: ForTargets(RemovalReturning(0, game.TargetReturn{LifeEqualToPower: true})),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

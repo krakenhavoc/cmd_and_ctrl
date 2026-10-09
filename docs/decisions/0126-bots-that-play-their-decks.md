@@ -4,6 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
 This ADR was written plan-first. No code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
@@ -422,6 +423,271 @@ Worked, in the owner's position: late in the game a land in hand has a `cardValu
 - Hashaton, Scarab's Fist: `types` creature, `tokens: 1`. The `{2}{U}` it asks for is not declared. A token is priced well under a 4/4, which leaves room for the mana.
 
 `TestCuratedDeckPurposes` holds each to its declaration.
+
+## Amendment (2026-10-08): purposes that follow a mode's target, and damage priced by whether it kills
+
+**Status:** Accepted (owner answers 2026-10-08). The owner chose the recommended option, (a), on every question; see [Owner answers (2026-10-08)](#owner-answers-2026-10-08) at the end of this amendment. No code changed with it. The changes land in the PRs under its delivery plan.
+**Issue:** [#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689). Related: [#2681](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2681) (Prismari's self loot and Treasure selection is never enumerated) and [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457) (the bot's own draw step as a spend window).
+**Amends:** §6 (what a purpose says, and who it is about) and the target half of the cast price. §4's sweep, §7, and the discard-payoff amendment are unchanged.
+**Line numbers** are on `develop` at `8cda8c86d`. The issue cited `46f6b1e0c`; `aiseat/heuristic/moves.go` has not moved since, and `legal/legal.go`'s cap moved from `:554` to `:562`.
+
+### The problem
+
+**The evidence.** Review game 2 (`06e98afa`, 2026-10-08) was a two-seat table: the heuristic on izzet-aggro (Bot 1, life 34) against a Claude MCP seat on Esper (life 41). At decision-log seq 248, in the bot's turn-6 draw step, the bot had three lands and no creatures. Its hand was Angrath's Marauders, Goldspan Dragon, Solphim, Unexpected Windfall, Captain Lannery Storm, Malcolm and Prismari Command. Claude controlled Y'shtola, Night's Blessed, a 2/4 commander with no damage marked.
+
+Prismari Command reads: "Choose two — • Prismari Command deals 2 damage to any target. • Target player draws two cards, then discards two cards. • Target player creates a Treasure token. • Destroy target artifact." The enumerator offered twelve casts. Every one of them was modes [0,1] or [0,2]; #2681 covers why. The trace priced them as follows:
+
+| Mode 0's target | Mode 1's or 2's target | [0,1] | [0,2] |
+|---|---|---:|---:|
+| Y'shtola | Claude | **9.12** (chosen, index 5) | 9.12 (index 11) |
+| Y'shtola | Bot 1 | 5.82 | 5.82 |
+| Claude | Claude | 4.20 | 4.20 |
+| Claude | Bot 1 | 0.90 | 0.90 |
+| Bot 1 | Claude | 0.90 | 0.90 |
+| Bot 1 | Bot 1 | −2.40 | −2.40 |
+
+Pass was 0. The bot cast the top line: 2 damage to a 2/4, which kills nothing, and "Claude draws two, then discards two", which let Claude pitch two spare lands. It spent all three lands in the draw step, so it cast nothing in its main phase. Mary Read and Anne Bonny (4.17), Malcolm and Lannery Storm were all castable there.
+
+**Why, in the code.** Every price in the table is one sum:
+
+```
+0.60 (3 × SpellPerMana 0.60, less the card's Hand 1.20)
++ a price per target
+```
+
+- **A player target is always priced as an attack.** `targetsValue` (`aiseat/heuristic/moves.go:781`) charges `SelfTargetPenalty` (−1.50, `:787`) for the bot itself, and pays `DamageToPlayer × leaderBoost` (+1.20 × 1.50 = +1.80, `:793`) for anyone else, whatever the mode does to them. Giving Claude two new cards or a Treasure is priced the same as burning Claude.
+- **A creature target is always priced as removal.** `cardTargetValue` (`:820`–`:829`) prices an opponent's creature at `CreatureValue × RemovalConfidence × leaderBoost`, which is 5.60 × 0.80 × 1.50 = 6.72 for Y'shtola. Nothing asks whether 2 damage kills a 4-toughness creature.
+- **The mode never enters the price.** Prismari declares no purpose on any mode (`cards/effects/prismari_command.go`). `castPurpose` (`purpose.go:98`) then falls back to the card, which has none, and `resolvedValueFor` (`fuel.go:217`–`:223`) uses the mana-value proxy. So [0,1] and [0,2] are the same number.
+- **The signal could not say it.** `PurposeView`'s amounts are all the controller's: `draws` is "cards its controller draws" (`protocol/purpose_view.go:28`). Declaring Prismari's loot as `draws: 2, discards: 2` would add +1.20 to every cast whoever it targets, and keep the attack price on Claude. That is why `TestCuratedDeckPurposes` lists Prismari on `valueIsTheirTarget` with the class "its targets decide who draws and who gets the Treasure, by mode" (`internal/decks/purpose_test.go:93`). Sign in Blood is there for the same reason (`:99`).
+- **The damage field exists, but nothing reads it for a spell.** `damage_to_creature` came with [ADR 0130's amendment of 2026-10-07](0130-exert.md#amendment-2026-10-07-exert-rows-and-what-they-declare) for exert rows. Only `exertGain` reads it, through `bestCreatureKill` (`exert.go:99`, `:119`), which checks `effectiveToughness(c) <= dmg`. Two catalog rows declare it (Glorybringer and Fervent Paincaster). No spell or mode does, and the cast price never looks.
+
+**How wide it is.** These are greps, so they are upper bounds:
+
+- 41 card files in `cards/effects` are modal and have a mode that targets a player.
+- 265 files have a player or opponent target clause.
+- About 280 name a damage effect and a creature or any-target clause.
+
+The curated decks put it in play every game:
+
+- izzet-aggro holds Lightning Bolt, Shock, Arc Trail, Fiery Temper, Abrade, Izzet Charm and Prismari Command. Every one of them prices any opposing creature as killed.
+- mono-black-aristocrats holds Sign in Blood ("Target player draws two cards and loses 2 life"). By the same arithmetic, the bot always prefers to cast it at an opponent rather than at itself. That case is from the code, not from a logged game.
+
+The hostile default is right for some effects: a discard (Kolaghan's Command), a mill, a life loss and damage are all bad for their target. It is wrong for a draw, a token, a life gain and a loot.
+
+**What the rules say.** I checked every rule below against the Comprehensive Rules effective September 25, 2026.
+
+- **CR 601.2c:** "if the spell uses the word 'target' in multiple places, the same object or player can be chosen once for each instance of the word 'target'". So Prismari's [1,2] with the bot as both targets, the play the review wanted, is a legal cast.
+- **CR 120.6:** "If the total damage marked on a creature is greater than or equal to its toughness, that creature has been dealt lethal damage and is destroyed as a state-based action". **CR 704.5g** is that state-based action.
+- **CR 514.2:** in the cleanup step, "all damage marked on permanents … is removed". Damage that does not kill is gone at end of turn.
+- **CR 702.12b:** an indestructible permanent is not destroyed by lethal damage.
+- **CR 702.2b:** a creature dealt damage by a source with deathtouch is destroyed.
+- **CR 702.16e:** damage from a source of the protected quality is prevented.
+- **CR 120.3c:** damage to a planeswalker removes that many loyalty counters. **CR 704.5i:** a planeswalker with loyalty 0 goes to the graveyard.
+- **CR 120.3d:** damage from a source with wither or infect is dealt as −1/−1 counters, which stay.
+- **CR 704.5a:** "If a player has 0 or less life, that player loses the game."
+
+### Options considered
+
+**A. How the catalog says who a purpose is about.**
+
+1. **(Recommended) Per target clause.** `game.Purpose` gains a list of target purposes, each keyed by the `slot` of the target clause it describes within its statement: the card's own statement, a mode's, an alternative cost's or an activated row's. Each entry holds what happens *to that target*: `draws`, `discards`, `tokens`, `life_gain`, `life_loss` and `damage`. A move's target already names its clause: `targets[].slot`, and `targets[].mode`, an index into the move's `modes` (`legal/legal.go:962`–`:971`, ADR 0065 §2). So the heuristic can match every pick to its entry without a wire change to moves. This is the only option that can say Arc Trail ("2 damage to any target and 1 damage to another target") truthfully, and it follows CR 601.2c's one-target-per-instance model, which the engine already uses.
+2. **A mode-level flag:** "this mode's amounts apply to its target player". It is smaller, and enough for Prismari and Sign in Blood. It cannot split a statement with two clauses, and it needs a separate damage field anyway.
+3. **Inferring it from the clause kind:** a mode whose only target is a player has its amounts apply to that player. Rejected. §6's rule is "declared on the card, never inferred", and the inference is wrong for "Target opponent sacrifices a creature. You draw a card."
+4. **Resolving the spell on a copy of the game and scoring the result.** Rejected. ADR 0033 §3 rules out cloning a game in a policy.
+
+**B. How a gift to another seat is priced.**
+
+1. **(Recommended) The bot's own formula, through the opposition weights.** For the bot as target, the entry is priced by `purposeValue`'s amount terms, as if the bot had cast an untargeted "you draw two". The discard payoffs and the cards it would discard come with that (`resolutionDiscardPayoff`). For an opponent, the same amounts make a strength change `x` for that seat. It is priced as the change in `ScoreEval` (`score.go:952`): `−(OpponentMean × x / n + OpponentMax × x)` when that seat is the strongest opponent, and only the mean term otherwise. That is how §4 prices a sweep, and it weighs a four-player table without a new constant. At a two-seat table it is −1.5x, which is what `LeaderBoost` (1.50) gives.
+2. **A sign table with `LeaderBoost`**, as the issue proposed: +value on the bot, −value × `leaderBoost` on an opponent. Simpler, but it treats a gift to one of three opponents as costing the bot as much as the same gift to itself.
+
+**C. How damage is priced.**
+
+1. **(Recommended) By whether it kills, else nothing.** A creature target dies if it is not indestructible, the damage is not prevented by protection from the source, and either `damage ≥ toughness − damage_marked` (CR 120.6) or the source has deathtouch and `damage ≥ 1` (CR 702.2b). The combat planner's `kills` (`combat.go:127`) already makes these checks for combat. A creature that dies is priced as removal is today. One that survives is priced at `DamageChip × removal value`, with `DamageChip` 0.00 (Q3). The bot's own creature is priced negatively if it dies and 0 otherwise, rather than `OwnPermanentTarget`'s +0.40 pump guess. A planeswalker loses loyalty for good, so it is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price (Q6).
+2. **In proportion to damage over toughness.** Rejected. Marked damage is removed in cleanup (CR 514.2), so 2 of 4 points is worth nothing after this turn. The one exception is damage combined with a combat this turn, and that is the combat planner's business.
+
+**D. Damage to a player with a declared amount.**
+
+1. **(Recommended) Per point.** The amount is priced at `DamageToOpponent` (0.30, the unit the attack planner uses) per point, through B's opposition weights. It gets `LethalBonus` when the amount is at least the player's life and the player can lose to life (CR 704.5a). That replaces `targetsValue`'s `FinishLife` bet (`moves.go:800`–`:811`) with a reading, for a declared spell only. Damage to the bot itself is priced as the life lost, at `MarginalLife`.
+2. **Today's flat `DamageToPlayer × leaderBoost` per target, whatever the amount.** Smaller, but a 2-damage mode stays worth 1.80 at a player on 41 life. At seq 248 that is enough to cast Prismari in the draw step anyway (see below).
+
+**Undeclared cards keep today's price.** A target with no entry is priced by `targetsValue` exactly as now. Nothing is inferred.
+
+### Recommendation
+
+A1, B1, C1 and D1, in two pricing PRs behind two `Config` switches. `PriceTargetPurposes` covers A and B; `DamageByLethality` covers C and D. Both are on in `DefaultConfig()` and off in `BaselineConfig()` (§9), so each lever is measured alone, as ADR 0052 asks. Then declarations: every curated card in either class, and every catalog card whose spell, mode or row gives its target player something (Q5).
+
+**Worked at seq 248**, with the recommended answers. Claude is the only opponent, so B1's weight is 1.5. Prismari declares mode 0 `damage: 2`, mode 1 `draws: 2, discards: 2` and mode 2 `tokens: 1`, each on slot 0. The cast is then purpose-priced, so the 1.80 mana proxy goes, and the card still costs Hand (1.20).
+
+| Selection | Today | Amended |
+|---|---:|---:|
+| 2 to Y'shtola, loot to Claude | 9.12 | 0 − 1.80 − 1.20 = **−3.00** |
+| 2 to Y'shtola, loot to Bot 1 | 5.82 | 0 + 1.20 − 1.20 = 0.00 |
+| 2 to Claude, loot to Bot 1 | 0.90 | 0.90 + 1.20 − 1.20 = 0.90 |
+| 2 to Claude, Treasure to Bot 1 | 0.90 | 0.90 + 0.50 − 1.20 = 0.20 |
+| loot and Treasure to Bot 1 (after #2681) | not offered | 1.20 + 0.50 − 1.20 = 0.50 |
+
+The bot's loot is 2 × 1.20 − 2 × `DiscardWeight` 0.60 = 1.20; Mary Read is not on the battlefield, so there is no discard payoff. The 2 damage to Claude is 2 × 0.30 × 1.5 = 0.90. Every Prismari cast is now below `InstantThreshold` (1.50), so the bot passes the draw step and casts Mary Read and Anne Bonny (4.17) in its main phase. That is the issue's accepted answer, and it needs no #2457 gate.
+
+Under D2 instead, "2 to Claude, loot to Bot 1" is 1.80 + 1.20 − 1.20 = 1.80, which clears 1.50, and the bot still casts in its draw step. So D matters to the acceptance position.
+
+### Snapshot and wire impact
+
+- **No snapshot change.** A purpose is catalog data projected into the view, as §6 says. Nothing new is captured, `SnapshotSchemaVersion` stays 7, and `testdata/snapshot_shape/v7.txt` does not change.
+- **Wire, additive.** `PurposeView` gains `targets`, omitted when empty: a list of `TargetPurposeView` `{slot, draws, discards, tokens, life_gain, life_loss, damage}`, every amount `omitempty`. It rides wherever `PurposeView` already does (the card, `ModeOptionView`, `AlternativeCostView`, `ActivatedAbilityView`), and it is projected and cleared with it. Clients ignore it. `docs/protocol.md` documents it, and `client/src/lib/protocol.ts` mirrors the type.
+- **No move change.** `targets[].slot` and `targets[].mode` are on the wire already. The heuristic's private `targetRef` (`params.go:20`) gains the two fields it currently drops.
+- **`game.Purpose` stays comparable.** `IsZero` compares it with `==` (`game/purpose.go:148`), so the new field is a pointer, as `DiscardPayoff` and `Pump` are. `plus` (a fused split spell) concatenates the two halves' lists, renumbering the second half's slots past the first's.
+- **`damage_to_creature` stays.** It describes a triggered or activated row whose target is chosen later (exert's Glorybringer), where there is no move target to match. A `targets` entry describes a target the move names.
+- **The registration guard** refuses:
+  - an entry whose `slot` is not a target clause of its statement;
+  - a player amount (`draws`, `discards`, `tokens`, `life_gain`, `life_loss`) on a clause that cannot target a player;
+  - `damage` on a clause that can target nothing damage can be dealt to;
+  - a negative amount;
+  - an entry that says nothing.
+
+### Delivery plan
+
+| # | PR | Depends on | Acceptance |
+|---|---|---|---|
+| 1 | This amendment | — | docsguard |
+| 2 | **The signal.** `game.Purpose`'s target list, `TargetPurposeView`, the projection, the guard, `docs/protocol.md` and `protocol.ts`. Declarations for the curated decks' cards in both classes: Prismari Command, Sign in Blood, Lightning Bolt, Shock, Arc Trail, Fiery Temper, Abrade, Izzet Charm's damage mode, and Blaze if X can be declared (otherwise it goes on `noPrintedAmount`). `TestCuratedDeckPurposes` requires an entry for each and drops their `valueIsTheirTarget` notes. The dump audit lists catalog cards whose text reads "target player draws / creates / gains", or "deals N damage to" a creature or any target, with no entry. **No price change.** Touches `effects`, `game`, `protocol`, `decks` and the client types, and nothing under `aiseat/`. | 1 | Unit tests for the guard and the projection. `TestCuratedDeckPurposes`. §8 run 1 and run 2 identical to `develop` apart from IDs and timings, as PR 6 showed. |
+| 3 | **Target purposes priced** (A1, B1) behind `PriceTargetPurposes`. `targetRef` decodes `slot` and `mode`. A declared entry replaces `targetsValue`'s price for its pick, and a cast whose only declared amounts are target entries counts as purpose-priced, so the mana proxy goes. | 2 | Unit tests: Prismari's loot is worth more on the bot than on an opponent, its Treasure likewise, and Sign in Blood at itself beats an opponent on 30 life. §8 run 1 and run 2 under §8's sub-PR bar: no tag's agreement falls, and `heuristic`'s upper bound stays above 25%. A targeted run, `boteval arena --seats heuristic,heuristic,heuristic-baseline,heuristic-baseline --decks izzet-aggro,mono-black-aristocrats,izzet-aggro,mono-black-aristocrats --games 96 --rotate --lockstep`, reporting Prismari's and Sign in Blood's Cards rows, with who each was aimed at, read from the decision logs. |
+| 4 | **Damage by whether it kills** (C1, D1) behind `DamageByLethality`. `cardTargetValue` takes the declared amount; the kill test is shared with `combat.go`'s. | 2 (3 for the acceptance position) | Unit tests: Shock at a 2/4 is about 0, at a 2/2 it is removal, at an indestructible 2/2 it is 0, at a 3/3 with 1 damage marked it is removal, and at a player on 2 life it gets the lethal bonus. §8 run 1 and run 2 as in PR 3. The izzet-aggro run, reporting burn aimed at creatures it killed, at creatures it did not, and at players. |
+| 5 | **The catalog sweep** (owner answer 5): every catalog spell, mode or row that gives its target player something (a draw, a token, a life gain or a loot), then burn from the dump audit's list, in card batches with no price change. Each batch follows docs/adding-cards.md (its own oracle fixtures only, Completeness unchanged). | 2 | The dump audit's list shrinks. The real-dump audits pass. |
+
+Suite positions are **proposals only**, for the owner to review in the PR that adds them, as every suite position is:
+
+- **`prismari-draw-step-with-a-three-drop`** (PR 4, the issue's position):
+  - Window: the bot's draw step; 3 lands untapped; Prismari Command in hand; the opponent has a 2/4; a castable 3-drop is in hand.
+  - Accept: pass, or Prismari "loot and Treasure, both at the bot" once #2681 offers it.
+  - Reject: any Prismari cast aimed at the 2/4 and the opponent.
+- **`prismari-loot-yourself`** (PR 3):
+  - Window: the bot's own second main phase; the opponent has no creatures; the bot has 3 lands and dead 5- and 7-drops in hand.
+  - Accept: Prismari "loot and Treasure, both at the bot".
+  - Reject: any selection that loots the opponent or gives them the Treasure.
+- **`do-not-shock-the-two-four`** (PR 4):
+  - Window: the bot's main phase; Shock in hand; the opponent's only creature is a 2/4.
+  - Accept: pass, or Shock at the opponent.
+  - Reject: Shock at the 2/4.
+- **`sign-in-blood-yourself`** (PR 3):
+  - Window: the bot's main phase; Sign in Blood in hand; the bot on 30 life; the opponent on 30.
+  - Accept: Sign in Blood at the bot.
+  - Reject: Sign in Blood at the opponent.
+
+**Out of this amendment:** the draw-step gate (#2457), Prismari's missing selection and the labels that don't name the modes (#2681), a trigger whose target is picked later through `choices.go:194` (a follow-up once PR 3 shows the shape), wither and infect sources (CR 120.3d; no curated spell has either, so they keep today's price), and damage priced together with a combat this turn.
+
+### Open questions for the owner (2026-10-08)
+
+Each question lists the recommended option first.
+
+1. **Q1. Where a target's amounts are declared.**
+   - **(a) Recommended:** per target clause, keyed by `slot`, in a `targets` list on `Purpose` and `PurposeView`. Arc Trail's two clauses and Prismari's two modes are each described truthfully, and the move's existing `slot`/`mode` find the entry.
+   - **(b)** A mode-level flag, "these amounts apply to the mode's target player", plus a mode-level `damage`. Smaller. Arc Trail and other two-clause statements stay undeclared at today's price.
+   - **(c)** Inferred from the clause kind. This breaks §6's "declared, never inferred", and it is wrong for "target opponent sacrifices…, you draw".
+2. **Q2. How a gift to an opponent is priced.**
+   - **(a) Recommended:** the bot's own amount formula, turned into a change in that seat's strength and priced through `ScoreEval`'s opposition weights, as §4 prices a sweep. A gift to the strongest of three opponents costs 0.83 of its value, and a gift to another opponent 0.33.
+   - **(b)** A sign flip times `LeaderBoost`: 1.5 for the leader, 1.0 for anyone else, at any table size. It is simpler, and it overcharges gifts at a four-player table. At two seats the two options agree.
+3. **Q3. Damage that does not kill a creature.**
+   - **(a) Recommended:** `DamageChip` 0.00, so it is worth nothing, because marked damage is removed in cleanup (CR 514.2).
+   - **(b)** A small share, `DamageChip` 0.10 of the removal value, as a tie-break toward the bigger creature. Prismari's 2 at Y'shtola would then be 0.67, not 0.
+   - **(c)** In proportion to damage over toughness. 2 at Y'shtola would be 3.36, still enough for a bad cast in a main phase.
+4. **Q4. Declared damage at a player.**
+   - **(a) Recommended:** per point at `DamageToOpponent` (0.30), through Q2's weights, with `LethalBonus` when the amount reaches the player's life (CR 704.5a). This replaces the `FinishLife` bet for declared spells only.
+   - **(b)** Keep the flat `DamageToPlayer × leaderBoost` (1.80 for any amount). At seq 248, "2 to Claude and loot the bot" then prices 1.80, above `InstantThreshold`, and the draw-step cast stays.
+5. **Q5. Which cards declare target purposes.**
+   - **(a) Recommended:** the curated decks' cards in both classes (PR 2), then every catalog spell, mode or row that gives its target player something: a draw, a token, a life gain or a loot. Those are the sign errors (PR 5), about 40 modal files plus the non-modal "target player draws" spells. Burn across the catalog follows in batches from the dump audit. Undeclared burn keeps today's removal price.
+   - **(b)** The curated decks only. Every other card keeps today's price.
+   - **(c)** Every catalog card in both classes now: about 280 damage files and the player-target files, in PR 5's batches before PR 4 is measured.
+6. **Q6. Planeswalker and battle targets of declared damage.**
+   - **(a) Recommended:** a planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
+   - **(b)** Both keep today's price, as removal whatever the amount. Smaller, and 2 damage to a 6-loyalty planeswalker stays priced as killing it.
+
+#### Owner answers (2026-10-08)
+
+The owner chose option (a), the recommended one, on every question. No section above changed. These answers bind the delivery PRs.
+
+1. **Per target clause.** `Purpose` and `PurposeView` gain a `targets` list keyed by the clause's `slot` (A1).
+2. **Through the table's weights.** A gift to an opponent is that seat's strength change, priced through `ScoreEval`'s `OpponentMean` and `OpponentMax` (B1).
+3. **`DamageChip` 0.00.** Damage that does not kill a creature is worth nothing (C1; CR 514.2).
+4. **Per point, plus lethal.** Declared damage at a player is priced at `DamageToOpponent` per point through those weights, with `LethalBonus` when it reaches the player's life (D1; CR 704.5a).
+5. **The curated decks, then gifts.** PR 2 declares the curated decks' cards in both classes. PR 5 then declares every catalog spell, mode or row that gives its target player something, and burn follows from the dump audit. Undeclared burn keeps today's removal price.
+6. **Planeswalkers by loyalty.** A planeswalker is priced by the share of loyalty removed, and as killed at or above its loyalty (CR 120.3c, 704.5i). A battle keeps today's price.
+
+## Amendment 2026-10-08: what removal hands back
+
+**Status:** Accepted (owner decision on #2753, 2026-10-08).
+**Issue:** [#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679). PR: #2753.
+**Amends:** the target half of the cast price, and the [amendment of 2026-10-08](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills)'s target entries, which gain one field. Everything else is unchanged.
+
+### The problem
+
+A spell aimed at an opposing permanent is priced as removal, at the permanent's value × `RemovalConfidence` × `leaderBoost` (`cardTargetValue`, `damageCardValue`). Two kinds of removal give something back, and that price saw neither of them.
+
+- **A commander comes back.** CR 903.9a: a commander put into a graveyard or exile may go to the command zone. CR 903.9b: one that would go to a hand or a library may go there instead. CR 903.8: each later cast from there costs {2} more. In review game 2 (`06e98afa`, seq 186), Chaos Warp on Y'shtola, a 2/4 commander, priced at 6.65 and beat casting the bot's own commander (4.17).
+- **Some removal gives its target's controller a gift.** Rapid Hybridization, Pongify, Beast Within and Generous Gift give a 3/3. Stroke of Midnight gives a 1/1. Swords to Plowshares gives life equal to the target's power. Path to Exile and Assassin's Trophy give a basic land. In review game 1 (`8a9f18d7`, seq 66), Rapid Hybridization on a 1/1 priced at 3.45 and handed back a 3/3.
+
+### Why the per-target entries cannot say it
+
+The previous amendment's `targets` entries (#2689) describe what happens **to the target**. Their player amounts (`draws`, `discards`, `tokens`, `life_gain`, `life_loss`) belong to the player the clause picks. The registration guard refuses a player amount on a clause that cannot target a player. Removal's clause targets a creature or a permanent, and the gift goes to that permanent's **controller**, who is not a target. So `tokens: 1` on Rapid Hybridization's creature clause is refused, and it would mean the wrong thing if it were accepted. Inferring the gift from the card is ruled out by §6 ("declared, never inferred").
+
+### Decision
+
+**1. A declared return on the target entry.** `game.TargetPurpose` gains `Returns`, a `game.TargetReturn` of printed amounts:
+
+| Field | Wire (`targets[].returns`) | Meaning | Example |
+|---|---|---|---|
+| `CreatureTokens` | `creature_tokens` | creature tokens the target's controller creates | Rapid Hybridization 1 |
+| `TokenPower`, `TokenToughness` | `token_power`, `token_toughness` | each token's printed size | 3 and 3; Stroke of Midnight 1 and 1 |
+| `LifeEqualToPower` | `life_equal_to_power` | the controller gains life equal to the target's power, counted at resolution, so a flag rather than a number | Swords to Plowshares |
+| `Lands` | `lands` | land cards the controller may put onto the battlefield | Path to Exile, Assassin's Trophy 1 |
+| `LandsUntapped` | `lands_untapped` | how many of those enter untapped | Assassin's Trophy 1, Path to Exile 0 |
+
+It is additive on the wire, with every field omitted when zero, and there is no snapshot change. `docs/protocol.md` documents it and `client/src/lib/protocol.ts` mirrors it. An entry that holds only a return is not empty (`TargetPurpose.IsZero`).
+
+**The guard** (`checkTargetPurposes`) refuses:
+
+- a return on a clause that cannot target a permanent;
+- a negative amount;
+- creature tokens with no printed toughness, or a token size with no tokens;
+- more untapped lands than lands.
+
+`effects.RemovalReturning(slot, r)` builds the entry. It is declared on the eight cards listed above.
+
+**Chaos Warp declares nothing.** What it gives back is whatever the owner reveals from the top of their library, and no printed amount says that.
+
+**2. The price** (`NetRemoval`; on in `DefaultConfig`, off in `BaselineConfig`; `net_removal.go`).
+
+- **An opposing commander**, owned by its opponent, is priced at `min(its value, 2 × CommanderTax + DamageToOpponent × power)` before `RemovalConfidence` and `leaderBoost`.
+  - `2 × CommanderTax` is the tax counted for its {2}.
+  - `DamageToOpponent × power` is the one turn of damage it does not deal while it is away.
+  - This applies on the default removal path, and to declared damage that kills it or removes all of a planeswalker's loyalty.
+  - It needs no catalog data, because `is_commander` is on the wire.
+  - A commander the bot owns but an opponent controls keeps its full price, since it comes back to the bot.
+- **A declared return** is valued the way the target's controller would value it:
+  - a token at the `CreatureValue` of its printed body;
+  - life at what `Strength` counts it;
+  - a land at `ManaSource`.
+
+  It is taken off the removal on the removal's own scale (× `RemovalConfidence` × `leaderBoost`), so the move is worth the removal less the gift. Only a target an opponent controls is netted. A return does not make the move purpose-priced, so the mana-value proxy stays.
+
+**Worked:**
+
+- Game 1 seq 66: Rapid Hybridization on the 1/1 goes from 3.45 to −1.77, and the bot passes.
+- Game 2 seq 186: Chaos Warp on Y'shtola goes from 6.65 to 3.72, and the bot casts Mary Read and Anne Bonny (4.17).
+
+### Measured
+
+The run tables are under [Measurements, #2679](#2679-removal-priced-net-of-what-comes-back-2026-10-08).
+
+- Run 2's seeds 1, 1001 and 2001 pooled are unchanged for `heuristic` (80 of 288 before and after).
+- **Seed 2001** is the one seed where `heuristic` finished behind the baseline after the change (21 vs 27; it was 24 vs 24). Two more seeds put `heuristic` 6 and 2 games up. Over five seeds it went from 135 of 480 to 143 of 480 (28.1% to 29.8%, intervals overlapping). The owner reads the seed 2001 dip as noise against the five-seed pool.
+- The counters it targets went to near zero:
+  - gift removal cast on a target worth less than its gift: 23 to 0 in run 1, and 49 to 0 in run 2;
+  - the listed removal on an opposing commander: 59 to 13, and 47 to 2.
+
+### Open
+
+- **Sweeps and edicts** still price a commander at its full body. A wipe's `ScoreEval` and an untargeted sacrifice do not read `is_commander`.
+- **A non-removal targeted effect on an opposing commander** also gets the net price on the default path, because without an entry the heuristic cannot tell a destroy from a Pacifism-style aura or a tap. Such an effect keeps the commander on the battlefield, so the net price undervalues it. A target entry that says "this does not remove" is the fix, if a curated card needs it.
 
 ## Consequences
 
@@ -1057,3 +1323,305 @@ Before is `develop` at `c1391ff97` (#2649 merged), after is the branch; every ru
 Win rates do not move beyond a game. Run 1: esper 27 and 27 of 64, izzet 3 and 2, black 22 and 24, simic 12 and 11. Run 2 half B: `heuristic` 42 of 96 seat-games both times (43.8%, 34.3%–53.7%), `heuristic-baseline` 6 of 96 both times; by deck, black 22 then 21, simic 20 then 21. The simic ×4 runs are at the null by construction. The other A2 and A3 rows are within one game in run 1 and run 2. In the simic ×4 runs, where a changed Harrow decision changes the rest of the game, they move by up to eight games either way along with their offered counts (Ornithopter of Paradise 137 of 168 to 145 of 177, Delighted Halfling 155 of 181 to 152 of 184), and the only row that crosses its bar is Delighted Halfling in the 40-game run, upward (76% to 82%). The suite is 37 of 37.
 
 Run 1 now meets A3's 50% for Harrow, but the 160-game simic ×4 pool, at 34%, does not. A decision log of six games shows why the rest of the windows still pass: Harrow is priced positive in nearly every window it is offered in, and it is refused where the bar is `InstantThreshold`, with a trigger on the stack in the bot's own main phase or in its upkeep and draw steps, or it loses the main phase to a bigger cast that taps the bot out. It is rarely offered in the end step before the bot's turn, because the bot has spent its mana by then. Those are sequencing questions, not Harrow's price.
+
+### #2675, #2690, #2676: combat priced by what combat does (2026-10-08)
+
+Three fixes from the 2026-10-08 review games, each a knob that `BaselineConfig` turns off: `FocusNeedsValue` (the focus bonus only on an attack whose own value is positive, and an attacker with no power is not a blocker the defender must spend), `GangAwareAttacks` (an attack priced against any group of free blockers that kills it, a dying commander charged `CommanderTax`, and a creature tapped in the bot's first main phase charged its attack at `attackValue`), and `Weights.BlockOnlyBody` (0.10 per point of toughness for a token with no power and no abilities, in place of its body price in combat). This is combat, which §Out of scope left alone; `CombatValue` stays body-only (owner decision 3), since `BlockOnlyBody` reads only the body and the token flag.
+
+Before is `develop` at `da81f844d`, after is the branch; every run is `--rotate --lockstep` with the real dump, seed 1, 0 stalls and 0 rejected moves in every run.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games) | esper-control | 27, 42.2% (30.9%–54.4%) | 25, 39.1% (28.1%–51.3%) |
+| Run 1 | izzet-aggro | 2, 3.1% (0.9%–10.7%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 24, 37.5% (26.7%–49.7%) | 17, 26.6% (17.3%–38.5%) |
+| Run 1 | simic-ramp | 11, 17.2% (9.9%–28.2%) | 18, 28.1% (18.6%–40.1%) |
+| Run 2 (izzet and simic, 48 games) | heuristic | 24 / 96, 25.0% (17.4%–34.5%) | 28 / 96, 29.2% (21.0%–38.9%) |
+| Run 2 | heuristic-baseline | 24 / 96, 25.0% (17.4%–34.5%) | 20 / 96, 20.8% (13.9%–30.0%) |
+
+Run 1's turns p50 goes from 15 to 14; run 2's stays 12. The counters, from the decision logs (run 1, per game; run 2, the `heuristic` seats over 48 games):
+
+| Counter | Run 1 before | after | Run 2 before | after |
+|---|---:|---:|---:|---:|
+| Attacks with a 0-power creature | 60 (0.94) | 5 (0.08) | 40 | 18 |
+| Attackers blocked by two or more and lost | 41 of 76 | 7 of 23 | 7 of 17 | 1 of 7 |
+| Losing blocks (the blocker dies, the attacker lives) | 186 | 161 | 155 | 118 |
+| of them with a 0-power token | 3 | 5 | 0 | 1 |
+| "No blocks" with an untapped 0-power token and an attack incoming | 5 | 1 | 0 | 0 |
+
+The 0-power attacks left are all lethal pushes, two-turn races and attrition plans, which send every body by design. The curated decks make few 0-power tokens, so the chump counter barely moves; the issue's window is pinned by a unit test instead. The A3 canaries in run 1 move by at most two games: Mary Read's loot 44 of 61 to 49 of 61, Harrow 15 of 27 (56%) to 13 of 27 (48%), which crosses the bar downward by two games; the others stay above it. The suite is 41 of 41 before and after.
+
+### #2677 and #2691: land searches by colour, discards by distance (2026-10-08)
+
+Two card choices the 2026-10-08 review games found wrong, both local to the decision they fix (`card_choices.go`); `cardValue`, which the scry, the sacrifice, the fuel pricer and the cast-cost discard read, is unchanged.
+
+- **#2677, `LandColorNeed` (0.30).** A library search scored every land at one flat `cardValue` and took the first. A land now adds `LandColorNeed` × its fit: for each colour its repeatable mana abilities make, 1/(1 + the bot's sources of it) when the hand or commander has a pip of it, and 0.1 when nothing does, so a dual beats a basic that meets the hand equally. The same score answers a `choose_cards` look at the library.
+- **#2691, `DiscardByDistance`, `DistanceDiscount` (0.60), `DiscardSpellPerMana` (1.00), `DiscardLandFloor` (2.50).** A discard from the bot's own hand (cleanup, a discard prompt, a loot's or rummage's named cards, and the discard-payoff estimate that mirrors them) prices a nonland card by `handKeepValue`: an instant or sorcery at `DiscardSpellPerMana` per mana, a permanent at its `permanentValue`, either multiplied by `DistanceDiscount` per mana it is short (its mana value less sources and lands in hand, or its coloured pips less the sources and lands in hand of each colour, whichever is larger). A land is worth what it brings the rest of the hand closer to castable, never less than its `cardValue`, and never less than `DiscardLandFloor` while the bot has fewer than `RampWantCap` sources. The floor came from measurement: without it the bot discarded 243 lands in run 1 where it had discarded 142, and played no land on 27.1% of its own turns against 24.1%.
+
+`BaselineConfig` zeroes all five. Before is `develop` at `36d0e9e4c` (with #2710's combat fixes), after is the branch merged onto it; every run is `--rotate --lockstep` with the real dump. No run stalled and no move was rejected. The counters come from a scratch observer on the runner's decision feed, not part of the change: a search counts when every option is a land and some option makes a colour the hand needs and has no source of while another does not; a discard counts when the nonland cards in hand differ in distance and at least one is short.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | search took a colour the hand needs | 27 / 64 | 55 / 55 |
+| | search took a dual over a basic, need equal | 52 / 150 | 134 / 136 |
+| | discard took the card furthest from castable | 0 / 56 | 17 / 43 |
+| | own turns with no land played | 798 / 3267, 24.4% | 850 / 3267, 26.0% |
+| | lands among the cards discarded | 133 / 581 | 205 / 633 |
+| | turns p50 | 14 | 15 |
+| Run 2, seed 1 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 28 / 96, 29.2% (21.0%–38.9%) |
+| | `heuristic-baseline` wins | 17 / 96 | 20 / 96 |
+| Run 2, seed 1001 | `heuristic` wins | 24 / 96, 25.0% (17.4%–34.5%) | 24 / 96, 25.0% (17.4%–34.5%) |
+| | `heuristic-baseline` wins | 24 / 96 | 24 / 96 |
+| Run 2, pooled | `heuristic` wins | 55 / 192, 28.6% (22.7%–35.4%) | 52 / 192, 27.1% (21.3%–33.8%) |
+| | `heuristic-baseline` wins | 41 / 192, 21.4% | 44 / 192, 22.9% |
+
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48`, so each policy plays each deck 48 times; its turns p50 is 11 then 12 at seed 1 and 12 both times at seed 1001. In run 2 `heuristic` took the needed colour in 20 of 20 and 18 of 18 searches (8 of 21 and 6 of 19 before), and played no land on 18.3% and 16.9% of its turns (18.3% and 17.6% before). The pooled difference is three games of 192 either way. The same runs on the base before #2710 (`da81f844d`) gave 55 of 192 before and 55 after, with the baseline at 41 both times.
+
+Run 1's deck shares moved: esper 26 to 20 of 64, izzet 5 to 7, black 18 to 25, simic 15 to 12. Four copies of one policy are zero-sum, so this measures no strength; run 2 is the strength measure. `never` counts are esper 0, izzet 2 to 3, black 4, simic 1 to 2. A2 and A3 rows move both ways with their offered counts, as in #2469's runs: in run 1, 17 of 41 rows met their bar before and 15 after; in run 2, 8 to 9 at seed 1 and 7 to 8 at seed 1001. Every A3 canary that met its bar in run 1 still does (Harrow, 11 of 26 before, is 12 of 27 after). One A2 row fell on both bases: Worn Powerstone, used in 18 of 20 games before and 8 of 14 after here, and 15 of 17 before and 9 of 13 after on the older base. Four run-1 games where black cast it before and not after (seeds 14, 22, 32 and 52) were replayed one by one with the decision log on, and the cause is not its price. In every window it is offered in, before and after, it is priced by the same rule (+2.8, +1.8 or +0.8 as the ramp deficit closes), and it is never discarded. It is the bot's last-choice play once the deficit closes, cast only in a main phase with nothing better to spend the mana on, and after the change that main phase comes later or not at all:
+
+- Seed 22: the cleanup discards of turns 3 and 4 kept Exsanguinate and Ambition's Cost (pitched before) and pitched Rise of the Dark Realms, a nine-drop three mana short, and Dictate of Erebos. On turn 7 the bot cast Ambition's Cost (+2.4) where before, with neither card kept, it cast the Powerstone (+2.8).
+- Seed 14: the table diverges from turn 3 on other seats' decisions. Demonic Tutor then takes Midnight Reaper, and from turn 6 every main phase has a castable creature or spell priced above the Powerstone's +0.8 (Midnight Reaper, Gray Merchant, Deadly Dispute, Sign in Blood, Read the Bones).
+- Seed 32: black's decisions are the same as before, window by window, but the game ends at turn 11 instead of 16, before the late main phase in which it had cast the rock.
+- Seed 52: black draws it on turn 6 instead of 8, taps out for its commander that turn, and an opponent's Wheel of Fortune discards its hand in the same round.
+
+So the row measures how often black runs out of better plays before the game ends. The change gives it more of them (seeds 22 and 14), and it moves when the game ends and what the opponents do (seeds 32 and 52). Casting a card-draw spell or a creature over a tapped three-mana rock at seven mana is consistent with how §2 prices a rock once the deficit closes. Nothing in this change was adjusted for it.
+
+The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 5 turns before and 1 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.
+
+### Amendment PR 3: target purposes priced (2026-10-08)
+
+`PriceTargetPurposes` (`target_purpose.go`), A1 and B1 of the [amendment of 2026-10-08](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills). A player pick whose declared entry gives it cards, tokens or life is priced as that seat's strength change through `ScoreEval`, and the cast drops the mana proxy. Damage entries keep today's price until `DamageByLethality` (PR 4). `BaselineConfig` turns it off.
+
+Before is `develop` at `32886c5cc` (PR 2 merged), after is the branch; every run is `--rotate --lockstep` with the real dump, 0 stalls in every run. Lockstep tie-breaks are not yet fully deterministic (#2730), so read the intervals.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 26, 40.6% (29.5%–52.9%) | 23, 35.9% (25.3%–48.2%) |
+| Run 1 | izzet-aggro | 5, 7.8% (3.4%–17.0%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 18, 28.1% (18.6%–40.1%) | 19, 29.7% (19.9%–41.8%) |
+| Run 1 | simic-ramp | 15, 23.4% (14.7%–35.1%) | 18, 28.1% (18.6%–40.1%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 33 / 96, 34.4% (25.6%–44.3%) | 33 / 96, same |
+| Run 2 | heuristic-baseline | 15 / 96, 15.6% | 15 / 96, same |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 31 / 96, same |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 17 / 96, same |
+| Targeted (izzet and black, 96 games) | heuristic | 64 / 192, 33.3% (27.0%–40.3%) | 64 / 192, same |
+| Targeted | heuristic-baseline | 32 / 192, 16.7% | 32 / 192, same |
+
+Run 1's turns p50 is 14 before and 15 after; run 2's is 12. A2 and A3 rows move by at most three games and none crosses its bar (Harrow stays below A3 at 11 of 26 and 10 of 23).
+
+A head-to-head with the knob alone (today's heuristic against itself with `PriceTargetPurposes` off, a local build, izzet and simic, 48 games each at seeds 1 and 1001): with the knob 44 / 192, 22.9% (17.5%–29.4%); without 52 / 192, 27.1% (21.3%–33.8%). The intervals overlap and both contain the null; the direction is against the knob in both seeds, mostly on izzet at seed 1 (2 against 7 wins).
+
+Who the cards were aimed at in the targeted run (after, from the decision logs; before, every cast aimed at an opponent by construction, as `heuristic-baseline`'s 23 Sign in Blood and 11 of 14 Prismari casts are):
+
+| Contestant | Card | Aimed at | Casts |
+|---|---|---|---:|
+| heuristic | Sign in Blood | itself | 6 |
+| heuristic | Sign in Blood | an opponent on 2 life (3) or 6 | 4 |
+| heuristic | Prismari Command | 2 damage at an opponent, destroy an artifact | 8 |
+| heuristic | Prismari Command | 2 damage at an opponent, loot itself | 3 |
+| heuristic | Prismari Command | loot itself, destroy an artifact | 3 |
+| heuristic | Prismari Command | loot itself, Treasure itself | 2 |
+| heuristic-baseline | Prismari Command | 2 damage and loot, both at an opponent | 11 |
+| heuristic-baseline | Prismari Command | 2 damage at an opponent, destroy an artifact | 3 |
+| heuristic-baseline | Sign in Blood | an opponent | 23 |
+
+`heuristic` cast Sign in Blood in fewer games (14 of 16 to 10 of 16; run 1, 11 of 12 to 6 of 11): at itself it is +0.96, not +2.40, so it loses more main phases to a creature. At seq 248 of review game 2, with PR 2's declarations put on the logged view, the chosen line moves from 2 at Y'shtola and loot Claude (9.12) to 2 at Y'shtola and loot the bot (6.72); the lines that loot Claude fall by 5.40 and those that give Claude the Treasure by 4.35. The cast stays above `InstantThreshold` because 2 damage at a 2/4 is still priced as removal (6.72), which is PR 4's to fix. The suite is 41 of 41 before and after.
+
+### Amendment PR 4: damage priced by whether it kills, measured with PR 3 (2026-10-08)
+
+The owner held PR 3 to measure it together with PR 4. `DamageByLethality` (`target_purpose.go`, `damageKills` shared with `combat.go`'s `kills`), C1 and D1 with owner answers 3, 4 and 6:
+- A declared damage entry at a creature is removal if it kills and `DamageChip` (0.00) of removal if it does not.
+- At a planeswalker it is the share of loyalty removed.
+- At a player it is `DamageToOpponent` per point through the opposition weights, with `LethalBonus` at or above their life.
+
+Arc Trail is now two clauses, 2 damage and 1 to another target, and declares both. This changes its moves: the second pick names slot 1. `BaselineConfig` turns the knob off.
+
+Before is `develop` at `8ecec05ba`, and after is the branch with both knobs (develop merged in). Every run is `--rotate --lockstep` with the real dump, and every run had 0 stalls.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 20, 31.2% (21.2%–43.4%) | 28, 43.8% (32.3%–55.9%) |
+| Run 1 | izzet-aggro | 7, 10.9% (5.4%–20.9%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 25, 39.1% (28.1%–51.3%) | 20, 31.2% (21.2%–43.4%) |
+| Run 1 | simic-ramp | 12, 18.8% (11.1%–30.0%) | 12, 18.8% (11.1%–30.0%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 32 / 96, 33.3% (24.7%–43.2%) | 37 / 96, 38.5% (29.4%–48.5%) |
+| Run 2, seed 1 | heuristic-baseline | 16 / 96, 16.7% | 11 / 96, 11.5% |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 32 / 96, 33.3% (24.7%–43.2%) |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 16 / 96, 16.7% |
+| Targeted (izzet and black, 96 games) | heuristic | 62 / 192, 32.3% (26.1%–39.2%) | 57 / 192, 29.7% (23.7%–36.5%) |
+| Targeted | heuristic-baseline | 34 / 192, 17.7% | 39 / 192, 20.3% |
+
+Izzet-aggro over run 1 and both run 2 seeds: 20 of 160 before and 21 of 160 after. Run 1's turns p50 goes from 15 to 14, and run 2's stays at 12.
+
+A2 and A3 rows move by up to 7 games, all on simic-ramp, which holds no declared target. Bars are crossed both ways:
+- Run 1: Delighted Halfling and Rhystic Study fall below their bars, and Harrow rises above its bar (12 of 27 to 16 of 25).
+- Run 2: Birds of Paradise and Ornithopter rise above their bars.
+- Run 2, seed 1001: Delighted Halfling, Sol Ring and Rhystic Study rise above their bars.
+
+That is a diverged game, not a price.
+
+**Knob-alone head-to-head.** This is today's heuristic against a local build with both knobs off, on izzet and simic, 48 games each:
+- seed 1: 25 against 23 wins
+- seed 1001: 21 against 27 wins
+- pooled: with the knobs 46 / 192, 24.0% (18.5%–30.5%); without 50 / 192, 26.0% (20.3%–32.7%)
+- on izzet: 2 against 2 at seed 1, and 5 against 5 at seed 1001
+
+**What the burn and the gifts were aimed at** (the targeted run's decision logs, after):
+
+| Card | `heuristic` | `heuristic-baseline` |
+|---|---|---|
+| Lightning Bolt | 11 at creatures it killed | 5 killed, 6 at creatures that survived, 4 at players (1 lethal) |
+| Shock | 14 killed | 2 killed, 8 survived, 4 at players |
+| Fiery Temper | 16 killed, 2 survived | 10 killed, 11 survived, 2 at players |
+| Izzet Charm (damage) | 19 killed | 6 killed, 11 survived |
+| Arc Trail | 2 at an opponent with 1 killing a creature: 6; 2 at itself with 1 killing a creature: 4; lethal at an opponent: 1 | 3 killed, 6 survived, 3 at players only |
+| Prismari Command | loot and Treasure at itself 5; loot itself with damage or artifact removal 7; 2 at an opponent with artifact removal 3 | 2 and loot both at an opponent 11 |
+| Sign in Blood | at itself 7; at an opponent on 3 life or less 7 | at an opponent 21 |
+
+Sign in Blood's cast rate (games used of games offered) is close to before:
+- run 1: 11 of 11 before, 8 of 9 after
+- targeted run: 16 of 17 before, 14 of 16 after
+
+With PR 3 alone it was 6 of 11 and 10 of 16. PR 4 makes the burn and the bodies the bot would otherwise cast cheaper to hold, which leaves room in the main phase.
+
+**Arc Trail at itself.** The 4 casts that put Arc Trail's 2 at the bot are the enumerator's doing. `legalStepSets` is a cartesian product capped at 12, in candidate order, and candidates are ordered by threat. So slot 0 takes the top-threat candidate in every offered set, and on some boards that candidate is the bot itself. In one logged window the only Arc Trail move offered was "2 at the bot, 1 at Fleshbag Marauder". This is a follow-up for the enumerator, like #2681. `heuristic-baseline` shows the same shape once.
+
+**Seq 248 of review game 2**, with PR 2's declarations put on the logged view: every Prismari Command line is now below `InstantThreshold`. The best is "2 at Claude, loot the bot" at +0.90, and pass is 0, so the bot passes the draw step, as the amendment predicted. The table is in the PR. The suite is 41 of 41 before and after.
+
+**Pins.** `TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow` was re-pinned by hand (its fifth exception). The battle deck's Lightning Bolt at a player on 40 life is now held. With the knob off, the old digests still match.
+
+**Real-dump audit.** The branch E2E's `realdump` job fails on `TestRealDumpPurposeAudit` over Eliminate the Impossible, a card from #2734 that reads as a wipe and declares no sweep. `develop` at `8ecec05ba` fails the same way. Arc Trail passes the audit.
+
+### #2680 and #2678: puts from hand, own-permanent picks and extra land drops (2026-10-08)
+
+Three things the 2026-10-08 review games found the heuristic pricing as nothing, or as the opposite of what they are (`puts.go`).
+
+- **#2680, `PricePutsFromHand`.** "You may put a land card from your hand onto the battlefield" is a `choose_cards` over the bot's own hand, which `valueKeptInHand` prices as a discard of the named card, so the bot declined every one. The prompt now carries `choose_destination` (`battlefield`, or `battlefield_tapped`: an additive `PendingChoice.ChooseDestination`, recorded by the shape guard, withheld from non-choosers with the bounds), set by `PutFromHandOntoBattlefield`. A named land adds `ManaSource` (`TappedManaSource` when it enters tapped) and the ramp premium while the bot has fewer than `RampWantCap` sources, 0.3 of that after, plus `landColorFit`; any other permanent adds its resolved value.
+- **#2680, `PriceOwnPermanentPicks`.** An `own_permanents` pick had no branch, so every answer scored 0 and the enumerator's cheapest-fuel-first order chose. A fixed-count pick now gives up what is worth least to keep: `permanentValue`, a land multiplied by the mana it makes and with its ability rows added. A pick whose count is the chooser's (Scapeshift, Tragic Arrogance's own leg) keeps the enumerator's order.
+- **#2678, `PriceExtraLandDrops`, `ExtraLandDropRecurring` (0.50).** `purpose.extra_land_drops` is declared on every catalog card with `AdditionalLandPlays` (Register refuses a number that disagrees; `TestCuratedDeckPurposes` and `TestEveryExtraLandDropIsDeclared` hold the declarations), and on Explore. A cast adds `ManaSource` plus the ramp premium for each extra drop the bot holds a land for and could not otherwise play this turn, and, for a permanent, `ExtraLandDropRecurring` per drop while it has fewer than `RampWantCap` sources.
+
+`BaselineConfig` zeroes all four. Before is `develop` at `c98668a15`, after is this branch; every run is `--rotate --lockstep` with the real dump and `--decision-log`. No run stalled and no move was rejected. The counters come from a scratch script over the decision logs.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | Uro's land put accepted | 0 / 72 | 81 / 81 |
+| | Eureka Moment's land put accepted | 0 / 12 | 11 / 11 |
+| | karoo returned itself | 78 / 96 | 0 / 43 |
+| | karoo returned a tapped land when one was offered | 17 / 17 | 16 / 16 |
+| | Oracle of Mul Daya cast, windows / games used of offered | 22 / 117, 22 / 28 | 25 / 82, 24 / 27 |
+| | Exploration cast, windows / games used of offered | 15 / 92, 15 / 22 | 20 / 89, 18 / 25 |
+| | land drop offered and not taken | 1 turn | 2 turns |
+| | turns p50 | 15 | 14 |
+| | simic-ramp wins | 12 / 64 | 21 / 64 |
+| Run 2, seed 1 | `heuristic` wins | 32 / 96, 33.3% (24.7%–43.2%) | 30 / 96, 31.2% (22.9%–41.1%) |
+| | `heuristic-baseline` wins | 16 / 96 | 18 / 96 |
+| Run 2, seed 1001 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 24 / 96, 25.0% (17.4%–34.5%) |
+| | `heuristic-baseline` wins | 17 / 96 | 24 / 96 |
+| Run 2, seed 2001 | `heuristic` wins | 23 / 96, 24.0% (16.5%–33.4%) | 26 / 96, 27.1% (19.2%–36.7%) |
+| | `heuristic-baseline` wins | 25 / 96 | 22 / 96 |
+| Run 2, pooled | `heuristic` wins | 86 / 288, 29.9% | 80 / 288, 27.8% |
+| | `heuristic-baseline` wins | 58 / 288 | 64 / 288 |
+
+Run 2 is `--seats heuristic-baseline,heuristic-baseline,heuristic,heuristic --decks izzet-aggro,simic-ramp,izzet-aggro,simic-ramp --games 48`, so each policy plays each deck 48 times per seed. The pooled difference is six games of 288, inside the run-to-run spread (seed 1001 moved seven games one way, seed 2001 three the other), and in no run does the baseline win more than `heuristic`. Turns p50 is 12 to 11 at seed 1 and 12 both times at seeds 1001 and 2001. Run 1's karoo returns before were the source itself in 78 of 96, because the enumerator offers the cheapest fuel first and a tapped karoo ties a tapped basic; after, with no other tapped land offered it returns an untapped land (27 times) rather than itself.
+
+In run 1, every A3 canary meets its bar after (Harrow 12 / 27 before, 15 / 29 after, now meeting it). A2 rows meeting their bar fell from 6 to 4: Delighted Halfling (85% to 76%) and Ornithopter of Paradise (83% to 64%) in simic-ramp, whose early turns now also hold an Exploration or an Oracle priced above a body. In run 2 the met A2 and A3 rows went from 6 to 11 at seed 1, 8 to 10 at seed 1001 and 9 to 10 at seed 2001. The suite is 41 of 41 before and after, and no position's pick changed.
+
+### #2679: removal priced net of what comes back (2026-10-08)
+
+`NetRemoval` (on in `DefaultConfig`, off in `BaselineConfig`; `net_removal.go`), as decided in the [amendment of 2026-10-08, what removal hands back](#amendment-2026-10-08-what-removal-hands-back). An opposing commander its opponent owns is priced at `2 × CommanderTax + DamageToOpponent × power`, never above its value, because it returns from the command zone (CR 903.8, 903.9a, 903.9b). A target entry's new `returns` (a creature token of a printed size, life equal to the target's power, lands) is valued as the target's controller would value it and taken off the removal at `RemovalConfidence × leaderBoost`. The amendment's target entries could not say it: their amounts are the target's own, and the guard refuses a player amount on a clause that cannot target a player. So `TargetPurpose` gained `Returns`, additive on the wire as `targets[].returns`, declared on Rapid Hybridization, Pongify, Beast Within, Generous Gift, Stroke of Midnight, Swords to Plowshares, Path to Exile and Assassin's Trophy. Chaos Warp's return is a random card and declares nothing; its commander half is covered.
+
+Review windows, re-ranked offline (game 1 with the declaration patched onto the logged view): game 1 seq 66, Rapid Hybridization on a 1/1 Archivist of Oghma, 3.45 to −1.77, so the bot passes. Game 2 seq 186, Chaos Warp on Y'shtola (a 2/4 commander), 6.65 to 3.72, below Mary Read and Anne Bonny from the command zone (4.17), which the bot now casts.
+
+Before is `develop` at `50d5c34ec`, after is this branch; every run is `--rotate --lockstep` with the real dump. No run stalled. Counters come from a scratch pass over the decision logs; "worth less than the gift" compares the target's body (`CreatureValue`, or its board value) with the gift's value, both before `RemovalConfidence` and `leaderBoost`.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (64 games, seed 1) | gift-removal casts at a target worth less than its gift | 23 of 190 | 0 of 143 |
+| | the listed removal (the eight, plus Chaos Warp) on an opposing commander | 59 | 13 |
+| | any targeted cast at an opposing commander | 232 | 138 |
+| | esper / izzet / black / simic wins | 18 / 3 / 21 / 22 | 21 / 1 / 22 / 20 |
+| | turns p50 | 13 | 13 |
+| Run 2, seed 1 | `heuristic` / `heuristic-baseline` wins | 29 / 19 | 29 / 19 |
+| Run 2, seed 1001 | | 27 / 21 | 30 / 18 |
+| Run 2, seed 2001 | | 24 / 24 | 21 / 27 |
+| Run 2, seeds 1, 1001, 2001 | `heuristic` | 80 / 288, 27.8% (22.9%–33.2%) | 80 / 288, 27.8% (22.9%–33.2%) |
+| | `heuristic` gift-removal casts worth less than the gift | 49 of 258 | 0 of 198 |
+| | `heuristic` listed removal on an opposing commander | 47 | 2 |
+| Run 2, seeds 3001 and 4001 (added) | `heuristic` / `heuristic-baseline` wins | 29 / 19, 26 / 22 | 35 / 13, 28 / 20 |
+| Run 2, five seeds pooled | `heuristic` | 135 / 480, 28.1% (24.3%–32.3%) | 143 / 480, 29.8% (25.9%–34.0%) |
+| | izzet-aggro under `heuristic` | 28 / 240 | 32 / 240 |
+
+Seed 2001 is the one seed where `heuristic` finished behind the baseline after (21 to 27; it was 24 to 24 before), so two more seeds were run rather than any weight tuned. Pooled over five seeds `heuristic` is 8 games up and the baseline 8 down. Turns p50 is unchanged except seed 1001 (12 to 11). In run 1 every A3 canary meets its bar except Harrow (19 / 32, 59%, to 13 / 29, 45%); Harrow is not removal, and simic-ramp's games diverge once its Beast Within and Pongify casts change. A2 rows meeting their bar went from 6 to 8 of 31 (Delighted Halfling and Ornithopter of Paradise). The suite is 41 of 41 before and after, and no position's pick changed.
+
+### #2693: the mulligan checks for something to cast (2026-10-08)
+
+- **`KeepNeedsCast`, `KeepCastReach` (0).** `decideMulligan` counted lands only, so review game 2 kept two lands and five spells of three to seven mana and missed its next two land drops. A hand at `KeepMinLands` is now kept only if it holds a nonland spell whose mana value is at most its lands plus `KeepCastReach`, with its coloured pips made by those lands (a land that names no colour, such as a fetch land or Exotic Orchard, counts as any). Otherwise it takes the mulligan, but only while the mulligan is free (the engine's first redraws seven); a mulligan that costs a card keeps the old land-count rule. A reach of 1, the issue's "lands + 1", would still keep game 2's hand on Chaos Warp, so the default is 0.
+- The arena has a new **Opening hands** section (`botarena/opening.go`): mulligans per keep, kept hands by size, and land drops missed on each seat's own turns 2–4, from the runner's observer.
+
+`BaselineConfig` zeroes both. Before is this branch with `KeepNeedsCast` off, which takes the old code path exactly; every run is `--rotate --lockstep` with the real dump. No run stalled.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | mulligans per keep (all four decks) | 62 / 256, 0.24 | 67 / 256, 0.26 |
+| | kept 7 / 6 | 246 / 10 | 246 / 10 |
+| | land drops missed on own turns 2–4 | 77 / 768, 10.0% | 77 / 768, 10.0% |
+| | turns p50 | 14 | 14 |
+| | wins: esper / izzet / mono-black / simic | 15 / 5 / 23 / 21 | 15 / 4 / 25 / 20 |
+| Run 2, seeds 1, 1001, 2001 pooled | `heuristic` wins | 86 / 288, 29.9% | 84 / 288, 29.2% |
+| | `heuristic-baseline` wins | 58 / 288 | 60 / 288 |
+| | `heuristic` izzet-aggro: wins, mulligans per keep, missed drops | 8 / 144, 0.25, 39 / 432 | 6 / 144, 0.26, 39 / 432 |
+| | `heuristic` simic-ramp: wins, mulligans per keep, missed drops | 78 / 144, 0.23, 49 / 432 | 78 / 144, 0.28, 51 / 432 |
+| | turns p50 | 11 | 11 |
+
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48` per seed. The rule fires rarely: 5 extra mulligans in run 1's 256 seat-games and 9 in run 2's 288 `heuristic` seat-games, changing 5 and 7 games. In run 2's seven changed games the seat that took the new mulligan won two it had lost and lost two it had won. Every difference is inside its interval, and `heuristic` stays ahead of the baseline. In run 1 every A3 canary meets its bar before and after, and A2 rows move by at most two games. The suite is 41 of 41 before and after; it has no mulligan position.
+
+### #2689 PR 5: target gifts across the catalog (2026-10-08)
+
+Owner answer 5a: every catalog spell, mode or row that gives its target player a draw, a token, life or a loot declares a target entry (`Purpose.Targets`), so `PriceTargetPurposes` prices it as the seat's strength change instead of as a hit. Burn is not in this batch.
+
+Declared (23 cards): Ancestral Vision, Atlantis Attacks (the Leviathan mode), Blessed Alliance (the life mode), Blood Pact, Bloodgift Demon, Cease // Desist (Cease), Cephalid Coliseum, Compulsive Research, Deep Analysis, Depth Defiler (the loot mode), Echocasting Symposium, Etched Oracle, Flame of Anor (the draw mode), Flumph, Forbidden Orchard, Insatiable Avarice (the drain-and-draw mode), Loran of the Third Path, Oona's Grace, Rise of the Eldrazi (slot 1 only), Scheming Silvertongue's Sign in Blood, Secret Rendezvous, Sublime Epiphany (the draw mode) and Wedding Ring. Flumph, Loran and Secret Rendezvous also declare the controller's own draw, because "you and target opponent each draw" is two gifts. Compulsive Research declares the printed two discards, not the one-land alternative.
+
+Left undeclared, because no printed number says the amount:
+- X, or an amount counted at resolution: Blue Sun's Zenith, Damnable Pact, Drown in Dreams, Heliod's Intervention, Inscription of Abundance (the greatest power), Kozilek's Command, Peer into the Abyss (half a library), Stroke of Genius.
+- Generous Plunderer: the target opponent is chosen by a reflexive trigger, which has no row to carry a purpose.
+- Treacherous Pit-Dweller: what it hands over is a creature.
+
+The real-dump audit's "target gift" list goes from 30 cards to those 10. The gifts to the controller of a removal spell's target (Swords to Plowshares and the rest of #2679's list) cannot be declared here: their clause is a creature, and the guard refuses a player amount on one.
+
+**Curated decks.** Only Loran of the Third Path (esper-control) gains an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `50d5c34ec` and from this branch: 0 stalls in both, turns p50 13 in both, and wins esper-control 18 / 17, izzet-aggro 3 / 3, mono-black-aristocrats 21 / 21, simic-ramp 22 / 23. Nine games differ, and every one has a Loran in play: Loran's activation is taken 0 to 2 times in eight of them and 6 times in one, against 1 to 4 before, because aiming a symmetric draw at an opponent is no longer priced as an attack. Two more games differ without a Loran in either deck; a control run of the `develop` binary over seeds 1 to 3 differs from its own earlier run on seed 3 in the runner counters, so that is the residual tie-break nondeterminism, not this change. The suite is 41 of 41 before and after.
+
+#### Burn batch 1 (2026-10-08)
+
+The first burn batch of PR 5 declares a damage target entry (`DamageToTarget`, per clause and slot) on the dump audit's undeclared burn list, A through E in alphabetical order. No price code changed: declared burn goes through the existing `DamageByLethality` and `PriceTargetPurposes` code, and undeclared burn keeps today's price.
+
+Declared (34 cards): Aethertorch Renegade (both abilities), Agate Assault (the damage mode), Annihilating Fire, Arc-Slogger, Archangel of Wrath (both triggers), Balduvian Trading Post, Ballista Watcher // Ballista Wielder (both faces), Barbarian Ring, Betrayer's Bargain, Blasting Station, Bonecrusher Giant // Stomp (Stomp), Boros Charm (the damage mode), Bot Bashing Time, Breya, Etherium Shaper (the player-or-planeswalker ability), Brutal Expulsion (the damage mode), Burn the Accursed (the 5 at the creature; the 2 to its controller is not a target clause), Call In a Professional, Carbonize, Cathartic Pyre (the damage mode), Collective Defiance (the creature and opponent modes), Combust, Consulate Turret, Cramped Vents // Access Maze (Cramped Vents' 6; the life gained from the excess is not declared), Cut In (slot 0 only), Dawnsire, Sunstar Dreadnought (100), Demonic Pact (the damage mode), Desert, Dracosaur Auxiliary, Dynavolt Tower, Eiganjo, Seat of the Empire (channel), Electrickery (the single-target cast; overload clears the clause), Elspeth's Smite, Engulfing Flames and Explosive Derailment (the damage mode).
+
+Left undeclared (5):
+- Arrow Storm: 4, or 5 with raid, read as it resolves.
+- Burst Lightning: 2, or 4 kicked; the kicker is chosen at cast.
+- Cinder Strike: 2, or 4 if blight was paid.
+- Court of Ire: 2, or 7 if you are the monarch.
+- Drakuseth, Maw of Flames: 4 to the first target and 3 to each other target of one clause, which one entry per clause cannot say.
+
+The audit's burn list goes from 165 cards to 131: 34 declared, the 5 above left in A through E, and 126 from F on. Batch 2 starts at Fall of Cair Andros.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `a544704cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. One game of 64 differs between the two. A second run of the `develop` binary differs from its own first run in 2 games and ends at 20 / 2 / 22 / 20, the branch's numbers, so the difference is the run-to-run tie-break nondeterminism of #2730, not this change. The suite is 41 of 41 before and after.
+
+#### Burn batch 2 (2026-10-08)
+
+The second burn batch of PR 5 declares a damage target entry on the audit's undeclared burn list from Fall of Cair Andros through Loot, the Pathfinder (F to L). No price code changed.
+
+Declared (34 cards): Fall of Cair Andros (the 7-damage ability), Fanged Flames, Feed the Flames, Fervent Paincaster (the player-or-planeswalker ping), Fireblast, Firemaw Kavu (both triggers), Flame Jab, Flame-Blessed Bolt, Flames of the Blood Hand, Foundry Helix, Ghitu Slinger, Glassworks // Shattered Yard (Glassworks), Goblin Bombardment, Goblin Sharpshooter, Goblin Snowman, Grapeshot, Grim Lavamancer, Gut Shot, Idol of the Deep King // Sovereign's Macuahuitl (the Idol's trigger), Impractical Joke, Incendiary Flow, Incinerate, Insult // Injury (Injury, one entry per clause), Jaya Ballard, Task Mage (the 3-damage ability), Keldon Champion, Kolaghan's Command (the damage mode), Lava Coil, Lava Dart, Lesser Masticore, Lightning Axe, Lightning Helix and Lightning Strike (the 3 at the target; the life gained is not declared), Longhorn Sharpshooter, Loot, the Pathfinder (the 3-damage exhaust).
+
+Left undeclared (7):
+- Furystoke Giant: the 2 damage is an ability it grants to other creatures, and the audit and the wire's ability rows do not carry a target entry from a grant.
+- Garruk Relentless: the creature deals damage back to him, which the fields cannot say.
+- Glorybringer: already declared for the exert pricer as `DamageToCreature`; a target entry beside it would price the same hit twice. (Fervent Paincaster's exert ability is the same, and keeps its `DamageToCreature`.)
+- Helicarrier Strike: 2, or 4 with teamwork, chosen at cast.
+- Invasion of Tarkir: X plus 2, where X is the Dragons revealed.
+- Land's Edge: the damage depends on the discarded card being a land.
+- Lightning Surge: 4, or 6 with threshold, read as it resolves.
+
+The audit's burn list goes from 131 cards to 97: 34 declared, leaving the 5 from batch 1, the 7 above and 85 from M on. Batch 3 starts at Mage il-Vec.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena` with the same command as batch 1, with binaries built from `develop` at `e0139b738` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. A second run of the `develop` binary differs from its own first run in 1 game and ends at 20 / 2 / 22 / 20, the branch's numbers: the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. The regenerated `legal_actions_agreement.json` gains Goblin Bombardment's declared entry, the one card of the batch in that fixture.

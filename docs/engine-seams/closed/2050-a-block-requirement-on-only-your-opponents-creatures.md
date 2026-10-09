@@ -1,0 +1,6 @@
+---
+title: "A block requirement on only your opponents' creatures"
+date: 2026-10-08
+issues: [2050]
+---
+**A block requirement on only your opponents' creatures** (#2050, CR 509.1c, [ADR 0045 amendment 2026-10-08](decisions/0045-combat-restrictions.md) Decisions 71-73) — "all creatures your opponents control able to block that creature this turn do so" binds fewer creatures than Alluring Scent's Lure: when the target is an opponent's creature attacking you, your own creatures are not required to block it, and a plain Lure would force them to. `game.BlockRequirement.ExceptController` names the player whose creatures a Lure does not bind, read at the declaration in `bindsBlocker`, the one question the block search, the CR 509.1c checkpoint, the enumerator and the bots all ask. A resolving effect writes it with `game.AddLureExceptMod(controller)` (a `lure` block-requirement mod carrying the player in `Mod.Player`, so undo and restore points need nothing new) or `effects.BlockRequirementUntilEOT{ExceptController: …}`; registration refuses a player on any kind but a Lure. **Cards** (1): You Look Upon the Tarrasque (Full; its other mode is ADR 0108's `preventFromSource`). Opponents are every player but the controller, which is the same set in Commander.

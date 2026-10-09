@@ -765,7 +765,7 @@ GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast(
 // Omniscience: CastFromHandWithoutPayingManaCost()
 ```
 
-Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label.
+Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label, with two exceptions it checks: energy and "as though it had flash" (ADR 0129 §5), and emerge's one-creature sacrifice (Herigast, Erupting Nullkite, `EmergeForCreatureSpellsYouCast()`, ADR 0135 PR 6). `GrantedAlternativeCost.PricedAtManaCost` prices an offer at the mana cost of the spell being cast ("The emerge cost is equal to its mana cost"), so its `Offer.ManaCost` stays empty. A card that reads "if its emerge cost was paid" asks `PaidEmerge(key)`, which is true for its own emerge and for Herigast's.
 
 ### Granting an ability to another permanent (ADR 0093, #754)
 
@@ -796,6 +796,14 @@ refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
 refuses a grant naming an unregistered bundle or a bundle with a
 `Static` slot.
+
+A TOKEN that grants an ability (a Role: "Enchanted creature has 'Whenever
+this creature attacks, scry 1.'") declares its bundles in
+`tokenTemplate.Grants` instead of `Spec.Grants`, and names them from its own
+`Static` with `GrantAbilitiesToAttached(key)`; see `role_tokens.go`. Namespace
+the key with the token's slug. A granted trigger's source is the enchanted
+creature, so write its `AppliesTo` against `source` as you would for a
+creature's own trigger (ADR 0093 amendment 2026-10-08).
 
 The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
 "All Slivers have …" / "Sliver creatures you control have …", and
@@ -2123,6 +2131,8 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
+| `"ascend"` | Ascend (CR 702.131) — #2696, read by the engine, never by a card file: a permanent with ascend gives its controller the city's blessing as soon as they control ten permanents, and an instant or sorcery with ascend gives it as the spell resolves (`game/citys_blessing.go`). Declare it as `game.KeywordAscend`; the card reads the designation, not the keyword. See "Ascend and the city's blessing" below ([ADR 0096 amendment 2026-10-08](decisions/0096-the-monarch-from-a-card-effect.md)) |
+| `"start your engines!"` | Start your engines! (CR 702.179) — #2122, the state-based action that gives a player with no speed a speed of 1 while they control a permanent with it (`game/speed.go`, CR 704.5aa). Declare it as `game.KeywordStartYourEngines`. The deck importer stamps it from Scryfall, so a speed card with no catalog entry still sets its controller's speed; its "Max speed —" ability still needs one. "Max speed — …" is NOT a keyword token: it is the `effects.MaxSpeed…` wrappers. See "Speed" below ([ADR 0138](decisions/0138-speed.md)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
 "Put a flying counter on it" is `AddCounter{Target: id, Kind:
@@ -3126,7 +3136,14 @@ Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
 (#2527, ADR 0113's 2026-10-07 amendment). The count the activator
 names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
-puts X in two places.
+puts X in two places. The Martyr cycle's "Reveal X black cards from
+your hand" is `RevealX("X black cards", "B")` (#2598, ADR 0020's
+2026-10-08 amendment): the same announced-X count, but the cards are
+only shown, never moved, so the picks ride `reveal_ids` and nothing is
+kept out of the auto-tapper. Pair it with `SacrificeThis()` and the mana
+as `Plus(ManaCost("{1}"), RevealX("X black cards", "B"), SacrificeThis())`,
+declare `XMatters: true`, and let a target count that follows the same X
+use `CountFromX` + `UpToX` on the clause (Martyr of Bones).
 
 **X read off a card (#2190):** Kozilek, the Great Distortion's "Discard a
 card with mana value X: Counter target spell with mana value X" is
@@ -3190,8 +3207,32 @@ locking accessor), and reads only public information, because every
 viewer receives the flag. Never drop a condition you can't express,
 and never move it into `Effect`: the first is stronger than printed
 (#259), the second charges the cost for nothing. "Activate only once
-each turn" and boast still have no shape (the per-source activation
-count in `docs/engine-seams.md`).
+each turn" is `OncePerTurnActivation(label)` (Quirion Ranger).
+
+**Boast (CR 702.142, #2697):** never spell "attacked this turn" and
+"only once each turn" by hand. `Boast(text, cost, effect)` and
+`BoastTargeting(text, cost, targets, effect)` in
+[boast.go](../server/internal/cards/effects/boast.go) write the label
+("Boast — " + the printed line after the dash) and set the bit; the
+engine does the rest in one gate, `Game.BoastBlockLocked`, which the
+activation path, the bot enumerator and the view (`boast_blocked`) all
+read:
+
+```go
+Activated: []ActivatedAbility{
+    Boast("{2}{R}: Create a 2/1 red Dwarf Berserker creature token.",
+        ManaCost("{2}{R}"), createTheToken("2/1 red Dwarf Berserker")),
+},
+```
+
+A card that changes the limit (Birgi: "can boast twice … rather than
+once") declares `BoastLimits: []game.BoastLimit{YourCreaturesBoastTimes(label, 2)}`;
+the largest applicable limit wins, it is not a sum. A card that talks
+ABOUT boast abilities reads the bits the engine stamps: `ABoastAbility`
+on the activation event ("whenever you activate a boast ability",
+Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
+Berserker, with `ActivationCostsLessEach`). `Register` panics when the
+label prints "Boast —" without the bit or the bit without the label.
 
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
@@ -6168,6 +6209,52 @@ colorless creature it will be (Curator Beastie).
 Not here: turning a permanent face up as an EFFECT (no cost) has no
 door yet, so cards that say "you may turn it face up" wait on it.
 
+### Craft (ADR 0137, #2124, CR 702.167)
+
+A craft card is a transform DFC: the front face's spec carries the
+keyword, the back face registers under `<oracle_id>#1`. The keyword is
+one constructor, and the materials are another:
+
+```go
+Activated: []ActivatedAbility{
+    Craft("Craft with artifact {5}{W}{W}", "{5}{W}{W}", CraftWith("artifact")),  // Clay-Fired Bricks
+    Craft("Craft with two creatures {5}{B}", "{5}{B}", CraftWithN(2, "creature")), // Visage of Dread
+    Craft("Craft with Island {3}{U}", "{3}{U}", CraftWithSubtype("Island")),     // Waterlogged Hulk
+},
+```
+
+The label is the printed keyword line without its reminder text; the
+oracle check matches it. `Craft` builds the whole of CR 702.167a: the
+mana, "Exile this artifact", the materials, "Activate only as a
+sorcery", and the return. Never hand-write any of those halves:
+
+- **Materials come from two zones.** A material named without the word
+  "card" may be a permanent you control or a card in your own graveyard,
+  mixed in one payment (CR 702.167b). `CraftWith*` sets
+  `ExilePermanentsCost.FromGraveyard`; a hand-built
+  `ExileACreatureYouControl()` would accept the battlefield only, which
+  is weaker than printed. The source is never a material (it pays
+  "Exile this artifact").
+- **The return is a new object** (`game.ReturnCraftedFromExileForEffect`):
+  back face up, under its OWNER's control, summoning sick, with every
+  enters ability on the back face firing. Write the back face's "When
+  this enters" as an ordinary `WhenThisEnters` trigger.
+- **"The exiled card(s) used to craft it"** (CR 702.167c) is
+  `CraftMaterials(ctx)`: the materials still in exile, read through the
+  source object, so a trigger that resolves after the permanent has left
+  still finds them. A token material ceased to exist in exile and is not
+  one of them. Jadeheart Attendant is the pattern.
+
+Not yet expressible (the craft row, #2709): "Craft with one or more …",
+a rule over the chosen set ("two that share a card type", "a Dinosaur,
+a Merfolk, a Pirate, and a Vampire"), and graveyard-only materials
+("four or more red instant and/or sorcery cards").
+
+**Tests** build the card through the import road
+(`transformRow` + `deck.ToGameCard`), because a flat fixture has no back
+face; `craft_test.go` has `pushCraftCard` and `activateCraft`, and
+`craft_cards_test.go` has `craftInto`.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in
@@ -7090,6 +7177,126 @@ Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
 
+### Role tokens (ADR 0036 and ADR 0093 amendments 2026-10-08, #1945, CR 111.10 / 303.7a / 704.5z)
+
+A Role is a token Aura ("Token Enchantment — Aura Role") created
+already attached to a creature, so it is never cast and never targets
+on entry (CR 303.7a). The definitions live in
+[role_tokens.go](../server/internal/cards/effects/role_tokens.go), one
+`RoleKind` each: `RoleMonster`, `RoleCursed`, `RoleRoyal`,
+`RoleWicked`, `RoleSorcerer`, `RoleYoungHero`, `RoleVirtuous` and
+`RoleChef`. A card never builds a Role by hand:
+
+```go
+CreateRoleToken{Role: RoleMonster, Host: id}.Apply(ctx)   // "create a Monster Role token attached to it"
+Effect: createRoleOnFirstTarget(RoleWicked),              // a trigger or ability whose whole body is the Role
+createRoleOnClauseTarget(ctx, 1, RoleCursed)              // the Role on the creature chosen for clause slot 1
+Effect: createRoleOnThis(RoleRoyal),                      // "…attached to this creature"
+```
+
+The shared bodies are in
+[role_effects.go](../server/internal/cards/effects/role_effects.go).
+`CreateRoleToken` creates nothing for a host that is no longer a
+creature on the battlefield, so a target that left in response needs no
+special case (CR 608.2b).
+
+Two rules the engine already enforces, so a card file never repeats
+them:
+
+- **One Role per controller per creature (CR 704.5z).** When a player
+  controls two or more Roles on one permanent, all but the newest go to
+  the graveyard as a state-based action (`attachmentSBALocked`). A
+  second Role REPLACES the first; it doesn't stack.
+- **A Role that gives the creature a triggered ability** (Sorcerer's
+  scry, Young Hero's counter, Chef's Food) grants it through the token
+  template's `Grants` field (`tokenTemplate.Grants` in
+  [token_catalog.go](../server/internal/cards/effects/token_catalog.go)),
+  the same ADR 0093 bundle a `Spec.Grants` card uses. The enchanted
+  creature is the trigger's source and its controller controls it, not
+  the Role's. Don't write the trigger on the Role itself.
+
+The Questing Role ("has all the abilities of Questing Beast") does not
+exist yet: a grant bundle has no slot for Questing Beast's block
+restriction or its damage-prevention rule. Questing Cosplayer waits on
+it (#1945).
+
+### Ascend and the city's blessing (ADR 0096 amendment 2026-10-08, #2696, CR 702.131)
+
+The city's blessing is a **player** designation the engine grants and
+keeps (`Player.CitysBlessing`, `game/citys_blessing.go`): a permanent with
+ascend gives it to its controller as soon as they control ten permanents,
+and an instant or sorcery with ascend as it resolves, before its other
+instructions. Nothing takes it away, so **never approximate it with a
+live permanent count** (that is what the four old caveats were). A card
+declares the keyword and reads the designation, with the vocabulary in
+[citys_blessing.go](../server/internal/cards/effects/citys_blessing.go):
+
+```go
+PrintedKeywords: []string{game.KeywordAscend},                          // the badge; the engine reads it
+Static: []game.StaticAbility{SelfPumpWhileCitysBlessing(3, 0)},          // Snubhorn Sentry: +3/+0 as long as you have it
+Static: []game.StaticAbility{SelfKeywordWhileCitysBlessing("flying")},   // Skymarcher Aspirant
+Condition: YouHaveTheCitysBlessingCondition(),                           // "Activate only if you have the city's blessing"
+On(game.EventBeginUpkeep, AllOf(ByYou, YouHaveTheCitysBlessingNow), …)   // intervening "if" (re-check in the effect)
+if YouHaveTheCitysBlessing(ctx.Game, item.Controller) { … }              // "if you have the city's blessing, instead"
+```
+
+An intervening "if" is read at the trigger and again as it resolves
+(CR 603.4); "instead" is a clause of the effect, read as it resolves. A
+catalog card lists `ascend` in `PrintedKeywords`; a deck-imported one gets
+it from Scryfall. In a test, `grantBlessing(g, p)` in
+`citys_blessing_cards_test.go` gives the designation the way the engine
+does (it emits the event that invalidates the layer pass); to earn it for
+real, put an ascend permanent and nine others on the battlefield and call
+`g.RunStateChecksForTest()`. "Can't attack unless you have the city's
+blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
+`CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
+
+### Speed: start your engines! and max speed (ADR 0138, #2122, CR 702.178 / 702.179)
+
+Speed is the player's, and the engine owns all of it (`game/speed.go`):
+the state-based action that gives a player speed 1 (CR 704.5aa), the
+inherent once-per-turn trigger that raises it when an opponent loses
+life on their turn (CR 702.179d), the cap at 4. A card declares the
+keyword and wraps each "Max speed —" ability, nothing else:
+
+```go
+PrintedKeywords: []string{StartYourEngines},                 // "Start your engines!"
+Static: append([]game.StaticAbility{MaxSpeedSelfPump(1, 1)},  // "Max speed — This creature gets +1/+1
+    MaxSpeedSelfKeywords("menace")...),                       //  and has menace."
+Activated: []ActivatedAbility{MaxSpeedActivated(ActivatedAbility{
+    Label: "Max speed — {T}: …",                               // the printed line, "Max speed —" included
+    …
+})},
+ManaAbilities: []ManaAbility{MaxSpeedMana(ManaAbility{…})},
+Triggered:     []game.TriggeredAbility{MaxSpeedTrigger(WheneverYouDraw(…))},
+Replacements:  []game.ReplacementEffect{MaxSpeedReplacement(YouDrawTwiceInstead(…))},
+CostModifiers: []game.CostModifier{MaxSpeedCostModifier(CostsLess(1, "…", YourSpell()))},
+```
+
+Write the ability exactly as you would without "Max speed —", then wrap
+it. Never write the speed check by hand.
+
+- **It is not an ADR 0071 designation.** That gate reads only the
+  object, and max speed is the player's (ADR 0138 §5). So the wrappers
+  put `YouHaveMaxSpeed` in the slot's own predicate: `AppliesTo` for a
+  static, trigger, replacement or cost modifier, and `Condition` for an
+  activated or mana ability. A max-speed activated ability is therefore
+  shown greyed below max speed (`condition_unmet`) rather than hidden,
+  which is what you want: the label says what the player is racing to.
+- **"Where X is your speed"** is `YourSpeed(g, player)`, read at
+  resolution. A player with no speed has 0 (CR 702.179f).
+- **"You" is the controller, or the owner off the battlefield**
+  (the glossary's "Max Speed"), so a Surveyor's graveyard ability reads
+  its owner's speed. Declare `Zones` as for any graveyard ability; the
+  max speed half follows it there (CR 702.178b).
+- **A static that reads the speed needs no `DependsOn…` flag.** Every
+  speed change emits `game.EventSpeedChanged`, which bumps the layer
+  version.
+
+Tests set the speed with `g.SetSpeedForTest(player, n)` (it goes through
+the one write and its event) rather than playing turns: see
+`speed_cards_test.go`.
+
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
 A **designation** is a marker a permanent has on the battlefield that
@@ -7126,6 +7333,124 @@ proliferates or doubles it, a copy does not take it (CR 716.2c,
 (CR 400.7). A new designation needs a kind, an arm in
 `Designation.Active`, and a layer-version bump on the event that
 changes it — nothing else.
+
+**Saddle (CR 702.171, #2695)** is the one designation that lasts a turn.
+A Mount is written with the vocabulary in
+[saddle.go](../server/internal/cards/effects/saddle.go):
+
+```go
+Activated: []ActivatedAbility{Saddle(2)},                    // "Saddle 2"
+Triggered: []game.TriggeredAbility{
+    AttacksWhileSaddled("Gilded Ghoda — create a Treasure", effect),
+},
+```
+
+`Saddle(n)` is crew's cost over OTHER creatures (`AbilityCost.Saddle`,
+paid through the same validator and `crew_ids` payload; the Mount can
+never tap itself) at sorcery speed. The designation is `Card.Saddled`,
+set by `Game.SaddleForEffect` and swept at end of turn, so "attacks while
+saddled" is read when the attack is declared and "as long as it's saddled"
+is the gate `Saddled()` (`SaddledKeywords(kw…)` is the keyword shape).
+"Becomes saddled" is `WhenBecomesSaddled`, which fires only on the first
+saddle of a turn, so "for the first time each turn" needs no counting. A
+card that says "[target Mount] becomes saddled" uses `BecomeSaddled{}`,
+which does nothing to a permanent that is not a Mount. "Creatures that
+saddled it this turn" is `SaddlersOf(ctx, mount)` (survivors only; a
+creature that left is a new object): a card-set prompt at resolution can
+offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
+be written yet (#2704). Read the state a trigger needs when it is BUILT,
+not when it resolves, if the Mount might leave in response
+(`caustic_bronco.go` carries it on `item.Params`).
+### Explore (CR 701.44, #2720)
+
+"<Permanent> explores" is `Game.ExploreForEffect(source, explorer
+ObjectRef, controller, then)` (`game/explore.go`). The card side is in
+`cards/effects/explores.go`. (`explore.go` in that package is the card
+named Explore.)
+
+```go
+Explores{Explorer: id, Then: rest}.Apply(ctx)                                     // "it explores, then …"
+Effect:  targetCreatureYouControlExplores, Targets: targetCreatureYouControl()  // Guidestone Compass
+CreateToken{Controller: p, Template: MapToken(), N: 2}.Apply(ctx)                 // Get Lost
+```
+
+- Anything after the explore goes in `Then`. The graveyard question is
+  a prompt, so a following statement would run before it is answered.
+- `Explores` reads the explorer's object identity when it applies. A
+  creature that leaves and returns is a new object and gets no counter
+  (CR 400.7), but the reveal still happens (CR 701.44c).
+- "Whenever a creature you control explores" watches
+  `game.EventExplored`: `CardID` is the explorer and `Actor` its
+  controller. It fires once the process is complete, including when the
+  library was empty (CR 701.44b).
+- Not built: simultaneous explores in APNAP order (CR 701.44d), and a
+  replacement window on the action (Topography Tracker).
+
+### Reconfigure (CR 702.151, #2639)
+
+"Reconfigure [cost]" is two activated rows from one constructor in
+`cards/effects/reconfigure.go`. The rules side is `game/reconfigure.go`.
+
+```go
+Activated: Reconfigure("{2}"),                                         // Lizard Blades
+Activated: append([]ActivatedAbility{ownRow}, Reconfigure("{2}")...),  // Lion Sash
+Activated: ReconfigureOneOf("Reconfigure—Pay {2} or {E}{E}{E}",
+    ReconfigureOption{Pay: "{2}", Cost: ManaCost("{2}")},
+    ReconfigureOption{Pay: "{E}{E}{E}", Cost: PayEnergy(3)}),          // Razorfield Ripper
+```
+
+- Write the "Equipped creature …" lines as for any Equipment
+  (`PumpAttached`, `GrantToAttached`, `SetAttachedBasePT`). The engine
+  makes an attached reconfigure Equipment a noncreature with no creature
+  types (CR 702.151b), so do not write that line.
+- "Whenever this creature or equipped creature attacks / deals combat
+  damage to a player / becomes blocked" are
+  `ThisOrEquippedCreatureAttacks`,
+  `ThisOrEquippedCreatureDealsCombatDamageToAPlayer` and
+  `ThisOrEquippedCreatureBecomesBlocked`. "It" in the effect is the
+  creature in the event (`ctx.TriggeringPermanent()`, the event's
+  `CardID`).
+- "As long as ~ is attached to a creature" is
+  `g.AttachedToACreatureForEffect(source)`.
+- Never set `Reconfigure` or `Equip` on a row by hand.
+
+### Suspect (CR 701.60, #2698)
+
+Suspected is a designation that **gives** abilities rather than switching
+yours on, so there is no `ActiveWhen` gate and no Spec slot for it: a
+suspected creature has menace and can't block, and the engine applies both
+([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md)
+amendment 2026-10-08). A card file only says who gets suspected:
+
+```go
+Suspect{Target: item.SourceCardID}.Apply(ctx)            // "suspect it" (Barbed Servitor, Person of Interest)
+Targeting(WhenThisEnters("…", SuspectEachLegalTarget),
+    UpToOneTargetCreature("up to one target creature you control", YouControl()))  // "suspect up to one target creature"
+Unsuspect{Target: id}.Apply(ctx)                          // "it's no longer suspected"
+UnsuspectAll{Match: And(Creature(), OpponentControls())}  // "all suspected creatures are no longer suspected"
+```
+
+`Suspected()` and `NotSuspected()` are target predicates ("target suspected
+creature you control" is `Suspected(), YouControl()`), `SacrificeASuspectedCreature()`
+is the cost, and "if it's suspected" on a resolved object is `g.IsSuspected(id)`.
+Write "if it's not suspected, you may suspect it" as an intervening if
+(read `source.Suspected` in `AppliesTo`, re-check `g.IsSuspected` in the
+effect), as Rubblebelt Braggart does. "If the sacrificed creature was
+suspected" reads `ctx.SacrificedPermanent()` and its `Suspected` field, since
+the flag is gone once the creature is in a graveyard.
+
+Three things to get right:
+
+- **Never write `menace` or `cant_block` on the card.** They come from the
+  designation, and a copy of a suspected creature is not suspected.
+- **A permanent that is already suspected can't become suspected again**
+  (CR 701.60d). `SuspectForEffect` enforces it, so `Suspect` over a set is
+  safe, and so is a second Repeat Offender activation in response to the first.
+- **The primitive is guarded by `isNewSourceObject` (#1432).** When the
+  instruction names the object that has just come back from the graveyard
+  and the ability's source is that same card (Presumed Dead's granted
+  trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
+  read it as the old object's ability reaching the new one and do nothing.
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 

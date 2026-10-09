@@ -13,6 +13,7 @@ func init() {
 		Name:         "Elspeth's Smite",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(3)),
 	})
 }

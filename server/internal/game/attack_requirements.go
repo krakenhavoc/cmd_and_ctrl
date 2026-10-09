@@ -86,7 +86,7 @@ import (
 
 // AttackRequirement is one CR 508.1d requirement on one creature.
 //
-// Two shapes, told apart by OtherThan:
+// Three shapes, told apart by OtherThan and MostLifeOpponentOf:
 //
 //   - OtherThan == uuid.Nil: "attacks each combat if able" — obeyed by
 //     attacking anything.
@@ -96,6 +96,12 @@ import (
 //     plain requirement and not this one, which is what makes a
 //     goaded creature attack a player rather than a walker when it
 //     can (CR 701.15b says "player").
+//   - MostLifeOpponentOf set: "attacks an opponent with the most life
+//     among your opponents each combat if able" (Galactus, Devourer of
+//     Worlds, #2744) — obeyed only by attacking a player who is an
+//     opponent of MostLifeOpponentOf and has the most life of them.
+//     Life is read when the attack is judged, so a tie offers each of
+//     the tied opponents.
 //
 // Pure data, so the Characteristic that carries it stays copyable.
 type AttackRequirement struct {
@@ -113,6 +119,11 @@ type AttackRequirement struct {
 	// OtherThan, when set, makes this "attacks a player other than
 	// OtherThan if able".
 	OtherThan uuid.UUID
+	// MostLifeOpponentOf, when set, makes this "attacks an opponent
+	// with the most life among MostLifeOpponentOf's opponents if able"
+	// (#2744). It is the requirement's "you", the controller of the
+	// source that imposes it.
+	MostLifeOpponentOf uuid.UUID
 }
 
 // obeyedBy reports whether an attack at `target` obeys r. uuid.Nil is
@@ -123,10 +134,40 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 	if target == uuid.Nil {
 		return false
 	}
+	if r.MostLifeOpponentOf != uuid.Nil {
+		return g.isMostLifeOpponentLocked(r.MostLifeOpponentOf, target)
+	}
 	if r.OtherThan == uuid.Nil {
 		return true
 	}
 	return target != r.OtherThan && g.classifyAttackTargetLocked(target) == AttackTargetPlayer
+}
+
+// isMostLifeOpponentLocked reports whether `target` is a player still
+// in the game who is an opponent of `you` and has the most life among
+// your opponents (#2744). Every other seat is an opponent: this engine
+// seats no teams.
+//
+// Caller must hold g.mu.
+func (g *Game) isMostLifeOpponentLocked(you, target uuid.UUID) bool {
+	if target == you || g.classifyAttackTargetLocked(target) != AttackTargetPlayer {
+		return false
+	}
+	most, found := 0, false
+	var targetLife int
+	targetIn := false
+	for _, p := range g.Seats {
+		if p == nil || p.ID == you || p.Eliminated {
+			continue
+		}
+		if !found || p.Life > most {
+			most, found = p.Life, true
+		}
+		if p.ID == target {
+			targetLife, targetIn = p.Life, true
+		}
+	}
+	return targetIn && targetLife == most
 }
 
 // attackRequirementsOfLocked is every requirement on `c` right now:
@@ -511,6 +552,7 @@ func (e *AttackRequirementError) Unwrap() error { return ErrAttackRequirement }
 //	"Zurgo Helmsmasher must attack this combat if able."
 //	"Grizzly Bears must attack this combat if able (Grand Melee)."
 //	"Grizzly Bears is goaded by you and must attack a player other than you if able."
+//	"Galactus, Devourer of Worlds must attack an opponent with the most life if able."
 func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	who := nameOr(e.AttackerName, "That creature")
 	r := e.Requirement
@@ -519,6 +561,13 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 			return "you"
 		}
 		return nameOr(name, "that player")
+	}
+	if r.MostLifeOpponentOf != uuid.Nil {
+		s := who + " must attack an opponent with the most life if able"
+		if r.SourceName != "" && r.SourceName != e.AttackerName {
+			s += " (" + r.SourceName + ")"
+		}
+		return s + "."
 	}
 	if r.GoadedBy != uuid.Nil {
 		s := who + " is goaded by " + player(r.GoadedBy, e.GoaderName)

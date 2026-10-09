@@ -13,6 +13,7 @@ func init() {
 		Name:         "Annihilating Fire",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    damageAnyTargetExileIfDealtDies(fixedAmount(3), false),
 	})
 }

@@ -437,6 +437,12 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.SacrificedObjects) > 0 {
 		meta.Paid.SacrificedObjects = append([]ObjectRef(nil), item.Paid.SacrificedObjects...)
 	}
+	// ADR 0135 §4: and the objects the original's alternative cost paid
+	// with — a copied emerge spell reads the creature the original
+	// sacrificed (CR 707.10).
+	if len(item.Paid.AltCostObjects) > 0 {
+		meta.Paid.AltCostObjects = append([]ObjectRef(nil), item.Paid.AltCostObjects...)
+	}
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 

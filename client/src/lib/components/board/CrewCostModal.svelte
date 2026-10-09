@@ -52,12 +52,19 @@
     card,
     ability,
     threshold,
-    keyword = "Crew",
-    rule = "CR 702.122",
+    keyword: keywordProp = "Crew",
+    rule: ruleProp = "CR 702.122",
     options,
     onConfirm,
     onCancel,
   }: Props = $props();
+
+  // #2695: a Mount's saddle ability (CR 702.171a) is this same picker —
+  // crew's floor on total power — over OTHER creatures, so the server's
+  // crew_options already leaves the Mount out. Only the words change.
+  const saddle = $derived(ability?.saddle === true);
+  const keyword = $derived(saddle ? "Saddle" : keywordProp);
+  const rule = $derived(saddle ? "CR 702.171" : ruleProp);
 
   let chosen = $state<string[]>([]);
 
@@ -110,11 +117,14 @@
     width={560}
     sheetKey={`crew:${card.instance_id}:${ability?.index ?? keyword}`}
     count={`${total} / ${need} power`}
-    primary={confirmAction(keyword === "Crew" ? "Crew" : "Tap", confirm, { disabled: !enough })}
+    primary={confirmAction(keyword === "Crew" || saddle ? keyword : "Tap", confirm, {
+      disabled: !enough,
+    })}
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">
-      Tap any number of untapped creatures you control with total power {need} or more.
+      Tap any number of {saddle ? "other " : ""}untapped creatures you control with total power {need}
+      or more.
     </p>
     {#if options.length === 0}
       <p class="prompt-hint error">You control no untapped creatures to tap.</p>

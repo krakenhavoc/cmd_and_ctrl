@@ -40,6 +40,7 @@ func init() {
 				Label:   "{2}, Sacrifice two artifacts: Breya deals 3 damage to target player or planeswalker",
 				Cost:    cost,
 				Targets: targetPlayerOrPlaneswalker(),
+				Purpose: ForTargets(DamageToTarget(0, 3)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					for _, t := range ctx.LegalTargets() {

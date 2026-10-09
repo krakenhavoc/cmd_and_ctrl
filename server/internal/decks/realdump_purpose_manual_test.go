@@ -11,6 +11,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // realdump_purpose_manual_test.go — ADR 0126 §6's manual audit of
@@ -21,19 +22,29 @@ import (
 //	CMDCTRL_SCRYFALL_DUMP=data/scryfall/default-cards.json \
 //	  go test ./internal/decks/ -run RealDumpPurpose -v
 //
-// Two checks:
+// Three checks:
 //
 //   - TestRealDumpPurposeCuratedSpellList: curatedInstantsAndSorceries
 //     (purpose_test.go) is exactly the curated decks' instants and
 //     sorceries by Scryfall's type lines, so TestCuratedDeckPurposes
 //     covers every one of them offline.
+//   - TestRealDumpPurposeLandsUntapped: curatedLandsUntapped
+//     (purpose_test.go) is exactly the curated cards that declare Lands
+//     and whose search puts a card onto the battlefield without
+//     "tapped" (ADR 0136 §2). It lists, without failing, the other
+//     catalog cards that declare Lands, read the same way, and declare
+//     no LandsUntapped.
 //   - TestRealDumpPurposeAudit: every catalog card whose oracle text
 //     reads as a board wipe declares a Sweep somewhere (owner decision
 //     2: every catalog wipe), or is on reviewedNotAWipe with the reason.
 //     It also LISTS, without failing, the catalog cards whose text reads
 //     as a draw, a tutor or a land search and that declare no purpose:
 //     a review aid, since ADR 0126 declares those for the curated decks
-//     alone.
+//     alone. It lists the same way the cards whose text gives a target
+//     player something ("target player draws / creates / gains") or
+//     deals a fixed amount of damage to a creature or any target, and
+//     that declare no target entry: ADR 0126's amendment of 2026-10-08,
+//     whose PR 5 works through that list.
 
 // The oracle-text readings. Deliberately loose: a false positive is a
 // line on reviewedNotAWipe, a false negative is a wipe nobody declared.
@@ -47,11 +58,49 @@ var (
 		regexp.MustCompile(`(?i)\bsacrifices? all\b`),
 		regexp.MustCompile(`(?i)change "target" in its text to "each"`),
 	}
-	drawText      = regexp.MustCompile(`(?i)\b(you )?draws? (a|an|one|two|three|four|five|six|seven) cards?\b`)
-	tutorText     = regexp.MustCompile(`(?i)search your library for`)
-	landToBfText  = regexp.MustCompile(`(?i)search your library for [^.]*\bland[^.]*onto the battlefield`)
-	instantSorcer = regexp.MustCompile(`\b(Instant|Sorcery)\b`)
+	drawText     = regexp.MustCompile(`(?i)\b(you )?draws? (a|an|one|two|three|four|five|six|seven) cards?\b`)
+	tutorText    = regexp.MustCompile(`(?i)search your library for`)
+	landToBfText = regexp.MustCompile(`(?i)search your library for [^.]*\bland[^.]*onto the battlefield`)
+	// ADR 0136 §2: a library search that puts a card onto the
+	// battlefield, and whether "tapped" follows.
+	searchToBfText = regexp.MustCompile(`(?i)search your library for [^.]*?onto the battlefield( tapped)?`)
+	instantSorcer  = regexp.MustCompile(`\b(Instant|Sorcery)\b`)
+	// ADR 0126's amendment of 2026-10-08: a target that is given
+	// something, and burn at a creature or any target.
+	giftText = regexp.MustCompile(`(?i)\btarget (player|opponent) (draws|creates|gains)\b`)
+	burnText = regexp.MustCompile(`(?i)deals \d+ damage to (any (other )?target|(up to \w+ )?(another )?target ([\w,-]+ )*?(creature|planeswalker))`)
 )
+
+// declaresTargetEntry reports whether a spec declares a target entry
+// (Purpose.Targets) in any slot.
+func declaresTargetEntry(s effects.Spec) bool {
+	ps := []game.Purpose{s.Purpose}
+	modes := func(m *game.ModeSpec) {
+		if m != nil {
+			for _, o := range m.Options {
+				ps = append(ps, o.Purpose)
+			}
+		}
+	}
+	modes(s.Modes)
+	for _, a := range s.AlternativeCosts {
+		ps = append(ps, a.Purpose)
+	}
+	for _, a := range s.Activated {
+		ps = append(ps, a.Purpose)
+		modes(a.Modes)
+	}
+	for _, t := range s.Triggered {
+		ps = append(ps, t.Purpose)
+		modes(t.Modes)
+	}
+	for _, p := range ps {
+		if p.Targets != nil {
+			return true
+		}
+	}
+	return false
+}
 
 // reviewedNotAWipe is every catalog card the sweep reading flags that
 // declares no Sweep, with why. Each was read.
@@ -62,6 +111,7 @@ var reviewedNotAWipe = map[string]string{
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"Crypt Incursion":                          "exiles a graveyard",
+	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",
 	"Glorious End":                             "ends the turn",
 	"Jace, the Mind Sculptor":                  "exiles a library",
@@ -193,8 +243,8 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 	// Every Spec under one base oracle ID is one card: its faces, a
 	// split card's halves.
 	type entry struct {
-		name             string
-		declared, sweeps bool
+		name                      string
+		declared, sweeps, targets bool
 	}
 	byBase := map[string]*entry{}
 	for _, s := range effects.All() {
@@ -207,6 +257,7 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 		d, sw := anyPurpose(s)
 		e.declared = e.declared || d
 		e.sweeps = e.sweeps || sw
+		e.targets = e.targets || declaresTargetEntry(s)
 	}
 
 	var undeclaredWipes, staleReviews []string
@@ -236,6 +287,14 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 		case reviewed && (e.sweeps || !wipe):
 			staleReviews = append(staleReviews, card.Name)
 		}
+		if !e.targets {
+			switch {
+			case reads(giftText):
+				listed["target gift"] = append(listed["target gift"], card.Name)
+			case reads(burnText):
+				listed["burn at a creature or any target"] = append(listed["burn at a creature or any target"], card.Name)
+			}
+		}
 		if e.declared {
 			continue
 		}
@@ -259,10 +318,93 @@ func TestRealDumpPurposeAudit(t *testing.T) {
 		t.Errorf("reviewedNotAWipe lists cards that now declare a Sweep, or no longer read as one:\n\t%s",
 			strings.Join(staleReviews, "\n\t"))
 	}
-	for _, class := range []string{"land search", "tutor", "draw (instant or sorcery)"} {
-		names := listed[class]
+	for _, class := range []struct{ name, lacks string }{
+		{"land search", "purpose"},
+		{"tutor", "purpose"},
+		{"draw (instant or sorcery)", "purpose"},
+		{"target gift", "target entry"},
+		{"burn at a creature or any target", "target entry"},
+	} {
+		names := listed[class.name]
 		sort.Strings(names)
-		t.Logf("review aid: %d catalog card(s) read as a %s and declare no purpose:\n\t%s",
-			len(names), class, strings.Join(names, "\n\t"))
+		t.Logf("review aid: %d catalog card(s) read as a %s and declare no %s:\n\t%s",
+			len(names), class.name, class.lacks, strings.Join(names, "\n\t"))
 	}
+}
+
+// readsLandsUntapped reports whether a card's text puts a searched-out
+// card onto the battlefield without "tapped".
+func readsLandsUntapped(text string) bool {
+	for _, m := range searchToBfText.FindAllStringSubmatch(text, -1) {
+		if m[1] == "" {
+			return true
+		}
+	}
+	return false
+}
+
+// declaredLands sums the Lands a spec declares in every slot.
+func declaredLands(s effects.Spec) int {
+	n := 0
+	for _, p := range specPurposes(s) {
+		n += p.Lands
+	}
+	return n
+}
+
+func TestRealDumpPurposeLandsUntapped(t *testing.T) {
+	idx := loadDumpForPurpose(t)
+	curated := map[string]bool{}
+	var diff []string
+	for _, d := range All() {
+		for _, c := range d.Cards() {
+			if c.Basic || curated[c.Name] {
+				continue
+			}
+			curated[c.Name] = true
+			spec, ok := effects.Lookup(c.OracleID)
+			if !ok || declaredLands(spec) == 0 {
+				continue
+			}
+			card, ok := idx.FindByOracleID(uuid.MustParse(c.OracleID))
+			if !ok {
+				t.Errorf("%s is not in the dump", c.Name)
+				continue
+			}
+			_, text := printed(card)
+			_, listed := curatedLandsUntapped[c.Name]
+			switch untapped := readsLandsUntapped(text); {
+			case untapped && !listed:
+				diff = append(diff, c.Name+" puts its lands onto the battlefield untapped and is not on curatedLandsUntapped")
+			case !untapped && listed:
+				diff = append(diff, c.Name+" is on curatedLandsUntapped and its lands enter tapped")
+			}
+		}
+	}
+	if len(diff) > 0 {
+		sort.Strings(diff)
+		t.Errorf("curatedLandsUntapped is wrong (ADR 0136 §2):\n\t%s", strings.Join(diff, "\n\t"))
+	}
+
+	var aid []string
+	for _, s := range effects.All() {
+		if curated[s.Name] || declaredLands(s) == 0 || landsUntappedIn(s) > 0 {
+			continue
+		}
+		base, _, _ := strings.Cut(s.OracleID, "#")
+		id, err := uuid.Parse(base)
+		if err != nil {
+			continue
+		}
+		card, ok := idx.FindByOracleID(id)
+		if !ok {
+			continue
+		}
+		if _, text := printed(card); readsLandsUntapped(text) {
+			aid = append(aid, s.Name)
+		}
+	}
+	sort.Strings(aid)
+	t.Logf("review aid: %d catalog card(s) outside the curated decks declare Lands, put them onto the battlefield untapped, and declare no LandsUntapped:\n\t%s",
+		len(aid), strings.Join(aid, "\n\t"))
 }

@@ -21,6 +21,7 @@ func init() {
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Retrace("{2}{U}")},
 		Targets:          TargetPlayer("target player"),
+		Purpose:          ForTargets(game.TargetPurpose{Slot: 0, Draws: 1}),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil

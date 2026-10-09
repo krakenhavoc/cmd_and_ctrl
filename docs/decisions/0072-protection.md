@@ -855,3 +855,63 @@ Strionic Resonator copies the trigger.
 
 **Still open.** Nothing on this path. Hexproof from a quality is still
 not a keyword (the #1429 amendment's last bullet).
+
+## Amendment (2026-10-08, #2745): protection from each of your opponents
+
+Absolute Virtue prints "You have protection from each of your
+opponents." CR 702.16i reads "protection from each [set of players]" as
+one protection per player in the set, and CR 702.16k says protection
+from a player is protection from each object that player controls. §A4
+called protection on a player from a player reachable but unexercised.
+This is its first card, and it needs one thing §A4 did not have: a way
+to know who "your" is. It joins the grammar as one more closed shape.
+
+- **The quality.** `ProtectionQualityOpponents`, printed "each of your
+  opponents", wire kind `"opponents"`. The token
+  `game.ProtectionFromEachOfYourOpponents` names no seat.
+- **Who "your" is.** The reader fills it in, as §7 does for the chosen
+  player, in a new field, `ProtectionQuality.Holder`. On a player, the
+  reader is `bindPlayerProtectionQuality`, called by
+  `PlayerProtectedFromLocked` and by the targeting walk, and Holder is
+  the player's own seat. On a permanent, the reader is
+  `bindProtectionQuality`, and Holder is the permanent's controller.
+  It's a separate field from `Player` because the meaning is the
+  opposite: `Player` is the seat protected *from*, and `Holder` is
+  the seat whose opponents are refused.
+- **Matching.** A source matches when its controller is set and isn't
+  the holder. This engine seats no teams, so every other seat is an
+  opponent. An unbound quality matches nothing, which is the weaker
+  direction §7 already chose.
+- **No new consumer.** Damage, targeting and enchanting already go
+  through the two player readers, so all three follow.
+- **Still open.** Protection from a chosen player, granted to a
+  *player*, still protects from nobody (§A4). No catalogued card
+  prints it.
+
+## Amendment (2026-10-08, #2742): protection from the chosen card type
+
+Serra's Emissary prints "As this creature enters, choose a card type.
+You and creatures you control have protection from the chosen card
+type." The answer lives on the Emissary, but the protection belongs to
+other objects: its controller and each of their creatures. The chosen
+player quality (§7) binds from the protected card, so it can't be
+copied for this. Instead the protection is resolved where the answer
+is.
+
+- **The choice.** The Sieges' option pick (`ChooseOptionAsEnters`), over
+  `game.ChoosableCardTypes`: CR 205.2a's card types minus the six that
+  exist only in other formats. It is stored on `Card.ChosenOption`.
+  That field's lifecycle is exactly what CR 614.12 and CR 400.7 need,
+  and the Emissary has no anchor-word gate that could read the same
+  field.
+- **Creatures.** A layer-6 static appends the concrete token,
+  `game.ProtectionFromCardType(answer)`, to each creature its
+  controller controls. The token is an ordinary card-type quality, so
+  the four consumers, the view and the bot read it unchanged.
+- **The player.** `game.ProtectionFromTheChosenCardType` is a
+  placeholder a Spec may put in `PlayerKeywords`. It is not grammar:
+  `playerAbilityTokensLocked` swaps it for the concrete token while it
+  holds the granting permanent, and `checkPlayerKeywords` accepts it by
+  name.
+- **Unanswered** — neither half grants anything.
+- **Kindred** joins the card-type words, because the prompt offers it.

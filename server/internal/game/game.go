@@ -586,6 +586,23 @@ type Game struct {
 	// declaration whose triggers have already fired.
 	blocksDeclared map[uuid.UUID]bool
 
+	// blockDeclarationClosed is whether this combat's CR 509.1
+	// declaration AS A WHOLE is over (#2021, ADR 0045 Decision 74):
+	// set the moment every player defending at that moment has
+	// completed theirs. blocksDeclared is per seat, so on its own it
+	// cannot tell "has not declared yet" from "was not a defending
+	// player when the declaration was made" — and a player who becomes
+	// one afterwards (an attack reselected onto them, CR 508.7a; a
+	// creature put onto the battlefield attacking them, CR 508.4) never
+	// declares: the turn-based action happened once, as the step began
+	// (CR 509.1, 509.1h). With this set every defending player reads
+	// as declared.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot for blocksDeclared's
+	// reason.
+	blockDeclarationClosed bool
+
 	// attacksDeclared is the ATTACK side's completion point for CR
 	// 508.1d (#1571, attack_requirements.go): true once the active
 	// player's declaration this combat has passed its requirement
@@ -994,6 +1011,10 @@ func NewGame() *Game {
 	// PendingTriggers first — CR 603.3b reorders anything that
 	// actually matters. See monarch.go.
 	g.Listeners = append(g.Listeners, monarchTriggers{})
+	// ADR 0138, CR 702.179d: speed's inherent once-per-turn trigger has
+	// no source either, so it rides the registry for the monarch's
+	// reason and right after it. See speed.go.
+	g.Listeners = append(g.Listeners, speedTriggers{})
 	// #1729, CR 610.3: an exile "until" an event ends when the event
 	// happens, and that is a rule rather than a triggered ability — so
 	// it watches the event log on its own, after the monarch's CR 725.4
@@ -1615,6 +1636,13 @@ type CastTally struct {
 	// spell while Artifact is still 0: a cost is determined (CR 601.2f)
 	// before the spell is counted here.
 	Artifact int `json:"artifact,omitempty"`
+	// ManaValue is the total mana value of the spells the player cast
+	// this turn (CR 202.3), read as each spell became cast, off the
+	// spell on the stack (CR 601.2i): an X spell counts the X it was
+	// cast with (CR 202.3e) and a spell cast face down counts 0 (CR
+	// 708.4). Call Forth the Tempest's "the total mana value of other
+	// spells you've cast this turn" subtracts its own (#2743).
+	ManaValue int `json:"manaValue,omitempty"`
 }
 
 // CastInstantOrSorceryOfColor reports whether the tally includes an

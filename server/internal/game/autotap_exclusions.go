@@ -47,9 +47,105 @@ import "github.com/google/uuid"
 // "sacrifice three creatures" must not be cracked for that {1} first.
 // The same was already true, and unexercised, of a Spirit Guide named
 // to a pitch cost.
-func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
-	return unionIDs(params.LockedSources, params.TapIDs, params.SacrificeIDs, params.DiscardIDs,
-		params.TeamworkIDs, params.BlightIDs, params.AltCostIDs)
+//
+// ADR 0135 §4 (owner decision 3): a permanent named to a SACRIFICE cost
+// on the cast — the additional cost's SacrificeIDs, and AltCostIDs when
+// `alt` is a sacrifice offer (emerge, Dread Return's flashback,
+// Fireblast) — is in the set as SACRIFICE-NAMED rather than excluded:
+// the planner may use its mana abilities that do not sacrifice it, and
+// none that does. CR 601.2g has mana abilities activated before CR
+// 601.2h pays the costs, and the emerge rulings say so outright ("The
+// creature chosen to be sacrificed is still on the battlefield … as you
+// activate mana abilities to cast the emerge spell"), so a Llanowar
+// Elves named to Village Rites may tap for the {B}'s neighbour and then
+// be sacrificed. An Eldrazi Spawn named to emerge may not be cracked
+// first: that would leave the sacrifice nothing to pay with. Every other
+// component stays excluded outright. `alt` is the offer the cast claims,
+// nil for none.
+func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uuid.UUID]bool {
+	full := [][]uuid.UUID{params.LockedSources, params.TapIDs, params.DiscardIDs,
+		params.TeamworkIDs, params.BlightIDs}
+	sacrificed := [][]uuid.UUID{params.SacrificeIDs}
+	if alt != nil && alt.Sacrifice != nil {
+		sacrificed = append(sacrificed, params.AltCostIDs)
+	} else {
+		full = append(full, params.AltCostIDs)
+	}
+	return WithSacrificeNamedExclusions(unionIDs(full...), sacrificed...)
+}
+
+// castAutoTapExclusionsLocked is CastAutoTapExclusions for an
+// announcement whose offer is still a key on `params`: the offer is
+// resolved the way the pricer resolves it. Caller must hold g.mu.
+func (g *Game) castAutoTapExclusionsLocked(playerID uuid.UUID, card Card, params CastSpellParams) map[uuid.UUID]bool {
+	return CastAutoTapExclusions(params, g.claimedAltCostLocked(playerID, card, params))
+}
+
+// CastAutoTapExclusionsFor is castAutoTapExclusionsLocked under the read
+// lock, for the auto-tap preview, so the preview plans exactly what
+// CastSpell's auto-tap will.
+func (g *Game) CastAutoTapExclusionsFor(playerID uuid.UUID, card Card, params CastSpellParams) map[uuid.UUID]bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.castAutoTapExclusionsLocked(playerID, card, params)
+}
+
+// An exclusion set maps a permanent or card to TRUE when the planner may
+// not reach for it at all, and to FALSE when it is SACRIFICE-NAMED (ADR
+// 0135 §4): the planner may still use its mana abilities that do not
+// sacrifice it (autoTapMayUse). Absent is free. Every reader that copies
+// a set keeps the value (WithAutoTapExclusions, MergeAutoTapExclusions),
+// and a permanent that is both is excluded outright.
+
+// WithSacrificeNamedExclusions returns `base` plus each of `ids` as
+// sacrifice-named, copying rather than writing into `base`. An ID
+// `base` already excludes outright stays excluded.
+func WithSacrificeNamedExclusions(base map[uuid.UUID]bool, ids ...[]uuid.UUID) map[uuid.UUID]bool {
+	n := 0
+	for _, l := range ids {
+		n += len(l)
+	}
+	if n == 0 {
+		return base
+	}
+	out := make(map[uuid.UUID]bool, len(base)+n)
+	for id, full := range base {
+		out[id] = full
+	}
+	for _, l := range ids {
+		for _, id := range l {
+			if _, ok := out[id]; !ok {
+				out[id] = false
+			}
+		}
+	}
+	return out
+}
+
+// MergeAutoTapExclusions writes `src` into `dst` (which must be
+// non-nil), keeping each entry's meaning: outright wins over
+// sacrifice-named.
+func MergeAutoTapExclusions(dst, src map[uuid.UUID]bool) {
+	for id, full := range src {
+		if cur, ok := dst[id]; !ok || (full && !cur) {
+			dst[id] = full
+		}
+	}
+}
+
+// autoTapMayUse is the planner's question about one candidate: may it
+// plan `ab` on the permanent or card `id`? Not when the set excludes it
+// outright; when it is sacrifice-named, only an ability that does not
+// sacrifice it (ADR 0135 §4).
+func autoTapMayUse(excluded map[uuid.UUID]bool, id uuid.UUID, ab *ManaAbilityShape) bool {
+	full, named := excluded[id]
+	if !named {
+		return true
+	}
+	if full {
+		return false
+	}
+	return ab == nil || !ab.SacrificeCost
 }
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's
@@ -144,8 +240,10 @@ func WithAutoTapExclusions(base map[uuid.UUID]bool, ids ...[]uuid.UUID) map[uuid
 		return base
 	}
 	out := make(map[uuid.UUID]bool, len(base)+n)
-	for id := range base {
-		out[id] = true
+	// ADR 0135 §4: a copy keeps a sacrifice-named entry's meaning, and an
+	// ID named here is excluded outright whatever it was.
+	for id, full := range base {
+		out[id] = full
 	}
 	for _, l := range ids {
 		for _, id := range l {
@@ -177,8 +275,8 @@ func (g *Game) excludeNonQualifyingSourcesLocked(controller uuid.UUID, excluded 
 		return excluded
 	}
 	out := make(map[uuid.UUID]bool, len(excluded))
-	for id := range excluded {
-		out[id] = true
+	for id, full := range excluded {
+		out[id] = full
 	}
 	skip := func(c Card) {
 		if !manaSourceKindsOf(c).HasAny(only) {

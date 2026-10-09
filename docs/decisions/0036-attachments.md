@@ -983,3 +983,96 @@ question of any stamped item, triggers included. An item with no stamp
 (from a snapshot written before #1418) keeps the kind gate above. A
 living-weapon or Hero's Blade trigger whose Equipment was flickered in
 response now attaches nothing, just as an equip does.
+
+## Amendment (2026-10-08, #1945): decision 20 — Role tokens are token Auras, and CR 704.5z keeps the newest
+
+Wilds of Eldraine's Roles are Aura tokens (CR 111.10, 303.7). The
+engine already had everything a token Aura needs except three things,
+and the amendment adds exactly those.
+
+### 1. A Role is a token template, not a new card kind
+
+`effects.RoleToken` / `CreateRoleToken` mint a "Token Enchantment —
+Aura Role" from the ADR 0083 token catalog: the abilities ride the
+template's static and triggered slots (`PumpAttached`,
+`GrantToAttached`, `SetAttachedBasePT`, `WardGranted`, a dies trigger),
+so the instance carries only `TokenKey` and a board holding a Role is
+as snapshottable as one holding a Treasure. Monster, Cursed, Royal and
+Wicked are declared. Sorcerer, Young Hero, Virtuous, Questing and Chef
+each grant the enchanted creature a triggered ability or count
+enchantments, which no token slot expresses yet; a card making one
+stays off the catalog (#1945 stays open for them).
+
+`CreateRoleToken` creates nothing for a host that is not a creature on
+the battlefield (CR 303.4f: the Aura could not enter attached to it).
+It creates through `CreateTokensThenForEffect` and attaches in the
+continuation, so a Doubling Season window still attaches the right
+tokens. `Card.IsRole` is `IsAura` plus the Role subtype.
+
+### 2. CR 704.5z in the attachment sweep
+
+`attachmentSBALocked` gains the Role branch: for each (host,
+controller) pair holding two or more Roles, all but the one with the
+latest `AttachedAt` (CR 303.7a, 613.7e; board order breaks a tie) go to
+the graveyard. The key includes the controller, so two players' Roles
+on one creature coexist. An unattached Role also fails CR 704.5m,
+which the sweep previously applied only to Auras with a catalog enchant
+clause (a token has none).
+
+### 3. "Sacrifice an Aura attached to this creature"
+
+`TargetSpec.AttachedToSource` restricts a sacrifice clause to
+permanents attached to the paying permanent. One function,
+`Game.AttachedToSourceOKForEffect`, answers it for the payment
+validator, the legal enumerator's pool and the protocol picker, so the
+three cannot disagree (#544). Built with `effects.AttachedToThis`.
+Faunsbane Troll is the proof card.
+
+## Amendment (2026-10-09, #2639): decision 21 — reconfigure
+
+CR 702.151a makes reconfigure two activated abilities: attach this
+permanent to another target creature you control, and unattach it,
+which may be activated only while it is attached to a creature. Both
+are sorcery speed. CR 702.151b says that attaching an Equipment with
+reconfigure to another creature makes it stop being a creature until it
+becomes unattached from that creature. CR 301.5c says an Equipment that
+is also a creature can't equip a creature unless it has reconfigure.
+
+### 1. Two ordinary activated rows, as decision 4 did for equip
+
+`effects.Reconfigure(cost)` returns the pair, and
+`effects.ReconfigureOneOf(printed, options...)` returns one pair per
+payment for a cost printed with a choice (Razorfield Ripper's "Pay {2}
+or {E}{E}{E}"). The attach row resolves through `AttachSourceToTarget`,
+equip's resolution, and its target clause is wrapped in `Another`. The
+unattach row resolves through `game.UnattachSourceForEffect`, which does
+nothing for a source that left or came back as a new object (decision
+19), and its Condition is `SourceAttachedToACreature`. Both carry
+`ActivatedAbilityShape.Reconfigure`. Neither carries `Equip`: Leonin
+Shikari's "equip abilities" does not reach them.
+
+### 2. "Stops being a creature" is derived, not stored
+
+The layer pass gathers one layer-4 effect per battlefield permanent
+whose catalog rows print reconfigure and that is attached to a
+permanent still on the battlefield. It removes the creature card type
+and the creature subtypes (CR 205.3d), and keeps Artifact and
+Equipment. Its timestamp is `AttachedAt` (decision 2), so a later
+layer-4 animation makes it a creature again.
+
+Recording a flag at attach time would follow the rule's wording
+exactly, but it adds a snapshot field and a write at every place the
+link is cleared. The derived form differs only for a permanent that
+gains or loses reconfigure while attached. Because it reads the PRINTED
+rows, an attached Equipment that loses all abilities stays a
+noncreature, which is what the rule says. No card grants reconfigure.
+The host is checked too, because CR 701.3d counts a host that left the
+battlefield as an unattach.
+
+### 3. CR 301.5c in decision 9's legality check
+
+`attachmentLegalLocked` now refuses an Equipment that is a creature
+right now and has no reconfigure ability (`HasReconfigure`, which reads
+the layered rows, so removal counts). Such an Equipment becomes
+unattached as CR 704.5n says. This applies to animated Equipment too,
+which used to stay attached.

@@ -19,6 +19,7 @@ func TestParseContestant(t *testing.T) {
 		"heuristic":          {Tier: tiers.Heuristic},
 		"random":             {Tier: tiers.Random},
 		"heuristic-baseline": {Tier: tiers.Heuristic, Variant: botarena.VariantBaseline},
+		"heuristic-noplan":   {Tier: tiers.Heuristic, Variant: botarena.VariantNoPlan},
 	} {
 		got, err := botarena.ParseContestant(in)
 		if err != nil {
@@ -40,12 +41,14 @@ func TestParseContestant(t *testing.T) {
 // heuristic-baseline is an ARENA name, not a tier: tiers.Parse, which
 // the lobby and GET /bot/options read, must not know it.
 func TestBaselineIsNotATier(t *testing.T) {
-	if _, err := tiers.Parse(botarena.BaselineContestant); err == nil {
-		t.Fatalf("tiers.Parse accepts %q; it would be offered in the lobby", botarena.BaselineContestant)
-	}
-	for _, tier := range tiers.All() {
-		if string(tier) == botarena.BaselineContestant {
-			t.Fatalf("tiers.All lists %q", tier)
+	for _, name := range []string{botarena.BaselineContestant, botarena.NoPlanContestant} {
+		if _, err := tiers.Parse(name); err == nil {
+			t.Fatalf("tiers.Parse accepts %q; it would be offered in the lobby", name)
+		}
+		for _, tier := range tiers.All() {
+			if string(tier) == name {
+				t.Fatalf("tiers.All lists %q", tier)
+			}
 		}
 	}
 }
@@ -115,8 +118,19 @@ func TestRunReportsContestantsAndCards(t *testing.T) {
 	if casts == 0 {
 		t.Error("five turns of the battle deck cast nothing, or the Cards section did not see it")
 	}
+	for _, row := range sum.PerContestant {
+		tm := row.TurnMana
+		if tm.Turns == 0 || tm.Stranded > tm.Idle || tm.Idle > tm.Turns {
+			t.Errorf("%s: impossible or empty turn-mana tally %+v", row.Policy, tm)
+		}
+		// ADR 0136 PR 4: a plan miss is a checked window, and a checked
+		// window follows a planned one.
+		if tm.Misses > tm.Checked || tm.Checked > tm.Planned {
+			t.Errorf("%s: impossible plan numbers: %+v", row.Policy, tm)
+		}
+	}
 	md := sum.Markdown()
-	for _, want := range []string{"### Play by contestant", "### Cards", "#### Acceptance-bar cards", "| A3 | Sol Ring |", "not offered"} {
+	for _, want := range []string{"### Play by contestant", "### Cards", "#### Acceptance-bar cards", "| A3 | Sol Ring |", "not offered", "### Turn mana (ADR 0136 §8)"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("Markdown() is missing %q:\n%s", want, md)
 		}

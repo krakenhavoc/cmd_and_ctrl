@@ -46,7 +46,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{T}: You and target opponent each draw a card.",
 			// ADR 0126 §6: the opponent draws too, which no field says.
-			Purpose: game.Purpose{Draws: 1},
+			// You draw one, and so does the opponent you aim it at.
+			Purpose: game.Purpose{Draws: 1, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 1})},
 			Cost:    TapCost(),
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

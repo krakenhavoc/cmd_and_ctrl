@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/botarena"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 )
 
 // lockstep_test.go pins #1503: `boteval arena --lockstep` makes a seed
@@ -109,6 +111,28 @@ func TestArenaLockstepSeedReplaysMoveForMove(t *testing.T) {
 				{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic},
 			},
 			Games: 1, Seed: 107, TurnBudget: 50, Wall: 5 * time.Minute, Lockstep: true,
+		})
+	})
+	// #2730: the curated decks are where two moves are priced the
+	// same — esper-control's Damnation and Austere Command's two
+	// creature modes are both "destroy every creature" — and the
+	// synthetic battle deck has no such pair. Seed 1 diverged at
+	// window 1263 of 2223 while ScoreEval summed in map order.
+	t.Run("curated decks", func(t *testing.T) {
+		dump := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
+		if dump == "" {
+			t.Skip("needs CMDCTRL_SCRYFALL_DUMP: the curated decks are built from the real catalog")
+		}
+		idx := cards.NewIndex()
+		if _, err := idx.Load(dump); err != nil {
+			t.Fatalf("load %s: %v", dump, err)
+		}
+		var seats []botarena.SeatSpec
+		for _, d := range []string{"esper-control", "izzet-aggro", "mono-black-aristocrats", "simic-ramp"} {
+			seats = append(seats, botarena.SeatSpec{Tier: tiers.Heuristic, Deck: d})
+		}
+		assertReplays(t, botarena.Config{
+			Seats: seats, Games: 1, Seed: 1, TurnBudget: 60, Wall: 10 * time.Minute, Lockstep: true, Index: idx,
 		})
 	})
 }

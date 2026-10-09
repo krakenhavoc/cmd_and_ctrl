@@ -609,6 +609,13 @@ type PendingChoiceView struct {
 	// chained choice queue (#74).
 	ChooseMin int `json:"choose_min,omitempty"`
 	ChooseMax int `json:"choose_max,omitempty"`
+	// ChooseDestination populates the "choose_cards" kind when the
+	// card says where the named cards go (#2680): "battlefield" or
+	// "battlefield_tapped" for "put a land card from your hand onto
+	// the battlefield [tapped]". Absent on every other choose_cards,
+	// where naming a card from the chooser's hand is giving it up.
+	// Withheld from a non-chooser with the bounds.
+	ChooseDestination string `json:"choose_destination,omitempty"`
 
 	// ChoosePlayers and ChooseSuggested populate the "proliferate"
 	// kind (#2525, CR 701.34a). ChoosePlayers are the seats on offer
@@ -1285,6 +1292,22 @@ type AlternativeCostView struct {
 	// stamped at all (#695). Per viewer, like `pay_options` (#1172).
 	TapOptions *LegalTargetsView `json:"tap_options,omitempty"`
 
+	// ReducesByManaValue marks an emerge offer (ADR 0135 §4, CR
+	// 702.119a): the permanent picked from `sacrifice_options` reduces
+	// the cost by its mana value, so the picker shows each candidate's
+	// price (`sacrifice_prices`) and the auto-tap preview is asked with
+	// the pick. Absent for every other offer.
+	ReducesByManaValue bool `json:"reduces_by_mana_value,omitempty"`
+
+	// SacrificePrices is an emerge offer's price per candidate, keyed by
+	// the instance IDs in `sacrifice_options`: the candidate's mana value
+	// and the mana the cast pays with it sacrificed ("{1}{U}{U}" for
+	// Elder Deep-Fiend over a four-drop), priced by the engine's one
+	// pricer — commander tax and the board's cost modifiers included,
+	// before convoke or delve. Absent for every other offer. Per viewer,
+	// like `sacrifice_options`.
+	SacrificePrices map[string]AltCostPriceView `json:"sacrifice_prices,omitempty"`
+
 	// PayLabel is the picker's prompt copy for PayOptions,
 	// SacrificeOptions or TapOptions ("a blue card", "an Island you
 	// control", "three creatures"). Absent when there is nothing to pick.
@@ -1646,12 +1669,16 @@ type VoteView struct {
 // cards, opponent library cards) while preserving the `count` so the
 // UI can still render a placeholder stack.
 type PlayerView struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Seat      int      `json:"seat"`
-	Life      int      `json:"life"`
-	Poison    int      `json:"poison,omitempty"`
-	Energy    int      `json:"energy,omitempty"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Seat   int    `json:"seat"`
+	Life   int    `json:"life"`
+	Poison int    `json:"poison,omitempty"`
+	Energy int    `json:"energy,omitempty"`
+	// Speed is the player's speed (CR 702.179, ADR 0138): omitted
+	// while they have none, then 1 to 4; 4 is max speed (CR 702.178a).
+	// Public: every viewer gets the same number.
+	Speed     int      `json:"speed,omitempty"`
 	Library   ZoneView `json:"library"`
 	Hand      ZoneView `json:"hand"`
 	Graveyard ZoneView `json:"graveyard"`
@@ -1730,6 +1757,10 @@ type PlayerView struct {
 	// seat. Never cleared once set, and never true on a bot seat.
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
+	// CitysBlessing is the city's blessing (CR 702.131c): a player
+	// designation ascend gives, kept for the rest of the game. Public
+	// and identical for every viewer, like the monarch. #2696.
+	CitysBlessing bool `json:"citys_blessing,omitempty"`
 
 	// PlaymatURL is the same-origin URL of the playmat the seat's
 	// signed-in owner chose (ADR 0128), drawn behind that seat's
@@ -2578,6 +2609,20 @@ type CardView struct {
 	// Public, like Harnessed, and set straight off the card for the
 	// same reason: no card type owns monstrosity.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Saddled is a Mount's CR 702.171 saddled designation (ADR 0071
+	// amendment 2026-10-08, #2695) — set until end of turn and gone when
+	// the turn ends or the Mount leaves. Public, set straight off the
+	// card like Monstrous: the table can see the Mount is saddled, which
+	// is what the attack triggers read.
+	Saddled bool `json:"saddled,omitempty"`
+	// Suspected is a permanent's CR 701.60 suspected designation
+	// (ADR 0071 amendment 2026-10-08, #2698): it has menace and can't
+	// block for as long as it is set. Public, and set straight off the
+	// card. Unlike Monstrous it is NOT cleared on a face-down permanent:
+	// the designation was given to the object in public and says nothing
+	// about the hidden card, and the table needs it to know why the
+	// creature cannot block.
+	Suspected bool `json:"suspected,omitempty"`
 	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
 	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
 	// Public, and set straight off the card. Unlike Monstrous it is NOT
@@ -3413,6 +3458,15 @@ type ActivatedAbilityView struct {
 	// untap). The client greys the row the same way; the server
 	// refuses with ErrAbilityExhausted either way.
 	Exhausted bool `json:"exhausted,omitempty"`
+	// BoastBlocked is why a boast ability (CR 702.142a, "Activate only
+	// if this creature attacked this turn and only once each turn")
+	// cannot be activated right now: "not_attacked" or "used". Absent
+	// when the ability is not a boast ability or nothing objects. Two
+	// tokens rather than a bool because the halves recover differently
+	// and the client says which; the sentence is the client's, the
+	// verdict is game.Game.BoastBlockLocked's, which the activation path
+	// and the bot enumerator also read (Birgi's raised limit included).
+	BoastBlocked string `json:"boast_blocked,omitempty"`
 	// CantActivate is the printed clause of a board-wide "can't be
 	// activated" static that refuses THIS ability right now (CR
 	// 602.5, #1210) — "Activated abilities of creatures can't be
@@ -3487,8 +3541,17 @@ type ActivatedAbilityView struct {
 	// re-checks. Each option's power is already on the CardView the
 	// client holds, so the running total is computable client-side
 	// without a second round trip. Added in S27.
+	//
+	// A Mount's saddle ability (CR 702.171a, #2695) rides the same two
+	// fields, because its cost is crew's — creatures tapped for total
+	// power — and the client's picker, the `crew_ids` payload and the
+	// engine's validator are one walk. CrewCost then carries the saddle
+	// number, Saddle is true so the picker says "Saddle" rather than
+	// "Crew", and CrewOptions leaves out the Mount itself ("other"
+	// creatures).
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
+	Saddle      bool              `json:"saddle,omitempty"`
 	// CounterCostView is the counter half of the cost — embedded, so
 	// its fields sit at the top level of the JSON exactly as they did
 	// before #789 split them out, and so a mana ability can carry the
@@ -3566,6 +3629,26 @@ type ActivatedAbilityView struct {
 	// and narrows the ability's target clause by it before targets are
 	// chosen (`mana_value_equals_x`).
 	DiscardCostManaValueX bool `json:"discard_cost_mana_value_x,omitempty"`
+	// RevealCostN / Label / Options describe a "Reveal N <quality> cards
+	// from your hand" cost component (#2598, ADR 0020's 2026-10-08
+	// amendment) — Martyr of Bones' "Reveal X black cards". RevealCostN
+	// is the printed count (absent for the X form); RevealCostLabel is
+	// the clause as printed, without the verb ("X black cards").
+	// RevealCostOptions is every matching card in the activator's hand,
+	// in hand order, the source excluded — private to the activator, the
+	// same leak DiscardCostOptions guards. The picks go back as
+	// `reveal_ids`.
+	//
+	// RevealCostCountFromX marks the X form: the count is the X the
+	// activator announces, so RevealCostN is absent and the number of
+	// cards picked IS the announcement — the client opens its picker
+	// (zero to as many as RevealCostOptions lists), sends the picks as
+	// `reveal_ids` and their number as `x_value`, and skips the X
+	// stepper. `demands_x` is set beside it.
+	RevealCostN          int      `json:"reveal_cost_n,omitempty"`
+	RevealCostLabel      string   `json:"reveal_cost_label,omitempty"`
+	RevealCostOptions    []string `json:"reveal_cost_options,omitempty"`
+	RevealCostCountFromX bool     `json:"reveal_cost_count_from_x,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -5018,6 +5101,8 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.SacrificeOptions = nil
 		// ADR 0135 §1: "untapped creatures YOU control", likewise.
 		o.TapOptions = nil
+		// ADR 0135 §4: an emerge price per creature YOU control.
+		o.SacrificePrices = nil
 		out[i] = o
 	}
 	return out
@@ -5152,6 +5237,10 @@ func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView
 	// (Penance) lists the controller's whole hand, the same leak.
 	private = private || len(v.TopCostOptions) > 0
 	v.TopCostOptions = nil
+	// #2598: "Reveal X black cards from your hand" (Martyr of Bones)
+	// lists the controller's matching hand cards, the same leak.
+	private = private || len(v.RevealCostOptions) > 0
+	v.RevealCostOptions = nil
 	// #1297's "Exile N cards from your hand" (Holistic Wisdom): the
 	// same leak one verb over. The graveyard form (Grim Lavamancer,
 	// Moorland Haunt) lists cards in a pile every viewer may read and
@@ -5531,7 +5620,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if haveLive {
 		faced = &live
 	}
-	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, offers)
+	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, kind, offers)
 	// #1012: and the wire says so when the printed cost is not one of
 	// them. `castable_here` is one bit and means "you may cast this
 	// from here", never "you may cast this from here for the cost in
@@ -5847,7 +5936,8 @@ type ProtectionView struct {
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
 	// "everything", "player", "mana_value_at_most" (Value is the
-	// bound N, #2181) or "ring_bearer" (#2145). Stable tokens; see
+	// bound N, #2181), "ring_bearer" (#2145) or "opponents" (#2745).
+	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour
@@ -5865,6 +5955,9 @@ type ProtectionView struct {
 	//
 	// Empty for a player quality whose permanent has not been answered
 	// yet, which reads correctly as "protected from nobody".
+	//
+	// For "opponents" (#2745) it is the seat that HAS the protection:
+	// a source matches when its controller is any other seat.
 	Value string `json:"value,omitempty"`
 }
 
@@ -5888,6 +5981,12 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 		// resolved it off the permanent (#980).
 		if q.Player != uuid.Nil {
 			v.Value = q.Player.String()
+		}
+		// "Each of your opponents" (#2745): the seat whose opponents
+		// these are, so the client compares a source's controller
+		// against it the same way.
+		if q.Holder != uuid.Nil {
+			v.Value = q.Holder.String()
 		}
 		out = append(out, v)
 	}
@@ -6134,7 +6233,11 @@ func viewOfWaterbend(g *game.Game, player, exclude uuid.UUID, wb *game.TapPerman
 // one looks on the wire. The nil entry in that list is the printed
 // mana cost, which is not an alternative cost and is projected as
 // `alternative_cost_required` instead.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, offers []*game.AlternativeCost) []AlternativeCostView {
+//
+// `zone` is where the card sits, the zone a cast of it comes out of: an
+// emerge offer's per-candidate price (ADR 0135 §4) is priced for a cast
+// from there, commander tax included.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, zone game.ZoneKind, offers []*game.AlternativeCost) []AlternativeCostView {
 	// A nil result rather than a present-and-empty one: `absent`
 	// is what the field means for a card with no offers, and every
 	// card in every cast surface reaches this function since #1012.
@@ -6229,6 +6332,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the caster's own permanents (CR 701.21a), in payment
 			// order, bounded by the clause's count.
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, paySpec, uuid.Nil, false)
+			if ac.ReducedBySacrificedManaValue && live != nil {
+				// ADR 0135 §4: emerge — each candidate's mana value and
+				// the price the cast pays with it named, from the pricer
+				// the payment is charged with.
+				v.ReducesByManaValue = true
+				v.SacrificePrices = emergePricesView(g, caster, *live, zone, ac.Key, v.SacrificeOptions)
+			}
 		} else if tc := ac.TapOthers; !tc.Empty() {
 			// ADR 0135 §1: the ability's tap-others block, with no
 			// source — the spell is not on the battlefield.
@@ -7521,6 +7631,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if game.IsCardSetPickKind(c.Kind) {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
+			v.ChooseDestination = string(c.ChooseDestination)
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -7972,6 +8083,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Life:                  p.Life,
 		Poison:                p.Poison,
 		Energy:                p.Energy,
+		Speed:                 p.Speed,
 		Library:               viewOfZone(p.Library),
 		Hand:                  viewOfZone(p.Hand),
 		Graveyard:             viewOfZone(p.Graveyard),
@@ -7994,6 +8106,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		BotDeck:               p.BotDeck,
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 		CommanderCasts:        cmdrCasts,
 		Counters:              cloneStringIntMap(p.Counters),
 		MaxHandSize:           g.EffectiveMaxHandSizeLocked(p),
@@ -8545,6 +8658,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].Options = nil
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
+			out[i].ChooseDestination = ""
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's
@@ -9017,6 +9131,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// to be false — only a permanent with a monstrosity ability can
 	// become monstrous, so the badge would hint at the hidden card.
 	out.Monstrous = false
+	// #2695: cleared with the other designations rather than trusted to
+	// be false — a face-down permanent is not a Mount (CR 708.2).
+	out.Saddled = false
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.
@@ -9344,6 +9461,8 @@ func viewOfCard(c game.Card) CardView {
 		}
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
+		view.Saddled = c.Saddled
+		view.Suspected = c.Suspected
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
 		if game.HasSharedTypeLine(c) {
@@ -9810,6 +9929,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
+		// CR 702.142a (#2697): which half of a boast ability's
+		// instruction fails, from the one gate the engine and the
+		// enumerator read.
+		v.BoastBlocked = g.BoastBlockLocked(&c, a).String()
 		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate's reason, from the one function the engine and the
 		// enumerator call. Behind the fast negative taken once for
@@ -9835,7 +9958,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
-			v.CrewOptions = crewOptions(g, caster)
+			v.CrewOptions = crewOptions(g, caster, uuid.Nil)
+		}
+		if a.Cost.Saddle > 0 {
+			v.CrewCost = a.Cost.Saddle
+			v.Saddle = true
+			v.CrewOptions = crewOptions(g, caster, c.InstanceID)
 		}
 		v.CounterCostView = counterCostView(g, caster, c.InstanceID, a.Cost.RemoveCounters, a.Cost.AddCounter)
 		if a.Cost.DemandsX() {
@@ -9867,6 +9995,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// stamps the flag and no options.
 			v.DiscardCostRandom = dc.Random
 			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
+		}
+		// #2598: the reveal component, off the walk the engine validates
+		// against (RevealCardsOptionsForEffect).
+		if rc := a.Cost.RevealCards; rc != nil {
+			v.RevealCostN = rc.N
+			v.RevealCostLabel = rc.Label
+			v.RevealCostCountFromX = rc.CountFromX
+			v.RevealCostOptions = cardIDStrings(g.RevealCardsOptionsForEffect(caster, c.InstanceID, rc))
 		}
 		// ADR 0109 §7 (#1902): the two library components, off the
 		// walk the engine validates against.
@@ -9957,10 +10093,10 @@ func cardIDStrings(ids []uuid.UUID) []string {
 //
 // Summoning-sick creatures are included deliberately — tapping to
 // crew is not paying a {T} cost (CR 702.122b). Caller must hold g.mu.
-func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
+func crewOptions(g *game.Game, caster, except uuid.UUID) *LegalTargetsView {
 	out := &LegalTargetsView{Min: 1, Max: 0}
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != caster || !c.IsCreature() || c.Tapped {
+		if c.Controller != caster || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
 		out.Cards = append(out.Cards, c.InstanceID.String())
@@ -10128,6 +10264,9 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	var ids []uuid.UUID
 	for _, id := range lt.Cards {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
+			continue
+		}
+		if !g.AttachedToSourceOKForEffect(spec, sourceID, id) {
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
@@ -10570,4 +10709,43 @@ func autoAnswerKeysFor(log []LogEvent, seats []PlayerView, viewerID string) []Lo
 		}
 	}
 	return log
+}
+
+// AltCostPriceView is one emerge candidate's price (ADR 0135 §4): the
+// permanent's mana value, and the cast's mana cost with it sacrificed.
+type AltCostPriceView struct {
+	ManaValue int    `json:"mana_value"`
+	Price     string `json:"price"`
+}
+
+// emergePricesView prices an emerge cast once per sacrifice candidate,
+// through game.PriceCastForEffect — the pricer CastSpell charges with —
+// so the price the picker shows beside a creature is the price the
+// payment takes. A candidate the pricer refuses is left out of the map.
+// Caller must hold g.mu.
+func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.ZoneKind, key string, opts *LegalTargetsView) map[string]AltCostPriceView {
+	if opts == nil || len(opts.Cards) == 0 {
+		return nil
+	}
+	out := make(map[string]AltCostPriceView, len(opts.Cards))
+	for _, raw := range opts.Cards {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			continue
+		}
+		price, err := g.PriceCastForEffect(caster, card, game.CastSpellParams{
+			FromZone:        delveZoneWire(zone),
+			AlternativeCost: key,
+			AltCostIDs:      []uuid.UUID{id},
+			Face:            card.ActiveFace,
+		})
+		if err != nil {
+			continue
+		}
+		out[raw] = AltCostPriceView{ManaValue: g.AltSacrificeManaValueForEffect(id), Price: price.Total.String()}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

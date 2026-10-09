@@ -319,8 +319,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two either/or branches keyed %q", spec.Name, b.Key))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
-		case b.Reveal != nil && b.Reveal.Subtype == "":
-			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no type", spec.Name, where))
+		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):
+			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no creature type, or one narrowed by colour — a cast's reveal branch names a creature type only", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
 		}

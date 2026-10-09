@@ -27,6 +27,7 @@ import (
 // each at boot rather than as a bot that quietly misprices a card:
 //
 //   - a negative amount;
+//   - more LandsUntapped than Lands (ADR 0136 §2);
 //   - ControllerLosesLife anywhere but an any-player activated row,
 //     where the activator and the controller differ (ADR 0106);
 //   - DeathPayoff anywhere but a triggered row;
@@ -37,8 +38,14 @@ import (
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
 //   - AwakenLand anywhere but an alternative cost (ADR 0135 §3);
+//   - ExtraLandDrops anywhere but the card, or on a card whose
+//     AdditionalLandPlays says a different number (#2678);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
-//     has none, or none on a verb that needs one.
+//     has none, or none on a verb that needs one;
+//   - a target entry (Purpose.Targets, ADR 0126's amendment of
+//     2026-10-08) that names no clause of its statement, names one
+//     twice, says nothing, or says what the clause's pick cannot be
+//     given (checkTargetPurposes).
 
 // purposeSlot says where a Purpose was declared, for the guard's rules.
 type purposeSlot int
@@ -64,8 +71,14 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 {
 		fail("has a negative amount")
+	}
+	if p.LandsUntapped > p.Lands {
+		fail("says more lands enter untapped (LandsUntapped) than it puts onto the battlefield (Lands) (ADR 0136 §2)")
+	}
+	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
+		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
 		fail("names ControllerLosesLife off an any-player activated row — the activator and the controller are one player there")
@@ -164,7 +177,9 @@ func checkModePurposes(name, where string, m *game.ModeSpec) {
 		return
 	}
 	for i, o := range m.Options {
-		checkPurpose(name, fmt.Sprintf("%s mode %d", where, i), purposeOnMode, o.Purpose)
+		mw := fmt.Sprintf("%s mode %d", where, i)
+		checkPurpose(name, mw, purposeOnMode, o.Purpose)
+		checkTargetPurposes(name, mw, o.Purpose, o.Targets, true)
 	}
 }
 
@@ -172,17 +187,32 @@ func checkModePurposes(name, where string, m *game.ModeSpec) {
 func checkSpecPurposes(spec Spec) {
 	name := spec.Name
 	checkPurpose(name, "card", purposeOnCard, spec.Purpose)
+	if n := spec.Purpose.ExtraLandDrops; n != 0 && spec.AdditionalLandPlays != 0 && n != spec.AdditionalLandPlays {
+		panic(fmt.Sprintf("effects.Register: %q declares ExtraLandDrops %d but AdditionalLandPlays %d: the purpose says what the static does (#2678)",
+			name, n, spec.AdditionalLandPlays))
+	}
+	checkTargetPurposes(name, "card", spec.Purpose, spec.Targets, true)
 	checkModePurposes(name, "spell", spec.Modes)
 	for _, a := range spec.AlternativeCosts {
-		checkPurpose(name, fmt.Sprintf("alternative cost %q", a.Key), purposeOnAltCost, a.Purpose)
+		where := fmt.Sprintf("alternative cost %q", a.Key)
+		checkPurpose(name, where, purposeOnAltCost, a.Purpose)
+		// The statement a cast for this cost announces: its own clause
+		// list when it replaces the card's, none when it clears it
+		// (overload), else the card's.
+		stmt := spec.Targets
+		switch {
+		case a.Targets != nil:
+			stmt = a.Targets
+		case a.ClearsTargets:
+			stmt = nil
+		}
+		checkTargetPurposes(name, where, a.Purpose, stmt, true)
 	}
 	for i, a := range spec.Activated {
 		checkActivatedPurpose(name, fmt.Sprintf("ability %d", i), a)
 	}
 	for i, t := range spec.Triggered {
-		where := fmt.Sprintf("triggered ability %d", i)
-		checkPurpose(name, where, purposeOnTriggered, t.Purpose)
-		checkModePurposes(name, where, t.Modes)
+		checkTriggeredPurpose(name, fmt.Sprintf("triggered ability %d", i), t)
 	}
 }
 
@@ -195,7 +225,115 @@ func checkActivatedPurpose(name, where string, a ActivatedAbility) {
 		slot = purposeOnAnyPlayerActivated
 	}
 	checkPurpose(name, where, slot, a.Purpose)
+	checkTargetPurposes(name, where, a.Purpose, a.Targets, true)
 	checkModePurposes(name, where, a.Modes)
+}
+
+// checkTriggeredPurpose checks one triggered row's purpose and its
+// modes'. Shared with the ability-grant guard. A row whose clause list
+// is built at trigger time (TargetsFrom) has no statement to check a
+// target entry against, so it may not declare one.
+func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
+	checkPurpose(name, where, purposeOnTriggered, t.Purpose)
+	checkTargetPurposes(name, where, t.Purpose, t.Targets, t.Targets != nil || t.TargetsFrom == nil)
+	checkModePurposes(name, where, t.Modes)
+}
+
+// checkTargetPurposes is the guard for Purpose.Targets (ADR 0126's
+// amendment of 2026-10-08): each entry names a target clause of the
+// statement it is declared on, once, and says something that clause's
+// pick can be given. `stmt` is that statement's clause list; `known`
+// is false when the list is only built at run time.
+//
+// It refuses:
+//
+//   - an empty list (declare nil instead);
+//   - a slot that is not a clause of the statement, or one named twice;
+//   - an entry that says nothing, or has a negative amount;
+//   - a player amount (draws, discards, tokens, life gained or lost)
+//     on a clause that cannot target a player;
+//   - damage on a clause that can target neither a player nor a
+//     permanent;
+//   - a return to the target's controller (#2679) on a clause that
+//     cannot target a permanent, a negative one, creature tokens with
+//     no printed toughness or a size with no tokens, or more untapped
+//     lands than lands. The clause's card predicate is a closure, so "target
+//     artifact" is a permanent clause to this check; the card's text
+//     is the rest of the review.
+func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSpec, known bool) {
+	if p.Targets == nil {
+		return
+	}
+	fail := func(why string) {
+		panic(fmt.Sprintf("effects.Register: %q %s declares a target purpose that %s (ADR 0126, amendment of 2026-10-08)", name, where, why))
+	}
+	entries := p.Targets.List()
+	if len(entries) == 0 {
+		fail("is an empty list — leave Targets nil")
+	}
+	if !known {
+		fail("is declared on a row whose target clauses are built when it triggers (TargetsFrom), so no slot can be checked")
+	}
+	seen := map[int]bool{}
+	for _, e := range entries {
+		if e.Slot < 0 || e.Slot >= stmt.ClauseCount() {
+			fail(fmt.Sprintf("names slot %d, which is not one of the statement's %d target clause(s)", e.Slot, stmt.ClauseCount()))
+		}
+		if seen[e.Slot] {
+			fail(fmt.Sprintf("names slot %d twice", e.Slot))
+		}
+		seen[e.Slot] = true
+		if e.Draws < 0 || e.Discards < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 {
+			fail(fmt.Sprintf("has a negative amount on slot %d", e.Slot))
+		}
+		if e.IsZero() {
+			fail(fmt.Sprintf("says nothing about slot %d", e.Slot))
+		}
+		clause := stmt.Clause(e.Slot)
+		if e.HasPlayerAmount() && !clause.Players {
+			fail(fmt.Sprintf("gives a player amount to slot %d, whose clause %q cannot target a player", e.Slot, clause.Label))
+		}
+		if e.Damage != 0 && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+			fail(fmt.Sprintf("deals damage to slot %d, whose clause %q can target neither a player nor a permanent", e.Slot, clause.Label))
+		}
+		if r := e.Returns; !r.IsZero() {
+			if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+				fail(fmt.Sprintf("returns something to the controller of slot %d, whose clause %q cannot target a permanent", e.Slot, clause.Label))
+			}
+			if r.CreatureTokens < 0 || r.TokenPower < 0 || r.TokenToughness < 0 || r.Lands < 0 || r.LandsUntapped < 0 {
+				fail(fmt.Sprintf("has a negative return on slot %d", e.Slot))
+			}
+			if (r.CreatureTokens == 0) != (r.TokenPower == 0 && r.TokenToughness == 0) || (r.CreatureTokens > 0 && r.TokenToughness == 0) {
+				fail(fmt.Sprintf("returns creature tokens on slot %d without a printed toughness, or a token size with no tokens", e.Slot))
+			}
+			if r.LandsUntapped > r.Lands {
+				fail(fmt.Sprintf("returns more untapped lands than lands on slot %d", e.Slot))
+			}
+		}
+	}
+}
+
+// ForTargets is a Purpose that declares only what happens to the
+// statement's targets (ADR 0126's amendment of 2026-10-08), one entry
+// per target clause:
+//
+//	Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
+func ForTargets(entries ...game.TargetPurpose) game.Purpose {
+	return game.Purpose{Targets: game.ForTargets(entries...)}
+}
+
+// RemovalReturning is the target entry for a removal whose target's
+// controller is given something back (#2679): Rapid Hybridization is
+// ForTargets(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1,
+// TokenPower: 3, TokenToughness: 3})).
+func RemovalReturning(slot int, r game.TargetReturn) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, Returns: r}
+}
+
+// DamageToTarget is the target entry for "deals n damage to" the pick
+// of clause `slot`: Lightning Bolt is ForTargets(DamageToTarget(0, 3)).
+func DamageToTarget(slot, n int) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, Damage: n}
 }
 
 // ModeWithPurpose is a mode bullet with its declared purpose: the

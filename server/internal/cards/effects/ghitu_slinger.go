@@ -15,7 +15,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Echo("Ghitu Slinger", "{2}{R}"),
-			Targeting(WhenThisEnters("Ghitu Slinger — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2)), TargetAny()),
+			TriggerWithPurpose(Targeting(WhenThisEnters("Ghitu Slinger — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
 		},
 	})
 }

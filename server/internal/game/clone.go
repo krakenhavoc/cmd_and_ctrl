@@ -370,6 +370,9 @@ func (g *Game) cloneLocked() *Game {
 	// finish_blocks reopens it, so the attacker they had not blocked
 	// is not "unblocked" to ninjutsu until they choose again.
 	out.blocksDeclared = copyBoolMap(g.blocksDeclared)
+	// #2021: and whether the declaration as a whole is over, for the
+	// same reason.
+	out.blockDeclarationClosed = g.blockDeclarationClosed
 	out.attacksDeclared = g.attacksDeclared
 	// #716: and the combat damage steps' participation record rewinds
 	// with the combat it belongs to. An undo back into the priority
@@ -586,6 +589,8 @@ func cloneCard(c Card) Card {
 	// permanent was cast for. Its one slice would alias the live
 	// record into every undo snapshot under a value copy.
 	out.Provenance = c.Provenance.Clone()
+	// ADR 0137: the craft link is a slice, aliased by a value copy.
+	out.CraftedWith = cloneObjectRefs(c.CraftedWith)
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -628,6 +633,7 @@ func clonePlayer(p *Player) *Player {
 		BotDeck:               p.BotDeck,
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
+		CitysBlessing:         p.CitysBlessing,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -658,6 +664,7 @@ func clonePlayer(p *Player) *Player {
 	}
 	out.MaxHandSize = p.MaxHandSize
 	out.MaxHandSizeAt = p.MaxHandSizeAt
+	out.Speed = p.Speed
 	out.LandDropsPerTurn = p.LandDropsPerTurn
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
@@ -1093,6 +1100,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.announcedAttacks = src.announcedAttacks
 	g.attackDefenders = src.attackDefenders
 	g.blocksDeclared = src.blocksDeclared
+	g.blockDeclarationClosed = src.blockDeclarationClosed
 	g.attacksDeclared = src.attacksDeclared
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners
