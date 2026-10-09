@@ -12,27 +12,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 //	Soul Tether — "Create a Heartwood token."
 //
-// THE SIMPLIFICATION. Mana restrictions are decided from the object
-// being paid for, and the spend context carries no "cast from" zone, so
-// "can't be spent to cast spells from your hand" has no tag. The mana is
-// restricted to activated-ability costs instead, which is a strict
-// subset of what is printed: it also can't cast a spell from the
-// graveyard, exile or command zone, as the printed text allows.
+// The mana carries ManaRestrictNotFromHand (#2811): the spend context
+// knows the zone a spell is cast from, so the mana pays for activated
+// abilities and for spells cast from anywhere but the hand.
+//
+// No simplification.
 func init() {
 	const id = "c8b3a070-408e-4a8f-8597-6476eeec0a5f"
 	Register(Spec{
 		OracleID:     id,
 		Name:         "Heartwood Crafter",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Its mana can only pay for activated abilities, so it can't help cast a spell from your graveyard, exile or command zone either.",
-		},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersPrepared()},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			Produced:     "{C}",
 			Label:        "Add {C} (can't be spent to cast spells from your hand)",
-			Restrictions: []string{ManaRestrictActivate},
+			Restrictions: []string{ManaRestrictNotFromHand},
 		}},
 	})
 	Register(Spec{
