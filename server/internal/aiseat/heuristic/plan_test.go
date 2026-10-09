@@ -127,37 +127,14 @@ func TestPlanCastsTheRockFirst(t *testing.T) {
 // commander's seven mana buys more as the two spells, and the draw
 // spell goes first (§4).
 func TestPlanTakesTwoSpellsOverTheTaxedCommander(t *testing.T) {
-	cmdr := creature(cardID(999), 0, "Tatyova, Benthic Druid", 3, 3, commander())
-	cmdr.ManaCost = "{3}{G}{U}"
-	cmdr.TypeLine = "Legendary Creature — Merfolk Druid"
-	cmdr.AbilityRows = []protocol.AbilityRowView{{Kind: "triggered", Label: "Landfall"}}
-	oracle := creature(cardID(20), 0, "Oracle of Mul Daya", 2, 2)
-	oracle.ManaCost = "{3}{G}"
-	oracle.AbilityRows = []protocol.AbilityRowView{{Kind: "static", Label: "You may play an additional land on each of your turns."}, {Kind: "static", Label: "Play with the top card of your library revealed."}}
-	harmonize := protocol.CardView{InstanceID: cardID(21), Name: "Harmonize", Owner: seatID(0).String(), Controller: seatID(0).String(),
-		TypeLine: "Sorcery", ManaCost: "{2}{G}{G}", KnownByYou: true, Purpose: &protocol.PurposeView{Draws: 3}}
-	me := newSeat(0, withHand(oracle, harmonize), withCommanderCasts(1))
-	me.Command = protocol.ZoneView{Kind: "command", Count: 1, Cards: []protocol.CardView{cmdr}}
-	var lands []protocol.CardView
-	for i := 0; i < 5; i++ {
-		lands = append(lands, planForest(cardID(100+i)))
-	}
-	for i := 0; i < 3; i++ {
-		lands = append(lands, planIsland(cardID(200+i)))
-	}
-	v := newView([]protocol.PlayerView{me, newSeat(1)}, withTurn(8, 0, "precombat_main"), withBattlefield(lands...))
-	tatyova := stampedCast(t, cardID(999), "Cast Tatyova, Benthic Druid from the command zone", "{5}{G}{U}")
-	tatyova.Params = mustJSON(t, map[string]any{"instance_id": cardID(999), "from_zone": "command"})
-	in := input(0, v,
-		passMove(0),
-		stampedCast(t, cardID(20), "Cast Oracle of Mul Daya", "{3}{G}"),
-		stampedCast(t, cardID(21), "Cast Harmonize", "{2}{G}{G}"),
-		tatyova,
-	)
+	in := taxedCommanderBoard(t, nil, 5, 3)
 	on, off, plan := decideBoth(t, in)
 	if got := moveLabel(in, off); got != "Cast Tatyova, Benthic Druid from the command zone" {
 		t.Fatalf("with the plan off the bot casts %q; this board no longer shows the problem", got)
 	}
+	// Oracle declares no purpose here, so it is not ordered as ramp
+	// (Config.PlanLandDropsAsRamp reads the purpose, never the name):
+	// the draw goes first.
 	if got := moveLabel(in, on); got != "Cast Harmonize" {
 		t.Errorf("the plan casts %q (%s), want Harmonize first", got, on.Reason)
 	}
@@ -167,11 +144,95 @@ func TestPlanTakesTwoSpellsOverTheTaxedCommander(t *testing.T) {
 
 	// Seven lands: the two spells need eight, and the commander is
 	// still the one cast.
-	v.Battlefield.Cards = v.Battlefield.Cards[:7]
-	in.View = v
+	in = taxedCommanderBoard(t, nil, 5, 2)
 	if on, _, _ := decideBoth(t, in); moveLabel(in, on) != "Cast Tatyova, Benthic Druid from the command zone" {
 		t.Errorf("with seven lands the bot casts %q (%s), want the commander", moveLabel(in, on), on.Reason)
 	}
+}
+
+// TestPlanCastsTheExtraLandDropBeforeTheDraw is seq 402 as the catalog
+// declares Oracle of Mul Daya today (purpose.extra_land_drops 1): the
+// owner's decision of 2026-10-08 (ADR 0136 §4, amendment) orders a
+// permanent that grants extra land drops with the mana members, so
+// Oracle is cast first and a land Harmonize draws can still be played
+// this turn. It fails with Config.PlanLandDropsAsRamp off.
+//
+// Six Forests and two Islands: Oracle's {3}{G} leaves {G}{G} for
+// Harmonize however the auto-tapper pays it.
+func TestPlanCastsTheExtraLandDropBeforeTheDraw(t *testing.T) {
+	in := taxedCommanderBoard(t, &protocol.PurposeView{ExtraLandDrops: 1}, 6, 2)
+	d, tr, err := heuristic.New().DecideTraced(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := moveLabel(in, d); got != "Cast Oracle of Mul Daya" {
+		t.Errorf("the plan casts %q (%s), want Oracle of Mul Daya first", got, d.Reason)
+	}
+	if len(tr.Plan) != 2 || tr.Plan[0].Label != "Cast Oracle of Mul Daya" || tr.Plan[1].Label != "Cast Harmonize" {
+		t.Errorf("trace plan = %+v, want Oracle then Harmonize", tr.Plan)
+	}
+
+	cfg := heuristic.DefaultConfig()
+	cfg.PlanLandDropsAsRamp = false
+	off, otr, err := heuristic.NewWithConfig(cfg).DecideTraced(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := moveLabel(in, off); got != "Cast Harmonize" {
+		t.Errorf("with PlanLandDropsAsRamp off the plan casts %q (%s), want Harmonize first", got, off.Reason)
+	}
+	if len(otr.Plan) != 2 {
+		t.Errorf("with PlanLandDropsAsRamp off the plan is %+v, want the same two members", otr.Plan)
+	}
+
+	// Five Forests and three Islands: the auto-tapper may pay Oracle's
+	// generic with Forests and leave Harmonize one {G} short, so the
+	// amended order cannot be promised. The set is still the best one,
+	// so it falls back to the order before the amendment: the draw
+	// first, then Oracle, rather than the commander alone.
+	in = taxedCommanderBoard(t, &protocol.PurposeView{ExtraLandDrops: 1}, 5, 3)
+	d, tr, err = heuristic.New().DecideTraced(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := moveLabel(in, d); got != "Cast Harmonize" || len(tr.Plan) != 2 {
+		t.Errorf("on five Forests the plan casts %q (%s) with plan %+v, want Harmonize then Oracle", got, d.Reason, tr.Plan)
+	}
+}
+
+// taxedCommanderBoard is seq 402's board: `forests` Forests and
+// `islands` Islands, Tatyova in the command zone with {2} of tax, and
+// Oracle of Mul Daya (with oraclePurpose) and Harmonize in hand.
+func taxedCommanderBoard(t *testing.T, oraclePurpose *protocol.PurposeView, forests, islands int) aiseat.Input {
+	t.Helper()
+	cmdr := creature(cardID(999), 0, "Tatyova, Benthic Druid", 3, 3, commander())
+	cmdr.ManaCost = "{3}{G}{U}"
+	cmdr.TypeLine = "Legendary Creature — Merfolk Druid"
+	cmdr.AbilityRows = []protocol.AbilityRowView{{Kind: "triggered", Label: "Landfall"}}
+	oracle := creature(cardID(20), 0, "Oracle of Mul Daya", 2, 2)
+	oracle.ManaCost = "{3}{G}"
+	oracle.AbilityRows = []protocol.AbilityRowView{{Kind: "static", Label: "You may play an additional land on each of your turns."}, {Kind: "static", Label: "Play with the top card of your library revealed."}}
+	oracle.Purpose = oraclePurpose
+	harmonize := protocol.CardView{InstanceID: cardID(21), Name: "Harmonize", Owner: seatID(0).String(), Controller: seatID(0).String(),
+		TypeLine: "Sorcery", ManaCost: "{2}{G}{G}", KnownByYou: true, Purpose: &protocol.PurposeView{Draws: 3}}
+	me := newSeat(0, withHand(oracle, harmonize), withCommanderCasts(1))
+	me.Command = protocol.ZoneView{Kind: "command", Count: 1, Cards: []protocol.CardView{cmdr}}
+	var bf []protocol.CardView
+	for i := 0; i < forests; i++ {
+		bf = append(bf, planForest(cardID(100+i)))
+	}
+	for i := 0; i < islands; i++ {
+		bf = append(bf, planIsland(cardID(200+i)))
+	}
+	v := newView([]protocol.PlayerView{me, newSeat(1)}, withTurn(8, 0, "precombat_main"), withBattlefield(bf...))
+	tatyova := stampedCast(t, cardID(999), "Cast Tatyova, Benthic Druid from the command zone", "{5}{G}{U}")
+	tatyova.Params = mustJSON(t, map[string]any{"instance_id": cardID(999), "from_zone": "command"})
+	return input(0, v,
+		passMove(0),
+		stampedCast(t, cardID(20), "Cast Oracle of Mul Daya", "{3}{G}"),
+		stampedCast(t, cardID(21), "Cast Harmonize", "{2}{G}{G}"),
+		tatyova,
+	)
 }
 
 // TestPlanDrawsBeforeThePermanent is `cantrip-before-the-permanent`

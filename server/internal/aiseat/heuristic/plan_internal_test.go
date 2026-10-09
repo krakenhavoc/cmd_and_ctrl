@@ -99,7 +99,7 @@ func TestManaModelReadsWhatTheSeatCanMakeNow(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			p := New()
 			st := p.newState(aiseat.Input{Seat: me, View: planSeatView(me, c.bf, c.pool...)})
-			got := sortedUnits(st.manaAvailable())
+			got := sortedUnits(st.manaAvailable(false))
 			want := sortedUnits(c.want)
 			if len(got) != len(want) {
 				t.Fatalf("units = %v, want %v", got, want)
@@ -282,5 +282,47 @@ func TestPlanSharesTheRampPremium(t *testing.T) {
 	}
 	if want := vals[0] + vals[1] - p.cfg.RampPerMana; math.Abs(pl.value-want) > 1e-9 {
 		t.Errorf("two rocks are worth %v, want %v: the one mana of deficit is claimed once", pl.value, want)
+	}
+}
+
+// TestManaModelRunsAFilterLand is Flooded Grove under
+// Config.PlanFilterLands (ADR 0136 §2): "{G/U}, {T}: Add {G}{G}, {G}{U},
+// or {U}{U}" is a filter, fed by a green or blue mana, rather than its
+// plain {C} row. Off, the land is its {C} row, as PR 4 shipped. With
+// nothing to feed it, it is still its {C}.
+func TestManaModelRunsAFilterLand(t *testing.T) {
+	me := uuid.New()
+	grove := func() protocol.CardView {
+		return protocol.CardView{Name: "Flooded Grove", TypeLine: "Land", ManaAbilities: []protocol.ManaAbilityView{
+			{TapCost: true, Produced: "{C}"},
+			{TapCost: true, ManaCost: "{G/U}", Produced: "{G|U}{G|U}", ColorOptions: [][]string{{"G", "U"}, {"G", "U"}}}}}
+	}
+	gu := manaG | manaU
+	cases := []struct {
+		name string
+		on   bool
+		bf   []protocol.CardView
+		want []uint8
+	}{
+		{"off: its {C} row", false, []protocol.CardView{planLand("{U}"), grove()}, []uint8{manaU, manaC}},
+		{"on: an Island feeds it", true, []protocol.CardView{planLand("{U}"), grove()}, []uint8{gu, gu}},
+		{"on: a Swamp cannot feed it", true, []protocol.CardView{planLand("{B}"), grove()}, []uint8{manaB, manaC}},
+		{"on: alone it is its {C}", true, []protocol.CardView{grove()}, []uint8{manaC}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := New()
+			st := p.newState(aiseat.Input{Seat: me, View: planSeatView(me, c.bf)})
+			got := sortedUnits(st.manaAvailable(c.on))
+			want := sortedUnits(c.want)
+			if len(got) != len(want) {
+				t.Fatalf("units = %v, want %v", got, want)
+			}
+			for i := range got {
+				if got[i] != want[i] {
+					t.Fatalf("units = %v, want %v", got, want)
+				}
+			}
+		})
 	}
 }

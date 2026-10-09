@@ -26,7 +26,9 @@ import (
 //     (aiseat.Trace.Plan) named a next member that is not offered now,
 //     though no other seat acted in between. The next window is the
 //     seat's next one in which it holds priority: a prompt the first
-//     move raised as it resolved is not it. P6 holds them under 5% of
+//     move raised as it resolved is not it, and a member the seat cast
+//     itself before that window (at instant speed, with the first move
+//     still on the stack) is checked and found. P6 holds them under 5% of
 //     planned windows. It says how good the plan's mana model is: a
 //     miss is a plan that thought a second cast was payable and was
 //     wrong.
@@ -72,7 +74,8 @@ type TurnMana struct {
 	// Checked is the windows in which a plan's next member was looked
 	// for: the seat's next main-phase window with an empty stack after
 	// it made the plan's first move, in the same phase, with no other
-	// seat having acted in between.
+	// seat having acted in between; or the window before it in which the
+	// seat cast that member itself.
 	Checked int `json:"plan_checked"`
 	// Misses is the Checked windows in which that member was not
 	// offered.
@@ -180,6 +183,17 @@ func (w *turnManaWatch) Observe(ev aiseat.DecisionEvent) {
 	v := &ev.Input.View
 	s := w.seat(ev.Seat)
 	main := ownMainPhaseEmptyStack(v, ev.Seat)
+
+	// The seat cast the plan's next member itself before that window
+	// came, at instant speed with the first member still on the stack:
+	// the plan's second cast was payable, and it was made. That is a
+	// checked window with no miss, not a miss because the card has left
+	// the hand by the time the check looks for it.
+	if p := s.pending; p != nil && ok && dispatched.Kind == legal.KindCast && dispatched.Source == p.source &&
+		p.turn == v.Turn.Seq && !p.interrupted {
+		s.pending = nil
+		s.checked++
+	}
 
 	// The check waits for a window in which the seat holds priority: a
 	// prompt the plan's first move raised as it resolved (a search, a

@@ -305,6 +305,18 @@ type Config struct {
 	// best single cast prices highest (ADR 0136 §1). Ten, so at most
 	// 1,024 sets. Zero or less considers every card on offer.
 	PlanMaxCards int
+	// PlanLandDropsAsRamp orders a permanent that declares extra land
+	// drops (purpose.extra_land_drops) with the plan's mana members,
+	// ahead of its draws, so a land a draw finds can still be played
+	// this turn (ADR 0136 §4, the amendment of 2026-10-08). Off (the
+	// zero value) orders it with the rest, as PR 4 shipped.
+	PlanLandDropsAsRamp bool
+	// PlanFilterLands makes a filter land (Flooded Grove's "{G/U}, {T}:
+	// Add {G}{G}, {G}{U}, or {U}{U}") a filter in the plan's mana model,
+	// as ADR 0136 §2 describes one, its input paid with the colours it
+	// names, instead of the plain {C} row that nets as much. Off (the
+	// zero value) models the land as its {C} row, as PR 4 shipped.
+	PlanFilterLands bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -549,6 +561,8 @@ func DefaultConfig() Config {
 		DiscardLandFloor:    2.50,
 		PlanTurnMana:        true,
 		PlanMaxCards:        10,
+		PlanLandDropsAsRamp: true,
+		PlanFilterLands:     true,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -683,6 +697,8 @@ func BaselineConfig() Config {
 	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
 	c.PlanTurnMana = false
 	c.PlanMaxCards = 0
+	c.PlanLandDropsAsRamp = false
+	c.PlanFilterLands = false
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
 	c.PricePutsFromHand = false

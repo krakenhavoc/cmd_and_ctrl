@@ -105,6 +105,8 @@ A small, pure function under `aiseat/heuristic`, reading only the view:
 - **What each member adds.** A mana rock or a hasty mana creature, once it has resolved, adds its entry for the members after it. A ramp spell's lands add mana this turn only if they enter untapped, which the view does not say today ([Q4](#questions-for-the-owner-answered)).
 - **Feasible.** A set is feasible if, in the plan's order (§4), each member's cost can be paid from what is left, coloured symbols first and then generic. A hybrid symbol may be paid by either colour. A Phyrexian symbol is paid with mana here; its life is already priced by `valueOf`. A set of one is always feasible: the engine offered the move, and its answer outranks the model's.
 
+A filter land's input is paid with the colours its cost names: Flooded Grove's `{G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}` is fed by a green or blue mana, and when nothing can feed it the land counts as its plain {C} row. PR 4 counted such a land as its {C} row always, because the two rows net the same mana. PR 4b makes it the filter this section describes, as `Config.PlanFilterLands`, on by default and off in `BaselineConfig()`.
+
 The model is advisory. If it is wrong, the second member is not offered in the next window, and the bot re-plans with what it has. The worst case is the one-spell turn it plays today. PR 2's arena counts these misses (§8).
 
 ### 3. What a plan is worth
@@ -132,6 +134,10 @@ The plan says which spells; the order says which one now:
 3. **Then the rest**, highest value first.
 
 The order changes no price. It only picks which member of an already chosen plan is cast first ([Q5](#questions-for-the-owner-answered) offers a draw premium as well).
+
+**Amendment 2026-10-08: extra land drops order as ramp.** The owner's decision on the review game's seq 402 and 475, where the plan is Harmonize and Oracle of Mul Daya: the Oracle is cast first. A permanent that grants extra land drops counts as a mana member in item 1, ahead of the draws, so a land a draw finds can still be played this turn. The bot reads this from the card's declared purpose (`purpose.extra_land_drops`, #2678), never from its name. Oracle of Mul Daya, Exploration, Azusa and Dryad of the Ilysian Grove declare it today. An instant or sorcery that declares it (Explore) is not a permanent and keeps its place. Among the mana members the cheapest still goes first, so a Signet goes before an Oracle. It is `Config.PlanLandDropsAsRamp`, on by default and off in `BaselineConfig()`.
+
+The amendment changes which member goes first, never which sets the bot can afford. §2 checks a set in the plan's order. If the extra-land-drop member cannot go first and still leave the later members payable, the set is checked in the order before the amendment, and the draw goes first. At seq 402 and 475 the Oracle goes first. That needs §2's filter entry for Flooded Grove (`Config.PlanFilterLands`, below): with the Grove counted as its plain {C} row, the bot's three other green sources are exactly the three {G} the two spells need, and the model cannot promise that the auto-tapper leaves a Forest after paying the Oracle's generic mana.
 
 ### 5. Instants: cast now, or hold for the end step (#2668)
 
@@ -204,8 +210,8 @@ Prices are today's (re-ranked on `a5f7d2639`). Mana counts use the model in §2.
 | seq 180 | Explosive Vegetation +2.80 | Explosive Vegetation (the best pair, Signet + Rampant Growth, is +1.60) | +2.80 | unchanged |
 | seq 226 | Uro +7.71 | Signet, Uro (5 of 5) | +8.51 | Arcane Signet |
 | seq 292 | Tatyova +3.71 | Signet, Tatyova (7 of 7) | +4.51 | Arcane Signet |
-| seq 402 | Tatyova +3.71 | Oracle, Harmonize (8 of 8). Adding the Signet makes it 10 of 9 | +5.16 | Oracle of Mul Daya |
-| seq 475 | Tatyova +3.71 | Oracle, Harmonize (8 of 9). With the Signet it is 10 of 10 but worth +4.96, so the Signet is left out | +5.16 | Oracle of Mul Daya |
+| seq 402 | Tatyova +3.71 | Oracle, Harmonize (8 of 8). Adding the Signet makes it 10 of 9 | +5.16 | Oracle of Mul Daya (§4's amendment of 2026-10-08; PR 4 cast Harmonize first) |
+| seq 475 | Tatyova +3.71 | Oracle, Harmonize (8 of 9). With the Signet it is 10 of 10 but worth +4.96, so the Signet is left out | +5.16 | Oracle of Mul Daya, as seq 402 |
 | cantrip position, with today's purposes | Exquisite Blood +1.90 | Night's Whisper, Bastion of Remembrance (5 of 5) | +2.70 | Night's Whisper (draws first) |
 | `develop-before-harrow` (gated) | Peregrine Drake +3.70 | Peregrine Drake. Harrow, then Eureka Moment on the lands it nets, is +2.00 | +3.70 | unchanged |
 
