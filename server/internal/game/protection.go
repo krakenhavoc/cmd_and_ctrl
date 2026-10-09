@@ -341,6 +341,9 @@ var protectionCardTypes = map[string]string{
 	"planeswalkers": "planeswalker",
 	"sorcery":       "sorcery",
 	"sorceries":     "sorcery",
+	// Kindred has no plural: "protection from kindred". Offered by the
+	// chosen-card-type prompt (#2742), so the grammar has to read it.
+	"kindred": "kindred",
 }
 
 // singulars returns the candidate singular spellings of a printed
@@ -432,6 +435,51 @@ func ProtectionFromColor(color string) string {
 	}
 	return ""
 }
+
+// ChoosableCardTypes is the answer list for "choose a card type"
+// (Serra's Emissary, #2742): CR 205.2a's card types, minus the six that
+// exist only in other formats (conspiracy, dungeon, phenomenon, plane,
+// scheme, vanguard), in that rule's order and capitalised as a type
+// line spells them. Each one is a type ProtectionFromCardType can turn
+// into a token.
+var ChoosableCardTypes = []string{
+	"Artifact", "Battle", "Creature", "Enchantment", "Instant",
+	"Kindred", "Land", "Planeswalker", "Sorcery",
+}
+
+// protectionCardTypePlurals is how a protection token spells each
+// choosable card type: the printed plural ("protection from
+// creatures"), which keeps the badge in a card's own words.
+var protectionCardTypePlurals = map[string]string{
+	"artifact": "artifacts", "battle": "battles", "creature": "creatures",
+	"enchantment": "enchantments", "instant": "instants", "kindred": "kindred",
+	"land": "lands", "planeswalker": "planeswalkers", "sorcery": "sorceries",
+}
+
+// ProtectionFromCardType is the token for "protection from <card
+// type>", given a card type in any case ("Creature"). Empty for a word
+// that is not a card type in the grammar.
+//
+// The one place a card-type PICK becomes a protection token, as
+// ProtectionFromColor is for a colour pick (#2742).
+func ProtectionFromCardType(cardType string) string {
+	if plural, ok := protectionCardTypePlurals[strings.ToLower(strings.TrimSpace(cardType))]; ok {
+		return protectionPrefix + plural
+	}
+	return ""
+}
+
+// ProtectionFromTheChosenCardType is "protection from the chosen card
+// type" as a PLAYER keyword (Serra's Emissary's "You … have protection
+// from the chosen card type", #2742).
+//
+// It is not a quality the grammar parses, and it never reaches a
+// permanent's ability list. It is a placeholder in a Spec's
+// PlayerKeywords that the player walk (playerAbilityTokensLocked)
+// replaces with ProtectionFromCardType of the granting permanent's
+// answer, which lives on that permanent (Card.ChosenOption). Unanswered,
+// it grants nothing.
+const ProtectionFromTheChosenCardType = protectionPrefix + "the chosen card type"
 
 // ProtectionQualities is THE reader: every protection this card has
 // right now, parsed.

@@ -887,3 +887,31 @@ to know who "your" is. It joins the grammar as one more closed shape.
 - **Still open.** Protection from a chosen player, granted to a
   *player*, still protects from nobody (§A4). No catalogued card
   prints it.
+
+## Amendment (2026-10-08, #2742): protection from the chosen card type
+
+Serra's Emissary prints "As this creature enters, choose a card type.
+You and creatures you control have protection from the chosen card
+type." The answer lives on the Emissary, but the protection belongs to
+other objects: its controller and each of their creatures. The chosen
+player quality (§7) binds from the protected card, so it can't be
+copied for this. Instead the protection is resolved where the answer
+is.
+
+- **The choice.** The Sieges' option pick (`ChooseOptionAsEnters`), over
+  `game.ChoosableCardTypes`: CR 205.2a's card types minus the six that
+  exist only in other formats. It is stored on `Card.ChosenOption`.
+  That field's lifecycle is exactly what CR 614.12 and CR 400.7 need,
+  and the Emissary has no anchor-word gate that could read the same
+  field.
+- **Creatures.** A layer-6 static appends the concrete token,
+  `game.ProtectionFromCardType(answer)`, to each creature its
+  controller controls. The token is an ordinary card-type quality, so
+  the four consumers, the view and the bot read it unchanged.
+- **The player.** `game.ProtectionFromTheChosenCardType` is a
+  placeholder a Spec may put in `PlayerKeywords`. It is not grammar:
+  `playerAbilityTokensLocked` swaps it for the concrete token while it
+  holds the granting permanent, and `checkPlayerKeywords` accepts it by
+  name.
+- **Unanswered** — neither half grants anything.
+- **Kindred** joins the card-type words, because the prompt offers it.
