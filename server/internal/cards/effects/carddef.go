@@ -21,9 +21,12 @@ func lookupDef(key string) *game.CardDef { return defs[key] }
 // fileDef is the one writer of `defs`: it stamps every triggered row of
 // the definition with its catalog identity (the key and its index —
 // game.IdentifyCatalogRows, ADR 0041 P9) and files it. A row the engine
-// can name is a row whose waiting stack item can be restored.
+// can name is a row whose waiting stack item can be restored. It also
+// marks which rows are source-blind (#1968, source_blind.go), on the
+// copy IdentifyCatalogRows made, so the card file's slice is untouched.
 func fileDef(key string, d *game.CardDef) {
 	game.IdentifyCatalogRows(key, d)
+	classifySourceBlind(d)
 	defs[key] = d
 }
 

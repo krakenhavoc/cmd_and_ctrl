@@ -11,6 +11,7 @@
     exportSettings,
     importSettings,
     fingerprintSettings,
+    type TriggerOrderMode,
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
@@ -816,21 +817,26 @@
               a card you cannot play is still greyed out.
             </p>
 
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.alwaysAskTriggerOrder}
+            <label class="slider-row">
+              <span>Order my triggers</span>
+              <select
+                value={$settings.gameplay.triggerOrder}
                 onchange={(e) =>
-                  change("gameplay", "alwaysAskTriggerOrder", e.currentTarget.checked)}
-              />
-              Always ask me to order my triggers
-              {#if isFresh("gameplay.alwaysAskTriggerOrder")}<span class="saved">✓ saved</span>{/if}
+                  change("gameplay", "triggerOrder", e.currentTarget.value as TriggerOrderMode)}
+              >
+                <option value="when_it_matters">Ask only when the order matters (default)</option>
+                <option value="always">Always ask</option>
+                <option value="never">Never ask: order them for me</option>
+              </select>
+              {#if isFresh("gameplay.triggerOrder")}<span class="saved">✓</span>{/if}
             </label>
             <p class="help">
-              When several of your triggers go on the stack together, the game orders them for you
-              if every order gives the same result (a board of prowess creatures, for example). Turn
-              this on to be asked every time, so you choose which resolves first while your
-              opponents can still respond between them.
+              When several of your triggers go on the stack together, you choose which resolves
+              first. By default the game orders them for you when every order gives the same result:
+              a board of prowess creatures, or copies of the same ability with no targets, like two
+              Soul Wardens. Always ask lets you choose every time, so you pick which resolves first
+              while your opponents can still respond between them. Never ask puts them on the stack
+              in the order they triggered, even when the order could matter.
             </p>
 
             <AutoAnswersSettings />

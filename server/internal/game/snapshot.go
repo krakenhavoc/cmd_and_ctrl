@@ -644,9 +644,16 @@ type playerSnapshot struct {
 	// file written before it restores with false for every seat, which
 	// reads as a fresh round of decisions.
 	MulliganDecided bool `json:"mulliganDecided,omitempty"`
-	// TriggerOrderAlwaysAsk is Player.TriggerOrderAlwaysAsk (#1530).
-	// Additive: a file written before it restores with false, the default.
+	// TriggerOrderAlwaysAsk is #1530's always-ask flag, true when
+	// Player.TriggerOrder is "always". Still written beside TriggerOrder
+	// so a binary from before #1968, which reads only this key, restores
+	// an "always" seat as always; a "never" seat reads there as the
+	// default. Additive: a file written before it restores with false.
 	TriggerOrderAlwaysAsk bool `json:"triggerOrderAlwaysAsk,omitempty"`
+	// TriggerOrder is Player.TriggerOrder (#1968): "always" or "never",
+	// omitted for the default. Additive: a file written before it
+	// restores from TriggerOrderAlwaysAsk (restoredTriggerOrder).
+	TriggerOrder string `json:"triggerOrder,omitempty"`
 	// AutoAnswers is Player.AutoAnswers (ADR 0127 §8). Additive: a file
 	// written before it restores with none, which asks every prompt;
 	// the client's reconcile sends the rules again on the next frame.
@@ -2126,7 +2133,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
+		TriggerOrder:          string(p.TriggerOrder),
 		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
@@ -2996,44 +3004,44 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                    p.ID,
-		Name:                  p.Name,
-		Seat:                  p.Seat,
-		Life:                  p.Life,
-		Poison:                p.Poison,
-		Energy:                p.Energy,
-		Library:               restoreZone(p.Library, ZoneLibrary),
-		Hand:                  restoreZone(p.Hand, ZoneHand),
-		Graveyard:             restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:               restoreZone(p.Command, ZoneCommand),
-		Emblems:               restoreZone(p.Emblems, ZoneCommand),
-		TurnsBegun:            p.TurnsBegun,
-		UpkeepsBegun:          p.UpkeepsBegun,
-		EndStepTurn:           p.EndStepTurn,
-		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:            p.Eliminated,
-		HandKept:              p.HandKept,
-		MulliganDecided:       p.MulliganDecided,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
-		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
-		MulligansTaken:        p.MulligansTaken,
-		DeckImported:          p.DeckImported,
-		UndosRemaining:        p.UndosRemaining,
-		DiscordID:             p.DiscordID,
-		DiscordAvatarHash:     p.DiscordAvatarHash,
-		DisplayName:           p.DisplayName,
-		IsBot:                 p.IsBot,
-		BotTier:               p.BotTier,
-		BotDeck:               p.BotDeck,
-		Agent:                 p.Agent,
-		AgentClient:           p.AgentClient,
-		CitysBlessing:         p.CitysBlessing,
-		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
-		Counters:              copyStringIntMap(p.Counters),
-		MaxHandSize:           p.MaxHandSize,
-		MaxHandSizeAt:         p.MaxHandSizeAt,
-		Speed:                 p.Speed,
-		LandDropsPerTurn:      p.LandDropsPerTurn,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            restoreZone(p.Library, ZoneLibrary),
+		Hand:               restoreZone(p.Hand, ZoneHand),
+		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:            restoreZone(p.Command, ZoneCommand),
+		Emblems:            restoreZone(p.Emblems, ZoneCommand),
+		TurnsBegun:         p.TurnsBegun,
+		UpkeepsBegun:       p.UpkeepsBegun,
+		EndStepTurn:        p.EndStepTurn,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulliganDecided:    p.MulliganDecided,
+		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
+		AutoAnswers:        copyAutoAnswers(p.AutoAnswers),
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		Agent:              p.Agent,
+		AgentClient:        p.AgentClient,
+		CitysBlessing:      p.CitysBlessing,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
+		MaxHandSizeAt:      p.MaxHandSizeAt,
+		Speed:              p.Speed,
+		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never

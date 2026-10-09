@@ -618,33 +618,33 @@ func cloneCard(c Card) Card {
 
 func clonePlayer(p *Player) *Player {
 	out := &Player{
-		ID:                    p.ID,
-		Name:                  p.Name,
-		Seat:                  p.Seat,
-		Life:                  p.Life,
-		Poison:                p.Poison,
-		Energy:                p.Energy,
-		TurnsBegun:            p.TurnsBegun,
-		UpkeepsBegun:          p.UpkeepsBegun,
-		EndStepTurn:           p.EndStepTurn,
-		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:            p.Eliminated,
-		HandKept:              p.HandKept,
-		MulliganDecided:       p.MulliganDecided,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
-		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
-		MulligansTaken:        p.MulligansTaken,
-		DeckImported:          p.DeckImported,
-		UndosRemaining:        p.UndosRemaining,
-		DiscordID:             p.DiscordID,
-		DiscordAvatarHash:     p.DiscordAvatarHash,
-		DisplayName:           p.DisplayName,
-		IsBot:                 p.IsBot,
-		BotTier:               p.BotTier,
-		BotDeck:               p.BotDeck,
-		Agent:                 p.Agent,
-		AgentClient:           p.AgentClient,
-		CitysBlessing:         p.CitysBlessing,
+		ID:                p.ID,
+		Name:              p.Name,
+		Seat:              p.Seat,
+		Life:              p.Life,
+		Poison:            p.Poison,
+		Energy:            p.Energy,
+		TurnsBegun:        p.TurnsBegun,
+		UpkeepsBegun:      p.UpkeepsBegun,
+		EndStepTurn:       p.EndStepTurn,
+		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:        p.Eliminated,
+		HandKept:          p.HandKept,
+		MulliganDecided:   p.MulliganDecided,
+		TriggerOrder:      p.TriggerOrder,
+		AutoAnswers:       copyAutoAnswers(p.AutoAnswers),
+		MulligansTaken:    p.MulligansTaken,
+		DeckImported:      p.DeckImported,
+		UndosRemaining:    p.UndosRemaining,
+		DiscordID:         p.DiscordID,
+		DiscordAvatarHash: p.DiscordAvatarHash,
+		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
+		Agent:             p.Agent,
+		AgentClient:       p.AgentClient,
+		CitysBlessing:     p.CitysBlessing,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -1011,23 +1011,23 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ID = src.ID
 	g.CreatedAt = src.CreatedAt
 	g.State = src.State
-	// #1530: a seat's trigger-ordering preference is a setting, not a
+	// #1530, #1968: a seat's trigger-ordering preference is a setting, not a
 	// play. It is set without an undo entry, so the snapshot predates
 	// it; carry the live value across the restore (by player ID) so an
 	// undo of some earlier action cannot flip it back.
 	// ADR 0127 §8: so are its standing answers, by the same rule.
-	live := make(map[uuid.UUID]bool, len(g.Seats))
+	live := make(map[uuid.UUID]TriggerOrderMode, len(g.Seats))
 	liveAnswers := make(map[uuid.UUID]map[string]AutoAnswer, len(g.Seats))
 	for _, p := range g.Seats {
 		if p != nil {
-			live[p.ID] = p.TriggerOrderAlwaysAsk
+			live[p.ID] = p.TriggerOrder
 			liveAnswers[p.ID] = p.AutoAnswers
 		}
 	}
 	g.Seats = src.Seats
 	for _, p := range g.Seats {
 		if p != nil {
-			p.TriggerOrderAlwaysAsk = live[p.ID]
+			p.TriggerOrder = live[p.ID]
 			p.AutoAnswers = copyAutoAnswers(liveAnswers[p.ID])
 		}
 	}

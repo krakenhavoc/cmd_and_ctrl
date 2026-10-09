@@ -3473,3 +3473,139 @@ it is wrong (a counter you put on an opponent's planeswalker by an effect that n
 credited), never stronger. A planeswalker entering with its counters counts (CR 122.6: "put" covers an
 object given counters as it enters). The card side is `effects.WheneverYouPutLoyaltyCountersOnAPlaneswalker`
 (`loyalty_counter_trigger.go`).
+
+
+## Amendment 2026-10-09 — three trigger-order modes, and copies of one ability need no order (#1968) · Accepted · S60
+
+Issue [#1968](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1968). Builds on #1511's skip and #1530's
+"always ask", both above. Item 1 of [#1530](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1530)
+(Mentor and Sokka boards) is unchanged.
+
+### Owner decisions (2026-10-09)
+
+1. #1530's checkbox becomes a three-way setting, `gameplay.triggerOrder`:
+   - **Ask only when the order matters** (`when_it_matters`): the default, and the old checkbox off.
+   - **Always ask** (`always`): the old checkbox on.
+   - **Never ask: order them for me** (`never`): no CR 603.3b prompt for this seat at all.
+2. When the game orders a seat's triggers, it uses **the order they triggered in**: the order the batch was
+   collected in, which is what every skipped batch has always used.
+3. The default skip widens to copies of the same ability with no targets and no modes, from different source
+   objects too: two Soul Wardens, or a set of tokens with the same trigger.
+
+### Decision: the mode
+
+- **`Player.TriggerOrder` (`game.TriggerOrderMode`) replaces `Player.TriggerOrderAlwaysAsk`.** The zero value
+  is `when_it_matters`, so a seat that never chose has the default. `seatNeedsTriggerOrder(items, mode)` returns
+  false for `never`, keeps #1530's rule for `always` (any batch of two or more with an item not yet `Ordered`),
+  and runs the skips for `when_it_matters`. A mode this binary does not know behaves as the default. A `never`
+  batch is placed by the same APNAP drain as any other, in queue order, and it still waits for other seats'
+  prompts (CR 603.3b is APNAP).
+- **Wire.** `set_trigger_order_preference` takes `{trigger_order: "when_it_matters" | "always" | "never"}`. The
+  #1530 form `{always_ask: bool}` is still read for a cached client: `true` is `always`, `false` is
+  `when_it_matters`, and `trigger_order` wins when both are sent. The seat's own `PlayerView` carries
+  `trigger_order` (`"always"` or `"never"`, absent for the default) and still carries
+  `trigger_order_always_ask` (true for `always`) for an older client. Both are private to the seat.
+- **Snapshot, additive.** The seat gains `triggerOrder` (recorded with `-update-shape`, no bump). An `always` seat
+  still writes `triggerOrderAlwaysAsk: true`, so a binary from before this change restores it as always; a
+  `never` seat reads there as the default. A file from before it has only the boolean, and `true` restores as
+  `always`. An unknown `triggerOrder` is kept as it is, so a roll-forward gets it back.
+- **Undo** carries the live mode across `RestoreFrom`, as it carried the flag. It mints no undo entry.
+- **Bots** are unchanged: they never set the mode, so they have the default and answer any prompt with their
+  policy as before.
+- **Client.** `gameplay.triggerOrder` (synced) replaces `gameplay.alwaysAskTriggerOrder` with no settings version
+  bump, because the old key says which blob it is: a stored or synced `alwaysAskTriggerOrder: true` becomes
+  `always`, anything else the default, and the old key is dropped. An account copy from an older client goes
+  through the same migration (ADR 0110 §4). The reconcile (`triggerOrderPref.ts`) sends the enum, and now
+  forgets a send the server refused (matched by the error frame's `replyTo`), so the next frame sends it again.
+
+### Decision: copies of one source-blind ability
+
+**A seat's batch drains without a prompt when every item is a copy of one source-blind catalog ability**
+(`copiesOfOneSourceBlindAbility`, `game/mutations.go`):
+
+- every item is a stamped catalog trigger (`Body` `catalog/triggered`) naming the **same `AbilityRef`**: the same
+  catalog key, slot, row and label. Two Soul Wardens share their oracle ID's row; tokens from one template share
+  the token's key; a granted bundle's rows share the bundle's key. Two different cards with the same words are
+  two rows and still ask;
+- the running catalog still hands that row back under the ref (`abilityRefMatched`), and the row is
+  **`TriggeredAbility.SourceBlind`**;
+- no item carries anything of its own: no targets, modes, payload, X or division.
+
+**`SourceBlind` is engine-owned.** The catalog registry computes it as it files each definition
+(`effects.fileDef` → `classifySourceBlind`, `cards/effects/source_blind.go`) and overwrites whatever a card file
+set. A row is source-blind only when it has no `Build`, no target or mode clause, and its `Effect` is an
+`effects.Do` whose every step is on a short list: `GainLife`, `DrawCards`, `MillCards`, `GetEnergy`,
+`CreateToken`, `BecomeTheMonarch`, and `Scry` / `Surveil` with no `Then`. The registry can see the steps because
+`Do`'s closure answers a probe item with them (and `Do` is `noinline`, so every Do closure shares one code
+pointer the registry can recognise). Anything it cannot see, a hand-written closure above all, is not
+source-blind and keeps asking. The safe direction: a row wrongly left off costs a click; a row wrongly put on
+takes a real choice away.
+
+### Why such copies commute (CR 603.3b)
+
+CR 603.3b lets the controller put their simultaneous triggers on the stack "in any order they choose". The
+order is theirs; the engine picks it only where every order gives the same game, or where they asked it to.
+
+A triggered ability on the stack "has the text of the ability that created it, and no other characteristics"
+(CR 603.3), and once triggered it exists independently of its source (CR 113.7a). Two copies of one row have the
+same text and the same controller (the drain buckets by controller). What can still differ between them is
+their source object, their trigger context, and anything chosen or recorded for each as it was put on the
+stack. The conditions above rule out the last; a source-blind effect reads neither of the first two. So each
+copy applies the same function of the game state, and resolving them in either order applies it, lets whatever
+it caused go on the stack above the next copy and resolve first, then applies it again. The two orders produce
+the same sequence of game states.
+
+**Exceptions found, which keep asking:**
+
+- **An effect that reads its source.** CR 608.2h: an effect that needs information from a specific object,
+  "including the source of the ability itself", uses that object's current or last known information. Two
+  sources can differ (counters, power, tapped, attachments), and one copy can change what the other reads: "Double
+  the +1/+1 counters on this creature, then put a +1/+1 counter on each other creature you control" from two
+  sources gives different boards in the two orders. No primitive on the list reads its source this way.
+- **An effect whose source performs the action**, damage above all. A source's damage carries its own
+  characteristics (lifelink, CR 702.15b; deathtouch; infect; commander damage), and state-based actions run
+  between the two resolutions, so the first copy's damage can remove a creature the second would have hit, and
+  which source dealt it decides who gains life. Impact Tremors is the example: two of them still ask
+  (`TestTwoImpactTremorsStillAsk`).
+- **An effect that reads its trigger context.** Two copies in one batch can come from different events ("you
+  gain life equal to that creature's toughness"). No primitive on the list reads the event.
+- **A continuation closure** (`Scry.Then`), a `Build` fill-in (per-source `Params`, payload or label), a target
+  or mode clause: each can differ per copy, or cannot be read.
+
+**What is left, stated honestly.** `GainLife` passes its source on as the gain's attribution (CR 119.9: "whenever
+a source causes [a player] to gain life"), and `Scry` / `Surveil` as the prompt's. So the two orders differ in
+which of two objects with the same ability is named first on two otherwise identical events. And, as with
+#1511, opponents get priority between the two resolutions (CR 117.3b), so they can respond with the first copy
+resolved and the second waiting; because the copies are interchangeable, which one is waiting does not change
+what a response can do. **Always ask** gives the choice back to anyone who wants it.
+
+Only the existing identical skip (same source and label) still ignores the trigger context. That shape is
+unchanged.
+
+### Rejected
+
+- **Widen by identity alone** (same oracle ID and label, no targets or modes). That is the shape #1511 rejected,
+  for the reason it gave: a shared row says the closures are the same code, not that they commute. The class
+  above is identity plus a check of what the effect reads.
+- **Simulate both orders on a clone and compare.** Exact in principle, but token IDs, prompts, hidden zones and
+  random effects make the two results different objects even when they are the same game, and it would cost a
+  clone per batch.
+- **Mark source-blind rows by hand in card files.** It would rot and could be wrong silently. The registry
+  derives it from what the row declares, and a card file cannot set it.
+
+### Tests
+
+- `game/trigger_order_mode_test.go`: each mode on two different untargeted triggers (when_it_matters and always
+  ask; never does not, and keeps the collected order); never on a targeted pair; APNAP across a `never` seat and
+  a default seat; always on an all-prowess batch; restore from the old boolean, the snapshot round trip, undo, the
+  refusals and the parser; two copies of a source-blind row (no prompt, collected order), of a row that is not
+  (prompt), under always (prompt), and with a target, mode, payload, X, another row or no stamp on one copy
+  (prompt).
+- `cards/effects/source_blind_test.go`: the `Do` probe; the classification table (a gain, a draw and a token,
+  scry with and without `Then`, a damage step, a hand-written closure, an empty `Do`, a target clause, a `Build`);
+  the registry marks Soul Warden and not Impact Tremors; two Soul Wardens see a creature enter, go on the stack
+  with no prompt and gain 2; two Impact Tremors still ask; under never they do not.
+- `actions/trigger_order_preference_test.go`: the enum through `Dispatch`, the old boolean, both keys.
+- `protocol/trigger_order_preference_view_test.go`: each seat sees only its own mode.
+- Client: `settingsTriggerOrder.test.ts` (the migration, local and synced), `triggerOrderPref.test.ts` (the
+  reconcile sends the enum, reads an older server's boolean, and retries a refused send).
