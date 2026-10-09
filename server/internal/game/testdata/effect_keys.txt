@@ -152,3 +152,5 @@ body rad/mill
 body prevention/bloatfly-remove-counters-give-rad
 body renown/grow
 body winter-tormented-loner/edict
+body fra-creature-c/lyra-draw-two
+condition fra-creature-c/lyra-combat-damage-to-a-player

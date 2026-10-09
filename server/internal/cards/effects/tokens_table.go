@@ -217,6 +217,8 @@ var tokenTable = map[string]game.Card{
 	"4/4 red Dragon with flying":                    {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 red Dragon with flying":                    {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"4/4 red Scorpion Dragon with flying and haste": {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
+	"3/3 blue Angel with flying":                    {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"3/3 green Legendary Dog named Mowu":            {Name: "Mowu", TypeLine: "Token Legendary Creature — Dog", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 white Angel with flying":                   {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying":                   {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying and vigilance":     {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance"}},
