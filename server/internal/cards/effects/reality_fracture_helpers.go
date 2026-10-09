@@ -113,3 +113,117 @@ func returnTargetGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// frJaceSubtype is the planeswalker type "behold a Jace" and "Jace
+// planeswalkers" name.
+const frJaceSubtype = "Jace"
+
+// frYouControlAJace reports whether `player` controls a permanent with the
+// Jace subtype — a Jace planeswalker card or the Jace token. It is the
+// "choose a Jace you control" half of behold. Caller holds g.mu.
+func frYouControlAJace(g *game.Game, player uuid.UUID) bool {
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == player && c.HasSubtype(frJaceSubtype) {
+			return true
+		}
+	}
+	return false
+}
+
+// frEntersTappedUnlessYouBeholdAJace is "As this land enters, you may
+// behold a Jace. If you don't, this land enters tapped." (Theorist's
+// Sanctum). Behold is "choose a Jace you control or reveal a Jace card
+// from your hand". Choosing a Jace you control is free and strictly
+// better than the tapped alternative, so a controlled Jace makes the
+// replacement not apply at all (no prompt, enters untapped); otherwise
+// the reveal-from-hand prompt of the reveal-lands is asked.
+func frEntersTappedUnlessYouBeholdAJace(name string) game.ReplacementEffect {
+	rep := EntersTappedUnlessYouRevealFromHand(name, "a Jace card",
+		func(c game.Card) bool { return c.HasSubtype(frJaceSubtype) })
+	applies := rep.AppliesTo
+	rep.AppliesTo = func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+		if !applies(ev, g, src) {
+			return false
+		}
+		return !frYouControlAJace(g, ev.Actor)
+	}
+	return rep
+}
+
+// frPutLoyaltyCounterOnEachPlaneswalkerYouControl is "put a loyalty
+// counter on each planeswalker you control" (Way of the Mentor, Way of
+// the Necromancer). The set is fixed when the trigger resolves, and the
+// walkers are the trigger controller's.
+func frPutLoyaltyCounterOnEachPlaneswalkerYouControl(g *game.Game, item *game.StackItem) error {
+	var ids []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == item.Controller && c.IsPlaneswalker() {
+			ids = append(ids, c.InstanceID)
+		}
+	}
+	for _, id := range ids {
+		if err := nothingIfGone(g.AddCounterForEffect(id, game.CounterLoyalty, 1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// frYouActivatedALoyaltyAbility is "whenever you activate a loyalty
+// ability": a loyalty ability (CR 606.2), printed or granted, announced
+// by the source's controller.
+func frYouActivatedALoyaltyAbility(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventActivateAbility && ev.Loyalty && ev.Actor == source.Controller
+}
+
+// frLoyaltyAbilityRemovedAtLeast reports whether the loyalty ability an
+// activation event announces has a loyalty cost of −n or lower, i.e. "you
+// removed n or more loyalty counters to activate it". The cost is read off
+// the planeswalker's current abilities by the event's label, because the
+// loyalty cost path records no counters-removed fact. A planeswalker that
+// has already left reads as false (weaker than printed, never stronger).
+func frLoyaltyAbilityRemovedAtLeast(ev game.Event, g *game.Game, n int) bool {
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok {
+		return false
+	}
+	abs, _ := game.ActivatedAbilitiesWithOrigins(c)
+	for _, ab := range abs {
+		if ab.Label == ev.Label && ab.Cost.Loyalty != nil && *ab.Cost.Loyalty <= -n {
+			return true
+		}
+	}
+	return false
+}
+
+// frDealDamageWithExcess deals `amount` damage from the resolving
+// source to a creature or planeswalker and returns the EXCESS (CR
+// 120.4a): what landed beyond the lethal amount. Lethal is the toughness
+// less damage already marked for a creature, the loyalty for a
+// planeswalker, and the larger of the two for something that is both.
+// Read after the damage lands, so prevention lowers the excess too.
+func frDealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
+	c, ok := ctx.Game.LookupCardForEffect(target)
+	if !ok || amount <= 0 {
+		return 0, nil
+	}
+	lethal := 0
+	if c.IsCreature() {
+		lethal = c.CurrentToughness() - c.DamageMarked
+	}
+	if c.IsPlaneswalker() && c.Counters[game.CounterLoyalty] > lethal {
+		lethal = c.Counters[game.CounterLoyalty]
+	}
+	if lethal < 0 {
+		lethal = 0
+	}
+	cursor := b25LastEventSeq(ctx.Game)
+	if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: amount}).Apply(ctx); err != nil {
+		return 0, err
+	}
+	excess := b27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor) - lethal
+	if excess < 0 {
+		excess = 0
+	}
+	return excess, nil
+}
