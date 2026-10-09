@@ -1,6 +1,6 @@
 # ADR 0143 — Gameplay settings overhaul
 
-**Status:** Proposed · 2026-10-09 · S60 — Table clarity: a stack you can follow. The design waits for owner review, starting with the [questions](#questions-for-the-owner). No code changes with this ADR. The changes land in the PRs under [Delivery](#7-delivery).
+**Status:** Accepted · 2026-10-09 · S60 — Table clarity: a stack you can follow. The owner answered all seven [questions](#questions-for-the-owner-answered-2026-10-09) on 2026-10-09, each with the recommended option (a). No code changes with this ADR. The changes land in the PRs under [Delivery](#7-delivery).
 **Issue:** [#2886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2886). In flight: [#2871](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2871) / PR #2879 (stop at a ticked step only when you can act; combat abilities in combat), [#2884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2884) (trigger order skips independent triggers), [#2881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2881) (Pass turn must walk every step), [#2880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2880) / PR #2885 (board picks).
 **Amends, once accepted:** [ADR 0009](0009-smart-priority-autopass.md): the precedence list, the safety belt (§7), and `smartAutoPass`. [ADR 0111](0111-action-dock.md) §5 and §7: the dock's toggles and Pass turn. [ADR 0119](0119-a-stack-you-can-follow.md) §2: who sets the stack hold.
 **Builds on:** [ADR 0110](0110-remember-me.md) §4 (synced settings), [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) (strict payment), [ADR 0127](0127-answering-repeated-prompts-for-you.md) (standing answers), [ADR 0075](0075-table-settings-and-host-controls.md) §2 (table settings).
@@ -225,11 +225,13 @@ Two consequences of the migration:
 ### 6. What moves to the server
 
 - **The stack hold**, by reusing `TableSettings.BotPace` (§2.6). This needs no new field and no snapshot change. The client maps `bot_pace` to milliseconds with the same three numbers `aiseat/runner.go` uses. A test pins the two tables together, so that a change to `botPacePresets` fails a client test.
-- **Nothing else moves now.** The gate chain stays client-side, as ADR 0009 put it, and `triggerOrder` and `autoAnswers` stay server-held as they are. Moving the stops and key windows to the server would let a seat keep passing while its tablet sleeps, and would take a round trip out of every automatic pass. It is a larger change, with new seat state, a snapshot field and a protocol action. It is [Q7](#questions-for-the-owner), not part of this plan.
+- **Nothing else moves now.** The gate chain stays client-side, as ADR 0009 put it, and `triggerOrder` and `autoAnswers` stay server-held as they are. Moving the stops and key windows to the server would let a seat keep passing while its tablet sleeps, and would take a round trip out of every automatic pass. It is a larger change, with new seat state, a snapshot field and a protocol action. The owner chose not to do it now ([Q7](#questions-for-the-owner-answered-2026-10-09)), so it is not part of this plan.
 
 ### 7. Delivery
 
 Each PR is one logical change, targets `develop`, and carries `Sprint: S60` and `Issue: #2886`. PR #2879 merges first.
+
+0. **This ADR** (docs only; PR #2888). **Done:** accepted 2026-10-09.
 
 1. **Key windows always on; one Auto-pass choice** (client; schema v24). This adds `passMode` and removes `autoPassPriority`, `smartAutoPass` and `alwaysStopOpponentStack`. It changes rules 5-7, the practice table capture, the bluff chip gate, and the "Stop for" fieldset (never disabled). Tests: the migration from each combination; rule 7 in Careful; the toggle reading categories; `highlightsLive` with the new verdicts. Branch E2E: yes (client interaction).
 2. **Stops by whose turn it is** (client; v25). This adds `stepStopsOpponents`, makes rule 8 read the active column, and adds the two-column grid. Tests: the migration of a default and a tuned grid; a default player holding an instant passes an opponent's main 1 and end step but stops on an opponent's attack; a tuned player stops where they did. Branch E2E: yes.
@@ -254,9 +256,9 @@ PRs 1 and 2 deliver most of the owner's goal on their own. They can ship before 
 - The table pace sets reading time for everyone. A host who picks Fast gets a fast table, and nobody can slow it down by accident through a personal setting.
 - Costs: four schema bumps, a label rename the e2e suite feels, and a migration that changes behaviour for untouched-default players (deliberately, as v15, v19 and v22 did).
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-09)
 
-Each question lists the recommended option first.
+Each question lists the recommended option first. The owner chose (a), the recommended option, on all seven, and no section above changed. The answers are recorded under [Owner answers](#owner-answers-2026-10-09) below and bind the delivery PRs.
 
 1. **Q1. One Auto-pass choice.**
    - **(a) Recommended:** Smart / Careful / Manual replaces "Auto-pass priority", "Smart auto-pass" and "Always stop for opponents' spells" (§2.1).
@@ -285,6 +287,16 @@ Each question lists the recommended option first.
 7. **Q7. Passing on the server.**
    - **(a) Recommended:** not now. The stops and key windows stay client-side, and only the stack hold reads a table setting (§6). Revisit if a sleeping tablet stalls real games.
    - **(b)** Move the stops, the mode and the key windows into the seat's server state, so the server passes for a seat whose tab is asleep or closed. This needs a new action, snapshot fields and a server copy of the response classes.
+
+### Owner answers (2026-10-09)
+
+1. **Q1: (a).** One Auto-pass choice, Smart / Careful / Manual, stored as `passMode`. It replaces `autoPassPriority`, `smartAutoPass` and `alwaysStopOpponentStack` (§2.1).
+2. **Q2: (a).** The stop grid has two columns, My turn and Opponents' turns, with the new defaults and the migration in §2.3 and §5.
+3. **Q3: (a).** An opponent's spell, combat once attackers are declared, and an opponent's end step always stop you when you can respond, in Smart and Careful. There is no switch (§2.2).
+4. **Q4: (a).** The table pace sets the stack hold for everyone, and `stackHoldMs` is removed (§2.6).
+5. **Q5: (a).** End turn and Skip to my turn replace the autopass toggle and Pass turn. `autopassPersistThroughTurns` is removed, and the sandbox Pass turn moves to the ⋯ menu (§4.2).
+6. **Q6: (a).** A collapsed Advanced section at the bottom of Gameplay, holding the list in §3.1.
+7. **Q7: (a).** Passing stays client-side for now. Only the stack hold reads a table setting (§6).
 
 ## Appendix: the audit
 
