@@ -774,6 +774,40 @@ func InExile(t game.TriggeredAbility) game.TriggeredAbility {
 	return t
 }
 
+// EminenceTrigger is an eminence trigger (#2802, ADR 0140 amendment):
+// "Whenever …, if [this] is in the command zone or on the battlefield,
+// …". The ability watches from both zones, so a commander that has not
+// been cast yet triggers from its owner's command zone, and "you" there
+// is that owner (CR 108.4, the declared-zone harvest's rule). The
+// intervening "if" (CR 603.4) holds when it triggers, because those are
+// the only two zones it watches from, and is checked again on
+// resolution: a source that has since left both — cast in response, so
+// it is on the stack — does nothing.
+//
+// The wrapped ability must declare its Effect (On / OnAny with a
+// non-nil effect): the resolution check wraps it.
+func EminenceTrigger(t game.TriggeredAbility) game.TriggeredAbility {
+	if t.Effect == nil {
+		panic("effects.EminenceTrigger: the trigger declares no Effect to check on resolution")
+	}
+	t.Zones = []game.ZoneKind{game.ZoneBattlefield, game.ZoneCommand}
+	inner := t.Effect
+	t.Effect = func(g *game.Game, item *game.StackItem) error {
+		if !eminenceSourceFunctions(g, item.SourceCardID) {
+			return nil
+		}
+		return inner(g, item)
+	}
+	return t
+}
+
+// eminenceSourceFunctions is the intervening "if [this] is in the
+// command zone or on the battlefield".
+func eminenceSourceFunctions(g *game.Game, source uuid.UUID) bool {
+	z := g.FindCardZoneForEffect(source)
+	return z != nil && (z.Kind == game.ZoneBattlefield || z.Kind == game.ZoneCommand)
+}
+
 // WhenThisBecomesPlotted — "When this card becomes plotted, …"
 // (CR 702.170c/d; Longhorn Sharpshooter, Aloe Alchemist; #1382).
 //

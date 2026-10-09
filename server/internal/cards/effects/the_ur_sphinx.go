@@ -59,7 +59,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) && attackerIsASphinx(g, ev)
+				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, "Sphinx")
 			}, urSphinxTriggerLabel, urSphinxMillAndCast)),
 		},
 	})
@@ -67,27 +67,29 @@ func init() {
 
 const urSphinxTriggerLabel = "The Ur-Sphinx — each player mills that many cards; you may cast a card each milled this way"
 
-// attackerIsASphinx reports whether the creature the attack event
-// declares is a Sphinx, as it is now (changelings count, CR 702.73a).
-func attackerIsASphinx(g *game.Game, ev game.Event) bool {
+// attackerHasSubtype reports whether the creature the attack event
+// declares has the creature type, as it is now (changelings count,
+// CR 702.73a). The Ur-Sphinx's Sphinxes and The Ur-Dragon's Dragons.
+func attackerHasSubtype(g *game.Game, ev game.Event, subtype string) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.HasSubtype("Sphinx")
+	return ok && c.IsCreature() && c.HasSubtype(subtype)
 }
 
-// sphinxesDeclaredInTheSameBatch is "that many" for the trigger: the
-// number of Sphinxes `you` declared as attackers in the event batch ev
-// belongs to. Read off the log rather than the board, so a Sphinx that
-// died or left combat before the trigger resolved still counts.
+// attackersOfSubtypeInTheSameBatch is "that many" for an "whenever one
+// or more [type] you control attack" trigger: the number of creatures
+// of the type `you` declared as attackers in the event batch ev belongs
+// to. Read off the log rather than the board, so one that died or left
+// combat before the trigger resolved still counts.
 //
 // Caller must hold g.mu.
-func sphinxesDeclaredInTheSameBatch(g *game.Game, ev game.Event, you uuid.UUID) int {
+func attackersOfSubtypeInTheSameBatch(g *game.Game, ev game.Event, you uuid.UUID, subtype string) int {
 	n := 0
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		e := g.Events[i]
 		if e.Batch < ev.Batch {
 			break
 		}
-		if e.Batch == ev.Batch && attackDeclaredByYou(e, you) && attackerIsASphinx(g, e) {
+		if e.Batch == ev.Batch && attackDeclaredByYou(e, you) && attackerHasSubtype(g, e, subtype) {
 			n++
 		}
 	}
@@ -100,7 +102,7 @@ func urSphinxMillAndCast(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	n := sphinxesDeclaredInTheSameBatch(g, item.Trigger.Event, item.Controller)
+	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, "Sphinx")
 	if n <= 0 {
 		return nil
 	}
