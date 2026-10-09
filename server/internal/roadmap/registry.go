@@ -3093,16 +3093,6 @@ var items = []Item{
 		EngineNotes: "The explore keyword action has no primitive: `effects/explore.go` is the card Explore, not the action. Get Lost also needs a predefined Map token (\"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\") beside `ClueToken` and `FoodToken` in `effects/tokens.go`. Lodestone Needle's back face waits on the same action and is listed on the craft row. Look up the action's rule number in the pinned TXT before citing it.",
 	},
 	{
-		Slug: "protection-from-chosen-card-type", Name: "Protection from a card type chosen as it enters", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permanents that choose a card type as they enter and then give protection from it, such as Serra's Emissary's \"You and creatures you control have protection from the chosen card type\".",
-		Missing:     "A permanent can't choose a card type as it enters, so nothing can give protection from the chosen one.",
-		Rules:       []string{"702.16", "614.12"},
-		Issue:       2742,
-		Tracked:     "#2742 (S58 tracker #2077)",
-		Waiting:     []string{"Serra's Emissary"},
-		EngineNotes: "two pieces. (1) No per-instance chosen card type: `Card` has `NamedTribe`, `ChosenColor`, `ChosenPlayer`, `ChosenName` and `ChosenOption`, and `ChosenOption` feeds the ADR 0071 designation gate rather than a value effects read. (2) `ProtectionQualityCardType` fixes its type in the token; \"the chosen card type\" has to be resolved by the reader from the source permanent, the way `ProtectionQualityPlayer` reads `Card.ChosenPlayer` (#980), matching nothing while unanswered. The player half goes through `PlayerProtectedFromLocked`.",
-	},
-	{
 		Slug: "attack-requirement-most-life-opponent", Name: "Creatures that must attack the opponent with the most life", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Creatures that must attack an opponent with the most life each combat, such as Galactus, Devourer of Worlds.",
 		Missing:     "A creature can be made to attack each combat, but not to attack a particular opponent.",
@@ -3126,6 +3116,12 @@ var items = []Item{
 		Summary:  "Spells that count the total mana value of the other spells you've cast this turn, such as Call Forth the Tempest.",
 		Rules:    []string{"202.3", "601.2i"},
 		Examples: []string{"Call Forth the Tempest"},
+	},
+	{
+		Slug: "protection-from-chosen-card-type", Name: "Protection from a card type chosen as it enters", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Permanents that choose a card type as they enter and then give protection from it, such as Serra's Emissary's \"You and creatures you control have protection from the chosen card type\".",
+		Rules:    []string{"702.16", "614.12"},
+		Examples: []string{"Serra's Emissary"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

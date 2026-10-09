@@ -1683,7 +1683,7 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // bare "protection" for.
 func checkPlayerKeywords(spec Spec) {
 	for i, kw := range spec.PlayerKeywords {
-		if kw == game.KeywordHexproof {
+		if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
 			continue
 		}
 		if _, ok := game.ParseProtectionQuality(kw); ok {
