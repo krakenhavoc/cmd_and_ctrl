@@ -495,6 +495,18 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 				return 1, "trade: keep the creature"
 			}
 		}
+		// ADR 0136's amendment of 2026-10-09: an opponent's tax that
+		// would leave the turn plan's next member unpayable is weighed
+		// against that member (tax.go).
+		if kind == choicePayUnless {
+			if decline, why, ok := p.taxAgainstPlan(st, ch); ok {
+				yes := cp.Apply != nil && *cp.Apply
+				if yes == decline {
+					return 0.25, why
+				}
+				return 1, why
+			}
+		}
 		// The enumerator only offers "pay" when the cost is payable,
 		// and a trigger the bot controls is a trigger it wants. Say
 		// yes, but not so emphatically that a targeted alternative

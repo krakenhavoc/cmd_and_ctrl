@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
@@ -29,6 +30,13 @@ import (
 // An attack that exerts the card (ADR 0130 §9) is tallied as the action
 // `exert`: offered when the window held the twin attack move that exerts
 // it, taken when that move was dispatched.
+//
+// A mana rock or dork's cast is also counted the owner's way (#2435,
+// ADR 0136's amendment of 2026-10-09): the windows it was offered in
+// while the seat's mana deficit was open, which heuristic.DeficitOpen
+// answers with the heuristic's own deficit, for every contestant alike.
+// A2's second column is the seat-games with such an offer, and those in
+// which the card was used.
 //
 // The tally comes from the runner's observer, the same feed the
 // decision log writes, so it needs no log on disk. It reads only the
@@ -69,6 +77,10 @@ type CardUse struct {
 	// windows in which the seat used it.
 	Offered int `json:"offered"`
 	Taken   int `json:"taken"`
+	// OfferedDeficit is the windows a mana source's cast was offered in
+	// while the seat's mana deficit was open (heuristic.DeficitOpen).
+	// Zero for every other card.
+	OfferedDeficit int `json:"offered_deficit,omitempty"`
 }
 
 type cardKey struct {
@@ -123,6 +135,9 @@ func (t *cardTally) Observe(ev aiseat.DecisionEvent) {
 		}
 		u.ManaSource = u.ManaSource || repeatableManaSource(c)
 		u.Offered++
+		if k.action == ActionCast && repeatableManaSource(c) && heuristic.DeficitOpen(ev.Input, c.InstanceID) {
+			u.OfferedDeficit++
+		}
 	}
 	if !ev.Applied || ev.Index < 0 || ev.Index >= len(ev.Input.Moves) {
 		return
@@ -225,6 +240,11 @@ type CardTotals struct {
 	GamesUsed    int `json:"games_used"`
 	// Never is Windows >= NeverWindows and Taken == 0.
 	Never bool `json:"never,omitempty"`
+	// GamesOfferedDeficit is the seat-games in which a mana source's
+	// cast was offered at least once while the deficit was open, and
+	// GamesUsedDeficit those of them in which it was used (#2435).
+	GamesOfferedDeficit int `json:"games_offered_deficit,omitempty"`
+	GamesUsedDeficit    int `json:"games_used_deficit,omitempty"`
 }
 
 // UseRate is GamesUsed / GamesOffered, 0 when never offered.
@@ -294,6 +314,12 @@ func (a *cardsAcc) add(r GameResult) {
 			}
 			if u.Taken > 0 {
 				t.GamesUsed++
+			}
+			if u.OfferedDeficit > 0 {
+				t.GamesOfferedDeficit++
+				if u.Taken > 0 {
+					t.GamesUsedDeficit++
+				}
 			}
 		}
 	}
@@ -370,6 +396,14 @@ type CanaryResult struct {
 	Rate       float64 `json:"rate"`
 	Want       float64 `json:"want"`
 	Meets      bool    `json:"meets"`
+	// OfferedDeficit, UsedDeficit and RateDeficit are A2 counted the
+	// owner's way (#2435): the seat-games in which the card was offered
+	// while the mana deficit was open, and those in which it was used.
+	// A2 rows only; MeetsDeficit is RateDeficit >= Want.
+	OfferedDeficit int     `json:"games_offered_deficit,omitempty"`
+	UsedDeficit    int     `json:"games_used_deficit,omitempty"`
+	RateDeficit    float64 `json:"rate_deficit,omitempty"`
+	MeetsDeficit   bool    `json:"meets_deficit,omitempty"`
 }
 
 // canaries reads A2 and A3 off the Cards section. An A3 canary that no
@@ -388,7 +422,13 @@ func canaries(cards []ContestantCards) []CanaryResult {
 	for _, cc := range cards {
 		for _, t := range cc.Cards {
 			if t.ManaSource && t.Action == ActionCast {
-				a2 = append(a2, row("A2", cc, t, "mana rock or dork", ManaSourceBar))
+				r := row("A2", cc, t, "mana rock or dork", ManaSourceBar)
+				r.OfferedDeficit, r.UsedDeficit = t.GamesOfferedDeficit, t.GamesUsedDeficit
+				if r.OfferedDeficit > 0 {
+					r.RateDeficit = float64(r.UsedDeficit) / float64(r.OfferedDeficit)
+					r.MeetsDeficit = r.RateDeficit >= ManaSourceBar
+				}
+				a2 = append(a2, r)
 			}
 		}
 	}
@@ -429,16 +469,24 @@ func writeCards(b *strings.Builder, s Summary) {
 
 	if len(s.Canaries) > 0 {
 		b.WriteString("\n#### Acceptance-bar cards (ADR 0126 A2, A3)\n\n")
-		b.WriteString("| bar | card | class | contestant | games offered | games used | used | want | meets |\n")
-		b.WriteString("|---|---|---|---|---:|---:|---:|---:|:--:|\n")
+		b.WriteString("Games are seat-games. The `deficit open` columns count A2 the owner's way (#2435): the games in which the rock or dork was offered while the seat's mana deficit was open, and those of them in which it was used. The other columns count every game it was offered in.\n\n")
+		b.WriteString("| bar | card | class | contestant | games offered | games used | used | deficit open: offered | deficit open: used | deficit open: used % | want | meets | meets, deficit open |\n")
+		b.WriteString("|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|:--:|:--:|\n")
 		for _, c := range s.Canaries {
 			if c.Contestant == "" {
-				fmt.Fprintf(b, "| %s | %s | %s | — | 0 | 0 | — | %s | not offered |\n", c.Bar, cardName(CardTotals{Name: c.Name, Action: c.Action}), c.Class, pct0(c.Want))
+				fmt.Fprintf(b, "| %s | %s | %s | — | 0 | 0 | — | — | — | — | %s | not offered | — |\n", c.Bar, cardName(CardTotals{Name: c.Name, Action: c.Action}), c.Class, pct0(c.Want))
 				continue
 			}
-			fmt.Fprintf(b, "| %s | %s | %s | %s | %d | %d | %s | %s | %s |\n",
+			defOffered, defUsed, defRate, defMeets := "—", "—", "—", "—"
+			if c.Bar == "A2" {
+				defOffered, defUsed = fmt.Sprint(c.OfferedDeficit), fmt.Sprint(c.UsedDeficit)
+				if c.OfferedDeficit > 0 {
+					defRate, defMeets = pct0(c.RateDeficit), yesNo(c.MeetsDeficit)
+				}
+			}
+			fmt.Fprintf(b, "| %s | %s | %s | %s | %d | %d | %s | %s | %s | %s | %s | %s | %s |\n",
 				c.Bar, cardName(CardTotals{Name: c.Name, Action: c.Action}), c.Class, c.Contestant,
-				c.Offered, c.Used, pct0(c.Rate), pct0(c.Want), yesNo(c.Meets))
+				c.Offered, c.Used, pct0(c.Rate), defOffered, defUsed, defRate, pct0(c.Want), yesNo(c.Meets), defMeets)
 		}
 	}
 
