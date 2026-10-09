@@ -3103,16 +3103,6 @@ var items = []Item{
 		EngineNotes: "two pieces. (1) No per-instance chosen card type: `Card` has `NamedTribe`, `ChosenColor`, `ChosenPlayer`, `ChosenName` and `ChosenOption`, and `ChosenOption` feeds the ADR 0071 designation gate rather than a value effects read. (2) `ProtectionQualityCardType` fixes its type in the token; \"the chosen card type\" has to be resolved by the reader from the source permanent, the way `ProtectionQualityPlayer` reads `Card.ChosenPlayer` (#980), matching nothing while unanswered. The player half goes through `PlayerProtectedFromLocked`.",
 	},
 	{
-		Slug: "mana-value-of-spells-cast-this-turn", Name: "The total mana value of spells cast this turn", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Spells that count the total mana value of the other spells you've cast this turn, such as Call Forth the Tempest.",
-		Missing:     "The game counts how many spells you've cast this turn, but not their total mana value.",
-		Rules:       []string{"202.3", "601.2i"},
-		Issue:       2743,
-		Tracked:     "#2743 (S58 tracker #2077)",
-		Waiting:     []string{"Call Forth the Tempest"},
-		EngineNotes: "`game.CastTally` (`Game.SpellsCastThisTurn`) holds `Total`, `Noncreature`, `InstantSorceryColors` and `Artifact`, and no mana values. Needs a running sum written where the tally is written, as each spell becomes cast, with an X spell counting its X. \"Other spells\" subtracts the reader's own contribution; the spells its two cascade triggers cast count, which is the card's point.",
-	},
-	{
 		Slug: "attack-requirement-most-life-opponent", Name: "Creatures that must attack the opponent with the most life", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Creatures that must attack an opponent with the most life each combat, such as Galactus, Devourer of Worlds.",
 		Missing:     "A creature can be made to attack each combat, but not to attack a particular opponent.",
@@ -3130,6 +3120,12 @@ var items = []Item{
 		Summary:  "Effects that give you protection from each of your opponents, such as Absolute Virtue's, so nothing your opponents control can damage, enchant or target you.",
 		Rules:    []string{"702.16"},
 		Examples: []string{"Absolute Virtue"},
+	},
+	{
+		Slug: "mana-value-of-spells-cast-this-turn", Name: "The total mana value of spells cast this turn", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Spells that count the total mana value of the other spells you've cast this turn, such as Call Forth the Tempest.",
+		Rules:    []string{"202.3", "601.2i"},
+		Examples: []string{"Call Forth the Tempest"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

@@ -4265,6 +4265,7 @@ spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
+spellsCastThisTurn{}.manaValue	number:int
 splitSecondActive	bool
 stack	object
 stack.cards	array
