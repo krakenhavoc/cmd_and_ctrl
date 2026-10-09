@@ -326,7 +326,7 @@ PRs 2 and 3 can be built in parallel. The owner's answers leave this plan as it 
 
 ## Measurements
 
-PRs 4 and 5 add their rows under PR 2's baseline.
+PRs 4c and 5 add their rows under PR 2's baseline, and PR 6 records the exit run against P1–P7. PRs 4, 4b and 4d reported theirs in their pull requests (#2752, #2776, #2778).
 
 ### PR 2: the baseline, before any plan (2026-10-08)
 
@@ -445,6 +445,45 @@ The build that ships has the first build's rules plus the amendment, on `develop
 **Why Harrow is still rarely cast in the end step.** In run 3's logged games Harrow was cast 44 times. 35 of those were plan casts in the first main phase, where §5 casts it now because a later member of the plan pays with the lands it puts onto the battlefield. 5 were a lone Harrow with no plan chosen that turn, which the amendment leaves as today's choice. 2 came from the two-turn comparison, and 2 were cast in the end step. Harrow was held in only 12 turns. Of those, 2 ended in an end-step cast and 3 in a later main-phase cast, after a draw or a Rhystic Study tax changed the plan. In 4 the bot reached its next turn with Harrow uncast, and in 3 the seat had no later window in the log. End-step casts stay rare because the holds are rare, not because the window is missing. No value was tuned on these numbers.
 
 Canaries (A3): Harrow 13 / 25 → 24 / 25 in run 1. Rhystic Study on simic-ramp 10 / 23 → 9 / 22 in run 1 and 110 / 225 → 110 / 245 in run 3. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after.
+
+### PR 6: the exit run (2026-10-09)
+
+On `develop` at `987d545b1`, which has PRs 4, 4b, 4c, 4d and 5. This PR changes no code. All runs use `--rotate --lockstep` and the real dump. **0 stalls in every run, and no runner fallbacks.** Runs 1 and 3 are the same seeds as PRs 4c and 5, and they reproduce PR 5's figures for the build that shipped. The raw decision logs were deleted once the tables were extracted.
+
+**The strength re-check** (owner, on #2780: "merge, re-check at PR 6"). Run 2 was played on eight seed blocks: seeds 1 and 101, as in PRs 4c and 5, and the new blocks 201, 301, 401, 501, 601 and 701. Each block is 48 games with `heuristic` on esper-control and izzet-aggro and 48 with the seats swapped, so the run is 768 games: four times PR 5's 192. `heuristic` against `heuristic-baseline` was played the same way on the same seeds.
+
+| Contestants | Seeds | `heuristic` won | 95% CI | Other won | 95% CI |
+|---|---|---:|---|---:|---|
+| `heuristic` against `heuristic-noplan` | 1 and 101 (PR 5's) | 97 / 384, 25.3% | 21.2–29.8% | 95 / 384, 24.7% | 20.7–29.3% |
+| | 201 to 701 (new) | 275 / 1,152, 23.9% | 21.5–26.4% | 301 / 1,152, 26.1% | 23.7–28.7% |
+| | **all eight (768 games)** | **372 / 1,536, 24.2%** | **22.1–26.4%** | 396 / 1,536, 25.8% | 23.7–28.0% |
+| `heuristic` against `heuristic-baseline` | all eight (768 games) | **499 / 1,536, 32.5%** | **30.2–34.9%** | 269 / 1,536, 17.5% | 15.7–19.5% |
+
+- **P3 is met, narrowly.** Against `heuristic-noplan` the upper bound is 26.4%, which is above 25%, so the plan is not detectably worse. The lower bound is 22.1%, so the plan does not clear 25% either. The point estimate is 0.8 points below even, and every deck is within its interval of `noplan`'s (esper 105 against 115 wins, izzet 10 against 12, mono-black 153 against 162, simic 104 against 107, of 384 seat-games each). The plan changes how the bot spends its mana, not how often it wins.
+- **Against `heuristic-baseline`** the lower bound, 30.2%, clears 25%. Today's heuristic beats the frozen pre-S66 policy outright at this size.
+
+**The acceptance bars** (§8, owner answer 9):
+
+| # | Bar | Exit result | Verdict |
+|---|---|---|---|
+| P1 | Each rock and dork used in ≥ 80% of the games in which it was offered with an open deficit (run 1) | Pooled, the owner's way: 209 / 245, **85.3%** (80.3–89.2%), against `noplan`'s 196 / 269, 72.9%. 20 of the 31 contestant rows reach 80%; 10 of the 11 that do not were offered with the deficit open in 10 or fewer games, and the lowest are Thought Vessel on esper-control (2 / 4) and Commander's Sphere on mono-black (4 / 7). Counted over every offer, 381 / 547 (69.7%). Run 3: 535 / 588, 91.0%. | **Pass**, pooled. Not every row reaches 80%. PR 4c's stricter count, a cast made while the deficit is still open, was 71.5% |
+| P2 | Stranded share at most half of `heuristic-noplan`'s (run 1) | 99 / 2,916, **3.4%**. PR 2's `noplan` was 9.2% to 9.6%, so its bar is 4.6% or lower; this run's `noplan` is 110 / 2,985, 3.7%, so its bar is 1.8%. | **Pass** against PR 2's baseline. **Fail** against today's `noplan`, which also casts the idle late rock (ADR 0126 §2), the change that removed most stranded turns. Run 2 shows the same: 3.8% against 3.9% |
+| P3 | Plan against no plan (run 2): the upper bound not below 25% | 372 / 1,536, 24.2% (22.1–26.4%), above | **Pass**. The lower bound does not clear 25% |
+| P4 | Harrow use rises against `develop` on the same seeds, with no win-rate regression (run 3) | 206 / 249, **82.7%** (77.5–86.9%), against 75 / 254, 29.5% before PR 5. Run 3 is a mirror, so its win rate is 25% by construction; in run 1 simic-ramp won 17 games, against 19 for `noplan`, which is within noise. | **Pass**. Cast in the end step before the bot's turn in only 2 of 44 casts (40 logged games); see below |
+| P5 | Every gated position passes, no tag's agreement falls | `boteval suite run --policy heuristic`: 41 / 41, 100%, every tag at 100% | **Pass**. This ADR's proposed positions are not gated; see below |
+| P6 | 0 stalls; rejected moves not above `noplan`'s; turns p50 within ±3; plan misses under 5% | 0 stalls in 1,824 games. No runner fallbacks for either contestant. Turns p50: run 1 13 against `noplan`'s 13, run 3 11. Plan misses: run 1 44 / 1,050 (4.2%), run 2 220 / 5,922 (3.7%), run 3 148 / 4,401 (3.4%) | **Pass** |
+| P7 | Decision p99 within 5 ms of `noplan`'s | Run 1: 404 µs against `noplan`'s 455 µs. Run 2: 334–734 µs against 339–664 µs over the sixteen halves. Run 3 (simic ×4): 1.46 and 1.65 ms | **Pass** |
+
+**What fell short, and why.**
+
+- **Rhystic Study on simic-ramp (A3 canary).** 9 / 22 (41%) in run 1 and 110 / 245 (44.9%) in run 3, below its 50% bar. `noplan` casts it in 18 / 26 games in run 1. On simic-ramp the plan and the two-turn comparison send the turn's mana to rocks, Harrow and the spells those pay for, and the Study loses that mana. It was already below 50% before PR 4c (11 / 24). Nothing was tuned for it. On esper-control it is 14 / 17 (82%). The other canaries meet their bars: Sol Ring 75 / 77, Entomb 10 / 11, Mary Read and Anne Bonny's loot 52 / 63, Harrow 24 / 25 and Viscera Seer 18 / 18.
+- **End-step Harrow casts are rare by design.** In run 3's 40 logged games, Harrow was offered in the end step before the bot's turn only twice, and cast both times. Harrow was held in 31 windows, and the other 42 of its 44 casts were in the bot's main phase. PR 5 broke those down on the same seeds: most are plan casts where a later member uses Harrow's lands (§5), and the rest are a lone Harrow with no plan that turn, which the owner's answer to PR 5's question 1 (b) leaves as today's choice, or the two-turn comparison. No cleanup discard gave up a held Harrow.
+- **P2 against today's `noplan`.** See the table. The idle late rock is a price, so both contestants have it.
+
+**#2458's positions.** None is gated, because the owner labels them.
+
+- `cantrip-before-the-permanent` (owner answer 10): the `cantrip-with-leftover-mana` board, re-decided with the purposes the catalog declares today put on its hand (Night's Whisper `draws: 2`, Vampiric Tutor `tutors: 1`, Bastion of Remembrance `tokens: 1` and its death-payoff row). The bot casts Night's Whisper, with `plan: Night's Whisper → Bastion of Remembrance (+3.20)`. A capture from a live game is still to do. The gated `cantrip-with-leftover-mana` itself still picks Exquisite Blood, because its frozen view has no purposes. Every cast is accepted there.
+- `rock-before-the-two-drop` (seq 133), `signet-then-uro` (226) and `signet-then-the-commander` (292) pick Arcane Signet on the logged views. `two-spells-over-the-taxed-commander` (402) picks Oracle of Mul Daya on a view that carries its purpose. These are PR 4c's re-decisions, and PR 5 changed none of them.
 
 ---
 
