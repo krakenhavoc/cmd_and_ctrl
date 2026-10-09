@@ -630,6 +630,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// permanent, which leaves the game with them (CR 800.4a), and its
 	// frame rides replacementResume like entry_controller's.
 	PendingChoiceEntryRiot: {},
+	// entry_read_ahead (#2123) is entry_riot's row for entry_riot's
+	// reason: the departed player's own entering Saga leaves the game
+	// with them (CR 800.4a), and the frame rides replacementResume.
+	PendingChoiceEntryReadAhead: {},
 	// ADR 0098's two siblings take the same row for the same reason:
 	// the discard or the sacrifice is the "unless" of the departed
 	// player's own entering permanent, and the hand or the permanents

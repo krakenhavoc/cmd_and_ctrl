@@ -890,6 +890,27 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
+		case game.PendingChoiceEntryReadAhead:
+			// Read ahead (CR 702.155b, #2123): the chapter the Saga
+			// starts on, one answer per chapter. ResolveEntryReadAhead
+			// accepts every one, and chapter I — the lore count an entry
+			// that cannot ask takes, and the one that skips nothing — is
+			// the always-legal answer.
+			for i, opt := range c.PickOptions {
+				p := base()
+				idx := i
+				p.OptionIndex = &idx
+				label := opt.Label
+				if label == "" {
+					label = "chapter " + strconv.Itoa(i+1)
+				}
+				if i == 0 {
+					e.addAlwaysLegalChoice(c, reason+": "+label, p)
+					continue
+				}
+				e.addChoice(c, reason+": "+label, p)
+			}
+
 		case game.PendingChoiceEntryRiot:
 			// Riot (CR 702.136a, ADR 0109 §10): a +1/+1 counter or
 			// haste. Mandatory and both always accepted, so the

@@ -1839,6 +1839,11 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryController {
 			return g.ResolveEntryController(choiceID, a.Player, p.OptionIndex)
 		}
+		// #2123, CR 702.155b: read ahead's starting chapter. The same
+		// {option_index} payload; option N is chapter N+1.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryReadAhead {
+			return g.ResolveEntryReadAhead(choiceID, a.Player, p.OptionIndex)
+		}
 		// #764, CR 603.3c: the mode of a modal triggered ability,
 		// chosen as the ability is put on the stack. Routed by kind
 		// for the same reason the two above are.

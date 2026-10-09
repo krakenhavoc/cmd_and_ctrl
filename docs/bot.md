@@ -323,6 +323,11 @@ entering creature would be the bot's only untapped creature, which a
 counter would stop from blocking (CR 702.98a). See
 `aiseat/heuristic/riot.go`.
 
+**Read ahead (`entry_read_ahead`, #2123).** The bot starts every
+read-ahead Saga on chapter I, so it gets every chapter the Saga prints.
+It has no measure of when trading the skipped chapters for tempo is
+worth it. See `readAheadValue` in `aiseat/heuristic/choices.go`.
+
 **Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
 CR 903.9a).** When the bot's commander has been put into a graveyard or
 exile, the state-based action asks its owner whether it goes to the
