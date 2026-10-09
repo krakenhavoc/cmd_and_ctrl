@@ -1017,6 +1017,22 @@ func AnOpponentCastTheirFirstNoncreatureSpellThisTurn(ev game.Event, source *gam
 	return g.CastTallyFor(ev.Actor).Noncreature == 1
 }
 
+// YouCastYourFirstNoncreatureSpellThisTurn — "Whenever you cast your
+// first noncreature spell each turn" (Plan for All Outcomes, ADR 0139).
+// AnOpponentCastTheirFirstNoncreatureSpellThisTurn with the caster
+// being the source's controller; the same tally, bumped before
+// EventCast fires.
+func YouCastYourFirstNoncreatureSpellThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
+		return false
+	}
+	spell, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || spell.IsCreature() {
+		return false
+	}
+	return g.CastTallyFor(ev.Actor).Noncreature == 1
+}
+
 // YouPlayedACard — "whenever you play a card" (Null Profusion,
 // Recycle): you played a land (b20LandPlayed: a land put onto the
 // battlefield as a play, Event.Played) or cast a spell (EventCast). A
