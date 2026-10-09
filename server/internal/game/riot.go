@@ -92,9 +92,10 @@ func entryKeywordReplacementID(keyword string, i int) ReplacementEffectID {
 }
 
 // EntryKeywordOfReplacement reports which entry keyword a replacement
-// ID stands for — KeywordRiot, KeywordUnleash, or "" for any other
-// effect. The view reads it to tell a policy and the table which
-// question an optional_replacement or entry_riot prompt is.
+// ID stands for — KeywordRiot, KeywordUnleash, KeywordReadAhead,
+// KeywordModular, or "" for any other effect. The view reads it to
+// tell a policy and the table which question an optional_replacement
+// or entry_riot prompt is.
 func EntryKeywordOfReplacement(id ReplacementEffectID) string {
 	switch {
 	case id >= riotReplacementIDBase && id < riotReplacementIDBase+MaxCatalogReplacementSlots:
