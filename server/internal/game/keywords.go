@@ -327,6 +327,13 @@ var canonicalKeywords = map[string]bool{
 	// by the deck importer like every other canonical token, so an
 	// uncatalogued speed card still starts its controller's speed.
 	KeywordStartYourEngines: true,
+	// decayed (CR 702.147) joins with #2650, in the same change that
+	// teaches the engine to honour it. Its consumers are decayed.go:
+	// keywordTriggersFor derives its attack trigger, and
+	// foldDecayedLocked adds its "can't block" after the layer pass, so
+	// a decayed token, a deck-imported card or a decayed counter works
+	// with no catalog entry. CUMULATIVE (CR 113.2c).
+	KeywordDecayed: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

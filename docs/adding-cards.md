@@ -2128,6 +2128,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"annihilator N"` | Annihilator (CR 702.86) — #2073, the third TRIGGERED keyword: numbered like toxic and triggered like prowess. One attack trigger per instance (`game/annihilator.go`, CR 702.86b); the defending player (CR 508.5, read per attacker) chooses N permanents they control in one prompt and sacrifices them together. Declare it in `PrintedKeywords` (`"annihilator 4"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.AnnihilatorAmounts`, never `HasKeyword`. "Annihilator X" read at resolution is the catalog row `AnnihilatorCounted(label, count)` (Ulamog, the Defiler). A creature whose only text is annihilator and other tokens here needs no card file ([ADR 0113 §2](decisions/0113-small-seams-for-the-s58-deck-requests.md#2-annihilator-2073)) |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
+| `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
@@ -2145,18 +2146,19 @@ keyword to "creatures with a flying counter" (the retired
 silenced by the source losing its abilities, and it has the wrong
 timestamp. "Returns … with a hexproof counter on it" rides the entry
 event (`ReturnFromGraveyardWithCountersForEffect`, Perennation). The
-kinds are the fourteen in `game.KeywordCounterKinds()`, spelled as the
+kinds are the fifteen in `game.KeywordCounterKinds()`, spelled as the
 keyword token (`game.CounterFirstStrike` is `"first strike"`). Exalted
 counters are cumulative: each one is one more instance of exalted (the
-Emissary of Soulfire ruling), where two flying counters are one flying.
-Decayed and "hexproof from" counters are not read yet, because those
-keywords are not enforced: a card that places one ships with a caveat.
+Emissary of Soulfire ruling), and so are decayed counters, where two
+flying counters are one flying. "Hexproof from" counters are not read
+yet, because that keyword is not enforced: a card that places one ships
+with a caveat.
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess, evolve, exalted, undying, persist) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve, exalted, decayed, undying, persist) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
