@@ -404,6 +404,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
 		Delve:                   &DelveView{Options: lt, Max: 1},
 		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
+		PermissionTypes:         []string{"artifact", "creature"},
 		PhyrexianSymbols:        1,
 		PhyrexianGranted:        1,
 		CastableHere:            true,
@@ -815,6 +816,9 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"CastPrices": surfacePrivate,
 	// #2581: a count read off the asking seat's board.
 	"XMax": surfacePrivate,
+	// #2167: which types a per-type permission leaves is the holder's
+	// own budget.
+	"PermissionTypes": surfacePrivate,
 	// #1169: cost-shaped facts about the card. Public on a public
 	// pile — an escape offer is priced by a graveyard everybody can
 	// count — and not on a hand card the viewer was shown one of.
