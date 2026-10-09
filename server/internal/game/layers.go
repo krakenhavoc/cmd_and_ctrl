@@ -992,6 +992,8 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	// CR 702.98a (#1556): unleash's "can't block as long as it has a
 	// +1/+1 counter on it", read off the finished ability list.
 	g.foldUnleashLocked()
+	// CR 702.147a (#2650): decayed's "can't block".
+	g.foldDecayedLocked()
 	// CR 701.60c (#2737): a suspected permanent's granted "can't block".
 	g.foldSuspectedCantBlockLocked()
 }

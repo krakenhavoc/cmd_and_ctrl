@@ -205,6 +205,11 @@ func KeywordIsCumulative(kw string) bool {
 	if kw == KeywordExalted {
 		return true
 	}
+	// Decayed (#2650): no rule of its own on the point, so CR 113.2c —
+	// each instance is its own attack trigger.
+	if kw == KeywordDecayed {
+		return true
+	}
 	_, ok := ToxicValue(kw)
 	return ok
 }

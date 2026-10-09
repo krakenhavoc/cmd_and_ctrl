@@ -41,6 +41,7 @@ const (
 	CounterFirstStrike    = "first strike"
 	CounterDoubleStrike   = "double strike"
 	CounterDeathtouch     = "deathtouch"
+	CounterDecayed        = "decayed"
 	CounterExalted        = "exalted"
 	CounterHaste          = "haste"
 	CounterHexproof       = "hexproof"
@@ -56,11 +57,10 @@ const (
 // keywordCounterKinds is CR 122.1b's list INTERSECTED with
 // canonicalKeywords. The table is closed, like the keyword table it is
 // drawn from: a kind joins it in the same change that teaches the
-// engine to honour its keyword. One of CR 122.1b's fifteen is out for
-// that reason — decayed is not a canonical keyword yet (ADR 0101 owner
-// decision 5, #2650) — and so is every "hexproof from [quality]"
-// variant, which ADR 0038 §6 refused as a keyword. Exalted joined with
-// #2538 (ADR 0101 amendment 2026-10-08).
+// engine to honour its keyword. Every "hexproof from [quality]" variant
+// is out for that reason, which ADR 0038 §6 refused as a keyword.
+// Exalted joined with #2538 (ADR 0101 amendment 2026-10-08), and
+// decayed, the last of CR 122.1b's fifteen, with #2650.
 //
 // TestKeywordCounterKindsAreCR1221b and
 // TestKeywordCounterKindsAreCanonicalKeywords hold it to both halves.
@@ -69,6 +69,7 @@ var keywordCounterKinds = map[string]bool{
 	CounterFirstStrike:    true,
 	CounterDoubleStrike:   true,
 	CounterDeathtouch:     true,
+	CounterDecayed:        true,
 	CounterExalted:        true,
 	CounterHaste:          true,
 	CounterHexproof:       true,

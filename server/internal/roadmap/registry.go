@@ -352,6 +352,18 @@ var items = []Item{
 		Examples: []string{"Noble Hierarch", "Ignoble Hierarch"},
 	},
 	{
+		Slug: "decayed", Name: "Decayed", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A creature with decayed can't block, and when it attacks it is sacrificed at end of combat. Decayed tokens, decayed another permanent gives and decayed counters all work.",
+		Rules:    []string{"702.147", "122.1b"},
+		Issue:    2650,
+		ADR:      "0101-keyword-counters.md",
+		Keywords: []string{game.KeywordDecayed},
+		// Nearly every decayed card makes a decayed token rather than
+		// printing the keyword, so the text is matched anywhere.
+		Printed:  printedWords("decayed"),
+		Examples: []string{"Falcon Abomination"},
+	},
+	{
 		Slug: "prowess", Name: "Prowess", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Whenever you cast a noncreature spell, a creature with prowess gets +1/+1 until end of turn, once for each instance of prowess it has.",
 		Rules:    []string{"702.108"},
