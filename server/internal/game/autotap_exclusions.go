@@ -78,6 +78,12 @@ func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uui
 // announcement whose offer is still a key on `params`: the offer is
 // resolved the way the pricer resolves it. Caller must hold g.mu.
 func (g *Game) castAutoTapExclusionsLocked(playerID uuid.UUID, card Card, params CastSpellParams) map[uuid.UUID]bool {
+	// #2097: a "sacrifice all" cost names nothing on the wire, so the
+	// preview fills the set the way CastSpell will, and plans around the
+	// same permanents. CastSpell has already filled it by here.
+	if ac := AdditionalCostFor(CatalogKey(card)); ac != nil && ac.SacrificeAll && len(params.SacrificeIDs) == 0 {
+		params.SacrificeIDs = g.sacrificeAllCandidatesLocked(playerID, ac.Sacrifice)
+	}
 	return CastAutoTapExclusions(params, g.claimedAltCostLocked(playerID, card, params))
 }
 

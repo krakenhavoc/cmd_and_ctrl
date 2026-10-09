@@ -227,6 +227,12 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		if len(g.LegendRuleExemptions) > 0 {
 			merged.LegendRuleExemptions = append(append([]LegendRuleExemption(nil), merged.LegendRuleExemptions...), g.LegendRuleExemptions...)
 		}
+		// #2821: a layer-6 grant may carry an attack limit (Tomik,
+		// Orzhov Lawmage). Read live off the composite key, so the
+		// limit's "this" is the recipient.
+		if len(g.AttackLimits) > 0 {
+			merged.AttackLimits = append(append([]AttackLimit(nil), merged.AttackLimits...), g.AttackLimits...)
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

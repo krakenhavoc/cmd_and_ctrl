@@ -745,3 +745,29 @@ arrives later, the grantor leaving), `TestKioraGrantedMinusEightMakesALeviathan`
 `internal/legal` `TestEnumeratorOffersTheClassGrantedLoyaltyAbility` and `TestWireViewShowsTheClassGrantedLoyaltyRow`
 (the bot's list and the client's menu). A granted STATIC to planeswalkers (Tomik, Orzhov Lawmage's
 "No more than one creature can attack this planeswalker each combat") stays out of scope under Decision 10.
+
+## Amendment 2026-10-09 — a bundle can carry an attack limit (#2821)
+
+Tomik, Orzhov Lawmage reads 'Planeswalkers you control have "No more than one creature can attack this
+planeswalker each combat."' The amendment above left it out under Decision 10, as a granted static. It is
+not one in Decision 10's sense. Decision 10 refuses a granted `StaticAbility` because the layer pass gathers
+statics before layer 1, so one that only exists after layer 6 would never be gathered. An attack limit
+(`game.AttackLimit`, ADR 0045 Decisions 43-47) is not a layer effect: the attack check reads every limit live
+through `CatalogAttackLimits`, keyed by `catalogAbilityKeyOf`, and that key is already the recipient's
+composite key with its layer-6 grants on it.
+
+So the change is one bundle slot:
+
+- `AbilityGrant.AttackLimits []game.AttackLimit` (`cards/effects/ability_grant.go`), projected by
+  `buildGrantDef` and counted by `checkGrants` as an ability.
+- `mergeCatalogParts` (`game/copy_grants.go`) appends a bundle's `AttackLimits` to the merged definition,
+  as it does `LegendRuleExemptions`.
+
+The limit's source is the recipient, so `AttackLimitAttackingThis` counts attacks on the recipient and each
+planeswalker is limited on its own. The grant follows the layer pass: a walker that arrives later is limited
+at once, one that changes control stops being limited, and every limit ends when Tomik leaves. A
+`StaticAbility` in a layer-6 bundle is still refused.
+
+Pinned by `TestTomikLimitsEachOfYourPlaneswalkersToOneAttacker` (two walkers counted on their own, the
+player unlimited, and the enumerator agreeing with the verb at every target) and
+`TestTomikLimitEndsWithTomik`.

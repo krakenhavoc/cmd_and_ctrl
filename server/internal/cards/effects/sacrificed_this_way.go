@@ -138,3 +138,19 @@ func sharesACreatureTypeWith(info game.PermanentInfo, c game.Card) bool {
 	}
 	return false
 }
+
+// damageEqualToSacrificedTotalPower is "deals damage to any target
+// equal to the total power of the sacrificed creatures" (Soulblast,
+// #2097): every sacrificed creature's last-known power summed, the total
+// floored at zero (ctx.SacrificedTotalPower, CR 107.1b), to the first
+// target. Nothing sacrificed is no damage.
+func damageEqualToSacrificedTotalPower(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return DealDamage{
+		Source: ctx.Source(),
+		Target: item.Targets[0].ID,
+		Amount: ctx.SacrificedTotalPower(),
+	}.Apply(ctx)
+}

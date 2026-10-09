@@ -815,6 +815,14 @@ type LegalTargetsView struct {
 	// holds its confirm button until they do, and "Choose for me" fills
 	// it with a set that does. Absent on every clause without one.
 	EachOf []SacrificeGroupView `json:"each_of,omitempty"`
+
+	// All marks a SACRIFICE clause that takes every permanent listed in
+	// `cards` and lets the caster choose none of them (#2097, Soulblast's
+	// "sacrifice all creatures you control"): min and max are both the
+	// number listed, which may be zero. The client confirms rather than
+	// picks, and may send `sacrifice_ids` empty (the server fills it) or
+	// exactly these. Absent on every other clause.
+	All bool `json:"all,omitempty"`
 }
 
 // SacrificeGroupView is one entry of LegalTargetsView.EachOf: the
@@ -6434,6 +6442,12 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		// shroud gate must not narrow the list the client offers. The
 		// same list, count and order the abilities ship (#747).
 		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+		if ac.SacrificeAll {
+			// #2097: "sacrifice all" — the engine's own set, the one
+			// CastSpell will take, as a demand of exactly that many.
+			all := g.SacrificeAllCandidatesForEffect(caster, ac.Sacrifice)
+			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+		}
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator

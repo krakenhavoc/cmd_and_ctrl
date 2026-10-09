@@ -2803,6 +2803,12 @@ BlockRules: []game.BlockRule{
   trigger's effect, a turn-scoped `BlockRule.Limit` with
   `LimitPerDefender`, so each defending player is counted on their
   own.
+- **A limit granted to other permanents** (#2821): "Planeswalkers you
+  control have 'No more than one creature can attack this planeswalker
+  each combat.'" (Tomik, Orzhov Lawmage) is an `AbilityGrant` whose
+  `AttackLimits` slot holds `NoMoreThanNCanAttackThisEachCombat(1)`,
+  named by `GrantAbilitiesToYourPlaneswalkers(key)`. "This" is the
+  recipient, so each walker is counted on its own.
 
 Tests: [block_rules_test.go](../server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
@@ -3343,6 +3349,20 @@ optional cost or an either/or branch, beside any other sacrifice in the
 plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
 life"; "any number" on an ability is still refused, because a cost an
 ability can pay with nothing is free.
+
+**"Sacrifice all creatures you control" (#2097):** the clause the caster
+does not choose at all.
+
+```go
+AdditionalCost: SacrificeAllCost("creatures you control", Creature()), // Soulblast
+```
+
+The engine takes every matching permanent the caster controls as the
+spell is cast (a phased-out one is left, an indestructible one goes), and
+none is a legal payment. Read what it took with `ctx.Sacrificed()` and
+`ctx.SacrificedTotalPower()` as for any other sacrifice. Mandatory slot
+only: Register refuses it in an optional cost or an either/or branch.
+The heuristic bot declines these casts outright.
 
 **The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
 payment record names each one (`PaidCost.SacrificedObjects`, written at
@@ -7160,6 +7180,8 @@ set is read live every layer pass, so a walker that arrives later has the row an
 The token is `item.Controller`'s, the activator's. `PlaneswalkersYouControl` is the bare predicate for a
 static that is not a grant. "You've activated a loyalty ability this turn" (an intervening "if") is
 `youActivatedALoyaltyAbilityThisTurn(g, you)`; it reads the turn's activation events, so a granted row counts.
+A bundle can also carry an attack limit instead of an ability row (Tomik, Orzhov Lawmage, #2821): see the
+combat-limits section.
 
 **"Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty"** (Sanctum
 Lurker) is `ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()` on the `Spec`. It is a static that stops
