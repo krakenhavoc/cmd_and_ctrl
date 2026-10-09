@@ -1003,6 +1003,80 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
   names why.
 
+### Declaring what an ability answers (ADR 0142)
+
+Smart autopass stops on an opponent's stack item only when you can
+respond, and for an activated ability with no target it asks what the
+row **answers**. Declare that on the row as `Purpose.Answers`, beside any
+amounts. A row in scope that declares nothing is read from its printed
+text instead, and that fallback only shrinks.
+
+**Which rows.** Every activated row (a card's own, a granted bundle's, a
+token template's) that is not sorcery speed or a loyalty ability, and
+that can be announced with no target: it has no `Targets`, or it is
+modal with at least one untargeted mode. Also every mana ability whose
+cost sacrifices another permanent, which declares `ManaAbility.Answers`.
+A targeted row declares nothing: its move already stops you.
+
+**The vocabulary.** Use the smallest set that is true. The tier is fixed
+in code, not declared.
+
+| Constant | Tier | Declare it when the row… | Examples |
+|---|---|---|---|
+| `game.AnswerProtect` | stack | keeps a permanent of yours: regenerate, indestructible, hexproof, shroud, protection, phase out, a blink, returns itself to hand, grants persist or undying | Albino Troll, Selfless Spirit |
+| `game.AnswerPump` | stack | raises power or toughness: +N/+N, +1/+1 counters, monstrosity, adapt, a base power and toughness | Arbor Colossus |
+| `game.AnswerPrevent` | stack | prevents or redirects damage, or sets a damage shield | Spore Frog, Opal-Eye |
+| `game.AnswerRemove` | stack | removes, destroys, damages or shrinks other permanents with no target | Pestilence, Nevinyrral's Disk |
+| `game.AnswerSacOutlet` | stack | sacrifices a creature at will, in its cost or its effect | Viscera Seer, Ashnod's Altar |
+| `game.AnswerRestrict` | stack | stops what an opponent may do next: can't cast, can't activate | Ranger-Captain of Eos |
+| `game.AnswerCombatGrant` | combat | grants a combat keyword or permission, first strike, double strike and deathtouch included | Endling's deathtouch |
+| `game.AnswerAnimate` | combat | becomes a creature until end of turn: a manland, a Vehicle, every crew row | Smuggler's Copter |
+| `game.AnswerMakesBlocker` | combat | creates creature tokens at instant speed | Dawn of Hope |
+| `game.AnswerValue` | — | answers nothing: draw, mana, ramp, a fetch, scry, a non-creature token, a counter that only counts | Mind Stone, a Clue, cycling |
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerProtect},                     // "{1}{G}: Regenerate this creature."
+Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{...}}, // a self pump the bot also prices
+Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},            // Mind Stone's draw
+```
+
+`Answers` says what kind of answer and the amounts say how much. Declare
+both where both are true; neither is derived from the other.
+
+**Helpers declare for their rows.** A row built by a shared helper
+(cycling, monstrosity, crew, boast) is declared once, in the helper.
+
+**What `effects.Register` refuses:**
+
+- `AnswerValue` beside any other answer;
+- `Answers` on a spell, a mode, an alternative cost or a triggered row
+  (nothing reads it there yet);
+- `Answers` on a sorcery-speed or loyalty row, or on a row whose every
+  announcement has a target;
+- a crew row without `AnswerAnimate`;
+- a row whose cost sacrifices, exiles or returns a creature without
+  `AnswerSacOutlet` or `AnswerProtect`;
+- on a mana ability, anything but `AnswerSacOutlet` or `AnswerValue`, or
+  a creature-sacrifice cost declared without `AnswerSacOutlet`.
+
+**The ratchet.** `TestAnswersFallbackOnlyShrinks`
+(`internal/cards/effects`) lists every undeclared row in scope in
+`testdata/answers_fallback.txt`. A new card's undeclared row fails it,
+naming the row. When you declare a listed row, delete its line (or run
+`go test ./internal/cards/effects -run TestAnswersFallbackOnlyShrinks
+-args -update-answers-fallback`, which only removes lines) and lower
+`answersFallbackCeiling` to the new count. Then regenerate the review
+record with `go test ./internal/cards/effects -run
+TestAnswersDisagreementsAreCurrent -args -update-answers-disagreements`:
+`testdata/answers_disagreements.txt` lists every declared row whose tier
+differs from what the text read said, and its diff is the PR's "Verdicts
+changed" list. Declare what the card does, never what the text read said.
+
+A "Sacrifice this creature: …" row needs no special declaration for the
+moment its creature is threatened: the enumerator sets `interacts` while
+an opponent's stack item targets it, and `combat_interacts` while it
+attacks or blocks, from the game state (ADR 0142 owner answer 4).
+
 ### Paying energy (ADR 0129, #1995)
 
 Energy is a counter on the player (CR 107.14, CR 122.1):

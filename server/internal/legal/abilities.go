@@ -918,6 +918,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
 								}
+								// ADR 0142: the row's declared answers (or the
+								// text read for an undeclared row), by tier.
+								interacts, combatInteracts := untargetedFlags(g, source, zone, ab, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -931,7 +934,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// is flagged on its own.
 									TargetsStack: targetsStackObject(g, targets),
 									HasTargets:   hasTargets(targets),
-									Interacts:    !hasTargets(targets) && abilityInteracts(ab),
+									Interacts:    interacts,
+									// #2871: a combat ability, counted only in combat.
+									CombatInteracts: combatInteracts,
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,
@@ -2275,8 +2280,9 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							Source: source.InstanceID,
 							Cost:   cost,
 							// #2853: a sacrifice outlet that makes mana
-							// still answers removal.
-							Interacts: manaAbilityInteracts(ab.SacrificeOther),
+							// still answers removal (ADR 0142: declared,
+							// or read from the cost).
+							Interacts: manaMoveInteracts(g, source, zone, ab),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,

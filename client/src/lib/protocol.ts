@@ -744,6 +744,11 @@ export interface LegalMoveView {
   // phasing, a blink, damage prevention, a pump. Smart autopass stops
   // for it as for a targeted ability. Absent on older servers.
   interacts?: boolean;
+  // #2871, ADR 0142: true on an activation with no target that changes a
+  // fight without answering a spell: crew, a manland, a granted combat
+  // keyword, a creature token. Smart autopass counts it only in a combat
+  // window. Never set beside `interacts`. Absent on older servers.
+  combat_interacts?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never
@@ -2940,7 +2945,26 @@ export interface PurposeView {
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
   targets?: TargetPurposeView[];
+  // ADR 0142: what an activated row can do in response, declared on the
+  // card file. ["value"] is a declared "answers nothing". Absent when
+  // the row declares none.
+  answers?: PurposeAnswer[];
 }
+
+// PurposeAnswer is one name in ADR 0142's vocabulary, in the order the
+// server lists them. The first six are stack answers, the next three
+// combat answers.
+export type PurposeAnswer =
+  | "protect"
+  | "pump"
+  | "prevent"
+  | "remove"
+  | "sac_outlet"
+  | "restrict"
+  | "combat_grant"
+  | "animate"
+  | "makes_blocker"
+  | "value";
 
 // TargetPurposeView is what a spell or an ability does to the target
 // picked for clause `slot` (ADR 0126, amendment of 2026-10-08). The

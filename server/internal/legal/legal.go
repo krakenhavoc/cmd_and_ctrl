@@ -170,8 +170,19 @@ type Move struct {
 	// blink, damage prevention, a pump or counters (#2853, owner answer
 	// 2). Smart autopass stops for it as it does for a targeted ability.
 	// Pure value (draw, mana, a fetch, tokens, scry) never sets it. See
-	// abilityInteracts.
+	// answersOf (ADR 0142: the row's declared Purpose.Answers, else the
+	// printed-text read).
 	Interacts bool `json:"interacts,omitempty"`
+
+	// CombatInteracts is true on an activation with no target that
+	// changes attacks or blocks without answering a spell: crew, a
+	// manland or an animated artifact, a granted combat keyword (#2871),
+	// or (ADR 0142 owner answer 4) a creature that sacrifices itself
+	// while it is attacking or blocking. Smart autopass counts it only in
+	// a combat window, so it is a bit of its own rather than part of
+	// Interacts. Never set alongside Interacts. Read from the row's
+	// combat-tier answers (answersOf).
+	CombatInteracts bool `json:"combat_interacts,omitempty"`
 
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:

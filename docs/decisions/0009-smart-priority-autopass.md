@@ -22,6 +22,10 @@ the precedence list below.
 no longer a response by default, and the hold toggle clears itself once the
 stack it held has emptied. See "Amendment: only real interaction stops you
 (#2853)" below.
+**Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
+2026-10-09 — `interacts` reads what the ability row declares it answers
+(`Purpose.Answers`) before the printed-text read, and `combat_interacts`
+carries the combat tier. The response classes here are unchanged.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as

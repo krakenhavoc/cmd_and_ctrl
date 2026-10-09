@@ -171,7 +171,7 @@ func (st *state) stackSweepShare(c *protocol.CardView) float64 {
 func stackItemPurposes(card *protocol.CardView, it *protocol.StackItemView) []*protocol.PurposeView {
 	if it.AltCost != "" {
 		for i := range card.AlternativeCosts {
-			if ac := &card.AlternativeCosts[i]; ac.Key == it.AltCost && ac.Purpose != nil {
+			if ac := &card.AlternativeCosts[i]; ac.Key == it.AltCost && ac.Purpose.Priced() {
 				return []*protocol.PurposeView{ac.Purpose}
 			}
 		}
@@ -179,7 +179,7 @@ func stackItemPurposes(card *protocol.CardView, it *protocol.StackItemView) []*p
 	if card.Modes != nil && len(it.Modes) > 0 {
 		var out []*protocol.PurposeView
 		for _, m := range it.Modes {
-			if m >= 0 && m < len(card.Modes.Options) && card.Modes.Options[m].Purpose != nil {
+			if m >= 0 && m < len(card.Modes.Options) && card.Modes.Options[m].Purpose.Priced() {
 				out = append(out, card.Modes.Options[m].Purpose)
 			}
 		}
@@ -187,7 +187,7 @@ func stackItemPurposes(card *protocol.CardView, it *protocol.StackItemView) []*p
 			return out
 		}
 	}
-	if card.Purpose != nil {
+	if card.Purpose.Priced() {
 		return []*protocol.PurposeView{card.Purpose}
 	}
 	return nil

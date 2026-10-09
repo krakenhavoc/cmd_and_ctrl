@@ -145,6 +145,16 @@ type Purpose struct {
 	// Nil is "no target entries"; effects.Register refuses an empty
 	// list. A pointer so Purpose stays comparable.
 	Targets *TargetPurposes
+
+	// Answers is what this ability can do in response: the reasons a
+	// player would hold priority for it (ADR 0142). Declared by hand,
+	// like every Purpose field. The zero value is "not declared", and
+	// the reader (internal/legal's answersOf) falls back to the
+	// printed-text read. AnswerValue declares "answers nothing".
+	// Declared on an activated row only, for now: effects.Register
+	// refuses it on a spell, a mode, an alternative cost and a
+	// triggered row, which nothing reads it on yet (ADR 0142 §2).
+	Answers Answers
 }
 
 // TargetPurposes is a statement's target entries (Purpose.Targets), at
@@ -411,6 +421,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
+		Answers:                   p.Answers | o.Answers,
 	}
 	if out.Pump == nil {
 		out.Pump = o.Pump

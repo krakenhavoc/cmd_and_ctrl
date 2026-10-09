@@ -782,7 +782,7 @@ func (st *state) anyPlayerPurposeValue(src *protocol.CardView, index int) (float
 			break
 		}
 	}
-	if row == nil || !row.AnyPlayer || row.Purpose == nil {
+	if row == nil || !row.AnyPlayer || !row.Purpose.Priced() {
 		return 0, false
 	}
 	v := st.w.Hand * float64(row.Purpose.Draws)
