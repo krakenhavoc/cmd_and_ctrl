@@ -70,6 +70,11 @@ func TestNinjutsuOnAnAttackingCommanderAsksItsOwner(t *testing.T) {
 	if !g.Battlefield.Contains(cmd) || len(g.StackMeta) != 0 {
 		t.Fatal("ninjutsu was paid before the commander's owner answered")
 	}
+	// #2420: the prompt says a "no" sends the commander to its owner's
+	// hand, where it is cast without the CR 903.8 tax.
+	if got := g.PendingChoices[0].CommanderHeadedFor(); got != game.ZoneHand {
+		t.Errorf("CommanderHeadedFor() = %q, want %q", got, game.ZoneHand)
+	}
 	answerCostCommander(t, g, me.ID, true)
 	if !me.Command.Contains(cmd) || me.Hand.Contains(cmd) {
 		t.Fatal("the returned commander did not take the command zone")

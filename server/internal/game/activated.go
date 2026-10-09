@@ -1684,12 +1684,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// on top. A sacrificed, discarded or exiled commander is paid like
 	// any other card and offered the command zone afterwards by the
 	// CR 903.9a state-based action.
-	asking := append(append([]uuid.UUID(nil), params.ReturnIDs...), tops...)
+	// #2420: each with the zone it is headed for, so the prompt can say
+	// a returned commander would stay castable from its owner's hand.
+	asking := append(costCommanderMovesTo(ZoneHand, params.ReturnIDs...), costCommanderMovesTo(ZoneLibrary, tops...)...)
 	// #2028: and the source a return-this cost puts into its owner's
 	// hand. A commander that returns itself is asked CR 903.9b here,
 	// before anything is paid, like any other returned commander.
 	if ab.Cost.ReturnSelf {
-		asking = append(asking, cardID)
+		asking = append(asking, costCommanderMovesTo(ZoneHand, cardID)...)
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {

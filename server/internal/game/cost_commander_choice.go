@@ -117,6 +117,13 @@ type costCommanderFrame struct {
 	payer uuid.UUID
 	// card is the commander this prompt is about.
 	card uuid.UUID
+	// headedFor is where the payment puts `card` if its owner declines:
+	// ZoneHand for a return to hand, ZoneLibrary for a card put on top
+	// of its library (#2420). The caller knows it when it builds the
+	// list it asks about; PendingChoice.CommanderHeadedFor reads it, so
+	// this prompt carries the same playable_from_zone fact as CR
+	// 903.9b's question about an effect's move.
+	headedFor ZoneKind
 	// answers are the owners' answers already given for OTHER cards
 	// of the same payment — a Village Rites paid with two partners'
 	// worth of commanders asks twice, one card at a time.
@@ -220,8 +227,10 @@ func (g *Game) CardExitPausedForEffect(cardID uuid.UUID) bool {
 //
 // `moving` is every card the payment is about to move — the discards,
 // the returns, the exiles, the sacrifices, the alternative cost's
-// cards, and the source itself when the cost moves it. For each one
-// that is a commander (Card.IsCommander, the same test the CR 903.9
+// cards, and the source itself when the cost moves it — each with the
+// zone the payment puts it in (since ADR 0115 only a hand or a
+// library reaches here; #2420 carries the zone onto the prompt). For
+// each one that is a commander (Card.IsCommander, the same test the CR 903.9
 // built-in makes) with no answer yet in `answers`:
 //
 //   - an owner who is gone (CR 800.4a) cannot be asked, and their
@@ -241,8 +250,9 @@ func (g *Game) CardExitPausedForEffect(cardID uuid.UUID) bool {
 // "Thrill of Possibility").
 //
 // Caller must hold g.mu.
-func (g *Game) askCostCommanderLocked(payer uuid.UUID, moving []uuid.UUID, answers map[uuid.UUID]bool, what string, announce func(*Game, map[uuid.UUID]bool) error) (bool, map[uuid.UUID]bool) {
-	for _, id := range moving {
+func (g *Game) askCostCommanderLocked(payer uuid.UUID, moving []costCommanderMove, answers map[uuid.UUID]bool, what string, announce func(*Game, map[uuid.UUID]bool) error) (bool, map[uuid.UUID]bool) {
+	for _, mv := range moving {
+		id := mv.card
 		if _, answered := answers[id]; answered {
 			continue
 		}
@@ -265,10 +275,11 @@ func (g *Game) askCostCommanderLocked(payer uuid.UUID, moving []uuid.UUID, answe
 			Source:  id,
 			Reason:  reason,
 			costCommanderResume: &costCommanderFrame{
-				payer:    payer,
-				card:     id,
-				answers:  answers,
-				announce: announce,
+				payer:     payer,
+				card:      id,
+				headedFor: mv.to,
+				answers:   answers,
+				announce:  announce,
 			},
 		})
 		if queued == uuid.Nil {
@@ -282,6 +293,23 @@ func (g *Game) askCostCommanderLocked(payer uuid.UUID, moving []uuid.UUID, answe
 		return true, answers
 	}
 	return false, answers
+}
+
+// costCommanderMove is one card a cost payment is about to put into a
+// hand or a library, and which of the two (#2420).
+type costCommanderMove struct {
+	card uuid.UUID
+	to   ZoneKind
+}
+
+// costCommanderMovesTo pairs every id with the one zone they are all
+// headed for.
+func costCommanderMovesTo(to ZoneKind, ids ...uuid.UUID) []costCommanderMove {
+	out := make([]costCommanderMove, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, costCommanderMove{card: id, to: to})
+	}
+	return out
 }
 
 // withCommanderAnswer returns a NEW map holding `answers` plus one

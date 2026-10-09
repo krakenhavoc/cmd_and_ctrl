@@ -354,8 +354,10 @@ answer of its own (`aiseat/heuristic/replacement.go`, `dredge.go`):
 - **A commander headed for a hand** (CR 903.9b; the prompt sets
   `playable_from_zone`): no. In hand it is cast without the commander tax,
   which is owner decision 2 of ADR 0115 applied to the one zone a commander
-  can always be cast from. Headed for a library, or asked before a cost is
-  paid: yes.
+  can always be cast from. That includes the question asked before a cost
+  is paid (ninjutsu, "return a creature you control to its owner's hand",
+  Daze's alternative cost), which says where the card is going since #2420.
+  Headed for a library: yes.
 - **Library of Leng and Moonlit Meditation**: yes. Leng's prompt does not
   name the discarded card (it is in a hand), so the bot cannot price it, and
   keeping a card beats losing it. Moonlit Meditation enchants a permanent

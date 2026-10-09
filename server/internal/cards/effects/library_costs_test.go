@@ -349,6 +349,10 @@ func TestLibraryCostsAskACommandersOwner(t *testing.T) {
 	if !me.Hand.Contains(cmd.InstanceID) {
 		t.Fatal("the put was paid before the owner answered")
 	}
+	// #2420: the prompt says a "no" puts the commander into its library.
+	if got := g.PendingChoices[0].CommanderHeadedFor(); got != game.ZoneLibrary {
+		t.Errorf("CommanderHeadedFor() = %q, want %q", got, game.ZoneLibrary)
+	}
 	answerCostCommander(t, g, me.ID, false)
 	if top, _ := me.Library.Top(); top.InstanceID != cmd.InstanceID {
 		t.Fatal("the declined commander is not on top of the library")
