@@ -340,6 +340,15 @@ type Config struct {
 	// than what the tax prevents (ADR 0136's amendment of 2026-10-09,
 	// tax.go). Off (the zero value) pays every tax it can, as before.
 	PlanWeighTaxes bool
+	// PlanHoldInstants holds the turn plan's instant-speed members for
+	// the end step before the bot's turn, unless a later member needs
+	// their mana or they draw with mana left after them (ADR 0136 §5,
+	// owner answer 6, #2668, holdinstants.go). A held member keeps its
+	// mana reserved in the plan; when every member left is held the bot
+	// passes, and ADR 0126 §5 casts it in that end step. It also lets a
+	// land swap that nets lands (Harrow) be a plan member. Off (the zero
+	// value) casts instants like sorceries, as PR 4 shipped.
+	PlanHoldInstants bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -592,6 +601,7 @@ func DefaultConfig() Config {
 		PlanNextTurnDiscount: 0.75,
 		IdleLateRocks:        true,
 		PlanWeighTaxes:       true,
+		PlanHoldInstants:     true,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -733,6 +743,7 @@ func BaselineConfig() Config {
 	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
 	c.IdleLateRocks = false
 	c.PlanWeighTaxes = false
+	c.PlanHoldInstants = false
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
 	c.PricePutsFromHand = false

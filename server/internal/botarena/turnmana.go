@@ -69,7 +69,8 @@ type TurnMana struct {
 	// with nothing castable left on the table.
 	Idle int `json:"idle"`
 	// Planned is the windows whose trace carried a plan of two or more
-	// members (aiseat.Trace.Plan): the plan-miss denominator.
+	// members cast this turn (aiseat.Trace.Plan; a member held for the
+	// end step is not one): the plan-miss denominator.
 	Planned int `json:"planned_windows"`
 	// Checked is the windows in which a plan's next member was looked
 	// for: the seat's next main-phase window with an empty stack after
@@ -209,7 +210,7 @@ func (w *turnManaWatch) Observe(ev aiseat.DecisionEvent) {
 		}
 	}
 
-	if plan := ev.Trace.Plan; len(plan) >= 2 {
+	if plan := ev.Trace.Plan; castNow(plan) >= 2 {
 		s.planned++
 		if ok && ev.Index == plan[0].Index && main {
 			for _, m := range plan[1:] {
@@ -270,6 +271,21 @@ func ownMainPhaseEmptyStack(v *protocol.GameView, seat uuid.UUID) bool {
 		return false
 	}
 	return v.Turn.Step == "precombat_main" || v.Turn.Step == "postcombat_main"
+}
+
+// castNow is how many of a plan's members are cast this turn: a member
+// held for the end step before the seat's turn (ADR 0136 §5) is not,
+// and is never looked for by the plan-miss check. A plan with fewer
+// than two such members names no next member, so it is not a planned
+// window.
+func castNow(plan []aiseat.PlanMember) int {
+	n := 0
+	for _, m := range plan {
+		if !m.Held {
+			n++
+		}
+	}
+	return n
 }
 
 func offersPass(moves []legal.Move) bool {

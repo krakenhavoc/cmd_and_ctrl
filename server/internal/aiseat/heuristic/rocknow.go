@@ -44,6 +44,10 @@ type twoTurnLine struct {
 	nowVal  float64
 	next    []*planCandidate
 	nextVal float64
+	// held is the members of now that §5 holds for the end step, as bits
+	// in cands (Config.PlanHoldInstants).
+	held  uint
+	cands []*planCandidate
 }
 
 func (l twoTurnLine) total(discount float64) float64 { return l.nowVal + discount*l.nextVal }
@@ -64,11 +68,11 @@ func (p *Policy) decideRockNow(ctx context.Context, st *state, moves []legal.Mov
 		return aiseat.Decision{}, nil, false
 	}
 	// The line's members, as bits in cands. A line holding a move the
-	// plan cannot model (an activation, a cast with a sacrifice) is left
-	// alone.
+	// plan cannot model (an activation, a cast with a sacrifice other
+	// than a land swap that nets lands, planEligibleIn) is left alone.
 	var lineMask uint
 	for _, idx := range line {
-		k := candidateFor(cands, moves, idx)
+		k := p.candidateFor(st, cands, moves, idx)
 		if k < 0 {
 			return aiseat.Decision{}, nil, false
 		}
@@ -92,14 +96,14 @@ func (p *Policy) decideRockNow(ctx context.Context, st *state, moves []legal.Mov
 		if setFeasible(base, cands, lineMask|bit, units) {
 			continue
 		}
-		mask, val, ord, ok := p.bestSet(ctx, setSearch{
+		mask, val, ord, held, ok := p.bestSet(ctx, setSearch{
 			cands: cands, base: base, want: want, sources: sources,
-			must: bit, minSize: 1, trustSingles: true,
+			must: bit, minSize: 1, trustSingles: true, hold: p.cfg.PlanHoldInstants,
 		})
 		if !ok {
 			continue
 		}
-		a := &twoTurnLine{now: membersOf(cands, ord, mask), nowVal: val}
+		a := &twoTurnLine{now: membersOf(cands, ord, mask, held), nowVal: val, held: held, cands: cands}
 		if a.nowVal <= p.setBar(st, moves, a.now, threshold, leftover) {
 			continue
 		}
@@ -107,7 +111,7 @@ func (p *Policy) decideRockNow(ctx context.Context, st *state, moves []legal.Mov
 		if lineB == nil {
 			b := &twoTurnLine{nowVal: lineVal}
 			for _, idx := range line {
-				b.now = append(b.now, cands[candidateFor(cands, moves, idx)])
+				b.now = append(b.now, cands[p.candidateFor(st, cands, moves, idx)])
 			}
 			b.next, b.nextVal = p.nextTurnBest(ctx, st, moves, vals, b.now)
 			lineB = b
@@ -122,17 +126,20 @@ func (p *Policy) decideRockNow(ctx context.Context, st *state, moves []legal.Mov
 	if best == nil {
 		return aiseat.Decision{}, nil, false
 	}
-	members := make([]aiseat.PlanMember, 0, len(best.now))
-	for _, c := range best.now {
-		members = append(members, aiseat.PlanMember{Index: c.index, Label: moves[c.index].Label})
+	a2 := turnPlan{members: best.now, cands: best.cands, held: best.held}
+	d := aiseat.Decision{Index: best.now[0].index, Reason: twoTurnReason(*best, *lineB, p.cfg.PlanNextTurnDiscount)}
+	if a2.isHeld(best.now[0]) {
+		// §5: held members come last, so every member of the order is
+		// held for the end step, and nothing is cast now.
+		d.Index = passOrDecline(moves)
 	}
-	return aiseat.Decision{Index: best.now[0].index, Reason: twoTurnReason(*best, *lineB, p.cfg.PlanNextTurnDiscount)}, members, true
+	return d, planMembers(moves, a2), true
 }
 
 // candidateFor is the index in cands of the card move idx casts, -1
 // when the move is not a plan candidate.
-func candidateFor(cands []*planCandidate, moves []legal.Move, idx int) int {
-	if idx < 0 || idx >= len(moves) || !planEligible(moves[idx]) {
+func (p *Policy) candidateFor(st *state, cands []*planCandidate, moves []legal.Move, idx int) int {
+	if idx < 0 || idx >= len(moves) || !p.planEligibleIn(st, moves[idx]) {
 		return -1
 	}
 	id := decode[castParams](moves[idx].Params).InstanceID
@@ -230,14 +237,14 @@ func (p *Policy) nextTurnBest(ctx context.Context, st *state, moves []legal.Move
 	for _, c := range now {
 		sources += c.amount
 	}
-	mask, val, ord, ok := p.bestSet(ctx, setSearch{
+	mask, val, ord, _, ok := p.bestSet(ctx, setSearch{
 		cands: cands, base: st.nextTurnMana(p.cfg.PlanFilterLands, now),
 		want: want, sources: sources, minSize: 1,
 	})
 	if !ok || val <= 0 {
 		return nil, 0
 	}
-	return membersOf(cands, ord, mask), val
+	return membersOf(cands, ord, mask, 0), val
 }
 
 // nextTurnMana is the mana the bot can make in its next turn's main
