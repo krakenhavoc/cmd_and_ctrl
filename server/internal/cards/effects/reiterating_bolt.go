@@ -28,6 +28,7 @@ func init() {
 		Name:          "Reiterating Bolt",
 		Completeness:  CompletenessFull,
 		Targets:       TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Purpose:       ForTargets(DamageToTarget(0, 3)),
 		OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(3, 10)},
 		Triggered:     []game.TriggeredAbility{Replicate()},
 		OnResolve:     damageToFirstTarget(3),

@@ -61,6 +61,7 @@ func init() {
 				Label:   "−4: Nicol Bolas deals 7 damage to target opponent, creature an opponent controls, or planeswalker an opponent controls.",
 				Cost:    LoyaltyCost(-4),
 				Targets: b12TargetOpponentOrTheirCreatureOrPlaneswalker(),
+				Purpose: ForTargets(DamageToTarget(0, 7)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					for _, t := range ctx.LegalTargets() {

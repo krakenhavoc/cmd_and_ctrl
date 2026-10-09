@@ -13,6 +13,7 @@ func init() {
 		Name:         "Magma Spray",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(2)),
 	})
 }

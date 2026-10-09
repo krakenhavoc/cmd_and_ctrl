@@ -30,10 +30,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenChosen("Khans", AtYourUpkeep("Outpost Siege — exile the top card of your library; you may play it this turn",
 				outpostSiegeImpulse)),
-			WhenChosen("Dragons", Targeting(
+			WhenChosen("Dragons", TriggerWithPurpose(Targeting(
 				On(game.EventLTB, aCreatureYouControlLeft, "Outpost Siege — 1 damage to any target",
 					b33DamageChosenTargetFromSource(1)),
-				TargetAny())),
+				TargetAny()), ForTargets(DamageToTarget(0, 1)))),
 		},
 	})
 }

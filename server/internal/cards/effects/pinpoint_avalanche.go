@@ -16,6 +16,7 @@ func init() {
 		Completeness:               CompletenessFull,
 		SpellDamageCantBePrevented: Always(),
 		Targets:                    TargetCreature("target creature"),
+		Purpose:                    ForTargets(DamageToTarget(0, 4)),
 		OnResolve:                  damageToFirstTarget(4),
 	})
 }

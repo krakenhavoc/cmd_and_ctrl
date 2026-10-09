@@ -13,6 +13,7 @@ func init() {
 		Name:         "Obliterating Bolt",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Purpose:      ForTargets(DamageToTarget(0, 4)),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(4)),
 	})
 }

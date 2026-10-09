@@ -17,6 +17,7 @@ func init() {
 		Name:         "Moonrager's Slash",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(2, "This spell costs {2} less to cast if it's night.", ItsNightCost()),
 		},

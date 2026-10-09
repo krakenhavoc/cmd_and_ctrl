@@ -20,6 +20,7 @@ func init() {
 			Label:   "{T}, Discard a card at random: This creature deals 1 damage to any target.",
 			Cost:    Plus(TapCost(), DiscardAtRandom(1, "a card at random")),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  sourceDealsDamageToEachLegalTarget(1),
 		}},
 	})

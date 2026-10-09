@@ -110,6 +110,7 @@ var reviewedNotAWipe = map[string]string{
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
+	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
 	"Crypt Incursion":                          "exiles a graveyard",
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",

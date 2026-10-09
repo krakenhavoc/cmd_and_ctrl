@@ -21,7 +21,7 @@ func init() {
 		Name:         "Naya Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Naya Charm deals 3 damage to target creature.", TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Naya Charm deals 3 damage to target creature.", TargetCreature("target creature")), ForTargets(DamageToTarget(0, 3))),
 			Mode("Return target card from a graveyard to its owner's hand.", TargetCardInGraveyard("target card from a graveyard")),
 			Mode("Tap all creatures target player controls.", TargetPlayer("target player")),
 		),

@@ -13,6 +13,7 @@ func init() {
 		Name:         "Pillar of Flame",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve:    damageAnyTargetExileIfDealtDies(fixedAmount(2), false),
 	})
 }

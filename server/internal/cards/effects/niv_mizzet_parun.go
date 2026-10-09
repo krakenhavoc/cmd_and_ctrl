@@ -33,6 +33,7 @@ func init() {
 				Watches:   []game.EventKind{game.EventDrawCard},
 				AppliesTo: ByYou,
 				Targets:   TargetAny(),
+				Purpose:   ForTargets(DamageToTarget(0, 1)),
 				Key:       "Niv-Mizzet, Parun — deal 1 damage to any target",
 				Effect:    sourceDealsDamageToEachLegalTarget(1),
 			},
