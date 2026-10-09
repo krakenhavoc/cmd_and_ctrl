@@ -83,8 +83,13 @@ func TestPublicLogProjectsTableEvents(t *testing.T) {
 	if step.Turn != 3 || step.Round != 2 || step.Step != "precombat_main" {
 		t.Errorf("step entry: turn %d step %q, want 3 / precombat_main", step.Turn, step.Step)
 	}
-	if want := "Turn 2 — P1 · precombat main"; step.Text != want {
+	if want := "Turn 3 (round 2) — P1 · precombat main"; step.Text != want {
 		t.Errorf("step text: got %q, want %q", step.Text, want)
+	}
+	// #2790: the step line counts turns and names the round, in the
+	// words boardtext's header uses for the same two fields.
+	if want := fmt.Sprintf("Turn %d (round %d) — ", step.Turn, step.Round); !strings.HasPrefix(step.Text, want) {
+		t.Errorf("step text %q does not lead with %q", step.Text, want)
 	}
 
 	cast := findLog(t, log, LogCast)
@@ -582,4 +587,17 @@ func fourPlayerBoard(tb testing.TB) *game.Game {
 		}
 	})
 	return g
+}
+
+// #2790: a step entry persisted before ADR 0059 carries no round, so its
+// line keeps the one number it has.
+func TestAStepWithNoRoundKeepsOneNumber(t *testing.T) {
+	e := LogEvent{Kind: LogStep, Turn: 4, Step: "upkeep", actorName: "P1"}
+	if got, want := renderLogText(e, "", ""), "Turn 4 — P1 · upkeep"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	e.Round = 2
+	if got, want := renderLogText(e, "", ""), "Turn 4 (round 2) — P1 · upkeep"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
 }
