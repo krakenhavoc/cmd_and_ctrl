@@ -28,10 +28,17 @@ import (
 // structure; this is the version with a target in it.
 //
 // The modes resolve in PRINTED ORDER (CR 608.2c) regardless of which
-// order they were picked in, which matters for exactly one pairing
-// here: bullets three and four together make the Bears first and then
-// put counters on them, so two 2/2s become two 4/4s. Picking them the
-// other way round does not change that.
+// order they were picked in, which matters for two pairings here:
+//
+//   - bullets three and four together make the Bears first and then
+//     put counters on them, so two 2/2s become two 4/4s;
+//   - bullets two and four together finish the search before the
+//     counters: a creature land the search finds is on the battlefield
+//     when the counters go out, so it gets them too. The search is a
+//     prompt, and each bullet is a ModeDoing body so the engine's
+//     bullet walk holds the later ones until it is answered (#2789).
+//     As one OnResolve the counters ran on the line below the search,
+//     while the prompt was still open.
 //
 // Notes on the individual bullets:
 //
@@ -41,7 +48,8 @@ import (
 //   - "Up to two land cards" may find one or none, and the lands come
 //     in tapped. Any land card, not just basics.
 //   - The counters go on every creature its controller controls at
-//     resolution, including the Bears from the bullet above.
+//     resolution, including the Bears and any creature land from the
+//     bullets above.
 //
 // No simplification.
 func init() {
@@ -50,46 +58,34 @@ func init() {
 		Name:         "Titania's Command",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose two", 2, 2,
-			Mode("Exile target player's graveyard. You gain 1 life for each card exiled this way.",
-				TargetPlayer("target player")),
-			ModeWithPurpose(Mode("Search your library for up to two land cards, put them onto the battlefield tapped, then shuffle."), game.Purpose{Lands: 2}),
-			ModeWithPurpose(Mode("Create two 2/2 green Bear creature tokens."), game.Purpose{Tokens: 2}),
-			Mode("Put two +1/+1 counters on each creature you control."),
+			ModeDoing("Exile target player's graveyard. You gain 1 life for each card exiled this way.",
+				TargetPlayer("target player"), titaniasCommandExileAndGain),
+			ModeWithPurpose(ModeDoing("Search your library for up to two land cards, put them onto the battlefield tapped, then shuffle.", nil,
+				func(item *game.StackItem, ctx *Context, _ int) error {
+					return SearchLibrary{
+						Player:        item.Controller,
+						Predicate:     game.Card.IsLand,
+						Dest:          game.ZoneBattlefield,
+						Limit:         2,
+						TappedOnEntry: true,
+						Shuffle:       true,
+						Optional:      true,
+						Reason:        "Titania's Command — up to two land cards, onto the battlefield tapped",
+					}.Apply(ctx)
+				}), game.Purpose{Lands: 2}),
+			ModeWithPurpose(ModeDoing("Create two 2/2 green Bear creature tokens.", nil,
+				func(item *game.StackItem, ctx *Context, _ int) error {
+					return CreateToken{
+						Controller: item.Controller,
+						Template:   TokenCard("2/2 green Bear"),
+						N:          2,
+					}.Apply(ctx)
+				}), game.Purpose{Tokens: 2}),
+			ModeDoing("Put two +1/+1 counters on each creature you control.", nil,
+				func(_ *game.StackItem, ctx *Context, _ int) error {
+					return titaniasCommandCountersOnYourCreatures(ctx)
+				}),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) {
-				if err := titaniasCommandExileAndGain(ctx); err != nil {
-					return err
-				}
-			}
-			if ctx.HasMode(1) {
-				if err := (SearchLibrary{
-					Player:        item.Controller,
-					Predicate:     game.Card.IsLand,
-					Dest:          game.ZoneBattlefield,
-					Limit:         2,
-					TappedOnEntry: true,
-					Shuffle:       true,
-					Optional:      true,
-					Reason:        "Titania's Command — up to two land cards, onto the battlefield tapped",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			if ctx.HasMode(2) {
-				if err := (CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("2/2 green Bear"),
-					N:          2,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			if ctx.HasMode(3) {
-				return titaniasCommandCountersOnYourCreatures(ctx)
-			}
-			return nil
-		},
 	})
 }
 
@@ -100,31 +96,29 @@ func init() {
 // Swarm's is: "each card exiled this way" is the cards that got
 // there, not the cards that were in the pile when the mode was
 // chosen.
-func titaniasCommandExileAndGain(ctx *Context) error {
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetPlayer {
-			continue
-		}
-		p := ctx.Game.PlayerByIDForEffect(t.ID)
-		if p == nil || p.Graveyard == nil {
-			return nil
-		}
-		ids := make([]uuid.UUID, 0, len(p.Graveyard.Cards))
-		for _, c := range p.Graveyard.Cards {
-			ids = append(ids, c.InstanceID)
-		}
-		exiled := 0
-		for _, id := range ids {
-			if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
-				return err
-			}
-			if z := ctx.Game.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
-				exiled++
-			}
-		}
-		return GainLife{Player: ctx.Controller(), Amount: exiled}.Apply(ctx)
+func titaniasCommandExileAndGain(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
 	}
-	return nil
+	p := ctx.Game.PlayerByIDForEffect(t.ID)
+	if p == nil || p.Graveyard == nil {
+		return nil
+	}
+	ids := make([]uuid.UUID, 0, len(p.Graveyard.Cards))
+	for _, c := range p.Graveyard.Cards {
+		ids = append(ids, c.InstanceID)
+	}
+	exiled := 0
+	for _, id := range ids {
+		if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+		if z := ctx.Game.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
+			exiled++
+		}
+	}
+	return GainLife{Player: ctx.Controller(), Amount: exiled}.Apply(ctx)
 }
 
 // titaniasCommandCountersOnYourCreatures is the fourth bullet: two

@@ -1245,3 +1245,50 @@ Tests: `modes_printed_order_test.go` announces a spell, a triggered
 ability and an activated ability in reverse and a repeatable mode
 interleaved, and checks both the run order and each occurrence's
 target.
+
+## Amendment 2026-10-09: a later bullet waits for an earlier bullet's prompt (#2789)
+
+**The gap.** The 2026-09-30 amendment made the bullets RUN in printed
+order, but a bullet that asks something (a library search, a scry, a
+discard) only queues its prompt and returns, and the walk then ran the
+next bullet before the answer. Titania's Command put its +1/+1 counters
+out while its land search was open, so a creature land it found missed
+them; Insatiable Avarice drew three before the tutored card was on top.
+The "Out of scope, stated" note above (Inscription of Insight: "Printed
+order needs a bullet walk that waits for a prompt to be answered, and
+nothing has one yet") named the same gap. CR 608.2c's "follows its
+instructions in the order written" was already decided; this amendment
+only makes the walk honour it across a prompt.
+
+**What changed.**
+
+- `runChosenModeEffectsLocked` checks, before each bullet, whether the
+  resolution is paused on one of its own prompts (#1289's
+  `pausedResolutionChoiceLocked`). If it is, the bullets not yet run
+  are parked in `Game.pausedModeWalk` (`game/mode_walk.go`) and the
+  walk returns. The resolution stays open, so the CR 704.3 boundary is
+  held, and a prompt the answer chains on is stamped as part of the
+  resolution and keeps the walk parked.
+- When the last such prompt is answered or withdrawn,
+  `holdForOpenResolutionLocked` resumes the walk instead of closing the
+  resolution. A resumed bullet may pause again; the boundary runs only
+  after the last bullet.
+- Checked before each bullet, not after, so an `OnResolve` or trigger
+  body that paused holds the bullets too.
+- The parked walk is data: the stack item (through the ordinary stack
+  item mirror, which re-derives the bullets from the oracle ID or the
+  ability's catalog row), the spell's catalog key and the occurrences
+  still to run. Clone and the snapshot both carry it
+  (`GameSnapshot.PausedModeWalk`, additive in schema v7), so it adds no
+  restore-point blocker. A binary from before this change drops the key
+  and would lose the parked bullets of a game restored mid-prompt.
+- Applies to `ModeDoing` bodies only. An `if ctx.HasMode(i)` chain in
+  one `OnResolve` cannot be suspended, so Titania's Command moved to
+  `ModeDoing` bullets. The other modal cards whose prompting bullet is
+  followed by another bullet already declare `ModeDoing` and are fixed
+  by the engine change: Insatiable Avarice, Kolaghan's Command,
+  Mishra's Command, Prismari Command and Kozilek's Command.
+
+Tests: `titanias_command_test.go` (the counters and the Bears wait for
+the search; a creature land found gets the counters) and
+`TestInsatiableAvariceDrawsTheTutoredCard`.

@@ -118,14 +118,20 @@ func TestInscriptionOfRuinKickedChoosesAnyNumber(t *testing.T) {
 		t.Fatalf("kicked: all three bullets are legal: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	if !choiceFor(g, b.opp.ID) {
+		t.Fatal("the discard bullet asks the opponent to discard")
+	}
+	// CR 608.2c (#2789): the later bullets wait for the discard.
+	if g.Battlefield.Contains(b.dead) {
+		t.Error("the reanimation bullet ran before the discard was answered")
+	}
+	discardFromHand(t, g, b.opp.ID)
+	g.SettleResolution()
 	if !g.Battlefield.Contains(b.dead) {
 		t.Error("the reanimation bullet returns the two-drop")
 	}
 	if g.Battlefield.Contains(b.theirs) {
 		t.Error("the destroy bullet destroys the three-drop")
-	}
-	if !choiceFor(g, b.opp.ID) {
-		t.Error("the discard bullet asks the opponent to discard")
 	}
 }
 
@@ -411,13 +417,24 @@ func TestLetsPlayAGameDeliriumUnlocksEveryBullet(t *testing.T) {
 		t.Fatalf("delirium: every bullet: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	// CR 608.2c (#2789): the life bullet waits for every opponent's
+	// discard.
+	if opp.Life != oppLife {
+		t.Errorf("the life bullet ran before the discards were answered: %d", opp.Life)
+	}
+	for _, p := range g.Seats {
+		if p.ID != me.ID {
+			discardFromHand(t, g, p.ID)
+		}
+	}
+	g.SettleResolution()
 	if opp.Life != oppLife-3 || me.Life != myLife+3 {
 		t.Errorf("life %d/%d, want %d/%d", opp.Life, me.Life, oppLife-3, myLife+3)
 	}
-	// The opponents' discard prompts hold priority, so the 0/0 has not
-	// met the state-based check yet; its power says the bullet landed.
-	if g.Battlefield.Contains(bear) && currentPower(t, g, bear) != 0 {
-		t.Error("the -1/-1 bullet shrinks the opponent's 1/1")
+	// The -1/-1 bullet made the 1/1 a 0/0, and the state-based check
+	// after the resolution finished put it in the graveyard.
+	if g.Battlefield.Contains(bear) {
+		t.Errorf("the -1/-1 bullet shrinks the opponent's 1/1 to death (power %d)", currentPower(t, g, bear))
 	}
 }
 

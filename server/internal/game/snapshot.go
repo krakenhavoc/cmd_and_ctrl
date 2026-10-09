@@ -426,6 +426,12 @@ type GameSnapshot struct {
 	// the old behaviour (the boundary is not held). No schema bump.
 	ResolutionOpen bool `json:"resolutionOpen,omitempty"`
 
+	// PausedModeWalk is Game.pausedModeWalk (#2789, mode_walk.go): a
+	// modal item's bullets parked behind a prompt an earlier bullet
+	// queued. A file written before it restores nil, which is the old
+	// behaviour (the later bullets had already run). No schema bump.
+	PausedModeWalk *modeWalkSnapshot `json:"pausedModeWalk,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -1835,6 +1841,9 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.PendingChoices = append(s.PendingChoices, snapshotPendingChoice(c, cen))
 		}
 	}
+	// #2789: a modal item's later bullets parked behind one of those
+	// prompts (mode_walk.go).
+	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
 
 	if len(g.Events) > 0 {
 		s.Events = make([]Event, len(g.Events))
@@ -2601,6 +2610,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
+	g.pausedModeWalk = restoreModeWalk(s.PausedModeWalk)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)

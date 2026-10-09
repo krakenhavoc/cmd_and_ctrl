@@ -115,6 +115,12 @@ func (g *Game) holdForOpenResolutionLocked() bool {
 	if g.pausedResolutionChoiceLocked() != nil {
 		return true
 	}
+	// #2789, CR 608.2c: the prompt a modal item's bullet was waiting on
+	// is answered, so its later bullets run now, still inside the
+	// resolution (mode_walk.go). One of them may pause again.
+	if g.resumeModeWalkLocked() && g.pausedResolutionChoiceLocked() != nil {
+		return true
+	}
 	g.resolutionOpen = false
 	return false
 }
