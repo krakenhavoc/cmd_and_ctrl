@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "3a49b518-61c8-4dea-8008-c5edf8384581",
 		Name:            "Ob Nixilis, the Ascended",
+		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true}},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{

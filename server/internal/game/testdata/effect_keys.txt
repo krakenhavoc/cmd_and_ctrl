@@ -159,3 +159,5 @@ body lichs-relic/destroy
 condition attack/attacks-an-opponent-of-the-controller
 body primal-witchstalker/land
 body modular/move-counters
+body seasoned-cryomancer/tap-and-stun
+body tether-technician/strike

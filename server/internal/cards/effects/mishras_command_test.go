@@ -110,12 +110,11 @@ func TestMishrasCommandPumpsOneCreatureWhileBurningAnother(t *testing.T) {
 
 // --- discard-up-to-X, then draw exactly what was discarded --------
 
-// The pump bullet resolves even though the discard bullet's own
-// question is still open: the mode-effect loop runs every chosen
-// bullet in one pass (CR 608.2c); only the discard's OWN
-// continuation waits on the target player's answer. And the draw
-// counts what was REALLY discarded, not X (#1027,
-// PlayerDiscardsThenForEffect).
+// The pump bullet waits for the discard bullet's question: CR
+// 608.2c follows the instructions in the order written, so the
+// bullet printed later runs only once the target player has answered
+// (#2789). And the draw counts what was REALLY discarded, not X
+// (#1027, PlayerDiscardsThenForEffect).
 func TestMishrasCommandDiscardsUpToXThenDrawsExactlyWhatWasDiscarded(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -130,8 +129,8 @@ func TestMishrasCommandDiscardsUpToXThenDrawsExactlyWhatWasDiscarded(t *testing.
 		})
 	passPriorityAroundTable(t, g)
 
-	if got := effectivePower(t, g, mine); got != 2+3 {
-		t.Fatalf("the pump bullet should have resolved already: power %d, want %d", got, 2+3)
+	if got := effectivePower(t, g, mine); got != 2 {
+		t.Fatalf("the pump bullet ran before the discard was answered: power %d, want 2", got)
 	}
 	c := discardChoiceFor(g, opp.ID)
 	if c == nil {
@@ -147,6 +146,11 @@ func TestMishrasCommandDiscardsUpToXThenDrawsExactlyWhatWasDiscarded(t *testing.
 		ids[i] = opp.Hand.Cards[i].InstanceID
 	}
 	answerDiscard(t, g, opp.ID, ids...)
+	g.SettleResolution()
+
+	if got := effectivePower(t, g, mine); got != 2+3 {
+		t.Errorf("the pump bullet runs once the discard is answered: power %d, want %d", got, 2+3)
+	}
 
 	if got := opp.Hand.Size(); got != oppHandBefore {
 		t.Errorf("discarded 2, drew 2 back: hand %d, want %d (net unchanged)", got, oppHandBefore)

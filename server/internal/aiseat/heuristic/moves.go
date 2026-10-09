@@ -495,6 +495,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
 	card := st.castSource(cp.InstanceID)
+	if castSacrificesAll(card) {
+		return sacrificeAllDeclined, "cast declined: its cost sacrifices everything (#2097)"
+	}
 	// ADR 0135 §3: an awaken cast's last target is its own land, which
 	// awakenValue prices as the body it becomes; it is not a pump on a
 	// permanent of the bot's (OwnPermanentTarget), and it does not make

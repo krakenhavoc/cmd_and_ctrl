@@ -220,6 +220,7 @@ func buildDef(spec Spec) *game.CardDef {
 		WantsManaFrom:              spec.WantsManaFrom,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,
+		XCeiling:                   spec.XCeiling,
 		CastPermissions:            standingCastPermissions(spec.CastPermissions),
 		GatedCastPermissions:       gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                spec.CastTimings,

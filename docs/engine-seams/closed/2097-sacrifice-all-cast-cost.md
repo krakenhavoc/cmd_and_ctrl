@@ -1,0 +1,6 @@
+---
+title: "Sacrifice all creatures you control as a spell's cost"
+date: 2026-10-09
+issues: [2097]
+---
+**Sacrifice all creatures you control as a spell's cost** (#2097) — `game.AdditionalCost.SacrificeAll`, built by `effects.SacrificeAllCost(label, preds…)`, is a cast's mandatory sacrifice clause that takes every matching permanent the caster controls and lets them choose none (CR 601.2b, 601.2h). The set is fixed at announce from the battlefield, so a phased-out permanent is left (CR 702.26b) and an indestructible one goes (CR 701.21a); an empty board pays it with nothing (CR 118.3). It is then an ordinary payment: one simultaneous exit with the spell on the stack, recorded on `PaidCost.Sacrificed` and `SacrificedObjects`, so "the sacrificed creatures" reads their last-known information and survives a restore. `cast_spell.sacrifice_ids` may be empty (the engine fills it) or exactly the set; the view ships `sacrifice_options.all`, the client confirms instead of picking, the enumerator names the set on its move, and the heuristic declines such casts. **Cards:** Soulblast (Full). **Still open** on the row: Kaervek's Spite ("discard your hand" as a spell's cost) and Tomb of Urami (an activated ability's "sacrifice all lands you control").

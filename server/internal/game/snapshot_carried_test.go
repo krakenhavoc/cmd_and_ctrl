@@ -315,6 +315,18 @@ var carriedFixture = map[string]any{
 				SourceCardID: id, Label: "drift-Game.lastKnownStack", XValue: 5, Seq: 5151},
 		}}
 	},
+	// #2789: a generated item would name an invented body and be
+	// refused, as Game.lastKnownStack's would.
+	"Game.pausedModeWalk": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.pausedModeWalk"))
+		me := g.Seats[0].ID
+		return &modeWalk{
+			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+				SourceCardID: id, Label: "drift-Game.pausedModeWalk", Modes: []int{2, 0}, XValue: 3, Seq: 5252},
+			key:  "drift-Game.pausedModeWalk",
+			rest: []int{1, 0},
+		}
+	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.

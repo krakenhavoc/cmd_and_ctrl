@@ -126,6 +126,7 @@ var reviewedNotAWipe = map[string]string{
 	"Rest in Peace":                            "exiles graveyards",
 	"Scavenger Grounds":                        "exiles graveyards",
 	"Soul-Guide Lantern":                       "exiles graveyards",
+	"Soulblast":                                "sacrifices only its caster's creatures, as a cost (#2097); the heuristic declines the cast",
 	"Sundial of the Infinite":                  "ends the turn",
 	"Time Stop":                                "ends the turn",
 	"Ugin's Binding":                           "a single target, and an exile from the graveyard",

@@ -46,6 +46,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"TokenText":                  "a token's printed text, already token_text",
 	"GrantText":                  "a grant bundle's printed text, already granted_abilities",
 	"XMatters":                   "an enumerator hint",
+	"XCeiling":                   "a bound on a spell's announced X, read at cast",
 	"WantsDistinctColors":        "an auto-tapper hint",
 	"WantsManaFrom":              "an auto-tapper hint",
 }

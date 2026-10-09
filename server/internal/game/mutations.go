@@ -889,6 +889,21 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
+	// #2581, CR 107.3a / 601.2b: a printed "X can't be greater than
+	// <count>" bounds the announcement, so the count is read HERE, as
+	// X is announced, and never again — the stack item keeps the X
+	// announced (x_ceiling.go). Refused rather than clamped, for the
+	// reason the X lock above is.
+	if ceiling, ok := g.SpellXCeilingLocked(playerID, CatalogKey(card)); ok && params.XValue > ceiling {
+		slog.Warn("cast_spell rejected: X above the printed ceiling",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"x_value", params.XValue,
+			"x_ceiling", ceiling,
+			"ceiling", XCeilingFor(CatalogKey(card)).Label,
+		)
+		return ErrInvalidParam
+	}
 	// ADR 0073, CR 601.2b: the optional additional costs the caster
 	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
 	// with the modes and before the targets, for two reasons that
@@ -944,6 +959,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"cost_branch", params.CostBranch,
 		)
 		return err
+	}
+	// #2097, CR 601.2b / 601.2h: "sacrifice all creatures you control"
+	// is settled here, with the other announce-time choices and before
+	// anything reads sacrifice_ids — the price (CostQuery.Sacrificing),
+	// the validator, the auto-tapper's exclusions, the CR 903.9 walk and
+	// the payment all see the one set the engine fixed.
+	if addCost != nil && addCost.SacrificeAll {
+		ids, err := g.sacrificeAllPaymentLocked(playerID, addCost, params.SacrificeIDs)
+		if err != nil {
+			slog.Warn("cast_spell rejected: sacrifice_ids are not every permanent a sacrifice-all cost takes",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"sacrifices_received", len(params.SacrificeIDs),
+			)
+			return err
+		}
+		params.SacrificeIDs = ids
 	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2). #1590: the
@@ -3357,7 +3389,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// order, once per occurrence. A modal card that branches inside
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
-	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
+	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top))
 	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
@@ -3712,7 +3744,7 @@ func (g *Game) resolveTopAbilityLocked() {
 	// CR 608.2c: a modal triggered or activated ability resolves its
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
-	g.runChosenModeEffectsLocked(top, top.modeSpec)
+	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and

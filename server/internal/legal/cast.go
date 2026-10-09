@@ -824,6 +824,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
 	}
+	// #2581: and a printed "X can't be greater than <count>" bounds
+	// the same announcement without pricing it (x.go). Only where the
+	// cost this cast pays has an {X} to announce: a free cast's X is
+	// locked at 0 (CR 107.3b), and announcedX reads a ceiling on a cost
+	// with no {X} slot as the PRICE of X, which this is not.
+	if cost.XSlots > 0 {
+		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), xLifeCeiling)
+	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
 	// together never claim more than the seat has (CR 119.4). A "pay X
@@ -994,7 +1002,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				pool = append(pool, id)
 			}
 		}
-		if varSac {
+		if addCost != nil && addCost.SacrificeAll && addCost.Sacrifice == sacrifice {
+			// #2097: "sacrifice all" has one payment, the engine's own
+			// set (empty included). It is named on the move so a policy
+			// prices what the cast gives up (sacrificeCost), and priced
+			// per payment below as a variable clause is.
+			sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, sacrifice)}
+		} else if varSac {
 			sacOrdered = g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
 			sacrificeSets = e.castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)
 		} else {
@@ -1542,7 +1556,11 @@ func (e *enumerator) castMoveEmitter(
 		}
 		// ADR 0100 §6: the counts of a variable sacrifice are otherwise
 		// the same line in the move log.
-		if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
+		if paying != nil && paying.SacrificeAll {
+			// #2097: said outright, so a model seat or an MCP client
+			// reading the move list sees it gives up its whole board.
+			label += sacrificeAllLabel(g, paying, sacs)
+		} else if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
 			label += sacrificeLabel(g, sacs)
 		}
 		// #2681: the modes, so two moves with the same targets and
