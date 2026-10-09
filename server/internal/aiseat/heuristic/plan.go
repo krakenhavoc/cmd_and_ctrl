@@ -101,7 +101,10 @@ func (s manaSource) net() int { return len(s.units) - s.input }
 
 // planCandidate is one card's best plan-eligible cast in this window.
 type planCandidate struct {
+	// index is the move's place in this window's list, -1 for a cast
+	// the two-turn comparison prices for next turn (rocknow.go).
 	index int
+	move  legal.Move
 	card  *protocol.CardView
 	value float64
 	// premium is the ramp premium valueOf included, and amount the mana
@@ -122,12 +125,21 @@ type planCandidate struct {
 	// removes from the board as it stands, so among the rest it goes
 	// before any permanent the plan adds.
 	sweep bool
+	// lands is the lands its purpose puts onto the battlefield, which
+	// make mana from next turn on (rocknow.go).
+	lands int
+	// annotated is set once rankCandidates has filled the fields above.
+	annotated bool
 }
 
 // turnPlan is the plan chosen in one window.
 type turnPlan struct {
 	members []*planCandidate
 	value   float64
+	// cands are the window's candidates, in §4's order, and mask the
+	// members' bits in them.
+	cands []*planCandidate
+	mask  uint
 }
 
 // planEligible reports whether m may be a plan member (§1, owner answer
@@ -147,14 +159,67 @@ func planEligible(m legal.Move) bool {
 // planTurn searches the sets of plan-eligible casts on offer for the
 // one worth most (§3). vals holds valueOf for each move, already
 // priced by decideGeneral. It returns false when no set of two or more
-// members is feasible.
+// members is feasible. The plan carries its candidates either way, for
+// the two-turn comparison (rocknow.go).
 func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, vals []float64) (turnPlan, bool) {
 	cands := p.planCandidates(st, moves, vals)
+	out := turnPlan{cands: cands}
 	if len(cands) < 2 {
-		return turnPlan{}, false
+		return out, false
 	}
-	base := st.manaAvailable(p.cfg.PlanFilterLands)
-	maxMana := len(base)
+	mask, value, order, ok := p.bestSet(ctx, setSearch{
+		cands:   cands,
+		base:    st.manaAvailable(p.cfg.PlanFilterLands),
+		want:    st.rampWants(),
+		sources: st.manaSourcesTotal(),
+		minSize: 2,
+	})
+	if !ok {
+		return out, false
+	}
+	out.value, out.mask = value, mask
+	out.members = membersOf(cands, order, mask)
+	return out, true
+}
+
+// membersOf is the candidates in mask, in order.
+func membersOf(cands []*planCandidate, order []int, mask uint) []*planCandidate {
+	var out []*planCandidate
+	for _, i := range order {
+		if mask&(1<<i) != 0 {
+			out = append(out, cands[i])
+		}
+	}
+	return out
+}
+
+// setSearch is one search over sets of candidates: this turn's plan
+// (§3), or a turn of the two-turn comparison (rocknow.go).
+type setSearch struct {
+	// cands are in §4's order (planBefore).
+	cands []*planCandidate
+	// base is the mana there is to spend.
+	base []uint8
+	// want and sources are rampFor's, for the shared premium (§3).
+	want    []rampWant
+	sources int
+	// must is the members every set holds, and minSize the fewest
+	// members a set may have.
+	must    uint
+	minSize int
+	// trustSingles takes a set of one as feasible without asking the
+	// model: the engine offered the move, and its answer outranks the
+	// model's (§2).
+	trustSingles bool
+}
+
+// bestSet is the feasible set worth most (§3), with the order its
+// members are paid in. Ties go to the smaller set, then to the set
+// found first. It stops at the context deadline with the best set so
+// far.
+func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int, bool) {
+	cands := s.cands
+	maxMana := len(s.base)
 	for _, c := range cands {
 		for _, a := range c.adds {
 			if n := a.net(); n > 0 {
@@ -162,28 +227,9 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 			}
 		}
 	}
-	want := st.rampWants()
-	sources := st.manaSourcesTotal()
-
 	n := len(cands)
-	order := make([]int, n)
-	for i := range order {
-		order[i] = i
-	}
-	// alt is §4's order before the amendment of 2026-10-08, for a set
-	// whose extra-land-drop member cannot go first and still leave the
-	// later members payable.
-	var alt []int
-	var amended uint
-	for i, c := range cands {
-		if c.class != c.baseClass {
-			amended |= 1 << i
-		}
-	}
-	if amended != 0 {
-		alt = append([]int(nil), order...)
-		sort.SliceStable(alt, func(i, j int) bool { return planBefore(cands[alt[i]], cands[alt[j]], true) })
-	}
+	order := identityOrder(n)
+	alt, amended := altOrder(cands)
 	bestMask, bestVal := uint(0), 0.0
 	var bestOrder []int
 	units := make([]uint8, 0, maxMana)
@@ -191,8 +237,11 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 		if mask%64 == 0 && ctx.Err() != nil {
 			break
 		}
+		if mask&s.must != s.must {
+			continue
+		}
 		size := bits.OnesCount(mask)
-		if size < 2 {
+		if size < s.minSize {
 			continue
 		}
 		var cost, amount int
@@ -214,7 +263,7 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 		// in the set, and never more than the members' own premiums.
 		value -= premium
 		if premium > 0 {
-			shared := p.cfg.RampPerMana * float64(min(amount, p.planDeficit(want, sources, cands, mask)))
+			shared := p.cfg.RampPerMana * float64(min(amount, p.planDeficit(s.want, s.sources, cands, mask)))
 			value += min(premium, shared)
 		}
 		// Ties go to the smaller set (§3), then to the set found first.
@@ -224,8 +273,8 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 			continue
 		}
 		used := order
-		if !planFeasible(base, cands, order, mask, units) {
-			if mask&amended == 0 || !planFeasible(base, cands, alt, mask, units) {
+		if !(size == 1 && s.trustSingles) && !planFeasible(s.base, cands, order, mask, units) {
+			if mask&amended == 0 || !planFeasible(s.base, cands, alt, mask, units) {
 				continue
 			}
 			used = alt
@@ -233,20 +282,62 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 		bestMask, bestVal, bestOrder = mask, value, used
 	}
 	if bestMask == 0 {
-		return turnPlan{}, false
+		return 0, 0, nil, false
 	}
-	out := turnPlan{value: bestVal}
-	for _, i := range bestOrder {
-		if bestMask&(1<<i) != 0 {
-			out.members = append(out.members, cands[i])
+	return bestMask, bestVal, bestOrder, true
+}
+
+// identityOrder is 0..n-1: candidates are kept in §4's order.
+func identityOrder(n int) []int {
+	order := make([]int, n)
+	for i := range order {
+		order[i] = i
+	}
+	return order
+}
+
+// altOrder is §4's order before the amendment of 2026-10-08, for a set
+// whose extra-land-drop member cannot go first and still leave the
+// later members payable, and the bits of the candidates the amendment
+// moved. Nil and 0 when it moved none.
+func altOrder(cands []*planCandidate) ([]int, uint) {
+	var amended uint
+	for i, c := range cands {
+		if c.class != c.baseClass {
+			amended |= 1 << i
 		}
 	}
-	return out, true
+	if amended == 0 {
+		return nil, 0
+	}
+	alt := identityOrder(len(cands))
+	sort.SliceStable(alt, func(i, j int) bool { return planBefore(cands[alt[i]], cands[alt[j]], true) })
+	return alt, amended
+}
+
+// setFeasible is planFeasible in §4's order, or in the order before its
+// amendment when the amended order cannot pay for the set.
+func setFeasible(base []uint8, cands []*planCandidate, mask uint, scratch []uint8) bool {
+	if planFeasible(base, cands, identityOrder(len(cands)), mask, scratch) {
+		return true
+	}
+	alt, amended := altOrder(cands)
+	return mask&amended != 0 && planFeasible(base, cands, alt, mask, scratch)
 }
 
 // planCandidates is each card's best plan-eligible cast, in §4's order,
 // the PlanMaxCards most valuable of them.
 func (p *Policy) planCandidates(st *state, moves []legal.Move, vals []float64) []*planCandidate {
+	out := p.eligibleCasts(st, moves, vals)
+	if len(out) < 2 {
+		return nil
+	}
+	return p.rankCandidates(st, out)
+}
+
+// eligibleCasts is each card's best plan-eligible cast on offer, in
+// the order the moves first name the cards, not yet annotated.
+func (p *Policy) eligibleCasts(st *state, moves []legal.Move, vals []float64) []*planCandidate {
 	byCard := map[string]*planCandidate{}
 	var order []string
 	for i := range moves {
@@ -266,19 +357,23 @@ func (p *Policy) planCandidates(st *state, moves []legal.Move, vals []float64) [
 		if !ok {
 			continue
 		}
-		c := &planCandidate{index: i, card: card, value: vals[i], cost: cost}
+		c := &planCandidate{index: i, move: m, card: card, value: vals[i], cost: cost}
 		if byCard[card.InstanceID] == nil {
 			order = append(order, card.InstanceID)
 		}
 		byCard[card.InstanceID] = c
 	}
-	if len(order) < 2 {
-		return nil
-	}
 	out := make([]*planCandidate, 0, len(order))
 	for _, id := range order {
 		out = append(out, byCard[id])
 	}
+	return out
+}
+
+// rankCandidates keeps the PlanMaxCards most valuable candidates,
+// annotates them (premium, amount, adds, class) and sorts them into
+// §4's order.
+func (p *Policy) rankCandidates(st *state, out []*planCandidate) []*planCandidate {
 	sort.SliceStable(out, func(i, j int) bool { return out[i].value > out[j].value })
 	if max := p.cfg.PlanMaxCards; max > 0 && len(out) > max {
 		out = out[:max]
@@ -289,7 +384,11 @@ func (p *Policy) planCandidates(st *state, moves []legal.Move, vals []float64) [
 	noRamp := &Policy{cfg: p.cfg}
 	noRamp.cfg.RampPerMana = 0
 	for _, c := range out {
-		m := moves[c.index]
+		if c.annotated {
+			continue
+		}
+		c.annotated = true
+		m := c.move
 		cp := decode[castParams](m.Params)
 		ps := castPurpose(c.card, cp)
 		if p.cfg.RampPerMana > 0 {
@@ -302,6 +401,9 @@ func (p *Policy) planCandidates(st *state, moves []legal.Move, vals []float64) [
 			if p.cfg.PricePurposes {
 				c.amount += ps.lands
 			}
+		}
+		if p.cfg.PricePurposes {
+			c.lands = ps.lands
 		}
 		c.adds = castAddsMana(c.card, ps, p.cfg.PlanFilterLands)
 		switch {
@@ -871,30 +973,36 @@ func planReason(pl turnPlan) string {
 //
 // The land drop is left alone (§1): while a land is the best move the
 // bot plays it, and plans the rest in the next window.
+//
+// The plan it searched comes back whether or not it was chosen, with
+// its candidates, for the two-turn comparison (rocknow.go). searched
+// is false when no search ran.
 func (p *Policy) decidePlan(ctx context.Context, st *state, moves []legal.Move, vals []float64,
-	best int, bestVal, threshold float64, leftover bool) (aiseat.Decision, []aiseat.PlanMember, bool) {
+	best int, bestVal, threshold float64, leftover bool) (d aiseat.Decision, members []aiseat.PlanMember, pl turnPlan, searched, chosen bool) {
 	if !p.cfg.PlanTurnMana || !st.sorcerySpeed || best < 0 || moves[best].Kind == legal.KindLand || ctx.Err() != nil {
-		return aiseat.Decision{}, nil, false
+		return aiseat.Decision{}, nil, turnPlan{}, false, false
 	}
 	pl, ok := p.planTurn(ctx, st, moves, vals)
 	if !ok || len(pl.members) < 2 || pl.value <= bestVal+planEpsilon {
-		return aiseat.Decision{}, nil, false
+		return aiseat.Decision{}, nil, pl, true, false
 	}
-	bar := threshold
-	if leftover {
-		all := true
-		for _, c := range pl.members {
-			if !p.leftoverEligible(st, moves[c.index]) {
-				all = false
-				break
-			}
+	if pl.value <= p.setBar(st, moves, pl.members, threshold, leftover) {
+		return aiseat.Decision{}, nil, pl, true, false
+	}
+	return aiseat.Decision{Index: pl.members[0].index, Reason: planReason(pl)}, planMembers(moves, pl), pl, true, true
+}
+
+// setBar is the bar a set of this turn's casts clears: the window's,
+// or ADR 0126 §5's LeftoverThreshold when the window is a leftover one
+// and every member is eligible for it.
+func (p *Policy) setBar(st *state, moves []legal.Move, members []*planCandidate, threshold float64, leftover bool) float64 {
+	if !leftover {
+		return threshold
+	}
+	for _, c := range members {
+		if !p.leftoverEligible(st, moves[c.index]) {
+			return threshold
 		}
-		if all {
-			bar = p.cfg.LeftoverThreshold
-		}
 	}
-	if pl.value <= bar {
-		return aiseat.Decision{}, nil, false
-	}
-	return aiseat.Decision{Index: pl.members[0].index, Reason: planReason(pl)}, planMembers(moves, pl), true
+	return p.cfg.LeftoverThreshold
 }

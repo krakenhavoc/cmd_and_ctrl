@@ -132,6 +132,14 @@ A ramp spell (Rampant Growth, Harrow, Farseek, Three Visits, Nature's Lore) gets
 
 Rituals and one-shot sources (Dark Ritual, Lotus Petal, a Treasure) stay as they are. Their value is the spell they let the bot cast this turn, which needs a plan the heuristic does not make (see [Out of scope](#out-of-scope)).
 
+#### Amendment 2026-10-09: an idle late rock
+
+The owner's decision on ADR 0136 PR 4b's question 2. The table's "Arcane Signet, turn 9" row priced a rock with no open deficit at −0.20, below even §5's `LeftoverThreshold`, so the sentence above ("unless §5's leftover-mana window takes it") never came true. ADR 0136 PR 4b found that 170 of the 249 turns run 1 ended with stranded mana were exactly that rock, left in hand with its mana unspent.
+
+In the turn's last main-phase window (§5's first window: the bot's own last main phase, stack empty), a cast of a nonland permanent with a repeatable mana ability, no ramp premium (the deficit is closed) and only mana and taps for its cost is priced at `LeftoverThreshold` when its mana would otherwise go unused, that is, when no other move on offer is priced above `LeftoverThreshold`. The bot then casts it rather than pass. A rock's mana is still useful past `RampWantCap`: it pays a commander's growing tax and an X. If several such rocks are on offer, the one that makes the most mana goes first. The first main phase is unchanged, because combat and the draw may still give that mana a use, and so is every price above zero. The row now reads: Arcane Signet, turn 9, deficit 0: −0.20, and `LeftoverThreshold` (0.00, cast) in the turn's last main phase when nothing else on offer is priced above it.
+
+It is `Config.IdleLateRocks`, on in `DefaultConfig()` and off in `BaselineConfig()`. It is a price, not part of ADR 0136's plan, so `heuristic-noplan` has it too. Measured in [ADR 0136](0136-planning-the-turns-mana.md#amendment-2026-10-09-a-rock-against-a-spell-over-two-turns)'s PR 4c, which also carries the same day's two-turn amendment.
+
 ### 3. Other permanents: priced by mana value and by what their rows say
 
 Ranked second. This covers the enchantment and artifact engines, Equipment, Vehicles, Altars, and every small creature.
