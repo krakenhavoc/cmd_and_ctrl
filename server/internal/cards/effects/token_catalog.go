@@ -168,6 +168,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedTreasureToken,
 	printedGoldToken,
 	printedFoodToken,
+	printedGingerbruteToken,
 	printedClueToken,
 	printedMapToken,
 	printedBloodToken,
