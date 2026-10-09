@@ -4,6 +4,7 @@
 **Owner decisions:** the owner answered this ADR's ten questions on 2026-10-08, each with the recommended option. The answers are listed under [Owner answers](#owner-answers-2026-10-08) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Issues:** [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458) (this change: draw before deploying, rock first, two spells over one). It must not conflict with [#2668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2668) (hold instant-speed ramp for the end step before your turn); §5 says how the two fit. Under owner answer 6, #2668 is delivered by this ADR's PR 5.
 **Owner direction:** 2026-10-08, on #2458: a design pass before any implementation.
+**Amended:** 2026-10-09, the owner's decisions on PR 4b's questions 1 and 2: [a rock against a spell over two turns](#amendment-2026-10-09-a-rock-against-a-spell-over-two-turns), and an idle late rock, recorded in [ADR 0126 §2](0126-bots-that-play-their-decks.md#amendment-2026-10-09-an-idle-late-rock).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-08. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: `origin/develop`, `origin/main`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/playmats`, `origin/fix/2545-breeches-flake`, `origin/fix/2611-marwyn-source-left`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default` and `pr/2326`. The highest number on any of them is 0135 (`0135-alternative-costs-that-tap-discard-awaken-and-emerge.md`, on `origin/develop`, `origin/main` and `origin/fix/2545-breeches-flake`). The one open pull request, #2700, adds no ADR. This ADR takes **0136**.
 **Builds on:** [ADR 0126](0126-bots-that-play-their-decks.md) (the prices, §2's ramp premium, §5's leftover windows, §6's `purpose`, §8's measurement, and the [exit decision on A2](0126-bots-that-play-their-decks.md#exit-decisions-2026-10-07) that sends rock-first here), [ADR 0033](0033-ai-bot-seat.md) §3 (a policy reads the view and the move list, never the game), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena and the position suite).
 
@@ -219,6 +220,42 @@ The bot declines the tax when the member is worth more, and pays it otherwise. W
 
 **Measurement.** The arena's A2 rows gain the owner's count (#2435), next to today's every-offer count. These are the seat-games in which each rock or dork was offered while the seat's mana deficit was open, and the seat-games among those in which it was used. The deficit is the heuristic's own (`rampFor` under `DefaultConfig`, exported as `heuristic.DeficitOpen`). Before, it could only be read from a decision log.
 
+### Amendment 2026-10-09: a rock against a spell over two turns
+
+The owner's decision on PR 4b's question 1. PR 4b's diagnosis found the largest class of rocks left in hand while the deficit was open to be (d): this turn's mana pays for the rock or for the spell the plan takes, not both, and the spell prices higher. Arcane Signet (+0.80) loses to a two-drop (+1.59) on two lands. Casting the rock now and the spell next turn is a question about two turns, which §3 does not ask.
+
+**When it runs.** In the bot's own main phase with an empty stack (§1), after the plan has chosen the turn's line: the plan's members, or the single move `decideGeneral` takes when no plan is chosen. It looks at each plan candidate (§1) whose price carries ADR 0126 §2's ramp premium, which means the deficit is open: a rock, a dork, or a ramp spell. It runs only when that candidate is not in the line and §2's model cannot pay for the candidate and the line together. A line that holds a move the plan cannot model (an activation, a cast with a non-mana cost) is left alone. `Config.PlanTurnMana` must be on.
+
+**The comparison.** Two orders, each over this turn and the next:
+
+```
+A = value(the best set holding the source, this turn)
+    + PlanNextTurnDiscount × value(the best set next turn's mana buys, with the source on the battlefield)
+B = value(the line, this turn)
+    + PlanNextTurnDiscount × value(the best set next turn's mana buys, without it)
+```
+
+The bot takes A when it is worth more and A's set clears the window's bar (§3). Otherwise it keeps the line. Each set is valued as §3 values a plan, with the ramp premium shared within it, and a turn with nothing worth casting is worth 0, since the bot can pass. Next turn's set may hold any card in the bot's hand or command zone except the ones the order casts this turn. A card castable now is priced by its best plan-eligible move; a card that is not is priced by a cast from its zone that names no target. A card offered now only with a cost the plan cannot hold is left out. Only the hand, the command zone and the mana model are read. Nothing hidden is used and no opponent is simulated.
+
+Line B may cast the source next turn. So when both orders cast the same cards over the two turns, the comparison reduces to which card is worth more now, and the spell goes first. The source goes first only when its mana lets next turn buy more: the four-drop on curve, or two spells where there would be one.
+
+**Next turn's mana** (`nextTurnMana`):
+
+- every mana permanent the bot controls, tapped or not, since each untaps in the bot's untap step (CR 502.3). A creature counts too, because by then it has been under the bot's control since the turn began (CR 302.6);
+- one land, if a land is in hand, for next turn's land drop. A land drop still available this turn is taken first (§1), so a land left in hand is next turn's;
+- the mana sources the order's casts this turn leave on the battlefield, and one mana of any colour for each land a ramp spell's purpose puts onto the battlefield;
+- not the mana pool, which empties first.
+
+Each source is read the way §2 reads one, filters included.
+
+**The discount: `PlanNextTurnDiscount`, 0.75.** Next turn's casts count three quarters of this turn's. A value is needed, because at 1.0 the comparison would put a rock first whenever the same cards land over two turns, giving up a turn of the spell for nothing. 0.75 is chosen for three reasons. Next turn is a full table round away, and each opponent acts before it comes. A permanent cast now has that round to block, attack or trigger. And what the bot plans for next turn is the least certain part of the comparison: the draw changes the hand, and removal or a counterspell can take the rock or the spell. A quarter off reflects that, and it still lets a source that brings the four-drop down a turn early outbid a two-drop. An offline re-decision of develop's run 1 windows (PR 4c) showed how much the choice matters. Of the 100 (d) windows, the comparison casts the rock in 18 at 0.50, 27 at 0.75, 29 at 0.90 and 31 at 1.00. The choice moves few windows, and 0.75 is near the plateau. It is `Config.PlanNextTurnDiscount`.
+
+**How it sits with §4 and §2.** The comparison chooses which set is cast this turn. §4 still orders that set, so the source, a mana member, goes first, and the next window plans again from what is on the battlefield. §2's ramp premium is unchanged. In A it is counted once, in this turn's set. In B the source is cast next turn, if at all, at its premium discounted. The premium still prices the source's later turns, which the comparison does not look at. §3's shared premium applies within each turn's set.
+
+It is `Config.PlanRockTwoTurns` with `Config.PlanNextTurnDiscount`, on in `DefaultConfig()` and off in `BaselineConfig()`. `heuristic-noplan` has the plan off, so it never runs the comparison. The decision's reason names both orders, for example `two turns: Arcane Signet now, then Siege Wurm (+x.xx) over Grizzly Bears now, then Arcane Signet (+y.yy)`, and the trace's `plan` lists A's set for this turn.
+
+The same day, the owner decided PR 4b's question 2 as an amendment to ADR 0126 §2: [an idle late rock](0126-bots-that-play-their-decks.md#amendment-2026-10-09-an-idle-late-rock). In the turn's last main-phase window, a rock with no open deficit is cast when its mana would otherwise go unused. It is ADR 0126's price, so it applies to `heuristic-noplan` as well.
+
 ---
 
 ## Worked: the evidence windows under the plan
@@ -299,6 +336,33 @@ The two contestants are the same policy here, so the gap is the deck split, whic
 **Run 3:** simic-ramp ×4, `--games 40 --seed 1` and `--games 120 --seed 1000`. 160 games, turns p50 12. Harrow used in 76 of 218 seat-games offered (34.9%). Stranded: 293 of 6,563 own turns (4.5%), mean unspent 0.76.
 
 **Unchanged decisions.** `boteval suite run --policy heuristic` gives 41 of 41 (100%) on this branch and on `develop`, with the same move, layer and reason string at every position. Run 1 on `develop` at `e2b731dd3` gives the same winner and the same turn count in all 64 games. Its Cards table differs from this branch's by one window at a time on a few cards (Day of Judgment against Wrath of God, Sheoldred, Commander's Sphere). A second `develop` run differs from the first in the same way (Damnation against Day of Judgment), so this is run-to-run noise in how lockstep games break ties between equally priced cards, not this PR.
+
+### PR 4c: a rock against a spell over two turns, and an idle late rock (2026-10-09)
+
+"Before" is `develop` at `02da8bccb`, which includes PR 4b. "After" is the same tree with `PlanRockTwoTurns`, `PlanNextTurnDiscount` 0.75 and `IdleLateRocks` on. All runs use `--rotate --lockstep` and the real dump. **0 stalls in every run.** P1 is counted the owner's way from run 1's and run 3's decision logs: seat-games in which a rock or dork was offered in the bot's main phase while the deficit was open. A seat-game counts as used if the rock was cast at any point in the game. The stricter count requires the rock to have been cast in a window where the deficit was still open. The idle-rock rule casts some rocks later, after the deficit has closed, so the two counts now differ more than they did.
+
+| # | Measure | Before | After |
+|---|---|---|---|
+| P1 | run 1, rock used in a game where it was offered with an open deficit | 187 / 262, 71.4% (65.6–76.5); 6 of 18 cards at ≥ 80% | **211 / 249, 84.7% (79.7–88.7); 13 of 18 cards** |
+| P1 | the same, cast while the deficit was open | 174 / 262, 66.4% | 178 / 249, 71.5% |
+| P1 | run 3 (40 logged games), both counts | 122 / 142, 85.9%; 115 / 142 | 132 / 142, 93.0%; 124 / 142 |
+| | class (d) in run 1: windows, and turns in games where the rock was never cast | 100; 56 | **65; 24** |
+| P2 | run 1 stranded share | 281 / 3,063, 9.2% (`noplan` 8.7%) | **109 / 2,971, 3.7%** (`noplan` 109 / 2,996, 3.6%) |
+| | stranded turns whose best cast was a rock or dork priced ≤ 0 (run 1) | 169 of 248 | 15 of 107 |
+| P3 | run 2, `heuristic` won (seed 1, 96 games) | 51 / 192, 26.6% (20.8–33.2) | 44 / 192, 22.9% (17.5–29.4) |
+| P3 | run 2 with seed 101 added (192 games) | 101 / 384, 26.3% (22.1–30.9); `noplan` 91 | 92 / 384, 24.0% (20.0–28.5); `noplan` 100 |
+| P5 | suite | 41 / 41 | 41 / 41, the same move, layer and reason at every position |
+| P6 | plan misses, runs 1 / 2 (seed 1) / 3 | 6.0% / 3.9% / 5.7% | 6.0% / 4.4% / 5.7% |
+| P6 | turns p50, runs 1 / 3 | 14 / 10, 11 | 13 / 10, 11 |
+| P7 | decision p99, run 1, `heuristic` / `noplan` | 380 / 456 µs | 445 / 562 µs |
+
+Both rules act on `heuristic-noplan` differently. The two-turn comparison is part of the plan, so `noplan` never runs it. The idle late rock is ADR 0126's price, so `noplan` has it too. That is why `noplan`'s stranded share fell with `heuristic`'s, from 8.7% to 3.6%, and why P2 is not met against this branch's `noplan` (3.7% against a bar of 1.8%). Against `develop`'s `noplan` (8.7%) the bar is 4.35%, which is met.
+
+**The two-turn comparison alone.** In a scratch build, a contestant with only `PlanRockTwoTurns` off sat against `heuristic`, over the same two run-2 seed blocks. `heuristic` won 95 / 384 (24.7%, 20.7–29.3) and the contestant 97 / 384. The rule makes no detectable difference to strength. Run 2's move against `noplan` (101 to 92 wins) is within its noise: its interval still clears P3's bar.
+
+**Canaries (A3).** Run 1: Rhystic Study on simic-ramp 11 / 24 → 9 / 24 (below its 50% bar before and after), on esper-control 13 / 19 → 15 / 19; Harrow 14 / 30 → 14 / 25. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after. Run 3, pooled: Rhystic Study 108 / 218 (49.5%) → 108 / 229 (47.2%); Harrow 89 / 245 (36.3%) → 81 / 256 (31.6%). On simic-ramp an open deficit now sends the turn's mana to a rock that the bot used to spend on Rhystic Study or Harrow. Harrow's P4 is PR 5's.
+
+**The review-game windows** (game `8a9f18d7`), re-decided on this branch. On the logged views nothing changes: seq 133, 226 and 292 cast Arcane Signet, 180 casts Explosive Vegetation, and 402 and 475 cast Harmonize. With Oracle of Mul Daya's purpose as the catalog declares it today, 292 casts the Oracle and 402 and 475 cast the Oracle first, as before. Seq 180 changes. Before this change it cast the Oracle. Now the two-turn comparison casts Explosive Vegetation (`two turns: Explosive Vegetation now, then Arcane Signet → Tatyova, Benthic Druid (+6.19) over Oracle of Mul Daya now, then Explosive Vegetation (+5.36)`), which is the choice the worked table above gives for 180.
 
 ---
 

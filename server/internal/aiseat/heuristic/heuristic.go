@@ -317,6 +317,22 @@ type Config struct {
 	// names, instead of the plain {C} row that nets as much. Off (the
 	// zero value) models the land as its {C} row, as PR 4 shipped.
 	PlanFilterLands bool
+	// PlanRockTwoTurns weighs a mana source against the turn's chosen
+	// line over two turns when this turn's mana pays for one or the
+	// other, not both (ADR 0136's amendment of 2026-10-09, rocknow.go):
+	// the source now and what next turn's mana then buys with it,
+	// against the line now and what next turn's mana buys without it.
+	// Off (the zero value) takes the line, as PR 4b shipped.
+	PlanRockTwoTurns bool
+	// PlanNextTurnDiscount is what next turn's casts are worth, per
+	// point, against this turn's in that comparison.
+	PlanNextTurnDiscount float64
+	// IdleLateRocks casts a mana source with no open deficit in the
+	// turn's last main-phase window when nothing else on offer is priced
+	// above LeftoverThreshold, so its mana is not left unused (ADR 0126
+	// §2's amendment of 2026-10-09, rocknow.go). Off (the zero value)
+	// leaves it at its §2 price, below the bar.
+	IdleLateRocks bool
 	// PlanWeighTaxes weighs an opponent's optional mana tax (Rhystic
 	// Study's "pay {1}?", Smothering Tithe's "pay {2}?") against the
 	// turn plan's next member when paying would leave that member
@@ -570,7 +586,12 @@ func DefaultConfig() Config {
 		PlanMaxCards:        10,
 		PlanLandDropsAsRamp: true,
 		PlanFilterLands:     true,
-		PlanWeighTaxes:      true,
+		// A quarter off next turn: see ADR 0136's amendment of
+		// 2026-10-09 for the reason.
+		PlanRockTwoTurns:     true,
+		PlanNextTurnDiscount: 0.75,
+		IdleLateRocks:        true,
+		PlanWeighTaxes:       true,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -707,6 +728,10 @@ func BaselineConfig() Config {
 	c.PlanMaxCards = 0
 	c.PlanLandDropsAsRamp = false
 	c.PlanFilterLands = false
+	c.PlanRockTwoTurns = false
+	c.PlanNextTurnDiscount = 0
+	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
+	c.IdleLateRocks = false
 	c.PlanWeighTaxes = false
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
@@ -1060,8 +1085,35 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		// the pass it stands in for.
 		passIdx = indexOfKind(moves, legal.KindFinishBlocks)
 	}
-	if d, plan, ok := p.decidePlan(ctx, st, moves, vals, best, bestVal, threshold, leftover); ok {
+	d, plan, pl, searched, chosen := p.decidePlan(ctx, st, moves, vals, best, bestVal, threshold, leftover)
+	if searched {
+		// ADR 0136's amendment of 2026-10-09: a mana source the turn's
+		// mana cannot pay for beside the chosen line, weighed against it
+		// over two turns (rocknow.go).
+		var line []int
+		lineVal := takeVal
+		switch {
+		case chosen:
+			for _, c := range pl.members {
+				line = append(line, c.index)
+			}
+			lineVal = pl.value
+		case take >= 0:
+			line = []int{take}
+		}
+		if d2, plan2, ok := p.decideRockNow(ctx, st, moves, vals, pl, line, lineVal, threshold, leftover); ok {
+			return d2, plan2
+		}
+	}
+	if chosen {
 		return d, plan
+	}
+	if take < 0 {
+		// ADR 0126 §2's amendment of 2026-10-09: a late mana source is
+		// cast with mana that would otherwise go unused.
+		if i := p.idleRock(st, moves, vals); i >= 0 {
+			return aiseat.Decision{Index: i, Reason: fmt.Sprintf("cast idle mana source, leftover mana (+%.2f)", p.cfg.LeftoverThreshold)}, nil
+		}
 	}
 	if take >= 0 {
 		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}, nil
