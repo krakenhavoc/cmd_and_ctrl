@@ -777,6 +777,10 @@ type Policy struct {
 	// for an opponent's tax prompt before the plan's next cast
 	// (Config.PlanWeighTaxes, tax.go).
 	tail *planTail
+	// heldThisTurn is the cards a plan chosen earlier this turn held for
+	// the end step before the bot's next one (Config.PlanHoldInstants,
+	// holdinstants.go).
+	heldThisTurn *turnHolds
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -806,6 +810,7 @@ func (p *Policy) Reset() {
 	p.agg.reset()
 	p.hopelessTurns, p.hopelessTurn = 0, 0
 	p.tail = nil
+	p.heldThisTurn = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -1037,6 +1042,7 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 
 	d, plan := p.decideGeneral(ctx, st, in.Moves)
 	p.notePlan(st, in.Moves, plan)
+	p.noteHolds(st, in.Moves, plan)
 	return d, plan, nil
 }
 
@@ -1118,6 +1124,12 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	}
 	if chosen {
 		return d, plan
+	}
+	if p.holdRemainder(st, moves, vals, take) {
+		// ADR 0136 §5 and the owner's decision of 2026-10-09: what is
+		// left of this turn's plan is a member it held. It waits for
+		// the end step before the bot's turn, its mana kept up.
+		return holdDecision(moves, take, takeVal)
 	}
 	if take < 0 {
 		// ADR 0126 §2's amendment of 2026-10-09: a late mana source is

@@ -101,18 +101,20 @@ func TestPlanHoldsHarrowForTheEndStep(t *testing.T) {
 }
 
 // When every member is held the bot passes, its mana kept up: Harrow and
-// a flash creature, six lands, nothing cast at sorcery speed. With the
-// switch off the creature is cast in the main phase.
+// a second ramp instant, six lands, nothing cast at sorcery speed. With
+// the switch off the second one is cast in the main phase.
 func TestPlanPassesWhenEveryMemberIsHeld(t *testing.T) {
 	h := greenHarrow(cardID(1))
-	ambusher := greenCreature(cardID(2), "Ambusher", "{2}{G}", 3, 3, keywords("flash"))
-	lands := forests(6, 100)
-	v := newView([]protocol.PlayerView{newSeat(0, withHand(h, ambusher, rampFiveDrop(cardID(9), 0))), newSeat(1)},
+	grow := spell(cardID(2), 0, "Grow Wild", "{2}{G}")
+	grow.Purpose = &protocol.PurposeView{Lands: 2, LandsUntapped: 2}
+	lands := forests(7, 100)
+	lands[6].Tapped = true
+	v := newView([]protocol.PlayerView{newSeat(0, withHand(h, grow, rampFiveDrop(cardID(9), 0))), newSeat(1)},
 		withTurn(5, 0, "precombat_main"), withBattlefield(lands...))
 	in := input(0, v,
 		passMove(0),
-		sacrificeCast(t, 0, h, lands[0].InstanceID),
-		stampedCast(t, ambusher.InstanceID, "Cast Ambusher", "{2}{G}"),
+		sacrificeCast(t, 0, h, lands[6].InstanceID),
+		stampedCast(t, grow.InstanceID, "Cast Grow Wild", "{2}{G}"),
 	)
 
 	d, plan := decideHold(t, heuristic.DefaultConfig(), in)
@@ -124,6 +126,86 @@ func TestPlanPassesWhenEveryMemberIsHeld(t *testing.T) {
 	}
 	if d, _ := decideHold(t, holdOff(), in); moveLabel(in, d) == "Pass priority" {
 		t.Errorf("with PlanHoldInstants off the bot passes (%s); this board no longer shows the rule", d.Reason)
+	}
+}
+
+// Only a ramp or draw instant is held (the owner's decision of
+// 2026-10-09, question 2): a flash creature beside Harrow is cast now,
+// and Harrow waits.
+func TestPlanHoldsOnlyRampAndDrawInstants(t *testing.T) {
+	h := greenHarrow(cardID(1))
+	ambusher := greenCreature(cardID(2), "Ambusher", "{2}{G}", 3, 3, keywords("flash"))
+	lands := forests(6, 100)
+	v := newView([]protocol.PlayerView{newSeat(0, withHand(h, ambusher, rampFiveDrop(cardID(9), 0))), newSeat(1)},
+		withTurn(5, 0, "precombat_main"), withBattlefield(lands...))
+	in := input(0, v,
+		passMove(0),
+		sacrificeCast(t, 0, h, lands[0].InstanceID),
+		stampedCast(t, ambusher.InstanceID, "Cast Ambusher", "{2}{G}"),
+	)
+	d, plan := decideHold(t, heuristic.DefaultConfig(), in)
+	if got := moveLabel(in, d); got != "Cast Ambusher" {
+		t.Errorf("chose %q (%s), want the flash creature now", got, d.Reason)
+	}
+	if len(plan) != 2 || plan[0].Held || plan[0].Label != "Cast Ambusher" || !plan[1].Held {
+		t.Errorf("trace plan = %+v, want the Ambusher now and Harrow held", plan)
+	}
+}
+
+// What remains of this turn's plan stays held (the owner's decision of
+// 2026-10-09, question 1). The plan casts the Bear and holds Harrow; in
+// the next window Harrow is alone, a plan of one, and the policy that
+// chose the plan passes. A policy that chose no plan this turn casts it,
+// as the gated position harrow-sacrifices-the-tapped-land asks.
+func TestHeldRemainderStaysHeldThisTurn(t *testing.T) {
+	h := greenHarrow(cardID(1))
+	bear := greenCreature(cardID(2), "Bear", "{1}{G}", 2, 2)
+	lands := forests(5, 100)
+	big := rampFiveDrop(cardID(9), 0)
+	first := input(0, newView([]protocol.PlayerView{newSeat(0, withHand(h, bear, big)), newSeat(1)},
+		withTurn(5, 0, "precombat_main"), withBattlefield(lands...)),
+		passMove(0),
+		sacrificeCast(t, 0, h, lands[0].InstanceID),
+		stampedCast(t, bear.InstanceID, "Cast Bear", "{1}{G}"),
+	)
+	after := append([]protocol.CardView(nil), lands...)
+	after[3].Tapped, after[4].Tapped = true, true
+	cast := bear
+	cast.SummoningSick = true
+	after = append(after, cast)
+	second := input(0, newView([]protocol.PlayerView{newSeat(0, withHand(h, big)), newSeat(1)},
+		withTurn(5, 0, "precombat_main"), withBattlefield(after...)),
+		passMove(0),
+		sacrificeCast(t, 0, h, lands[3].InstanceID),
+	)
+
+	for name, cfg := range map[string]heuristic.Config{"on": heuristic.DefaultConfig(), "off": holdOff()} {
+		pol := heuristic.NewWithConfig(cfg)
+		if _, _, err := pol.DecideTraced(context.Background(), first); err != nil {
+			t.Fatal(err)
+		}
+		d, tr, err := pol.DecideTraced(context.Background(), second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := moveLabel(second, d)
+		switch name {
+		case "on":
+			if got != "Pass priority" {
+				t.Errorf("on: chose %q (%s), want Harrow kept for the end step", got, d.Reason)
+			}
+			if len(tr.Plan) != 1 || !tr.Plan[0].Held || tr.Plan[0].Label != "Cast Harrow" {
+				t.Errorf("on: trace plan = %+v, want Harrow marked held", tr.Plan)
+			}
+		case "off":
+			if got != "Cast Harrow" {
+				t.Errorf("off: chose %q (%s), want Harrow", got, d.Reason)
+			}
+		}
+	}
+	// A fresh policy has no plan from this turn: a lone Harrow is cast.
+	if got := moveLabel(second, decide(t, heuristic.New(), second)); got != "Cast Harrow" {
+		t.Errorf("fresh policy chose %q, want Harrow: a plan of one is today's choice", got)
 	}
 }
 

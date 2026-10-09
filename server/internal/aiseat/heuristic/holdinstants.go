@@ -1,6 +1,8 @@
 package heuristic
 
 import (
+	"fmt"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
@@ -24,12 +26,15 @@ import (
 // other member can spend it, and what it adds arrives only for the other
 // held members. When every member left is held the bot passes.
 //
-// A plan of one is today's choice (§3), so a hold needs a plan of two
-// or more: a lone instant-speed cast is made as before. The plan is
-// rebuilt in every window, so once the members cast this turn have
-// resolved, the held member is a plan of one again, and it is cast in
-// that window. Whether a plan of one should be held is an open owner
-// question on ADR 0136 PR 5.
+// A plan of one is today's choice (§3), so a lone instant-speed cast is
+// made as before, unless it is what remains of a plan chosen earlier
+// this turn that held it (the owner's decision of 2026-10-09, question
+// 1). The policy keeps the cards each plan held for the rest of the
+// turn (noteHolds, a second exception to §3's "the plan is not
+// stored", beside the tax memory in tax.go), and in a later main-phase
+// window that card, alone, is held again by the same rule
+// (holdRemainder). Only an instant whose declared purpose is ramp or
+// draw is held at all (question 2, planCandidate.instant).
 //
 // A member is any cast §1 allows, plus, under this switch, a cast whose
 // only other cost is sacrificing lands that its own declared purpose
@@ -96,6 +101,82 @@ func holdsFor(base []uint8, cands []*planCandidate, order []int, mask uint, scra
 		}
 	}
 	return held, true
+}
+
+// turnHolds is the cards the plans chosen this turn held for the end
+// step, by instance ID: game-independent policy state, like the
+// aggression rotation, and never game state.
+type turnHolds struct {
+	seat string
+	turn int
+	ids  map[string]bool
+}
+
+// noteHolds remembers the members a plan chosen in this sorcery-speed
+// window held, for the rest of the turn. A new turn forgets them.
+func (p *Policy) noteHolds(st *state, moves []legal.Move, plan []aiseat.PlanMember) {
+	if !p.cfg.PlanHoldInstants || !st.sorcerySpeed {
+		return
+	}
+	if h := p.heldThisTurn; h != nil && (h.seat != st.me || h.turn != st.view.Turn.Seq) {
+		p.heldThisTurn = nil
+	}
+	for _, pm := range plan {
+		if !pm.Held || pm.Index < 0 || pm.Index >= len(moves) {
+			continue
+		}
+		id := decode[castParams](moves[pm.Index].Params).InstanceID
+		if id == "" {
+			continue
+		}
+		if p.heldThisTurn == nil {
+			p.heldThisTurn = &turnHolds{seat: st.me, turn: st.view.Turn.Seq, ids: map[string]bool{}}
+		}
+		p.heldThisTurn.ids[id] = true
+	}
+}
+
+// holdRemainder reports whether the move decideGeneral would make,
+// moves[i], casts a card a plan held earlier this turn that §5 still
+// holds as a plan of one: in the bot's own main phase with an empty
+// stack, a ramp or draw instant that does not draw with mana left after
+// it.
+func (p *Policy) holdRemainder(st *state, moves []legal.Move, vals []float64, i int) bool {
+	if !p.cfg.PlanTurnMana || !p.cfg.PlanHoldInstants || !st.sorcerySpeed || i < 0 || i >= len(moves) {
+		return false
+	}
+	h := p.heldThisTurn
+	if h == nil || h.seat != st.me || h.turn != st.view.Turn.Seq {
+		return false
+	}
+	m := moves[i]
+	if !p.planEligibleIn(st, m) {
+		return false
+	}
+	cp := decode[castParams](m.Params)
+	if !h.ids[cp.InstanceID] {
+		return false
+	}
+	card := st.castSource(cp.InstanceID)
+	if card == nil {
+		return false
+	}
+	cost, ok := st.planCastCost(m, card, cp)
+	if !ok {
+		return false
+	}
+	cands := p.rankCandidates(st, []*planCandidate{{index: i, move: m, card: card, value: vals[i], cost: cost}})
+	held, _ := holdsFor(st.manaAvailable(p.cfg.PlanFilterLands), cands, []int{0}, 1, nil)
+	return held&1 != 0
+}
+
+// holdDecision is the pass a held remainder makes. Its trace names the
+// card as a held plan member, so a replay of the turn's windows shows
+// what the policy kept.
+func holdDecision(moves []legal.Move, i int, val float64) (aiseat.Decision, []aiseat.PlanMember) {
+	name := moves[i].Label
+	return aiseat.Decision{Index: passOrDecline(moves), Reason: fmt.Sprintf("plan: held for the end step before my turn: %s (+%.2f)", name, val)},
+		[]aiseat.PlanMember{{Index: i, Label: name, Held: true}}
 }
 
 // passOrDecline is the pass on offer, or a decline when there is none

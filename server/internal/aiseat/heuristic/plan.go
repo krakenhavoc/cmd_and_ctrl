@@ -136,9 +136,10 @@ type planCandidate struct {
 	// any it sacrifices (Harrow), which make mana from next turn on
 	// (rocknow.go).
 	lands int
-	// instant is an instant-speed cast §5 may hold for the end step
-	// before the bot's turn (Config.PlanHoldInstants), and drawer one
-	// whose purpose draws or tutors.
+	// instant is an instant-speed cast whose declared purpose is ramp
+	// or draw, which §5 may hold for the end step before the bot's turn
+	// (Config.PlanHoldInstants), and drawer one whose purpose draws or
+	// tutors.
 	instant bool
 	drawer  bool
 	// annotated is set once rankCandidates has filled the fields above.
@@ -447,8 +448,12 @@ func (p *Policy) rankCandidates(st *state, out []*planCandidate) []*planCandidat
 			c.lands = max(0, ps.lands-len(cp.SacrificeIDs))
 		}
 		c.adds = castAddsMana(c.card, ps, p.cfg.PlanFilterLands)
-		c.instant = p.cfg.PlanHoldInstants && p.instantSpeed(st, m)
 		c.drawer = ps.draws > 0 || ps.tutors > 0
+		// The owner's decision of 2026-10-09 (ADR 0136 §5, question 2):
+		// only an instant-speed cast whose declared purpose is ramp or
+		// draw is held. Removal, burn and flash creatures are not.
+		ramp := ps.lands > 0 || len(c.adds) > 0 || (!isLand(c.card) && repeatableMana(c.card) > 0)
+		c.instant = p.cfg.PlanHoldInstants && p.instantSpeed(st, m) && (ramp || c.drawer)
 		switch {
 		case len(c.adds) > 0:
 			c.baseClass = 0
