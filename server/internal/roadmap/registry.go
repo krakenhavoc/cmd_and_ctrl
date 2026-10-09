@@ -927,6 +927,15 @@ var items = []Item{
 		EngineNotes: "primitive: modular (CR 702.43a) is two abilities, an entry with N +1/+1 counters and a dies trigger that moves one counter per +1/+1 counter the permanent had onto target artifact creature; CR 702.43b makes each instance work separately. Neither half exists: `modular` is not in `canonicalKeywords`. The likely shape is an engine-derived keyword like riot (ADR 0109 §10): the counters as one entry replacement per instance through the entry look-ahead, and the dies trigger reading last-known counters (`LastKnownCountersForEffect`, CR 603.10a). Arcbound Slasher's riot already works (#1556). Found landing the riot cards.",
 	},
 	{
+		Slug: "text-changing-effects", Name: "Text-changing effects", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Spells that rewrite a colour word, basic land type or creature type everywhere it appears in another spell or permanent's text, such as Glamerdye, Sleight of Mind and Magical Hack.",
+		Missing:     "Changing the words in another card's text isn't implemented yet, so these cards can't be played.",
+		Rules:       []string{"612"},
+		Issue:       2779,
+		Waiting:     []string{"Glamerdye", "Sleight of Mind", "Alter Reality", "Balduvian Shaman", "Whim of Volrath", "Magical Hack", "Spectral Shift", "Mind Bend", "Crystal Spray", "Trait Doctoring", "Artificial Evolution", "New Blood", "Exchange of Words"},
+		EngineNotes: "model: CR 612 effects rewrite the text of an object (a colour word or basic land type everywhere it appears, indefinitely or until end of turn; Artificial Evolution and New Blood do it to a creature type, Exchange of Words swaps two text boxes). The layer engine has a Layer 3 stub (ADR 0012) and no execution path, and card abilities are catalog closures rather than text, so there is nothing to substitute inside. The shape to design is a per-object substitution the colour, land-type and creature-type readers consult (target clauses, protection and `nonblack`-style predicates on the changed object, `Card.Colors`), with a timestamp for CR 612.3. Glamerdye's retrace half shipped with #2528; Reality Scramble, the other open piece of #2550, shipped as a plain card. Found finishing #2550.",
+	},
+	{
 		Slug: "revealed-hand-restricted-pick", Name: "Choosing a card from a revealed hand with a restriction", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Spells that make a player reveal their hand so you can choose a card of a kind for them to discard, such as Thoughtseize's nonland card or Pelakka Predation's mana value 3 or greater.",
 		Rules:       []string{"701.9b", "701.20a", "609.3"},

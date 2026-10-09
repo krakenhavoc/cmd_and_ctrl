@@ -32,6 +32,7 @@ var retraceCards = []struct {
 	{"Waves of Aggression", "10991b1a-7dd3-4fbf-a4c8-200dc62fc605", "{3}{R/W}{R/W}"},
 	{"Embrace the Unknown", "9f36dd20-350c-4046-b57f-e6b5cc9aa999", "{2}{R}"},
 	{"Spitting Image", "a30dee74-86e3-4888-980e-b22437fbbb66", "{4}{G/U}{G/U}"},
+	{"Reality Scramble", "afad2e76-4b53-4884-8f96-ba68b0808990", "{2}{R}{R}"},
 	{"Throes of Chaos", "e3444fcf-70ed-4d6e-aea9-030af15cad56", "{3}{R}"},
 	{"Decaying Time Loop", "13e94530-defb-4c9b-9ec7-bb7789ec2630", "{3}{R}"},
 }
