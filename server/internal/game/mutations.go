@@ -1748,6 +1748,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
 			}
+			// #2743: the running mana value, with the X this spell was
+			// cast with. SourceCharacteristics already priced it that
+			// way, face down included.
+			if mv, ok := g.castManaValueLocked(sc); ok {
+				tally.ManaValue += mv
+			}
 			break
 		}
 	}

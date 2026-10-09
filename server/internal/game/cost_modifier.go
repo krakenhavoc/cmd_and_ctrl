@@ -1330,6 +1330,25 @@ func (g *Game) ManaValueForEffect(c Card) (mv int, ok bool) {
 	return cost.ManaValueWithX(g.announcedXOnStackLocked(c.InstanceID)), true
 }
 
+// castManaValueLocked is the mana value of the spell `sc` on the stack,
+// as the cast tally and "other spells you've cast this turn" count it
+// (#2743): the X it was cast with (CR 202.3e), and 0 for a spell cast
+// face down, which has no mana cost (CR 708.4, CR 202.3a). ok is false
+// when the cost can't be read. Caller must hold g.mu.
+func (g *Game) castManaValueLocked(sc *Card) (int, bool) {
+	if sc.FaceDown {
+		return 0, true
+	}
+	return g.ManaValueForEffect(*sc)
+}
+
+// CastManaValueForEffect is castManaValueLocked for a catalog effect:
+// the mana value a spell on the stack added to its caster's tally when
+// it became cast. Caller must hold g.mu.
+func (g *Game) CastManaValueForEffect(sc *Card) (int, bool) {
+	return g.castManaValueLocked(sc)
+}
+
 // announcedXOnStackLocked is the X chosen for the spell `id` while it
 // is on the stack, and zero for anything that isn't a spell on the
 // stack (CR 202.3e).

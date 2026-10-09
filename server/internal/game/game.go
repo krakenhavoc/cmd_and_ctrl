@@ -1619,6 +1619,13 @@ type CastTally struct {
 	// spell while Artifact is still 0: a cost is determined (CR 601.2f)
 	// before the spell is counted here.
 	Artifact int `json:"artifact,omitempty"`
+	// ManaValue is the total mana value of the spells the player cast
+	// this turn (CR 202.3), read as each spell became cast, off the
+	// spell on the stack (CR 601.2i): an X spell counts the X it was
+	// cast with (CR 202.3e) and a spell cast face down counts 0 (CR
+	// 708.4). Call Forth the Tempest's "the total mana value of other
+	// spells you've cast this turn" subtracts its own (#2743).
+	ManaValue int `json:"manaValue,omitempty"`
 }
 
 // CastInstantOrSorceryOfColor reports whether the tally includes an
