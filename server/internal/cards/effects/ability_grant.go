@@ -79,6 +79,15 @@ type AbilityGrant struct {
 	// permanents you control" (a copy of Sakashima of a Thousand Faces).
 	LegendRuleExempt []game.LegendRuleExemption
 
+	// AttackLimits is a granted CR 508.1c count limit — Tomik, Orzhov
+	// Lawmage's "Planeswalkers you control have 'No more than one
+	// creature can attack this planeswalker each combat.'" (#2821).
+	// Not a layer effect, so Decision 10's refusal of a granted static
+	// does not reach it: the attack check reads limits live under the
+	// recipient's composite key, so "this" is the recipient and the
+	// limit is gone the pass its grant is.
+	AttackLimits []game.AttackLimit
+
 	// Text is the bundle as the granting card prints it, quoted ability
 	// and all: "{T}: Add one mana of any color." Required. The recipient
 	// has no printing that says it has the ability, and a granted
@@ -100,6 +109,7 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 		GrantText:     gr.Text,
 
 		LegendRuleExemptions: gr.LegendRuleExempt,
+		AttackLimits:         gr.AttackLimits,
 	}
 }
 
@@ -176,7 +186,7 @@ func checkGrants(name string, grants []AbilityGrant) {
 		if gr.Key == "" {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
-		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 {
+		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

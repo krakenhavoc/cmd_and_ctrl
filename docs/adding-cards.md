@@ -2803,6 +2803,12 @@ BlockRules: []game.BlockRule{
   trigger's effect, a turn-scoped `BlockRule.Limit` with
   `LimitPerDefender`, so each defending player is counted on their
   own.
+- **A limit granted to other permanents** (#2821): "Planeswalkers you
+  control have 'No more than one creature can attack this planeswalker
+  each combat.'" (Tomik, Orzhov Lawmage) is an `AbilityGrant` whose
+  `AttackLimits` slot holds `NoMoreThanNCanAttackThisEachCombat(1)`,
+  named by `GrantAbilitiesToYourPlaneswalkers(key)`. "This" is the
+  recipient, so each walker is counted on its own.
 
 Tests: [block_rules_test.go](../server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
@@ -7150,6 +7156,8 @@ set is read live every layer pass, so a walker that arrives later has the row an
 The token is `item.Controller`'s, the activator's. `PlaneswalkersYouControl` is the bare predicate for a
 static that is not a grant. "You've activated a loyalty ability this turn" (an intervening "if") is
 `youActivatedALoyaltyAbilityThisTurn(g, you)`; it reads the turn's activation events, so a granted row counts.
+A bundle can also carry an attack limit instead of an ability row (Tomik, Orzhov Lawmage, #2821): see the
+combat-limits section.
 
 **"Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty"** (Sanctum
 Lurker) is `ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()` on the `Spec`. It is a static that stops
