@@ -20,17 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with life), and `x` the X the move announces.
 //
 // X is settled into the generic component, because the move announces
-// it. A Phyrexian symbol still in the cost is paid with mana by this
+// it, less any generic a cost reduction took off it (CR 601.2f, #2701). A Phyrexian symbol still in the cost is paid with mana by this
 // move (the ones it pays with life were struck before the check), so it
 // renders as its coloured half. A cast that charges no mana at all (an
 // alternative cost of {0}, a free cast permission) renders "{0}" rather
 // than "", so a reader can tell "free" from "not stated".
 func castManaCost(cost game.ParsedCost, x int) string {
-	out := cost
-	if out.XSlots > 0 {
-		out.Generic += out.XSlots * x
-		out.XSlots = 0
-	}
+	// SettleX takes off what a cost reduction took from the X (#2701),
+	// so a {X}{G} at X = 3 under a {2} reduction renders {1}{G}.
+	out := cost.SettleX(x)
 	if out.HasPhyrexian || len(out.Required) > 0 {
 		req := make([]game.ColorRequirement, len(out.Required))
 		for i, r := range out.Required {

@@ -63,6 +63,13 @@ import (
 // reduceGeneric is deliberately the only place in the engine that
 // knows how to spend a reduction.
 //
+// The mana announced for {X} is generic mana in that total (CR 107.3a:
+// on the stack X "equals the announced value"), so a reduction the
+// printed generic cannot absorb comes off it (#2701). The pricer may
+// run before X is announced, so that part is kept on
+// ParsedCost.XReduced and taken off XSlots*x when the cost is solved
+// (ParsedCost.GenericWithX). X itself is never lowered.
+//
 // (The sprint brief cited "a floor of {1} per CR 117.13". There is
 // no such rule: CR 117 is timing and priority, and the real floor is
 // zero generic mana with coloured requirements untouched, which is
@@ -1219,12 +1226,22 @@ func increaseBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
 //
 // The one rule this function exists to keep: a reduction that
 // overshoots is not carried forward and does not start eating {B}.
+//
+// The generic mana announced for {X} is generic mana in the total
+// cost too (CR 107.3a, 601.2f, 118.7a; #2701), so what the printed
+// generic cannot absorb is kept on XReduced for a cost with {X}, and
+// comes off XSlots*x when the cost is solved at the announced X
+// (ParsedCost.GenericWithX). It is still never carried past the X:
+// GenericWithX stops at zero. A cost with no {X} drops the rest.
 func reduceGeneric(cost ParsedCost, n int) ParsedCost {
 	if n <= 0 {
 		return cost
 	}
 	out := cost
 	if n >= out.Generic {
+		if out.XSlots > 0 {
+			out.XReduced += n - out.Generic
+		}
 		out.Generic = 0
 		return out
 	}
@@ -1305,8 +1322,12 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 // (see ColorRequirement), which is the nonhybrid equivalent the
 // engine announces on the caster's behalf (CR 601.2b). A cost-setting
 // effect (Trinisphere) measures this, not the mana value.
+//
+// A reduction already taken off the X (XReduced, #2701) is not
+// charged, so it is not counted: Trinisphere measures what the spell
+// "would cost" after every reduction.
 func (c ParsedCost) totalManaWithX(x int) int {
-	return c.Generic + c.XSlots*x + len(c.Required)
+	return c.GenericWithX(x) + len(c.Required)
 }
 
 // ManaValue is the card's printed mana value, or zero when the cost
