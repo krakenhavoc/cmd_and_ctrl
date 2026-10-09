@@ -581,7 +581,7 @@ var playerFields = plan(
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
 	"MulliganDecided", carried, "",
-	"TriggerOrderAlwaysAsk", carried, "",
+	"TriggerOrder", carried, "",
 	"AutoAnswers", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",

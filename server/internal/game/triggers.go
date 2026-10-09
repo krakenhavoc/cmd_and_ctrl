@@ -208,6 +208,24 @@ type TriggeredAbility struct {
 	// opponent stopped needing the flag. No catalog row sets it today.
 	TargetsFromReadsBoard bool
 
+	// SourceBlind records that this row's Effect reads nothing of its
+	// stack item but the controller: not its source object, not its
+	// trigger context, not its targets, modes or Params. Two items of
+	// such a row with the same controller are then one effect queued
+	// twice, so the CR 603.3b order between them cannot change the game
+	// and seatNeedsTriggerOrder skips the prompt for a batch of them
+	// (#1968, ADR 0018's #1968 amendment).
+	//
+	// ENGINE-OWNED, like StackItem.Commutes. A card file never sets it:
+	// the catalog registry computes it as it files each definition
+	// (effects.fileDef) and overwrites whatever the row carried. It is
+	// true only for a row with no Build, no target or mode clause, whose
+	// Effect is an effects.Do of primitives on the registry's
+	// source-blind list. Anything else — a hand-written closure, a
+	// primitive that reads or acts through its source — is false and
+	// keeps asking.
+	SourceBlind bool
+
 	// row is the catalog identity the registry stamped on this row
 	// (IdentifyCatalogRows): the key whose Triggered list holds it and
 	// its index there. Zero for a row the catalog did not register — an

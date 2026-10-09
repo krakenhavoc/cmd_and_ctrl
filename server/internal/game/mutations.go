@@ -5700,7 +5700,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		if !seatNeedsTriggerOrder(items, p.TriggerOrderAlwaysAsk) {
+		if !seatNeedsTriggerOrder(items, p.TriggerOrder) {
 			continue
 		}
 		held = true
@@ -5771,9 +5771,19 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 }
 
 // seatNeedsTriggerOrder reports whether a seat's batch of pending
-// triggers needs a CR 603.3b ordering prompt: at least two items,
-// at least one not yet Ordered by an answered prompt, and an order
-// that could change the game. Two shapes are known not to:
+// triggers needs a CR 603.3b ordering prompt, given the seat's
+// TriggerOrderMode (#1968).
+//
+// TriggerOrderNever: no. The batch goes on the stack in the order it
+// was collected, which is the order every skipped batch has always
+// used.
+//
+// TriggerOrderAlways (#1530): any batch of two or more with an item
+// not yet Ordered by an answered prompt, the skips below included.
+//
+// TriggerOrderWhenItMatters, the default: at least two items, at least
+// one not yet Ordered, and an order that could change the game. Three
+// shapes are known not to:
 //
 //   - all identical — same source card and same label. Two Bident
 //     draws are interchangeable and asking would be noise.
@@ -5783,9 +5793,12 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 //     spell). An item that commutes still counts only while it has
 //     no targets and no modes; Commutes is engine-owned and no such
 //     item has either today, so that check is a belt, not the rule.
-//
-// A seat with Player.TriggerOrderAlwaysAsk set (#1530) gets the prompt
-// for any batch of two or more not yet Ordered, skips included.
+//   - all copies of one source-blind catalog ability (#1968) — every
+//     item names the same catalog row, that row is
+//     TriggeredAbility.SourceBlind, and no item carries targets, modes
+//     or anything else chosen for it alone (copiesOfOneSourceBlindAbility).
+//     Two Soul Wardens, or a set of tokens with the same trigger. The
+//     rules argument is in ADR 0018's #1968 amendment.
 //
 // Anything else prompts, including a batch that is all commutative
 // items plus ONE other trigger: where that trigger sits among the
@@ -5795,11 +5808,11 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 // An auto-ordered batch keeps its queue order, which is harvest
 // order; the drain below places it exactly as it places an answered
 // prompt.
-func seatNeedsTriggerOrder(items []*StackItem, alwaysAsk bool) bool {
-	if len(items) < 2 {
+func seatNeedsTriggerOrder(items []*StackItem, mode TriggerOrderMode) bool {
+	if len(items) < 2 || mode == TriggerOrderNever {
 		return false
 	}
-	if alwaysAsk {
+	if mode == TriggerOrderAlways {
 		// #1530: the seat opted out of the skips. Only an already
 		// answered batch (every item Ordered) stays out of the prompt.
 		for _, t := range items {
@@ -5823,7 +5836,10 @@ func seatNeedsTriggerOrder(items []*StackItem, alwaysAsk bool) bool {
 			allCommute = false
 		}
 	}
-	return !allOrdered && !allSame && !allCommute
+	if allOrdered || allSame || allCommute {
+		return false
+	}
+	return !copiesOfOneSourceBlindAbility(items)
 }
 
 // commutesForOrdering is the per-item half of the #1511 skip: the
@@ -5832,6 +5848,35 @@ func seatNeedsTriggerOrder(items []*StackItem, alwaysAsk bool) bool {
 // modes.
 func commutesForOrdering(t *StackItem) bool {
 	return t.Commutes && len(t.Targets) == 0 && len(t.Modes) == 0
+}
+
+// copiesOfOneSourceBlindAbility is the #1968 skip: every item is a
+// stamped catalog trigger (Body "catalog/triggered") naming the SAME
+// row — the same AbilityRef, so the same catalog key, slot, row and
+// label — the running catalog still hands that row back under the ref,
+// the row is TriggeredAbility.SourceBlind, and no item carries anything
+// chosen or recorded for it alone: no targets, modes, payload, X or
+// division. Such items differ only in their source object and their
+// trigger context, and a source-blind effect reads neither, so they are
+// one effect queued several times and every order resolves the same
+// sequence of effects. ADR 0018's #1968 amendment has the argument.
+func copiesOfOneSourceBlindAbility(items []*StackItem) bool {
+	first := items[0].Params.Ability
+	if first == nil {
+		return false
+	}
+	for _, t := range items {
+		ref := t.Params.Ability
+		if t.Body != CatalogTriggeredBodyKey || ref == nil || *ref != *first {
+			return false
+		}
+		if len(t.Targets) > 0 || len(t.Modes) > 0 || len(t.Payload) > 0 ||
+			t.XValue != 0 || len(t.Distribution) > 0 {
+			return false
+		}
+	}
+	row, _, outcome := resolveTriggeredAbilityRef(*first)
+	return outcome == abilityRefMatched && row.SourceBlind
 }
 
 // triggerAnnouncementOpenLocked reports whether some triggered

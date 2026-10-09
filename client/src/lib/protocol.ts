@@ -215,8 +215,10 @@ export type ActionType =
   // at the table for fun. Never a game roll, never undoable, and the
   // server takes one per seat per 2 s.
   | "roll_table_die"
-  // #1530: `{always_ask: boolean}` — the seat's own "always ask me to
-  // order my triggers" preference. A setting, not a play: never undoable.
+  // #1968: `{trigger_order: "when_it_matters" | "always" | "never"}` —
+  // when the game asks this seat to order its triggers (the #1530
+  // `{always_ask: boolean}` form is still read). A setting, not a play:
+  // never undoable.
   | "set_trigger_order_preference"
   // ADR 0127 §3: `{rules: [{key, answer}]}` — the seat's standing
   // answers to repeated prompts, replacing the list ("always" or
@@ -1872,9 +1874,12 @@ export interface PlayerView {
   // mulligan. Mulligan decisions go in turn order, starting player
   // first. Omitempty: absent on every other seat.
   mulligan_turn?: boolean;
-  // #1530: this seat's "always ask me to order my triggers" preference.
-  // Present (true) only in the seat's OWN view; the server blanks it for
-  // everyone else. Omitempty: absent means off.
+  // #1968: this seat's trigger-order mode, "always" or "never"; absent
+  // means the default, "when_it_matters". Present only in the seat's OWN
+  // view; the server blanks it for everyone else.
+  trigger_order?: "always" | "never";
+  // #1530: true when trigger_order is "always", kept for older clients.
+  // Own view only, like trigger_order.
   trigger_order_always_ask?: boolean;
   // ADR 0127 §3: this seat's standing answers, sorted by key. Own view
   // only; the client reconciles it with gameplay.autoAnswers.

@@ -218,21 +218,23 @@ type Player struct {
 	// round ends; see mulligan_order.go.
 	MulliganDecided bool
 
-	// TriggerOrderAlwaysAsk is this seat's "always ask me to order my
-	// triggers" preference (#1530, ADR 0018's #1530 amendment). When
-	// set, seatNeedsTriggerOrder no longer skips the CR 603.3b prompt
-	// for a batch whose items commute (#1511's all-prowess batch) or
-	// are identical. Default false. Server-held so the skip decision,
-	// which only the server makes, can read it; the client re-sends its
-	// local setting whenever the seat's view disagrees. Survives undo
-	// (RestoreFrom carries it forward) and the snapshot.
-	TriggerOrderAlwaysAsk bool
+	// TriggerOrder is this seat's trigger-order preference (#1968,
+	// replacing #1530's always-ask flag; ADR 0018's #1968 amendment):
+	// when_it_matters (the zero value) lets seatNeedsTriggerOrder skip
+	// the CR 603.3b prompt for a batch whose order cannot change the
+	// game, always asks for every batch of two or more, and never asks,
+	// putting the batch on the stack in the order it was collected.
+	// Server-held so the skip decision, which only the server makes, can
+	// read it; the client re-sends its local setting whenever the seat's
+	// view disagrees. Survives undo (RestoreFrom carries it forward) and
+	// the snapshot. A bot seat never sets it.
+	TriggerOrder TriggerOrderMode
 
 	// AutoAnswers is this seat's standing answers to repeated prompts
 	// (ADR 0127 §3), by key (PendingChoice.AutoAnswerKey). Ask is the
 	// absence of a key. Set only by set_auto_answers, which replaces
 	// the whole map and mints no undo entry; RestoreFrom carries it
-	// across an undo, like TriggerOrderAlwaysAsk. Always empty for a bot
+	// across an undo, like TriggerOrder. Always empty for a bot
 	// seat. Server-held so the server can answer while the player's
 	// browser is closed.
 	AutoAnswers map[string]AutoAnswer
