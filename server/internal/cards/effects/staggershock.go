@@ -19,6 +19,7 @@ func init() {
 		Name:            "Staggershock",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
+		Purpose:         ForTargets(DamageToTarget(0, 2)),
 		Targets:         TargetAny(),
 		OnResolve:       damageToFirstTarget(2),
 	})

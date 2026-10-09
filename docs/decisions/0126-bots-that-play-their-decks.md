@@ -1638,3 +1638,23 @@ Left undeclared (1):
 The audit's burn list goes from 97 cards to 56: 41 declared, leaving the 12 from batches 1 and 2, Razorgrass Ambush and 43 from S on. Batch 4 starts at Savage Alliance.
 
 **Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with binaries built from `develop` at `a33469d45` and from this branch: 0 stalls in both, turns p50 14 in both, and the two reports are identical game for game (seed, turns, winner): esper-control 24, izzet-aggro 4, mono-black-aristocrats 26, simic-ramp 10 wins in both. The suite is 41 of 41 before and after. `TestLegalActionsAgreement` did not go stale, because none of the batch is in its fixture. `TestRealDumpPurposeAudit` already fails on `develop` for an unrelated reason (Call Forth the Tempest reads as a wipe with no Sweep); the burn list above is read from its output.
+
+#### Burn batch 4 (2026-10-09)
+
+The last burn batch of PR 5 declares a damage target entry on the audit's undeclared burn list from Savage Alliance through Zacama, Primal Calamity (S to Z). No price code changed.
+
+Declared (33 cards): Savage Alliance (the 2 at a creature; its sweep mode keeps its Sweep), Scorching Dragonfire, Scorching Lava (the 2; the kicker rider changes no amount), Scorchmark, Serpentine Spike (2, 3 and 4 on slots 0, 1 and 2), Siege-Gang Commander, Skullcrack, Skysovereign, Consul Flagship, Smite the Deathless, Sorin Markov (the +2), Spikefield Hazard, Spring-Loaded Sawblades, Staggershock, Stormbind, Sudden Shock, Sunscorched Desert, Suplex (the damage mode), Sword of Fire and Ice (the 2; the draw is not declared), Synth Eradicator, Task Mage Assembly, Thornscape Battlemage (the kicked-with-{R} trigger), Thunderous Wrath, Ticking Gnomes, Touch of the Void, Trumpeting Carnosaur (the discard ability), Ugin, the Spirit Dragon (the +2), Walking Ballista, Warrior's Blades (the 3; the life gained is not declared), Wild Slash, Wilt in the Heat, Wrenn and Six (the -1), Yamabushi's Flame and Zacama, Primal Calamity (the 3-damage ability).
+
+Left undeclared (10), which with the 13 from batches 1 to 3 is every undeclared card the audit still lists:
+- Slaying Fire: 3, or 4 with adamant, read as it resolves.
+- Stormscale Anarch: 2, or 4 if the card discarded at random was multicolored.
+- Torch the Tower: 2, or 3 if bargained.
+- Urza's Rage: 3, or 10 kicked.
+- Unstable Footing: the 5 is dealt to a target chosen only when kicked, and that clause hangs on the kicker, not on the statement; `checkTargetPurposes` refuses slot 0 because the statement has no target clause.
+- Three Bowls of Porridge: a modal activated ability. Only a spell's mode bullets carry a purpose the bot reads, and an activated row reads entries for its first mode only.
+- Thornbite Staff: the 1 damage is an ability it grants to the equipped creature; the audit and the wire's ability rows do not carry an entry from a grant (like Furystoke Giant).
+- Spiked Corridor // Torture Pit, Tibalt, Rakish Instigator and Weapons Manufacturing: the damage is a created token's own trigger (the Devil's 1, the Munitions' 2). The audit reads the card, not the token it makes, and a token's trigger is shared by every card that makes it, so it is not declared here.
+
+The audit's burn list goes from 56 cards to 23: 33 declared. The 23 left are the 12 from batches 1 and 2, Razorgrass Ambush (batch 3) and the 10 above.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with binaries built from `develop` at `800eff6cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 23 / 24, izzet-aggro 4 / 4, mono-black-aristocrats 27 / 26, simic-ramp 10 / 10. One game of 64 differs (the 48th, 16 turns against 13). A second run of the branch binary differs from its own first run in that same game and matches `develop` game for game, while two runs of the `develop` binary were identical, so the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. `TestLegalActionsAgreement` did not go stale. `TestRealDumpPurposeAudit` still fails on `develop` for Call Forth the Tempest (#2771), the only failure; the burn list above is read from its output.

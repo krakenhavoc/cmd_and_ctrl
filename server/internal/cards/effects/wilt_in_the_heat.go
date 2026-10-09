@@ -21,6 +21,7 @@ func init() {
 		Name:         "Wilt in the Heat",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 5)),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(2, "This spell costs {2} less to cast if one or more cards left your graveyard this turn.",
 				g2CardLeftYourGraveyardThisTurn()),

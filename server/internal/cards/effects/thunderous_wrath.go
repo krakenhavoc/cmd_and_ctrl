@@ -17,6 +17,7 @@ func init() {
 		Name:             "Thunderous Wrath",
 		Completeness:     CompletenessFull,
 		Targets:          TargetAny(),
+		Purpose:          ForTargets(DamageToTarget(0, 5)),
 		AlternativeCosts: []game.AlternativeCost{Miracle("{R}")},
 		OnResolve:        damageToFirstTarget(5),
 	})

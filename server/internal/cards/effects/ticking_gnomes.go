@@ -20,6 +20,7 @@ func init() {
 			Label:   "Sacrifice this creature: It deals 1 damage to any target.",
 			Cost:    SacrificeThis(),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  sourceDealsOneToFirstTarget,
 		}},
 		Triggered: []game.TriggeredAbility{Echo("Ticking Gnomes", "{3}")},
