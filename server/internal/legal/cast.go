@@ -994,7 +994,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				pool = append(pool, id)
 			}
 		}
-		if varSac {
+		if addCost != nil && addCost.SacrificeAll && addCost.Sacrifice == sacrifice {
+			// #2097: "sacrifice all" has one payment, the engine's own
+			// set (empty included). It is named on the move so a policy
+			// prices what the cast gives up (sacrificeCost), and priced
+			// per payment below as a variable clause is.
+			sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, sacrifice)}
+		} else if varSac {
 			sacOrdered = g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
 			sacrificeSets = e.castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)
 		} else {
@@ -1542,7 +1548,11 @@ func (e *enumerator) castMoveEmitter(
 		}
 		// ADR 0100 §6: the counts of a variable sacrifice are otherwise
 		// the same line in the move log.
-		if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
+		if paying != nil && paying.SacrificeAll {
+			// #2097: said outright, so a model seat or an MCP client
+			// reading the move list sees it gives up its whole board.
+			label += sacrificeAllLabel(g, paying, sacs)
+		} else if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
 			label += sacrificeLabel(g, sacs)
 		}
 		// #2681: the modes, so two moves with the same targets and

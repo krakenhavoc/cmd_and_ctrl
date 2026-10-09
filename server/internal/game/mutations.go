@@ -945,6 +945,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #2097, CR 601.2b / 601.2h: "sacrifice all creatures you control"
+	// is settled here, with the other announce-time choices and before
+	// anything reads sacrifice_ids — the price (CostQuery.Sacrificing),
+	// the validator, the auto-tapper's exclusions, the CR 903.9 walk and
+	// the payment all see the one set the engine fixed.
+	if addCost != nil && addCost.SacrificeAll {
+		ids, err := g.sacrificeAllPaymentLocked(playerID, addCost, params.SacrificeIDs)
+		if err != nil {
+			slog.Warn("cast_spell rejected: sacrifice_ids are not every permanent a sacrifice-all cost takes",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"sacrifices_received", len(params.SacrificeIDs),
+			)
+			return err
+		}
+		params.SacrificeIDs = ids
+	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2). #1590: the
 	// count's bounds are read HERE, "as you cast this spell", for a

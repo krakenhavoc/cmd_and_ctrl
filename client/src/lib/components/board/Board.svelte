@@ -160,6 +160,7 @@
     exilePermanentOptions,
     orderSacrificeOptions,
     sacrificeRange,
+    sacrificesAll,
   } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import DivideDamageModal from "./DivideDamageModal.svelte";
@@ -615,7 +616,10 @@
     clause: LegalTargetsView | undefined,
     ids: string[],
   ): CastChoices {
-    const out: CastChoices = { ...choices, sacrificeIDs: ids };
+    // #2097: "sacrifice all" sends nothing; the server takes every
+    // permanent the clause matches as the spell is cast, so the board
+    // as it is then is what goes, not the list the sheet showed.
+    const out: CastChoices = { ...choices, sacrificeIDs: sacrificesAll(clause) ? [] : ids };
     if (clause?.count_from_x) out.xValue = ids.length;
     return out;
   }
@@ -3740,6 +3744,7 @@
     min={castSacrificeBounds.min}
     countIsX={sacrificePromptClause?.count_from_x === true}
     eachOf={sacrificePromptClause?.each_of}
+    all={sacrificesAll(sacrificePromptClause)}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;
