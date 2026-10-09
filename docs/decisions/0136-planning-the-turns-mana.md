@@ -124,7 +124,7 @@ value(S) = Σ valueOf(m) for m in S
 
 **The decision.** When the plan holds more than one member and is worth more than the best single move, the bot makes the plan's first move (§4) if the plan's value clears the window's bar (`PassThreshold`, or `LeftoverThreshold` in ADR 0126 §5's windows). Otherwise `decideGeneral` decides exactly as today. A plan of one is today's choice.
 
-The plan is not stored. It is rebuilt in every window from the view, so it adds nothing to the little the policy keeps between decisions (the aggression rotation and the concede counter). After the Signet resolves, the next window plans again with the Signet on the battlefield and finds the Ornithopter. If a draw finds something better, the next plan uses it.
+The plan is not stored. It is rebuilt in every window from the view, so it adds nothing to the little the policy keeps between decisions (the aggression rotation and the concede counter). After the Signet resolves, the next window plans again with the Signet on the battlefield and finds the Ornithopter. If a draw finds something better, the next plan uses it. The [amendment of 2026-10-09](#amendment-2026-10-09-an-opponents-tax-against-the-plan) keeps one thing: the members of the plan the last window chose, until the phase ends, for an opponent's tax prompt to read.
 
 ### 4. The order: mana first, then draws, then the rest
 
@@ -198,6 +198,27 @@ The forward-looking half, `CommanderTax × 0.5` per cast from the command zone (
 - `signet-then-the-commander` (seq 292): T6, six mana, Tatyova in the command zone with no tax. Accept "Cast Arcane Signet". Reject "Cast Tatyova, Benthic Druid from the command zone".
 - `two-spells-over-the-taxed-commander` (seq 402): T8, eight mana, Tatyova with {2} tax, Oracle of Mul Daya and Harmonize in hand. Accept "Cast Oracle of Mul Daya" and "Cast Harmonize". Reject "Cast Tatyova, Benthic Druid from the command zone".
 - `cantrip-before-the-permanent`: the `cantrip-with-leftover-mana` board, re-captured from a game on a view that carries the declared purposes. Accept "Cast Night's Whisper" only, as the owner asked on #2458 ([Q10](#questions-for-the-owner-answered)).
+
+### Amendment 2026-10-09: an opponent's tax against the plan
+
+**The owner's decision of 2026-10-09** (#2458, PR 4b's owner question 3, option a).
+
+In PR 4b's run 1, the largest class of plan misses was an opponent's Rhystic Study or Smothering Tithe tax that the bot paid between two of the plan's moves: 28 of 52 misses. In run 3's simic pool it was 49 of 64. The first member's cast or draw raises the "pay {N}?" prompt. The bot paid every tax it could, and the tax spent the mana the next member needed.
+
+**The rule.** The bot may be asked to pay an opponent's optional mana tax: Rhystic Study, Mystic Remora, Esper Sentinel, Smothering Tithe, or any prompt of the same shape. When paying it would leave the turn plan's next member unpayable this turn, and declining would leave that member payable, the bot weighs the two:
+
+- **What the tax prevents.** This is read from the triggered rows of the prompt's source, the opponent's permanent, through their declared purpose (ADR 0126 §6). `draws` is a card for that opponent, and `tokens` a token for them. A Treasure is priced like any token. Both go through the existing gift pricing (`giftsValue`, ADR 0126's amendment of 2026-10-08): `Hand` per card and `TokenWeight` per token, weighed by `OpponentMean` and `OpponentMax`. No new weight. In PR 4d's runs a card for one opponent cost the bot 0.40 to 1.80: more when that opponent is the strongest seat, or one of fewer opponents.
+- **What the next member is worth.** This is its price (`valueOf`) in the window that chose the plan.
+
+The bot declines the tax when the member is worth more, and pays it otherwise. When paying still leaves the member payable, the answer is unchanged. It is also unchanged when the source declares no gift, and when no plan was chosen this phase. The mana check is §2's model. The member's mana is counted after the tax is paid, plus the mana that the members still on the stack add once they resolve.
+
+**What the policy now remembers.** A tax prompt offers only pay and decline (`legal.choiceMoves`), so the window that answers it cannot rebuild the plan. The policy remembers the members of the plan chosen in the last sorcery-speed window of its own turn: each card, its mana, its price and the mana it adds. A later sorcery-speed window that chooses no plan clears this memory. It is read only in the same turn and phase, and only for a member still in hand or in the command zone that is not held for the end step. This is the one exception to §3's "the plan is not stored". Replaying a tax window offline answers it as if no plan was chosen, unless the plan's window is replayed first on the same policy. It is game-independent policy state, like the aggression rotation, and not game state. The snapshot does not change.
+
+**Catalog.** Each tax card declares its gift on its triggered row. Rhystic Study, Mystic Remora's cast trigger and Esper Sentinel declare `draws: 1`. Smothering Tithe and Kazuul, Tyrant of the Cliffs declare `tokens: 1`. `TestCuratedDeckPurposes` requires the declaration on Rhystic Study and Smothering Tithe, the two curated cards. A ward prompt is never weighed this way: its decline counters the bot's own spell. The bot skips any prompt whose source is a target of the bot's own stack item.
+
+**Config.** `Config.PlanWeighTaxes`, on in `DefaultConfig()` and off in `BaselineConfig()`.
+
+**Measurement.** The arena's A2 rows gain the owner's count (#2435), next to today's every-offer count. These are the seat-games in which each rock or dork was offered while the seat's mana deficit was open, and the seat-games among those in which it was used. The deficit is the heuristic's own (`rampFor` under `DefaultConfig`, exported as `heuristic.DeficitOpen`). Before, it could only be read from a decision log.
 
 ### Amendment 2026-10-09: a rock against a spell over two turns
 

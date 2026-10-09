@@ -333,6 +333,13 @@ type Config struct {
 	// §2's amendment of 2026-10-09, rocknow.go). Off (the zero value)
 	// leaves it at its §2 price, below the bar.
 	IdleLateRocks bool
+	// PlanWeighTaxes weighs an opponent's optional mana tax (Rhystic
+	// Study's "pay {1}?", Smothering Tithe's "pay {2}?") against the
+	// turn plan's next member when paying would leave that member
+	// unpayable this turn, and declines when the member is worth more
+	// than what the tax prevents (ADR 0136's amendment of 2026-10-09,
+	// tax.go). Off (the zero value) pays every tax it can, as before.
+	PlanWeighTaxes bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -584,6 +591,7 @@ func DefaultConfig() Config {
 		PlanRockTwoTurns:     true,
 		PlanNextTurnDiscount: 0.75,
 		IdleLateRocks:        true,
+		PlanWeighTaxes:       true,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -724,6 +732,7 @@ func BaselineConfig() Config {
 	c.PlanNextTurnDiscount = 0
 	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
 	c.IdleLateRocks = false
+	c.PlanWeighTaxes = false
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
 	c.PricePutsFromHand = false
@@ -753,6 +762,10 @@ type Policy struct {
 	// counted on, so one turn cannot count twice.
 	hopelessTurns int
 	hopelessTurn  int
+	// tail is the turn plan the last sorcery-speed window chose, kept
+	// for an opponent's tax prompt before the plan's next cast
+	// (Config.PlanWeighTaxes, tax.go).
+	tail *planTail
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -781,6 +794,7 @@ func (p *Policy) Reset() {
 	defer p.mu.Unlock()
 	p.agg.reset()
 	p.hopelessTurns, p.hopelessTurn = 0, 0
+	p.tail = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -1011,6 +1025,7 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	}
 
 	d, plan := p.decideGeneral(ctx, st, in.Moves)
+	p.notePlan(st, in.Moves, plan)
 	return d, plan, nil
 }
 

@@ -1084,6 +1084,41 @@ lands in hand beyond the drops left), at `ManaSource` plus the ramp
 premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
 while the bot has fewer than `RampWantCap` sources.
 
+### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
+
+An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,
+and Smothering Tithe asks "pay {2}?" when it draws. Both prompts arrive
+between two casts of the bot's turn plan, after the first cast and
+before the next. With `PlanWeighTaxes` on (`tax.go`), the bot checks two
+things when one of these taxes would leave the plan's next cast
+unpayable this turn, and when declining would leave it payable:
+
+- **What declining gives the opponent.** This is read from the triggered
+  ability rows that the prompt's source declares
+  (`purpose.draws` or `purpose.tokens` on the row). It is priced like any
+  gift to an opponent (`giftsValue`): `Hand` for each card and
+  `TokenWeight` for each token, a Treasure included, weighed by the
+  opposition weights. In the arena a card for one opponent cost the bot
+  0.40 to 1.80: more when that opponent is the strongest seat, or one of
+  fewer opponents.
+- **What the next cast is worth.** This is its price in the window that
+  chose the plan.
+
+If the cast is worth more, the bot declines the tax. Otherwise it pays,
+as it did before. The bot also pays as before when paying still leaves
+the cast payable, when the source declares no gift, and when no plan
+was chosen this phase. Rhystic Study, Mystic Remora, Esper Sentinel,
+Smothering Tithe and Kazuul declare their gift. A ward prompt is never
+weighed this way, because its decline counters the bot's own spell.
+
+The tax prompt offers only "pay" and "decline", so the window that
+answers it cannot rebuild the plan. The policy therefore remembers the
+plan's members from the window that chose it, until the phase ends.
+This is the only part of the plan the policy keeps between decisions.
+Replaying a tax window offline from the decision log answers it as if
+no plan was chosen, unless the plan window before it is replayed first
+on the same policy.
+
 ### Sacrifices
 
 With `SacrificeDyingAnyway` on, a permanent sacrificed to pay a cost
@@ -1757,7 +1792,17 @@ game.
   Lotus Petal or an Altar), and the six A3 canaries (Sol Ring, Rhystic
   Study, Mary Read and Anne Bonny's loot, Entomb, Harrow, Viscera Seer),
   each with the share of games it was used in and the bar it is held
-  to. A canary nobody was dealt says `not offered`. The full per-card
+  to. A canary nobody was dealt says `not offered`. Each A2 row also
+  counts the owner's way (#2435), in the `deficit open` columns. These
+  count the seat-games in which the rock or dork was offered while the
+  seat's mana deficit was open, and the seat-games among those in which
+  it was used. `heuristic.DeficitOpen` gives that answer from the
+  heuristic's own deficit (`rampFor` under `DefaultConfig`, ADR 0126
+  §2), and the same rule is used for every contestant. A rock offered
+  only after the seat's sources already covered its hand is counted in
+  the every-offer columns only. In `summary.json` these columns are
+  `games_offered_deficit`, `games_used_deficit`, `rate_deficit` and
+  `meets_deficit`. The full per-card
   tables are folded under `<details>`. The tally is the runner's
   observer, so it needs no decision log; `summary.json` carries it as
   `cards` and `canaries`, and each game's per-seat counts are in
