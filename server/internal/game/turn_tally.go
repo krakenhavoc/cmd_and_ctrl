@@ -354,6 +354,18 @@ type TurnTally struct {
 	StepsBegun   map[Step]int      `json:"stepsBegun,omitempty"`
 	PhasesBegun  map[PhaseKind]int `json:"phasesBegun,omitempty"`
 	PhaseStarted int               `json:"phaseStarted,omitempty"`
+	// PermissionTypes is the per-type budget a STANDING permission has
+	// spent this turn (#2167, ADR 0066's 2026-10-09 amendment):
+	// Muldrotha, the Gravetide's "a land and a permanent spell of each
+	// permanent type", one cell per (holder, granting object, card
+	// type), keyed by permissionTypeTallyKey. Per OBJECT, for #936's
+	// reason, so a new Muldrotha this turn grants a fresh set (ruling
+	// 2020-11-10), and per HOLDER, so a Muldrotha that changes control
+	// opens its new controller's own set. A stored permission keeps its
+	// spent types on itself (CastPermission.PerTypeUsed); a derived one
+	// has nowhere to keep them, so they are here and the derivation
+	// reads them back. Additive within v7: omitted when empty.
+	PermissionTypes map[string]int `json:"permissionTypes,omitempty"`
 }
 
 // AttackRecord is one creature declared as an attacker (CR 508.1).
@@ -1080,6 +1092,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.PhaseStarted = t.PhaseStarted
+	out.PermissionTypes = copyStringIntMap(t.PermissionTypes)
 	// #1238: a fresh backing array, not the same slice header. The
 	// clone is an undo restore point and the live game keeps
 	// appending to its own list; sharing the array would let a cast

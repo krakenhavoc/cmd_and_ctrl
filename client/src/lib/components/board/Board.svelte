@@ -196,6 +196,8 @@
   } from "../../libraryCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
+  import PermissionTypeModal from "./PermissionTypeModal.svelte";
+  import { needsPermissionTypePicker } from "../../permissionTypes";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
   import TapCostModal from "./TapCostModal.svelte";
@@ -1097,7 +1099,28 @@
     afterFace(cardAsFace(card, face), { ...base, face });
   }
 
+  // #2167: a cast through a permission that opens one of each card type
+  // (Muldrotha, the Gravetide; Aminatou's Augury) asks which type the
+  // chosen face uses when it has two or more left — "choose one as you
+  // play it". Asked here, after the face and before the costs, because
+  // it is a question about what the chosen face is being cast as.
+  let permissionTypePromptCard = $state<CardView | null>(null);
+  let permissionTypePromptChoices: CastChoices = {};
+  function confirmPermissionType(permissionType: string): void {
+    const card = permissionTypePromptCard;
+    const choices = permissionTypePromptChoices;
+    permissionTypePromptCard = null;
+    permissionTypePromptChoices = {};
+    if (!card) return;
+    afterFace(card, { ...choices, permissionType });
+  }
+
   function afterFace(card: CardView, choices: CastChoices): void {
+    if (choices.permissionType === undefined && needsPermissionTypePicker(card)) {
+      permissionTypePromptChoices = choices;
+      permissionTypePromptCard = card;
+      return;
+    }
     // ADR 0073: a card with kicker and no alternative cost opens the
     // same picker with only the add-ons showing — one prompt for one
     // question (CR 601.2b), rather than a second modal asking the
@@ -3485,6 +3508,14 @@
     zone={facePromptZone}
     onConfirm={confirmFace}
     onCancel={() => (facePromptCard = null)}
+  />
+  <PermissionTypeModal
+    card={permissionTypePromptCard}
+    onConfirm={confirmPermissionType}
+    onCancel={() => {
+      permissionTypePromptCard = null;
+      permissionTypePromptChoices = {};
+    }}
   />
   <AlternativeCostModal
     card={altCostPromptCard}
