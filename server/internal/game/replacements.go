@@ -1000,6 +1000,15 @@ type ReplacementEvent struct {
 	LifePlayer uuid.UUID
 	LifeDelta  int
 
+	// LifeFromRadiation marks life lost "from radiation" (CR 728.1a):
+	// the loss the rad counters' inherent trigger causes
+	// (rad_counters.go, #2042). A replacement worded about radiation —
+	// Strong, the Brutish Thespian's "you gain life rather than lose
+	// life from radiation" — reads it; every other life replacement
+	// ignores it. The landed EventChangeLife carries it as
+	// Event.FromRadiation.
+	LifeFromRadiation bool
+
 	// lifeTail is the life half's answer to damageTail: the rest of
 	// the effect that asked for this change, run with the amount that
 	// actually moved once the pipeline settles. Set by the *Then*

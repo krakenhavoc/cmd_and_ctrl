@@ -39,11 +39,20 @@ func init() {
 // the black mana spent, less every mana that paid for something other
 // than X (the spell's {2}{B} and anything a cost modifier added). Zero
 // for a payment the engine did not record.
+//
+// The mana that paid for X is X, unless a cost reduction ate into it
+// (#2701): a generic reduction takes the {2} first and then the X, so
+// once it reaches the X only the {B} is left beside it, and the X mana
+// paid is the total less that one symbol. No cost modifier adds a
+// coloured symbol to Soul Burn (only a spell's own strive-style
+// increase does), so the {B} is the whole of the coloured part.
 func blackSpentOnXAtLeast(ctx *Context) int {
 	spent := ctx.ManaSpent()
 	if !spent.Known() {
 		return 0
 	}
-	elsewhere := spent.Total() - ctx.X()
-	return max(0, ctx.ManaSpentOfColor("B")-max(0, elsewhere))
+	const colouredSymbols = 1 // Soul Burn's {B}
+	xPaid := max(0, min(ctx.X(), spent.Total()-colouredSymbols))
+	elsewhere := spent.Total() - xPaid
+	return max(0, min(xPaid, ctx.ManaSpentOfColor("B")-max(0, elsewhere)))
 }

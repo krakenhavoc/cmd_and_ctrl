@@ -374,7 +374,7 @@ func solveCostedChain(
 	s := &costedSolver{
 		m:            m,
 		taken:        map[uuid.UUID]bool{},
-		spellGeneric: cost.Generic + cost.XSlots*xValue,
+		spellGeneric: cost.GenericWithX(xValue),
 		costGeneric:  make([]int, m),
 		pain:         painBudget,
 		budget:       budget,

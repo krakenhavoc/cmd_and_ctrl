@@ -798,7 +798,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// nothing reads targets, which is every board without such a
 	// card; otherwise each (modes, targets) set below is priced on its
 	// own and carries its own X.
-	spend := game.ManaSpendForCast(card)
+	spend := game.ManaSpendForCastFrom(card, fromZone)
 	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the

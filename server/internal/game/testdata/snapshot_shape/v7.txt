@@ -291,6 +291,7 @@ battlefield.cards[].provenance.optionalCosts	array
 battlefield.cards[].provenance.optionalCosts[]	number:int
 battlefield.cards[].provenance.x	number:int
 battlefield.cards[].regenerationShields	number:int
+battlefield.cards[].renowned	bool
 battlefield.cards[].ringBearer	bool
 battlefield.cards[].ringTemptations	number:int
 battlefield.cards[].saddled	bool
@@ -451,6 +452,7 @@ events[].entered_from	string
 events[].entered_from_owner	custom(uuid.UUID)
 events[].error_msg	string
 events[].exhaust	bool
+events[].from_radiation	bool
 events[].kind	string
 events[].label	string
 events[].last_known_all_creature_types	bool
@@ -752,6 +754,7 @@ exile.cards[].provenance.optionalCosts	array
 exile.cards[].provenance.optionalCosts[]	number:int
 exile.cards[].provenance.x	number:int
 exile.cards[].regenerationShields	number:int
+exile.cards[].renowned	bool
 exile.cards[].ringBearer	bool
 exile.cards[].ringTemptations	number:int
 exile.cards[].saddled	bool
@@ -1000,6 +1003,7 @@ lastKnownPermanents{}[].left	bool
 lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
+lastKnownPermanents{}[].renowned	bool
 lastKnownPermanents{}[].ringBearer	bool
 lastKnownPermanents{}[].suspected	bool
 lastKnownPermanents{}[].tapped	bool
@@ -1272,6 +1276,7 @@ lastKnownStack[].card.provenance.optionalCosts	array
 lastKnownStack[].card.provenance.optionalCosts[]	number:int
 lastKnownStack[].card.provenance.x	number:int
 lastKnownStack[].card.regenerationShields	number:int
+lastKnownStack[].card.renowned	bool
 lastKnownStack[].card.ringBearer	bool
 lastKnownStack[].card.ringTemptations	number:int
 lastKnownStack[].card.saddled	bool
@@ -1449,6 +1454,7 @@ lastKnownStack[].item.trigger.Event.entered_from	string
 lastKnownStack[].item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.error_msg	string
 lastKnownStack[].item.trigger.Event.exhaust	bool
+lastKnownStack[].item.trigger.Event.from_radiation	bool
 lastKnownStack[].item.trigger.Event.kind	string
 lastKnownStack[].item.trigger.Event.label	string
 lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
@@ -1939,6 +1945,7 @@ pendingTriggers[].trigger.Event.entered_from	string
 pendingTriggers[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.error_msg	string
 pendingTriggers[].trigger.Event.exhaust	bool
+pendingTriggers[].trigger.Event.from_radiation	bool
 pendingTriggers[].trigger.Event.kind	string
 pendingTriggers[].trigger.Event.label	string
 pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
@@ -2264,6 +2271,7 @@ phasedOut.cards[].provenance.optionalCosts	array
 phasedOut.cards[].provenance.optionalCosts[]	number:int
 phasedOut.cards[].provenance.x	number:int
 phasedOut.cards[].regenerationShields	number:int
+phasedOut.cards[].renowned	bool
 phasedOut.cards[].ringBearer	bool
 phasedOut.cards[].ringTemptations	number:int
 phasedOut.cards[].saddled	bool
@@ -2858,6 +2866,7 @@ seats[].command.cards[].provenance.optionalCosts	array
 seats[].command.cards[].provenance.optionalCosts[]	number:int
 seats[].command.cards[].provenance.x	number:int
 seats[].command.cards[].regenerationShields	number:int
+seats[].command.cards[].renowned	bool
 seats[].command.cards[].ringBearer	bool
 seats[].command.cards[].ringTemptations	number:int
 seats[].command.cards[].saddled	bool
@@ -3161,6 +3170,7 @@ seats[].emblems.cards[].provenance.optionalCosts	array
 seats[].emblems.cards[].provenance.optionalCosts[]	number:int
 seats[].emblems.cards[].provenance.x	number:int
 seats[].emblems.cards[].regenerationShields	number:int
+seats[].emblems.cards[].renowned	bool
 seats[].emblems.cards[].ringBearer	bool
 seats[].emblems.cards[].ringTemptations	number:int
 seats[].emblems.cards[].saddled	bool
@@ -3455,6 +3465,7 @@ seats[].graveyard.cards[].provenance.optionalCosts	array
 seats[].graveyard.cards[].provenance.optionalCosts[]	number:int
 seats[].graveyard.cards[].provenance.x	number:int
 seats[].graveyard.cards[].regenerationShields	number:int
+seats[].graveyard.cards[].renowned	bool
 seats[].graveyard.cards[].ringBearer	bool
 seats[].graveyard.cards[].ringTemptations	number:int
 seats[].graveyard.cards[].saddled	bool
@@ -3747,6 +3758,7 @@ seats[].hand.cards[].provenance.optionalCosts	array
 seats[].hand.cards[].provenance.optionalCosts[]	number:int
 seats[].hand.cards[].provenance.x	number:int
 seats[].hand.cards[].regenerationShields	number:int
+seats[].hand.cards[].renowned	bool
 seats[].hand.cards[].ringBearer	bool
 seats[].hand.cards[].ringTemptations	number:int
 seats[].hand.cards[].saddled	bool
@@ -4050,6 +4062,7 @@ seats[].library.cards[].provenance.optionalCosts	array
 seats[].library.cards[].provenance.optionalCosts[]	number:int
 seats[].library.cards[].provenance.x	number:int
 seats[].library.cards[].regenerationShields	number:int
+seats[].library.cards[].renowned	bool
 seats[].library.cards[].ringBearer	bool
 seats[].library.cards[].ringTemptations	number:int
 seats[].library.cards[].saddled	bool
@@ -4549,6 +4562,7 @@ stack.cards[].provenance.optionalCosts	array
 stack.cards[].provenance.optionalCosts[]	number:int
 stack.cards[].provenance.x	number:int
 stack.cards[].regenerationShields	number:int
+stack.cards[].renowned	bool
 stack.cards[].ringBearer	bool
 stack.cards[].ringTemptations	number:int
 stack.cards[].saddled	bool
@@ -4729,6 +4743,7 @@ stackMeta[].trigger.Event.entered_from	string
 stackMeta[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 stackMeta[].trigger.Event.error_msg	string
 stackMeta[].trigger.Event.exhaust	bool
+stackMeta[].trigger.Event.from_radiation	bool
 stackMeta[].trigger.Event.kind	string
 stackMeta[].trigger.Event.label	string
 stackMeta[].trigger.Event.last_known_all_creature_types	bool

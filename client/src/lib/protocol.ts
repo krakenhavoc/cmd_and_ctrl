@@ -3621,6 +3621,12 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0071 amendment 2026-10-09, #2049 (CR 702.112b): this permanent
+  // is renowned — one of its renown triggers resolved, and it stays
+  // renowned until it leaves the battlefield. Switches on its "as long
+  // as this creature is renowned" lines. Read straight off the card,
+  // like `monstrous`. Absent — not `false` — for everything else.
+  renowned?: boolean;
   // ADR 0071 amendment 2026-10-08, #2695 (CR 702.171): this Mount is
   // saddled — until end of turn, or until it leaves the battlefield.
   // Switches on its "while saddled" lines and is what its "attacks

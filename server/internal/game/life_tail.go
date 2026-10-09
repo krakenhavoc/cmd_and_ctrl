@@ -167,10 +167,11 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 	// stale from this instant until something drops the cache.
 	g.invalidateLayersForLifeChangeLocked()
 	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Source: ev.Source,
-		Target: ev.LifePlayer,
-		Amount: ev.LifeDelta,
+		Kind:          EventChangeLife,
+		Source:        ev.Source,
+		Target:        ev.LifePlayer,
+		Amount:        ev.LifeDelta,
+		FromRadiation: ev.LifeFromRadiation,
 	})
 	// #793: the rest of the effect, with the amount that actually
 	// moved. Runs after the event so a continuation that reads the log

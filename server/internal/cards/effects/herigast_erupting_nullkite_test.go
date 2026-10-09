@@ -38,7 +38,13 @@ func castGrantedEmerge(g *game.Game, p *game.Player, card, sac uuid.UUID, strict
 // granted emerge cost over `sac`.
 func grantedEmergePrice(t *testing.T, g *game.Game, p *game.Player, card, sac uuid.UUID, x int) string {
 	t.Helper()
-	var out string
+	return grantedEmergeTotal(t, g, p, card, sac, x).String()
+}
+
+// grantedEmergeTotal is the total cost that pricer charges.
+func grantedEmergeTotal(t *testing.T, g *game.Game, p *game.Player, card, sac uuid.UUID, x int) game.ParsedCost {
+	t.Helper()
+	var out game.ParsedCost
 	g.WithWriteLock(func() {
 		c, ok := g.LookupCardForEffect(card)
 		if !ok {
@@ -49,7 +55,7 @@ func grantedEmergePrice(t *testing.T, g *game.Game, p *game.Player, card, sac uu
 		if err != nil {
 			t.Fatalf("PriceCastForEffect: %v", err)
 		}
-		out = price.Total.String()
+		out = price.Total
 	})
 	return out
 }
@@ -77,8 +83,8 @@ func TestHerigastDeclaresItsEmergeAndTheGrant(t *testing.T) {
 	if !ok {
 		t.Fatal("Herigast is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("completeness %v, want Caveats", spec.Completeness)
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("completeness %v, want Full", spec.Completeness)
 	}
 	offers := game.AlternativeCostsFor(herigastOracle)
 	if len(offers) != 1 || offers[0].Key != AltCostKeyEmerge || offers[0].Label != "Emerge {6}{R}{R}" {
@@ -191,19 +197,29 @@ func TestHerigastGrantEndsWhenItLeaves(t *testing.T) {
 
 // "The emerge cost is equal to its mana cost": an {X} in the mana cost
 // stays in the emerge cost, and the caster chooses X (CR 107.3a). The
-// sacrificed creature's mana value comes off the generic part only, and
-// the engine does not yet count the announced X as generic (the card's
-// caveat), so the reduction leaves {X} to pay.
+// sacrificed creature's mana value is a generic reduction of the total
+// cost (CR 702.119a), and the total counts X at its announced value (CR
+// 601.2f), so once the {X}{G} has no printed generic left the reduction
+// comes off the mana announced for X (#2701). X on the stack stays 3.
 func TestHerigastEmergeKeepsTheSpellsX(t *testing.T) {
 	g, me, _ := emergeTable(t)
 	herigastOnBattlefield(g, me.ID)
 	hydra := withHandPT(g, me, handCardOf(g, me, "Hydra", "Creature — Hydra", "{X}{G}", ""), 0, 0)
 	spawn := apaPush(g, me.ID, me.ID, EldraziSpawnToken())
-	if got := grantedEmergePrice(t, g, me, hydra, spawn, 3); got != "{X}{G}" {
-		t.Errorf("X = 3 over a token: %s, want {X}{G}", got)
+	two := emergeFodder(g, me.ID, "Two", "{1}{G}", 2, 2)
+	if got := grantedEmergeSettled(t, g, me, hydra, spawn, 3); got != "{3}{G}" {
+		t.Errorf("X = 3 over a token: %s, want {3}{G}", got)
 	}
-	if err := castGrantedEmerge(g, me, hydra, spawn, false, 3); err != nil {
-		t.Fatalf("granted emerge with X = 3: %v", err)
+	if got := grantedEmergeSettled(t, g, me, hydra, two, 3); got != "{1}{G}" {
+		t.Errorf("X = 3 over a two-drop: %s, want {1}{G}", got)
+	}
+	if got := grantedEmergeSettled(t, g, me, hydra, two, 1); got != "{G}" {
+		t.Errorf("X = 1 over a two-drop: %s, want {G} (never below the X)", got)
+	}
+	// Two lands pay {1}{G}: the four-mana cast is paid with two.
+	emergeLands(g, me.ID, 2, "Forest")
+	if err := castGrantedEmerge(g, me, hydra, two, true, 3); err != nil {
+		t.Fatalf("granted emerge with X = 3 over a two-drop, two Forests: %v", err)
 	}
 	var x int
 	g.ReadSnapshot(func() {
@@ -214,6 +230,13 @@ func TestHerigastEmergeKeepsTheSpellsX(t *testing.T) {
 	if x != 3 {
 		t.Errorf("X on the stack = %d, want 3", x)
 	}
+}
+
+// grantedEmergeSettled is grantedEmergePrice with X settled at the
+// announced x, which is what the payment charges.
+func grantedEmergeSettled(t *testing.T, g *game.Game, p *game.Player, card, sac uuid.UUID, x int) string {
+	t.Helper()
+	return grantedEmergeTotal(t, g, p, card, sac, x).SettleX(x).String()
 }
 
 // A creature that prints emerge keeps its own beside Herigast's (the

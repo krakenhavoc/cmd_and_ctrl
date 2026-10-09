@@ -166,3 +166,33 @@ func TestCastManaIsOnCastsOnly(t *testing.T) {
 		}
 	}
 }
+
+// #2701, CR 601.2f and 118.7a: a generic reduction comes off the mana
+// announced for X once the printed generic is gone. Blaze's {X}{R}
+// under a {2} reduction with three Mountains is affordable at X = 4:
+// four for X, less two, plus {R}. The move states {2}{R}, the engine
+// taps three lands for it, and it still announces X = 4.
+func TestCastManaTakesAReductionOffX(t *testing.T) {
+	const reducer = "test-x-reducer"
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	withCostModifiers(t, reducer, []game.CostModifier{{
+		Kind:   game.CostReduction,
+		Label:  "Spells you cast cost {2} less to cast.",
+		Amount: func(game.CostQuery) int { return 2 },
+	}})
+	battlefieldCard(g, active, game.Card{Name: "Test Reducer", TypeLine: "Artifact", OracleID: reducer})
+	basicLands(g, active, 3, "Mountain")
+	blaze := handCard(active, game.Card{Name: "Blaze", TypeLine: "Sorcery", ManaCost: "{X}{R}", OracleID: oracleBlaze})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	for _, m := range wantCastMana(t, g, active.ID, blaze, "{2}{R}", 3) {
+		var p struct {
+			XValue int `json:"x_value"`
+		}
+		if err := json.Unmarshal(m.Params, &p); err != nil || p.XValue != 4 {
+			t.Errorf("%q announces X=%d (%v), want 4", m.Label, p.XValue, err)
+		}
+	}
+}

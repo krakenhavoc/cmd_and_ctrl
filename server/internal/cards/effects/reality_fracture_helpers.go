@@ -227,3 +227,82 @@ func frDealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, er
 	}
 	return excess, nil
 }
+
+// --- fra-planeswalker-a ---------------------------------------------
+
+// youControlAPlaneswalker is the Reality Fracture land condition —
+// "unless you control a planeswalker". Read once as the land enters
+// (CR 614.12), against effective types so a planeswalker that is also
+// something else still counts.
+func youControlAPlaneswalker(g *game.Game, controller uuid.UUID) bool {
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == controller && c.IsPlaneswalker() {
+			return true
+		}
+	}
+	return false
+}
+
+// AjanisPridemateToken is Ajani Resolute's −4 token: a 2/2 white Cat
+// Soldier named Ajani's Pridemate with "Whenever you gain life, put a
+// +1/+1 counter on this token."
+func AjanisPridemateToken() game.Card { return tokenFromCatalog(printedAjanisPridemateToken) }
+
+// printedAjanisPridemateToken is that token as PRINTED, ability included.
+func printedAjanisPridemateToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "ajanis-pridemate",
+		Card: game.Card{
+			Name:      "Ajani's Pridemate",
+			TypeLine:  "Token Creature — Cat Soldier",
+			Power:     2,
+			Toughness: 2,
+			Colors:    []string{"W"},
+		},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", putCounterOnSelf),
+		},
+		Text: "Whenever you gain life, put a +1/+1 counter on this token.",
+	}
+}
+
+// surveilKeepNoncreatureNonland is Chandra, Chill of Compliance's first
+// +1: "Surveil 1. If you put a noncreature, nonland card into your
+// graveyard this way, put that card into your hand."
+//
+// Surveil.Then is told which cards were put away only by what changed,
+// so the graveyard is read before the prompt opens and again when the
+// player has answered: every card that is new in it was put there by the
+// surveil (nothing else moves a card into this graveyard while the
+// prompt is open), and each noncreature, nonland one is returned to hand.
+func surveilKeepNoncreatureNonland(g *game.Game, item *game.StackItem) error {
+	me := item.Controller
+	p := g.PlayerByIDForEffect(me)
+	if p == nil {
+		return nil
+	}
+	before := map[uuid.UUID]bool{}
+	for _, c := range p.Graveyard.Cards {
+		before[c.InstanceID] = true
+	}
+	g.SurveilThenForEffect(me, item.SourceCardID, 1, func(g *game.Game) error {
+		q := g.PlayerByIDForEffect(me)
+		if q == nil {
+			return nil
+		}
+		var back []uuid.UUID
+		for _, c := range q.Graveyard.Cards {
+			if !before[c.InstanceID] && !c.IsCreature() && !c.IsLand() {
+				back = append(back, c.InstanceID)
+			}
+		}
+		ctx := NewContext(g, item)
+		for _, id := range back {
+			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return nil
+}

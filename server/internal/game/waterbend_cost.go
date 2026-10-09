@@ -61,7 +61,7 @@ func WaterbendBudget(wb *TapPermanentsCost, priced ParsedCost, x int) int {
 		return 0
 	}
 	budget := clause.Generic + clause.XSlots*x
-	if owed := priced.Generic + priced.XSlots*x; owed < budget {
+	if owed := priced.GenericWithX(x); owed < budget {
 		budget = owed
 	}
 	if budget < 0 {
@@ -83,10 +83,8 @@ func WaterbendReduced(priced ParsedCost, x, n int) ParsedCost {
 	if n <= 0 {
 		return priced
 	}
-	out := priced
+	out := priced.SettleX(x)
 	out.Required = append([]ColorRequirement(nil), priced.Required...)
-	out.Generic += out.XSlots * x
-	out.XSlots = 0
 	if n > out.Generic {
 		n = out.Generic
 	}

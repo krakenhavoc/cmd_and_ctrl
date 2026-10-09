@@ -93,6 +93,13 @@ const (
 	// and refuses a cast of anything else. Tags AND and every other tag
 	// is positive, so the clause cannot be spelled as two of them.
 	ManaRestrictNotNonartifactSpell = "not:nonartifact-spell"
+	// ManaRestrictNotFromHand is a NEGATIVE clause — "this mana can't be
+	// spent to cast spells from your hand" (Heartwood Crafter, #2811).
+	// It admits any payment that is not a cast, and a cast whose spend
+	// context names a zone other than the hand (a graveyard, exile, the
+	// command zone, a library top). A cast whose zone is not known is
+	// refused: weaker than printed, never stronger.
+	ManaRestrictNotFromHand = "not:cast-from-hand"
 	// ManaRestrictMonocolored permits the token only when the object
 	// being paid for is exactly one colour (CR 105.2a) — Throne of
 	// Eldraine's "spend this mana only to cast monocolored spells of
@@ -265,9 +272,35 @@ type ManaSpendContext struct {
 	// card's catalog declaration (SpendOnlySourcesFor); zero for every
 	// other payment, which means no source restriction.
 	SourceOnly ManaSourceKinds
+
+	// CastFrom is the zone a spell is being cast FROM (CR 601.2a moves
+	// it to the stack first, so the zone has to be carried): what
+	// ManaRestrictNotFromHand reads (#2811). Empty when the caller does
+	// not know it, which that restriction treats as the hand. Set by
+	// ManaSpendForCastFrom and ManaSpendForCastParams; meaningless for
+	// any other purpose.
+	CastFrom ZoneKind
 }
 
-// ManaSpendForCast builds the spend context for casting `c`.
+// ManaSpendForCastFrom is ManaSpendForCast for a cast from a known
+// zone.
+func ManaSpendForCastFrom(c Card, from ZoneKind) ManaSpendContext {
+	ctx := ManaSpendForCast(c)
+	ctx.CastFrom = from
+	return ctx
+}
+
+// ManaSpendForCastParams is ManaSpendForCastFrom with the zone read off
+// the cast's own parameters, as CastSpell reads it (an empty FromZone
+// is the hand).
+func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
+	from, _ := castZoneFromWire(params.FromZone)
+	return ManaSpendForCastFrom(c, from)
+}
+
+// ManaSpendForCast builds the spend context for casting `c`. It does
+// not know the zone the spell is cast from; a caller that does uses
+// ManaSpendForCastFrom.
 func ManaSpendForCast(c Card) ManaSpendContext {
 	ch := c.Effective()
 	return ManaSpendContext{
@@ -352,6 +385,14 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// Decided per symbol by the solvers (noGeneric), not by the
 		// object being paid for: nothing here to refuse.
 		return true
+	case ManaRestrictNotFromHand:
+		switch ctx.Purpose {
+		case SpendPurposeActivate, SpendPurposeUnlock:
+			return true
+		case SpendPurposeCast:
+			return ctx.CastFrom != "" && ctx.CastFrom != ZoneHand
+		}
+		return false
 	case ManaRestrictNotNonartifactSpell:
 		switch ctx.Purpose {
 		case SpendPurposeActivate:

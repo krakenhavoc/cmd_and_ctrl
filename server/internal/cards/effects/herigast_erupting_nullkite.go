@@ -30,20 +30,17 @@ import (
 // prints. Herigast itself may be the creature sacrificed (the ruling:
 // losing control of it once the cast has begun doesn't matter).
 //
-// Caveat: a creature with {X} in its mana cost keeps the {X} in its
-// emerge cost, and X is chosen as usual (CR 107.3a), but the engine
-// takes a generic cost reduction off the cost's printed generic part
-// only and never off the mana announced for X, so the sacrificed
-// creature's mana value does not pay for X. CR 107.3a and 601.2f count
-// the announced X in the total cost the reduction applies to. That is
-// the engine's rule for every cost reduction, not Herigast's alone, and
-// it errs toward costing more (#2701).
+// A creature with {X} in its mana cost keeps the {X} in its emerge
+// cost, and X is chosen as usual (CR 107.3a). The sacrificed creature's
+// mana value is a generic reduction of the total cost (CR 702.119a,
+// 601.2f), which counts X at its announced value, so it comes off the
+// mana announced for X once the printed generic is gone (#2701); X
+// itself stays what was announced.
 func init() {
 	Register(Spec{
 		OracleID:                "76243b38-cab1-465f-aa7d-5bc617541753",
 		Name:                    "Herigast, Erupting Nullkite",
-		Completeness:            CompletenessCaveats,
-		Caveats:                 []string{"When you emerge a creature with {X} in its mana cost, the sacrificed creature's mana value doesn't reduce the mana you pay for X."},
+		Completeness:            CompletenessFull,
 		PrintedKeywords:         []string{"flying"},
 		AlternativeCosts:        []game.AlternativeCost{Emerge("{6}{R}{R}")},
 		GrantedAlternativeCosts: []game.GrantedAlternativeCost{EmergeForCreatureSpellsYouCast()},
